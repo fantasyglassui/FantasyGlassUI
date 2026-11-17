@@ -1,6 +1,6 @@
 # Releases Fantasy Glass UI: pushing a version tag (for example 11.9.1) builds the zip from the
 # three add-on folders and uploads it to CurseForge, with RELEASE.md as its changelog, and also
-# attaches it to a GitHub release. Needs the repository secret CF_API_KEY (a CurseForge API token).
+# attaches it to a GitHub release. Needs the repository secret CF_API_TOKEN (a CurseForge API token).
 name: Release
 
 on:
@@ -15,8 +15,8 @@ jobs:
     permissions:
       contents: write
     env:
-      CF_API_KEY: ${{ secrets.CF_API_KEY }}
-      GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
+      CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+      GH_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Check out the code
         uses: actions/checkout@v4
