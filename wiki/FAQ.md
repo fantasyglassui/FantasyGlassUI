@@ -2,7 +2,7 @@
 
 **Is it free?** Yes, on [CurseForge](https://www.curseforge.com/wow/addons/fantasy-glass-ui).
 
-**Which game is it for?** WoW Forever (interface 16001).
+**Which game is it for?** WoW Forever.
 
 **Does it replace ElvUI / Bartender / bag add-ons?** It does all of those jobs. If you keep another add-on for one of them, Fantasy Glass UI leaves that job to it. Coming from ElvUI, Tukui, RealUI or GW2 UI, the setup has a one-click layout close to what you are used to.
 

@@ -1,6 +1,6 @@
 # Reporting bugs and ideas
 
-Use the repository's **Issues** tab: [new issue](../../../issues/new/choose). There are two forms, one for bugs and one for ideas.
+Use the repository's **Issues** tab: [new issue](https://github.com/fantasyglassui/FantasyGlassUI/issues/new/choose). There are two forms, one for bugs and one for ideas.
 
 For a bug, the most useful things are:
 - the report from **Report a Problem** (open `/fgui`, press the button, copy the text);

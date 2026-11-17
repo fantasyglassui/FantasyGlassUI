@@ -1,5 +1,3 @@
-**Fantasy Glass UI**
-
 - [Home](Home)
 - [Installation](Installation)
 - [Getting Started](Getting-Started)
