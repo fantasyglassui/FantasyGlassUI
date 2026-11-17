@@ -297,6 +297,7 @@ local function BuildLook(page)
         familyButtons[def[1]] = b
     end
     page.SetFamily = function(which) family = which; Refresh() end
+    page.themeButtons = themeButtons
 
     -- the themes of the chosen family: four rows show at a time, and the grid scrolls for the rest
     local ROWS_SHOWN = 4
@@ -316,6 +317,7 @@ local function BuildLook(page)
             GameTooltip:Show()
         end)
         b:HookScript("OnLeave", function() GameTooltip:Hide() end)
+        if ns.optUI and ns.optUI.ThemeSwatch then ns.optUI.ThemeSwatch(b) end      -- (a small picture of the theme)
         themeButtons[i] = b
         return b
     end
@@ -355,7 +357,8 @@ local function BuildLook(page)
         for i, key in ipairs(list) do
             local b = ThemeButton(i)
             b.key = key
-            b.text:SetText((ns.themes[key].name:gsub(" %(.-%)$", ""):gsub("^Fantasy: ", ""):gsub("^Glass: ", "")))
+            b.text:SetText((ns.themes[key].name:gsub(" %(.-%)$", ""):gsub("^Fantasy: ", ""):gsub("^Glass: ", ""):gsub("^Runic: ", "")))
+            if b.swatch then ns.optUI.ShowThemeSwatch(b.swatch, key) end
             Mark(b, key == (ns.db.theme or "SMOKE"))
             if key == (ns.db.theme or "SMOKE") then current = i end
             b:Show()
@@ -370,7 +373,7 @@ local function BuildLook(page)
         for key, sw in pairs(swatches) do
             if key == (ns.db.accent or "AZURE") then sw:SetBackdropBorderColor(1, 1, 1, 1) else sw:SetBackdropBorderColor(0, 0, 0, 1) end
         end
-        note:SetText(needReload and ns:Tr("Glass and fantasy panels are built differently, so this change finishes when the setup reloads the interface at the end.") or "")
+        note:SetText(needReload and ns:Tr("Each family of themes is built differently, so this change finishes when the setup reloads the interface at the end.") or "")
     end
     -- each time the setup opens: show the family of the theme in use
     refreshers[#refreshers + 1] = function() family = FamilyOf(ns.db.theme or "SMOKE"); Refresh() end

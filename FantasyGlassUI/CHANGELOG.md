@@ -2,6 +2,17 @@
 
 The releases published on CurseForge. Each lists what changed since the release before it.
 
+## 11.9.1
+
+**Changed**
+- The setup's theme buttons show a small picture of each theme, as the Look tab does.
+- The home key now rechecks your cooldowns at most every ten seconds instead of after every cast;
+  new spells and items are still picked up at once.
+
+**Fixed**
+- In the setup, Runic themes showed "Runic:" in front of their names.
+- A boss note that never finished arriving from the group was kept until you logged out.
+
 ## 11.9.0
 
 **New**
@@ -15,6 +26,7 @@ The releases published on CurseForge. Each lists what changed since the release 
   feature added since 11.6 and reports, line by line, what works, what is switched off, what needs
   a place or a moment (the auction house, a fight) and what to look at, as text to copy and send.
 
+## 11.8.1
 
 **Fixed**
 - The language list showed only one language's name, with the rest of the buttons empty

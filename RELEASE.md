@@ -1,13 +1,10 @@
-## 11.9.0
+## 11.9.1
 
-### New
-- **Runic art:** with a Runic theme, the class emblems are carved on a stone disc inside a band of
-  runes, the minimap sits in a band of runes (a ring of them when it is round), the action buttons
-  have carved edges, and runes run along the foot of each action bar.
-- **Theme previews** on the Look tab: a small picture on each theme's button, and a larger card
-  while you point at one.
-- **Check of the new features** (`/fgui check new`, the Tools tab or the Tools menu): tries each
-  feature added since 11.6 and reports what works, as text to copy and send.
+### Changed
+- The setup's theme buttons show a small picture of each theme, as the Look tab does.
+- The home key now rechecks your cooldowns at most every ten seconds instead of after every cast;
+  new spells and items are still picked up at once.
 
 ### Fixed
-- The language list showed only one language's name, with the rest of the buttons empty.
+- In the setup, Runic themes showed "Runic:" in front of their names.
+- A boss note that never finished arriving from the group was kept until you logged out.

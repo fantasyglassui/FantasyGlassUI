@@ -421,8 +421,20 @@ ns:NewModule("homeKey", function()
         return e
     end
     ns.homeKeyTest = { Assign = Assign, key = key }
+    -- New spells or items: choose again at once. Cooldowns tick with every spell cast, so for those
+    -- choose again at most every ten seconds (a hearthstone's cooldown is counted in minutes).
     local ev = CreateFrame("Frame")
+    local cooled, last = false, 0
     for _, e in ipairs({ "SPELLS_CHANGED", "BAG_UPDATE_DELAYED", "BAG_UPDATE_COOLDOWN", "SPELL_UPDATE_COOLDOWN", "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_ENABLED" }) do pcall(ev.RegisterEvent, ev, e) end
-    ev:SetScript("OnEvent", function() dirty = true end)
-    ns:Every(2, "Home key", function() if dirty and not InCombatLockdown() then pcall(Assign) end end)
+    ev:SetScript("OnEvent", function(_, event)
+        if event == "SPELL_UPDATE_COOLDOWN" or event == "BAG_UPDATE_COOLDOWN" then cooled = true else dirty = true end
+    end)
+    ns:Every(2, "Home key", function()
+        if InCombatLockdown() then return end
+        local now = GetTime()
+        if dirty or (cooled and now - last >= 10) then
+            cooled, last = false, now
+            pcall(Assign)
+        end
+    end)
 end)

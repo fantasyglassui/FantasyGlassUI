@@ -1,6 +1,6 @@
 local ADDON, ns = ...
 _G.FantasyGlassUI = ns
-ns.version = "11.9.0"
+ns.version = "11.9.1"
 ns.author = "DustyMouse"
 
 ns.modules = {}
@@ -1402,6 +1402,7 @@ end
 
 -- What's new: shown once after an update (never on a first install, where the setup opens instead).
 ns.whatsNew = {
+    { "11.9.1", { "Polish: the setup's themes show their pictures too, and Runic themes no longer carry their family's name there; the home key works less while you cast." } },
     { "11.9.0", { "Runic themes now carry runes everywhere: carved class emblems on stone, a band of runes round the minimap, and carved edges on the action buttons.",
                   "The Look tab shows a small picture of each theme; point at one for a larger card.",
                   "/fgui check new tries each feature added since 11.6 and reports what works." } },

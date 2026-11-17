@@ -327,7 +327,11 @@ ns:NewModule("bossNotes", function()
             local from = ns.GroupShortName and ns.GroupShortName(d) or d
             if from == UnitName("player") then return end
             i, n = tonumber(i), tonumber(n)
-            local t = incoming[id] or { parts = {}, got = 0, n = n }
+            local now = GetTime()
+            for oldId, old in pairs(incoming) do                -- (a note that never finished arriving is let go)
+                if now - (old.at or now) > 60 then incoming[oldId] = nil end
+            end
+            local t = incoming[id] or { parts = {}, got = 0, n = n, at = now }
             if not t.parts[i] then t.parts[i] = piece; t.got = t.got + 1 end
             incoming[id] = t
             if t.got >= t.n then incoming[id] = nil; ns:ReceiveBossNote(from, table.concat(t.parts)) end
