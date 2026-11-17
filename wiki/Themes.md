@@ -22,7 +22,7 @@ Granite (grey stone, frost runes), Basalt (black rock, ember runes), Slate (blue
 
 ## Tooltips
 
-Tooltips wear the theme too: glass panes on Glass, leather with small gold corners on Fantasy, and carved stone with small rune-studs on Runic. See [Player Tooltips](Player-Tooltips.md) to choose what a player's tooltip shows.
+Tooltips wear the theme too: glass panes on Glass, leather with small gold corners on Fantasy, and carved stone with small rune-studs on Runic. See [Player Tooltips](Player-Tooltips) to choose what a player's tooltip shows.
 
 ## Lettering and accents
 

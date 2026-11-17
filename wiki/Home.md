@@ -5,19 +5,19 @@ A complete interface in one add-on for **WoW Forever**: unit frames, action bars
 **Current version: 11.10.0.** [Download on CurseForge](https://www.curseforge.com/wow/addons/fantasy-glass-ui).
 
 ## Start here
-- [Installation](Installation.md)
-- [Getting Started](Getting-Started.md): the first five minutes
-- [Themes](Themes.md)
+- [Installation](Installation)
+- [Getting Started](Getting-Started): the first five minutes
+- [Themes](Themes)
 
 ## Using it
-- [Features](Features.md): every switch, with what it does
-- [Commands](Commands.md): every `/fgui` command, in groups
-- [Keys and Shortcuts](Keys-and-Shortcuts.md): key bindings, the minimap button, the Tools menu and the help window
-- [Player Tooltips](Player-Tooltips.md): choose every line of a player's tooltip (new in 11.10.0)
-- [Backups and Undo](Backups-and-Undo.md): undo, history, backups, reset and safe mode
+- [Features](Features): every switch, with what it does
+- [Commands](Commands): every `/fgui` command, in groups
+- [Keys and Shortcuts](Keys-and-Shortcuts): key bindings, the minimap button, the Tools menu and the help window
+- [Player Tooltips](Player-Tooltips): choose every line of a player's tooltip (new in 11.10.0)
+- [Backups and Undo](Backups-and-Undo): undo, history, backups, reset and safe mode
 
 ## Help
-- [Troubleshooting](Troubleshooting.md) and [FAQ](FAQ.md)
-- [Reporting Bugs](Reporting-Bugs.md)
+- [Troubleshooting](Troubleshooting) and [FAQ](FAQ)
+- [Reporting Bugs](Reporting-Bugs)
 
-The full list of changes is in [CHANGELOG.md](../CHANGELOG.md).
+The full list of changes is in [CHANGELOG.md](https://github.com/fantasyglassui/FantasyGlassUI/blob/main/CHANGELOG.md).

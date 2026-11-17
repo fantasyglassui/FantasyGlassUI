@@ -54,7 +54,7 @@ Point at a button to see what it does and the command you could type instead.
 
 ## The help window
 
-`/fgui help` lists every command under headings, in a window you can search: `/fgui help bags` shows only the commands about bags. Click a command to put it in the chat box, ready to finish and send. The full list is also on the [Commands](Commands.md) page.
+`/fgui help` lists every command under headings, in a window you can search: `/fgui help bags` shows only the commands about bags. Click a command to put it in the chat box, ready to finish and send. The full list is also on the [Commands](Commands) page.
 
 ## If you mistype
 

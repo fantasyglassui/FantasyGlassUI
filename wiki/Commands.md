@@ -157,4 +157,4 @@ Mistype one and the add-on suggests the nearest command instead.
 | `/fgui tree` | how the window under your mouse is built (for restyling requests) |
 | `/fgui strings` | every label shown so far, laid out for translators |
 
-Other ways in: the **Tools** button on the menu bar opens a button for every tool window, in groups; Shift-click the minimap button opens it too. The **Tools** tab in `/fgui` lists them all with your lists and rules. See [Keys and Shortcuts](Keys-and-Shortcuts.md) for the key bindings.
+Other ways in: the **Tools** button on the menu bar opens a button for every tool window, in groups; Shift-click the minimap button opens it too. The **Tools** tab in `/fgui` lists them all with your lists and rules. See [Keys and Shortcuts](Keys-and-Shortcuts) for the key bindings.

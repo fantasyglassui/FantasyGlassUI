@@ -12,9 +12,9 @@
 
 **Which languages?** English, German, French, Spanish, Italian, Portuguese, Russian, Korean and Simplified Chinese: the options, the chat messages, the window notes and the command help. `/fgui language` switches. Names of items, spells and places come from the game, in the game's language.
 
-**Can I change what player tooltips show?** Yes, line by line, on the Features tab. See [Player Tooltips](Player-Tooltips.md).
+**Can I change what player tooltips show?** Yes, line by line, on the Features tab. See [Player Tooltips](Player-Tooltips).
 
-**Is there a key binding for ...?** Nineteen: Esc, Key Bindings, AddOns. See [Keys and Shortcuts](Keys-and-Shortcuts.md).
+**Is there a key binding for ...?** Nineteen: Esc, Key Bindings, AddOns. See [Keys and Shortcuts](Keys-and-Shortcuts).
 
 **How much memory does it use?** `/fgui check` and `/fgui perf load` show it, feature by feature. The options and translations load only when needed.
 
