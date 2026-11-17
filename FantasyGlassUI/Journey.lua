@@ -173,7 +173,17 @@ ns:NewModule("cdTimeline", function()
         return n
     end
     ns.cdTimelineTest = { Update = Update, icons = icons, frame = f }
-    ns:Every(0.05, "Cooldown timeline", Update)
+    -- Twenty times a second while something is cooling down; with nothing on it, five times a second
+    -- is enough to notice the next one.
+    local idleTicks, lastCount = 0, 1
+    ns:Every(0.05, "Cooldown timeline", function()
+        if (lastCount or 0) == 0 and not ns.moving then
+            idleTicks = idleTicks + 1
+            if idleTicks < 4 then return end
+        end
+        idleTicks = 0
+        lastCount = Update()
+    end)
     local entry = ns:RegisterMovable(f, "cdTimeline", "Cooldown Timeline")
     if type(entry) == "table" then entry.offPage = true end        -- (scaled from its own right-click menu in move mode)
 end)
@@ -182,9 +192,11 @@ end)
 -- Ready-check report: when a ready check starts (outside a fight), who in the group is missing food,
 -- a flask or elixir, or a class buff that someone in the group can give.
 ------------------------------------------------------------------------------------------
-ns.READY_WORDS = {
-    food = { "Well Fed", "Satt", "Bien nourri", "Bien alimentado", "Bien Alimentado" },
-    flask = { "Flask", "Fläschchen", "Flacon", "Frasco", "Elixir", "Elixier", "Élixir" },
+ns.READY_WORDS = {                                           -- (in each client language the add-on speaks)
+    food = { "Well Fed", "Satt", "Bien nourri", "Bien alimentado", "Bien Alimentado", "Сытость", "Bem Alimentado", "Ben Nutrito",
+             "포만감", "进食充分" },
+    flask = { "Flask", "Fläschchen", "Flacon", "Frasco", "Elixir", "Elixier", "Élixir", "Настой", "Эликсир", "Tonico", "Elisir",
+              "영약", "비약", "合剂", "药剂" },
 }
 -- class buffs: the class that gives it, and spells whose names count (all ranks share a name)
 ns.READY_BUFFS = {

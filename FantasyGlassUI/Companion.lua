@@ -11,16 +11,28 @@ local Secret = function(v) return ns:IsSecret(v) end
 -- Tools from the Menu button: "Tools" in the Menu button's list opens a small palette with a button
 -- for every tool window, so they can be used without opening the options.
 ------------------------------------------------------------------------------------------
-ns.TOOL_MENU = {
-    { "Checklist", "checklist" }, { "Session", "session" }, { "Gold history", "gold" }, { "Loot log", "loot" },
-    { "Rolls", "rolls" }, { "Notes on players", "note", "list" }, { "Recent group mates", "recent" }, { "Lockouts", "lockouts" },
-    { "Your characters", "alts" }, { "Trades", "trades" }, { "To do", "todo" }, { "Notepad", "notepad" },
-    { "Whisper window", "whispers" }, { "Shopping list", "shop" }, { "Crafting queue", "queue", "list" }, { "Profession cooldowns", "profcd" },
-    { "Talent builds", "talents" }, { "Sort bags", "sort" }, { "Professions", "crafts" }, { "Key bindings", "keys" }, { "Quiet mode", "quiet" }, { "Group practice", "testgroup" }, { "Put on upgrades", "equipbest" }, { "Am I ready?", "ready", "me" }, { "Check new features", "checknew" }, { "Boss notes", "bossnote", "list" }, { "Death recap", "death" }, { "Worth selling", "ah" }, { "Backups", "backup" }, { "Changes to this profile", "history" }, { "Reputations and currencies", "reps" }, { "Goals", "goal" }, { "Where to level", "level" }, { "Rares you have seen", "rares" },
-    { "Events and holidays", "events" }, { "Raid composition", "comp" }, { "Ready check", "ready" }, { "Who is missing", "missing" },
-    { "Battleground score", "bgscore" }, { "Bag rules", "bagrules" }, { "Mail rules", "mailrules" }, { "Preview a shared string", "sharepreview" },
-    { "Layout gallery", "gallery" }, { "What's this?", "whatsthis" }, { "Performance", "perf" }, { "Self-test", "selftest" },
+ns.TOOL_MENU = {                                             -- (in groups: see ns.TOOL_MENU_GROUPS)
+    { "Am I ready?", "ready", "me" }, { "Ready check", "ready" }, { "Who is missing", "missing" },
+    { "Raid composition", "comp" }, { "Boss notes", "bossnote", "list" }, { "Death recap", "death" },
+    { "Rolls", "rolls" }, { "Group practice", "testgroup" }, { "Battleground score", "bgscore" },
+    { "Lockouts", "lockouts" },
+    { "Your characters", "alts" }, { "Checklist", "checklist" }, { "Professions", "crafts" },
+    { "Profession cooldowns", "profcd" }, { "Reputations and currencies", "reps" }, { "Goals", "goal" },
+    { "Talent builds", "talents" }, { "Session", "session" }, { "Gold history", "gold" },
+    { "Sort bags", "sort" }, { "Put on upgrades", "equipbest" }, { "Bag rules", "bagrules" },
+    { "Mail rules", "mailrules" }, { "Worth selling", "ah" }, { "Shopping list", "shop" },
+    { "Crafting queue", "queue", "list" }, { "Loot log", "loot" }, { "Trades", "trades" },
+    { "Notes on players", "note", "list" }, { "Recent group mates", "recent" }, { "Whisper window", "whispers" },
+    { "To do", "todo" }, { "Notepad", "notepad" },
+    { "Where to level", "level" }, { "Rares you have seen", "rares" }, { "Events and holidays", "events" },
+    { "Key bindings", "keys" }, { "Quiet mode", "quiet" }, { "Layout gallery", "gallery" },
+    { "Preview a shared string", "sharepreview" }, { "Backups", "backup" }, { "Changes to this profile", "history" },
+    { "What's this?", "whatsthis" }, { "Check new features", "checknew" }, { "Performance", "perf" },
+    { "Self-test", "selftest" },
 }
+-- Where each group of the Tools menu starts, and its heading (the menu's buttons are in this order).
+ns.TOOL_MENU_GROUPS = { [1] = "Groups and raids", [11] = "Your characters", [20] = "Bags, gear and trade",
+                        [29] = "People and notes", [34] = "The world", [37] = "The add-on itself" }
 local palette
 do
     local ev = CreateFrame("Frame")
@@ -33,10 +45,24 @@ function ns:ToggleToolsMenu(anchor)
         if palette.open then palette:Hide(); palette.open = false; return false end
         palette:Show(); palette.open = true; return true
     end
-    local COLS, BW, BH = 2, 170, 22
-    local rows = math.ceil(#ns.TOOL_MENU / COLS)
+    local COLS, BW, BH, HEAD = 4, 156, 22, 18            -- (four across keeps the panel on a small screen)
+    -- where each button goes: a group starts on a new row, under its heading
+    local spots, headings, y, col = {}, {}, -30, 0
+    for i in ipairs(ns.TOOL_MENU) do
+        local group = ns.TOOL_MENU_GROUPS and ns.TOOL_MENU_GROUPS[i]
+        if group then
+            if col > 0 then y = y - (BH + 2); col = 0 end
+            headings[#headings + 1] = { text = group, y = y }
+            y = y - HEAD
+        elseif col >= COLS then
+            y = y - (BH + 2); col = 0
+        end
+        spots[i] = { x = 8 + col * (BW + 4), y = y }
+        col = col + 1
+    end
+    local height = -(y - (BH + 2)) + 12
     palette = CreateFrame("Frame", "FantasyGlassUIToolMenu", UIParent, ns.template)
-    palette:SetSize(COLS * (BW + 4) + 16, rows * (BH + 2) + 40)
+    palette:SetSize(COLS * (BW + 4) + 16, height)
     palette:SetFrameStrata("DIALOG")
     palette:SetBackdrop(ns.BACKDROP)
     ns:Paint(palette, "SetBackdropColor", "window", 0.97)
@@ -52,6 +78,12 @@ function ns:ToggleToolsMenu(anchor)
     ns:Paint(title, "SetTextColor", "@accent")
     local close = ns:CreateButton(palette, "X", 20, 18, function() palette:Hide() end)
     close:SetPoint("TOPRIGHT", -6, -6)
+    for _, h in ipairs(headings) do
+        local fs = ns:NewText(palette, 11, "LEFT")
+        fs:SetPoint("TOPLEFT", 10, h.y - 3)
+        fs:SetText(ns:Tr(h.text))
+        ns:Paint(fs, "SetTextColor", "dim")
+    end
     palette.buttons = {}
     for i, def in ipairs(ns.TOOL_MENU) do
         local b = ns:CreateButton(palette, def[1], BW, BH, function()
@@ -59,7 +91,7 @@ function ns:ToggleToolsMenu(anchor)
             local word = def[2]
             ns:ToolCommand(word .. (def[3] and (" " .. def[3]) or ""), word .. (def[3] and (" " .. def[3]) or ""))
         end)
-        b:SetPoint("TOPLEFT", 8 + ((i - 1) % COLS) * (BW + 4), -30 - math.floor((i - 1) / COLS) * (BH + 2))
+        b:SetPoint("TOPLEFT", spots[i].x, spots[i].y)
         if b.text then ns:Font(b.text, 11) end
         palette.buttons[i] = b
     end

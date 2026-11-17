@@ -200,6 +200,7 @@ ns:NewModule("imbueReminder", function()
         end
         local cur = f:GetAlpha()
         if type(cur) ~= "number" then cur = target end
+        if cur == target and (target == 0) ~= (f:IsShown() and true or false) then return end   -- (settled: nothing to do this tick)
         if math.abs(cur - target) < 0.02 then
             cur = target
         else

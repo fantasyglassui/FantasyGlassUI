@@ -75,6 +75,7 @@ ns.defaults = {
     ufArena          = false,       -- arena enemy frames (UnitFrames.lua)
     enemyCDs         = true,        -- enemy trinket, interrupt and dispel cooldowns, in arenas and battlegrounds (Arena.lua)
     upgradeArrows    = true,
+    loginLine        = true,        -- the "loaded" line in chat at login
     bossNotes        = true,        -- a note for each boss, opened on target or pull (Raid.lua)
     deathRecap       = true,        -- what hit you before you died (Raid.lua)
     homeKey          = true,        -- one key for the best way home (QuickKeys.lua)
@@ -1402,7 +1403,7 @@ end
 
 -- What's new: shown once after an update (never on a first install, where the setup opens instead).
 ns.whatsNew = {
-    { "11.9.1", { "Polish: the setup's themes show their pictures too, and Runic themes no longer carry their family's name there; the home key works less while you cast." } },
+    { "11.9.1", { "Polish: the setup's themes show their pictures too, and Runic themes no longer carry their family's name there; the home key works less while you cast.", "/fgui help opens a window you can search, and the Tools menu is sorted into groups.", "The death recap names the kind of damage; boss notes can be deleted from the list; group practice shows a banner." } },
     { "11.9.0", { "Runic themes now carry runes everywhere: carved class emblems on stone, a band of runes round the minimap, and carved edges on the action buttons.",
                   "The Look tab shows a small picture of each theme; point at one for a larger card.",
                   "/fgui check new tries each feature added since 11.6 and reports what works." } },
@@ -1903,7 +1904,7 @@ f:SetScript("OnEvent", function(_, event, name)
                 end
             end
         end
-        ns:Print(format("v%s loaded (%d modules). Type |cffffff00/fgui|r for options.", ns.version, count))
+        if ns.db.loginLine ~= false then ns:Print(format("v%s loaded (%d modules). Type |cffffff00/fgui|r for options.", ns.version, count)) end
         if #stepped > 0 then
             local seen, names = {}, {}
             for _, name in ipairs(stepped) do if not seen[name] then seen[name] = true; names[#names + 1] = name end end
@@ -1938,6 +1939,44 @@ end)
 
 -- Slash commands --------------------------------------------------------------
 -- /fgui help. A line with one entry is a heading.
+-- Every command in one window (11.9.1), not a hundred lines of chat: grouped under headings,
+-- /fgui help <word> keeps the ones that mention it, and clicking one puts it in the chat box.
+function ns.HelpMatches(lines, word)
+    word = ns.Trim(word or ""):lower()
+    local out, heading = {}, nil
+    for _, line in ipairs(lines) do
+        if not line[2] then
+            heading = line
+        elseif word == "" or line[1]:lower():find(word, 1, true) or ns:Tr(line[2]):lower():find(word, 1, true) or line[2]:lower():find(word, 1, true) then
+            if heading then out[#out + 1] = heading; heading = nil end
+            out[#out + 1] = line
+        end
+    end
+    return out
+end
+function ns:ShowHelp(word)
+    local found = ns.HelpMatches(ns.helpLines, word)
+    local rows = {}
+    for _, line in ipairs(found) do
+        if line[2] then
+            local cmd = line[1]:gsub("%s*[%[<].*$", "")             -- (what to type: the part before any <...> or [...])
+            rows[#rows + 1] = {
+                left = "|cffffd100" .. line[1] .. "|r  " .. ns:Tr(line[2]),
+                click = function()
+                    local open = ChatFrame_OpenChat or (ChatFrameUtil and ChatFrameUtil.OpenChat)
+                    if type(open) == "function" then pcall(open, cmd .. " ") end
+                end,
+            }
+        else
+            rows[#rows + 1] = { left = ns:AccentHex() .. ns:Tr(line[1]) .. "|r" }
+        end
+    end
+    if #rows == 0 then rows[1] = { left = format(ns:Tr("No command mentions \"%s\"."), ns.Trim(word)) } end
+    ns:ShowList("Help", format("Fantasy Glass UI %s: %s", ns.version, ns:Tr("commands")), rows,
+        "Click one to put it in the chat box. /fgui help bags shows only the ones about bags.", 620, 440)
+    return #found
+end
+
 ns.helpLines = {
     { "Everyday" },
     { "/fgui", "open the options (or use the minimap button)" },
@@ -2315,11 +2354,8 @@ SlashCmdList["FANTASYGLASSUI"] = function(msg)
                 ns:Print(format("  %s: %s", m.key, ns.loaded[m.key] and "|cff33ff66on|r" or "|cffff4444off|r"))
             end
         end
-    elseif msg == "help" then
-        ns:PrintRaw("|cff33ccffFantasy Glass UI|r " .. ns.version .. "  -  " .. ns:Tr("commands"))
-        for _, line in ipairs(ns.helpLines) do
-            if line[2] then ns:PrintRaw("  |cffffd100" .. line[1] .. "|r  " .. ns:Tr(line[2])) else ns:PrintRaw("|cff8f96a3" .. ns:Tr(line[1]) .. "|r") end
-        end
+    elseif msg == "help" or msg:sub(1, 5) == "help " then
+        ns:ShowHelp(msg:sub(6))
     else
         ns:ToggleConfig()
     end

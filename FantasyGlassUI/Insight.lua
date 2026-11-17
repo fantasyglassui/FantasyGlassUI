@@ -472,6 +472,10 @@ function ns:PerfFight()
             fight.armed = false
             wipe(ns.perfData)
             ns.perfOn, ns.perfStart = true, GetTime()
+        elseif event == "PLAYER_REGEN_ENABLED" and ns.perfOn and not fight.armed and GetTime() - ns.perfStart < 10 then
+            ns.perfOn = false                                -- (a few seconds says nothing: wait for a real fight)
+            fight.armed, fight.fps = true, {}
+            ns:Print("That fight was too short to measure. Waiting for the next one.")
         elseif event == "PLAYER_REGEN_ENABLED" and ns.perfOn and not fight.armed then
             ns.perfOn = false
             self:UnregisterAllEvents(); ticker:SetScript("OnUpdate", nil)

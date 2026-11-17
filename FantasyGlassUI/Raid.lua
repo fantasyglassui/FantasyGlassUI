@@ -295,11 +295,28 @@ function ns:BossNoteCommand(text)
         local mine, sent = NoteStore()
         local lines = {}
         local seen = {}
-        for key, n in pairs(mine) do seen[key] = true; lines[#lines + 1] = { left = n.name, right = DIM .. ns:Tr("yours") .. "|r", click = function() ns:ShowBossNote(n.name) end } end
-        for key, n in pairs(sent) do if not seen[key] then lines[#lines + 1] = { left = n.name, right = DIM .. format(ns:Tr("from %s"), tostring(n.from)) .. "|r", click = function() ns:ShowBossNote(n.name) end } end end
+        local armed                                          -- (right-click twice to delete: a note can't be brought back)
+        local function Click(n, store, key)
+            return function(button)
+                if button == "RightButton" then
+                    if armed == key then
+                        store[key] = nil; armed = nil
+                        ns:Print("Note for %s deleted.", n.name)
+                        ns:BossNoteCommand("list")
+                    else
+                        armed = key
+                        ns:Print("Right-click %s again to delete its note.", n.name)
+                    end
+                else
+                    ns:ShowBossNote(n.name)
+                end
+            end
+        end
+        for key, n in pairs(mine) do seen[key] = true; lines[#lines + 1] = { left = n.name, right = DIM .. ns:Tr("yours") .. "|r", click = Click(n, mine, key) } end
+        for key, n in pairs(sent) do if not seen[key] then lines[#lines + 1] = { left = n.name, right = DIM .. format(ns:Tr("from %s"), tostring(n.from)) .. "|r", click = Click(n, sent, key) } end end
         table.sort(lines, function(a, b) return a.left < b.left end)
         if #lines == 0 then lines[1] = { left = ns:Tr("No boss notes yet. Target a boss and type /fgui bossnote.") } end
-        ns:ShowList("BossNotes", "Boss notes", lines, "Click one to read it.", 360, math.min(420, 80 + #lines * 18))
+        ns:ShowList("BossNotes", "Boss notes", lines, "Click one to read it. Right-click twice to delete it.", 360, math.min(420, 80 + #lines * 18))
         return #lines
     end
     local boss = ns.TargetBoss() or (ns.Yes(UnitExists("target")) and select(2, pcall(UnitName, "target"))) or nil
@@ -354,12 +371,23 @@ local recap = { list = {}, last = nil }
 ns.deathRecap = recap
 local KINDS = { WOUND = "Hit", HEAL = "Heal", DODGE = "Dodged", PARRY = "Parried", MISS = "Missed", BLOCK = "Blocked",
     RESIST = "Resisted", IMMUNE = "Immune", ABSORB = "Absorbed", ENERGIZE = nil }
-function ns.DeathRecapNote(list, action, flag, amount, now)
+-- the kind of damage (the game's own words where it has them)
+local SCHOOLS = { [1] = { "STRING_SCHOOL_PHYSICAL", "Physical" }, [2] = { "STRING_SCHOOL_HOLY", "Holy" }, [4] = { "STRING_SCHOOL_FIRE", "Fire" },
+    [8] = { "STRING_SCHOOL_NATURE", "Nature" }, [16] = { "STRING_SCHOOL_FROST", "Frost" }, [32] = { "STRING_SCHOOL_SHADOW", "Shadow" },
+    [64] = { "STRING_SCHOOL_ARCANE", "Arcane" } }
+function ns.DamageSchool(mask)
+    if type(mask) ~= "number" or Secret(mask) then return nil end
+    local s = SCHOOLS[mask]
+    if not s then return nil end
+    local word = _G[s[1]]
+    return (type(word) == "string" and word ~= "") and word or s[2]
+end
+function ns.DeathRecapNote(list, action, flag, amount, now, school)
     if Secret(action) then action = "WOUND" end
     local kind = KINDS[action]
     if not kind then return false end
     local crit = not Secret(flag) and flag == "CRITICAL"
-    list[#list + 1] = { kind = kind, crit = crit, amount = amount, t = now }
+    list[#list + 1] = { kind = kind, crit = crit, amount = amount, t = now, school = (kind == "Hit") and ns.DamageSchool(school) or nil }
     while #list > KEEP do table.remove(list, 1) end
     return true
 end
@@ -378,7 +406,7 @@ function ns:ShowDeathRecap()
     local lines = {}
     for _, e in ipairs(d.events) do
         local when = format("-%.1fs", math.max(0, d.at - e.t))
-        local label = DIM .. when .. "|r  " .. ns:Tr(e.kind) .. (e.crit and (" |cffffd100" .. ns:Tr("critical") .. "|r") or "")
+        local label = DIM .. when .. "|r  " .. ns:Tr(e.kind) .. (e.school and (" (" .. e.school .. ")") or "") .. (e.crit and (" |cffffd100" .. ns:Tr("critical") .. "|r") or "")
         local line = { left = label, color = (e.kind == "Heal") and { 0.4, 1, 0.5 } or { 1, 0.8, 0.75 } }
         if Secret(e.amount) then line.secretRight, line.hasSecret = e.amount, true
         elseif type(e.amount) == "number" and e.amount > 0 then
@@ -394,9 +422,9 @@ ns:NewModule("deathRecap", function()
     local ev = CreateFrame("Frame")
     pcall(ev.RegisterUnitEvent, ev, "UNIT_COMBAT", "player")
     pcall(ev.RegisterEvent, ev, "PLAYER_DEAD")
-    ev:SetScript("OnEvent", ns:Guard("Death recap", function(_, event, _, action, flag, amount)
+    ev:SetScript("OnEvent", ns:Guard("Death recap", function(_, event, _, action, flag, amount, school)
         if event == "UNIT_COMBAT" then
-            ns.DeathRecapNote(recap.list, action, flag, amount, GetTime())
+            ns.DeathRecapNote(recap.list, action, flag, amount, GetTime(), school)
         else
             local now = GetTime()
             recap.last = { at = now, events = ns.DeathRecapLines(recap.list, now) }

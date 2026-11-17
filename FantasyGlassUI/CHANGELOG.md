@@ -16,6 +16,20 @@ The releases published on CurseForge. Each lists what changed since the release 
 - The death recap writes big numbers with separators (12,345).
 - Auction prices you have not seen for two months are let go, so the saved list stays small.
 - Spelling is American English throughout (gray, favorite), as in the game.
+- `/fgui help` opens a window you can search: `/fgui help bags` shows only the commands about
+  bags, and clicking one puts it in chat for you.
+- The Tools menu (and the palette) is sorted into groups with headings: groups and raids, your
+  characters, bags and gear, people and notes, the world, and the add-on itself.
+- A new switch on the Features tab turns off the "loaded" line in chat at login.
+- The death recap says what kind of damage each hit was (fire, shadow, physical…).
+- The ready check reads "ready" in every language the add-on speaks.
+- Boss notes can be deleted from the list: right-click one twice.
+- Equip best says what it put on.
+- Group practice shows a banner with the time left; click it to end practice.
+- Performance notes skip fights shorter than ten seconds.
+- Worth selling shows what everything on the list comes to.
+- Weapon imbues, the cooldown timeline and the nameplate target mark do less work when nothing
+  is changing; the target mark follows a new target at once.
 
 **Fixed**
 - In the setup, Runic themes showed "Runic:" in front of their names.

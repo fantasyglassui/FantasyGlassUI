@@ -114,11 +114,16 @@ function ns:EquipBest()
         return 0
     end
     busy = true
-    local i = 0
+    local i, done = 0, {}
     local function Next()
         i = i + 1
         local p = plan[i]
-        if not p or InCombatLockdown() then busy = false; ns:Print("Put on %d upgrade(s).", i - 1); return end
+        if not p or InCombatLockdown() then
+            busy = false
+            if #done > 0 then ns:Print("Put on: %s", table.concat(done, ", ")) end
+            return
+        end
+        done[#done + 1] = tostring(p.item.link)
         local C = C_Container
         if C and C.PickupContainerItem and EquipCursorItem then
             pcall(C.PickupContainerItem, p.item.bag, p.item.slot)

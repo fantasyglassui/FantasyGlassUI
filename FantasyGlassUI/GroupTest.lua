@@ -69,6 +69,27 @@ function ns.TestGroupStep(t, now)
     return who
 end
 
+-- A small banner while it runs, so made-up group mates are never taken for real ones.
+local banner
+local function Banner(show, left)
+    if not show then if banner then banner:Hide() end return end
+    if not banner then
+        banner = CreateFrame("Button", nil, UIParent, ns.template)
+        banner:SetSize(300, 26)
+        banner:SetPoint("TOP", UIParent, "TOP", 0, -90)
+        banner:SetFrameStrata("HIGH")
+        banner:SetBackdrop(ns.BACKDROP)
+        ns:Paint(banner, "SetBackdropColor", "window", 0.92)
+        ns:Paint(banner, "SetBackdropBorderColor", "@accent", 1)
+        banner.text = ns:NewText(banner, 12, "CENTER")
+        banner.text:SetPoint("CENTER")
+        banner:SetScript("OnClick", function() ns:ToggleTestGroup(false) end)
+    end
+    banner.text:SetText(format(ns:Tr("Group practice: %d:%02d left. Click to end."), math.floor(left / 60), math.floor(left % 60)))
+    banner:Show()
+end
+ns.TestGroupBanner = Banner
+
 local ticker
 function ns:ToggleTestGroup(on)
     if on == nil then on = not ns.testGroup end
@@ -92,6 +113,7 @@ function ns:ToggleTestGroup(on)
                 local g = ns.testGroup
                 if not g then return end
                 if GetTime() - g.started > LIMIT then ns:ToggleTestGroup(false); return end
+                Banner(true, LIMIT - (GetTime() - g.started))
                 ns.TestGroupStep(g, GetTime())
             end)
         end
@@ -118,6 +140,7 @@ function ns:ToggleTestGroup(on)
         if ns.coverTest then pcall(ns.coverTest.Update) end
         if ns.groupCDTest then pcall(ns.groupCDTest.Update) end
         if ns.kickTest then pcall(ns.kickTest.Update) end
+        Banner(false)
         ns:Print("Group practice off.")
         return false
     end

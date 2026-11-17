@@ -469,8 +469,17 @@ ns:NewModule("nameplates", function()
             end
         end
     end))
-    -- which plate is your target can change at any moment: check the visible ones ten times a second
-    ns:Every(0.1, "Nameplate selection", function()
+    -- which plate is your target: at once when you change target, and three times a second as well
+    -- (for the moments the game moves a plate to another unit without saying so)
+    local function Selection()
+        for uf in pairs(plates) do
+            if Usable(uf) and uf.IsVisible and uf:IsVisible() then pcall(ShowSelection, uf) end
+        end
+    end
+    local sel = CreateFrame("Frame")
+    sel:RegisterEvent("PLAYER_TARGET_CHANGED")
+    sel:SetScript("OnEvent", function() Selection() end)
+    ns:Every(0.3, "Nameplate selection", function()
         for uf in pairs(plates) do
             if Usable(uf) and uf.IsVisible and uf:IsVisible() then pcall(ShowSelection, uf) end
         end

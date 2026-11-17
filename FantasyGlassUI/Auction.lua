@@ -79,7 +79,12 @@ function ns:ShowWorthSelling()
             click = function() if not PutOnSellPage(w.item) then ns:Print("Open the auction house's sell page first.") end end,
         }
     end
-    if #lines == 0 then lines[1] = { left = ns:Tr("Nothing in your bags is worth more there than at a vendor, from the prices you have seen.") } end
+    if #lines == 0 then lines[1] = { left = ns:Tr("Nothing in your bags is worth more there than at a vendor, from the prices you have seen.") }
+    else
+        local total = 0
+        for _, w in ipairs(list) do total = total + w.total end
+        table.insert(lines, 1, { left = ns:AccentHex() .. ns:Tr("In all") .. "|r", right = ns:Coins(total) })
+    end
     ns:ShowList("WorthSelling", "Worth selling at the auction house", lines,
         "From the prices you have seen. Click one to put it on the sell page.", 480, math.min(420, 80 + #lines * 18))
     return #list
