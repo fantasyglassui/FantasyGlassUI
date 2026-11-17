@@ -197,7 +197,7 @@ function ns:ShowNotepad()
         ns:Paint(w, "SetBackdropColor", "window", 0.97)
         ns:Paint(w, "SetBackdropBorderColor", "@border", 1)
         ns:Dress(w)
-        w:EnableMouse(true); w:SetMovable(true); w:RegisterForDrag("LeftButton")
+        w:EnableMouse(true); w:SetMovable(true); if w.SetClampedToScreen then w:SetClampedToScreen(true) end; w:RegisterForDrag("LeftButton")
         w:SetScript("OnDragStart", function(self) self:StartMoving() end)
         w:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
         if type(UISpecialFrames) == "table" then tinsert(UISpecialFrames, "FantasyGlassUINotepad") end
@@ -237,6 +237,8 @@ function ns:ShowNotepad()
         w.mine:SetPoint("TOPLEFT", 14, -38)
         w.all = ns:CreateButton(w, "All characters", 130, 20, function() w.page = "shared"; w:Load() end)
         w.all:SetPoint("LEFT", w.mine, "RIGHT", 6, 0)
+        ns:ButtonTip(w.mine, "Notes only this character sees.")
+        ns:ButtonTip(w.all, "Notes every character on your account sees.")
         pad = w
     end
     pad:Load()

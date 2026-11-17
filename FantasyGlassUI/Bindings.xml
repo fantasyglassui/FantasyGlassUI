@@ -51,4 +51,19 @@
     <Binding name="FANTASYGLASSUI_WHATSTHIS" category="ADDONS">
         FantasyGlassUI_Binding("WHATSTHIS")
     </Binding>
+    <Binding name="FANTASYGLASSUI_TOOLS" category="ADDONS">
+        FantasyGlassUI_Binding("TOOLS")
+    </Binding>
+    <Binding name="FANTASYGLASSUI_EQUIPBEST" category="ADDONS">
+        FantasyGlassUI_Binding("EQUIPBEST")
+    </Binding>
+    <Binding name="FANTASYGLASSUI_DEATH" category="ADDONS">
+        FantasyGlassUI_Binding("DEATH")
+    </Binding>
+    <Binding name="FANTASYGLASSUI_BOSSNOTE" category="ADDONS">
+        FantasyGlassUI_Binding("BOSSNOTE")
+    </Binding>
+    <Binding name="FANTASYGLASSUI_HELP" category="ADDONS">
+        FantasyGlassUI_Binding("HELP")
+    </Binding>
 </Bindings>

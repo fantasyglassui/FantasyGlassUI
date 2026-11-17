@@ -64,6 +64,7 @@ function ns:ToggleToolsMenu(anchor)
     palette = CreateFrame("Frame", "FantasyGlassUIToolMenu", UIParent, ns.template)
     palette:SetSize(COLS * (BW + 4) + 16, height)
     palette:SetFrameStrata("DIALOG")
+    if palette.SetClampedToScreen then palette:SetClampedToScreen(true) end
     palette:SetBackdrop(ns.BACKDROP)
     ns:Paint(palette, "SetBackdropColor", "window", 0.97)
     ns:Paint(palette, "SetBackdropBorderColor", "@accent", 1)
@@ -92,6 +93,11 @@ function ns:ToggleToolsMenu(anchor)
             ns:ToolCommand(word .. (def[3] and (" " .. def[3]) or ""), word .. (def[3] and (" " .. def[3]) or ""))
         end)
         b:SetPoint("TOPLEFT", spots[i].x, spots[i].y)
+        local typed = (def[2] == "checknew") and "/fgui check new" or ("/fgui " .. def[2] .. (def[3] and (" " .. def[3]) or ""))
+        ns:ButtonTip(b, function()                              -- (what the help says of it, and what to type instead)
+            local about = ns.HelpAbout and ns.HelpAbout(def[2], def[3])
+            return (about and (ns:Tr(about) .. "\n") or "") .. "|cffffd100" .. typed .. "|r"
+        end)
         if b.text then ns:Font(b.text, 11) end
         palette.buttons[i] = b
     end
@@ -185,7 +191,7 @@ function ns:ShowSharePreview()
         ns:Paint(preview, "SetBackdropColor", "window", 0.97)
         ns:Paint(preview, "SetBackdropBorderColor", "@accent", 1)
         ns:Dress(preview)
-        preview:EnableMouse(true); preview:SetMovable(true); preview:RegisterForDrag("LeftButton")
+        preview:EnableMouse(true); preview:SetMovable(true); if preview.SetClampedToScreen then preview:SetClampedToScreen(true) end; preview:RegisterForDrag("LeftButton")
         preview:SetScript("OnDragStart", preview.StartMoving); preview:SetScript("OnDragStop", preview.StopMovingOrSizing)
         tinsert(UISpecialFrames, "FantasyGlassUISharePreview")
         local title = preview:CreateFontString(nil, "OVERLAY")

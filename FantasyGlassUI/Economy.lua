@@ -167,6 +167,7 @@ function ns:ShowGold()
         if d.change and d.change > 0 then change = "   |cff33ff66+" .. ns:Coins(d.change) .. "|r" elseif d.change and d.change < 0 then change = "   |cffff5555-" .. ns:Coins(-d.change) .. "|r" end
         lines[#lines + 1] = { left = s:sub(1, 4) .. "-" .. s:sub(5, 6) .. "-" .. s:sub(7, 8) .. change, right = ns:Coins(d.gold), bar = d.gold / most }
     end
+    if #lines == 0 then lines[1] = { left = ns:Tr("No days kept yet: your gold is noted at the end of each day you play.") } end
     local names = {}
     for source in pairs(ns.sessionMoney) do names[#names + 1] = source end
     table.sort(names)
@@ -538,6 +539,7 @@ function ns:ShowLoot(text)
         total = total + (l.value or 0)
         lines[#lines + 1] = { left = (l.count > 1 and (l.count .. " x ") or "") .. l.link, right = (l.value or 0) > 0 and ns:Coins(l.value) or "" }
     end
+    if #lines == 0 then lines[1] = { left = "|cff9aa4b4" .. ns:Tr("Nothing looted yet this session.") .. "|r" } end
     table.insert(lines, 1, { left = ns:Tr("Vendor value of it all"), right = ns:Coins(total), color = { 1, 0.82, 0.3 } })
     if not ns.db.lootLog then lines[#lines + 1] = { left = ns:Tr("The loot log is switched off (Features tab).") } end
     return ns:ShowList("Loot", "Looted this session", lines, "/fgui loot clear empties the list.", 460, 360), total

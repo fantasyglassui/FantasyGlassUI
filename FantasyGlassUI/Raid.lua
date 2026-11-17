@@ -220,7 +220,7 @@ function ns:EditBossNote(name)
         ns:Paint(w, "SetBackdropColor", "window", 0.97)
         ns:Paint(w, "SetBackdropBorderColor", "@border", 1)
         ns:Dress(w)
-        w:EnableMouse(true); w:SetMovable(true); w:RegisterForDrag("LeftButton")
+        w:EnableMouse(true); w:SetMovable(true); if w.SetClampedToScreen then w:SetClampedToScreen(true) end; w:RegisterForDrag("LeftButton")
         w:SetScript("OnDragStart", function(self) self:StartMoving() end)
         w:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
         if type(UISpecialFrames) == "table" then tinsert(UISpecialFrames, "FantasyGlassUIBossNoteEditor") end
@@ -416,9 +416,19 @@ function ns:ShowDeathRecap()
         end
         lines[#lines + 1] = line
     end
-    if #lines == 0 then lines[1] = { left = ns:Tr("Nothing hit you in the last few seconds.") } end
+    if #lines == 0 then lines[1] = { left = ns:Tr("Nothing hit you in the last few seconds.") }
+    else
+        local taken, first = 0, nil                                  -- (on top: what it all came to; hidden amounts are left out)
+        for _, e in ipairs(d.events) do
+            if e.kind == "Hit" and not Secret(e.amount) and type(e.amount) == "number" then taken = taken + e.amount; first = first or e.t end
+        end
+        if taken > 0 then
+            local n = (type(BreakUpLargeNumbers) == "function" and BreakUpLargeNumbers(taken)) or tostring(taken)
+            table.insert(lines, 1, { left = ns:AccentHex() .. format(ns:Tr("Damage taken in the last %.1f seconds"), math.max(0, d.at - first)) .. "|r", right = n })
+        end
+    end
     ns:ShowList("DeathRecap", "What happened", lines, "Your last moments, oldest first.", 340, math.min(420, 80 + #lines * 18))
-    return #lines
+    return #d.events
 end
 ns:NewModule("deathRecap", function()
     local ev = CreateFrame("Frame")

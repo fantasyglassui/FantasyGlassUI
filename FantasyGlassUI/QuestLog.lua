@@ -180,11 +180,13 @@ ns:NewModule("questLog", function()
 
     btnShare = ns:CreateButton(frame, "Share", 80, 26, function()
         if not selectedID then return end
-        if QL.IsPushableQuest and QL.IsPushableQuest(selectedID) and IsInGroup() then
+        if not IsInGroup() then
+            ns:Print("Join a group first: quests are shared with your group.")
+        elseif not (QL.IsPushableQuest and QL.IsPushableQuest(selectedID)) then
+            ns:Print("This quest can't be shared.")
+        else
             QL.SetSelectedQuest(selectedID)
             if QuestLogPushQuest then QuestLogPushQuest() end
-        else
-            ns:Print("This quest can't be shared (or you're not in a group).")
         end
     end)
     btnShare:SetPoint("LEFT", btnMap, "RIGHT", 8, 0)
@@ -200,7 +202,7 @@ ns:NewModule("questLog", function()
             selectedID = nil
         else
             self.armed = true
-            self.text:SetText("|cffff5555Click to confirm|r")
+            self.text:SetText("|cffff5555" .. ns:Tr("Click to confirm") .. "|r")
             abandonToken = abandonToken + 1
             local token = abandonToken
             ns:After(4, function()
@@ -237,7 +239,7 @@ ns:NewModule("questLog", function()
             end
         end
         hObj:SetText(ns:Tr("Objectives"))
-        dObj:SetText(#lines > 0 and table.concat(lines, "\n") or "|cffb5a585None|r")
+        dObj:SetText(#lines > 0 and table.concat(lines, "\n") or ("|cffb5a585" .. ns:Tr("None") .. "|r"))
 
         local ok, desc = pcall(GetQuestLogQuestText)
         hDesc:SetText(ns:Tr("Description"))

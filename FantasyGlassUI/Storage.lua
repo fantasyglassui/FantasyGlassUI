@@ -7,12 +7,8 @@ local _, ns = ...
 local SIZE, GAP, COLS, PAD = 36, 4, 10, 12
 
 local function Ago(t)
-    if type(t) ~= "number" then return "never recorded" end
-    local d = math.max(0, time() - t)
-    if d < 90 then return "recorded just now" end
-    if d < 3600 then return format("recorded %d min ago", math.floor(d / 60)) end
-    if d < 86400 then return format("recorded %d h ago", math.floor(d / 3600)) end
-    return format("recorded %d days ago", math.floor(d / 86400))
+    if type(t) ~= "number" then return ns:Tr("never recorded") end
+    return format(ns:Tr("recorded %s"), ns.Ago(time() - t))
 end
 
 local function Scan(bagList)
@@ -425,7 +421,7 @@ ns:NewModule("storage", function()
             win.note:Hide()
         end
         win:SetHeight(-y + 30)
-        win.foot:SetText(total .. (total == 1 and " stack" or " stacks") .. "   |cff9c8c6c" .. Ago(stamp) .. "|r")
+        win.foot:SetText(total .. (total == 1 and (" " .. ns:Tr("stack")) or (" " .. ns:Tr("stacks"))) .. "   |cff9c8c6c" .. Ago(stamp) .. "|r")
         win.money:SetText(view == "guild" and "" or ns:Coins(who.money))
     end
 

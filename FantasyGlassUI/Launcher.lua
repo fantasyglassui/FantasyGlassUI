@@ -9,12 +9,16 @@ local _, ns = ...
 -- that show launchers can show it.
 ns:NewModule("launcher", function()
     local function Tip(tooltip)
-        tooltip:AddLine("Fantasy Glass UI")
+        tooltip:AddLine("Fantasy Glass UI  |cff9aa4b4" .. tostring(ns.version) .. "|r")
         tooltip:AddLine(ns:Tr("Left-click: options"), 1, 1, 1)
         tooltip:AddLine(ns:Tr("Right-click: move panels"), 1, 1, 1)
+        tooltip:AddLine(ns:Tr("Shift-click: the Tools menu"), 1, 1, 1)
+        tooltip:AddLine(ns:Tr("Drag: move this button around the minimap"), 0.6, 0.6, 0.6)
+        if ns.safeMode then tooltip:AddLine(ns:Tr("Safe mode is on: every feature is off. /fgui safe leaves it."), 1, 0.82, 0.2, true) end
     end
     local function Click(button)
-        if button == "RightButton" then ns:ToggleMove() else ns:ToggleConfig() end
+        if IsShiftKeyDown and IsShiftKeyDown() and ns.ToggleToolsMenu then ns:ToggleToolsMenu()
+        elseif button == "RightButton" then ns:ToggleMove() else ns:ToggleConfig() end
     end
 
     ns.LauncherClick = Click

@@ -60,7 +60,7 @@ function ns:GuideRouteEditor(name)
         ns:Paint(win, "SetBackdropBorderColor", "@accent", 1)
         ns:Dress(win)
         win:EnableMouse(true)
-        win:SetMovable(true)
+        win:SetMovable(true); if win.SetClampedToScreen then win:SetClampedToScreen(true) end
         win:RegisterForDrag("LeftButton")
         win:SetScript("OnDragStart", win.StartMoving)
         win:SetScript("OnDragStop", win.StopMovingOrSizing)

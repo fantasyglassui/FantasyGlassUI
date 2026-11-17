@@ -72,6 +72,7 @@ function ns:NoteCommand(text)
                 click = function(button) if button == "RightButton" then ns:SetPlayerNote(name, ""); ns:NoteCommand("list") end end }
         end
         table.sort(lines, function(a, b) return a.name < b.name end)
+        if #lines == 0 then lines[1] = { left = ns:Tr("No notes yet. Target a player and type /fgui note, then what you want to remember.") } end
         return ns:ShowList("Notes", "Notes on players", lines, "Right-click a line to remove that note.")
     end
     local name = TargetPlayer()
@@ -111,8 +112,7 @@ function ns:ShowRecent()
     for _, p in ipairs(list) do
         local r, g, b = 1, 1, 1
         if p.class then local ok, cr, cg, cb = pcall(function() return ns:ClassRGB(p.class) end); if ok and type(cr) == "number" then r, g, b = cr, cg, cb end end
-        local ago = math.max(0, now - (p.at or now))
-        local when = (ago < 3600) and format("%d min", math.floor(ago / 60)) or (ago < 86400) and format("%d h", math.floor(ago / 3600)) or format("%d d", math.floor(ago / 86400))
+        local when = ns.Ago(now - (p.at or now))
         local note = ns:PlayerNote(p.name)
         lines[#lines + 1] = { left = p.name .. (note and ("  |cff999999" .. note .. "|r") or ""), right = when, color = { r, g, b },
             tip = { p.name, p.where or "", note or "" },
@@ -121,6 +121,7 @@ function ns:ShowRecent()
                 elseif ChatFrame_SendTell then pcall(ChatFrame_SendTell, p.name) end
             end }
     end
+    if #lines == 0 then lines[1] = { left = ns:Tr("Nobody yet: the players you group with are listed here.") } end
     return ns:ShowList("Recent", "Recent group mates", lines, "Click a name to whisper. Right-click to invite.")
 end
 
@@ -256,6 +257,7 @@ function ns:ShowRolls(text)
         lines[#lines + 1] = { left = (i == 1 and not r.void) and (r.name .. "  |cffffd100" .. ns:Tr("wins") .. "|r") or r.name,
             right = r.void and ("|cff888888" .. r.roll .. " (" .. ns:Tr(r.void) .. ")|r") or tostring(r.roll) }
     end
+    if #lines == 0 then lines[1] = { left = ns:Tr("No rolls yet. When someone types /roll, it is listed here, highest first.") } end
     return ns:ShowList("Rolls", "Rolls", lines, "/fgui rolls clear starts a new round.")
 end
 ns:NewModule("rollTracker", function()
@@ -304,7 +306,7 @@ function ns.LockoutLines(alts, now)
                 if not any then any = true; lines[#lines + 1] = { left = c.name or key, header = true, class = c.class } end
                 local left = l.ends - now
                 lines[#lines + 1] = { left = "    " .. l.name .. ((l.difficulty or "") ~= "" and (" (" .. l.difficulty .. ")") or "") .. format("  %d/%d", l.done or 0, l.bosses or 0),
-                    right = (left >= 86400) and format("%d d %d h", math.floor(left / 86400), math.floor(left % 86400 / 3600)) or format("%d h %d min", math.floor(left / 3600), math.floor(left % 3600 / 60)) }
+                    right = ns.TimeLeft(left) }
             end
         end
     end

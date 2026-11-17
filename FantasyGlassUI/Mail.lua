@@ -20,7 +20,7 @@ ns:NewModule("mailTools", function()
         running = false
         local parts = {}
         if gold > 0 then parts[#parts + 1] = ns:Coins(gold) end
-        if taken > 0 then parts[#parts + 1] = format(ns:Tr("%d letter(s) emptied"), taken) end
+        if taken > 0 then parts[#parts + 1] = format(ns:Tr(taken == 1 and "%d letter emptied" or "%d letters emptied"), taken) end
         ns:PrintRaw(ns:Tr(reason or "Mail done.") .. " " .. (#parts > 0 and table.concat(parts, ", ") .. "." or ns:Tr("Nothing to collect.")))
     end
 
@@ -56,9 +56,11 @@ ns:NewModule("mailTools", function()
 
     local goldBtn = ns:CreateButton(bar, "Collect gold", 110, 22, function() Start("gold") end)
     goldBtn:SetPoint("LEFT", 0, 0)
+    ns:ButtonTip(goldBtn, "Take the gold out of every letter, leaving the items where they are.")
     if type(_G.OpenAllMail) ~= "table" then                -- newer clients already have their own "Open All"
         local all = ns:CreateButton(bar, "Open all", 110, 22, function() Start("all") end)
         all:SetPoint("LEFT", goldBtn, "RIGHT", 6, 0)
+        ns:ButtonTip(all, "Take the gold and items out of every letter. Stops when your bags are full.")
     end
 
     -- full bags: stop instead of hammering the server

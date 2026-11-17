@@ -115,7 +115,7 @@ function ns:ShowGallery()
     ns:Paint(win, "SetBackdropBorderColor", "@accent", 1)
     ns:Dress(win)
     win:EnableMouse(true)
-    win:SetMovable(true)
+    win:SetMovable(true); if win.SetClampedToScreen then win:SetClampedToScreen(true) end
     win:RegisterForDrag("LeftButton")
     win:SetScript("OnDragStart", win.StartMoving)
     win:SetScript("OnDragStop", win.StopMovingOrSizing)
@@ -171,6 +171,7 @@ function ns:ShowGallery()
         ns:Paint(text, "SetTextColor", "dim")
         local use = ns:CreateButton(card, "Use", 60, 20, function() ns:ApplyGallery(def.key) end)
         use:SetPoint("TOPRIGHT", screen, "BOTTOMRIGHT", 0, -4)
+        ns:ButtonTip(use, "Move your panels to this layout. /fgui undo puts them back.")
         win.cards[i] = card
     end
     local note = ns:NewText(win, 10, "LEFT")

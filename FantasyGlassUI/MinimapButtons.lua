@@ -104,7 +104,7 @@ ns:NewModule("buttonBag", function()
         local rowsN = math.max(1, math.ceil(n / PER))
         panel:SetSize(16 + cols * (SIZE + GAP) - GAP, 16 + rowsN * (SIZE + GAP) - GAP)
         if n > 0 then toggle:Show() else toggle:Hide(); panel:Hide() end
-        toggle.text:SetText("Add-ons  " .. n)
+        toggle.text:SetText(ns:Tr("Add-ons") .. "  " .. n)
         return n
     end
     -- What each gathered button looks like to the game, for finding out why one is dim: /fgui buttons.

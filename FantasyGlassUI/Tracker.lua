@@ -134,7 +134,7 @@ ns:NewModule("questTracker", function()
     -- Layout ------------------------------------------------------------------------------------
     local function Update()
         local n = QL.GetNumQuestWatches() or 0
-        header.text:SetText("Quests  |cffffffff" .. n .. "|r")
+        header.text:SetText(ns:Tr("Quests") .. "  |cffffffff" .. n .. "|r")
         header.fold:SetText(collapsed and "+" or "-")
 
         local combat = InCombatLockdown()
@@ -240,7 +240,7 @@ ns:NewModule("questTracker", function()
         ns.trackerFailed = true
         if ns:Locked(tracker) then tracker:SetAlpha(0) else tracker:Hide() end
         ns:Unkill(blizz)
-        ns:Print("|cffff4444Quest tracker error - Blizzard's tracker restored (|r/reload|cffff4444 to make it clickable again).|r")
+        ns:Print("|cffff4444Something went wrong in the quest tracker, so the game's own tracker is back.|r Type /reload to try ours again.")
     end
 
     header:SetScript("OnClick", function()

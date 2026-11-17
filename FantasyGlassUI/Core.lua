@@ -1403,7 +1403,7 @@ end
 
 -- What's new: shown once after an update (never on a first install, where the setup opens instead).
 ns.whatsNew = {
-    { "11.9.1", { "Polish: the setup's themes show their pictures too, and Runic themes no longer carry their family's name there; the home key works less while you cast.", "/fgui help opens a window you can search, and the Tools menu is sorted into groups.", "The death recap names the kind of damage; boss notes can be deleted from the list; group practice shows a banner.", "Asked for during a fight, Equip best, Sort bags and talent builds happen when it ends; a mistyped command suggests the right one." } },
+    { "11.9.1", { "Polish: the setup's themes show their pictures too, and Runic themes no longer carry their family's name there; the home key works less while you cast.", "/fgui help opens a window you can search, and the Tools menu is sorted into groups.", "The death recap names the kind of damage; boss notes can be deleted from the list; group practice shows a banner.", "Asked for during a fight, Equip best, Sort bags and talent builds happen when it ends; a mistyped command suggests the right one.", "Every message is now translated; /fgui reset asks first and keeps a backup; five new key bindings." } },
     { "11.9.0", { "Runic themes now carry runes everywhere: carved class emblems on stone, a band of runes round the minimap, and carved edges on the action buttons.",
                   "The Look tab shows a small picture of each theme; point at one for a larger card.",
                   "/fgui check new tries each feature added since 11.6 and reports what works." } },
@@ -1773,6 +1773,11 @@ BINDING_NAME_FANTASYGLASSUI_SORT = "Sort bags"
 BINDING_NAME_FANTASYGLASSUI_KEYS = "Key binding sheet (hold)"
 BINDING_NAME_FANTASYGLASSUI_QUIET = "Quiet mode"
 BINDING_NAME_FANTASYGLASSUI_WHATSTHIS = "What's this? (point at a panel)"
+BINDING_NAME_FANTASYGLASSUI_TOOLS = "Tools menu"
+BINDING_NAME_FANTASYGLASSUI_EQUIPBEST = "Equip best (put on the upgrades in your bags)"
+BINDING_NAME_FANTASYGLASSUI_DEATH = "Death recap (your last death)"
+BINDING_NAME_FANTASYGLASSUI_BOSSNOTE = "Boss note (for your target)"
+BINDING_NAME_FANTASYGLASSUI_HELP = "Every command (/fgui help)"
 for i = 1, 4 do _G["BINDING_NAME_CLICK FantasyGlassUIConsumable" .. i .. ":LeftButton"] = "Consumables bar: button " .. i end
 function FantasyGlassUI_Binding(which, keystate)
     if not ns.db then return end
@@ -1790,7 +1795,12 @@ function FantasyGlassUI_Binding(which, keystate)
     elseif which == "NOTEPAD" then if ns.ShowNotepad then ns:ShowNotepad() end
     elseif which == "WHISPERS" then if ns.ShowWhispers then ns:ShowWhispers() end
     elseif which == "TODO" then if ns.TodoCommand then ns:TodoCommand("") end
-    elseif which == "WHATSTHIS" then if ns.WhatsThis then ns:WhatsThis() end end
+    elseif which == "WHATSTHIS" then if ns.WhatsThis then ns:WhatsThis() end
+    elseif which == "TOOLS" then if ns.ToggleToolsMenu then ns:ToggleToolsMenu() end
+    elseif which == "EQUIPBEST" then if ns.EquipBest then ns:EquipBest() end
+    elseif which == "DEATH" then if ns.ShowDeathRecap then ns:ShowDeathRecap() end
+    elseif which == "BOSSNOTE" then if ns.BossNoteCommand then ns:BossNoteCommand(ns.Yes(UnitExists("target")) and "" or "list") end
+    elseif which == "HELP" then if ns.ShowHelp then ns:ShowHelp("") end end
 end
 
 function ns:LowestDurability()
@@ -1978,6 +1988,23 @@ function ns:ShowHelp(word)
     return #found
 end
 
+-- What the help says of a command: "/fgui death" → its line. With `arg`, a line naming it is preferred.
+local HELP_ALIAS = { checknew = { "check", "new" } }            -- (a word the menu uses for a two-word command)
+function ns.HelpAbout(word, arg)
+    if HELP_ALIAS[word] and not arg then word, arg = HELP_ALIAS[word][1], HELP_ALIAS[word][2] end
+    local plain
+    for _, line in ipairs(ns.helpLines or {}) do
+        local cmd = line[2] and line[1]:lower()
+        if cmd then
+            local w, rest = cmd:match("^/fgui%s+([%a]+)(.*)$")
+            if w == word then
+                if arg and rest:find(arg, 1, true) then return line[2] end
+                plain = plain or line[2]
+            end
+        end
+    end
+    return plain
+end
 -- The command closest to a mistyped word (two letters off at most), from the help: "equipbets" → "equipbest".
 local function Distance(a, b)
     local prev = {}
@@ -2085,7 +2112,7 @@ ns.helpLines = {
     { "/fgui death", "what hit you before you last died" },
     { "/fgui ah", "what in your bags is worth more at the auction house than at a vendor" },
     { "/fgui home", "which way home the home key would use" },
-    { "/fgui backup", "the backups of your settings, made before each update and once a day; click one to put it back" },
+    { "/fgui backup", "the backups of your settings, made before each update, once a day and before a reset; click one to see how to put it back" },
     { "/fgui history", "what you changed in this profile, and when; click a change to undo it" },
     { "/fgui pack", "your whole UI (profile, layout, theme, bars, mail rules) in one string to share" },
     { "/fgui perf fight", "measure the add-on through your next fight, then a report to send" },
@@ -2110,7 +2137,7 @@ ns.helpLines = {
     { "/fgui blocked", "anything the game refused to let the add-on do, and where" },
     { "/fgui report", "everything needed to report a problem, ready to copy" },
     { "/fgui safe", "safe mode: reload with every feature off (again to leave it)" },
-    { "/fgui reset", "reset this profile to how it came" },
+    { "/fgui reset", "put this profile back to how it came (type it twice; a backup is kept)" },
     { "Less often" },
     { "/fgui language", "choose the add-on's language" },
     { "/fgui new", "what changed in this version" },
@@ -2237,8 +2264,7 @@ SlashCmdList["FANTASYGLASSUI"] = function(msg)
     msg = strlower(raw)
     ns:InitDB()
     if msg == "reset" then
-        ns.root.profiles[ns.profile] = {}        -- this profile back to defaults; other profiles untouched
-        ReloadUI()
+        ns:ResetProfileCommand()
     elseif msg == "setup" or msg == "role" then
         ns:ShowSetup()
     elseif msg == "move" then

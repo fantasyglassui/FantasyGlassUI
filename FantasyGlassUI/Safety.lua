@@ -12,8 +12,9 @@ local function Copy(v) return ns.DeepCopy and ns.DeepCopy(v) or v end
 -- /fgui backup lists them; /fgui backup restore update|daily puts one back and reloads. A restore
 -- first keeps what you have now as "before restore", so a restore can itself be undone.
 ------------------------------------------------------------------------------------------
-ns.BACKUP_KINDS = { "update", "daily", "restore" }
-ns.BACKUP_LABELS = { update = "Before the last update", daily = "Start of the last day you played", restore = "Before the last restore" }
+ns.BACKUP_KINDS = { "update", "daily", "restore", "reset" }
+ns.BACKUP_LABELS = { update = "Before the last update", daily = "Start of the last day you played", restore = "Before the last restore",
+    reset = "Before the last reset" }
 local function Snapshot(root, label)
     return { when = time and time() or 0, version = ns.version, label = label,
              profiles = Copy(root.profiles), chars = Copy(root.chars), mainChar = root.mainChar,
@@ -52,6 +53,28 @@ function ns:RestoreBackup(kind)
     if type(root.profiles.Default) ~= "table" then root.profiles.Default = {} end
     return true, "Settings put back. The interface reloads now."
 end
+-- /fgui reset: this profile back to how it came. Typed twice within ten seconds, so it is never an
+-- accident, and a backup of everything is kept first ("/fgui backup restore reset" undoes it).
+local resetAsked = 0
+function ns:ResetProfileCommand(now)
+    now = now or GetTime()
+    local root = ns.root
+    if type(root) ~= "table" or type(root.profiles) ~= "table" then return false end
+    if InCombatLockdown() then ns:Print("Not during a fight."); return false end
+    if now - resetAsked > 10 then
+        resetAsked = now
+        ns:Print("This puts every setting of the profile \"%s\" back to how it came, and reloads. Type |cffffff00/fgui reset|r again within ten seconds to do it.", tostring(ns.profile))
+        return false
+    end
+    resetAsked = 0
+    root.backups = type(root.backups) == "table" and root.backups or {}
+    root.backups.reset = Snapshot(root, nil)
+    root.profiles[ns.profile] = {}        -- this profile back to defaults; other profiles untouched
+    ns:Print("Reset. If you change your mind: |cffffff00/fgui backup restore reset|r.")
+    ReloadUI()
+    return true
+end
+
 function ns.BackupLines(backups, now)
     local out = {}
     for _, kind in ipairs(ns.BACKUP_KINDS) do
@@ -59,9 +82,7 @@ function ns.BackupLines(backups, now)
         if type(b) == "table" then
             local n = 0
             for _ in pairs(b.profiles or {}) do n = n + 1 end
-            local ago = math.max(0, (now or 0) - (b.when or 0))
-            local when = (ago < 3600) and format(ns:Tr("%d min ago"), math.floor(ago / 60)) or (ago < 86400) and format(ns:Tr("%d h ago"), math.floor(ago / 3600))
-                or format(ns:Tr("%d days ago"), math.floor(ago / 86400))
+            local when = ns.Ago((now or 0) - (b.when or 0))
             out[#out + 1] = { kind = kind, label = ns.BACKUP_LABELS[kind], when = when, profiles = n, version = b.label or b.version }
         end
     end
@@ -88,7 +109,7 @@ function ns:BackupCommand(text)
         }
     end
     if #lines == 0 then lines[1] = { left = ns:Tr("No backups yet: one is made at your first login each day and before each update.") } end
-    ns:ShowList("Backups", "Backups of your settings", lines, "Made by themselves: before each update and once a day.", 460, math.min(300, 80 + #lines * 18))
+    ns:ShowList("Backups", "Backups of your settings", lines, "Made by themselves: before each update, once a day, and before a reset.", 460, math.min(300, 80 + #lines * 18))
     return #lines
 end
 
@@ -197,9 +218,7 @@ function ns:ShowSettingHistory()
     local lines = {}
     local now = time and time() or 0
     for i, d in ipairs(h.changes) do
-        local ago = math.max(0, now - (d.t or now))
-        local when = (ago < 3600) and format(ns:Tr("%d min ago"), math.floor(ago / 60)) or (ago < 86400) and format(ns:Tr("%d h ago"), math.floor(ago / 3600))
-            or format(ns:Tr("%d days ago"), math.floor(ago / 86400))
+        local when = ns.Ago(now - (d.t or now))
         local old, new = tostring(d.old), tostring(d.new)
         if #old > 24 then old = old:sub(1, 22) .. "..." end
         if #new > 24 then new = new:sub(1, 22) .. "..." end

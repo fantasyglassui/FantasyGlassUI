@@ -19,7 +19,7 @@ local function BuildLayout(page)
             ns:ResetPositions()
         else
             self.armed = true
-            self.text:SetText("|cffff5555Click to confirm|r")
+            self.text:SetText("|cffff5555" .. ns:Tr("Click to confirm") .. "|r")
             ns:After(4, function() reset.armed = false; reset.text:SetText(ns:Tr("Reset Positions")) end)
         end
     end)
@@ -196,7 +196,7 @@ local function BuildProfiles(page)
     local rows = {}
     local MAX = 8
     local function Refresh()
-        active:SetText("Active profile: " .. ns:AccentHex() .. ns.profile .. "|r    |cff9c8c6ceach character remembers its own choice|r")
+        active:SetText(ns:Tr("Active profile:") .. " " .. ns:AccentHex() .. ns.profile .. "|r    |cff9c8c6c" .. ns:Tr("each character remembers its own choice") .. "|r")
         local names = ns:ProfileList()
         for i = 1, MAX do
             local r = rows[i]

@@ -1028,7 +1028,7 @@ function ns:CreateButton(parent, text, w, h, onClick, template, name)
         if self.suiTip then
             GameTooltip:SetOwner(self, "ANCHOR_TOP")
             GameTooltip:AddLine(ns:AccentHex() .. ns:Tr(text or "") .. "|r")
-            GameTooltip:AddLine(ns:Tr(self.suiTip), 1, 1, 1, true)
+            GameTooltip:AddLine(type(self.suiTip) == "function" and self.suiTip() or ns:Tr(self.suiTip), 1, 1, 1, true)
             GameTooltip:Show()
         end
     end)
@@ -1215,7 +1215,7 @@ function ns:Undo()
     ns:PanelShowTick()
     if ns.RefreshMoveBar then ns:RefreshMoveBar() end
     if ns.RefreshPanelMenu then ns:RefreshPanelMenu() end
-    ns:Print("Undone: " .. tostring(step.label or "the last change") .. ".")
+    ns:Print("Undone: %s.", ns:Tr(tostring(step.label or "the last change")))
     return true
 end
 
@@ -2568,7 +2568,7 @@ function ns:ShowTextWindow(title, text, toBottom, link)
         textWin.title:SetPoint("TOPLEFT", 16, -12)
         local hint = ns:NewText(textWin, 11, "LEFT")
         hint:SetPoint("LEFT", textWin.title, "RIGHT", 12, 0)
-        hint:SetText("click in the text, Ctrl+A then Ctrl+C to copy")
+        hint:SetText(ns:Tr("click in the text, Ctrl+A then Ctrl+C to copy"))
         ns:Paint(hint, "SetTextColor", "faint")
         textWin.hint = hint
         local close = ns:CreateButton(textWin, "X", 22, 22, function() textWin:Hide() end)

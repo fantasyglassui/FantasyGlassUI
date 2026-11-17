@@ -41,6 +41,10 @@ function ns:ListWindow(key, title, note, width, height)
             w:SetPoint(saved[1], UIParent, saved[2] or saved[1], tonumber(saved[3]) or 0, tonumber(saved[4]) or 0)
         end
         if type(UISpecialFrames) == "table" then tinsert(UISpecialFrames, name) end
+        local function Sound(kit) if PlaySound and SOUNDKIT and SOUNDKIT[kit] then pcall(PlaySound, SOUNDKIT[kit]) end end
+        w:Hide()                                                              -- (so the first Show is heard too)
+        w:SetScript("OnShow", function() Sound("IG_CHARACTER_INFO_OPEN") end)       -- (the game's own window sounds)
+        w:SetScript("OnHide", function() Sound("IG_CHARACTER_INFO_CLOSE") end)
         w.title = ns:NewText(w, 14, "LEFT")
         w.title:SetPoint("TOPLEFT", 14, -12)
         ns:Paint(w.title, "SetTextColor", "@accent")
@@ -122,6 +126,7 @@ function ns:HideLists()
 end
 -- Open a list window with these lines (the usual case).
 function ns:ShowList(key, title, lines, note, width, height)
+    if type(lines) ~= "table" or #lines == 0 then lines = { { left = "|cff9aa4b4" .. ns:Tr("Nothing here yet.") .. "|r" } } end
     local w = ns:ListWindow(key, title, note, width, height)
     w:SetLines(lines)
     w:Show()
@@ -200,6 +205,22 @@ end
 --   /fgui remind Lightning Shield      adds it, or removes it if it is there already
 --   /fgui remind add X   /fgui remind remove X   /fgui remind (shows the list)
 ------------------------------------------------------------------------------------------
+-- How long ago, in words: "just now", "12 min ago", "3 h ago", "5 days ago".
+function ns.Ago(seconds)
+    local ago = math.max(0, tonumber(seconds) or 0)
+    if ago < 60 then return ns:Tr("just now") end
+    if ago < 3600 then return format(ns:Tr("%d min ago"), math.floor(ago / 60)) end
+    if ago < 86400 then return format(ns:Tr("%d h ago"), math.floor(ago / 3600)) end
+    return format(ns:Tr("%d days ago"), math.floor(ago / 86400))
+end
+-- How long until, in words: "2 days 4 h", "3 h 20 min", "12 min".
+function ns.TimeLeft(seconds)
+    local left = math.max(0, tonumber(seconds) or 0)
+    if left >= 86400 then return format(ns:Tr("%d d %d h"), math.floor(left / 86400), math.floor(left % 86400 / 3600)) end
+    if left >= 3600 then return format(ns:Tr("%d h %d min"), math.floor(left / 3600), math.floor(left % 3600 / 60)) end
+    return format(ns:Tr("%d min"), math.max(1, math.ceil(left / 60)))
+end
+
 local function Trim(s) return (tostring(s or ""):gsub("^%s+", ""):gsub("%s+$", "")) end
 ns.Trim = Trim
 

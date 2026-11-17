@@ -157,7 +157,7 @@ local function Build()
     roleText:SetPoint("LEFT", title, "RIGHT", 16, 0)
     O.frame:SetScript("OnShow", function()
         local r = ns.roles[ns.db.role]
-        roleText:SetText("Role: " .. (r and (ns:RoleHex(ns.db.role) .. r.label .. "|r") or "|cffa59575not set|r")
+        roleText:SetText(ns:Tr("Role:") .. " " .. (r and (ns:RoleHex(ns.db.role) .. ns:Tr(r.label) .. "|r") or ("|cffa59575" .. ns:Tr("not set") .. "|r"))
             .. "     Profile: " .. ns:AccentHex() .. ns.profile .. "|r")
     end)
 
@@ -209,7 +209,7 @@ local function Build()
         GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
         GameTooltip:AddLine("Language: " .. ns:LanguageName(ns:Language()))
         GameTooltip:AddLine(ns:Tr("The language Fantasy Glass UI's own labels are shown in. A change takes effect when the interface reloads."), 1, 1, 1, true)
-        GameTooltip:AddLine(ns:Tr("Only the main labels are translated so far; the rest stays in English."), 0.6, 0.6, 0.6, true)
+        GameTooltip:AddLine(ns:Tr("Names of items, spells and places come from the game, in the game's language."), 0.6, 0.6, 0.6, true)
         GameTooltip:Show()
     end)
     langBtn:HookScript("OnLeave", function() GameTooltip:Hide() end)
@@ -290,7 +290,7 @@ local function Build()
     role:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
         GameTooltip:SetText(ns:Tr("Run Setup Again"))
-        GameTooltip:AddLine("Opens the first-run setup: role, look, lettering and portraits, layout. It starts from your current choices and changes nothing until you click.", 1, 1, 1, true)
+        GameTooltip:AddLine(ns:Tr("Opens the first-run setup: role, look, lettering and portraits, layout. It starts from your current choices and changes nothing until you click."), 1, 1, 1, true)
         GameTooltip:Show()
     end)
     role:HookScript("OnLeave", function() GameTooltip:Hide() end)
@@ -397,7 +397,8 @@ local function Build()
     searchBox:HookScript("OnEscapePressed", function(self) self:SetText(""); results:Hide(); self:ClearFocus() end)
     O.frame:HookScript("OnHide", function() results:Hide(); ring:Hide(); if ns.NoteSettingChanges then pcall(ns.NoteSettingChanges, ns) end end)
 
-    O.ShowPage("features")
+    local last = type(ns.root) == "table" and ns.root.optionsPage
+    O.ShowPage((type(last) == "string" and O.pages[last]) and last or "features")
 end
 
 function ns:NoteNothing() end        -- settings that are simply read the next time they are needed

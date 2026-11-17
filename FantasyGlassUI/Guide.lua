@@ -478,7 +478,7 @@ function ns:GuideEdit(name)
         ns:Paint(w, "SetBackdropColor", "window", 0.97)
         ns:Paint(w, "SetBackdropBorderColor", "@border", 1)
         ns:Dress(w)
-        w:EnableMouse(true); w:SetMovable(true); w:RegisterForDrag("LeftButton")
+        w:EnableMouse(true); w:SetMovable(true); if w.SetClampedToScreen then w:SetClampedToScreen(true) end; w:RegisterForDrag("LeftButton")
         w:SetScript("OnDragStart", function(self) self:StartMoving() end)
         w:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
         if type(UISpecialFrames) == "table" then tinsert(UISpecialFrames, "FantasyGlassUIGuideEditor") end

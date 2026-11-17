@@ -37,6 +37,34 @@
   the mailbox; the boss note's Edit and Send to my group.
 - `/fgui help bags` names the word in the window's title.
 - The waypoint arrow's distance is rounded to the nearest yard.
+- **Every message is translated.** The chat messages, hints and window notes that were still in
+  English (about 330 of them) now come in all eight other languages, so a German, French,
+  Spanish, Russian, Portuguese, Italian, Korean or Chinese game no longer mixes languages.
+- `/fgui reset` asks first: type it twice within ten seconds. A backup is kept before it
+  ("Before the last reset"), so `/fgui backup restore reset` undoes it.
+- Five new key bindings (Esc, Key Bindings, AddOns): the Tools menu, Equip best, the death recap,
+  the boss note for your target, and every command.
+- The minimap button: Shift-click opens the Tools menu, the tooltip shows the version and says it
+  can be dragged, and it says when safe mode is on.
+- Hover help on every Tools menu button, taken from the help, with the command to type.
+- More hover help: Collect gold and Open all on the mailbox, Reset Instances, a gallery
+  layout's Use, and the notepad's two pages.
+- Windows that were empty now say why, and what to do: player notes, recent group mates, rolls,
+  gold history and the loot log.
+- Times read the same everywhere, in your language: "just now", "12 min ago", "3 days ago",
+  "1 d 4 h" (backups, setting history, recent group mates, lockouts, the bank's "recorded").
+- The death recap starts with the damage you took in its last seconds.
+- Worth selling shows what a whole stack comes to, with the price each beside it, and hover
+  help with the auction and vendor prices.
+- Equip best says once which upgrades it left for you because they aren't bound yet, instead of
+  a line for each.
+- The options open on the tab you used last.
+- List windows make the game's open and close sounds, and every window of ours that can be
+  dragged stays on the screen, the Tools menu too.
+- The quest log's Share says what is wrong: you are not in a group, or the quest can't be shared.
+- Clearer wording: "1 letter emptied" / "3 letters emptied" (no more "letter(s)"), click-cast and
+  buff alert counts, and the message when the quest tracker falls back to the game's.
+- `/fgui help` describes `/fgui backup` and `/fgui reset` as they work now.
 
 **Fixed**
 - In the setup, Runic themes showed "Runic:" in front of their names.

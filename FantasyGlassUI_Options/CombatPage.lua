@@ -67,7 +67,7 @@ local function BuildClickCast(page)
     local apply = ns:CreateButton(page, "Apply bindings", 150, 26, function()
         ns.db.clickCast = Read()
         local done = ns:ApplyClickCast()
-        msg:SetText(done and ("|cff66dd77" .. #ns.db.clickCast .. " binding(s) active.|r") or "|cffffd100Saved. They take effect when you leave combat.|r")
+        msg:SetText(done and ("|cff66dd77" .. format(ns:Tr(#ns.db.clickCast == 1 and "%d binding active." or "%d bindings active."), #ns.db.clickCast) .. "|r") or ("|cffffd100" .. ns:Tr("Saved. They take effect when you leave combat.") .. "|r"))
     end)
     apply:SetPoint("TOPLEFT", 0, -62 - ROWS * 30 - 8)
 end
@@ -202,9 +202,9 @@ local function BuildCombat(page)
         if found and not alerts then
             msg:SetText(format("|cff66dd77%d of %d cooldown spells found.|r", found, #ns.db.cooldownSpells))
         elseif found then
-            msg:SetText(format("|cff66dd77%d of %d cooldown spells found.|r  %d buff alert(s) set.", found, #ns.db.cooldownSpells, #ns.db.alertBuffs))
+            msg:SetText("|cff66dd77" .. format(ns:Tr("%d of %d cooldown spells found."), found, #ns.db.cooldownSpells) .. "|r  " .. format(ns:Tr(#ns.db.alertBuffs == 1 and "%d buff alert set." or "%d buff alerts set."), #ns.db.alertBuffs))
         else
-            msg:SetText("|cffffd100Saved. Turn on the cooldown tracker on the Features tab and reload to see it.|r")
+            msg:SetText("|cffffd100" .. ns:Tr("Saved. Turn on the cooldown tracker on the Features tab and reload to see it.") .. "|r")
         end
     end)
     apply:SetPoint("TOPLEFT", 0, (alerts and -404 or -298) + S)

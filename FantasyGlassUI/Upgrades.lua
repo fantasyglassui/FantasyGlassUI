@@ -108,7 +108,11 @@ function ns:EquipBest()
     if ns:AfterFight("Equip best", function() ns:EquipBest() end) then return 0 end
     if busy then return 0 end
     local plan, unbound = ns.EquipPlan(BagItems(), Worn())
-    for _, it in ipairs(unbound) do ns:Print("%s would be an upgrade but is not bound to you yet: put it on yourself if you want it.", it.link) end
+    if #unbound > 0 then                                          -- (one line, however many there are)
+        local links = {}
+        for _, it in ipairs(unbound) do links[#links + 1] = tostring(it.link) end
+        ns:Print("Upgrades not bound to you yet, so left for you to put on: %s", table.concat(links, ", "))
+    end
     if #plan == 0 then
         ns:Print("Nothing in your bags is an upgrade on what you wear.")
         return 0

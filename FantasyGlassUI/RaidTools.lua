@@ -60,6 +60,7 @@ ns:NewModule("raidTools", function()
     Btn("Role Check", 106, 120, -12, function() if InitiateRolePoll then InitiateRolePoll() end end)
     local reset = ns:CreateButton(panel, "Reset Instances", 236, 20, function() if ns.ResetInstancesNow then ns:ResetInstancesNow() end end)
     reset:SetPoint("TOPLEFT", panel, "BOTTOMLEFT", 0, -3)            -- (hangs under the panel, and shows with it)
+    ns:ButtonTip(reset, "Reset the dungeons you have been in, so the next run starts fresh. Only the group leader can, and only outside.")
     Btn("Pull in 10", 106, 10, -38, function()
         if C_PartyInfo and C_PartyInfo.DoCountdown then C_PartyInfo.DoCountdown(10) end
     end)

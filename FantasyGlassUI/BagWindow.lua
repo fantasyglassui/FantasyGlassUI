@@ -459,7 +459,7 @@ local function NewWindow(cfg)
                 GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
                 if sock then
                     if not (self.filled and pcall(GameTooltip.SetBagItem, GameTooltip, sock.container, self.index)) then
-                        GameTooltip:SetText("Bank tab " .. self.index .. (self.filled and "" or " (empty: drop a bag here)"))
+                        GameTooltip:SetText(format(ns:Tr(self.filled and "Bank tab %d" or "Bank tab %d (empty: drop a bag here)"), self.index))
                     end
                 elseif self.bag == 0 then
                     GameTooltip:SetText(type(BACKPACK_TOOLTIP) == "string" and BACKPACK_TOOLTIP or "Backpack")
@@ -822,7 +822,7 @@ local function NewWindow(cfg)
         end
         picker.itemID = b.info.itemID
         local label = type(b.info.hyperlink) == "string" and b.info.hyperlink:match("%[(.-)%]") or "this item"
-        picker.title:SetText("Category for " .. label)
+        picker.title:SetText(format(ns:Tr("Category for %s"), label))
 
         local names, seen = {}, {}
         for _, name in pairs(ns.db.bagAssign) do

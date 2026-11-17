@@ -613,7 +613,7 @@ local function Build()
     ns:Paint(frame, "SetBackdropBorderColor", "@border", 1)
     ns:Dress(frame)
     frame:EnableMouse(true)
-    frame:SetMovable(true)
+    frame:SetMovable(true); if frame.SetClampedToScreen then frame:SetClampedToScreen(true) end
     frame:RegisterForDrag("LeftButton")
     frame:SetScript("OnDragStart", frame.StartMoving)
     frame:SetScript("OnDragStop", frame.StopMovingOrSizing)

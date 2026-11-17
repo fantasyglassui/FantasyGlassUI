@@ -75,7 +75,10 @@ function ns:ShowWorthSelling()
     for _, w in ipairs(list) do
         lines[#lines + 1] = {
             left = tostring(w.item.link or ("item " .. w.item.id)) .. ((w.item.count or 1) > 1 and (" x" .. w.item.count) or ""),
-            right = ns:Coins(w.price) .. "  |cff9aa4b4" .. ns:Tr("vendor") .. " " .. ns:Coins(w.item.vendor) .. "|r",
+            right = ns:Coins(w.total) .. (((w.item.count or 1) > 1) and ("  |cff9aa4b4" .. format(ns:Tr("%s each"), ns:Coins(w.price)) .. "|r") or "")
+                .. "  |cff9aa4b4" .. ns:Tr("vendor") .. " " .. ns:Coins(w.item.vendor) .. "|r",
+            tip = { tostring(w.item.link or ""), format(ns:Tr("Auction house: %s each, from the prices you have seen."), ns:Coins(w.price)),
+                format(ns:Tr("A vendor pays %s each."), ns:Coins(w.item.vendor or 0)) },
             click = function() if not PutOnSellPage(w.item) then ns:Print("Open the auction house's sell page first.") end end,
         }
     end
@@ -86,7 +89,7 @@ function ns:ShowWorthSelling()
         table.insert(lines, 1, { left = ns:AccentHex() .. ns:Tr("In all") .. "|r", right = ns:Coins(total) })
     end
     ns:ShowList("WorthSelling", "Worth selling at the auction house", lines,
-        "From the prices you have seen. Click one to put it on the sell page.", 480, math.min(420, 80 + #lines * 18))
+        "From the prices you have seen. Click one to put it on the sell page.", 560, math.min(420, 80 + #lines * 18))
     return #list
 end
 

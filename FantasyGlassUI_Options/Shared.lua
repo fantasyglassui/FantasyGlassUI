@@ -31,6 +31,7 @@ function O.ShowPage(id)
     end
     for key, b in pairs(O.tabButtons) do b:SetSelected(key == id) end
     if O.frame then O.frame.currentPage = id end
+    if type(ns.root) == "table" and O.pages[id] then ns.root.optionsPage = id end      -- (opens there next time)
     if O.pages[id] and O.pages[id].Refresh then O.pages[id].Refresh() end
     if O.pages[id] and O.pages[id].NavRefresh then O.pages[id].NavRefresh() end
 end

@@ -726,7 +726,7 @@ local function CreateUnit(key, unit, w, h, opt)
         f.combat:Hide()
         f.rest = Text(layer, 10, "RIGHT")
         f.rest:SetPoint("BOTTOMRIGHT", f, "TOPRIGHT", -2, 3)
-        f.rest:SetText("|cffffd100Resting|r")
+        f.rest:SetText("|cffffd100" .. ns:Tr("Resting") .. "|r")
         f.rest:Hide()
     end
 
