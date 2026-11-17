@@ -30,6 +30,17 @@ The releases published on CurseForge. Each lists what changed since the release 
 - Worth selling shows what everything on the list comes to.
 - Weapon imbues, the cooldown timeline and the nameplate target mark do less work when nothing
   is changing; the target mark follows a new target at once.
+- Equip best, Sort bags and switching talent builds, asked for during a fight, now happen as soon
+  as the fight ends instead of just saying no.
+- A mistyped command no longer opens the options: `/fgui equipbets` asks "Did you mean
+  /fgui equipbest?", and a word that is not a command shows the commands that mention it.
+- List windows (help, boss notes, worth selling and the rest) stay where you drag them, for all
+  your characters, and can't be dragged off the screen.
+- Hover help on the add-on's buttons in the game's windows: the bag window's Slots, Bank, Guild,
+  Chars and Equip best; the auction house's Worth selling and Lowest -1c; Send by my rules on
+  the mailbox; the boss note's Edit and Send to my group.
+- `/fgui help bags` names the word in the window's title.
+- The waypoint arrow's distance is rounded to the nearest yard.
 
 **Fixed**
 - In the setup, Runic themes showed "Runic:" in front of their names.

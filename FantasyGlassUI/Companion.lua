@@ -791,6 +791,7 @@ do
             local want = ns.db.mailButton ~= false and #Jobs() > 0
             if want and not ns.mailRuleButton then
                 local b = ns:CreateButton(MailFrame, "Send by my rules", 140, 22, function() ns:SendByMailRules() end)
+                ns:ButtonTip(b, "Send the items your mail rules name to the characters they name. /fgui mailrules to change them.")
                 b:SetPoint("BOTTOMRIGHT", MailFrame, "TOPRIGHT", 0, 2)
                 ns.mailRuleButton = b
             end
@@ -1002,7 +1003,7 @@ function ns:ReceiveTalentBuild(from, text)
     return key
 end
 function ns:ApplyTalentBuild(name)
-    if InCombatLockdown() then ns:Print("Not during a fight."); return false end
+    if ns:AfterFight("Talent build", function() ns:ApplyTalentBuild(name) end) then return false end
     local b = Builds()[name]
     if not b or not TalentAPI() or type(LearnTalent) ~= "function" then return false end
     local have = ReadTalents()

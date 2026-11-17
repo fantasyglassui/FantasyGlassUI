@@ -125,10 +125,12 @@ ns:NewModule("auctionHelper", function()
         done = true
         local worth = ns:CreateButton(ahf, "Worth selling", 120, 22, function() ns:ShowWorthSelling() end)
         worth:SetPoint("TOPRIGHT", ahf, "TOPRIGHT", -60, -30)
+        ns:ButtonTip(worth, "What in your bags sells for more here than at a vendor, from the prices you have seen.")
         for _, key in ipairs({ "ItemSellFrame", "CommoditiesSellFrame" }) do
             local sf = ahf[key]
             if type(sf) == "table" then
                 local b = ns:CreateButton(sf, "Lowest -1c", 96, 20, function() ns:UndercutOn(sf) end)
+                ns:ButtonTip(b, "Fill in one copper under the lowest price seen today, never under what a vendor pays. Posting is still your click.")
                 local input = sf.PriceInput or sf.UnitPriceInput
                 if type(input) == "table" then b:SetPoint("LEFT", input, "RIGHT", 10, 0) else b:SetPoint("TOPRIGHT", sf, "TOPRIGHT", -10, -10) end
             end

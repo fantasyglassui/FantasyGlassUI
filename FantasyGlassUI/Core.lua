@@ -1403,7 +1403,7 @@ end
 
 -- What's new: shown once after an update (never on a first install, where the setup opens instead).
 ns.whatsNew = {
-    { "11.9.1", { "Polish: the setup's themes show their pictures too, and Runic themes no longer carry their family's name there; the home key works less while you cast.", "/fgui help opens a window you can search, and the Tools menu is sorted into groups.", "The death recap names the kind of damage; boss notes can be deleted from the list; group practice shows a banner." } },
+    { "11.9.1", { "Polish: the setup's themes show their pictures too, and Runic themes no longer carry their family's name there; the home key works less while you cast.", "/fgui help opens a window you can search, and the Tools menu is sorted into groups.", "The death recap names the kind of damage; boss notes can be deleted from the list; group practice shows a banner.", "Asked for during a fight, Equip best, Sort bags and talent builds happen when it ends; a mistyped command suggests the right one." } },
     { "11.9.0", { "Runic themes now carry runes everywhere: carved class emblems on stone, a band of runes round the minimap, and carved edges on the action buttons.",
                   "The Look tab shows a small picture of each theme; point at one for a larger card.",
                   "/fgui check new tries each feature added since 11.6 and reports what works." } },
@@ -1972,9 +1972,37 @@ function ns:ShowHelp(word)
         end
     end
     if #rows == 0 then rows[1] = { left = format(ns:Tr("No command mentions \"%s\"."), ns.Trim(word)) } end
-    ns:ShowList("Help", format("Fantasy Glass UI %s: %s", ns.version, ns:Tr("commands")), rows,
+    local what = ns.Trim(word or "") == "" and ns:Tr("commands") or format(ns:Tr("commands about \"%s\""), ns.Trim(word))
+    ns:ShowList("Help", format("Fantasy Glass UI %s: %s", ns.version, what), rows,
         "Click one to put it in the chat box. /fgui help bags shows only the ones about bags.", 620, 440)
     return #found
+end
+
+-- The command closest to a mistyped word (two letters off at most), from the help: "equipbets" → "equipbest".
+local function Distance(a, b)
+    local prev = {}
+    for j = 0, #b do prev[j] = j end
+    for i = 1, #a do
+        local cur = { [0] = i }
+        for j = 1, #b do
+            cur[j] = math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + ((a:sub(i, i) == b:sub(j, j)) and 0 or 1))
+        end
+        prev = cur
+    end
+    return prev[#b]
+end
+function ns.ClosestCommand(word, lines)
+    word = ns.Trim(word):lower():match("^(%S+)") or ""
+    if word == "" then return nil end
+    local best, bestD
+    for _, line in ipairs(lines or ns.helpLines) do
+        local w = line[2] and line[1]:lower():match("^/fgui%s+([%a]+)")
+        if w then
+            local d = Distance(word, w)
+            if d <= math.min(2, math.floor(#w / 3)) and (not bestD or d < bestD) then best, bestD = w, d end
+        end
+    end
+    return best
 end
 
 ns.helpLines = {
@@ -2356,7 +2384,17 @@ SlashCmdList["FANTASYGLASSUI"] = function(msg)
         end
     elseif msg == "help" or msg:sub(1, 5) == "help " then
         ns:ShowHelp(msg:sub(6))
-    else
+    elseif msg == "" or msg == "options" or msg == "config" or msg == "show" then
         ns:ToggleConfig()
+    else
+        local near = ns.ClosestCommand(msg)
+        if near then
+            ns:Print("\"%s\" is not a command. Did you mean |cffffff00/fgui %s|r?", raw, near)
+        elseif #ns.HelpMatches(ns.helpLines, msg) > 0 then
+            ns:Print("\"%s\" is not a command. These mention it:", raw)
+            ns:ShowHelp(msg)
+        else
+            ns:Print("\"%s\" is not a command. |cffffff00/fgui help|r lists them all.", raw)
+        end
     end
 end

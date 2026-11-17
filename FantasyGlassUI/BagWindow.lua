@@ -111,6 +111,7 @@ local function NewWindow(cfg)
     local prev
     for _, d in ipairs(cfg.buttons or {}) do
         local b = ns:CreateButton(win, d[1], d[2], 22, d[3])
+        if d[4] then ns:ButtonTip(b, d[4]) end
         ns:Font(b.text, 11)
         if prev then b:SetPoint("LEFT", prev, "RIGHT", 4, 0) else b:SetPoint("LEFT", search, "RIGHT", 8, 0) end
         prev = b
@@ -964,11 +965,11 @@ ns:NewModule("bagWindow", function()
     win = NewWindow({
         name = "FantasyGlassUIBags", title = "Bags", key = "bags", bags = bags, reagent = reagent, money = true, combatUse = true,
         buttons = {
-            { "Slots", 50, function() win.ToggleSlots() end },
-            { "Bank",  48, function() Storage("bank") end },
-            { "Guild", 50, function() Storage("guild") end },
-            { "Chars", 52, function() Storage("bags") end },
-            { "Equip best", 76, function() if ns.EquipBest then ns:EquipBest() end end },
+            { "Slots", 50, function() win.ToggleSlots() end, "Show or hide your bag slots, to swap or buy bags." },
+            { "Bank",  48, function() Storage("bank") end, "Your bank, as it was when you last opened it." },
+            { "Guild", 50, function() Storage("guild") end, "The guild bank, as it was when you last opened it." },
+            { "Chars", 52, function() Storage("bags") end, "What your other characters carry." },
+            { "Equip best", 76, function() if ns.EquipBest then ns:EquipBest() end end, "Put on every piece in your bags with a higher item level than what you wear. Only gear already bound to you." },
         },
         point = { "BOTTOMRIGHT", -40, 120 },
         isOpen = BlizzOpen,

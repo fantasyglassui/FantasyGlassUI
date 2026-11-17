@@ -24,9 +24,22 @@ function ns:ListWindow(key, title, note, width, height)
         ns:Dress(w)
         w:EnableMouse(true)
         w:SetMovable(true)
+        if w.SetClampedToScreen then w:SetClampedToScreen(true) end        -- (a kept place can never leave it off the screen)
         w:RegisterForDrag("LeftButton")
         w:SetScript("OnDragStart", function(self) self:StartMoving() end)
-        w:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
+        w:SetScript("OnDragStop", function(self)
+            self:StopMovingOrSizing()
+            local point, _, rel, x, y = self:GetPoint()                -- (kept for next time, for every character)
+            if type(ns.root) == "table" and point then
+                ns.root.listPos = type(ns.root.listPos) == "table" and ns.root.listPos or {}
+                ns.root.listPos[key] = { point, rel or point, math.floor((x or 0) + 0.5), math.floor((y or 0) + 0.5) }
+            end
+        end)
+        local saved = type(ns.root) == "table" and type(ns.root.listPos) == "table" and ns.root.listPos[key]
+        if type(saved) == "table" and type(saved[1]) == "string" then
+            w:ClearAllPoints()
+            w:SetPoint(saved[1], UIParent, saved[2] or saved[1], tonumber(saved[3]) or 0, tonumber(saved[4]) or 0)
+        end
         if type(UISpecialFrames) == "table" then tinsert(UISpecialFrames, name) end
         w.title = ns:NewText(w, 14, "LEFT")
         w.title:SetPoint("TOPLEFT", 14, -12)
@@ -150,6 +163,27 @@ function ns:Flash(text, r, g, b, arg)
     ns.flashLast = text
     return true
 end
+
+-- Something the game does not allow during a fight: done when the fight ends instead (once, however
+-- many times it was asked for). Returns true when it was put off.
+local afterFight, afterFrame = {}, nil
+function ns:AfterFight(label, fn)
+    if not InCombatLockdown() then return false end
+    if not afterFrame then
+        afterFrame = CreateFrame("Frame")
+        pcall(afterFrame.RegisterEvent, afterFrame, "PLAYER_REGEN_ENABLED")
+        afterFrame:SetScript("OnEvent", function()
+            local list = afterFight
+            afterFight = {}
+            for _, job in ipairs(list) do pcall(job.fn) end
+        end)
+    end
+    for _, job in ipairs(afterFight) do if job.label == label then return true end end
+    afterFight[#afterFight + 1] = { label = label, fn = fn }
+    ns:Print("%s: not during a fight, so it happens as soon as the fight ends.", ns:Tr(label))
+    return true
+end
+function ns.AfterFightCount() return #afterFight end
 
 -- Something you must not miss: a sound that plays with the game in another window, the game's
 -- icon flashing in the taskbar, and a notice.

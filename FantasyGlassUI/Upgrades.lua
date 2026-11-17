@@ -105,7 +105,7 @@ end
 
 local busy = false
 function ns:EquipBest()
-    if InCombatLockdown() then ns:Print("Not during a fight."); return 0 end
+    if ns:AfterFight("Equip best", function() ns:EquipBest() end) then return 0 end
     if busy then return 0 end
     local plan, unbound = ns.EquipPlan(BagItems(), Worn())
     for _, it in ipairs(unbound) do ns:Print("%s would be an upgrade but is not bound to you yet: put it on yourself if you want it.", it.link) end

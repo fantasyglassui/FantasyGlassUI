@@ -90,7 +90,7 @@ function ns:SetWaypoint(x, y, label, onMap, quiet)
             if distance < 10 and not w.quiet then ns:Print("You have arrived."); ns:ClearWaypoint(true); return end
             self.tex:Show()
             if self.tex.SetRotation then self.tex:SetRotation(turn) end
-            self.text:SetText(format("%d %s", distance, ns:Tr("yd")))
+            self.text:SetText(format("%d %s", math.floor((tonumber(distance) or 0) + 0.5), ns:Tr("yd")))
         end))
         local entry = ns:RegisterMovable(arrow, "waypoint", "Waypoint")
         if type(entry) == "table" then entry.offPage = true end        -- (scaled from its own right-click menu in move mode)

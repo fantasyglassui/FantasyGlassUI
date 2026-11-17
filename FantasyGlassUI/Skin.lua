@@ -1025,14 +1025,26 @@ function ns:CreateButton(parent, text, w, h, onClick, template, name)
         ns:Paint(self, "SetBackdropBorderColor", "@accent", 1)
         self.text:SetTextColor(1, 1, 1)
         self.wash:Show()
+        if self.suiTip then
+            GameTooltip:SetOwner(self, "ANCHOR_TOP")
+            GameTooltip:AddLine(ns:AccentHex() .. ns:Tr(text or "") .. "|r")
+            GameTooltip:AddLine(ns:Tr(self.suiTip), 1, 1, 1, true)
+            GameTooltip:Show()
+        end
     end)
     b:SetScript("OnLeave", function(self)
         ns:Paint(self, "SetBackdropBorderColor", "@border", 1)
         ns:Paint(self.text, "SetTextColor", "@btn")
         self.wash:Hide()
+        if self.suiTip then GameTooltip:Hide() end
     end)
     if onClick then b:SetScript("OnClick", onClick) end
     ns:IndexOption(text, b)
+    return b
+end
+-- A line of help when the mouse is over one of our buttons.
+function ns:ButtonTip(b, tip)
+    if type(b) == "table" then b.suiTip = tip end
     return b
 end
 

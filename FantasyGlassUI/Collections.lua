@@ -93,7 +93,7 @@ local function ReadSlots()
 end
 local sorting
 function ns:SortBags()
-    if InCombatLockdown() then ns:Print("Not during a fight."); return false end
+    if ns:AfterFight("Sort bags", function() ns:SortBags() end) then return false end
     local C = C_Container
     if not (C and C.PickupContainerItem and C.GetContainerItemInfo) then ns:Print("This game client cannot sort bags for an add-on."); return false end
     if sorting then sorting = nil; ns:Print("Sorting stopped."); return false end
