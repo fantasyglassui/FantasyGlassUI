@@ -175,7 +175,7 @@ function ns:ShowGallery()
     end
     local note = ns:NewText(win, 10, "LEFT")
     note:SetPoint("BOTTOMLEFT", 16, 10)
-    note:SetText(ns:Tr("Gold: your frames. Green: party and raid. Grey: the rest. /fgui undo takes a setup back."))
+    note:SetText(ns:Tr("Gold: your frames. Green: party and raid. Gray: the rest. /fgui undo takes a setup back."))
     ns:Paint(note, "SetTextColor", "faint")
     win:Show()
     return win

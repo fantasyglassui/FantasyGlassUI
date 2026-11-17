@@ -1039,7 +1039,7 @@ end
 -- Flat checkbox -----------------------------------------------------------------
 function ns:CreateCheckbox(parent, label, checked, onChange)
     local th = ns.theme
-    -- A switch: a small track with a knob that sits left (off, grey) or right (on, in the accent
+    -- A switch: a small track with a knob that sits left (off, gray) or right (on, in the accent
     -- color). Glass themes with rounded corners get a pill and a round knob; the rest are square.
     local c = CreateFrame("Button", nil, parent)
     c:SetSize(260, 22)
@@ -1756,7 +1756,7 @@ function ns:NudgePanel(key, dx, dy)
     if m.onMoved then pcall(m.onMoved) end
     return true
 end
-function ns:CenterPanel(key)                             -- centred left to right, keeping its height on screen
+function ns:CenterPanel(key)                             -- centered left to right, keeping its height on screen
     local m = FindMovable(key)
     if not m or InCombatLockdown() then return false end
     local _, cy = m.frame:GetCenter()
@@ -1766,7 +1766,7 @@ function ns:CenterPanel(key)                             -- centred left to righ
     local scale = m.frame:GetScale()
     if type(scale) ~= "number" or scale <= 0 then scale = 1 end
     local y = ((cy * fs - uy * us) / us) / scale
-    ns:PushUndo(key, nil, "centred " .. tostring(m.label))
+    ns:PushUndo(key, nil, "centered " .. tostring(m.label))
     m.frame:ClearAllPoints()
     m.frame:SetPoint("CENTER", UIParent, "CENTER", 0, y)
     ns.db.pos[key] = { "CENTER", "CENTER", 0, y }

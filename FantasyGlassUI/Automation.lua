@@ -8,10 +8,10 @@ local function CoinString(copper)
 end
 
 -- Keep and sell lists ----------------------------------------------------------------------------------------
--- Selling junk goes by an item's color: grey is sold. Two lists, kept for the whole account, correct
+-- Selling junk goes by an item's color: gray is sold. Two lists, kept for the whole account, correct
 -- it where that is wrong:
 --   sell   always sold when junk is sold, whatever its color (a white item you never want)
---   keep   never sold automatically, even if grey (a grey item you are saving)
+--   keep   never sold automatically, even if gray (a gray item you are saving)
 -- An item is on at most one of them. They are set from the bag window (Alt-click an item) or with
 -- /fgui sell [item] and /fgui keep [item] (shift-click the item into the chat line).
 local function List(kind)
@@ -49,7 +49,7 @@ function ns:ShouldSell(link, quality, price)
     return quality == 0
 end
 
--- Sell the junk: every grey item, and whatever is on the sell list, less whatever is on the keep list.
+-- Sell the junk: every gray item, and whatever is on the sell list, less whatever is on the keep list.
 -- Returns the copper earned. announce = print even when nothing was sold.
 function ns:SellJunk(announce)
     local total, sold = 0, 0

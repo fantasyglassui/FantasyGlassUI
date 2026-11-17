@@ -295,6 +295,7 @@ local function BuildProfiles(page)
     end)
     packBtn:SetPoint("LEFT", peek, "RIGHT", 10, 0)
     page.packButton = packBtn
+    O.Tip(packBtn, "Copy my whole UI", "One line of text with your profile, layout, theme, bars and rules. Anyone with Fantasy Glass UI can paste it in Preview a shared string.")
     -- send straight to another player who has the add-on
     local sendTo = ns:CreateEditBox(page, 200, 22, "a player's name")
     sendTo:SetPoint("TOPLEFT", 0, y - 142)
@@ -311,6 +312,7 @@ local function BuildProfiles(page)
     sendTheme:SetPoint("LEFT", sendProfile, "RIGHT", 8, 0)
     local sendPack = ns:CreateButton(page, "Send whole UI", 120, 22, function() SendKind("pack") end)
     sendPack:SetPoint("LEFT", sendTheme, "RIGHT", 8, 0)
+    O.Tip(sendPack, "Send whole UI", "Sends your whole UI to the player named in the box. They see a preview and choose whether to take it.")
     page.sendBox = sendTo
     -- new characters: their own copy of your main's setup (AltSetup.lua)
     Header(page, "New characters", 0, y - 178)
@@ -324,11 +326,15 @@ local function BuildProfiles(page)
     end)
     mainBtn:SetPoint("TOPLEFT", 300, y - 198)
     page.altCopy, page.mainButton = copyBox, mainBtn
+    O.Tip(copyBox, "New characters copy my main's setup", "A character you have never played before gets its own profile, copied from your main and fitted to its class. Off: new characters share the Default profile.")
+    O.Tip(mainBtn, "Make this character my main", "New characters copy this one's setup. Without a main, they copy the character you played last.")
     -- backups and what changed (Safety.lua)
     local backups = ns:CreateButton(page, "Backups", 120, 22, function() if ns.HideConfig then ns.HideConfig() end; ns:BackupCommand("") end)
     backups:SetPoint("TOPLEFT", 0, y - 232)
     local history = ns:CreateButton(page, "Changes to this profile", 190, 22, function() if ns.HideConfig then ns.HideConfig() end; ns:ShowSettingHistory() end)
     history:SetPoint("LEFT", backups, "RIGHT", 8, 0)
     page.backupButton, page.historyButton = backups, history
+    O.Tip(backups, "Backups", "Your settings are copied before each update and at your first login each day. Pick one to see how to put it back.")
+    O.Tip(history, "Changes to this profile", "What you changed and when, newest first. Click one to undo it.")
 end
 O.BuildLayout, O.BuildProfiles = BuildLayout, BuildProfiles

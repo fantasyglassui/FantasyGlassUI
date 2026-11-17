@@ -5,7 +5,7 @@ local _, ns = ...
 --
 -- The sets saved in the game's equipment manager, as a row of buttons under the character window:
 -- one click puts a set on. The set you are wearing is marked, and a set with pieces you no longer
--- own is shown grey with the count in its tooltip.
+-- own is shown gray with the count in its tooltip.
 --
 -- The buttons are ordinary ones, not secure ones: the game lets an add-on ask for a set outside
 -- combat, and refuses anyone during it, so there is nothing a secure button would add - and nothing

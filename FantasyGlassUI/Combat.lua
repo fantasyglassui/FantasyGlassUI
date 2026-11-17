@@ -42,9 +42,9 @@ ns:NewModule("cooldowns", function()
     -- What an ability is doing right now. Returns: state, start, duration
     --   "ready"    nothing to wait for (this includes "only the global cooldown", which every ability
     --              shares for a second and a half and which is not what this row is for)
-    --   "cooling"  on its own cooldown: the icon is greyed and the sweep runs
+    --   "cooling"  on its own cooldown: the icon is grayed and the sweep runs
     --   "hidden"   the game is hiding the numbers (in combat on some clients). The sweep can still be
-    --              handed to the game to draw, but whether to grey the icon cannot be known, so it isn't.
+    --              handed to the game to draw, but whether to gray the icon cannot be known, so it isn't.
     local GCD = 61304                                        -- the game's stand-in spell for the global cooldown
     local function Read(id)
         if C_Spell and C_Spell.GetSpellCooldown then
@@ -123,7 +123,7 @@ ns:NewModule("cooldowns", function()
     end
     function ns:CooldownTrackerState()
         if #active == 0 then return "no abilities chosen (Combat tab)" end
-        return #active .. " abilities" .. (hiddenSeen and "; in combat the game hides their cooldowns, so sweeps are drawn but icons are not greyed" or "")
+        return #active .. " abilities" .. (hiddenSeen and "; in combat the game hides their cooldowns, so sweeps are drawn but icons are not grayed" or "")
     end
     ns.cooldownTest = { Refresh = Refresh, active = function() return active end }
 
@@ -145,7 +145,7 @@ ns:NewModule("cooldowns", function()
             end
         end
         for i = n + 1, #icons do icons[i]:Hide() end
-        local width = n * (SIZE + GAP) - GAP                       -- keep the row centred on its anchor
+        local width = n * (SIZE + GAP) - GAP                       -- keep the row centered on its anchor
         for i, b in ipairs(active) do
             b:ClearAllPoints()
             b:SetPoint("LEFT", holder, "CENTER", -width / 2 + (i - 1) * (SIZE + GAP), 0)
@@ -163,7 +163,7 @@ ns:NewModule("cooldowns", function()
     end))
     ns:RebuildCooldowns()
     -- The game says when a cooldown starts, but not when one finishes. So the row is also looked at a
-    -- few times a second; otherwise an icon stays grey until something else happens to prompt a look.
+    -- few times a second; otherwise an icon stays gray until something else happens to prompt a look.
     ns:Every(0.2, "Cooldown tracker", function() if #active > 0 then Refresh() end end)
     ns:RegisterMovable(holder, "cooldowns", "Cooldown Tracker")
 end)

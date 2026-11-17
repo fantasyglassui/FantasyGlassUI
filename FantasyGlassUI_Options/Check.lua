@@ -57,7 +57,7 @@ local OLDER = {
     ["C_TradeSkillUI.GetTradeSkillTexture"]  = { nil, "not in this game (a profession's icon is found another way)" },
     GetProfessions             = { nil, "not in this game (a profession's icon is found another way)" },
     GetTradeSkillLine          = { nil, "not in this game (the open profession is found another way)" },
-    ["C_TradeSkillUI.GetRecipeInfo"] = { nil, "not in this game (a craft is recognised another way)" },
+    ["C_TradeSkillUI.GetRecipeInfo"] = { nil, "not in this game (a craft is recognized another way)" },
 }
 -- What to print beside a function's name, and whether it is a real fault.
 function ns.CheckFunctionLine(path, exists)

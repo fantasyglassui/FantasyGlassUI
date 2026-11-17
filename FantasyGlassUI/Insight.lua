@@ -314,7 +314,7 @@ function ns:ShowLevelZones()
         if #lines == 0 then lines[1] = { left = ns:Tr("No zone's level range is near yours.") } end
     end
     return ns:ShowList("LevelZones", format(ns:Tr("Where to level at %d"), level), lines,
-        "Green: your level now. Yellow: next. Grey: nearly done. From the game's own map.", 440, 340)
+        "Green: your level now. Yellow: next. Gray: nearly done. From the game's own map.", 440, 340)
 end
 
 ------------------------------------------------------------------------------------------

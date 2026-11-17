@@ -185,6 +185,7 @@ local function Panel()
     local edit = ns:CreateButton(panel, "Edit", 50, 18, function() ns:EditBossNote(panel.boss) end)
     edit:SetPoint("RIGHT", close, "LEFT", -4, 0)
     panel:Hide()
+    if type(UISpecialFrames) == "table" then tinsert(UISpecialFrames, "FantasyGlassUIBossNote") end      -- (Escape puts it away)
     local entry = ns:RegisterMovable(panel, "bossNote", "Boss note")
     if type(entry) == "table" then entry.offPage = true end
     return panel
@@ -312,7 +313,7 @@ end
 ns:NewModule("bossNotes", function()
     local incoming = {}
     local ev = CreateFrame("Frame")
-    for _, e in ipairs({ "PLAYER_TARGET_CHANGED", "ENCOUNTER_START", "CHAT_MSG_ADDON" }) do pcall(ev.RegisterEvent, ev, e) end
+    for _, e in ipairs({ "PLAYER_TARGET_CHANGED", "ENCOUNTER_START", "ENCOUNTER_END", "CHAT_MSG_ADDON" }) do pcall(ev.RegisterEvent, ev, e) end
     local shownFor
     ev:SetScript("OnEvent", ns:Guard("Boss notes", function(_, event, a, b, c, d)
         if event == "PLAYER_TARGET_CHANGED" then
@@ -320,6 +321,9 @@ ns:NewModule("bossNotes", function()
             if boss and boss ~= shownFor then shownFor = boss; ns:ShowBossNote(boss, true) end
         elseif event == "ENCOUNTER_START" then
             if type(b) == "string" and not Secret(b) then ns:ShowBossNote(b, true) end
+        elseif event == "ENCOUNTER_END" then                   -- the fight is over: the note has done its job
+            shownFor = nil
+            if panel and panel.Hide then panel:Hide() end
         elseif event == "CHAT_MSG_ADDON" then
             if Secret(a) or Secret(b) or a ~= "FGUI" or type(b) ~= "string" then return end
             local id, i, n, piece = b:match("^BN:(%w+):(%d+):(%d+):(.*)$")
@@ -377,7 +381,9 @@ function ns:ShowDeathRecap()
         local label = DIM .. when .. "|r  " .. ns:Tr(e.kind) .. (e.crit and (" |cffffd100" .. ns:Tr("critical") .. "|r") or "")
         local line = { left = label, color = (e.kind == "Heal") and { 0.4, 1, 0.5 } or { 1, 0.8, 0.75 } }
         if Secret(e.amount) then line.secretRight, line.hasSecret = e.amount, true
-        elseif type(e.amount) == "number" and e.amount > 0 then line.right = tostring(e.amount) end
+        elseif type(e.amount) == "number" and e.amount > 0 then
+            line.right = (type(BreakUpLargeNumbers) == "function" and BreakUpLargeNumbers(e.amount)) or tostring(e.amount)     -- (12,345)
+        end
         lines[#lines + 1] = line
     end
     if #lines == 0 then lines[1] = { left = ns:Tr("Nothing hit you in the last few seconds.") } end

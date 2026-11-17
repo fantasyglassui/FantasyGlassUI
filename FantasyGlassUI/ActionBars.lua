@@ -90,7 +90,7 @@ local function SkinButton(btn)
     -- The dark backing behind the icon. It must sit at the very bottom of the background layer: the
     -- game draws the icon in that same layer, and two things at the same depth are drawn in no fixed
     -- order. Left at the default depth, this backing could end up on top of the icon, and the whole
-    -- bar looked greyed out, as if every ability were on cooldown.
+    -- bar looked grayed out, as if every ability were on cooldown.
     local bg = btn:CreateTexture(nil, "BACKGROUND", nil, -8)
     bg:SetAllPoints()
     bg:SetTexture(ns.FLAT)

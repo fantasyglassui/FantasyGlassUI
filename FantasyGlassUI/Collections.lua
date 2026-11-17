@@ -128,15 +128,15 @@ function ns:SortBags()
 end
 
 ------------------------------------------------------------------------------------------
--- Mount and pet buttons: two small movable buttons - a random favourite mount (one that suits where
--- you are) and a random favourite pet - and key bindings for both (the game's Key Bindings, AddOns).
+-- Mount and pet buttons: two small movable buttons - a random favorite mount (one that suits where
+-- you are) and a random favorite pet - and key bindings for both (the game's Key Bindings, AddOns).
 ------------------------------------------------------------------------------------------
 function ns:SummonPet()
     local P = C_PetJournal
     if not (type(P) == "table" and type(P.SummonRandomPet) == "function") then ns:Print("This game client has no pet collection an add-on can use."); return false end
     return pcall(P.SummonRandomPet, true) and "summoned" or false
 end
-BINDING_NAME_FANTASYGLASSUI_PET = "Pet (random favourite)"
+BINDING_NAME_FANTASYGLASSUI_PET = "Pet (random favorite)"
 ns:NewModule("mountButtons", function()
     local f = CreateFrame("Frame", "FantasyGlassUIMountButtons", UIParent)
     f:SetSize(2 * 32 + 4, 32)
@@ -160,8 +160,8 @@ ns:NewModule("mountButtons", function()
         b:SetScript("OnLeave", function() GameTooltip:Hide() end)
         return b
     end
-    f.mount = Button(1, 132261, "Mount (random favourite)", function() ns:MountUp() end)
-    f.pet = Button(2, 132599, "Pet (random favourite)", function() ns:SummonPet() end)
+    f.mount = Button(1, 132261, "Mount (random favorite)", function() ns:MountUp() end)
+    f.pet = Button(2, 132599, "Pet (random favorite)", function() ns:SummonPet() end)
     ns.mountButtonsTest = f
     local entry = ns:RegisterMovable(f, "mountButtons", "Mount and pet")
     if type(entry) == "table" then entry.offPage = true end

@@ -495,7 +495,7 @@ end
 ------------------------------------------------------------------------------------------
 -- Bag rules: sections of your own in the one-window bags, each with a rule, in the order you set.
 --   kinds: ilvl (item level at least), boe (bind on equip, not bound), set (in a gear set),
---   quality (at least: 0 grey .. 5 legendary), type (consumable, gear, trade, quest, recipe, gem),
+--   quality (at least: 0 gray .. 5 legendary), type (consumable, gear, trade, quest, recipe, gem),
 --   name (the name contains)
 ------------------------------------------------------------------------------------------
 ns.BAG_RULE_KINDS = {

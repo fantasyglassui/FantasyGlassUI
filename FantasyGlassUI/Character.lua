@@ -43,7 +43,7 @@ ns:NewModule("characterWindow", function()
         if IsTexture(icon) and type(mask) == "table" and icon.RemoveMaskTexture then pcall(icon.RemoveMaskTexture, icon, mask) end
     end
 
-    -- Keep the shape, lose the gold: grey it out and tint it with a theme color.
+    -- Keep the shape, lose the gold: gray it out and tint it with a theme color.
     local function Tint(tex, role, alpha)
         if not IsTexture(tex) or tex.sui or tex.suiTinted then return end
         tex.suiTinted = true

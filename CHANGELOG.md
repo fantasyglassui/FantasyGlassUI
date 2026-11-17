@@ -8,6 +8,14 @@ The releases published on CurseForge. Each lists what changed since the release 
 - The setup's theme buttons show a small picture of each theme, as the Look tab does.
 - The home key now rechecks your cooldowns at most every ten seconds instead of after every cast;
   new spells and items are still picked up at once.
+- After a long break, What's new shows the five newest releases and how many more there were,
+  not a wall of every update since.
+- The boss note closes with Escape, and puts itself away when the boss fight ends.
+- Hover help on the Profiles tab's newer buttons: Copy my whole UI, Send whole UI, Backups,
+  Changes to this profile, and the new-character settings.
+- The death recap writes big numbers with separators (12,345).
+- Auction prices you have not seen for two months are let go, so the saved list stays small.
+- Spelling is American English throughout (gray, favorite), as in the game.
 
 **Fixed**
 - In the setup, Runic themes showed "Runic:" in front of their names.
@@ -165,7 +173,7 @@ Everything since 10.0.0, in one list.
 - **Fourteen more game settings as switches** (Features tab, Game settings):
   - Auto loot, loot window at the mouse, auto self-cast.
   - Nameplates from further away, stacking nameplates.
-  - A camera that stays where you turn it, clear weather, no grey screen when dead, less screen glow.
+  - A camera that stays where you turn it, clear weather, no gray screen when dead, less screen glow.
   - A lower frame rate when tabbed out.
   - No tutorial pop-ups, profanity filter off, mute the music, mute ambient sounds.
   - Each remembers what the setting was and puts it back when switched off. None changes during a
@@ -241,8 +249,8 @@ Everything since 10.0.0, in one list.
   sections, your own rules first, best quality first inside each. Special bags are left alone.
 - **Reputations and currencies on all your characters** (`/fgui reps`): pin the ones you care about
   and see every character's standing or amount side by side.
-- **Mount and pet buttons** (Features tab, off until you choose them): a random favourite mount and
-  a random favourite pet, as two small movable buttons and as key bindings.
+- **Mount and pet buttons** (Features tab, off until you choose them): a random favorite mount and
+  a random favorite pet, as two small movable buttons and as key bindings.
 - **Send a talent build** (`/fgui talents send <player> <build>`): it arrives with their builds,
   for their class only, and nothing is learned until they choose it.
 - **Goals of your own and achievements on the goals panel:** `/fgui goal add 50 <goal>` (click it
@@ -301,7 +309,7 @@ Everything since 10.0.0, in one list.
 - Finishing the setup always reloads the interface, so everything you chose is in place at once.
 
 **Fixed**
-- Buttons in the Add-ons panel under the minimap looked greyed out (DBM, Questie, RestedXP and
+- Buttons in the Add-ons panel under the minimap looked grayed out (DBM, Questie, RestedXP and
   others). They now sit in front of the panel, and a hidden button no longer leaves a gap.
 - Class emblems stopped animating or stuck on one frame. The game's own animation system now moves
   them, and `/fgui check` says how many are moving.
@@ -347,7 +355,7 @@ Fifty-eight additions, thirty more themes and fifteen more lettering styles. Wha
 **New: map and travel**
 - **Waypoints.** `/fgui way 45 62 the cave`: an arrow with the distance.
 - **Travel bar** (off until chosen): your hearthstone and every teleport or portal you know.
-- **Mount key.** A key binding, or `/fgui mount`, for a random favourite mount.
+- **Mount key.** A key binding, or `/fgui mount`, for a random favorite mount.
 - **Flight timer.** A bar for the time left on a flight path; each route is learned the first time you fly it.
 - **Fishing mode** (off until chosen): loud splash, quiet music, auto-loot, while a fishing pole is equipped.
 - **Smaller world map** (off until chosen) that fades while you move.
@@ -467,7 +475,7 @@ Fifty-eight additions, thirty more themes and fifteen more lettering styles. Wha
   - Click the heading to switch between damage and healing; right-click for this fight or overall.
 - **Gear set buttons.** A row under the character window with a button for each set saved in the
   game's equipment manager. One click puts a set on. The set you are wearing is underlined, and a
-  set with missing pieces is grey.
+  set with missing pieces is gray.
 - **Five more helpers under "Done for you"** on the Features tab, each off until you choose it:
   - *Stand up when an action needs it* and *Dismount when an action needs it*: when something
     fails because you are sitting or mounted, that is put right and the next press works. Never
@@ -511,7 +519,7 @@ Fifty-eight additions, thirty more themes and fifteen more lettering styles. Wha
 - An action bar you had moved could jump to the game's default place during a fight (seen on a
   paladin, whose aura bar makes the game re-lay its bars) and only come back afterwards. A moved
   bar is now held where you put it through the fight.
-- Buffs and debuffs on the target, focus and party frames ran their timer sweep backwards (grey
+- Buffs and debuffs on the target, focus and party frames ran their timer sweep backwards (gray
   first, brightening). They now start in full color and darken as they run out, like everywhere else.
 - Three errors from details the game hides from add-ons around combat: the "Targeting" line in a
   unit's tooltip, the resource text on nameplates, and the AFK screen's check of whether you are
@@ -541,7 +549,7 @@ consistency.
   follow the reputation you earn, repair from guild funds, pick the only choice in a conversation.
 
 **Changed**
-- The Features tab is organised into fourteen sections under headings, in place of three long lists.
+- The Features tab is organized into fourteen sections under headings, in place of three long lists.
 - Every options tab that can outgrow the window now scrolls.
 - `/fgui help` is a grouped list of every command.
 - Tooltip lines, the XP bar's tooltip, the quest log's headings and other leftover English text now
@@ -575,7 +583,7 @@ consistency.
 - The game's debuff icons no longer get a border from the add-on.
 
 **Fixed**
-- The action bars could look greyed out, as if every ability were on cooldown.
+- The action bars could look grayed out, as if every ability were on cooldown.
 - A tall dark panel could appear down the right side of the screen after opening a menu.
 - Rows of empty boxes where the game's debuff icons and the totem timers go.
 - An error could appear when a tooltip was shown for certain units.
@@ -595,7 +603,7 @@ consistency.
 
 **Fixed**
 - The game's own loot roll frame appeared alongside ours.
-- Cooldown tracker: an icon stayed grey after its cooldown had finished.
+- Cooldown tracker: an icon stayed gray after its cooldown had finished.
 - An error could appear while a menu was open.
 - The report window opened behind the options window and was see-through.
 - The Layout tab's last rows ran into the buttons at the bottom of the window.

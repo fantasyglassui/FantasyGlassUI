@@ -404,6 +404,18 @@ function ns.AuctionUsual(e)
     local usual = (#list % 2 == 1) and list[mid] or math.floor((list[mid] + list[mid + 1]) / 2)
     return usual, #list
 end
+-- Let go of items not seen at the auction house for `days` days, so the list doesn't grow forever.
+-- Returns how many were let go.
+function ns.AuctionForget(seen, today, days)
+    local gone = 0
+    for id, e in pairs(seen) do
+        if type(e) ~= "table" or type(e.day) ~= "number" or ns.DaysBetween(e.day, today) > days then
+            seen[id] = nil
+            gone = gone + 1
+        end
+    end
+    return gone
+end
 function ns.AuctionSeenText(entry, today)
     if type(entry) ~= "table" or type(entry.price) ~= "number" then return nil end
     local days = math.max(0, ns.DaysBetween(entry.day, today))
@@ -423,6 +435,7 @@ ns:NewModule("auctionMemory", function()
     if type(ns.root) ~= "table" then return end
     if type(ns.root.auctionSeen) ~= "table" then ns.root.auctionSeen = {} end
     local seen = ns.root.auctionSeen
+    ns.AuctionForget(seen, ns.Today(), 60)                        -- (prices older than two months are let go)
     local function Note(id, price)
         if type(id) ~= "number" or type(price) ~= "number" or Secret(price) or price <= 0 then return end
         local today = ns.Today()

@@ -809,7 +809,7 @@ local function NewWindow(cfg)
                 return btn
             end
             picker.sell = ListButton("sell", "Always sell", "Sold whenever junk is sold, whatever its color. Click again to take it off the list.")
-            picker.keep = ListButton("keep", "Never sell", "Never sold automatically, even if it is grey. Click again to take it off the list.")
+            picker.keep = ListButton("keep", "Never sell", "Never sold automatically, even if it is gray. Click again to take it off the list.")
             picker.sell:SetPoint("BOTTOMLEFT", 8, 8)
             picker.keep:SetPoint("BOTTOMRIGHT", -8, 8)
             function picker.MarkLists()

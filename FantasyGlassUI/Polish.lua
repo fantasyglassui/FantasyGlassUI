@@ -398,7 +398,7 @@ ns:NewModule("windows", function()
     end
 
     -- Collections (mounts, pets, toys, heirlooms, appearances) ------------------------------------------
-    -- The five tabs share a handful of pieces. Each is recognised by how it is built, wherever it sits:
+    -- The five tabs share a handful of pieces. Each is recognized by how it is built, wherever it sits:
     --   list row      Button { background, icon, selectedTexture }       (mounts, pets)
     --   count plate   { BorderTopLeft ... BorderBottomRight, Bg }         ("Mounts: 12", toy progress)
     --   icon grid     { BackgroundTile, BGCornerTopLeft ... }             (toys, heirlooms, appearances)
@@ -492,7 +492,7 @@ ns:NewModule("windows", function()
     -- Auction house -----------------------------------------------------------------------------------------
     -- A very large window (more so with an auction add-on living inside it), far beyond what the general
     -- window pass will walk in one go. So each panel gets the general pass to itself the first time it
-    -- is shown, and these pieces, which only the auction house has, are recognised by how they are built:
+    -- is shown, and these pieces, which only the auction house has, are recognized by how they are built:
     --   panel          { Background, NineSlice }                         (every list and form)
     --   column header  Button { Arrow, Left, Middle, Right }             (click to sort)
     --   list row       { NormalTexture, SelectedHighlight }              (the striped rows)
@@ -629,7 +629,7 @@ ns:NewModule("windows", function()
     -- (LFGParentFrame, from its outline.) It is a shell that holds three complete windows stacked in
     -- the same place - list yourself, the who list, browse groups - with three round icon tabs down
     -- its side and an animated eye where a portrait would be. So each of the three gets the standard
-    -- window treatment to itself, the shell's own art goes, and these pieces are recognised by how
+    -- window treatment to itself, the shell's own art goes, and these pieces are recognized by how
     -- they are built:
     --   side tab       { Background, SelectedTexture, Icon, Mask }      (the three round tabs)
     --   dropdown       Button { Arrow, Background }                     (category, activity, role, voice chat)
@@ -706,7 +706,7 @@ ns:NewModule("windows", function()
     -- state ourselves (the game keeps it on each button as visualState). Then the icon is squared, our
     -- rim goes around it, and the rim's color carries the meaning:
     --     green  - can be taken now, or partly taken        gold - full
-    --     red    - a problem (would have to be refunded)     grey - locked or out of reach
+    --     red    - a problem (would have to be refunded)     gray - locked or out of reach
     -- If the state can't be read, the talent is left exactly as the game draws it.
     local TALENT_COLORS = {
         Selectable = { 0.30, 0.92, 0.42 }, Normal = { 0.30, 0.75, 0.40 }, Maxed = { 1.00, 0.82, 0.20 },
@@ -736,7 +736,7 @@ ns:NewModule("windows", function()
             local icon = btn.Icon
             if type(btn.IconMask) == "table" and icon.RemoveMaskTexture then pcall(icon.RemoveMaskTexture, icon, btn.IconMask) end
             icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-            local dim = btn.DisabledOverlay                  -- the grey wash on talents you can't take: squared to match
+            local dim = btn.DisabledOverlay                  -- the gray wash on talents you can't take: squared to match
             if IsTexture(dim) and type(btn.DisabledOverlayMask) == "table" and dim.RemoveMaskTexture then
                 pcall(dim.RemoveMaskTexture, dim, btn.DisabledOverlayMask)
             end

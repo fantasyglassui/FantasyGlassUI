@@ -677,7 +677,7 @@ ns.themes = {
         bg = { 0.085, 0.026, 0.047 }, border = { 0.6, 0.499, 0.222 }, rim = { 0.03, 0.009, 0.017 },
         grain = { 0.8, 0.2, 0.42, 0.12 }, light = { 1, 0.899, 0.622 }, plate = { 0.2, 0.064, 0.114 },
         text = { 0.95, 0.827, 0.872 }, dim = { 0.85, 0.629, 0.71 }, faint = { 0.65, 0.442, 0.518 }, btn = { 1, 0.904, 0.64 } },
-    ASHEN = { name = "Fantasy: Ashen (ash grey and scarlet)", accent = "SCARLET",
+    ASHEN = { name = "Fantasy: Ashen (ash gray and scarlet)", accent = "SCARLET",
         bg = { 0.085, 0.08, 0.078 }, border = { 0.6, 0.117, 0.133 }, rim = { 0.03, 0.028, 0.027 },
         grain = { 0.8, 0.752, 0.728, 0.12 }, light = { 1, 0.517, 0.533 }, plate = { 0.2, 0.189, 0.184 },
         text = { 0.95, 0.94, 0.935 }, dim = { 0.85, 0.832, 0.823 }, faint = { 0.63, 0.614, 0.606 }, btn = { 1, 0.7, 0.71 } },
@@ -696,7 +696,7 @@ ns.themes = {
     CLASS  = { name = "Fantasy: Class (your class color)", accent = "CLASS" },      -- built from your class color at login
     -- Runic (11.8): carved stone, an engraved inner edge, and runes that glow in the accent color
     -- from the corners and along the foot of each panel. Opaque like fantasy, no ornament in gold.
-    R_GRANITE = { name = "Runic: Granite (grey stone, frost runes)", style = "RUNIC", accent = "FROST",
+    R_GRANITE = { name = "Runic: Granite (gray stone, frost runes)", style = "RUNIC", accent = "FROST",
         bg = { 0.085, 0.085, 0.09 }, border = { 0.337, 0.365, 0.398 }, rim = { 0.0255, 0.0255, 0.027 },
         grain = { 0.405, 0.405, 0.42, 0.1 }, light = { 0.7, 0.868, 1 }, plate = { 0.192, 0.192, 0.201 },
         text = { 0.89, 0.907, 0.92 }, dim = { 0.73, 0.747, 0.76 }, faint = { 0.525, 0.539, 0.55 }, btn = { 0.775, 0.901, 1 } },
@@ -704,7 +704,7 @@ ns.themes = {
         bg = { 0.05, 0.05, 0.055 }, border = { 0.305, 0.252, 0.243 }, rim = { 0.015, 0.015, 0.0165 },
         grain = { 0.3, 0.3, 0.315, 0.1 }, light = { 0.97, 0.652, 0.532 }, plate = { 0.125, 0.125, 0.135 },
         text = { 0.917, 0.885, 0.873 }, dim = { 0.757, 0.725, 0.713 }, faint = { 0.547, 0.521, 0.511 }, btn = { 0.978, 0.739, 0.649 } },
-    R_SLATE = { name = "Runic: Slate (blue-grey, azure runes)", style = "RUNIC", accent = "AZURE",
+    R_SLATE = { name = "Runic: Slate (blue-gray, azure runes)", style = "RUNIC", accent = "AZURE",
         bg = { 0.06, 0.075, 0.09 }, border = { 0.268, 0.337, 0.398 }, rim = { 0.018, 0.0225, 0.027 },
         grain = { 0.33, 0.375, 0.42, 0.1 }, light = { 0.616, 0.832, 1 }, plate = { 0.144, 0.172, 0.201 },
         text = { 0.882, 0.903, 0.92 }, dim = { 0.722, 0.743, 0.76 }, faint = { 0.518, 0.536, 0.55 }, btn = { 0.712, 0.874, 1 } },
@@ -736,7 +736,7 @@ ns.themes = {
         bg = { 0.09, 0.05, 0.035 }, border = { 0.393, 0.252, 0.199 }, rim = { 0.027, 0.015, 0.0105 },
         grain = { 0.42, 0.3, 0.255, 0.1 }, light = { 0.97, 0.652, 0.532 }, plate = { 0.201, 0.125, 0.0965 },
         text = { 0.917, 0.885, 0.873 }, dim = { 0.757, 0.725, 0.713 }, faint = { 0.547, 0.521, 0.511 }, btn = { 0.978, 0.739, 0.649 } },
-    R_STORM = { name = "Runic: Stormrune (thunder grey, teal runes)", style = "RUNIC", accent = "TEAL",
+    R_STORM = { name = "Runic: Stormrune (thunder gray, teal runes)", style = "RUNIC", accent = "TEAL",
         bg = { 0.06, 0.065, 0.09 }, border = { 0.257, 0.329, 0.382 }, rim = { 0.018, 0.0195, 0.027 },
         grain = { 0.33, 0.345, 0.42, 0.1 }, light = { 0.55, 0.916, 0.904 }, plate = { 0.144, 0.153, 0.201 },
         text = { 0.875, 0.912, 0.91 }, dim = { 0.715, 0.752, 0.75 }, faint = { 0.512, 0.543, 0.542 }, btn = { 0.663, 0.937, 0.928 } },
@@ -784,7 +784,7 @@ ns.themes = {
         bg = { 0.08, 0.065, 0.035 }, border = { 0.376, 0.325, 0.217 }, rim = { 0.024, 0.0195, 0.0105 },
         grain = { 0.39, 0.345, 0.255, 0.1 }, light = { 1, 0.892, 0.64 }, plate = { 0.182, 0.153, 0.0965 },
         text = { 0.92, 0.909, 0.884 }, dim = { 0.76, 0.749, 0.724 }, faint = { 0.55, 0.541, 0.52 }, btn = { 1, 0.919, 0.73 } },
-    R_SILVER = { name = "Runic: Silverrune (grey, silver runes)", style = "RUNIC", accent = "PLATINUM",
+    R_SILVER = { name = "Runic: Silverrune (gray, silver runes)", style = "RUNIC", accent = "PLATINUM",
         bg = { 0.085, 0.09, 0.095 }, border = { 0.371, 0.386, 0.403 }, rim = { 0.0255, 0.027, 0.0285 },
         grain = { 0.405, 0.42, 0.435, 0.1 }, light = { 0.904, 0.928, 0.964 }, plate = { 0.192, 0.201, 0.21 },
         text = { 0.91, 0.913, 0.916 }, dim = { 0.75, 0.753, 0.756 }, faint = { 0.542, 0.544, 0.547 }, btn = { 0.928, 0.946, 0.973 } },
@@ -808,7 +808,7 @@ ns.themes = {
         bg = { 0.04, 0.06, 0.03 }, border = { 0.25, 0.328, 0.192 }, rim = { 0.012, 0.018, 0.009 },
         grain = { 0.27, 0.33, 0.24, 0.1 }, light = { 0.772, 0.976, 0.556 }, plate = { 0.106, 0.144, 0.087 },
         text = { 0.897, 0.918, 0.876 }, dim = { 0.737, 0.758, 0.716 }, faint = { 0.531, 0.548, 0.513 }, btn = { 0.829, 0.982, 0.667 } },
-    R_ASH = { name = "Runic: Ashstone (burnt grey, ember runes)", style = "RUNIC", accent = "EMBER",
+    R_ASH = { name = "Runic: Ashstone (burnt gray, ember runes)", style = "RUNIC", accent = "EMBER",
         bg = { 0.075, 0.07, 0.065 }, border = { 0.36, 0.296, 0.265 }, rim = { 0.0225, 0.021, 0.0195 },
         grain = { 0.375, 0.36, 0.345, 0.1 }, light = { 0.97, 0.652, 0.532 }, plate = { 0.172, 0.163, 0.153 },
         text = { 0.917, 0.885, 0.873 }, dim = { 0.757, 0.725, 0.713 }, faint = { 0.547, 0.521, 0.511 }, btn = { 0.978, 0.739, 0.649 } },
@@ -1455,7 +1455,7 @@ ns.whatsNew = {
     { "10.8.0", { "The Look tab is shorter: accent, lettering, the game menu and bars, your own theme and the new Theme by place are one section, Accent and style.",
                   "New: a session card (/fgui session), quest rewards on the tracker, a ready-check report, rares remembered on the world map (/fgui rares), a crafting queue (/fgui queue) and a goals panel (/fgui goal).",
                   "New, off until you choose them (Features tab): a cooldown timeline, combat text in your lettering and a login splash." } },
-    { "10.7.0", { "Fourteen more game settings as switches (Features tab, Game settings): auto loot, loot window at the mouse, auto self-cast, nameplates from further away, stacking nameplates, a camera that stays where you turn it, clear weather, a lower frame rate when tabbed out, no tutorial pop-ups, profanity filter off, mute the music or ambient sounds, no grey screen when dead, and less screen glow. Switching one off puts the game's setting back." } },
+    { "10.7.0", { "Fourteen more game settings as switches (Features tab, Game settings): auto loot, loot window at the mouse, auto self-cast, nameplates from further away, stacking nameplates, a camera that stays where you turn it, clear weather, a lower frame rate when tabbed out, no tutorial pop-ups, profanity filter off, mute the music or ambient sounds, no gray screen when dead, and less screen glow. Switching one off puts the game's setting back." } },
     { "10.6.2", { "The white streak of light that passed over the class emblems is gone." } },
     { "10.6.1", { "The class sigils inside the medallions are animated again, each with its own loop: swords meeting, a bow drawn and loosed, a lightning bolt crackling, and the rest.",
                   "The Hunter's arrow has real feathers now, and the Warlock's flame is back as it was." } },
@@ -1465,9 +1465,9 @@ ns.whatsNew = {
     { "10.5.0", { "Every tab of /fgui now works like the Features tab: its sections are listed down the left, and the one you choose is shown by itself. The window is a little wider to make room.",
                   "Click casting has moved into the Combat tab, as its own section. /fgui clickcast still takes you straight there.",
                   "Fixed: the animated class emblems on portraits stopping after a while. /fgui check has a line that says whether they are running." } },
-    { "10.4.3", { "Fixed, this time for good: buttons in the Add-ons panel that looked greyed out. Most minimap buttons lock the layer they are drawn on, so they stayed behind the panel; they are now unlocked, brought forward and locked again." } },
-    { "10.4.2", { "/fgui buttons lists the buttons gathered into the Add-ons panel and how the game is drawing each, for tracking down one that looks greyed out." } },
-    { "10.4.1", { "Fixed: some of the buttons in the Add-ons panel under the minimap looked greyed out. They were sitting behind the panel's dark backing; every gathered button is now in front of it and solid." } },
+    { "10.4.3", { "Fixed, this time for good: buttons in the Add-ons panel that looked grayed out. Most minimap buttons lock the layer they are drawn on, so they stayed behind the panel; they are now unlocked, brought forward and locked again." } },
+    { "10.4.2", { "/fgui buttons lists the buttons gathered into the Add-ons panel and how the game is drawing each, for tracking down one that looks grayed out." } },
+    { "10.4.1", { "Fixed: some of the buttons in the Add-ons panel under the minimap looked grayed out. They were sitting behind the panel's dark backing; every gathered button is now in front of it and solid." } },
     { "10.4.0", { "A Bars tab in /fgui: each action bar has its own size, opacity and rule for when it shows (always, when pointed at, in or out of combat, with a target, never), its own key text and macro names, and its rows, buttons, button size and spacing.",
                   "A Guide tab: quest guides are coming soon." } },
     { "10.2.0", { "The options window has a new, lighter look: the Features tab shows one section at a time, with the sections listed down the left and a card that says what the switch under the mouse does. Tabs are plain names with a line under the open one, and every tick box is now a switch.",
@@ -1498,7 +1498,7 @@ ns.whatsNew = {
     { "9.1.0", { "The options, the setup and the self-check now load only when you open one of them, so the add-on uses less memory the rest of the time.",
                  "The add-on is now two folders: FantasyGlassUI and FantasyGlassUI_Options. Keep both.",
                  "/fgui memory shows how much memory is in use." } },
-    { "9.0.0", { "A release about finish. The Features tab is organised into sections under headings.",
+    { "9.0.0", { "A release about finish. The Features tab is organized into sections under headings.",
                  "Leftover English text (tooltips, the XP bar's tooltip, the quest log) follows your language.",
                  "/fgui help lists every command; /fgui check no longer shows older game functions as missing." } },
     { "8.12.0", { "Inspecting someone shows the item level of each piece and their average.",
@@ -1555,16 +1555,22 @@ function ns:WhatsNew(force)
     root.seenVersion = ns.version
     if not force and (ns.freshInstall or seen == ns.version) then return nil end
     local since = VersionNumber(seen)
-    local out = {}
+    local out, shown, more = {}, 0, 0
     for i, entry in ipairs(ns.whatsNew) do
         if (force and i <= 4) or (not force and VersionNumber(entry[1]) > since) then     -- (asked for: the last four releases)
             if seen == nil and not force and i > 1 then break end        -- unknown previous version: just the latest
-            out[#out + 1] = "Version " .. entry[1]
-            for _, line in ipairs(entry[2]) do out[#out + 1] = "  - " .. line end
-            out[#out + 1] = ""
+            if shown >= 5 then                                -- (after a long break, five releases and a count of the rest)
+                more = more + 1
+            else
+                shown = shown + 1
+                out[#out + 1] = "Version " .. entry[1]
+                for _, line in ipairs(entry[2]) do out[#out + 1] = "  - " .. line end
+                out[#out + 1] = ""
+            end
         end
     end
     if #out == 0 then return nil end
+    if more > 0 then out[#out + 1] = format("And %d earlier updates since yours: the full list is in the changelog on CurseForge and GitHub.", more); out[#out + 1] = "" end
     out[#out + 1] = "Everything is in /fgui. This note appears once per update; /fgui new shows it again."
     return table.concat(out, "\n")
 end
@@ -1758,7 +1764,7 @@ BINDING_NAME_FANTASYGLASSUI_KEYBIND = "Keybind mode"
 BINDING_NAME_FANTASYGLASSUI_CLEAN = "Clean screen (5 seconds)"
 BINDING_NAME_FANTASYGLASSUI_METER = "Damage meter drawer"
 BINDING_NAME_FANTASYGLASSUI_ALTS = "Your characters"
-BINDING_NAME_FANTASYGLASSUI_MOUNT = "Mount (random favourite)"
+BINDING_NAME_FANTASYGLASSUI_MOUNT = "Mount (random favorite)"
 BINDING_NAME_FANTASYGLASSUI_NOTEPAD = "Notepad"
 BINDING_NAME_FANTASYGLASSUI_WHISPERS = "Whisper window"
 BINDING_NAME_FANTASYGLASSUI_TODO = "To-do list"
@@ -1970,7 +1976,7 @@ ns.helpLines = {
     { "/fgui remind <buff>", "an icon while that buff is missing (again to stop)" },
     { "/fgui hidebuff <buff>", "leave that buff out of your buff row (again to show it)" },
     { "/fgui execute 20", "where the execute line sits on the target's health bar" },
-    { "/fgui mount", "a random favourite mount, or off the one you are on" },
+    { "/fgui mount", "a random favorite mount, or off the one you are on" },
     { "/fgui note <text>", "a note on the player you have targeted (\"list\" shows them all)" },
     { "/fgui recent", "the people you grouped with lately: whisper or invite" },
     { "/fgui missing", "who in your group is not here" },
@@ -2023,7 +2029,7 @@ ns.helpLines = {
     { "/fgui reps", "reputations and currencies on all your characters; click one to pin it" },
     { "/fgui goal add 50 <goal>", "a goal of your own on the goals panel (click it to count); /fgui goal ach <achievement> too" },
     { "/fgui talents send <player> <build>", "send a saved talent build to another player of your class" },
-    { "/fgui pet", "a random favourite pet (/fgui mount for a mount)" },
+    { "/fgui pet", "a random favorite pet (/fgui mount for a mount)" },
     { "/fgui toolmenu", "every tool window in one small panel (also \"Tools\" on the Menu button)" },
     { "/fgui talents save <name>", "keep your talents as a build; /fgui talents lists them, click one to learn it" },
     { "/fgui events", "holidays and events, now and in the next two weeks" },

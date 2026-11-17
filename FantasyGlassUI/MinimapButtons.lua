@@ -37,7 +37,7 @@ ns:NewModule("buttonBag", function()
     end
 
     -- A gathered button must be seen as its add-on drew it: in front of the panel (a button keeps the
-    -- level it had on the minimap, which can be behind the panel's dark backing and so looks greyed
+    -- level it had on the minimap, which can be behind the panel's dark backing and so looks grayed
     -- out), and solid (some fade themselves until the minimap is pointed at).
     -- (Many buttons - every one made by the usual minimap-button library - "fix" their layer so that the
     -- minimap cannot change it. A fixed layer ignores being set, so it is unfixed, set, and fixed again.
@@ -126,7 +126,7 @@ ns:NewModule("buttonBag", function()
             for _, region in ipairs({ f:GetRegions() }) do
                 if type(region) == "table" and region.GetObjectType and region:GetObjectType() == "Texture" and n < 6 then
                     n = n + 1
-                    lines[#lines + 1] = format("     texture %s | atlas %s | layer %s | shown %s | alpha %s | grey %s | color %s", Say(region.GetTexture, region), Say(region.GetAtlas, region),
+                    lines[#lines + 1] = format("     texture %s | atlas %s | layer %s | shown %s | alpha %s | gray %s | color %s", Say(region.GetTexture, region), Say(region.GetAtlas, region),
                         Say(region.GetDrawLayer, region), Say(region.IsShown, region), Say(region.GetAlpha, region), Say(region.IsDesaturated, region), Say(region.GetVertexColor, region))
                 end
             end

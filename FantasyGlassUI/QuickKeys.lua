@@ -153,7 +153,7 @@ ns:NewModule("quickKeys", function()
 end)
 
 ------------------------------------------------------------------------------------------
--- Mount key: a random favourite mount (the game picks one that works where you are); pressed
+-- Mount key: a random favorite mount (the game picks one that works where you are); pressed
 -- again, it gets you off. Bind it in the game's key bindings, or type /fgui mount.
 ------------------------------------------------------------------------------------------
 function ns:MountUp()

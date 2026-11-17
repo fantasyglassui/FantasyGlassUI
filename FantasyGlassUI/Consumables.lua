@@ -8,7 +8,7 @@ local Secret = function(v) return ns:IsSecret(v) end
 --
 -- The buttons are secure ones (using an item is something only the game may do), so which item each
 -- holds can only be changed between fights. In a fight the counts still tick down, and a button
--- whose item has run out is greyed until the fight ends and the bar is laid out again.
+-- whose item has run out is grayed until the fight ends and the bar is laid out again.
 ------------------------------------------------------------------------------------------
 -- The kinds shown, by the game's number for the kind, in the order they appear on the bar.
 local ORDER = { [1] = 1,    -- potions

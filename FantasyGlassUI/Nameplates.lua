@@ -146,7 +146,7 @@ ns:NewModule("nameplates", function()
         bar.text:SetText(name)
         pcall(bar.icon.SetTexture, bar.icon, texture)
         if channel then bar:SetStatusBarColor(0.35, 0.85, 0.45) else ns:Paint(bar, "SetStatusBarColor", "@accent") end
-        -- casts you cannot interrupt are greyed out
+        -- casts you cannot interrupt are grayed out
         if Secret(locked) then
             if not (bar.lock.SetAlphaFromBoolean and pcall(bar.lock.SetAlphaFromBoolean, bar.lock, locked, 0.8, 0)) then bar.lock:SetAlpha(0) end
         else

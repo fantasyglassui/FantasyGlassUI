@@ -88,7 +88,7 @@ get two of everything.
 | `/fgui remind <buff>`, `/fgui hidebuff <buff>` | An icon while that buff is missing; leave a buff out of your buff row (the same again undoes it) |
 | `/fgui note <text>`, `/fgui recent`, `/fgui missing`, `/fgui rolls`, `/fgui lockouts` | A note on your target, recent group mates, who is not here, the /roll list, raid lockouts |
 | `/fgui raidsort group\|role\|name`, `/fgui resetinstances` | Order of the raid frames; reset your instances |
-| `/fgui way 45 62`, `/fgui mount`, `/fgui mapsize 70` | A waypoint (alone, it clears), a random favourite mount, the size of the smaller world map |
+| `/fgui way 45 62`, `/fgui mount`, `/fgui mapsize 70` | A waypoint (alone, it clears), a random favorite mount, the size of the smaller world map |
 | `/fgui restock [item] 5`, `/fgui gold`, `/fgui shop`, `/fgui trades`, `/fgui loot`, `/fgui deposit` | Restock list, gold history, shopping list for the selected recipe, trade log, loot log, deposit crafting materials |
 | `/fgui keyword <word>`, `/fgui whispers`, `/fgui chattabs` | Keyword alerts, the whisper window, a Loot and a Whispers tab |
 | `/fgui notepad`, `/fgui todo <text>`, `/fgui calc 20*45` | Notepad, to-do list ("daily ..." comes back each day), calculator |
@@ -181,7 +181,7 @@ the ones below. Hover a switch to read what it does.
   has taken damage), and your average item level is written above the head slot.
 - **Gear set buttons.** A row under the character window with a button for each set saved in the
   game's equipment manager. One click puts a set on (not in combat). The set you are wearing is
-  underlined; a set with pieces you no longer have is grey, and its tooltip says how many.
+  underlined; a set with pieces you no longer have is gray, and its tooltip says how many.
 - **Every tooltip matches.** The side-by-side comparison tooltips, and the one that opens when you
   click an item link in chat, are covered along with the main tooltip.
 - **Drag the game's windows.** The character window, spellbook, vendor, mailbox, trainer and the
@@ -245,13 +245,13 @@ the ones below. Hover a switch to read what it does.
 **Vendors, trainers and mail**
 - **At vendors and trainers.** Alt-click a vendor's item to buy a full stack (or as many as you can
   afford). Trainers get a "Learn all" button that buys every skill you can learn and afford.
-- **Keep and sell lists.** "Sell junk" goes by color: grey is sold. Two lists correct it: *Always
-  sell* (sold whatever its color) and *Never sell* (kept even if grey). In the bag window, Alt-click
+- **Keep and sell lists.** "Sell junk" goes by color: gray is sold. Two lists correct it: *Always
+  sell* (sold whatever its color) and *Never sell* (kept even if gray). In the bag window, Alt-click
   an item and use the two buttons at the bottom; a gold or green line along the bottom of the slot
   marks a listed item, and its tooltip says so. Without the bag window: `/fgui sell` or `/fgui keep`,
   a space, then shift-click the item. `/fgui sell list` shows both lists. The lists are shared by
   all your characters. Nothing without a vendor price is ever sold.
-- **A coin on junk.** In the bag window, a small coin marks everything "Sell junk" would sell: grey
+- **A coin on junk.** In the bag window, a small coin marks everything "Sell junk" would sell: gray
   items and your always-sell list, less your never-sell list.
 - **Mail to your other characters.** While you are writing a letter, your other characters are listed
   beside the mail window. Click one to address the letter to it. ("Mail: list my other characters".)
@@ -300,7 +300,7 @@ the ones below. Hover a switch to read what it does.
   voice, sound when tabbed out, best-quality screenshots, auto loot, loot window at the mouse,
   auto self-cast, nameplates from further away (41 yards), stacking nameplates, a camera that stays
   where you turn it, clear weather, a lower frame rate when tabbed out (30), no tutorial pop-ups,
-  profanity filter off, mute the music, mute ambient sounds, no grey screen when dead and less
+  profanity filter off, mute the music, mute ambient sounds, no gray screen when dead and less
   screen glow. Each is one of the game's own settings; switching it off puts back what it was
   (unless you have changed it yourself since). None is changed during a fight, and the presets
   never touch them.
@@ -316,7 +316,7 @@ the ones below. Hover a switch to read what it does.
   counts in tooltips ("12 in bags, 40 in bank, 5 on an alt").
 
 **Helpers**
-- Sell grey items and repair automatically at vendors.
+- Sell gray items and repair automatically at vendors.
 - At the mailbox: Collect gold, and Open all on clients that don't have their own.
 - Optional automatic quest accept and turn-in (hold Shift to skip; it never picks a reward).
 - Clickable web links in chat, and a Copy button on each chat tab. The last lines of every
@@ -419,7 +419,7 @@ the ones below. Hover a switch to read what it does.
   never in a fight; special bags and the reagent bag are left alone. Again to stop.
 - **Reputations and currencies** (`/fgui reps`): each character's are noted as you play it. Click a
   line to pin it, and it is listed first for every character.
-- **Mount and pet buttons** (Features tab, off): a random favourite mount and pet, as two movable
+- **Mount and pet buttons** (Features tab, off): a random favorite mount and pet, as two movable
   buttons and as key bindings (Key Bindings, AddOns).
 - **Send a talent build** (`/fgui talents send <player> <build>`): kept with their builds, for their
   class only, and never learned until they choose it.
@@ -558,7 +558,7 @@ the ones below. Hover a switch to read what it does.
   screen with its name. Point at one to see which feature made it and what it does; click it to go
   to that feature's switch, right-click to switch it off. Esc finishes.
 - **Where to level**: `/fgui level` lists the zones that suit your level, from the game's own map
-  information, so the new zones are there too. Green: your level now; yellow: next; grey: nearly
+  information, so the new zones are there too. Green: your level now; yellow: next; gray: nearly
   done. Click one to open it on the world map.
 - **Profession cooldowns**: each character's once-a-day crafts are remembered whenever a profession
   window is open, with a notice when one is ready again. `/fgui profcd` lists them for all your

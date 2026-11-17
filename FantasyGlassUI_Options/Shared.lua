@@ -35,6 +35,18 @@ function O.ShowPage(id)
     if O.pages[id] and O.pages[id].NavRefresh then O.pages[id].NavRefresh() end
 end
 
+-- Hover help for a button or box: a title and a line or two of explanation.
+function O.Tip(widget, title, text)
+    if type(widget) ~= "table" or not widget.HookScript then return end
+    widget:HookScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:AddLine(ns:Tr(title))
+        if text then GameTooltip:AddLine(ns:Tr(text), 1, 1, 1, true) end
+        GameTooltip:Show()
+    end)
+    widget:HookScript("OnLeave", function() GameTooltip:Hide() end)
+end
+
 -- A small picture of a theme on its button (11.9): its panel color in its edge color, a line of its
 -- accent along the foot, and the mark of its family (glass: a lit top edge; fantasy: gold studs at
 -- the top corners; runic: a glowing rune-stud). On the Look tab and in the setup.

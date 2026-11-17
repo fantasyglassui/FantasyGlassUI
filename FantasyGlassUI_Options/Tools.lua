@@ -24,7 +24,7 @@ local ALSO = {
     bigger = "scale size", smaller = "scale size", larger = "scale size", resize = "scale size", big = "scale size", small = "scale size",
     dps = "damage meter", hps = "healing meter", recount = "damage meter", details = "damage meter", threat = "aggro meter",
     hotkey = "keybind key", shortcut = "keybind key", bind = "keybind", binding = "keybind",
-    money = "gold", coins = "gold", rich = "gold", junk = "sell grey", trash = "sell grey", vendor = "vendors sell",
+    money = "gold", coins = "gold", rich = "gold", junk = "sell gray", trash = "sell gray", vendor = "vendors sell",
     plates = "nameplates", nameplate = "nameplates", castbar = "cast bar", cd = "cooldown", cds = "cooldown", cooldowns = "cooldown",
     bag = "bags", inventory = "bags", backpack = "bags", pm = "whisper", tell = "whisper", dm = "whisper",
     hearth = "hearthstone travel", teleport = "travel", portal = "travel", flying = "flight", taxi = "flight",
