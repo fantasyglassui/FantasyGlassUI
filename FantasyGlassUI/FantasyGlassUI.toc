@@ -3,11 +3,15 @@
 ## Notes: A complete interface in glass, fantasy and runic themes: unit frames, raid frames, action bars, bags, quests, minimap, chat and restyled windows. Type /fgui.
 ## Author: DustyMouse
 ## Version: 11.9.1
-## Notes-deDE: Ein komplettes Interface in Glas- und Fantasy-Themen: Einheitenfenster, Aktionsleisten, Taschen, Quests, Minikarte, Chat und passende Fenster. /fgui eingeben.
-## Notes-frFR: Une interface complète en thèmes verre et fantasy : cadres d'unité, barres d'action, sacs, quêtes, minicarte, discussion et fenêtres assorties. Tapez /fgui.
-## Notes-esES: Una interfaz completa en temas de cristal y fantasía: marcos de unidad, barras de acción, bolsas, misiones, minimapa, chat y ventanas a juego. Escribe /fgui.
-## Notes-esMX: Una interfaz completa en temas de cristal y fantasía: marcos de unidad, barras de acción, bolsas, misiones, minimapa, chat y ventanas a juego. Escribe /fgui.
-## Notes-zhCN: 玻璃与奇幻主题的完整界面：单位框体、团队框体、动作条、背包、任务、小地图、聊天和配套窗口。输入 /fgui。
+## Notes-deDE: Ein komplettes Interface in Glas-, Fantasy- und Runen-Themen: Einheitenfenster, Schlachtzugsfenster, Aktionsleisten, Taschen, Quests, Minikarte, Chat und neu gestaltete Fenster. /fgui eingeben.
+## Notes-frFR: Une interface complète en thèmes verre, fantasy et runiques : cadres d'unité, cadres de raid, barres d'action, sacs, quêtes, minicarte, discussion et fenêtres restylées. Tapez /fgui.
+## Notes-esES: Una interfaz completa en temas de cristal, fantasía y rúnicos: marcos de unidad, marcos de banda, barras de acción, bolsas, misiones, minimapa, chat y ventanas con nuevo estilo. Escribe /fgui.
+## Notes-esMX: Una interfaz completa en temas de cristal, fantasía y rúnicos: marcos de unidad, marcos de banda, barras de acción, bolsas, misiones, minimapa, chat y ventanas con nuevo estilo. Escribe /fgui.
+## Notes-ruRU: Полный интерфейс в стеклянных, фэнтезийных и рунических темах: рамки, рамки рейда, панели команд, сумки, задания, миникарта, чат и обновлённые окна. Введите /fgui.
+## Notes-ptBR: Uma interface completa em temas de vidro, fantasia e rúnicos: quadros de unidade, quadros de raide, barras de ação, bolsas, missões, minimapa, chat e janelas reestilizadas. Digite /fgui.
+## Notes-itIT: Un'interfaccia completa in temi vetro, fantasy e runici: riquadri delle unità, riquadri d'incursione, barre delle azioni, borse, missioni, minimappa, chat e finestre con nuovo stile. Scrivi /fgui.
+## Notes-koKR: 유리, 판타지, 룬 테마의 완전한 인터페이스: 유닛 프레임, 공격대 프레임, 행동 단축바, 가방, 퀘스트, 미니맵, 대화창, 새로 꾸민 창. /fgui를 입력하세요.
+## Notes-zhCN: 玻璃、奇幻与符文主题的完整界面：单位框体、团队框体、动作条、背包、任务、小地图、聊天和重新美化的窗口。输入 /fgui。
 ## Category: User Interface
 ## X-License: All Rights Reserved
 ## X-Curse-Project-ID: 1798626
