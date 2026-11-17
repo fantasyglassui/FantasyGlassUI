@@ -67,7 +67,8 @@ function ns:SellJunk(announce)
             end
         end
     end
-    if total > 0 then ns:Print("Sold junk for %s", CoinString(total))
+    if total > 0 then
+        if not (ns.VendorSummaryOn and ns:VendorSummaryOn()) then ns:Print("Sold junk for %s", CoinString(total)) end
     elseif announce then ns:Print("No junk to sell.") end
     return total, sold
 end
@@ -86,6 +87,7 @@ local f = CreateFrame("Frame")
 f:RegisterEvent("MERCHANT_SHOW")
 f:SetScript("OnEvent", ns:Safe("Vendor automation", function()
     if not ns.db then return end
+    if ns.VendorVisitBegin then pcall(ns.VendorVisitBegin) end      -- (the vendor summary counts from here)
     if ns.db.autoSell then ns:SellJunk() end
 
     if ns.db.autoRepair and CanMerchantRepair and CanMerchantRepair() then
@@ -100,10 +102,10 @@ f:SetScript("OnEvent", ns:Safe("Vendor automation", function()
             local source = ns.RepairSource(cost, GetMoney(), guildOK, allowance, bank)
             if source == "guild" then
                 RepairAllItems(true)
-                ns:Print("Repaired for %s from guild funds", CoinString(cost))
+                if not ns:VendorSummaryOn() then ns:Print("Repaired for %s from guild funds", CoinString(cost)) end
             elseif source == "own" then
                 RepairAllItems()
-                ns:Print("Repaired for %s", CoinString(cost))
+                if not ns:VendorSummaryOn() then ns:Print("Repaired for %s", CoinString(cost)) end
             else
                 ns:Print("|cffff4444Not enough gold to repair|r (%s)", CoinString(cost))
             end

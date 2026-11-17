@@ -225,6 +225,7 @@ The search box at the top of the options finds any of them, and pointing at a sw
 | Auto-sell gray items | on | Sells gray items whenever you open a vendor. |
 | Auto-repair | on | Repairs your gear whenever you open a vendor that can. |
 | Repair from guild funds first | off | Auto-repair pays from your guild allowance when it covers the whole bill, and from your own gold otherwise. Needs "Auto-repair". Presets never change this. |
+| Vendors: one-line summary | on | When you close a vendor, one line in chat says what the visit came to: what you sold, bought and repaired, and the total. It takes the place of the junk seller's and auto-repair's own lines. |
 | Vendors: Alt-click buys a stack | on | Hold Alt and click an item at a vendor to buy a full stack of it, or as many as you can afford. |
 | Vendors: mark what I already know | on | At a vendor, anything on sale that you have already learned (a recipe, a pattern, a mount, a pet) is washed in red, so you don't buy it twice. |
 | Trainers: Learn all button | on | Adds a "Learn all" button to the trainer window. It buys every skill you can learn and afford, one after another. |

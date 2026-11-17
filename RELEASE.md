@@ -24,7 +24,22 @@
   takes the player's class color, or green, yellow or red for a friendly, neutral or hostile
   creature.
 
+**New: a one-line vendor summary**
+- When you close a vendor, one line in chat says what the visit came to:
+  "At the vendor: sold 12 items for 3g 20s, bought 3 items for 40s, repaired for 1g 5s. In all: +1g 75s."
+- It counts every change in your gold while the vendor is open, so it is exact, buy-backs and
+  restock purchases included; guild-paid repairs are named as such.
+- It takes the place of the junk seller's, auto-repair's and restock list's own lines. A visit
+  where nothing changed hands says nothing. Switch: "Vendors: one-line summary" (on at first).
+
+**New: right-click hands items over in the bag window**
+- At a vendor, right-clicking an item in the one-window bags sells it, gear and items with a
+  "Use:" effect too. Before, gear could be equipped instead, or needed a second click.
+- The same at the bank and guild bank (stores it), a trade and the auction house, as in the
+  game's own bags.
+
 **Changed**
+- What's new is translated, in all eight other languages.
 - Switches that only work while another is on are dimmed while it is off, and their card says
   which one they need: the player tooltip lines, the quest tracker's rewards, names on chat
   bubbles, and the bag sections.

@@ -74,7 +74,7 @@ ns:NewModule("restockOn", function()
                 for _, amount in ipairs(buys) do pcall(BuyMerchantItem, i, amount); n = n + amount end
                 if n > 0 then
                     bought, spent = bought + n, spent + cost
-                    ns:Print("Restocked %d of %s.", n, Name(id))
+                    if not ns:VendorSummaryOn() then ns:Print("Restocked %d of %s.", n, Name(id)) end
                 end
             end
         end

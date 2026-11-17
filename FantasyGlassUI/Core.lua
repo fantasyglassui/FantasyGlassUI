@@ -64,6 +64,7 @@ ns.defaults = {
     roleHUD          = true,
     autoSell         = true,
     autoRepair       = true,
+    vendorSummary    = true,        -- one line in chat after each vendor visit (11.10)
     accent           = "AZURE",
     theme            = "SMOKE",
     panelAlpha       = 78,          -- glass HUD panel opacity, percent
@@ -1409,7 +1410,9 @@ ns.whatsNew = {
     { "11.10.0", { "Player tooltips are yours to choose: hide the title, realm, guild, level line, faction, PvP or health bar, and add their role, whether they are your friend or guild mate, and their health in numbers. Features tab, under Player tooltips.",
                    "Player tooltips can also be put away during fights; hold Shift to see one anyway.",
                    "Every tooltip now wears your theme: glass, leather and gold, or carved stone with rune-studs. The health bar under it takes the player's class color.",
-                   "The spellbook's section headings are tidied, and the help (/fgui help) is sorted into proper groups." } },
+                   "The spellbook's section headings are tidied, and the help (/fgui help) is sorted into proper groups.",
+                   "After each vendor visit, one line in chat says what you sold, bought and repaired, and what it came to.",
+                   "In the bag window, right-clicking at a vendor sells the item, gear too; at the bank it stores it." } },
     { "11.9.1", { "Polish: the setup's themes show their pictures too, and Runic themes no longer carry their family's name there; the home key works less while you cast.", "/fgui help opens a window you can search, and the Tools menu is sorted into groups.", "The death recap names the kind of damage; boss notes can be deleted from the list; group practice shows a banner.", "Asked for during a fight, Equip best, Sort bags and talent builds happen when it ends; a mistyped command suggests the right one.", "Every message is now translated; /fgui reset asks first and keeps a backup; five new key bindings." } },
     { "11.9.0", { "Runic themes now carry runes everywhere: carved class emblems on stone, a band of runes round the minimap, and carved edges on the action buttons.",
                   "The Look tab shows a small picture of each theme; point at one for a larger card.",
@@ -1571,15 +1574,15 @@ function ns:WhatsNew(force)
                 more = more + 1
             else
                 shown = shown + 1
-                out[#out + 1] = "Version " .. entry[1]
-                for _, line in ipairs(entry[2]) do out[#out + 1] = "  - " .. line end
+                out[#out + 1] = ns:Tr("Version") .. " " .. entry[1]
+                for _, line in ipairs(entry[2]) do out[#out + 1] = "  - " .. ns:Tr(line) end
                 out[#out + 1] = ""
             end
         end
     end
     if #out == 0 then return nil end
-    if more > 0 then out[#out + 1] = format("And %d earlier updates since yours: the full list is in the changelog on CurseForge and GitHub.", more); out[#out + 1] = "" end
-    out[#out + 1] = "Everything is in /fgui. This note appears once per update; /fgui new shows it again."
+    if more > 0 then out[#out + 1] = format(ns:Tr("And %d earlier updates since yours: the full list is in the changelog on CurseForge and GitHub."), more); out[#out + 1] = "" end
+    out[#out + 1] = ns:Tr("Everything is in /fgui. This note appears once per update; /fgui new shows it again.")
     return table.concat(out, "\n")
 end
 

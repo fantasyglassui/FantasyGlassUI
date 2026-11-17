@@ -60,6 +60,14 @@ Point at a button to see what it does and the command you could type instead.
 
 A mistyped command no longer opens the options. `/fgui equipbets` answers "Did you mean /fgui equipbest?". A word that isn't a command shows the commands that mention it, or points you to `/fgui help`.
 
+## Right-click in the bag window
+
+At a vendor, right-clicking an item in the bag window sells it, gear included. At the bank or guild bank it stores it, in a trade it puts it in the trade, and at the auction house it puts it on the sell page, just as in the game's own bags. Anywhere else, right-click uses or equips the item.
+
+## After a vendor visit
+
+When you close a vendor, one line in chat says what you sold, bought and repaired, and what it all came to. Switch it off with **Vendors: one-line summary** on the Features tab.
+
 ## During a fight
 
 The game doesn't allow some things during a fight. If you ask for **Equip best**, **Sort bags** or a **talent build** then, it happens as soon as the fight ends instead of just saying no.

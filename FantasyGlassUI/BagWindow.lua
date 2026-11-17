@@ -1,5 +1,31 @@
 local _, ns = ...
 
+-- Right-click hands an item over (11.10), as the game's own bags do: while a vendor, the bank, the
+-- guild bank, a trade or the auction house is open, right-clicking sells it, stores it or puts it in.
+-- The bag window's secure "use" buttons would equip gear instead (the game's own rule for using an
+-- equippable item), so while one of those windows is open they leave the right button alone. (Not
+-- the mailbox: with its inbox showing, a right-click uses the item, which only the secure button may.)
+local handing, handListeners = {}, {}
+local HAND_EVENTS = {
+    MERCHANT_SHOW = { "merchant", true }, MERCHANT_CLOSED = { "merchant", false },
+    BANKFRAME_OPENED = { "bank", true }, BANKFRAME_CLOSED = { "bank", false },
+    GUILDBANKFRAME_OPENED = { "guildbank", true }, GUILDBANKFRAME_CLOSED = { "guildbank", false },
+    TRADE_SHOW = { "trade", true }, TRADE_CLOSED = { "trade", false },
+    AUCTION_HOUSE_SHOW = { "auction", true }, AUCTION_HOUSE_CLOSED = { "auction", false },
+}
+function ns.BagHandOver() return next(handing) ~= nil end
+do
+    local ev = CreateFrame("Frame")
+    for e in pairs(HAND_EVENTS) do pcall(ev.RegisterEvent, ev, e) end
+    pcall(ev.RegisterEvent, ev, "PLAYER_REGEN_ENABLED")
+    ev:SetScript("OnEvent", function(_, event)
+        local h = HAND_EVENTS[event]
+        if h then handing[h[1]] = h[2] or nil end
+        for _, fn in ipairs(handListeners) do pcall(fn) end             -- (after a fight too: what had to wait)
+    end)
+end
+
+
 -- One window per container set: the bags, and the bank. Categories or plain grid, search, sort,
 -- quality borders. Blizzard's own frames stay the "source of truth" for open/closed (so B, vendors,
 -- the banker and the bag button all keep working); they are made invisible and ours mirror them.
@@ -169,6 +195,10 @@ local function NewWindow(cfg)
         return true
     end
     RightClick = function(b)
+        if ns.BagHandOver() then                                -- a vendor, the bank, mail...: sell it, store it, put it in
+            C.UseContainerItem(b.bag, b.slot)
+            return "handed"
+        end
         if b.suiUse then return "secure" end                    -- (its own secure button takes the click, not this)
         if not HasUseEffect(b) then                          -- equip, sell, move to the bank: nothing protected about these
             C.UseContainerItem(b.bag, b.slot)
@@ -256,6 +286,16 @@ local function NewWindow(cfg)
             for _, b in pairs(list) do fn(b) end
         end
     end
+    -- the secure buttons step aside for the right button while something is open to hand items to
+    -- (attributes can only change outside a fight: in one, it waits for the end)
+    local function RightToGame()
+        if InCombatLockdown() then return end
+        local value = (not ns.BagHandOver()) and "item" or nil
+        EachSlot(function(b) if b.suiUse and b.suiUse:GetAttribute("type2") ~= value then b.suiUse:SetAttribute("type2", value) end end)
+        if overlay and overlay:GetAttribute("type2") ~= value then overlay:SetAttribute("type2", value) end
+    end
+    handListeners[#handListeners + 1] = RightToGame
+    ns.bagTest[cfg.name].RightToGame = RightToGame
     local function TakeOff(reason)                           -- out of combat only
         if InCombatLockdown() then return false end
         EachSlot(function(b)
@@ -281,8 +321,14 @@ local function NewWindow(cfg)
         u:SetAttribute("type2", "item")
         u:SetAttribute("item", tostring(b.bag) .. " " .. tostring(b.slot))      -- "bag slot": which item this button uses
         u.target = b
+        if ns.BagHandOver() then u:SetAttribute("type2", nil) end
         u:SetScript("PostClick", function(self, button, down)
-            if down or button ~= "LeftButton" then return end
+            if down then return end
+            if button == "RightButton" then
+                if self:GetAttribute("type2") == nil and ns.BagHandOver() then C.UseContainerItem(self.target.bag, self.target.slot) end
+                return
+            end
+            if button ~= "LeftButton" then return end
             LeftClick(self.target)
         end)
         local function drag(self) C.PickupContainerItem(self.target.bag, self.target.slot) end
@@ -391,7 +437,12 @@ local function NewWindow(cfg)
         overlay:SetAttribute("type2", "item")
         overlay:Hide()
         overlay:SetScript("PostClick", function(self, button, down)
-            if down or button ~= "LeftButton" or not self.target then return end
+            if down or not self.target then return end
+            if button == "RightButton" then
+                if self:GetAttribute("type2") == nil and ns.BagHandOver() then C.UseContainerItem(self.target.bag, self.target.slot) end
+                return
+            end
+            if button ~= "LeftButton" then return end
             LeftClick(self.target)
         end)
         local function drag(self) if self.target then C.PickupContainerItem(self.target.bag, self.target.slot) end end

@@ -48,6 +48,7 @@ globals = {
 }
 -- the game's own names the add-on reads
 read_globals = {
+    "BuybackItem",
     "AbbreviateNumbers",
     "AcceptGroup",
     "AcceptQuest",

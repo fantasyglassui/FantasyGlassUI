@@ -107,4 +107,5 @@ AltSetup.lua
 Raid.lua
 Safety.lua
 Auction.lua
+VendorSummary.lua
 SelfTest.lua

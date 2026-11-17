@@ -1743,6 +1743,7 @@ try("Look tab sections", function()
     ns:ToggleConfig()
 end)
 try("Bag window: using items", function()
+    for _, e in ipairs({ "MERCHANT_CLOSED", "BANKFRAME_CLOSED", "GUILDBANKFRAME_CLOSED", "TRADE_CLOSED", "AUCTION_HOUSE_CLOSED" }) do fireEvent(e) end
     local bag
     for _, api in pairs(ns.bagTest or {}) do bag = bag or api end
     if not bag then error("the bag window offers nothing to test") end
@@ -3849,6 +3850,58 @@ try("Tooltip rank and IDs", function()
     if has(r, "Guild rank") then error("the guild rank line should go when switched off") end
     ns.db.tipGuildRank = true
     env.UnitIsPlayer, env.GetGuildInfo = keepPlayer, keepGuild
+end)
+try("Right-click hands items over", function()
+    local T = ns.bagTest and ns.bagTest.FantasyGlassUIBags
+    if not T then error("the bag window's test hooks are missing") end
+    local used
+    local keep = env.C_Container.UseContainerItem
+    env.C_Container.UseContainerItem = function(bag, slot) used = bag .. ":" .. slot end
+    local b = { bag = 0, slot = 3, info = { hyperlink = "|Hitem:2000|h[Trinket]|h" } }
+    fireEvent("MERCHANT_SHOW")
+    if not ns.BagHandOver() then error("an open vendor should count") end
+    local r = T.RightClick(b)
+    if r ~= "handed" or used ~= "0:3" then error("right-click at a vendor should sell, even gear with a use: " .. tostring(r)) end
+    -- a slot's own secure button leaves the right button to the game while the vendor is open
+    local attr = {}
+    b.suiUse = { GetAttribute = function(_, k) return attr[k] end, SetAttribute = function(_, k, v) attr[k] = v end }
+    attr.type2 = "item"
+    T.RightToGame()
+    fireEvent("MERCHANT_CLOSED")
+    if ns.BagHandOver() then error("a closed vendor should not count") end
+    used = nil
+    if T.RightClick({ bag = 0, slot = 4, info = {} }) ~= "used" or used ~= "0:4" then error("away from a vendor an item with no use is used as before") end
+    env.C_Container.UseContainerItem = keep
+end)
+try("Vendor summary", function()
+    local L = ns.VendorSummaryLine
+    if L({ sold = 0, spent = 0 }) then error("a visit where nothing happened says nothing") end
+    local plain = function(s) return (tostring(s):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) end
+    local one = plain(L({ sold = 32000, spent = 0, soldCount = 12 }))
+    if not one:find("sold 12 items for", 1, true) or one:find("In all", 1, true) then error("sold only: " .. one) end
+    local all = plain(L({ sold = 32000, spent = 14500, soldCount = 12, boughtCount = 3, repair = 10500 }))
+    if not (all:find("bought 3 items for", 1, true) and all:find("repaired for", 1, true) and all:find("In all: +", 1, true)) then error("the whole visit: " .. all) end
+    local guild = plain(L({ sold = 0, spent = 0, guildRepair = 5000 }))
+    if not guild:find("from guild funds", 1, true) then error("a guild repair: " .. guild) end
+    local minus = plain(L({ sold = 100, spent = 900, soldCount = 1, boughtCount = 1 }))
+    if not (minus:find("sold 1 item for", 1, true) and minus:find("In all: -", 1, true)) then error("spent more than sold: " .. minus) end
+    -- a whole visit, through the game's events
+    local money = 10000
+    local keepMoney, keepCost = env.GetMoney, env.GetRepairAllCost
+    env.GetMoney = function() return money end
+    env.GetRepairAllCost = function() return 2500, true end
+    local printed
+    local realPrint = ns.Print
+    ns.Print = function(_, f, ...) printed = tostring(f) end
+    fireEvent("MERCHANT_SHOW")
+    money = money + 600; fireEvent("PLAYER_MONEY")              -- (sold)
+    if type(env.RepairAllItems) == "function" then env.RepairAllItems() end
+    money = money - 2500; fireEvent("PLAYER_MONEY")             -- (repaired)
+    fireEvent("MERCHANT_CLOSED"); runTimers()
+    ns.Print = realPrint
+    env.GetMoney, env.GetRepairAllCost = keepMoney, keepCost
+    if not printed or not plain(printed):find("At the vendor:", 1, true) then error("closing the vendor should print the summary: " .. tostring(printed)) end
+    if type(ns.vendorSummaryTest) ~= "table" or ns.vendorSummaryTest.Visit() ~= nil then error("the visit should be over") end
 end)
 try("Tooltips wear the theme", function()
     local tip = env.CreateFrame("Frame", "PanelTestTip")
