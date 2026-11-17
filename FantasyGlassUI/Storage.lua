@@ -119,7 +119,7 @@ ns:NewModule("storage", function()
                          "BANKFRAME_OPENED", "GUILDBANKBAGSLOTS_CHANGED", "GUILDBANKFRAME_OPENED" }) do
         pcall(ev.RegisterEvent, ev, e)
     end
-    ev:SetScript("OnEvent", function(_, event)
+    ev:SetScript("OnEvent", ns:Guard("Storage events", function(_, event)
         if event == "GUILDBANKBAGSLOTS_CHANGED" or event == "GUILDBANKFRAME_OPENED" then
             pending.guild = true
         elseif event == "PLAYERBANKSLOTS_CHANGED" or event == "BANKFRAME_OPENED" then
@@ -128,7 +128,7 @@ ns:NewModule("storage", function()
             pending.bags = true
             pending.bank = true          -- bank bags are containers too; only saved while the bank is open
         end
-    end)
+    end))
     local acc = 0
     ev:SetScript("OnUpdate", ns:Guard("Storage", function(_, e)
         acc = acc + e

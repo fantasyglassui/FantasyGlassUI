@@ -137,7 +137,7 @@ end
 do  -- say what was done, once the world is up
     local ev = CreateFrame("Frame")
     ev:RegisterEvent("PLAYER_ENTERING_WORLD")
-    ev:SetScript("OnEvent", function(self)
+    ev:SetScript("OnEvent", ns:Guard("AltSetup events", function(self)
         self:UnregisterAllEvents()
         local note = ns.altSetupNote
         if not note then return end
@@ -157,5 +157,5 @@ do  -- say what was done, once the world is up
             end
             ns:Print("|cffffff00/fgui setup|r goes through it yourself; the Profiles tab shares another profile instead.")
         end)
-    end)
+    end))
 end

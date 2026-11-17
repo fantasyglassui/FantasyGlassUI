@@ -148,7 +148,7 @@ ns:NewModule("quickKeys", function()
     ns.quickKeysTest = { Assign = Assign, heal = heal, food = food }
     local ev = CreateFrame("Frame")
     for _, e in ipairs({ "BAG_UPDATE_DELAYED", "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_ENABLED", "PLAYER_LEVEL_UP", "GET_ITEM_INFO_RECEIVED" }) do pcall(ev.RegisterEvent, ev, e) end
-    ev:SetScript("OnEvent", function() dirty = true end)
+    ev:SetScript("OnEvent", ns:Guard("QuickKeys events", function() dirty = true end))
     ns:Every(1, "Quick keys", function() if dirty and not InCombatLockdown() then pcall(Assign) end end)
 end)
 
@@ -277,7 +277,7 @@ ns:NewModule("openAll", function()
     ns.openAllTest = { Assign = Assign, row = row }
     local ev = CreateFrame("Frame")
     for _, e in ipairs({ "BAG_UPDATE_DELAYED", "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_ENABLED" }) do pcall(ev.RegisterEvent, ev, e) end
-    ev:SetScript("OnEvent", function() dirty = true end)
+    ev:SetScript("OnEvent", ns:Guard("QuickKeys events", function() dirty = true end))
     ns:Every(0.5, "Open-all button", function() if dirty and not InCombatLockdown() then pcall(Assign) end end)
     local entry = ns:RegisterMovable(row, "openAll", "Open All")
     if type(entry) == "table" then entry.offPage = true end        -- (scaled from its own right-click menu in move mode)
@@ -352,7 +352,7 @@ ns:NewModule("travelBar", function()
     ns.travelTest = { Assign = Assign, row = row }
     local ev = CreateFrame("Frame")
     for _, e in ipairs({ "SPELLS_CHANGED", "BAG_UPDATE_DELAYED", "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_ENABLED" }) do pcall(ev.RegisterEvent, ev, e) end
-    ev:SetScript("OnEvent", function() dirty = true end)
+    ev:SetScript("OnEvent", ns:Guard("QuickKeys events", function() dirty = true end))
     ns:Every(1, "Travel bar", function()
         if dirty and not InCombatLockdown() then pcall(Assign) end
         Tick()
@@ -426,9 +426,9 @@ ns:NewModule("homeKey", function()
     local ev = CreateFrame("Frame")
     local cooled, last = false, 0
     for _, e in ipairs({ "SPELLS_CHANGED", "BAG_UPDATE_DELAYED", "BAG_UPDATE_COOLDOWN", "SPELL_UPDATE_COOLDOWN", "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_ENABLED" }) do pcall(ev.RegisterEvent, ev, e) end
-    ev:SetScript("OnEvent", function(_, event)
+    ev:SetScript("OnEvent", ns:Guard("QuickKeys events", function(_, event)
         if event == "SPELL_UPDATE_COOLDOWN" or event == "BAG_UPDATE_COOLDOWN" then cooled = true else dirty = true end
-    end)
+    end))
     ns:Every(2, "Home key", function()
         if InCombatLockdown() then return end
         local now = GetTime()

@@ -290,9 +290,9 @@ ns:NewModule("nameplates", function()
         local sizer = CreateFrame("Frame")
         sizer:RegisterEvent("PLAYER_REGEN_ENABLED")
         sizer:RegisterEvent("PLAYER_ENTERING_WORLD")
-        sizer:SetScript("OnEvent", function(_, event)
+        sizer:SetScript("OnEvent", ns:Guard("Nameplates events", function(_, event)
             if event == "PLAYER_ENTERING_WORLD" or sizePending then pcall(ns.ApplyNameplateSize, ns) end
-        end)
+        end))
     end
 
     -- Health text on the plate's bar: a percentage, or the amount when "Health as numbers" is on (the
@@ -478,7 +478,7 @@ ns:NewModule("nameplates", function()
     end
     local sel = CreateFrame("Frame")
     sel:RegisterEvent("PLAYER_TARGET_CHANGED")
-    sel:SetScript("OnEvent", function() Selection() end)
+    sel:SetScript("OnEvent", ns:Guard("Nameplates events", function() Selection() end))
     ns:Every(0.3, "Nameplate selection", function()
         for uf in pairs(plates) do
             if Usable(uf) and uf.IsVisible and uf:IsVisible() then pcall(ShowSelection, uf) end

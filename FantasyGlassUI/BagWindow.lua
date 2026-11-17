@@ -18,11 +18,11 @@ do
     local ev = CreateFrame("Frame")
     for e in pairs(HAND_EVENTS) do pcall(ev.RegisterEvent, ev, e) end
     pcall(ev.RegisterEvent, ev, "PLAYER_REGEN_ENABLED")
-    ev:SetScript("OnEvent", function(_, event)
+    ev:SetScript("OnEvent", ns:Guard("BagWindow events", function(_, event)
         local h = HAND_EVENTS[event]
         if h then handing[h[1]] = h[2] or nil end
         for _, fn in ipairs(handListeners) do pcall(fn) end             -- (after a fight too: what had to wait)
-    end)
+    end))
 end
 
 
@@ -115,6 +115,7 @@ local function NewWindow(cfg)
     close:SetPoint("TOPRIGHT", -8, -8)
     local sortBtn = ns:CreateButton(win, "Sort", 54, 22, function() pcall(cfg.sort) end)
     sortBtn:SetPoint("RIGHT", close, "LEFT", -6, 0)
+    ns:ButtonTip(sortBtn, "Sort these bags. In the bag window the order follows your bag sections.")
     local viewBtn
     viewBtn = ns:CreateButton(win, "", 92, 22, function()
         ns.db[gridKey] = not ns.db[gridKey]
@@ -941,7 +942,7 @@ local function NewWindow(cfg)
         pcall(ev.RegisterEvent, ev, e)
     end
     for _, e in ipairs(cfg.events or {}) do pcall(ev.RegisterEvent, ev, e) end
-    ev:SetScript("OnEvent", function(_, event)
+    ev:SetScript("OnEvent", ns:Guard("BagWindow events", function(_, event)
         if event == "PLAYER_REGEN_DISABLED" then
             -- The roaming button can't follow the mouse in combat, and must not be left fixed to a slot
             -- (see LetGo). This event arrives just before the game's combat rules begin, so it is still allowed.
@@ -954,7 +955,7 @@ local function NewWindow(cfg)
         else
             dirty = true
         end
-    end)
+    end))
 
     local acc, macc = 0, 0
     ev:SetScript("OnUpdate", ns:Guard(cfg.title .. " window", function(_, e)

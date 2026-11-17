@@ -395,12 +395,13 @@ ns:NewModule("microMenu", function()
     ns.menuButton, ns.menuList = btn, list
     ns:Font(btn.text, 11)
     btn:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -8, 8)
+    ns:ButtonTip(btn, "The game menu: character, spellbook, talents, quests, the shop and the rest. Tools opens the add-on's own tool windows.")
     -- The rows are secure buttons, so the game locks whatever the list is anchored to for the length of a
     -- fight: here, the Menu button. The list is therefore fixed to the button only while it is open, and
     -- lets go as a fight starts (this event arrives just before the game's combat rules begin).
     local closer = CreateFrame("Frame")
     closer:RegisterEvent("PLAYER_REGEN_DISABLED")
-    closer:SetScript("OnEvent", function() list:Hide(); list:ClearAllPoints() end)
+    closer:SetScript("OnEvent", ns:Guard("ActionBars events", function() list:Hide(); list:ClearAllPoints() end))
 
     ns:RegisterMovable(btn, "menu", "Menu Button")
 
@@ -428,10 +429,10 @@ ns:NewModule("microMenu", function()
     for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_ENABLED", "EDIT_MODE_LAYOUTS_UPDATED", "UI_SCALE_CHANGED" }) do
         pcall(sizer.RegisterEvent, sizer, e)
     end
-    sizer:SetScript("OnEvent", function(_, event)
+    sizer:SetScript("OnEvent", ns:Guard("ActionBars events", function(_, event)
         if event == "PLAYER_REGEN_ENABLED" and not ns.barScalePending then return end
         ns:After(0.5, function() pcall(ns.ApplyBarScale, ns) end)
-    end)
+    end))
     ns:ApplyBarScale()
 
     -- Movable bars: each bar is adopted (see ns:AdoptGameFrame in Skin.lua) and gets a handle in move mode.

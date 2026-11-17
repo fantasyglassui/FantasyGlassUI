@@ -136,7 +136,7 @@ local function Build()
     O.frame:SetClampedToScreen(true)
     O.frame:RegisterForDrag("LeftButton")
     O.frame:SetScript("OnDragStart", O.frame.StartMoving)
-    O.frame:SetScript("OnDragStop", O.frame.StopMovingOrSizing)
+    ns:KeepPlace(O.frame, "Options")
     tinsert(UISpecialFrames, "FantasyGlassUIConfig")
 
     local logo = O.frame:CreateTexture(nil, "OVERLAY")           -- the add-on's icon, beside its name
@@ -369,7 +369,28 @@ local function Build()
     local function ShowResults(query)
         local hits = ns:SearchOptions(query or searchBox:GetText(), 10)
         O.frame.searchHits = hits
-        if #hits == 0 then results:Hide(); return hits end
+        local q = strtrim(tostring(query or searchBox:GetText() or ""))
+        if #hits == 0 then
+            if q == "" then results:Hide(); return hits end
+            local row = results.rows[1]                          -- (one plain line saying so, instead of nothing at all)
+            if not row then
+                row = ns:CreateButton(results, "", 290, 22, function(self) if self.hit then GoTo(self.hit) end end)
+                row:SetPoint("TOPLEFT", 5, -5)
+                row.text:ClearAllPoints()
+                row.text:SetPoint("LEFT", 8, 0)
+                row.text:SetPoint("RIGHT", -8, 0)
+                row.text:SetJustifyH("LEFT")
+                row.text:SetWordWrap(false)
+                results.rows[1] = row
+            end
+            row.hit = nil
+            row.text:SetText("|cff9aa4b4" .. format(ns:Tr("No option matches \"%s\"."), q) .. "|r")
+            row:Show()
+            for i = 2, #results.rows do results.rows[i]:Hide() end
+            results:SetHeight(32)
+            results:Show()
+            return hits
+        end
         for i, hit in ipairs(hits) do
             local row = results.rows[i]
             if not row then

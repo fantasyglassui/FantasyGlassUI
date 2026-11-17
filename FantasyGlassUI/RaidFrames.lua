@@ -494,7 +494,7 @@ ns:NewModule("raidFrames", function()
     do
         local w = CreateFrame("Frame")
         w:RegisterEvent("PLAYER_REGEN_ENABLED")
-        w:SetScript("OnEvent", function() if ns.raidDesignPending then pcall(ns.ApplyRaidDesign, ns) end end)
+        w:SetScript("OnEvent", ns:Guard("RaidFrames events", function() if ns.raidDesignPending then pcall(ns.ApplyRaidDesign, ns) end end))
     end
 
     -- range dimming, a couple of times a second
@@ -520,7 +520,7 @@ ns:NewModule("raidFrames", function()
     if InCombatLockdown() then
         local w = CreateFrame("Frame")
         w:RegisterEvent("PLAYER_REGEN_ENABLED")
-        w:SetScript("OnEvent", function(self) self:UnregisterAllEvents(); pcall(Park) end)
+        w:SetScript("OnEvent", ns:Guard("RaidFrames events", function(self) self:UnregisterAllEvents(); pcall(Park) end))
     else
         Park()
     end

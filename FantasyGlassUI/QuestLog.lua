@@ -22,7 +22,7 @@ ns:NewModule("questLog", function()
     frame:SetClampedToScreen(true)
     frame:RegisterForDrag("LeftButton")
     frame:SetScript("OnDragStart", frame.StartMoving)
-    frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
+    ns:KeepPlace(frame, "QuestLog")
     frame:Hide()
     tinsert(UISpecialFrames, "FantasyGlassUIQuestLog")
 
@@ -165,6 +165,7 @@ ns:NewModule("questLog", function()
         Rebuild(); ShowDetails(selectedID)
     end)
     btnTrack:SetPoint("BOTTOMLEFT", 312, 14)
+    ns:ButtonTip(btnTrack, "Show this quest in the quest tracker, or take it off.")
 
     btnMap = ns:CreateButton(frame, "Show on Map", 110, 26, function()
         if not selectedID then return end
@@ -177,6 +178,7 @@ ns:NewModule("questLog", function()
         elseif ToggleWorldMap then ToggleWorldMap() end
     end)
     btnMap:SetPoint("LEFT", btnTrack, "RIGHT", 8, 0)
+    ns:ButtonTip(btnMap, "Open the map at this quest and point your arrow to it.")
 
     btnShare = ns:CreateButton(frame, "Share", 80, 26, function()
         if not selectedID then return end
@@ -190,6 +192,7 @@ ns:NewModule("questLog", function()
         end
     end)
     btnShare:SetPoint("LEFT", btnMap, "RIGHT", 8, 0)
+    ns:ButtonTip(btnShare, "Offer this quest to your group.")
 
     btnAbandon = ns:CreateButton(frame, "Abandon", 110, 26, function(self)
         if not selectedID then return end
@@ -214,6 +217,7 @@ ns:NewModule("questLog", function()
         end
     end)
     btnAbandon:SetPoint("BOTTOMRIGHT", -14, 14)
+    ns:ButtonTip(btnAbandon, "Give up this quest. Click twice: the first click only asks.")
 
     -- Details -----------------------------------------------------------------------------------------
     function ShowDetails(id)

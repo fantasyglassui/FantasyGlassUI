@@ -66,12 +66,12 @@ ns:NewModule("mailTools", function()
     -- full bags: stop instead of hammering the server
     local ev = CreateFrame("Frame")
     ev:RegisterEvent("UI_ERROR_MESSAGE")
-    ev:SetScript("OnEvent", function(_, _, a, b)
+    ev:SetScript("OnEvent", ns:Guard("Mail events", function(_, _, a, b)
         local msg = type(b) == "string" and b or a
         if running and type(msg) == "string" and type(ERR_INV_FULL) == "string" and msg == ERR_INV_FULL then
             Finish("Bags are full.")
         end
-    end)
+    end))
 
     ns:Every(0.2, "Mail tools", function()
         local inbox = _G.InboxFrame

@@ -397,9 +397,9 @@ do
     end))
     local later = CreateFrame("Frame")
     later:RegisterEvent("PLAYER_REGEN_ENABLED")
-    later:SetScript("OnEvent", function()
+    later:SetScript("OnEvent", ns:Guard("Group events", function()
         if ns.sharedWaiting and ns.PreviewShared then local t = ns.sharedWaiting; ns.sharedWaiting = nil; pcall(ns.PreviewShared, ns, t) end
-    end)
+    end))
 end
 function ns:SendCommand(text)
     local name, kind = ns.Trim(text):match("^(%S+)%s*(%a*)$")

@@ -3851,6 +3851,20 @@ try("Tooltip rank and IDs", function()
     ns.db.tipGuildRank = true
     env.UnitIsPlayer, env.GetGuildInfo = keepPlayer, keepGuild
 end)
+try("Buttons that delete ask first", function()
+    local ran = 0
+    local b = ns:CreateButton(env.UIParent, "Delete", 80, 24, ns:ConfirmClick(function() ran = ran + 1 end))
+    local click = b:GetScript("OnClick")
+    if type(click) ~= "function" then
+        for _, h in ipairs(handlers) do if h.self == b and h.name == "OnClick" then click = h.fn end end
+    end
+    click(b)
+    if ran ~= 0 then error("one click should only ask") end
+    if not rawget(b, "suiArmed") then error("the button should be waiting for the second click") end
+    click(b)
+    if ran ~= 1 then error("the second click should do it") end
+    if rawget(b, "suiArmed") then error("and then it waits no longer") end
+end)
 try("Right-click hands items over", function()
     local T = ns.bagTest and ns.bagTest.FantasyGlassUIBags
     if not T then error("the bag window's test hooks are missing") end

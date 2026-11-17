@@ -114,7 +114,7 @@ ns:NewModule("enchantCheck", function()
     local dirty, wasShown = true, false
     local ev = CreateFrame("Frame")
     pcall(ev.RegisterEvent, ev, "PLAYER_EQUIPMENT_CHANGED")
-    ev:SetScript("OnEvent", function() dirty = true end)
+    ev:SetScript("OnEvent", ns:Guard("CharMore events", function() dirty = true end))
     ns:Every(0.5, "Missing enchants", function()
         local win = _G.CharacterFrame
         if not (type(win) == "table" and win.IsShown and ns.Yes(win:IsShown())) then wasShown = false; return end
@@ -199,7 +199,7 @@ function ns:ShowNotepad()
         ns:Dress(w)
         w:EnableMouse(true); w:SetMovable(true); if w.SetClampedToScreen then w:SetClampedToScreen(true) end; w:RegisterForDrag("LeftButton")
         w:SetScript("OnDragStart", function(self) self:StartMoving() end)
-        w:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
+        ns:KeepPlace(w, "Notepad")
         if type(UISpecialFrames) == "table" then tinsert(UISpecialFrames, "FantasyGlassUINotepad") end
         w.title = ns:NewText(w, 14, "LEFT")
         w.title:SetPoint("TOPLEFT", 14, -12)

@@ -63,7 +63,7 @@ end
 do  -- finish a change that was asked for mid-fight
     local f = CreateFrame("Frame")
     f:RegisterEvent("PLAYER_REGEN_ENABLED")
-    f:SetScript("OnEvent", function()
+    f:SetScript("OnEvent", ns:Guard("ClickCast events", function()
         if ns.clickCastPending and ns.db then pcall(ns.ApplyClickCast, ns) end
-    end)
+    end))
 end

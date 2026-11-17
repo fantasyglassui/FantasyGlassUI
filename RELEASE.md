@@ -38,6 +38,27 @@
 - The same at the bank and guild bank (stores it), a trade and the auction house, as in the
   game's own bags.
 
+**Polish**
+- The add-on's buttons and switches make the game's own click sounds.
+- Buttons that delete or reset ask first: click once and it turns red ("Click to confirm"), click
+  again within four seconds to do it. Now on deleting a profile, deleting a theme you made,
+  resetting all class colors and resetting window positions.
+- More windows stay where you drag them, for all your characters: the options, the notepad, the
+  whisper window, the quest log, the layout gallery, the share preview, the boss note editor and
+  the copy-text window.
+- Hover help on more buttons: the menu, Sort, the quest log's Track, Show on Map, Share and Abandon,
+  the minimap add-on buttons, Raid Tools, the share preview, the safe mode banner, and a panel's
+  Center and Reset in move mode.
+- Counts read right when there is one: "1 skill", "1 piece missing", "Seen once", "1 match",
+  "in 1 day" and the rest, in every language.
+- Searching the options says so when nothing matches, on the Features tab and in the search across
+  every tab.
+- Twelve more messages are translated, among them the home key's, keybind mode's and the layout
+  gallery's.
+- Every event the add-on listens for is now handled inside its error guard, so a fault in one shows
+  once in chat instead of as a game error, and `/fgui perf` measures them all.
+- Still class emblems cost nothing between frames.
+
 **Changed**
 - What's new is translated, in all eight other languages.
 - Switches that only work while another is on are dimmed while it is off, and their card says
@@ -55,4 +76,7 @@
 - "Level, race and class" in player tooltips also hides the class when the game puts it on a
   line of its own, as WoW Forever does.
 - Your session's loot count counted a stack of several items ("x5") as one.
+- The session's experience count could stop with an error when experience was gained during a
+  fight.
+- The experience bar's "kills or quests to level" line was not translated.
 

@@ -211,12 +211,12 @@ end)
 do
     local f = CreateFrame("Frame")
     f:RegisterEvent("PLAYER_LOGIN")
-    f:SetScript("OnEvent", function()
+    f:SetScript("OnEvent", ns:Guard("Tooltip events", function()
         if type(GameTooltip_SetDefaultAnchor) ~= "function" or not hooksecurefunc then return end
         hooksecurefunc("GameTooltip_SetDefaultAnchor", function(tooltip, parent)
             if not (ns.db and ns.db.tooltipCursor) or InCombatLockdown() then return end
             if type(tooltip) ~= "table" or not tooltip.SetOwner then return end
             pcall(tooltip.SetOwner, tooltip, parent or UIParent, "ANCHOR_CURSOR_RIGHT", 16, 8)
         end)
-    end)
+    end))
 end

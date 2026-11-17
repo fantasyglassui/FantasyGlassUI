@@ -47,6 +47,8 @@ function ns:NeedLocale(code)
 end
 ns.seenStrings = {}
 ns.L = setmetatable({}, { __index = function(_, key) return key end })
+-- The translated text for a count: the first form for exactly one, the second for any other number.
+function ns:TrN(n, one, many) return ns:Tr(n == 1 and one or many) end
 function ns:Tr(text)
     if type(text) ~= "string" or text == "" then return text end
     ns.seenStrings[text] = true
@@ -1039,6 +1041,7 @@ function ns:CreateButton(parent, text, w, h, onClick, template, name)
         if self.suiTip then GameTooltip:Hide() end
     end)
     if onClick then b:SetScript("OnClick", onClick) end
+    b:SetScript("PostClick", function() ns.UISound("IG_MAINMENU_OPTION") end)    -- (the game's own click, whatever OnClick becomes)
     ns:IndexOption(text, b)
     return b
 end
@@ -1049,6 +1052,30 @@ function ns:ButtonTip(b, tip)
 end
 
 -- Flat checkbox -----------------------------------------------------------------
+-- A click handler that asks first: the first click turns the button red ("Click to confirm") for four
+-- seconds, a second click in that time does it. For anything that deletes or resets.
+function ns:ConfirmClick(fn)
+    return function(self, ...)
+        if self.suiArmed then
+            self.suiArmed = false
+            if self.text and self.suiLabel then self.text:SetText(self.suiLabel) end
+            return fn(self, ...)
+        end
+        self.suiArmed = true
+        self.suiLabel = self.suiLabel or (self.text and self.text:GetText())
+        if self.text then self.text:SetText("|cffff5555" .. ns:Tr("Click to confirm") .. "|r") end
+        ns:After(4, function()
+            if self.suiArmed then
+                self.suiArmed = false
+                if self.text and self.suiLabel then self.text:SetText(self.suiLabel) end
+            end
+        end)
+    end
+end
+-- The game's own interface sounds, by name (quietly nothing on a client without them).
+function ns.UISound(kit)
+    if PlaySound and SOUNDKIT and SOUNDKIT[kit] then pcall(PlaySound, SOUNDKIT[kit]) end
+end
 function ns:CreateCheckbox(parent, label, checked, onChange)
     local th = ns.theme
     -- A switch: a small track with a knob that sits left (off, gray) or right (on, in the accent
@@ -1098,6 +1125,7 @@ function ns:CreateCheckbox(parent, label, checked, onChange)
     c:SetChecked(checked)
     c:SetScript("OnClick", function(self)
         self:SetChecked(not self.checked)
+        ns.UISound(self.checked and "IG_MAINMENU_OPTION_CHECKBOX_ON" or "IG_MAINMENU_OPTION_CHECKBOX_OFF")
         if onChange then onChange(self.checked) end
     end)
     c:SetScript("OnEnter", function(self) Draw(self, true) end)
@@ -1448,6 +1476,7 @@ function ns:ShowSafeBanner()
         if ns:SetSafeMode(false) then ReloadUI() end
     end)
     leave:SetPoint("BOTTOMRIGHT", -12, 12)
+    ns:ButtonTip(leave, "Turn your features back on and reload.")
     local options = ns:CreateButton(f, "Options", 70, 24, function() ns:ToggleConfig() end)
     options:SetPoint("RIGHT", leave, "LEFT", -6, 0)
     ns.safeBanner = f
@@ -1720,14 +1749,14 @@ function ns:AdoptGameFrame(frame, key, label, note, corner)
         for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_ENABLED", "EDIT_MODE_LAYOUTS_UPDATED", "UI_SCALE_CHANGED", "DISPLAY_SIZE_CHANGED" }) do
             pcall(adoptWatcher.RegisterEvent, adoptWatcher, e)
         end
-        adoptWatcher:SetScript("OnEvent", function(_, event)
+        adoptWatcher:SetScript("OnEvent", ns:Guard("Skin events", function(_, event)
             ns:After(event == "PLAYER_REGEN_ENABLED" and 0.1 or 1, function()
                 for _, known in ipairs(ns.adopted) do
                     if known.releasePending then pcall(AdoptRelease, known)
                     elseif ns.db.pos[known.key] and (event ~= "PLAYER_REGEN_ENABLED" or known.pending) then pcall(AdoptAttach, known) end
                 end
             end)
-        end)
+        end))
     end
     if saved then ns:After(1, function() pcall(AdoptAttach, info) end) end      -- a place saved earlier: take it up
     return info, entry
@@ -1919,6 +1948,8 @@ function ns:OpenPanelMenu(key)
             f.scale:SetValue(1)
         end)
         reset:SetPoint("LEFT", center, "RIGHT", 6, 0)
+        ns:ButtonTip(center, "Center this panel left to right, keeping its height.")
+        ns:ButtonTip(reset, "Put this panel back where it started, at its first size. /fgui undo puts it back again.")
         f.show = ns:CreateButton(f, "", 210, 22, function()  -- each click moves on to the next choice
             if not f.keys then return end
             local now, nextRule = ns:PanelShowRule(f.keys[1]), ns.showRules[1]
@@ -2282,8 +2313,11 @@ function ns.EmblemStep(m)
     return frame
 end
 ns:Every(0.04, "Class emblem frames", function()
+    local moves = EmblemMoves()
     for _, m in ipairs(emblemWidgets) do
-        if m.class and m:IsVisible() then                    -- (only the ones on screen: the rest catch up as they show)
+        -- (only the ones on screen: the rest catch up as they show; still ones already on their
+        -- first frame need nothing, so a still emblem costs nothing at all)
+        if m.class and (moves or m.frame ~= 0) and m:IsVisible() then
             local ok, err = pcall(ns.EmblemStep, m)
             if not ok then ns.emblemError = tostring(err) end
         end
@@ -2366,12 +2400,12 @@ end
 do  -- a fight ends the preview (this event fires just before the game locks secure frames)
     local f = CreateFrame("Frame")
     f:RegisterEvent("PLAYER_REGEN_DISABLED")
-    f:SetScript("OnEvent", function()
+    f:SetScript("OnEvent", ns:Guard("Skin events", function()
         if ns.previewing then
             ns:TogglePreview(true)
             ns:Print("Preview ended: you entered combat.")
         end
-    end)
+    end))
 end
 
 -- Slider ----------------------------------------------------------------------------------
@@ -2562,7 +2596,7 @@ function ns:ShowTextWindow(title, text, toBottom, link)
         textWin:SetClampedToScreen(true)
         textWin:RegisterForDrag("LeftButton")
         textWin:SetScript("OnDragStart", textWin.StartMoving)
-        textWin:SetScript("OnDragStop", textWin.StopMovingOrSizing)
+        ns:KeepPlace(textWin, "TextWindow")
         tinsert(UISpecialFrames, "FantasyGlassUIText")
         textWin.title = ns:NewText(textWin, 15, "LEFT", true)
         textWin.title:SetPoint("TOPLEFT", 16, -12)

@@ -147,7 +147,7 @@ ns:NewModule("raidGraphics", function()
     ns.raidGraphicsTest = { Check = Check }
     local ev = CreateFrame("Frame")
     for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA", "PLAYER_REGEN_ENABLED" }) do pcall(ev.RegisterEvent, ev, e) end
-    ev:SetScript("OnEvent", function() ns:After(2, function() pcall(Check) end) end)
+    ev:SetScript("OnEvent", ns:Guard("System events", function() ns:After(2, function() pcall(Check) end) end))
 end)
 
 ------------------------------------------------------------------------------------------
@@ -200,7 +200,7 @@ ns:NewModule("talkingHeadHide", function()
     if not Hook() then
         local ev = CreateFrame("Frame")
         ev:RegisterEvent("ADDON_LOADED")
-        ev:SetScript("OnEvent", function() Hook() end)
+        ev:SetScript("OnEvent", ns:Guard("System events", function() Hook() end))
     end
 end)
 ns:NewModule("talkingHeadMove", function()

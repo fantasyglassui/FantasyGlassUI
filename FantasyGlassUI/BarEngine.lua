@@ -323,7 +323,7 @@ do
         pcall(ev.RegisterEvent, ev, e)
     end
     local dirty, acc = true, 0
-    ev:SetScript("OnEvent", function(_, event, arg)
+    ev:SetScript("OnEvent", ns:Guard("BarEngine events", function(_, event, arg)
         if #engine.all == 0 then return end
         if event == "UPDATE_BINDINGS" or event == "PLAYER_ENTERING_WORLD" then
             for _, b in ipairs(engine.all) do pcall(engine.UpdateHotkey, b) end
@@ -333,7 +333,7 @@ do
             return
         end
         dirty = true
-    end)
+    end))
     -- (and a few times a second: range and usability change without any event)
     ev:SetScript("OnUpdate", function(_, e)
         acc = acc + e

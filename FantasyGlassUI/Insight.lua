@@ -218,7 +218,7 @@ function ns:WhatsThis(on)
             else pcall(self.SetPropagateKeyboardInput, self, true) end
         end)
         banner:RegisterEvent("PLAYER_REGEN_DISABLED")       -- (a fight closes it)
-        banner:SetScript("OnEvent", function() if whatOn then ns:WhatsThis(false) end end)
+        banner:SetScript("OnEvent", ns:Guard("Insight events", function() if whatOn then ns:WhatsThis(false) end end))
     end
     local n = 0
     if on then
@@ -467,7 +467,7 @@ function ns:PerfFight()
         local f = GetFramerate and GetFramerate()
         if type(f) == "number" then fight.fps[#fight.fps + 1] = f end
     end)
-    ev:SetScript("OnEvent", function(self, event)
+    ev:SetScript("OnEvent", ns:Guard("Insight events", function(self, event)
         if event == "PLAYER_REGEN_DISABLED" and fight.armed then
             fight.armed = false
             wipe(ns.perfData)
@@ -492,7 +492,7 @@ function ns:PerfFight()
             end
             ns:PerfShow(took, info)
         end
-    end)
+    end))
     return true
 end
 function ns:PerfCommand(text)

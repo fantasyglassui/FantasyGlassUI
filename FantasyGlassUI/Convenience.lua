@@ -112,7 +112,7 @@ do
 
         local ev = CreateFrame("Frame")
         ev:RegisterEvent("PLAYER_REGEN_DISABLED")
-        ev:SetScript("OnEvent", function() Stop("Keybind mode stopped: keys can't be changed in combat.") end)
+        ev:SetScript("OnEvent", ns:Guard("Convenience events", function() Stop("Keybind mode stopped: keys can't be changed in combat.") end))
     end
 
     function ns:ToggleKeybindMode()
@@ -236,13 +236,13 @@ ns:NewModule("afkScreen", function()
                          "CHAT_MSG_WHISPER_INFORM" }) do
         pcall(ev.RegisterEvent, ev, e)
     end
-    ev:SetScript("OnEvent", function(_, event, unit)
+    ev:SetScript("OnEvent", ns:Guard("Convenience events", function(_, event, unit)
         if event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_LEAVING_WORLD" then Active(); Leave() return end
         if event == "PLAYER_FLAGS_CHANGED" or event == "PLAYER_ENTERING_WORLD" then Check() return end
         if event:sub(1, 15) == "UNIT_SPELLCAST_" and unit ~= "player" then return end
         Active()
         if Delay() > 0 then Check() end
-    end)
+    end))
     -- a safety net: whatever happens, the interface is never left faded while you are not away
     ns:Every(1, "AFK screen", function()
         if GetCursorPosition then                           -- the mouse moving counts as you being here
@@ -269,7 +269,7 @@ ns:NewModule("levelShot", function()
     if not Screenshot then return end
     local ev = CreateFrame("Frame")
     ev:RegisterEvent("PLAYER_LEVEL_UP")
-    ev:SetScript("OnEvent", function()
+    ev:SetScript("OnEvent", ns:Guard("Convenience events", function()
         ns:After(1.5, function() pcall(Screenshot) end)        -- after the level-up banner has appeared
-    end)
+    end))
 end)

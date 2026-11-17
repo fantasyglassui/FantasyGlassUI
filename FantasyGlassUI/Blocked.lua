@@ -97,11 +97,11 @@ end
 do
     local f = CreateFrame("Frame")
     for _, e in ipairs({ "ADDON_ACTION_BLOCKED", "ADDON_ACTION_FORBIDDEN", "PLAYER_LOGIN" }) do pcall(f.RegisterEvent, f, e) end
-    f:SetScript("OnEvent", function(_, event, addon, func)
+    f:SetScript("OnEvent", ns:Guard("Blocked events", function(_, event, addon, func)
         if event == "PLAYER_LOGIN" then pcall(ns.BlockedCarryOver, ns); return end
         local ok, stack = pcall(function() return debugstack and debugstack(2, 14, 0) or nil end)
         pcall(ns.NoteBlocked, ns, event, addon, func, ok and stack or nil)
-    end)
+    end))
 end
 
 -- May this frame be shown, hidden, moved or resized right now? (Always yes outside combat.)

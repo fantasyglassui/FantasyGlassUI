@@ -19,6 +19,7 @@ ns:NewModule("raidTools", function()
         if ok and type(made) == "table" and made.SetFrameRef then tab, secure = made, true end
     end
     if not tab then tab = ns:CreateButton(UIParent, "Raid Tools", 92, 18) end
+    ns:ButtonTip(tab, "Ready check, pull timer, raid markers and reset instances.")
     ns:Font(tab.text, 11)
     tab:SetPoint("TOP", UIParent, "TOP", -330, -3)
 

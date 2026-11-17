@@ -112,7 +112,7 @@ function ns:SortBags()
         sorting.waits = 0
         local i, j = ns.SortNextMove(slots, ns.SortPlan(slots))
         if not i or sorting.moves >= 500 then
-            ns:Print("Bags sorted (%d moves).", sorting.moves)
+            ns:Print(sorting.moves == 1 and "Bags sorted (%d move)." or "Bags sorted (%d moves).", sorting.moves)
             sorting = nil
             if ns.RefreshBagWindow then pcall(ns.RefreshBagWindow, ns) end
             return

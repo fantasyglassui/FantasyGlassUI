@@ -263,7 +263,7 @@ ns:NewModule("vendorKnown", function()
     ns.vendorKnownTest = { Mark = function() dirty = true; return Mark() end }
     local ev = CreateFrame("Frame")
     for _, e in ipairs({ "MERCHANT_SHOW", "MERCHANT_UPDATE", "NEW_RECIPE_LEARNED", "LEARNED_SPELL_IN_TAB", "SPELLS_CHANGED" }) do pcall(ev.RegisterEvent, ev, e) end
-    ev:SetScript("OnEvent", function() dirty = true end)
+    ev:SetScript("OnEvent", ns:Guard("Extras events", function() dirty = true end))
     ns:Every(0.3, "Vendor: already known", function() Mark() end)
 end)
 
@@ -283,14 +283,14 @@ end)
 do
     local f = CreateFrame("Frame")
     f:RegisterEvent("PLAYER_LOGIN")
-    f:SetScript("OnEvent", function()
+    f:SetScript("OnEvent", ns:Guard("Extras events", function()
         ns:After(3, function()                               -- switched off since last time: the game's setting goes back
             if ns.db and not ns.db.chatClassColors and ns.root and type(ns.root.chatClassPrev) == "string" then
                 CVar("chatClassColorOverride", ns.root.chatClassPrev)
                 ns.root.chatClassPrev = nil
             end
         end)
-    end)
+    end))
 end
 
 ------------------------------------------------------------------------------------------
@@ -389,7 +389,7 @@ ns:NewModule("trainAll", function()
     local running, learned, spent = false, 0, 0
     local function Finish()
         running = false
-        if learned > 0 then ns:Print("Learned %d skills for %s.", learned, ns:Coins(spent)) else ns:Print("Nothing here that you can learn and afford.") end
+        if learned > 0 then ns:Print(learned == 1 and "Learned %d skill for %s." or "Learned %d skills for %s.", learned, ns:Coins(spent)) else ns:Print("Nothing here that you can learn and afford.") end
     end
     local function Step(left, lastName, repeats)
         if not running then return end
@@ -428,7 +428,7 @@ ns:NewModule("trainAll", function()
                 local list, total = ns:TrainerAvailable()
                 GameTooltip:SetOwner(self, "ANCHOR_TOP")
                 GameTooltip:SetText(ns:Tr("Learn all"))
-                GameTooltip:AddLine(format(ns:Tr("%d skills you can learn now, %s in all. Buys each one you can afford."), #list, ns:Coins(total)), 1, 1, 1, true)
+                GameTooltip:AddLine(format(ns:TrN(#list, "%d skill you can learn now, for %s.", "%d skills you can learn now, %s in all. Buys each one you can afford."), #list, ns:Coins(total)), 1, 1, 1, true)
                 GameTooltip:Show()
             end)
             btn:HookScript("OnLeave", function() GameTooltip:Hide() end)

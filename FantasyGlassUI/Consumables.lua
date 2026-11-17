@@ -159,7 +159,7 @@ ns:NewModule("consumeBar", function()
 
     local ev = CreateFrame("Frame")
     for _, e in ipairs({ "BAG_UPDATE_DELAYED", "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_ENABLED", "GET_ITEM_INFO_RECEIVED" }) do pcall(ev.RegisterEvent, ev, e) end
-    ev:SetScript("OnEvent", function() dirty = true end)
+    ev:SetScript("OnEvent", ns:Guard("Consumables events", function() dirty = true end))
     ns:Every(0.5, "Consumables bar", function()
         if (dirty or pending) and not InCombatLockdown() then pcall(Assign) end
         Tick()

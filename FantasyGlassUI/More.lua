@@ -636,10 +636,10 @@ end
 do
     local ev = CreateFrame("Frame")
     pcall(ev.RegisterEvent, ev, "PLAYER_ENTERING_WORLD")
-    ev:SetScript("OnEvent", function()
+    ev:SetScript("OnEvent", ns:Guard("More events", function()
         if ns.quietOn or type(ns.root) ~= "table" or type(ns.root.quietCVars) ~= "table" then return end
         local Set = (C_CVar and C_CVar.SetCVar) or SetCVar
         for cv, v in pairs(ns.root.quietCVars) do pcall(Set, cv, v) end
         ns.root.quietCVars = nil
-    end)
+    end))
 end

@@ -115,7 +115,7 @@ ns:NewModule("questSounds", function()
     local ev = CreateFrame("Frame")
     pcall(ev.RegisterEvent, ev, "QUEST_LOG_UPDATE")
     pcall(ev.RegisterEvent, ev, "PLAYER_ENTERING_WORLD")
-    ev:SetScript("OnEvent", function() dirty = true end)
+    ev:SetScript("OnEvent", ns:Guard("Inspect events", function() dirty = true end))
     ns:Every(0.3, "Quest sounds", function()
         if not dirty then return end
         dirty = false

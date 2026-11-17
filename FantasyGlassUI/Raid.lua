@@ -222,7 +222,7 @@ function ns:EditBossNote(name)
         ns:Dress(w)
         w:EnableMouse(true); w:SetMovable(true); if w.SetClampedToScreen then w:SetClampedToScreen(true) end; w:RegisterForDrag("LeftButton")
         w:SetScript("OnDragStart", function(self) self:StartMoving() end)
-        w:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
+        ns:KeepPlace(w, "BossNoteEdit")
         if type(UISpecialFrames) == "table" then tinsert(UISpecialFrames, "FantasyGlassUIBossNoteEditor") end
         w.title = ns:NewText(w, 14, "LEFT", true)
         w.title:SetPoint("TOPLEFT", 14, -12)

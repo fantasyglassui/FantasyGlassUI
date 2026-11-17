@@ -27,21 +27,9 @@ function ns:ListWindow(key, title, note, width, height)
         if w.SetClampedToScreen then w:SetClampedToScreen(true) end        -- (a kept place can never leave it off the screen)
         w:RegisterForDrag("LeftButton")
         w:SetScript("OnDragStart", function(self) self:StartMoving() end)
-        w:SetScript("OnDragStop", function(self)
-            self:StopMovingOrSizing()
-            local point, _, rel, x, y = self:GetPoint()                -- (kept for next time, for every character)
-            if type(ns.root) == "table" and point then
-                ns.root.listPos = type(ns.root.listPos) == "table" and ns.root.listPos or {}
-                ns.root.listPos[key] = { point, rel or point, math.floor((x or 0) + 0.5), math.floor((y or 0) + 0.5) }
-            end
-        end)
-        local saved = type(ns.root) == "table" and type(ns.root.listPos) == "table" and ns.root.listPos[key]
-        if type(saved) == "table" and type(saved[1]) == "string" then
-            w:ClearAllPoints()
-            w:SetPoint(saved[1], UIParent, saved[2] or saved[1], tonumber(saved[3]) or 0, tonumber(saved[4]) or 0)
-        end
+        ns:KeepPlace(w, key)
         if type(UISpecialFrames) == "table" then tinsert(UISpecialFrames, name) end
-        local function Sound(kit) if PlaySound and SOUNDKIT and SOUNDKIT[kit] then pcall(PlaySound, SOUNDKIT[kit]) end end
+        local Sound = ns.UISound
         w:Hide()                                                              -- (so the first Show is heard too)
         w:SetScript("OnShow", function() Sound("IG_CHARACTER_INFO_OPEN") end)       -- (the game's own window sounds)
         w:SetScript("OnHide", function() Sound("IG_CHARACTER_INFO_CLOSE") end)
@@ -177,11 +165,11 @@ function ns:AfterFight(label, fn)
     if not afterFrame then
         afterFrame = CreateFrame("Frame")
         pcall(afterFrame.RegisterEvent, afterFrame, "PLAYER_REGEN_ENABLED")
-        afterFrame:SetScript("OnEvent", function()
+        afterFrame:SetScript("OnEvent", ns:Guard("Lists events", function()
             local list = afterFight
             afterFight = {}
             for _, job in ipairs(list) do pcall(job.fn) end
-        end)
+        end))
     end
     for _, job in ipairs(afterFight) do if job.label == label then return true end end
     afterFight[#afterFight + 1] = { label = label, fn = fn }
@@ -205,6 +193,25 @@ end
 --   /fgui remind Lightning Shield      adds it, or removes it if it is there already
 --   /fgui remind add X   /fgui remind remove X   /fgui remind (shows the list)
 ------------------------------------------------------------------------------------------
+-- A window that stays where you drag it, for every character (kept under its key; list windows
+-- and the add-on's other windows share the one table). Sets the window's OnDragStop.
+function ns:KeepPlace(w, key)
+    if type(w) ~= "table" or not w.SetScript then return end
+    w:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+        local point, _, rel, x, y = self:GetPoint()
+        if type(ns.root) == "table" and point then
+            ns.root.listPos = type(ns.root.listPos) == "table" and ns.root.listPos or {}
+            ns.root.listPos[key] = { point, rel or point, math.floor((x or 0) + 0.5), math.floor((y or 0) + 0.5) }
+        end
+    end)
+    local saved = type(ns.root) == "table" and type(ns.root.listPos) == "table" and ns.root.listPos[key]
+    if type(saved) == "table" and type(saved[1]) == "string" then
+        w:ClearAllPoints()
+        w:SetPoint(saved[1], UIParent, saved[2] or saved[1], tonumber(saved[3]) or 0, tonumber(saved[4]) or 0)
+    end
+end
+
 -- How long ago, in words: "just now", "12 min ago", "3 h ago", "5 days ago".
 function ns.Ago(seconds)
     local ago = math.max(0, tonumber(seconds) or 0)

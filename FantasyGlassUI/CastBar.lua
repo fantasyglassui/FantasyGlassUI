@@ -147,7 +147,7 @@ ns:NewModule("playerCast", function()
         q:RegisterEvent("PLAYER_ENTERING_WORLD")
         pcall(q.RegisterUnitEvent, q, "UNIT_ENTERED_VEHICLE", "player")
         pcall(q.RegisterUnitEvent, q, "UNIT_EXITED_VEHICLE", "player")
-        q:SetScript("OnEvent", function() ns:After(0.1, Quiet) end)
+        q:SetScript("OnEvent", ns:Guard("CastBar events", function() ns:After(0.1, Quiet) end))
     end
 
     ns:RegisterMovable(bar, "playerCast", "Cast Bar")

@@ -47,7 +47,7 @@ for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "PLAYER_XP_UPDATE", "QUEST_TURNED_
     pcall(ev.RegisterEvent, ev, e)
 end
 local questUntil, asked = 0, false
-ev:SetScript("OnEvent", function(_, event, a, b)
+ev:SetScript("OnEvent", ns:Guard("Session events", function(_, event, a, b)
     if event == "PLAYER_ENTERING_WORLD" then
         -- a /reload (or a quick relog) picks the session up where it left off
         local saved = type(FantasyGlassUIDB) == "table" and FantasyGlassUIDB.sessionSave
@@ -69,7 +69,8 @@ ev:SetScript("OnEvent", function(_, event, a, b)
         if not asked then asked = true; ns:After(3, AskPlayed) end
     elseif event == "PLAYER_XP_UPDATE" then
         local cur, max = UnitXP("player") or 0, UnitXPMax("player") or 0
-        if S.lastXP then
+        if ns:IsSecret(cur) or ns:IsSecret(max) then return end           -- (hidden in a fight: counted at the next one that isn't)
+        if S.lastXP and not ns:IsSecret(S.lastXP) then
             local delta = cur - S.lastXP
             if delta < 0 then delta = (S.lastMax - S.lastXP) + cur end       -- levelled up
             if delta > 0 then
@@ -97,7 +98,7 @@ ev:SetScript("OnEvent", function(_, event, a, b)
         end
         RestoreChat()
     end
-end)
+end))
 
 -- The figures as { label, value } rows, ready to show.
 function ns:SessionStats()

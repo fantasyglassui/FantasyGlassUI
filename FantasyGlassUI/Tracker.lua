@@ -254,7 +254,7 @@ ns:NewModule("questTracker", function()
                          "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_ENABLED", "BAG_UPDATE_DELAYED" }) do
         pcall(f.RegisterEvent, f, e)
     end
-    f:SetScript("OnEvent", function() dirty = true end)
+    f:SetScript("OnEvent", ns:Guard("Tracker events", function() dirty = true end))
 
     local acc = 0
     f:SetScript("OnUpdate", function(_, e)

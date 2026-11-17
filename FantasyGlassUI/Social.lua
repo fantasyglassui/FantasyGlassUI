@@ -160,11 +160,11 @@ ns:NewModule("groupWatch", function()
     local ev = CreateFrame("Frame")
     for _, e in ipairs({ "GROUP_ROSTER_UPDATE", "PLAYER_ENTERING_WORLD" }) do pcall(ev.RegisterEvent, ev, e) end
     local queued = false
-    ev:SetScript("OnEvent", function()
+    ev:SetScript("OnEvent", ns:Guard("Social events", function()
         if queued then return end
         queued = true
         ns:After(1, function() queued = false; pcall(Scan) end)                   -- (the game sends several at once)
-    end)
+    end))
 end)
 
 -- A note in a player's tooltip.

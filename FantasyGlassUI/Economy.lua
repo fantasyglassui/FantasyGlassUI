@@ -83,7 +83,7 @@ ns:NewModule("restockOn", function()
     ns.restockTest = { Shop = Shop }
     local ev = CreateFrame("Frame")
     pcall(ev.RegisterEvent, ev, "MERCHANT_SHOW")
-    ev:SetScript("OnEvent", function() ns:After(0.3, function() pcall(Shop) end) end)
+    ev:SetScript("OnEvent", ns:Guard("Economy events", function() ns:After(0.3, function() pcall(Shop) end) end))
 end)
 
 ------------------------------------------------------------------------------------------
@@ -209,7 +209,7 @@ end
 do
     local ev = CreateFrame("Frame")
     for _, e in ipairs({ "EQUIPMENT_SETS_CHANGED", "PLAYER_ENTERING_WORLD" }) do pcall(ev.RegisterEvent, ev, e) end
-    ev:SetScript("OnEvent", function() setItems = nil end)
+    ev:SetScript("OnEvent", ns:Guard("Economy events", function() setItems = nil end))
 end
 
 ------------------------------------------------------------------------------------------
@@ -378,7 +378,7 @@ function ns:DepositMaterials()
         ns:After(0.15, function() Next(i + 1) end)                -- (one at a time: the game drops moves sent together)
     end
     Next(1)
-    ns:Print("Depositing %d stacks of crafting materials.", #queue)
+    ns:Print(#queue == 1 and "Depositing %d stack of crafting materials." or "Depositing %d stacks of crafting materials.", #queue)
     return #queue
 end
 

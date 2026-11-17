@@ -376,7 +376,7 @@ do
     for _, e in ipairs({ "ACTIVE_TALENT_GROUP_CHANGED", "PLAYER_SPECIALIZATION_CHANGED", "GROUP_ROSTER_UPDATE", "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_ENABLED", "PLAYER_LOGOUT", "DISPLAY_SIZE_CHANGED" }) do
         pcall(f.RegisterEvent, f, e)
     end
-    f:SetScript("OnEvent", function(_, event)
+    f:SetScript("OnEvent", ns:Guard("Profiles events", function(_, event)
         if not ns.db then return end
         if event == "PLAYER_REGEN_ENABLED" then
             if pendingLayout then pcall(ns.ApplyLayout, ns, ns:LayoutSnapshot()) end
@@ -385,7 +385,7 @@ do
         else
             pcall(CheckLayoutContext)
         end
-    end)
+    end))
 end
 
 ------------------------------------------------------------------------------------------

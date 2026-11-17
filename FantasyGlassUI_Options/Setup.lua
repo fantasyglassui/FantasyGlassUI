@@ -499,7 +499,7 @@ local function BuildBehavior(page)
         end
         ns.db.cooldownSpells = names
         if ns.RebuildCooldowns then ns:RebuildCooldowns() end
-        result:SetText("|cff66dd77" .. format(ns:Tr("%d abilities taken from your action bars."), #names) .. "|r")
+        result:SetText("|cff66dd77" .. format(ns:TrN(#names, "%d ability taken from your action bars.", "%d abilities taken from your action bars."), #names) .. "|r")
     end)
     fill:SetPoint("TOPLEFT", 0, y - 72)
     page.FillCooldowns = function() fill:Click() end

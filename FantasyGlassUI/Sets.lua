@@ -67,7 +67,7 @@ end
 function ns.SetSummary(set)
     local lines = {}
     if set.items > 0 then lines[#lines + 1] = format(ns:Tr("%d of %d pieces on"), set.wearing, set.items) end
-    if set.missing > 0 then lines[#lines + 1] = "|cffff5555" .. format(ns:Tr("%d pieces missing"), set.missing) .. "|r" end
+    if set.missing > 0 then lines[#lines + 1] = "|cffff5555" .. format(ns:TrN(set.missing, "%d piece missing", "%d pieces missing"), set.missing) .. "|r" end
     lines[#lines + 1] = "|cff999999" .. ns:Tr(set.worn and "You are wearing this set" or "Click to wear this set") .. "|r"
     return lines
 end
@@ -157,7 +157,7 @@ ns:NewModule("equipSets", function()
     local dirty, wasShown = true, false
     local ev = CreateFrame("Frame")
     for _, e in ipairs({ "EQUIPMENT_SETS_CHANGED", "EQUIPMENT_SWAP_FINISHED", "PLAYER_EQUIPMENT_CHANGED" }) do pcall(ev.RegisterEvent, ev, e) end
-    ev:SetScript("OnEvent", function() dirty = true end)
+    ev:SetScript("OnEvent", ns:Guard("Sets events", function() dirty = true end))
 
     ns:Every(0.5, "Gear sets", function()
         local win = _G.CharacterFrame

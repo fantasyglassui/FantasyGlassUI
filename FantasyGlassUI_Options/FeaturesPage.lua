@@ -266,8 +266,8 @@ local function BuildFeatures(page)
             end
         end
         Mark(0)
-        Layout(keys, format(ns:Tr("%d match"), #keys))
-        found:SetText("")
+        Layout(keys, format(ns:TrN(#keys, "%d match", "%d matches"), #keys))
+        found:SetText(#keys == 0 and ("|cffffd100" .. format(ns:Tr("No switch matches \"%s\"."), strtrim(q)) .. "|r") or "")
         return #keys
     end
     search:HookScript("OnTextChanged", Filter)
@@ -307,7 +307,7 @@ local function BuildFeatures(page)
                 self.armed = false
                 local n = Apply(def[1])
                 self.text:SetText(ns:Tr(def[2]))
-                found:SetText(format(ns:Tr("%d switches changed"), n))
+                found:SetText(format(ns:TrN(n, "%d switch changed", "%d switches changed"), n))
             else
                 self.armed = true
                 self.text:SetText("|cffffd100" .. ns:Tr("Click to confirm") .. "|r")

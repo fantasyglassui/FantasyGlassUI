@@ -172,7 +172,7 @@ local function BuildLayout(page)
     -- what the info bar shows is chosen from a small list of its own
     local piecesBtn = ns:CreateButton(page, "Info bar pieces", 170, 24, function(self) ns:ToggleInfoBarPieces(self) end)
     piecesBtn:SetPoint("TOPLEFT", 0, page.bottom - 4)
-    local windowsBtn = ns:CreateButton(page, "Reset window positions", 200, 24, function() ns:ResetWindowPositions() end)
+    local windowsBtn = ns:CreateButton(page, "Reset window positions", 200, 24, ns:ConfirmClick(function() ns:ResetWindowPositions() end))
     windowsBtn:SetPoint("LEFT", piecesBtn, "RIGHT", 10, 0)
     page.bottom = page.bottom - 30
     -- The tab scrolls if it has to: the list of panels grows with every feature that adds one.
@@ -209,10 +209,10 @@ local function BuildProfiles(page)
                 r.name:SetPoint("LEFT", 4, 0)
                 r.use = ns:CreateButton(r, "Use", 70, 22, function() ns:UseProfile(r.profile) end)
                 r.use:SetPoint("LEFT", 260, 0)
-                r.del = ns:CreateButton(r, "Delete", 70, 22, function()
+                r.del = ns:CreateButton(r, "Delete", 70, 22, ns:ConfirmClick(function()
                     Say(ns:DeleteProfile(r.profile))
                     O.pages.profiles.Refresh()
-                end)
+                end))
                 r.del:SetPoint("LEFT", r.use, "RIGHT", 8, 0)
                 rows[i] = r
             end

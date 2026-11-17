@@ -151,9 +151,9 @@ do  -- a fight, or joining a real group, ends it
     local ev = CreateFrame("Frame")
     pcall(ev.RegisterEvent, ev, "PLAYER_REGEN_DISABLED")
     pcall(ev.RegisterEvent, ev, "GROUP_ROSTER_UPDATE")
-    ev:SetScript("OnEvent", function(_, event)
+    ev:SetScript("OnEvent", ns:Guard("GroupTest events", function(_, event)
         if not ns.testGroup then return end
         if event == "GROUP_ROSTER_UPDATE" and not (ns.GroupChannel and ns.GroupChannel()) then return end
         ns:ToggleTestGroup(false)
-    end)
+    end))
 end

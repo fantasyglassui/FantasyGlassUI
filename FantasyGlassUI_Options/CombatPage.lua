@@ -219,7 +219,7 @@ local function BuildCombat(page)
         for i, eb in ipairs(cds) do eb:SetText(names[i] or "") end
         ns.db.cooldownSpells = Read(cds)
         local found = ns.RebuildCooldowns and ns:RebuildCooldowns()
-        msg:SetText(format("|cff66dd77" .. ns:Tr("%d abilities taken from your action bars.") .. "|r", #names)
+        msg:SetText(format("|cff66dd77" .. ns:TrN(#names, "%d ability taken from your action bars.", "%d abilities taken from your action bars.") .. "|r", #names)
             .. (found and "" or "  " .. ns:Tr("Turn on the cooldown tracker on the Features tab and reload to see it.")))
     end)
     fill:SetPoint("LEFT", apply, "RIGHT", 10, 0)

@@ -88,7 +88,7 @@ ns:NewModule("launcher", function()
     ns:After(1, Build)                                      -- after the minimap has been set up
     local ev = CreateFrame("Frame")
     ev:RegisterEvent("PLAYER_ENTERING_WORLD")
-    ev:SetScript("OnEvent", function() ns:After(1, Build) end)
+    ev:SetScript("OnEvent", ns:Guard("Launcher events", function() ns:After(1, Build) end))
     ns.BuildLauncher = Build
 
     -- the same, published for bars that show launchers

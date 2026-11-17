@@ -321,16 +321,20 @@ local function BuildLook(page)
     page.SaveAs = function(name) nameBox:SetText(name); return Save() end
     local save = ns:CreateButton(page, "Save", 80, 24, Save)
     save:SetPoint("LEFT", nameBox, "RIGHT", 10, 0)
-    local delete = ns:CreateButton(page, "Delete", 80, 24, function()
+    local DeleteTheme = ns:ConfirmClick(function()
         local t = ns.themes[ns.db.theme]
-        if not (t and t.custom) then
-            msg:SetText("|cffffd100" .. ns:Tr("Only themes you made can be deleted.") .. "|r")
-            return
-        end
         ns:DeleteCustomTheme(t.customName)
         ns.db.theme, ns.db.accent = "SMOKE", "AZURE"
         msg:SetText(ns:Tr("Theme deleted."))
         Changed()
+    end)
+    local delete = ns:CreateButton(page, "Delete", 80, 24, function(self, ...)
+        local t = ns.themes[ns.db.theme]
+        if not (t and t.custom) then                                 -- (asked before anything is armed)
+            msg:SetText("|cffffd100" .. ns:Tr("Only themes you made can be deleted.") .. "|r")
+            return
+        end
+        return DeleteTheme(self, ...)
     end)
     delete:SetPoint("LEFT", save, "RIGHT", 10, 0)
     page.Delete = function() delete:Click() end
@@ -634,10 +638,10 @@ function BuildColors(page)
         if selected then ns.db.classColors[selected] = nil; Changed() end
     end)
     reset:SetPoint("LEFT", wheel, "RIGHT", 10, 0)
-    local resetAll = ns:CreateButton(page, "Reset all", 130, 24, function()
+    local resetAll = ns:CreateButton(page, "Reset all", 130, 24, ns:ConfirmClick(function()
         ns.db.classColors = {}
         Changed()
-    end)
+    end))
     resetAll:SetPoint("LEFT", reset, "RIGHT", 10, 0)
 
     page.Refresh = Paint

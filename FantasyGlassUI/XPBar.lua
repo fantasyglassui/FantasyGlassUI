@@ -167,9 +167,9 @@ ns:NewModule("xpBar", function()
             local kill, quest = Average(pace.kills), Average(pace.quests)
             if kill or quest then
                 local parts = {}
-                if kill then parts[#parts + 1] = format("%d kills", math.ceil(x.left / kill)) end
-                if quest then parts[#parts + 1] = format("%d quests", math.ceil(x.left / quest)) end
-                GameTooltip:AddDoubleLine(ns:Tr("At recent sizes"), table.concat(parts, "  or  "), 1, 1, 1, 0.7, 0.7, 0.7)
+                if kill then local k = math.ceil(x.left / kill); parts[#parts + 1] = format(ns:TrN(k, "%d kill", "%d kills"), k) end
+                if quest then local q = math.ceil(x.left / quest); parts[#parts + 1] = format(ns:TrN(q, "%d quest", "%d quests"), q) end
+                GameTooltip:AddDoubleLine(ns:Tr("At recent sizes"), table.concat(parts, "  " .. ns:Tr("or") .. "  "), 1, 1, 1, 0.7, 0.7, 0.7)
             end
         end
         if info.rep then

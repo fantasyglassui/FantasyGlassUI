@@ -48,7 +48,7 @@ do  -- the session is kept for next time when you log out (a /reload carries the
     ev:RegisterEvent("PLAYER_LOGOUT")
     ev:RegisterEvent("CHAT_MSG_LOOT")
     local pattern
-    ev:SetScript("OnEvent", function(_, event, msg)
+    ev:SetScript("OnEvent", ns:Guard("Journey events", function(_, event, msg)
         local S = ns.session
         if event == "CHAT_MSG_LOOT" then
             if type(msg) ~= "string" or Secret(msg) or not S then return end
@@ -66,7 +66,7 @@ do  -- the session is kept for next time when you log out (a /reload carries the
         if type(ns.root.lastSession) ~= "table" then ns.root.lastSession = {} end
         local okD, when = pcall(date, "%d %b %H:%M")
         ns.root.lastSession[ns:CharKey()] = { rows = rows, when = okD and when or "" }
-    end)
+    end))
 end
 
 ------------------------------------------------------------------------------------------
@@ -360,7 +360,7 @@ ns:NewModule("rareMemory", function()
             if not self.spot then return end
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:AddLine(self.spot.name, 1, 0.82, 0.2)
-            GameTooltip:AddLine(format(ns:Tr("Seen %d times"), self.spot.seen or 1), 1, 1, 1)
+            GameTooltip:AddLine(format(ns:TrN(self.spot.seen or 1, "Seen once", "Seen %d times"), self.spot.seen or 1), 1, 1, 1)
             GameTooltip:Show()
         end)
         p:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -462,7 +462,7 @@ do
     ev:RegisterEvent("PLAYER_LOGIN")
     -- The numbers over heads take their font as the add-on loads, before settings are worked out, so the
     -- file chosen last time is kept with the account settings and set straight away.
-    ev:SetScript("OnEvent", function(self, event, name)
+    ev:SetScript("OnEvent", ns:Guard("Journey events", function(self, event, name)
         if event == "ADDON_LOADED" then
             if name ~= ADDON then return end
             local file = type(FantasyGlassUIDB) == "table" and FantasyGlassUIDB.combatTextFile
@@ -482,7 +482,7 @@ do
         end
         ns.combatTextState = (before == file) and ("on (" .. tostring(ns.db.fontStyle or "GLASS") .. ")")
             or "on; the numbers over heads change after a relog"
-    end)
+    end))
 end
 
 ------------------------------------------------------------------------------------------

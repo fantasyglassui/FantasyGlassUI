@@ -118,7 +118,7 @@ function ns:ShowGallery()
     win:SetMovable(true); if win.SetClampedToScreen then win:SetClampedToScreen(true) end
     win:RegisterForDrag("LeftButton")
     win:SetScript("OnDragStart", win.StartMoving)
-    win:SetScript("OnDragStop", win.StopMovingOrSizing)
+    ns:KeepPlace(win, "Gallery")
     tinsert(UISpecialFrames, "FantasyGlassUIGallery")
     local title = win:CreateFontString(nil, "OVERLAY")
     ns:Font(title, 16, true)

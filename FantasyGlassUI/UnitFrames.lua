@@ -980,7 +980,7 @@ ns:NewModule("unitFrames", function()
     if InCombatLockdown() then
         local w = CreateFrame("Frame")
         w:RegisterEvent("PLAYER_REGEN_ENABLED")
-        w:SetScript("OnEvent", function(self) self:UnregisterAllEvents(); pcall(ParkAll) end)
+        w:SetScript("OnEvent", ns:Guard("UnitFrames events", function(self) self:UnregisterAllEvents(); pcall(ParkAll) end))
     else
         ParkAll()
     end
@@ -1057,7 +1057,7 @@ ns:NewModule("unitFrames", function()
     do
         local later = CreateFrame("Frame")
         later:RegisterEvent("PLAYER_REGEN_ENABLED")
-        later:SetScript("OnEvent", function() if ns.designPending then ns.designPending = nil; ns:ApplyFrameDesign() end end)
+        later:SetScript("OnEvent", ns:Guard("UnitFrames events", function() if ns.designPending then ns.designPending = nil; ns:ApplyFrameDesign() end end))
     end
     -- Live resize (size sliders in /fgui layout)
     function ns:ResizeUnitFrames()

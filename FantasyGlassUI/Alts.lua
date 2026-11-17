@@ -79,7 +79,7 @@ function ns.AltTip(c, now)
     if c.mail then lines[#lines + 1] = ns:Tr("Mail waiting") end
     if c.at and now and not c.current then
         local days = math.floor(math.max(0, now - c.at) / 86400)
-        lines[#lines + 1] = (days == 0) and ns:Tr("Played today") or format(ns:Tr("Last played %d days ago"), days)
+        lines[#lines + 1] = (days == 0) and ns:Tr("Played today") or format(ns:TrN(days, "Last played %d day ago", "Last played %d days ago"), days)
     end
     return lines
 end

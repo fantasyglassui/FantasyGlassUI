@@ -145,7 +145,7 @@ ns:NewModule("autoCombatLog", function()
     ns.combatLogTest = { Check = Check }
     local ev = CreateFrame("Frame")
     for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA" }) do pcall(ev.RegisterEvent, ev, e) end
-    ev:SetScript("OnEvent", function() ns:After(2, function() pcall(Check) end) end)
+    ev:SetScript("OnEvent", ns:Guard("Encounters events", function() ns:After(2, function() pcall(Check) end) end))
 end)
 
 ------------------------------------------------------------------------------------------

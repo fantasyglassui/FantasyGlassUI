@@ -12,6 +12,7 @@ ns:NewModule("buttonBag", function()
         if panel:IsShown() then panel:Hide() else panel:Show() end
     end)
     ns:Font(toggle.text, 10)
+    ns:ButtonTip(toggle, "The minimap buttons of your other add-ons, gathered in one panel.")
     local home = _G.FantasyGlassUIMinimap
     if type(home) == "table" then toggle:SetPoint("TOPLEFT", home, "BOTTOMLEFT", 0, -4)
     else toggle:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -150, -210) end

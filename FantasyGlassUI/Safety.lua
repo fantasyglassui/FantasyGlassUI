@@ -238,10 +238,10 @@ end
 do
     local ev = CreateFrame("Frame")
     for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "PLAYER_LOGOUT" }) do pcall(ev.RegisterEvent, ev, e) end
-    ev:SetScript("OnEvent", function(self, event)
+    ev:SetScript("OnEvent", ns:Guard("Safety events", function(self, event)
         if event == "PLAYER_ENTERING_WORLD" then self:UnregisterEvent("PLAYER_ENTERING_WORLD") end
         pcall(ns.NoteSettingChanges, ns)
-    end)
+    end))
 end
 
 ------------------------------------------------------------------------------------------

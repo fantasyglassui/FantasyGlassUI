@@ -487,7 +487,7 @@ ns:NewModule("characterWindow", function()
     pcall(ev.RegisterEvent, ev, "PLAYER_EQUIPMENT_CHANGED")
     pcall(ev.RegisterUnitEvent, ev, "UNIT_INVENTORY_CHANGED", "player")
     pcall(ev.RegisterEvent, ev, "UPDATE_INVENTORY_DURABILITY")
-    ev:SetScript("OnEvent", function() dirty = true end)
+    ev:SetScript("OnEvent", ns:Guard("Character events", function() dirty = true end))
 
     local function Open()
         local win = _G.CharacterFrame

@@ -37,7 +37,7 @@ local palette
 do
     local ev = CreateFrame("Frame")
     pcall(ev.RegisterEvent, ev, "PLAYER_REGEN_DISABLED")
-    ev:SetScript("OnEvent", function() if palette then palette:Hide() end end)
+    ev:SetScript("OnEvent", ns:Guard("Companion events", function() if palette then palette:Hide() end end))
 end
 function ns:ToggleToolsMenu(anchor)
     if InCombatLockdown() then ns:Print("Not during a fight."); return false end
@@ -192,7 +192,7 @@ function ns:ShowSharePreview()
         ns:Paint(preview, "SetBackdropBorderColor", "@accent", 1)
         ns:Dress(preview)
         preview:EnableMouse(true); preview:SetMovable(true); if preview.SetClampedToScreen then preview:SetClampedToScreen(true) end; preview:RegisterForDrag("LeftButton")
-        preview:SetScript("OnDragStart", preview.StartMoving); preview:SetScript("OnDragStop", preview.StopMovingOrSizing)
+        preview:SetScript("OnDragStart", preview.StartMoving); ns:KeepPlace(preview, "SharePreview")
         tinsert(UISpecialFrames, "FantasyGlassUISharePreview")
         local title = preview:CreateFontString(nil, "OVERLAY")
         ns:Font(title, 15, true)
@@ -205,6 +205,7 @@ function ns:ShowSharePreview()
         preview.box:SetPoint("TOPLEFT", 14, -42)
         preview.go = ns:CreateButton(preview, "Preview", 80, 24, function() ns:PreviewShared(preview.box:GetText()) end)
         preview.go:SetPoint("LEFT", preview.box, "RIGHT", 8, 0)
+        ns:ButtonTip(preview.go, "See what the pasted text holds, on a picture of the screen. Nothing changes until you click Use it.")
         preview.screen = CreateFrame("Frame", nil, preview)
         preview.screen:SetSize(492, 276)
         preview.screen:SetPoint("TOPLEFT", 14, -76)
@@ -217,6 +218,7 @@ function ns:ShowSharePreview()
         preview.info:SetWidth(492)
         preview.use = ns:CreateButton(preview, "Use it", 120, 24, function() if preview.apply then preview.apply() end end)
         preview.use:SetPoint("BOTTOMRIGHT", -14, 12)
+        ns:ButtonTip(preview.use, "Take it in place of what you have now. Today's backup still has what you had (/fgui backup).")
         preview.use:Hide()
     end
     preview:Show()
@@ -279,7 +281,7 @@ function ns:PreviewShared(text)
         end
     end
     local what = { profile = "A whole profile", layout = "A layout", theme = "A theme", pack = "A whole-UI pack" }
-    p.info:SetText(format("%s.  %s", ns:Tr(what[kind] or kind), format(ns:Tr("%d panels placed."), n))
+    p.info:SetText(format("%s.  %s", ns:Tr(what[kind] or kind), format(ns:TrN(n, "%d panel placed.", "%d panels placed."), n))
         .. (themeName and ("  " .. ns:Tr("Theme") .. ": " .. tostring(themeName)) or ""))
     p.use:Show()
     p.apply = function()
@@ -890,7 +892,7 @@ function ns:ShowEvents()
     else
         for _, e in ipairs(events) do
             lines[#lines + 1] = { left = (e.now and "|cff33ff66" or "|cffffffff") .. e.title .. "|r",
-                right = e.now and ns:Tr("on now") or format(ns:Tr("in %d days"), e.inDays) }
+                right = e.now and ns:Tr("on now") or format(ns:TrN(e.inDays, "in %d day", "in %d days"), e.inDays) }
         end
         if #lines == 0 then lines[1] = { left = ns:Tr("Nothing on the calendar for the next two weeks.") } end
     end

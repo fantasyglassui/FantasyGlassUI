@@ -216,7 +216,7 @@ ns:NewModule("fishingMode", function()
     ns.fishingTest = { Apply = Apply }
     local ev = CreateFrame("Frame")
     for _, e in ipairs({ "PLAYER_EQUIPMENT_CHANGED", "PLAYER_ENTERING_WORLD" }) do pcall(ev.RegisterEvent, ev, e) end
-    ev:SetScript("OnEvent", function() ns:After(0.5, function() pcall(Apply) end) end)
+    ev:SetScript("OnEvent", ns:Guard("MapExtras events", function() ns:After(0.5, function() pcall(Apply) end) end))
 end)
 
 ------------------------------------------------------------------------------------------
@@ -238,10 +238,10 @@ ns:NewModule("smallMap", function()
     if map.HookScript then pcall(map.HookScript, map, "OnShow", function() pcall(Apply) end) end
     local ev = CreateFrame("Frame")
     for _, e in ipairs({ "PLAYER_STARTED_MOVING", "PLAYER_STOPPED_MOVING" }) do pcall(ev.RegisterEvent, ev, e) end
-    ev:SetScript("OnEvent", function(_, event)
+    ev:SetScript("OnEvent", ns:Guard("MapExtras events", function(_, event)
         moving = (event == "PLAYER_STARTED_MOVING")
         if map.IsShown and ns.Yes(map:IsShown()) then pcall(Apply) end
-    end)
+    end))
 end)
 function ns:MapSizeCommand(text)
     local n = tonumber((ns.Trim(text):gsub("%%", "")))

@@ -52,7 +52,7 @@ ns:NewModule("fallbacks", function()
     local dirty, wasShown = true, {}
     local ev = CreateFrame("Frame")
     ev:RegisterEvent("BAG_UPDATE_DELAYED")
-    ev:SetScript("OnEvent", function() dirty = true end)
+    ev:SetScript("OnEvent", ns:Guard("Bags events", function() dirty = true end))
     local acc = 0
     ev:SetScript("OnUpdate", function(_, e)
         acc = acc + e
