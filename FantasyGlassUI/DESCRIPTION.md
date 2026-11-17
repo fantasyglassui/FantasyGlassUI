@@ -2,7 +2,7 @@
 
 **Trade the plain game UI for gleaming glass, gilded fantasy or glowing runes.**
 
-Fantasy Glass UI restyles your whole interface in one add-on. Unit frames, action bars, raid frames, nameplates, bags, quests, the minimap, chat and every one of the game's own windows all share one look, and you choose it.
+Fantasy Glass UI restyles your whole interface in one add-on. Unit frames, action bars, raid frames, nameplates, bags, quests, the minimap, chat, tooltips and every one of the game's own windows all share one look, and you choose it.
 
 A guided setup has you playing in two minutes. Every character after your first starts from your main's setup, fitted to its class.
 
@@ -23,6 +23,8 @@ There are 38 themes in each family, including one in your own class color. You a
 - **Action bars** that fade, hide and show when you want, or eight bars of the add-on's own with no Edit Mode needed
 - **One-window bags and bank** with search, smart sections and your own sorting rules
 - **Green arrows on upgrades,** and one button to put them all on
+- **Player tooltips your way:** hide any line (title, realm, guild, level, faction, PvP, health bar), add their role, whether they're a friend or guild mate, and their health in numbers, or put tooltips away during fights
+- **A one-line vendor summary:** what you sold, bought and repaired, and what it came to. Right-click sells from the bag window, gear included
 - **A home key** that picks your best way home that's ready
 
 **For groups and raids**
@@ -50,13 +52,13 @@ Built and tested on **WoW Forever** (interface 16001).
 
 ## Your language
 
-English, Deutsch, Français, Español, Italiano, Português, Русский, 한국어 and 简体中文, across the whole options window.
+English, Deutsch, Français, Español, Italiano, Português, Русский, 한국어 and 简体中文: the options, every message, the command help and What's new.
 
 ## Getting started
 
 1. **Install** with the CurseForge app, or put the zip's **three folders** in `Interface/AddOns`.
 2. **Log in:** the setup opens by itself. Pick a language, role, look and layout.
-3. **Make it yours:** `/fgui` opens the options, `/fgui move` arranges your panels, and the **Tools** button holds every tool.
+3. **Make it yours:** `/fgui` opens the options, `/fgui move` arranges your panels, the **Tools** button holds every tool, and `/fgui help` lists every command.
 
 Coming from ElvUI, Tukui, RealUI or GW2 UI? One click in the setup puts your frames where you're used to them.
 
