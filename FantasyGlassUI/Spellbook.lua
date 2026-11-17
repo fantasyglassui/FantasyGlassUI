@@ -89,7 +89,27 @@ ns:NewModule("spellbook", function()
                         Hide(btn.Border); Hide(btn.BorderShadow); Hide(btn.BorderSheen); Hide(item.Backplate)
                     elseif type(item.Text) == "table" and type(item.Border) == "table" then      -- a section heading
                         Hide(item.Border); Hide(item.Backplate)
-                        ns.kit.Heading(item, item.Text, 14)
+                        if not item.suiSection then
+                            -- The heading's frame is much taller than its words, which the game pins to the
+                            -- top-left corner: a panel round it all leaves them squeezed in that corner. So
+                            -- the words get room from the edge, and only a thin accent line runs under them.
+                            item.suiSection = true
+                            ns:Font(item.Text, 14, true)
+                            item.Text:ClearAllPoints()
+                            item.Text:SetPoint("BOTTOMLEFT", item, "BOTTOMLEFT", 8, 8)
+                            local line = item:CreateTexture(nil, "BORDER")
+                            line:SetHeight(1)
+                            line:SetPoint("TOPLEFT", item.Text, "BOTTOMLEFT", -2, -3)
+                            line:SetPoint("RIGHT", item, "RIGHT", -8, 0)
+                            line:SetTexture(ns.FLAT)
+                            line.sui = true
+                            if line.SetGradient and CreateColor then
+                                local a = ns.theme.accent
+                                line:SetGradient("HORIZONTAL", CreateColor(a[1], a[2], a[3], 0.9), CreateColor(a[1], a[2], a[3], 0))
+                            else
+                                ns:Paint(line, "SetVertexColor", "@accent", 0.6)
+                            end
+                        end
                     end
                 end
             end

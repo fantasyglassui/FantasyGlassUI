@@ -45,9 +45,11 @@ function ns.PlayerTipPlan(lines, info, db)
                 drop[i] = true
             elseif not db.tipFaction and type(info.faction) == "string" and info.faction ~= "" and t == info.faction then
                 drop[i] = true
-            elseif not db.tipLevel and type(info.class) == "string" and info.class ~= "" and t:find(info.class, 1, true)
-                and ((type(info.levelWord) == "string" and t:find(info.levelWord, 1, true)) or (info.level and t:find(tostring(info.level), 1, true))) then
-                drop[i] = true
+            elseif not db.tipLevel and type(info.levelWord) == "string" and info.level and t:find(info.levelWord, 1, true)
+                and t:find(tostring(info.level), 1, true) then
+                drop[i] = true                                          -- "Level 16 Dwarf (Player)", with or without the class
+            elseif not db.tipLevel and type(info.class) == "string" and info.class ~= "" and t == info.class then
+                drop[i] = true                                          -- (some clients put the class on a line of its own)
             end
         end
     end

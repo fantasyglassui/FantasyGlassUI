@@ -572,6 +572,18 @@ end
 
 -- Shared with the setup wizard: the switches, what each does, and the presets.
 ns.featureGroups, ns.featureDesc = groups, DESC
+
+-- Switches that only do something while another is on (11.10.0): shown dimmed while it is off,
+-- and their card says which one they need.
+local NEEDS = {
+    tipTitle = "playerTips", tipRealm = "playerTips", tipGuild = "playerTips", tipLevel = "playerTips", tipFaction = "playerTips",
+    tipPvP = "playerTips", tipHealthBar = "playerTips", tipRole = "playerTips", tipFriend = "playerTips", tipHealth = "playerTips",
+    tipCombatHide = "playerTips", tipGuildRank = "tooltip", tipTarget = "tooltip",
+    questRewards = "questTracker", bubbleNames = "chatBubbles",
+    bagSecMine = "bagWindow", bagSecUpgrades = "bagWindow", bagSecSets = "bagWindow", bagSecBoE = "bagWindow",
+    bagSecMats = "bagWindow", bagSecConsumables = "bagWindow", bagSecRecipes = "bagWindow",
+}
+ns.featureNeeds = NEEDS
 function ns:FeatureHidden(key) return (ns.aurasLocked and LOCKED_HIDE[key]) and true or false end
 function ns:FeatureLabel(key, label) return (ns.aurasLocked and LOCKED_LABEL[key]) or label end
 local function EachFeature(fn)

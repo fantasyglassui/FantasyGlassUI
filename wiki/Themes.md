@@ -20,6 +20,10 @@ Warm (tavern leather), Dark (obsidian), Cold (frost slate), Forest (moss and bra
 
 Granite (grey stone, frost runes), Basalt (black rock, ember runes), Slate (blue-grey, azure runes), Marble (pale stone, gold runes), Sandstone (desert, amber runes), Moonstone (cool stone, silver runes), Bloodstone (dark red, scarlet runes), Jadestone (green stone, mint runes), Frostrune (ice-bound, frost runes), Emberrune (scorched, fire runes), Stormrune (thunder grey, teal runes), Sunrune (sun-baked, gold runes), Voidrune (deep violet, void runes), Thornrune (mossy stone, green runes), Tiderune (sea stone, teal runes), Earthrune (brown stone, amber runes), Skyrune (pale blue, azure runes), Dawnstone (rose stone, coral runes), Duskstone (plum stone, orchid runes), Starstone (night blue, silver runes), Ironrune (dark iron, red runes), Goldrune (dark bronze, gold runes), Silverrune (grey, silver runes), Copperrune (copper stone, coral runes), Amberstone (honey stone, amber runes), Opal (milky stone, rose runes), Obsidian (black glass, arcane runes), Felstone (tainted rock, fel runes), Ashstone (burnt grey, ember runes), Bonerune (old bone, pale runes), Spiritrune (ghost stone, mint runes), Arcanerune (violet stone, arcane runes), Rubystone (wine stone, crimson runes), Sapphirestone (deep blue, azure runes), Emeraldstone (deep green, green runes), Crystal (clear stone, frost runes), Ancient (weathered, gold runes), your class color
 
+## Tooltips
+
+Tooltips wear the theme too: glass panes on Glass, leather with small gold corners on Fantasy, and carved stone with small rune-studs on Runic. See [Player Tooltips](Player-Tooltips.md) to choose what a player's tooltip shows.
+
 ## Lettering and accents
 
 34 lettering styles and 19 accent colors, also on the Look tab. **A theme for each kind of place** (cities, dungeons, raids, battlegrounds and more) switches by itself when you go there.

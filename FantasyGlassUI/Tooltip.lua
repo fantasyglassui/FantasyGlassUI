@@ -1,23 +1,70 @@
 local _, ns = ...
 
 ns:NewModule("tooltip", function()
-    local function Style(tip, r, g, b)
+    -- Tooltips wear the theme's own panel (11.10.1): the same art as every window, so a Glass theme
+    -- gives glass tooltips, Fantasy its leather grain and gold corners, Runic carved stone with
+    -- glowing rune-studs. The game's own frame is put out of sight and our panel is painted on the
+    -- tooltip itself, under its text. (Not the small tooltips that sit inside another one.)
+    local INSIDE = { EmbeddedItemTooltip = true }
+    local function Panel(tip)
+        if tip.suiPanel ~= nil then return tip.suiPanel end
+        tip.suiPanel = false
+        local name = tip.GetName and tip:GetName()
+        if INSIDE[name] or not tip.CreateTexture then return false end
         local nine = tip.NineSlice
-        if nine and nine.SetCenterColor then
-            ns:Paint(nine, "SetCenterColor", "bg", 0.94)
-            nine:SetBorderColor(r or 0.2, g or 0.2, b or 0.26, 1)
-            tip.suiStyledAt = GetTime()
+        if type(nine) == "table" and nine.SetAlpha then nine:SetAlpha(0) end
+        -- the slim form of the panel (a tooltip can be a single line), with corners to its size:
+        -- small gold brackets on Fantasy, small glowing rune-studs on Runic, none on Glass
+        if pcall(ns.PaintPanel, ns, tip, 0.94, true) and tip.suiRim then
+            tip.suiPanel = true
+            pcall(ns.Corners, ns, tip, tip, 12, 1)
+        elseif type(nine) == "table" and nine.SetAlpha then nine:SetAlpha(1) end          -- (could not paint: the game's frame stays)
+        return tip.suiPanel
+    end
+    ns.TooltipPanel = Panel
+    local DEFAULT_EDGE = { 0.2, 0.2, 0.26 }
+    local function Edge(tip, r, g, b)
+        if tip.suiPanel and tip.suiRim then
+            if r then tip.suiRim:SetColor(r, g, b, 1)
+            else local e = ns.theme.border or DEFAULT_EDGE; tip.suiRim:SetColor(e[1], e[2], e[3], 1) end
+        else
+            local nine = tip.NineSlice
+            if nine and nine.SetBorderColor then nine:SetBorderColor(r or 0.2, g or 0.2, b or 0.26, 1) end
         end
+    end
+    local function Style(tip, r, g, b)
+        Panel(tip)
+        local nine = tip.NineSlice
+        if not tip.suiPanel and nine and nine.SetCenterColor then ns:Paint(nine, "SetCenterColor", "bg", 0.94) end
+        Edge(tip, r, g, b)
+        tip.suiStyledAt = GetTime()
     end
     -- A tooltip being shown that the item-and-unit pass may not reach (or has only just colored):
     -- the panel always; the border only if nothing has set it in the last moment, so an item's
     -- quality color put on a split second earlier is not wiped.
     local function OnShown(tip)
+        Panel(tip)
         local nine = tip.NineSlice
-        if not (nine and nine.SetCenterColor) then return end
-        ns:Paint(nine, "SetCenterColor", "bg", 0.94)
-        if not tip.suiStyledAt or GetTime() - tip.suiStyledAt > 0.1 then nine:SetBorderColor(0.2, 0.2, 0.26, 1) end
+        if not tip.suiPanel and nine and nine.SetCenterColor then ns:Paint(nine, "SetCenterColor", "bg", 0.94) end
+        if not tip.suiStyledAt or GetTime() - tip.suiStyledAt > 0.1 then Edge(tip) end
     end
+    -- The health bar under a unit's tooltip, in our bar style
+    local function HealthBar()
+        local bar = _G.GameTooltipStatusBar
+        if type(bar) ~= "table" or bar.suiTipBar or not bar.SetStatusBarTexture then return end
+        bar.suiTipBar = true
+        pcall(bar.SetStatusBarTexture, bar, ns.BAR or ns.FLAT)
+        if bar.SetHeight then bar:SetHeight(6) end
+        if bar.CreateTexture then
+            local bg = bar:CreateTexture(nil, "BACKGROUND", nil, -8)
+            bg:SetAllPoints()
+            bg:SetTexture(ns.FLAT)
+            bg:SetVertexColor(0, 0, 0, 0.55)
+            bg.sui = true
+            ns:Outline(bar, -1, 0, 0, 0, 0.9, "BACKGROUND")
+        end
+    end
+    pcall(HealthBar)
     ns.TooltipOnShown = OnShown
 
     -- Is there already a line on this tooltip containing `needle`? (So nothing is added twice.)
@@ -48,6 +95,20 @@ ns:NewModule("tooltip", function()
             r, g, b = ns:ClassColor(unit)
             local line1 = _G[(tip:GetName() or "") .. "TextLeft1"]
             if r and line1 then line1:SetTextColor(r, g, b) end
+            -- the health bar: a player's class color; a creature's friendly, neutral or hostile color
+            local bar = _G.GameTooltipStatusBar
+            if tip == GameTooltip and type(bar) == "table" and bar.SetStatusBarColor then
+                local hr, hg, hb = r, g, b
+                if not hr then
+                    local okR, reaction = pcall(UnitReaction, unit, "player")
+                    if okR and type(reaction) == "number" and not ns:IsSecret(reaction) then
+                        if reaction >= 5 then hr, hg, hb = 0.25, 0.8, 0.3
+                        elseif reaction == 4 then hr, hg, hb = 0.95, 0.85, 0.25
+                        else hr, hg, hb = 0.85, 0.22, 0.2 end
+                    end
+                end
+                if hr then pcall(bar.SetStatusBarColor, bar, hr, hg, hb) end
+            end
             local tgt = unit .. "target"
             local okT, has = pcall(UnitExists, tgt)
             if okT and not ns:IsSecret(has) and has and not tip.suiTargetAdded and ns.db.tipTarget ~= false then
@@ -124,7 +185,7 @@ ns:NewModule("tooltip", function()
     -- The other tooltips the game has: the side-by-side comparison ones, and the one that opens when
     -- an item link in chat is clicked (with its own comparisons and a close button).
     local extra = 0
-    for _, name in ipairs({ "ShoppingTooltip1", "ShoppingTooltip2", "ItemRefTooltip", "ItemRefShoppingTooltip1", "ItemRefShoppingTooltip2",
+    for _, name in ipairs({ "GameTooltip", "ShoppingTooltip1", "ShoppingTooltip2", "ItemRefTooltip", "ItemRefShoppingTooltip1", "ItemRefShoppingTooltip2",
                             "WorldMapTooltip", "EmbeddedItemTooltip" }) do
         local tip = _G[name]
         if type(tip) == "table" and tip.HookScript and ns:Usable(tip) then

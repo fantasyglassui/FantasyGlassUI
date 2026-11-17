@@ -139,7 +139,12 @@ local function BuildFeatures(page)
         end
         card.title:SetText(ns:Tr(labelOf[key]))
         card.desc:SetText(ns:Tr(DESC[key] or ""))
-        card.foot:SetText(ns:Tr(INSTANT[key] and "Takes effect at once." or "Takes effect after a /reload."))
+        local needs = ns.featureNeeds and ns.featureNeeds[key]
+        if needs and not ns.db[needs] then
+            card.foot:SetText(format(ns:Tr("Needs \"%s\" switched on."), ns:Tr(labelOf[needs] or needs)))
+        else
+            card.foot:SetText(ns:Tr(INSTANT[key] and "Takes effect at once." or "Takes effect after a /reload."))
+        end
         page.described = key
     end
     page.Describe = Describe
@@ -159,6 +164,7 @@ local function BuildFeatures(page)
                 ns.db[key] = v
                 if INSTANT[key] then ns:ApplyInstant() else O.frame.note:Show() end
                 Counts()
+                if page.Dim then page.Dim() end
             end)
             cb:SetWidth(COLW - 6)
             cb.label:SetWidth(COLW - 6 - 36)                 -- (a name too long for its column is cut short; the card has it in full)
@@ -170,6 +176,15 @@ local function BuildFeatures(page)
             cb:HookScript("OnEnter", function() Describe(key) end)
             cb:Hide()
             boxes[key] = cb
+        end
+    end
+
+    -- a switch whose parent is off is dimmed (it can still be set, ready for when the parent is on)
+    function page.Dim()
+        local needs = ns.featureNeeds or {}
+        for key, cb in pairs(boxes) do
+            local parent = needs[key]
+            if cb.SetAlpha then cb:SetAlpha((parent and not ns.db[parent]) and 0.45 or 1) end
         end
     end
 
@@ -189,6 +204,7 @@ local function BuildFeatures(page)
             end
         end
         heading:SetText(title)
+        if page.Dim then page.Dim() end
         local below = TOP - 30 - half * PITCH - 12
         local build = extraName and EXTRAS[extraName]
         if build then
