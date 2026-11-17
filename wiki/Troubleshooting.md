@@ -9,13 +9,19 @@
 `/fgui safe` reloads with every feature off. Fix what you need in `/fgui`, then `/fgui safe` again to leave safe mode.
 
 ## I want my old settings back
-`/fgui backup` lists the backups made before each update and once a day. `/fgui backup restore daily` (or `update`) puts one back and reloads; what you had is kept as "before the last restore".
+`/fgui backup` lists the backups made before each update, once a day and before a reset. `/fgui backup restore daily` (or `update`, or `reset`) puts one back and reloads; what you had is kept as "Before the last restore". See [Backups and Undo](Backups-and-Undo.md).
 
 ## I changed one setting and want it undone
 `/fgui history` lists what you changed in this profile and when; click a change to undo it.
 
 ## Panels won't move during a fight
-The game does not let any add-on move or resize frames in combat. Wait for the fight to end.
+The game does not let any add-on move or resize frames in combat. Wait for the fight to end. Equip best, Sort bags and talent builds asked for during a fight happen by themselves when it ends.
+
+## A command did nothing / I don't remember a command
+`/fgui help` lists every command in a window you can search. If you mistype one, the add-on suggests the nearest.
+
+## A player's tooltip is missing a line
+Check the **Player tooltips** switches on the Features tab ([Player Tooltips](Player-Tooltips.md)). The game also keeps some things hidden from add-ons, and those lines are left as the game writes them.
 
 ## Buffs look different in combat
 On WoW Forever, buffs and debuffs are hidden from add-ons during combat, so the game's own buff frames are restyled and used instead.

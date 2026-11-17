@@ -1,8 +1,8 @@
 # Features
 
-Every switch on the **Features** tab (`/fgui`, Features), in its section, with what it does and whether it is on when you first install. Version 11.9.0.
+Every switch on the **Features** tab (`/fgui`, Features), in its section, with what it does and whether it is on when you first install. Version 11.10.0.
 
-Switches marked **reload** finish after a `/reload`; the options window says which. The search box at the top of the options finds any of them.
+The search box at the top of the options finds any of them, and pointing at a switch shows what it does.
 
 ## Frames, bars and nameplates
 
@@ -69,7 +69,7 @@ Switches marked **reload** finish after a `/reload`; the options window says whi
 | Death recap | on | When you die, the last hits and heals you took, with how long before the end. /fgui death shows it again. |
 | Raid frames: mark missing buffs I can give | off | A small icon on the raid and party frames of anyone missing the buff you can give (Fortitude, Mark of the Wild, Arcane Intellect, Battle Shout). Checked out of fights. /fgui testgroup shows it on sample frames. |
 | Enemy trinket, interrupt and dispel cooldowns | on | In arenas and battlegrounds: an enemy player's PvP trinket, interrupt and dispel, counting down once they have used it. Beside the arena enemy frames, and under your target and focus frames. Only spells the game names to add-ons can be seen. |
-| Mount and pet buttons | off | Two small buttons you can move anywhere: a random favourite mount (one that suits where you are; click again to get off) and a random favourite pet. Both have key bindings too (Key Bindings, AddOns). |
+| Mount and pet buttons | off | Two small buttons you can move anywhere: a random favorite mount (one that suits where you are; click again to get off) and a random favorite pet. Both have key bindings too (Key Bindings, AddOns). |
 | Tooltips: who of your characters can make it | on | Item tooltips say which of your characters can make the item, from the recipes noted when each opens a profession window. /fgui crafts searches them all. |
 | Totem bar (Shamans) | on | Four buttons, one for each element. Left-click drops the totem chosen for it, right-click takes the one that is down away, and the mouse wheel over a button chooses another (not in a fight). The totem that is down shows with its time left. Only for Shamans. |
 | Accept setups other players send me | on | When another player sends you a layout, profile or theme (/fgui send), it opens in the preview, where you choose whether to take it. Off: anything sent is ignored. |
@@ -114,7 +114,7 @@ Switches marked **reload** finish after a `/reload`; the options window says whi
 | Windows & menus | on | Restyles the game's own windows, menus and dialogs to match. |
 | Spellbook | on | Restyles the spellbook. |
 | Character window | on | Restyles the character window and all its pages. |
-| Character window: gear set buttons | on | A row of buttons under the character window, one for each set saved in the game's equipment manager. Click one to put that set on. The set you are wearing is underlined; a set with pieces you no longer have is grey. Not in combat. |
+| Character window: gear set buttons | on | A row of buttons under the character window, one for each set saved in the game's equipment manager. Click one to put that set on. The set you are wearing is underlined; a set with pieces you no longer have is gray. Not in combat. |
 | Character window: talent set buttons | on | A small 1 and 2 at the top of the character window: one click changes talent set (also /fgui spec). |
 | Character window: missing enchants | off | On the character window, a red E on a piece with no enchant where one usually goes, and a G where a gem socket is empty. |
 | Item levels when inspecting | on | On the inspect window, shows the item level of each piece the other player wears and their average, like your own character window. |
@@ -123,6 +123,20 @@ Switches marked **reload** finish after a `/reload`; the options window says whi
 | Item counts in tooltips | on | Adds how many of an item you own, across characters, to its tooltip. |
 | Item level & price in tooltips | on | Adds item level and vendor price to item tooltips when the game doesn't show them. |
 | Item & spell IDs in tooltips | off | Adds the item's or spell's ID number to its tooltip, for writing macros. Presets never change this. |
+| Player tooltips: choose the lines | on | Lets you choose every line of a player's tooltip with the switches below it. Off, the game's lines stay as they are. |
+| Player tooltips: title in the name | on | Their title in front of their name ("Champion of the Frozen Wastes" and the like). |
+| Player tooltips: realm in the name | on | The realm after the name of a player from another realm. |
+| Player tooltips: guild | on | The line with their guild's name. |
+| Player tooltips: guild rank | on | Their rank in their guild, under the guild's name. |
+| Player tooltips: level, race and class | on | The line with their level, race and class. |
+| Player tooltips: faction | on | The line saying Alliance or Horde. |
+| Player tooltips: PvP | on | The line saying they are flagged for PvP. |
+| Player tooltips: health bar | on | The health bar under a player's tooltip. |
+| Player tooltips: who they target | on | Who they have targeted ("Targeting: YOU" when it is you). |
+| Player tooltips: role in your group | on | Tank, healer or damage, as chosen in your group. Only while you are in a group. |
+| Player tooltips: friend or guild mate | on | "Your friend" or "In your guild" under players you know. |
+| Player tooltips: health in numbers | off | Their health in numbers: 12,345 / 20,000 (62%). |
+| Player tooltips: hide during fights | off | Puts player tooltips away while you are fighting, so they don't cover the fight. Hold Shift to see one anyway. |
 | Quest tracker | on | Our list of tracked quests at the side of the screen. |
 | Goals panel | on | A small panel of reputations and items you are working towards, with a bar each. Add them with /fgui goal rep <name>, or /fgui goal and a shift-clicked item with a number. |
 | Quest tracker: rewards | on | The experience and money each quest gives, beside its name on the tracker; in gold once the quest is ready to turn in. |
@@ -138,6 +152,7 @@ Switches marked **reload** finish after a `/reload`; the options window says whi
 | Glossy bar texture | on | A glossy texture on health and power bars instead of a flat one. |
 | Theme by place | off | Switches to the theme you chose for cities and inns, dungeons, raids or everywhere else, as you travel. Choose them on the Look tab. Only between themes of the same family. |
 | Login splash | off | As you log in, the add-on's emblem, your character and where you are, for a moment. Click to close it sooner. (The loading screen itself is the game's: add-ons cannot draw over it.) |
+| "Loaded" line in chat at login | on | The one line in chat when you log in, with the version. Off: Fantasy Glass UI only speaks up in chat when something needs you (a new version, a problem). |
 | Combat text in your lettering | off | The numbers that float up in combat use the add-on's lettering. The game reads that font as the world loads, so a change shows after a relog. |
 | Rounded corners (glass) | on | Rounded corners on panels and buttons, on glass themes. |
 | Ring round the mouse pointer | off | A ring in the accent color round the mouse pointer, so it is easy to find in a fight. It hides while you hold a mouse button to turn or look around. |
@@ -190,7 +205,7 @@ Switches marked **reload** finish after a `/reload`; the options window says whi
 | One-window bank | on | The bank in one window, in the same style. |
 | Remember bags & bank | on | Remembers each character's bags and bank so you can look at them from any character (/storage). |
 | Bags: BoE tag on unbound gear | on | Marks gear in your bags that binds when equipped and is not bound to you yet, so it can still be sold or traded. |
-| Bags: coin on junk | on | Puts a small coin on every item in the bag window that "Sell junk" would sell: grey items and anything on your always-sell list, less your never-sell list. |
+| Bags: coin on junk | on | Puts a small coin on every item in the bag window that "Sell junk" would sell: gray items and anything on your always-sell list, less your never-sell list. |
 | Bags: use items in combat | off | Off until you choose it. Lets you use potions and other items from the bag window during a fight. While you are in combat the bag window's arrangement is frozen (icons and counts still update) and it re-sorts when the fight ends. If your client can't support it, it switches itself back off and says so in /fgui check. |
 | Bags: mark gear set items | on | An item that belongs to a gear set saved in the equipment manager says "Set" in the bag window, and is never sold with your junk. |
 | Loot log | on | Keeps a list of everything you loot this session. /fgui loot shows it with what a vendor would pay for it all. |
@@ -207,7 +222,7 @@ Switches marked **reload** finish after a `/reload`; the options window says whi
 
 | Switch | Starts | What it does |
 |---|---|---|
-| Auto-sell grey items | on | Sells grey items whenever you open a vendor. |
+| Auto-sell gray items | on | Sells gray items whenever you open a vendor. |
 | Auto-repair | on | Repairs your gear whenever you open a vendor that can. |
 | Repair from guild funds first | off | Auto-repair pays from your guild allowance when it covers the whole bill, and from your own gold otherwise. Needs "Auto-repair". Presets never change this. |
 | Vendors: Alt-click buys a stack | on | Hold Alt and click an item at a vendor to buy a full stack of it, or as many as you can afford. |
@@ -273,7 +288,7 @@ Switches marked **reload** finish after a `/reload`; the options window says whi
 | Profanity filter off | off | Shows chat as people typed it, without the game's word filter. A game setting: switching this off puts back what it was. Presets never change this. |
 | Mute the music | off | Turns off the game's music; effects, voices and ambience stay. A game setting: switching this off puts back what it was. Presets never change this. |
 | Mute ambient sounds | off | Turns off background sounds such as wind, birds and crowds. A game setting: switching this off puts back what it was. Presets never change this. |
-| No grey screen when dead | off | The world keeps its colors while you are dead or a ghost. A game setting: switching this off puts back what it was. Presets never change this. |
+| No gray screen when dead | off | The world keeps its colors while you are dead or a ghost. A game setting: switching this off puts back what it was. Presets never change this. |
 | Less screen glow | off | Turns off the soft full-screen glow, for sharper edges and a little more speed. A game setting: switching this off puts back what it was. Presets never change this. |
 | Lower graphics in raids | off | Shadows, liquid detail, particle density and a few other costly settings are turned down while you are inside a raid and put back when you leave. |
 | Fishing mode | off | While a fishing pole is equipped: sound effects at full, music and background noise down, auto-loot on. Everything goes back when the pole comes off. |

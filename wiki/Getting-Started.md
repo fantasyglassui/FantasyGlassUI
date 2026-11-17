@@ -80,15 +80,25 @@ The **Tools** button on the menu bar (or `/fgui tools`) opens a button for every
 | `/fgui testgroup` | Practice the group panels alone |
 | `/fgui quiet` | Hide chat and names for screenshots and streaming |
 
-Type `/fgui help` for the full list.
+- **Every command:** `/fgui help` opens all of them in a window you can search (`/fgui help bags`). Click one to put it in the chat box. See [Commands](Commands.md).
+- **Without typing:** Shift-click the minimap button for the Tools menu, or set key bindings for the most used tools. See [Keys and Shortcuts](Keys-and-Shortcuts.md).
+- **Mistyped a command?** The add-on suggests the right one.
 
-## 8. Keep your setup safe and share it
+## 8. Tooltips your way
+
+- **Player tooltips:** every line of a player's tooltip can be hidden or shown: title, realm, guild, level line, faction, PvP and health bar.
+- **New lines:** you can also add their role, "Your friend" / "In your guild", and their health in numbers.
+- **During fights:** player tooltips can be put away while you fight.
+- **Where:** the Features tab, under **Player tooltips: choose the lines**. See [Player Tooltips](Player-Tooltips.md).
+
+## 9. Keep your setup safe and share it
 
 - **Backups** are made by themselves before each update and once a day. `/fgui backup` lists them.
 - **History:** each profile remembers your changes. `/fgui history` lists them; click one to undo it.
+- **Reset:** `/fgui reset` starts a profile over. Type it twice; a backup is kept first. See [Backups and Undo](Backups-and-Undo.md).
 - **Profiles tab:** a profile per character, Tank, Healer and Damage templates, and **Copy my whole UI**. That button gives one string with your profile, layout, theme, bars and rules, for a friend or your guild to paste in.
 
-## 9. If something goes wrong
+## 10. If something goes wrong
 
 - **Safe mode:** `/fgui safe` reloads with every feature off, so you can always get back to the options.
 - **Self-check:** `/fgui check` writes a report on what is running.

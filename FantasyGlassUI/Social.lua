@@ -176,7 +176,8 @@ ns:NewModule("playerNotes", function()
         local name, realm = UnitName(unit)
         if type(name) ~= "string" or Secret(name) then return end
         local note = ns:PlayerNote((type(realm) == "string" and not Secret(realm) and realm ~= "") and (name .. "-" .. realm) or name)
-        if note then tooltip:AddLine(ns:Tr("Note") .. ": " .. note, 1, 0.82, 0.3, true); tooltip:Show() end
+        local hidden = ns.db.tipCombatHide and InCombatLockdown() and not (IsShiftKeyDown and IsShiftKeyDown())   -- (put away for the fight)
+        if note and not hidden then tooltip:AddLine(ns:Tr("Note") .. ": " .. note, 1, 0.82, 0.3, true); tooltip:Show() end
     end
     local safe = ns:Guard("Player notes", Add)
     if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType and Enum.TooltipDataType.Unit then

@@ -50,7 +50,7 @@ ns:NewModule("tooltip", function()
             if r and line1 then line1:SetTextColor(r, g, b) end
             local tgt = unit .. "target"
             local okT, has = pcall(UnitExists, tgt)
-            if okT and not ns:IsSecret(has) and has and not tip.suiTargetAdded then
+            if okT and not ns:IsSecret(has) and has and not tip.suiTargetAdded and ns.db.tipTarget ~= false then
                 local tr, tg, tb = ns:ClassColor(tgt)
                 local okN, isMe = pcall(UnitIsUnit, tgt, "player")
                 -- (for a token like "mouseovertarget" the game hides whether it is you: then it is named instead)
@@ -61,7 +61,7 @@ ns:NewModule("tooltip", function()
             end
             -- a player's rank in their guild (the game shows the guild's name, not the rank)
             local okP, isPlayer = pcall(UnitIsPlayer, unit)
-            if okP and ns.Is(isPlayer, true) and type(GetGuildInfo) == "function" then
+            if okP and ns.Is(isPlayer, true) and type(GetGuildInfo) == "function" and ns.db.tipGuildRank ~= false then
                 local okG, _, rank = pcall(GetGuildInfo, unit)
                 local label = ns:Tr("Guild rank")
                 if okG and type(rank) == "string" and rank ~= "" and not ns:IsSecret(rank) and not TipHasLine(tip, label) then

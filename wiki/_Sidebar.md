@@ -1,0 +1,14 @@
+**Fantasy Glass UI**
+
+- [Home](Home)
+- [Installation](Installation)
+- [Getting Started](Getting-Started)
+- [Themes](Themes)
+- [Features](Features)
+- [Commands](Commands)
+- [Keys and Shortcuts](Keys-and-Shortcuts)
+- [Player Tooltips](Player-Tooltips)
+- [Backups and Undo](Backups-and-Undo)
+- [Troubleshooting](Troubleshooting)
+- [FAQ](FAQ)
+- [Reporting Bugs](Reporting-Bugs)
