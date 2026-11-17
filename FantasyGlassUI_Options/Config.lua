@@ -8,7 +8,7 @@ if type(ns) ~= "table" then return end
 -- page. The pages themselves are built in FeaturesPage, LookPage, LayoutPage and CombatPage.lua
 -- (with the switch list in FeatureList.lua and the shared pieces in Shared.lua).
 local O = ns.optUI
-local Header = function(...) return O.Header(...) end
+local Header = function(...) return O.Header(...) end   -- luacheck: ignore
 -- The list of a tab's sections, down the left of the window. A tab either says what its sections
 -- are itself (sheet.navItems and sheet.NavSelect: the Features switches, the action bars), or they
 -- are found from its headings: each heading starts a slice of the sheet, and choosing it shows that

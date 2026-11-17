@@ -349,7 +349,7 @@ ns:NewModule("storage", function()
         end
 
         -- what to show
-        local sections, stamp, empty = {}, nil, nil
+        local sections, stamp, empty = {}, nil, nil   -- luacheck: ignore
         if view == "bags" then
             sections[1] = { items = who.bags }
             stamp, empty = who.time, "Nothing recorded for this character yet. Log in on it once."

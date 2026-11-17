@@ -9,6 +9,8 @@ move-folders:
 
 ignore:
   - .github
+  - .luacheckrc
+  - tests
   - wiki
   - README.md
   - CHANGELOG.md

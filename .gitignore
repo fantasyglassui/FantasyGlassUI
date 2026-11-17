@@ -1,5 +1,8 @@
 # zips made for release, and files from the operating system
 *.zip
 .DS_Store
+.pytest_cache/
 Thumbs.db
+__pycache__/
 desktop.ini
+tests/.cache/

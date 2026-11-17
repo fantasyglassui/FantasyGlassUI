@@ -128,7 +128,8 @@ function ns:GuideRouteEditor(name)
         win.buttons.change = win.B("Change this step", 140, 252, y1)
         win.buttons.add = win.B("Add after it", 120, 398, y1)
         win.buttons.here = win.B("Here", 70, 524, y1, function()
-            local map, x, y = ns.GuideHere and ns.GuideHere()
+            local map, x, y
+            if ns.GuideHere then map, x, y = ns.GuideHere() end       -- (all three: "a and f()" would keep only the first)
             if not x then win.msg:SetText("|cffff5555" .. ns:Tr("The game does not say where you are here.") .. "|r"); return end
             win.line:SetText(format("goto | %s @ %d:%.1f,%.1f", ns:Tr("Go here"), map, x, y))
         end)

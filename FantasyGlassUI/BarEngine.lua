@@ -264,7 +264,7 @@ function engine.UpdateButton(b)
         end
         -- cooldown (the game's own figures, whether or not they can be read)
         if b.cooldown then
-            local start, dur, enable
+            local start, dur, enable   -- luacheck: ignore
             if C_ActionBar and C_ActionBar.GetActionCooldown then
                 local okI, info = pcall(C_ActionBar.GetActionCooldown, a)
                 if okI and type(info) == "table" then start, dur, enable = info.startTime, info.duration, info.isEnabled end

@@ -101,7 +101,7 @@ local function BuildCombat(page)
     -- the rows sit a little closer and everything below moves down by the difference (S).
     local toggleRows = math.ceil(#toggles / 3)
     local ROWH = (toggleRows > 4) and 22 or 24
-    local S = -math.max(0, toggleRows * ROWH - 96)
+    local S = -math.max(0, toggleRows * ROWH - 96)   -- luacheck: ignore
     page.toggleCount = #toggles
     for i, t in ipairs(toggles) do
         local key = t[1]

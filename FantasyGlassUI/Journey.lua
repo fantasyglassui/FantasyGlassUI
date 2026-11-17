@@ -54,8 +54,9 @@ do  -- the session is kept for next time when you log out (a /reload carries the
             if type(msg) ~= "string" or Secret(msg) or not S then return end
             pattern = pattern or ns.GamePattern(_G.LOOT_ITEM_SELF)
             local pm = ns.GamePattern(_G.LOOT_ITEM_SELF_MULTIPLE)
-            local _, n = pm and msg:match(pm)
-            if pm and msg:match(pm) then S.loot = (S.loot or 0) + (tonumber(n) or 1)
+            local item, n
+            if pm then item, n = msg:match(pm) end                         -- (the item and how many)
+            if item then S.loot = (S.loot or 0) + (tonumber(n) or 1)
             elseif pattern and msg:match(pattern) then S.loot = (S.loot or 0) + 1 end
             return
         end
@@ -151,7 +152,7 @@ ns:NewModule("cdTimeline", function()
         for _, name in ipairs(type(ns.db.cooldownSpells) == "table" and ns.db.cooldownSpells or {}) do
             local id, icon = Info(name)
             if id then
-                local start, duration, raw = Cooldown(id)
+                local start, duration, raw = Cooldown(id)   -- luacheck: ignore
                 local hidden = Secret(start) or Secret(duration)
                 local remaining = (not hidden and type(start) == "number" and type(duration) == "number" and duration > 1.6) and (start + duration - now) or 0
                 if hidden or remaining > 0 or ns.moving then
@@ -366,7 +367,7 @@ ns:NewModule("rareMemory", function()
         pins[i] = p
         return p
     end
-    local lastMap
+    local lastMap   -- luacheck: ignore
     local function Update()
         local mapID = map.GetMapID and map:GetMapID()
         local n = 0

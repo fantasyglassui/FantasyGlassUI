@@ -5,7 +5,7 @@ local ns = _G.FantasyGlassUI
 if type(ns) ~= "table" then return end
 local O = ns.optUI
 local Header = function(...) return O.Header(...) end
-local groups = ns.featureGroups
+local groups = ns.featureGroups   -- luacheck: ignore
 
 -- Page 2: move, preview, scale, sizes ----------------------------------------------------------
 local function BuildLayout(page)
@@ -71,7 +71,7 @@ local function BuildLayout(page)
             msg:SetText((ok and "|cff66dd77" or "|cffff5555") .. ns:Tr(text) .. "|r")
         end)
         import:SetPoint("LEFT", export, "RIGHT", 8, 0)
-        local set, how = ns:TalentSet()
+        local set, how = ns:TalentSet()   -- luacheck: ignore
         local label = "A separate layout for each talent set"
         -- switching either option on or off changes the context: start the new one from what is on screen
         local function ContextChanged()

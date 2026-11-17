@@ -113,7 +113,7 @@ ns.TOUR = {
     { title = "Ask the guide", text = "Not sure where something is? On the Tools tab, type a question in plain words, such as how do I make the bars bigger, and it shows you." },
     { title = "What's this?", text = "Type /fgui whatsthis (or set a key for it) and point at any panel: it tells you which feature made it, and takes you to its switch." },
 }
-local tourAt
+local tourAt   -- luacheck: ignore
 function ns:TourStep(i)
     local c = Callout()
     local steps = ns.TOUR

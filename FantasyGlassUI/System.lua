@@ -84,7 +84,7 @@ end
 ------------------------------------------------------------------------------------------
 function ns:MuteCommand(text)
     if type(MuteSoundFile) ~= "function" then ns:Print("This game client does not let add-ons mute a sound."); return false end
-    local list = ns:SavedList("mutedSounds", true)
+    local list = ns:SavedList("mutedSounds", true)   -- luacheck: ignore
     text = ns.Trim(text)
     local id = text:match("(%d+)%s*$")
     if text ~= "" and text:lower() ~= "list" and not id then ns:Print("Give the sound file's number: /fgui mute 567458."); return false end

@@ -1,5 +1,7 @@
 # Fantasy Glass UI
 
+[![Tests](https://github.com/fantasyglassui/FantasyGlassUI/actions/workflows/Testing.yml/badge.svg)](https://github.com/fantasyglassui/FantasyGlassUI/actions/workflows/Testing.yml)
+
 A complete interface in one add-on for **WoW Forever** (interface 16001): unit frames, action bars,
 raid frames, nameplates, bags, quests, minimap, chat and every one of the game's own windows, in one
 look you choose from **114 glass, fantasy and runic themes**.

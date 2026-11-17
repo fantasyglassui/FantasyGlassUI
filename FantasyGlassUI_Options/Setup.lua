@@ -485,7 +485,7 @@ local function BuildBehavior(page)
     end
     local y = -44 - math.ceil(#list / 2) * 24 - 40
     Label(page, "Cooldown tracker", 0, y)
-    local msg = Note(page, "A row of your abilities that have a cooldown, each showing when it is ready. One click fills it from your action bars; you can edit the list later on the Combat tab.", y - 22)
+    local msg = Note(page, "A row of your abilities that have a cooldown, each showing when it is ready. One click fills it from your action bars; you can edit the list later on the Combat tab.", y - 22)   -- luacheck: ignore
     local result = page:CreateFontString(nil, "OVERLAY")
     ns:Font(result, 12)
     result:SetPoint("TOPLEFT", 236, y - 76)

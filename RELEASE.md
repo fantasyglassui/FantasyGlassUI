@@ -39,4 +39,5 @@
   top-left corner of a big box. They now sit on a thin accent line, with room around them.
 - "Level, race and class" in player tooltips also hides the class when the game puts it on a
   line of its own, as WoW Forever does.
+- Your session's loot count counted a stack of several items ("x5") as one.
 

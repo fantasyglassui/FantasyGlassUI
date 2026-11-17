@@ -68,7 +68,7 @@ function ns.BuildBarsPage(page)
     page.navItems = {}
     local nBars = (type(bars) == "table") and #bars or 0
     for i = 1, nBars do page.navItems[i] = { title = bars[i].label or bars[i].key } end
-    local nFrames = designer and #designer.frames or 0
+    local nFrames = designer and #designer.frames or 0   -- luacheck: ignore
     for j, def in ipairs(designer and designer.frames or {}) do page.navItems[nBars + j] = { title = def.label } end
     if T.plates then page.navItems[#page.navItems + 1] = { title = "Nameplates" } end
     if T.raid then page.navItems[#page.navItems + 1] = { title = "Raid frames" } end

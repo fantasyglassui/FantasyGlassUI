@@ -513,7 +513,7 @@ function ns:ShowBattlegroundScore()
     local rows = {}
     local okN, n = pcall(GetNumBattlefieldScores)
     for i = 1, (okN and tonumber(n)) or 0 do
-        local ok, name, kb, hk, deaths, honor, faction, _, _, class, classToken, damage, healing = pcall(GetBattlefieldScore, i)
+        local ok, name, kb, hk, deaths, honor, faction, _, _, class, classToken, damage, healing = pcall(GetBattlefieldScore, i)   -- luacheck: ignore
         if ok and type(name) == "string" and not Secret(name) then
             rows[#rows + 1] = { name = name, kb = tonumber(kb) or 0, hk = tonumber(hk) or 0, deaths = tonumber(deaths) or 0,
                 faction = faction, class = classToken, damage = tonumber(damage) or 0, healing = tonumber(healing) or 0 }
