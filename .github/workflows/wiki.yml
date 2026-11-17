@@ -1,0 +1,71 @@
+# Publishes the wiki folder to the repository's wiki whenever it changes on main.
+#
+# The wiki folder is the master copy. Each publish is saved in the wiki as "Published from <commit>",
+# so the next run can tell whether a page was edited on the wiki's website since: if one was, it
+# stops instead of overwriting that edit, and names the page. Copy the edit into the wiki folder
+# (or undo it on the website), and run it again from the Actions tab.
+name: Wiki
+
+on:
+  push:
+    branches: [main]
+    paths: ["wiki/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency: wiki
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch the wiki
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: git clone "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git" live
+
+      - name: Stop if a page was edited on the website since the last publish
+        run: |
+          last=$(git -C live log -1 --format=%s | sed -n 's/^Published from \([0-9a-f]\{7,40\}\).*/\1/p')
+          if [ -z "$last" ]; then
+            echo "The wiki's newest save is not a publish from here; comparing with the last publish, if any."
+            last=$(git -C live log --format=%s | sed -n 's/^Published from \([0-9a-f]\{7,40\}\).*/\1/p' | head -1)
+          fi
+          if [ -z "$last" ]; then echo "First publish: nothing to compare with."; exit 0; fi
+          if ! git cat-file -e "$last^{commit}" 2>/dev/null; then echo "The last publish ($last) is not in this repository's history; publishing anyway."; exit 0; fi
+          edited=""
+          for f in live/*.md; do
+            name=$(basename "$f")
+            if git cat-file -e "$last:wiki/$name" 2>/dev/null; then
+              if ! git show "$last:wiki/$name" | cmp -s - "$f"; then edited="$edited $name"; fi
+            else
+              if [ ! -f "wiki/$name" ]; then edited="$edited $name"; fi
+            fi
+          done
+          if [ -n "$edited" ]; then
+            echo "::error::Edited on the wiki website since the last publish:$edited. Copy those edits into the wiki folder (or undo them on the website), then run this again."
+            exit 1
+          fi
+          echo "No edits on the website since $last."
+
+      - name: Copy the pages and publish
+        run: |
+          for f in wiki/*.md; do
+            name=$(basename "$f")
+            [ "$name" = "README.md" ] && continue          # (README is Home for browsing the folder on GitHub)
+            cp "$f" "live/$name"
+          done
+          cd live
+          git config user.name "DustyMouse"
+          git config user.email "fantasyglassui@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then echo "The wiki already matches the folder."; exit 0; fi
+          git commit -q -m "Published from ${GITHUB_SHA::7}" -m "$(git diff --cached --name-only | tr '\n' ' ')"
+          git push -q origin HEAD
+          echo "Published: $(git show --name-only --format= HEAD | tr '\n' ' ')"
