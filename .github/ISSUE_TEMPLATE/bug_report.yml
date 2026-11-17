@@ -1,0 +1,49 @@
+name: Bug report
+description: Something in Fantasy Glass UI looks wrong, shows an error, or doesn't work.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. The most useful thing you can add is the add-on's own report:
+        open `/fgui` in the game, press **Report a Problem**, and paste the text below.
+  - type: input
+    id: version
+    attributes:
+      label: Fantasy Glass UI version
+      description: Shown at the top of `/fgui`, or in `/fgui check`.
+      placeholder: "11.9.0"
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to make it happen
+      description: What you did just before. Steps someone else can follow are best.
+      placeholder: |
+        1. Open the bags
+        2. Click Equip best
+        3. ...
+  - type: textarea
+    id: report
+    attributes:
+      label: The add-on's report
+      description: From /fgui, Report a Problem (or /fgui check). Paste it as it is.
+      render: text
+  - type: input
+    id: theme
+    attributes:
+      label: Theme and language
+      description: For example "Runic: Granite, English". Helps with anything that looks wrong.
+  - type: textarea
+    id: screens
+    attributes:
+      label: Screenshots
+      description: Drag images in here if something looks wrong.

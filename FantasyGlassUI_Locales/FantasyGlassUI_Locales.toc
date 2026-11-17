@@ -1,0 +1,13 @@
+## Interface: 16001
+## Title: |cff33ccffFantasy Glass|r UI - translations
+## Notes: The translations for Fantasy Glass UI. The game loads this only when the add-on is shown in a language other than English, so English players never spend memory on it. Leave it enabled.
+## Author: DustyMouse
+## Version: 11.9.0
+## LoadOnDemand: 1
+## RequiredDeps: FantasyGlassUI
+## Category: User Interface
+## X-License: All Rights Reserved
+## X-Curse-Project-ID: 1798626
+## IconTexture: Interface\AddOns\FantasyGlassUI\Media\icon.tga
+
+Locales.lua

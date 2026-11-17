@@ -1,0 +1,105 @@
+## Interface: 16001
+## Title: |cff33ccffFantasy Glass|r UI
+## Notes: A complete interface in glass, fantasy and runic themes: unit frames, raid frames, action bars, bags, quests, minimap, chat and restyled windows. Type /fgui.
+## Author: DustyMouse
+## Version: 11.9.0
+## Notes-deDE: Ein komplettes Interface in Glas- und Fantasy-Themen: Einheitenfenster, Aktionsleisten, Taschen, Quests, Minikarte, Chat und passende Fenster. /fgui eingeben.
+## Notes-frFR: Une interface complète en thèmes verre et fantasy : cadres d'unité, barres d'action, sacs, quêtes, minicarte, discussion et fenêtres assorties. Tapez /fgui.
+## Notes-esES: Una interfaz completa en temas de cristal y fantasía: marcos de unidad, barras de acción, bolsas, misiones, minimapa, chat y ventanas a juego. Escribe /fgui.
+## Notes-esMX: Una interfaz completa en temas de cristal y fantasía: marcos de unidad, barras de acción, bolsas, misiones, minimapa, chat y ventanas a juego. Escribe /fgui.
+## Notes-zhCN: 玻璃与奇幻主题的完整界面：单位框体、团队框体、动作条、背包、任务、小地图、聊天和配套窗口。输入 /fgui。
+## Category: User Interface
+## X-License: All Rights Reserved
+## X-Curse-Project-ID: 1798626
+## IconTexture: Interface\AddOns\FantasyGlassUI\Media\icon.tga
+## SavedVariables: FantasyGlassUIDB, StylishUIDB
+
+Core.lua
+Contact.lua
+Skin.lua
+Blocked.lua
+Lists.lua
+Frames.lua
+ClickCast.lua
+UnitFrames.lua
+RaidFrames.lua
+CastBar.lua
+CraftBar.lua
+SwingTimer.lua
+Combat.lua
+Totems.lua
+Warnings.lua
+MirrorBars.lua
+Tooltip.lua
+Chat.lua
+ChatSkin.lua
+ActionBars.lua
+BarEngine.lua
+Minimap.lua
+InfoBar.lua
+Tracker.lua
+QuestLog.lua
+Quests.lua
+Windows.lua
+Spellbook.lua
+Character.lua
+Sets.lua
+QuestMarks.lua
+Consumables.lua
+Alts.lua
+Timers.lua
+Reminders.lua
+QuickKeys.lua
+Encounters.lua
+Social.lua
+MapExtras.lua
+Guide.lua
+GuideEditor.lua
+Polish.lua
+Bags.lua
+BagWindow.lua
+Storage.lua
+DamageMeter.lua
+Auras.lua
+XPBar.lua
+ChatExtras.lua
+ChatBubbles.lua
+RaidTools.lua
+Toasts.lua
+ClassBar.lua
+LootRoll.lua
+Mail.lua
+MinimapButtons.lua
+Launcher.lua
+Helpers.lua
+Extras.lua
+Inspect.lua
+MapCoords.lua
+Nameplates.lua
+Automation.lua
+Roles.lua
+Session.lua
+Convenience.lua
+Profiles.lua
+Economy.lua
+ChatMore.lua
+CharMore.lua
+System.lua
+Journey.lua
+Insight.lua
+Gallery.lua
+Alerts.lua
+API.lua
+Checklist.lua
+Companion.lua
+Group.lua
+Collections.lua
+More.lua
+GroupTest.lua
+Arena.lua
+Upgrades.lua
+AltSetup.lua
+Raid.lua
+Safety.lua
+Auction.lua
+SelfTest.lua

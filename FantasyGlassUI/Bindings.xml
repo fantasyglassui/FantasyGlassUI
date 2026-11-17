@@ -1,0 +1,54 @@
+<Bindings>
+    <Binding name="FANTASYGLASSUI_OPTIONS" header="FANTASYGLASSUI" category="ADDONS">
+        FantasyGlassUI_Binding("OPTIONS")
+    </Binding>
+    <Binding name="FANTASYGLASSUI_MOVE" category="ADDONS">
+        FantasyGlassUI_Binding("MOVE")
+    </Binding>
+    <Binding name="FANTASYGLASSUI_KEYBIND" category="ADDONS">
+        FantasyGlassUI_Binding("KEYBIND")
+    </Binding>
+    <Binding name="FANTASYGLASSUI_CLEAN" category="ADDONS">
+        FantasyGlassUI_Binding("CLEAN")
+    </Binding>
+    <Binding name="FANTASYGLASSUI_METER" category="ADDONS">
+        FantasyGlassUI_Binding("METER")
+    </Binding>
+    <Binding name="FANTASYGLASSUI_ALTS" category="ADDONS">
+        FantasyGlassUI_Binding("ALTS")
+    </Binding>
+    <Binding name="FANTASYGLASSUI_MOUNT" category="ADDONS">
+        FantasyGlassUI_Binding("MOUNT")
+    </Binding>
+    <Binding name="FANTASYGLASSUI_PET" category="ADDONS">
+        FantasyGlassUI_Binding("PET")
+    </Binding>
+    <Binding name="FANTASYGLASSUI_SORT" category="ADDONS">
+        FantasyGlassUI_Binding("SORT")
+    </Binding>
+    <Binding name="FANTASYGLASSUI_KEYS" category="ADDONS" runOnUp="true">
+        FantasyGlassUI_Binding("KEYS", keystate)
+    </Binding>
+    <Binding name="FANTASYGLASSUI_QUIET" category="ADDONS">
+        FantasyGlassUI_Binding("QUIET")
+    </Binding>
+    <Binding name="FANTASYGLASSUI_NOTEPAD" category="ADDONS">
+        FantasyGlassUI_Binding("NOTEPAD")
+    </Binding>
+    <Binding name="FANTASYGLASSUI_WHISPERS" category="ADDONS">
+        FantasyGlassUI_Binding("WHISPERS")
+    </Binding>
+    <Binding name="FANTASYGLASSUI_TODO" category="ADDONS">
+        FantasyGlassUI_Binding("TODO")
+    </Binding>
+    <Binding name="CLICK FantasyGlassUIHealKey:LeftButton" category="ADDONS"/>
+    <Binding name="CLICK FantasyGlassUIFoodKey:LeftButton" category="ADDONS"/>
+    <Binding name="CLICK FantasyGlassUIHomeKey:LeftButton" category="ADDONS"/>
+    <Binding name="CLICK FantasyGlassUIConsumable1:LeftButton" category="ADDONS"/>
+    <Binding name="CLICK FantasyGlassUIConsumable2:LeftButton" category="ADDONS"/>
+    <Binding name="CLICK FantasyGlassUIConsumable3:LeftButton" category="ADDONS"/>
+    <Binding name="CLICK FantasyGlassUIConsumable4:LeftButton" category="ADDONS"/>
+    <Binding name="FANTASYGLASSUI_WHATSTHIS" category="ADDONS">
+        FantasyGlassUI_Binding("WHATSTHIS")
+    </Binding>
+</Bindings>

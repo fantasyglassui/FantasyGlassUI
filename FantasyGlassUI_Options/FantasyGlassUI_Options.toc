@@ -1,0 +1,24 @@
+## Interface: 16001
+## Title: |cff33ccffFantasy Glass|r UI - options
+## Notes: The options window, guided setup and self-check for Fantasy Glass UI. The game loads this by itself the first time one of them is opened, so it uses no memory until then. Leave it enabled.
+## Author: DustyMouse
+## Version: 11.9.0
+## LoadOnDemand: 1
+## RequiredDeps: FantasyGlassUI
+## Category: User Interface
+## X-License: All Rights Reserved
+## X-Curse-Project-ID: 1798626
+## IconTexture: Interface\AddOns\FantasyGlassUI\Media\icon.tga
+
+Setup.lua
+Check.lua
+Tools.lua
+Designer.lua
+Bars.lua
+Shared.lua
+FeatureList.lua
+FeaturesPage.lua
+LookPage.lua
+LayoutPage.lua
+CombatPage.lua
+Config.lua
