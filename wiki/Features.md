@@ -1,6 +1,6 @@
 # Features
 
-Every switch on the **Features** tab (`/fgui`, Features), in its section, with what it does and whether it is on when you first install. Version 11.10.0.
+Every switch on the **Features** tab (`/fgui`, Features), in its section, with what it does and whether it is on when you first install. Version 11.11.0.
 
 The search box at the top of the options finds any of them, and pointing at a switch shows what it does.
 
@@ -90,7 +90,7 @@ The search box at the top of the options finds any of them, and pointing at a sw
 |---|---|---|
 | Minimap | on | A square minimap with zone, coordinates and clock. |
 | Minimap: round | off | A round minimap instead of the square one, with a rim in your theme's color. The zone, coordinates and clock stay on it. |
-| Pixel-perfect scale | off | Sets the whole interface to the scale where one of its pixels is one of your screen's, so thin rims and lettering stay sharp. Switching it off puts back the scale the game had. |
+| Pixel-perfect scale | off | Sets the whole interface to the scale where one of its pixels is one of your screen's, so thin rims and lettering stay sharp. Switching it off puts back the scale the game had. Interface size on the Layout tab still works on top of it. |
 | Minimap button collector | on | Gathers other add-ons' minimap buttons into one fold-out panel. |
 | Minimap button for these options | on | A small button on the minimap with the add-on's icon. Left-click opens these options, right-click starts moving panels, and it can be dragged along the minimap. |
 | Coordinates on the world map | on | Shows where you are, and where the mouse is pointing, in the bottom left corner of the world map. |
@@ -153,6 +153,8 @@ The search box at the top of the options finds any of them, and pointing at a sw
 | Theme by place | off | Switches to the theme you chose for cities and inns, dungeons, raids or everywhere else, as you travel. Choose them on the Look tab. Only between themes of the same family. |
 | Login splash | off | As you log in, the add-on's emblem, your character and where you are, for a moment. Click to close it sooner. (The loading screen itself is the game's: add-ons cannot draw over it.) |
 | "Loaded" line in chat at login | on | The one line in chat when you log in, with the version. Off: Fantasy Glass UI only speaks up in chat when something needs you (a new version, a problem). |
+| Login briefing: what is waiting | on | A few seconds after you log in, one small window says what is waiting: crafts ready, mail on your other characters, lockouts that have reset, rested experience and the jobs left on your checklist. Only when something is waiting; /fgui briefing shows it at any time. |
+| Weekly recap | on | Notes each character's week as you play it: gold made or spent, time played, levels, raids and dungeons, best loot. /fgui recap shows the last week; the login briefing says when a new one is ready. |
 | Combat text in your lettering | off | The numbers that float up in combat use the add-on's lettering. The game reads that font as the world loads, so a change shows after a relog. |
 | Rounded corners (glass) | on | Rounded corners on panels and buttons, on glass themes. |
 | Ring round the mouse pointer | off | A ring in the accent color round the mouse pointer, so it is easy to find in a fight. It hides while you hold a mouse button to turn or look around. |
@@ -210,6 +212,7 @@ The search box at the top of the options finds any of them, and pointing at a sw
 | Bags: mark gear set items | on | An item that belongs to a gear set saved in the equipment manager says "Set" in the bag window, and is never sold with your junk. |
 | Loot log | on | Keeps a list of everything you loot this session. /fgui loot shows it with what a vendor would pay for it all. |
 | Profession cooldowns | on | Remembers each character's once-a-day crafts (transmutes and the like) whenever a profession window is open, and says when one is ready again. /fgui profcd lists them for all your characters. |
+| Profession leveling helper (Skill-ups) | on | A Skill-ups button on the profession window: the recipes you know that still give skill points, best first. What you can make now comes first, then what needs the fewest materials (counting your other characters), orange before yellow before green. |
 | Bags: my own rules (Tools tab) | on | The sections you make yourself under Your rules on the Tools tab (or /fgui bagrules). They come first: the first rule an item meets decides its section. |
 | Bags: Upgrades section | off | Gear better than what you wear (the green arrow) gets its own section at the top of the bags. |
 | Bags: Gear sets section | off | Items in a gear set from the equipment manager are kept together in a Gear sets section. |

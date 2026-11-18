@@ -212,23 +212,55 @@ function ns:UndoSettingChange(i)
     h.snapshot = lastFlat
     return true
 end
+-- How a change reads in the list: the setting's name as the options show it (a switch's label, or the
+-- name of a look or layout setting), then which panel it belongs to; on and off in words.
+local SETTING_NAMES = { theme = "Theme", accent = "Accent color", fontStyle = "Lettering", fontScale = "Text size",
+    uiScale = "Interface size", role = "Role", rounded = "Rounded corners", windowAlpha = "Window opacity",
+    chatBg = "Chat background", barFade = "Fade when not in use", mailRules = "Mail rules", pos = "Panel positions",
+    windowPos = "Window positions", panelShow = "When panels show", bars = "Bar settings", infobarParts = "Info bar",
+    clickCast = "Click-casting" }
+local function SettingName(path)
+    local key, sub = path:match("^([^.]+)%.(.+)$")
+    key = key or path
+    local name = SETTING_NAMES[key] and ns:Tr(SETTING_NAMES[key])
+    if not name then
+        for _, group in ipairs(ns.featureGroups or {}) do
+            for _, opt in ipairs(group[2]) do if opt[1] == key then name = ns:Tr(opt[2]) end end
+        end
+    end
+    if not name then return path end
+    if sub then
+        local movable = ns.FindMovable and ns:FindMovable(sub)
+        sub = (type(movable) == "table" and movable.label) and ns:Tr(movable.label) or sub
+        return name .. ": " .. sub
+    end
+    return name
+end
+local function SettingValue(v)
+    if v == "true" then return ns:Tr("on") elseif v == "false" then return ns:Tr("off")
+    elseif v == "(not set)" then return ns:Tr("(not set)") end
+    return v
+end
+ns.SettingName, ns.SettingValue = SettingName, SettingValue
 function ns:ShowSettingHistory()
+    if ns.LoadOptions then pcall(ns.LoadOptions, ns) end          -- (the switches' names live with the options)
     ns:NoteSettingChanges()
     local h = HistoryStore()
     local lines = {}
     local now = time and time() or 0
     for i, d in ipairs(h.changes) do
         local when = ns.Ago(now - (d.t or now))
-        local old, new = tostring(d.old), tostring(d.new)
+        local old, new = SettingValue(tostring(d.old)), SettingValue(tostring(d.new))
         if #old > 24 then old = old:sub(1, 22) .. "..." end
         if #new > 24 then new = new:sub(1, 22) .. "..." end
+        local name = d.bulk and d.path or SettingName(d.path)
         lines[#lines + 1] = {
-            left = d.path .. (d.bulk and "" or ("  |cff9aa4b4" .. old .. " > |r" .. new)),
+            left = name .. (d.bulk and "" or ("  |cff9aa4b4" .. old .. " > |r" .. new)),
             right = "|cff9aa4b4" .. when .. "|r",
             click = (not d.bulk) and function()
-                if ns:UndoSettingChange(i) then ns:Print("Undone: %s. Some changes show after a /reload.", d.path); ns:ShowSettingHistory() end
+                if ns:UndoSettingChange(i) then ns:Print("Undone: %s. Some changes show after a /reload.", name); ns:ShowSettingHistory() end
             end or nil,
-            tip = { d.path, (not d.bulk) and ns:Tr("Click to put it back as it was.") or nil },
+            tip = { name, (not d.bulk) and ns:Tr("Click to put it back as it was.") or nil },
         }
     end
     if #lines == 0 then lines[1] = { left = ns:Tr("No changes noted yet for this profile.") } end

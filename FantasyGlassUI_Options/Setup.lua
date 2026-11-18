@@ -5,7 +5,7 @@ local ns = _G.FantasyGlassUI
 if type(ns) ~= "table" then return end
 
 -- First-run setup: a guided tour in nine steps. It opens on first login, and again from the
--- "Run Setup Again" button in /fgui or with /fgui setup. Where it can, each choice applies as you
+-- "Run setup again" button in /fgui or with /fgui setup. Where it can, each choice applies as you
 -- click; choices that need the interface to reload are collected, and the last step reloads once.
 local frame
 local step, pages, dots = 1, {}, {}
@@ -219,7 +219,7 @@ local function BuildRole(page)
         btn.text:ClearAllPoints()
         btn.text:SetPoint("TOPLEFT", 14, -8)
         ns:Font(btn.text, 16, true)
-        btn.text:SetText(role.label)
+        btn.text:SetText(ns:Tr(role.label))
         btn.text:SetTextColor(r, g, b)
         btn:HookScript("OnLeave", function(self) self.text:SetTextColor(r, g, b); page.Mark() end)
         local desc = btn:CreateFontString(nil, "OVERLAY")
@@ -227,7 +227,7 @@ local function BuildRole(page)
         desc:SetPoint("TOPLEFT", 14, -30)
         desc:SetWidth(444)
         desc:SetJustifyH("LEFT")
-        desc:SetText(role.desc)
+        desc:SetText(ns:Tr(role.desc))
         ns:Paint(desc, "SetTextColor", "dim")
         btn.role = key
         page[key] = btn
@@ -246,7 +246,7 @@ end
 -- Step 3: the look: glass or fantasy first, then every theme of that family, then the accent color.
 -- (Themes you made yourself get a third group, which only appears once you have some.)
 local function BuildLook(page)
-    Heading(page, "Pick a look", "Choose glass, fantasy or runic, then a theme. The accent is the highlight color. Everything applies as you click, and all of it can be changed later on the Look tab of /fgui.")
+    Heading(page, "Pick a look", "Choose glass, fantasy or celestial, then a theme. The accent is the highlight color. Everything applies as you click, and all of it can be changed later on the Look tab of /fgui.")
 
     local COLS, BW = 4, 114
     local family = "GLASS"
@@ -262,7 +262,7 @@ local function BuildLook(page)
         local t = ns.themes[key]
         if not t then return "GLASS" end
         if t.custom then return "MINE" end
-        return (t.style == "GLASS") and "GLASS" or (t.style == "RUNIC") and "RUNIC" or "FANTASY"
+        return (t.style == "GLASS") and "GLASS" or (t.style == "CELESTIAL") and "CELESTIAL" or "FANTASY"
     end
     local function ThemesOf(which)
         local list = {}
@@ -274,7 +274,7 @@ local function BuildLook(page)
 
     local note = page:CreateFontString(nil, "OVERLAY")
     ns:Font(note, 11)
-    note:SetPoint("TOPLEFT", 0, -272)
+    note:SetPoint("TOPLEFT", 0, -284)
     note:SetWidth(474)
     note:SetJustifyH("LEFT")
     ns:Paint(note, "SetTextColor", "faint")
@@ -289,7 +289,7 @@ local function BuildLook(page)
     end
     page.Pick = Pick
 
-    local families = { { "GLASS", "Glass" }, { "FANTASY", "Fantasy" }, { "RUNIC", "Runic" }, { "MINE", "My themes" } }
+    local families = { { "GLASS", "Glass" }, { "FANTASY", "Fantasy" }, { "CELESTIAL", "Celestial" }, { "MINE", "My themes" } }
     for i, def in ipairs(families) do
         local b = ns:CreateButton(page, def[2], 112, 26, function() family = def[1]; Refresh() end)
         b:SetPoint("TOPLEFT", (i - 1) * 118, -70)
@@ -313,7 +313,7 @@ local function BuildLook(page)
             local t = self.key and ns.themes[self.key]
             if not t then return end
             GameTooltip:SetOwner(self, "ANCHOR_TOP")
-            GameTooltip:AddLine(t.name)
+            GameTooltip:AddLine(ns:ThemeName(self.key))
             GameTooltip:Show()
         end)
         b:HookScript("OnLeave", function() GameTooltip:Hide() end)
@@ -330,14 +330,14 @@ local function BuildLook(page)
     for i, key in ipairs(ns.accentOrder) do
         local sw = CreateFrame("Button", nil, page, ns.template)
         sw:SetSize(18, 18)
-        sw:SetPoint("TOPLEFT", 58 + (i - 1) * 22, -238)
+        sw:SetPoint("TOPLEFT", 58 + ((i - 1) % 16) * 22, -236 - math.floor((i - 1) / 16) * 21)   -- two rows of sixteen
         sw:SetBackdrop(ns.BACKDROP)
         local r, g, b = ns:AccentColor(key)
         sw:SetBackdropColor(r, g, b, 1)
         sw:SetScript("OnClick", function() ns.db.accent = key; ns:Retheme(); Refresh() end)
         sw:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_TOP")
-            GameTooltip:AddLine(key == "CLASS" and ns:Tr("Your class color") or (key:sub(1, 1) .. key:sub(2):lower()))
+            GameTooltip:AddLine(ns:AccentName(key))
             GameTooltip:Show()
         end)
         sw:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -357,7 +357,7 @@ local function BuildLook(page)
         for i, key in ipairs(list) do
             local b = ThemeButton(i)
             b.key = key
-            b.text:SetText((ns.themes[key].name:gsub(" %(.-%)$", ""):gsub("^Fantasy: ", ""):gsub("^Glass: ", ""):gsub("^Runic: ", "")))
+            b.text:SetText(ns:ThemeName(key, "short"))
             if b.swatch then ns.optUI.ShowThemeSwatch(b.swatch, key) end
             Mark(b, key == (ns.db.theme or "SMOKE"))
             if key == (ns.db.theme or "SMOKE") then current = i end
@@ -499,7 +499,7 @@ local function BuildBehavior(page)
         end
         ns.db.cooldownSpells = names
         if ns.RebuildCooldowns then ns:RebuildCooldowns() end
-        result:SetText("|cff66dd77" .. format(ns:TrN(#names, "%d ability taken from your action bars.", "%d abilities taken from your action bars."), #names) .. "|r")
+        result:SetText(ns:SignalHex("good") .. format(ns:TrN(#names, "%d ability taken from your action bars.", "%d abilities taken from your action bars."), #names) .. "|r")
     end)
     fill:SetPoint("TOPLEFT", 0, y - 72)
     page.FillCooldowns = function() fill:Click() end
@@ -565,7 +565,6 @@ local function BuildFinish(page)
 
     local PRESETS = { STANDARD = "Standard", EVERYTHING = "Everything", MINIMAL = "Minimal" }
     function page.Refresh()
-        local theme = ns.themes[ns.db.theme or "SMOKE"] or ns.themes.SMOKE
         local accent = ns.db.accent or "AZURE"
         local font = ns.fontStyles[ns.db.fontStyle or "GLASS"] or ns.fontStyles.GLASS
         local role = ns.roles[ns.db.role]
@@ -574,9 +573,9 @@ local function BuildFinish(page)
         local preset = ns.CurrentPreset and ns:CurrentPreset()
         local data = {
             { "Role", role and ns:Tr(role.label) or ns:Tr("not chosen") },
-            { "Theme", theme.name },
-            { "Accent", accent == "CUSTOM" and ns:Tr("your own color") or accent == "CLASS" and ns:Tr("your class color") or (accent:sub(1, 1) .. accent:sub(2):lower()) },
-            { "Lettering", ns:Tr(font.name) .. "  (" .. font.face .. ")" },
+            { "Theme", ns:ThemeName(ns.themes[ns.db.theme or "SMOKE"] and (ns.db.theme or "SMOKE") or "SMOKE", "plain") },
+            { "Accent", accent == "CUSTOM" and ns:Tr("your own color") or accent == "CLASS" and ns:Tr("your class color") or ns:AccentName(accent) },
+            { "Lettering", ns:Tr(font.name) .. "  (" .. ns:Tr(font.face) .. ")" },
             { "Features", format(ns:Tr("%d of %d switched on"), on, total) .. "  (" .. ns:Tr(PRESETS[preset] or "set by hand") .. ")" },
             { "Bags", ns:Tr(ns.db.bagWindow and "Fantasy Glass UI's single window" or "the game's own") },
         }
@@ -626,7 +625,7 @@ local function Build()
     local title = frame:CreateFontString(nil, "OVERLAY")
     ns:Font(title, 13, true)
     title:SetPoint("TOPLEFT", 58, -16)
-    title:SetText(ns:Tr("Fantasy Glass UI setup") .. "  |cff808080by " .. ns.author .. "|r")
+    title:SetText(ns:Tr("Fantasy Glass UI setup") .. "  |cff808080" .. ns:Tr("by") .. " " .. ns.author .. "|r")
     ns:Paint(title, "SetTextColor", "dim")
     frame.count = frame:CreateFontString(nil, "OVERLAY")
     ns:Font(frame.count, 11)

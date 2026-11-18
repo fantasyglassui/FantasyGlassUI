@@ -15,7 +15,7 @@ The setup opens by itself the first time you log in. It takes nine short steps:
 
 - **Language:** your game's own, or any of the nine the add-on speaks.
 - **Role:** this places your frames where a tank, healer or damage player wants them.
-- **Look:** pick a family, Glass, Fantasy or Runic, then one of its 38 themes.
+- **Look:** pick a family, Glass, Fantasy or Celestial, then one of its 38 themes.
 - **Lettering:** the style of text across the whole interface.
 - **Features:** how much the add-on should take over.
 - **Layout:** where your panels go.
@@ -43,12 +43,14 @@ Open the options with `/fgui` and go to the **Look** tab.
 - **Themes:** 114 of them, in three families.
   - **Glass:** see-through panes with soft shadows.
   - **Fantasy:** solid panels with gold ornaments.
-  - **Runic:** carved stone with glowing runes.
+  - **Celestial:** a night sky with stars and constellations.
 - **Previews:** each theme button shows a small picture. Point at one to see a larger card, and click it to wear it.
 - **Make your own:** set three colors at the bottom of the Look tab.
 - **A theme for each kind of place** is also on the Look tab: cities, dungeons, raids and battlegrounds.
 
 Switching to another family finishes after a `/reload`.
+
+- **Text and interface size:** on the **Layout** tab, **Text size** (70 to 150%) sets the add-on's lettering and **Interface size** (50 to 150%) scales the whole interface. From chat: `/fgui textsize 120` and `/fgui uisize 90` (`reset` puts either back). On the sliders, both take effect when you let go.
 
 ## 5. Pick your features
 
@@ -76,6 +78,9 @@ The **Tools** button on the menu bar (or `/fgui tools`) opens a button for every
 | `/fgui death` | What hit you before you died |
 | `/fgui alts` | All your characters, their gold and more |
 | `/fgui crafts` | What all your characters can craft |
+| `/fgui briefing` | What is waiting for you: crafts ready, mail, lockouts reset, jobs left |
+| `/fgui recap` | Your last week on every character: gold, time, levels, raids, best loot |
+| `/fgui skillups` | With a profession window open: the recipes that still give skill points |
 | `/fgui equipbest` | Put on every upgrade in your bags |
 | `/fgui testgroup` | Practice the group panels alone |
 | `/fgui quiet` | Hide chat and names for screenshots and streaming |
@@ -83,6 +88,9 @@ The **Tools** button on the menu bar (or `/fgui tools`) opens a button for every
 - **Every command:** `/fgui help` opens all of them in a window you can search (`/fgui help bags`). Click one to put it in the chat box. See [Commands](Commands).
 - **Without typing:** Shift-click the minimap button for the Tools menu, or set key bindings for the most used tools. See [Keys and Shortcuts](Keys-and-Shortcuts).
 - **Mistyped a command?** The add-on suggests the right one.
+- **Login briefing:** a few seconds after you log in, one small window says what is waiting. Click a line to open the window it comes from. It only shows when something is waiting.
+- **Weekly recap:** each character's week is noted as you play it. When a new week starts, the login briefing says the recap is ready.
+- **Skill-ups:** the profession window gets a Skill-ups button listing the recipes that still give skill points, best first: what you can make now, then what needs the least.
 
 ## 8. Tooltips your way
 
@@ -102,6 +110,6 @@ The **Tools** button on the menu bar (or `/fgui tools`) opens a button for every
 
 - **Safe mode:** `/fgui safe` reloads with every feature off, so you can always get back to the options.
 - **Self-check:** `/fgui check` writes a report on what is running.
-- **Report a Problem:** the button in `/fgui` gathers what is needed into text you can copy. Save it as a text file and upload it with the form on the add-on's page.
+- **Report a problem:** the button in `/fgui` gathers what is needed into text you can copy. Save it as a text file and upload it with the form on the add-on's page.
 
 Enjoy the game.

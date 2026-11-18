@@ -9,7 +9,7 @@ local function Count(id, bank)
 end
 local function Name(id)
     local ok, name = pcall(function() return ns:GetItemInfo(id) end)
-    return (ok and type(name) == "string") and name or ("item " .. tostring(id))
+    return (ok and type(name) == "string") and name or (ns:Tr("Item") .. " " .. tostring(id))
 end
 
 ------------------------------------------------------------------------------------------
@@ -164,7 +164,7 @@ function ns:ShowGold()
     for _, d in ipairs(days) do
         local s = tostring(d.day)
         local change = ""
-        if d.change and d.change > 0 then change = "   |cff33ff66+" .. ns:Coins(d.change) .. "|r" elseif d.change and d.change < 0 then change = "   |cffff5555-" .. ns:Coins(-d.change) .. "|r" end
+        if d.change and d.change > 0 then change = "   " .. ns:SignalHex("good") .. "+" .. ns:Coins(d.change) .. "|r" elseif d.change and d.change < 0 then change = "   " .. ns:SignalHex("bad") .. "-" .. ns:Coins(-d.change) .. "|r" end
         lines[#lines + 1] = { left = s:sub(1, 4) .. "-" .. s:sub(5, 6) .. "-" .. s:sub(7, 8) .. change, right = ns:Coins(d.gold), bar = d.gold / most }
     end
     if #lines == 0 then lines[1] = { left = ns:Tr("No days kept yet: your gold is noted at the end of each day you play.") } end
@@ -177,7 +177,7 @@ function ns:ShowGold()
         for _, source in ipairs(names) do
             local s = ns.sessionMoney[source]
             lines[#lines + 1] = { left = "    " .. ns:Tr(source),
-                right = (s.earned > 0 and ("|cff33ff66+" .. ns:Coins(s.earned) .. "|r  ") or "") .. (s.spent > 0 and ("|cffff5555-" .. ns:Coins(s.spent) .. "|r") or "") }
+                right = (s.earned > 0 and (ns:SignalHex("good") .. "+" .. ns:Coins(s.earned) .. "|r  ") or "") .. (s.spent > 0 and (ns:SignalHex("bad") .. "-" .. ns:Coins(s.spent) .. "|r") or "") }
         end
     end
     return ns:ShowList("Gold", "Gold history", lines, "Your gold at the end of each day you played this character.", 420, 380)
@@ -236,7 +236,7 @@ function ns:SelectedRecipe()
             reagents[#reagents + 1] = { id = first.itemID, need = slot.quantityRequired }
         end
     end
-    return (type(name) == "string" and name) or schematic.name or "Recipe", reagents, recipeID
+    return (type(name) == "string" and name) or schematic.name or ns:Tr("Recipe"), reagents, recipeID
 end
 -- One line per reagent: how many more you need, and where the rest is.
 -- have(id) -> on this character (bags and bank), on your other characters.
@@ -265,13 +265,14 @@ function ns:ShowShopping(text)
         return Count(id, true), others
     end)) do
         local right
-        if r.short == 0 then right = "|cff33ff66" .. ns:Tr("enough") .. "|r"
+        if r.short == 0 then right = ns:SignalHex("good") .. ns:Tr("enough") .. "|r"
         else
-            right = "|cffff5555" .. format(ns:Tr("%d short"), r.short) .. "|r"
+            right = ns:SignalHex("bad") .. format(ns:Tr("%d short"), r.short) .. "|r"
             if r.fromAlts > 0 then right = right .. "  |cff9aa4b4" .. format(ns:Tr("%d on other characters"), r.others) .. "|r" end
         end
         lines[#lines + 1] = { left = format("%d x %s  |cff9aa4b4(%d)|r", r.need, Name(r.id), r.mine), right = right }
     end
+    if #lines == 0 then lines[1] = { left = ns:Tr("This recipe needs no materials.") } end
     return ns:ShowList("Shopping", name .. (times > 1 and (" x " .. times) or ""), lines, "Needed, with how many you have in brackets (bags and bank).", 460, 300)
 end
 
@@ -320,7 +321,7 @@ ns:NewModule("tradeLog", function()
         t.at = time and time() or 0
         table.insert(ns.root.trades, 1, t)
         while #ns.root.trades > 50 do table.remove(ns.root.trades) end
-        ns:PrintRaw("|cff33ccffFantasy Glass UI|r: " .. ns:Tr("Traded with") .. " " .. line)
+        ns:PrintRaw(ns:Tr("Traded with") .. " " .. line)
         return line
     end
     ns.tradeTest = { Start = function(who) now = { who = who } end, Snapshot = Snapshot, Done = Done, Now = function() return now end }
@@ -377,6 +378,7 @@ function ns:DepositMaterials()
         pcall(ns.UseBagItem, ns, move[1], move[2])
         ns:After(0.15, function() Next(i + 1) end)                -- (one at a time: the game drops moves sent together)
     end
+    if #queue == 0 then ns:Print("No crafting materials in your bags."); return 0 end
     Next(1)
     ns:Print(#queue == 1 and "Depositing %d stack of crafting materials." or "Depositing %d stacks of crafting materials.", #queue)
     return #queue
@@ -420,7 +422,7 @@ end
 function ns.AuctionSeenText(entry, today)
     if type(entry) ~= "table" or type(entry.price) ~= "number" then return nil end
     local days = math.max(0, ns.DaysBetween(entry.day, today))
-    return (days == 0) and "today" or (days == 1) and "yesterday" or format("%d days ago", days)
+    return (days == 0) and ns:Tr("today") or (days == 1) and ns:Tr("yesterday") or format(ns:Tr("%d days ago"), days)
 end
 -- Days from one 20261115-style date to another.
 function ns.DaysBetween(a, b)
@@ -537,7 +539,7 @@ function ns:ShowLoot(text)
     for i = #ns.lootLog, 1, -1 do
         local l = ns.lootLog[i]
         total = total + (l.value or 0)
-        lines[#lines + 1] = { left = (l.count > 1 and (l.count .. " x ") or "") .. l.link, right = (l.value or 0) > 0 and ns:Coins(l.value) or "" }
+        lines[#lines + 1] = { left = (l.count > 1 and (l.count .. " x ") or "") .. l.link, right = (l.value or 0) > 0 and ns:Coins(l.value) or "", link = l.link }   -- (the item's own tooltip under the mouse)
     end
     if #lines == 0 then lines[1] = { left = "|cff9aa4b4" .. ns:Tr("Nothing looted yet this session.") .. "|r" } end
     table.insert(lines, 1, { left = ns:Tr("Vendor value of it all"), right = ns:Coins(total), color = { 1, 0.82, 0.3 } })

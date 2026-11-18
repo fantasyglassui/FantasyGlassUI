@@ -126,7 +126,7 @@ ns:NewModule("totems", function()
         if not on then Update() end
     end)
     ns.totemTest = { icons = icons, Update = Update, max = MAX }
-    ns:RegisterMovable(holder, "totems", "Totem Timers")
+    ns:RegisterMovable(holder, "totems", "Totem timers")
 end)
 
 -- Weapon imbue reminder (shamans' weapon imbues, rogues' poisons): says so when the main hand has
@@ -141,7 +141,7 @@ ns:NewModule("imbueReminder", function()
     f:SetPoint("CENTER", UIParent, "CENTER", 0, -205)
     f:SetBackdrop(ns.BACKDROP)
     ns:Paint(f, "SetBackdropColor", "bg", 0.85)
-    f:SetBackdropBorderColor(0.85, 0.25, 0.2, 1)
+    f:SetBackdropBorderColor(ns:Signal("bad"))
     f.icon = f:CreateTexture(nil, "ARTWORK")
     f.icon:SetSize(24, 24)
     f.icon:SetPoint("LEFT", 3, 0)
@@ -180,7 +180,8 @@ ns:NewModule("imbueReminder", function()
         end
         local remaining = seen.expires and (seen.expires - GetTime()) or nil
         if not seen.has or (remaining and remaining <= 0) then
-            Say(ns:Tr("No weapon imbue"), 0.85, 0.25, 0.2)
+            local r, g, b = ns:Signal("bad")
+            Say(ns:Tr("No weapon imbue"), r, g, b)
         elseif remaining and remaining < 60 then
             Say(format(ns:Tr("Imbue ends in %d s"), math.floor(remaining)), 1, 0.82, 0)
         end
@@ -201,7 +202,7 @@ ns:NewModule("imbueReminder", function()
         local cur = f:GetAlpha()
         if type(cur) ~= "number" then cur = target end
         if cur == target and (target == 0) ~= (f:IsShown() and true or false) then return end   -- (settled: nothing to do this tick)
-        if math.abs(cur - target) < 0.02 then
+        if math.abs(cur - target) < 0.02 or not ns:Motion() then        -- (Reduce motion: no fade, it just appears and goes)
             cur = target
         else
             cur = cur + (target - cur) * 0.18
@@ -216,7 +217,7 @@ ns:NewModule("imbueReminder", function()
 
     ns:RegisterPreview(function(on)
         preview = on
-        if on then Say(ns:Tr("No weapon imbue"), 0.85, 0.25, 0.2) else want = false end
+        if on then local r, g, b = ns:Signal("bad"); Say(ns:Tr("No weapon imbue"), r, g, b) else want = false end
     end)
-    ns:RegisterMovable(f, "imbue", "Imbue Reminder")
+    ns:RegisterMovable(f, "imbue", "Imbue reminder")
 end)

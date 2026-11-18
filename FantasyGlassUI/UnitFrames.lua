@@ -1,4 +1,7 @@
 local _, ns = ...
+-- "Offline" and "Dead" on a frame: the game's own word in its language, or ours.
+function ns.OfflineWord() return (type(_G.PLAYER_OFFLINE) == "string" and _G.PLAYER_OFFLINE ~= "") and _G.PLAYER_OFFLINE or ns:Tr("Offline") end
+function ns.DeadWord() return (type(_G.DEAD) == "string" and _G.DEAD ~= "") and _G.DEAD or ns:Tr("Dead") end
 
 -- Fantasy Glass UI unit frames: player, target, target-of-target, focus, pet, party.
 -- Written for the modern engine: frames are secure (click to target, right-click menu),
@@ -7,6 +10,14 @@ local _, ns = ...
 
 local frames = {}
 local Secret = function(v) return ns:IsSecret(v) end
+
+-- A debuff's frame color: the game's color for what can remove it (magic, curse, poison, disease),
+-- red for the rest and whenever the game keeps the kind to itself.
+function ns:DebuffColor(kind)
+    local c = (not Secret(kind)) and type(kind) == "string" and type(DebuffTypeColor) == "table" and DebuffTypeColor[kind]
+    if type(c) == "table" and type(c.r) == "number" then return c.r, c.g, c.b, 1 end
+    return 0.85, 0.18, 0.18, 1
+end
 
 ------------------------------------------------------------------------------------------
 -- Small helpers
@@ -144,13 +155,14 @@ local function UpdateHealth(f)
     end)
     if not f.pct then return end
     local ok, state = pcall(function()
-        if ns.Is(UnitIsConnected(u), false) then return "Offline" end
-        if ns.Yes(UnitIsDeadOrGhost(u)) then return "Dead" end
+        if ns.Is(UnitIsConnected(u), false) then return ns.OfflineWord() end
+        if ns.Yes(UnitIsDeadOrGhost(u)) then return ns.DeadWord() end
     end)
     if ok and state then f.pct:SetText(state) else ns.healthTextMode = SetHealthText(f.pct, u) or ns.healthTextMode end
 end
 
 -- (the option was just changed: rewrite the text on every frame that is showing)
+local UpdatePower                                           -- (made below; named here so this can reach it)
 function ns:RefreshHealthText()
     for _, f in ipairs(frames) do
         if f.pct and f:IsShown() then pcall(UpdateHealth, f) end
@@ -250,7 +262,7 @@ function ns:PowerPercentProbe()
 end
 function ns:ForgetPowerCall() powerCall, powerGuess = nil, nil end       -- (for tests)
 
-local function UpdatePower(f)
+UpdatePower = function(f)
     if not f.power then return end
     local u = f.unit
     local ptype, token = UnitPowerType(u)
@@ -444,7 +456,8 @@ local function UpdateAuras(f)
             b.kind:SetText((debuff and ns.db.colorblind) and ns:DispelLetter(a.dispelName) or "")
             if debuff and ns.db.auraFilter and f.unit ~= "player" and ns.Is(a.isFromPlayerOrPlayerPet, true) then
                 ns:Paint(b.suiBorder, "SetBackdropBorderColor", "@accent", 1)          -- your own debuff: rimmed in the accent color
-            elseif debuff then b.suiBorder:SetBackdropBorderColor(0.85, 0.18, 0.18, 1) else b.suiBorder:SetBackdropBorderColor(0, 0, 0, 1) end
+            elseif debuff then b.suiBorder:SetBackdropBorderColor(ns:DebuffColor(a.dispelName))     -- (magic blue, curse purple ...)
+            else b.suiBorder:SetBackdropBorderColor(0, 0, 0, 1) end
             b:Show()
             end
         end
@@ -988,13 +1001,13 @@ ns:NewModule("unitFrames", function()
     -- Movers -------------------------------------------------------------------------------------
     ns:RegisterMovable(player, "ufPlayer", "Player")
     ns:RegisterMovable(target, "ufTarget", "Target")
-    ns:RegisterMovable(tot, "ufToT", "Target's Target")
+    ns:RegisterMovable(tot, "ufToT", "Target's target")
     ns:RegisterMovable(focus, "ufFocus", "Focus")
-    if focusTarget then ns:RegisterMovable(focusTarget, "ufFocusTarget", "Focus's Target") end
+    if focusTarget then ns:RegisterMovable(focusTarget, "ufFocusTarget", "Focus's target") end
     ns:RegisterMovable(pet, "ufPet", "Pet")
-    for i, f in ipairs(party) do ns:RegisterMovable(f, "ufParty" .. i, "Party " .. i) end
-    for i, f in ipairs(boss) do ns:RegisterMovable(f, "ufBoss" .. i, "Boss " .. i) end
-    for i, f in ipairs(arena) do ns:RegisterMovable(f, "ufArena" .. i, "Arena enemy " .. i) end
+    for i, f in ipairs(party) do ns:RegisterMovable(f, "ufParty" .. i, format(ns:Tr("Party %d"), i)) end
+    for i, f in ipairs(boss) do ns:RegisterMovable(f, "ufBoss" .. i, format(ns:Tr("Boss %d"), i)) end
+    for i, f in ipairs(arena) do ns:RegisterMovable(f, "ufArena" .. i, format(ns:Tr("Arena enemy %d"), i)) end
 
     -- Live refresh (portrait style changed in options)
     function ns:RefreshUnitFrames()
@@ -1009,6 +1022,7 @@ ns:NewModule("unitFrames", function()
     end
 
     -- Idle fade: with nothing targeted, out of combat and at full health, the player and pet frames dim
+    local idleFrames = { player, pet }
     ns:Every(0.2, "Idle fade", function()
         local want = 1
         if ns.db.idleFade and not ns.previewing and not ns.moving and not InCombatLockdown() and not UnitExists("target") then
@@ -1016,10 +1030,10 @@ ns:NewModule("unitFrames", function()
             local casting = UnitCastingInfo("player")
             if not Secret(hp) and not Secret(max) and hp == max and not Secret(casting) and casting == nil then want = 0.4 end
         end
-        for _, f in ipairs({ player, pet }) do
+        for _, f in ipairs(idleFrames) do
             local cur = f:GetAlpha()
             if type(cur) == "number" and math.abs(cur - want) > 0.01 then
-                f:SetAlpha(cur + (want - cur) * 0.3)
+                f:SetAlpha(ns:Motion() and (cur + (want - cur) * 0.3) or want)      -- (Reduce motion: no slow dimming)
             end
         end
     end)
@@ -1031,7 +1045,10 @@ ns:NewModule("unitFrames", function()
             if f.designKey then
                 pcall(ns.ApplyDesign, f)
                 Layout(f)
-                if f.auras and not InCombatLockdown() then f.auras:SetWidth(f:GetWidth()) end
+                if not InCombatLockdown() then
+                    if f.auras then f.auras:SetWidth(f:GetWidth()) end
+                    if f.combo then f.combo.Ticks(f:GetWidth()) end      -- (the combo point dividers follow a new width)
+                end
                 if f:IsShown() then pcall(UpdateAll, f) end
                 n = n + 1
             end

@@ -48,12 +48,12 @@ local function BuildClickCast(page)
         local y = -62 - (i - 1) * 30
         r.modBtn = ns:CreateButton(page, MODNAME[r.mod] or MODNAME[""], 120, 24, function()
             for k, m in ipairs(MODS) do if m == r.mod then r.mod = MODS[k % #MODS + 1]; break end end
-            r.modBtn.text:SetText(MODNAME[r.mod])
+            r.modBtn.text:SetText(ns:Tr(MODNAME[r.mod]))
         end)
         r.modBtn:SetPoint("TOPLEFT", 0, y)
         r.btnBtn = ns:CreateButton(page, BTNNAME[r.button] or BTNNAME[1], 120, 24, function()
             r.button = r.button % #BTNNAME + 1
-            r.btnBtn.text:SetText(BTNNAME[r.button])
+            r.btnBtn.text:SetText(ns:Tr(BTNNAME[r.button]))
         end)
         r.btnBtn:SetPoint("LEFT", r.modBtn, "RIGHT", 8, 0)
         r.spell = ns:CreateEditBox(page, 300, 24, "Spell name")
@@ -67,7 +67,7 @@ local function BuildClickCast(page)
     local apply = ns:CreateButton(page, "Apply bindings", 150, 26, function()
         ns.db.clickCast = Read()
         local done = ns:ApplyClickCast()
-        msg:SetText(done and ("|cff66dd77" .. format(ns:Tr(#ns.db.clickCast == 1 and "%d binding active." or "%d bindings active."), #ns.db.clickCast) .. "|r") or ("|cffffd100" .. ns:Tr("Saved. They take effect when you leave combat.") .. "|r"))
+        msg:SetText(done and (ns:SignalHex("good") .. format(ns:Tr(#ns.db.clickCast == 1 and "%d binding active." or "%d bindings active."), #ns.db.clickCast) .. "|r") or ("|cffffd100" .. ns:Tr("Saved. They take effect when you leave combat.") .. "|r"))
     end)
     apply:SetPoint("TOPLEFT", 0, -62 - ROWS * 30 - 8)
 end
@@ -200,9 +200,9 @@ local function BuildCombat(page)
         local found = ns.RebuildCooldowns and ns:RebuildCooldowns()
         if ns.RefreshAlerts then pcall(ns.RefreshAlerts) end
         if found and not alerts then
-            msg:SetText(format("|cff66dd77%d of %d cooldown spells found.|r", found, #ns.db.cooldownSpells))
+            msg:SetText(ns:SignalHex("good") .. format(ns:Tr("%d of %d cooldown spells found."), found, #ns.db.cooldownSpells) .. "|r")
         elseif found then
-            msg:SetText("|cff66dd77" .. format(ns:Tr("%d of %d cooldown spells found."), found, #ns.db.cooldownSpells) .. "|r  " .. format(ns:Tr(#ns.db.alertBuffs == 1 and "%d buff alert set." or "%d buff alerts set."), #ns.db.alertBuffs))
+            msg:SetText(ns:SignalHex("good") .. format(ns:Tr("%d of %d cooldown spells found."), found, #ns.db.cooldownSpells) .. "|r  " .. format(ns:Tr(#ns.db.alertBuffs == 1 and "%d buff alert set." or "%d buff alerts set."), #ns.db.alertBuffs))
         else
             msg:SetText("|cffffd100" .. ns:Tr("Saved. Turn on the cooldown tracker on the Features tab and reload to see it.") .. "|r")
         end
@@ -219,7 +219,7 @@ local function BuildCombat(page)
         for i, eb in ipairs(cds) do eb:SetText(names[i] or "") end
         ns.db.cooldownSpells = Read(cds)
         local found = ns.RebuildCooldowns and ns:RebuildCooldowns()
-        msg:SetText(format("|cff66dd77" .. ns:TrN(#names, "%d ability taken from your action bars.", "%d abilities taken from your action bars.") .. "|r", #names)
+        msg:SetText(format(ns:SignalHex("good") .. ns:TrN(#names, "%d ability taken from your action bars.", "%d abilities taken from your action bars.") .. "|r", #names)
             .. (found and "" or "  " .. ns:Tr("Turn on the cooldown tracker on the Features tab and reload to see it.")))
     end)
     fill:SetPoint("LEFT", apply, "RIGHT", 10, 0)
@@ -227,7 +227,7 @@ local function BuildCombat(page)
     page.Refresh = function()
         -- the lists show what is saved now (the setup, or "Fill from action bars", may have changed it)
         for i, eb in ipairs(cds) do eb:SetText(type(ns.db.cooldownSpells) == "table" and ns.db.cooldownSpells[i] or "") end
-        if alerts then for i, eb in ipairs(alerts) do eb:SetText(type(ns.db.buffAlertList) == "table" and ns.db.buffAlertList[i] or "") end end
+        if alerts then for i, eb in ipairs(alerts) do eb:SetText(type(ns.db.alertBuffs) == "table" and ns.db.alertBuffs[i] or "") end end
         afkSlider:SetValue(tonumber(ns.db.afkDelay) or 0)
         afkFlag:SetChecked(ns.db.afkFlag)
         afkHint:SetText(ns:Tr(ns.db.afkScreen and "Idle means no moving, casting, targeting or mouse movement."
@@ -250,6 +250,7 @@ local function BuildCombat(page)
     page.contentHeight = -(ccTop - 30) + 400 + 10
     if page.area then page.area:SetContentHeight(page.contentHeight) end
     ns.combatPage = page
+    page.cooldownBoxes, page.buffBoxes = cds, alerts           -- (for the tests)
     page.Refresh()
 end
 

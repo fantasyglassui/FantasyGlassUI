@@ -1,8 +1,8 @@
 # Fantasy Glass UI
 
-A complete interface in one add-on for **WoW Forever**: unit frames, action bars, raid frames, nameplates, bags, quests, minimap, chat and every one of the game's own windows, in one look you choose from 114 glass, fantasy and runic themes.
+A complete interface in one add-on for **WoW Forever**: unit frames, action bars, raid frames, nameplates, bags, quests, minimap, chat and every one of the game's own windows, in one look you choose from 114 glass, fantasy and celestial themes.
 
-**Current version: 11.10.0.** [Download on CurseForge](https://www.curseforge.com/wow/addons/fantasy-glass-ui).
+**Current version: 11.11.0.** [Download on CurseForge](https://www.curseforge.com/wow/addons/fantasy-glass-ui).
 
 ## Start here
 - [Installation](Installation)
@@ -14,6 +14,7 @@ A complete interface in one add-on for **WoW Forever**: unit frames, action bars
 - [Commands](Commands): every `/fgui` command, in groups
 - [Keys and Shortcuts](Keys-and-Shortcuts): key bindings, the minimap button, the Tools menu and the help window
 - [Player Tooltips](Player-Tooltips): choose every line of a player's tooltip (new in 11.10.0)
+- [Getting Started: what is new in 11.11.0](Getting-Started#7-tools-at-your-fingertips): the login briefing, Skill-ups, the weekly recap and Interface size
 - [Backups and Undo](Backups-and-Undo): undo, history, backups, reset and safe mode
 
 ## Help

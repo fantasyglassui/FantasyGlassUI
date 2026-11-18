@@ -16,6 +16,13 @@ do
     local IGNORE = { LSHIFT = true, RSHIFT = true, LCTRL = true, RCTRL = true, LALT = true, RALT = true, LMETA = true, RMETA = true,
                      UNKNOWN = true, PRINTSCREEN = true }
 
+    -- What to call a button: the game's own name for its key binding ("Action Button 3", in your
+    -- language) where it has one, otherwise the frame's name.
+    local function Label(command, name)
+        local text = type(command) == "string" and _G["BINDING_NAME_" .. command]
+        if type(text) == "string" and text ~= "" then return text end
+        return tostring(name or command or "?")
+    end
     -- The binding command behind whatever the mouse is over, e.g. "ACTIONBUTTON3", and a label for it.
     local function Target()
         local f
@@ -27,10 +34,10 @@ do
         for _ = 1, 4 do                                        -- the button itself, or a piece sitting on it
             if not ns:Usable(f) then return nil end
             local name = f.GetName and f:GetName()
-            if type(f.suiCommand) == "string" then return f.suiCommand, name end      -- one of the add-on's own bar buttons
+            if type(f.suiCommand) == "string" then return f.suiCommand, Label(f.suiCommand, name) end      -- one of the add-on's own bar buttons
             if type(name) == "string" then
                 local prefix, n = name:match("^(.-)(%d+)$")
-                if prefix and COMMANDS[prefix] then return COMMANDS[prefix] .. n, name end
+                if prefix and COMMANDS[prefix] then return COMMANDS[prefix] .. n, Label(COMMANDS[prefix] .. n, name) end
             end
             f = f.GetParent and f:GetParent()
         end
@@ -61,7 +68,7 @@ do
         if binder.SetPropagateKeyboardInput then binder:SetPropagateKeyboardInput(true) end
 
         panel = CreateFrame("Frame", nil, UIParent, ns.template)
-        panel:SetSize(520, 54)
+        panel:SetSize(520, 70)
         panel:SetPoint("TOP", UIParent, "TOP", 0, -60)
         panel:SetFrameStrata("DIALOG")
         panel:SetBackdrop(ns.BACKDROP)
@@ -70,9 +77,13 @@ do
         ns:Dress(panel, true)
         local head = ns:NewText(panel, 13, "CENTER", true)
         head:SetPoint("TOP", 0, -8)
+        head:SetWidth(500)                                    -- (two lines at most, inside the panel, in any language)
+        head:SetWordWrap(true)
+        if head.SetMaxLines then head:SetMaxLines(2) end
         head:SetText(ns:Tr("Keybind mode: hover an action button and press a key. Backspace clears, Esc finishes."))
         status = ns:NewText(panel, 12, "CENTER")
         status:SetPoint("BOTTOM", 0, 9)
+        status:SetWidth(500)
 
         binder:SetScript("OnKeyDown", function(self, key)
             local command, name = Target()
@@ -88,12 +99,18 @@ do
                 return
             end
             local full = (IsAltKeyDown() and "ALT-" or "") .. (IsControlKeyDown() and "CTRL-" or "") .. (IsShiftKeyDown() and "SHIFT-" or "") .. key
+            local before = GetBindingAction and select(2, pcall(GetBindingAction, full))     -- (what the key did until now)
             local ok, done = pcall(SetBinding, full, command)
             if ok and done ~= false then
                 changed = true
-                status:SetText(format("|cff66dd77" .. ns:Tr("%s is now on %s") .. "|r", name, full))
+                if type(before) == "string" and before ~= "" and before ~= command then
+                    local was = _G["BINDING_NAME_" .. before] or before
+                    status:SetText(format(ns:SignalHex("good") .. ns:Tr("%s is now on %s (it was on %s)") .. "|r", name, full, tostring(was)))
+                else
+                    status:SetText(format(ns:SignalHex("good") .. ns:Tr("%s is now on %s") .. "|r", name, full))
+                end
             else
-                status:SetText("|cffff5555" .. format(ns:Tr("The game refused %s for that button."), full) .. "|r")
+                status:SetText(ns:SignalHex("bad") .. format(ns:Tr("The game refused %s for that button."), full) .. "|r")
             end
         end)
 

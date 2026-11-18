@@ -71,8 +71,18 @@ local function BuildNav(page, sheet, area, tabTitle)
         if b.text.SetWordWrap then b.text:SetWordWrap(false) end
         b.text:SetText(ns:Tr(item.title))
         b:SetScript("OnClick", function() Mark(i); sheet.NavSelect(i) end)
-        b:SetScript("OnEnter", function(self) if not self.picked then ns:Paint(self.text, "SetTextColor", "text") end end)
-        b:SetScript("OnLeave", function(self) if not self.picked then ns:Paint(self.text, "SetTextColor", "dim") end end)
+        b:SetScript("OnEnter", function(self)
+            if not self.picked then ns:Paint(self.text, "SetTextColor", "text") end
+            if self.text.IsTruncated and self.text:IsTruncated() then          -- (a long name in some languages: shown whole)
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:SetText(ns:Tr(item.title))
+                GameTooltip:Show()
+            end
+        end)
+        b:SetScript("OnLeave", function(self)
+            if not self.picked then ns:Paint(self.text, "SetTextColor", "dim") end
+            if GameTooltip:IsOwned(self) then GameTooltip:Hide() end
+        end)
         buttons[i] = b
     end
     sheet.nav = buttons
@@ -148,18 +158,22 @@ local function Build()
     title:SetPoint("TOPLEFT", 48, -15)
     title:SetJustifyH("LEFT")
     if title.SetWordWrap then title:SetWordWrap(false) end
-    title:SetText(ns:AccentHex() .. "Fantasy Glass|r UI  |cff9c8c6cv" .. ns.version .. "  by " .. ns.author .. "|r")
     O.frame.title = title
 
     local roleText = O.frame:CreateFontString(nil, "OVERLAY")
     ns:Font(roleText, 11)
     ns:Paint(roleText, "SetTextColor", "dim")
     roleText:SetPoint("LEFT", title, "RIGHT", 16, 0)
-    O.frame:SetScript("OnShow", function()
+    -- the heading: written again when the window opens and when the theme changes (its accent color)
+    local function Heading()
+        title:SetText(ns:AccentHex() .. "Fantasy Glass|r UI  |cff9c8c6cv" .. ns.version .. "  " .. ns:Tr("by") .. " " .. ns.author .. "|r")
         local r = ns.roles[ns.db.role]
         roleText:SetText(ns:Tr("Role:") .. " " .. (r and (ns:RoleHex(ns.db.role) .. ns:Tr(r.label) .. "|r") or ("|cffa59575" .. ns:Tr("not set") .. "|r"))
-            .. "     Profile: " .. ns:AccentHex() .. ns.profile .. "|r")
-    end)
+            .. "     " .. ns:Tr("Profile:") .. " " .. ns:AccentHex() .. ns.profile .. "|r")
+    end
+    Heading()
+    O.frame:HookScript("OnShow", Heading)
+    ns:OnTheme(function() if O.frame:IsShown() then Heading() end end)
 
     local close = ns:CreateButton(O.frame, "X", 24, 24, function() O.frame:Hide() end)
     close:SetPoint("TOPRIGHT", -10, -10)
@@ -207,7 +221,7 @@ local function Build()
     roleText:SetWordWrap(false)
     langBtn:HookScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
-        GameTooltip:AddLine("Language: " .. ns:LanguageName(ns:Language()))
+        GameTooltip:AddLine(ns:Tr("Language") .. ": " .. ns:LanguageName(ns:Language()))
         GameTooltip:AddLine(ns:Tr("The language Fantasy Glass UI's own labels are shown in. A change takes effect when the interface reloads."), 1, 1, 1, true)
         GameTooltip:AddLine(ns:Tr("Names of items, spells and places come from the game, in the game's language."), 0.6, 0.6, 0.6, true)
         GameTooltip:Show()
@@ -286,20 +300,20 @@ local function Build()
     O.frame.note:SetText("|cffffd100" .. ns:Tr("Reload to apply these changes.") .. "|r")
     O.frame.note:Hide()
 
-    local role = ns:CreateButton(O.frame, "Run Setup Again", 132, 24, function() O.frame:Hide(); ns:ShowSetup() end)
+    local role = ns:CreateButton(O.frame, "Run setup again", 132, 24, function() O.frame:Hide(); ns:ShowSetup() end)
     role:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:SetText(ns:Tr("Run Setup Again"))
+        GameTooltip:SetText(ns:Tr("Run setup again"))
         GameTooltip:AddLine(ns:Tr("Opens the first-run setup: role, look, lettering and portraits, layout. It starts from your current choices and changes nothing until you click."), 1, 1, 1, true)
         GameTooltip:Show()
     end)
     role:HookScript("OnLeave", function() GameTooltip:Hide() end)
     role:SetPoint("BOTTOMLEFT", 20, 14)
-    local report = ns:CreateButton(O.frame, "Report a Problem", 132, 24, function() ns:ProblemReport() end)
+    local report = ns:CreateButton(O.frame, "Report a problem", 132, 24, function() ns:ProblemReport() end)
     report:SetPoint("LEFT", role, "RIGHT", 8, 0)
     report:HookScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:SetText(ns:Tr("Report a Problem"))
+        GameTooltip:SetText(ns:Tr("Report a problem"))
         GameTooltip:AddLine(ns:Tr("Gathers what is needed to look into a problem - what is running, any errors, the settings you changed and your other add-ons - into text you can copy. Nothing is sent by itself: add-ons have no access to the internet."), 1, 1, 1, true)
         if ns:ReportLink() then GameTooltip:AddLine(ns:Tr("The window shows where to send it."), 0.6, 0.6, 0.6, true) end
         GameTooltip:Show()

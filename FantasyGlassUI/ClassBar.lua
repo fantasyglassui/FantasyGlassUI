@@ -50,7 +50,7 @@ ns:NewModule("classBar", function()
         EVOKER  = { PT.Essence or 19,       { 0.35, 0.85, 0.80 } },
     }
     local res = RESOURCE[class]
-    local pips, ticks, lastMax
+    local pips, ticks, lastMax, lastW
     if res then
         pips = Bar(6)
         pips:SetPoint("TOPLEFT"); pips:SetPoint("TOPRIGHT")
@@ -61,11 +61,11 @@ ns:NewModule("classBar", function()
         if not pips then return false end
         local max = Number(UnitPowerMax, "player", res[1])
         if not max or max < 1 or max > 10 then pips:Hide(); return false end     -- this game has no such resource
-        if max ~= lastMax then                               -- (re)draw the dividers between segments
-            lastMax = max
+        local w = host:GetWidth()
+        if type(w) ~= "number" or w <= 0 then w = 220 end
+        if max ~= lastMax or w ~= lastW then                 -- (re)draw the dividers: a new maximum, or the frame was resized
+            lastMax, lastW = max, w
             pips:SetMinMaxValues(0, max)
-            local w = host:GetWidth()
-            if type(w) ~= "number" or w <= 0 then w = 220 end
             for i = 1, math.max(max - 1, #ticks) do
                 local t = ticks[i]
                 if not t then

@@ -96,7 +96,7 @@ local function SkinButton(btn)
     bg:SetTexture(ns.FLAT)
     ns:Paint(bg, "SetVertexColor", "bg2", 0.85)
     ns:AddBorder(btn, 0, 0, 0, 1)
-    ns:RunicButtonEdge(btn)                                  -- (Runic themes: a carved edge)
+    ns:CelestialButtonEdge(btn)                              -- (Celestial themes: a fine frame with star points)
 
     if btn.GetHighlightTexture then ns:ColorTex(btn:GetHighlightTexture(), 1, 1, 1, 0.25) end
     if btn.GetPushedTexture then ns:ColorTex(btn:GetPushedTexture(), 1, 0.85, 0.2, 0.35) end
@@ -166,19 +166,6 @@ ns:NewModule("actionBars", function()
                 ns:Paint(panel, "SetBackdropColor", "bg", 0.75)
                 ns:Paint(panel, "SetBackdropBorderColor", "border", 1)
                 ns:Dress(panel)
-                if ns.style == "RUNIC" then                  -- runes cut along the foot of the bar, lit from within
-                    local strip = ns:RuneStrip(panel, false, 200, 8, 0.45, "ARTWORK")
-                    strip:ClearAllPoints()
-                    strip:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", 6, 1)
-                    strip:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -6, 1)
-                    panel.suiRunes = strip
-                    panel:HookScript("OnSizeChanged", function(self, w)
-                        if type(w) == "number" and not ns:IsSecret(w) and w > 0 then
-                            local reps = math.max(0.25, (w - 12) / (8 * 16))
-                            self.suiRunes:SetTexCoord(0, reps, 0, 1)
-                        end
-                    end)
-                end
                 panels[#panels + 1] = panel
             end
         end
@@ -364,16 +351,18 @@ ns:NewModule("microMenu", function()
             end
         end
     end
-    if not hasGameMenu then Row(nil, GameMenu).label = "Game Menu" end        -- always offer it
-    Row(nil, function() ns:ToggleKeybindMode() end).label = "Keybind Mode"
+    if not hasGameMenu then Row(nil, GameMenu).label = "Game menu" end        -- always offer it
+    Row(nil, function() ns:ToggleKeybindMode() end).label = "Keybind mode"
     Row(nil, function() if ToggleAllBags then ToggleAllBags() end end).label = "Bags"
     Row(nil, function() if ns.ToggleToolsMenu then ns:ToggleToolsMenu() end end).label = "Tools"
-    Row(nil, function() ns:ToggleConfig() end).label = ns:AccentHex() .. "Fantasy Glass UI options|r"
+    local optionsRow = Row(nil, function() ns:ToggleConfig() end)
+    optionsRow.label, optionsRow.accent = "Fantasy Glass UI options", true
     list:SetSize(182, #rows * 20 + 16)
 
     local function Relabel()                                  -- names can change (level-ups unlock buttons)
         for _, r in ipairs(rows) do
-            r.text:SetText(r.label or (r.target and Label(r.target)) or "?")
+            local text = (r.label and ns:Tr(r.label)) or (r.target and Label(r.target)) or "?"
+            r.text:SetText(r.accent and (ns:AccentHex() .. text .. "|r") or text)      -- (the accent as it is now)
         end
     end
     Relabel()
@@ -403,7 +392,7 @@ ns:NewModule("microMenu", function()
     closer:RegisterEvent("PLAYER_REGEN_DISABLED")
     closer:SetScript("OnEvent", ns:Guard("ActionBars events", function() list:Hide(); list:ClearAllPoints() end))
 
-    ns:RegisterMovable(btn, "menu", "Menu Button")
+    ns:RegisterMovable(btn, "menu", "Menu button")
 
     -- Action bar size. At 100 the bars are left exactly as the game (and its Edit Mode) sized them.
     -- Any other value scales every bar; the game re-applies its own size now and then, so ours is put
@@ -437,9 +426,10 @@ ns:NewModule("microMenu", function()
 
     -- Movable bars: each bar is adopted (see ns:AdoptGameFrame in Skin.lua) and gets a handle in move mode.
     local LABELS = {
-        MainActionBar = "Action Bar", MultiBarBottomLeft = "Action Bar 2", MultiBarBottomRight = "Action Bar 3",
-        MultiBarRight = "Action Bar 4", MultiBarLeft = "Action Bar 5", MultiBar5 = "Action Bar 6",
-        MultiBar6 = "Action Bar 7", MultiBar7 = "Action Bar 8", StanceBar = "Stance Bar", PetActionBar = "Pet Bar",
+        -- (the same names as the add-on's own bars: BarEngine.lua)
+        MainActionBar = "Bar 1", MultiBarBottomLeft = "Bar 2", MultiBarBottomRight = "Bar 3",
+        MultiBarRight = "Bar 4", MultiBarLeft = "Bar 5", MultiBar5 = "Bar 6",
+        MultiBar6 = "Bar 7", MultiBar7 = "Bar 8", StanceBar = "Stance bar", PetActionBar = "Pet bar",
     }
     local infos = {}
     for _, def in ipairs(BARS) do
@@ -545,9 +535,9 @@ end
 -- The layout in use, if it is one of your own. Returns: everything the game holds, the layout; or nil and why.
 function ns:EditModeActive()
     local E = C_EditMode
-    if not (type(E) == "table" and type(E.GetLayouts) == "function" and type(E.SaveLayouts) == "function") then return nil, "this game client has no Edit Mode an add-on can use" end
+    if not (type(E) == "table" and type(E.GetLayouts) == "function" and type(E.SaveLayouts) == "function") then return nil, "This game client has no Edit Mode an add-on can use." end
     local ok, info = pcall(E.GetLayouts)
-    if not (ok and type(info) == "table" and type(info.layouts) == "table" and type(info.activeLayout) == "number") then return nil, "the game did not hand over its Edit Mode layouts" end
+    if not (ok and type(info) == "table" and type(info.layouts) == "table" and type(info.activeLayout) == "number") then return nil, "The game did not hand over its Edit Mode layouts." end
     local presets = 0
     local M = _G.EditModePresetLayoutManager
     if type(M) == "table" and type(M.GetCopyOfPresetLayouts) == "function" then
@@ -562,12 +552,12 @@ ns.PRESET_NOTE = "You are using one of the game's own Edit Mode layouts, which c
 function ns:BarLayoutRead(bar)
     if type(bar) == "table" and bar.suiEngine and ns.EngineLayoutRead then return ns:EngineLayoutRead(bar) end      -- one of our own bars
     local enums = EditEnums()
-    if not enums then return nil, "this game client has no Edit Mode an add-on can use" end
-    if type(bar) ~= "table" or type(bar.systemIndex) ~= "number" then return nil, "this bar is not one the Edit Mode lays out" end
+    if not enums then return nil, "This game client has no Edit Mode an add-on can use." end
+    if type(bar) ~= "table" or type(bar.systemIndex) ~= "number" then return nil, "This bar is not one the Edit Mode lays out." end
     local info, layout = ns:EditModeActive()
     if not info then return nil, layout end
     local entry = ns.EditModeFind(layout, Enum.EditModeSystem.ActionBar, bar.systemIndex)
-    if not entry then return nil, "this bar is not in your Edit Mode layout" end
+    if not entry then return nil, "This bar is not in your Edit Mode layout." end
     local out = {}
     for name, setting in pairs(enums) do out[name] = ns.EditModeGet(entry, setting) end
     out.size = ns.BarSizeFromRaw(out.size)
@@ -577,14 +567,14 @@ end
 -- values: { rows, icons, size (percent), padding, vertical (0 across, 1 down) }. Returns true, or nil and why.
 function ns:BarLayoutWrite(bar, values)
     if type(bar) == "table" and bar.suiEngine and ns.EngineLayoutWrite then return ns:EngineLayoutWrite(bar, values) end
-    if InCombatLockdown() then return nil, "not in combat" end
+    if InCombatLockdown() then return nil, "Not during a fight." end
     local enums = EditEnums()
-    if not enums then return nil, "this game client has no Edit Mode an add-on can use" end
-    if type(bar) ~= "table" or type(bar.systemIndex) ~= "number" then return nil, "this bar is not one the Edit Mode lays out" end
+    if not enums then return nil, "This game client has no Edit Mode an add-on can use." end
+    if type(bar) ~= "table" or type(bar.systemIndex) ~= "number" then return nil, "This bar is not one the Edit Mode lays out." end
     local info, layout = ns:EditModeActive()
     if not info then return nil, layout end
     local entry = ns.EditModeFind(layout, Enum.EditModeSystem.ActionBar, bar.systemIndex)
-    if not entry then return nil, "this bar is not in your Edit Mode layout" end
+    if not entry then return nil, "This bar is not in your Edit Mode layout." end
     local percent = (tonumber(ns.EditModeGet(entry, enums.size)) or 0) > 20
     local any = false
     for name, setting in pairs(enums) do

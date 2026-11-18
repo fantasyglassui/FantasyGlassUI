@@ -38,23 +38,7 @@ ns:NewModule("minimap", function()
     end
     PlaceMap()
     Minimap:SetMaskTexture("Interface\\ChatFrame\\ChatFrameBackground")
-    if ns.style == "RUNIC" then                              -- Runic: the map set in a band of carved runes
-        local edge = CreateFrame("Frame", nil, Minimap)
-        edge:SetAllPoints()
-        edge:SetFrameLevel((Minimap:GetFrameLevel() or 1) + 3)
-        local function Strip(vertical, a1, a2, x, y)
-            local s = ns:RuneStrip(edge, vertical, W, 11, 0.7)
-            s:ClearAllPoints()
-            s:SetPoint(a1, Minimap, a2, x, y)
-            return s
-        end
-        edge.top = Strip(false, "TOP", "TOP", 0, 0)
-        edge.bottom = Strip(false, "BOTTOM", "BOTTOM", 0, 0)
-        edge.left = Strip(true, "LEFT", "LEFT", 0, 0)
-        edge.right = Strip(true, "RIGHT", "RIGHT", 0, 0)
-        ns:Corners(edge, Minimap, 18, 0)                     -- (a rune-stud at each corner)
-        ns.minimapRunes = edge
-    end
+    if ns.style == "CELESTIAL" then ns:CelestialMinimap(W) end      -- (Celestial: the map as a star chart)
     function GetMinimapShape() return "SQUARE" end
     if ns.db.minimapRound and ns.ApplyMinimapShape then ns:After(0, function() pcall(ns.ApplyMinimapShape, ns) end) end
 
@@ -173,3 +157,83 @@ ns:NewModule("minimap", function()
 
     ns:RegisterMovable(box, "minimap", "Minimap")
 end)
+
+------------------------------------------------------------------------------------------
+-- Celestial (11.11): the minimap as a star chart. Square (as it comes): degree marks along its edges,
+-- a star point at north, east, south and west (north the largest), and the sun by day or the moon by
+-- night riding along the top edge by the game's clock. Round (the minimap's "round" switch): a still
+-- ring of degree marks with the four directions, an outer orbit that turns slowly (held still with
+-- "Reduce motion"), and the sun or moon on it: noon at the top, midnight at the foot.
+------------------------------------------------------------------------------------------
+local function GameHours()
+    local ok, h, m = pcall(GetGameTime)
+    if ok and type(h) == "number" and type(m) == "number" and not ns:IsSecret(h) then return h + m / 60 end
+    local ok2, t = pcall(date, "*t")
+    if ok2 and type(t) == "table" then return (tonumber(t.hour) or 12) + (tonumber(t.min) or 0) / 60 end
+    return 12
+end
+ns.MinimapGameHours = GameHours
+-- Where the sun or moon sits, for a time of day: on the square's top edge (0 left .. 1 right, the
+-- day from 6:00 to 18:00 and the night from 18:00 to 6:00), and on the round ring (radians, 0 at
+-- the top, clockwise).
+function ns.SkyBody(hours)
+    hours = (tonumber(hours) or 12) % 24
+    local day = hours >= 6 and hours < 18
+    return day, ((hours - 6) % 12) / 12, ((hours - 12) / 24) * 2 * math.pi
+end
+function ns:CelestialMinimap(W)
+    if ns.minimapRunes then return ns.minimapRunes end
+    local edge = CreateFrame("Frame", nil, Minimap)
+    edge:SetAllPoints()
+    edge:SetFrameLevel((Minimap:GetFrameLevel() or 1) + 3)
+    local THICK, REPEAT = 12, 192                           -- (the marks drawn 12 high; one run of them every 192 across)
+    local function Ticks(side)
+        local t = edge:CreateTexture(nil, "OVERLAY")
+        if not pcall(t.SetTexture, t, ns.MEDIA .. "ticks_celestial.tga", "REPEAT", "REPEAT") then t:SetTexture(ns.MEDIA .. "ticks_celestial.tga") end
+        if t.SetBlendMode then t:SetBlendMode("ADD") end
+        ns:Paint(t, "SetVertexColor", "@accent", 0.75)
+        local reps = W / REPEAT
+        if side == "TOP" or side == "BOTTOM" then
+            t:SetHeight(THICK)
+            t:SetPoint(side .. "LEFT"); t:SetPoint(side .. "RIGHT")
+            if side == "TOP" then t:SetTexCoord(0, reps, 0, 1) else t:SetTexCoord(0, reps, 1, 0) end      -- (the marks face inward)
+        else
+            t:SetWidth(THICK)
+            t:SetPoint("TOP" .. side); t:SetPoint("BOTTOM" .. side)
+            -- (the strip turned on its side: corners in the order upper-left, lower-left, upper-right, lower-right)
+            if side == "LEFT" then t:SetTexCoord(0, 0, reps, 0, 0, 1, reps, 1) else t:SetTexCoord(0, 1, reps, 1, 0, 0, reps, 0) end
+        end
+        t.sui = true
+        return t
+    end
+    for _, side in ipairs({ "TOP", "BOTTOM", "LEFT", "RIGHT" }) do Ticks(side) end
+    for k, def in ipairs({ { "TOP", 26 }, { "RIGHT", 16 }, { "BOTTOM", 16 }, { "LEFT", 16 } }) do
+        local star = ns:Sparkle(edge, Minimap, def[1], def[2])
+        if ns.SkyBreathe then ns.SkyBreathe(star, 0.25, 1, 1.1 + k * 0.4) end     -- (each twinkling in its own time)
+        if ns.SkyLoop then ns:SkyLoop(star, "Rotation", 8 + k * 2, function(r) r:SetDegrees((k % 2 == 0) and 360 or -360) end, false) end
+    end
+    local body = edge:CreateTexture(nil, "OVERLAY", nil, 1)
+    body:SetSize(20, 20)
+    if body.SetBlendMode then body:SetBlendMode("ADD") end
+    body.sui = true
+    edge.body = body
+    if ns.SkyLoop then                                       -- the sun's rays turning; the moon's light breathing
+        edge.spin = ns:SkyLoop(body, "Rotation", 40, function(r) r:SetDegrees(-360) end, false)
+    end
+    local function Place()
+        local day, along = ns.SkyBody(GameHours())
+        body:SetTexture(ns.MEDIA .. (day and "sun_celestial.tga" or "moon_celestial.tga"))
+        if day then body:SetVertexColor(1, 0.85, 0.5, 1) else local lt = ns.theme.light; body:SetVertexColor(lt[1], lt[2], lt[3], 1) end
+        body:ClearAllPoints()
+        body:SetPoint("TOP", Minimap, "TOPLEFT", 14 + along * (W - 28), -(THICK + 1))   -- (inside the top edge, under the marks: clear of the zone's name)
+        if edge.spin then                                     -- (only the sun turns; a turning crescent looks wrong)
+            if day and ns:Motion() then if not edge.spin:IsPlaying() then edge.spin:Play() end else edge.spin:Stop() end
+        end
+        edge.day, edge.along = day, along
+    end
+    Place()
+    ns:Every(20, "Minimap sky", function() if edge:IsShown() then Place() end; if ns.CelestialRoundTick then ns:CelestialRoundTick() end end)
+    edge.Place = Place
+    ns.minimapRunes = edge                                   -- (the square map's frame: hidden when the map is round)
+    return edge
+end

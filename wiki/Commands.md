@@ -56,6 +56,8 @@ Mistype one and the add-on suggests the nearest command instead.
 
 | Command | What it does |
 |---|---|
+| `/fgui recap` | your last week on every character: gold, time played, levels, raids and dungeons, best loot ("this": this week so far) |
+| `/fgui briefing` | what is waiting for you: crafts ready, mail on your other characters, lockouts reset, rested experience, jobs left |
 | `/fgui alts` | your characters, with level and gold, and the total |
 | `/fgui main` | make this character your main: new characters copy its setup |
 | `/fgui session` | this session's statistics and time played, with your last session |
@@ -63,6 +65,7 @@ Mistype one and the add-on suggests the nearest command instead.
 | `/fgui checklist` | your daily and weekly jobs for each character; /fgui checklist add daily <job> |
 | `/fgui lockouts` | which raids and dungeons each character is saved to |
 | `/fgui profcd` | once-a-day crafts on all your characters, and when each is ready |
+| `/fgui skillups` | with a profession window open: the recipes that still give skill points, best first, with what each needs |
 | `/fgui crafts <search>` | what all your characters can craft; search their recipes |
 | `/fgui reps` | reputations and currencies on all your characters; click one to pin it |
 | `/fgui spec` | change talent set |
@@ -134,6 +137,8 @@ Mistype one and the add-on suggests the nearest command instead.
 
 | Command | What it does |
 |---|---|
+| `/fgui textsize 120` | all the add-on's lettering at that size, in percent (70 to 150; "reset" is as it came) |
+| `/fgui uisize 90` | the whole interface at that size, in percent of the game's (50 to 150; "reset" is as it came) |
 | `/fgui backup` | the backups of your settings, made before each update, once a day and before a reset; click one to see how to put it back |
 | `/fgui history` | what you changed in this profile, and when; click a change to undo it |
 | `/fgui reset` | put this profile back to how it came (type it twice; a backup is kept) |
@@ -157,4 +162,4 @@ Mistype one and the add-on suggests the nearest command instead.
 | `/fgui tree` | how the window under your mouse is built (for restyling requests) |
 | `/fgui strings` | every label shown so far, laid out for translators |
 
-Other ways in: the **Tools** button on the menu bar opens a button for every tool window, in groups; Shift-click the minimap button opens it too. The **Tools** tab in `/fgui` lists them all with your lists and rules. See [Keys and Shortcuts](Keys-and-Shortcuts) for the key bindings.
+Other ways in: the **Tools** button on the menu bar opens a button for every tool window, in groups; Shift-click the minimap button opens it too. The **Tools** tab in `/fgui` lists them all with your lists and rules. See [Keys and Shortcuts](Keys-and-Shortcuts.md) for the key bindings.

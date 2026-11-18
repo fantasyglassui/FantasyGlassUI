@@ -122,7 +122,7 @@ ns:NewModule("questSounds", function()
         local what = Scan()
         if what and PlaySound and GetTime() - lastSound > 1 then
             lastSound = GetTime()
-            pcall(PlaySound, what == "complete" and 619 or 618, "Master")      -- the game's "quest completed" and "quest update" sounds
+            pcall(PlaySound, what == "complete" and 619 or 618, "SFX")         -- the game's "quest completed" and "quest update" sounds (as loud as your sound effects)
         end
     end)
 end)

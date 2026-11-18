@@ -358,7 +358,7 @@ function ns:GuideShowPanel()
             def[1]:HookScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine(ns:Tr(def[2]), 1, 1, 1); GameTooltip:Show() end)
             def[1]:HookScript("OnLeave", function() GameTooltip:Hide() end)
         end
-        local entry = ns:RegisterMovable(panel, "questGuide", "Quest Guide")
+        local entry = ns:RegisterMovable(panel, "questGuide", "Quest guide")
         if type(entry) == "table" then entry.offPage = true end
     end
     panel:Show()
@@ -514,7 +514,7 @@ function ns:GuideEdit(name)
         local function Save(follow)
             local guide, problems = w:Read()
             local ok, why = ns:GuideSave(guide)
-            if not ok then w.status:SetText("|cffff5555" .. ns:Tr(why) .. "|r"); return false end
+            if not ok then w.status:SetText(ns:SignalHex("bad") .. ns:Tr(why) .. "|r"); return false end
             w.name = guide.name
             w.status:SetText((#problems > 0) and ("|cffffd100" .. problems[1] .. ((#problems > 1) and format(" (+%d)", #problems - 1) or "") .. "|r")
                 or format(ns:Tr("Saved: %d steps."), #guide.steps))

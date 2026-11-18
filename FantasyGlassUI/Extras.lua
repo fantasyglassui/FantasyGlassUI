@@ -534,7 +534,7 @@ ns:NewModule("rareAlert", function()
         if count > 300 then seen, count = {}, 0 end
         seen[id], count = true, count + 1
         local label = ns:Tr(KIND_LABEL[ns.VignetteKind(info.atlasName)])
-        ns:PrintRaw("|cff33ccffFantasy Glass UI|r: " .. label .. " " .. ns:Tr("nearby") .. ": |cffffd100" .. info.name .. "|r")
+        ns:PrintRaw(label .. " " .. ns:Tr("nearby") .. ": |cffffd100" .. info.name .. "|r")
         if ns.Toast and ns.db.toasts then pcall(ns.Toast, ns, nil, label, info.name, "!") end
         if ns.RareSighted then pcall(ns.RareSighted, ns, id, info) end      -- (remembered for the map: Journey.lua)
         if PlaySound then pcall(PlaySound, (SOUNDKIT and SOUNDKIT.RAID_WARNING) or 8959, "Master") end

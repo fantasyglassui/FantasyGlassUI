@@ -157,7 +157,7 @@ end)
 -- again, it gets you off. Bind it in the game's key bindings, or type /fgui mount.
 ------------------------------------------------------------------------------------------
 function ns:MountUp()
-    if InCombatLockdown() then ns:Print("Not in combat."); return false end
+    if InCombatLockdown() then ns:Print("Not during a fight."); return false end
     if ns.Yes(IsMounted and IsMounted()) then
         if Dismount then pcall(Dismount) end
         return "dismounted"
@@ -279,7 +279,7 @@ ns:NewModule("openAll", function()
     for _, e in ipairs({ "BAG_UPDATE_DELAYED", "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_ENABLED" }) do pcall(ev.RegisterEvent, ev, e) end
     ev:SetScript("OnEvent", ns:Guard("QuickKeys events", function() dirty = true end))
     ns:Every(0.5, "Open-all button", function() if dirty and not InCombatLockdown() then pcall(Assign) end end)
-    local entry = ns:RegisterMovable(row, "openAll", "Open All")
+    local entry = ns:RegisterMovable(row, "openAll", "Open all")
     if type(entry) == "table" then entry.offPage = true end        -- (scaled from its own right-click menu in move mode)
 end)
 

@@ -2,7 +2,7 @@
 
 ## Something looks wrong or an error appears
 1. Type `/fgui check` for a report on what is running.
-2. Open `/fgui` and press **Report a Problem**: it gathers what is needed into text you can copy.
+2. Open `/fgui` and press **Report a problem**: it gathers what is needed into text you can copy.
 3. [Open an issue](../../../issues/new/choose) and paste it in.
 
 ## I can't get into the options / the screen is broken

@@ -19,10 +19,10 @@ ns.CLASS_REAGENTS = {
     WARLOCK = { 6265 },                 -- Soul Shard
     ROGUE = { 5140, 5530 },             -- Flash Powder, Blinding Powder
 }
-local GOOD, BAD, DIM = "|cff33ff66", "|cffff7766", "|cff9aa4b4"
+local DIM = "|cff9aa4b4"    -- (good and bad use ns:SignalHex, so the color-blind setting counts)
 local function ItemName(id)
     local n = ns.GetItemInfo and ns:GetItemInfo(id)
-    return (type(n) == "string" and not Secret(n)) and n or ("item " .. id)
+    return (type(n) == "string" and not Secret(n)) and n or (ns:Tr("Item") .. " " .. id)
 end
 local function Count(id)
     local fn = (C_Item and C_Item.GetItemCount) or GetItemCount
@@ -104,8 +104,8 @@ function ns:ReadyMe()
     local lines, short = {}, 0
     for _, l in ipairs(ns.ReadyMeLines(ns:ReadyMeFacts())) do
         local right
-        if l.ok == true then right = GOOD .. (l.text or ns:Tr("yes")) .. "|r"
-        elseif l.ok == false then right = BAD .. (l.text or ns:Tr("missing")) .. "|r"; short = short + 1
+        if l.ok == true then right = ns:SignalHex("good") .. (l.text or ns:Tr("yes")) .. "|r"
+        elseif l.ok == false then right = ns:SignalHex("bad") .. (l.text or ns:Tr("missing")) .. "|r"; short = short + 1
         else right = DIM .. ns:Tr(l.text or "?") .. "|r" end
         lines[#lines + 1] = { left = ns:Tr(l.label), right = right }
     end
@@ -182,7 +182,7 @@ local function Panel()
     if panel.text.SetJustifyV then panel.text:SetJustifyV("TOP") end
     local close = ns:CreateButton(panel, "X", 20, 18, function() panel:Hide() end)
     close:SetPoint("TOPRIGHT", -6, -6)
-    local edit = ns:CreateButton(panel, "Edit", 50, 18, function() ns:EditBossNote(panel.boss) end)
+    local edit = ns:SizeToLabel(ns:CreateButton(panel, "Edit", 200, 18, function() ns:EditBossNote(panel.boss) end), 50)
     ns:ButtonTip(edit, "Change this boss's note. It shows again each time you fight the boss.")
     edit:SetPoint("RIGHT", close, "LEFT", -4, 0)
     panel:Hide()
@@ -241,6 +241,20 @@ function ns:EditBossNote(name)
         box:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
         scroll:SetScrollChild(box)
         w.box = box
+        -- the writing area looks like the add-on's other text boxes, and a click anywhere in it puts the
+        -- cursor in the note (an empty note is only one line tall, so it would be hard to hit)
+        local field = CreateFrame("Frame", nil, w, ns.template)
+        field:SetPoint("TOPLEFT", scroll, "TOPLEFT", -4, 4)
+        field:SetPoint("BOTTOMRIGHT", scroll, "BOTTOMRIGHT", 4, -4)
+        field:SetFrameLevel(math.max(0, (scroll:GetFrameLevel() or 1) - 1))
+        if field.SetBackdrop then
+            field:SetBackdrop(ns.BACKDROP)
+            ns:Paint(field, "SetBackdropColor", "field", 1)
+            ns:Paint(field, "SetBackdropBorderColor", "@border", 1)
+        end
+        box:SetHeight(180)
+        scroll:EnableMouse(true)
+        scroll:SetScript("OnMouseDown", function() box:SetFocus() end)
         local save = ns:CreateButton(w, "Save", 80, 22, function()
             ns:SetBossNote(w.boss, box:GetText())
             ns:Print("Note for %s saved.", tostring(w.boss))
@@ -260,6 +274,7 @@ function ns:EditBossNote(name)
     editor.title:SetText(format(ns:Tr("Note for %s"), name))
     editor.box:SetText(mine and mine.text or "")
     editor:Show()
+    editor.box:SetFocus()                                    -- (ready to type)
     return editor
 end
 function ns:SendBossNote(name)

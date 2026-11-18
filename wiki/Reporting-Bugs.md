@@ -3,7 +3,7 @@
 Use the repository's **Issues** tab: [new issue](https://github.com/fantasyglassui/FantasyGlassUI/issues/new/choose). There are two forms, one for bugs and one for ideas.
 
 For a bug, the most useful things are:
-- the report from **Report a Problem** (open `/fgui`, press the button, copy the text);
+- the report from **Report a problem** (open `/fgui`, press the button, copy the text);
 - what you did just before it happened;
 - a screenshot, if something looks wrong.
 

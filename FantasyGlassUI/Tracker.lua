@@ -3,7 +3,7 @@ local _, ns = ...
 ns:NewModule("questTracker", function()
     local QL = C_QuestLog
     if not (QL and QL.GetNumQuestWatches and QL.GetQuestIDForQuestWatchIndex and QL.GetQuestObjectives) then
-        ns:Print("Quest tracker: this client lacks the C_QuestLog API, keeping Blizzard's tracker.")
+        ns:Print("This game client does not hand its quests to add-ons, so the game's own quest tracker stays.")
         return
     end
 
@@ -123,7 +123,7 @@ ns:NewModule("questTracker", function()
     end)
 
     local function QuestColor(level, complete)
-        if complete then return 0.40, 1.00, 0.50 end
+        if complete then return ns:Signal("good") end
         if GetQuestDifficultyColor and level then
             local c = GetQuestDifficultyColor(level)
             if c then return c.r, c.g, c.b end
@@ -182,7 +182,7 @@ ns:NewModule("questTracker", function()
                 t:SetPoint("TOPLEFT", tracker, "TOPLEFT", indent, y)
                 t:SetWidth(W + 8 - indent)
                 t.text:SetWidth(W + 8 - indent)
-                local title = QL.GetTitleForQuestID(id) or ("Quest " .. id)
+                local title = QL.GetTitleForQuestID(id) or format(ns:Tr("Quest %d"), id)
                 local lvl = info and info.questLevel
                 t.text:SetTextColor(QuestColor(lvl, complete))
                 local reward = ""
@@ -203,7 +203,7 @@ ns:NewModule("questTracker", function()
                 for _, o in ipairs(objs or {}) do
                     local text = o.text
                     if o.type == "progressbar" and GetQuestProgressBarPercent then
-                        text = (text and text ~= "" and text or "Progress") .. format(" %d%%", GetQuestProgressBarPercent(id) or 0)
+                        text = (text and text ~= "" and text or ns:Tr("Progress")) .. format(" %d%%", GetQuestProgressBarPercent(id) or 0)
                     end
                     if text and text ~= "" then
                         li = li + 1
@@ -212,7 +212,7 @@ ns:NewModule("questTracker", function()
                         fs:ClearAllPoints()
                         fs:SetPoint("TOPLEFT", tracker, "TOPLEFT", indent + 8, y)
                         fs:SetWidth(W - indent - 4)
-                        if o.finished then fs:SetTextColor(0.40, 0.85, 0.50) else ns:Paint(fs, "SetTextColor", "text") end
+                        if o.finished then fs:SetTextColor(ns:Signal("good")) else ns:Paint(fs, "SetTextColor", "text") end
                         fs:SetText("- " .. text)
                         fs:Show()
                         y = y - fs:GetStringHeight() - 1
@@ -224,8 +224,8 @@ ns:NewModule("questTracker", function()
                     fs:ClearAllPoints()
                     fs:SetPoint("TOPLEFT", tracker, "TOPLEFT", indent + 8, y)
                     fs:SetWidth(W - indent - 4)
-                    fs:SetTextColor(0.40, 0.85, 0.50)
-                    fs:SetText("- Ready to turn in")
+                    fs:SetTextColor(ns:Signal("good"))
+                    fs:SetText("- " .. ns:Tr("Ready to turn in"))
                     fs:Show()
                     y = y - fs:GetStringHeight() - 1
                 end
@@ -274,5 +274,5 @@ ns:NewModule("questTracker", function()
     -- (a managed frame: never Hide() it or hook it; make it see-through and unclickable instead)
     ns:Silence(blizz)
 
-    ns:RegisterMovable(tracker, "tracker", "Quest Tracker")
+    ns:RegisterMovable(tracker, "tracker", "Quest tracker")
 end)

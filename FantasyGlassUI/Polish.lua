@@ -244,21 +244,27 @@ ns:NewModule("windows", function()
     -- The game writes quest text in dark ink on parchment, and puts the ink color back every time it
     -- shows a page. So: the parchment goes, and while the dialog is open every piece of dark lettering
     -- in it is relit to our text color (lettering that is already light is left alone).
-    local function Relight(frame, depth)
-        if depth > 6 or type(frame) ~= "table" or (frame.IsForbidden and frame:IsForbidden()) then return end
-        if frame.GetRegions then
-            for _, r in ipairs({ frame:GetRegions() }) do
-                if type(r) == "table" and r.GetObjectType and r:GetObjectType() == "FontString" then
-                    local cr, cg, cb = r:GetTextColor()
-                    if type(cr) == "number" and not ns:IsSecret(cr) and (cr * 0.30 + cg * 0.59 + cb * 0.11) < 0.42 then
-                        ns:Paint(r, "SetTextColor", "text")
-                    end
+    -- (this runs ten times a second while the dialog is open, so the regions and children are walked
+    -- straight off the calls' results rather than gathered into new tables)
+    local Relight
+    local function RelightRegions(...)
+        for i = 1, select("#", ...) do
+            local r = select(i, ...)
+            if type(r) == "table" and r.GetObjectType and r:GetObjectType() == "FontString" then
+                local cr, cg, cb = r:GetTextColor()
+                if type(cr) == "number" and not ns:IsSecret(cr) and (cr * 0.30 + cg * 0.59 + cb * 0.11) < 0.42 then
+                    ns:Paint(r, "SetTextColor", "text")
                 end
             end
         end
-        if frame.GetChildren then
-            for _, child in ipairs({ frame:GetChildren() }) do Relight(child, depth + 1) end
-        end
+    end
+    local function RelightKids(depth, ...)
+        for i = 1, select("#", ...) do Relight((select(i, ...)), depth) end
+    end
+    function Relight(frame, depth)
+        if depth > 6 or type(frame) ~= "table" or (frame.IsForbidden and frame:IsForbidden()) then return end
+        if frame.GetRegions then RelightRegions(frame:GetRegions()) end
+        if frame.GetChildren then RelightKids(depth + 1, frame:GetChildren()) end
     end
 
     local PARCHMENT = { "Bg", "MaterialTopLeft", "MaterialTopRight", "MaterialBotLeft", "MaterialBotRight", "SealMaterialBG" }
@@ -268,14 +274,13 @@ ns:NewModule("windows", function()
     end
 
     -- reward and required-item buttons: an icon with a name plate beside it
-    local function RewardButtons(holder)
-        Each(holder, function(btn, kind)
-            if kind ~= "Button" or not IsTexture(btn.NameFrame) or not Once(btn, "suiPolish") then return end
-            Hide(btn.NameFrame)
-            ItemCard(btn)
-            if IsTexture(btn.Icon) then btn.Icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
-        end)
+    local function RewardButton(btn, kind)
+        if kind ~= "Button" or not IsTexture(btn.NameFrame) or not Once(btn, "suiPolish") then return end
+        Hide(btn.NameFrame)
+        ItemCard(btn)
+        if IsTexture(btn.Icon) then btn.Icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
     end
+    local function RewardButtons(holder) Each(holder, RewardButton) end
 
     local QUEST_PANELS = { "QuestFrameRewardPanel", "QuestFrameProgressPanel", "QuestFrameDetailPanel", "QuestFrameGreetingPanel" }
     local QUEST_HEADINGS = { "QuestInfoTitleHeader", "QuestInfoObjectivesHeader", "QuestProgressTitleText", "CurrentQuestsText", "AvailableQuestsText" }
@@ -316,19 +321,20 @@ ns:NewModule("windows", function()
     end
 
     -- The quest details page beside the world map shows the same text the same way: same treatment.
+    local function MapDetails(details)
+        if type(details) ~= "table" then return end
+        if Once(details, "suiUnparchment") then Hide(details.Bg); Hide(details.SealMaterialBG) end
+        if Shown(details) then
+            Relight(details, 0)
+            Headings()
+            RewardButtons(_G.QuestInfoRewardsFrame)
+        end
+    end
     local function MapQuestDetails()
         local panel = _G.QuestMapFrame
         if not Shown(panel) then return end
-        for _, details in ipairs({ panel.DetailsFrame, type(panel.QuestsFrame) == "table" and panel.QuestsFrame.DetailsFrame or nil }) do
-            if type(details) == "table" then
-                if Once(details, "suiUnparchment") then Hide(details.Bg); Hide(details.SealMaterialBG) end
-                if Shown(details) then
-                    Relight(details, 0)
-                    Headings()
-                    RewardButtons(_G.QuestInfoRewardsFrame)
-                end
-            end
-        end
+        MapDetails(panel.DetailsFrame)
+        if type(panel.QuestsFrame) == "table" then MapDetails(panel.QuestsFrame.DetailsFrame) end
     end
 
     -- Professions ------------------------------------------------------------------------------------------

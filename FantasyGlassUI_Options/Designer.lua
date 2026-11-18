@@ -134,7 +134,11 @@ function ns.BuildAlertEditor(box)
     local text = ns:CreateEditBox(box, 210, 24, "what to show")
     local function DrawTrig()
         trigBtn.text:SetText(ns:Tr(T().label))
-        if T().input then value:Show(); value.hint = (T().input == "number") and "a number" or "a name" else value:Hide() end
+        if T().input then
+            value:Show()
+            -- the box's grey hint says what to type (it once said "value" whatever the alert wanted)
+            if value.hint and value.hint.SetText then value.hint:SetText(ns:Tr((T().input == "number") and "a number" or "a name")) end
+        else value:Hide() end
     end
     trigBtn = ns:CreateButton(box, "", 230, 24, function(_, button)
         local n = #ns.ALERT_TRIGGERS
@@ -161,8 +165,8 @@ function ns.BuildAlertEditor(box)
         local t = text:GetText()
         if type(t) ~= "string" then t = "" end
         local a, why = ns:AddAlert(T().key, v, t, sound.checked ~= false, speak.checked == true)
-        if a then msg:SetText("|cff33ff66" .. ns:Tr("Added.") .. "|r"); value:SetText(""); text:SetText("")
-        else msg:SetText("|cffff5555" .. ns:Tr(why) .. "|r") end
+        if a then msg:SetText(ns:SignalHex("good") .. ns:Tr("Added.") .. "|r"); value:SetText(""); text:SetText("")
+        else msg:SetText(ns:SignalHex("bad") .. ns:Tr(why) .. "|r") end
         Refresh()
     end)
     add:SetPoint("LEFT", text, "RIGHT", 8, 0)
@@ -245,6 +249,8 @@ local function Cycler(box, width, list, get, set, label)
     local function Draw()
         local now, name = get(), nil
         for _, c in ipairs(list) do if c[1] == now then name = c[2] end end
+        -- a value that is none of the choices (the game handed back something unexpected): the first choice, never "table: 0x..."
+        if not name and type(now) ~= "string" and type(now) ~= "number" then name = list[1] and list[1][2] end
         b.text:SetText(ns:Tr(label) .. ":  " .. ns:Tr(name or tostring(now)))
     end
     b = ns:CreateButton(box, "", width, 24, function()

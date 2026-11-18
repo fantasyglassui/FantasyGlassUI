@@ -60,6 +60,7 @@ local function Stamps()
     local daily, weekly = Untils()
     return { daily = ns.ChecklistStamp(now, daily), weekly = ns.ChecklistStamp(now, weekly) }, daily, weekly
 end
+ns.ChecklistStamps = Stamps
 -- How many of a period's jobs a character has done: done, total.
 function ns.ChecklistCount(store, char, period, stamps)
     local done, total = 0, 0
@@ -80,7 +81,7 @@ function ns:ShowChecklist()
     local lines = {}
     local head = {}
     if daily then head[#head + 1] = ns:Tr("Daily reset in") .. " " .. short(daily) end
-    if weekly then head[#head + 1] = ns:Tr("Weekly reset in") .. " " .. ((weekly >= 86400) and format("%dd %dh", math.floor(weekly / 86400), math.floor(weekly % 86400 / 3600)) or short(weekly)) end
+    if weekly then head[#head + 1] = ns:Tr("Weekly reset in") .. " " .. ((weekly >= 86400) and format(ns:Tr("%dd %dh"), math.floor(weekly / 86400), math.floor(weekly % 86400 / 3600)) or short(weekly)) end
     lines[#lines + 1] = { left = "|cff9aa4b4" .. table.concat(head, "   ") .. "|r" }
     for _, period in ipairs({ "daily", "weekly" }) do
         local done, total = ns.ChecklistCount(store, me, period, stamps)
@@ -151,7 +152,8 @@ function ns:ChecklistCommand(text)
         if item then ns:Print("Added to the %s checklist: %s", ns:Tr(item.period), item.text) else ns:Print("What is the job? /fgui checklist add daily Cooking quest") end
     elseif word == "remove" then
         local n = tonumber(rest)
-        if n and store.items[n] then local gone = table.remove(store.items, n); ns:Print("Removed: %s", gone.text) end
+        if n and store.items[n] then local gone = table.remove(store.items, n); ns:Print("Removed: %s", gone.text)
+        else ns:Print("There is no job %s on the checklist. Right-click a job in the window to remove it.", rest ~= "" and rest or "?") end
     elseif word == "clear" then
         store.done[ns:CharKey()] = {}
         ns:Print("This character's ticks are cleared.")

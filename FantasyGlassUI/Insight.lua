@@ -8,9 +8,9 @@ local Secret = function(v) return ns:IsSecret(v) end
 local function Clock(seconds)
     seconds = math.max(0, math.floor(tonumber(seconds) or 0))
     local d, h, m = math.floor(seconds / 86400), math.floor(seconds % 86400 / 3600), math.floor(seconds % 3600 / 60)
-    if d > 0 then return format("%dd %dh", d, h) end
-    if h > 0 then return format("%dh %02dm", h, m) end
-    return format("%dm", math.max(1, m))
+    if d > 0 then return format(ns:Tr("%dd %dh"), d, h) end
+    if h > 0 then return format(ns:Tr("%dh %02dm"), h, m) end
+    return format(ns:Tr("%dm"), math.max(1, m))
 end
 ns.LongClock = Clock
 
@@ -38,6 +38,7 @@ local function Callout()
     local c = CreateFrame("Frame", "FantasyGlassUICallout", UIParent, ns.template)
     c:SetSize(300, 130)
     c:SetFrameStrata("FULLSCREEN_DIALOG")
+    if c.SetClampedToScreen then c:SetClampedToScreen(true) end       -- (a panel near the screen's edge: the card stays in sight)
     c:SetBackdrop(ns.BACKDROP)
     ns:Paint(c, "SetBackdropColor", "window", 0.97)
     ns:Paint(c, "SetBackdropBorderColor", "@accent", 1)
@@ -305,7 +306,7 @@ function ns:ShowLevelZones()
             if a.lo ~= b.lo then return a.lo < b.lo end
             return tostring(a.name) < tostring(b.name)
         end)
-        local colors = { now = "|cff33ff66", soon = "|cffffd100", past = "|cff9aa4b4" }
+        local colors = { now = ns:SignalHex("good"), soon = "|cffffd100", past = "|cff9aa4b4" }
         for _, z in ipairs(picked) do
             lines[#lines + 1] = { left = colors[z.fit] .. tostring(z.name) .. "|r", right = format("%d-%d  |cff9aa4b4%s|r", z.lo, z.hi, tostring(z.continent or "")),
                 click = function() if OpenWorldMap then pcall(OpenWorldMap, z.id) elseif WorldMapFrame and WorldMapFrame.SetMapID then ShowUIPanel(WorldMapFrame); WorldMapFrame:SetMapID(z.id) end end,
@@ -314,7 +315,8 @@ function ns:ShowLevelZones()
         if #lines == 0 then lines[1] = { left = ns:Tr("No zone's level range is near yours.") } end
     end
     return ns:ShowList("LevelZones", format(ns:Tr("Where to level at %d"), level), lines,
-        "Green: your level now. Yellow: next. Gray: nearly done. From the game's own map.", 440, 340)
+        (ns.db and ns.db.colorblind) and "Blue: your level now. Yellow: next. Gray: nearly done. From the game's own map."
+            or "Green: your level now. Yellow: next. Gray: nearly done. From the game's own map.", 440, 340)
 end
 
 ------------------------------------------------------------------------------------------
@@ -363,7 +365,7 @@ local function ScanProfession()
         local okC, cd, isDay = pcall(T.GetRecipeCooldown, id)
         if okC and ((type(cd) == "number" and cd > 0) or isDay or mine[id]) then
             local okI, info = pcall(T.GetRecipeInfo, id)
-            local name = okI and type(info) == "table" and info.name or (mine[id] and mine[id].name) or ("recipe " .. id)
+            local name = okI and type(info) == "table" and info.name or (mine[id] and mine[id].name) or (ns:Tr("Recipe") .. " " .. id)
             if not (okI and type(info) == "table" and info.learned == false) then
                 seen[id] = { name = name, seconds = type(cd) == "number" and cd or 0 }
                 n = n + 1
@@ -379,7 +381,7 @@ function ns:ShowProfCooldowns()
     local me = ns:CharKey()
     for _, l in ipairs(ns.ProfCDLines(CDStore(), time())) do
         lines[#lines + 1] = { left = tostring(l.name) .. "  |cff9aa4b4" .. tostring(l.char):gsub(" %- .*$", "") .. "|r",
-            right = l.left <= 0 and ("|cff33ff66" .. ns:Tr("ready") .. "|r") or Clock(l.left),
+            right = l.left <= 0 and (ns:SignalHex("good") .. ns:Tr("ready") .. "|r") or Clock(l.left),
             color = (l.char == me) and { 1, 1, 1 } or { 0.8, 0.8, 0.8 } }
     end
     if #lines == 0 then lines[1] = { left = ns:Tr("None yet. Open each profession window once on each character.") } end
@@ -402,7 +404,7 @@ ns:NewModule("profCooldowns", function()
             if not s.told and s.readyAt <= now then
                 s.told = true
                 if ns.Toast then pcall(ns.Toast, ns, nil, ns:Tr("Ready to craft"), tostring(s.name), "!") end
-                ns:PrintRaw("|cff33ccffFantasy Glass UI|r: " .. ns:Tr("Ready to craft") .. ": |cffffd100" .. tostring(s.name) .. "|r")
+                ns:PrintRaw(ns:Tr("Ready to craft") .. ": |cffffd100" .. tostring(s.name) .. "|r")
             end
         end
     end)
@@ -539,6 +541,6 @@ function ns:PerfShow(took, info)
         if info.what == "a fight" and ns.ShowCopyBox then
             ns:After(0.3, function() ns:ShowCopyBox(ns.perfLastText, ns:Tr("The fight's performance report: Ctrl+C to copy it and send it on.")) end)
         end
+        return rows
     end
-    return rows
 end

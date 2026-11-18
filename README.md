@@ -4,7 +4,7 @@
 
 A complete interface in one add-on for **WoW Forever** (interface 16001): unit frames, action bars,
 raid frames, nameplates, bags, quests, minimap, chat and every one of the game's own windows, in one
-look you choose from **114 glass, fantasy and runic themes**.
+look you choose from **114 glass, fantasy and celestial themes**.
 
 **[Download on CurseForge](https://www.curseforge.com/wow/addons/fantasy-glass-ui)** ·
 **[Wiki](../../wiki)** ([also here](wiki/README.md)) · **[Report a bug or suggest an idea](../../issues/new/choose)** ·

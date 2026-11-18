@@ -1,6 +1,6 @@
 local _, ns = ...
 
--- Where "Report a Problem" asks people to send their report.
+-- Where "Report a problem" asks people to send their report.
 --
 -- Put ONE address between the quotes below:
 --   a web page     for example a form, an issues page or a Discord invite

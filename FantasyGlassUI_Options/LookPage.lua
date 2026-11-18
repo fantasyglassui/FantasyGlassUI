@@ -49,9 +49,9 @@ local function BuildLook(page)
     -- heading only shows once you have made one). The page scrolls, so nothing has to be left out.
     local function GroupOf(t)
         if t.custom then return "MINE" end
-        return (t.style == "GLASS") and "GLASS" or (t.style == "RUNIC") and "RUNIC" or "FANTASY"
+        return (t.style == "GLASS") and "GLASS" or (t.style == "CELESTIAL") and "CELESTIAL" or "FANTASY"
     end
-    local builtIn = { GLASS = 0, FANTASY = 0, RUNIC = 0 }
+    local builtIn = { GLASS = 0, FANTASY = 0, CELESTIAL = 0 }
     for _, key in ipairs(ns.themeOrder) do
         local t = ns.themes[key]
         if t and not t.custom then builtIn[GroupOf(t)] = builtIn[GroupOf(t)] + 1 end
@@ -59,7 +59,7 @@ local function BuildLook(page)
     local GROUPS = {
         { key = "GLASS",   title = "Glass",       cols = 5, width = 142, rows = math.max(1, math.ceil(builtIn.GLASS / 5)) },
         { key = "FANTASY", title = "Fantasy",     cols = 5, width = 142, rows = math.max(1, math.ceil(builtIn.FANTASY / 5)) },
-        { key = "RUNIC",   title = "Runic",       cols = 5, width = 142, rows = math.max(1, math.ceil(builtIn.RUNIC / 5)) },
+        { key = "CELESTIAL", title = "Celestial", cols = 5, width = 142, rows = math.max(1, math.ceil(builtIn.CELESTIAL / 5)) },
         { key = "MINE",    title = "Your themes", cols = 7, width = 100, rows = 1 },
     }
     local groupY = 0
@@ -69,7 +69,7 @@ local function BuildLook(page)
     end
     -- A small picture of each theme on its button (11.9): its panel color in its edge color, a line
     -- of its accent along the foot, and the mark of its family (glass: a lit top edge; fantasy: gold
-    -- studs at the top corners; runic: a glowing rune-stud). Pointing at one shows a larger card.
+    -- studs at the top corners; celestial: a star point). Pointing at one shows a larger card.
     local Swatch, ShowSwatch = O.ThemeSwatch, O.ShowThemeSwatch     -- (Shared.lua: the setup uses them too)
     page.ShowSwatch = ShowSwatch
     local card                                               -- the larger card, while pointing at a theme
@@ -80,6 +80,7 @@ local function BuildLook(page)
             card = CreateFrame("Frame", nil, UIParent)
             card:SetSize(190, 84)
             card:SetFrameStrata("TOOLTIP")
+            if card.SetClampedToScreen then card:SetClampedToScreen(true) end      -- (the window dragged to the top of the screen)
             local function Tex(layer, sub) local t = card:CreateTexture(nil, layer, nil, sub); t:SetTexture(ns.FLAT); return t end
             card.edge = Tex("BACKGROUND", 0); card.edge:SetAllPoints()
             card.fill = Tex("BACKGROUND", 1); card.fill:SetPoint("TOPLEFT", 2, -2); card.fill:SetPoint("BOTTOMRIGHT", -2, 2)
@@ -103,16 +104,16 @@ local function BuildLook(page)
         end
         local function V(t, col, a) t:SetVertexColor(col[1], col[2], col[3], a or 1) end
         V(card.edge, c.border); V(card.fill, c.bg); V(card.plate, c.plate); V(card.plateEdge, c.border)
-        V(card.foot, c.accent, c.style == "RUNIC" and 0.22 or 0)
+        V(card.foot, c.accent, c.style == "CELESTIAL" and 0.22 or 0)
         card.gloss:SetVertexColor(1, 1, 1, c.style == "GLASS" and 0.5 or 0)
-        card.title:SetText((ns.themes[key].name:gsub(" %(.-%)$", "")))
+        card.title:SetText(ns:ThemeName(key, "plain"))
         card.title:SetTextColor(c.accent[1], c.accent[2], c.accent[3])
         card.line:SetText(ns:Tr("Unit frames, bags and quests"))
         card.line:SetTextColor(c.text[1], c.text[2], c.text[3])
         card.btn:SetText(ns:Tr("Button"))
         card.btn:SetTextColor(c.btn[1], c.btn[2], c.btn[3])
         for _, d in ipairs(card.studs) do
-            if c.style == "RUNIC" then V(d, c.accent) elseif c.style == "FANTASY" then V(d, c.border) end
+            if c.style == "CELESTIAL" then V(d, c.accent) elseif c.style == "FANTASY" then V(d, c.border) end
             d:SetShown(c.style ~= "GLASS")
         end
         card:ClearAllPoints()
@@ -135,7 +136,7 @@ local function BuildLook(page)
             local t = self.key and ns.themes[self.key]
             if not t then return end
             GameTooltip:SetOwner(self, "ANCHOR_TOP")
-            GameTooltip:AddLine(t.name)
+            GameTooltip:AddLine(ns:ThemeName(self.key))
             if t.custom then GameTooltip:AddLine(ns:Tr("One of your own themes."), 0.6, 0.6, 0.6) end
             GameTooltip:Show()
             Card(self, self.key)
@@ -161,19 +162,20 @@ local function BuildLook(page)
     for i, key in ipairs(ns.accentOrder) do
         local sw = CreateFrame("Button", nil, page, ns.template)
         sw:SetSize(24, 20)
-        sw:SetPoint("TOPLEFT", 90 + (i - 1) * 29, Y - 1)        -- nineteen across
+        sw:SetPoint("TOPLEFT", 90 + ((i - 1) % 16) * 29, Y - 1 - math.floor((i - 1) / 16) * 24)   -- two rows of sixteen
         sw:SetBackdrop(ns.BACKDROP)
         local r, g, b = ns:AccentColor(key)
         sw:SetBackdropColor(r, g, b, 1)
         sw:SetScript("OnClick", function() ns.db.accent = key; Changed() end)
         sw:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_TOP")
-            GameTooltip:AddLine(key == "CLASS" and ns:Tr("Your class color") or (key:sub(1, 1) .. key:sub(2):lower()))
+            GameTooltip:AddLine(ns:AccentName(key))
             GameTooltip:Show()
         end)
         sw:SetScript("OnLeave", function() GameTooltip:Hide() end)
         swatches[key] = sw
     end
+    Y = Y - 24 * (math.ceil(#ns.accentOrder / 16) - 1)       -- (room for the second row of accents)
 
     -- lettering, portraits, the game's micro menu
     Header(page, "Lettering", 0, Y - 34, { sub = true })
@@ -185,7 +187,7 @@ local function BuildLook(page)
         b:HookScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_TOP")
             GameTooltip:AddLine(ns:Tr(style.name))
-            GameTooltip:AddLine(style.face, 1, 1, 1)
+            GameTooltip:AddLine(ns:Tr(style.face), 1, 1, 1)
             if not style.wide and (style.body or style.title) then
                 GameTooltip:AddLine(ns:Tr("Western European letters only; other languages use the game's fonts."), 0.6, 0.6, 0.6, true)
             end
@@ -260,19 +262,19 @@ local function BuildLook(page)
     -- shadows, or solid panels with rims, grain and corner ornaments)
     local function SetStyle(style)
         local def = Work()
-        def.style = (style == "FANTASY" or style == "RUNIC") and style or "GLASS"
+        def.style = (style == "FANTASY" or style == "CELESTIAL") and style or "GLASS"
         Changed()
     end
     page.SetStyle = SetStyle
     local styleButtons = {}
-    for i, def in ipairs({ { "GLASS", "Glass" }, { "FANTASY", "Fantasy" }, { "RUNIC", "Runic" } }) do
+    for i, def in ipairs({ { "GLASS", "Glass" }, { "FANTASY", "Fantasy" }, { "CELESTIAL", "Celestial" } }) do
         local b = Choice(def[2], 58, function() SetStyle(def[1]) end)
         b:SetPoint("TOPLEFT", 556 + (i - 1) * 60, EY - 28)
         b:HookScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_TOP")
             GameTooltip:AddLine(ns:Tr(def[2]))
             GameTooltip:AddLine(ns:Tr(def[1] == "GLASS" and "See-through panes with soft shadows and a bright top edge."
-                or def[1] == "RUNIC" and "Carved stone with an engraved edge, and runes glowing in the accent color."
+                or def[1] == "CELESTIAL" and "A night sky: a fine starfield, constellations and star points in the accent color."
                 or "Solid panels with a dark rim, a grain and corner ornaments."), 1, 1, 1, true)
             GameTooltip:AddLine(ns:Tr("Changing family finishes after a /reload."), 0.6, 0.6, 0.6, true)
             GameTooltip:Show()
@@ -306,7 +308,7 @@ local function BuildLook(page)
         local name = nameBox:GetText()
         name = type(name) == "string" and strtrim(name):sub(1, 24) or ""
         if name == "" or name == "*" or name:find("[|:]") then
-            msg:SetText("|cffff5555" .. ns:Tr("Type a name for the theme first (letters and numbers).") .. "|r")
+            msg:SetText(ns:SignalHex("bad") .. ns:Tr("Type a name for the theme first (letters and numbers).") .. "|r")
             return false
         end
         local def, was = Work()
@@ -314,7 +316,7 @@ local function BuildLook(page)
         ns.db.accent = "CUSTOM"
         if was == "*" then ns:DeleteCustomTheme("*") end
         nameBox:SetText("")
-        msg:SetText("|cff66dd77" .. format(ns:Tr("Saved as %s."), name) .. "|r")
+        msg:SetText(ns:SignalHex("good") .. format(ns:Tr("Saved as %s."), name) .. "|r")
         Changed()
         return true
     end
@@ -344,17 +346,17 @@ local function BuildLook(page)
         nameBox:SetText(ns:ExportTheme())
         nameBox:SetFocus()
         nameBox:HighlightText()
-        msg:SetText("|cff66dd77" .. ns:Tr("The theme is in the box as text. Press Ctrl+C to copy it.") .. "|r")
+        msg:SetText(ns:SignalHex("good") .. ns:Tr("The theme is in the box as text. Press Ctrl+C to copy it.") .. "|r")
     end)
     export:SetPoint("LEFT", delete, "RIGHT", 10, 0)
     local import = ns:CreateButton(page, "Import", 80, 24, function()
         local ok, result = ns:ImportTheme(nameBox:GetText())
         if ok then
             nameBox:SetText("")
-            msg:SetText("|cff66dd77" .. format(ns:Tr("Imported as %s."), result) .. "|r")
+            msg:SetText(ns:SignalHex("good") .. format(ns:Tr("Imported as %s."), result) .. "|r")
             Changed()
         else
-            msg:SetText("|cffff5555" .. ns:Tr(result) .. "  " .. ns:Tr("Paste a theme string into the box first.") .. "|r")
+            msg:SetText(ns:SignalHex("bad") .. ns:Tr(result) .. "  " .. ns:Tr("Paste a theme string into the box first.") .. "|r")
         end
     end)
     import:SetPoint("LEFT", export, "RIGHT", 6, 0)
@@ -362,7 +364,7 @@ local function BuildLook(page)
 
     Refresh = function()
         ns:RegisterCustomThemes()
-        local lists = { GLASS = {}, FANTASY = {}, RUNIC = {}, MINE = {} }
+        local lists = { GLASS = {}, FANTASY = {}, CELESTIAL = {}, MINE = {} }
         for _, key in ipairs(ns.themeOrder) do
             local t = ns.themes[key]
             if t then table.insert(lists[GroupOf(t)], key) end
@@ -374,7 +376,7 @@ local function BuildLook(page)
                 if not b then b = NewThemeButton(group, i); group.buttons[i] = b end
                 local t = ns.themes[list[i]]
                 b.key = list[i]
-                b.text:SetText((t.name:gsub(" %(.-%)$", ""):gsub("^Fantasy: ", ""):gsub("^Glass: ", ""):gsub("^Runic: ", "")))   -- the heading says which kind
+                b.text:SetText(ns:ThemeName(list[i], "short"))          -- (the heading says which kind)
                 ShowSwatch(b.swatch, list[i])
                 if not b.suiIndexed and not t.custom then                 -- (noted once, under the name it now carries)
                     b.suiIndexed = true
@@ -438,6 +440,7 @@ local function BuildLook(page)
         use:SetPoint("TOPLEFT", 400, y)
         local clear = ns:CreateButton(page, "Clear", 70, 22, function()
             ns.db.placeThemes[def[1]] = nil
+            if ns.db.themeByPlace and ns.ApplyPlaceTheme then ns:ApplyPlaceTheme() end      -- (standing there now: back at once)
             Refresh()
         end)
         clear:SetPoint("LEFT", use, "RIGHT", 6, 0)
@@ -450,7 +453,7 @@ local function BuildLook(page)
         tbp:SetChecked(ns.db.themeByPlace)
         for key, fs in pairs(placeRows) do
             local t = ns.db.placeThemes[key] and ns.themes[ns.db.placeThemes[key]]
-            if t then fs:SetText(t.name); ns:Paint(fs, "SetTextColor", "text")
+            if t then fs:SetText(ns:ThemeName(ns.db.placeThemes[key], "plain")); ns:Paint(fs, "SetTextColor", "text")
             else fs:SetText(ns:Tr(key == "world" and "the theme you choose above" or "no change")); ns:Paint(fs, "SetTextColor", "faint") end
         end
     end
@@ -513,7 +516,7 @@ function BuildColors(page)
             local r, g, b = ns:ClassRGB(token)
             row.swatch:SetBackdropColor(r or 1, g or 1, b or 1, 1)
             row.name:SetTextColor(r or 1, g or 1, b or 1)
-            row.custom:SetText(ns.db.classColors[token] and "custom" or "")
+            row.custom:SetText(ns.db.classColors[token] and ns:Tr("custom") or "")
             if token == selected then ns:Paint(row.bg, "SetVertexColor", "@accent", 0.22) else row.bg:SetVertexColor(1, 1, 1, 0) end
         end
         if not selected then return end
@@ -523,7 +526,7 @@ function BuildColors(page)
         title:SetTextColor(r, g, b)
         preview:SetStatusBarColor(r, g, b)
         emblem:SetClass(selected, r, g, b)
-        customNote:SetText(ns.db.classColors[selected] and "Custom color" or "Game default")
+        customNote:SetText(ns:Tr(ns.db.classColors[selected] and "Custom color" or "Game default"))
         syncing = true                                   -- move the sliders without treating it as an edit
         sliders[1].slider:SetValue(math.floor(r * 255 + 0.5))
         sliders[2].slider:SetValue(math.floor(g * 255 + 0.5))

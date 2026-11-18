@@ -100,7 +100,9 @@ local function Build()
         bar:Hide()
         bars[i] = bar
     end
+    local idle = false
     holder:SetScript("OnUpdate", ns:Guard("Timers", function()
+        if idle and #timers == 0 then return end              -- (nothing running: nothing to do, every frame)
         local now = time and time() or 0
         for i = #timers, 1, -1 do
             local t = timers[i]
@@ -110,7 +112,8 @@ local function Build()
                 ns:TimerDone(t)
             end
         end
-        if #timers == 0 then Layout() return end
+        if #timers == 0 then Layout(); idle = true; return end
+        idle = false
         local fine = GetTime and GetTime() or 0               -- (the clock counts whole seconds: smooth the bar between them)
         for _, bar in ipairs(bars) do
             local t = bar.timer
@@ -135,7 +138,7 @@ end
 
 -- Start one. Returns the timer, or nil and why not.
 function ns:StartTimer(seconds, label)
-    if type(seconds) ~= "number" or seconds <= 0 then return nil, "no time given" end
+    if type(seconds) ~= "number" or seconds <= 0 then return nil, "no time given" end      -- (reasons are in the translations: ns:Tr(why))
     if #timers >= MAX then return nil, "six timers are running already" end
     Build()
     local t = { label = tostring(label or ""), ends = (time and time() or 0) + seconds, length = seconds }
@@ -176,7 +179,7 @@ function ns:TimerCommand(text)
     end
     local t, why = ns:StartTimer(seconds, label)
     if t then ns:Print("Timer started: %s (%s).", (label ~= "" and label) or ns:Tr("Timer"), ns.TimerText(seconds))
-    else ns:Print("No timer started: %s.", tostring(why)) end
+    else ns:Print("No timer started: %s.", ns:Tr(tostring(why))) end
 end
 
 -- timers that were running when you last logged out or reloaded

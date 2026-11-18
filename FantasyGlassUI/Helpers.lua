@@ -214,7 +214,7 @@ ns:NewModule("versionNotice", function()
         if not ns.newestSeen or ns:IsNewerVersion(version, ns.newestSeen) then ns.newestSeen = version end
         if ns.root and ns.root.toldVersion and not ns:IsNewerVersion(version, ns.root.toldVersion) then return false end
         if ns.root then ns.root.toldVersion = version end
-        ns:PrintRaw("|cff33ccffFantasy Glass UI|r: " .. format(ns:Tr("version %s is out (you have %s). Seen from %s."), version, ns.version, tostring(from or "?")))
+        ns:PrintRaw(format(ns:Tr("version %s is out (you have %s). Seen from %s."), version, ns.version, tostring(from or "?")))
         if ns.Toast and ns.db.toasts then
             pcall(ns.Toast, ns, ns.MEDIA .. "icon.tga", ns:Tr("Update available"), format(ns:Tr("Fantasy Glass UI %s is out."), version))
         end
@@ -288,16 +288,19 @@ ns:NewModule("cursorRing", function()
     ring.tex:SetTexture(ns.MEDIA .. "ring.tga")
     ns:Paint(ring.tex, "SetVertexColor", "@accent", 0.75)
     local hidden = false
+    local lastX, lastY, lastScale
     ring:SetScript("OnUpdate", function()
         local looking = IsMouselooking and IsMouselooking()
         if looking then
-            if not hidden then hidden = true; ring.tex:Hide() end
+            if not hidden then hidden = true; lastX = nil; ring.tex:Hide() end
             return
         end
         if hidden then hidden = false; ring.tex:Show() end
         local x, y = GetCursorPosition()
         local scale = UIParent:GetEffectiveScale()
         if type(x) ~= "number" or type(y) ~= "number" or type(scale) ~= "number" or scale <= 0 then return end
+        if x == lastX and y == lastY and scale == lastScale then return end   -- (the mouse has not moved)
+        lastX, lastY, lastScale = x, y, scale
         ring:ClearAllPoints()
         ring:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x / scale, y / scale)
     end)
@@ -473,6 +476,7 @@ ns:NewModule("autoSummon", function()
         local same = (type(summoner) ~= "function") or ask(summoner) == from
         local combat = InCombatLockdown() and true or false
         local decision = ns.SummonDecision(offered, same, combat)
+        if decision == "wait" and not waiting then ns:Print("In a fight: the summon is taken when it ends, if it is still on offer.") end
         waiting = (decision == "wait")
         if decision ~= "accept" then return end
         if pcall(confirm) and type(StaticPopup_Hide) == "function" then pcall(StaticPopup_Hide, "CONFIRM_SUMMON") end
@@ -686,14 +690,14 @@ ns:NewModule("combatAlert", function()
     local left = 0
     local function Say(starting)
         text:SetText((starting and "+ " or "- ") .. ns:Tr("Combat"))
-        if starting then text:SetTextColor(1, 0.30, 0.25) else text:SetTextColor(0.35, 0.90, 0.40) end
+        text:SetTextColor(ns:Signal(starting and "bad" or "good"))     -- (the color-blind safe pair when that is on)
         left = ns.COMBAT_ALERT_TIME
         holder:SetAlpha(1)
         ns.combatAlertLast = starting and "start" or "end"
     end
     holder:SetScript("OnUpdate", function(self, elapsed)
         if ns.moving then                                   -- arranging the screen: shown, so it can be seen and placed
-            if not self.suiSample then self.suiSample = true; text:SetText("+ " .. ns:Tr("Combat")); text:SetTextColor(1, 0.30, 0.25); self:SetAlpha(1) end
+            if not self.suiSample then self.suiSample = true; text:SetText("+ " .. ns:Tr("Combat")); text:SetTextColor(ns:Signal("bad")); self:SetAlpha(1) end
             return
         elseif self.suiSample then
             self.suiSample = nil
@@ -709,7 +713,7 @@ ns:NewModule("combatAlert", function()
     ev:RegisterEvent("PLAYER_REGEN_DISABLED")
     ev:RegisterEvent("PLAYER_REGEN_ENABLED")
     ev:SetScript("OnEvent", ns:Guard("Combat alerts", function(_, event) Say(event == "PLAYER_REGEN_DISABLED") end))
-    ns:RegisterMovable(holder, "combatAlert", "Combat Alert")
+    ns:RegisterMovable(holder, "combatAlert", "Combat alert")
     ns.combatAlertTest = { holder = holder, text = text, Say = Say }
 end)
 

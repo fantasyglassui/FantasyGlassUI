@@ -256,6 +256,7 @@ ns:NewModule("groupCDs", function()
         r.name:SetPoint("LEFT", r.icon, "RIGHT", 5, 0)
         r.left = ns:NewText(r, 11, "RIGHT")
         r.left:SetPoint("RIGHT", -2, 0)
+        r.name:SetPoint("RIGHT", r.left, "LEFT", -4, 0)       -- (a long name or note is cut short rather than running out)
         f.rows[i] = r
         return r
     end
@@ -276,11 +277,11 @@ ns:NewModule("groupCDs", function()
             r.name:SetTextColor(cr or 1, cg or 1, cb or 1)
             if l.left > 0 then
                 r.left:SetText(ns.Clock and ns.Clock(l.left) or tostring(math.ceil(l.left)))
-                r.left:SetTextColor(1, 0.45, 0.4)
+                r.left:SetTextColor(ns:Signal("bad"))
                 r.icon:SetDesaturated(true)
             else
                 r.left:SetText(ns:Tr("ready"))
-                r.left:SetTextColor(0.3, 1, 0.45)
+                r.left:SetTextColor(ns:Signal("good"))
                 r.icon:SetDesaturated(false)
             end
             r:Show()
@@ -361,7 +362,7 @@ function ns:SendSetup(target, kind, given)
         end
         ns:After(0.12, Next)
     end
-    ns:Print("Sending your %s to %s (%d pieces)...", ns:Tr(kind), target, #parts)
+    ns:Print(#parts == 1 and "Sending your %s to %s (%d piece)..." or "Sending your %s to %s (%d pieces)...", ns:Tr(kind == "talents" and "talent build" or kind), target, #parts)
     Next()
     return #parts
 end
@@ -375,7 +376,7 @@ do
         local ack = msg:match("^SSA:(%w+)$")
         if ack then
             local o = outgoing[ack]
-            if o then o.done = true; ns:Print("%s has your %s.", from, ns:Tr(o.kind)) end
+            if o then o.done = true; ns:Print("%s has your %s.", from, ns:Tr(o.kind == "talents" and "talent build" or o.kind)) end
             return
         end
         local id, i, n, kind, piece = ns.ParseSharePiece(msg)
@@ -402,8 +403,12 @@ do
     end))
 end
 function ns:SendCommand(text)
-    local name, kind = ns.Trim(text):match("^(%S+)%s*(%a*)$")
-    return ns:SendSetup(name or "", (kind or ""):lower())
+    local name, kind = ns.Trim(text):match("^(%S+)%s*(.-)$")
+    kind = (kind or ""):lower()
+    if kind ~= "" and kind ~= "layout" and kind ~= "profile" and kind ~= "theme" and kind ~= "pack" then
+        ns:Print("Send what? /fgui send <name> layout, profile, theme or pack."); return false
+    end
+    return ns:SendSetup(name or "", kind)
 end
 
 ------------------------------------------------------------------------------------------

@@ -79,7 +79,7 @@ ns:NewModule("playerCast", function()
         spark:Hide()
         bar:SetMinMaxValues(0, 1)
         bar:SetValue(1)
-        bar:SetStatusBarColor(0.9, 0.2, 0.2)
+        bar:SetStatusBarColor(ns:Signal("bad"))
         name:SetText(ns:Tr("Interrupted"))
         timer:SetText("")
         bar:SetAlpha(1)
@@ -150,7 +150,7 @@ ns:NewModule("playerCast", function()
         q:SetScript("OnEvent", ns:Guard("CastBar events", function() ns:After(0.1, Quiet) end))
     end
 
-    ns:RegisterMovable(bar, "playerCast", "Cast Bar")
+    ns:RegisterMovable(bar, "playerCast", "Cast bar")
     ns.castBarFrame = bar
 
     ns:RegisterPreview(function(on)

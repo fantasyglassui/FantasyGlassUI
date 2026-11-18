@@ -1,6 +1,7 @@
 local _, ns = ...
 
--- The Fantasy Glass UI look: warm dark leather, bronze rims, gold filigree.
+-- The Fantasy Glass UI look. These are the colors before a theme is applied at login (Core.lua's
+-- BuildPalette fills them in): glass, fantasy leather and gold, or a celestial night sky.
 ns.theme = {
     bg     = { 0.075, 0.060, 0.045, 0.94 },
     border = { 0.42, 0.32, 0.17, 1.00 },      -- bronze
@@ -40,7 +41,7 @@ function ns:NeedLocale(code)
     end
     ns.localesState = (ok and loaded) and "loaded" or ("not loaded (" .. tostring(ok and why or loaded) .. ")")
     if not (ok and loaded) then
-        ns:PrintRaw("|cffff4444Fantasy Glass UI:|r the translations could not be loaded (" .. tostring(ok and why or loaded)
+        ns:PrintRaw("|cffff4444The translations could not be loaded|r (" .. tostring(ok and why or loaded)
             .. "). They are in a third folder, " .. ns.localesAddon .. ", which must sit beside FantasyGlassUI in Interface/AddOns and be enabled. Until then everything shows in English.")
     end
     return type(ns.locales[code]) == "table"
@@ -118,7 +119,21 @@ function ns:LoadLocale()
     for k, v in pairs(t) do
         if type(k) == "string" and type(v) == "string" and v ~= "" then rawset(ns.L, k, v) end
     end
+    ns:TranslateBindings()
     return code
+end
+-- The names in the game's Key Bindings window, in the chosen language. The English names are noted
+-- the first time (one look through the globals), so a change of language starts from them again.
+function ns:TranslateBindings()
+    if not ns.bindingEnglish then
+        ns.bindingEnglish = {}
+        for k, v in pairs(_G) do
+            if type(k) == "string" and type(v) == "string" and (k:find("^BINDING_NAME_FANTASYGLASSUI_") or k:find("^BINDING_NAME_CLICK FantasyGlassUI")) then
+                ns.bindingEnglish[k] = v
+            end
+        end
+    end
+    for k, english in pairs(ns.bindingEnglish) do _G[k] = ns.L[english] end
 end
 
 local fonts = setmetatable({}, { __mode = "k" })
@@ -240,7 +255,13 @@ end
 local muted = setmetatable({}, { __mode = "k" })
 local hidden = setmetatable({}, { __mode = "k" })
 
-local function MuteTree(f, depth, root)
+local MuteTree
+-- (the children are walked straight off the call's results: this runs every second, so no table is
+-- made for them)
+local function MuteKids(depth, root, ...)
+    for i = 1, select("#", ...) do MuteTree((select(i, ...)), depth, root) end
+end
+function MuteTree(f, depth, root)
     if depth > 5 or type(f) ~= "table" or not f.GetChildren then return end
     if f.IsForbidden and f:IsForbidden() then return end
     if f.IsProtected and f:IsProtected() then
@@ -258,7 +279,7 @@ local function MuteTree(f, depth, root)
         muted[root] = muted[root] or {}
         muted[root][f] = true
     end
-    for _, c in ipairs({ f:GetChildren() }) do MuteTree(c, depth + 1, root) end
+    MuteKids(depth + 1, root, f:GetChildren())
 end
 
 -- Undo ns:Silence: visible and clickable again.
@@ -347,6 +368,8 @@ function ns:Repaint()
     end
     for fs, e in pairs(fonts) do
         if not rawget(fs, "suiFamily") then pcall(fs.SetFont, fs, rawget(fs, "suiFixedFont") or (e[2] and ns.TITLEFONT or ns.FONT), e[1] * (ns.fontScale or 1), ns.FONTFLAGS) end
+        local fit = rawget(fs, "suiFit")
+        if fit then pcall(fit) end                               -- (a button's label: fitted again at the new size)
     end
     for _, fn in ipairs(themeHooks) do pcall(fn) end
 end
@@ -394,63 +417,33 @@ function ns:PaintPanel(frame, alpha, plain)
     return fill
 end
 
--- Gold filigree in the four corners of `anchor`, drawn by `host` (a frame above the content).
--- Runic: a rune-stud in each corner, glowing in the accent color: a small bright point in a soft halo.
-local function RuneStuds(host, anchor, inset, small)
-    inset = inset or 6
-    for _, point in ipairs({ "TOPLEFT", "TOPRIGHT", "BOTTOMLEFT", "BOTTOMRIGHT" }) do
-        local x = point:find("LEFT") and inset or -inset
-        local y = point:find("TOP") and -inset or inset
-        local halo = host:CreateTexture(nil, "OVERLAY")
-        halo:SetTexture(ns.MEDIA .. "dot.tga")
-        halo:SetSize(small and 12 or 18, small and 12 or 18)
-        halo:SetPoint("CENTER", anchor, point, x, y)
-        if halo.SetBlendMode then halo:SetBlendMode("ADD") end
-        ns:Paint(halo, "SetVertexColor", "@accent", 0.45)
-        halo.sui = true
-        local stud = host:CreateTexture(nil, "OVERLAY", nil, 1)
-        stud:SetTexture(ns.MEDIA .. "dot.tga")
-        stud:SetSize(small and 4 or 6, small and 4 or 6)
-        stud:SetPoint("CENTER", anchor, point, x, y)
-        ns:Paint(stud, "SetVertexColor", "@accent", 1)
-        stud.sui = true
-    end
-end
--- Runic art (11.9): a strip of runes between two lines, repeating along an edge of any length.
--- vertical: running top to bottom. Returns the texture; the caller places it.
-function ns:RuneStrip(host, vertical, length, thick, alpha, layer)
-    local t = host:CreateTexture(nil, layer or "OVERLAY")
-    if not pcall(t.SetTexture, t, ns.MEDIA .. "runes_strip.tga", "REPEAT", "REPEAT") then t:SetTexture(ns.MEDIA .. "runes_strip.tga") end
-    thick = thick or 10
-    local reps = math.max(0.25, (length or 160) / (thick * 16))         -- (the strip is sixteen times as long as it is high)
-    if vertical then
-        t:SetSize(thick, length or 160)
-        t:SetTexCoord(0, 1, reps, 1, 0, 0, reps, 0)
-    else
-        t:SetSize(length or 160, thick)
-        t:SetTexCoord(0, reps, 0, 1)
-    end
-    ns:Paint(t, "SetVertexColor", "@accent", alpha or 0.6)
+-- Celestial (11.11): a four-pointed star, glowing in the accent, centred on `point` of `anchor`.
+function ns:Sparkle(host, anchor, point, size, x, y, alpha)
+    local t = host:CreateTexture(nil, "OVERLAY")
+    t:SetTexture(ns.MEDIA .. "sparkle.tga")
+    t:SetSize(size, size)
+    t:SetPoint("CENTER", anchor, point, x or 0, y or 0)
+    if t.SetBlendMode then t:SetBlendMode("ADD") end
+    ns:Paint(t, "SetVertexColor", "@accent", alpha or 1)
     t.sui = true
     return t
 end
--- An action button's carved edge, for the Runic family: cut corners and a notch on each side.
-function ns:RunicButtonEdge(btn)
-    if ns.style ~= "RUNIC" or type(btn) ~= "table" or not btn.CreateTexture or rawget(btn, "suiRunicEdge") then return end
+-- An action button lit from inside, for the Celestial family: a soft glow just inside its edge.
+function ns:CelestialButtonEdge(btn)
+    if ns.style ~= "CELESTIAL" or type(btn) ~= "table" or not btn.CreateTexture or rawget(btn, "suiStarEdge") then return end
     local t = btn:CreateTexture(nil, "OVERLAY", nil, 6)
-    t:SetTexture(ns.MEDIA .. "button_runic.tga")
-    t:SetPoint("TOPLEFT", -3, 3)
-    t:SetPoint("BOTTOMRIGHT", 3, -3)
-    ns:Paint(t, "SetVertexColor", "@border", 1)
+    t:SetTexture(ns.MEDIA .. "button_celestial.tga")
+    t:SetAllPoints()
+    if t.SetBlendMode then t:SetBlendMode("ADD") end
+    ns:Paint(t, "SetVertexColor", "@accent", 0.55)
     t.sui = true
-    btn.suiRunicEdge = t
-    if btn.suiBorder and btn.suiBorder.SetAlpha then btn.suiBorder:SetAlpha(0) end     -- (the carved edge stands in for the plain one)
+    btn.suiStarEdge = t
     return t
 end
 
 function ns:Corners(host, anchor, size, offset)
     if ns.style == "GLASS" then return end          -- glass has no ornament
-    if ns.style == "RUNIC" then return RuneStuds(host, anchor, math.floor((size or 18) / 3), (size or 18) < 16) end
+    if ns.style == "CELESTIAL" then return end     -- (Celestial's panels carry their own small star, at the top)
     local a = ns.theme.accent
     size, offset = size or 18, offset or 1
     local coords = {
@@ -478,10 +471,22 @@ function ns:Divider(parent, height)
         t:SetTexture(ns.MEDIA .. "line.tga")
         t:SetHeight(5)
         ns:Paint(t, "SetVertexColor", "@accent", 1)
-    elseif ns.style == "RUNIC" then                 -- a groove cut in the stone, lit along its length
+    elseif ns.style == "CELESTIAL" then             -- a fine line of light with a star at its middle
         t:SetTexture(ns.MEDIA .. "line.tga")
-        t:SetHeight(3)
-        ns:Paint(t, "SetVertexColor", "@accent", 0.75)
+        t:SetHeight(5)
+        if t.SetBlendMode then t:SetBlendMode("ADD") end
+        ns:Paint(t, "SetVertexColor", "@accent", 0.85)
+        local star = parent:CreateTexture(nil, "OVERLAY")
+        star:SetTexture(ns.MEDIA .. "sparkle.tga")
+        star:SetSize(22, 22)
+        star:SetPoint("CENTER", t, "CENTER", 0, 0)
+        if star.SetBlendMode then star:SetBlendMode("ADD") end
+        ns:Paint(star, "SetVertexColor", "@accent", 1)
+        star.sui = true
+        if ns.SkyBreathe then ns.SkyBreathe(star, 0.6, 1, 3.4) end   -- (breathing slowly)
+        t.suiStar = star
+        hooksecurefunc(t, "Hide", function() star:Hide() end)       -- (the star goes and comes with its line)
+        hooksecurefunc(t, "Show", function() star:Show() end)
     else
         t:SetTexture(ns.MEDIA .. "divider.tga")
         t:SetHeight(height or 12)
@@ -597,40 +602,231 @@ local function DressGlass(frame, plain)
     ns:Shadow(frame, plain and 5 or 9, plain and 0.28 or 0.40)
 end
 
--- Runic panel: carved stone. A stone grain, an engraved edge a few pixels in (a dark cut with a
--- lit lip under it), runes glowing up from the foot of the panel, and a rune-stud in each corner.
-local function DressRunic(frame, plain)
-    local grain = frame:CreateTexture(nil, "BACKGROUND", nil, 1)
-    grain:SetPoint("TOPLEFT", 1, -1)
-    grain:SetPoint("BOTTOMRIGHT", -1, 1)
-    if not pcall(grain.SetTexture, grain, ns.MEDIA .. "panel.tga", "REPEAT", "REPEAT") then grain:SetTexture(ns.MEDIA .. "panel.tga") end
-    if grain.SetHorizTile then grain:SetHorizTile(true); grain:SetVertTile(true) end
-    local gt = ns.theme.grain
-    grain:SetVertexColor(gt[1], gt[2], gt[3], gt[4] or 0.1)
-    grain.sui = true
-    frame.suiGrain = grain
-    local glow = frame:CreateTexture(nil, "BACKGROUND", nil, 2)    -- the runes' light, rising from the foot
-    glow:SetPoint("BOTTOMLEFT", 1, 1)
-    glow:SetPoint("BOTTOMRIGHT", -1, 1)
-    glow:SetHeight(plain and 10 or 30)
-    glow:SetTexture(ns.MEDIA .. "glow_up.tga")                      -- (white, fading upward: tinted with the accent)
-    ns:Paint(glow, "SetVertexColor", "@accent", plain and 0.10 or 0.18)
-    glow.sui = true
-    local shade = frame:CreateTexture(nil, "BACKGROUND", nil, 2)   -- the stone darker toward its top, as if cut
-    shade:SetPoint("TOPLEFT", 1, -1)
-    shade:SetPoint("TOPRIGHT", -1, -1)
-    shade:SetHeight(40)
-    shade:SetTexture(ns.FLAT)
-    shade.sui = true
-    if shade.SetGradient and CreateColor then shade:SetGradient("VERTICAL", CreateColor(0, 0, 0, 0), CreateColor(0, 0, 0, 0.22))
-    else shade:SetVertexColor(0, 0, 0, 0.06) end
-    local rim, lt = ns.theme.rim, ns.theme.light
-    if not plain then
-        ns:Outline(frame, 4, 0, 0, 0, 0.55, "BORDER")                       -- the engraved cut
-        ns:Outline(frame, 5, lt[1], lt[2], lt[3], 0.08, "BORDER")           -- and the lit lip under it
+-- Celestial panel (11.11): a night sky with depth. The sky deepens toward the top, a glow lies along
+-- the foot like a horizon, the stars are sparse and uneven (each window sees a different part of the
+-- sky), and a faint Milky Way crosses it. One fine line round the edge with a soft glow inside it, a
+-- small star at the top, and on large windows one real constellation and an orbit across a corner.
+local skyCount = 0
+local function SkyLayer(frame, file, sub, size, off, r, g, b, a)
+    local t = frame:CreateTexture(nil, "BACKGROUND", nil, sub)
+    t:SetPoint("TOPLEFT", 1, -1)
+    t:SetPoint("BOTTOMRIGHT", -1, 1)
+    if not pcall(t.SetTexture, t, ns.MEDIA .. file, "REPEAT", "REPEAT") then t:SetTexture(ns.MEDIA .. file) end
+    if t.SetBlendMode then t:SetBlendMode("ADD") end
+    t:SetVertexColor(r, g, b, a)
+    t.sui = true
+    t.suiTile, t.suiOff = size, off                     -- (the texture at its own size, from its own place in the sky)
+    return t
+end
+local function TileTo(t, w, h)
+    local u, v = t.suiOff, t.suiOff * 0.618
+    pcall(t.SetTexCoord, t, u, u + w / t.suiTile, v, v + h / t.suiTile)
+end
+local function Gradient(t, top, topA, bottom, bottomA)
+    t.suiGradient = true
+    if not (t.SetGradient and CreateColor) then t:SetVertexColor(top[1], top[2], top[3], topA * 0.4); return end
+    t:SetGradient("VERTICAL", CreateColor(bottom[1], bottom[2], bottom[3], bottomA), CreateColor(top[1], top[2], top[3], topA))
+end
+-- Celestial motion (11.11): stars that twinkle, the horizon, the Milky Way and the constellation
+-- breathing slowly, the top star turning, and now and then a shooting star across a large window.
+-- All of it is the game's own animation (nothing is redrawn by the add-on each frame), it runs only
+-- on windows that are showing, and "Reduce motion" holds it all still.
+local skyLoops, skyWindows, skyWatch = {}, setmetatable({}, { __mode = "k" }), false
+function ns:SkyLoop(region, kind, time, set, bounce)
+    if not (region and region.CreateAnimationGroup) then return nil end
+    if rawget(region, "suiGradient") then return nil end         -- (never on a SetGradient fade: it would turn white)
+    local g = region:CreateAnimationGroup()
+    if g.SetLooping then g:SetLooping(bounce == false and "REPEAT" or "BOUNCE") end
+    local a = g:CreateAnimation(kind)
+    set(a)
+    if a.SetDuration then a:SetDuration(time) end
+    if a.SetSmoothing and bounce ~= false then a:SetSmoothing("IN_OUT") end
+    skyLoops[#skyLoops + 1] = g
+    if ns:Motion() and g.Play then g:Play() end
+    if not skyWatch and ns.Every then
+        skyWatch = true
+        local was = ns:Motion()
+        ns:Every(2, "Celestial motion", function()                -- (Reduce motion switched on or off)
+            local now = ns:Motion()
+            if now == was then return end
+            was = now
+            for _, loop in ipairs(skyLoops) do
+                if now then pcall(loop.Play, loop) else pcall(loop.Stop, loop) end
+            end
+        end)
     end
-    ns:Outline(frame, -1, rim[1], rim[2], rim[3], 0.95, "BACKGROUND")       -- dark line just outside the rim
-    if not plain then RuneStuds(frame, frame, 9) end
+    return g
+end
+local function Breathe(region, low, high, time)
+    return ns:SkyLoop(region, "Alpha", time, function(a) a:SetFromAlpha(low); a:SetToAlpha(high) end)
+end
+ns.SkyBreathe = Breathe
+ns.skyLoops = skyLoops
+-- Motes of starlight: small stars drifting up through a large window, fading in and out as they go,
+-- each on its own path and in its own time.
+function ns:SkyMotes(frame, n)
+    for i = 1, 6 do
+        local m = frame:CreateTexture(nil, "BORDER", nil, 2)
+        m:SetTexture(ns.MEDIA .. "sparkle.tga")
+        local size = 7 + ((n + i) % 3) * 2
+        m:SetSize(size, size)
+        if m.SetBlendMode then m:SetBlendMode("ADD") end
+        ns:Paint(m, "SetVertexColor", "@accent", 0.9)
+        m:SetPoint("BOTTOM", frame, "BOTTOMLEFT", 0, 6)
+        m:SetAlpha(0)
+        m.sui = true
+        m.suiPlace = ((n * 0.37 + i * 0.161) % 1)                     -- (across the window: placed when its width is known)
+        local g = m.CreateAnimationGroup and m:CreateAnimationGroup()
+        if g then
+            if g.SetLooping then g:SetLooping("REPEAT") end
+            local time = 6 + ((n + i * 3) % 5)
+            local rise = g:CreateAnimation("Translation"); rise:SetOffset((i % 2 == 0) and 14 or -14, 120 + (i % 3) * 30); rise:SetDuration(time)
+            local inA = g:CreateAnimation("Alpha"); inA:SetFromAlpha(0); inA:SetToAlpha(1); inA:SetDuration(time * 0.3)
+            local outA = g:CreateAnimation("Alpha"); outA:SetFromAlpha(1); outA:SetToAlpha(0); outA:SetDuration(time * 0.5)
+            local wait = i * 0.9                                     -- (each mote starts a little after the one before)
+            if rise.SetStartDelay then rise:SetStartDelay(wait); inA:SetStartDelay(wait); outA:SetStartDelay(time * 0.5 + wait) end
+            skyLoops[#skyLoops + 1] = g
+            if ns:Motion() and g.Play then g:Play() end
+        end
+        local motes = rawget(frame, "suiMotes") or {}
+        motes[#motes + 1] = m
+        frame.suiMotes = motes
+    end
+end
+function ns.PlaceMotes(frame, w, shown)
+    for _, m in ipairs(rawget(frame, "suiMotes") or {}) do
+        m:SetShown(shown ~= false)                                   -- (a window too small for them: none)
+        m:ClearAllPoints()
+        m:SetPoint("BOTTOM", frame, "BOTTOMLEFT", 12 + m.suiPlace * math.max(1, w - 24), 6)
+    end
+end
+
+-- A shooting star: now and then, across the upper part of one large window that is showing.
+local function ShootingStar(frame)
+    local s = rawget(frame, "suiShooting")
+    if not s then
+        s = frame:CreateTexture(nil, "BORDER", nil, 2)
+        s:SetTexture(ns.MEDIA .. "shooting.tga")
+        s:SetSize(140, 14)
+        if s.SetBlendMode then s:SetBlendMode("ADD") end
+        local lt = ns.theme.light
+        s:SetVertexColor(lt[1] * 0.3 + 0.7, lt[2] * 0.3 + 0.7, lt[3] * 0.3 + 0.7, 1)       -- (nearly white: a streak of real light)
+        s:SetAlpha(0)
+        if s.SetRotation then pcall(s.SetRotation, s, math.rad(-18)) end    -- (falling a little as it goes)
+        s.sui = true
+        local g = s.CreateAnimationGroup and s:CreateAnimationGroup()
+        if g then
+            local fadeIn = g:CreateAnimation("Alpha"); fadeIn:SetFromAlpha(0); fadeIn:SetToAlpha(1); fadeIn:SetDuration(0.15)
+            local move = g:CreateAnimation("Translation"); move:SetOffset(150, -48); move:SetDuration(0.9)
+            local fadeOut = g:CreateAnimation("Alpha"); fadeOut:SetFromAlpha(1); fadeOut:SetToAlpha(0); fadeOut:SetDuration(0.45)
+            if fadeOut.SetStartDelay then fadeOut:SetStartDelay(0.45) end
+            s.flight = g
+        end
+        frame.suiShooting = s
+    end
+    local okW, w = pcall(frame.GetWidth, frame)
+    local okH, h = pcall(frame.GetHeight, frame)
+    if not (okW and type(w) == "number") or ns:IsSecret(w) then w = 300 end      -- (size not known: a guess will do)
+    if not (okH and type(h) == "number") or ns:IsSecret(h) then h = 200 end
+    s:ClearAllPoints()
+    s:SetPoint("CENTER", frame, "TOPLEFT", w * (0.15 + math.random() * 0.4), -h * (0.15 + math.random() * 0.25))
+    if s.flight then s.flight:Stop(); s.flight:Play() end
+    return true
+end
+ns.ShootingStar = ShootingStar
+local nextShot = 0
+local function ShootingTick()
+    if not ns:Motion() or ns.style ~= "CELESTIAL" then return end
+    local now = GetTime()
+    if now < nextShot then return end
+    nextShot = now + 6 + math.random() * 8                         -- (one every ten seconds or so, somewhere)
+    local shown = {}
+    for f in pairs(skyWindows) do
+        local ok, v = pcall(f.IsVisible, f)
+        if ok and v then shown[#shown + 1] = f end
+    end
+    if #shown > 0 then ns.lastShootingStar = shown[math.random(#shown)]; ShootingStar(ns.lastShootingStar) end
+end
+ns.ShootingTick = ShootingTick
+
+local function DressCelestial(frame, plain)
+    skyCount = skyCount + 1
+    local n = skyCount
+    local th = ns.theme
+    local a, bg, lt = th.accent, th.bg, th.light
+    local sky = frame:CreateTexture(nil, "BACKGROUND", nil, 1)          -- deeper toward the top
+    sky:SetPoint("TOPLEFT", 1, -1)
+    sky:SetPoint("BOTTOMRIGHT", -1, 1)
+    sky:SetTexture(ns.FLAT)
+    sky.sui = true
+    Gradient(sky, { math.min(1, bg[1] * 1.6 + a[1] * 0.05), math.min(1, bg[2] * 1.6 + a[2] * 0.05), math.min(1, bg[3] * 1.6 + a[3] * 0.05 + 0.012) }, 0.9, bg, 0)
+    local horizon = frame:CreateTexture(nil, "BACKGROUND", nil, 2)      -- and lit along its foot
+    horizon:SetPoint("BOTTOMLEFT", 1, 1)
+    horizon:SetPoint("BOTTOMRIGHT", -1, 1)
+    horizon:SetHeight(plain and 10 or 60)
+    -- (a picture of the fade, tinted: a fade made with SetGradient turns white on some game clients
+    -- while an animation plays on it, so nothing that breathes is drawn that way)
+    horizon:SetTexture(ns.MEDIA .. "glow_up.tga")
+    horizon.sui = true
+    ns:Paint(horizon, "SetVertexColor", "@accent", 0.16)
+    Breathe(horizon, 0.45, 1, 4 + (n % 3) * 0.5)                    -- the horizon breathing
+    local layers = {}
+    if not plain then layers[#layers + 1] = SkyLayer(frame, "milkyway.tga", 3, 512, (n * 0.19) % 1, lt[1], lt[2], lt[3], 0.20) end
+    layers[#layers + 1] = SkyLayer(frame, "stars.tga", 4, 512, (n * 0.37) % 1, lt[1], lt[2], lt[3], plain and 0.28 or 0.6)
+    frame.suiGrain = layers[#layers]
+    if layers[2] then Breathe(layers[1], 0.5, 1, 6) end             -- the Milky Way, more slowly
+    for k, time in ipairs({ 1.3, 1.9, 2.7 }) do                     -- three layers of bright stars, twinkling out of step
+        local tw = SkyLayer(frame, "twinkle.tga", 5, 512, (n * 0.53 + k * 0.29) % 1, lt[1], lt[2], lt[3], plain and 0.35 or 0.8)
+        layers[#layers + 1] = tw
+        Breathe(tw, 0.05, 1, time + (n % 4) * 0.2)
+    end
+    for i, alpha in ipairs({ 0.10, 0.06, 0.03 }) do ns:Outline(frame, i, a[1], a[2], a[3], plain and alpha * 0.6 or alpha, "BORDER") end   -- the edge's glow, inward
+    ns:Outline(frame, -1, 0, 0, 0.01, 0.8, "BACKGROUND")
+    local big = {}
+    if not plain then
+        local star = frame:CreateTexture(nil, "OVERLAY")                -- a small star at the top centre
+        star:SetTexture(ns.MEDIA .. "sparkle.tga")
+        star:SetSize(16, 16)
+        star:SetPoint("CENTER", frame, "TOP", 0, 0)
+        if star.SetBlendMode then star:SetBlendMode("ADD") end
+        ns:Paint(star, "SetVertexColor", "@accent", 1)
+        star.sui = true
+        ns:SkyLoop(star, "Rotation", 10, function(r) r:SetDegrees(-360) end, false)    -- turning
+        Breathe(star, 0.5, 1, 1.6)
+        local cell = n % 6                                              -- one real constellation, a different one per window
+        local c = frame:CreateTexture(nil, "BORDER", nil, 1)
+        c:SetTexture(ns.MEDIA .. "constellations.tga")
+        c:SetTexCoord((cell % 4) * 0.25, (cell % 4) * 0.25 + 0.25, math.floor(cell / 4) * 0.5, math.floor(cell / 4) * 0.5 + 0.5)
+        c:SetPoint("TOPRIGHT", -10, -12)
+        local o = frame:CreateTexture(nil, "BORDER", nil, 1)             -- an orbit swept across the bottom-right corner
+        o:SetTexture(ns.MEDIA .. "orbit.tga")
+        o:SetPoint("BOTTOMRIGHT", -1, 1)
+        for _, t in ipairs({ c, o }) do if t.SetBlendMode then t:SetBlendMode("ADD") end; t.sui = true end
+        ns:Paint(c, "SetVertexColor", "@accent", 0.55)
+        ns:Paint(o, "SetVertexColor", "@accent", 0.45)
+        Breathe(c, 0.35, 1, 2.4)                                     -- the constellation's stars glowing and fading
+        Breathe(o, 0.4, 1, 3.6)                                      -- and the orbit with them
+        ns:SkyMotes(frame, n)                                        -- motes of starlight drifting up
+        big.c, big.o = c, o
+        skyWindows[frame] = true                                     -- (a window a shooting star can cross)
+        if not ns.shootingWatch and ns.Every then ns.shootingWatch = true; ns:Every(1, "Shooting stars", ShootingTick) end
+    end
+    local function Fit(_, w, h)
+        w, h = tonumber(w), tonumber(h)
+        if not w or not h or ns:IsSecret(w) or ns:IsSecret(h) or w <= 0 or h <= 0 then return end
+        for _, t in ipairs(layers) do TileTo(t, w, h) end
+        if big.c then
+            local size = math.floor(math.min(110, h * 0.42, w * 0.3))
+            big.c:SetSize(math.max(1, size), math.max(1, size)); big.c:SetShown(size >= 48)       -- (too small to read: left out)
+            local o = math.floor(math.min(200, w * 0.5, h * 0.7))
+            big.o:SetSize(math.max(1, o), math.max(1, o)); big.o:SetShown(size >= 48)
+            ns.PlaceMotes(frame, w, size >= 48)
+        end
+    end
+    local okW, w = pcall(frame.GetWidth, frame)
+    local okH, h = pcall(frame.GetHeight, frame)
+    Fit(nil, okW and w, okH and h)
+    if frame.HookScript then pcall(frame.HookScript, frame, "OnSizeChanged", Fit) end
 end
 
 function ns:Dress(frame, plain)
@@ -638,7 +834,7 @@ function ns:Dress(frame, plain)
     frame.suiDressed = true
     if not plain and not frame.suiNoRound then pcall(ns.FadeIn, ns, frame) end       -- our windows only, never the game's
     if ns.style == "GLASS" then return DressGlass(frame, plain) end
-    if ns.style == "RUNIC" then return DressRunic(frame, plain) end
+    if ns.style == "CELESTIAL" then return DressCelestial(frame, plain) end
     local a = ns.theme.accent
 
     local grain = frame:CreateTexture(nil, "BACKGROUND", nil, 1)
@@ -838,25 +1034,23 @@ local function StyleRow(row)
     ns:AutoSkin(row, 3)
 end
 do
+    local function StyleList(target)
+        if not target:IsVisible() then return end
+        local n = 0
+        for _, row in ipairs({ target:GetChildren() }) do
+            if type(row) == "table" and not row.suiRow and not (row.IsForbidden and row:IsForbidden()) then
+                StyleRow(row)
+                n = n + 1
+                if n > 60 then break end
+            end
+        end
+    end
     local f, acc = CreateFrame("Frame"), 0
     f:SetScript("OnUpdate", function(_, e)
         acc = acc + e
         if acc < 0.4 then return end
         acc = 0
-        for target in pairs(lists) do
-            pcall(function()
-                if target:IsVisible() then
-                    local n = 0
-                    for _, row in ipairs({ target:GetChildren() }) do
-                        if type(row) == "table" and not row.suiRow and not (row.IsForbidden and row:IsForbidden()) then
-                            StyleRow(row)
-                            n = n + 1
-                            if n > 60 then break end
-                        end
-                    end
-                end
-            end)
-        end
+        for target in pairs(lists) do pcall(StyleList, target) end
     end)
 end
 
@@ -1010,8 +1204,9 @@ function ns:CreateButton(parent, text, w, h, onClick, template, name)
         local lt = th.light
         if ns.style == "GLASS" then
             plate:SetGradient("VERTICAL", CreateColor(lt[1], lt[2], lt[3], 0), CreateColor(lt[1], lt[2], lt[3], 0.12))
-        elseif ns.style == "RUNIC" then                  -- a carved key: dark at the top of the cut, lit at its foot
-            plate:SetGradient("VERTICAL", CreateColor(lt[1], lt[2], lt[3], 0.10), CreateColor(0, 0, 0, 0.32))
+        elseif ns.style == "CELESTIAL" then              -- night: a little starlight pooling at the top
+            local a = th.accent
+            plate:SetGradient("VERTICAL", CreateColor(0, 0, 0, 0.25), CreateColor(a[1], a[2], a[3], 0.12))
         else
             plate:SetGradient("VERTICAL", CreateColor(0, 0, 0, 0.35), CreateColor(lt[1], lt[2], lt[3], 0.16))
         end
@@ -1021,28 +1216,119 @@ function ns:CreateButton(parent, text, w, h, onClick, template, name)
     b.text = b:CreateFontString(nil, "OVERLAY")
     ns:Font(b.text, 12)
     b.text:SetPoint("CENTER")
+    -- A label longer than its button (a long word in another language) is drawn a little smaller,
+    -- down to 9 points; one still too long is cut short with "...", and the whole of it is in the
+    -- tooltip under the mouse.
+    local fitting
+    local function Fit()
+        local t = b.text
+        if fitting or not (t and t.GetStringWidth and t.SetWidth) or rawget(t, "suiFamily") then return end
+        fitting = true
+        local okW, bw = pcall(b.GetWidth, b)
+        local room = ((okW and type(bw) == "number" and bw > 0) and bw or b.suiW or 100) - 8
+        if room > 0 then
+            pcall(t.SetWidth, t, 0)
+            local e = fonts[t]
+            local base, face = (e and e[1]) or 12, rawget(t, "suiFixedFont") or ((e and e[2]) and ns.TITLEFONT or ns.FONT)
+            local size = base
+            local function Wide()
+                local ok, sw = pcall(t.GetStringWidth, t)
+                return ok and type(sw) == "number" and sw > room
+            end
+            pcall(t.SetFont, t, face, size * (ns.fontScale or 1), ns.FONTFLAGS)
+            while size > 9 and Wide() do
+                size = size - 1
+                pcall(t.SetFont, t, face, size * (ns.fontScale or 1), ns.FONTFLAGS)
+            end
+            if Wide() then pcall(t.SetWidth, t, room) end
+        end
+        fitting = nil
+    end
+    b.text.suiFit = Fit
     b.text:SetText(ns:Tr(text) or "")
+    hooksecurefunc(b.text, "SetText", Fit)
+    b:HookScript("OnSizeChanged", Fit)
+    Fit()
     ns:Paint(b.text, "SetTextColor", "@btn")
     b:SetScript("OnEnter", function(self)
         ns:Paint(self, "SetBackdropBorderColor", "@accent", 1)
         self.text:SetTextColor(1, 1, 1)
         self.wash:Show()
-        if self.suiTip then
+        local tip = self.suiTip or (type(text) == "string" and ns.BUTTON_TIPS[text])
+        local cut = self.text.IsTruncated and ns.Yes(self.text:IsTruncated())
+        if tip or cut then
             GameTooltip:SetOwner(self, "ANCHOR_TOP")
-            GameTooltip:AddLine(ns:AccentHex() .. ns:Tr(text or "") .. "|r")
-            GameTooltip:AddLine(type(self.suiTip) == "function" and self.suiTip() or ns:Tr(self.suiTip), 1, 1, 1, true)
+            local own = (cut or (text or "") == "") and (self.text:GetText() or "")      -- (a label set later, or cut short)
+            GameTooltip:AddLine(ns:AccentHex() .. (own or ns:Tr(text or "")) .. "|r")
+            if tip then GameTooltip:AddLine(type(tip) == "function" and tip() or ns:Tr(tip), 1, 1, 1, true) end
             GameTooltip:Show()
+            self.suiTipShown = true
         end
     end)
     b:SetScript("OnLeave", function(self)
         ns:Paint(self, "SetBackdropBorderColor", "@border", 1)
-        ns:Paint(self.text, "SetTextColor", "@btn")
+        local c = self.suiTextColor                         -- (a label in a color of its own, such as a class color, keeps it)
+        if type(c) == "table" then self.text:SetTextColor(c[1], c[2], c[3]) else ns:Paint(self.text, "SetTextColor", "@btn") end
         self.wash:Hide()
-        if self.suiTip then GameTooltip:Hide() end
+        if self.suiTipShown then self.suiTipShown = nil; GameTooltip:Hide() end
     end)
     if onClick then b:SetScript("OnClick", onClick) end
     b:SetScript("PostClick", function() ns.UISound("IG_MAINMENU_OPTION") end)    -- (the game's own click, whatever OnClick becomes)
     ns:IndexOption(text, b)
+    return b
+end
+-- The tooltip a button shows by its label, unless it was given one of its own (ns:ButtonTip).
+ns.BUTTON_TIPS = {
+    ["Turn these on"] = "Switch on the features suggested for your class. Some take effect after a reload.",
+    ["Preview"] = "Show sample unit, party and raid frames so you can see your changes without a group.",
+    ["Move panels"] = "Unlock every panel so you can drag it where you want. Right-click a panel for its size; click again to lock.",
+    ["Show sample frames"] = "Show sample unit, party and raid frames so you can see your changes without a group.",
+    ["Reset positions"] = "Put every panel back where it came. Asks first.",
+    ["Role layout"] = "Place the frames the way that suits your role: tank, healer or damage.",
+    ["Use the layout for my role"] = "Place the frames the way that suits your role: tank, healer or damage.",
+    ["Share layout"] = "Export your layout as text to share, import someone else's, or keep one layout per talent set.",
+    ["Layout gallery"] = "Ready-made layouts to try. Your own is backed up first.",
+    ["Info bar pieces"] = "Choose which pieces the info bar shows: gold, durability, bags, time and more.",
+    ["Reset window positions"] = "Put the add-on's list windows back in the middle of the screen. Asks first.",
+    ["Create copy of current"] = "A new profile that starts as a copy of the one you are using.",
+    ["Export current profile"] = "Your current profile as a line of text you can share or keep.",
+    ["Preview a shared string"] = "See what a shared profile, layout or theme would change before you take it.",
+    ["Send my layout"] = "Send your layout to the player you are targeting or whispering with.",
+    ["Send my profile"] = "Send your profile to the player you are targeting or whispering with.",
+    ["Send my theme"] = "Send your theme to the player you are targeting or whispering with.",
+    ["Run setup again"] = "The first-login setup again: role, theme, layout and language.",
+    ["Report a problem"] = "A short report to copy into a bug report: version, client, errors and the switches you changed.",
+    ["Reload UI"] = "Reload the interface: needed after a few changes, such as switching theme family.",
+    ["Language"] = "Show the add-on in another language. Takes effect after a reload.",
+    ["Use my current theme"] = "Take the colors of the theme you are wearing as the start of your own.",
+    ["Color wheel..."] = "Pick a color for this class on the game's color wheel.",
+    ["Reset this class"] = "This class's color back to how it came.",
+    ["Reset all"] = "Every class color back to how it came. Asks first.",
+    ["Edit my own bag rules"] = "Your own rules for which bag each item goes to.",
+    ["Edit my own mail rules"] = "Your own rules for which items go to which character.",
+    ["Fill from my action bars"] = "Put the spells on your action bars into the key list.",
+    ["Fill from action bars"] = "Put the spells on your action bars into the key list.",
+    ["Apply bindings"] = "Set the keys in this list as your key bindings.",
+    ["Apply to the bar"] = "Use these settings on the bar you chose.",
+    ["Edit the route"] = "Change the steps of the guide you are following.",
+    ["Your guides"] = "The guides you have written or pasted, to follow or edit.",
+    ["Write or paste a guide"] = "Write a guide of your own, or paste one someone shared.",
+    ["Auras hidden on every frame"] = "The buffs and debuffs you chose never to show on frames and nameplates.",
+    ["Try the voice"] = "Hear the voice your spoken alerts will use.",
+    ["Back to how it came"] = "This one back to how the add-on came.",
+    ["Learn all"] = "Learn every spell this trainer can teach you that you can afford.",
+    ["Copy"] = "Copy this chat into a box you can select text from.",
+    ["Undo"] = "Undo the last change.",
+    ["Options"] = "Open the options.",
+    ["Guides"] = "Your guides, to follow or edit.",
+    ["Save and follow"] = "Save this guide and start following it.",
+    ["Skill-ups"] = "Recipes that still give skill points, best first, with what each needs.",
+}
+-- A small button as wide as its label needs (at least min): "Copy" in Russian is a long word.
+function ns:SizeToLabel(b, min)
+    if not (b and b.text and b.text.GetStringWidth) then return b end
+    local ok, sw = pcall(b.text.GetStringWidth, b.text)
+    if ok and type(sw) == "number" and not ns:IsSecret(sw) then b:SetWidth(math.max(min or 40, math.ceil(sw) + 14)) end
     return b
 end
 -- A line of help when the mouse is over one of our buttons.
@@ -1063,7 +1349,7 @@ function ns:ConfirmClick(fn)
         end
         self.suiArmed = true
         self.suiLabel = self.suiLabel or (self.text and self.text:GetText())
-        if self.text then self.text:SetText("|cffff5555" .. ns:Tr("Click to confirm") .. "|r") end
+        if self.text then self.text:SetText(ns:SignalHex("bad") .. ns:Tr("Click to confirm") .. "|r") end
         ns:After(4, function()
             if self.suiArmed then
                 self.suiArmed = false
@@ -1102,7 +1388,21 @@ function ns:CreateCheckbox(parent, label, checked, onChange)
     c.label = c:CreateFontString(nil, "OVERLAY")
     ns:Font(c.label, 12)
     c.label:SetPoint("LEFT", c.box, "RIGHT", 8, 0)
+    c.label:SetJustifyH("LEFT")
+    if c.label.SetWordWrap then c.label:SetWordWrap(false) end
     c.label:SetText(ns:Tr(label))
+    -- The label keeps to the switch's own width: one too long in another language is cut short with
+    -- "..." (and shown whole under the mouse) instead of running into whatever sits beside it.
+    local function FitLabel(_, w)
+        w = tonumber(w)
+        if w and not ns:IsSecret(w) and w > 60 then c.label:SetWidth(w - 36) end
+    end
+    c:HookScript("OnSizeChanged", FitLabel)
+    if hooksecurefunc then                                   -- (and at once when it is given a width, before it is first drawn)
+        hooksecurefunc(c, "SetWidth", function(self, w) FitLabel(self, w) end)
+        hooksecurefunc(c, "SetSize", function(self, w) FitLabel(self, w) end)
+    end
+    FitLabel(c, 260)
     local function Draw(self, hover)
         local on = self.checked
         local rim = (on or hover) and "@accent" or "@border"
@@ -1128,8 +1428,19 @@ function ns:CreateCheckbox(parent, label, checked, onChange)
         ns.UISound(self.checked and "IG_MAINMENU_OPTION_CHECKBOX_ON" or "IG_MAINMENU_OPTION_CHECKBOX_OFF")
         if onChange then onChange(self.checked) end
     end)
-    c:SetScript("OnEnter", function(self) Draw(self, true) end)
-    c:SetScript("OnLeave", function(self) Draw(self, false) end)
+    c:SetScript("OnEnter", function(self)
+        Draw(self, true)
+        if self.label.IsTruncated and ns.Yes(self.label:IsTruncated()) then        -- (a tooltip of its own, hooked on later, replaces this)
+            GameTooltip:SetOwner(self, "ANCHOR_TOP")
+            GameTooltip:SetText(self.label:GetText() or "", 1, 1, 1, 1, true)
+            GameTooltip:Show()
+            self.suiTipShown = true
+        end
+    end)
+    c:SetScript("OnLeave", function(self)
+        Draw(self, false)
+        if self.suiTipShown then self.suiTipShown = nil; GameTooltip:Hide() end
+    end)
     ns:IndexOption(label, c)
     return c
 end
@@ -1314,9 +1625,9 @@ function ns:RegisterMovable(frame, key, label)
     local t = ov:CreateFontString(nil, "OVERLAY")
     ns:Font(t, 12)
     t:SetPoint("CENTER")
-    t:SetText(label or key)
+    t:SetText(ns:Tr(label or key))                            -- (the panel's name in your language)
     ov:SetScript("OnDragStart", function()
-        ns:PushUndo(key, nil, "moved " .. tostring(label or key))
+        ns:PushUndo(key, nil, format(ns:Tr("moved %s"), ns:Tr(tostring(label or key))))
         frame:StartMoving()
     end)
     ov:SetScript("OnDragStop", function()
@@ -1783,6 +2094,7 @@ end
 FindMovable = function(key)
     for _, m in ipairs(ns.movables) do if m.key == key then return m end end
 end
+function ns:FindMovable(key) return FindMovable(key) end
 
 -- The actions, usable without the menu (and by tests).
 function ns:NudgePanel(key, dx, dy)
@@ -1790,7 +2102,7 @@ function ns:NudgePanel(key, dx, dy)
     if not m or InCombatLockdown() then return false end
     local point, _, relPoint, x, y = m.frame:GetPoint(1)
     if type(point) ~= "string" or type(x) ~= "number" then return false end
-    ns:PushUndo(key, "nudge", "nudged " .. tostring(m.label))
+    ns:PushUndo(key, "nudge", format(ns:Tr("nudged %s"), ns:Tr(tostring(m.label))))
     m.frame:ClearAllPoints()
     m.frame:SetPoint(point, UIParent, relPoint or point, x + dx, y + dy)
     ns.db.pos[key] = { point, relPoint or point, x + dx, y + dy }
@@ -1807,7 +2119,7 @@ function ns:CenterPanel(key)                             -- centered left to rig
     local scale = m.frame:GetScale()
     if type(scale) ~= "number" or scale <= 0 then scale = 1 end
     local y = ((cy * fs - uy * us) / us) / scale
-    ns:PushUndo(key, nil, "centered " .. tostring(m.label))
+    ns:PushUndo(key, nil, format(ns:Tr("centered %s"), ns:Tr(tostring(m.label))))
     m.frame:ClearAllPoints()
     m.frame:SetPoint("CENTER", UIParent, "CENTER", 0, y)
     ns.db.pos[key] = { "CENTER", "CENTER", 0, y }
@@ -1817,7 +2129,7 @@ end
 function ns:ResetPanel(key)                              -- back to where it sits by default, at normal size
     local m = FindMovable(key)
     if not m or InCombatLockdown() then return false end
-    ns:PushUndo(key, nil, "reset " .. tostring(m.label))
+    ns:PushUndo(key, nil, format(ns:Tr("reset %s"), ns:Tr(tostring(m.label))))
     ns.db.pos[key], ns.db.scale[key] = nil, nil
     if type(ns.db.panelShow) == "table" then ns.db.panelShow[key] = nil end      -- and back to showing always
     m.frame:SetScale(1)
@@ -1932,12 +2244,15 @@ function ns:OpenPanelMenu(key)
         hint:SetPoint("TOPLEFT", 12, -80)
         hint:SetText(ns:Tr("Nudge"))
         ns:Paint(hint, "SetTextColor", "faint")
-        for i, d in ipairs({ { "<", -1, 0 }, { "^", 0, 1 }, { "v", 0, -1 }, { ">", 1, 0 } }) do
+        local prevArrow
+        for _, d in ipairs({ { "<", -1, 0 }, { "^", 0, 1 }, { "v", 0, -1 }, { ">", 1, 0 } }) do
             local b = ns:CreateButton(f, d[1], 30, 22, function()
                 local step = IsShiftKeyDown() and 10 or 1
                 for _, k in ipairs(f.keys or {}) do ns:NudgePanel(k, d[2] * step, d[3] * step) end
             end)
-            b:SetPoint("TOPLEFT", 60 + (i - 1) * 34, -76)
+            if prevArrow then b:SetPoint("LEFT", prevArrow, "RIGHT", 4, 0)
+            else b:SetPoint("LEFT", hint, "RIGHT", 10, 0) end   -- (after the word, however long it is in your language)
+            prevArrow = b
         end
         local center = ns:CreateButton(f, "Center", 102, 22, function()
             for _, k in ipairs(f.keys or {}) do ns:CenterPanel(k) end
@@ -2141,7 +2456,8 @@ function ns:SetPanelScale(keys, value)
         return false
     end
     value = ClampScale(value) or 1
-    ns:PushUndo(keys, "scale", "resized " .. tostring(keys[1]))
+    local first = FindMovable(keys[1])
+    ns:PushUndo(keys, "scale", format(ns:Tr("resized %s"), ns:Tr(tostring(first and first.label or keys[1]))))
     for _, m in ipairs(ns.movables) do
         for _, key in ipairs(keys) do
             if m.key == key then
@@ -2238,9 +2554,10 @@ function ns:CreateEmblem(parent, inset)
     end
     function m:Restyle()                                     -- the ring of this theme's family
         local rune = (ns.style ~= "GLASS")
-        local runic = (ns.style == "RUNIC")                  -- carved stone: a broad rune band on a stone disc
-        self.ring:SetTexture(E(runic and "ring_runic" or rune and "ring_rune" or "ring_glass"))
-        self.disc:SetTexture(E(runic and "disc_runic" or "disc"))
+        local sky = (ns.style == "CELESTIAL")                -- an orbit ring with star points round a night disc
+        self.ring:SetTexture(E(sky and "ring_celestial" or rune and "ring_rune" or "ring_glass"))
+        self.disc:SetTexture(E(sky and "disc_celestial" or "disc"))
+        if self.ring.SetBlendMode then self.ring:SetBlendMode(sky and "ADD" or "BLEND") end
         ns:Paint(self.ring, "SetVertexColor", "@accent", rune and 0.95 or 0.85)
         ns:Paint(self.sparks, "SetVertexColor", "@accent", 0.9)
         self.style = ns.style
@@ -2359,6 +2676,8 @@ function ns:ToggleDemo(forceOff)
             demoBanner.text:SetPoint("CENTER")
         end
         demoBanner.text:SetText(ns:Tr("Fantasy Glass UI demo: these are samples. /fgui demo to end."))
+        local w = demoBanner.text.GetStringWidth and demoBanner.text:GetStringWidth()       -- (as wide as its text needs)
+        if type(w) == "number" and not ns:IsSecret(w) then demoBanner:SetWidth(math.max(420, w + 32)) end
         demoBanner:Show()
         demoStep = 0
         ns:Print("Demo ON - sample frames and notifications are showing. |cffffff00/fgui demo|r again to end.")
@@ -2422,6 +2741,9 @@ function ns:CreateSlider(parent, label, minV, maxV, step, value, fmt, onChange, 
     c.value = c:CreateFontString(nil, "OVERLAY")
     ns:Font(c.value, 11)
     c.value:SetPoint("TOPRIGHT", 0, 0)
+    c.label:SetWidth(math.max(40, width - 44))               -- (a long name in another language stops short of the value)
+    c.label:SetJustifyH("LEFT")
+    if c.label.SetWordWrap then c.label:SetWordWrap(false) end
 
     local s = CreateFrame("Slider", nil, c, ns.template)
     s:SetOrientation("HORIZONTAL")
@@ -2478,6 +2800,18 @@ function ns:CreateEditBox(parent, w, h, hintText)
         ns:Font(hint, 11)
         hint:SetPoint("LEFT", 7, 0)
         hint:SetText(ns:Tr(hintText))
+        hint:SetJustifyH("LEFT")
+        if hint.SetWordWrap then hint:SetWordWrap(false) end
+        local function FitHint(_, bw)                         -- (the hint stays inside the box, whatever its width)
+            bw = tonumber(bw)
+            if bw and not ns:IsSecret(bw) and bw > 20 then hint:SetWidth(bw - 14) end
+        end
+        FitHint(eb, w)
+        eb:HookScript("OnSizeChanged", FitHint)
+        if hooksecurefunc then
+            hooksecurefunc(eb, "SetWidth", function(self, bw) FitHint(self, bw) end)
+            hooksecurefunc(eb, "SetSize", function(self, bw) FitHint(self, bw) end)
+        end
         ns:Paint(hint, "SetTextColor", "faint")
         eb.hint = hint
         eb:SetScript("OnTextChanged", function(self)
@@ -2504,6 +2838,10 @@ function ns:ShowCopyBox(text, caption)
         copyBox.label = copyBox:CreateFontString(nil, "OVERLAY")
         ns:Font(copyBox.label, 11)
         copyBox.label:SetPoint("TOPLEFT", 12, -10)
+        copyBox.label:SetWidth(436)                              -- (a long caption takes two lines, never runs out of the box)
+        copyBox.label:SetWordWrap(true)
+        if copyBox.label.SetMaxLines then copyBox.label:SetMaxLines(2) end
+        copyBox.label:SetJustifyH("LEFT")
         ns:Paint(copyBox.label, "SetTextColor", "dim")
         local eb = ns:CreateEditBox(copyBox, 436, 24)
         eb:SetPoint("BOTTOM", 0, 12)
@@ -2607,6 +2945,7 @@ function ns:ShowTextWindow(title, text, toBottom, link)
         textWin.hint = hint
         local close = ns:CreateButton(textWin, "X", 22, 22, function() textWin:Hide() end)
         close:SetPoint("TOPRIGHT", -8, -8)
+        hint:SetPoint("RIGHT", close, "LEFT", -8, 0)            -- (cut short before the X when the title is long)
         local sf = CreateFrame("ScrollFrame", nil, textWin)
         sf:SetPoint("TOPLEFT", 16, -40)
         sf:SetPoint("BOTTOMRIGHT", -16, 14)
@@ -2701,7 +3040,7 @@ function ns:ShowTextWindow(title, text, toBottom, link)
         textWin.sf:SetPoint("BOTTOMRIGHT", -16, 14)
     end
     textWin.link = link
-    textWin.title:SetText(title or "")
+    textWin.title:SetText(ns:Tr(title or ""))
     textWin.box:SetText(text or "")
     textWin:Show()
     if textWin.Raise then textWin:Raise() end                -- in front of anything else on its layer

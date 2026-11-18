@@ -2,8 +2,8 @@ local _, ns = ...
 
 ns:NewModule("tooltip", function()
     -- Tooltips wear the theme's own panel (11.10.1): the same art as every window, so a Glass theme
-    -- gives glass tooltips, Fantasy its leather grain and gold corners, Runic carved stone with
-    -- glowing rune-studs. The game's own frame is put out of sight and our panel is painted on the
+    -- gives glass tooltips, Fantasy its leather grain and gold corners, Celestial a night sky
+    -- with star points. The game's own frame is put out of sight and our panel is painted on the
     -- tooltip itself, under its text. (Not the small tooltips that sit inside another one.)
     local INSIDE = { EmbeddedItemTooltip = true }
     local function Panel(tip)
@@ -14,7 +14,7 @@ ns:NewModule("tooltip", function()
         local nine = tip.NineSlice
         if type(nine) == "table" and nine.SetAlpha then nine:SetAlpha(0) end
         -- the slim form of the panel (a tooltip can be a single line), with corners to its size:
-        -- small gold brackets on Fantasy, small glowing rune-studs on Runic, none on Glass
+        -- small gold brackets on Fantasy, small star points on Celestial, none on Glass
         if pcall(ns.PaintPanel, ns, tip, 0.94, true) and tip.suiRim then
             tip.suiPanel = true
             pcall(ns.Corners, ns, tip, tip, 12, 1)
@@ -133,10 +133,10 @@ ns:NewModule("tooltip", function()
             local _, link = tip:GetItem()
             if link and ns:IsSecret(link) then link = nil end       -- (an item the game will not name: nothing to add)
             if type(link) == "string" then
-                AddID(tip, "Item ID", ns.ItemIDOf and ns:ItemIDOf(link))
+                AddID(tip, ns:Tr("Item ID"), ns.ItemIDOf and ns:ItemIDOf(link))
             elseif link == nil and tip.GetSpell and ns.db.tooltipIDs then
                 local okS, _, spellID = pcall(tip.GetSpell, tip)
-                if okS then AddID(tip, "Spell ID", spellID) end
+                if okS then AddID(tip, ns:Tr("Spell ID"), spellID) end
             end
             if link and type(link) == "string" then                 -- on one of the two lists that correct "sell junk"
                 local listed = ns.ItemListState and ns:ItemListState(link)

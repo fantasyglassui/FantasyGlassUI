@@ -15,10 +15,10 @@ ns:NewModule("raidTools", function()
 
     local secure = false
     do
-        local ok, made = pcall(ns.CreateButton, ns, UIParent, "Raid Tools", 92, 18, nil, "SecureHandlerClickTemplate", "FantasyGlassUIRaidToolsTab")
+        local ok, made = pcall(ns.CreateButton, ns, UIParent, "Raid tools", 92, 18, nil, "SecureHandlerClickTemplate", "FantasyGlassUIRaidToolsTab")
         if ok and type(made) == "table" and made.SetFrameRef then tab, secure = made, true end
     end
-    if not tab then tab = ns:CreateButton(UIParent, "Raid Tools", 92, 18) end
+    if not tab then tab = ns:CreateButton(UIParent, "Raid tools", 92, 18) end
     ns:ButtonTip(tab, "Ready check, pull timer, raid markers and reset instances.")
     ns:Font(tab.text, 11)
     tab:SetPoint("TOP", UIParent, "TOP", -330, -3)
@@ -57,16 +57,16 @@ ns:NewModule("raidTools", function()
         b:SetPoint("TOPLEFT", x, y)
         return b
     end
-    Btn("Ready Check", 106, 10, -12, function() if DoReadyCheck then DoReadyCheck() end end)
-    Btn("Role Check", 106, 120, -12, function() if InitiateRolePoll then InitiateRolePoll() end end)
-    local reset = ns:CreateButton(panel, "Reset Instances", 236, 20, function() if ns.ResetInstancesNow then ns:ResetInstancesNow() end end)
+    Btn("Ready check", 106, 10, -12, function() if DoReadyCheck then DoReadyCheck() end end)
+    Btn("Role check", 106, 120, -12, function() if InitiateRolePoll then InitiateRolePoll() end end)
+    local reset = ns:CreateButton(panel, "Reset instances", 236, 20, function() if ns.ResetInstancesNow then ns:ResetInstancesNow() end end)
     reset:SetPoint("TOPLEFT", panel, "BOTTOMLEFT", 0, -3)            -- (hangs under the panel, and shows with it)
     ns:ButtonTip(reset, "Reset the dungeons you have been in, so the next run starts fresh. Only the group leader can, and only outside.")
     Btn("Pull in 10", 106, 10, -38, function()
         if C_PartyInfo and C_PartyInfo.DoCountdown then C_PartyInfo.DoCountdown(10) end
     end)
     local convert
-    convert = Btn("To Raid", 106, 120, -38, function()
+    convert = Btn("To raid", 106, 120, -38, function()
         if not C_PartyInfo then return end
         if IsInRaid() then
             if C_PartyInfo.ConvertToParty then C_PartyInfo.ConvertToParty() end
@@ -171,7 +171,7 @@ ns:NewModule("raidTools", function()
     end
     local function Refresh()
         local grouped = IsInGroup and IsInGroup()
-        if grouped then convert.text:SetText((IsInRaid and IsInRaid()) and "To Party" or "To Raid") end
+        if grouped then convert.text:SetText((IsInRaid and IsInRaid()) and ns:Tr("To party") or ns:Tr("To raid")) end
         if driven or ns:Locked(tab) then return end
         if grouped then
             tab:Show()
@@ -186,5 +186,5 @@ ns:NewModule("raidTools", function()
     ev:SetScript("OnEvent", ns:Guard("Raid tools", Refresh))
     Refresh()
 
-    ns:RegisterMovable(tab, "raidTools", "Raid Tools")
+    ns:RegisterMovable(tab, "raidTools", "Raid tools")
 end)

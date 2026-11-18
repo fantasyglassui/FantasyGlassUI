@@ -98,6 +98,11 @@ function ns:ShowCharacters()
         ns:Paint(window, "SetBackdropBorderColor", "@border", 1)
         ns:Dress(window)
         window:EnableMouse(true)
+        window:SetMovable(true)                                  -- (dragged by its edge, and kept where you leave it)
+        window:SetClampedToScreen(true)
+        window:RegisterForDrag("LeftButton")
+        window:SetScript("OnDragStart", function(self) self:StartMoving() end)
+        ns:KeepPlace(window, "Alts")
         if type(UISpecialFrames) == "table" then tinsert(UISpecialFrames, "FantasyGlassUIAlts") end
         window.title = ns:NewText(window, 14, "LEFT")
         window.title:SetPoint("TOPLEFT", 14, -12)
@@ -111,8 +116,9 @@ function ns:ShowCharacters()
         window.total:SetPoint("BOTTOMRIGHT", -16, 26)
         window.note = ns:NewText(window, 10, "LEFT")
         window.note:SetPoint("BOTTOMLEFT", 14, 9)
+        window.note:SetPoint("RIGHT", window, "RIGHT", -14, 0)    -- (kept inside the window in every language)
         window.note:SetTextColor(0.6, 0.6, 0.6)
-        window.note:SetText(ns:Tr("Right-click a line to forget that character."))
+        window.note:SetText(ns:Tr("Right-click a line twice to forget that character."))
         window.rows = {}
     end
     local list, total = ns:Characters()
@@ -144,12 +150,25 @@ function ns:ShowCharacters()
             row:SetScript("OnLeave", function() GameTooltip:Hide() end)
             row:RegisterForClicks("RightButtonUp")
             row:SetScript("OnClick", function(self)
-                if self.key and ns:ForgetCharacter(self.key) then ns:ShowCharacters() end
+                if not self.key then return end
+                if self.key == ns:CharKey() then ns:Print("That is the character you are playing."); return end
+                -- twice, so a stray click does not lose a character's bags, bank and lockouts
+                local now = GetTime()
+                if self.armedKey ~= self.key or now - (self.armedAt or 0) > 4 then
+                    self.armedKey, self.armedAt = self.key, now
+                    ns:Print("Right-click %s again to forget that character.", self.c and self.c.name or self.key)
+                    return
+                end
+                self.armedKey = nil
+                if ns:ForgetCharacter(self.key) then
+                    ns:Print("Forgot %s.", self.c and self.c.name or self.key)
+                    ns:ShowCharacters()
+                end
             end)
             window.rows[i] = row
         end
         row.key, row.c = c.key, c
-        row.name:SetText(c.name .. (c.current and "  *" or ""))
+        row.name:SetText(c.name .. (c.current and "  *" or "") .. (c.mail and "  |TInterface\\Minimap\\Tracking\\Mailbox:14:14|t" or ""))
         local ok, r, g, b = pcall(function() return ns:ClassRGB(c.class) end)
         if ok and type(r) == "number" then row.name:SetTextColor(r, g, b) else row.name:SetTextColor(1, 1, 1) end
         row.level:SetText(c.level and tostring(c.level) or "")

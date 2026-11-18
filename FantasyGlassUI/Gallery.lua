@@ -71,6 +71,7 @@ function ns:ApplyGallery(key)
     local def
     for _, g in ipairs(ns.GALLERY) do if g.key == key then def = g end end
     if not def then return false end
+    if ns.AfterFight and ns:AfterFight("Layout gallery", function() ns:ApplyGallery(key) end) then return true end   -- (panels cannot move in a fight)
     local combat = InCombatLockdown()
     local keys = {}
     for k in pairs(def.pos) do keys[#keys + 1] = k end
@@ -162,6 +163,9 @@ function ns:ShowGallery()
         local name = card:CreateFontString(nil, "OVERLAY")
         ns:Font(name, 13, true)
         name:SetPoint("TOPLEFT", screen, "BOTTOMLEFT", 0, -6)
+        name:SetWidth(PW - 66)                              -- (stops short of the Use button)
+        name:SetJustifyH("LEFT")
+        if name.SetWordWrap then name:SetWordWrap(false) end
         name:SetText(ns:Tr(def.name))
         local text = ns:NewText(card, 10, "LEFT")
         text:SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -2)
@@ -176,7 +180,7 @@ function ns:ShowGallery()
     end
     local note = ns:NewText(win, 10, "LEFT")
     note:SetPoint("BOTTOMLEFT", 16, 10)
-    note:SetText(ns:Tr("Gold: your frames. Green: party and raid. Gray: the rest. /fgui undo takes a setup back."))
+    note:SetText(ns:Tr("Accent color: your frames. Green: party and raid. Gray: the rest. /fgui undo takes a setup back."))
     ns:Paint(note, "SetTextColor", "faint")
     win:Show()
     return win

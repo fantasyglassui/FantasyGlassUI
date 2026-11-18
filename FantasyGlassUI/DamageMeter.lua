@@ -262,7 +262,7 @@ ns:NewModule("damageMeter", function()
     end
     header:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:AddLine(ns:Tr("Damage Meter"))
+        GameTooltip:AddLine(ns:Tr("Damage meter"))
         GameTooltip:AddLine(ns:Tr("Left-click or mouse wheel: next view (Shift: back)"), 0.8, 0.8, 0.8)
         GameTooltip:AddLine(ns:Tr("Right-click: this fight or overall"), 0.8, 0.8, 0.8)
         GameTooltip:AddLine(ns:Tr("Shift-right-click: reset the meter"), 0.8, 0.8, 0.8)
@@ -270,6 +270,11 @@ ns:NewModule("damageMeter", function()
     end)
     header:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
+    local empty = ns:NewText(body, 11, "CENTER")              -- (before the first fight: say so, not a blank panel)
+    empty:SetPoint("TOPLEFT", 10, -HEADER_H - 8)
+    empty:SetPoint("TOPRIGHT", -10, -HEADER_H - 8)
+    ns:Paint(empty, "SetTextColor", "dim")
+    empty:SetText(ns:Tr("Nothing yet: the meter fills during a fight."))
     local rows = {}
     for i = 1, MAX_ROWS do
         local bar = ns:NewStatusBar(body)
@@ -306,7 +311,7 @@ ns:NewModule("damageMeter", function()
             local src = self.src
             if type(src) ~= "table" then return end
             GameTooltip:SetOwner(self, "ANCHOR_TOP")
-            if not pcall(GameTooltip.AddLine, GameTooltip, src.name) then GameTooltip:AddLine(ns:Tr("Damage Meter")) end
+            if not pcall(GameTooltip.AddLine, GameTooltip, src.name) then GameTooltip:AddLine(ns:Tr("Damage meter")) end
             local spells, why = Breakdown(src)
             if spells and #spells > 0 then
                 ns.meterBreakdown = format("worked (%d abilities listed)", #spells)
@@ -457,8 +462,11 @@ ns:NewModule("damageMeter", function()
             end
         end
         for i = shown + 1, MAX_ROWS do rows[i].src = nil; rows[i]:Hide() end
+        empty:SetShown(shown == 0)
         return shown, threatCount
     end
+
+    function ns:ResetMeter() return Reset() end               -- (/fgui meter reset, in either shape)
 
     -- A window of its own ------------------------------------------------------------------------------
     if not docked then
@@ -467,7 +475,7 @@ ns:NewModule("damageMeter", function()
         body:SetPoint("TOPLEFT")
         body:SetPoint("BOTTOMLEFT")
         ns:Dress(panel, true)
-        ns:RegisterMovable(panel, "meter", "Damage Meter")
+        ns:RegisterMovable(panel, "meter", "Damage meter")
         ns.meterState = "a window of its own"
         -- one failure switches the meter off rather than repeating an error every second
         ns:Every(1, "Damage meter", ns:Safe("Damage meter", function()
@@ -581,7 +589,7 @@ ns:NewModule("damageMeter", function()
         self.over = true
         self:SetAlpha(1)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:AddLine(ns:Tr("Damage Meter"))
+        GameTooltip:AddLine(ns:Tr("Damage meter"))
         GameTooltip:AddLine(ns:Tr(open and "Click to tuck it away" or "Click to bring it out"), 0.8, 0.8, 0.8)
         GameTooltip:Show()
     end)
@@ -598,7 +606,6 @@ ns:NewModule("damageMeter", function()
         if open and panel:IsShown() then Refresh() end
     end))
     function ns:ToggleMeter() Manual() end
-    function ns:ResetMeter() return Reset() end
     ns.meterTest = { Refresh = Refresh, rows = rows, threatRows = threatRows, panel = panel, handle = handle, docked = true,
                      SetOpen = SetOpen, IsOpen = function() return open end, Side = function() return side end,
                      Step = Step, View = function() return modes[mode].key end,

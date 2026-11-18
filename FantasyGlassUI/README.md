@@ -4,9 +4,9 @@ by DustyMouse
 
 A complete interface replacement for **WoW Forever** (interface 16001): unit frames, raid frames, cast
 bars, action bars, bags and bank, quest tracker and quest log, minimap, buffs, nameplates, chat and
-the game's own windows, in one look that you choose from 114 glass, fantasy and runic themes.
+the game's own windows, in one look that you choose from 114 glass, fantasy and celestial themes.
 
-Version 11.10.0
+Version 11.11.0
 
 ## Install
 
@@ -35,7 +35,7 @@ get two of everything.
 | Command | What it does |
 |---|---|
 | `/fgui` | Open the options window |
-| `/fgui setup` | Run the first-run setup again (also the "Run Setup Again" button in `/fgui`) |
+| `/fgui setup` | Run the first-run setup again (also the "Run setup again" button in `/fgui`) |
 | `/fgui move` | Unlock every panel for dragging; type it again to lock |
 | `/fgui test` | Preview mode: sample unit frames, raid frames, casts and swings |
 | `/fgui layout` | Jump to the Layout tab (scale and size sliders) |
@@ -49,7 +49,7 @@ get two of everything.
 | `/fgui combat` | Jump to the Combat tab (cooldown tracker, buff alerts, behavior) |
 | `/fgui memory` | How much memory the add-on is using, and whether the options have been loaded |
 | `/fgui check` | Self-check: a copyable report of what the client supports and any errors |
-| `/fgui report` | Everything needed to report a problem, as text to copy (also the Report a Problem button) |
+| `/fgui report` | Everything needed to report a problem, as text to copy (also the Report a problem button) |
 | `/fgui windows reset` | The game's windows open in their usual places again |
 | `/fgui sell [item]`, `/fgui keep [item]` | Always or never sell an item with your junk (shift-click the item in). `/fgui sell list` shows both lists |
 | `/fgui undo` | Put back the last panel move, nudge, resize or reset |
@@ -331,7 +331,7 @@ the ones below. Hover a switch to read what it does.
   combat logging, a buff filter, screenshots on boss kills.
 - Groups: your own notes on players, recent group mates, a roll tracker, raid frames ordered by
   group, role or name, who is missing, raid lockouts for every character, join and leave notices, a
-  Reset Instances button.
+  Reset instances button.
 - Map and travel: waypoints with an arrow, a travel bar, a mount key, a flight timer that learns each
   route, fishing mode, a smaller world map, your group on the map in class colors, the tracking menu
   on a right-click of the minimap, and who pinged it.
@@ -356,13 +356,17 @@ the ones below. Hover a switch to read what it does.
   changed (Esc, Edit Mode, Layout, New Layout makes one).
 - A bar that is not showing is see-through; its buttons can still be pressed where they were.
 
+**Added in 11.11**
+- **Celestial themes** take the place of Runic: a third family of 38, night-sky panels with a fine
+  starfield, a faint nebula in the accent color, constellations and star points. A Runic theme in use
+  becomes the Celestial theme made from it, with the same accent.
+
 **Added in 11.9**
-- **Runic art** for emblems, the minimap and the action bars; **theme previews** on the Look tab;
+- Art for the third family for emblems, the minimap and the action bars; **theme previews** on the Look tab;
   `/fgui check new` reports on every feature added since 11.6.
 
 **Added in 11.8**
-- **Runic themes:** a third family of 38, carved stone with an engraved edge and runes glowing in
-  the accent color (114 themes in all).
+- A third family of 38 themes (Runic; replaced by Celestial in 11.11).
 - Korean and Chinese names in the language list no longer show as boxes.
 
 **Added in 11.7**
@@ -405,7 +409,7 @@ the ones below. Hover a switch to read what it does.
 - **Key binding sheet** (`/fgui keys`, or a key in Key Bindings, AddOns: shown while held).
 - **Buff coverage** (Features tab, off): a mark on raid and party frames of anyone missing the buff
   you can give. Checked out of fights.
-- **A layout for each screen size** (Layout tab, Share Layout, third switch).
+- **A layout for each screen size** (Layout tab, Share layout, third switch).
 - **Quiet mode** (`/fgui quiet`, the Tools tab, or a key): no chat, names over heads or info bar,
   then everything back as it was (names come back even after a reload).
 - **Simplified Chinese** (简体中文) as a language for the add-on's labels; every language now covers
@@ -592,11 +596,11 @@ at the top right changes the add-on's language.
   **Theme by place**: a theme for cities and inns, dungeons, raids and everywhere else, switched
   to by itself as you travel (between themes of the same family). **Portraits and class colors**
   has the portrait style and your own color for each class, by slider or color wheel.
-- **Layout**: Move Panels (right-click any panel while moving for its own settings: scale, nudge,
-  centre, reset, switch off; the action bars, stance bar and pet bar each have a handle too), Preview, Share Layout, Role Layout, a scale slider for every panel, size sliders for
+- **Layout**: Move panels (right-click any panel while moving for its own settings: scale, nudge,
+  centre, reset, switch off; the action bars, stance bar and pet bar each have a handle too), Preview, Share layout, Role layout, a scale slider for every panel, size sliders for
   unit and raid frames, an action bar size slider, a text size slider for all lettering, and strength sliders for the chat
   background, info bar background, HUD panels and windows. Panels snap to a grid and to the screen's centre lines; hold Shift to place freely.
-  Share Layout exports only where panels sit and how big they are, as a text string, and imports
+  Share layout exports only where panels sit and how big they are, as a text string, and imports
   one from someone else. It can also keep a separate layout for each talent set, and for solo,
   party and raid, and swap the right one in by itself. **Layout gallery** opens six whole screen
   setups, each with a picture of where everything goes.
@@ -632,18 +636,19 @@ contrast, and one tinted with your class color) and thirty-eight fantasy themes 
 ornament (Warm, Dark, Cold, Forest, Blood, Arcane, Sand, Forge, Royal, Abyss, Fel, Bone, Onyx,
 Dragonfire, Moonlit, Verdigris, Autumn, Twilight, Plague, Steel, Sunwell, Rosewood, Frostfire, Emerald
 Dream, Shadow, Titan, Lightforged, Nether, Tundra, Jungle, Molten, Tidal, Wine, Ashen, Oak,
-Stormcaller, Starlight, and one in your class color). Noir and Onyx are black and red. There are nineteen accent colors. Picking a theme also
+Stormcaller, Starlight, and one in your class color), and thirty-eight celestial themes, night skies
+with a fine starfield, constellations and star points (Polaris, Eclipse, Blue Hour, Zenith, Desert Sky, Moonlight, Blood Moon, Aurora, Winter Sky, Comet, Starstorm, Solstice, Void, Moonlit Grove, Tides, Harvest Moon, Clear Night, Dawn, Dusk, Starlight, Red Planet, Gilded Sky, Silver Mist, Evening Star, Honey Moon, Opaline, Deep Space, Fel Sky, Ashen Sky, Pearl Moon, Spirit Lights, Arcane Sky, Crimson Nebula, Sapphire Night, Emerald Night, Crystal Sky, Astrolabe, and one in your class color). Noir and Onyx are black and red. There are thirty-one accent colors. Picking a theme also
 picks a matching accent, which you can change afterwards.
 
 Lettering is a separate choice, with thirty-four styles. Plain: Modern, Clean, Sharp, Squared, Tech,
 Rounded, Condensed, Terminal, Slab, Narrow, Future, Soft, Military, Circuit, Blocky, Heavy titles,
 Arcade. With character: Fantasy titles, Scholar, Manuscript, Storybook, Calligraphy, Celtic, Gothic,
-Runic, Poster, Imperial, Chronicle, Roman, Medieval, Illuminated, Warband, Knightly. And the game's own fonts. You can also
-make your own theme on the Look tab, as either a glass or a fantasy theme, and share it as a text
-string with Export and Import. The Look tab lists themes under three headings: Glass, Fantasy and
-Your themes. The tab scrolls (mouse wheel) so that every theme and lettering style has its own
+Engraved, Poster, Imperial, Chronicle, Roman, Medieval, Illuminated, Warband, Knightly. And the game's own fonts. You can also
+make your own theme on the Look tab, as a glass, fantasy or celestial theme, and share it as a text
+string with Export and Import. The Look tab lists themes under four headings: Glass, Fantasy, Celestial
+and Your themes. The tab scrolls (mouse wheel) so that every theme and lettering style has its own
 button; so do the theme and lettering grids in the setup. It also has a switch for a framed panel behind the action bars (off by default). Theme, accent and lettering
-change on the spot; switching between the glass, fantasy and runic families finishes after a `/reload`.
+change on the spot; switching between the glass, fantasy and celestial families finishes after a `/reload`.
 Glass panels have rounded corners on clients that support it.
 
 ## If something goes wrong
@@ -720,7 +725,7 @@ strings exported from StylishUI still import.
 
 ## Where problem reports go
 
-"Report a Problem" gathers a report as text. It cannot send it: the game gives add-ons no access to
+"Report a problem" gathers a report as text. It cannot send it: the game gives add-ons no access to
 the internet. To tell people where to send it, open `Contact.lua` in a text editor and put one
 address between the quotes: a web page (a form, an issues page, a Discord invite) or an email
 address. The report window then shows that address in a box to copy, with short instructions.

@@ -27,6 +27,9 @@ Set these in the game's key bindings: **Esc → Key Bindings → AddOns → Fant
 | Death recap (your last death) | what hit you before you last died |
 | Boss note (for your target) | the note for the boss you have targeted; with no target, the list of notes |
 | Every command (/fgui help) | the help window |
+| Login briefing (what is waiting) | the login briefing, at any time |
+| Weekly recap | your last week on every character |
+| Skill-ups (profession window open) | the recipes that still give skill points |
 
 ## The minimap button
 
@@ -68,12 +71,22 @@ At a vendor, right-clicking an item in the bag window sells it, gear included. A
 
 When you close a vendor, one line in chat says what you sold, bought and repaired, and what it all came to. Switch it off with **Vendors: one-line summary** on the Features tab.
 
+## When you log in
+
+A few seconds after you log in, the **login briefing** lists what is waiting: crafts ready, mail on your other characters, lockouts that reset, rested experience, jobs left, gear that needs a repair and bags nearly full. Click a line to open that window. `/fgui briefing` shows it again; switch it off with **Login briefing: what is waiting** on the Features tab.
+
+## In the profession window
+
+The **Skill-ups** button (top right of the profession window) lists the recipes that still give skill points, best first. Click one to bring it up.
+
 ## During a fight
 
-The game doesn't allow some things during a fight. If you ask for **Equip best**, **Sort bags** or a **talent build** then, it happens as soon as the fight ends instead of just saying no.
+The game doesn't allow some things during a fight. If you ask for **Equip best**, **Sort bags** or a **talent build** then, it happens as soon as the fight ends instead of just saying no. The same goes for `/fgui textsize`, `/fgui uisize` and quiet mode.
 
 ## Windows
 
+- **Tooltips:** point at a button in the options for what it does; the Layout tab's size sliders explain themselves too.
+- **Long lines:** in a list window, a line too long to fit is shown in full when you point at it.
 - **Close with Escape:** every window the add-on opens closes with **Escape**.
 - **Remembered places:** list windows such as help, boss notes and Worth selling stay where you drag them, for all your characters.
 - **On screen:** no window can be dragged off the screen.

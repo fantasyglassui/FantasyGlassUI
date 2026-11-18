@@ -129,11 +129,12 @@ end)
 -- number; how wide, how tall, how far apart. It can go anywhere (move mode).
 ------------------------------------------------------------------------------------------
 ns.RESOURCE_DEFAULT = { style = "dots", width = 180, height = 12, gap = 4, font = 16 }
+local RESOURCE_STYLES = { dots = true, bar = true, number = true }
 function ns.ResourceDesign()
     local d = type(ns.db and ns.db.resourceDesign) == "table" and ns.db.resourceDesign or {}
     local out = {}
     for k, v in pairs(ns.RESOURCE_DEFAULT) do if d[k] == nil then out[k] = v else out[k] = d[k] end end
-    if not ({ dots = true, bar = true, number = true })[out.style] then out.style = "dots" end
+    if not RESOURCE_STYLES[out.style] then out.style = "dots" end
     out.width = math.max(60, math.min(400, tonumber(out.width) or 180))
     out.height = math.max(4, math.min(40, tonumber(out.height) or 12))
     out.gap = math.max(0, math.min(12, tonumber(out.gap) or 4))
@@ -218,11 +219,24 @@ ns:NewModule("classResource", function()
         end
         return max
     end
+    -- The design is read again only when its table changes (a profile switch, a reset) or every couple
+    -- of seconds, rather than built afresh ten times a second.
+    local design, designFrom, designAge = nil, nil, 0
+    local function Design()
+        local from = ns.db and ns.db.resourceDesign
+        designAge = designAge + 1
+        if not design or from ~= designFrom or designAge > 20 then
+            local fresh = from ~= designFrom
+            design, designFrom, designAge = ns.ResourceDesign(), from, 0
+            return design, fresh
+        end
+        return design, false
+    end
     local function Update()
         if not res then if not ns.moving then f:Hide() end; return end
         local max = Max()
-        local d = ns.ResourceDesign()
-        if max ~= lastMax or d.style ~= lastStyle then f.Apply() end
+        local d, fresh = Design()
+        if fresh or max ~= lastMax or d.style ~= lastStyle then f.Apply() end     -- (fresh: another profile's design)
         if max <= 0 and not ns.moving then f:Hide(); return end
         f:Show()
         if res[1] == "runes" then
@@ -243,8 +257,18 @@ ns:NewModule("classResource", function()
         pcall(f.num.SetText, f.num, v)
     end
     ns.resourceTest = { frame = f, Update = Update }
-    ns.ApplyResourceDesign = function() f.Apply(); Update() end
-    ns:Every(0.1, "Class resource", Update)
+    ns.ApplyResourceDesign = function() design = nil; f.Apply(); Update() end
+    -- Combo points, holy power and the rest change on an event; a slower look catches anything else.
+    if res then
+        local ev = CreateFrame("Frame")
+        pcall(ev.RegisterUnitEvent, ev, "UNIT_POWER_FREQUENT", "player")
+        pcall(ev.RegisterUnitEvent, ev, "UNIT_MAXPOWER", "player")
+        pcall(ev.RegisterUnitEvent, ev, "UNIT_DISPLAYPOWER", "player")
+        pcall(ev.RegisterEvent, ev, "RUNE_POWER_UPDATE")
+        pcall(ev.RegisterEvent, ev, "PLAYER_TARGET_CHANGED")
+        ev:SetScript("OnEvent", ns:Guard("Class resource", function() Update() end))
+    end
+    ns:Every(0.25, "Class resource", Update)
     local entry = ns:RegisterMovable(f, "classResource", "Class resource")
     if type(entry) == "table" then entry.noScale = "Sized on the Bars and frames tab (Class resource)." end
 end)
@@ -443,6 +467,8 @@ function ns:ShowKeySheet(show)
         local row = sheet.rows[r]
         if not row then
             row = { label = ns:NewText(sheet, 11, "RIGHT"), cells = {} }
+            row.label:SetWidth(84)                           -- (a long bar name in another language is cut short, not pushed off the sheet)
+            if row.label.SetWordWrap then row.label:SetWordWrap(false) end
             for i = 1, 12 do
                 local c = CreateFrame("Frame", nil, sheet)
                 c:SetSize(CELL, CELL)
@@ -451,6 +477,7 @@ function ns:ShowKeySheet(show)
                 c.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
                 c.key = ns:NewText(c, 12, "CENTER", true)
                 c.key:SetPoint("TOP", c.icon, "BOTTOM", 0, -1)
+                c.key:SetWidth(CELL); if c.key.SetWordWrap then c.key:SetWordWrap(false) end   -- (a long key such as a mouse wheel stays in its cell)
                 c.name = ns:NewText(c, 9, "CENTER")
                 c.name:SetPoint("TOP", c.key, "BOTTOM", 0, -1)
                 c.name:SetWidth(CELL); if c.name.SetWordWrap then c.name:SetWordWrap(false) end
@@ -605,7 +632,11 @@ local function QuietFrames()
 end
 function ns:ToggleQuiet(on)
     if on == nil then on = not ns.quietOn end
-    if InCombatLockdown() and on ~= ns.quietOn then ns:Print("Not during a fight."); return ns.quietOn end
+    if InCombatLockdown() and on ~= ns.quietOn then                -- (asked for in a fight: as soon as it ends)
+        local want = on
+        if not (ns.AfterFight and ns:AfterFight("Quiet mode", function() ns:ToggleQuiet(want) end)) then ns:Print("Not during a fight.") end
+        return ns.quietOn
+    end
     local Get = (C_CVar and C_CVar.GetCVar) or GetCVar
     local Set = (C_CVar and C_CVar.SetCVar) or SetCVar
     if on and not ns.quietOn then
@@ -629,6 +660,7 @@ function ns:ToggleQuiet(on)
         if UIErrorsFrame then pcall(UIErrorsFrame.SetAlpha, UIErrorsFrame, 1) end
         ns.quietOn, ns.quietSaved = false, nil
         if type(ns.root) == "table" then ns.root.quietCVars = nil end
+        ns:Print("Quiet mode off: chat, names and the info bar are back.")       -- (on, there is no chat to say it in)
     end
     return ns.quietOn
 end

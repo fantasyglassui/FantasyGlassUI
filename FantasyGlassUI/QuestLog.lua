@@ -3,7 +3,7 @@ local _, ns = ...
 ns:NewModule("questLog", function()
     local QL = C_QuestLog
     if not (QL and QL.GetNumQuestLogEntries and QL.GetInfo and QL.GetTitleForQuestID) then
-        ns:Print("Quest log: this client lacks the C_QuestLog API, keeping Blizzard's quest log.")
+        ns:Print("This game client does not hand its quest log to add-ons, so the game's own quest log stays.")
         return
     end
 
@@ -29,7 +29,8 @@ ns:NewModule("questLog", function()
     local title = frame:CreateFontString(nil, "OVERLAY")
     ns:Font(title, 20, true)
     title:SetPoint("TOPLEFT", 16, -14)
-    title:SetText(ns:AccentHex() .. "Quest|r Log")
+    title:SetText(ns:Tr("Quest log"))
+    ns:Paint(title, "SetTextColor", "@accent")
     local count = frame:CreateFontString(nil, "OVERLAY")
     ns:Font(count, 12)
     count:SetPoint("LEFT", title, "RIGHT", 14, 0)
@@ -76,16 +77,16 @@ ns:NewModule("questLog", function()
         fs:SetTextColor(r or 1, g or 1, b or 1)
         return fs
     end
-    local dTitle = FS(18, 1, 0.82, 0)
-    local dLevel = FS(12, ns:T("dim"))
-    local hObj   = FS(13, th.accent[1], th.accent[2], th.accent[3])
-    local dObj   = FS(12, ns:T("text"))
-    local hDesc  = FS(13, th.accent[1], th.accent[2], th.accent[3])
-    local dDesc  = FS(12, ns:T("text"))
-    local hRew   = FS(13, th.accent[1], th.accent[2], th.accent[3])
-    local dRew   = FS(12, ns:T("text"))
+    local dTitle = FS(18)
+    local dLevel = FS(12)
+    local hObj, dObj = FS(13), FS(12)
+    local hDesc, dDesc = FS(13), FS(12)
+    local hRew, dRew = FS(13), FS(12)
     ns:Font(dTitle, 20, true)
-    for _, h in ipairs({ hObj, hDesc, hRew }) do ns:Font(h, 14, true) end
+    ns:Paint(dTitle, "SetTextColor", "@accent")               -- (painted, so a new theme or accent shows at once)
+    ns:Paint(dLevel, "SetTextColor", "dim")
+    for _, h in ipairs({ hObj, hDesc, hRew }) do ns:Font(h, 14, true); ns:Paint(h, "SetTextColor", "@accent") end
+    for _, d in ipairs({ dObj, dDesc, dRew }) do ns:Paint(d, "SetTextColor", "text") end
 
     local function Layout()
         local y = 0
@@ -133,7 +134,7 @@ ns:NewModule("questLog", function()
         local r = {}
         pcall(function()
             local xp = GetQuestLogRewardXP and GetQuestLogRewardXP(id)
-            if xp and xp > 0 then r[#r + 1] = "|cffffffff" .. xp .. "|r experience" end
+            if xp and xp > 0 then r[#r + 1] = format(ns:Tr("%s experience"), "|cffffffff" .. xp .. "|r") end
             local money = GetQuestLogRewardMoney and GetQuestLogRewardMoney(id)
             if money and money > 0 then
                 r[#r + 1] = ns:Coins(money)
@@ -145,7 +146,7 @@ ns:NewModule("questLog", function()
             end
             local c = GetNumQuestLogChoices and GetNumQuestLogChoices(id, true) or 0
             if c > 0 then
-                r[#r + 1] = "|cffb5a585Choose one:|r"
+                r[#r + 1] = "|cffb5a585" .. ns:Tr("Choose one:") .. "|r"
                 for i = 1, c do
                     local name, tex, num = GetQuestLogChoiceInfo(i)
                     if name then r[#r + 1] = format("   |T%s:14|t %s%s", tex or "", name, (num and num > 1) and (" x" .. num) or "") end
@@ -167,7 +168,7 @@ ns:NewModule("questLog", function()
     btnTrack:SetPoint("BOTTOMLEFT", 312, 14)
     ns:ButtonTip(btnTrack, "Show this quest in the quest tracker, or take it off.")
 
-    btnMap = ns:CreateButton(frame, "Show on Map", 110, 26, function()
+    btnMap = ns:CreateButton(frame, "Show on map", 110, 26, function()
         if not selectedID then return end
         if C_SuperTrack and C_SuperTrack.SetSuperTrackedQuestID then C_SuperTrack.SetSuperTrackedQuestID(selectedID) end
         if InCombatLockdown() then                               -- (the game does not let an add-on open the map in a fight)
@@ -205,7 +206,7 @@ ns:NewModule("questLog", function()
             selectedID = nil
         else
             self.armed = true
-            self.text:SetText("|cffff5555" .. ns:Tr("Click to confirm") .. "|r")
+            self.text:SetText(ns:SignalHex("bad") .. ns:Tr("Click to confirm") .. "|r")
             abandonToken = abandonToken + 1
             local token = abandonToken
             ns:After(4, function()
@@ -234,12 +235,12 @@ ns:NewModule("questLog", function()
         local complete = QL.IsComplete and QL.IsComplete(id)
         dTitle:SetText(QL.GetTitleForQuestID(id) or "")
         local lvl = info and info.questLevel
-        dLevel:SetText(((lvl and lvl > 0) and ("Level " .. lvl) or "") .. (complete and "   |cff66dd77Ready to turn in|r" or ""))
+        dLevel:SetText(((lvl and lvl > 0) and format(ns:Tr("Level %d"), lvl) or "") .. (complete and ("   " .. ns:SignalHex("good") .. ns:Tr("Ready to turn in") .. "|r") or ""))
 
         local lines = {}
         for _, o in ipairs(QL.GetQuestObjectives(id) or {}) do
             if o.text and o.text ~= "" then
-                lines[#lines + 1] = (o.finished and "|cff66dd77" or "|cffddd2b8") .. "- " .. o.text .. "|r"
+                lines[#lines + 1] = (o.finished and ns:SignalHex("good") or "|cffddd2b8") .. "- " .. o.text .. "|r"
             end
         end
         hObj:SetText(ns:Tr("Objectives"))
@@ -250,10 +251,10 @@ ns:NewModule("questLog", function()
         dDesc:SetText((ok and desc) or "")
 
         local rew = RewardsText(id)
-        hRew:SetText(rew ~= "" and "Rewards" or "")
+        hRew:SetText(rew ~= "" and ns:Tr("Rewards") or "")
         dRew:SetText(rew)
 
-        btnTrack.text:SetText(Tracked(id) and "Untrack" or "Track")
+        btnTrack.text:SetText(ns:Tr(Tracked(id) and "Untrack" or "Track"))
         Layout()
     end
 
@@ -304,7 +305,7 @@ ns:NewModule("questLog", function()
                     cur = { title = info.title, quests = {} }
                     groups[#groups + 1] = cur
                 else
-                    if not cur then cur = { title = "Other", quests = {} }; groups[#groups + 1] = cur end
+                    if not cur then cur = { title = ns:Tr("Other"), quests = {} }; groups[#groups + 1] = cur end
                     cur.quests[#cur.quests + 1] = info
                 end
             end
@@ -342,7 +343,7 @@ ns:NewModule("questLog", function()
                     b.selected = (q.questID == selectedID)
                     local done = QL.IsComplete and QL.IsComplete(q.questID)
                     local lvl = q.questLevel
-                    b.text:SetText(((lvl and lvl > 0) and ("[" .. lvl .. "] ") or "") .. (q.title or "?") .. (done and "  |cff66dd77Done|r" or ""))
+                    b.text:SetText(((lvl and lvl > 0) and ("[" .. lvl .. "] ") or "") .. (q.title or "?") .. (done and ("  " .. ns:SignalHex("good") .. ns:Tr("Done") .. "|r") or ""))
                     b.text:SetTextColor(LevelColor(lvl))
                     b.text:SetPoint("LEFT", 16, 0)
                     b.bg:SetVertexColor(th.accent[1], th.accent[2], th.accent[3], b.selected and 0.25 or 0)

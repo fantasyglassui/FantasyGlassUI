@@ -32,9 +32,12 @@ ns:NewModule("chat", function()
         end
     end
 
-    -- Timestamps (only if the player hasn't picked one)
-    local ts = GetCVar("showTimestamps")
-    if not ts or ts == "none" then SetCVar("showTimestamps", "%H:%M ") end
+    -- Timestamps: switched on once. If you then choose "None" in the game's chat settings, that stays.
+    if not ns.db.chatStampsOffered then
+        ns.db.chatStampsOffered = true
+        local ts = GetCVar("showTimestamps")
+        if not ts or ts == "none" then SetCVar("showTimestamps", "%H:%M ") end
+    end
 
     for i = 1, NUM_CHAT_WINDOWS do
         local chat = _G["ChatFrame" .. i]

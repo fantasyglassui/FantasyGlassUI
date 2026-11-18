@@ -8,9 +8,9 @@ ns.session = S
 local function Duration(seconds)
     seconds = math.max(0, math.floor(seconds))
     local d, h, m = math.floor(seconds / 86400), math.floor(seconds % 86400 / 3600), math.floor(seconds % 3600 / 60)
-    if d > 0 then return format("%dd %dh %02dm", d, h, m) end
-    if h > 0 then return format("%dh %02dm", h, m) end
-    return format("%dm %02ds", m, seconds % 60)
+    if d > 0 then return format(ns:Tr("%dd %dh %02dm"), d, h, m) end
+    if h > 0 then return format(ns:Tr("%dh %02dm"), h, m) end
+    return format(ns:Tr("%dm %02ds"), m, seconds % 60)
 end
 local function Num(n)
     n = math.floor(n)
@@ -116,7 +116,7 @@ function ns:SessionStats()
     end
     local change = S.money and (GetMoney() - S.money) or 0
     if change ~= 0 then
-        rows[#rows + 1] = { ns:Tr("Gold"), (change > 0 and "|cff55ee66+" or "|cffff6655-") .. ns:Coins(math.abs(change)) .. "|r" }
+        rows[#rows + 1] = { ns:Tr("Gold"), (change > 0 and (ns:SignalHex("good") .. "+") or (ns:SignalHex("bad") .. "-")) .. ns:Coins(math.abs(change)) .. "|r" }
     end
     rows[#rows + 1] = { ns:Tr("Quests / kills / deaths"), format("%d  /  %d  /  %d", S.quests, S.kills, S.deaths) }
     if played then

@@ -35,7 +35,7 @@ Your own note on a player has its own switch, **Notes on players** (Chat and peo
 All tooltips wear your theme's panel:
 - **Glass:** the glass sheen and bright top edge.
 - **Fantasy:** leather grain with small gold corners.
-- **Runic:** carved stone with small glowing rune-studs.
+- **Celestial:** a night sky with small star points.
 
 An item's quality colors the edge. The health bar under a player's tooltip takes their class color; under a creature's, green, yellow or red for friendly, neutral or hostile.
 

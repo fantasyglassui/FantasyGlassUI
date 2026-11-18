@@ -127,6 +127,9 @@ function ns:MainCommand(text)
     elseif arg == "copy" then
         root.altCopy = nil
         ns:Print("New characters get their own copy of your main's setup, fitted to their class.")
+    elseif arg ~= "" then                                         -- (a word it does not know: not a reason to change your main)
+        ns:Print("/fgui main makes this character your main. Also: |cffffff00/fgui main off|r, |cffffff00share|r, |cffffff00copy|r.")
+        return root.mainChar
     else
         root.mainChar = ns:CharKey()
         ns:Print("%s is now your main: new characters copy its setup (|cffffff00/fgui main off|r to undo).", ns:CharKey())

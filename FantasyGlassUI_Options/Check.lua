@@ -522,7 +522,7 @@ function ns:DumpTree(root, maxDepth)
 end
 
 
--- /fgui report (and the "Report a Problem" button): everything someone needs to see to help, in one
+-- /fgui report (and the "Report a problem" button): everything someone needs to see to help, in one
 -- block of text to copy. It is the self-check, plus the settings that differ from how the add-on
 -- comes, plus the other add-ons that are running. Nothing is sent anywhere; it is only shown.
 -- The address reports should go to (Contact.lua), tidied: nothing that could be read as formatting
@@ -725,15 +725,15 @@ function ns:CheckNew(quiet)
         return (#rows > 0) and "OK" or "CHECK", format("%d features measured", #rows)
     end)
     add("")
-    add("11.8 and 11.9")
-    try("Runic themes", function()
+    add("11.8 and 11.9 (Celestial since 11.11)")
+    try("Celestial themes", function()
         local n = 0
-        for _, key in ipairs(ns.themeOrder) do local t = ns.themes[key]; if t and t.style == "RUNIC" and not t.custom then n = n + 1 end end
-        return (n == 38) and "OK" or "CHECK", format("%d runic themes; this one is %s", n, tostring(ns.style))
+        for _, key in ipairs(ns.themeOrder) do local t = ns.themes[key]; if t and t.style == "CELESTIAL" and not t.custom then n = n + 1 end end
+        return (n == 38) and "OK" or "CHECK", format("%d celestial themes; this one is %s", n, tostring(ns.style))
     end)
-    try("Runic art", function()
-        if ns.style ~= "RUNIC" then return "OK", "shown with a Runic theme (pick one and /reload to see it)" end
-        return ns.minimapRunes and "OK" or "CHECK", ns.minimapRunes and "minimap rune band in place" or "no minimap rune band (is the minimap switched off?)"
+    try("Celestial art", function()
+        if ns.style ~= "CELESTIAL" then return "OK", "shown with a Celestial theme (pick one and /reload to see it)" end
+        return ns.minimapRunes and "OK" or "CHECK", ns.minimapRunes and "minimap star frame in place" or "no minimap star frame (is the minimap switched off?)"
     end)
     try("Language names", function()
         local fam = _G.GameFontHighlight

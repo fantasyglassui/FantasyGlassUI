@@ -197,7 +197,7 @@ ns:NewModule("toasts", function()
         if type(lowest) == "number" then
             if lowest < 20 and not repairWarned then
                 repairWarned = true
-                ns:Toast(nil, ns:Tr("Gear needs repair"), format(ns:Tr("Your most worn item is at %d%%."), lowest), "!")
+                ns:Toast(nil, ns:Tr("Gear needs repair"), format(ns:Tr("Your most worn item is at %d%%."), math.floor(lowest)), "!")
             elseif lowest >= 50 then
                 repairWarned = false
             end

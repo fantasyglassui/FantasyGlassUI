@@ -1,6 +1,6 @@
 local ADDON, ns = ...
 _G.FantasyGlassUI = ns
-ns.version = "11.10.0"
+ns.version = "11.11.0"
 ns.author = "DustyMouse"
 
 ns.modules = {}
@@ -32,7 +32,7 @@ function ns:LoadOptions()
     if ns.optionsLoaded then return true end
     if not ns.optionsWarned or GetTime() - ns.optionsWarned > 10 then
         ns.optionsWarned = GetTime()
-        ns:PrintRaw("|cffff4444Fantasy Glass UI:|r the options could not be opened (" .. reason .. "). They are in a second folder, "
+        ns:PrintRaw("|cffff4444The options could not be opened|r (" .. reason .. "). They are in a second folder, "
             .. OPTIONS .. ", which must sit beside FantasyGlassUI in Interface/AddOns and be enabled. Installing the add-on again puts it back.")
     end
     return false
@@ -65,6 +65,9 @@ ns.defaults = {
     autoSell         = true,
     autoRepair       = true,
     vendorSummary    = true,        -- one line in chat after each vendor visit (11.10)
+    loginBriefing    = true,        -- what is waiting, a few seconds after you log in (11.11)
+    skillUps         = true,        -- "Skill-ups" on the profession window (11.11)
+    weeklyRecap      = true,        -- each character's week, noted as you play (11.11)
     accent           = "AZURE",
     theme            = "SMOKE",
     panelAlpha       = 78,          -- glass HUD panel opacity, percent
@@ -75,12 +78,12 @@ ns.defaults = {
     ufBoss           = true,        -- boss frames
     ufArena          = false,       -- arena enemy frames (UnitFrames.lua)
     enemyCDs         = true,        -- enemy trinket, interrupt and dispel cooldowns, in arenas and battlegrounds (Arena.lua)
-    upgradeArrows    = true,
+    upgradeArrows    = true,        -- upgrade arrows on loot rolls, quest rewards and the game's bags (Upgrades.lua)
     loginLine        = true,        -- the "loaded" line in chat at login
     bossNotes        = true,        -- a note for each boss, opened on target or pull (Raid.lua)
     deathRecap       = true,        -- what hit you before you died (Raid.lua)
     homeKey          = true,        -- one key for the best way home (QuickKeys.lua)
-    auctionHelper    = true,        -- auction house: lowest -1c and worth selling (Auction.lua)        -- upgrade arrows on loot rolls, quest rewards and the game's bags (Upgrades.lua)
+    auctionHelper    = true,        -- auction house: lowest -1c and worth selling (Auction.lua)
     launcher         = true,        -- a minimap button that opens the options
     versionNotice    = true,        -- say once when someone in your guild or group has a newer version
     autoInvite       = false,       -- accept group invitations from friends and guildmates
@@ -91,6 +94,7 @@ ns.defaults = {
     equipSets        = true,        -- a button for each saved gear set, under the character window
     autoGreed        = false,       -- roll Greed on green items (not on bind-on-pickup ones or upgrades)
     chatEditTop      = false,       -- the typing bar above the chat box (it covers the chat tabs there) rather than under it
+    chatStampsOffered = false,      -- chat timestamps were switched on once (a later "None" in the game's settings is kept)
     chatHistory      = true,        -- the last lines of each chat tab come back after a reload
     tweakCamera      = false,       -- game settings as switches: zoom the camera out further,
     tweakErrorVoice  = false,       --   mute the "Not enough mana" voice,
@@ -206,6 +210,7 @@ ns.defaults = {
     bubbleNames      = true,        -- speaker's name above each chat bubble
     bubbleFont       = 13,
     fontScale        = 100,         -- all lettering, percent
+    uiScale          = 100,         -- the whole interface, percent of the game's (or pixel-perfect) scale
     smoothBars       = true,
     fades            = true,
     idleFade         = false,       -- dim the player frame when nothing is happening
@@ -367,10 +372,36 @@ ns.accents = {
     FEL      = { 0.62, 0.96, 0.26 },
     BONE     = { 0.93, 0.89, 0.76 },
     PLATINUM = { 0.84, 0.88, 0.94 },
+    -- 11.11: twelve more
+    MIDNIGHT   = { 0.36, 0.46, 0.96 },
+    ICE        = { 0.72, 0.93, 1.00 },
+    TURQUOISE  = { 0.16, 0.72, 0.90 },
+    EMERALD    = { 0.18, 0.80, 0.46 },
+    CHARTREUSE = { 0.80, 0.95, 0.26 },
+    OLIVE      = { 0.70, 0.72, 0.36 },
+    INDIGO     = { 0.48, 0.44, 1.00 },
+    LAVENDER   = { 0.80, 0.72, 1.00 },
+    MAGENTA    = { 1.00, 0.32, 0.86 },
+    BLUSH      = { 1.00, 0.70, 0.79 },
+    PEACH      = { 1.00, 0.73, 0.56 },
+    BRONZE     = { 0.82, 0.57, 0.31 },
     CLASS   = false,   -- resolved from your class at login
 }
-ns.accentOrder = { "AZURE", "FROST", "TEAL", "MINT", "VERDANT", "FEL", "GOLD", "AMBER", "CORAL", "EMBER", "SCARLET", "CRIMSON", "ROSE",
-                   "ORCHID", "VIOLET", "ARCANE", "BONE", "PLATINUM", "CLASS" }
+ns.accentOrder = { "MIDNIGHT", "AZURE", "FROST", "ICE", "TURQUOISE", "TEAL", "MINT", "EMERALD", "VERDANT", "FEL", "CHARTREUSE", "OLIVE",
+                   "GOLD", "AMBER", "BRONZE", "PEACH", "CORAL", "EMBER", "SCARLET", "CRIMSON", "ROSE", "BLUSH", "MAGENTA",
+                   "ORCHID", "LAVENDER", "VIOLET", "INDIGO", "ARCANE", "BONE", "PLATINUM", "CLASS" }
+-- An accent's name, as the Look tab and the setup show it.
+ns.accentNames = {
+    MIDNIGHT = "Midnight blue", AZURE = "Azure", FROST = "Frost", ICE = "Ice", TURQUOISE = "Turquoise", TEAL = "Teal", MINT = "Mint",
+    EMERALD = "Emerald", VERDANT = "Verdant", FEL = "Fel green", CHARTREUSE = "Chartreuse", OLIVE = "Olive", GOLD = "Gold",
+    AMBER = "Amber", BRONZE = "Bronze", PEACH = "Peach", CORAL = "Coral", EMBER = "Ember", SCARLET = "Scarlet", CRIMSON = "Crimson",
+    ROSE = "Rose", BLUSH = "Blush pink", MAGENTA = "Magenta", ORCHID = "Orchid", LAVENDER = "Lavender", VIOLET = "Violet",
+    INDIGO = "Indigo", ARCANE = "Arcane", BONE = "Bone", PLATINUM = "Platinum", CLASS = "Your class color",
+}
+function ns:AccentName(key)
+    local name = ns.accentNames[key] or (tostring(key):sub(1, 1) .. tostring(key):sub(2):lower())
+    return ns:Tr(name)
+end
 
 function ns:AccentColor(key)
     local c = ns.accents[key]
@@ -393,6 +424,11 @@ function ns:ApplyAccent()
     local r, g, b = ns:AccentColor(ns.db.accent or "AZURE")
     local a = ns.theme.accent
     a[1], a[2], a[3] = r, g, b
+    local base = ns.celestialEdge                            -- Celestial: the one fine line round a panel leans to the accent
+    if ns.style == "CELESTIAL" and base then
+        local e = ns.theme.border
+        for i = 1, 3 do e[i] = base[i] * 0.55 + a[i] * 0.45 end
+    end
 end
 
 -- Themes: the whole palette in one place. Every panel, button and bar reads its colors from here.
@@ -699,157 +735,158 @@ ns.themes = {
         grain = { 0.382, 0.23, 0.8, 0.12 }, light = { 0.908, 0.929, 1 }, plate = { 0.105, 0.071, 0.2 },
         text = { 0.864, 0.833, 0.95 }, dim = { 0.696, 0.64, 0.85 }, faint = { 0.521, 0.466, 0.67 }, btn = { 0.912, 0.933, 1 } },
     CLASS  = { name = "Fantasy: Class (your class color)", accent = "CLASS" },      -- built from your class color at login
-    -- Runic (11.8): carved stone, an engraved inner edge, and runes that glow in the accent color
-    -- from the corners and along the foot of each panel. Opaque like fantasy, no ornament in gold.
-    R_GRANITE = { name = "Runic: Granite (gray stone, frost runes)", style = "RUNIC", accent = "FROST",
-        bg = { 0.085, 0.085, 0.09 }, border = { 0.337, 0.365, 0.398 }, rim = { 0.0255, 0.0255, 0.027 },
-        grain = { 0.405, 0.405, 0.42, 0.1 }, light = { 0.7, 0.868, 1 }, plate = { 0.192, 0.192, 0.201 },
+    -- Celestial (11.11, in place of Runic): a night sky deepening toward the top with a horizon glow
+    -- at its foot, sparse stars and a faint Milky Way, one fine line round each panel, and on large
+    -- windows one constellation and an orbit. Each was made from the Runic theme it replaces (the same accent).
+    C_POLARIS = { name = "Celestial: Polaris (silver night, frost stars)", style = "CELESTIAL", accent = "FROST",
+        bg = { 0.055, 0.057, 0.074 }, border = { 0.374, 0.399, 0.447 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 0.775, 0.901, 1 }, plate = { 0.153, 0.159, 0.201 },
         text = { 0.89, 0.907, 0.92 }, dim = { 0.73, 0.747, 0.76 }, faint = { 0.525, 0.539, 0.55 }, btn = { 0.775, 0.901, 1 } },
-    R_BASALT = { name = "Runic: Basalt (black rock, ember runes)", style = "RUNIC", accent = "EMBER",
-        bg = { 0.05, 0.05, 0.055 }, border = { 0.305, 0.252, 0.243 }, rim = { 0.015, 0.015, 0.0165 },
-        grain = { 0.3, 0.3, 0.315, 0.1 }, light = { 0.97, 0.652, 0.532 }, plate = { 0.125, 0.125, 0.135 },
+    C_ECLIPSE = { name = "Celestial: Eclipse (black sky, ember corona)", style = "CELESTIAL", accent = "EMBER",
+        bg = { 0.036, 0.037, 0.055 }, border = { 0.352, 0.32, 0.338 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 0.978, 0.739, 0.649 }, plate = { 0.113, 0.117, 0.161 },
         text = { 0.917, 0.885, 0.873 }, dim = { 0.757, 0.725, 0.713 }, faint = { 0.547, 0.521, 0.511 }, btn = { 0.978, 0.739, 0.649 } },
-    R_SLATE = { name = "Runic: Slate (blue-gray, azure runes)", style = "RUNIC", accent = "AZURE",
-        bg = { 0.06, 0.075, 0.09 }, border = { 0.268, 0.337, 0.398 }, rim = { 0.018, 0.0225, 0.027 },
-        grain = { 0.33, 0.375, 0.42, 0.1 }, light = { 0.616, 0.832, 1 }, plate = { 0.144, 0.172, 0.201 },
+    C_BLUEHOUR = { name = "Celestial: Blue Hour (slate sky, azure stars)", style = "CELESTIAL", accent = "AZURE",
+        bg = { 0.041, 0.051, 0.074 }, border = { 0.326, 0.38, 0.447 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 0.712, 0.874, 1 }, plate = { 0.124, 0.146, 0.201 },
         text = { 0.882, 0.903, 0.92 }, dim = { 0.722, 0.743, 0.76 }, faint = { 0.518, 0.536, 0.55 }, btn = { 0.712, 0.874, 1 } },
-    R_MARBLE = { name = "Runic: Marble (pale stone, gold runes)", style = "RUNIC", accent = "GOLD",
-        bg = { 0.12, 0.115, 0.11 }, border = { 0.464, 0.435, 0.382 }, rim = { 0.036, 0.0345, 0.033 },
-        grain = { 0.51, 0.495, 0.48, 0.1 }, light = { 1, 0.892, 0.64 }, plate = { 0.258, 0.248, 0.239 },
+    C_ZENITH = { name = "Celestial: Zenith (pale night, gold stars)", style = "CELESTIAL", accent = "GOLD",
+        bg = { 0.074, 0.073, 0.085 }, border = { 0.463, 0.449, 0.435 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 1, 0.919, 0.73 }, plate = { 0.193, 0.193, 0.225 },
         text = { 0.92, 0.909, 0.884 }, dim = { 0.76, 0.749, 0.724 }, faint = { 0.55, 0.541, 0.52 }, btn = { 1, 0.919, 0.73 } },
-    R_SANDSTONE = { name = "Runic: Sandstone (desert, amber runes)", style = "RUNIC", accent = "AMBER",
-        bg = { 0.11, 0.08, 0.05 }, border = { 0.442, 0.35, 0.24 }, rim = { 0.033, 0.024, 0.015 },
-        grain = { 0.48, 0.39, 0.3, 0.1 }, light = { 1, 0.844, 0.58 }, plate = { 0.239, 0.182, 0.125 },
+    C_DESERT = { name = "Celestial: Desert Sky (warm dusk, amber stars)", style = "CELESTIAL", accent = "AMBER",
+        bg = { 0.069, 0.054, 0.052 }, border = { 0.447, 0.389, 0.336 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 1, 0.883, 0.685 }, plate = { 0.183, 0.153, 0.155 },
         text = { 0.92, 0.904, 0.878 }, dim = { 0.76, 0.744, 0.718 }, faint = { 0.55, 0.537, 0.515 }, btn = { 1, 0.883, 0.685 } },
-    R_MOONSTONE = { name = "Runic: Moonstone (cool stone, silver runes)", style = "RUNIC", accent = "PLATINUM",
-        bg = { 0.08, 0.085, 0.11 }, border = { 0.36, 0.375, 0.436 }, rim = { 0.024, 0.0255, 0.033 },
-        grain = { 0.39, 0.405, 0.48, 0.1 }, light = { 0.904, 0.928, 0.964 }, plate = { 0.182, 0.192, 0.239 },
+    C_MOON = { name = "Celestial: Moonlight (cool night, silver stars)", style = "CELESTIAL", accent = "PLATINUM",
+        bg = { 0.052, 0.057, 0.085 }, border = { 0.39, 0.406, 0.473 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 0.928, 0.946, 0.973 }, plate = { 0.147, 0.159, 0.225 },
         text = { 0.91, 0.913, 0.916 }, dim = { 0.75, 0.753, 0.756 }, faint = { 0.542, 0.544, 0.547 }, btn = { 0.928, 0.946, 0.973 } },
-    R_BLOODSTONE = { name = "Runic: Bloodstone (dark red, scarlet runes)", style = "RUNIC", accent = "SCARLET",
-        bg = { 0.09, 0.035, 0.035 }, border = { 0.396, 0.197, 0.199 }, rim = { 0.027, 0.0105, 0.0105 },
-        grain = { 0.42, 0.255, 0.255, 0.1 }, light = { 0.988, 0.52, 0.532 }, plate = { 0.201, 0.0965, 0.0965 },
+    C_BLOODMOON = { name = "Celestial: Blood Moon (dark red sky, scarlet stars)", style = "CELESTIAL", accent = "SCARLET",
+        bg = { 0.058, 0.029, 0.044 }, border = { 0.415, 0.282, 0.307 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 0.991, 0.64, 0.649 }, plate = { 0.16, 0.1, 0.138 },
         text = { 0.919, 0.872, 0.873 }, dim = { 0.759, 0.712, 0.713 }, faint = { 0.549, 0.51, 0.511 }, btn = { 0.991, 0.64, 0.649 } },
-    R_JADE = { name = "Runic: Jadestone (green stone, mint runes)", style = "RUNIC", accent = "MINT",
-        bg = { 0.04, 0.08, 0.06 }, border = { 0.224, 0.368, 0.304 }, rim = { 0.012, 0.024, 0.018 },
-        grain = { 0.27, 0.39, 0.33, 0.1 }, light = { 0.616, 0.952, 0.832 }, plate = { 0.106, 0.182, 0.144 },
+    C_AURORA = { name = "Celestial: Aurora (green night, mint lights)", style = "CELESTIAL", accent = "MINT",
+        bg = { 0.03, 0.054, 0.058 }, border = { 0.295, 0.402, 0.381 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 0.712, 0.964, 0.874 }, plate = { 0.1, 0.153, 0.168 },
         text = { 0.882, 0.915, 0.903 }, dim = { 0.722, 0.755, 0.743 }, faint = { 0.518, 0.546, 0.536 }, btn = { 0.712, 0.964, 0.874 } },
-    R_FROST = { name = "Runic: Frostrune (ice-bound, frost runes)", style = "RUNIC", accent = "FROST",
-        bg = { 0.06, 0.08, 0.11 }, border = { 0.282, 0.354, 0.442 }, rim = { 0.018, 0.024, 0.033 },
-        grain = { 0.33, 0.39, 0.48, 0.1 }, light = { 0.7, 0.868, 1 }, plate = { 0.144, 0.182, 0.239 },
+    C_WINTER = { name = "Celestial: Winter Sky (ice blue, frost stars)", style = "CELESTIAL", accent = "FROST",
+        bg = { 0.041, 0.054, 0.085 }, border = { 0.335, 0.392, 0.477 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 0.775, 0.901, 1 }, plate = { 0.124, 0.153, 0.225 },
         text = { 0.89, 0.907, 0.92 }, dim = { 0.73, 0.747, 0.76 }, faint = { 0.525, 0.539, 0.55 }, btn = { 0.775, 0.901, 1 } },
-    R_EMBER = { name = "Runic: Emberrune (scorched, fire runes)", style = "RUNIC", accent = "EMBER",
-        bg = { 0.09, 0.05, 0.035 }, border = { 0.393, 0.252, 0.199 }, rim = { 0.027, 0.015, 0.0105 },
-        grain = { 0.42, 0.3, 0.255, 0.1 }, light = { 0.97, 0.652, 0.532 }, plate = { 0.201, 0.125, 0.0965 },
+    C_COMET = { name = "Celestial: Comet (scorched sky, a fiery tail)", style = "CELESTIAL", accent = "EMBER",
+        bg = { 0.058, 0.037, 0.044 }, border = { 0.413, 0.32, 0.307 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 0.978, 0.739, 0.649 }, plate = { 0.16, 0.117, 0.138 },
         text = { 0.917, 0.885, 0.873 }, dim = { 0.757, 0.725, 0.713 }, faint = { 0.547, 0.521, 0.511 }, btn = { 0.978, 0.739, 0.649 } },
-    R_STORM = { name = "Runic: Stormrune (thunder gray, teal runes)", style = "RUNIC", accent = "TEAL",
-        bg = { 0.06, 0.065, 0.09 }, border = { 0.257, 0.329, 0.382 }, rim = { 0.018, 0.0195, 0.027 },
-        grain = { 0.33, 0.345, 0.42, 0.1 }, light = { 0.55, 0.916, 0.904 }, plate = { 0.144, 0.153, 0.201 },
+    C_STARSTORM = { name = "Celestial: Starstorm (thunder gray, teal stars)", style = "CELESTIAL", accent = "TEAL",
+        bg = { 0.041, 0.046, 0.074 }, border = { 0.318, 0.374, 0.435 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 0.663, 0.937, 0.928 }, plate = { 0.124, 0.136, 0.201 },
         text = { 0.875, 0.912, 0.91 }, dim = { 0.715, 0.752, 0.75 }, faint = { 0.512, 0.543, 0.542 }, btn = { 0.663, 0.937, 0.928 } },
-    R_SUN = { name = "Runic: Sunrune (sun-baked, gold runes)", style = "RUNIC", accent = "GOLD",
-        bg = { 0.1, 0.08, 0.04 }, border = { 0.42, 0.358, 0.228 }, rim = { 0.03, 0.024, 0.012 },
-        grain = { 0.45, 0.39, 0.27, 0.1 }, light = { 1, 0.892, 0.64 }, plate = { 0.22, 0.182, 0.106 },
+    C_SOLSTICE = { name = "Celestial: Solstice (golden dusk, gold stars)", style = "CELESTIAL", accent = "GOLD",
+        bg = { 0.063, 0.054, 0.047 }, border = { 0.432, 0.395, 0.328 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 1, 0.919, 0.73 }, plate = { 0.17, 0.153, 0.144 },
         text = { 0.92, 0.909, 0.884 }, dim = { 0.76, 0.749, 0.724 }, faint = { 0.55, 0.541, 0.52 }, btn = { 1, 0.919, 0.73 } },
-    R_VOID = { name = "Runic: Voidrune (deep violet, void runes)", style = "RUNIC", accent = "VIOLET",
-        bg = { 0.05, 0.03, 0.08 }, border = { 0.278, 0.22, 0.376 }, rim = { 0.015, 0.009, 0.024 },
-        grain = { 0.3, 0.24, 0.39, 0.1 }, light = { 0.808, 0.724, 1 }, plate = { 0.125, 0.087, 0.182 },
+    C_VOID = { name = "Celestial: Void (deep violet, void stars)", style = "CELESTIAL", accent = "VIOLET",
+        bg = { 0.036, 0.026, 0.069 }, border = { 0.333, 0.298, 0.431 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 0.856, 0.793, 1 }, plate = { 0.113, 0.093, 0.191 },
         text = { 0.901, 0.892, 0.92 }, dim = { 0.741, 0.732, 0.76 }, faint = { 0.534, 0.527, 0.55 }, btn = { 0.856, 0.793, 1 } },
-    R_THORN = { name = "Runic: Thornrune (mossy stone, green runes)", style = "RUNIC", accent = "VERDANT",
-        bg = { 0.05, 0.07, 0.04 }, border = { 0.255, 0.339, 0.233 }, rim = { 0.015, 0.021, 0.012 },
-        grain = { 0.3, 0.36, 0.27, 0.1 }, light = { 0.67, 0.91, 0.67 }, plate = { 0.125, 0.163, 0.106 },
+    C_GROVE = { name = "Celestial: Moonlit Grove (forest night, green stars)", style = "CELESTIAL", accent = "VERDANT",
+        bg = { 0.036, 0.048, 0.047 }, border = { 0.317, 0.381, 0.331 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 0.753, 0.932, 0.753 }, plate = { 0.113, 0.14, 0.144 },
         text = { 0.887, 0.911, 0.887 }, dim = { 0.727, 0.751, 0.727 }, faint = { 0.522, 0.542, 0.522 }, btn = { 0.753, 0.933, 0.753 } },
-    R_TIDE = { name = "Runic: Tiderune (sea stone, teal runes)", style = "RUNIC", accent = "TEAL",
-        bg = { 0.03, 0.07, 0.08 }, border = { 0.191, 0.34, 0.36 }, rim = { 0.009, 0.021, 0.024 },
-        grain = { 0.24, 0.36, 0.39, 0.1 }, light = { 0.55, 0.916, 0.904 }, plate = { 0.087, 0.163, 0.182 },
+    C_TIDES = { name = "Celestial: Tides (sea night, teal stars)", style = "CELESTIAL", accent = "TEAL",
+        bg = { 0.025, 0.048, 0.069 }, border = { 0.272, 0.382, 0.42 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 0.663, 0.937, 0.928 }, plate = { 0.09, 0.14, 0.191 },
         text = { 0.875, 0.912, 0.91 }, dim = { 0.715, 0.752, 0.75 }, faint = { 0.512, 0.543, 0.542 }, btn = { 0.663, 0.937, 0.928 } },
-    R_EARTH = { name = "Runic: Earthrune (brown stone, amber runes)", style = "RUNIC", accent = "AMBER",
-        bg = { 0.08, 0.065, 0.045 }, border = { 0.376, 0.317, 0.229 }, rim = { 0.024, 0.0195, 0.0135 },
-        grain = { 0.39, 0.345, 0.285, 0.1 }, light = { 1, 0.844, 0.58 }, plate = { 0.182, 0.153, 0.115 },
+    C_HARVEST = { name = "Celestial: Harvest Moon (brown dusk, amber stars)", style = "CELESTIAL", accent = "AMBER",
+        bg = { 0.052, 0.046, 0.05 }, border = { 0.401, 0.366, 0.328 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 1, 0.883, 0.685 }, plate = { 0.147, 0.136, 0.151 },
         text = { 0.92, 0.904, 0.878 }, dim = { 0.76, 0.744, 0.718 }, faint = { 0.55, 0.537, 0.515 }, btn = { 1, 0.883, 0.685 } },
-    R_SKY = { name = "Runic: Skyrune (pale blue, azure runes)", style = "RUNIC", accent = "AZURE",
-        bg = { 0.07, 0.09, 0.12 }, border = { 0.29, 0.37, 0.464 }, rim = { 0.021, 0.027, 0.036 },
-        grain = { 0.36, 0.42, 0.51, 0.1 }, light = { 0.616, 0.832, 1 }, plate = { 0.163, 0.201, 0.258 },
+    C_CLEAR = { name = "Celestial: Clear Night (pale blue, azure stars)", style = "CELESTIAL", accent = "AZURE",
+        bg = { 0.047, 0.059, 0.091 }, border = { 0.341, 0.403, 0.493 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 0.712, 0.874, 1 }, plate = { 0.136, 0.163, 0.237 },
         text = { 0.882, 0.903, 0.92 }, dim = { 0.722, 0.743, 0.76 }, faint = { 0.518, 0.536, 0.55 }, btn = { 0.712, 0.874, 1 } },
-    R_DAWN = { name = "Runic: Dawnstone (rose stone, coral runes)", style = "RUNIC", accent = "CORAL",
-        bg = { 0.11, 0.07, 0.07 }, border = { 0.442, 0.311, 0.299 }, rim = { 0.033, 0.021, 0.021 },
-        grain = { 0.48, 0.36, 0.36, 0.1 }, light = { 1, 0.742, 0.67 }, plate = { 0.239, 0.163, 0.163 },
+    C_DAWN = { name = "Celestial: Dawn (rose sky, coral stars)", style = "CELESTIAL", accent = "CORAL",
+        bg = { 0.069, 0.048, 0.063 }, border = { 0.447, 0.362, 0.377 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 1, 0.806, 0.753 }, plate = { 0.183, 0.14, 0.178 },
         text = { 0.92, 0.894, 0.887 }, dim = { 0.76, 0.734, 0.727 }, faint = { 0.55, 0.528, 0.522 }, btn = { 1, 0.806, 0.753 } },
-    R_DUSK = { name = "Runic: Duskstone (plum stone, orchid runes)", style = "RUNIC", accent = "ORCHID",
-        bg = { 0.08, 0.05, 0.08 }, border = { 0.363, 0.263, 0.376 }, rim = { 0.024, 0.015, 0.024 },
-        grain = { 0.39, 0.3, 0.39, 0.1 }, light = { 0.922, 0.718, 1 }, plate = { 0.182, 0.125, 0.182 },
+    C_DUSK = { name = "Celestial: Dusk (plum sky, orchid stars)", style = "CELESTIAL", accent = "ORCHID",
+        bg = { 0.052, 0.037, 0.069 }, border = { 0.392, 0.328, 0.431 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 0.942, 0.788, 1 }, plate = { 0.147, 0.117, 0.191 },
         text = { 0.912, 0.892, 0.92 }, dim = { 0.752, 0.732, 0.76 }, faint = { 0.543, 0.526, 0.55 }, btn = { 0.942, 0.789, 1 } },
-    R_STAR = { name = "Runic: Starstone (night blue, silver runes)", style = "RUNIC", accent = "PLATINUM",
-        bg = { 0.04, 0.045, 0.08 }, border = { 0.272, 0.287, 0.37 }, rim = { 0.012, 0.0135, 0.024 },
-        grain = { 0.27, 0.285, 0.39, 0.1 }, light = { 0.904, 0.928, 0.964 }, plate = { 0.106, 0.115, 0.182 },
+    C_STARLIGHT = { name = "Celestial: Starlight (night blue, silver stars)", style = "CELESTIAL", accent = "PLATINUM",
+        bg = { 0.03, 0.035, 0.069 }, border = { 0.328, 0.345, 0.427 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 0.928, 0.946, 0.973 }, plate = { 0.1, 0.112, 0.191 },
         text = { 0.91, 0.913, 0.916 }, dim = { 0.75, 0.753, 0.756 }, faint = { 0.542, 0.544, 0.547 }, btn = { 0.928, 0.946, 0.973 } },
-    R_IRON = { name = "Runic: Ironrune (dark iron, red runes)", style = "RUNIC", accent = "SCARLET",
-        bg = { 0.07, 0.07, 0.075 }, border = { 0.352, 0.274, 0.287 }, rim = { 0.021, 0.021, 0.0225 },
-        grain = { 0.36, 0.36, 0.375, 0.1 }, light = { 0.988, 0.52, 0.532 }, plate = { 0.163, 0.163, 0.172 },
+    C_REDPLANET = { name = "Celestial: Red Planet (dark sky, red stars)", style = "CELESTIAL", accent = "SCARLET",
+        bg = { 0.047, 0.048, 0.066 }, border = { 0.384, 0.336, 0.369 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 0.991, 0.64, 0.649 }, plate = { 0.136, 0.14, 0.184 },
         text = { 0.919, 0.872, 0.873 }, dim = { 0.759, 0.712, 0.713 }, faint = { 0.549, 0.51, 0.511 }, btn = { 0.991, 0.64, 0.649 } },
-    R_GOLD = { name = "Runic: Goldrune (dark bronze, gold runes)", style = "RUNIC", accent = "GOLD",
-        bg = { 0.08, 0.065, 0.035 }, border = { 0.376, 0.325, 0.217 }, rim = { 0.024, 0.0195, 0.0105 },
-        grain = { 0.39, 0.345, 0.255, 0.1 }, light = { 1, 0.892, 0.64 }, plate = { 0.182, 0.153, 0.0965 },
+    C_GILDED = { name = "Celestial: Gilded Sky (dark bronze, gold stars)", style = "CELESTIAL", accent = "GOLD",
+        bg = { 0.052, 0.046, 0.044 }, border = { 0.401, 0.371, 0.32 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 1, 0.919, 0.73 }, plate = { 0.147, 0.136, 0.138 },
         text = { 0.92, 0.909, 0.884 }, dim = { 0.76, 0.749, 0.724 }, faint = { 0.55, 0.541, 0.52 }, btn = { 1, 0.919, 0.73 } },
-    R_SILVER = { name = "Runic: Silverrune (gray, silver runes)", style = "RUNIC", accent = "PLATINUM",
-        bg = { 0.085, 0.09, 0.095 }, border = { 0.371, 0.386, 0.403 }, rim = { 0.0255, 0.027, 0.0285 },
-        grain = { 0.405, 0.42, 0.435, 0.1 }, light = { 0.904, 0.928, 0.964 }, plate = { 0.192, 0.201, 0.21 },
+    C_SILVERMIST = { name = "Celestial: Silver Mist (gray night, silver stars)", style = "CELESTIAL", accent = "PLATINUM",
+        bg = { 0.055, 0.059, 0.077 }, border = { 0.398, 0.414, 0.45 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 0.928, 0.946, 0.973 }, plate = { 0.153, 0.163, 0.208 },
         text = { 0.91, 0.913, 0.916 }, dim = { 0.75, 0.753, 0.756 }, faint = { 0.542, 0.544, 0.547 }, btn = { 0.928, 0.946, 0.973 } },
-    R_COPPER = { name = "Runic: Copperrune (copper stone, coral runes)", style = "RUNIC", accent = "CORAL",
-        bg = { 0.09, 0.055, 0.04 }, border = { 0.398, 0.278, 0.233 }, rim = { 0.027, 0.0165, 0.012 },
-        grain = { 0.42, 0.315, 0.27, 0.1 }, light = { 1, 0.742, 0.67 }, plate = { 0.201, 0.135, 0.106 },
+    C_EVENINGSTAR = { name = "Celestial: Evening Star (copper dusk, coral stars)", style = "CELESTIAL", accent = "CORAL",
+        bg = { 0.058, 0.04, 0.047 }, border = { 0.417, 0.339, 0.331 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 1, 0.806, 0.753 }, plate = { 0.16, 0.123, 0.144 },
         text = { 0.92, 0.894, 0.887 }, dim = { 0.76, 0.734, 0.727 }, faint = { 0.55, 0.528, 0.522 }, btn = { 1, 0.806, 0.753 } },
-    R_AMBER = { name = "Runic: Amberstone (honey stone, amber runes)", style = "RUNIC", accent = "AMBER",
-        bg = { 0.1, 0.065, 0.025 }, border = { 0.42, 0.317, 0.185 }, rim = { 0.03, 0.0195, 0.0075 },
-        grain = { 0.45, 0.345, 0.225, 0.1 }, light = { 1, 0.844, 0.58 }, plate = { 0.22, 0.153, 0.0775 },
+    C_HONEYMOON = { name = "Celestial: Honey Moon (amber dusk, amber stars)", style = "CELESTIAL", accent = "AMBER",
+        bg = { 0.063, 0.046, 0.039 }, border = { 0.432, 0.366, 0.297 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 1, 0.883, 0.685 }, plate = { 0.17, 0.136, 0.127 },
         text = { 0.92, 0.904, 0.878 }, dim = { 0.76, 0.744, 0.718 }, faint = { 0.55, 0.537, 0.515 }, btn = { 1, 0.883, 0.685 } },
-    R_OPAL = { name = "Runic: Opal (milky stone, rose runes)", style = "RUNIC", accent = "ROSE",
-        bg = { 0.08, 0.09, 0.1 }, border = { 0.376, 0.346, 0.38 }, rim = { 0.024, 0.027, 0.03 },
-        grain = { 0.39, 0.42, 0.45, 0.1 }, light = { 1, 0.688, 0.76 }, plate = { 0.182, 0.201, 0.22 },
+    C_OPALINE = { name = "Celestial: Opaline (milky night, rose stars)", style = "CELESTIAL", accent = "ROSE",
+        bg = { 0.052, 0.059, 0.08 }, border = { 0.401, 0.386, 0.434 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 1, 0.766, 0.82 }, plate = { 0.147, 0.163, 0.214 },
         text = { 0.92, 0.889, 0.896 }, dim = { 0.76, 0.729, 0.736 }, faint = { 0.55, 0.524, 0.53 }, btn = { 1, 0.766, 0.82 } },
-    R_OBSIDIAN = { name = "Runic: Obsidian (black glass, arcane runes)", style = "RUNIC", accent = "ARCANE",
-        bg = { 0.025, 0.025, 0.03 }, border = { 0.223, 0.203, 0.264 }, rim = { 0.0075, 0.0075, 0.009 },
-        grain = { 0.225, 0.225, 0.24, 0.1 }, light = { 0.808, 0.688, 0.988 }, plate = { 0.0775, 0.0775, 0.087 },
+    C_DEEPSPACE = { name = "Celestial: Deep Space (black, arcane stars)", style = "CELESTIAL", accent = "ARCANE",
+        bg = { 0.022, 0.024, 0.041 }, border = { 0.294, 0.286, 0.353 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 0.856, 0.766, 0.991 }, plate = { 0.083, 0.089, 0.132 },
         text = { 0.901, 0.889, 0.919 }, dim = { 0.741, 0.729, 0.759 }, faint = { 0.534, 0.524, 0.549 }, btn = { 0.856, 0.766, 0.991 } },
-    R_FEL = { name = "Runic: Felstone (tainted rock, fel runes)", style = "RUNIC", accent = "FEL",
-        bg = { 0.04, 0.06, 0.03 }, border = { 0.25, 0.328, 0.192 }, rim = { 0.012, 0.018, 0.009 },
-        grain = { 0.27, 0.33, 0.24, 0.1 }, light = { 0.772, 0.976, 0.556 }, plate = { 0.106, 0.144, 0.087 },
+    C_FELSKY = { name = "Celestial: Fel Sky (tainted night, fel stars)", style = "CELESTIAL", accent = "FEL",
+        bg = { 0.03, 0.043, 0.041 }, border = { 0.313, 0.374, 0.302 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 0.829, 0.982, 0.667 }, plate = { 0.1, 0.129, 0.132 },
         text = { 0.897, 0.918, 0.876 }, dim = { 0.737, 0.758, 0.716 }, faint = { 0.531, 0.548, 0.513 }, btn = { 0.829, 0.982, 0.667 } },
-    R_ASH = { name = "Runic: Ashstone (burnt gray, ember runes)", style = "RUNIC", accent = "EMBER",
-        bg = { 0.075, 0.07, 0.065 }, border = { 0.36, 0.296, 0.265 }, rim = { 0.0225, 0.021, 0.0195 },
-        grain = { 0.375, 0.36, 0.345, 0.1 }, light = { 0.97, 0.652, 0.532 }, plate = { 0.172, 0.163, 0.153 },
+    C_ASHENSKY = { name = "Celestial: Ashen Sky (smoke gray, ember stars)", style = "CELESTIAL", accent = "EMBER",
+        bg = { 0.049, 0.048, 0.061 }, border = { 0.39, 0.351, 0.354 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 0.978, 0.739, 0.649 }, plate = { 0.14, 0.14, 0.174 },
         text = { 0.917, 0.885, 0.873 }, dim = { 0.757, 0.725, 0.713 }, faint = { 0.547, 0.521, 0.511 }, btn = { 0.978, 0.739, 0.649 } },
-    R_BONE = { name = "Runic: Bonerune (old bone, pale runes)", style = "RUNIC", accent = "BONE",
-        bg = { 0.1, 0.095, 0.08 }, border = { 0.413, 0.398, 0.352 }, rim = { 0.03, 0.0285, 0.024 },
-        grain = { 0.45, 0.435, 0.39, 0.1 }, light = { 0.958, 0.934, 0.856 }, plate = { 0.22, 0.21, 0.182 },
+    C_PEARLMOON = { name = "Celestial: Pearl Moon (pale night, ivory stars)", style = "CELESTIAL", accent = "BONE",
+        bg = { 0.063, 0.062, 0.069 }, border = { 0.427, 0.423, 0.414 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 0.968, 0.951, 0.892 }, plate = { 0.17, 0.17, 0.191 },
         text = { 0.916, 0.913, 0.906 }, dim = { 0.756, 0.753, 0.746 }, faint = { 0.546, 0.544, 0.538 }, btn = { 0.969, 0.951, 0.892 } },
-    R_SPIRIT = { name = "Runic: Spiritrune (ghost stone, mint runes)", style = "RUNIC", accent = "MINT",
-        bg = { 0.05, 0.08, 0.09 }, border = { 0.246, 0.368, 0.37 }, rim = { 0.015, 0.024, 0.027 },
-        grain = { 0.3, 0.39, 0.42, 0.1 }, light = { 0.616, 0.952, 0.832 }, plate = { 0.125, 0.182, 0.201 },
+    C_SPIRIT = { name = "Celestial: Spirit Lights (ghostly night, mint stars)", style = "CELESTIAL", accent = "MINT",
+        bg = { 0.036, 0.054, 0.074 }, border = { 0.31, 0.402, 0.427 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 0.712, 0.964, 0.874 }, plate = { 0.113, 0.153, 0.201 },
         text = { 0.882, 0.915, 0.903 }, dim = { 0.722, 0.755, 0.743 }, faint = { 0.518, 0.546, 0.536 }, btn = { 0.712, 0.964, 0.874 } },
-    R_ARCANE = { name = "Runic: Arcanerune (violet stone, arcane runes)", style = "RUNIC", accent = "ARCANE",
-        bg = { 0.06, 0.04, 0.09 }, border = { 0.3, 0.236, 0.396 }, rim = { 0.018, 0.012, 0.027 },
-        grain = { 0.33, 0.27, 0.42, 0.1 }, light = { 0.808, 0.688, 0.988 }, plate = { 0.144, 0.106, 0.201 },
+    C_ARCANE = { name = "Celestial: Arcane Sky (violet night, arcane stars)", style = "CELESTIAL", accent = "ARCANE",
+        bg = { 0.041, 0.032, 0.074 }, border = { 0.348, 0.309, 0.445 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 0.856, 0.766, 0.991 }, plate = { 0.124, 0.106, 0.201 },
         text = { 0.901, 0.889, 0.919 }, dim = { 0.741, 0.729, 0.759 }, faint = { 0.534, 0.524, 0.549 }, btn = { 0.856, 0.766, 0.991 } },
-    R_RUBY = { name = "Runic: Rubystone (wine stone, crimson runes)", style = "RUNIC", accent = "CRIMSON",
-        bg = { 0.09, 0.03, 0.05 }, border = { 0.398, 0.2, 0.248 }, rim = { 0.027, 0.009, 0.015 },
-        grain = { 0.42, 0.24, 0.3, 0.1 }, light = { 1, 0.604, 0.628 }, plate = { 0.201, 0.087, 0.125 },
+    C_NEBULA = { name = "Celestial: Crimson Nebula (wine night, crimson stars)", style = "CELESTIAL", accent = "CRIMSON",
+        bg = { 0.058, 0.026, 0.052 }, border = { 0.417, 0.284, 0.342 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 1, 0.703, 0.721 }, plate = { 0.16, 0.093, 0.155 },
         text = { 0.92, 0.88, 0.883 }, dim = { 0.76, 0.72, 0.723 }, faint = { 0.55, 0.517, 0.519 }, btn = { 1, 0.703, 0.721 } },
-    R_SAPPHIRE = { name = "Runic: Sapphirestone (deep blue, azure runes)", style = "RUNIC", accent = "AZURE",
-        bg = { 0.03, 0.05, 0.1 }, border = { 0.202, 0.282, 0.42 }, rim = { 0.009, 0.015, 0.03 },
-        grain = { 0.24, 0.3, 0.45, 0.1 }, light = { 0.616, 0.832, 1 }, plate = { 0.087, 0.125, 0.22 },
+    C_SAPPHIRE = { name = "Celestial: Sapphire Night (deep blue, azure stars)", style = "CELESTIAL", accent = "AZURE",
+        bg = { 0.025, 0.037, 0.08 }, border = { 0.279, 0.341, 0.462 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 0.712, 0.874, 1 }, plate = { 0.09, 0.117, 0.214 },
         text = { 0.882, 0.903, 0.92 }, dim = { 0.722, 0.743, 0.76 }, faint = { 0.518, 0.536, 0.55 }, btn = { 0.712, 0.874, 1 } },
-    R_EMERALD = { name = "Runic: Emeraldstone (deep green, green runes)", style = "RUNIC", accent = "VERDANT",
-        bg = { 0.03, 0.08, 0.05 }, border = { 0.211, 0.361, 0.255 }, rim = { 0.009, 0.024, 0.015 },
-        grain = { 0.24, 0.39, 0.3, 0.1 }, light = { 0.67, 0.91, 0.67 }, plate = { 0.087, 0.182, 0.125 },
+    C_EMERALD = { name = "Celestial: Emerald Night (deep green, green stars)", style = "CELESTIAL", accent = "VERDANT",
+        bg = { 0.025, 0.054, 0.052 }, border = { 0.286, 0.397, 0.347 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 0.753, 0.932, 0.753 }, plate = { 0.09, 0.153, 0.155 },
         text = { 0.887, 0.911, 0.887 }, dim = { 0.727, 0.751, 0.727 }, faint = { 0.522, 0.542, 0.522 }, btn = { 0.753, 0.933, 0.753 } },
-    R_CRYSTAL = { name = "Runic: Crystal (clear stone, frost runes)", style = "RUNIC", accent = "FROST",
-        bg = { 0.07, 0.08, 0.09 }, border = { 0.304, 0.354, 0.398 }, rim = { 0.021, 0.024, 0.027 },
-        grain = { 0.36, 0.39, 0.42, 0.1 }, light = { 0.7, 0.868, 1 }, plate = { 0.163, 0.182, 0.201 },
+    C_CRYSTAL = { name = "Celestial: Crystal Sky (clear night, frost stars)", style = "CELESTIAL", accent = "FROST",
+        bg = { 0.047, 0.054, 0.074 }, border = { 0.351, 0.392, 0.447 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 0.775, 0.901, 1 }, plate = { 0.136, 0.153, 0.201 },
         text = { 0.89, 0.907, 0.92 }, dim = { 0.73, 0.747, 0.76 }, faint = { 0.525, 0.539, 0.55 }, btn = { 0.775, 0.901, 1 } },
-    R_ANCIENT = { name = "Runic: Ancient (weathered, gold runes)", style = "RUNIC", accent = "GOLD",
-        bg = { 0.07, 0.065, 0.05 }, border = { 0.354, 0.325, 0.25 }, rim = { 0.021, 0.0195, 0.015 },
-        grain = { 0.36, 0.345, 0.3, 0.1 }, light = { 1, 0.892, 0.64 }, plate = { 0.163, 0.153, 0.125 },
+    C_ASTROLABE = { name = "Celestial: Astrolabe (old brass, gold stars)", style = "CELESTIAL", accent = "GOLD",
+        bg = { 0.047, 0.046, 0.052 }, border = { 0.386, 0.371, 0.343 }, rim = { 0, 0, 0.01 },
+        grain = { 1, 1, 1, 0 }, light = { 1, 0.919, 0.73 }, plate = { 0.136, 0.136, 0.155 },
         text = { 0.92, 0.909, 0.884 }, dim = { 0.76, 0.749, 0.724 }, faint = { 0.55, 0.541, 0.52 }, btn = { 1, 0.919, 0.73 } },
-    RCLASS = { name = "Runic: your class color", style = "RUNIC", accent = "CLASS" },      -- built from your class color at login
+    CCLASS = { name = "Celestial: your class color", style = "CELESTIAL", accent = "CLASS" },      -- built from your class color at login
 }
 -- Lettering styles. body / title are files in Media (left out = the game's own face).
 -- wide = the face also has Cyrillic, so it is used for every language except Chinese, Japanese, Korean;
@@ -862,7 +899,7 @@ ns.fontStyles = {
     CLEAN     = { name = "Condensed",      face = "Fira Sans Condensed",  body = "FiraSansCondensed-SemiBold.ttf", flags = "OUTLINE", wide = true },
     ELEGANT   = { name = "Fantasy titles", face = "Marcellus",            title = "Marcellus-Regular.ttf" },
     STORYBOOK = { name = "Storybook",      face = "Almendra",             body = "AlegreyaSans-Medium.ttf", title = "Almendra-Bold.ttf" },
-    RUNIC     = { name = "Runic",          face = "Metamorphous",         body = "AlegreyaSans-Medium.ttf", title = "Metamorphous-Regular.ttf" },
+    RUNIC     = { name = "Engraved",          face = "Metamorphous",         body = "AlegreyaSans-Medium.ttf", title = "Metamorphous-Regular.ttf" },
     BARLOW    = { name = "Clean",          face = "Barlow",               body = "Barlow-Medium.ttf", title = "Barlow-SemiBold.ttf" },
     CHAKRA    = { name = "Tech",           face = "Chakra Petch",         body = "ChakraPetch-Medium.ttf", title = "ChakraPetch-SemiBold.ttf" },
     MONO      = { name = "Terminal",       face = "Share Tech Mono",      body = "ShareTechMono-Regular.ttf", title = "ShareTechMono-Regular.ttf" },
@@ -905,11 +942,12 @@ ns.themeOrder = { "SMOKE", "FROSTED", "MIDNIGHT", "AURORA", "BLUSH", "EMERALD", 
                   "DRAGON", "MOON", "VERDIGRIS", "AUTUMN", "TWILIGHT", "PLAGUE", "STEEL", "SUNWELL", "ROSEWOOD",
                   "FROSTFIRE", "DREAM", "SHADOW", "TITAN", "LIGHTFORGED", "NETHER", "TUNDRA", "JUNGLE",
                   "MOLTEN", "TIDAL", "WINE", "ASHEN", "OAK", "STORMCALLER", "STARLIGHT", "CLASS",
-                  "R_GRANITE", "R_BASALT", "R_SLATE", "R_MARBLE", "R_SANDSTONE", "R_MOONSTONE", "R_BLOODSTONE",
-                  "R_JADE", "R_FROST", "R_EMBER", "R_STORM", "R_SUN", "R_VOID", "R_THORN", "R_TIDE", "R_EARTH",
-                  "R_SKY", "R_DAWN", "R_DUSK", "R_STAR", "R_IRON", "R_GOLD", "R_SILVER", "R_COPPER", "R_AMBER",
-                  "R_OPAL", "R_OBSIDIAN", "R_FEL", "R_ASH", "R_BONE", "R_SPIRIT", "R_ARCANE", "R_RUBY", "R_SAPPHIRE",
-                  "R_EMERALD", "R_CRYSTAL", "R_ANCIENT", "RCLASS" }
+                  "C_POLARIS", "C_ECLIPSE", "C_BLUEHOUR", "C_ZENITH", "C_DESERT", "C_MOON", "C_BLOODMOON",
+                  "C_AURORA", "C_WINTER", "C_COMET", "C_STARSTORM", "C_SOLSTICE", "C_VOID", "C_GROVE",
+                  "C_TIDES", "C_HARVEST", "C_CLEAR", "C_DAWN", "C_DUSK", "C_STARLIGHT", "C_REDPLANET",
+                  "C_GILDED", "C_SILVERMIST", "C_EVENINGSTAR", "C_HONEYMOON", "C_OPALINE", "C_DEEPSPACE", "C_FELSKY",
+                  "C_ASHENSKY", "C_PEARLMOON", "C_SPIRIT", "C_ARCANE", "C_NEBULA", "C_SAPPHIRE", "C_EMERALD",
+                  "C_CRYSTAL", "C_ASTROLABE", "CCLASS" }
 ns.colors = {}
 
 -- A theme derived from the player's class color: dark panels tinted with it, rims in a muted version of it.
@@ -929,6 +967,22 @@ local function ClassTheme()
         btn = { r * 0.4 + 0.6, g * 0.4 + 0.6, b * 0.4 + 0.6 },
     }
 end
+
+-- The Celestial family's class theme: a night sky, its stars and lines in your class color.
+local function CelestialClassTheme()
+    local r, g, b = 0.6, 0.7, 1
+    local _, class = UnitClass("player")
+    local cr, cg, cb = ns:ClassRGB(class)
+    if cr then r, g, b = cr, cg, cb end
+    return { style = "CELESTIAL",
+        bg = { r * 0.05 + 0.018, g * 0.05 + 0.022, b * 0.05 + 0.05 }, border = { r * 0.35 + 0.3, g * 0.35 + 0.3, b * 0.35 + 0.34 },
+        rim = { 0, 0, 0.01 }, grain = { 1, 1, 1, 0 }, light = { r * 0.5 + 0.5, g * 0.5 + 0.5, b * 0.5 + 0.5 },
+        plate = { r * 0.08 + 0.06, g * 0.08 + 0.065, b * 0.08 + 0.11 },
+        text = { 0.92, 0.93, 0.96 }, dim = { 0.74, 0.76, 0.82 }, faint = { 0.52, 0.54, 0.6 }, btn = { r * 0.4 + 0.6, g * 0.4 + 0.6, b * 0.4 + 0.6 } }
+end
+-- Runic themes (11.8 to 11.10) and the Celestial theme that took each one's place in 11.11.
+ns.RUNIC_TO_CELESTIAL = { R_GRANITE = "C_POLARIS", R_BASALT = "C_ECLIPSE", R_SLATE = "C_BLUEHOUR", R_MARBLE = "C_ZENITH", R_SANDSTONE = "C_DESERT", R_MOONSTONE = "C_MOON", R_BLOODSTONE = "C_BLOODMOON", R_JADE = "C_AURORA", R_FROST = "C_WINTER", R_EMBER = "C_COMET", R_STORM = "C_STARSTORM", R_SUN = "C_SOLSTICE", R_VOID = "C_VOID", R_THORN = "C_GROVE", R_TIDE = "C_TIDES", R_EARTH = "C_HARVEST", R_SKY = "C_CLEAR", R_DAWN = "C_DAWN", R_DUSK = "C_DUSK", R_STAR = "C_STARLIGHT", R_IRON = "C_REDPLANET", R_GOLD = "C_GILDED", R_SILVER = "C_SILVERMIST", R_COPPER = "C_EVENINGSTAR", R_AMBER = "C_HONEYMOON", R_OPAL = "C_OPALINE", R_OBSIDIAN = "C_DEEPSPACE", R_FEL = "C_FELSKY", R_ASH = "C_ASHENSKY", R_BONE = "C_PEARLMOON", R_SPIRIT = "C_SPIRIT", R_ARCANE = "C_ARCANE", R_RUBY = "C_NEBULA", R_SAPPHIRE = "C_SAPPHIRE", R_EMERALD = "C_EMERALD", R_CRYSTAL = "C_CRYSTAL", R_ANCIENT = "C_ASTROLABE", RCLASS = "CCLASS" }
+function ns.CelestialFor(key) return ns.RUNIC_TO_CELESTIAL[key] or key end
 
 -- Color for a role ("bg", "border", "text", ...). With alpha it returns four values, so use it as the LAST argument.
 local PANES = { bg = true, bg2 = true, bg3 = true, bg4 = true }
@@ -954,7 +1008,7 @@ end
 function ns:CleanThemeDef(def)
     if type(def) ~= "table" then def = {} end
     return { panel = Triple(def.panel, { 0.07, 0.08, 0.10 }), rim = Triple(def.rim, { 0.34, 0.38, 0.44 }), accent = Triple(def.accent, { 0.36, 0.72, 1.00 }),
-             style = (def.style == "FANTASY" or def.style == "RUNIC") and def.style or "GLASS" }
+             style = (def.style == "FANTASY" or def.style == "CELESTIAL") and def.style or (def.style == "RUNIC") and "CELESTIAL" or "GLASS" }    -- (Runic is gone: its own themes became Celestial)
 end
 local function ThemeFromDef(name, def)
     local p, r = def.panel, def.rim
@@ -962,8 +1016,8 @@ local function ThemeFromDef(name, def)
     local function lift(c, f, add) return { math.min(1, c[1] * f + add), math.min(1, c[2] * f + add), math.min(1, c[3] * f + add) } end
     local t = { name = (name == "*") and "Custom (unsaved)" or name, accent = "CUSTOM", custom = def, customName = name,
                 style = def.style, bg = { p[1], p[2], p[3] }, border = { r[1], r[2], r[3] } }
-    if def.style == "FANTASY" or def.style == "RUNIC" then
-        -- ornamented (or carved) panels: a dark outer rim, a grain washed with the rim color, warm highlights,
+    if def.style == "FANTASY" then
+        -- ornamented panels: a dark outer rim, a grain washed with the rim color, warm highlights,
         -- worked out the way the built-in fantasy themes relate their colors to each other
         local glow = lift(r, 1.9, 0.10)
         local grain = lift(r, 1.45, 0)
@@ -981,6 +1035,7 @@ local function ThemeFromDef(name, def)
         t.dim   = pale and { 0.25, 0.27, 0.31 } or { 0.72, 0.76, 0.82 }
         t.faint = pale and { 0.42, 0.44, 0.48 } or { 0.50, 0.54, 0.60 }
         t.btn   = pale and { 0.10, 0.11, 0.13 } or { 0.94, 0.97, 1.00 }
+        if def.style == "CELESTIAL" then t.rim, t.light = { 0, 0, 0.01 }, lift(def.accent, 0.75, 0.25) end    -- (starlight in the accent)
     end
     return t
 end
@@ -1017,18 +1072,42 @@ function ns:DeleteCustomTheme(name)
     ns:RegisterCustomThemes()
 end
 
+-- A theme's name in your language. how: nil, the whole name ("Glass: Smoke (dark gray)"); "plain",
+-- without the description in brackets; "short", without the family as well (where a heading says it).
+-- Your own themes keep the names you gave them.
+function ns:ThemeName(key, how)
+    local t = ns.themes[key]
+    if not t then return tostring(key) end
+    if t.custom then return tostring(t.name) end
+    local name = ns:Tr(t.name)
+    if how == "plain" or how == "short" then
+        name = name:gsub("%s*%(.-%)%s*$", ""):gsub("%s*（.-）%s*$", "")
+    end
+    if how == "short" then
+        local rest = name:match("^[^:]-:%s*(.+)$") or name:match("^.-：%s*(.+)$")
+        if rest and rest ~= "" then name = rest end
+    end
+    return name
+end
+
 -- A theme's colors without putting it on (11.9: the previews on the Look tab). Returns
 -- { style, bg, border, text, plate, btn, accent }, or nil for a theme that does not exist.
 function ns:ThemeColors(key)
     local t = ns.themes[key]
     if not t then return nil end
-    if key == "CLASS" or key == "RCLASS" or key == "GCLASS" then
+    if key == "CCLASS" then
+        local c = CelestialClassTheme()
+        t = { style = "CELESTIAL", bg = c.bg, border = c.border, text = c.text, plate = c.plate, btn = c.btn }
+    elseif key == "CLASS" or key == "GCLASS" then
         local c = ClassTheme()
-        t = { style = (key == "RCLASS") and "RUNIC" or (key == "GCLASS") and "GLASS" or "FANTASY",
+        t = { style = (key == "GCLASS") and "GLASS" or "FANTASY",
               bg = c.bg, border = c.border, text = c.text, plate = c.plate, btn = c.btn }
-        if key == "GCLASS" then
+        if key == "GCLASS" then                            -- (as BuildPalette makes it, so the preview matches)
             local b = c.border
             t.bg = { b[1] * 0.16 + 0.03, b[2] * 0.16 + 0.03, b[3] * 0.16 + 0.03 }
+            t.border = { b[1] * 0.7 + 0.14, b[2] * 0.7 + 0.14, b[3] * 0.7 + 0.14 }
+            t.plate = { b[1] * 0.4 + 0.08, b[2] * 0.4 + 0.08, b[3] * 0.4 + 0.08 }
+            t.text = { 0.95, 0.95, 0.96 }
         end
     end
     local accent
@@ -1044,14 +1123,13 @@ end
 
 function ns:BuildPalette()
     ns:RegisterCustomThemes()
-    local key = ns.db.theme
+    local key = ns.CelestialFor(ns.db.theme)
     local t = ns.themes[key] or ns.themes.SMOKE
     if t.custom and ns.db.accent == "CUSTOM" then ns.db.customAccent = { t.custom.accent[1], t.custom.accent[2], t.custom.accent[3] } end
     if key == "CLASS" then
         t = ClassTheme()
-    elseif key == "RCLASS" then                   -- carved stone lit with your class color
-        t = ClassTheme()
-        t.style = "RUNIC"
+    elseif key == "CCLASS" then                   -- a night sky lit with your class color
+        t = CelestialClassTheme()
     elseif key == "GCLASS" then                   -- glass tinted with your class color
         local c = ClassTheme()
         local base = c.border                      -- a muted version of the class color
@@ -1071,6 +1149,7 @@ function ns:BuildPalette()
     local th = ns.theme
     th.bg[1], th.bg[2], th.bg[3] = t.bg[1], t.bg[2], t.bg[3]
     th.border[1], th.border[2], th.border[3] = t.border[1], t.border[2], t.border[3]
+    ns.celestialEdge = (ns.style == "CELESTIAL") and { t.border[1], t.border[2], t.border[3] } or nil
     th.rim[1], th.rim[2], th.rim[3] = t.rim[1], t.rim[2], t.rim[3]
     th.grain, th.light, th.btn = t.grain, t.light, t.btn
     ns.colors = {
@@ -1084,11 +1163,42 @@ end
 
 -- Font and bar texture: ours (in Media) or the game's
 ns.MEDIA = "Interface\\AddOns\\" .. ADDON .. "\\Media\\"
+-- The game reads a font file from disk only while a loading screen is up; a face first asked for
+-- later (a lettering style picked on the Look tab) draws nothing new until a /reload. So every
+-- bundled face is put to use once now, while the add-on loads, on strings nobody sees; after that
+-- any lettering can be switched to on the spot.
+function ns:PreloadFonts()
+    if ns.fontsPreloaded or not CreateFrame then return end
+    ns.fontsPreloaded = true
+    local holder = CreateFrame("Frame", nil, UIParent)
+    holder:SetSize(1, 1)
+    holder:SetPoint("TOPLEFT", UIParent, "TOPLEFT", -200, 200)      -- (off the screen, but shown, so the text is drawn)
+    holder:SetAlpha(0)
+    holder.strings = {}
+    local seen = {}
+    for _, style in pairs(ns.fontStyles) do
+        for _, file in ipairs({ style.body or false, style.title or false }) do
+            if file and not seen[file] then
+                seen[file] = true
+                local fs = holder:CreateFontString(nil, "OVERLAY")
+                if pcall(fs.SetFont, fs, ns.MEDIA .. file, 12, "") then
+                    fs:SetPoint("TOPLEFT")
+                    fs:SetText("Aa")
+                    holder.strings[#holder.strings + 1] = fs
+                end
+            end
+        end
+    end
+    ns.fontHolder = holder                                          -- (kept: an unseen "Aa" per face costs nothing)
+end
+
 function ns:ApplyTheme()
+    ns:PreloadFonts()
     ns.fontScale = math.max(0.7, math.min(1.5, (tonumber(ns.db.fontScale) or 100) / 100))
     if not ns.localeLoaded then
         ns.localeLoaded = true
         ns:LoadLocale()
+        ns:TranslateBindings()
         ns:After(20, function() ns:TrimLocales() end)       -- (after the setup, if it is going to open, has been built)
     end
     if ns.roundOK == nil then                           -- can this client slice textures (needed for rounded corners)?
@@ -1143,7 +1253,7 @@ function ns:Retheme()
     ns:ApplyTheme()
     ns:Repaint()
     if before ~= ns.style then
-        ns:Print("Switching between glass, fantasy and runic themes finishes after a |cffffff00/reload|r.")
+        ns:Print("Switching between glass, fantasy and celestial themes finishes after a |cffffff00/reload|r.")
         return false
     end
     return true
@@ -1168,6 +1278,7 @@ function ns:ApplyRoleLayout(role)
         ns:Print("Choose a role first (|cffffff00/fgui setup|r).")
         return
     end
+    if ns.AfterFight and ns:AfterFight("Role layout", function() ns:ApplyRoleLayout(role) end) then return end   -- (frames cannot move in a fight)
     local combat = InCombatLockdown()
     do                                                       -- one undo step for the whole layout
         local keys = {}
@@ -1234,7 +1345,7 @@ ns.template = BackdropTemplateMixin and "BackdropTemplate" or nil
 ns.hidden = CreateFrame("Frame")
 ns.hidden:Hide()
 
--- ns:Print("Sold junk for %s", coins) - the message is looked up in the translation table first, then
+-- ns:Print("Sold junk for %s.", coins) - the message is looked up in the translation table first, then
 -- any extra values are filled in. ns:PrintRaw is for text that should stay exactly as it is (errors).
 function ns:PrintRaw(msg)
     DEFAULT_CHAT_FRAME:AddMessage("|cffffd166Fantasy Glass UI|r: " .. tostring(msg))
@@ -1274,9 +1385,20 @@ function ns:FillDefaults(profile)
     if type(profile.placeThemes) ~= "table" then profile.placeThemes = {} end      -- theme by place: { city = , dungeon = , raid = , world = }
     if type(profile.layouts) ~= "table" then profile.layouts = {} end
     if type(profile.customThemes) ~= "table" then profile.customThemes = {} end
+    -- Runic is gone (11.11): a Runic theme becomes the Celestial one made from it, here and by place
+    if type(profile.theme) == "string" then profile.theme = ns.CelestialFor(profile.theme) end
+    for where, key in pairs(profile.placeThemes) do if type(key) == "string" then profile.placeThemes[where] = ns.CelestialFor(key) end end
+    for _, def in pairs(profile.customThemes) do if type(def) == "table" and def.style == "RUNIC" then def.style = "CELESTIAL" end end
     if type(profile.alertBuffs) ~= "table" then profile.alertBuffs = {} end
     for k, v in pairs(ns.defaults) do
-        if profile[k] == nil then profile[k] = v end
+        if profile[k] == nil then
+            if type(v) == "table" then                       -- (a table of its own: never the defaults' table, shared by every profile)
+                local copy = {}
+                for kk, vv in pairs(v) do copy[kk] = vv end
+                v = copy
+            end
+            profile[k] = v
+        end
     end
     if type(profile.pos) ~= "table" then profile.pos = {} end
     if type(profile.scale) ~= "table" then profile.scale = {} end
@@ -1407,6 +1529,14 @@ end
 
 -- What's new: shown once after an update (never on a first install, where the setup opens instead).
 ns.whatsNew = {
+    { "11.11.0", { "A login briefing: a few seconds after you log in, one small window says what is waiting: crafts ready, mail on your other characters, lockouts reset, rested experience, jobs left. /fgui briefing shows it again.",
+                   "Skill-ups on the profession window: the recipes that still give skill points, best first, with what each needs.",
+                   "Your weekly recap: what each character did last week, gold, time, levels, raids and best loot (/fgui recap).",
+                   "Celestial themes take the place of Runic: 38 night skies with twinkling stars, constellations and shooting stars. A Runic theme you use becomes the Celestial one made from it.",
+                   "The minimap is a star chart on Celestial themes, with the sun or moon by the game's clock; and twelve more accent colors, 31 in all.",
+                   "An Interface size slider beside Text size on the Layout tab, and /fgui uisize and /fgui textsize.",
+                   "Polish: tooltips on the option buttons and size sliders, the new tools in the Tools menu and as key bindings, and long list lines shown in full under the mouse.",
+                   "The whole add-on polished, file by file: everything it shows is translated, every message is a full sentence, and commands say what they did or why not." } },
     { "11.10.0", { "Player tooltips are yours to choose: hide the title, realm, guild, level line, faction, PvP or health bar, and add their role, whether they are your friend or guild mate, and their health in numbers. Features tab, under Player tooltips.",
                    "Player tooltips can also be put away during fights; hold Shift to see one anyway.",
                    "Every tooltip now wears your theme: glass, leather and gold, or carved stone with rune-studs. The health bar under it takes the player's class color.",
@@ -1788,7 +1918,20 @@ BINDING_NAME_FANTASYGLASSUI_EQUIPBEST = "Equip best (put on the upgrades in your
 BINDING_NAME_FANTASYGLASSUI_DEATH = "Death recap (your last death)"
 BINDING_NAME_FANTASYGLASSUI_BOSSNOTE = "Boss note (for your target)"
 BINDING_NAME_FANTASYGLASSUI_HELP = "Every command (/fgui help)"
-for i = 1, 4 do _G["BINDING_NAME_CLICK FantasyGlassUIConsumable" .. i .. ":LeftButton"] = "Consumables bar: button " .. i end
+BINDING_NAME_FANTASYGLASSUI_BRIEFING = "Login briefing (what is waiting)"
+BINDING_NAME_FANTASYGLASSUI_RECAP = "Weekly recap"
+BINDING_NAME_FANTASYGLASSUI_SKILLUPS = "Skill-ups (profession window open)"
+for i = 1, 4 do _G["BINDING_NAME_CLICK FantasyGlassUIConsumable" .. i .. ":LeftButton"] = format("Consumables bar: button %d", i) end
+-- The names above in the player's language, once the translations are loaded (the game's Key
+-- Bindings window reads them only when it opens, so this is in time).
+function ns:TranslateBindings()
+    for _, k in ipairs({ "OPTIONS", "MOVE", "KEYBIND", "CLEAN", "METER", "ALTS", "MOUNT", "PET", "NOTEPAD", "WHISPERS", "TODO", "SORT",
+                         "KEYS", "QUIET", "WHATSTHIS", "TOOLS", "EQUIPBEST", "DEATH", "BOSSNOTE", "HELP", "BRIEFING", "RECAP", "SKILLUPS" }) do
+        local g = "BINDING_NAME_FANTASYGLASSUI_" .. k
+        if type(_G[g]) == "string" then _G[g] = ns:Tr(_G[g]) end
+    end
+    for i = 1, 4 do _G["BINDING_NAME_CLICK FantasyGlassUIConsumable" .. i .. ":LeftButton"] = format(ns:Tr("Consumables bar: button %d"), i) end
+end
 function FantasyGlassUI_Binding(which, keystate)
     if not ns.db then return end
     if which == "KEYS" then if ns.ShowKeySheet then ns:ShowKeySheet(keystate ~= "up") end; return end
@@ -1810,7 +1953,10 @@ function FantasyGlassUI_Binding(which, keystate)
     elseif which == "EQUIPBEST" then if ns.EquipBest then ns:EquipBest() end
     elseif which == "DEATH" then if ns.ShowDeathRecap then ns:ShowDeathRecap() end
     elseif which == "BOSSNOTE" then if ns.BossNoteCommand then ns:BossNoteCommand(ns.Yes(UnitExists("target")) and "" or "list") end
-    elseif which == "HELP" then if ns.ShowHelp then ns:ShowHelp("") end end
+    elseif which == "HELP" then if ns.ShowHelp then ns:ShowHelp("") end
+    elseif which == "BRIEFING" then if ns.ShowBriefing then ns:ShowBriefing() end
+    elseif which == "RECAP" then if ns.ShowRecap then ns:ShowRecap("") end
+    elseif which == "SKILLUPS" then if ns.ShowSkillUps then ns:ShowSkillUps() end end
 end
 
 function ns:LowestDurability()
@@ -1895,7 +2041,7 @@ f:SetScript("OnEvent", function(_, event, name)
         -- whatever was wrong can be switched off, and then safe mode left.
         if ns.root and ns.root.safeMode then
             ns.safeMode = true
-            ns:PrintRaw("|cffffd100Fantasy Glass UI is in safe mode:|r every feature is off. |cffffff00/fgui|r opens the options; |cffffff00/fgui safe|r leaves safe mode.")
+            ns:PrintRaw("|cffffd100Safe mode:|r every feature is off. |cffffff00/fgui|r opens the options; |cffffff00/fgui safe|r leaves safe mode.")
             ns:After(1, function() if ns.ShowSafeBanner then ns:ShowSafeBanner() end end)
             return
         end
@@ -1924,7 +2070,7 @@ f:SetScript("OnEvent", function(_, event, name)
                 end
             end
         end
-        if ns.db.loginLine ~= false then ns:Print(format("v%s loaded (%d modules). Type |cffffff00/fgui|r for options.", ns.version, count)) end
+        if ns.db.loginLine ~= false then ns:Print("v%s loaded (%d modules). Type |cffffff00/fgui|r for options.", ns.version, count) end
         if #stepped > 0 then
             local seen, names = {}, {}
             for _, name in ipairs(stepped) do if not seen[name] then seen[name] = true; names[#names + 1] = name end end
@@ -2084,6 +2230,8 @@ ns.helpLines = {
     { "/fgui hidebuff <buff>", "leave that buff out of your buff row (again to show it)" },
     { "/fgui hideonframe <aura>", "never show that buff or debuff on the unit frames, raid frames or nameplates (again to show it)" },
     { "Your characters" },
+    { "/fgui recap", "your last week on every character: gold, time played, levels, raids and dungeons, best loot (\"this\": this week so far)" },
+    { "/fgui briefing", "what is waiting for you: crafts ready, mail on your other characters, lockouts reset, rested experience, jobs left" },
     { "/fgui alts", "your characters, with level and gold, and the total" },
     { "/fgui main", "make this character your main: new characters copy its setup" },
     { "/fgui session", "this session's statistics and time played, with your last session" },
@@ -2091,6 +2239,7 @@ ns.helpLines = {
     { "/fgui checklist", "your daily and weekly jobs for each character; /fgui checklist add daily <job>" },
     { "/fgui lockouts", "which raids and dungeons each character is saved to" },
     { "/fgui profcd", "once-a-day crafts on all your characters, and when each is ready" },
+    { "/fgui skillups", "with a profession window open: the recipes that still give skill points, best first, with what each needs" },
     { "/fgui crafts <search>", "what all your characters can craft; search their recipes" },
     { "/fgui reps", "reputations and currencies on all your characters; click one to pin it" },
     { "/fgui spec", "change talent set" },
@@ -2142,6 +2291,8 @@ ns.helpLines = {
     { "/fgui mute <number>", "never play that sound file again" },
     { "/fgui media", "fonts and bar textures other add-ons offer (/fgui font, /fgui bartexture)" },
     { "Settings and backups" },
+    { "/fgui textsize 120", "all the add-on's lettering at that size, in percent (70 to 150; \"reset\" is as it came)" },
+    { "/fgui uisize 90", "the whole interface at that size, in percent of the game's (50 to 150; \"reset\" is as it came)" },
     { "/fgui backup", "the backups of your settings, made before each update, once a day and before a reset; click one to see how to put it back" },
     { "/fgui history", "what you changed in this profile, and when; click a change to undo it" },
     { "/fgui reset", "put this profile back to how it came (type it twice; a backup is kept)" },
@@ -2164,7 +2315,7 @@ ns.helpLines = {
 
 SLASH_FANTASYGLASSUI1 = "/fgui"
 SLASH_FANTASYGLASSUI2 = "/fantasyglass"
-SLASH_FANTASYGLASSUI3 = "/sui"                              -- the command from when this was called Fantasy Glass UI still works
+SLASH_FANTASYGLASSUI3 = "/sui"                              -- the command from when this was called StylishUI still works
 -- The smaller tools, by the word after /fgui. Each is given whatever follows the word, as typed.
 ns.toolCommands = {
     alts = function() if ns.ShowCharacters then ns:ShowCharacters() end end,
@@ -2207,6 +2358,11 @@ ns.toolCommands = {
     whatsthis = function() ns:WhatsThis() end,
     level = function() ns:ShowLevelZones() end,
     profcd = function() ns:ShowProfCooldowns() end,
+    briefing = function() ns:ShowBriefing() end,
+    recap = function(t) ns:ShowRecap(t) end,
+    skillups = function() ns:ShowSkillUps() end,
+    textsize = function(t) ns:SizeCommand("fontScale", t, 70, 150) end,
+    uisize = function(t) ns:SizeCommand("uiScale", t, 50, 150) end,
     perf = function(t) ns:PerfCommand(t) end,
     session = function() if ns.ShowSession then ns:ShowSession() else ns:PrintSession() end end,
     rares = function() ns:ShowRares() end,
@@ -2319,12 +2475,12 @@ SlashCmdList["FANTASYGLASSUI"] = function(msg)
         local code = ALIAS[want]
         if code then
             if ns:SetLanguage(code) then
-                ns:PrintRaw("|cff33ccffFantasy Glass UI|r: " .. ns:LanguageName(code) .. ". /reload")
+                ns:PrintRaw(ns:LanguageName(code) .. ". /reload")
             else
-                ns:PrintRaw("|cff33ccffFantasy Glass UI|r: " .. ns:LanguageName(ns:Language()))
+                ns:PrintRaw(ns:LanguageName(ns:Language()))
             end
         else
-            ns:PrintRaw("|cff33ccffFantasy Glass UI|r: /fgui language  auto | english | deutsch | français | español | italiano | português | russian | korean")
+            ns:PrintRaw("/fgui language  auto | english | deutsch | français | español | italiano | português | russian | korean | chinese")
         end
     elseif msg:sub(1, 5) == "sell " or msg:sub(1, 5) == "keep " or msg == "sell" or msg == "keep" then
         -- /fgui sell [item]   put an item on the "always sell" list, or take it off (shift-click it into the chat line)
@@ -2335,14 +2491,14 @@ SlashCmdList["FANTASYGLASSUI"] = function(msg)
         if id then
             local now = (ns:ItemListState(id) ~= kind) and kind or nil
             ns:SetItemList(id, now)
-            local name = (ns:GetItemInfo(id)) or ("item " .. id)
+            local name = (ns:GetItemInfo(id)) or (ns:Tr("Item") .. " " .. id)
             ns:Print(now == "sell" and "%s will always be sold with your junk." or now == "keep" and "%s will never be sold with your junk." or "%s is off both lists.", tostring(name))
         else
             for _, which in ipairs({ "sell", "keep" }) do
                 local names = {}
-                for itemID in pairs(ns.root and ns.root[which .. "List"] or {}) do names[#names + 1] = tostring((ns:GetItemInfo(itemID)) or ("item " .. itemID)) end
+                for itemID in pairs(ns.root and ns.root[which .. "List"] or {}) do names[#names + 1] = tostring((ns:GetItemInfo(itemID)) or (ns:Tr("Item") .. " " .. itemID)) end
                 table.sort(names)
-                ns:Print((which == "sell" and "Always sold: " or "Never sold: ") .. (#names > 0 and table.concat(names, ", ") or "nothing"))
+                ns:Print(which == "sell" and "Always sold: %s" or "Never sold: %s", #names > 0 and table.concat(names, ", ") or ns:Tr("nothing"))
             end
             ns:Print("To change a list: /fgui sell or /fgui keep, a space, then shift-click the item.")
         end
@@ -2352,11 +2508,11 @@ SlashCmdList["FANTASYGLASSUI"] = function(msg)
         -- how much memory the add-on is using, without loading the options to find out
         if UpdateAddOnMemoryUsage and GetAddOnMemoryUsage then
             UpdateAddOnMemoryUsage()
-            local text = format("|cff33ccffFantasy Glass UI|r: %.0f KB.", tonumber(GetAddOnMemoryUsage(ADDON)) or 0)
+            local text = format("%.0f KB.", tonumber(GetAddOnMemoryUsage(ADDON)) or 0)
             if ns.optionsLoaded then
-                text = text .. format("  Options, setup and self-check: %.0f KB more (opened this session).", tonumber(GetAddOnMemoryUsage(OPTIONS)) or 0)
+                text = text .. "  " .. format(ns:Tr("Options, setup and self-check: %.0f KB more (opened this session)."), tonumber(GetAddOnMemoryUsage(OPTIONS)) or 0)
             else
-                text = text .. "  Options, setup and self-check: not loaded (they load the first time one is opened)."
+                text = text .. "  " .. ns:Tr("Options, setup and self-check: not loaded (they load the first time one is opened).")
             end
             ns:PrintRaw(text)
         else
@@ -2374,7 +2530,8 @@ SlashCmdList["FANTASYGLASSUI"] = function(msg)
         -- /fgui invword           says the word
         -- /fgui invword invite    changes it
         local want = msg:sub(9):gsub("^%s+", ""):gsub("%s+$", "")
-        if want ~= "" and not want:find("%s") then ns.db.whisperInviteWord = want end
+        if want:find("%s") then ns:Print("The invite word is one word, with no spaces."); return end
+        if want ~= "" then ns.db.whisperInviteWord = want end
         ns:Print("Whisper invites answer to the word \"%s\".", ns.InviteWord and ns:InviteWord() or "inv")
         if not ns.db.whisperInvite then ns:Print("They are switched off: see \"Invite by whisper\" on the Features tab.") end
     elseif msg == "meter" then
@@ -2383,7 +2540,7 @@ SlashCmdList["FANTASYGLASSUI"] = function(msg)
         -- what the game counts as "Interface actions failed because of this AddOn", with the place each came from
         local lines = ns.BlockedLines and ns:BlockedLines(8) or { "Blocked actions: not being counted." }
         for i, line in ipairs(lines) do
-            if i == 1 then ns:PrintRaw("|cff33ccffFantasy Glass UI|r: " .. line) else ns:PrintRaw(line) end
+            if i == 1 then ns:PrintRaw(line) else ns:PrintRaw(line) end
         end
         if ns.blocked and ns.blocked.total > 0 then ns:PrintRaw("  /fgui report puts this in a form you can send.") end
     elseif msg == "undo" then
@@ -2421,7 +2578,7 @@ SlashCmdList["FANTASYGLASSUI"] = function(msg)
         for _, m in ipairs(ns.modules) do
             if not listed[m.key] and m.key ~= "fallbacks" then
                 listed[m.key] = true
-                ns:Print(format("  %s: %s", m.key, ns.loaded[m.key] and "|cff33ff66on|r" or "|cffff4444off|r"))
+                ns:PrintRaw(format("  %s: %s", m.key, ns.loaded[m.key] and "|cff33ff66on|r" or "|cffff4444off|r"))     -- (feature keys: not for translating)
             end
         end
     elseif msg == "help" or msg:sub(1, 5) == "help " then

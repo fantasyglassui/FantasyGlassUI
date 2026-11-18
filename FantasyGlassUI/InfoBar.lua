@@ -118,7 +118,7 @@ ns:NewModule("infobar", function()
     local function Compose()
         for i = #parts, 1, -1 do parts[i] = nil end
         local role = ns.roles[ns.db.role]
-        if On("role") and role then parts[#parts + 1] = ns:RoleHex(ns.db.role) .. "[" .. role.label .. "]|r" end
+        if On("role") and role then parts[#parts + 1] = ns:RoleHex(ns.db.role) .. "[" .. ns:Tr(role.label) .. "]|r" end
         if On("fps") then
             local fps = floor(GetFramerate())
             parts[#parts + 1] = format("%s%d|r fps", ColorFor(fps, 60, 30, true), fps)
@@ -129,7 +129,7 @@ ns:NewModule("infobar", function()
         end
         if On("durability") then
             local dur = floor(ns:LowestDurability())
-            parts[#parts + 1] = format("%s%d%%|r durability", ColorFor(dur, 60, 25, true), dur)
+            parts[#parts + 1] = format("%s%d%%|r %s", ColorFor(dur, 60, 25, true), dur, ns:Tr("durability"))
         end
         if On("gold") then parts[#parts + 1] = ns:Coins(GetMoney()) end
         if ns.db.infobarExtras then
@@ -263,8 +263,8 @@ ns:NewModule("infobar", function()
         if #rows > 1 then GameTooltip:AddDoubleLine(ns:Tr("All characters"), ns:Coins(total), 1, 0.82, 0, 1, 1, 1) end
         local change = GetMoney() - loginMoney
         if change ~= 0 then
-            GameTooltip:AddDoubleLine(ns:Tr("This session"), (change > 0 and "+" or "-") .. ns:Coins(math.abs(change)), 1, 1, 1,
-                change > 0 and 0.3 or 1, change > 0 and 1 or 0.35, 0.35)
+            local sr, sg, sb = ns:Signal(change > 0 and "good" or "bad")
+            GameTooltip:AddDoubleLine(ns:Tr("This session"), (change > 0 and "+" or "-") .. ns:Coins(math.abs(change)), 1, 1, 1, sr, sg, sb)
         end
 
         local free, slots = FreeBagSlots()
@@ -286,6 +286,7 @@ ns:NewModule("infobar", function()
                     end
                 end
             end
+            if shown > 12 then GameTooltip:AddLine(format(ns:Tr("... and %d more"), shown - 12), 0.7, 0.7, 0.7) end
         end
 
         if IsInGuild and IsInGuild() and GetNumGuildMembers and GetGuildRosterInfo then
@@ -325,7 +326,7 @@ ns:NewModule("infobar", function()
     bar:SetScript("OnMouseUp", Clicked)
 
     Update()
-    ns:RegisterMovable(bar, "infobar", "Info Bar")
+    ns:RegisterMovable(bar, "infobar", "Info bar")
 end)
 
 -- Other add-ons' data on the info bar. Many add-ons publish a line of text (gold, memory, a
@@ -428,5 +429,5 @@ ns:NewModule("infobarPlugins", function()
     end
     ns:Every(1, "Info bar plugins", Refresh)
     Refresh()
-    ns:RegisterMovable(strip, "brokers", "Add-on Data")
+    ns:RegisterMovable(strip, "brokers", "Add-on data")
 end)

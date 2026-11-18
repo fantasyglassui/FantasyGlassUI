@@ -36,7 +36,7 @@ function API.RegisterInfoPiece(key, label, text, opts)
     return key
 end
 
--- A theme on the Look tab. def = { style = "GLASS" or "FANTASY", panel = { r, g, b }, rim = { r, g, b },
+-- A theme on the Look tab. def = { style = "GLASS", "FANTASY" or "CELESTIAL", panel = { r, g, b }, rim = { r, g, b },
 -- accent = { r, g, b } } with colors from 0 to 1. It is listed with the others of its family.
 function API.RegisterTheme(key, name, def)
     Check(type(key) == "string" and key ~= "", "RegisterTheme: key must be a string")

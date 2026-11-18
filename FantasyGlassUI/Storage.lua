@@ -80,7 +80,7 @@ ns:NewModule("storage", function()
             end
         end
         local name = GetGuildBankTabInfo and GetGuildBankTabInfo(tab)
-        g.tabs[tab] = { name = type(name) == "string" and name or ("Tab " .. tab), items = items }
+        g.tabs[tab] = { name = type(name) == "string" and name ~= "" and name or format(ns:Tr("Tab %d"), tab), items = items }
         g.time = time()
     end
 
@@ -192,7 +192,7 @@ ns:NewModule("storage", function()
 
         win.title = ns:NewText(win, 18, "LEFT", true)
         win.title:SetPoint("TOPLEFT", PAD, -12)
-        win.title:SetText(ns:AccentHex() .. "Storage|r")
+        win.title:SetText(ns:AccentHex() .. ns:Tr("Storage") .. "|r")
         local close = ns:CreateButton(win, "X", 22, 22, function() win:Hide() end)
         close:SetPoint("TOPRIGHT", -8, -8)
 
@@ -234,7 +234,7 @@ ns:NewModule("storage", function()
                     rows[i] = r
                 end
                 r.key = key
-                r.text:SetText(ClassHex(key) .. Label(key) .. "|r" .. (key == myKey and "  |cff9c8c6c(you)|r" or ""))
+                r.text:SetText(ClassHex(key) .. Label(key) .. "|r" .. (key == myKey and ("  |cff9c8c6c(" .. ns:Tr("you") .. ")|r") or ""))
                 r:Show()
             end
             for i = #names + 1, #rows do rows[i]:Hide() end
@@ -285,6 +285,7 @@ ns:NewModule("storage", function()
         end
         local search = ns:CreateEditBox(win, 150, 22, "Search")
         search:SetPoint("LEFT", prev, "RIGHT", 10, 0)
+        search:SetWidth(math.max(80, math.min(150, win:GetWidth() - PAD * 2 - 3 * 84 - 2 * 4 - 10)))   -- (ends inside the window)
         search:SetScript("OnEscapePressed", function(self) self:SetText(""); self:ClearFocus() end)
         search:HookScript("OnTextChanged", function(self)
             local t = self:GetText()
@@ -292,6 +293,9 @@ ns:NewModule("storage", function()
             Refresh()
         end)
 
+        -- the items scroll: a guild bank's six tabs, or a large bank, would be far taller than the screen
+        win.area, win.sheet = ns:ScrollArea(win, COLS * SIZE + (COLS - 1) * GAP, 100)
+        win.area:SetPoint("TOPLEFT", PAD, -70)
         win.note = ns:NewText(win, 12, "LEFT")
         win.note:SetPoint("TOPLEFT", PAD, -74)
         win.note:SetWidth(win:GetWidth() - PAD * 2)
@@ -309,7 +313,7 @@ ns:NewModule("storage", function()
     local function Item(i)
         local b = buttons[i]
         if b then return b end
-        b = CreateFrame("Button", nil, win)
+        b = CreateFrame("Button", nil, win.sheet)
         b:SetSize(SIZE, SIZE)
         b.bg = b:CreateTexture(nil, "BACKGROUND")
         b.bg:SetAllPoints()
@@ -322,6 +326,8 @@ ns:NewModule("storage", function()
         b.count = ns:NewText(b, 11, "RIGHT")
         b.count:SetPoint("BOTTOMRIGHT", -2, 2)
         ns:AddBorder(b, 0, 0, 0, 1, 0)
+        b:EnableMouseWheel(true)                             -- (the wheel over an item scrolls the list)
+        b:SetScript("OnMouseWheel", function(_, delta) win.area:Scroll(-(tonumber(delta) or 0) * 42) end)
         b:SetScript("OnEnter", function(self)
             if not self.link then return end
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -369,7 +375,7 @@ ns:NewModule("storage", function()
         end
 
         for _, h in ipairs(headers) do h:Hide() end
-        local n, hi, y, total = 0, 0, -70, 0
+        local n, hi, y, total = 0, 0, 0, 0                  -- (y: down from the top of the scrolling sheet)
         for _, sec in ipairs(sections) do
             local shown = {}
             for _, it in ipairs(sec.items or {}) do
@@ -381,12 +387,12 @@ ns:NewModule("storage", function()
                     hi = hi + 1
                     local h = headers[hi]
                     if not h then
-                        h = ns:NewText(win, 11, "LEFT")
+                        h = ns:NewText(win.sheet, 11, "LEFT")
                         ns:Paint(h, "SetTextColor", "@accent")
                         headers[hi] = h
                     end
                     h:ClearAllPoints()
-                    h:SetPoint("TOPLEFT", win, "TOPLEFT", PAD, y)
+                    h:SetPoint("TOPLEFT", win.sheet, "TOPLEFT", 0, y)
                     h:SetText(sec.title .. "  |cff9c8c6c" .. #shown .. "|r")
                     h:Show()
                     y = y - 16
@@ -396,7 +402,7 @@ ns:NewModule("storage", function()
                     local b = Item(n)
                     local col, row = (i - 1) % COLS, math.floor((i - 1) / COLS)
                     b:ClearAllPoints()
-                    b:SetPoint("TOPLEFT", win, "TOPLEFT", PAD + col * (SIZE + GAP), y - row * (SIZE + GAP))
+                    b:SetPoint("TOPLEFT", win.sheet, "TOPLEFT", col * (SIZE + GAP), y - row * (SIZE + GAP))
                     b.link = it[1]
                     b.icon:SetTexture(it[4])
                     b.count:SetText((type(it[2]) == "number" and it[2] > 1) and it[2] or "")
@@ -413,14 +419,21 @@ ns:NewModule("storage", function()
         end
         for i = n + 1, #buttons do buttons[i]:Hide() end
 
+        local content = -y
+        local screen = UIParent:GetHeight()
+        if type(screen) ~= "number" or ns:IsSecret(screen) or screen <= 0 then screen = 768 end
+        local shownH = math.min(content, math.max(200, screen * 0.8 - 110))   -- (taller than that, and it scrolls)
+        win.area:SetHeight(math.max(1, shownH))
+        win.area:SetContentHeight(content)
+        win.area:ScrollTo(0)
         if total == 0 then
-            win.note:SetText(query ~= "" and "Nothing here matches your search." or empty)
+            win.note:SetText(ns:Tr(query ~= "" and "Nothing here matches your search." or empty))
             win.note:Show()
-            y = y - 44
+            shownH = 44
         else
             win.note:Hide()
         end
-        win:SetHeight(-y + 30)
+        win:SetHeight(70 + shownH + 30)
         win.foot:SetText(total .. (total == 1 and (" " .. ns:Tr("stack")) or (" " .. ns:Tr("stacks"))) .. "   |cff9c8c6c" .. Ago(stamp) .. "|r")
         win.money:SetText(view == "guild" and "" or ns:Coins(who.money))
     end
@@ -454,14 +467,14 @@ ns:NewModule("storage", function()
             if sum > 0 then
                 local left, right
                 if o.guild > 0 then
-                    left = "|cff66dd88" .. owner:gsub("^guild:", ""):gsub(" %- .*$", "") .. " (guild bank)|r"
+                    left = "|cff66dd88" .. owner:gsub("^guild:", ""):gsub(" %- .*$", "") .. " (" .. ns:Tr("guild bank") .. ")|r"
                     right = tostring(o.guild)
                 else
                     left = ClassHex(owner) .. owner:gsub(" %- .*$", "") .. "|r"
                     if o.bags > 0 and o.bank > 0 then
-                        right = format("%d  |cff9aa4b4(bags %d, bank %d)|r", sum, o.bags, o.bank)
+                        right = format("%d  |cff9aa4b4(" .. ns:Tr("bags %d, bank %d") .. ")|r", sum, o.bags, o.bank)
                     elseif o.bank > 0 then
-                        right = format("%d  |cff9aa4b4(bank)|r", sum)
+                        right = format("%d  |cff9aa4b4(%s)|r", sum, ns:Tr("bank"))
                     else
                         right = tostring(sum)
                     end

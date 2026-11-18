@@ -50,7 +50,7 @@ end
 
 -- A small picture of a theme on its button (11.9): its panel color in its edge color, a line of its
 -- accent along the foot, and the mark of its family (glass: a lit top edge; fantasy: gold studs at
--- the top corners; runic: a glowing rune-stud). On the Look tab and in the setup.
+-- the top corners; celestial: a star point). On the Look tab and in the setup.
 function O.ThemeSwatch(b)
     local s = CreateFrame("Frame", nil, b)
     s:SetSize(26, 16)
@@ -69,8 +69,8 @@ function O.ThemeSwatch(b)
         s.studs[k] = d
     end
     s.rune = s:CreateTexture(nil, "OVERLAY")
-    s.rune:SetTexture(ns.MEDIA .. "dot.tga")
-    s.rune:SetSize(6, 6)
+    s.rune:SetTexture(ns.MEDIA .. "sparkle.tga")              -- (a star point, for the Celestial family)
+    s.rune:SetSize(12, 12)
     s.rune:SetPoint("CENTER", 0, 1)
     s.halo = s:CreateTexture(nil, "OVERLAY", nil, -1)
     s.halo:SetTexture(ns.MEDIA .. "dot.tga")
@@ -96,5 +96,5 @@ function O.ShowThemeSwatch(s, key)
     for _, d in ipairs(s.studs) do d:SetVertexColor(c.border[1], c.border[2], c.border[3], 1); d:SetShown(c.style == "FANTASY") end
     s.rune:SetVertexColor(c.accent[1], c.accent[2], c.accent[3], 1)
     s.halo:SetVertexColor(c.accent[1], c.accent[2], c.accent[3], 0.5)
-    s.rune:SetShown(c.style == "RUNIC"); s.halo:SetShown(c.style == "RUNIC")
+    s.rune:SetShown(c.style == "CELESTIAL"); s.halo:SetShown(c.style == "CELESTIAL")
 end

@@ -165,7 +165,7 @@ ns:NewModule("cooldowns", function()
     -- The game says when a cooldown starts, but not when one finishes. So the row is also looked at a
     -- few times a second; otherwise an icon stays gray until something else happens to prompt a look.
     ns:Every(0.2, "Cooldown tracker", function() if #active > 0 then Refresh() end end)
-    ns:RegisterMovable(holder, "cooldowns", "Cooldown Tracker")
+    ns:RegisterMovable(holder, "cooldowns", "Cooldown tracker")
 end)
 
 ------------------------------------------------------------------------------------------
@@ -206,8 +206,7 @@ ns:NewModule("buffAlerts", function()
             local b = icons[i]
             if not b then
                 b = Icon(holder, SIZE)
-                local a = ns.theme.accent
-                b.suiBorder:SetBackdropBorderColor(a[1], a[2], a[3], 1)
+                ns:Paint(b.suiBorder, "SetBackdropBorderColor", "@accent", 1)     -- (follows a change of theme)
                 -- a quick "pop" when the buff first appears
                 local group = b:CreateAnimationGroup()
                 local grow = group:CreateAnimation("Scale")
@@ -245,7 +244,7 @@ ns:NewModule("buffAlerts", function()
     ev:RegisterEvent("PLAYER_ENTERING_WORLD")
     ev:SetScript("OnEvent", ns:Guard("Buff alerts", Refresh))
     Refresh()
-    ns:RegisterMovable(holder, "alerts", "Buff Alerts")
+    ns:RegisterMovable(holder, "alerts", "Buff alerts")
 end)
 
 ------------------------------------------------------------------------------------------
@@ -293,6 +292,6 @@ ns:NewModule("cooldownPulse", function()
             self:SetAlpha(1 - p * p)
         end
     end)
-    ns:RegisterMovable(holder, "cooldownPulse", "Cooldown Pulse")
+    ns:RegisterMovable(holder, "cooldownPulse", "Cooldown pulse")
     ns.pulseTest = { holder = holder, icon = icon }
 end)

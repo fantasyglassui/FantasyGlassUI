@@ -176,7 +176,7 @@ function engine.BuildStance()
     RegisterStateDriver(st, "visibility", "[petbattle][vehicleui][overridebar] hide; show")
     local entry = ns:RegisterMovable(st, "fgstance", "Stance bar")
     if type(entry) == "table" then entry.fadeKey = "fgstance"; entry.noScale = "Sized with the action bars." end
-    table.insert(ns.barHandles, math.min(#engine.bars + 1, #ns.barHandles + 1), { key = "fgstance", bar = st, holder = st, entry = entry, label = "Stance Bar", layout = false })
+    table.insert(ns.barHandles, math.min(#engine.bars + 1, #ns.barHandles + 1), { key = "fgstance", bar = st, holder = st, entry = entry, label = "Stance bar", layout = false })
     st.Refresh()
 end
 -- Our buttons: what each shows, kept up to date here (the template gives only the look).
@@ -533,7 +533,7 @@ function ns:EngineLayoutRead(bar)
     return { rows = s.rows, icons = s.buttons, size = math.floor(s.size / 38 * 100 + 0.5), padding = s.padding, vertical = s.vertical, sizeIsPercent = true }
 end
 function ns:EngineLayoutWrite(bar, values)
-    if InCombatLockdown() then return nil, "not in combat" end
+    if InCombatLockdown() then return nil, "Not during a fight." end
     if type(ns.db.engineBars) ~= "table" then ns.db.engineBars = {} end
     local s = ns.EngineSettings(Saved(bar.index))
     local before = format("%d %d %d %d %d", s.buttons, s.rows, s.size, s.padding, s.vertical)

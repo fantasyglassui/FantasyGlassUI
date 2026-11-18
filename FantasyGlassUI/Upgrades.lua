@@ -217,7 +217,7 @@ ns:NewModule("upgradeArrows", function()
             local ok, _, link = pcall(tip.GetItem, tip)
             if not ok or type(link) ~= "string" or Secret(link) then return end
             local by = ns.UpgradeAmount(link)
-            if by and by > 0 then tip:AddLine(format(ns:Tr("Upgrade: +%d item level over what you wear"), by), 0.3, 1, 0.4) end
+            if by and by > 0 then local r, g, b = ns:Signal("good"); tip:AddLine(format(ns:Tr("Upgrade: +%d item level over what you wear"), by), r, g, b) end
         end))
     end
     ns.upgradeTest = { Rewards = Rewards, GameBag = GameBag }

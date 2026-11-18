@@ -23,14 +23,14 @@ local function Steps()
     end)
     add("Options load", function() if not ns:LoadOptions() then error("the options folder could not be loaded") end end)
     for _, tab in ipairs({ "features", "look", "layout", "combat", "profiles", "bars", "tools", "guide" }) do
-        add("Options tab: " .. tab, function()
+        add(format(ns:Tr("Options tab: %s"), tab), function()
             ns:ToggleConfig(tab)
             if not (ns.configFrame and ns.configFrame.currentPage == tab) then error("did not open") end
         end)
     end
     add("Options close", function() if ns.HideConfig then ns.HideConfig() end end)
     for _, word in ipairs(ns.SELFTEST_WINDOWS) do
-        add("Window: /fgui " .. word, function()
+        add(format(ns:Tr("Window: %s"), "/fgui " .. word), function()
             if not ns.toolCommands[word] then error("no such command") end
             ns:ToolCommand(word, word)
         end)
@@ -112,7 +112,7 @@ function ns:ShowSelfTest(results, cut)
     local lines, failed = {}, 0
     for _, r in ipairs(results) do
         if not r.ok then failed = failed + 1 end
-        lines[#lines + 1] = { left = (r.ok and "|cff33ff66" .. ns:Tr("pass") or "|cffff5555" .. ns:Tr("FAIL")) .. "|r  " .. ns:Tr(r.name),
+        lines[#lines + 1] = { left = (r.ok and ns:SignalHex("good") .. ns:Tr("pass") or ns:SignalHex("bad") .. ns:Tr("FAIL")) .. "|r  " .. ns:Tr(r.name),
             right = r.err and ("|cffff9a8a" .. r.err .. "|r") or "", tip = r.err and { ns:Tr(r.name), r.err } or nil }
     end
     table.sort(lines, function(a, b) return (a.right ~= "" and 0 or 1) < (b.right ~= "" and 0 or 1) end)

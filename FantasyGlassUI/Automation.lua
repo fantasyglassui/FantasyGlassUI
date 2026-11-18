@@ -1,11 +1,7 @@
 local _, ns = ...
 
-local function CoinString(copper)
-    local g = floor(copper / 10000)
-    local s = floor((copper % 10000) / 100)
-    local c = copper % 100
-    return format("|cffffd700%dg|r |cffc7c7cf%ds|r |cffeda55f%dc|r", g, s, c)
-end
+local function CoinString(copper) return ns:Coins(copper) end      -- (the game's own coins, as everywhere else)
+local function Summary() return ns.VendorSummaryOn and ns:VendorSummaryOn() end
 
 -- Keep and sell lists ----------------------------------------------------------------------------------------
 -- Selling junk goes by an item's color: gray is sold. Two lists, kept for the whole account, correct
@@ -68,7 +64,7 @@ function ns:SellJunk(announce)
         end
     end
     if total > 0 then
-        if not (ns.VendorSummaryOn and ns:VendorSummaryOn()) then ns:Print("Sold junk for %s", CoinString(total)) end
+        if not Summary() then ns:Print("Sold junk for %s.", CoinString(total)) end
     elseif announce then ns:Print("No junk to sell.") end
     return total, sold
 end
@@ -102,12 +98,12 @@ f:SetScript("OnEvent", ns:Safe("Vendor automation", function()
             local source = ns.RepairSource(cost, GetMoney(), guildOK, allowance, bank)
             if source == "guild" then
                 RepairAllItems(true)
-                if not ns:VendorSummaryOn() then ns:Print("Repaired for %s from guild funds", CoinString(cost)) end
+                if not Summary() then ns:Print("Repaired for %s from guild funds.", CoinString(cost)) end
             elseif source == "own" then
                 RepairAllItems()
-                if not ns:VendorSummaryOn() then ns:Print("Repaired for %s", CoinString(cost)) end
+                if not Summary() then ns:Print("Repaired for %s.", CoinString(cost)) end
             else
-                ns:Print("|cffff4444Not enough gold to repair|r (%s)", CoinString(cost))
+                ns:Print("|cffff4444Not enough gold to repair:|r it costs %s.", CoinString(cost))
             end
         end
     end

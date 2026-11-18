@@ -19,6 +19,7 @@ ns.TOOL_MENU = {                                             -- (in groups: see 
     { "Your characters", "alts" }, { "Checklist", "checklist" }, { "Professions", "crafts" },
     { "Profession cooldowns", "profcd" }, { "Reputations and currencies", "reps" }, { "Goals", "goal" },
     { "Talent builds", "talents" }, { "Session", "session" }, { "Gold history", "gold" },
+    { "Login briefing", "briefing" }, { "Weekly recap", "recap" }, { "Skill-ups", "skillups" },
     { "Sort bags", "sort" }, { "Put on upgrades", "equipbest" }, { "Bag rules", "bagrules" },
     { "Mail rules", "mailrules" }, { "Worth selling", "ah" }, { "Shopping list", "shop" },
     { "Crafting queue", "queue", "list" }, { "Loot log", "loot" }, { "Trades", "trades" },
@@ -31,8 +32,8 @@ ns.TOOL_MENU = {                                             -- (in groups: see 
     { "Self-test", "selftest" },
 }
 -- Where each group of the Tools menu starts, and its heading (the menu's buttons are in this order).
-ns.TOOL_MENU_GROUPS = { [1] = "Groups and raids", [11] = "Your characters", [20] = "Bags, gear and trade",
-                        [29] = "People and notes", [34] = "The world", [37] = "The add-on itself" }
+ns.TOOL_MENU_GROUPS = { [1] = "Groups and raids", [11] = "Your characters", [23] = "Bags, gear and trade",
+                        [32] = "People and notes", [37] = "The world", [40] = "The add-on itself" }
 local palette
 do
     local ev = CreateFrame("Frame")
@@ -119,21 +120,52 @@ function ns.PixelScale(screenHeight)
     if not screenHeight or screenHeight <= 0 then return nil end
     return 768 / screenHeight
 end
+-- /fgui textsize 120, /fgui uisize 90: a size in percent, kept in range. Alone: says the size now.
+function ns:SizeCommand(key, text, lo, hi)
+    local word = ns.Trim(text or ""):lower()
+    local n = tonumber(word:match("^(%d+)"))
+    if word == "reset" or word == "off" or word == "default" then n = 100 end   -- (back to as it came)
+    local what = (key == "fontScale") and ns:Tr("Text size") or ns:Tr("Interface size")
+    if not n then ns:Print("%s: %d%%. Give a number from %d to %d.", what, tonumber(ns.db[key]) or 100, lo, hi); return nil end
+    n = math.max(lo, math.min(hi, math.floor(n + 0.5)))
+    ns.db[key] = n
+    if key == "fontScale" then ns:Retheme()
+    elseif InCombatLockdown() then
+        ns:ApplyPixelScale()                                     -- (it waits for the fight to end)
+        ns:Print("%s: %d%%, from when the fight ends.", what, n)
+        return n
+    else ns:ApplyPixelScale() end
+    ns:Print("%s: %d%%.", what, n)
+    return n
+end
+-- The scale the whole interface should have: pixel-perfect (or the game's own scale), times the
+-- "Interface size %" (11.11). Nil when both are as the game set them.
+function ns.InterfaceScale(pixelPerfect, screenHeight, percent, gameScale)
+    percent = math.max(50, math.min(150, tonumber(percent) or 100))
+    local base
+    if pixelPerfect then base = ns.PixelScale(screenHeight)
+    elseif percent ~= 100 then base = tonumber(gameScale) end
+    if not base then return nil end
+    return math.max(0.35, math.min(1.6, base * percent / 100))
+end
 function ns:ApplyPixelScale()
     if InCombatLockdown() then ns.pixelPending = true; return false end
     ns.pixelPending = nil
-    if type(GetPhysicalScreenSize) ~= "function" then ns.pixelState = "this client does not give the screen size"; return false end
-    local _, h = GetPhysicalScreenSize()
-    if ns.db.pixelPerfect then
-        local s = ns.PixelScale(h)
-        if not s then return false end
+    local h
+    if type(GetPhysicalScreenSize) == "function" then h = select(2, GetPhysicalScreenSize())
+    elseif ns.db.pixelPerfect then ns.pixelState = "this client does not give the screen size"; return false end
+    local game = (ns.root and ns.root.scaleBefore) or UIParent:GetScale()
+    local s = ns.InterfaceScale(ns.db.pixelPerfect, h, ns.db.uiScale, game)
+    if s then
         if ns.root and ns.root.scaleBefore == nil then ns.root.scaleBefore = UIParent:GetScale() end
         UIParent:SetScale(s)
-        ns.pixelState = format("on: %.4f for a screen %d high", s, h)
+        ns.appliedScale = UIParent:GetScale()
+        ns.pixelState = format("on: %.4f (%s, interface size %d%%)", s, ns.db.pixelPerfect and "pixel-perfect" or "the game's scale", tonumber(ns.db.uiScale) or 100)
         return s
     elseif ns.root and ns.root.scaleBefore then
         UIParent:SetScale(ns.root.scaleBefore)
         ns.root.scaleBefore = nil
+        ns.appliedScale = nil
         ns.pixelState = "off"
     end
     return false
@@ -144,7 +176,18 @@ do
     ev:SetScript("OnEvent", ns:Guard("Pixel-perfect scale", function(_, event)
         if not ns.db then return end
         if event == "PLAYER_REGEN_ENABLED" and not ns.pixelPending then return end
-        if ns.db.pixelPerfect or (ns.root and ns.root.scaleBefore) then ns:After(0.5, function() pcall(ns.ApplyPixelScale, ns) end) end
+        if event == "UI_SCALE_CHANGED" and ns.root and ns.root.scaleBefore and not InCombatLockdown() then
+            -- the game's own scale was changed: that is the new base, once the game has put it on
+            ns:After(0.3, function()
+                if InCombatLockdown() or not ns.root then return end
+                local now = UIParent:GetScale()
+                if ns.appliedScale and math.abs(now - ns.appliedScale) < 0.001 then return end   -- (still ours: nothing changed)
+                ns.root.scaleBefore = nil
+                pcall(ns.ApplyPixelScale, ns)
+            end)
+            return
+        end
+        if ns.db.pixelPerfect or (tonumber(ns.db.uiScale) or 100) ~= 100 or (ns.root and ns.root.scaleBefore) then ns:After(0.5, function() pcall(ns.ApplyPixelScale, ns) end) end
     end))
 end
 
@@ -164,16 +207,57 @@ function ns:ApplyMinimapShape()
         local t = roundRing:CreateTexture(nil, "OVERLAY")
         t:SetPoint("TOPLEFT", -3, 3)
         t:SetPoint("BOTTOMRIGHT", 3, -3)
-        local runic = (ns.style == "RUNIC")                  -- (Runic: a band of runes round the map)
-        t:SetTexture(ns.MEDIA .. (runic and "ring_runic.tga" or "ring.tga"))
-        if runic then t:SetPoint("TOPLEFT", -6, 6); t:SetPoint("BOTTOMRIGHT", 6, -6) end
-        ns:Paint(t, "SetVertexColor", runic and "@accent" or "@border", runic and 0.7 or 1)
+        local sky = (ns.style == "CELESTIAL")                -- (Celestial: a star chart's ring, an orbit that turns, the sun or moon)
+        t:SetTexture(ns.MEDIA .. (sky and "ring_celestial.tga" or "ring.tga"))
+        if sky then
+            local pad = 21                                   -- (the ring's inner circle on the map's edge)
+            t:SetPoint("TOPLEFT", -pad, pad); t:SetPoint("BOTTOMRIGHT", pad, -pad)
+            if t.SetBlendMode then t:SetBlendMode("ADD") end
+            local orbit = roundRing:CreateTexture(nil, "OVERLAY", nil, -1)
+            orbit:SetTexture(ns.MEDIA .. "orbit_celestial.tga")
+            orbit:SetPoint("TOPLEFT", -pad, pad); orbit:SetPoint("BOTTOMRIGHT", pad, -pad)
+            if orbit.SetBlendMode then orbit:SetBlendMode("ADD") end
+            ns:Paint(orbit, "SetVertexColor", "@accent", 0.8)
+            roundRing.orbit = orbit
+            local body = roundRing:CreateTexture(nil, "OVERLAY", nil, 1)
+            body:SetSize(22, 22)
+            if body.SetBlendMode then body:SetBlendMode("ADD") end
+            roundRing.body = body
+            if ns.SkyLoop then roundRing.spin = ns:SkyLoop(body, "Rotation", 40, function(r) r:SetDegrees(-360) end, false) end   -- (the sun's rays turning)
+            if ns.SkyBreathe then ns.SkyBreathe(t, 0.5, 1, 2.5) end                                           -- (the ring's stars breathing)
+            local turned = 0
+            roundRing:SetScript("OnUpdate", function(self, elapsed)
+                if not ns:Motion() then return end           -- (Reduce motion: the orbit holds still)
+                turned = (turned + (tonumber(elapsed) or 0) * (2 * math.pi / 90)) % (2 * math.pi)    -- once round in a minute and a half
+                if self.orbit.SetRotation then pcall(self.orbit.SetRotation, self.orbit, -turned) end
+                self.turned = turned
+            end)
+        end
+        ns:Paint(t, "SetVertexColor", sky and "@accent" or "@border", sky and 0.95 or 1)
         roundRing.tex = t
     end
     if roundRing then roundRing:SetShown(round) end
+    if round and roundRing and roundRing.body then ns:CelestialRoundTick() end
     if ns.minimapRunes then ns.minimapRunes:SetShown(not round) end        -- (the square's rune band, not round the circle)
     ns.minimapShape = round and "ROUND" or "SQUARE"
     return round
+end
+
+-- The sun or moon on the round map's ring, by the game's clock (Celestial themes).
+function ns:CelestialRoundTick()
+    local body = roundRing and roundRing.body
+    if not body or not roundRing:IsShown() then return false end
+    local day, _, angle = ns.SkyBody(ns.MinimapGameHours and ns.MinimapGameHours() or 12)
+    body:SetTexture(ns.MEDIA .. (day and "sun_celestial.tga" or "moon_celestial.tga"))
+    if day then body:SetVertexColor(1, 0.85, 0.5, 1) else local lt = ns.theme.light; body:SetVertexColor(lt[1], lt[2], lt[3], 1) end
+    local w = Minimap:GetWidth()
+    local r = ((type(w) == "number" and not ns:IsSecret(w)) and w or 180) / 2 + 18
+    body:ClearAllPoints()
+    body:SetPoint("CENTER", Minimap, "CENTER", math.sin(angle) * r, math.cos(angle) * r)
+    roundRing.day, roundRing.angle = day, angle
+    local spin = roundRing.spin
+    if spin then if day and ns:Motion() then if not spin:IsPlaying() then spin:Play() end else spin:Stop() end end   -- (only the sun turns)
+    return day, angle
 end
 
 ------------------------------------------------------------------------------------------
@@ -204,6 +288,7 @@ function ns:ShowSharePreview()
         preview.box = ns:CreateEditBox(preview, 400, 24, "paste a profile, layout or theme string")
         preview.box:SetPoint("TOPLEFT", 14, -42)
         preview.go = ns:CreateButton(preview, "Preview", 80, 24, function() ns:PreviewShared(preview.box:GetText()) end)
+        preview.box:SetScript("OnEnterPressed", function(self) self:ClearFocus(); ns:PreviewShared(self:GetText()) end)
         preview.go:SetPoint("LEFT", preview.box, "RIGHT", 8, 0)
         ns:ButtonTip(preview.go, "See what the pasted text holds, on a picture of the screen. Nothing changes until you click Use it.")
         preview.screen = CreateFrame("Frame", nil, preview)
@@ -238,7 +323,7 @@ function ns:PreviewShared(text)
     p.use:Hide()
     p.apply = nil
     local kind, data = ns:PeekShared(text)
-    if not kind then p.info:SetText("|cffff5555" .. ns:Tr(tostring(data)) .. "|r"); return false end
+    if not kind then p.info:SetText(ns:SignalHex("bad") .. ns:Tr(tostring(data)) .. "|r"); return false end
     local pack = (kind == "pack") and data or nil
     if pack then data = type(pack.profile) == "table" and pack.profile or {} end
     local W, H = UIParent:GetWidth(), UIParent:GetHeight()
@@ -250,7 +335,7 @@ function ns:PreviewShared(text)
     local themeName
     if kind == "profile" or kind == "pack" then
         local t = data.theme and ns.themes[data.theme]
-        themeName = t and t.name or data.theme
+        themeName = t and ns:ThemeName(data.theme) or data.theme
         if type(data.accent) == "string" and ns.AccentColor then local okA, r, g, b = pcall(ns.AccentColor, ns, data.accent); if okA and type(r) == "number" then accent = { r, g, b } end end
     elseif kind == "theme" then
         themeName = type(data.name) == "string" and data.name or nil
@@ -301,7 +386,7 @@ function ns:PreviewShared(text)
             ok, msg = ns:ImportProfile(name, text)
             if ok then msg = format(ns:Tr("Saved as the profile \"%s\": choose it on the Profiles tab."), name) end
         end
-        p.info:SetText((ok and "|cff33ff66" or "|cffff5555") .. ns:Tr(tostring(msg or (ok and "Done." or "Not taken."))) .. "|r")
+        p.info:SetText((ok and ns:SignalHex("good") or ns:SignalHex("bad")) .. ns:Tr(tostring(msg or (ok and "Done." or "Not taken."))) .. "|r")
     end
     p.kind, p.count = kind, n
     return kind, n
@@ -348,7 +433,7 @@ function ns:ShowComposition()
     end
     local roles, classes, cover = ns.Composition(list)
     local lines = {}
-    lines[#lines + 1] = { left = ns:AccentHex() .. format(ns:Tr("%d players"), #list) .. "|r",
+    lines[#lines + 1] = { left = ns:AccentHex() .. format(ns:TrN(#list, "%d player", "%d players"), #list) .. "|r",
         right = format("|cff4d99ff%d %s|r  |cff4dff80%d %s|r  |cffff6655%d %s|r", roles.TANK, ns:Tr("tanks"), roles.HEALER, ns:Tr("healers"), roles.DAMAGER + roles.NONE, ns:Tr("damage")) }
     local cls = {}
     for c, n in pairs(classes) do cls[#cls + 1] = { c = c, n = n } end
@@ -360,7 +445,7 @@ function ns:ShowComposition()
     end
     lines[#lines + 1] = { left = ns:AccentHex() .. ns:Tr("Who covers what") .. "|r" }
     for _, c in ipairs(cover) do
-        lines[#lines + 1] = { left = "    " .. ns:Tr(c.label), right = (#c.who > 0) and ("|cff33ff66" .. table.concat(c.who, ", ") .. "|r") or ("|cffff5555" .. ns:Tr("nobody") .. "|r") }
+        lines[#lines + 1] = { left = "    " .. ns:Tr(c.label), right = (#c.who > 0) and (ns:SignalHex("good") .. table.concat(c.who, ", ") .. "|r") or (ns:SignalHex("bad") .. ns:Tr("nobody") .. "|r") }
     end
     return ns:ShowList("Composition", "Raid composition", lines, "Roles as people chose them in the group finder or role check.", 460, 420)
 end
@@ -423,8 +508,19 @@ function ns.ParseCountdown(text)
     return nil
 end
 function ns:CountdownCommand(kind, text)
-    local n = tonumber(ns.Trim(text))
+    local word = ns.Trim(text or "")
+    local n = tonumber(word)
+    if word ~= "" and not n then                                  -- (a word that is not a number: say how)
+        ns:Print(kind == "pull" and "Give the seconds to count down, such as /fgui pull 10." or "Give the minutes of the break, such as /fgui break 5.")
+        return false
+    end
     if not n then n = (kind == "pull") and 10 or 5 end
+    n = math.floor(n)
+    local most = (kind == "pull") and 60 or 60                    -- (a minute's pull; an hour's break)
+    if n < 1 or n > most then
+        ns:Print(kind == "pull" and "A pull timer is from 1 to 60 seconds." or "A break is from 1 to 60 minutes.")
+        return false
+    end
     local seconds = (kind == "break") and n * 60 or n
     if not (IsInGroup and IsInGroup()) then ns:StartCountdown(kind, seconds); return true end
     local leader = (UnitIsGroupLeader and UnitIsGroupLeader("player")) or (UnitIsGroupAssistant and UnitIsGroupAssistant("player"))
@@ -506,7 +602,7 @@ ns:NewModule("bgHelper", function()
     end
     ns.bgTest = { Update = Update, frame = f }
     ns:Every(1, "Battleground queue", Update)
-    local entry = ns:RegisterMovable(f, "bgQueue", "Battleground Queue")
+    local entry = ns:RegisterMovable(f, "bgQueue", "Battleground queue")
     if type(entry) == "table" then entry.offPage = true end
 end)
 function ns:ShowBattlegroundScore()
@@ -661,13 +757,15 @@ function ns:BagRulesCommand(text)
         if not known then ns:Print("Kinds: ilvl, boe, set, quality, type (consumable, gear, trade, quest, recipe, gem), name."); return end
         rules[#rules + 1] = { kind = kind, value = value ~= "" and value or nil, section = ns.Trim(section):sub(1, 24) }
         ns:Print("Bag rule added: %s.", rules[#rules].section)
-    elseif word == "remove" then
+    elseif word == "remove" or word == "up" or word == "down" then
         local n = tonumber(rest)
-        if n and rules[n] then table.remove(rules, n) end
-    elseif word == "up" or word == "down" then
-        local n = tonumber(rest)
-        local m = n and (word == "up" and n - 1 or n + 1)
-        if n and m and rules[n] and rules[m] then rules[n], rules[m] = rules[m], rules[n] end
+        if not (n and rules[n]) then ns:Print("There is no rule %s. /fgui bagrules lists them, numbered.", rest ~= "" and rest or "?"); return end
+        if word == "remove" then
+            ns:Print("Bag rule removed: %s.", table.remove(rules, n).section)
+        else
+            local m = (word == "up") and n - 1 or n + 1
+            if rules[m] then rules[n], rules[m] = rules[m], rules[n] end    -- (already first or last: it stays)
+        end
     end
     if ns.RefreshBagWindow then pcall(ns.RefreshBagWindow, ns) end
     return ns:ShowBagRules()
@@ -800,7 +898,7 @@ do
             if want and not ns.mailRuleButton then
                 local b = ns:CreateButton(MailFrame, "Send by my rules", 140, 22, function() ns:SendByMailRules() end)
                 ns:ButtonTip(b, "Send the items your mail rules name to the characters they name. /fgui mailrules to change them.")
-                b:SetPoint("BOTTOMRIGHT", MailFrame, "TOPRIGHT", 0, 2)
+                b:SetPoint("BOTTOMRIGHT", MailFrame, "TOPRIGHT", 0, 28)    -- (above the Collect gold / Open all row, not on it)
                 ns.mailRuleButton = b
             end
             if ns.mailRuleButton then ns.mailRuleButton:SetShown(want) end
@@ -823,7 +921,9 @@ function ns:MailRulesCommand(text)
         ns:Print("Mail rule: %s to %s.", what, to)
     elseif word == "remove" then
         local n = tonumber(rest)
-        if n and rules[n] then table.remove(rules, n) end
+        if not (n and rules[n]) then ns:Print("There is no rule %s. /fgui mailrules lists them, numbered.", rest ~= "" and rest or "?"); return end
+        local gone = table.remove(rules, n)
+        ns:Print("Mail rule removed: %s to %s.", gone.what, gone.to)
     elseif word == "send" then
         return ns:SendByMailRules()
     end
@@ -891,7 +991,7 @@ function ns:ShowEvents()
         lines[1] = { left = ns:Tr("This game client does not tell add-ons about the calendar.") }
     else
         for _, e in ipairs(events) do
-            lines[#lines + 1] = { left = (e.now and "|cff33ff66" or "|cffffffff") .. e.title .. "|r",
+            lines[#lines + 1] = { left = (e.now and ns:SignalHex("good") or "|cffffffff") .. e.title .. "|r",
                 right = e.now and ns:Tr("on now") or format(ns:TrN(e.inDays, "in %d day", "in %d days"), e.inDays) }
         end
         if #lines == 0 then lines[1] = { left = ns:Tr("Nothing on the calendar for the next two weeks.") } end
@@ -1010,19 +1110,59 @@ function ns:ReceiveTalentBuild(from, text)
     ns:Print("%s sent you a talent build: \"%s\". It is with your builds (/fgui talents); nothing is learned until you choose it.", from, key)
     return key
 end
+-- Learning a build: one point at a time, each once the game has taken the one before (the game
+-- refuses a talent whose tier is not open yet, and it opens tiers only as points land), lowest tier
+-- first in each tree. It stops when the build is done, the free points run out, or nothing moves.
+local learning
 function ns:ApplyTalentBuild(name)
     if ns:AfterFight("Talent build", function() ns:ApplyTalentBuild(name) end) then return false end
     local b = Builds()[name]
     if not b or not TalentAPI() or type(LearnTalent) ~= "function" then return false end
-    local have = ReadTalents()
-    local learned = 0
-    for _, step in ipairs(ns.TalentSteps(b.talents, have)) do
-        for _ = 1, step.ranks do
-            if pcall(LearnTalent, step.tab, step.index) then learned = learned + 1 end
-        end
+    if learning then ns:Print("Still learning the talent build \"%s\".", learning); return false end
+    local function Tier(tab, index)
+        local ok, _, _, tier = pcall(GetTalentInfo, tab, index)
+        return ok and tonumber(tier) or 99
     end
-    ns:Print("%s: %d points spent. Anything left needs free points (or a talent reset at a trainer).", name, learned)
-    return learned
+    local function Total()
+        local _, points = ReadTalents()
+        local n = 0
+        for _, p in pairs(points) do n = n + p end
+        return n
+    end
+    local function Free()
+        if type(UnitCharacterPoints) ~= "function" then return nil end
+        local ok, n = pcall(UnitCharacterPoints, "player")
+        return (ok and type(n) == "number" and not Secret(n)) and n or nil
+    end
+    local start, last, still = Total(), Total(), 0
+    learning = name
+    local function Done(why)
+        learning = nil
+        local got = Total() - start
+        ns:Print("%s: %d points spent. Anything left needs free points (or a talent reset at a trainer).", name, got)
+        if why then ns:Print(why) end
+        ns.talentLearned = got
+    end
+    local function Step()
+        if InCombatLockdown() then Done("A fight started: the rest of the build waits. Choose it again afterwards."); return end
+        local now = Total()
+        if now > last then still = 0 else still = still + 1 end
+        last = now
+        local steps = ns.TalentSteps(b.talents, (ReadTalents()))
+        local free = Free()
+        if #steps == 0 or (free and free <= 0) or still > 4 then Done(); return end
+        table.sort(steps, function(x, y)
+            if x.tab ~= y.tab then return x.tab < y.tab end
+            local tx, ty = Tier(x.tab, x.index), Tier(y.tab, y.index)
+            if tx ~= ty then return tx < ty end
+            return x.index < y.index
+        end)
+        pcall(LearnTalent, steps[1].tab, steps[1].index)
+        ns:After(0.3, Step)
+    end
+    still = -1                                                -- (the first look is before anything was asked)
+    Step()
+    return true
 end
 function ns:TalentCommand(text)
     text = ns.Trim(text)
@@ -1030,12 +1170,16 @@ function ns:TalentCommand(text)
     word = word and word:lower()
     if not TalentAPI() then ns:Print("This game client does not let add-ons read talents."); return false end
     local builds = Builds()
-    if word == "save" and rest ~= "" then
+    if word == "save" then
+        if rest == "" then ns:Print("Give the build a name: /fgui talents save <name>."); return false end
         local points = ns:SaveTalentBuild(rest)
         if points then ns:Print("Talent build saved: %s (%s).", rest, table.concat(points, "/")) end
-    elseif word == "delete" and builds[rest] then
+    elseif (word == "delete" or word == "use") and not builds[rest] then
+        ns:Print("No talent build called \"%s\". /fgui talents lists yours.", rest); return false
+    elseif word == "delete" then
         builds[rest] = nil
-    elseif word == "use" and builds[rest] then
+        ns:Print("Talent build deleted: %s.", rest)
+    elseif word == "use" then
         return ns:ApplyTalentBuild(rest)
     elseif word == "send" then
         local who, which = rest:match("^(%S+)%s+(.+)$")

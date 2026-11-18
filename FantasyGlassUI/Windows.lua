@@ -54,9 +54,10 @@ ns:NewModule("windows", function()
     -- run protected entries such as "Set Focus". Instead the open menu is looked up a few times a
     -- second and painted.
     local seen = setmetatable({}, { __mode = "k" })
+    local MENU_ART = { "NineSlice", "Background", "Bg", "Border", "Backdrop", "MenuBackdrop" }
     local function PaintMenu(menu)
         if type(menu) ~= "table" or not menu.GetRegions or (menu.IsForbidden and menu:IsForbidden()) then return end
-        for _, k in ipairs({ "NineSlice", "Background", "Bg", "Border", "Backdrop", "MenuBackdrop" }) do
+        for _, k in ipairs(MENU_ART) do
             local o = menu[k]
             if type(o) == "table" and not o.sui and o.SetAlpha then o:SetAlpha(0) end
         end
@@ -139,26 +140,40 @@ ns:NewModule("windows", function()
         return false
     end
     ns.MenuSignature = Signature
-    local macc = 0
+    -- Looked at 20 times a second while a menu is open (and once per tick otherwise, to see that none
+    -- is): a new menu is painted at once; the same menu is painted again, and the screen searched for
+    -- its submenus, ten times a second. A menu's signature is worked out once.
+    local macc, sacc, lastRoot = 0, 0, nil
+    local sigs = setmetatable({}, { __mode = "k" })
+    local function PaintKin(sig, n, root, pool)
+        for _, f in ipairs(pool) do
+            -- the screen's children include frames add-ons may not touch: ask before anything else
+            if f ~= root and ns:Usable(f) and f.IsShown and f:IsShown() and IsMenu(f, sig, n, root) then PaintMenu(f) end
+        end
+    end
     local mpoll = CreateFrame("Frame")
     mpoll:SetScript("OnUpdate", ns:Guard("Menus", function(_, e)
         macc = macc + e
         if macc < 0.05 then return end
+        sacc = sacc + macc
         macc = 0
         local root = OpenMenu()
-        if not root or not ns:Usable(root) then return end   -- (a menu the game has locked away is left alone)
+        if not root or not ns:Usable(root) then lastRoot = nil; return end   -- (a menu the game has locked away is left alone)
+        if root == lastRoot and sacc < 0.1 then return end
+        lastRoot, sacc = root, 0
         PaintMenu(root)
-        local ok, sig, n = pcall(Signature, root)
-        if ok and type(sig) == "table" and n and n > 0 then
+        local known = sigs[root]
+        if known == nil then
+            local ok, sig, n = pcall(Signature, root)
+            known = (ok and type(sig) == "table" and n and n > 0) and { sig, n } or false
+            sigs[root] = known
+        end
+        if known then
+            local sig, n = known[1], known[2]
+            PaintKin(sig, n, root, { UIParent:GetChildren() })
+            PaintKin(sig, n, root, { root:GetChildren() })
             local parent = root.GetParent and root:GetParent()
-            local pools = { { UIParent:GetChildren() }, { root:GetChildren() } }
-            if type(parent) == "table" and parent ~= UIParent and parent.GetChildren then pools[#pools + 1] = { parent:GetChildren() } end
-            for _, pool in ipairs(pools) do
-                for _, f in ipairs(pool) do
-                    -- the screen's children include frames add-ons may not touch: ask before anything else
-                    if f ~= root and ns:Usable(f) and f.IsShown and f:IsShown() and IsMenu(f, sig, n, root) then PaintMenu(f) end
-                end
-            end
+            if type(parent) == "table" and parent ~= UIParent and parent.GetChildren then PaintKin(sig, n, root, { parent:GetChildren() }) end
         end
     end))
 

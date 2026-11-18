@@ -1278,6 +1278,29 @@ try("Lettering styles", function()
     if not ns.FONT:find("Exo2", 1, true) then error("an unknown style should fall back to the default") end
     ns.db.fontStyle = before; ns:ApplyTheme()
 end)
+try("Lettering faces are loaded with the add-on", function()
+    if not (ns.fontHolder and ns.fontHolder.strings) then error("the faces were not put to use while loading") end
+    local files = {}
+    for _, style in pairs(ns.fontStyles) do
+        if style.body then files[style.body] = true end
+        if style.title then files[style.title] = true end
+    end
+    local n = 0
+    for _ in pairs(files) do n = n + 1 end
+    if #ns.fontHolder.strings ~= n then error("expected " .. n .. " faces loaded, found " .. #ns.fontHolder.strings) end
+    local count = ns.fontsPreloaded and #ns.fontHolder.strings
+    ns:PreloadFonts()
+    if #ns.fontHolder.strings ~= count then error("the faces should only be loaded once") end
+end)
+try("Bag window's top row fits inside it", function()
+    for _, name in ipairs({ "FantasyGlassUIBags", "FantasyGlassUIBank" }) do
+        local w = _G[name]
+        if w and w.suiRow then
+            local row = w.suiRow.search:GetWidth() + w.suiRow.used
+            if row > w:GetWidth() - 24 then error(name .. ": the search box and buttons take " .. row .. " of " .. (w:GetWidth() - 24)) end
+        end
+    end
+end)
 try("Fantasy custom theme", function()
     ns.db.theme, ns.db.accent = "SMOKE", "AZURE"; ns:Retheme()
     local key = ns:SaveCustomTheme("Old Oak", { panel = { 0.08, 0.06, 0.04 }, rim = { 0.45, 0.33, 0.18 }, accent = { 1, 0.8, 0.4 }, style = "FANTASY" })
@@ -1317,7 +1340,7 @@ try("Theme palette", function()
         local t = ns.themes[key]
         if not t then error("theme in the list but not defined: " .. key) end
         if ns.accents[t.accent] == nil then error(key .. " names an accent that doesn't exist: " .. tostring(t.accent)) end
-        if key ~= "CLASS" and key ~= "GCLASS" and key ~= "RCLASS" then     -- those three are worked out from your class at login
+        if key ~= "CLASS" and key ~= "GCLASS" and key ~= "CCLASS" then     -- those three are worked out from your class at login
             for _, field in ipairs({ "bg", "border", "rim", "light", "plate", "text", "dim", "faint", "btn" }) do
                 local c = t[field]
                 if type(c) ~= "table" then error(key .. " lacks " .. field) end
@@ -1330,12 +1353,19 @@ try("Theme palette", function()
             if lum(t.faint) - lum(t.bg) < 0.3 then error(key .. ": faint text too close to the panel") end
             if lum(t.plate) <= lum(t.bg) then error(key .. ": buttons should be lighter than the panel") end
             if lum(t.border) <= lum(t.plate) then error(key .. ": the rim should stand out from buttons") end
-            if (t.style == "GLASS") ~= (t.grain[4] == 0) then error(key .. ": glass themes have no grain, fantasy themes have one") end
+            if (t.style == "GLASS" or t.style == "CELESTIAL") ~= (t.grain[4] == 0) then error(key .. ": glass and celestial themes have no grain, fantasy themes have one") end
         end
         ns.db.theme = key; ns:BuildPalette()
         if ns.style ~= (t.style or "FANTASY") then error(key .. " did not set its family") end
     end
-    if #ns.accentOrder ~= 19 then error("expected 19 accents") end
+    if #ns.accentOrder ~= 31 then error("expected 31 accents") end
+    local seenAccent = {}
+    for _, key in ipairs(ns.accentOrder) do
+        if seenAccent[key] then error("accent listed twice: " .. key) end
+        seenAccent[key] = true
+        if key ~= "CLASS" and not ns.accents[key] then error("accent in the list but not defined: " .. key) end
+        if type(ns:AccentName(key)) ~= "string" then error("accent with no name: " .. key) end
+    end
     for _, key in ipairs(ns.accentOrder) do
         local r, g, b = ns:AccentColor(key)
         if type(r) ~= "number" or type(g) ~= "number" or type(b) ~= "number" then error("accent " .. key .. " has no color") end
@@ -1356,12 +1386,12 @@ try("Black and red", function()
 end)
 try("Setup offers every theme", function()
     -- every built-in theme must be reachable through one of the setup's two families
-    local glass, fantasy, runic = 0, 0, 0
+    local glass, fantasy, celestial = 0, 0, 0
     for _, key in ipairs(ns.themeOrder) do
         local th = ns.themes[key]
-        if not th.custom then if th.style == "GLASS" then glass = glass + 1 elseif th.style == "RUNIC" then runic = runic + 1 else fantasy = fantasy + 1 end end
+        if not th.custom then if th.style == "GLASS" then glass = glass + 1 elseif th.style == "CELESTIAL" then celestial = celestial + 1 else fantasy = fantasy + 1 end end
     end
-    if glass ~= 38 or fantasy ~= 38 or runic ~= 38 then error("expected 38 + 38 + 38 themes, found " .. glass .. " + " .. fantasy .. " + " .. runic) end
+    if glass ~= 38 or fantasy ~= 38 or celestial ~= 38 then error("expected 38 + 38 + 38 themes, found " .. glass .. " + " .. fantasy .. " + " .. celestial) end
     -- (a family no longer has to fit four rows: the setup's grid scrolls, which is tested further down)
     ns.db.theme, ns.db.accent = "SMOKE", "AZURE"; ns:Retheme()
     ns:ShowSetup()
@@ -1691,7 +1721,7 @@ try("Rename", function()
     if type(env.SlashCmdList.FANTASYGLASSUI) ~= "function" then error("the slash handler is not registered under the new name") end
     if type(env.FantasyGlassUI_Binding) ~= "function" then error("key bindings are not under the new name") end
     -- every key binding has a name in the key bindings window, and does something without an error
-    for _, which in ipairs({ "OPTIONS", "MOVE", "KEYBIND", "CLEAN", "METER", "ALTS", "MOUNT", "PET", "SORT", "KEYS", "QUIET", "NOTEPAD", "WHISPERS", "TODO", "WHATSTHIS", "TOOLS", "EQUIPBEST", "DEATH", "BOSSNOTE", "HELP" }) do
+    for _, which in ipairs({ "OPTIONS", "MOVE", "KEYBIND", "CLEAN", "METER", "ALTS", "MOUNT", "PET", "SORT", "KEYS", "QUIET", "NOTEPAD", "WHISPERS", "TODO", "WHATSTHIS", "TOOLS", "EQUIPBEST", "DEATH", "BOSSNOTE", "HELP", "BRIEFING", "RECAP", "SKILLUPS" }) do
         if which ~= "KEYS" and type(env["BINDING_NAME_FANTASYGLASSUI_" .. which]) ~= "string" then error("the " .. which .. " key binding has no name") end
         local ok, err = pcall(env.FantasyGlassUI_Binding, which, "down")
         if not ok then error("the " .. which .. " key binding failed: " .. tostring(err)) end
@@ -1722,12 +1752,12 @@ try("Look tab sections", function()
     ns:ToggleConfig("look")
     local page = ns.lookPage
     if not page or not page.themeGroups then error("the Look tab did not build its theme groups") end
-    local glass, fantasy, runicG, mine = page.themeGroups[1], page.themeGroups[2], page.themeGroups[3], page.themeGroups[4]
+    local glass, fantasy, skyG, mine = page.themeGroups[1], page.themeGroups[2], page.themeGroups[3], page.themeGroups[4]
     local function count(group) local n = 0; for _, b in ipairs(group.buttons) do if b.key and ns.themes[b.key] then n = n + 1 end end return n end
-    if count(glass) ~= 38 or count(fantasy) ~= 38 or count(runicG) ~= 38 then error("expected 38 glass, 38 fantasy and 38 runic buttons, got " .. count(glass) .. ", " .. count(fantasy) .. " and " .. count(runicG)) end
+    if count(glass) ~= 38 or count(fantasy) ~= 38 or count(skyG) ~= 38 then error("expected 38 glass, 38 fantasy and 38 celestial buttons, got " .. count(glass) .. ", " .. count(fantasy) .. " and " .. count(skyG)) end
     for _, b in ipairs(glass.buttons) do if ns.themes[b.key].style ~= "GLASS" then error("a fantasy theme is under Glass: " .. b.key) end end
-    for _, b in ipairs(fantasy.buttons) do if ns.themes[b.key].style == "GLASS" or ns.themes[b.key].style == "RUNIC" or ns.themes[b.key].custom then error("wrong theme under Fantasy: " .. b.key) end end
-    for _, b in ipairs(runicG.buttons) do if b.key and ns.themes[b.key].style ~= "RUNIC" then error("wrong theme under Runic: " .. b.key) end end
+    for _, b in ipairs(fantasy.buttons) do if ns.themes[b.key].style == "GLASS" or ns.themes[b.key].style == "CELESTIAL" or ns.themes[b.key].custom then error("wrong theme under Fantasy: " .. b.key) end end
+    for _, b in ipairs(skyG.buttons) do if b.key and ns.themes[b.key].style ~= "CELESTIAL" then error("wrong theme under Celestial: " .. b.key) end end
     for name in pairs(ns.db.customThemes) do ns:DeleteCustomTheme(name) end       -- (earlier tests may have left some)
     ns.db.theme, ns.db.accent = "SMOKE", "AZURE"; ns:Retheme(); page.Refresh()
     if count(mine) ~= 0 then error("no themes of your own: that group should be empty, has " .. count(mine)) end
@@ -1931,7 +1961,14 @@ try("Chat bubbles in each style", function()
             if part == "corner" and not (rec.file:find("corner.tga", 1, true) and same(rec.color, ar, ag, ab)) then error(style .. ": corner brackets should be in the accent color") end
             if part == "accent" and not same(rec.color, ar, ag, ab) then error(style .. ": the side bar should be in the accent color") end
         end
-        if style == "fantasy" then
+        if style == "celestial" then
+            if by.sky ~= 1 or by.stars ~= 1 or by.star ~= 1 or by.rim ~= 4 or by.glow ~= 4 or by.horizon ~= 1 then error("celestial: expected a sky, stars, a horizon, a fine rim with a glow, and the star at the top") end
+            if by.corner or by.grain or by.accent or by.shadow then error("celestial: glass or fantasy pieces on a celestial bubble") end
+            for _, tx in ipairs(made) do
+                local rec = rawget(tx, "rec")
+                if rawget(tx, "part") == "star" and not (rec.file:find("sparkle.tga", 1, true) and same(rec.color, ar, ag, ab)) then error("celestial: the star should be in the accent color") end
+            end
+        elseif style == "fantasy" then
             if by.corner ~= 4 or by.grain ~= 1 or by.outline ~= 4 or by.rim ~= 4 then error("fantasy: expected brackets, grain, an outer line and a rim") end
             if by.accent or by.shadow then error("fantasy: glass pieces on a fantasy bubble") end
         else
@@ -1965,6 +2002,8 @@ try("Chat bubbles in each style", function()
     if ns:CanRound() then check("rounded glass", true) end
     ns.db.rounded = false; ns:BuildPalette(); check("square glass", false)
     ns.db.theme = "ROYAL"; ns:BuildPalette(); check("fantasy", false)
+    for key, t in pairs(ns.themes) do if t.style == "CELESTIAL" and not t.custom then ns.db.theme = key; break end end
+    ns:BuildPalette(); check("celestial", false)
     ns.db.theme, ns.db.rounded = keepTheme, keepRounded; ns:Retheme()
 end)
 try("Where reports go", function()
@@ -2187,6 +2226,22 @@ try("Breath bar", function()
     if ns.MirrorDraw() ~= 2 then error("breath and fatigue can run together") end
     fireEvent("MIRROR_TIMER_PAUSE", "BREATH", 1)
     fireEvent("MIRROR_TIMER_STOP", "BREATH"); fireEvent("MIRROR_TIMER_STOP", "EXHAUSTION")
+    -- a game that will not say how much is left: the bar counts down by itself, and holds while paused
+    local realProgress, realTime, clock = env.GetMirrorTimerProgress, env.GetTime, 500
+    env.GetMirrorTimerProgress, env.GetTime = function() return nil end, function() return clock end
+    fireEvent("MIRROR_TIMER_START", "BREATH", 30000, 60000, -1, 0, "Breath")
+    clock = clock + 10; ns.MirrorDraw()
+    local bar = ns.mirrorBars and ns.mirrorBars[1]
+    if not bar then error("the breath bar's own bar could not be found for the countdown check") end
+    local shown; rawset(bar, "SetValue", function(_, v) shown = v end); ns.MirrorDraw()
+    local function Left() return shown end
+    if math.abs((Left() or 0) - 20) > 0.01 then error("after 10 seconds 20 should be left, not " .. tostring(Left())) end
+    fireEvent("MIRROR_TIMER_PAUSE", "BREATH", 1); clock = clock + 10; ns.MirrorDraw()
+    if math.abs((Left() or 0) - 20) > 0.01 then error("a paused timer should hold, not " .. tostring(Left())) end
+    fireEvent("MIRROR_TIMER_PAUSE", "BREATH", 0); clock = clock + 5; ns.MirrorDraw()
+    if math.abs((Left() or 0) - 15) > 0.01 then error("it should run on from where it held, not " .. tostring(Left())) end
+    fireEvent("MIRROR_TIMER_STOP", "BREATH"); rawset(bar, "SetValue", nil)
+    env.GetMirrorTimerProgress, env.GetTime = realProgress, realTime
     if ns.MirrorDraw() ~= 0 then error("the bars should go when their timers stop") end
     fireEvent("MIRROR_TIMER_START", "UNKNOWN", 0, 0, 0, 0, "")
     if ns.MirrorDraw() ~= 0 then error("an unused timer slot must not show a bar") end
@@ -2233,9 +2288,13 @@ try("Choosing a language", function()
     if not ns:SetLanguage("deDE") then error("choosing German should report a change") end
     if ns.root.language ~= "deDE" or ns:Tr("Unit frames") ~= "Einheitenfenster" then error("German was not applied") end
     if ns:SetLanguage("deDE") then error("choosing the same language again is not a change") end
+    if env.BINDING_NAME_FANTASYGLASSUI_OPTIONS ~= ns:Tr("Open options") or env.BINDING_NAME_FANTASYGLASSUI_OPTIONS == "Open options" then
+        error("the Key Bindings window should name our keys in German: " .. tostring(env.BINDING_NAME_FANTASYGLASSUI_OPTIONS)) end
+    if env["BINDING_NAME_CLICK FantasyGlassUIHealKey:LeftButton"] == "Use my best healing potion" then error("the potion key name should be in German too") end
     env.GetLocale = function() return "frFR" end
     ns:SetLanguage("enUS")
     if ns:Tr("Unit frames") ~= "Unit frames" then error("English chosen by hand must hold even on a French game") end
+    if env.BINDING_NAME_FANTASYGLASSUI_OPTIONS ~= "Open options" then error("going back to English should give the English key names again") end
     -- "Same as the game" follows the game again, and is stored as nothing at all
     ns:SetLanguage("auto")
     if ns.root.language ~= nil or ns:Tr("Unit frames") ~= "Cadres d'unité" then error("following the game should give French here") end
@@ -2333,6 +2392,26 @@ try("Nameplate health text", function()
     if shown ~= "12.4k" then error("a reused plate should show its new unit's health") end
     ns.db.healthNumbers = false
     env.UnitHealth, env.UnitHealthMax = realHP, realMax
+end)
+try("Changing the resource text option rewrites the frames at once", function()
+    local f
+    for _, uf in ipairs(ns.unitFrameList or {}) do if rawget(uf, "ppct") and uf.unit == "player" then f = uf end end
+    if not f then return end                                 -- (no player frame with resource text in this mode)
+    local shown
+    rawset(f.ppct, "SetText", function(_, t) shown = t end)
+    rawset(f, "IsShown", function() return true end)
+    local realP, realMax, keepText, keepNum = env.UnitPower, env.UnitPowerMax, ns.db.powerText, ns.db.powerNumbers
+    env.UnitPower, env.UnitPowerMax = function() return 500 end, function() return 1000 end
+    ns.db.powerText, ns.db.powerNumbers = true, false
+    ns:RefreshHealthText()
+    if shown ~= "50%" then error("a percentage first: " .. tostring(shown)) end
+    ns.db.powerNumbers = true
+    ns:RefreshHealthText()
+    if shown ~= "500" then error("switching to numbers should show the amount at once, not " .. tostring(shown)) end
+    ns.db.powerText, ns.db.powerNumbers = keepText, keepNum
+    env.UnitPower, env.UnitPowerMax = realP, realMax
+    rawset(f.ppct, "SetText", nil); rawset(f, "IsShown", nil)
+    ns:RefreshHealthText()
 end)
 try("Resource text", function()
     local shown
@@ -2924,19 +3003,19 @@ do   -- (the tab shows one section at a time: together the sections cover the pa
     local g, f, rg, m = page.themeGroups[1], page.themeGroups[2], page.themeGroups[3], page.themeGroups[4]
     if not (g.y > f.y and f.y > rg.y and rg.y > m.y) then error("the theme groups are out of order") end
     if g.y - f.y < 24 + g.rows * 28 then error("the Fantasy group overlaps the Glass group") end
-    if f.y - rg.y < 24 + f.rows * 28 then error("the Runic group overlaps the Fantasy group") end
-    if rg.y - m.y < 24 + rg.rows * 28 then error("Your themes overlaps the Runic group") end
+    if f.y - rg.y < 24 + f.rows * 28 then error("the Celestial group overlaps the Fantasy group") end
+    if rg.y - m.y < 24 + rg.rows * 28 then error("Your themes overlaps the Celestial group") end
     ns:ToggleConfig()
     -- the setup: both grids hold everything too
     ns:ShowSetup()
     local look, lettering = ns.setupLookPage, ns.setupLetteringPage
     if not look or not lettering then error("the setup's look and lettering steps did not build") end
-    for _, family in ipairs({ "GLASS", "FANTASY", "RUNIC" }) do
+    for _, family in ipairs({ "GLASS", "FANTASY", "CELESTIAL" }) do
         look.SetFamily(family)
         local want = 0
         for _, key in ipairs(ns.themeOrder) do
             local t = ns.themes[key]
-            local fam = (t.style == "GLASS") and "GLASS" or (t.style == "RUNIC") and "RUNIC" or "FANTASY"
+            local fam = (t.style == "GLASS") and "GLASS" or (t.style == "CELESTIAL") and "CELESTIAL" or "FANTASY"
             if not t.custom and fam == family then want = want + 1 end
         end
         if look.themeCount ~= want then error("the setup shows " .. tostring(look.themeCount) .. " of " .. want .. " " .. family .. " themes") end
@@ -3851,6 +3930,163 @@ try("Tooltip rank and IDs", function()
     ns.db.tipGuildRank = true
     env.UnitIsPlayer, env.GetGuildInfo = keepPlayer, keepGuild
 end)
+try("A long button label fits its button", function()
+    local b = ns:CreateButton(UIParent, "Short", 60, 20)
+    local t = b.text
+    local size, width, label = 12, 0, ""
+    rawset(t, "SetFont", function(_, _, s) size = s end)
+    rawset(t, "SetWidth", function(_, w) width = w end)
+    rawset(t, "GetStringWidth", function() return #label * size * 0.55 end)
+    rawset(b, "GetWidth", function() return 60 end)
+    label = "Short"; t.suiFit()
+    if size ~= 12 * (ns.fontScale or 1) or width ~= 0 then error("a label that fits keeps its size: " .. tostring(size)) end
+    label = "Longerlab"; t.suiFit()                  -- 9 letters: fits a little smaller
+    if size >= 12 * (ns.fontScale or 1) or width ~= 0 then error("a label a little too long is drawn smaller: " .. tostring(size)) end
+    label = "A label far too long for this button"; t.suiFit()
+    if math.floor(size + 0.5) ~= math.floor(9 * (ns.fontScale or 1) + 0.5) or width ~= 52 then error("one far too long is cut short at 9 points: " .. tostring(size) .. " " .. tostring(width)) end
+end)
+try("Pull and break timers say what they take", function()
+    if ns:CountdownCommand("pull", "soon") ~= false then error("a word that is not a number is refused, with how") end
+    if ns:CountdownCommand("pull", "0") ~= false or ns:CountdownCommand("break", "500") ~= false then error("out of range is refused") end
+end)
+try("Sizes go back to 100 when asked", function()
+    local before = ns.db.fontScale
+    ns.db.fontScale = 130
+    if ns:SizeCommand("fontScale", "reset", 70, 150) ~= 100 or ns.db.fontScale ~= 100 then error("/fgui textsize reset puts it back to 100") end
+    ns.db.fontScale = before
+end)
+try("Weekly recap", function()
+    -- a week is named by the next weekly reset: the same all week, different after it
+    if ns.RecapWeek(1000, 600000) ~= ns.RecapWeek(5000, 596000) then error("one week, one name") end
+    if ns.RecapWeek(1000, 600000) == ns.RecapWeek(700000, 504800) then error("a new week, a new name") end
+    -- the five best loot items: quality first, then item level; nothing below rare
+    local e = { loot = {} }
+    if ns.RecapLoot(e, "|Hitem:1|h[Green]|h", 2, 50) then error("uncommon loot is not kept") end
+    for i = 1, 7 do ns.RecapLoot(e, "|Hitem:" .. (10 + i) .. "|h[Rare " .. i .. "]|h", 3, 40 + i) end
+    ns.RecapLoot(e, "|Hitem:99|h[Epic]|h", 4, 30)
+    if #e.loot ~= 5 or not e.loot[1].link:find("Epic", 1, true) or e.loot[2].il ~= 47 then error("the five best, epic first") end
+    -- old weeks are let go
+    local weeks = {}
+    for i = 1, 11 do weeks["w" .. i] = { at = i * 1000, chars = {} } end
+    ns.RecapPrune(weeks)
+    local n = 0; for _ in pairs(weeks) do n = n + 1 end
+    if n ~= 8 or weeks.w1 or not weeks.w11 then error("the newest eight weeks are kept") end
+    -- the lines
+    local week = { chars = { ["Arthas - R"] = { goldStart = 10000, goldEnd = 35000, played = 3 * 3600 + 120, levelStart = 30, levelEnd = 33,
+        instances = { ["Molten Core"] = true }, loot = { { link = "|Hitem:5|h[Sword]|h", q = 4, il = 60 } } } } }
+    local text = {}
+    for _, l in ipairs(ns.RecapLines(week, { ["Arthas - R"] = { name = "Arthas" } })) do text[#text + 1] = l.left .. " " .. tostring(l.right or "") end
+    local all = table.concat(text, " | ")
+    for _, want in ipairs({ "All your characters", "Arthas", "3 h 2 min", "Levels 30 to 33", "Molten Core", "[Sword]" }) do
+        if not all:find(want, 1, true) then error("the recap should show " .. want .. ": " .. all) end
+    end
+    -- most played first; a character that only logged in is left out
+    week.chars["Jaina - R"] = { goldStart = 5, goldEnd = 5, played = 20 * 3600 }
+    week.chars["Thrall - R"] = { goldStart = 5, goldEnd = 5, played = 10 }
+    local order = {}
+    for _, l in ipairs(ns.RecapLines(week, { ["Arthas - R"] = { name = "Arthas" }, ["Jaina - R"] = { name = "Jaina" }, ["Thrall - R"] = { name = "Thrall" } })) do order[#order + 1] = l.left end
+    local o = table.concat(order, "|")
+    if not o:find("Jaina.*Arthas") then error("the most played character first") end
+    if o:find("Thrall", 1, true) then error("a character that did nothing is left out") end
+    -- noted as you play
+    if type(ns.recapTest) ~= "table" then error("the weekly recap did not start") end
+    ns.recapTest.Note()
+    local mine = ns.recapTest.Mine()
+    if mine.goldStart == nil or mine.levelEnd == nil then error("this character's week should be noted") end
+    if ns:ShowRecap() < 1 then error("the recap window should show") end
+    ns:HideLists()
+end)
+try("Interface and text size", function()
+    local S = ns.InterfaceScale
+    if S(false, 1080, 100, 0.9) ~= nil then error("as the game set it: nothing to change") end
+    if math.abs(S(false, 1080, 80, 0.9) - 0.72) > 0.001 then error("80% of the game's scale") end
+    if math.abs(S(true, 1080, 100, 0.9) - 768 / 1080) > 0.001 then error("pixel-perfect alone") end
+    if math.abs(S(true, 1080, 120, 0.9) - 768 / 1080 * 1.2) > 0.001 then error("pixel-perfect times the interface size") end
+    if S(false, 1080, 10, 0.9) < 0.35 or S(false, 1080, 999, 1.5) > 1.6 then error("kept in a range the game can draw") end
+    local keepFont, keepUi = ns.db.fontScale, ns.db.uiScale
+    if ns:SizeCommand("fontScale", "500", 70, 150) ~= 150 then error("a text size out of range is brought into it") end
+    if ns:SizeCommand("uiScale", "90", 50, 150) ~= 90 then error("the interface size is taken") end
+    if ns:SizeCommand("uiScale", "", 50, 150) ~= nil then error("with no number it only says the size") end
+    ns.db.fontScale, ns.db.uiScale = keepFont, keepUi
+    ns:ApplyPixelScale(); ns:Retheme()
+end)
+try("Profession leveling helper", function()
+    local P = ns.SkillUpPlan
+    local recipes = {
+        { id = 1, name = "Gray Bolt", difficulty = 3, reagents = { { id = 10, need = 1 } } },
+        { id = 2, name = "Green Shirt", difficulty = 2, reagents = { { id = 10, need = 2 } } },
+        { id = 3, name = "Orange Cloak", difficulty = 0, reagents = { { id = 10, need = 3 }, { id = 11, need = 1 } } },
+        { id = 4, name = "Yellow Gloves", difficulty = 1, reagents = { { id = 10, need = 2 } } },
+        { id = 5, name = "Orange Boots", difficulty = 0, reagents = { { id = 12, need = 5 } } },
+    }
+    local stock = { [10] = { 5, 0 }, [11] = { 0, 4 }, [12] = { 1, 0 } }
+    local plan = P(recipes, function(id) local s = stock[id] or { 0, 0 }; return s[1], s[2] end)
+    for _, p in ipairs(plan) do if p.name == "Gray Bolt" then error("gray recipes give nothing more and are left out") end end
+    if plan[1].name ~= "Yellow Gloves" or plan[1].makeNow ~= 2 then error("what you can make now comes first, the surer skill-up before the green one: " .. tostring(plan[1].name)) end
+    if plan[2].name ~= "Green Shirt" then error("then the other one you can make now: " .. tostring(plan[2].name)) end
+    if plan[3].name ~= "Orange Cloak" or plan[3].missing ~= 1 or plan[3].short[1].others ~= 4 then error("then the one missing least, and another character has it") end
+    if plan[4].name ~= "Orange Boots" or plan[4].missing ~= 4 then error("and the one missing most last") end
+    -- a recipe with no materials can always be made; more skill points first among equals
+    local plan2 = P({ { id = 6, name = "B Charm", difficulty = 1, skillUps = 1, reagents = {} },
+                      { id = 7, name = "A Charm", difficulty = 1, skillUps = 1, reagents = {} },
+                      { id = 8, name = "Z Charm", difficulty = 1, skillUps = 2, reagents = {} } }, function() return 0, 0 end)
+    if not plan2[1].free or plan2[1].makeNow < 1 then error("a recipe with no materials can be made now") end
+    if plan2[1].name ~= "Z Charm" or plan2[2].name ~= "A Charm" then error("the one worth two points first, then by name: " .. tostring(plan2[1].name)) end
+    -- the window, with a profession open
+    env.C_TradeSkillUI = { GetAllRecipeIDs = function() return { 1, 2 } end,
+        GetRecipeInfo = function(id) return { learned = true, name = id == 1 and "Linen Bandage" or "Wool Bandage", relativeDifficulty = id == 1 and 0 or 2, numSkillUps = id } end,
+        GetRecipeSchematic = function(id) return { reagentSlotSchematics = { { reagentType = 1, quantityRequired = 2, reagents = { { itemID = 2589 + id } } } } } end,
+        OpenRecipe = function() end }
+    if ns:ShowSkillUps() ~= 2 then error("both recipes that still give points are listed") end
+    env.C_TradeSkillUI = nil
+    if ns:ShowSkillUps(true) ~= 0 then error("no profession open: nothing, and quietly when asked to be") end
+    -- the older profession window: recipes by place in its list, difficulty as a word
+    env.GetNumTradeSkills = function() return 3 end
+    env.GetTradeSkillInfo = function(i) return ({ "Leather", "Light Armor Kit", "Handstitched Boots" })[i], ({ "header", "optimal", "trivial" })[i] end
+    env.GetTradeSkillNumReagents = function() return 1 end
+    env.GetTradeSkillReagentInfo = function() return "Light Leather", nil, 1, 0 end
+    env.GetTradeSkillReagentItemLink = function() return "|cffffffff|Hitem:2318::::::::|h[Light Leather]|h|r" end
+    local legacy = ns.SkillUpLegacyRecipes()
+    if not legacy or #legacy ~= 2 or legacy[1].difficulty ~= 0 or legacy[1].reagents[1].id ~= 2318 then error("the older profession window's recipes") end
+    if ns:ShowSkillUps(true) ~= 1 then error("the older window: only the recipe that still gives points") end
+    env.GetNumTradeSkills, env.GetTradeSkillInfo, env.GetTradeSkillNumReagents, env.GetTradeSkillReagentInfo, env.GetTradeSkillReagentItemLink = nil, nil, nil, nil, nil
+    -- the button on the profession window
+    env.ProfessionsFrame = env.CreateFrame("Frame", "ProfessionsFrame")
+    ns.skillUpTest.Dress()
+    env.ProfessionsFrame = nil
+    if type(ns.ShowSkillUps) ~= "function" then error("the skill-ups window is missing") end
+end)
+try("Login briefing", function()
+    local B = ns.BriefingLines
+    if #B({ now = 1000 }) ~= 0 then error("nothing known, nothing waiting") end
+    local d = {
+        me = "Arthas - Realm", now = 100000, lastSeen = 50000,
+        alts = { ["Arthas - Realm"] = { name = "Arthas", mail = true }, ["Jaina - Realm"] = { name = "Jaina", mail = true }, ["Thrall - Realm"] = { name = "Thrall", mail = false } },
+        profCD = { ["Jaina - Realm"] = { [1] = { name = "Transmute: Arcanite", readyAt = 90000 } } },
+        oldLockouts = { { name = "Molten Core", ends = 80000 }, { name = "Molten Core", ends = 80000 }, { name = "Onyxia's Lair", ends = 200000 }, { name = "Old", ends = 40000 } },
+        rested = 45, level = 30, maxLevel = 60,
+        checklist = { done = { daily = { 1, 3 }, weekly = { 2, 2 } } },
+    }
+    local text = {}
+    for _, l in ipairs(B(d)) do text[#text + 1] = l.left end
+    local all = table.concat(text, " | ")
+    for _, want in ipairs({ "Transmute: Arcanite", "Mail waiting for Jaina", "Molten Core", "Rested: 45%", "Daily jobs: 1 of 3" }) do
+        if not all:find(want, 1, true) then error("the briefing should say " .. want .. ": " .. all) end
+    end
+    if all:find("Arthas", 1, true) then error("this character's own mail is the game's to tell") end
+    if all:find("Onyxia", 1, true) or all:find("Old", 1, true) then error("only lockouts reset since you last played") end
+    if all:find("Weekly jobs", 1, true) then error("finished jobs are not mentioned") end
+    local extra = B({ now = 1, durability = 12, freeSlots = 2 })
+    if #extra ~= 2 or not extra[1].left:find("12", 1, true) or not extra[2].left:find("2", 1, true) then error("gear to repair and bags nearly full are mentioned") end
+    if #B({ now = 1, durability = 80, freeSlots = 20 }) ~= 0 then error("good gear and room in the bags are not mentioned") end
+    local _, mc = all:gsub("Molten Core", "")
+    if mc ~= 1 then error("a raid saved on two difficulties is named once") end
+    d.level = 60
+    for _, l in ipairs(B(d)) do if l.left:find("Rested", 1, true) then error("no rested line at the top level") end end
+    -- the window
+    if ns:ShowBriefing() < 1 then error("asked for, the briefing always shows (even if only to say nothing is waiting)") end
+    ns:HideLists()
+end)
 try("Buttons that delete ask first", function()
     local ran = 0
     local b = ns:CreateButton(env.UIParent, "Delete", 80, 24, ns:ConfirmClick(function() ran = ran + 1 end))
@@ -4150,6 +4386,18 @@ do   -- (the tab shows one section at a time: together the sections cover the pa
             covered = item.top + item.height
         end
         if covered ~= page.contentHeight then error("the sections should reach exactly to the foot of the page: " .. covered .. " of " .. page.contentHeight) end
+    end
+    -- opening the tab again shows the buff alerts you saved (it once read another setting and emptied them)
+    local buffBoxes = rawget(page, "buffBoxes")
+    if type(buffBoxes) == "table" and buffBoxes[1] then
+        local keep, shown = ns.db.alertBuffs, {}
+        for i, eb in ipairs(buffBoxes) do rawset(eb, "SetText", function(_, t) shown[i] = t end) end
+        ns.db.alertBuffs = { "Power Word: Fortitude", "Bloodlust" }
+        page.Refresh()
+        for _, eb in ipairs(buffBoxes) do rawset(eb, "SetText", nil) end
+        if shown[1] ~= "Power Word: Fortitude" or shown[2] ~= "Bloodlust" then
+            error("the buff alert boxes should show the saved list: " .. tostring(shown[1])) end
+        ns.db.alertBuffs = keep
     end
     ns:ToggleConfig()
 end)
@@ -6628,6 +6876,21 @@ try("11.0: custom and spoken alerts", function()
     -- the Combat tab has the editors
     ns:ToggleConfig("combat")
     if not (ns.alertEditor and ns.speakEditor) then error("the Combat tab has the alert and speech editors") end
+    do  -- the value box's hint says what the chosen alert wants typed
+        local E, saw = ns.alertEditor, {}
+        local hint = rawget(E.value, "hint")
+        if type(hint) ~= "table" then error("the value box has no hint") end
+        rawset(hint, "SetText", function(_, t) saw[t] = true end)
+        local click
+        for _, h in ipairs(handlers) do if h.self == E.triggerButton and h.name == "OnClick" then click = h.fn end end
+        if not click then error("the alert kind button has no click") end
+        for _ = 1, #ns.ALERT_TRIGGERS do
+            click(E.triggerButton, "LeftButton")
+            if type(rawget(E.value, "hint")) ~= "table" then error("the value box's hint was replaced by plain text") end
+        end
+        rawset(hint, "SetText", nil)
+        if not (saw[ns:Tr("a number")] or saw[ns:Tr("a name")]) then error("the hint should ask for a number or a name") end
+    end
     local cs = ns.OptionsSheet("combat")
     local titles = {}
     for _, item in ipairs(cs.navList) do titles[item.title] = true end
@@ -6734,7 +6997,7 @@ end)
 try("11.2.0: tools menu, timers, bag and mail rules, talents, holidays, preview", function()
     -- every button of the Tools menu runs a real command
     for _, def in ipairs(ns.TOOL_MENU) do if not ns.toolCommands[def[2]] then error("Tools menu: no command " .. def[2]) end end
-    for i, first in pairs({ [1] = "Am I ready?", [11] = "Your characters", [20] = "Sort bags", [29] = "Notes on players", [34] = "Where to level", [37] = "Key bindings" }) do
+    for i, first in pairs({ [1] = "Am I ready?", [11] = "Your characters", [23] = "Sort bags", [32] = "Notes on players", [37] = "Where to level", [40] = "Key bindings" }) do
         if not ns.TOOL_MENU_GROUPS[i] or ns.TOOL_MENU[i][1] ~= first then error("the Tools menu's groups start in the wrong places: " .. i) end
     end
     if not ns:ToggleToolsMenu() then error("the Tools menu opens") end
@@ -7035,6 +7298,34 @@ try("11.2.0: tools menu, timers, bag and mail rules, talents, holidays, preview"
     ns:TalentCommand("")
     ns:HideLists()
 end)
+try("Talent builds are learned a point at a time, lowest tier first", function()
+    -- one tree: talent 1 is tier 2 (needs 5 points spent), talent 2 is tier 1 (5 ranks), talent 3 is tier 1 (3 ranks)
+    local tiers, maxR, ranks = { 2, 1, 1 }, { 3, 5, 3 }, { 0, 0, 0 }
+    local free = 10
+    local keep = {}
+    for _, k in ipairs({ "GetNumTalentTabs", "GetNumTalents", "GetTalentInfo", "LearnTalent", "UnitCharacterPoints" }) do keep[k] = env[k] end
+    env.GetNumTalentTabs = function() return 1 end
+    env.GetNumTalents = function() return 3 end
+    env.GetTalentInfo = function(_, i) return "T" .. i, "icon", tiers[i], 1, ranks[i], maxR[i] end
+    local log = {}
+    env.LearnTalent = function(_, i)
+        log[#log + 1] = tostring(i)
+        local spent = ranks[1] + ranks[2] + ranks[3]
+        if free <= 0 or ranks[i] >= maxR[i] or spent < (tiers[i] - 1) * 5 then return end
+        ranks[i] = ranks[i] + 1; free = free - 1
+    end
+    env.UnitCharacterPoints = function() return free end
+    ns.TalentBuilds()["Test build"] = { talents = { [1] = { [1] = 3, [2] = 5, [3] = 2 } }, points = { 10 } }
+    ns:ApplyTalentBuild("Test build")
+    for _ = 1, 60 do                                   -- (each step waits for the one before: run the chain through)
+        local batch = timers; timers = {}
+        for _, fn in ipairs(batch) do pcall(fn) end
+    end
+    for k, v in pairs(keep) do env[k] = v end
+    ns.TalentBuilds()["Test build"] = nil
+    if ranks[2] ~= 5 or ranks[1] ~= 3 or ranks[3] ~= 2 then error("the build landed as " .. table.concat(ranks, "/") .. " (wanted 3/5/2): " .. table.concat(log, ",") .. " learned=" .. tostring(ns.talentLearned)) end
+    if ns.talentLearned ~= 10 then error("points spent should be 10, said " .. tostring(ns.talentLearned)) end
+end)
 try("11.6: execute line, group practice, enemy cooldowns, upgrades, new characters", function()
     -- the execute line only on an enemy
     local realAttack, realExists = env.UnitCanAttack, env.UnitExists
@@ -7226,6 +7517,11 @@ try("11.7: ready me, boss notes, death recap, backups, history, templates, packs
     if ns:NoteSettingChanges() ~= 1 then error("one change noted") end
     if not ns:UndoSettingChange(1) or ns.db.raidW ~= keepW then error("undone") end
     if ns:ShowSettingHistory() < 1 then error("the history window") end
+    -- the list says what a change is in words, not by its stored name
+    if ns.SettingName("pos.ufPlayer") == "pos.ufPlayer" or not ns.SettingName("pos.ufPlayer"):find(ns:Tr("Panel positions"), 1, true) then
+        error("a panel's place should read as its name: " .. tostring(ns.SettingName("pos.ufPlayer"))) end
+    if ns.SettingValue("true") ~= ns:Tr("on") or ns.SettingValue("false") ~= ns:Tr("off") or ns.SettingValue("42") ~= "42" then error("on and off in words") end
+    if ns.SettingName("someUnknownKey") ~= "someUnknownKey" then error("an unknown setting keeps its stored name") end
     -- templates
     local t = ns.TemplateProfile("HEALER", { theme = "SMOKE", accent = "VIOLET" })
     if t.role ~= "HEALER" or t.accent ~= "VIOLET" or t.raidFrames ~= true or t.pos.raid[1] ~= "CENTER" then error("a healer template") end
@@ -7285,24 +7581,65 @@ try("11.7: ready me, boss notes, death recap, backups, history, templates, packs
     local text = ns.PerfReportText({ { label = "Raid frames", perSec = 0.5, calls = 10, worst = 1.2 } }, 61, { what = "a fight", group = 20, fps = 60, fpsLow = 40, fpsHigh = 80, mem = 10240 })
     if not text:find("group of 20") or not text:find("Raid frames") or not text:find("10.0 MB") then error("the report text") end
 end)
-try("11.8: runic themes and language names", function()
+try("11.11: celestial themes (in place of runic) and language names", function()
     local keepTheme, keepAccent = ns.db.theme, ns.db.accent
-    for _, key in ipairs({ "R_GRANITE", "RCLASS" }) do
+    for _, key in ipairs({ "C_POLARIS", "CCLASS" }) do
         ns.db.theme = key; ns.db.accent = ns.themes[key].accent
         ns:Retheme()
-        if ns.style ~= "RUNIC" then error(key .. " is a runic theme") end
+        if ns.style ~= "CELESTIAL" then error(key .. " is a celestial theme") end
         local f = env.CreateFrame("Frame", nil, env.UIParent, ns.template)
+        f:SetSize(300, 200)
         ns:Dress(f)
-        if not rawget(f, "suiGrain") then error("a runic panel has its stone") end
+        if not rawget(f, "suiGrain") then error("a celestial panel has its stars") end
         local p = env.CreateFrame("Frame", nil, env.UIParent, ns.template)
         ns:Dress(p, true)
         ns:Corners(f, f, 16, 1)
         ns:Divider(f)
-        ns:CreateButton(f, "Runic", 80, 22, function() end)
+        ns:CreateButton(f, "Celestial", 80, 22, function() end)
     end
-    local own = ns.themes[ns:SaveCustomTheme("Rune test", { panel = { 0.08, 0.08, 0.09 }, rim = { 0.4, 0.4, 0.45 }, accent = { 0.5, 0.8, 1 }, style = "RUNIC" })]
-    if own.style ~= "RUNIC" or not (own.grain[4] > 0) then error("a runic theme of your own") end
-    ns:DeleteCustomTheme("Rune test")
+    local own = ns.themes[ns:SaveCustomTheme("Sky test", { panel = { 0.03, 0.03, 0.07 }, rim = { 0.4, 0.4, 0.45 }, accent = { 0.5, 0.8, 1 }, style = "CELESTIAL" })]
+    if own.style ~= "CELESTIAL" then error("a celestial theme of your own") end
+    ns:DeleteCustomTheme("Sky test")
+    -- Runic is gone: a theme of your own saved as Runic becomes Celestial, and so do the Runic themes
+    if ns:CleanThemeDef({ style = "RUNIC" }).style ~= "CELESTIAL" then error("an old Runic theme of your own becomes Celestial") end
+    local old = ns:FillDefaults({ design = 4, theme = "R_GRANITE", placeThemes = { raid = "R_EMBER", city = "SMOKE" }, customThemes = { Mine = { style = "RUNIC" } } })
+    if old.theme ~= "C_POLARIS" or old.placeThemes.raid ~= "C_COMET" or old.placeThemes.city ~= "SMOKE" or old.customThemes.Mine.style ~= "CELESTIAL" then
+        error("a Runic player moves to the Celestial theme made from theirs: " .. tostring(old.theme) .. ", " .. tostring(old.placeThemes.raid))
+    end
+    -- the sun and the moon: by day the sun, along the top from the left at 6:00; at night the moon; noon at the top of the ring
+    local day, along, angle = ns.SkyBody(6)
+    if not day or math.abs(along) > 0.001 then error("6:00: the sun at the left of the top edge") end
+    day, along, angle = ns.SkyBody(12)
+    if not day or math.abs(along - 0.5) > 0.001 or math.abs(angle) > 0.001 then error("noon: the sun in the middle, at the top of the ring") end
+    day, along, angle = ns.SkyBody(0)
+    if day or math.abs(along - 0.5) > 0.001 or math.abs(angle + math.pi) > 0.001 then error("midnight: the moon, at the foot of the ring") end
+    if ns.SkyBody(18) then error("18:00 is night") end
+    -- a Celestial window: a constellation on a large one, none on a small one
+    ns.db.theme = "C_POLARIS"; ns:Retheme()
+    local seenTex = {}
+    local big = env.CreateFrame("Frame", nil, env.UIParent, ns.template)
+    big:SetSize(420, 300)
+    ns:Dress(big)
+    local small = env.CreateFrame("Frame", nil, env.UIParent, ns.template)
+    small:SetSize(120, 30)
+    ns:Dress(small)
+    if not rawget(big, "suiGrain") or not rawget(small, "suiGrain") then error("both have their stars") end
+    -- it moves: loops are made and playing, a shooting star can cross the large window, Reduce motion holds still
+    if #ns.skyLoops < 5 then error("the celestial windows' loops: " .. #ns.skyLoops) end
+    if not ns.ShootingStar(big) or not rawget(big, "suiShooting") then error("a shooting star across a large window") end
+    if #(rawget(big, "suiMotes") or {}) ~= 6 then error("motes of starlight on a large window") end
+    -- nothing that is a SetGradient fade is animated (some game clients then draw it white: the white band of 11.11's first build)
+    local fade = env.CreateFrame("Frame", nil, env.UIParent):CreateTexture()
+    fade.suiGradient = true
+    if ns:SkyLoop(fade, "Alpha", 1, function(x) x:SetFromAlpha(0); x:SetToAlpha(1) end) then error("an animation on a gradient fade") end
+    local keepMotion = ns.db.reduceMotion
+    ns.db.reduceMotion = true
+    if ns:Motion() then error("reduce motion") end
+    ns.db.reduceMotion = keepMotion
+    for rk, ck in pairs(ns.RUNIC_TO_CELESTIAL) do
+        if not ns.themes[ck] then error("no Celestial theme for " .. rk .. ": " .. ck) end
+        if rk ~= "RCLASS" and ns.themes[ck].style ~= "CELESTIAL" then error(ck .. " is not Celestial") end
+    end
     ns.db.theme, ns.db.accent = keepTheme, keepAccent; ns:Retheme()
     -- Korean and Chinese names in a face that has their letters
     local fs = env.UIParent:CreateFontString(nil, "OVERLAY")
@@ -7322,7 +7659,7 @@ try("11.8: runic themes and language names", function()
     ns:LanguageFont(fs, "zhCN")
     if setTo ~= "Fonts\\ARKai_T.ttf" then error("without font families, the Chinese face by name: " .. tostring(setTo)) end
 end)
-try("11.9: check of the new features, runic art, theme previews", function()
+try("11.9: check of the new features, celestial art, theme previews", function()
     local out, counts = ns:CheckNew()
     if type(out) ~= "table" or #out < 25 then error("the report") end
     if counts.CHECK > 0 then
@@ -7330,36 +7667,64 @@ try("11.9: check of the new features, runic art, theme previews", function()
         for _, l in ipairs(out) do if l:find("^  CHECK") then bad[#bad + 1] = l end end
         error("lines to look at in the harness: " .. table.concat(bad, " | "))
     end
-    -- runic art
+    -- celestial art
     local keepStyle = ns.style
-    ns.style = "RUNIC"
+    ns.style = "CELESTIAL"
     local host = env.CreateFrame("Frame", nil, env.UIParent)
-    local s = ns:RuneStrip(host, true, 180, 9, 0.5)
-    if not s then error("a rune strip") end
     local btn = env.CreateFrame("Button", nil, env.UIParent)
     ns:AddBorder(btn, 0, 0, 0, 1)
-    if not ns:RunicButtonEdge(btn) or ns:RunicButtonEdge(btn) then error("a carved edge, once") end
+    if not ns:CelestialButtonEdge(btn) or ns:CelestialButtonEdge(btn) then error("a fine star frame, once") end
     local m = ns:CreateEmblem(host)
     local tex
     rawset(m.ring, "SetTexture", function(_, p) tex = p end)
     m:Restyle()
-    if not tostring(tex):find("ring_runic") then error("the runic emblem ring: " .. tostring(tex)) end
+    if not tostring(tex):find("ring_celestial") then error("the celestial emblem ring: " .. tostring(tex)) end
+    local div = ns:Divider(host)
+    if not rawget(div, "suiStar") then error("a star on the celestial divider") end
     ns.style = "GLASS"
-    if ns:RunicButtonEdge(env.CreateFrame("Button", nil, env.UIParent)) then error("no carved edge on glass") end
+    if ns:CelestialButtonEdge(env.CreateFrame("Button", nil, env.UIParent)) then error("no star frame on glass") end
     ns.style = keepStyle
     -- theme previews
-    for _, key in ipairs({ "SMOKE", "CLASS", "GCLASS", "RCLASS", "R_GRANITE" }) do
+    for _, key in ipairs({ "SMOKE", "CLASS", "GCLASS", "CCLASS", "C_POLARIS" }) do
         local c = ns:ThemeColors(key)
         if not c or not c.bg or not c.accent or not c.border then error("colors of " .. key) end
     end
     if ns:ThemeColors("NOPE") then error("no such theme") end
-    if ns:ThemeColors("RCLASS").style ~= "RUNIC" or ns:ThemeColors("GCLASS").style ~= "GLASS" then error("family of the class themes") end
+    if ns:ThemeColors("CCLASS").style ~= "CELESTIAL" or ns:ThemeColors("GCLASS").style ~= "GLASS" then error("family of the class themes") end
     local page = ns.lookPage
     if not (page and page.ThemeCard and page.themeGroups) then error("the Look page") end
     local b = page.themeGroups[3].buttons[1]
     if not b or not b.swatch then error("each theme button has its picture") end
-    page.ThemeCard(b, "R_GRANITE")
-    page.ShowSwatch(b.swatch, "RCLASS")
+    page.ThemeCard(b, "C_POLARIS")
+    page.ShowSwatch(b.swatch, "CCLASS")
+end)
+try("Chat bubbles: the look sleeps until someone speaks", function()
+    if type(ns.BubblePoll) ~= "function" then error("no bubble poll") end
+    local realTime, realGet = env.GetTime, known.C_ChatBubbles.GetAllChatBubbles
+    local asked = 0
+    known.C_ChatBubbles.GetAllChatBubbles = function() asked = asked + 1; return {} end
+    env.GetTime = function() return 5000 end
+    ns.BubblePoll()
+    if asked ~= 0 then error("looked for bubbles with nobody talking") end
+    fireEvent("CHAT_MSG_SAY", "hi", "Bob-Realm")
+    ns.BubblePoll()
+    if asked ~= 1 then error("did not look after a line was heard: " .. asked) end
+    env.GetTime = function() return 5020 end
+    ns.BubblePoll()
+    if asked ~= 1 then error("still looking 20 seconds after the last line") end
+    env.GetTime, known.C_ChatBubbles.GetAllChatBubbles = realTime, realGet
+end)
+try("Class resource: a new design table is read at once", function()
+    if not ns.resourceTest then return end
+    local f = ns.resourceTest.frame
+    local w
+    rawset(f, "SetSize", function(_, a) w = a end)
+    ns.db.resourceDesign = { width = 250 }
+    ns.resourceTest.Update()
+    ns.db.resourceDesign = nil
+    if w ~= 250 then error("the resource bar kept its old width: " .. tostring(w)) end
+    rawset(f, "SetSize", nil)
+    ns.resourceTest.Update()
 end)
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)

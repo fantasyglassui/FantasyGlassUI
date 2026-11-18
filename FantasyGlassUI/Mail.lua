@@ -57,7 +57,7 @@ ns:NewModule("mailTools", function()
     local goldBtn = ns:CreateButton(bar, "Collect gold", 110, 22, function() Start("gold") end)
     goldBtn:SetPoint("LEFT", 0, 0)
     ns:ButtonTip(goldBtn, "Take the gold out of every letter, leaving the items where they are.")
-    if type(_G.OpenAllMail) ~= "table" then                -- newer clients already have their own "Open All"
+    if type(_G.OpenAllMail) ~= "table" then                -- newer clients already have their own "Open all"
         local all = ns:CreateButton(bar, "Open all", 110, 22, function() Start("all") end)
         all:SetPoint("LEFT", goldBtn, "RIGHT", 6, 0)
         ns:ButtonTip(all, "Take the gold and items out of every letter. Stops when your bags are full.")
@@ -141,12 +141,16 @@ ns:NewModule("mailAlts", function()
                 row.text:SetPoint("RIGHT", -6, 0)
                 row.text:SetJustifyH("LEFT")
                 row.text:SetWordWrap(false)
+                ns:ButtonTip(row, function()                        -- (and what the * means)
+                    return format(ns:Tr("Address the letter to %s."), tostring(row.target))
+                        .. (row.other and ("\n" .. ns:Tr("* On another realm: only possible if the game allows mail between those realms.")) or "")
+                end)
                 rows[n] = row
             end
-            row.target = alt.target
+            row.target, row.other = alt.target, alt.other
             row.text:SetText(alt.other and (alt.name .. " *") or alt.name)
             local r, g, b = ns:ClassRGB(alt.class)
-            if r then row.text:SetTextColor(r, g, b) end
+            if r then row.text:SetTextColor(r, g, b); row.suiTextColor = { r, g, b } else row.suiTextColor = nil end
             row:Show()
         end
         local shown = math.min(#alts, 12)

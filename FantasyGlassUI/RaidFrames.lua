@@ -57,6 +57,14 @@ local READY = {
     waiting  = "Interface\\RaidFrame\\ReadyCheck-Waiting",
 }
 
+-- The role mark on a cell: the first letter of the game's own word for the role, in your language
+-- (T and H in English; one whole letter, also where a letter takes several bytes).
+function ns.RoleLetter(role)
+    local word = (role == "TANK" and _G.TANK) or (role == "HEALER" and _G.HEALER) or nil
+    if type(word) ~= "string" or word == "" then return role == "TANK" and "T" or "H" end
+    return word:match("^[%z\1-\127\194-\244][\128-\191]*") or word:sub(1, 1)
+end
+
 local function UpdateHealth(b)
     local u = b.unit
     pcall(function()
@@ -64,8 +72,8 @@ local function UpdateHealth(b)
         ns:SetBar(b.health, UnitHealth(u))
     end)
     local ok, state = pcall(function()
-        if not UnitIsConnected(u) then return "Offline" end
-        if UnitIsDeadOrGhost(u) then return "Dead" end
+        if not UnitIsConnected(u) then return ns.OfflineWord() end
+        if UnitIsDeadOrGhost(u) then return ns.DeadWord() end
     end)
     b.status:SetText((ok and state) or "")
 end
@@ -100,8 +108,8 @@ local function UpdateInfo(b)
     b.health:SetStatusBarColor(r or 0.3, g or 0.75, bl or 0.35)
     b.name:SetText(UnitName(u) or "")
     local role = UnitGroupRolesAssigned and UnitGroupRolesAssigned(u)
-    if role == "TANK" then b.role:SetText("|cff4d99ffT|r")
-    elseif role == "HEALER" then b.role:SetText("|cff4dff80H|r")
+    if role == "TANK" then b.role:SetText("|cff4d99ff" .. ns.RoleLetter("TANK") .. "|r")
+    elseif role == "HEALER" then b.role:SetText("|cff4dff80" .. ns.RoleLetter("HEALER") .. "|r")
     else b.role:SetText("") end
     if UnitIsGroupLeader and UnitIsGroupLeader(u) then b.leader:Show() else b.leader:Hide() end
     local idx = GetRaidTargetIndex and GetRaidTargetIndex(u)
@@ -121,6 +129,7 @@ local function UpdateDebuffs(b)
     if a and ns.AuraBlocked and ns.AuraBlocked(a.name) then a = get(b.unit, 2, "HARMFUL") end
     if a then
         pcall(b.debuff.icon.SetTexture, b.debuff.icon, a.icon)
+        if b.debuff.suiBorder and ns.DebuffColor then b.debuff.suiBorder:SetBackdropBorderColor(ns:DebuffColor(a.dispelName)) end
         b.debuff:Show()
     else
         b.debuff:Hide()
@@ -222,10 +231,14 @@ local function OnEvent(self, event)
     elseif event == "UNIT_HEAL_PREDICTION" then UpdateIncoming(self)
     elseif event == "UNIT_POWER_UPDATE" or event == "UNIT_MAXPOWER" or event == "UNIT_DISPLAYPOWER" then UpdatePower(self)
     elseif event == "UNIT_AURA" then UpdateDebuffs(self)
-    elseif event == "READY_CHECK" or event == "READY_CHECK_CONFIRM" then UpdateReady(self)
+    elseif event == "READY_CHECK" or event == "READY_CHECK_CONFIRM" then
+        if event == "READY_CHECK" then self.readyRound = (self.readyRound or 0) + 1 end
+        UpdateReady(self)
     elseif event == "READY_CHECK_FINISHED" then
         UpdateReady(self)
-        ns:After(6, function() self.ready:Hide() end)
+        self.readyRound = (self.readyRound or 0) + 1
+        local round = self.readyRound
+        ns:After(6, function() if self.readyRound == round then self.ready:Hide() end end)      -- (unless a new check has begun)
     else UpdateInfo(self) end
 end
 
@@ -489,6 +502,7 @@ ns:NewModule("raidFrames", function()
         GAP = rd.gap
         local g = Grid()
         header:Hide(); header:Show()                          -- (the header lays its cells out again)
+        if ns.PlaceRaidSamples then pcall(ns.PlaceRaidSamples) end      -- (and the sample players follow)
         return g
     end
     do
@@ -525,14 +539,18 @@ ns:NewModule("raidFrames", function()
         Park()
     end
 
-    ns:RegisterMovable(anchor, "raid", "Raid Frames")
+    ns:RegisterMovable(anchor, "raid", "Raid frames")
 
     -- Preview: ten sample players, since real raid frames only exist inside a raid
     local samples = {}
     ns.raidSamples = samples                                    -- (group practice puts buff coverage marks on them)
     local CLASSES = { "WARRIOR", "PRIEST", "MAGE", "ROGUE", "DRUID", "HUNTER", "PALADIN", "SHAMAN", "WARLOCK", "PRIEST" }
-    local function PlaceSample(i, b)
-        local col, row = math.floor((i - 1) / 5), (i - 1) % 5
+    local function PlaceSample(i, b)                         -- (laid out as the designer says: across or down, so many a column)
+        local d = ns.RaidDesign()
+        local per = d.perColumn
+        local col, row = math.floor((i - 1) / per), (i - 1) % per
+        if d.horizontal then col, row = (i - 1) % per, math.floor((i - 1) / per) end
+        GAP = d.gap
         b:SetSize(CELL_W, CELL_H)
         b:ClearAllPoints()
         b:SetPoint("TOPLEFT", anchor, "TOPLEFT", col * (CELL_W + GAP), -row * (CELL_H + GAP))
@@ -552,9 +570,9 @@ ns:NewModule("raidFrames", function()
                 b.power:SetMinMaxValues(0, 100)
                 b.power:SetValue(40 + (i * 23) % 60)
                 b.power:SetStatusBarColor(0.25, 0.5, 1)
-                b.name:SetText("Player " .. i)
-                b.role:SetText(i == 1 and "|cff4d99ffT|r" or (i == 2 and "|cff4dff80H|r" or ""))
-                if i == 4 then b.status:SetText(ns:Tr("Dead")); b.health:SetValue(0) end
+                b.name:SetText(format(ns:Tr("Player %d"), i))
+                b.role:SetText(i == 1 and ("|cff4d99ff" .. ns.RoleLetter("TANK") .. "|r") or (i == 2 and ("|cff4dff80" .. ns.RoleLetter("HEALER") .. "|r") or ""))
+                if i == 4 then b.status:SetText(ns.DeadWord()); b.health:SetValue(0) end
                 if i == 7 then b.dispel:Show() end
                 samples[i] = b
             end
@@ -580,4 +598,5 @@ ns:NewModule("raidFrames", function()
         end
         for i, b in ipairs(samples) do PlaceSample(i, b) end
     end
+    ns.PlaceRaidSamples = function() for i, b in ipairs(samples) do PlaceSample(i, b) end end
 end)

@@ -117,7 +117,7 @@ function ns:GuideRouteEditor(name)
         if type(text) ~= "string" then return nil, "nothing written" end
         return ns.GuideParseLine(text)
     end
-    local function Say(t, good) win.msg:SetText((good and "|cff33ff66" or "|cffff5555") .. ns:Tr(t) .. "|r") end
+    local function Say(t, good) win.msg:SetText((good and ns:SignalHex("good") or ns:SignalHex("bad")) .. ns:Tr(t) .. "|r") end
     -- the buttons are made once; each time the editor opens, Rebind points them at this guide's list
     if not win.buttons then
         win.buttons = {}
@@ -130,7 +130,7 @@ function ns:GuideRouteEditor(name)
         win.buttons.here = win.B("Here", 70, 524, y1, function()
             local map, x, y
             if ns.GuideHere then map, x, y = ns.GuideHere() end       -- (all three: "a and f()" would keep only the first)
-            if not x then win.msg:SetText("|cffff5555" .. ns:Tr("The game does not say where you are here.") .. "|r"); return end
+            if not x then win.msg:SetText(ns:SignalHex("bad") .. ns:Tr("The game does not say where you are here.") .. "|r"); return end
             win.line:SetText(format("goto | %s @ %d:%.1f,%.1f", ns:Tr("Go here"), map, x, y))
         end)
         win.buttons.save = win.B("Save", 100, 14, y2)

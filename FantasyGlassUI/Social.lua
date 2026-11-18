@@ -348,7 +348,7 @@ function ns:ResetInstancesNow()
     ns:Print("Instances reset.")
     if ns.Yes(IsInGroup and IsInGroup()) then
         local Send = (C_ChatInfo and C_ChatInfo.SendChatMessage) or SendChatMessage
-        if type(Send) == "function" then pcall(Send, "Instances have been reset.", ns.Yes(IsInRaid and IsInRaid()) and "RAID" or "PARTY") end
+        if type(Send) == "function" then pcall(Send, ns:Tr("Instances have been reset."), ns.Yes(IsInRaid and IsInRaid()) and "RAID" or "PARTY") end
     end
     return true
 end
@@ -375,7 +375,7 @@ function ns:RaidSortCommand(text)
     if ns.raidSorts[want] then ns.db.raidSort = want end
     local ok, why = ns:ApplyRaidSort()
     ns:Print("Raid frames are ordered by %s.", ns:Tr(ns.db.raidSort or "group"))
-    if not ok and why then ns:Print("Not applied yet: %s.", why) end
+    if not ok and why then ns:Print("Not applied yet: %s.", ns:Tr(why)) end
     if want ~= "" and not ns.raidSorts[want] then ns:Print("Choose one of: /fgui raidsort group, /fgui raidsort role, /fgui raidsort name.") end
 end
 do

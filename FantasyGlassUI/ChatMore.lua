@@ -190,6 +190,7 @@ function ns:ShowWhispers(name)
         w:EnableMouse(true); w:SetMovable(true); if w.SetClampedToScreen then w:SetClampedToScreen(true) end; w:RegisterForDrag("LeftButton")
         w:SetScript("OnDragStart", function(self) self:StartMoving() end)
         ns:KeepPlace(w, "Whispers")
+        if type(UISpecialFrames) == "table" then tinsert(UISpecialFrames, "FantasyGlassUIWhispers") end   -- (Escape closes it, like every window)
         w.title = ns:NewText(w, 14, "LEFT")
         w.title:SetPoint("TOPLEFT", 14, -12)
         ns:Paint(w.title, "SetTextColor", "@accent")
@@ -205,12 +206,12 @@ function ns:ShowWhispers(name)
         if w.log.SetMaxLines then w.log:SetMaxLines(100) end
         w.log:EnableMouseWheel(true)
         w.log:SetScript("OnMouseWheel", function(self, delta) if delta > 0 then self:ScrollUp() else self:ScrollDown() end end)
-        local ok, box = pcall(CreateFrame, "EditBox", "FantasyGlassUIWhisperBox", w, "InputBoxTemplate")
+        -- the add-on's own text box, like every other one, with a hint of what it is for
+        local ok, box = pcall(ns.CreateEditBox, ns, w, 318, 22, "Write a reply, then press Enter")
         if ok and box then
+            box:ClearAllPoints()
             box:SetPoint("BOTTOMLEFT", 138, 10)
             box:SetPoint("BOTTOMRIGHT", -14, 10)
-            box:SetHeight(22)
-            box:SetAutoFocus(false)
             if box.SetMaxLetters then box:SetMaxLetters(255) end
             box:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
             box:SetScript("OnEnterPressed", ns:Guard("Whispers", function(self)
@@ -370,7 +371,7 @@ ns:NewModule("friendColors", function()
         local ok, r, g, b = pcall(function() return ns:ClassRGB(token) end)
         if not (token and ok and type(r) == "number") then return end
         if button.name and button.name.SetText then
-            button.name:SetText(format("|cff%02x%02x%02x%s|r, %s", r * 255, g * 255, b * 255, info.name, tostring(info.level or "")))
+            button.name:SetText(format("|cff%02x%02x%02x%s|r, %s", math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b * 255 + 0.5), info.name, tostring(info.level or "")))
         end
         if button.info and button.info.SetText and type(info.area) == "string" then button.info:SetText(info.area) end
         ns.friendColored = (ns.friendColored or 0) + 1

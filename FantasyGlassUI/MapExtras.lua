@@ -171,7 +171,7 @@ ns:NewModule("flightTimer", function()
     ns.flightTest = { Chosen = Chosen, Tick = Tick, known = known, Trip = function(t) trip = t end }
     if hooksecurefunc and type(TakeTaxiNode) == "function" then pcall(hooksecurefunc, "TakeTaxiNode", function(index) pcall(Chosen, index) end) end
     ns:Every(0.5, "Flight timer", function() Tick() end)
-    local entry = ns:RegisterMovable(bar, "flight", "Flight Timer")
+    local entry = ns:RegisterMovable(bar, "flight", "Flight timer")
     if type(entry) == "table" then entry.offPage = true end        -- (scaled from its own right-click menu in move mode)
 end)
 

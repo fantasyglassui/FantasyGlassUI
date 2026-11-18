@@ -61,7 +61,8 @@ ns:NewModule("chatExtras", function()
         if not (msg:find("://", 1, true) or msg:find("www.", 1, true)) then return false end
         local out = msg:gsub("%S+", function(word)
             if word:find("^https?://") or word:find("^www%.[%w%-]+%.%a") then
-                return "|cff66bbff|Haddon:FantasyGlassUI:" .. word .. "|h[" .. word .. "]|h|r"
+                local url, tail = word:match("^(.-)([%.,;:!%?%)]*)$")      -- (a full stop after an address is not part of it)
+                return "|cff66bbff|Haddon:FantasyGlassUI:" .. url .. "|h[" .. url .. "]|h|r" .. tail
             end
         end)
         return false, out, ...
@@ -180,7 +181,7 @@ ns:NewModule("chatExtras", function()
     for i = 1, NUM_CHAT_WINDOWS do
         local chat = _G["ChatFrame" .. i]
         if type(chat) == "table" and chat.GetMessageInfo then
-            local b = ns:CreateButton(chat, "Copy", 40, 16, function() ShowCopy(chat) end)
+            local b = ns:SizeToLabel(ns:CreateButton(chat, "Copy", 200, 16, function() ShowCopy(chat) end), 40)
             ns:Font(b.text, 10)
             b:SetPoint("TOPRIGHT", chat, "TOPRIGHT", 0, 0)
             b:SetAlpha(0.25)

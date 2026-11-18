@@ -74,7 +74,7 @@ function ns:ShowWorthSelling()
     local lines = {}
     for _, w in ipairs(list) do
         lines[#lines + 1] = {
-            left = tostring(w.item.link or ("item " .. w.item.id)) .. ((w.item.count or 1) > 1 and (" x" .. w.item.count) or ""),
+            left = tostring(w.item.link or (ns:Tr("Item") .. " " .. w.item.id)) .. ((w.item.count or 1) > 1 and (" x" .. w.item.count) or ""),
             right = ns:Coins(w.total) .. (((w.item.count or 1) > 1) and ("  |cff9aa4b4" .. format(ns:Tr("%s each"), ns:Coins(w.price)) .. "|r") or "")
                 .. "  |cff9aa4b4" .. ns:Tr("vendor") .. " " .. ns:Coins(w.item.vendor) .. "|r",
             tip = { tostring(w.item.link or ""), format(ns:Tr("Auction house: %s each, from the prices you have seen."), ns:Coins(w.price)),

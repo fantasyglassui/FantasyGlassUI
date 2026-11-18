@@ -14,7 +14,7 @@ local function Count(id, bank)
 end
 local function ItemName(id)
     local ok, name = pcall(function() return ns:GetItemInfo(id) end)
-    return (ok and type(name) == "string") and name or ("item " .. tostring(id))
+    return (ok and type(name) == "string") and name or (ns:Tr("Item") .. " " .. tostring(id))
 end
 local function Short(n)
     n = tonumber(n) or 0
@@ -185,7 +185,7 @@ ns:NewModule("cdTimeline", function()
         idleTicks = 0
         lastCount = Update()
     end)
-    local entry = ns:RegisterMovable(f, "cdTimeline", "Cooldown Timeline")
+    local entry = ns:RegisterMovable(f, "cdTimeline", "Cooldown timeline")
     if type(entry) == "table" then entry.offPage = true end        -- (scaled from its own right-click menu in move mode)
 end)
 
@@ -262,11 +262,11 @@ function ns:ReadyReport(quiet)
         elseif not names then right = "|cff9aa4b4" .. ns:Tr("could not be read") .. "|r"
         else
             local miss = ns.ReadyMissing(names, classes, buffNames)
-            if #miss == 0 then right = "|cff33ff66" .. ns:Tr("all set") .. "|r"
+            if #miss == 0 then right = ns:SignalHex("good") .. ns:Tr("all set") .. "|r"
             else
                 short = short + 1
                 for i, w in ipairs(miss) do miss[i] = ns:Tr(w) end
-                right = "|cffff7766" .. ns:Tr("missing") .. ": " .. table.concat(miss, ", ") .. "|r"
+                right = ns:SignalHex("bad") .. ns:Tr("missing") .. ": " .. table.concat(miss, ", ") .. "|r"
             end
         end
         lines[#lines + 1] = { left = tostring(m.name), right = right, color = { r, g, b } }
@@ -559,7 +559,7 @@ function ns:ShowQueueShopping()
         local have = Count(id, true)
         local short = math.max(0, n - have)
         lines[#lines + 1] = { left = format("%d x %s  |cff9aa4b4(%d)|r", n, ItemName(id), have),
-            right = short == 0 and ("|cff33ff66" .. ns:Tr("enough") .. "|r") or ("|cffff5555" .. format(ns:Tr("%d short"), short) .. "|r"), sort = ItemName(id) }
+            right = short == 0 and (ns:SignalHex("good") .. ns:Tr("enough") .. "|r") or (ns:SignalHex("bad") .. format(ns:Tr("%d short"), short) .. "|r"), sort = ItemName(id) }
     end
     table.sort(lines, function(a, b) return a.sort < b.sort end)
     if #lines == 0 then lines[1] = { left = ns:Tr("Open the profession window once so the recipes can be read.") } end
@@ -693,14 +693,17 @@ function ns:GoalCommand(text)
     elseif first == "+" or first == "-" or first == "set" then
         local i, n = rest:match("^(%d+)%s*(%d*)$")
         local g = goals[tonumber(i or 0)]
-        if g and g.kind == "own" then
+        if not g then ns:Print("There is no goal %s. /fgui goal lists them, numbered.", i or "?"); return end
+        if g.kind ~= "own" then ns:Print("Only a goal of your own is counted by hand: the game keeps the others up to date."); return end
+        do
             local by = tonumber(n) or 1
             if first == "set" then g.have = by elseif first == "+" then g.have = (g.have or 0) + by else g.have = (g.have or 0) - by end
             g.have = math.max(0, math.min(g.need or 1, g.have))
         end
     elseif first == "remove" then
         local i = tonumber(rest)
-        if i and goals[i] then table.remove(goals, i); ns:Print("Goal removed.") end
+        if not (i and goals[i]) then ns:Print("There is no goal %s. /fgui goal lists them, numbered.", rest ~= "" and rest or "?"); return end
+        ns:Print("Goal removed: %s.", tostring(table.remove(goals, i).name))
     elseif first == "clear" then
         wipe(goals); ns:Print("Goals cleared.")
     elseif text:find("|Hitem:", 1, true) then
@@ -761,7 +764,7 @@ ns:NewModule("goalsPanel", function()
             local done, label = ns.GoalProgress(g, read)
             r.name:SetText(tostring(g.name))
             r.bar:SetValue(done)
-            if done >= 1 then r.bar:SetStatusBarColor(0.3, 0.85, 0.4) else r.bar:SetStatusBarColor(ns:Role("@accent")) end
+            if done >= 1 then r.bar:SetStatusBarColor(ns:Signal("good")) else r.bar:SetStatusBarColor(ns:Role("@accent")) end
             r.value:SetText(label)
             r:Show()
         end
@@ -812,7 +815,7 @@ ns:NewModule("loginSplash", function()
     f:SetScript("OnUpdate", function(self, e)
         left = left - (e or 0)
         if left <= 0 then self:Hide(); return end
-        self:SetAlpha(math.min(1, left / 0.6))
+        self:SetAlpha(ns:Motion() and math.min(1, left / 0.6) or 1)     -- (Reduce motion: no fade, it simply goes)
     end)
     local function Show()
         f.title:SetText(ns:AccentHex() .. "Fantasy Glass|r UI")

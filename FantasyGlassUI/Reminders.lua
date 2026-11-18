@@ -86,7 +86,7 @@ ns:NewModule("buffMissing", function()
                     b.mark = ns:NewText(b, 20, "CENTER")
                     b.mark:SetPoint("CENTER")
                     b.mark:SetText("!")
-                    b.mark:SetTextColor(1, 0.25, 0.25)
+                    b.mark:SetTextColor(ns:Signal("bad"))
                     ns:AddBorder(b, 0.85, 0.18, 0.18, 1)
                     icons[i] = b
                 end
@@ -104,7 +104,7 @@ ns:NewModule("buffMissing", function()
     end
     ns.buffMissingTest = { Refresh = Refresh, icons = icons }
     ns:Every(1, "Missing buff reminder", function() pcall(Refresh) end)
-    local entry = ns:RegisterMovable(holder, "missingBuffs", "Missing Buffs")
+    local entry = ns:RegisterMovable(holder, "missingBuffs", "Missing buffs")
     if type(entry) == "table" then entry.offPage = true end        -- (scaled from its own right-click menu in move mode)
 end)
 
@@ -198,7 +198,7 @@ ns:NewModule("locAlert", function()
     if okC and cd then cd:SetAllPoints(); if cd.SetHideCountdownNumbers then cd:SetHideCountdownNumbers(false) end; f.cd = cd end
     f.text = ns:NewText(f, 14, "CENTER")
     f.text:SetPoint("TOP", f, "BOTTOM", 0, -4)
-    f.text:SetTextColor(1, 0.3, 0.3)
+    f.text:SetTextColor(ns:Signal("bad"))
     ns:AddBorder(f, 0.85, 0.18, 0.18, 1)
     f:Hide()
 
@@ -223,7 +223,9 @@ ns:NewModule("locAlert", function()
     local ev = CreateFrame("Frame")
     for _, e in ipairs({ "LOSS_OF_CONTROL_ADDED", "LOSS_OF_CONTROL_UPDATE", "PLAYER_ENTERING_WORLD" }) do pcall(ev.RegisterEvent, ev, e) end
     ev:SetScript("OnEvent", ns:Guard("Loss of control", function() Update() end))
-    local entry = ns:RegisterMovable(f, "lossOfControl", "Loss of Control")
+    -- while it shows: gone as soon as control is back, and the sample put away after move mode
+    ns:Every(0.5, "Loss of control", function() if f:IsShown() then pcall(Update) end end)
+    local entry = ns:RegisterMovable(f, "lossOfControl", "Loss of control")
     if type(entry) == "table" then entry.offPage = true end        -- (scaled from its own right-click menu in move mode)
 end)
 

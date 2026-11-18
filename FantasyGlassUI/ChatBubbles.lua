@@ -6,6 +6,8 @@ local _, ns = ...
 --                    bright top edge, a thin rim and a bar of the accent color down its left side.
 --   Fantasy themes   a solid panel with grain, a dark outer line, a rim in the theme's metal and
 --                    small corner brackets in the accent color.
+--   Celestial themes a small piece of night sky with a few stars, one fine line with a soft glow
+--                    inside it, and a small star at the top.
 --
 -- Both have a tail that is part of the outline, and the speaker's name on a small tab above, in
 -- their class color. The words keep the game's own color, because it says what kind of speech it
@@ -34,6 +36,17 @@ ns:NewModule("chatBubbles", function()
         end
         recent[text] = { name = (sender:gsub("%-.*$", "")), class = class, at = GetTime() }
     end))
+    -- Bubbles only appear when someone speaks, so the look below runs for a while after a line is
+    -- heard and sleeps the rest of the time. (Any chat line wakes it, even one the add-on can't read.)
+    local awakeUntil = 0
+    local wake = CreateFrame("Frame")
+    for _, e in ipairs({ "CHAT_MSG_SAY", "CHAT_MSG_YELL", "CHAT_MSG_PARTY", "CHAT_MSG_PARTY_LEADER", "CHAT_MSG_RAID",
+                         "CHAT_MSG_RAID_LEADER", "CHAT_MSG_MONSTER_SAY", "CHAT_MSG_MONSTER_YELL", "CHAT_MSG_MONSTER_PARTY" }) do
+        pcall(wake.RegisterEvent, wake, e)
+    end
+    wake:SetScript("OnEvent", function(_, event)
+        if type(event) == "string" and event:find("^CHAT_MSG_") then awakeUntil = GetTime() + 12 end
+    end)
 
     local function FindString(frame)
         if type(frame.String) == "table" and frame.String.SetFont then return frame.String end
@@ -127,6 +140,35 @@ ns:NewModule("chatBubbles", function()
             bar:SetPoint("TOPLEFT", fill, "TOPLEFT", 6, -7)
             bar:SetPoint("BOTTOMLEFT", fill, "BOTTOMLEFT", 6, 7)
             ns:Paint(bar, "SetVertexColor", "@accent", 0.95)
+        elseif ns.style == "CELESTIAL" then
+            -- a small piece of night sky: deeper toward the top, lit along its foot, a scatter of stars,
+            -- one fine line with a soft glow inside it, and the small star at the top every Celestial window has
+            local a, bg = ns.theme.accent, ns.theme.bg
+            local sky = flat("sky", -5)
+            sky:SetPoint("TOPLEFT", fill, "TOPLEFT", 1, -1)
+            sky:SetPoint("BOTTOMRIGHT", fill, "BOTTOMRIGHT", -1, 1)
+            Gradient(sky, math.min(1, bg[1] * 1.6 + a[1] * 0.05), math.min(1, bg[2] * 1.6 + a[2] * 0.05), math.min(1, bg[3] * 1.6 + a[3] * 0.05 + 0.012), 0, 0.9, 0.3)
+            local horizon = tex("horizon", -4)
+            horizon:SetTexture(ns.MEDIA .. "glow_up.tga")
+            horizon:SetPoint("BOTTOMLEFT", fill, "BOTTOMLEFT", 1, 1)
+            horizon:SetPoint("BOTTOMRIGHT", fill, "BOTTOMRIGHT", -1, 1)
+            horizon:SetHeight(10)
+            ns:Paint(horizon, "SetVertexColor", "@accent", 0.16)
+            local stars = tex("stars", -4)
+            stars:SetTexture(ns.MEDIA .. "stars.tga")
+            stars:SetPoint("TOPLEFT", fill, "TOPLEFT", 1, -1)
+            stars:SetPoint("BOTTOMRIGHT", fill, "BOTTOMRIGHT", -1, 1)
+            stars:SetTexCoord(0.1, 0.45, 0.2, 0.32)           -- (a strip of the sky: the stars keep their size)
+            ns:Paint(stars, "SetVertexColor", "@light", 0.35)
+            Lines("outline", fill, -1, -7, "bg", 0.8)
+            Lines("rim", fill, 0, -3, "@border", 1)
+            Lines("glow", fill, 1, -3, "@accent", 0.10)
+            local star = tex("star", 4, "BORDER")
+            star:SetTexture(ns.MEDIA .. "sparkle.tga")
+            star:SetSize(12, 12)
+            star:SetPoint("CENTER", fill, "TOP", 0, 0)
+            if star.SetBlendMode then star:SetBlendMode("ADD") end
+            ns:Paint(star, "SetVertexColor", "@accent", 1)
         else
             Lines("outline", fill, -1, -7, "@rim", 0.95)     -- the dark line just outside the rim
             local grain = tex("grain", -5)
@@ -211,7 +253,11 @@ ns:NewModule("chatBubbles", function()
 
         if not holder.suiBubble then Dress(holder, str) end
         ns:StripArt(holder)                                 -- Blizzard's bubble and tail (ours are tagged and kept)
-        ns:Font(str, tonumber(ns.db.bubbleFont) or 13)
+        local size = tonumber(ns.db.bubbleFont) or 13
+        if holder.suiFontSize ~= size or holder.suiFontScale ~= ns.fontScale then    -- (only when it changed: this runs ten times a second)
+            holder.suiFontSize, holder.suiFontScale = size, ns.fontScale
+            ns:Font(str, size)
+        end
 
         -- speaker's name, when we saw the line that this bubble is showing
         local label = holder.suiName
@@ -242,11 +288,14 @@ ns:NewModule("chatBubbles", function()
         recent[text] = name and { name = name, class = class, at = GetTime() } or nil
     end
 
-    ns:Every(0.1, "Chat bubbles", function()
+    local function Poll()
+        if GetTime() > awakeUntil then return end
         local ok, list = pcall(CB.GetAllChatBubbles, false)          -- false: skip the ones the game has locked
         if not ok or type(list) ~= "table" then return end
         for _, bubble in pairs(list) do pcall(Style, bubble) end
-    end)
+    end
+    ns.BubblePoll = Poll
+    ns:Every(0.1, "Chat bubbles", Poll)
 
     -- forget old lines so the table never grows
     ns:Every(30, "Chat bubbles", function()

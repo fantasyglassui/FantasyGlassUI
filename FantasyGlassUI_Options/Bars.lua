@@ -187,9 +187,9 @@ function ns.BuildBarsPage(page)
     dirBtn:SetPoint("TOPLEFT", LX, -192)
     local apply = ns:CreateButton(box, "Apply to the bar", 266, 24, function()
         local ok, why = ns:BarLayoutWrite(bars[current].bar, pending)
-        if ok then status:SetText("|cff33ff66" .. ns:Tr((why == "nothing to change") and "Nothing to change." or "Applied.") .. "|r")
+        if ok then status:SetText(ns:SignalHex("good") .. ns:Tr((why == "nothing to change") and "Nothing to change." or "Applied.") .. "|r")
         elseif why == "preset" then status:SetText("|cffffd100" .. ns:Tr(ns.PRESET_NOTE) .. "|r")
-        else status:SetText("|cffff5555" .. ns:Tr(tostring(why)) .. "|r") end
+        else status:SetText(ns:SignalHex("bad") .. ns:Tr(tostring(why)) .. "|r") end
         T.lastApply = ok and true or false
     end)
     apply:SetPoint("TOPLEFT", LX, -222)
@@ -318,7 +318,7 @@ function ns.BuildGuidePage(page)
         sound:SetChecked(ns.db.guideSound ~= false)
         recBtn.text:SetText(ns:Tr(ns.guideRecording and "Stop recording" or "Record"))
         local st = ns.GuideState and ns.GuideState()
-        if ns.guideRecording then status:SetText("|cffff5555" .. ns:Tr("Recording") .. ":|r " .. tostring(ns.guideRecording.name) .. "  (" .. #ns.guideRecording.steps .. ")")
+        if ns.guideRecording then status:SetText(ns:SignalHex("bad") .. ns:Tr("Recording") .. ":|r " .. tostring(ns.guideRecording.name) .. "  (" .. #ns.guideRecording.steps .. ")")
         elseif st then status:SetText(ns:Tr("Following") .. ": " .. ns:AccentHex() .. tostring(st.name) .. "|r  -  " .. tostring(st.at))
         else status:SetText(ns:Tr("You are not following a guide.")) end
     end

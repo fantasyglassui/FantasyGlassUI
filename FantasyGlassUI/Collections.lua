@@ -196,6 +196,15 @@ function ns:RecordRepsAndCurrencies()
                 mine.reps[d.name] = { reaction = d.reaction, now = (tonumber(d.currentStanding) or 0) - lo, max = math.max(0, hi - lo) }
             end
         end
+    elseif type(GetNumFactions) == "function" and type(GetFactionInfo) == "function" then       -- (the older reputation list)
+        local okN, n = pcall(GetNumFactions)
+        for i = 1, (okN and tonumber(n)) or 0 do
+            local ok, name, _, standing, lo, hi, value, _, _, isHeader, _, hasRep = pcall(GetFactionInfo, i)
+            if ok and type(name) == "string" and not Secret(name) and (not isHeader or hasRep) and type(value) == "number" and not Secret(value) then
+                lo, hi = tonumber(lo) or 0, tonumber(hi) or 0
+                mine.reps[name] = { reaction = standing, now = value - lo, max = math.max(0, hi - lo) }
+            end
+        end
     end
     local Cu = C_CurrencyInfo
     if Cu and Cu.GetCurrencyListSize and Cu.GetCurrencyListInfo then
@@ -215,6 +224,7 @@ function ns.RepLines(store, me)
     local lines = {}
     local function Standing(r)
         local label = r.reaction and _G["FACTION_STANDING_LABEL" .. tostring(r.reaction)] or ""
+        if (r.max or 0) <= 0 then return label end                  -- (at the top: no progress to show)
         return format("%s  %d / %d", label, r.now or 0, r.max or 0)
     end
     local chars = {}

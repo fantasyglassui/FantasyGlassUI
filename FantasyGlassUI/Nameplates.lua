@@ -404,8 +404,9 @@ ns:NewModule("nameplates", function()
                 ns:Font(uf.name, pd.nameSize)
                 uf.name:SetAlpha(pd.nameShow and 1 or 0)
             end
-            plates[uf] = nil                                 -- (selection looked at afresh)
+            plates[uf] = "again"                             -- (selection looked at afresh; kept in the list so it is still watched)
         end
+        if ns.RefreshPlateAuras then pcall(ns.RefreshPlateAuras, ns) end     -- (more or fewer debuffs allowed: shown at once)
         ns.plateDesignApplied = n
         return n
     end

@@ -9,24 +9,26 @@ local groups = ns.featureGroups   -- luacheck: ignore
 
 -- Page 2: move, preview, scale, sizes ----------------------------------------------------------
 local function BuildLayout(page)
-    local move = ns:CreateButton(page, "Move Panels", 110, 24, function() ns:ToggleMove() end)
+    local move = ns:CreateButton(page, "Move panels", 110, 24, function() ns:ToggleMove() end)
     move:SetPoint("TOPLEFT", 0, 0)
     local preview = ns:CreateButton(page, "Preview", 90, 24, function() ns:TogglePreview() end)
     preview:SetPoint("LEFT", move, "RIGHT", 8, 0)
     local reset
-    reset = ns:CreateButton(page, "Reset Positions", 130, 24, function(self)
+    reset = ns:CreateButton(page, "Reset positions", 130, 24, function(self)
         if self.armed then
+            self.armed = false
+            self.text:SetText(ns:Tr("Reset positions"))
             ns:ResetPositions()
         else
             self.armed = true
-            self.text:SetText("|cffff5555" .. ns:Tr("Click to confirm") .. "|r")
-            ns:After(4, function() reset.armed = false; reset.text:SetText(ns:Tr("Reset Positions")) end)
+            self.text:SetText(ns:SignalHex("bad") .. ns:Tr("Click to confirm") .. "|r")
+            ns:After(4, function() if reset.armed then reset.armed = false; reset.text:SetText(ns:Tr("Reset positions")) end end)
         end
     end)
     reset:SetPoint("TOPRIGHT", page, "TOPRIGHT", 0, 0)
-    local roleLayout = ns:CreateButton(page, "Role Layout", 110, 24, function() ns:ApplyRoleLayout() end)
+    local roleLayout = ns:CreateButton(page, "Role layout", 110, 24, function() ns:ApplyRoleLayout() end)
     roleLayout:SetPoint("RIGHT", reset, "LEFT", -8, 0)
-    -- Share Layout: a small panel for exporting / importing just the layout, and per-talent-set layouts
+    -- Share layout: a small panel for exporting / importing just the layout, and per-talent-set layouts
     local share
     local function BuildShare()
         share = CreateFrame("Frame", "FantasyGlassUIShareLayout", O.frame, ns.template)
@@ -41,7 +43,7 @@ local function BuildLayout(page)
         local title = share:CreateFontString(nil, "OVERLAY")
         ns:Font(title, 15, true)
         title:SetPoint("TOPLEFT", 16, -12)
-        title:SetText(ns:Tr("Share Layout"))
+        title:SetText(ns:Tr("Share layout"))
         local close = ns:CreateButton(share, "X", 22, 22, function() share:Hide() end)
         close:SetPoint("TOPRIGHT", -8, -8)
         local note = share:CreateFontString(nil, "OVERLAY")
@@ -63,12 +65,12 @@ local function BuildLayout(page)
             box:SetText(ns:ExportLayout())
             box:SetFocus()
             box:HighlightText()
-            msg:SetText("|cff66dd77" .. ns:Tr("Press Ctrl+C to copy.") .. "|r")
+            msg:SetText(ns:SignalHex("good") .. ns:Tr("Press Ctrl+C to copy.") .. "|r")
         end)
         export:SetPoint("TOPLEFT", 16, -114)
         local import = ns:CreateButton(share, "Import", 110, 24, function()
             local ok, text = ns:ImportLayout(box:GetText())
-            msg:SetText((ok and "|cff66dd77" or "|cffff5555") .. ns:Tr(text) .. "|r")
+            msg:SetText((ok and ns:SignalHex("good") or ns:SignalHex("bad")) .. ns:Tr(text) .. "|r")
         end)
         import:SetPoint("LEFT", export, "RIGHT", 8, 0)
         local set, how = ns:TalentSet()   -- luacheck: ignore
@@ -99,7 +101,7 @@ local function BuildLayout(page)
             msg:SetText("|cffffd100" .. ns:Tr("This client doesn't report a talent set, so that option has nothing to switch on.") .. "|r")
         end
     end
-    local shareBtn = ns:CreateButton(page, "Share Layout", 110, 24, function()
+    local shareBtn = ns:CreateButton(page, "Share layout", 110, 24, function()
         if not share then BuildShare() end
         if share:IsShown() then share:Hide() else share:Show() end
     end)
@@ -155,18 +157,44 @@ local function BuildLayout(page)
     sizes[#sizes + 1] = { "HUD panel opacity %", "panelAlpha", 40, 100, 2, "Retheme" }
     sizes[#sizes + 1] = { "Window opacity %", "windowAlpha", 60, 100, 1, "Retheme" }
     sizes[#sizes + 1] = { "Chat bubble text size", "bubbleFont", 9, 20, 1, "NoteNothing" }
-    sizes[#sizes + 1] = { "Text size %", "fontScale", 80, 140, 5, "Retheme" }
+    sizes[#sizes + 1] = { "Text size %", "fontScale", 70, 150, 5, "Retheme" }
+    sizes[#sizes + 1] = { "Interface size %", "uiScale", 50, 150, 5, "ApplyPixelScale" }
     if ns.plateSizeSupport then                              -- (only where the game lets its nameplates be sized)
         sizes[#sizes + 1] = { "Nameplate width %", "plateW", 60, 180, 5, "NameplateSizeChanged" }
         sizes[#sizes + 1] = { "Nameplate height %", "plateH", 60, 270, 10, "NameplateSizeChanged" }
     end
+    local SIZE_TIPS = {
+        ufW = "How wide the player and target frames are.", ufH = "How tall the player and target frames are.",
+        partyW = "How wide each party frame is.", partyH = "How tall each party frame is.",
+        raidW = "How wide each raid frame cell is.", raidH = "How tall each raid frame cell is.",
+        barScale = "The size of every action bar.", chatBg = "How dark the chat background is. 0 is none.",
+        infobarBg = "How dark the info bar's background is. 0 is none.",
+        panelAlpha = "How solid the panels on your screen are: unit frames, bars, minimap.",
+        windowAlpha = "How solid windows are: bags, the options, lists.",
+        bubbleFont = "The size of the text in chat bubbles.",
+        fontScale = "The size of all the add-on's lettering. 100 is as it came. Takes effect when you let go.",
+        uiScale = "The size of the whole interface, as a share of the game's own scale. 100 is as it came. Takes effect when you let go.",
+        plateW = "How wide nameplates are.", plateH = "How tall nameplates are.",
+    }
+    -- applied once the slider stops moving: these redraw or rescale everything, and the interface
+    -- changing size under the mouse would pull the slider away from it
+    local SETTLE = { fontScale = true, uiScale = true }
+    local waiting = {}
     for i, d in ipairs(sizes) do
         local col, row = (i - 1) % 4, math.floor((i - 1) / 4)
         local s = ns:CreateSlider(page, d[1], d[3], d[4], d[5], ns.db[d[2]], "%d", function(v)
             ns.db[d[2]] = v
-            if ns[d[6]] then ns[d[6]](ns) end
+            if not ns[d[6]] then return end
+            if SETTLE[d[2]] then
+                waiting[d[2]] = (waiting[d[2]] or 0) + 1
+                local mine = waiting[d[2]]
+                ns:After(0.6, function() if waiting[d[2]] == mine then ns[d[6]](ns) end end)
+            else
+                ns[d[6]](ns)
+            end
         end, 170)
         s:SetPoint("TOPLEFT", col * 187, y - 20 - row * PITCH)
+        if SIZE_TIPS[d[2]] then O.Tip(s.slider or s, d[1], SIZE_TIPS[d[2]]) end
     end
     page.bottom = y - 20 - math.ceil(#sizes / 4) * PITCH     -- where the last row ends (the page is 520 tall)
     -- what the info bar shows is chosen from a small list of its own
@@ -191,7 +219,7 @@ local function BuildProfiles(page)
     ns:Font(msg, 12)
     msg:SetPoint("BOTTOMLEFT", 0, 0)
     msg:SetTextColor(1, 0.82, 0)
-    local function Say(ok, text) msg:SetText((ok and "|cff66dd77" or "|cffff6666") .. tostring(text or "") .. "|r") end
+    local function Say(ok, text) msg:SetText((ok and ns:SignalHex("good") or ns:SignalHex("bad")) .. ns:Tr(tostring(text or "")) .. "|r") end     -- (what the profile functions say, in your language)
 
     local rows = {}
     local MAX = 8
@@ -209,6 +237,7 @@ local function BuildProfiles(page)
                 r.name:SetPoint("LEFT", 4, 0)
                 r.use = ns:CreateButton(r, "Use", 70, 22, function() ns:UseProfile(r.profile) end)
                 r.use:SetPoint("LEFT", 260, 0)
+                ns:ButtonTip(r.use, "Switch to this profile.")
                 r.del = ns:CreateButton(r, "Delete", 70, 22, ns:ConfirmClick(function()
                     Say(ns:DeleteProfile(r.profile))
                     O.pages.profiles.Refresh()
@@ -220,7 +249,7 @@ local function BuildProfiles(page)
             if name then
                 r.profile = name
                 local mine = (name == ns.profile)
-                r.name:SetText(name .. (mine and "   |cff66dd77in use|r" or ""))
+                r.name:SetText(name .. (mine and ("   " .. ns:SignalHex("good") .. ns:Tr("in use") .. "|r") or ""))
                 if mine then r.use:Hide() else r.use:Show() end
                 if mine or name == "Default" then r.del:Hide() else r.del:Show() end
                 r:Show()
@@ -228,7 +257,7 @@ local function BuildProfiles(page)
                 r:Hide()
             end
         end
-        if #names > MAX then Say(true, (#names - MAX) .. " more profiles are not listed.") end
+        if #names > MAX then Say(true, format(ns:Tr("%d more profiles are not listed."), #names - MAX)) end
     end
     page.Refresh = Refresh
 
@@ -242,6 +271,10 @@ local function BuildProfiles(page)
         Refresh()
     end)
     create:SetPoint("LEFT", newName, "RIGHT", 10, 0)
+    newName:SetScript("OnEnterPressed", function(self)            -- (Enter makes it, like the button)
+        self:ClearFocus()
+        if ns.Trim(self:GetText() or "") ~= "" then create:Click() end
+    end)
     -- or a ready-made one for a role (Safety.lua)
     local prevT = create
     page.templates = {}

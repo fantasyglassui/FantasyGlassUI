@@ -33,9 +33,15 @@ ns:NewModule("mirrorBars", function()
         return bar
     end
 
-    local function Show(name, value, max, paused, label)
+    -- scale: how fast it runs (-1 drains a second a second); used only when the game will not say how much is left
+    local function Show(name, value, max, scale, paused, label)
         if type(name) ~= "string" or name == "UNKNOWN" then return end
-        active[name] = { max = (tonumber(max) or 1) / 1000, label = label, paused = paused and paused ~= 0, value = (tonumber(value) or 0) / 1000 }
+        active[name] = { max = (tonumber(max) or 1) / 1000, label = label, paused = paused and paused ~= 0, value = (tonumber(value) or 0) / 1000,
+            scale = tonumber(scale) or -1, since = GetTime() }
+    end
+    local function Left(t)                                  -- worked out from the start, for a game without GetMirrorTimerProgress
+        if t.paused then return t.value end
+        return math.max(0, math.min(t.max, t.value + t.scale * (GetTime() - t.since)))
     end
 
     local preview = false
@@ -57,7 +63,7 @@ ns:NewModule("mirrorBars", function()
                 if c then bar:SetStatusBarColor(c[1], c[2], c[3]) else ns:Paint(bar, "SetStatusBarColor", "@accent") end
                 bar.label:SetText(type(t.label) == "string" and t.label or name)
                 bar:SetMinMaxValues(0, t.max > 0 and t.max or 1)
-                local value = t.value                      -- how much is left, straight from the game when it will say
+                local value = Left(t)                      -- how much is left: straight from the game when it will say
                 if GetMirrorTimerProgress then
                     local ok, ms = pcall(GetMirrorTimerProgress, name)
                     if ok and ms ~= nil then
@@ -77,24 +83,28 @@ ns:NewModule("mirrorBars", function()
         for j = i + 1, #bars do bars[j]:Hide() end
         return i
     end
-    ns.MirrorDraw = Draw
+    ns.MirrorDraw, ns.mirrorBars = Draw, bars
 
     local ev = CreateFrame("Frame")
     for _, e in ipairs({ "MIRROR_TIMER_START", "MIRROR_TIMER_STOP", "MIRROR_TIMER_PAUSE", "PLAYER_ENTERING_WORLD" }) do
         pcall(ev.RegisterEvent, ev, e)
     end
-    ev:SetScript("OnEvent", ns:Guard("Breath bar", function(_, event, name, value, max, _, paused, label)
+    ev:SetScript("OnEvent", ns:Guard("Breath bar", function(_, event, name, value, max, scale, paused, label)
         if event == "MIRROR_TIMER_START" then
-            Show(name, value, max, paused, label)
+            Show(name, value, max, scale, paused, label)
         elseif event == "MIRROR_TIMER_STOP" then
             if type(name) == "string" then active[name] = nil end
         elseif event == "MIRROR_TIMER_PAUSE" then
-            if type(name) == "string" and active[name] then active[name].paused = (value and value ~= 0) and true or false end
+            local t = type(name) == "string" and active[name]
+            if t then
+                t.value, t.since = Left(t), GetTime()       -- (frozen where it stood, and running on from there)
+                t.paused = (value and value ~= 0) and true or false
+            end
         else                                                -- logging in or changing zone mid-swim: ask what is running
             for k in pairs(active) do active[k] = nil end
             for i = 1, MAX do
-                local ok, n, v, m, _, p, l = pcall(GetMirrorTimerInfo, i)
-                if ok then Show(n, v, m, p, l) end
+                local ok, n, v, m, sc, p, l = pcall(GetMirrorTimerInfo, i)
+                if ok then Show(n, v, m, sc, p, l) end
             end
         end
         Draw()
@@ -119,5 +129,5 @@ ns:NewModule("mirrorBars", function()
     ns:After(2, Quiet)
 
     ns:RegisterPreview(function(on) preview = on and true or false; Draw() end)
-    ns:RegisterMovable(holder, "mirror", "Breath Bar")
+    ns:RegisterMovable(holder, "mirror", "Breath bar")
 end)

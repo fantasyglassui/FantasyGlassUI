@@ -36,7 +36,7 @@ function ns.VendorSummaryLine(v)
     local net = sold - spent
     local line = ns:Tr("At the vendor:") .. " " .. table.concat(parts, ", ") .. "."
     if (sold > 0 and spent > 0) then                                -- ("in all" only says something when both happened)
-        line = line .. " " .. format(ns:Tr("In all: %s."), (net >= 0 and "|cff66dd77+" or "|cffff6655-") .. ns:Coins(math.abs(net)) .. "|r")
+        line = line .. " " .. format(ns:Tr("In all: %s."), (net >= 0 and (ns:SignalHex("good") .. "+") or (ns:SignalHex("bad") .. "-")) .. ns:Coins(math.abs(net)) .. "|r")
     end
     return line
 end

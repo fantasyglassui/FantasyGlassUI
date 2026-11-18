@@ -38,6 +38,7 @@ function ns:ListWindow(key, title, note, width, height)
         ns:Paint(w.title, "SetTextColor", "@accent")
         local close = ns:CreateButton(w, "X", 22, 20, function() w:Hide() end)
         close:SetPoint("TOPRIGHT", -8, -8)
+        w.title:SetPoint("RIGHT", close, "LEFT", -8, 0)       -- (a long title is cut short before the X)
         w.rowWidth = width - 34
         w.area, w.sheet = ns:ScrollArea(w, width - 28, height - 40 - 30)
         w.area:SetPoint("TOPLEFT", 14, -40)
@@ -60,6 +61,7 @@ function ns:ListWindow(key, title, note, width, height)
                     row.left:SetPoint("LEFT", 2, 0)
                     row.left:SetPoint("RIGHT", row.right, "LEFT", -8, 0)
                     if row.left.SetWordWrap then row.left:SetWordWrap(false) end
+                    if row.right.SetWordWrap then row.right:SetWordWrap(false) end
                     row.bar = row:CreateTexture(nil, "BACKGROUND")       -- (a line may carry a bar: line.bar from 0 to 1)
                     row.bar:SetPoint("TOPLEFT", 0, -1)
                     row.bar:SetPoint("BOTTOMLEFT", 0, 1)
@@ -72,8 +74,23 @@ function ns:ListWindow(key, title, note, width, height)
                     row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
                     row:SetScript("OnClick", ns:Guard("List", function(r, button) if r.line and r.line.click then r.line.click(button) end end))
                     row:SetScript("OnEnter", function(r)
+                        local link = r.line and r.line.link              -- (a line about an item: the item's own tooltip)
+                        if type(link) == "string" and link:find("|H", 1, true) and not ns:IsSecret(link) then
+                            GameTooltip:SetOwner(r, "ANCHOR_RIGHT")
+                            if pcall(GameTooltip.SetHyperlink, GameTooltip, link) then GameTooltip:Show() return end
+                        end
                         local tip = r.line and r.line.tip
-                        if type(tip) ~= "table" or #tip == 0 then return end
+                        if type(tip) ~= "table" or #tip == 0 then
+                            -- a line too long for the window: the whole of it, under the mouse
+                            local cut = (r.left.IsTruncated and r.left:IsTruncated()) or (r.right.IsTruncated and r.right:IsTruncated())
+                            if not cut then return end
+                            GameTooltip:SetOwner(r, "ANCHOR_RIGHT")
+                            GameTooltip:AddLine(r.left:GetText() or "", 1, 1, 1, true)
+                            local right = r.right:GetText()
+                            if right and right ~= "" then GameTooltip:AddLine(right, 1, 1, 1, true) end
+                            GameTooltip:Show()
+                            return
+                        end
                         GameTooltip:SetOwner(r, "ANCHOR_RIGHT")
                         for n, text in ipairs(tip) do
                             if n == 1 then GameTooltip:AddLine(ns:AccentHex() .. tostring(text) .. "|r") else GameTooltip:AddLine(tostring(text), 1, 1, 1, true) end
@@ -93,6 +110,12 @@ function ns:ListWindow(key, title, note, width, height)
                 row.left:SetText(line.left or line[1] or "")
                 if line.hasSecret then row.right:SetText(line.secretRight)      -- (a value the game hides: shown as it is, never tested)
                 else row.right:SetText(line.right or line[2] or "") end
+                -- the right side takes at most three fifths of the row, so the left always shows
+                if row.right.SetWidth and row.right.GetStringWidth then
+                    local most = math.floor(self.rowWidth * 0.6)
+                    local okW, sw = pcall(row.right.GetStringWidth, row.right)
+                    row.right:SetWidth((okW and type(sw) == "number" and not ns:IsSecret(sw) and sw > most) and most or 0)
+                end
                 local c = line.color
                 if type(c) == "table" then row.left:SetTextColor(c[1] or 1, c[2] or 1, c[3] or 1) else row.left:SetTextColor(1, 1, 1) end
                 row:Show()
@@ -270,7 +293,7 @@ function ns:ListCommand(key, text, what, account)
     elseif did == "removed" then ns:Print("%s: removed \"%s\".", ns:Tr(what), name)
     elseif did == "missing" then ns:Print("%s: \"%s\" is not on the list.", ns:Tr(what), name)
     elseif #list == 0 then ns:Print("%s: the list is empty.", ns:Tr(what))
-    else ns:PrintRaw("|cff33ccffFantasy Glass UI|r: " .. ns:Tr(what) .. ": " .. table.concat(list, ", ")) end
+    else ns:PrintRaw(ns:Tr(what) .. ": " .. table.concat(list, ", ")) end
     ns.listChanged = (ns.listChanged or 0) + 1
     return did, name
 end

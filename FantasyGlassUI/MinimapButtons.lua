@@ -175,5 +175,5 @@ ns:NewModule("buttonBag", function()
         if age <= 40 or age % 20 < 2 then Scan() end
     end)
     Scan()
-    ns:RegisterMovable(toggle, "buttonBag", "Add-on Buttons")
+    ns:RegisterMovable(toggle, "buttonBag", "Add-on buttons")
 end)

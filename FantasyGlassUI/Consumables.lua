@@ -98,7 +98,7 @@ ns:NewModule("consumeBar", function()
         b:HookScript("OnEnter", function(self)
             if not self.itemID then return end
             GameTooltip:SetOwner(self, "ANCHOR_TOP")
-            if not (GameTooltip.SetItemByID and pcall(GameTooltip.SetItemByID, GameTooltip, self.itemID)) then GameTooltip:AddLine("item " .. self.itemID) end
+            if not (GameTooltip.SetItemByID and pcall(GameTooltip.SetItemByID, GameTooltip, self.itemID)) then GameTooltip:AddLine(ns:Tr("Item") .. " " .. self.itemID) end
             GameTooltip:Show()
         end)
         b:HookScript("OnLeave", function() GameTooltip:Hide() end)

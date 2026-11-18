@@ -20,8 +20,9 @@ function ns:SwitchTalentSet(n)
     local now = ns:TalentSet()
     if count < 2 then ns:Print("This character has only one talent set."); return false end
     n = tonumber(n) or (now % count + 1)
-    if n < 1 or n > count or n == now then return false end
-    if InCombatLockdown() then ns:Print("Not in combat."); return false end
+    if n < 1 or n > count then ns:Print("Give a talent set from 1 to %d.", count); return false end
+    if n == now then ns:Print("You are already in talent set %d.", n); return false end
+    if InCombatLockdown() then ns:Print("Not during a fight."); return false end
     local set = (C_SpecializationInfo and C_SpecializationInfo.SetActiveSpecGroup) or _G.SetActiveTalentGroup or _G.SetActiveSpecGroup
     if type(set) ~= "function" then ns:Print("This game client does not let add-ons change talent set."); return false end
     return pcall(set, n) and n or false
@@ -46,6 +47,7 @@ ns:NewModule("specButtons", function()
                 buttons[i] = b
             end
             if b.text and b.text.SetTextColor then if i == now then ns:Paint(b.text, "SetTextColor", "@accent") else b.text:SetTextColor(0.7, 0.7, 0.7) end end
+            b.suiTextColor = (i == now) and ns.theme.accent or { 0.7, 0.7, 0.7 }      -- (kept after the mouse leaves it)
         end
         holder:Show()
         ns.specButtonsState = format("%d talent sets, on the character window", count)
@@ -91,7 +93,7 @@ ns:NewModule("enchantCheck", function()
                 if not mark then
                     mark = ns:NewText(slot, 10, "LEFT")
                     mark:SetPoint("BOTTOMLEFT", 2, 2)
-                    mark:SetTextColor(1, 0.25, 0.25)
+                    mark:SetTextColor(ns:Signal("bad"))
                     if mark.SetShadowOffset then mark:SetShadowOffset(1, -1); mark:SetShadowColor(0, 0, 0, 1) end
                     marks[name] = mark
                 end
@@ -140,7 +142,7 @@ function ns.InfoPiece(piece)
         local ok, start, duration = pcall(Get, 6948)
         if not ok or type(start) ~= "number" or type(duration) ~= "number" or Secret(start) or Secret(duration) then return nil end
         local left = (duration > 0) and (start + duration - GetTime()) or 0
-        if left <= 0 then return "|cff33ff66" .. ns:Tr("hearth ready") .. "|r" end
+        if left <= 0 then return ns:SignalHex("good") .. ns:Tr("hearth ready") .. "|r" end
         return format("|cffffffff%s|r %s", ns.ShortTime(left), ns:Tr("hearth"))
     elseif piece == "reset" then
         local get = C_DateAndTime and C_DateAndTime.GetSecondsUntilDailyReset
@@ -168,14 +170,14 @@ function ns:VolumeCommand(text)
     local Set = (C_CVar and C_CVar.SetCVar) or SetCVar
     if n and type(Set) == "function" then pcall(Set, "Sound_MasterVolume", tostring(math.max(0, math.min(100, n)) / 100)) end
     local piece = ns.InfoPiece("volume")
-    if piece then ns:PrintRaw("|cff33ccffFantasy Glass UI|r: " .. piece) end
+    if piece then ns:PrintRaw(piece) end
     if ns.RefreshInfoBar then ns:RefreshInfoBar() end
 end
 function ns:CurrencyCommand(text)
     local id = tonumber(ns.Trim(text)) or tonumber(tostring(text):match("currency:(%d+)"))
     if id then ns.db.infobarCurrency = id end
     local piece = ns.InfoPiece("currency")
-    if piece then ns:PrintRaw("|cff33ccffFantasy Glass UI|r: " .. piece .. "  (" .. ns:Tr("right-click the info bar and tick Currency to show it there") .. ")")
+    if piece then ns:PrintRaw(piece .. "  (" .. ns:Tr("right-click the info bar and tick Currency to show it there") .. ")")
     else ns:Print("Shift-click a currency into the line, or give its number: /fgui currency 1166.") end
     if ns.RefreshInfoBar then ns:RefreshInfoBar() end
 end
@@ -225,12 +227,17 @@ function ns:ShowNotepad()
             end
         end)
         scroll:SetScrollChild(box)
+        -- a click anywhere on the page puts the cursor in it (an empty box is only one line tall)
+        scroll:EnableMouse(true)
+        scroll:SetScript("OnMouseDown", function() box:SetFocus(); box:SetCursorPosition(#(box:GetText() or "")) end)
         w.box = box
         function w:Load()
             box:SetText(store[Key()] or "")
             if self.mine.text then
                 if self.page == "mine" then ns:Paint(self.mine.text, "SetTextColor", "@accent"); self.all.text:SetTextColor(0.7, 0.7, 0.7)
                 else ns:Paint(self.all.text, "SetTextColor", "@accent"); self.mine.text:SetTextColor(0.7, 0.7, 0.7) end
+                local on, off = (self.page == "mine") and self.mine or self.all, (self.page == "mine") and self.all or self.mine
+                on.suiTextColor, off.suiTextColor = ns.theme.accent, { 0.7, 0.7, 0.7 }
             end
         end
         w.mine = ns:CreateButton(w, "This character", 130, 20, function() w.page = "mine"; w:Load() end)
@@ -315,8 +322,8 @@ function ns.Calc(text)
 end
 function ns:CalcCommand(text)
     local value, why = ns.Calc(text)
-    if not value then ns:Print("Calculator: %s.", why); return end
+    if not value then ns:Print("Calculator: %s.", ns:Tr(why)); return end
     local shown = (value == math.floor(value) and math.abs(value) < 1e15) and format("%d", value) or format("%.4f", value):gsub("0+$", ""):gsub("%.$", "")
-    ns:PrintRaw("|cff33ccffFantasy Glass UI|r: " .. ns.Trim(text) .. " = |cffffffff" .. shown .. "|r")
+    ns:PrintRaw(ns.Trim(text) .. " = |cffffffff" .. shown .. "|r")
     return value
 end

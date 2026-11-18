@@ -11,7 +11,8 @@ ns:NewModule("quests", function()
             if type(msg) ~= "string" then return end
             local cur, need = msg:match("(%d+)/(%d+)%s*$")
             if cur and cur == need then
-                UIErrorsFrame:AddMessage("Objective complete: " .. msg, 0.3, 1, 0.4)
+                local r, g, bl = ns:Signal("good")
+                UIErrorsFrame:AddMessage(format(ns:Tr("Objective complete: %s"), msg), r, g, bl)
             end
         elseif event == "QUEST_COMPLETE" then
             local n = GetNumQuestChoices and GetNumQuestChoices() or 0

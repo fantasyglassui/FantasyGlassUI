@@ -58,7 +58,7 @@ ns:NewModule("roleHUD", function()
     local alertUntil, lowManaFlag, durFlag = 0, false, false
 
     local function ShowAlert(msg, r, g, b, secs)
-        alert:SetText(msg)
+        alert:SetText(ns:Tr(msg))
         alert:SetTextColor(r, g, b)
         alert:SetAlpha(1)
         alertUntil = GetTime() + (secs or 2)
@@ -137,7 +137,7 @@ ns:NewModule("roleHUD", function()
             local pct = SetPct(main, "target")                -- (the percentage still decides the color and the execute alert)
             if ns.db.healthNumbers and ns.SetHealthText then ns.SetHealthText(main, "target") end
             if pct then
-                if pct <= 20 then main:SetTextColor(1, 0.2, 0.2); line2 = "|cffff3333EXECUTE RANGE|r   "
+                if pct <= 20 then main:SetTextColor(ns:Signal("bad")); line2 = ns:SignalHex("bad") .. ns:Tr("EXECUTE RANGE") .. "|r   "
                 elseif pct <= 35 then main:SetTextColor(1, 0.65, 0)
                 else main:SetTextColor(1, 1, 1) end
             else
@@ -154,12 +154,14 @@ ns:NewModule("roleHUD", function()
     end
 
     -- Tank: threat bar (always), status text + lost-aggro alert when readable ---------------
-    local threatText = {
-        [3] = "|cff33ff66SECURE AGGRO|r",
-        [2] = "|cffffd100INSECURE AGGRO|r",
-        [1] = "|cffffa500HIGH THREAT - NOT TANKING|r",
-        [0] = "|cffff3333NO AGGRO|r",
-    }
+    local threatWords = { [3] = "SECURE AGGRO", [2] = "INSECURE AGGRO", [1] = "HIGH THREAT - NOT TANKING", [0] = "NO AGGRO" }
+    local function ThreatText(status)          -- translated, colored when shown (so the color-blind setting counts)
+        local word = threatWords[status]
+        if not word then return "" end
+        local hex = (status == 3 and ns:SignalHex("good")) or (status == 0 and ns:SignalHex("bad"))
+            or (status == 2 and "|cffffd100") or "|cffffa500"
+        return hex .. ns:Tr(word) .. "|r"
+    end
 
     local function UpdateTank()
         if not HasHostileTarget() then
@@ -187,9 +189,9 @@ ns:NewModule("roleHUD", function()
         end
 
         if not Secret(status) and status ~= nil then
-            main:SetText(threatText[status] or "")
+            main:SetText(ThreatText(status))
             if inCombat then
-                if lastThreat == 3 and status < 3 then ShowAlert("LOST AGGRO!", 1, 0.2, 0.2, 2.5) end
+                if lastThreat == 3 and status < 3 then local r, g, b = ns:Signal("bad"); ShowAlert("LOST AGGRO!", r, g, b, 2.5) end
                 lastThreat = status
             end
         else
@@ -199,7 +201,7 @@ ns:NewModule("roleHUD", function()
         -- who the target is attacking (skipped quietly if the client hides it)
         local ok, text = pcall(function()
             if ns.Yes(UnitExists("targettarget")) and ns.Is(UnitIsUnit("targettarget", "player"), false) then
-                return "Attacking: " .. (UnitName("targettarget") or "?")
+                return format(ns:Tr("Attacking: %s"), UnitName("targettarget") or "?")
             end
             return ""
         end)
@@ -265,7 +267,10 @@ ns:NewModule("roleHUD", function()
         acc = acc + e
         if acc < 0.1 then return end
         acc = 0
-        if ns.moving then return end
+        if ns.moving then                                    -- arranging the screen: a sample, so the panel can be seen and placed
+            if (main:GetText() or "") == "" then main:SetText("72%"); sub:SetText("|cffd8ccb00:42|r") end
+            return
+        end
         local role = ns.db.role
         if role == "DAMAGE" then UpdateDamage()
         elseif role == "TANK" then UpdateTank()

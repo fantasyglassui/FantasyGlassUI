@@ -74,12 +74,12 @@ end
 
 -- Written answers to the things people ask most. tab = where "Show me" goes; find = the label it rings.
 ns.guideTopics = {
-    { title = "Moving things", tab = "layout", find = "Move Panels", keys = "move panel frame bar window where layout lock verschieben bewegen mover déplacer deplacer",
+    { title = "Moving things", tab = "layout", find = "Move panels", keys = "move panel frame bar window where layout lock verschieben bewegen mover déplacer deplacer",
       text = "Type /fgui move, drag anything to where you want it, and type /fgui move again to lock. While moving, right-click a panel for its own scale, nudge, centre and reset." },
     { title = "Size of panels", tab = "layout", find = "Panel scale", keys = "scale size width height panel frame slider größe groesse tamaño taille",
       text = "The Layout tab has a scale slider for every panel and size sliders for unit frames, raid frames and action bars. In move mode, right-click a panel for its own scale." },
     { title = "Themes", tab = "look", find = "Glass", keys = "theme glass fantasy look dark style thema design farbe tema thème",
-      text = "The Look tab lists every theme under Glass, Fantasy and Runic; click one to see it at once. You can also make your own from three colors at the bottom of that tab." },
+      text = "The Look tab lists every theme under Glass, Fantasy and Celestial; click one to see it at once. You can also make your own from three colors at the bottom of that tab." },
     { title = "Lettering", tab = "look", find = "Lettering", keys = "lettering letters text face schrift schriftart fuente police",
       text = "Lettering is chosen on the Look tab, separately from the theme. Fonts from other add-ons can be picked on the Tools tab." },
     { title = "Text size", tab = "layout", find = "Text size %", keys = "text size letters read small large scale",
@@ -90,7 +90,7 @@ ns.guideTopics = {
       text = "Type /fgui bind, point at an action button and press the key. The game's own Key Bindings menu has an AddOns section for this add-on's keys (potion, food, mount and the rest)." },
     { title = "Profiles", tab = "profiles", keys = "profile character copy share export import settings profil perfil",
       text = "The Profiles tab keeps separate sets of settings, copies one to another, and exports a layout as text to share." },
-    { title = "Language", command = "/fgui language", keys = "language german deutsch french français spanish español english translate sprache idioma langue",
+    { title = "Language", command = "/fgui language", keys = "language german deutsch french français spanish español english italian italiano portuguese português russian русский язык korean 한국어 언어 chinese 中文 语言 translate sprache idioma langue lingua língua",
       text = "The Language button at the top right of this window, or /fgui language deutsch (english, français, español, auto)." },
     { title = "When something goes wrong", command = "/fgui report", keys = "error problem report help fix fail fehler hilfe ayuda erreur problema problème aide",
       text = "/fgui check lists what this game client supports and any errors. /fgui report gathers everything for a problem report. /fgui safe reloads with every feature off, to see whether the add-on is the cause." },
@@ -102,12 +102,12 @@ ns.guideTopics = {
       text = "In the Click casting section of the Combat tab, bind a mouse button (with or without a modifier) to a spell. Clicking any unit frame then casts it on that player." },
     { title = "Choosing cooldowns and buff alerts", tab = "combat", keys = "cooldown tracker choose add ability spell buff alert list",
       text = "The Combat tab holds the list of abilities for the cooldown tracker and the buffs for buff alerts." },
-    { title = "Showing a panel only at certain times", tab = "layout", find = "Move Panels", keys = "hide show only combat visible fade target panel",
+    { title = "Showing a panel only at certain times", tab = "layout", find = "Move panels", keys = "hide show only combat visible fade target panel",
       text = "In move mode, right-click a panel and click its \"Show:\" button to step through always, only in combat, only out of combat and only with a target." },
     { title = "Switching a feature on or off", tab = "features", low = true, keys = "switch feature turn schalter interruptor",
       text = "Every feature has a switch on the Features tab. Hover one to read what it does; most need a /reload." },
     { title = "The setup", command = "/fgui setup", keys = "setup wizard first role tank healer begin",
-      text = "/fgui setup (or Run Setup Again below) opens the guided setup: role, look, lettering, layout." },
+      text = "/fgui setup (or Run setup again below) opens the guided setup: role, look, lettering, layout." },
     { title = "Other add-ons", command = "/fgui conflicts off", keys = "conflict other addon add-on bar bag nameplate compatible together",
       text = "When another add-on does the same job (bars, bags, nameplates, unit frames, chat), this one leaves that job to it and says so. /fgui conflicts off runs everything regardless." },
     { title = "What is new", command = "/fgui new", keys = "new change changelog update version latest",
@@ -132,7 +132,9 @@ function ns:GuideEntries()
         local first, n = {}, 0
         for word in topic.keys:gmatch("%S+") do n = n + 1; if n <= 2 and not topic.low then first[#first + 1] = word end end
         entries[#entries + 1] = { title = topic.title, text = topic.text, tab = topic.tab, find = topic.find, command = topic.command,
-            label = Set(topic.title), main = Set(table.concat(first, " ")), keys = Set(topic.keys), desc = Set(topic.text), written = true, low = topic.low }
+            -- (the words of the player's own language count too: a question asked in German finds the German answer)
+            label = Set(topic.title .. " " .. ns:Tr(topic.title)), main = Set(table.concat(first, " ")), keys = Set(topic.keys),
+            desc = Set(topic.text .. " " .. ns:Tr(topic.text)), written = true, low = topic.low }
     end
     for _, group in ipairs(ns.featureGroups or {}) do
         for _, opt in ipairs(group[2]) do
@@ -140,7 +142,7 @@ function ns:GuideEntries()
             local desc = (ns.featureDesc and ns.featureDesc[key]) or ""
             local shown = ns:Tr(label)
             entries[#entries + 1] = { key = key, title = shown, text = desc, tab = "features", find = label,
-                label = Set(label .. " " .. shown), keys = {}, desc = Set(desc) }
+                label = Set(label .. " " .. shown), keys = {}, desc = Set(desc .. " " .. ns:Tr(desc)) }
         end
     end
     for _, line in ipairs(ns.helpLines or {}) do
@@ -189,15 +191,15 @@ function ns:GuideLines(question)
     if not best then
         return { ns:Tr("Nothing here matches that. Try one or two words, such as bags or move.") }, nil
     end
-    local text = best.text
+    local text = ns:Tr(best.text)
     if best.key then
         local on = ns.db and ns.db[best.key]
         text = text .. "  " .. ns:Tr(on and "It is switched on." or "It is switched off: its switch is on the Features tab.")
     end
-    local lines = { ns:AccentHex() .. best.title .. "|r", text }
+    local lines = { ns:AccentHex() .. ns:Tr(best.title) .. "|r", text }
     if #others > 0 then
         local names = {}
-        for _, e in ipairs(others) do names[#names + 1] = e.title end
+        for _, e in ipairs(others) do names[#names + 1] = ns:Tr(e.title) end
         lines[#lines + 1] = "|cff8f96a3" .. ns:Tr("Also close") .. ": " .. table.concat(names, ";  ") .. "|r"
     end
     return lines, best
@@ -205,7 +207,7 @@ end
 -- /fgui ask how do I move the bars
 function ns:GuidePrint(question)
     if Trim(question) == "" then ns:Print("Ask in a few words: /fgui ask how do I move the bars"); return end
-    for _, line in ipairs((ns:GuideLines(question))) do ns:PrintRaw("|cff33ccffFantasy Glass UI|r: " .. line) end
+    for _, line in ipairs((ns:GuideLines(question))) do ns:PrintRaw(line) end
 end
 -- Take the reader to the answer: the switch or section on its tab, or the command ready to send.
 function ns:GuideShow(entry)
@@ -268,6 +270,7 @@ ns.toolWindows = {
     { "Talent builds", "talents" }, { "Events and holidays", "events" }, { "Raid composition", "comp" }, { "Battleground score", "bgscore" },
     { "Bag rules", "bagrules" }, { "Mail rules", "mailrules" }, { "Preview a shared string", "sharepreview" },
     { "Reputations and currencies", "reps" }, { "Professions", "crafts" }, { "Key bindings", "keys" },
+    { "Login briefing", "briefing" }, { "Weekly recap", "recap" }, { "Skill-ups", "skillups" },
 }
 for _, w in ipairs(ns.apiToolWindows or {}) do ns.toolWindows[#ns.toolWindows + 1] = w end      -- (other add-ons' windows: API.lua)
 ns.toolActions = {
@@ -412,7 +415,7 @@ function ns:ToolListRows(def)
         table.sort(ids)
         for _, id in ipairs(ids) do
             local ok, name = pcall(function() return (ns:GetItemInfo(id)) end)
-            rows[#rows + 1] = { text = ((ok and type(name) == "string") and name or ("item " .. id)) .. "  |cff9aa4b4x" .. tostring(list[id]) .. "|r",
+            rows[#rows + 1] = { text = ((ok and type(name) == "string") and name or (ns:Tr("Item") .. " " .. id)) .. "  |cff9aa4b4x" .. tostring(list[id]) .. "|r",
                 remove = function() list[id] = nil end }
         end
     else
@@ -748,8 +751,9 @@ function ns.BuildToolsPage(page)
         end },
     }
     T.sliders = {}
+    local syncing = false                                     -- (showing a value is not changing it: no volume set just by looking)
     for i, def in ipairs(sliders) do
-        local s = ns:CreateSlider(page, def[1], def[2], def[3], def[4], def[5](), "%d", def[6], 226)
+        local s = ns:CreateSlider(page, def[1], def[2], def[3], def[4], def[5](), "%d", function(v) if not syncing then def[6](v) end end, 226)
         s:SetPoint("TOPLEFT", X3, yN - 30 - (i - 1) * 38)
         T.sliders[i] = s
     end
@@ -778,7 +782,7 @@ function ns.BuildToolsPage(page)
     local function DrawSuggest()
         local lines, off = {}, 0
         for _, s in ipairs(ns:ClassSuggestions(class)) do
-            lines[#lines + 1] = (s.on and "|cff33ff66+|r " or "|cff8f96a3-|r ") .. ns:Tr(s.label)
+            lines[#lines + 1] = (s.on and (ns:SignalHex("good") .. "+|r ") or "|cff8f96a3-|r ") .. ns:Tr(s.label)
             if not s.on then off = off + 1 end
         end
         suggest:SetText(table.concat(lines, "\n"))
@@ -794,6 +798,10 @@ function ns.BuildToolsPage(page)
 
     page.Refresh = function()
         DrawList(); rules.Draw(); DrawMedia(); DrawSort(); DrawSuggest()
+        for i, def in ipairs(sliders) do                     -- (the volume may have been changed in the game's own settings)
+            local s, ok, v = T.sliders[i], pcall(def[5])
+            if ok and type(v) == "number" and s and s.SetValue then syncing = true; pcall(s.SetValue, s, v); syncing = false end
+        end
     end
     page.Refresh()
     page.contentHeight = math.max(-bottom1, -rules.bottom, -(yS - 28 - 4 * 15 - 8 - 22), -(TOP - 330)) + 20

@@ -7,9 +7,9 @@ local _, ns = ...
 -- A new time against the best so far. Returns: is it a new best, and the line to say.
 function ns.BossResult(name, seconds, best)
     local t = ns.Clock(seconds)
-    if type(best) ~= "number" then return true, format("%s: %s (first kill timed)", name, t) end
-    if seconds < best then return true, format("%s: %s - a new best (was %s)", name, t, ns.Clock(best)) end
-    return false, format("%s: %s (best %s)", name, t, ns.Clock(best))
+    if type(best) ~= "number" then return true, format(ns:Tr("%s: %s (first time timed)"), name, t) end
+    if seconds < best then return true, format(ns:Tr("%s: %s - a new best (was %s)"), name, t, ns.Clock(best)) end
+    return false, format(ns:Tr("%s: %s (best %s)"), name, t, ns.Clock(best))
 end
 
 ns:NewModule("bossTimer", function()
@@ -38,7 +38,7 @@ ns:NewModule("bossTimer", function()
         return { name = name, key = tostring(id or name) .. ":" .. tostring(difficulty or 0) }
     end
     local function Start(id, name, difficulty)
-        fight = { name = type(name) == "string" and name or "Boss", key = tostring(id) .. ":" .. tostring(difficulty or 0), start = Now() }
+        fight = { name = type(name) == "string" and name or ns:Tr("Boss"), key = tostring(id) .. ":" .. tostring(difficulty or 0), start = Now() }
     end
     local function Finish(success)
         local was = fight
@@ -51,7 +51,7 @@ ns:NewModule("bossTimer", function()
         end
         local newBest, line = ns.BossResult(was.name, took, best[was.key])
         if newBest then best[was.key] = took end
-        ns:PrintRaw("|cff33ccffFantasy Glass UI|r: " .. line)
+        ns:PrintRaw(line)
         return true, newBest
     end
     local function Zone()
@@ -65,7 +65,7 @@ ns:NewModule("bossTimer", function()
         local took = Now() - run.start
         local newBest, line = ns.BossResult(run.name, took, runBest[run.key])
         if newBest then runBest[run.key] = took end
-        ns:PrintRaw("|cff33ccffFantasy Glass UI|r: " .. line)
+        ns:PrintRaw(line)
         return newBest
     end
     ns.bossTimerTest = { Start = Start, Finish = Finish, Zone = Zone, RunDone = RunDone, best = best, runBest = runBest,
@@ -85,13 +85,13 @@ ns:NewModule("bossTimer", function()
         self.wait = (self.wait or 0) + (elapsed or 0)
         if self.wait < 0.25 then return end
         self.wait = 0
-        if ns.moving then self.boss:SetText("Boss  1:23"); self.run:SetText("Run  12:34"); self:SetAlpha(1) return end
+        if ns.moving then self.boss:SetText(ns:Tr("Boss") .. "  1:23"); self.run:SetText(ns:Tr("Run") .. "  12:34"); self:SetAlpha(1) return end
         if not (fight or run) then self:SetAlpha(0) return end
         self:SetAlpha(1)
         self.boss:SetText(fight and (fight.name .. "  " .. ns.Clock(Now() - fight.start)) or "")
         self.run:SetText(run and not run.done and (ns:Tr("Run") .. "  " .. ns.Clock(Now() - run.start)) or "")
     end))
-    local entry = ns:RegisterMovable(f, "bossTimer", "Boss Timer")
+    local entry = ns:RegisterMovable(f, "bossTimer", "Boss timer")
     if type(entry) == "table" then entry.offPage = true end        -- (scaled from its own right-click menu in move mode)
 end)
 

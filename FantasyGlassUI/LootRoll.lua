@@ -147,7 +147,7 @@ ns:NewModule("lootRoll", function()
         if on and not r:IsShown() then
             r.sample, r.rollID = true, 0
             r.icon:SetTexture(135349)
-            r.name:SetText("Sample Sword of Testing")
+            r.name:SetText(ns:Tr("Sample Sword of Testing"))
             r.name:SetTextColor(0.64, 0.21, 0.93)
             if ns.db.upgradeArrows then r.upgrade:Show() end
             for _, b in pairs(r.buttons) do b:Show() end
@@ -159,5 +159,5 @@ ns:NewModule("lootRoll", function()
             r:Hide()
         end
     end)
-    ns:RegisterMovable(anchor, "lootRoll", "Loot Rolls")
+    ns:RegisterMovable(anchor, "lootRoll", "Loot rolls")
 end)

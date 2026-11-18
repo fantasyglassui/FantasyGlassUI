@@ -64,8 +64,8 @@ ns:NewModule("xpBar", function()
         pace.last, pace.lastMax = cur, max
     end
     local function Duration(seconds)
-        if seconds >= 3600 then return format("%dh %02dm", math.floor(seconds / 3600), math.floor(seconds % 3600 / 60)) end
-        return format("%dm", math.max(1, math.floor(seconds / 60)))
+        if seconds >= 3600 then return format(ns:Tr("%dh %02dm"), math.floor(seconds / 3600), math.floor(seconds % 3600 / 60)) end
+        return format(ns:Tr("%dm"), math.max(1, math.floor(seconds / 60)))
     end
     local function Num(n) return BreakUpLargeNumbers and BreakUpLargeNumbers(n) or tostring(n) end
 
@@ -220,5 +220,5 @@ ns:NewModule("xpBar", function()
     ns:Silence(_G.SecondaryStatusTrackingBarContainer)
 
     function ns:RefreshXPBar() Update() end                  -- (the percent-or-numbers choice changed)
-    ns:RegisterMovable(holder, "xpBar", "XP / Reputation")
+    ns:RegisterMovable(holder, "xpBar", "XP / reputation")
 end)

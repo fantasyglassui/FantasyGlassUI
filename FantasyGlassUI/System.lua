@@ -49,7 +49,7 @@ function ns:MediaCommand(kind, text)
     if kind == "list" or text == "" then
         for _, m in ipairs({ "font", "statusbar" }) do
             local ok, names = pcall(lib.List, lib, m)
-            ns:PrintRaw("|cff33ccffFantasy Glass UI|r: " .. ns:Tr(m == "font" and "Fonts" or "Bar textures") .. ": " .. ((ok and type(names) == "table") and table.concat(names, ", ") or "-"))
+            ns:PrintRaw(ns:Tr(m == "font" and "Fonts" or "Bar textures") .. ": " .. ((ok and type(names) == "table") and table.concat(names, ", ") or "-"))
         end
         return true
     end
@@ -192,7 +192,13 @@ ns:NewModule("talkingHeadHide", function()
         local head = _G.TalkingHeadFrame
         if type(head) ~= "table" or head.suiHidden or not head.HookScript then return false end
         head.suiHidden = true
-        pcall(head.HookScript, head, "OnShow", function(self) if not ns:Locked(self) then pcall(self.Hide, self) end end)
+        pcall(head.HookScript, head, "OnShow", function(self)
+            if ns:Locked(self) then return end
+            -- closed the game's own way where it has one, which also stops the voice; otherwise hidden
+            if type(self.CloseImmediately) == "function" then pcall(self.CloseImmediately, self)
+            elseif type(_G.TalkingHeadFrame_CloseImmediately) == "function" then pcall(_G.TalkingHeadFrame_CloseImmediately)
+            else pcall(self.Hide, self) end
+        end)
         ns.talkingHeadState = "hidden when it appears"
         return true
     end
@@ -207,7 +213,7 @@ ns:NewModule("talkingHeadMove", function()
     local function Adopt()
         local head = _G.TalkingHeadFrame
         if type(head) ~= "table" or not ns.AdoptGameFrame then return false end
-        return ns:AdoptGameFrame(head, "talkingHead", "Talking Head") and true or false
+        return ns:AdoptGameFrame(head, "talkingHead", "Talking head") and true or false
     end
     local ev = CreateFrame("Frame")
     for _, e in ipairs({ "PLAYER_LOGIN", "ADDON_LOADED" }) do pcall(ev.RegisterEvent, ev, e) end

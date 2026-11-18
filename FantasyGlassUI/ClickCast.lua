@@ -18,7 +18,7 @@ end
 
 local function Valid(b)
     return type(b) == "table" and type(b.spell) == "string" and b.spell ~= "" and type(b.button) == "number"
-       and b.button >= 1 and b.button <= 5 and (b.mod == "" or b.mod == "shift" or b.mod == "ctrl" or b.mod == "alt")
+       and b.button >= 1 and b.button <= 5 and (b.mod == nil or b.mod == "" or b.mod == "shift" or b.mod == "ctrl" or b.mod == "alt")
 end
 
 -- Returns true when applied, false when it has to wait for combat to end.
@@ -64,6 +64,9 @@ do  -- finish a change that was asked for mid-fight
     local f = CreateFrame("Frame")
     f:RegisterEvent("PLAYER_REGEN_ENABLED")
     f:SetScript("OnEvent", ns:Guard("ClickCast events", function()
-        if ns.clickCastPending and ns.db then pcall(ns.ApplyClickCast, ns) end
+        if ns.clickCastPending and ns.db then
+            local ok, applied = pcall(ns.ApplyClickCast, ns)
+            if ok and applied then ns:Print("Click-cast changes are in place now.") end       -- (said they would wait: now say they are done)
+        end
     end))
 end

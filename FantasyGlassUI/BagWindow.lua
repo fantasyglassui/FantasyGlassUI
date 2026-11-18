@@ -93,7 +93,8 @@ local function NewWindow(cfg)
 
     local title = ns:NewText(win, 18, "LEFT", true)
     title:SetPoint("TOPLEFT", PAD, -12)
-    title:SetText(ns:AccentHex() .. cfg.title .. "|r")
+    title:SetText(ns:Tr(cfg.title))
+    ns:Paint(title, "SetTextColor", "@accent")             -- (follows a change of theme)
     local freeText = ns:NewText(win, 11, "LEFT")
     freeText:SetPoint("LEFT", title, "RIGHT", 10, 0)
     ns:Paint(freeText, "SetTextColor", "dim")
@@ -119,15 +120,17 @@ local function NewWindow(cfg)
     local viewBtn
     viewBtn = ns:CreateButton(win, "", 92, 22, function()
         ns.db[gridKey] = not ns.db[gridKey]
-        viewBtn.text:SetText(ns.db[gridKey] and "Grid" or "Categories")
+        viewBtn.text:SetText(ns:Tr(ns.db[gridKey] and "Grid" or "Categories"))
         dirty = true
     end)
     viewBtn:SetPoint("RIGHT", sortBtn, "LEFT", -6, 0)
-    viewBtn.text:SetText(ns.db[gridKey] and "Grid" or "Categories")
+    viewBtn.text:SetText(ns:Tr(ns.db[gridKey] and "Grid" or "Categories"))
+    ns:ButtonTip(viewBtn, "Sections (Equipment, Consumables and the rest) or one plain grid. Click to switch.")
     local extraBtn
     if cfg.extra then
         extraBtn = ns:CreateButton(win, cfg.extra[1], 100, 22, cfg.extra[2])
         extraBtn:SetPoint("BOTTOMRIGHT", -8, 6)
+        if cfg.extraTip then ns:ButtonTip(extraBtn, cfg.extraTip) end
     end
 
     local search = ns:CreateEditBox(win, 180, 22, "Search")
@@ -135,14 +138,19 @@ local function NewWindow(cfg)
     search:SetScript("OnEscapePressed", function(self) self:SetText(""); self:ClearFocus() end)
 
     -- extra buttons beside the search box (Slots / Bank / Guild / Chars on the bag window)
+    -- The search box takes what the buttons leave of the row, so the row always ends inside the window.
     local prev
+    local used = 0
     for _, d in ipairs(cfg.buttons or {}) do
         local b = ns:CreateButton(win, d[1], d[2], 22, d[3])
         if d[4] then ns:ButtonTip(b, d[4]) end
         ns:Font(b.text, 11)
         if prev then b:SetPoint("LEFT", prev, "RIGHT", 4, 0) else b:SetPoint("LEFT", search, "RIGHT", 8, 0) end
+        used = used + d[2] + (prev and 4 or 8)
         prev = b
     end
+    if prev then search:SetWidth(math.max(80, math.min(180, win:GetWidth() - PAD * 2 - used))) end
+    win.suiRow = { search = search, used = used }        -- (for the self-test: the row fits the window)
 
     -- Slots ---------------------------------------------------------------------------------
     local slots, headers, overlay = {}, {}, nil
@@ -409,7 +417,7 @@ local function NewWindow(cfg)
         b.upgrade:Hide()
         b.newDot = layer:CreateTexture(nil, "OVERLAY")                      -- marks an item you just picked up
         b.newDot:SetSize(7, 7)
-        b.newDot:SetPoint("TOPRIGHT", -2, -2)
+        b.newDot:SetPoint("TOP", 0, -2)                                       -- (top middle: "BoE" or "Set" may be in the right corner)
         b.newDot:SetTexture(ns.FLAT)
         ns:Paint(b.newDot, "SetVertexColor", "@accent", 1)
         b.newDot:Hide()
@@ -518,7 +526,7 @@ local function NewWindow(cfg)
                 else
                     local inv = InvID(self.bag)
                     if not (inv and pcall(GameTooltip.SetInventoryItem, GameTooltip, "player", inv)) or not self.filled then
-                        GameTooltip:SetText(self.bag == cfg.reagent and "Reagent bag slot (empty)" or "Bag slot (empty)")
+                        GameTooltip:SetText(ns:Tr(self.bag == cfg.reagent and "Reagent bag slot (empty)" or "Bag slot (empty)"))
                     end
                 end
                 GameTooltip:Show()
@@ -753,7 +761,7 @@ local function NewWindow(cfg)
         if showSlots then RefreshSlotRow() end
         local y, hi = -TOP - (showSlots and 42 or 0), 0
         if total == 0 and cfg.emptyNote then
-            note:SetText(cfg.emptyNote)
+            note:SetText(ns:Tr(cfg.emptyNote))
             note:Show()
             y = y - 44
         else
@@ -783,7 +791,7 @@ local function NewWindow(cfg)
                             return a.slot < b.slot
                         end)
                         hi = hi + 1
-                        y = Header(hi, k .. "  |cff9c8c6c" .. #list .. "|r", y)
+                        y = Header(hi, ns:Tr(k) .. "  |cff9c8c6c" .. #list .. "|r", y)
                         y = Place(list, y)
                     end
                 end
@@ -793,7 +801,7 @@ local function NewWindow(cfg)
                 if firstR then firstR.count:SetText(freeR); freeList[#freeList + 1] = firstR end
                 if #freeList > 0 then
                     hi = hi + 1
-                    y = Header(hi, "Free  |cff9c8c6c" .. (freeN + freeR) .. "|r", y)
+                    y = Header(hi, ns:Tr("Free") .. "  |cff9c8c6c" .. (freeN + freeR) .. "|r", y)
                     y = Place(freeList, y)
                 end
             end
@@ -873,7 +881,7 @@ local function NewWindow(cfg)
             picker.rows = {}
         end
         picker.itemID = b.info.itemID
-        local label = type(b.info.hyperlink) == "string" and b.info.hyperlink:match("%[(.-)%]") or "this item"
+        local label = type(b.info.hyperlink) == "string" and b.info.hyperlink:match("%[(.-)%]") or ns:Tr("this item")
         picker.title:SetText(format(ns:Tr("Category for %s"), label))
 
         local names, seen = {}, {}
@@ -894,7 +902,7 @@ local function NewWindow(cfg)
                 picker.rows[i] = r
             end
             r.category = name or nil
-            r.text:SetText(name or "Automatic")
+            r.text:SetText(name or ns:Tr("Automatic"))
             r:Show()
         end
         for i = #names + 1, #picker.rows do picker.rows[i]:Hide() end
@@ -1028,6 +1036,7 @@ ns:NewModule("bagWindow", function()
         close = function() if CloseAllBags then CloseAllBags() end end,
         sort = function() C_Container.SortBags() end,
         events = { "MERCHANT_SHOW", "MERCHANT_CLOSED" },
+        extraTip = "Sell every gray item and everything on your always-sell list, less your never-sell list.",
         extra = { "Sell junk", function() ns:SellJunk(true) end,
                   visible = function()
                       local m = _G.MerchantFrame
@@ -1053,14 +1062,15 @@ ns:NewModule("bankWindow", function()
     win = NewWindow({
         name = "FantasyGlassUIBank", title = "Bank", key = "bank", bags = BankBags(),
         sockets = { container = BagIndex("Characterbanktab", -2) },
-        buttons = { { "Tabs", 50, function() win.ToggleSlots() end },
-                    { "Deposit", 64, function() if ns.DepositMaterials then ns:DepositMaterials() end end } },
+        buttons = { { "Tabs", 50, function() win.ToggleSlots() end, "Show or hide your bank tabs: buy a tab with +, then drop a bag onto it." },
+                    { "Deposit", 64, function() if ns.DepositMaterials then ns:DepositMaterials() end end, "Put every crafting material in your bags into the bank." } },
         point = { "TOPLEFT", 60, -120 },
         isOpen = function() return bank:IsShown() end,
         close = function() if HideUIPanel then HideUIPanel(bank) else bank:Hide() end end,
         sort = function() if C_Container.SortBankBags then C_Container.SortBankBags() end end,
         events = { "PLAYERBANKSLOTS_CHANGED", "BANKFRAME_OPENED", "BANK_TABS_CHANGED", "BANK_TAB_SETTINGS_UPDATED" },
         emptyNote = "No bank space yet. Click \"Tabs\" above: buy a tab with +, then drop a bag onto it.",
+        extraTip = "Show the game's own bank window as well, for what this one cannot do (such as its tab settings). Click again to hide it.",
         extra = { "Blizzard bank", function()
             managing = not managing
             if managing then ns:Unsilence(bank) else ns:Silence(bank) end

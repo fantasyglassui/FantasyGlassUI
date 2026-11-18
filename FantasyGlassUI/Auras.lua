@@ -128,7 +128,8 @@ ns:NewModule("auraBars", function()
                 if not Secret(apps) and apps and apps > 1 then b.count:SetText(apps) else b.count:SetText("") end
                 b.kind:SetText((filter == "HARMFUL" and ns.db.colorblind) and ns:DispelLetter(a.dispelName) or "")
                 if filter == "HARMFUL" then
-                    b.suiBorder:SetBackdropBorderColor(0.85, 0.18, 0.18, 1)
+                    -- the game's colors for what can remove it (magic blue, curse purple ...), red for the rest
+                    b.suiBorder:SetBackdropBorderColor(ns:DebuffColor(a.dispelName))
                 else
                     ns:Paint(b.suiBorder, "SetBackdropBorderColor", "@border", 1)
                 end
@@ -154,13 +155,24 @@ ns:NewModule("auraBars", function()
         debuffs.Update()
     end)
     ev:SetScript("OnEvent", refresh)
-    -- weapon enchants tick down with no event of their own: refresh the buff row once a second
-    local acc = 0
+    -- Weapon enchants tick down with no event of their own: while one is on, the buff row is refreshed
+    -- once a second (and once more when the last one runs out). Everything else is redrawn by its
+    -- events, with a full look every few seconds in case one was missed.
+    local acc, slow, lastEnchants = 0, 0, 0
+    local refreshBuffs = ns:Guard("Buff bars", function() buffs.Update() end)
     ev:SetScript("OnUpdate", function(_, e)
         acc = acc + e
         if acc < 1 then return end
+        slow = slow + acc
         acc = 0
-        refresh()
+        if slow >= 5 then slow = 0; refresh(); return end
+        local have = 0
+        if GetWeaponEnchantInfo then
+            local ok, mh, _, _, _, oh, _, _, _, rh = pcall(GetWeaponEnchantInfo)
+            if ok then have = (mh and 1 or 0) + (oh and 1 or 0) + (rh and 1 or 0) end
+        end
+        if have > 0 or have ~= lastEnchants then refreshBuffs() end
+        lastEnchants = have
     end)
     refresh()
 

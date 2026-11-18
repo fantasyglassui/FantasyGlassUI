@@ -21,6 +21,11 @@ ns:NewModule("swingTimer", function()
         { "OH", th.accent[1] * 0.6 + 0.4, th.accent[2] * 0.6 + 0.4, th.accent[3] * 0.6 + 0.4 },
         { "RNG", 1.0, 0.70, 0.20 },
     }
+    local function Recolor()                                  -- (main and off hand follow the theme's accent)
+        local a = ns.theme.accent
+        defs[1][2], defs[1][3], defs[1][4] = a[1], a[2], a[3]
+        defs[2][2], defs[2][3], defs[2][4] = a[1] * 0.6 + 0.4, a[2] * 0.6 + 0.4, a[3] * 0.6 + 0.4
+    end
     local bars = {}
     for i, d in ipairs(defs) do
         local b = ns:NewStatusBar(holder, true)
@@ -35,6 +40,11 @@ ns:NewModule("swingTimer", function()
         b:Hide()
         bars[i] = b
     end
+
+    ns:OnTheme(function()
+        Recolor()
+        for i, d in ipairs(defs) do bars[i]:SetStatusBarColor(d[2], d[3], d[4]) end
+    end)
 
     local T = Enum and Enum.PlayerSwingType
     local function Index(swingType)
@@ -118,7 +128,7 @@ ns:NewModule("swingTimer", function()
         local label = ns:NewText(mark, 10, "CENTER")
         label:SetPoint("CENTER")
         label:SetText(ns:Tr("out of range"))
-        label:SetTextColor(1, 0.3, 0.3)
+        label:SetTextColor(ns:Signal("bad"))
         mark:Hide()
         ns:Every(0.2, "Swing range", function()
             if preview or not InCombatLockdown() or not UnitExists("target") or not UnitCanAttack("player", "target") then
@@ -146,7 +156,7 @@ ns:NewModule("swingTimer", function()
         end
     end)
 
-    ns:RegisterMovable(holder, "swing", "Swing Timers")
+    ns:RegisterMovable(holder, "swing", "Swing timers")
 
     ns:RegisterPreview(function(on)
         preview = on

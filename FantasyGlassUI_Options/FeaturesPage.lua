@@ -289,6 +289,7 @@ local function BuildFeatures(page)
     local function Sync()                                   -- the switches follow the settings (the setup may have changed them)
         for key, cb in pairs(boxes) do cb:SetChecked(ns.db[key]) end
         Counts()
+        if page.Dim then page.Dim() end                          -- (a preset may have switched a parent on or off)
     end
     page.Refresh = Sync
     -- presets: one click sets every switch (click twice, so a slip of the mouse changes nothing)

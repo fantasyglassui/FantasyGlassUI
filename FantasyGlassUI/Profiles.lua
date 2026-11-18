@@ -96,9 +96,9 @@ end
 function ns:NewProfile(name, source)
     name = CleanName(name)
     if not name then return false, "Give the profile a name (up to 32 characters)." end
-    if ns.root.profiles[name] then return false, "A profile called '" .. name .. "' already exists." end
+    if ns.root.profiles[name] then return false, format(ns:Tr("A profile called \"%s\" already exists."), name) end
     ns.root.profiles[name] = DeepCopy(source or ns.db)
-    return true, "Profile '" .. name .. "' created."
+    return true, format(ns:Tr("Profile \"%s\" created."), name)
 end
 
 function ns:UseProfile(name)
@@ -116,7 +116,7 @@ function ns:DeleteProfile(name)
     for char, used in pairs(ns.root.chars) do
         if used == name then ns.root.chars[char] = "Default" end
     end
-    return true, "Profile '" .. name .. "' deleted."
+    return true, format(ns:Tr("Profile \"%s\" deleted."), name)
 end
 
 function ns:ExportProfile()
@@ -128,7 +128,7 @@ end
 function ns:ImportProfile(name, text)
     name = CleanName(name)
     if not name then return false, "Give the imported profile a name." end
-    if ns.root.profiles[name] then return false, "A profile called '" .. name .. "' already exists." end
+    if ns.root.profiles[name] then return false, format(ns:Tr("A profile called \"%s\" already exists."), name) end
     if type(text) ~= "string" then return false, "Nothing to import." end
     text = strtrim(text)
     if text:sub(1, #HEADER) ~= HEADER then return false, "That isn't a Fantasy Glass UI profile string." end
@@ -165,7 +165,7 @@ function ns:ImportProfile(name, text)
         end
     end
     ns.root.profiles[name] = clean
-    return true, "Profile '" .. name .. "' imported. Click Use to switch to it."
+    return true, format(ns:Tr("Profile \"%s\" imported. Click Use to switch to it."), name)
 end
 
 ------------------------------------------------------------------------------------------
@@ -299,6 +299,7 @@ local function Describe(ctx)
     for part in tostring(ctx):gmatch("[^/]+") do
         if part:match("^%d+$") then words[#words + 1] = format(ns:Tr("talent set %s"), part)
         elseif part:match("^%d+x%d+$") then words[#words + 1] = format(ns:Tr("a %s screen"), part)
+        elseif part == "screen" then words[#words + 1] = ns:Tr("this screen")          -- (the game would not say its size)
         elseif part == "raid" or part == "party" or part == "solo" then
             words[#words + 1] = ns:Tr(part == "raid" and "in a raid" or part == "party" and "in a party" or "on your own")
         end
@@ -446,12 +447,12 @@ end
 function ns:ImportPack(name, text, withMail)
     name = CleanName(name)
     if not name then return false, "Give the pack's profile a name." end
-    if ns.root.profiles[name] then return false, "A profile called '" .. name .. "' already exists." end
+    if ns.root.profiles[name] then return false, format(ns:Tr("A profile called \"%s\" already exists."), name) end
     local kind, data = ns:DecodeShared(text)
     if kind ~= "pack" then return false, "That isn't a Fantasy Glass UI pack." end
     ns.root.profiles[name] = ns.CleanPackProfile(data.profile)
     if withMail ~= false and type(data.mailRules) == "table" then ns.root.mailRules = DeepCopy(data.mailRules) end
     if withMail ~= false and type(data.mailTo) == "table" then ns.root.mailTo = DeepCopy(data.mailTo) end
     ns.packEditMode = type(data.editMode) == "string" and data.editMode or nil
-    return true, "Pack saved as the profile '" .. name .. "'. Click Use to switch to it.", ns.packEditMode
+    return true, format(ns:Tr("Pack saved as the profile \"%s\". Click Use to switch to it."), name), ns.packEditMode
 end

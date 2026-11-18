@@ -67,7 +67,7 @@ end
 function ns.SetSummary(set)
     local lines = {}
     if set.items > 0 then lines[#lines + 1] = format(ns:Tr("%d of %d pieces on"), set.wearing, set.items) end
-    if set.missing > 0 then lines[#lines + 1] = "|cffff5555" .. format(ns:TrN(set.missing, "%d piece missing", "%d pieces missing"), set.missing) .. "|r" end
+    if set.missing > 0 then lines[#lines + 1] = ns:SignalHex("bad") .. format(ns:TrN(set.missing, "%d piece missing", "%d pieces missing"), set.missing) .. "|r" end
     lines[#lines + 1] = "|cff999999" .. ns:Tr(set.worn and "You are wearing this set" or "Click to wear this set") .. "|r"
     return lines
 end

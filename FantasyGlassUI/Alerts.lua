@@ -143,12 +143,12 @@ function ns:Alerts()
     return ns.db.customAlerts
 end
 function ns:AddAlert(trigger, value, text, sound, speak)
-    if not BY_KEY[trigger] then return nil, "no such trigger" end
+    if not BY_KEY[trigger] then return nil, "There is no such alert." end
     local t = BY_KEY[trigger]
-    if t.input == "number" and not tonumber(value) then return nil, "this one needs a number" end
-    if t.input == "name" and (type(value) ~= "string" or ns.Trim(value) == "") then return nil, "this one needs a name" end
+    if t.input == "number" and not tonumber(value) then return nil, "This alert needs a number." end
+    if t.input == "name" and (type(value) ~= "string" or ns.Trim(value) == "") then return nil, "This alert needs a name: a buff or an ability." end
     local list = ns:Alerts()
-    if #list >= 20 then return nil, "twenty is the most" end
+    if #list >= 20 then return nil, "Twenty alerts is the most." end
     local a = { trigger = trigger, value = (t.input == "number") and tonumber(value) or (value and ns.Trim(value)) or nil,
                 text = ns.Trim(text or ""), sound = sound ~= false, speak = speak and true or false }
     list[#list + 1] = a
@@ -201,6 +201,6 @@ ns:NewModule("customAlerts", function()
     end
     ns.customAlertsTest = { Update = Update, on = on, frame = f }
     ns:Every(0.25, "Custom alerts", Update)
-    local entry = ns:RegisterMovable(f, "customAlerts", "Custom Alerts")
+    local entry = ns:RegisterMovable(f, "customAlerts", "Custom alerts")
     if type(entry) == "table" then entry.offPage = true end
 end)

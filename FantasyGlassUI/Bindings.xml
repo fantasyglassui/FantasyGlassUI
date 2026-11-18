@@ -66,4 +66,13 @@
     <Binding name="FANTASYGLASSUI_HELP" category="ADDONS">
         FantasyGlassUI_Binding("HELP")
     </Binding>
+    <Binding name="FANTASYGLASSUI_BRIEFING" category="ADDONS">
+        FantasyGlassUI_Binding("BRIEFING")
+    </Binding>
+    <Binding name="FANTASYGLASSUI_RECAP" category="ADDONS">
+        FantasyGlassUI_Binding("RECAP")
+    </Binding>
+    <Binding name="FANTASYGLASSUI_SKILLUPS" category="ADDONS">
+        FantasyGlassUI_Binding("SKILLUPS")
+    </Binding>
 </Bindings>
