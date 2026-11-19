@@ -2,6 +2,89 @@
 
 The releases published on CurseForge. Each lists what changed since the release before it.
 
+## 11.16.0
+
+**New: roll advice**
+- On the loot roll window, the button to press lights up and the reason shows beside the item's
+  name: Need for an item on your wishlist or an upgrade for you (with by how many item levels),
+  Pass for gear you can't use, Greed for the rest.
+- Nothing is ever rolled for you. Features tab: "Loot rolls: light the button to press".
+
+**New: group gear check**
+- `/fgui gear` lists everyone in your party or raid with their item level, the lowest first, and the
+  group's average at the top.
+- The game sends another player's gear one player at a time and only within reach, so the list fills
+  in while it is open. Anyone too far away shows "out of reach" and is asked again later. Levels are
+  kept for ten minutes, and it never asks during a fight or while your own inspect window is open.
+
+**New: lifetime stats**
+- `/fgui stats`: one page of totals for this character and for all of them together. Time played,
+  levels, quests, kills, deaths, gold made and spent, items looted, bosses killed, dungeon and raid
+  runs, time spent farming, and the best time for each place.
+- The counts start the day this version first runs, and the page says since when. Bosses, runs and
+  farming reach back as far as the run log and farming sessions do.
+
+**Our own nameplates**
+- The health bar on a nameplate is now the add-on's own: our bar texture on a black backing, with our
+  rim or the Starcut cut. The game's bar keeps running out of sight and passes on its health and
+  color, hidden values included. The red backing behind an enemy's bar is gone for good: it was the
+  game's own, tinted to match the bar.
+- The game's level badge is replaced by the level in its difficulty color just left of the name
+  ("??" for a boss).
+
+**One record of best times**
+- The boss timer's "new best" lines, for a boss and for a finished dungeon, are now measured against
+  the run log, so they always agree with `/fgui runs`. Best times from before the run log still
+  count.
+- Each kill in the run log also keeps how long the fight itself took. A run's page shows each fight
+  with your best for that boss.
+
+## 11.15.0
+
+**New: a loot wishlist**
+- In the loot browser (`/fgui drops`), click an item to star it; click it again to let it go.
+- A starred item dropping, coming up in a loot roll, or a boss that drops it becoming your target is
+  called out, with a sound and a line in chat (a boss once a day).
+- `/fgui wish` lists your wishlist, each item with the boss and place it drops from and how often you
+  have seen it drop. Starred items carry their star in the whose-upgrade list too.
+
+**New: boss drops on the boss**
+- Point at a boss and its tooltip lists what it drops that is on your wishlist or would be an upgrade
+  for you, with by how many item levels and in how many of your kills it dropped. From the loot
+  browser's book, and the dungeon journal where the game has one (Features tab, "Boss tooltips").
+
+**New: quest mobs on nameplates**
+- The plate of a mob you still need for a quest gets a small quest mark at its left, with how many
+  are left ("Defias Thug slain: 3/8" shows 5). Read from the mob's own tooltip, so it follows your
+  quest log as it changes.
+- Nameplates designer: "Quest mobs: a mark and how many are left". Where the game hides those
+  tooltip lines (in some instances), plates are left unmarked.
+
+**Starcut windows and tooltips**
+- Under the Starcut frame style, windows and tooltips have their corners cut away, with a fine rim
+  along each cut. Big windows carry a star on their two top cuts (not on Glass, which wears no
+  ornament). The corner brackets step aside for the cut.
+- The cut keeps its size on any window. On a game client that cannot draw it that way, windows keep
+  their square corners and only the stars are added.
+- Frame style: Classic puts the square corners back.
+
+## 11.14.1
+
+**Performance**
+- The add-on does less work while you play, most of all in a fight, and makes less to tidy up
+  afterwards (measured: 2.0 to 1.9 ms a second at rest, 2.1 to 1.8 in a fight, and about a sixth
+  less memory churn at rest).
+- Action button labels were looked at every second to catch a change; they now change when you
+  change the setting, with a slow look in case the game reset one.
+- The cooldown tracker only checks its icons while one of them is counting down.
+- The pieces of the game's own frames that are kept out of sight every frame (its cast bars, mirror
+  timers and loot rolls) are now checked in one sweep instead of one guarded call each.
+
+**Polish**
+- Farming panel: for the first two minutes it shows what you have made so far. One early coin used to
+  make the hourly figure look like a fortune.
+- Whose upgrade: right-click the list to put it away until the next drop; its tooltip says so.
+
 ## 11.14.0
 
 **Starcut for the rest of the screen**

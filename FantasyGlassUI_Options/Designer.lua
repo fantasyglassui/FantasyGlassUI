@@ -311,13 +311,15 @@ function ns.BuildPlateDesigner(box)
     P.threatEdge:SetWidth(300); P.threatEdge:SetPoint("TOPLEFT", 360, -202)
     P.highlight = ns:CreateCheckbox(box, "Mark my target's plate", true, function(v) Set("highlight", v) end)
     P.highlight:SetWidth(300); P.highlight:SetPoint("TOPLEFT", 360, -228)
+    P.questMarks = ns:CreateCheckbox(box, "Quest mobs: a mark and how many are left", true, function(v) Set("questMarks", v) end)
+    P.questMarks:SetWidth(300); P.questMarks:SetPoint("TOPLEFT", 360, -254)
     local reset = ns:CreateButton(box, "Back to how it came", 300, 24, function()
         ns.db.plateDesign = nil
         if ns.ApplyPlateDesign then ns:ApplyPlateDesign() end
         P.Refresh()
     end)
-    reset:SetPoint("TOPLEFT", 360, -262)
-    P.note = Note(box, "Size uses the game's own nameplate scale and waits until you are out of combat. Cast bars and debuff icons need \"Nameplate casts & debuffs\" on (Features tab); names and highlighting apply to plates as they appear.", 0, -296)
+    reset:SetPoint("TOPLEFT", 360, -288)
+    P.note = Note(box, "Size uses the game's own nameplate scale and waits until you are out of combat. Cast bars and debuff icons need \"Nameplate casts & debuffs\" on (Features tab); names and highlighting apply to plates as they appear.", 0, -322)
     function P.Refresh()
         local pd = ns.PlateDesign and ns.PlateDesign() or ns.PLATE_DEFAULT or {}
         syncing = true
@@ -333,6 +335,7 @@ function ns.BuildPlateDesigner(box)
         P.nameShow:SetChecked(pd.nameShow ~= false)
         P.threat:SetChecked(pd.threat ~= false)
         P.threatEdge:SetChecked(pd.threatEdge ~= false)
+        P.questMarks:SetChecked(pd.questMarks ~= false)
         P.highlight:SetChecked(pd.highlight ~= false)
         P.health.Draw()
     end

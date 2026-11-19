@@ -182,7 +182,11 @@ local function Refresh()
     local p = Panel()
     local t = ns.FarmTotals(s, Now(), Money())
     p.top:SetText(format(ns:Tr("Farming %s"), Clock(t.secs)))
-    p.bottom:SetText(format(ns:Tr("%s an hour (%s gold, %s items)"), Gold(t.totalHour), Gold(t.goldHour), Gold(t.valueHour)))
+    if t.secs < 120 then                                   -- (11.14.1: one early coin made the first minute read as a fortune an hour)
+        p.bottom:SetText("|cff9aa4b4" .. format(ns:Tr("So far: %s gold, %s items. An hour's worth shows after two minutes."), Gold(t.gold), Gold(t.value)) .. "|r")
+    else
+        p.bottom:SetText(format(ns:Tr("%s an hour (%s gold, %s items)"), Gold(t.totalHour), Gold(t.goldHour), Gold(t.valueHour)))
+    end
     p:Show()
 end
 ns.FarmRefresh = Refresh

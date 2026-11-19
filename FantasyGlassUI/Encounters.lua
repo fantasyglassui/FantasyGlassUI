@@ -3,6 +3,8 @@ local _, ns = ...
 ------------------------------------------------------------------------------------------
 -- Boss and dungeon timer: how long this boss has taken, and how long you have been in the dungeon
 -- or raid. When a boss dies you are told the time and your best; a finished dungeon run likewise.
+-- (11.16) The bests are the run log's (/fgui runs), so the two never disagree; with the run log
+-- switched off, the timer keeps its own as before.
 ------------------------------------------------------------------------------------------
 -- A new time against the best so far. Returns: is it a new best, and the line to say.
 function ns.BossResult(name, seconds, best)
@@ -38,7 +40,9 @@ ns:NewModule("bossTimer", function()
         return { name = name, key = tostring(id or name) .. ":" .. tostring(difficulty or 0) }
     end
     local function Start(id, name, difficulty)
-        fight = { name = type(name) == "string" and name or ns:Tr("Boss"), key = tostring(id) .. ":" .. tostring(difficulty or 0), start = Now() }
+        local here = Instance()
+        fight = { name = type(name) == "string" and name or ns:Tr("Boss"), key = tostring(id) .. ":" .. tostring(difficulty or 0), start = Now(),
+                  instance = here and here.name }
     end
     local function Finish(success)
         local was = fight
@@ -49,8 +53,13 @@ ns:NewModule("bossTimer", function()
             ns:Print("%s: not this time, after %s.", was.name, ns.Clock(took))
             return false
         end
-        local newBest, line = ns.BossResult(was.name, took, best[was.key])
-        if newBest then best[was.key] = took end
+        -- (11.16) the best is the run log's, where there is one, so the two agree; an older record
+        -- from before the log still counts
+        local logged = ns.db.runLog and ns.RunBossBest and was.instance and ns.RunBossBest(ns.RunLogged(), was.instance, was.name)
+        local before = best[was.key]
+        if logged and (not before or logged < before) then before = logged end
+        local newBest, line = ns.BossResult(was.name, took, before)
+        if newBest and not ns.db.runLog then best[was.key] = took end
         ns:PrintRaw(line)
         return true, newBest
     end
@@ -63,8 +72,11 @@ ns:NewModule("bossTimer", function()
         if not run or run.done then return end
         run.done = true
         local took = Now() - run.start
-        local newBest, line = ns.BossResult(run.name, took, runBest[run.key])
-        if newBest then runBest[run.key] = took end
+        local logged = ns.db.runLog and ns.RunPlaceBest and ns.RunPlaceBest(ns.RunLogged(), run.name)
+        local before = runBest[run.key]
+        if logged and (not before or logged < before) then before = logged end
+        local newBest, line = ns.BossResult(run.name, took, before)
+        if newBest and not ns.db.runLog then runBest[run.key] = took end
         ns:PrintRaw(line)
         return newBest
     end

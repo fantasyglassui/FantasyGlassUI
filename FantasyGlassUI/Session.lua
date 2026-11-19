@@ -47,6 +47,8 @@ for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "PLAYER_XP_UPDATE", "QUEST_TURNED_
     pcall(ev.RegisterEvent, ev, e)
 end
 local questUntil, asked = 0, false
+-- (11.16) each count also goes to the lifetime stats, when they are on
+local function Count(k, n) if ns.LifetimeCount then pcall(ns.LifetimeCount, k, n or 1) end end
 ev:SetScript("OnEvent", ns:Guard("Session events", function(_, event, a, b)
     if event == "PLAYER_ENTERING_WORLD" then
         -- a /reload (or a quick relog) picks the session up where it left off
@@ -75,17 +77,21 @@ ev:SetScript("OnEvent", ns:Guard("Session events", function(_, event, a, b)
             if delta < 0 then delta = (S.lastMax - S.lastXP) + cur end       -- levelled up
             if delta > 0 then
                 S.xp = S.xp + delta
-                if GetTime() >= questUntil then S.kills = S.kills + 1 end    -- experience that didn't come from a quest
+                Count("xp", delta)
+                if GetTime() >= questUntil then S.kills = S.kills + 1; Count("kills") end    -- experience that didn't come from a quest
             end
         end
         S.lastXP, S.lastMax = cur, max
     elseif event == "QUEST_TURNED_IN" then
         S.quests = S.quests + 1
+        Count("quests")
         questUntil = GetTime() + 3
     elseif event == "PLAYER_DEAD" then
         S.deaths = S.deaths + 1
+        Count("deaths")
     elseif event == "PLAYER_LEVEL_UP" then
         S.levels = S.levels + 1
+        Count("levels")
         if played then played.level, played.levelAt = 0, GetTime() end
     elseif event == "PLAYER_LOGOUT" then                 -- also fires for /reload
         if type(FantasyGlassUIDB) == "table" and time then
@@ -95,6 +101,7 @@ ev:SetScript("OnEvent", ns:Guard("Session events", function(_, event, a, b)
     elseif event == "TIME_PLAYED_MSG" then
         if type(a) == "number" and type(b) == "number" then
             played = { total = a, level = b, at = GetTime(), levelAt = GetTime() }
+            if ns.LifetimePlayed then pcall(ns.LifetimePlayed, a) end
         end
         RestoreChat()
     end

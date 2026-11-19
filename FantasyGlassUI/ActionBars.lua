@@ -197,7 +197,9 @@ ns:NewModule("actionBars", function()
     end
     ns.StyleExtraButtons = ExtraButtons
     ns:Every(1, "Extra action button", ExtraButtons)
-    ns:Every(1, "Action button text", function() ns:ApplyBarText() end)      -- the switches take effect without a reload
+    -- (the switches apply when changed, and each button as it is skinned; this only catches the game
+    -- resetting a label, so it need not run every second)
+    ns:Every(10, "Action button text", function() ns:ApplyBarText() end)
 
     -- The panels are an option ("Frame behind action bars", Look tab) and start hidden: buttons on their
     -- own look cleaner, and a panel on a bar whose buttons are not laid out in a row shows as a stray line.

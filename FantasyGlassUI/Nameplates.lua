@@ -4,7 +4,7 @@ local Secret = function(v) return ns:IsSecret(v) end
 -- Nameplate designer (11.0.1): what a nameplate shows and how big, from the Bars and frames tab.
 -- Width and height are the game's own nameplate scale (plateW, plateH); the rest is ns.db.plateDesign.
 ns.PLATE_DEFAULT = { nameSize = 10, nameShow = true, healthPos = "CENTER", healthSize = 9, castHeight = 8, castTextSize = 8,
-                     auraSize = 18, auraMax = 5, auraMine = true, threat = true, threatEdge = true, highlight = true }
+                     auraSize = 18, auraMax = 5, auraMine = true, threat = true, threatEdge = true, highlight = true, questMarks = true }
 function ns.PlateDesign()
     local d = type(ns.db and ns.db.plateDesign) == "table" and ns.db.plateDesign or {}
     local out = {}
@@ -43,6 +43,7 @@ ns:NewModule("nameplates", function()
     function ns.PlateEdge(bar, badge, selected)
         if not bar then return end
         local t = rawget(bar, "scThreat")
+        bar = rawget(bar, "suiOwn") or bar                   -- (our own bar wears the colors)
         for _, rim in ipairs({ bar.suiBorder, badge and badge.suiBorder }) do
             if selected then ns:Paint(rim, "SetBackdropBorderColor", "@accent", 1)
             elseif t and rim == bar.suiBorder then ns:Unpaint(rim, "SetBackdropBorderColor"); rim:SetBackdropBorderColor(t[1], t[2], t[3], 1)
@@ -55,6 +56,7 @@ ns:NewModule("nameplates", function()
             else ns:Paint(edge, "SetVertexColor", "@rim", 0.55) end
         end
         bar.scEdgeShown = selected and "target" or (t and "threat") or "plain"
+        return bar
     end
     local function Marks(uf)
         local bar = uf.healthBar or uf.healthbar or (uf.HealthBarsContainer and uf.HealthBarsContainer.healthBar)
@@ -75,55 +77,67 @@ ns:NewModule("nameplates", function()
         ns.PlateEdge(bar, badge, selected)
     end
 
-    -- (11.14) The game tints the background behind a plate's health in the bar's own color (red on an
-    -- enemy, so the bar and what is behind it ran together). Ours is black, whatever the game says.
-    local function Blacken(t)
-        if t.suiBlacking then return end
-        t.suiBlacking = true
-        pcall(t.SetVertexColor, t, 0.04, 0.04, 0.05, 0.85)
-        t.suiBlacking = nil
-    end
-    function ns.PlateBlackBackground(t)
-        if not IsTexture(t) or t.suiBlack then return end
-        t.suiBlack = true
-        Blacken(t)
+    -- (11.16) Our own nameplate: the game's health bar is kept running but out of sight, and a bar of
+    -- our own stands in its place - our texture, a black backing (the game's tinted its backing in the
+    -- bar's own color, so a red bar sat on red), our rim or the Starcut cut. Whatever the game puts on
+    -- its bar - the health, its color - is passed straight on to ours, hidden values included.
+    function ns.PlateOwnBar(uf, bar)
+        if type(bar) ~= "table" or rawget(bar, "suiOwn") then return rawget(bar, "suiOwn") end
+        local own = ns:NewStatusBar(uf, true)
+        own:SetAllPoints(bar)
+        own:SetFrameLevel((bar.GetFrameLevel and bar:GetFrameLevel() or 1) + 1)
+        if own.bg then own.bg:SetVertexColor(0.04, 0.04, 0.05, 0.9) end
+        ns:AddBorder(own, 0, 0, 0, 1)
+        ns:StarcutStyleBar(own, false)
+        bar.suiOwn = own
+        local okMM, lo, hi = pcall(bar.GetMinMaxValues, bar)
+        if okMM then pcall(own.SetMinMaxValues, own, lo, hi) end
+        local okV, v = pcall(bar.GetValue, bar)
+        if okV then pcall(own.SetValue, own, v) end
+        local okC, r, g, b = pcall(bar.GetStatusBarColor, bar)
+        if okC and type(r) == "number" then pcall(own.SetStatusBarColor, own, r, g, b) end
         if hooksecurefunc then
-            for _, m in ipairs({ "SetVertexColor", "SetColorTexture", "SetAtlas", "SetTexture" }) do
-                if t[m] then hooksecurefunc(t, m, Blacken) end
-            end
+            hooksecurefunc(bar, "SetMinMaxValues", function(_, a, z) pcall(own.SetMinMaxValues, own, a, z) end)
+            hooksecurefunc(bar, "SetValue", function(_, x) pcall(own.SetValue, own, x) end)
+            hooksecurefunc(bar, "SetStatusBarColor", function(_, cr, cg, cb) pcall(own.SetStatusBarColor, own, cr, cg, cb) end)
+            -- where the game shows only a name (friendly plates), its bar is hidden: ours goes with it
+            hooksecurefunc(bar, "Show", function() own:Show() end)
+            hooksecurefunc(bar, "Hide", function() own:Hide() end)
+            if bar.SetShown then hooksecurefunc(bar, "SetShown", function(_, on) own:SetShown(on and true or false) end) end
         end
+        local okS, shown = pcall(bar.IsShown, bar)
+        if okS and shown == false then own:Hide() end
+        ns:Kill(bar)                                           -- (the game's bar: out of sight, still running)
+        return own
     end
+    -- Our level, in the game's difficulty color, just left of the name ("??" for a boss).
+    local function PlateLevel(uf, unit)
+        if not (uf.name and uf.name.GetParent) then return end
+        local t = rawget(uf, "suiLevel")
+        if not t then
+            t = ns:NewText(uf, ns.PlateDesign().nameSize, "RIGHT", true)
+            t:SetPoint("RIGHT", uf.name, "LEFT", -3, 0)
+            if t.SetShadowOffset then t:SetShadowOffset(1, -1); t:SetShadowColor(0, 0, 0, 1) end
+            uf.suiLevel = t
+        end
+        local ok, lvl = pcall(UnitLevel, unit)
+        if not ok or type(lvl) ~= "number" or Secret(lvl) or not ns.PlateDesign().nameShow then t:SetText(""); return end
+        if lvl < 0 then t:SetText("??"); t:SetTextColor(1, 0.25, 0.2); return end
+        t:SetText(lvl)
+        local c = GetCreatureDifficultyColor and select(2, pcall(GetCreatureDifficultyColor, lvl))
+        if type(c) == "table" and c.r then t:SetTextColor(c.r, c.g, c.b) else t:SetTextColor(1, 0.82, 0.3) end
+    end
+    ns.PlateLevel = PlateLevel
 
     local function Skin(uf)
         if not Usable(uf) then return end
         local bar = HealthBar(uf)
         if bar and not bar.suiSkinned then
             bar.suiSkinned = true
-            bar:SetStatusBarTexture(ns.BAR or ns.FLAT)
-            ns:Kill(bar.border)
-            ns:AddBorder(bar, 0, 0, 0, 1)
-            -- the frame style: Starcut cuts the bar to points, with what the game draws on it (its
-            -- background, heal prediction and absorbs); no glow, as plates come by the dozen
-            local also = {}
-            pcall(function()
-                for _, r in ipairs({ bar:GetRegions() }) do
-                    if IsTexture(r) and r ~= bar:GetStatusBarTexture() then
-                        also[#also + 1] = r
-                        if r:GetDrawLayer() == "BACKGROUND" then ns.PlateBlackBackground(r) end
-                    end
-                end
-                for _, k in ipairs({ "background", "Background", "bgTexture", "bg" }) do       -- (and by its usual names)
-                    if IsTexture(bar[k]) then ns.PlateBlackBackground(bar[k]) end
-                end
-            end)
-            bar.scAlso = also
-            ns:StarcutStyleBar(bar, false)
+            ns.PlateOwnBar(uf, bar)
         end
-        local badge = uf.PlayerLevelDiffFrame                  -- the level badge beside the bar
-        if type(badge) == "table" and badge.CreateTexture and not badge.suiBorder then
-            ns:AddBorder(badge, 0, 0, 0, 1, 0)                 -- the same rim as the bar, recolored on selection
-            if type(badge.playerLevelDiffText) == "table" and badge.playerLevelDiffText.SetFont then ns:Font(badge.playerLevelDiffText, 10) end
-        end
+        local badge = uf.PlayerLevelDiffFrame                  -- the game's level badge: ours is beside the name
+        if type(badge) == "table" and badge.SetAlpha and not badge.suiKilled then ns:Kill(badge) end
         if bar then
             plates[uf] = nil                                   -- a reused plate: look at its selection afresh
             pcall(ShowSelection, uf)
@@ -411,6 +425,97 @@ ns:NewModule("nameplates", function()
         elseif pd.healthPos == "RIGHT" then h.text:SetPoint("RIGHT", h, "RIGHT", -3, 0); h.text:SetJustifyH("RIGHT")
         else h.text:SetPoint("CENTER", h, "CENTER", 0, 0); h.text:SetJustifyH("CENTER") end
     end
+    -- Quest mobs (11.15): a small mark at the left of the plate of a mob you still need for a quest,
+    -- with how many are left. Read from the unit's tooltip, where the game lists the objectives it
+    -- counts toward ("Defias Thug slain: 3/8"); where the game hides those lines, nothing is shown.
+    local questMarks = {}
+    local scanTip
+    local function TooltipLines(unit)
+        local out = {}
+        if C_TooltipInfo and C_TooltipInfo.GetUnit then
+            local ok, data = pcall(C_TooltipInfo.GetUnit, unit)
+            if ok and type(data) == "table" and type(data.lines) == "table" then
+                for _, l in ipairs(data.lines) do
+                    if type(l) == "table" and type(l.leftText) == "string" and not ns:IsSecret(l.leftText) then out[#out + 1] = l.leftText end
+                end
+                return out
+            end
+        end
+        if not scanTip then
+            scanTip = CreateFrame("GameTooltip", "FantasyGlassUIQuestScan", nil, "GameTooltipTemplate")
+        end
+        if not (scanTip.SetOwner and scanTip.SetUnit) then return out end
+        scanTip:SetOwner(WorldFrame, "ANCHOR_NONE")
+        if not pcall(scanTip.SetUnit, scanTip, unit) then return out end
+        for i = 2, math.min(12, scanTip:NumLines() or 0) do
+            local fs = _G["FantasyGlassUIQuestScanTextLeft" .. i]
+            local t = fs and fs.GetText and fs:GetText()
+            if type(t) == "string" and not ns:IsSecret(t) then out[#out + 1] = t end
+        end
+        scanTip:Hide()
+        return out
+    end
+    -- How many are still needed, from the lines: "3/8" counts 5; a "40%" counts as 1 until it is done.
+    function ns.PlateQuestLeft(lines)
+        local left, any = 0, false
+        for _, t in ipairs(lines or {}) do
+            local have, need = t:match("(%d+)%s*/%s*(%d+)")
+            have, need = tonumber(have), tonumber(need)
+            if have and need and need > 0 and need <= 250 then
+                any = true
+                if have < need then left = left + (need - have) end
+            else
+                local pct = tonumber(t:match("(%d+)%%%s*$") or t:match("%((%d+)%%%)"))
+                if pct and t:find("^%s*%-") then any = true; if pct < 100 then left = left + 1 end end
+            end
+        end
+        return any and left or nil
+    end
+    local function PlateQuest(plate, uf, unit)
+        if not Usable(plate) then return end
+        local q = questMarks[plate]
+        if not unit or not ns.PlateDesign().questMarks then if q then q:Hide() end return end
+        local okA, attackable = pcall(UnitCanAttack, "player", unit)
+        local okP, isPlayer = pcall(UnitIsPlayer, unit)
+        if not (okA and attackable == true) or (okP and isPlayer == true) then if q then q:Hide() end return end
+        local left = ns.PlateQuestLeft(TooltipLines(unit))
+        if not left or left <= 0 then if q then q:Hide() end return end
+        if not q then
+            local hb = HealthBar(uf)
+            if not hb then return end
+            q = CreateFrame("Frame", nil, plate)
+            q:SetSize(30, 14)
+            q:SetPoint("RIGHT", hb, "LEFT", -3, 0)
+            q:SetFrameLevel((hb:GetFrameLevel() or 1) + 4)
+            q.icon = q:CreateTexture(nil, "OVERLAY")
+            q.icon:SetSize(12, 12)
+            q.icon:SetPoint("RIGHT")
+            if not pcall(q.icon.SetAtlas, q.icon, "QuestNormal") then q.icon:SetTexture("Interface\\GossipFrame\\AvailableQuestIcon") end
+            q.text = ns:NewText(q, 10, "RIGHT", true)
+            q.text:SetPoint("RIGHT", q.icon, "LEFT", -1, 0)
+            q.text:SetTextColor(1, 0.82, 0.25)
+            if q.text.SetShadowOffset then q.text:SetShadowOffset(1, -1); q.text:SetShadowColor(0, 0, 0, 1) end
+            questMarks[plate] = q
+        end
+        q.text:SetText(tostring(left))
+        q.left = left
+        q:Show()
+    end
+    ns.plateQuestTest = { PlateQuest = PlateQuest, marks = questMarks }
+    local questDirty = false
+    local qev = CreateFrame("Frame")
+    for _, e in ipairs({ "QUEST_LOG_UPDATE", "UNIT_QUEST_LOG_CHANGED", "QUEST_WATCH_UPDATE" }) do pcall(qev.RegisterEvent, qev, e) end
+    qev:SetScript("OnEvent", function() questDirty = true end)
+    ns:Every(0.5, "Nameplate quest mobs", function()          -- (the log changes in bursts: one look after them)
+        if not questDirty or not (C_NamePlate and C_NamePlate.GetNamePlates) then return end
+        questDirty = false
+        for _, plate in ipairs(C_NamePlate.GetNamePlates()) do
+            local uf = plate.UnitFrame
+            local unit = uf and (rawget(uf, "unit") or uf.unit)
+            if type(unit) == "string" and not ns:IsSecret(unit) then pcall(PlateQuest, plate, uf, unit) end
+        end
+    end)
+
     local function PlateHealth(plate, uf, unit)
         if not Usable(plate) then return end
         local h = healthTexts[plate]
@@ -526,13 +631,16 @@ ns:NewModule("nameplates", function()
             local uf = plate and plate.UnitFrame
             if uf then
                 Skin(uf); Color(uf)
+                pcall(PlateLevel, uf, unit)
                 if extrasOn then Attach(plate, uf, unit) end
                 PlateHealth(plate, uf, unit)
+                pcall(PlateQuest, plate, uf, unit)
             end
         elseif event == "NAME_PLATE_UNIT_REMOVED" then
             local plate = C_NamePlate.GetNamePlateForUnit(unit)
             Detach(plate)
             if plate and healthTexts[plate] then PlateHealth(plate, plate.UnitFrame, nil) end
+            if plate and questMarks[plate] then questMarks[plate]:Hide() end
         elseif C_NamePlate.GetNamePlates then
             for _, plate in ipairs(C_NamePlate.GetNamePlates()) do
                 if plate.UnitFrame then Color(plate.UnitFrame) end

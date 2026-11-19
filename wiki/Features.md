@@ -1,6 +1,6 @@
 # Features
 
-Every switch on the **Features** tab (`/fgui`, Features), in its section, with what it does and whether it is on when you first install. Version 11.14.0.
+Every switch on the **Features** tab (`/fgui`, Features), in its section, with what it does and whether it is on when you first install. Version 11.16.0.
 
 The search box at the top of the options finds any of them, and pointing at a switch shows what it does.
 
@@ -57,11 +57,14 @@ The search box at the top of the options finds any of them, and pointing at a sw
 | Cooldown timeline | off | The abilities on your cooldown tracker list sliding along one slim bar towards ready, with the last seconds stretched out so they are easy to read. In a fight the game may hide cooldowns: those wait at the right end with the game's own sweep. |
 | Cooldown pulse | on | When an ability on the cooldown tracker comes off cooldown, its icon appears in the middle of the screen for a moment. Choose the abilities on the Combat tab; place the pulse in move mode. |
 | Buff alerts | on | A large icon when a buff you chose is on you. Set it up on the Combat tab. |
-| Loot browser: what bosses drop | on | Notes what each boss drops as you kill it in raids and dungeons - from your loot window, the loot rolls and what anyone in your group loots - shared by all your characters. /fgui drops shows it, raid by raid and boss by boss, with the upgrades for you first. On clients with the dungeon journal, its loot lists are there too. |
+| Loot browser: what bosses drop | on | Notes what each boss drops as you kill it in raids and dungeons - from your loot window, the loot rolls and what anyone in your group loots - shared by all your characters. /fgui drops shows it, raid by raid and boss by boss, with the upgrades for you first. On clients with the dungeon journal, its loot lists are there too. Click an item to star it for your wishlist (/fgui wish): you are told when it drops or comes up in a roll. |
+| Boss tooltips: what it drops for me | on | Point at a boss and its tooltip lists what it drops that is on your wishlist or would be an upgrade for you, with how often you have seen it drop. From the loot browser's book (and the dungeon journal where the game has one). |
 | Threat meter (in groups) | on | A small panel of its own: in a group, with a hostile target, who has how much threat on it, most first, up to five of you. Your row turns the warning color near the top and the danger color when you would pull the target. Works without the damage meter. Move it with /fgui move. |
 | Farming sessions (/fgui farm) | on | /fgui farm starts a session: a small panel shows the time and what you make an hour, in gold and in the items you loot (the auction price you have seen, or the vendor's). /fgui farm again lists every item; /fgui farm stop ends it, and the session counts in your weekly recap. |
 | Run log: dungeon and raid times (/fgui runs) | on | Each dungeon and raid you go into is a run: how long it took, the bosses killed and when, the wipes on each, your deaths and your rare and better loot. /fgui runs lists them place by place, each with its best time (the quickest of the runs that killed the most bosses). Stepping out to repair is still the same run. |
 | Whose upgrade: boss drops in a group | on | When a boss drops something rare or better, the players in your group who use Fantasy Glass UI each work out whether it is an upgrade for them and quietly tell the others. A small panel says whose upgrade it is and by how many item levels, before anyone rolls. Nothing is said in chat. Move it with /fgui move. |
+| Group gear check (/fgui gear) | on | /fgui gear lists everyone in your party or raid with their item level, the lowest first, and the group's average. The game sends another player's gear one player at a time and only within reach, so the list fills in while it is open; it never asks during a fight or while your own inspect window is open. |
+| Lifetime stats (/fgui stats) | on | /fgui stats: one page of totals for this character and for all of them together - time played, levels, quests, kills, deaths, gold made and spent, items looted, bosses killed, dungeon and raid runs with their best times, and time spent farming. The counts start the day this version first runs. |
 | Damage meter (if available) | on | A damage and healing meter, on clients that share those totals. Views: damage and healing per second, damage and healing done, damage taken, absorbs, interrupts, dispels and deaths. Click its heading (or roll the mouse wheel over it) for the next view, right-click for this fight, overall or an earlier fight, Shift-right-click to reset. Point at a row for that player's abilities. Your own row has a white edge. Under the bars: who has how much threat on your target when you are in a group. |
 | Damage meter: drawer on the chat box | on | The damage meter comes out of the side of the chat box, as tall as the chat box. The small tab on its edge tucks it away and brings it out again (so does /fgui meter). Switch this off to have the meter as a window of its own that you place in move mode. |
 | Damage meter: open in combat | off | The meter's drawer comes out by itself when a fight starts and tucks itself away eight seconds after it ends. Open or close it yourself and it is left as you set it. Needs the drawer on the chat box. |
@@ -83,7 +86,7 @@ The search box at the top of the options finds any of them, and pointing at a sw
 | Focus cast alert | off | A sound and a line in the middle of the screen when an enemy you have as your focus starts a cast. |
 | Execute line on the target | off | A thin line on the target's health bar at a percentage you choose, 20 unless you change it with /fgui execute. |
 | Loss-of-control alert | off | A large icon with a countdown while you are stunned, silenced, feared or otherwise not in control. Place it in move mode. |
-| Boss and dungeon timer | off | A small panel with the time on the current boss and the time since you entered the dungeon or raid. When a boss dies you are told the time and your best. |
+| Boss and dungeon timer | off | A small panel with the time on the current boss and the time since you entered the dungeon or raid. When a boss dies you are told the time and your best, from the run log (/fgui runs), so the two always agree. |
 | Keys for my best potion and food | on | Two key bindings (the game's Key Bindings, under AddOns): one always uses a healthstone or your best healing potion, the other eats and drinks your best food. Kept up to date as your bags change, between fights. |
 | Travel bar | off | Your hearthstone and every teleport or portal you know, on one bar with their cooldowns. Place it in move mode. |
 | Home key (best way home) | on | A key binding (Key Bindings, AddOns) for the best way home that is ready: your hearthstone, then Astral Recall, then a teleport. /fgui home says which it would use. |
@@ -175,6 +178,7 @@ The search box at the top of the options finds any of them, and pointing at a sw
 | Guild and friend notices | off | The guild message of the day as a notice when you log in or it changes, and a notice when a friend or guild mate comes online. |
 | Boss kill & achievement screenshots | off | Takes a screenshot when a boss dies and when you earn an achievement. |
 | Loot roll frames | on | Our Need / Greed / Pass frames when loot is rolled for. |
+| Loot rolls: light the button to press | on | On the loot roll frames, the button to press lights up and the reason shows beside the item: Need for an item on your wishlist or an upgrade for you (with by how many item levels), Pass for gear you can't use, Greed for the rest. Nothing is ever rolled for you. |
 | Tell me when an update is out | on | People in your guild or group who also run Fantasy Glass UI tell each other which version they have. If someone has a newer one, you are told once. Only the version number is sent, and nothing during combat. |
 | AFK screen | off | While you are away: the interface fades, the camera drifts, and a panel shows session statistics. |
 | Screenshot on level up | off | Takes a screenshot each time you gain a level. |

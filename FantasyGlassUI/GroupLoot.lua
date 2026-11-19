@@ -98,12 +98,21 @@ ns:NewModule("groupLoot", function()
             if not (self.link and GameTooltip) then return end
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             pcall(GameTooltip.SetHyperlink, GameTooltip, self.link)
+            GameTooltip:AddLine(ns:Tr("Right-click to put this list away."), 0.6, 0.65, 0.75)
             GameTooltip:Show()
         end)
         r:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+        r:SetScript("OnMouseUp", function(_, button) if button == "RightButton" then f:GetScript("OnMouseUp")(f, button) end end)
         r:Hide()
         f.rows[i] = r
     end
+    -- (11.14.1) Right-click puts the list away until the next drop.
+    f:EnableMouse(true)
+    f:SetScript("OnMouseUp", function(_, button)
+        if button ~= "RightButton" then return end
+        for id in pairs(heard) do heard[id] = nil end
+        f:Hide()
+    end)
     f:Hide()
     local entry = ns:RegisterMovable(f, "groupLoot", "Whose upgrade")
     if type(entry) == "table" then entry.offPage = true end        -- (scaled from its own right-click menu in move mode)
@@ -131,7 +140,7 @@ ns:NewModule("groupLoot", function()
             if it then
                 n = i
                 row.link = it.e.link
-                row.item:SetText(tostring(it.e.link or LinkFor(it.id)))
+                row.item:SetText(((ns.LootWished and ns.LootWished(it.id)) and (ns.LOOT_STAR .. " ") or "") .. tostring(it.e.link or LinkFor(it.id)))
                 local list, answered = ns.GroupLootWho(it.e)
                 if #list == 0 then
                     row.who:SetText("|cff9aa4b4" .. format(ns:TrN(answered, "An upgrade for no one (%d player with the add-on).", "An upgrade for no one (%d players with the add-on)."), answered) .. "|r")

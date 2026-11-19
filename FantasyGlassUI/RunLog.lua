@@ -9,6 +9,10 @@ local Secret = function(v) return ns:IsSecret(v) end
 --
 -- A run starts when you go in and ends when you have been out for 15 minutes, or go into somewhere
 -- else (stepping out to repair is still the same run). A /reload keeps it going.
+--
+-- 11.16: the one record of best times. Each kill also keeps how long the fight itself took, and the
+-- boss timer's "new best" lines (a boss, a finished dungeon) are measured against this log, so
+-- they agree with /fgui runs.
 ------------------------------------------------------------------------------------------
 local KEEP, AWAY = 100, 900
 
@@ -37,13 +41,22 @@ ns.RunKills = Kills
 
 -- What happens in a run (the tests call these directly).
 function ns.RunNew(instance, difficulty, now, char)
-    return { instance = instance, difficulty = difficulty, start = now, char = char, kills = {}, wipes = {}, deaths = 0, loot = {} }
+    return { instance = instance, difficulty = difficulty, start = now, char = char, kills = {}, wipes = {}, deaths = 0, loot = {}, fights = {} }
+end
+-- A pull: when the fight began, so a kill can say how long it took.
+function ns.RunPull(r, boss, now)
+    if type(r) ~= "table" or type(boss) ~= "string" then return end
+    r.pulls = type(r.pulls) == "table" and r.pulls or {}
+    r.pulls[boss] = now
 end
 function ns.RunEncounter(r, boss, success, now)
     if type(r) ~= "table" or type(boss) ~= "string" then return end
     if success then
         if not r.kills[boss] then r.kills[boss] = now - (tonumber(r.start) or now) end
         r.lastKill = now
+        local pulled = type(r.pulls) == "table" and r.pulls[boss]
+        r.fights = type(r.fights) == "table" and r.fights or {}
+        if pulled and not r.fights[boss] then r.fights[boss] = now - pulled end
     else
         r.wipes[boss] = (tonumber(r.wipes[boss]) or 0) + 1
     end
@@ -63,6 +76,22 @@ function ns.RunFinish(log, r)
     while #log > KEEP do table.remove(log, 1) end
     return true
 end
+-- The quickest kill of `boss` in `instance` among the finished runs (seconds), or nil.
+function ns.RunBossBest(log, instance, boss)
+    local best
+    for _, r in ipairs(type(log) == "table" and log or {}) do
+        local f = type(r) == "table" and r.instance == instance and type(r.fights) == "table" and tonumber(r.fights[boss])
+        if f and (not best or f < best) then best = f end
+    end
+    return best
+end
+-- The best time for a place (the quickest of its runs with the most kills), or nil.
+function ns.RunPlaceBest(log, instance)
+    for _, p in ipairs(ns.RunPlaces(log)) do
+        if p.instance == instance and p.best then return ns.RunLength(p.best), p.bestKills end
+    end
+end
+function ns.RunLogged() local root = Root(); return root and root.runs or {} end
 -- Each place: { instance, runs, best (the run), bestKills }. Best: the quickest of the runs with the most kills.
 function ns.RunPlaces(log)
     local by = {}
@@ -139,6 +168,11 @@ function ns.RunLines(state)
     for _, e in ipairs(bosses) do
         local w = tonumber(r.wipes[e.b]) or 0
         local right = e.at and (ns:SignalHex("good") .. Clock(e.at) .. "|r") or (ns:SignalHex("bad") .. ns:Tr("not killed") .. "|r")
+        local fight = type(r.fights) == "table" and tonumber(r.fights[e.b])
+        if fight then
+            local best = ns.RunBossBest(log, r.instance, e.b)
+            right = right .. "   |cff9aa4b4" .. format(ns:Tr("fight %s"), Clock(fight)) .. ((best and best < fight) and ("  " .. format(ns:Tr("best %s"), Clock(best))) or "") .. "|r"
+        end
         if w > 0 then right = right .. "   |cff9aa4b4" .. format(ns:TrN(w, "%d wipe", "%d wipes"), w) .. "|r" end
         lines[#lines + 1] = { left = "    " .. e.b, right = right }
     end
@@ -187,12 +221,14 @@ ns:NewModule("runLog", function()
     end
     local patterns = ns.LootPatterns({ LOOT_ITEM_SELF_MULTIPLE or "You receive loot: %sx%d.", LOOT_ITEM_SELF or "You receive loot: %s." })
     local ev = CreateFrame("Frame")
-    for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA", "ENCOUNTER_END", "PLAYER_DEAD", "CHAT_MSG_LOOT" }) do pcall(ev.RegisterEvent, ev, e) end
+    for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA", "ENCOUNTER_START", "ENCOUNTER_END", "PLAYER_DEAD", "CHAT_MSG_LOOT" }) do pcall(ev.RegisterEvent, ev, e) end
     ev:SetScript("OnEvent", ns:Guard("Run log", function(_, event, a, b, _, _, e)
         if event == "PLAYER_ENTERING_WORLD" or event == "ZONE_CHANGED_NEW_AREA" then Where() return end
         local r = Mine()
         if not r or r.left then return end
-        if event == "ENCOUNTER_END" then
+        if event == "ENCOUNTER_START" then
+            if type(b) == "string" and not Secret(b) then ns.RunPull(r, b, Now()) end
+        elseif event == "ENCOUNTER_END" then
             if type(b) == "string" and not Secret(b) then ns.RunEncounter(r, b, e == 1 or e == true, Now()) end
         elseif event == "PLAYER_DEAD" then
             r.deaths = (tonumber(r.deaths) or 0) + 1

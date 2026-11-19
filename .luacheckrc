@@ -423,6 +423,7 @@ read_globals = {
     "EJ_SelectInstance",
     "EJ_SelectTier",
     "GetLootSlotLink",
+    "ClearInspectPlayer", "CanInspect", "NotifyInspect",
     "LOOT_ITEM",
     "LOOT_ITEM_MULTIPLE",
     "RANDOM_ROLL_RESULT",

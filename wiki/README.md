@@ -2,7 +2,7 @@
 
 A complete interface in one add-on for **WoW Forever**: unit frames, action bars, raid frames, nameplates, bags, quests, minimap, chat and every one of the game's own windows, in one look you choose from 114 glass, fantasy and celestial themes.
 
-**Current version: 11.14.0.** [Download on CurseForge](https://www.curseforge.com/wow/addons/fantasy-glass-ui).
+**Current version: 11.16.0.** [Download on CurseForge](https://www.curseforge.com/wow/addons/fantasy-glass-ui).
 
 ## Start here
 - [Installation](Installation)
@@ -14,8 +14,8 @@ A complete interface in one add-on for **WoW Forever**: unit frames, action bars
 - [Commands](Commands): every `/fgui` command, in groups
 - [Keys and Shortcuts](Keys-and-Shortcuts): key bindings, the minimap button, the Tools menu and the help window
 - [Player Tooltips](Player-Tooltips): choose every line of a player's tooltip (new in 11.10.0)
-- [Getting Started: Starcut frames](Getting-Started#4-choose-your-look): the new look for your frames, bars, buttons and bags (11.12 to 11.14)
-- [Getting Started: what is new in 11.13 and 11.14](Getting-Started#7-tools-at-your-fingertips): screenshot mode, the loot browser, the threat meter, farming by zone, the run log, whose upgrade, goals and gear set keys
+- [Getting Started: Starcut frames](Getting-Started#4-choose-your-look): the new look for your frames, bars, buttons, bags, windows and tooltips (11.12 to 11.15)
+- [Getting Started: what is new in 11.13 to 11.16](Getting-Started#7-tools-at-your-fingertips): roll advice, the group gear check, lifetime stats, the loot wishlist, quest mobs on nameplates, screenshot mode, the loot browser, the threat meter, farming by zone, the run log, whose upgrade, goals and gear set keys
 - [Backups and Undo](Backups-and-Undo): undo, history, backups, reset and safe mode
 
 ## Help

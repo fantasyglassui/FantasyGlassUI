@@ -44,8 +44,11 @@ Mistype one and the add-on suggests the nearest command instead.
 | `/fgui testgroup` | group practice: made-up group mates, to see group cooldowns, the interrupt rotation and buff coverage alone |
 | `/fgui showcase` | screenshot mode: every frame with sample data and nothing in the way; again to end |
 | `/fgui drops [raid]` | the loot browser: what each boss dropped, with the upgrades for you first |
+| `/fgui wish` | your wishlist: the items you starred in the loot browser, and where each drops |
 | `/fgui farm [stop\|zones]` | a farming session: time, and gold and item value an hour; again to see it, stop to end it, zones for your best spots |
 | `/fgui threat` | show or hide the threat meter |
+| `/fgui stats` | lifetime stats: time played, quests, kills, deaths, gold, loot, bosses and runs, for this character and all of them |
+| `/fgui gear` | everyone in your group with their item level, the lowest first, and the group's average |
 | `/fgui runs` | your dungeon and raid runs: times, bosses, wipes, deaths and loot, with the best time for each place |
 | `/fgui set [name]` | put on a gear set by name (part of the name will do); on its own, the list of your sets |
 | `/fgui raidsort role` | order the raid frames by group, role or name |

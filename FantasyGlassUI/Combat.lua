@@ -164,7 +164,12 @@ ns:NewModule("cooldowns", function()
     ns:RebuildCooldowns()
     -- The game says when a cooldown starts, but not when one finishes. So the row is also looked at a
     -- few times a second; otherwise an icon stays gray until something else happens to prompt a look.
-    ns:Every(0.2, "Cooldown tracker", function() if #active > 0 then Refresh() end end)
+    -- (11.14.1: only while one is counting down; a row that is all ready waits for the game's events)
+    ns:Every(0.2, "Cooldown tracker", function()
+        for _, b in ipairs(active) do
+            if b.state ~= "ready" then Refresh() return end
+        end
+    end)
     ns:RegisterMovable(holder, "cooldowns", "Cooldown tracker")
 end)
 

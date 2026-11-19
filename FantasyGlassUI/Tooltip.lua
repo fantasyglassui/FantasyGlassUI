@@ -17,7 +17,9 @@ ns:NewModule("tooltip", function()
         -- small gold brackets on Fantasy, small star points on Celestial, none on Glass
         if pcall(ns.PaintPanel, ns, tip, 0.94, true) and tip.suiRim then
             tip.suiPanel = true
-            pcall(ns.Corners, ns, tip, tip, 12, 1)
+            local okC, made = pcall(ns.Corners, ns, tip, tip, 12, 1)
+            if okC then tip.suiCorners = made end
+            if ns.StarcutWindow then ns.StarcutWindow(tip, "tip") end      -- (Starcut: its corners cut, small)
         elseif type(nine) == "table" and nine.SetAlpha then nine:SetAlpha(1) end          -- (could not paint: the game's frame stays)
         return tip.suiPanel
     end

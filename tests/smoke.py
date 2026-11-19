@@ -8113,15 +8113,128 @@ try("Whose upgrade: answers in, biggest upgrade first", function()
     end
     ns.groupLootHeard[777] = nil
 end)
-try("Nameplates: the background behind the health stays black", function()
-    if type(ns.PlateBlackBackground) ~= "function" then return end
-    local t = env.CreateFrame("Frame"):CreateTexture()
-    local last
-    rawset(t, "SetVertexColor", function(self, r, g, b) last = { r, g, b } end)
-    rawset(t, "IsObjectType", function(_, kind) return kind == "Texture" end)
-    rawset(t, "GetObjectType", function() return "Texture" end)
-    ns.PlateBlackBackground(t)
-    if not last or last[1] > 0.1 then error("the background was not made black") end
+try("Nameplates: our own bar stands in for the game's, and takes what the game puts on it", function()
+    if type(ns.PlateOwnBar) ~= "function" then return end
+    local uf = env.CreateFrame("Frame")
+    local bar = env.CreateStatusBar and env.CreateStatusBar() or env.CreateFrame("StatusBar")
+    local own = ns.PlateOwnBar(uf, bar)
+    if not own or rawget(bar, "suiOwn") ~= own then error("no bar of our own") end
+    if ns.PlateOwnBar(uf, bar) ~= own then error("a second bar was made for the same plate") end
+    if rawget(bar, "suiKilled") ~= true then error("the game's bar is still in sight") end
+    local got
+    rawset(own, "SetStatusBarColor", function(_, r) got = r end)
+    bar:SetStatusBarColor(0.9, 0.1, 0.1)
+    if env.hooksecurefunc and got ~= nil and got ~= 0.9 then error("the color was not passed on") end
+end)
+try("Loot wishlist: star, call out, where it drops, and the boss's own tooltip", function()
+    if type(ns.LootWishToggle) ~= "function" then error("no wishlist") end
+    local link = "|cffa335ee|Hitem:424243::::::::60:::::|h[Sapphiron Drape]|h|r"
+    ns.root.lootWish = {}
+    if ns.LootWishToggle(link) ~= true or not ns.LootWished(424243) then error("not starred") end
+    ns.root.lootBook = ns.root.lootBook or {}
+    ns.root.lootBook["Test Lair"] = { ["Test Dragon"] = { kills = 3, items = { [424243] = { n = 2, link = link } } } }
+    local where = ns.LootWhereFrom(424243)
+    if not where[1] or where[1].boss ~= "Test Dragon" or where[1].n ~= 2 then error("where it drops is wrong") end
+    local forBoss = ns.LootForBoss("Test Dragon", true)
+    if not forBoss[1] or not forBoss[1].wish then error("the boss does not list the wished item") end
+    if ns:ShowWishlist() ~= 1 then error("the wishlist window is wrong") end
+    if ns.lootBookTest and ns.lootBookTest.CallOut then ns.lootBookTest.CallOut(link, "drop") end
+    if ns.lootBookTest and ns.lootBookTest.OnUnit then
+        local added = 0
+        local tip = { GetUnit = function() return "Test Dragon", "target" end, AddLine = function() added = added + 1 end,
+                      AddDoubleLine = function() added = added + 1 end, Show = function() end }
+        local realName, realAtt = env.UnitName, env.UnitCanAttack
+        env.UnitName = function() return "Test Dragon" end
+        env.UnitCanAttack = function() return true end
+        ns.lootBookTest.OnUnit(tip)
+        env.UnitName, env.UnitCanAttack = realName, realAtt
+        if added < 2 then error("the boss tooltip added " .. added .. " lines") end
+    end
+    if ns.LootWishToggle(link) ~= false then error("not let go") end
+    ns.root.lootBook["Test Lair"] = nil
+end)
+try("Nameplates: quest mobs counted from their objectives", function()
+    if type(ns.PlateQuestLeft) ~= "function" then return end
+    if ns.PlateQuestLeft({ "Defias Thug", "Level 10", " - Defias Thug slain: 3/8" }) ~= 5 then error("3/8 should leave 5") end
+    if ns.PlateQuestLeft({ " - Thugs slain: 8/8" }) ~= 0 then error("a finished objective should leave 0") end
+    if ns.PlateQuestLeft({ "Kobold Miner", "Level 4" }) ~= nil then error("a mob with no objective was marked") end
+    if ns.PlateQuestLeft({ " - Explore the mine (40%)" }) ~= 1 then error("a percent objective should count") end
+end)
+try("Starcut windows: corners cut where masks slice, the rim along the cut, put back by Classic", function()
+    if type(ns.StarcutWindow) ~= "function" then error("no window cut") end
+    local realStyle = ns.db.ufStyle
+    ns.db.ufStyle = "STARCUT"
+    local f = env.CreateFrame("Frame", nil, env.UIParent)
+    f:SetSize(400, 300)
+    rawset(f, "CreateMaskTexture", function() local m = newmock(); rawset(m, "SetTextureSliceMargins", function() end); return m end)
+    local bg = f:CreateTexture(nil, "BACKGROUND")
+    rawset(bg, "GetObjectType", function() return "Texture" end)
+    rawset(bg, "GetDrawLayer", function() return "BACKGROUND" end)
+    local masked = 0
+    rawset(bg, "AddMaskTexture", function() masked = masked + 1 end)
+    rawset(f, "GetRegions", function() return bg end)
+    local was = ns.StarcutCanSlice()
+    ns.StarcutCanSlice(true)
+    ns.StarcutWindow(f)
+    if rawget(f, "scCut") ~= true or masked ~= 1 then error("the window was not cut (" .. masked .. ")") end
+    ns.db.ufStyle = "CLASSIC"; ns:ApplyFrameStyle()
+    if rawget(f, "scCut") ~= nil then error("Classic did not put the corners back") end
+    ns.StarcutCanSlice(true)
+    if was ~= nil then ns.StarcutWindow(env.CreateFrame("Frame")) end     -- (back to what this client says)
+    ns.db.ufStyle = realStyle; ns:ApplyFrameStyle()
+end)
+try("Roll advice: need on a wish or an upgrade, pass on gear you can't use, greed for the rest", function()
+    if type(ns.RollAdvice) ~= "function" then error("no roll advice") end
+    local link = "|cff0070dd|Hitem:424250::::::::60:::::|h[Test Blade]|h|r"
+    ns.root.lootWish = { [424250] = { link = link } }
+    local k, why = ns.RollAdvice(link, true)
+    if k ~= "need" or type(why) ~= "string" then error("a wished item should be need: " .. tostring(k)) end
+    if ns.RollAdvice(link, false) == "need" then error("need was advised where the game does not allow it") end
+    ns.root.lootWish = {}
+    local realUp = ns.UpgradeAmount
+    ns.UpgradeAmount = function() return 12 end
+    local k2, why2 = ns.RollAdvice(link, true)
+    if k2 ~= "need" or not tostring(why2):find("12") then error("an upgrade should be need +12") end
+    ns.UpgradeAmount = function() return nil end
+    local k3 = ns.RollAdvice(link, true)
+    if k3 ~= "greed" and k3 ~= "pass" then error("the rest should be greed or pass: " .. tostring(k3)) end
+    ns.UpgradeAmount = realUp
+end)
+try("Group gear: levels lowest first, the average, and who is still to come", function()
+    if type(ns.GearLines) ~= "function" then error("no gear check") end
+    ns.gearKnown["g2"] = { level = 58, at = 100 }
+    local rows, avg, n = ns.GearLines({ { name = "Me", level = 62 }, { name = "Tank", guid = "g2" }, { name = "Far", guid = "g3", state = "far" } }, 120)
+    if rows[1].name ~= "Tank" or rows[2].name ~= "Me" or rows[3].name ~= "Far" then error("order wrong") end
+    if n ~= 2 or math.abs(avg - 60) > 0.01 then error("average wrong") end
+    local stale = ns.GearLines({ { name = "Tank", guid = "g2" } }, 100 + 601)
+    if stale[1].level ~= nil then error("a level older than ten minutes was used") end
+    ns.gearKnown["g2"] = nil
+    local lines = ns:ShowGear()
+    if type(lines) ~= "table" or #lines < 2 then error("the window has no lines") end
+end)
+try("Lifetime stats: counts, the run log's bosses and runs, and the page", function()
+    if type(ns.LifetimeRows) ~= "function" then error("no lifetime stats") end
+    local store = { ["A - R"] = { since = 10, kills = 5, deaths = 1, goldMade = 50000 }, ["B - R"] = { since = 5, kills = 3 } }
+    local runs = { { char = "A - R", kills = { x = 1, y = 2 } }, { char = "B - R", kills = { z = 1 } } }
+    local rows, since = ns.LifetimeRows(store, "A - R", runs, { Zone = { { secs = 600 } } })
+    local by = {}
+    for _, r in ipairs(rows) do by[r[1]] = r end
+    if by.kills[2] ~= 5 or by.kills[3] ~= 8 or by.bosses[2] ~= 2 or by.bosses[3] ~= 3 or by.runs[3] ~= 2 or by.farmed[3] ~= 600 or since ~= 5 then
+        error("rows wrong") end
+    local before = ns.root.lifetime and ns.root.lifetime[ns:CharKey()] and ns.root.lifetime[ns:CharKey()].deaths or 0
+    ns.LifetimeCount("deaths", 1)
+    if ns.db.lifetimeStats and (ns.root.lifetime[ns:CharKey()].deaths or 0) ~= before + 1 then error("a death was not counted") end
+    ns:ShowLifetime()
+end)
+try("Best times: one record, kept by the run log", function()
+    if type(ns.RunBossBest) ~= "function" then error("no run log bests") end
+    local r = ns.RunNew("Deadmines", "Normal", 1000)
+    ns.RunPull(r, "Sneed", 1100)
+    ns.RunEncounter(r, "Sneed", true, 1190)
+    if r.fights["Sneed"] ~= 90 then error("the fight's length was not kept") end
+    local log = { r, { instance = "Deadmines", fights = { Sneed = 80 }, kills = { Sneed = 50 }, start = 0, wipes = {}, loot = {} } }
+    if ns.RunBossBest(log, "Deadmines", "Sneed") ~= 80 then error("the boss best is wrong") end
+    if ns.RunPlaceBest(log, "Deadmines") == nil then error("no place best") end
 end)
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)

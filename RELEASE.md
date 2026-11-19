@@ -1,45 +1,36 @@
-## 11.14.0
+## 11.16.0
 
-**Starcut for the rest of the screen**
-- Action buttons are cut like gems: their corners cut away, a fine rim in your theme, and the cooldown
-  sweep cut to the same shape. The add-on's own bars and the game's bars alike.
-- Bag and bank slots take the same cut, the rim in the item's quality color.
-- A diamond minimap (Features tab, "Minimap: diamond"): cut like the Starcut portrait, with a fine rim
-  and a star on each point. The zone, coordinates and clock stay on it.
-- Frame style: Classic still puts the square box back on all of them at once.
+**New: roll advice**
+- On the loot roll window, the button to press lights up and the reason shows beside the item's
+  name: Need for an item on your wishlist or an upgrade for you (with by how many item levels),
+  Pass for gear you can't use, Greed for the rest.
+- Nothing is ever rolled for you. Features tab: "Loot rolls: light the button to press".
 
-**New: whose upgrade**
-- In a group, when a boss drops something rare or better, the players who use Fantasy Glass UI each
-  work out whether it is an upgrade for them and quietly tell the others.
-- A small panel says, item by item, whose upgrade it is and by how many item levels, biggest first,
-  before anyone rolls. It hears of an item from a loot roll or from whoever opens the loot window.
-- Nothing is said in chat; players without the add-on are simply not on the list. Move it with
-  `/fgui move`.
+**New: group gear check**
+- `/fgui gear` lists everyone in your party or raid with their item level, the lowest first, and the
+  group's average at the top.
+- The game sends another player's gear one player at a time and only within reach, so the list fills
+  in while it is open. Anyone too far away shows "out of reach" and is asked again later. Levels are
+  kept for ten minutes, and it never asks during a fight or while your own inspect window is open.
 
-**New: a run log**
-- Each dungeon and raid you go into is a run: how long it took, the bosses killed and when, the wipes
-  on each, your deaths and your rare and better loot.
-- `/fgui runs` lists them place by place, each with its best time: the quickest of the runs that
-  killed the most bosses. Click a place for its runs, and a run for its bosses and loot.
-- Stepping out to repair is still the same run; 15 minutes away, or going in somewhere else, ends it.
-  Shared by all your characters, the last 100 runs.
+**New: lifetime stats**
+- `/fgui stats`: one page of totals for this character and for all of them together. Time played,
+  levels, quests, kills, deaths, gold made and spent, items looted, bosses killed, dungeon and raid
+  runs, time spent farming, and the best time for each place.
+- The counts start the day this version first runs, and the page says since when. Bosses, runs and
+  farming reach back as far as the run log and farming sessions do.
 
-**Farming by zone**
-- Each farming session now notes where you farmed: the time, gold and loot zone by zone.
-- `/fgui farm zones` (or "Best farming spots" in the session window) lists the places you have
-  farmed by what they make an hour, with whether your latest time there was up or down on the
-  ones before.
+**Our own nameplates**
+- The health bar on a nameplate is now the add-on's own: our bar texture on a black backing, with our
+  rim or the Starcut cut. The game's bar keeps running out of sight and passes on its health and
+  color, hidden values included. The red backing behind an enemy's bar is gone for good: it was the
+  game's own, tinted to match the bar.
+- The game's level badge is replaced by the level in its difficulty color just left of the name
+  ("??" for a boss).
 
-**Goals**
-- Three new kinds on the goals panel: gold on all your characters (`/fgui goal gold 10000`), a level
-  (`/fgui goal level 60`) and a mount (`/fgui goal mount <name>`).
-- An item goal now counts the item on all your characters, and its tooltip says which boss it drops
-  from and in how many of your kills, from the loot browser.
-- The bars take the Starcut cut, and a goal reached says so once.
-
-**Nameplates**
-- The threat color is on the plate's edge too (Nameplates designer, "Threat on the plate's edge"):
-  a tank sees at a glance which mob is slipping, while the bar keeps its usual color if you switch
-  threat colors off. Your target's accent still comes first.
-- The background behind a plate's health is black now. The game tinted it in the bar's own color, so
-  on an enemy the red bar and its red background ran together.
+**One record of best times**
+- The boss timer's "new best" lines, for a boss and for a finished dungeon, are now measured against
+  the run log, so they always agree with `/fgui runs`. Best times from before the run log still
+  count.
+- Each kill in the run log also keeps how long the fight itself took. A run's page shows each fight
+  with your best for that boss.

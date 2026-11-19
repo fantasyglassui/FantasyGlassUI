@@ -1,6 +1,6 @@
 local ADDON, ns = ...
 _G.FantasyGlassUI = ns
-ns.version = "11.14.0"
+ns.version = "11.16.0"
 ns.author = "DustyMouse"
 
 ns.modules = {}
@@ -68,7 +68,10 @@ ns.defaults = {
     loginBriefing    = true,        -- what is waiting, a few seconds after you log in (11.11)
     skillUps         = true,        -- "Skill-ups" on the profession window (11.11)
     weeklyRecap      = true,        -- each character's week, noted as you play (11.11)
+    lootBossTip      = true,        -- a boss's tooltip lists what it drops for you (11.15)
     lootBook         = true,        -- what bosses drop, noted as you kill them; /fgui drops (11.13)
+    lifetimeStats    = true,        -- /fgui stats: totals for this character and all of them (11.16)
+    gearCheck        = true,        -- /fgui gear: everyone in your group with their item level (11.16)
     groupLoot        = true,        -- in a group: whose upgrade a boss drop is, among players with the add-on (11.14)
     runLog           = true,        -- dungeon and raid runs: times, kills, wipes, deaths, loot; /fgui runs (11.14)
     farming          = true,        -- farming sessions: /fgui farm, gold and item value an hour (11.13)
@@ -324,6 +327,7 @@ ns.defaults = {
     barScale         = 100,         -- action bar size, percent (100 leaves the game's own size alone)
     infobarExtras    = true,        -- bag space, friends, guild and mail on the info bar
     lootRoll         = true,
+    rollAdvice       = true,        -- the roll window lights the button to press, and says why (11.16)
     classBar         = true,        -- class extras: second resource, runes, mana in forms, pet happiness
     toasts           = false,       -- notifications: loot, level, mail, whispers
     toastQuality     = 2,           -- loot toasts from this quality up (2 = uncommon)
@@ -1537,6 +1541,17 @@ end
 
 -- What's new: shown once after an update (never on a first install, where the setup opens instead).
 ns.whatsNew = {
+    { "11.16.0", { "Roll advice: the loot roll window lights the button to press and says why - Need for a wish or an upgrade, Pass for gear you can't use.",
+                   "A group gear check: /fgui gear lists everyone in your group with their item level, the lowest first, and the group's average.",
+                   "Lifetime stats: /fgui stats gives totals for this character and all of them - time played, quests, kills, gold, loot, bosses and runs.",
+                   "Our own nameplates: the health bar is the add-on's, on a black backing, with the level in its color beside the name.",
+                   "One record of best times: the boss timer's new-best lines now agree with your run log, which also keeps how long each boss fight took." } },
+    { "11.15.0", { "A loot wishlist: click an item in the loot browser to star it, and you are told when it drops, comes up in a roll, or a boss that drops it is your target. /fgui wish lists them.",
+                   "Point at a boss: its tooltip lists what it drops that you want or that would be an upgrade for you.",
+                   "Quest mobs: nameplates mark the mobs you still need for a quest, with how many are left.",
+                   "Starcut windows and tooltips: their corners cut with a fine rim, and stars on big windows." } },
+    { "11.14.1", { "Lighter: the add-on does less while you play, in and out of a fight.",
+                   "Farming: the first two minutes show what you have made so far, not a guess at an hour; right-click the whose-upgrade list to put it away." } },
     { "11.14.0", { "Starcut reaches the rest of the screen: action buttons and bag slots are cut like gems, their cooldowns to match, and the minimap can be a diamond (Features tab).",
                    "Whose upgrade: in a group, a boss drop shows whose upgrade it is, and by how much, among players with the add-on - before anyone rolls.",
                    "A run log: /fgui runs keeps your dungeon and raid times, kills, wipes, deaths and loot, with a best time for each place.",
@@ -2249,8 +2264,11 @@ ns.helpLines = {
     { "/fgui testgroup", "group practice: made-up group mates, to see group cooldowns, the interrupt rotation and buff coverage alone" },
     { "/fgui showcase", "screenshot mode: every frame with sample data and nothing in the way; again to end" },
     { "/fgui drops [raid]", "the loot browser: what each boss dropped, with the upgrades for you first" },
+    { "/fgui wish", "your wishlist: the items you starred in the loot browser, and where each drops" },
     { "/fgui farm [stop|zones]", "a farming session: time, and gold and item value an hour; again to see it, stop to end it, zones for your best spots" },
     { "/fgui threat", "show or hide the threat meter" },
+    { "/fgui stats", "lifetime stats: time played, quests, kills, deaths, gold, loot, bosses and runs, for this character and all of them" },
+    { "/fgui gear", "everyone in your group with their item level, the lowest first, and the group's average" },
     { "/fgui runs", "your dungeon and raid runs: times, bosses, wipes, deaths and loot, with the best time for each place" },
     { "/fgui set [name]", "put on a gear set by name (part of the name will do); on its own, the list of your sets" },
     { "/fgui raidsort role", "order the raid frames by group, role or name" },
@@ -2361,8 +2379,12 @@ ns.toolCommands = {
     testgroup = function() ns:ToggleTestGroup() end,
     showcase = function() ns:ToggleShowcase() end,
     drops = function(t) ns:ShowDrops(t) end,
+    wish = function() ns:ShowWishlist() end,
+    wishlist = function() ns:ShowWishlist() end,
     farm = function(t) ns:Farm(t) end,
     runs = function() ns:ShowRuns() end,
+    gear = function() if ns.ShowGear then ns:ShowGear() end end,
+    stats = function() ns:ShowLifetime() end,
     set = function(t) ns:SetCommand(t) end,
     threat = function() if ns.ToggleThreatMeter then ns:ToggleThreatMeter() else ns:Print("The threat meter is switched off (Features tab).") end end,
     screenshot = function() ns:ToggleShowcase() end,

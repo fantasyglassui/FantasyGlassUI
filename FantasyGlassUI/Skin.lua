@@ -297,8 +297,29 @@ local function KeepClear(obj)
     if obj:GetAlpha() ~= 0 then obj:SetAlpha(0) end
 end
 local keeper, kacc = CreateFrame("Frame"), 0
+-- (11.14.1) The every-frame list is walked without a protected call per object: one call covers the
+-- walk, and if an object fails, the walk goes on after it the same frame.
+local function ClearStrict(from)
+    for i = from, #strict do
+        local o = strict[i]
+        if o:GetAlpha() ~= 0 then o:SetAlpha(0) end
+    end
+end
+local function ClearStrictSafe()
+    local from = 1
+    while from <= #strict do
+        local ok = pcall(ClearStrict, from)
+        if ok then return end
+        -- find the one that failed and step past it
+        local bad = from
+        for i = from, #strict do
+            if not pcall(KeepClear, strict[i]) then bad = i break end
+        end
+        from = bad + 1
+    end
+end
 keeper:SetScript("OnUpdate", function(_, e)
-    for i = 1, #strict do pcall(KeepClear, strict[i]) end
+    if #strict > 0 then ClearStrictSafe() end
     kacc = kacc + e
     if kacc < 1 then return end
     kacc = 0
@@ -841,6 +862,7 @@ end
 function ns:Dress(frame, plain)
     if type(frame) ~= "table" or frame.suiDressed or not frame.CreateTexture then return end
     frame.suiDressed = true
+    if ns.After then ns:After(0, function() if ns.StarcutWindow then pcall(ns.StarcutWindow, frame) end end) end   -- (Starcut cuts its corners once it is dressed)
     if not plain and not frame.suiNoRound then pcall(ns.FadeIn, ns, frame) end       -- our windows only, never the game's
     if ns.style == "GLASS" then return DressGlass(frame, plain) end
     if ns.style == "CELESTIAL" then return DressCelestial(frame, plain) end
@@ -885,7 +907,7 @@ function ns:Dress(frame, plain)
 
     local rim = ns.theme.rim
     ns:Outline(frame, -1, rim[1], rim[2], rim[3], 0.95, "BACKGROUND")      -- dark line just outside the rim
-    if not plain then ns:Corners(frame, frame, 20, 1) end                   -- clean gold brackets in the corners
+    if not plain then frame.suiCorners = ns:Corners(frame, frame, 20, 1) end   -- clean gold brackets in the corners
 end
 
 -- Dress the standard controls inside a Blizzard window (buttons, tabs, text boxes, insets), by
@@ -3487,3 +3509,114 @@ function ns:StarcutFacet(btn, parts)
     FacetApply(btn, ns.StarcutOn())
 end
 ns:OnFrameStyle(function(on) for btn in pairs(scButtons) do FacetApply(btn, on) end end)
+
+-- (11.15) Windows and tooltips cut like the rest: a small corner cut away at each corner, a fine rim
+-- along the cut, and on big windows (not Glass, which wears no ornament) a star on the two top cuts.
+-- The cut is a mask drawn in nine slices, so it keeps its size on any window; on a game client whose
+-- masks cannot be sliced, windows keep their square corners and get only the stars.
+local scWindows = setmetatable({}, { __mode = "k" })
+local CUT = { window = { mask = "window_cut", line = "cut_line", size = 12 }, tip = { mask = "tip_cut", line = "cut_line_tip", size = 6 } }
+local CUT_CORNERS = {                                 -- point, line tex coords, offset out of the frame
+    { "TOPLEFT", 0, 1, 0, 1, -2, 2 }, { "TOPRIGHT", 1, 0, 0, 1, 2, 2 },
+    { "BOTTOMLEFT", 0, 1, 1, 0, -2, -2 }, { "BOTTOMRIGHT", 1, 0, 1, 0, 2, -2 },
+}
+local sliceOK
+local function CanSlice(frame)
+    if sliceOK ~= nil then return sliceOK end
+    local ok, m = pcall(frame.CreateMaskTexture, frame)
+    sliceOK = ok and type(m) == "table" and type(m.SetTextureSliceMargins) == "function" or false
+    if ok and type(m) == "table" and m.Hide then m:Hide() end
+    return sliceOK
+end
+ns.StarcutCanSlice = function(reset) if reset then sliceOK = nil end return sliceOK end
+local function CutRegions(frame, mask, on, w)
+    w.masked = w.masked or {}
+    if on then
+        for _, r in ipairs({ frame:GetRegions() }) do
+            if not w.masked[r] and r.GetObjectType and r:GetObjectType() == "Texture" and r.scCutLine ~= true then
+                local layer = r.GetDrawLayer and r:GetDrawLayer()
+                if layer == "BACKGROUND" or layer == "BORDER" then
+                    if pcall(r.AddMaskTexture, r, mask) then w.masked[r] = true end
+                end
+            end
+        end
+        w.regions = frame.GetNumRegions and frame:GetNumRegions() or 0
+    else
+        for r in pairs(w.masked) do pcall(r.RemoveMaskTexture, r, mask) end
+        w.masked = {}
+        w.regions = nil
+    end
+end
+local function WindowApply(frame, on)
+    local w = scWindows[frame]
+    if not w then return end
+    local spec = CUT[w.kind] or CUT.window
+    local cut = on and CanSlice(frame)
+    if cut and not w.mask then
+        w.mask = frame:CreateMaskTexture()
+        w.mask:SetPoint("TOPLEFT", -2, 2); w.mask:SetPoint("BOTTOMRIGHT", 2, -2)
+    end
+    if w.mask and w.maskKind ~= w.kind then
+        w.mask:SetTexture(SC .. spec.mask, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+        pcall(w.mask.SetTextureSliceMargins, w.mask, spec.size, spec.size, spec.size, spec.size)
+        if w.mask.SetTextureSliceMode then pcall(w.mask.SetTextureSliceMode, w.mask, 0) end
+        w.maskKind = w.kind
+        if w.lines then for _, l in ipairs(w.lines) do l:SetTexture(SC .. spec.line); l:SetSize(spec.size, spec.size) end end
+    end
+    if w.mask then CutRegions(frame, w.mask, cut, w) end
+    -- the rim along each cut
+    if cut and not w.lines then
+        w.lines = {}
+        for i, c in ipairs(CUT_CORNERS) do
+            local l = frame:CreateTexture(nil, "BORDER", nil, 7)
+            l.scCutLine = true
+            l:SetTexture(SC .. spec.line)
+            l:SetTexCoord(c[2], c[3], c[4], c[5])
+            l:SetSize(spec.size, spec.size)
+            l:SetPoint(c[1], frame, c[1], c[6], c[7])
+            ns:Paint(l, "SetVertexColor", "@border", 1)
+            w.lines[i] = l
+        end
+    end
+    if w.lines then for _, l in ipairs(w.lines) do l:SetShown(cut and true or false) end end
+    -- the corner brackets would hang in the air over a cut corner
+    for _, t in ipairs(type(frame.suiCorners) == "table" and frame.suiCorners or {}) do
+        if t.SetShown then t:SetShown(not cut) end
+    end
+    -- stars on the two top cuts of a big window
+    local big = w.kind == "window" and ns.style ~= "GLASS" and (frame:GetWidth() or 0) >= 300 and (frame:GetHeight() or 0) >= 200
+    if on and big and not w.stars then
+        w.stars = {}
+        for i, pt in ipairs({ "TOPLEFT", "TOPRIGHT" }) do
+            local s = frame:CreateTexture(nil, "OVERLAY", nil, 6)
+            s:SetTexture(SC .. "star")
+            s:SetSize(14, 14)
+            local x = (i == 1) and (spec.size / 2 - 2) or -(spec.size / 2 - 2)
+            s:SetPoint("CENTER", frame, pt, x, -(spec.size / 2 - 2))
+            if s.SetBlendMode then s:SetBlendMode("ADD") end
+            ns:Paint(s, "SetVertexColor", "@accent", 0.9)
+            w.stars[i] = s
+        end
+    end
+    if w.stars then for _, s in ipairs(w.stars) do s:SetShown(on and big and true or false) end end
+    frame.scCut = cut or nil
+end
+function ns.StarcutWindow(frame, kind)
+    if type(frame) ~= "table" or not frame.CreateTexture or not frame.GetRegions then return end
+    local w = scWindows[frame]
+    if not w then
+        w = {}
+        scWindows[frame] = w
+        if frame.HookScript then                         -- (new pieces, a new size: looked at as it shows)
+            pcall(frame.HookScript, frame, "OnShow", function(self)
+                local ww = scWindows[self]
+                local n = self.GetNumRegions and self:GetNumRegions() or 0
+                if ww and ns.StarcutOn() and (ww.regions ~= n or not ww.sized) then ww.sized = true; WindowApply(self, true) end
+            end)
+            pcall(frame.HookScript, frame, "OnSizeChanged", function(self) local ww = scWindows[self]; if ww then ww.sized = nil end end)
+        end
+    end
+    if w.kind ~= "tip" then w.kind = kind or w.kind or "window" end   -- (a tooltip stays a tooltip)
+    WindowApply(frame, ns.StarcutOn())
+end
+ns:OnFrameStyle(function(on) for frame in pairs(scWindows) do pcall(WindowApply, frame, on) end end)

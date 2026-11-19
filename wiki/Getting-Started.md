@@ -50,7 +50,7 @@ Open the options with `/fgui` and go to the **Look** tab.
 
 Switching to another family finishes after a `/reload`.
 
-- **Frame style:** under **Portraits and class colors** on the Look tab. **Starcut** (new in 11.12) cuts health and power bars to points that glow in their own color, beside a diamond portrait with stars on its points, and since 11.13 it reaches every bar: your cast bar, the crafting bar, the class resource, raid frames, nameplates, timers, experience and totems. Since 11.14 action buttons and bag slots are cut like gems too (bag slots with their rim in the item's quality color), and the Features tab has **Minimap: diamond**. **Classic** brings back the box everywhere at once (chosen during a fight, it changes when the fight is over).
+- **Frame style:** under **Portraits and class colors** on the Look tab. **Starcut** (new in 11.12) cuts health and power bars to points that glow in their own color, beside a diamond portrait with stars on its points, and since 11.13 it reaches every bar: your cast bar, the crafting bar, the class resource, raid frames, nameplates, timers, experience and totems. Since 11.14 action buttons and bag slots are cut like gems too (bag slots with their rim in the item's quality color), and the Features tab has **Minimap: diamond**. Since 11.15 windows and tooltips have their corners cut too, with a fine rim along each cut and stars on big windows. **Classic** brings back the box everywhere at once (chosen during a fight, it changes when the fight is over).
 
 - **Text and interface size:** on the **Layout** tab, **Text size** (70 to 150%) sets the add-on's lettering and **Interface size** (50 to 150%) scales the whole interface. From chat: `/fgui textsize 120` and `/fgui uisize 90` (`reset` puts either back). On the sliders, both take effect when you let go.
 
@@ -89,6 +89,9 @@ The **Tools** button on the menu bar (or `/fgui tools`) opens a button for every
 | `/fgui showcase` | Screenshot mode: every frame with sample data, nothing in the way |
 | `/fgui drops` | The loot browser: what each boss dropped, your upgrades first |
 | `/fgui farm` | A farming session: gold and item value an hour (`stop` ends it, `zones` for your best spots) |
+| `/fgui wish` | Your loot wishlist: the items you starred in the loot browser, and where each drops |
+| `/fgui gear` | Everyone in your group with their item level, the lowest first, and the average |
+| `/fgui stats` | Lifetime stats for this character and all of them |
 | `/fgui runs` | Your dungeon and raid runs, with a best time for each place |
 | `/fgui goal` | Goals: `rep <faction>`, `gold 10000`, `level 60`, `mount <name>`, or an item and a number |
 | `/fgui set <name>` | Put on a gear set by name; on its own, the list of your sets |
@@ -103,6 +106,13 @@ The **Tools** button on the menu bar (or `/fgui tools`) opens a button for every
 - **Loot browser:** what each boss drops is noted as you kill it, from your loot window, the loot rolls and your group's loot lines, and shared by all your characters. `/fgui drops` lists it raid by raid and boss by boss; `/fgui drops <name>` goes straight to one raid or dungeon.
 - **Threat meter:** in a group with a hostile target, a small panel shows the top five on threat. Your row turns the warning color near the top and the danger color when you would pull. Move it with `/fgui move`.
 - **Farming sessions:** `/fgui farm` starts one; a small panel shows the time and what you make an hour, in gold and in looted items (the auction price you have seen, or the vendor's). A `/reload` keeps it going, and each finished session counts in your weekly recap.
+- **Roll advice:** the loot roll window lights the button to press and says why: Need for a wish or an upgrade, Pass for gear you can't use, Greed for the rest. Nothing is rolled for you.
+- **Group gear check:** `/fgui gear` lists everyone in your group with their item level, filling in as the game sends each player's gear.
+- **Lifetime stats:** `/fgui stats` gives totals for this character and all of them, with your best run times.
+- **Nameplates of our own:** the health bar on a nameplate is the add-on's own, on a black backing, with the level in its difficulty color beside the name.
+- **Loot wishlist:** click an item in the loot browser to star it. You are told when it drops, comes up in a roll, or a boss that drops it becomes your target; `/fgui wish` lists them with where each drops.
+- **Boss drops on the boss:** point at a boss and its tooltip lists what it drops that is on your wishlist or would be an upgrade for you.
+- **Quest mobs on nameplates:** the plate of a mob you still need for a quest gets a small quest mark with how many are left (Nameplates designer, "Quest mobs").
 - **Farming by zone:** each session also notes where you farmed. `/fgui farm zones` lists your best spots by what they make an hour, and whether your latest time there was up or down.
 - **Run log:** each dungeon and raid you go into is a run: its time, the bosses killed and when, wipes, your deaths and your rare and better loot. `/fgui runs` lists them place by place with a best time each (the quickest of the runs that killed the most bosses).
 - **Whose upgrade:** in a group, when a boss drops something rare or better, players with the add-on quietly tell each other whether it is an upgrade, and a small panel shows whose upgrade it is and by how many item levels, before anyone rolls.

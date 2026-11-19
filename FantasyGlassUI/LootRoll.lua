@@ -3,6 +3,30 @@ local _, ns = ...
 -- Our own loot-roll frames: item, Need / Greed / Pass, and a bar counting down.
 -- (This game has no Disenchant roll, so there is no button for one.)
 -- Blizzard's roll windows are told not to open (the two roll events are unregistered from UIParent).
+--
+-- 11.16: roll advice. The button to press lights up, with why beside the item's name: Need for an
+-- item on your wishlist or an upgrade for you, Pass for gear you can't use, Greed for the rest.
+-- Nothing is ever rolled for you.
+
+-- The advice for an item: "need", "greed" or "pass", and the reason. (canNeed: the game's word.)
+function ns.RollAdvice(link, canNeed)
+    if type(link) ~= "string" or ns:IsSecret(link) then return nil end
+    local id = tonumber(link:match("item:(%d+)"))
+    local need = not ns.Is(canNeed, false)
+    if need and id and ns.LootWished and ns.LootWished(id) then return "need", ns:Tr("on your wishlist") end
+    local up = ns.UpgradeAmount and ns.UpgradeAmount(link)
+    if need and up then return "need", format(ns:Tr("upgrade +%d"), math.floor(up + 0.5)) end
+    local GetInstant = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+    local okI, _, _, _, equipLoc = pcall(GetInstant or error, link)
+    local gear = okI and ns.EQUIP_SLOTS and ns.EQUIP_SLOTS[equipLoc]
+    if gear then
+        local IsUsable = (C_Item and C_Item.IsUsableItem) or IsUsableItem
+        local okU, usable = pcall(IsUsable or error, link)
+        if okU and ns.Is(usable, false) then return "pass", ns:Tr("you can't use it") end
+    end
+    return "greed", nil
+end
+
 ns:NewModule("lootRoll", function()
     if not (GetLootRollItemInfo and RollOnLoot and GetLootRollTimeLeft) then return end
     local th = ns.theme
@@ -39,9 +63,12 @@ ns:NewModule("lootRoll", function()
             if pcall(GameTooltip.SetLootRollItem, GameTooltip, r.rollID) then GameTooltip:Show() else GameTooltip:Hide() end
         end)
         r.iconBox:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        r.advice = ns:NewText(r, 10, "RIGHT")                   -- (11.16) why the lit button
+        r.advice:SetPoint("TOPRIGHT", -8, -7)
         r.name = ns:NewText(r, 12, "LEFT")
         r.name:SetPoint("TOPLEFT", 48, -6)
-        r.name:SetPoint("RIGHT", -8, 0)
+        r.name:SetPoint("RIGHT", r.advice, "LEFT", -6, 0)
+        if r.name.SetWordWrap then r.name:SetWordWrap(false) end
         r.buttons = {}
         for k, d in ipairs({ { "Need", 1 }, { "Greed", 2 }, { "Pass", 0 } }) do
             local b = ns:CreateButton(r, d[1], 78, 18, function()
@@ -51,6 +78,11 @@ ns:NewModule("lootRoll", function()
             end)
             ns:Font(b.text, 10)
             b:SetPoint("BOTTOMLEFT", 48 + (k - 1) * 84, 7)
+            b.lit = b:CreateTexture(nil, "OVERLAY")               -- the advice: a glow round the button to press
+            b.lit:SetPoint("TOPLEFT", -3, 3); b.lit:SetPoint("BOTTOMRIGHT", 3, -3)
+            b.lit:SetTexture(ns.MEDIA .. "starcut\\facet_ring")
+            if b.lit.SetBlendMode then b.lit:SetBlendMode("ADD") end
+            b.lit:Hide()
             r.buttons[d[2]] = b
         end
         r.timer = ns:NewStatusBar(r)
@@ -84,6 +116,22 @@ ns:NewModule("lootRoll", function()
         if ns.db.upgradeArrows and ns.UpgradeAmount and type(link) == "string" and ns.UpgradeAmount(link) then r.upgrade:Show() else r.upgrade:Hide() end
         local function able(btn, ok) if ns.Is(ok, false) then btn:Hide() else btn:Show() end end
         able(r.buttons[1], canNeed); able(r.buttons[2], canGreed)
+        -- the advice
+        for _, b in pairs(r.buttons) do b.lit:Hide() end
+        r.advice:SetText("")
+        r.adviceKind = nil
+        if ns.db.rollAdvice ~= false then
+            local okA, kind, why = pcall(ns.RollAdvice, link, canNeed)
+            if okA and kind then
+                local b = r.buttons[kind == "need" and 1 or kind == "greed" and 2 or 0]
+                if kind == "greed" and not b:IsShown() then b = r.buttons[0] end
+                local role = kind == "need" and "good" or kind == "pass" and "bad" or nil
+                if role then ns:Unpaint(b.lit, "SetVertexColor"); b.lit:SetVertexColor(ns:Signal(role)) else ns:Paint(b.lit, "SetVertexColor", "@accent", 1) end
+                b.lit:Show()
+                r.adviceKind = kind
+                if why then r.advice:SetText((role and ns:SignalHex(role) or ns:AccentHex()) .. why .. "|r") end
+            end
+        end
         r.total = (type(rollTime) == "number" and rollTime > 0) and rollTime or 60000
         r.timer:SetMinMaxValues(0, r.total)
         r.timer:SetValue(r.total)
