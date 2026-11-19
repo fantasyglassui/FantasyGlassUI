@@ -355,6 +355,12 @@ function ns:Paint(obj, method, role, alpha)
     fn(obj, ns:Role(role, alpha))
 end
 
+-- Stop re-applying a remembered color (the object is about to take one of its own).
+function ns:Unpaint(obj, method)
+    local list = type(obj) == "table" and painted[obj]
+    if list then list[method] = nil end
+end
+
 local themeHooks = {}
 function ns:OnTheme(fn) themeHooks[#themeHooks + 1] = fn end
 
@@ -3442,3 +3448,42 @@ end
 ns:OnFrameStyle(function() for bar, glow in pairs(scBars) do ScApplyOne(bar, glow) end end)
 -- (the text inside a bar steps in from the points: `on` and the usual inset)
 function ns.StarcutInset(on, inset) return on and math.max(inset or 6, 14) or (inset or 6) end
+
+-- (11.14) A square button cut like a gem: its corners cut away, a fine rim in the theme's rim color,
+-- and its cooldown sweep cut to the same shape. Action buttons and bag slots. Under Classic it is the
+-- square in its box again. `parts`: { icon = texture, also = { more textures }, cooldown = frame,
+-- ownRim = true when the button colors the rim itself }.
+local scButtons = setmetatable({}, { __mode = "k" })
+local function FacetApply(btn, on)
+    local p = scButtons[btn]
+    if not p then return end
+    if on and not btn.scFacet then
+        btn.scFacet = ScMask(btn, "facet", btn, 0)
+        local rim = btn:CreateTexture(nil, "OVERLAY", nil, 5)
+        rim:SetTexture(SC .. "facet_ring")
+        rim:SetPoint("TOPLEFT", -1, 1); rim:SetPoint("BOTTOMRIGHT", 1, -1)
+        if not p.ownRim then ns:Paint(rim, "SetVertexColor", "@rim", 1) end   -- (bag slots color it by the item's quality)
+        btn.scFacetRim = rim
+    end
+    local mask = btn.scFacet
+    if not mask then return end
+    ScMasked(p.icon, mask, on)
+    for _, t in ipairs(p.also or {}) do ScMasked(t, mask, on) end
+    for _, k in ipairs({ "GetHighlightTexture", "GetPushedTexture", "GetCheckedTexture" }) do
+        local ok, t = pcall(function() return btn[k] and btn[k](btn) end)
+        if ok and type(t) == "table" then ScMasked(t, mask, on) end
+    end
+    btn.scFacetRim:SetShown(on)
+    local b = btn.suiBorder
+    if b then b:SetShown(not on); if b.outer then b.outer:SetShown(not on) end end
+    if rawget(btn, "suiStarEdge") then btn.suiStarEdge:SetShown(not on) end
+    local cd = p.cooldown
+    if cd and cd.SetSwipeTexture then pcall(cd.SetSwipeTexture, cd, on and (SC .. "facet") or ns.FLAT) end
+    btn.scFacetOn = on or nil
+end
+function ns:StarcutFacet(btn, parts)
+    if type(btn) ~= "table" or not btn.CreateTexture then return end
+    scButtons[btn] = parts or {}
+    FacetApply(btn, ns.StarcutOn())
+end
+ns:OnFrameStyle(function(on) for btn in pairs(scButtons) do FacetApply(btn, on) end end)

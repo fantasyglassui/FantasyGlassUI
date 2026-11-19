@@ -44,8 +44,9 @@ Mistype one and the add-on suggests the nearest command instead.
 | `/fgui testgroup` | group practice: made-up group mates, to see group cooldowns, the interrupt rotation and buff coverage alone |
 | `/fgui showcase` | screenshot mode: every frame with sample data and nothing in the way; again to end |
 | `/fgui drops [raid]` | the loot browser: what each boss dropped, with the upgrades for you first |
-| `/fgui farm [stop]` | a farming session: time, and gold and item value an hour; again to see it, stop to end it |
+| `/fgui farm [stop\|zones]` | a farming session: time, and gold and item value an hour; again to see it, stop to end it, zones for your best spots |
 | `/fgui threat` | show or hide the threat meter |
+| `/fgui runs` | your dungeon and raid runs: times, bosses, wipes, deaths and loot, with the best time for each place |
 | `/fgui set [name]` | put on a gear set by name (part of the name will do); on its own, the list of your sets |
 | `/fgui raidsort role` | order the raid frames by group, role or name |
 | `/fgui resetinstances` | reset your instances and tell the group |
@@ -94,7 +95,7 @@ Mistype one and the add-on suggests the nearest command instead.
 | `/fgui loot` | everything looted this session and its vendor value |
 | `/fgui trades` | the trades on record |
 | `/fgui mailrules add <character> cloth` | mail rules; "Send by my rules" at the mailbox sends them |
-| `/fgui goal` | reputation and item goals: /fgui goal rep <name>, or an item and a number |
+| `/fgui goal` | goals: /fgui goal rep <name>, gold 10000, level 60, mount <name>, or an item and a number |
 | `/fgui goal add 50 <goal>` | a goal of your own on the goals panel (click it to count); /fgui goal ach <achievement> too |
 
 ## People and notes

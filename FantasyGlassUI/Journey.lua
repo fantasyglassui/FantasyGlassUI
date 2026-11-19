@@ -580,6 +580,9 @@ end
 ------------------------------------------------------------------------------------------
 -- Goals panel: reputations and items you are working towards, with a bar each.
 --   /fgui goal rep <faction name>    /fgui goal [item] 20    /fgui goal remove 2    /fgui goal clear
+-- 11.14: gold on all your characters (/fgui goal gold 10000), a level (/fgui goal level 60) and a mount
+-- (/fgui goal mount <name>); an item counts on every character, and a boss drop says where it drops;
+-- the bars take the Starcut cut, and a goal reached says so once.
 ------------------------------------------------------------------------------------------
 local function Goals()
     if type(ns.db.goals) ~= "table" then ns.db.goals = {} end
@@ -602,9 +605,55 @@ local function FindFaction(name)
         if ok and type(d) == "table" and type(d.name) == "string" and d.name:lower():find(want, 1, true) and d.factionID then return d.factionID, d.name end
     end
 end
+-- A mount by (part of) its name: id, name, collected. (nil where the game has no mount collection.)
+local function FindMount(text)
+    local M = C_MountJournal
+    if not (type(M) == "table" and M.GetMountIDs and M.GetMountInfoByID) then return nil end
+    local want, found = tostring(text):lower(), nil
+    pcall(function()
+        for _, id in ipairs(M.GetMountIDs() or {}) do
+            local name, _, _, _, _, _, _, _, _, _, collected = M.GetMountInfoByID(id)
+            if type(name) == "string" and not Secret(name) then
+                if name:lower() == want then found = { id, name, ns.Yes(collected) }; return end
+                if not found and name:lower():find(want, 1, true) then found = { id, name, ns.Yes(collected) } end
+            end
+        end
+    end)
+    if found then return found[1], found[2], found[3] end
+end
+-- The gold on all your characters, in copper.
+local function AllGold() local _, total = ns:Characters(); return tonumber(total) or 0 end
+-- An item on all your characters (bags and bank), or this one if that is more up to date.
+local function CountEverywhere(id)
+    local n = 0
+    local owners = ns.ItemOwners and ns:ItemOwners("item:" .. tostring(id))
+    for _, o in pairs(type(owners) == "table" and owners or {}) do n = n + (tonumber(o.bags) or 0) + (tonumber(o.bank) or 0) end
+    return math.max(n, Count(id, true))
+end
+-- Where an item drops, from the loot browser: "Boss (Instance)", times seen, kills.
+function ns.GoalDropsFrom(id)
+    local book = type(ns.root) == "table" and ns.root.lootBook
+    for inst, bosses in pairs(type(book) == "table" and book or {}) do
+        for boss, rec in pairs(type(bosses) == "table" and bosses or {}) do
+            if type(rec) == "table" and type(rec.items) == "table" and type(rec.items[id]) == "table" then
+                return format("%s (%s)", boss, inst), tonumber(rec.items[id].n) or 0, tonumber(rec.kills) or 0
+            end
+        end
+    end
+end
 -- How far along a goal is: done (0..1), the text on its bar.
 function ns.GoalProgress(goal, read)
-    if goal.kind == "item" then
+    if goal.kind == "gold" then
+        local have, need = (read.gold or AllGold)(), (tonumber(goal.need) or 1) * 10000
+        return math.max(0, math.min(1, have / math.max(1, need))), format("%s / %s", Short(math.floor(have / 10000)), Short(need / 10000)) .. "g"
+    elseif goal.kind == "level" then
+        local have = (read.level or function() local ok, v = pcall(UnitLevel, "player"); return (ok and type(v) == "number" and not Secret(v)) and v or 0 end)()
+        local need = math.max(1, tonumber(goal.need) or 1)
+        return math.min(1, have / need), format("%d / %d", math.min(have, need), need)
+    elseif goal.kind == "mount" then
+        local collected = (read.mount or function(id) local _, _, c = FindMount(goal.name); return c end)(goal.id)
+        return collected and 1 or 0, collected and ns:Tr("done") or ns:Tr("not yet")
+    elseif goal.kind == "item" then
         local have = read.count(goal.id)
         local need = math.max(1, tonumber(goal.need) or 1)
         return math.min(1, have / need), format("%d / %d", math.min(have, need), need)
@@ -676,6 +725,22 @@ function ns:GoalCommand(text)
         if not id then ns:Print("No reputation called \"%s\" (open the reputation window once, then try again).", rest); return end
         goals[#goals + 1] = { kind = "rep", id = id, name = name }
         ns:Print("Goal added: %s.", name)
+    elseif first == "gold" and tonumber((rest:gsub("[,%.%sgG]", ""))) then
+        local need = math.max(1, math.min(100000000, tonumber((rest:gsub("[,%.%sgG]", "")))))
+        goals[#goals + 1] = { kind = "gold", need = need, name = format(ns:Tr("%s gold on all characters"), Short(need)) }
+        ns:Print("Goal added: %s.", goals[#goals].name)
+    elseif first == "level" and tonumber(rest) then
+        local need = math.max(2, math.min(200, tonumber(rest)))
+        goals[#goals + 1] = { kind = "level", need = need, char = ns:CharKey(), name = format(ns:Tr("Level %d"), need) }
+        ns:Print("Goal added: %s.", goals[#goals].name)
+    elseif first == "mount" and rest ~= "" then
+        local id, name = FindMount(rest)
+        if not id then
+            ns:Print(type(C_MountJournal) == "table" and "No mount called \"%s\"." or "This game client has no mount collection an add-on can use.", rest)
+            return
+        end
+        goals[#goals + 1] = { kind = "mount", id = id, name = name }
+        ns:Print("Goal added: %s.", name)
     elseif first == "add" and rest ~= "" then
         -- a goal of your own: /fgui goal add 50 Kill raptors   (click it on the panel to count)
         local need, what = rest:match("^(%d+)%s+(.+)$")
@@ -711,7 +776,7 @@ function ns:GoalCommand(text)
         local need = tonumber(text:match("|h|r%s*(%d+)%s*$")) or 1
         if id then goals[#goals + 1] = { kind = "item", id = id, need = need, name = ItemName(id) }; ns:Print("Goal added: %s x %d.", ItemName(id), need) end
     else
-        if #goals == 0 then ns:Print("No goals yet: /fgui goal rep <faction name>, /fgui goal add 50 <your own goal>, /fgui goal ach <achievement>, or /fgui goal followed by a shift-clicked item and a number.") end
+        if #goals == 0 then ns:Print("No goals yet: /fgui goal rep <faction name>, /fgui goal gold 10000, /fgui goal level 60, /fgui goal mount <name>, /fgui goal add 50 <your own goal>, /fgui goal ach <achievement>, or /fgui goal followed by a shift-clicked item and a number.") end
         for i, g in ipairs(goals) do ns:PrintRaw("  " .. i .. ". " .. tostring(g.name)) end
     end
     if ns.goalsTest then ns.goalsTest.Update() end
@@ -727,7 +792,7 @@ ns:NewModule("goalsPanel", function()
     ns:Paint(f.title, "SetTextColor", "@accent")
     f.title:SetText(ns:Tr("Goals"))
     local rows = {}
-    local read = { count = function(id) return Count(id, true) end, faction = Faction }
+    local read = { count = CountEverywhere, faction = Faction }
     local function Row(i)
         local r = CreateFrame("Frame", nil, f)
         r:SetSize(W - 16, ROWH - 4)
@@ -742,7 +807,18 @@ ns:NewModule("goalsPanel", function()
         r.bar:SetMinMaxValues(0, 1)
         r.value = ns:NewText(r.bar, 9, "CENTER")
         r.value:SetPoint("CENTER")
+        ns:StarcutStyleBar(r.bar, true)                       -- (Starcut: cut to points and glowing, like every bar)
         r:EnableMouse(true)
+        r:SetScript("OnEnter", function(self)                  -- an item: its tooltip, and where it drops
+            local g = Goals()[self.index or 0]
+            if not (g and g.kind == "item" and GameTooltip) then return end
+            GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+            pcall(GameTooltip.SetHyperlink, GameTooltip, "item:" .. tostring(g.id))
+            local from, seen, kills = ns.GoalDropsFrom(g.id)
+            if from then GameTooltip:AddLine(format(ns:Tr("Drops from %s: in %d of your %d kills."), from, seen, math.max(seen, kills)), 0.6, 0.85, 1, true) end
+            GameTooltip:Show()
+        end)
+        r:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
         r:SetScript("OnMouseUp", function(self, button)        -- your own goals: count up (or down) with a click
             local g = Goals()[self.index or 0]
             if not (g and g.kind == "own") then return end
@@ -755,28 +831,41 @@ ns:NewModule("goalsPanel", function()
     local function Update()
         local goals = Goals()
         local n = 0
+        local shown = 0
         for i, g in ipairs(goals) do
             n = i
-            local r = rows[i] or Row(i)
-            r.index = i
-            r:ClearAllPoints()
-            r:SetPoint("TOPLEFT", f, "TOPLEFT", 8, -22 - (i - 1) * ROWH)
-            local done, label = ns.GoalProgress(g, read)
-            r.name:SetText(tostring(g.name))
-            r.bar:SetValue(done)
-            if done >= 1 then r.bar:SetStatusBarColor(ns:Signal("good")) else r.bar:SetStatusBarColor(ns:Role("@accent")) end
-            r.value:SetText(label)
-            r:Show()
+            if g.char and g.char ~= ns:CharKey() then            -- (a level goal belongs to its character)
+                if rows[i] then rows[i]:Hide() end
+            else
+                shown = shown + 1
+                local r = rows[i] or Row(i)
+                r.index = i
+                r:ClearAllPoints()
+                r:SetPoint("TOPLEFT", f, "TOPLEFT", 8, -22 - (shown - 1) * ROWH)
+                local done, label = ns.GoalProgress(g, read)
+                r.name:SetText(tostring(g.name))
+                r.bar:SetValue(done)
+                if done >= 1 then r.bar:SetStatusBarColor(ns:Signal("good")) else r.bar:SetStatusBarColor(ns:Role("@accent")) end
+                r.value:SetText(label)
+                r:Show()
+                if done >= 1 and not g.reached and g.kind ~= "own" then        -- (said once; your own goals you count yourself)
+                    g.reached = true
+                    ns:Print("Goal reached: %s.", tostring(g.name))
+                    if ns.Flash then pcall(ns.Flash, ns, format(ns:Tr("Goal reached: %s"), tostring(g.name))) end
+                elseif done < 1 then
+                    g.reached = nil
+                end
+            end
         end
         for i = n + 1, #rows do rows[i]:Hide() end
-        f:SetHeight(26 + n * ROWH)
-        if n > 0 or ns.moving then f:Show() else f:Hide() end
-        return n
+        f:SetHeight(26 + shown * ROWH)
+        if shown > 0 or ns.moving then f:Show() else f:Hide() end
+        return shown
     end
     ns.goalsTest = { Update = Update, frame = f }
     ns:Every(2, "Goals", Update)
     local ev = CreateFrame("Frame")
-    for _, e in ipairs({ "BAG_UPDATE_DELAYED", "UPDATE_FACTION", "PLAYER_ENTERING_WORLD" }) do pcall(ev.RegisterEvent, ev, e) end
+    for _, e in ipairs({ "BAG_UPDATE_DELAYED", "UPDATE_FACTION", "PLAYER_ENTERING_WORLD", "PLAYER_MONEY", "PLAYER_LEVEL_UP", "NEW_MOUNT_ADDED", "COMPANION_LEARNED" }) do pcall(ev.RegisterEvent, ev, e) end
     ev:SetScript("OnEvent", ns:Guard("Goals", function() Update() end))
     local entry = ns:RegisterMovable(f, "goals", "Goals")
     if type(entry) == "table" then entry.offPage = true end

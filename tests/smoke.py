@@ -8002,6 +8002,127 @@ try("Gear sets: /fgui set by name, the set keys, and the name over the player fr
     end
     env.C_EquipmentSet, env.InCombatLockdown = realE, realLock
 end)
+try("Starcut 11.14: buttons and bag slots cut like gems, a diamond minimap", function()
+    if type(ns.StarcutFacet) ~= "function" then error("no facet style") end
+    local realStyle = ns.db.ufStyle
+    local b = env.CreateFrame("Button")
+    local icon, cd = b:CreateTexture(), newmock()
+    ns.db.ufStyle = "STARCUT"
+    ns:StarcutFacet(b, { icon = icon, cooldown = cd })
+    if rawget(b, "scFacetOn") ~= true or not rawget(b, "scFacet") then error("the button was not cut") end
+    ns.db.ufStyle = "CLASSIC"; ns:ApplyFrameStyle()
+    if rawget(b, "scFacetOn") ~= nil then error("Classic did not put the square back") end
+    ns.db.ufStyle = realStyle; ns:ApplyFrameStyle()
+    if type(ns.ApplyMinimapShape) == "function" then
+        ns.db.minimapDiamond = true
+        if ns:ApplyMinimapShape() ~= "DIAMOND" then error("the minimap did not turn diamond") end
+        ns.db.minimapDiamond = nil
+        if ns:ApplyMinimapShape() == "DIAMOND" then error("the diamond minimap stuck") end
+    end
+end)
+try("Nameplates 11.14: threat on the edge, and the target's accent first", function()
+    if type(ns.PlateEdge) ~= "function" then return end
+    local bar = { suiBorder = newmock(), sc = { edge = newmock() } }
+    ns.PlateEdge(bar, nil, false)
+    if bar.scEdgeShown ~= "plain" then error("a plain plate's edge: " .. tostring(bar.scEdgeShown)) end
+    bar.scThreat = { 1, 0.5, 0 }
+    ns.PlateEdge(bar, nil, false)
+    if bar.scEdgeShown ~= "threat" then error("the threat color is not on the edge") end
+    ns.PlateEdge(bar, nil, true)
+    if bar.scEdgeShown ~= "target" then error("your target's accent should come first") end
+end)
+try("Farming by zone: time, gold and loot zone by zone, and the best spots", function()
+    if type(ns.FarmZonesSave) ~= "function" then error("no zones") end
+    local s = {}
+    ns.FarmZoneSwitch(s, "Elwynn Forest", 0)
+    ns.FarmZoneGold(s, 50000)
+    ns.FarmZoneItem(s, 101, 4, 50)
+    ns.FarmZoneSwitch(s, "Westfall", 1800)
+    ns.FarmZoneGold(s, 10000)
+    ns.FarmZoneSwitch(s, "Stormwind City", 3600)                -- (passing through: under a minute)
+    local hist = {}
+    local n = ns.FarmZonesSave(s, hist, 3630)
+    if n ~= 2 or not hist["Elwynn Forest"] or hist["Stormwind City"] then error("zones saved: " .. tostring(n)) end
+    if hist["Elwynn Forest"][1].secs ~= 1800 or hist["Elwynn Forest"][1].value ~= 200 then error("Elwynn's share is wrong") end
+    local rank = ns.FarmZoneRanking(hist)
+    if rank[1].zone ~= "Elwynn Forest" or math.abs(rank[1].perHour - 100400) > 1 then error("best spot wrong: " .. tostring(rank[1].zone) .. " " .. tostring(rank[1].perHour)) end
+    hist["Elwynn Forest"][2] = { secs = 1800, gold = 100000, value = 0 }
+    rank = ns.FarmZoneRanking(hist)
+    if not rank[1].before or rank[1].last <= rank[1].before then error("the latest time there should be up on the ones before") end
+    ns:FarmZones()
+end)
+try("Run log: kills, wipes, deaths, loot and the best time", function()
+    if type(ns.RunNew) ~= "function" then error("no run log") end
+    local log = {}
+    local a = ns.RunNew("Deadmines", "Normal", 1000, "Me - Realm")
+    ns.RunEncounter(a, "Rhahk'Zor", true, 1300)
+    ns.RunEncounter(a, "Sneed", false, 1500)
+    ns.RunEncounter(a, "Sneed", true, 1700)
+    a.deaths = 1
+    ns.RunLoot(a, "|cff0070dd|Hitem:5187::::::::20:::::|h[Rhahk'Zor's Hammer]|h|r", 3)
+    if not ns.RunFinish(log, a) then error("a run with kills was not kept") end
+    local b = ns.RunNew("Deadmines", "Normal", 5000, "Me - Realm")
+    ns.RunEncounter(b, "Rhahk'Zor", true, 5200)
+    ns.RunEncounter(b, "Sneed", true, 5500)
+    ns.RunFinish(log, b)
+    if ns.RunFinish(log, ns.RunNew("Deadmines", nil, 9000)) then error("an empty run was kept") end
+    local places = ns.RunPlaces(log)
+    if #places ~= 1 or places[1].runs ~= 2 or places[1].best ~= b or ns.RunLength(b) ~= 500 then error("best time wrong") end
+    if a.wipes["Sneed"] ~= 1 or a.kills["Sneed"] ~= 700 then error("wipes or kill times wrong") end
+    local realRoot = ns.root.runs
+    ns.root.runs = log
+    if #ns.RunLines({ level = 0 }) ~= 1 or #ns.RunLines({ level = 1, instance = "Deadmines" }) ~= 3 then error("run window lines wrong") end
+    if #ns.RunLines({ level = 2, run = 1 }) < 5 then error("a run's own lines are missing") end
+    ns:ShowRuns()
+    ns.root.runs = realRoot
+end)
+try("Goals 11.14: gold on all characters, a level, a mount, and where a drop drops", function()
+    if type(ns.GoalProgress) ~= "function" then error("no goals") end
+    local d, t = ns.GoalProgress({ kind = "gold", need = 1000 }, { gold = function() return 5000000 end })
+    if math.abs(d - 0.5) > 0.001 or type(t) ~= "string" then error("gold progress: " .. tostring(d)) end
+    if ns.GoalProgress({ kind = "level", need = 60 }, { level = function() return 30 end }) ~= 0.5 then error("level progress") end
+    if ns.GoalProgress({ kind = "mount", id = 1, name = "x" }, { mount = function() return true end }) ~= 1 then error("mount progress") end
+    ns.root.lootBook = ns.root.lootBook or {}
+    ns.root.lootBook["Test Keep"] = { ["Test Boss"] = { kills = 4, items = { [424242] = { n = 1, link = "x" } } } }
+    local from, seen, kills = ns.GoalDropsFrom(424242)
+    if from ~= "Test Boss (Test Keep)" or seen ~= 1 or kills ~= 4 then error("drops from: " .. tostring(from)) end
+    ns.root.lootBook["Test Keep"] = nil
+    local goals = ns.db.goals
+    ns.db.goals = {}
+    ns:GoalCommand("gold 10000")
+    ns:GoalCommand("level 60")
+    if #ns.db.goals ~= 2 or ns.db.goals[1].kind ~= "gold" or ns.db.goals[2].kind ~= "level" then error("goals not added") end
+    if ns.goalsTest then ns.goalsTest.Update() end
+    ns.db.goals = goals
+end)
+try("Whose upgrade: answers in, biggest upgrade first", function()
+    if type(ns.GroupLootParse) ~= "function" then error("no group loot helper") end
+    local k, ids = ns.GroupLootParse("GLQ:100,200")
+    if k ~= "ask" or ids[2] ~= 200 then error("ask not read") end
+    local k2, id, lv = ns.GroupLootParse("GLU:300:12")
+    if k2 ~= "answer" or id ~= 300 or lv ~= 12 then error("answer not read") end
+    if ns.GroupLootParse("GCQ") ~= nil then error("another message was read as loot") end
+    ns.GroupLootHear(777, "item:777", "Kaelith", 12, 0)
+    ns.GroupLootHear(777, nil, "Sylvae", 4, 0)
+    local e = ns.GroupLootHear(777, nil, "Brannoc", 0, 0)
+    local list, answered = ns.GroupLootWho(e)
+    if answered ~= 3 or #list ~= 2 or list[1].name ~= "Kaelith" then error("order wrong") end
+    if ns.groupLootTest then
+        e.at = env.GetTime()
+        if ns.groupLootTest.Draw() < 1 then error("the panel shows nothing") end
+    end
+    ns.groupLootHeard[777] = nil
+end)
+try("Nameplates: the background behind the health stays black", function()
+    if type(ns.PlateBlackBackground) ~= "function" then return end
+    local t = env.CreateFrame("Frame"):CreateTexture()
+    local last
+    rawset(t, "SetVertexColor", function(self, r, g, b) last = { r, g, b } end)
+    rawset(t, "IsObjectType", function(_, kind) return kind == "Texture" end)
+    rawset(t, "GetObjectType", function() return "Texture" end)
+    ns.PlateBlackBackground(t)
+    if not last or last[1] > 0.1 then error("the background was not made black") end
+end)
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()

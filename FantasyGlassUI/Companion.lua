@@ -194,9 +194,44 @@ end
 ------------------------------------------------------------------------------------------
 -- A round minimap (the add-on's minimap panel is square unless this is on).
 ------------------------------------------------------------------------------------------
-local roundRing
+local roundRing, diamondRing
+-- (11.14) A diamond minimap, cut like the Starcut portrait: a fine rim and a star on each point.
+local function Diamond(on)
+    if on and not diamondRing then
+        local SC = ns.MEDIA .. "starcut\\"
+        diamondRing = CreateFrame("Frame", nil, Minimap)
+        diamondRing:SetAllPoints()
+        diamondRing:SetFrameLevel((Minimap:GetFrameLevel() or 1) + 3)
+        local rim = diamondRing:CreateTexture(nil, "OVERLAY")
+        rim:SetTexture(SC .. "ring")
+        rim:SetPoint("TOPLEFT", -2, 2); rim:SetPoint("BOTTOMRIGHT", 2, -2)
+        ns:Paint(rim, "SetVertexColor", "@rim", 1)
+        diamondRing.rim = rim
+        diamondRing.stars = {}
+        for i, pt in ipairs({ "TOP", "RIGHT", "BOTTOM", "LEFT" }) do
+            local s = diamondRing:CreateTexture(nil, "OVERLAY", nil, 1)
+            s:SetTexture(SC .. "star")
+            s:SetSize(i % 2 == 1 and 18 or 14, i % 2 == 1 and 18 or 14)
+            s:SetPoint("CENTER", Minimap, pt, 0, 0)
+            if s.SetBlendMode then s:SetBlendMode("ADD") end
+            ns:Paint(s, "SetVertexColor", "@accent", 1)
+            diamondRing.stars[i] = s
+        end
+    end
+    if diamondRing then diamondRing:SetShown(on) end
+end
 function ns:ApplyMinimapShape()
     if type(Minimap) ~= "table" or not Minimap.SetMaskTexture then return false end
+    if ns.db.minimapDiamond then
+        Minimap:SetMaskTexture(ns.MEDIA .. "starcut\\diamond")
+        _G.GetMinimapShape = function() return "ROUND" end      -- (buttons that sit round the map: a circle is nearest)
+        if roundRing then roundRing:Hide() end
+        Diamond(true)
+        if ns.minimapRunes then ns.minimapRunes:Hide() end
+        ns.minimapShape = "DIAMOND"
+        return "DIAMOND"
+    end
+    Diamond(false)
     local round = ns.db.minimapRound and true or false
     Minimap:SetMaskTexture(round and "Interface\\CharacterFrame\\TempPortraitAlphaMask" or "Interface\\ChatFrame\\ChatFrameBackground")
     _G.GetMinimapShape = function() return round and "ROUND" or "SQUARE" end

@@ -4,7 +4,7 @@ local Secret = function(v) return ns:IsSecret(v) end
 -- Nameplate designer (11.0.1): what a nameplate shows and how big, from the Bars and frames tab.
 -- Width and height are the game's own nameplate scale (plateW, plateH); the rest is ns.db.plateDesign.
 ns.PLATE_DEFAULT = { nameSize = 10, nameShow = true, healthPos = "CENTER", healthSize = 9, castHeight = 8, castTextSize = 8,
-                     auraSize = 18, auraMax = 5, auraMine = true, threat = true, highlight = true }
+                     auraSize = 18, auraMax = 5, auraMine = true, threat = true, threatEdge = true, highlight = true }
 function ns.PlateDesign()
     local d = type(ns.db and ns.db.plateDesign) == "table" and ns.db.plateDesign or {}
     local out = {}
@@ -38,6 +38,24 @@ ns:NewModule("nameplates", function()
     -- another around the level badge (both called selectedBorder). Those are hidden; the game still
     -- shows and hides them, so we read that and turn our own thin rims to the accent color instead.
     local plates = setmetatable({}, { __mode = "k" })        -- unit frame -> was it selected last time we looked
+    -- The rim round the bar (Starcut: its edge line): the accent on your target; otherwise, with
+    -- "threat on the edge" on, the threat color (11.14: a tank sees which mob is slipping); otherwise plain.
+    function ns.PlateEdge(bar, badge, selected)
+        if not bar then return end
+        local t = rawget(bar, "scThreat")
+        for _, rim in ipairs({ bar.suiBorder, badge and badge.suiBorder }) do
+            if selected then ns:Paint(rim, "SetBackdropBorderColor", "@accent", 1)
+            elseif t and rim == bar.suiBorder then ns:Unpaint(rim, "SetBackdropBorderColor"); rim:SetBackdropBorderColor(t[1], t[2], t[3], 1)
+            else ns:Paint(rim, "SetBackdropBorderColor", "@border", 1) end           -- back to the rim every plate has
+        end
+        local edge = bar.sc and bar.sc.edge                  -- (Starcut has no box: its edge line takes the color)
+        if edge then
+            if selected then ns:Paint(edge, "SetVertexColor", "@accent", 1)
+            elseif t then ns:Unpaint(edge, "SetVertexColor"); edge:SetVertexColor(t[1], t[2], t[3], 1)
+            else ns:Paint(edge, "SetVertexColor", "@rim", 0.55) end
+        end
+        bar.scEdgeShown = selected and "target" or (t and "threat") or "plain"
+    end
     local function Marks(uf)
         local bar = uf.healthBar or uf.healthbar or (uf.HealthBarsContainer and uf.HealthBarsContainer.healthBar)
         local badge = uf.PlayerLevelDiffFrame
@@ -54,14 +72,25 @@ ns:NewModule("nameplates", function()
         if not ns.PlateDesign().highlight then selected = false end
         if plates[uf] == selected then return end
         plates[uf] = selected
-        for _, rim in ipairs({ bar.suiBorder, badge and badge.suiBorder }) do
-            if selected then ns:Paint(rim, "SetBackdropBorderColor", "@accent", 1)
-            else ns:Paint(rim, "SetBackdropBorderColor", "@border", 1) end           -- back to the rim every plate has
-        end
-        -- Starcut has no box round the bar: its edge line takes the accent instead
-        local edge = bar.sc and bar.sc.edge
-        if edge then
-            if selected then ns:Paint(edge, "SetVertexColor", "@accent", 1) else ns:Paint(edge, "SetVertexColor", "@rim", 0.55) end
+        ns.PlateEdge(bar, badge, selected)
+    end
+
+    -- (11.14) The game tints the background behind a plate's health in the bar's own color (red on an
+    -- enemy, so the bar and what is behind it ran together). Ours is black, whatever the game says.
+    local function Blacken(t)
+        if t.suiBlacking then return end
+        t.suiBlacking = true
+        pcall(t.SetVertexColor, t, 0.04, 0.04, 0.05, 0.85)
+        t.suiBlacking = nil
+    end
+    function ns.PlateBlackBackground(t)
+        if not IsTexture(t) or t.suiBlack then return end
+        t.suiBlack = true
+        Blacken(t)
+        if hooksecurefunc then
+            for _, m in ipairs({ "SetVertexColor", "SetColorTexture", "SetAtlas", "SetTexture" }) do
+                if t[m] then hooksecurefunc(t, m, Blacken) end
+            end
         end
     end
 
@@ -78,7 +107,13 @@ ns:NewModule("nameplates", function()
             local also = {}
             pcall(function()
                 for _, r in ipairs({ bar:GetRegions() }) do
-                    if IsTexture(r) and r ~= bar:GetStatusBarTexture() then also[#also + 1] = r end
+                    if IsTexture(r) and r ~= bar:GetStatusBarTexture() then
+                        also[#also + 1] = r
+                        if r:GetDrawLayer() == "BACKGROUND" then ns.PlateBlackBackground(r) end
+                    end
+                end
+                for _, k in ipairs({ "background", "Background", "bgTexture", "bg" }) do       -- (and by its usual names)
+                    if IsTexture(bar[k]) then ns.PlateBlackBackground(bar[k]) end
                 end
             end)
             bar.scAlso = also
@@ -129,18 +164,29 @@ ns:NewModule("nameplates", function()
         if not bar then return end
 
         local r, g, b = ns:ClassColor(unit)
-        if not r and ns.PlateDesign().threat and UnitCanAttack("player", unit) and UnitThreatSituation then
+        local pd = ns.PlateDesign()
+        local tr, tg, tb                                       -- the threat color, if any
+        if not r and (pd.threat or pd.threatEdge) and UnitCanAttack("player", unit) and UnitThreatSituation then
             local s = UnitThreatSituation("player", unit)
             if not ns:IsSecret(s) and s ~= nil then
                 if ns.db.role == "TANK" then
-                    if s == 3 then r, g, b = ns:Signal("good")
-                    elseif s == 2 then r, g, b = ns:Signal("warn")
-                    else r, g, b = ns:Signal("bad") end
-                elseif s == 3 then r, g, b = ns:Signal("bad")
-                elseif s == 2 then r, g, b = ns:Signal("warn") end
+                    if s == 3 then tr, tg, tb = ns:Signal("good")
+                    elseif s == 2 then tr, tg, tb = ns:Signal("warn")
+                    else tr, tg, tb = ns:Signal("bad") end
+                elseif s == 3 then tr, tg, tb = ns:Signal("bad")
+                elseif s == 2 then tr, tg, tb = ns:Signal("warn") end
             end
         end
+        if tr and pd.threat then r, g, b = tr, tg, tb end
         if r then bar:SetStatusBarColor(r, g, b) end
+        -- the edge: a tank's "good" (holding it) stays plain, so only the mobs slipping away stand out
+        local edgeColor = (tr and pd.threatEdge and not (ns.db.role == "TANK" and tr == (ns:Signal("good")))) and { tr, tg, tb } or nil
+        local old = rawget(bar, "scThreat")
+        if (old == nil) ~= (edgeColor == nil) or (old and edgeColor and (old[1] ~= edgeColor[1] or old[2] ~= edgeColor[2])) then
+            bar.scThreat = edgeColor
+            local _, badge = Marks(frame)
+            ns.PlateEdge(bar, badge, plates[frame] == true)
+        end
     end
 
     -- Extras: enemy cast bar + your own debuffs ----------------------------------------------------

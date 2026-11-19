@@ -113,6 +113,9 @@ local function SkinButton(btn)
     end
     skinned[#skinned + 1] = btn
     ApplyButtonText(btn)
+    -- Starcut: the button cut like a gem, its cooldown sweep to match (Classic: the square box)
+    local cd = btn.cooldown or btn.Cooldown or _G[name .. "Cooldown"]
+    ns:StarcutFacet(btn, { icon = icon, also = { bg }, cooldown = (type(cd) == "table") and cd or nil })
 end
 
 ns.SkinActionButton, ns.AbbrevHotkey = SkinButton, Abbrev      -- (the add-on's own bars use these too: BarEngine.lua)

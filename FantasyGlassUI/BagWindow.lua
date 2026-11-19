@@ -422,6 +422,7 @@ local function NewWindow(cfg)
         ns:Paint(b.newDot, "SetVertexColor", "@accent", 1)
         b.newDot:Hide()
         ns:AddBorder(b, 0, 0, 0, 1, 0)
+        ns:StarcutFacet(b, { icon = b.icon, also = { b.bg, b.hl }, cooldown = b.cd, ownRim = true })   -- (Starcut: cut like a gem)
 
         b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
         b:RegisterForDrag("LeftButton")
@@ -665,6 +666,7 @@ local function NewWindow(cfg)
             b.junk:Hide()
         end
         b.suiBorder:SetBackdropBorderColor(r, g, bl, 1)
+        if b.scFacetRim then b.scFacetRim:SetVertexColor(r, g, bl, 1) end    -- (Starcut: the cut rim takes the quality color)
         if upgrade then b.upgrade:Show() else b.upgrade:Hide() end
         b:SetAlpha(Matches(b) and 1 or 0.2)
         local isNew = false

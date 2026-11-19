@@ -1,6 +1,6 @@
 local ADDON, ns = ...
 _G.FantasyGlassUI = ns
-ns.version = "11.13.0"
+ns.version = "11.14.0"
 ns.author = "DustyMouse"
 
 ns.modules = {}
@@ -69,6 +69,8 @@ ns.defaults = {
     skillUps         = true,        -- "Skill-ups" on the profession window (11.11)
     weeklyRecap      = true,        -- each character's week, noted as you play (11.11)
     lootBook         = true,        -- what bosses drop, noted as you kill them; /fgui drops (11.13)
+    groupLoot        = true,        -- in a group: whose upgrade a boss drop is, among players with the add-on (11.14)
+    runLog           = true,        -- dungeon and raid runs: times, kills, wipes, deaths, loot; /fgui runs (11.14)
     farming          = true,        -- farming sessions: /fgui farm, gold and item value an hour (11.13)
     threatMeter      = true,        -- who has how much threat on your target, in a group (11.13)
     accent           = "AZURE",
@@ -251,6 +253,7 @@ ns.defaults = {
     barEngine        = false,       -- our own action bars in place of the game's (BarEngine.lua)
     pixelPerfect     = false,       -- the interface at the screen's own pixel scale (Companion.lua)
     minimapRound     = false,       -- a round minimap
+    minimapDiamond   = false,       -- a diamond minimap, cut like the Starcut portrait (11.14)
     bgHelper         = true,        -- battleground queue timer and start countdown
     holidayJobs      = true,        -- holidays that are on go on the checklist
     kickRotation     = false,       -- interrupt rotation (More.lua)
@@ -1534,6 +1537,12 @@ end
 
 -- What's new: shown once after an update (never on a first install, where the setup opens instead).
 ns.whatsNew = {
+    { "11.14.0", { "Starcut reaches the rest of the screen: action buttons and bag slots are cut like gems, their cooldowns to match, and the minimap can be a diamond (Features tab).",
+                   "Whose upgrade: in a group, a boss drop shows whose upgrade it is, and by how much, among players with the add-on - before anyone rolls.",
+                   "A run log: /fgui runs keeps your dungeon and raid times, kills, wipes, deaths and loot, with a best time for each place.",
+                   "Farming by zone: /fgui farm zones lists your best farming spots by gold an hour, and whether your latest time there was up or down.",
+                   "Goals: gold on all your characters, a level and a mount join the goals panel; an item counts on every character and says where it drops.",
+                   "Nameplates: the threat color is on the plate's edge too, so a tank sees which mob is slipping." } },
     { "11.13.0", { "Starcut reaches every bar: your cast bar, the class resource (its dots become small diamonds), raid frames, nameplates, timers, experience and totems.",
                    "Screenshot mode: /fgui showcase fills every frame with a picture-worthy sample (a boss with a breath on its way, a party of four) and clears the screen of everything else.",
                    "A loot browser: /fgui drops lists what each boss dropped while you were there, raid by raid, with the upgrades for you first.",
@@ -2240,8 +2249,9 @@ ns.helpLines = {
     { "/fgui testgroup", "group practice: made-up group mates, to see group cooldowns, the interrupt rotation and buff coverage alone" },
     { "/fgui showcase", "screenshot mode: every frame with sample data and nothing in the way; again to end" },
     { "/fgui drops [raid]", "the loot browser: what each boss dropped, with the upgrades for you first" },
-    { "/fgui farm [stop]", "a farming session: time, and gold and item value an hour; again to see it, stop to end it" },
+    { "/fgui farm [stop|zones]", "a farming session: time, and gold and item value an hour; again to see it, stop to end it, zones for your best spots" },
     { "/fgui threat", "show or hide the threat meter" },
+    { "/fgui runs", "your dungeon and raid runs: times, bosses, wipes, deaths and loot, with the best time for each place" },
     { "/fgui set [name]", "put on a gear set by name (part of the name will do); on its own, the list of your sets" },
     { "/fgui raidsort role", "order the raid frames by group, role or name" },
     { "/fgui resetinstances", "reset your instances and tell the group" },
@@ -2282,7 +2292,7 @@ ns.helpLines = {
     { "/fgui loot", "everything looted this session and its vendor value" },
     { "/fgui trades", "the trades on record" },
     { "/fgui mailrules add <character> cloth", "mail rules; \"Send by my rules\" at the mailbox sends them" },
-    { "/fgui goal", "reputation and item goals: /fgui goal rep <name>, or an item and a number" },
+    { "/fgui goal", "goals: /fgui goal rep <name>, gold 10000, level 60, mount <name>, or an item and a number" },
     { "/fgui goal add 50 <goal>", "a goal of your own on the goals panel (click it to count); /fgui goal ach <achievement> too" },
     { "People and notes" },
     { "/fgui note <text>", "a note on the player you have targeted (\"list\" shows them all)" },
@@ -2352,6 +2362,7 @@ ns.toolCommands = {
     showcase = function() ns:ToggleShowcase() end,
     drops = function(t) ns:ShowDrops(t) end,
     farm = function(t) ns:Farm(t) end,
+    runs = function() ns:ShowRuns() end,
     set = function(t) ns:SetCommand(t) end,
     threat = function() if ns.ToggleThreatMeter then ns:ToggleThreatMeter() else ns:Print("The threat meter is switched off (Features tab).") end end,
     screenshot = function() ns:ToggleShowcase() end,

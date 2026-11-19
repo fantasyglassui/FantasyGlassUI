@@ -1,6 +1,6 @@
 # Features
 
-Every switch on the **Features** tab (`/fgui`, Features), in its section, with what it does and whether it is on when you first install. Version 11.13.0.
+Every switch on the **Features** tab (`/fgui`, Features), in its section, with what it does and whether it is on when you first install. Version 11.14.0.
 
 The search box at the top of the options finds any of them, and pointing at a switch shows what it does.
 
@@ -60,6 +60,8 @@ The search box at the top of the options finds any of them, and pointing at a sw
 | Loot browser: what bosses drop | on | Notes what each boss drops as you kill it in raids and dungeons - from your loot window, the loot rolls and what anyone in your group loots - shared by all your characters. /fgui drops shows it, raid by raid and boss by boss, with the upgrades for you first. On clients with the dungeon journal, its loot lists are there too. |
 | Threat meter (in groups) | on | A small panel of its own: in a group, with a hostile target, who has how much threat on it, most first, up to five of you. Your row turns the warning color near the top and the danger color when you would pull the target. Works without the damage meter. Move it with /fgui move. |
 | Farming sessions (/fgui farm) | on | /fgui farm starts a session: a small panel shows the time and what you make an hour, in gold and in the items you loot (the auction price you have seen, or the vendor's). /fgui farm again lists every item; /fgui farm stop ends it, and the session counts in your weekly recap. |
+| Run log: dungeon and raid times (/fgui runs) | on | Each dungeon and raid you go into is a run: how long it took, the bosses killed and when, the wipes on each, your deaths and your rare and better loot. /fgui runs lists them place by place, each with its best time (the quickest of the runs that killed the most bosses). Stepping out to repair is still the same run. |
+| Whose upgrade: boss drops in a group | on | When a boss drops something rare or better, the players in your group who use Fantasy Glass UI each work out whether it is an upgrade for them and quietly tell the others. A small panel says whose upgrade it is and by how many item levels, before anyone rolls. Nothing is said in chat. Move it with /fgui move. |
 | Damage meter (if available) | on | A damage and healing meter, on clients that share those totals. Views: damage and healing per second, damage and healing done, damage taken, absorbs, interrupts, dispels and deaths. Click its heading (or roll the mouse wheel over it) for the next view, right-click for this fight, overall or an earlier fight, Shift-right-click to reset. Point at a row for that player's abilities. Your own row has a white edge. Under the bars: who has how much threat on your target when you are in a group. |
 | Damage meter: drawer on the chat box | on | The damage meter comes out of the side of the chat box, as tall as the chat box. The small tab on its edge tucks it away and brings it out again (so does /fgui meter). Switch this off to have the meter as a window of its own that you place in move mode. |
 | Damage meter: open in combat | off | The meter's drawer comes out by itself when a fight starts and tucks itself away eight seconds after it ends. Open or close it yourself and it is left as you set it. Needs the drawer on the chat box. |
@@ -93,6 +95,7 @@ The search box at the top of the options finds any of them, and pointing at a sw
 |---|---|---|
 | Minimap | on | A square minimap with zone, coordinates and clock. |
 | Minimap: round | off | A round minimap instead of the square one, with a rim in your theme's color. The zone, coordinates and clock stay on it. |
+| Minimap: diamond | off | A diamond minimap, cut like the Starcut portrait, with a fine rim and a star on each point. It takes the place of round or square while it is on. The zone, coordinates and clock stay on it. |
 | Pixel-perfect scale | off | Sets the whole interface to the scale where one of its pixels is one of your screen's, so thin rims and lettering stay sharp. Switching it off puts back the scale the game had. Interface size on the Layout tab still works on top of it. |
 | Minimap button collector | on | Gathers other add-ons' minimap buttons into one fold-out panel. |
 | Minimap button for these options | on | A small button on the minimap with the add-on's icon. Left-click opens these options, right-click starts moving panels, and it can be dragged along the minimap. |
@@ -142,7 +145,7 @@ The search box at the top of the options finds any of them, and pointing at a sw
 | Player tooltips: health in numbers | off | Their health in numbers: 12,345 / 20,000 (62%). |
 | Player tooltips: hide during fights | off | Puts player tooltips away while you are fighting, so they don't cover the fight. Hold Shift to see one anyway. |
 | Quest tracker | on | Our list of tracked quests at the side of the screen. |
-| Goals panel | on | A small panel of reputations and items you are working towards, with a bar each. Add them with /fgui goal rep <name>, or /fgui goal and a shift-clicked item with a number. |
+| Goals panel | on | A small panel of what you are working towards, with a bar each: reputations (/fgui goal rep <name>), gold on all your characters (/fgui goal gold 10000), a level (/fgui goal level 60), a mount (/fgui goal mount <name>), achievements, your own goals, and items (/fgui goal and a shift-clicked item with a number), counted on all your characters, with where a boss drop drops in its tooltip. A goal reached says so once. |
 | Quest tracker: rewards | on | The experience and money each quest gives, beside its name on the tracker; in gold once the quest is ready to turn in. |
 | Quest log (L / /ql) | on | Our quest log window (L, or /ql). |
 | Quest banners & reward hint | on | A banner when a quest is accepted or completed, and a hint at the best-selling reward. |

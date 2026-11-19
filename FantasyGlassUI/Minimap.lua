@@ -40,7 +40,7 @@ ns:NewModule("minimap", function()
     Minimap:SetMaskTexture("Interface\\ChatFrame\\ChatFrameBackground")
     if ns.style == "CELESTIAL" then ns:CelestialMinimap(W) end      -- (Celestial: the map as a star chart)
     function GetMinimapShape() return "SQUARE" end
-    if ns.db.minimapRound and ns.ApplyMinimapShape then ns:After(0, function() pcall(ns.ApplyMinimapShape, ns) end) end
+    if (ns.db.minimapRound or ns.db.minimapDiamond) and ns.ApplyMinimapShape then ns:After(0, function() pcall(ns.ApplyMinimapShape, ns) end) end
 
     -- Remove Blizzard's minimap art
     local kill = {
