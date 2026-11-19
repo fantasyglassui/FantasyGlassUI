@@ -21,13 +21,20 @@ ns:NewModule("windows", function()
     local function Shown(f)
         return type(f) == "table" and f.IsVisible and f:IsVisible()
     end
-    local function Each(frame, fn)                      -- direct children, safely
-        if type(frame) ~= "table" or not frame.GetChildren then return end
-        for _, child in ipairs({ frame:GetChildren() }) do
+    -- Direct children, safely: fn(child, kind, a, b). These passes run every half second while their
+    -- window is open, so the children are walked straight off the call's results (no table), and the
+    -- recursive walks hand their depth and budget through a and b rather than making a function per frame.
+    local function EachOf(fn, a, b, ...)
+        for i = 1, select("#", ...) do
+            local child = select(i, ...)
             if type(child) == "table" and child.GetObjectType and not (child.IsForbidden and child:IsForbidden()) then
-                pcall(fn, child, child:GetObjectType())
+                pcall(fn, child, child:GetObjectType(), a, b)
             end
         end
+    end
+    local function Each(frame, fn, a, b)
+        if type(frame) ~= "table" or not frame.GetChildren then return end
+        EachOf(fn, a, b, frame:GetChildren())
     end
     local function Once(f, key)                         -- true the first time only
         if type(f) ~= "table" or f[key] then return false end
@@ -352,17 +359,19 @@ ns:NewModule("windows", function()
     end
 
     -- item-style buttons anywhere under a page (gear and tool slots, the item a recipe makes)
-    local function ItemButtonsUnder(frame, depth, budget)
+    local ItemButtonsUnder
+    local function ItemButtonChild(child, kind, depth, budget)
+        budget.n = budget.n - 1
+        if kind == "Button" and IsTexture(child.icon) and IsTexture(child.IconBorder) and (child.NormalTexture or child.GetNormalTexture) then
+            kit.ItemButton(child)
+            kit.ItemQuality(child)
+        elseif kind ~= "ModelScene" and kind ~= "PlayerModel" then
+            ItemButtonsUnder(child, depth + 1, budget)
+        end
+    end
+    function ItemButtonsUnder(frame, depth, budget)
         if depth > 4 or budget.n <= 0 then return end
-        Each(frame, function(child, kind)
-            budget.n = budget.n - 1
-            if kind == "Button" and IsTexture(child.icon) and IsTexture(child.IconBorder) and (child.NormalTexture or child.GetNormalTexture) then
-                kit.ItemButton(child)
-                kit.ItemQuality(child)
-            elseif kind ~= "ModelScene" and kind ~= "PlayerModel" then
-                ItemButtonsUnder(child, depth + 1, budget)
-            end
-        end)
+        Each(frame, ItemButtonChild, depth, budget)
     end
 
     local function Professions()
@@ -473,19 +482,21 @@ ns:NewModule("windows", function()
         return false
     end
 
-    local function CollectionWalk(frame, depth, budget)
+    local CollectionWalk
+    local function CollectionChild(child, kind, depth, budget)
+        budget.n = budget.n - 1
+        if budget.n <= 0 then return end
+        if child.IsShown and not child:IsShown() then return end        -- hidden tabs wait until they are opened
+        if MODELS[kind] then
+            if kind == "DressUpModel" and Once(child, "suiPolish") then Tint(child.Border) end
+            ModelControls(child)
+            return
+        end
+        if not CollectionPiece(child, kind) then CollectionWalk(child, depth + 1, budget) end
+    end
+    function CollectionWalk(frame, depth, budget)
         if depth > 5 then return end
-        Each(frame, function(child, kind)
-            budget.n = budget.n - 1
-            if budget.n <= 0 then return end
-            if child.IsShown and not child:IsShown() then return end        -- hidden tabs wait until they are opened
-            if MODELS[kind] then
-                if kind == "DressUpModel" and Once(child, "suiPolish") then Tint(child.Border) end
-                ModelControls(child)
-                return
-            end
-            if not CollectionPiece(child, kind) then CollectionWalk(child, depth + 1, budget) end
-        end)
+        Each(frame, CollectionChild, depth, budget)
     end
 
     local function Collections()
@@ -550,14 +561,16 @@ ns:NewModule("windows", function()
         return false
     end
 
-    local function AuctionWalk(frame, depth, budget)
+    local AuctionWalk
+    local function AuctionChild(child, kind, depth, budget)
+        budget.n = budget.n - 1
+        if budget.n <= 0 or MODELS[kind] then return end
+        if child.IsShown and not child:IsShown() then return end        -- hidden pages wait until they are opened
+        if not AuctionPiece(child, kind) then AuctionWalk(child, depth + 1, budget) end
+    end
+    function AuctionWalk(frame, depth, budget)
         if depth > 8 then return end
-        Each(frame, function(child, kind)
-            budget.n = budget.n - 1
-            if budget.n <= 0 or MODELS[kind] then return end
-            if child.IsShown and not child:IsShown() then return end        -- hidden pages wait until they are opened
-            if not AuctionPiece(child, kind) then AuctionWalk(child, depth + 1, budget) end
-        end)
+        Each(frame, AuctionChild, depth, budget)
     end
 
     local function AuctionHouse()
@@ -677,14 +690,16 @@ ns:NewModule("windows", function()
         end
         return false
     end
-    local function FinderWalk(frame, depth, budget)
+    local FinderWalk
+    local function FinderChild(child, kind, depth, budget)
+        budget.n = budget.n - 1
+        if budget.n <= 0 or MODELS[kind] then return end
+        if child.IsShown and not child:IsShown() then return end        -- hidden pages wait until they are opened
+        if not FinderPiece(child, kind) then FinderWalk(child, depth + 1, budget) end
+    end
+    function FinderWalk(frame, depth, budget)
         if depth > 8 then return end
-        Each(frame, function(child, kind)
-            budget.n = budget.n - 1
-            if budget.n <= 0 or MODELS[kind] then return end
-            if child.IsShown and not child:IsShown() then return end        -- hidden pages wait until they are opened
-            if not FinderPiece(child, kind) then FinderWalk(child, depth + 1, budget) end
-        end)
+        Each(frame, FinderChild, depth, budget)
     end
     local function GroupFinder()
         local win = _G.LFGParentFrame

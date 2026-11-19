@@ -289,18 +289,17 @@ ns:NewModule("characterWindow", function()
     -- Every named piece of a frame that is such a bar or a check box, whatever the page calls it
     -- (ReputationBar, SkillsBar, StandingBar, RankBar, AtWarCheckbox ...).
     local TintCheck
+    local function Piece(piece)
+        if IsTexture(piece.Fill) then
+            FlatBar(piece)
+        elseif piece.GetObjectType and piece:GetObjectType() == "CheckButton" then
+            TintCheck(piece)
+        end
+    end
     local function PiecesOf(holder)
         if type(holder) ~= "table" then return end
         for key, piece in pairs(holder) do
-            if type(key) == "string" and type(piece) == "table" and key:sub(1, 3) ~= "sui" then
-                pcall(function()
-                    if IsTexture(piece.Fill) then
-                        FlatBar(piece)
-                    elseif piece.GetObjectType and piece:GetObjectType() == "CheckButton" then
-                        TintCheck(piece)
-                    end
-                end)
-            end
+            if type(key) == "string" and type(piece) == "table" and not key:find("^sui") then pcall(Piece, piece) end
         end
     end
 
@@ -348,14 +347,18 @@ ns:NewModule("characterWindow", function()
         { "ReputationFrame", "ReputationDetailFrame" }, { "SkillsFrame", "SkillDetailFrame" },
         { "TokenFrame", "DetailFrame" }, { "PVPRankFrame", "DetailFrame" }, { "StatisticsFrame", "DetailFrame" },
     }
+    local listCounts = setmetatable({}, { __mode = "k" })
     local function ListPages()
         for _, def in ipairs(LIST_PAGES) do
             local page = _G[def[1]]
             if type(page) == "table" and page.IsVisible and page:IsVisible() then
                 local box = page.ScrollBox
                 local target = type(box) == "table" and box.ScrollTarget
-                if type(target) == "table" and target.GetChildren then
+                -- (rows are styled once and reused for other lines: with no new rows, nothing to do)
+                local count = type(target) == "table" and target.GetNumChildren and target:GetNumChildren()
+                if type(target) == "table" and target.GetChildren and not (type(count) == "number" and listCounts[target] == count) then
                     for _, row in ipairs({ target:GetChildren() }) do pcall(ListRow, row) end
+                    if type(count) == "number" then listCounts[target] = count end
                 end
                 -- Each list also carries two small frames of one texture each (its top and bottom trim).
                 -- They are there even when the list is empty, as on a character with no currencies.
@@ -416,15 +419,23 @@ ns:NewModule("characterWindow", function()
     -- hides one of their pieces on the selected tab. So: count the pieces each tab is showing; if the
     -- counts differ, the tab showing the fewest is the selected one, and the tabs can safely take our
     -- plate with an accent on it. If the counts never differ they simply stay tinted, as before.
+    -- (five times a second while the window is open: the lists are kept and emptied, not made anew)
+    local tabs, counts = {}, {}
+    local function ShownArt(tab, ...)
+        local n = 0
+        for i = 1, select("#", ...) do
+            local r = select(i, ...)
+            if IsTexture(r) and r ~= tab.Icon and not r.sui and r.IsShown and r:IsShown() then n = n + 1 end
+        end
+        return n
+    end
     local function SidebarTabs()
-        local tabs, counts, lo, hi = {}, {}, math.huge, -1
+        local lo, hi = math.huge, -1
+        for i = #tabs, 1, -1 do counts[tabs[i]] = nil; tabs[i] = nil end
         for i = 1, 4 do
             local tab = _G["PaperDollSidebarTab" .. i]
             if type(tab) == "table" and tab.GetRegions and tab.IsShown and tab:IsShown() then
-                local n = 0
-                for _, r in ipairs({ tab:GetRegions() }) do
-                    if IsTexture(r) and r ~= tab.Icon and not r.sui and r.IsShown and r:IsShown() then n = n + 1 end
-                end
+                local n = ShownArt(tab, tab:GetRegions())
                 tabs[#tabs + 1] = tab
                 counts[tab] = n
                 lo, hi = math.min(lo, n), math.max(hi, n)
@@ -454,32 +465,41 @@ ns:NewModule("characterWindow", function()
     end
 
     -- Everything else: walk the window and treat what we recognise ---------------------------------------
+    -- (twice a second while the window is open: the children are walked straight off the call's
+    -- results, so no table is made for each frame on the way)
     local budget
-    local function Walk(f, depth)
-        if depth > 7 or type(f) ~= "table" or not f.GetChildren then return end
-        for _, child in ipairs({ f:GetChildren() }) do
-            budget = budget - 1
-            if budget <= 0 then return end
-            if type(child) == "table" and child.GetObjectType and not (child.IsForbidden and child:IsForbidden()) then
-                local kind = child:GetObjectType()
-                if not child.suiChar then
-                    child.suiChar = true
-                    local hasBg = IsTexture(child.Background)
-                    if hasBg and type(child.Title) == "table" and child.Title.SetFont then
-                        StyleCategory(child)
-                    elseif hasBg and type(child.Label) == "table" and type(child.Value) == "table" then
-                        StyleStatRow(child)
-                    elseif (kind == "Button" or kind == "CheckButton") and not child.suiControl then
-                        TintButton(child)
-                    elseif not MODELS[kind] and child.GetRegions then
-                        for _, r in ipairs({ child:GetRegions() }) do      -- dividers and trim, not backdrops
-                            if IsTexture(r) and EDGE_LAYERS[r:GetDrawLayer()] then Tint(r) end
-                        end
+    local Walk
+    local function Visit(child, depth)
+        if type(child) == "table" and child.GetObjectType and not (child.IsForbidden and child:IsForbidden()) then
+            local kind = child:GetObjectType()
+            if not child.suiChar then
+                child.suiChar = true
+                local hasBg = IsTexture(child.Background)
+                if hasBg and type(child.Title) == "table" and child.Title.SetFont then
+                    StyleCategory(child)
+                elseif hasBg and type(child.Label) == "table" and type(child.Value) == "table" then
+                    StyleStatRow(child)
+                elseif (kind == "Button" or kind == "CheckButton") and not child.suiControl then
+                    TintButton(child)
+                elseif not MODELS[kind] and child.GetRegions then
+                    for _, r in ipairs({ child:GetRegions() }) do      -- dividers and trim, not backdrops (once per frame)
+                        if IsTexture(r) and EDGE_LAYERS[r:GetDrawLayer()] then Tint(r) end
                     end
                 end
-                if not MODELS[kind] and not child.suiSlot and not child.suiTab and not child.suiRep then Walk(child, depth + 1) end
             end
+            if not MODELS[kind] and not child.suiSlot and not child.suiTab and not child.suiRep then Walk(child, depth + 1) end
         end
+    end
+    local function WalkKids(depth, ...)
+        for i = 1, select("#", ...) do
+            budget = budget - 1
+            if budget <= 0 then return end
+            Visit((select(i, ...)), depth)
+        end
+    end
+    function Walk(f, depth)
+        if depth > 7 or type(f) ~= "table" or not f.GetChildren or budget <= 0 then return end
+        WalkKids(depth, f:GetChildren())
     end
 
     local dirty = true

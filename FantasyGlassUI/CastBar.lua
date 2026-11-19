@@ -33,6 +33,24 @@ ns:NewModule("playerCast", function()
     timer:SetPoint("RIGHT", -6, 0)
     name:SetPoint("RIGHT", timer, "LEFT", -6, 0)
 
+    -- the frame style: Starcut cuts the bar to points, its icon to a small diamond, and steps the text in
+    local iconMask
+    bar.scAlso = { spark }
+    bar.scOnStyle = function(_, on)
+        if on and not iconMask then iconMask = ns.StarcutMask(iconBox, "diamond", iconBox, 0) end
+        ns.StarcutMasked(icon, iconMask, on)
+        local b = iconBox.suiBorder
+        if b then b:SetShown(not on); if b.outer then b.outer:SetShown(not on) end end
+        iconBox:ClearAllPoints()
+        iconBox:SetPoint("RIGHT", bar, "LEFT", on and -6 or -3, 0)
+        iconBox:SetSize(on and H + 4 or H, on and H + 4 or H)
+        local inset = ns.StarcutInset(on, 6)
+        name:ClearAllPoints(); timer:ClearAllPoints()
+        timer:SetPoint("RIGHT", -inset, 0)
+        name:SetPoint("LEFT", inset, 0); name:SetPoint("RIGHT", timer, "LEFT", -6, 0)
+    end
+    ns:StarcutStyleBar(bar, true)
+
     -- State ---------------------------------------------------------------------------
     local active, channel, raw = false, false, false
     local startS, endS = nil, nil

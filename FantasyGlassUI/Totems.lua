@@ -45,6 +45,7 @@ ns:NewModule("totems", function()
 
     -- the border round a slot (two thin lines), shown or not
     local function Box(b, on)
+        if ns.StarcutOn() then on = false end                  -- (Starcut: a diamond ring instead of the box)
         if b.suiBoxed == on then return end
         b.suiBoxed = on
         local border = b.suiBorder
@@ -109,7 +110,28 @@ ns:NewModule("totems", function()
     ev:RegisterEvent("PLAYER_ENTERING_WORLD")
     ev:SetScript("OnEvent", ns:Guard("Totem timers", Update))
     ns:Every(1, "Totem timers", Update)
-    Update()
+
+    -- The frame style: under Starcut each slot is a small diamond, its picture, ring and cooldown
+    -- sweep all cut to that shape; Classic keeps the square in its box.
+    local SCM = ns.MEDIA .. "starcut\\"
+    local function Style(on)
+        for _, b in ipairs(icons) do
+            if on and not b.scMask then
+                b.scMask = ns.StarcutMask(b, "diamond", b, 0)
+                b.scRing = b:CreateTexture(nil, "OVERLAY", nil, 6)
+                b.scRing:SetTexture(SCM .. "ring")
+                b.scRing:SetPoint("TOPLEFT", -2, 2); b.scRing:SetPoint("BOTTOMRIGHT", 2, -2)
+                ns:Paint(b.scRing, "SetVertexColor", "@rim", 1)
+            end
+            ns.StarcutMasked(b.tex, b.scMask, on)
+            if b.scRing then b.scRing:SetShown(on) end
+            if b.cd and b.cd.SetSwipeTexture then pcall(b.cd.SetSwipeTexture, b.cd, on and (SCM .. "diamond") or ns.FLAT) end
+            b.suiBoxed = nil
+        end
+        Update()
+    end
+    Style(ns.StarcutOn())
+    ns:OnFrameStyle(Style)
 
     ns:RegisterPreview(function(on)
         preview = on

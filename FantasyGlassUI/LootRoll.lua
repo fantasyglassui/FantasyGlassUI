@@ -142,7 +142,8 @@ ns:NewModule("lootRoll", function()
     ns.QuietGameRolls = QuietTheGames
     QuietTheGames()
 
-    ns:RegisterPreview(function(on)
+    ns:RegisterPreview(function(on, mode)
+        if on and mode == "showcase" then return end           -- (screenshot mode keeps the screen clear)
         local r = Row(1)
         if on and not r:IsShown() then
             r.sample, r.rollID = true, 0

@@ -120,7 +120,7 @@ end
 
 -- Who has threat on your target: you, your pet, your group. Nil when there is nothing worth showing
 -- (no hostile target, or nobody but you).
-function ns:ThreatOnTarget()
+function ns:ThreatOnTarget(most)                         -- most: how many rows (3 for the meter)
     if type(UnitDetailedThreatSituation) ~= "function" or type(UnitExists) ~= "function" then return nil end
     local function is(fn, ...)
         if type(fn) ~= "function" then return false end
@@ -147,7 +147,7 @@ function ns:ThreatOnTarget()
     end
     if #list < 2 then return nil end                          -- alone, everything is on you: nothing to compare
     ns.SortThreat(list)
-    while #list > THREAT_MAX do table.remove(list) end
+    while #list > (most or THREAT_MAX) do table.remove(list) end
     return list
 end
 

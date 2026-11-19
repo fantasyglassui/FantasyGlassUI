@@ -332,6 +332,20 @@ ns:NewModule("craftBar", function()
     local timer = ns:NewText(bar, 12, "RIGHT")
     timer:SetPoint("RIGHT", -6, 0)
     name:SetPoint("RIGHT", timer, "LEFT", -6, 0)
+    -- the frame style, as on the cast bar
+    local iconMask
+    bar.scAlso = { spark }
+    bar.scOnStyle = function(_, on)
+        if on and not iconMask then iconMask = ns.StarcutMask(iconBox, "diamond", iconBox, 0) end
+        ns.StarcutMasked(icon, iconMask, on)
+        local b = iconBox.suiBorder
+        if b then b:SetShown(not on); if b.outer then b.outer:SetShown(not on) end end
+        local inset = ns.StarcutInset(on, 6)
+        name:ClearAllPoints(); timer:ClearAllPoints()
+        timer:SetPoint("RIGHT", -inset, 0)
+        name:SetPoint("LEFT", inset, 0); name:SetPoint("RIGHT", timer, "LEFT", -6, 0)
+    end
+    ns:StarcutStyleBar(bar, true)
 
     local host, how                                   -- the game's crafting bar, once found, and how
     local casting, covering = false, false

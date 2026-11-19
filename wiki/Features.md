@@ -1,6 +1,6 @@
 # Features
 
-Every switch on the **Features** tab (`/fgui`, Features), in its section, with what it does and whether it is on when you first install. Version 11.11.0.
+Every switch on the **Features** tab (`/fgui`, Features), in its section, with what it does and whether it is on when you first install. Version 11.13.0.
 
 The search box at the top of the options finds any of them, and pointing at a switch shows what it does.
 
@@ -57,6 +57,9 @@ The search box at the top of the options finds any of them, and pointing at a sw
 | Cooldown timeline | off | The abilities on your cooldown tracker list sliding along one slim bar towards ready, with the last seconds stretched out so they are easy to read. In a fight the game may hide cooldowns: those wait at the right end with the game's own sweep. |
 | Cooldown pulse | on | When an ability on the cooldown tracker comes off cooldown, its icon appears in the middle of the screen for a moment. Choose the abilities on the Combat tab; place the pulse in move mode. |
 | Buff alerts | on | A large icon when a buff you chose is on you. Set it up on the Combat tab. |
+| Loot browser: what bosses drop | on | Notes what each boss drops as you kill it in raids and dungeons - from your loot window, the loot rolls and what anyone in your group loots - shared by all your characters. /fgui drops shows it, raid by raid and boss by boss, with the upgrades for you first. On clients with the dungeon journal, its loot lists are there too. |
+| Threat meter (in groups) | on | A small panel of its own: in a group, with a hostile target, who has how much threat on it, most first, up to five of you. Your row turns the warning color near the top and the danger color when you would pull the target. Works without the damage meter. Move it with /fgui move. |
+| Farming sessions (/fgui farm) | on | /fgui farm starts a session: a small panel shows the time and what you make an hour, in gold and in the items you loot (the auction price you have seen, or the vendor's). /fgui farm again lists every item; /fgui farm stop ends it, and the session counts in your weekly recap. |
 | Damage meter (if available) | on | A damage and healing meter, on clients that share those totals. Views: damage and healing per second, damage and healing done, damage taken, absorbs, interrupts, dispels and deaths. Click its heading (or roll the mouse wheel over it) for the next view, right-click for this fight, overall or an earlier fight, Shift-right-click to reset. Point at a row for that player's abilities. Your own row has a white edge. Under the bars: who has how much threat on your target when you are in a group. |
 | Damage meter: drawer on the chat box | on | The damage meter comes out of the side of the chat box, as tall as the chat box. The small tab on its edge tucks it away and brings it out again (so does /fgui meter). Switch this off to have the meter as a window of its own that you place in move mode. |
 | Damage meter: open in combat | off | The meter's drawer comes out by itself when a fight starts and tucks itself away eight seconds after it ends. Open or close it yourself and it is left as you set it. Needs the drawer on the chat box. |
@@ -115,6 +118,7 @@ The search box at the top of the options finds any of them, and pointing at a sw
 | Spellbook | on | Restyles the spellbook. |
 | Character window | on | Restyles the character window and all its pages. |
 | Character window: gear set buttons | on | A row of buttons under the character window, one for each set saved in the game's equipment manager. Click one to put that set on. The set you are wearing is underlined; a set with pieces you no longer have is gray. Not in combat. |
+| Gear set name over my player frame | on | The name of the gear set you are wearing, small, over the top right of your player frame. Put a set on with /fgui set <name>, or give the first five sets keys (Key Bindings, Fantasy Glass UI). |
 | Character window: talent set buttons | on | A small 1 and 2 at the top of the character window: one click changes talent set (also /fgui spec). |
 | Character window: missing enchants | off | On the character window, a red E on a piece with no enchant where one usually goes, and a G where a gem socket is empty. |
 | Item levels when inspecting | on | On the inspect window, shows the item level of each piece the other player wears and their average, like your own character window. |

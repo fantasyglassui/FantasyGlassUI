@@ -200,6 +200,7 @@ local function BuildLook(page)
     Y = Y - 28 * (math.ceil(#ns.fontOrder / 5) - 1)          -- (one row of lettering is allowed for below; this is the rest)
     Header(page, "Menu and bars", 0, Y - 68, { sub = true })
     local portraitButtons = {}                               -- (filled in the Portraits and class colors section, below)
+    local frameStyleButtons = {}                             -- (the same section: Starcut or Classic)
     local modes = { "HIDE", "HOVER", "DIM", "SHOW" }
     local modeNames = { HIDE = "Hidden (Menu button)", HOVER = "Show on hover", DIM = "Dimmed", SHOW = "Shown" }
     local mbtn
@@ -398,6 +399,7 @@ local function BuildLook(page)
         for key, b in pairs(fontButtons) do Mark(b, key == (ns.db.fontStyle or "GLASS")) end
         barPanel:SetChecked(ns.db.barPanel)
         for key, b in pairs(portraitButtons) do Mark(b, key == (ns.db.ufPortrait or "3D")) end
+        for key, b in pairs(frameStyleButtons) do Mark(b, key == ((ns.db.ufStyle == "CLASSIC") and "CLASSIC" or "STARCUT")) end
         -- the three chips show the colors that an edit would start from
         local t = ns.themes[ns.db.theme]
         local def = (t and t.custom) and ns.db.customThemes[t.customName] or nil
@@ -459,6 +461,24 @@ local function BuildLook(page)
     end
     local PY = TY - 30 - 4 * 28 - 16
     Header(page, "Portraits and class colors", 0, PY)
+    -- the unit frames' style: Starcut (bars cut to points, a diamond portrait) or Classic (the box)
+    local slabel = page:CreateFontString(nil, "OVERLAY")
+    ns:Font(slabel, 12)
+    ns:Paint(slabel, "SetTextColor", "dim")
+    slabel:SetPoint("TOPLEFT", 0, PY - 36)
+    slabel:SetText(ns:Tr("Frame style"))
+    for i, def in ipairs({ { "STARCUT", "Starcut" }, { "CLASSIC", "Classic" } }) do
+        local b = Choice(def[2], 150, function()
+            ns.db.ufStyle = def[1]
+            if InCombatLockdown() then ns:Print("The frame style will change when the fight is over.") end
+            ns:ApplyFrameStyle()
+            Refresh()
+        end)
+        b:SetPoint("TOPLEFT", 90 + (i - 1) * 156, PY - 30)
+        frameStyleButtons[def[1]] = b
+    end
+    page.frameStyleButtons = frameStyleButtons
+    PY = PY - 36                                              -- (the rows below move down one)
     local plabel = page:CreateFontString(nil, "OVERLAY")
     ns:Font(plabel, 12)
     ns:Paint(plabel, "SetTextColor", "dim")

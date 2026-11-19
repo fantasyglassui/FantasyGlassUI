@@ -243,3 +243,76 @@ ns:NewModule("setsFollowSpec", function()
         end
     end))
 end)
+
+------------------------------------------------------------------------------------------
+-- 11.13: the set you are wearing, by name, over your player frame; /fgui set <name> to put one on;
+-- and five key bindings for the first five sets (A to Z, as the buttons show them).
+------------------------------------------------------------------------------------------
+-- The set a typed name means: the same name, then one that starts with it, then one that has it.
+function ns.FindSet(sets, text)
+    local want = ns.Trim(text or ""):lower()
+    if want == "" then return nil end
+    for _, pass in ipairs({ "same", "start", "has" }) do
+        for _, set in ipairs(sets or {}) do
+            local n = set.name:lower()
+            if (pass == "same" and n == want) or (pass == "start" and n:sub(1, #want) == want)
+                or (pass == "has" and n:find(want, 1, true)) then return set end
+        end
+    end
+end
+
+function ns:SetCommand(text)
+    if not ns:CanUseSets() then ns:Print("This game client has no equipment manager an add-on can use.") return end
+    local sets = ns:EquipmentSets()
+    if ns.Trim(text or "") == "" then
+        local lines = {}
+        for i, set in ipairs(sets) do
+            local key = i <= 5 and GetBindingKey and GetBindingKey("FANTASYGLASSUI_GEARSET" .. i)
+            lines[#lines + 1] = { left = "|T" .. tostring(set.icon or QUESTION) .. ":16:16:0:0:64:64:5:59:5:59|t  " .. (set.worn and (ns:AccentHex() .. set.name .. "|r") or set.name),
+                                  right = (set.worn and ns:Tr("wearing") or "") .. (type(key) == "string" and ("  |cff9aa4b4" .. key .. "|r") or ""),
+                                  click = function() ns:WearSet(set) end }
+        end
+        if #lines == 0 then lines[1] = { left = ns:Tr("No sets saved in the equipment manager yet.") } end
+        ns:ShowList("GearSets", "Gear sets", lines, "Click one to put it on, or /fgui set <name>. The first five can have keys (Key Bindings, Fantasy Glass UI).", 380, math.min(360, 90 + #lines * 20))
+        return nil
+    end
+    local set = ns.FindSet(sets, text)
+    if not set then ns:Print(format(ns:Tr("No gear set called \"%s\"."), ns.Trim(text))) return nil end
+    if set.worn then ns:Print(format(ns:Tr("You are already wearing \"%s\"."), set.name)) return set end
+    if ns:WearSet(set) then ns:Print(format(ns:Tr("Putting on \"%s\"."), set.name)) end
+    return set
+end
+-- A key binding: the n-th set, A to Z.
+function ns:WearSetNumber(n)
+    local set = ns:EquipmentSets()[n]
+    if not set then ns:Print(format(ns:Tr("No gear set %d: you have %d."), n, #ns:EquipmentSets())) return end
+    if not set.worn and ns:WearSet(set) then ns:Print(format(ns:Tr("Putting on \"%s\"."), set.name)) end
+end
+
+ns:NewModule("setOnFrame", function()
+    if not ns:CanUseSets() then return end
+    local label
+    local function Player()
+        for _, f in ipairs(ns.unitFrameList or {}) do if f.realUnit == "player" then return f end end
+        return _G.PlayerFrame
+    end
+    local function Update()
+        local frame = Player()
+        if type(frame) ~= "table" or not frame.CreateFontString then return end
+        if not label or label.owner ~= frame then
+            label = ns:NewText(frame, 10, "RIGHT")
+            label.owner = frame
+            label:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", -4, 3)
+            ns:Paint(label, "SetTextColor", "@accent")
+        end
+        local worn
+        for _, set in ipairs(ns:EquipmentSets()) do if set.worn then worn = set.name break end end
+        label:SetText(worn or "")
+        label.setName = worn
+        if worn then label:Show() else label:Hide() end
+    end
+    ns.setOnFrameTest = { Update = Update, Label = function() return label end }
+    local ev = CreateFrame("Frame")
+    for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "EQUIPMENT_SETS_CHANGED", "EQUIPMENT_SWAP_FINISHED", "PLAYER_EQUIPMENT_CHANGED" }) do pcall(ev.RegisterEvent, ev, e) end
+    ev:SetScript("OnEvent", ns:Guard("Gear set name", function() ns:After(0.3, function() pcall(Update) end) end))
+end)

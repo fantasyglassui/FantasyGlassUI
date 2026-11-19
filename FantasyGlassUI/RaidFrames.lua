@@ -275,6 +275,30 @@ function ns.RaidStyle(b)
     b.power:SetPoint("BOTTOMRIGHT", -1, 1)
     b.power:SetHeight(3)
 
+    -- the frame style: under Starcut the cell's box goes, its bars are cut to points (no glow: a raid
+    -- has forty of them), the power bar set in from the points, and the incoming heals cut to match
+    local incMask
+    b.health.scOnStyle = function(_, on)
+        b.bg:SetShown(not on)
+        local bd = b.suiBorder
+        if bd then bd:SetShown(not on); if bd.outer then bd.outer:SetShown(not on) end end
+        b.health:ClearAllPoints(); b.power:ClearAllPoints()
+        if on then
+            b.health:SetPoint("TOPLEFT", 0, 0); b.health:SetPoint("BOTTOMRIGHT", 0, 6)
+            b.power:SetPoint("BOTTOMLEFT", 8, 0); b.power:SetPoint("BOTTOMRIGHT", -8, 0)
+        else
+            b.health:SetPoint("TOPLEFT", 1, -1); b.health:SetPoint("BOTTOMRIGHT", -1, 5)
+            b.power:SetPoint("BOTTOMLEFT", 1, 1); b.power:SetPoint("BOTTOMRIGHT", -1, 1)
+        end
+        b.power:SetHeight(3)
+        if b.incoming then
+            if on and not incMask then incMask = ns.StarcutMask(b.incoming, "bar_mask", b.health, 0) end
+            ns.StarcutMasked(b.incoming:GetStatusBarTexture(), incMask, on)
+        end
+    end
+    ns:StarcutStyleBar(b.health, false)
+    ns:StarcutStyleBar(b.power, false)
+
     local layer = CreateFrame("Frame", nil, b)
     layer:SetAllPoints()
     layer:SetFrameLevel(b:GetFrameLevel() + 6)

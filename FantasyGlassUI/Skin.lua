@@ -452,8 +452,10 @@ function ns:Corners(host, anchor, size, offset)
         BOTTOMLEFT  = { 0, 1, 1, 0,  offset,  offset },
         BOTTOMRIGHT = { 1, 0, 1, 0, -offset,  offset },
     }
+    local made = {}
     for point, c in pairs(coords) do
         local t = host:CreateTexture(nil, "OVERLAY")
+        made[#made + 1] = t
         t:SetTexture(ns.MEDIA .. "corner.tga")
         t:SetTexCoord(c[1], c[2], c[3], c[4])
         t:SetSize(size, size)
@@ -461,6 +463,7 @@ function ns:Corners(host, anchor, size, offset)
         ns:Paint(t, "SetVertexColor", "@accent", 1)
         t.sui = true
     end
+    return made                                         -- (so a frame can put them away: Starcut)
 end
 
 -- A jewelled divider line, tinted with the accent.
@@ -1034,17 +1037,24 @@ local function StyleRow(row)
     ns:AutoSkin(row, 3)
 end
 do
+    -- A row is styled once and keeps its style when the list reuses it for other lines, so a list
+    -- with as many rows as at its last look has nothing new: it is passed over without a walk.
+    local rowCounts = setmetatable({}, { __mode = "k" })
     local function StyleList(target)
         if not target:IsVisible() then return end
+        local count = target.GetNumChildren and target:GetNumChildren()
+        if type(count) == "number" and rowCounts[target] == count then return end
         local n = 0
         for _, row in ipairs({ target:GetChildren() }) do
             if type(row) == "table" and not row.suiRow and not (row.IsForbidden and row:IsForbidden()) then
                 StyleRow(row)
                 n = n + 1
-                if n > 60 then break end
+                if n > 60 then return end                   -- (the rest next time; the count is not noted yet)
             end
         end
+        if type(count) == "number" then rowCounts[target] = count end
     end
+    ns.StyleList = StyleList
     local f, acc = CreateFrame("Frame"), 0
     f:SetScript("OnUpdate", function(_, e)
         acc = acc + e
@@ -2700,7 +2710,9 @@ function ns:RegisterPreview(fn)
     table.insert(ns.previews, fn)
 end
 
-function ns:TogglePreview(forceOff)
+-- mode "showcase": screenshot mode, where the busier samples (notifications, warnings, loot rolls)
+-- stay away; quiet: nothing said in chat
+function ns:TogglePreview(forceOff, mode, quiet)
     local want = not ns.previewing
     if forceOff then want = false end
     if want == ns.previewing then return end
@@ -2709,8 +2721,8 @@ function ns:TogglePreview(forceOff)
         return
     end
     ns.previewing = want
-    for _, fn in ipairs(ns.previews) do pcall(fn, want) end
-    if not forceOff then
+    for _, fn in ipairs(ns.previews) do pcall(fn, want, want and mode or nil) end
+    if not forceOff and not quiet then
         ns:Print(want and "Preview ON - sample frames are showing. |cffffff00/fgui test|r again to end."
                       or "Preview OFF.")
     end
@@ -2876,6 +2888,7 @@ function ns:NewStatusBar(parent, border)
     else
         sheen:SetVertexColor(1, 1, 1, 0.05)
     end
+    bar.sheen = sheen                                   -- (Starcut cuts it to the bar's shape too)
     if border then ns:AddBorder(bar, 0, 0, 0, 1) end
     return bar
 end
@@ -3299,3 +3312,133 @@ ns:Every(0.1, "Icon tabs", function()
         end
     end
 end)
+
+------------------------------------------------------------------------------------------
+-- Starcut (11.12): bars cut to points at both ends, with a fine edge, a dark line under it so it
+-- holds on bright ground, and a glow in the bar's own color. Used by the unit frames (the "Starcut"
+-- frame style) and by every other bar of the add-on, so they all change together. Only the look
+-- changes: each shape is a mask on the game's own textures.
+------------------------------------------------------------------------------------------
+local SC = ns.MEDIA .. "starcut\\"
+function ns.StarcutOn() return (ns.db and ns.db.ufStyle or "STARCUT") ~= "CLASSIC" end
+
+-- A mask the size of `region` plus `out` pixels all round.
+local function ScMask(host, file, region, out)
+    local ok, m = pcall(host.CreateMaskTexture, host)
+    if not ok or not m then return nil end
+    m:SetTexture(SC .. file, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+    m:SetPoint("TOPLEFT", region, "TOPLEFT", -out, out)
+    m:SetPoint("BOTTOMRIGHT", region, "BOTTOMRIGHT", out, -out)
+    return m
+end
+local function ScMasked(tex, mask, on)
+    if not (tex and mask and tex.AddMaskTexture) then return end
+    if on and not tex.scMasked then pcall(tex.AddMaskTexture, tex, mask); tex.scMasked = true
+    elseif not on and tex.scMasked then pcall(tex.RemoveMaskTexture, tex, mask); tex.scMasked = nil end
+end
+
+-- One bar cut to points: its fill, trough and sheen share one mask; under them a line in the rim's
+-- color one pixel larger, a dark line one pixel larger again (so the edge holds on bright ground), and a
+-- glow in the bar's own color around it all.
+local ScGlowFit
+local function ScBar(bar, on, glow)
+    if not bar or not bar.CreateTexture then return end
+    if on and not bar.sc then
+        local sc = {}
+        local file = bar.scMaskFile or "bar_mask"             -- (a bar may take another shape: the resource's dots are diamonds)
+        sc.mask = ScMask(bar, file, bar, 0)
+        sc.dark = bar:CreateTexture(nil, "BACKGROUND", nil, -7)
+        sc.dark:SetTexture(ns.FLAT)
+        sc.dark:SetPoint("TOPLEFT", -2, 2); sc.dark:SetPoint("BOTTOMRIGHT", 2, -2)
+        sc.dark:SetVertexColor(0, 0, 0, 0.9)
+        sc.darkMask = ScMask(bar, file, bar, 2)
+        sc.edge = bar:CreateTexture(nil, "BACKGROUND", nil, -6)
+        sc.edge:SetTexture(ns.FLAT)
+        sc.edge:SetPoint("TOPLEFT", -1, 1); sc.edge:SetPoint("BOTTOMRIGHT", 1, -1)
+        ns:Paint(sc.edge, "SetVertexColor", "@rim", 0.55)
+        sc.edgeMask = ScMask(bar, file, bar, 1)
+        ScMasked(sc.dark, sc.darkMask, true)
+        ScMasked(sc.edge, sc.edgeMask, true)
+        sc.glow = bar:CreateTexture(nil, "BACKGROUND", nil, -8)
+        sc.glow:SetTexture(SC .. "bar_glow")
+        if sc.glow.SetBlendMode then sc.glow:SetBlendMode("ADD") end
+        bar.sc = sc
+        -- the glow follows the bar's size, however it is set
+        if bar.HookScript then
+            bar:HookScript("OnSizeChanged", function(self, w, h) if self.sc and self.sc.glow:IsShown() then ScGlowFit(self, w, h) end end)
+        end
+    end
+    local sc = bar.sc
+    if not sc then return end
+    ScMasked(bar:GetStatusBarTexture(), sc.mask, on)
+    ScMasked(bar.bg, sc.mask, on)
+    ScMasked(bar.sheen, sc.mask, on)
+    for _, t in ipairs(bar.scAlso or {}) do ScMasked(t, sc.mask, on) end   -- (a bar's own extra textures)
+    sc.dark:SetShown(on); sc.edge:SetShown(on)
+    sc.glow:SetShown(on and glow ~= false)
+    if on and glow ~= false then
+        local w, h = bar:GetWidth(), bar:GetHeight()
+        if type(w) == "number" and type(h) == "number" then ScGlowFit(bar, w, h) end
+    end
+end
+-- The glow's picture holds the bar shape in its middle 208 x 32 of 256 x 64: stretch it to fit.
+function ScGlowFit(bar, w, h)
+    local g = bar and bar.sc and bar.sc.glow
+    if not g or not w or not h or w <= 0 or h <= 0 then return end
+    local x, y = w * 24 / 208, h * 16 / 32
+    g:ClearAllPoints()
+    g:SetPoint("TOPLEFT", bar, "TOPLEFT", -x, y)
+    g:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", x, -y)
+end
+-- the glow takes the bar's color (called whenever that color is set)
+local function ScTint(bar, alpha)
+    local g = bar and bar.sc and bar.sc.glow
+    if not g or not g:IsShown() then return end
+    local ok, r, gg, b = pcall(bar.GetStatusBarColor, bar)
+    if ok and type(r) == "number" then g:SetVertexColor(r, gg, b, alpha or 0.5) end
+end
+ns.StarcutTint = ScTint
+ns.StarcutMask, ns.StarcutMasked, ns.StarcutBar, ns.StarcutGlowFit = ScMask, ScMasked, ScBar, ScGlowFit
+
+-- Other bars follow the frame style too: each registers what to do when it changes.
+local styleHooks = {}
+function ns:OnFrameStyle(fn) styleHooks[#styleHooks + 1] = fn end
+function ns:ApplyFrameStyle()
+    if InCombatLockdown() then ns.designPending = true; ns.styleHooksPending = true; return end
+    if ns.RefreshUnitFrames then ns:RefreshUnitFrames() end
+    if ns.ApplyAuraDesign then ns:ApplyAuraDesign() end
+    for _, fn in ipairs(styleHooks) do pcall(fn, ns.StarcutOn()) end
+    ns.styleHooksPending = nil
+end
+function ns:RunFrameStyleHooks()                 -- (after a fight, when the change was asked for during it)
+    if not ns.styleHooksPending then return end
+    ns.styleHooksPending = nil
+    for _, fn in ipairs(styleHooks) do pcall(fn, ns.StarcutOn()) end
+end
+
+-- A bar made with ns:NewStatusBar that should follow the frame style from now on: cut to points (and
+-- its box border put away) under Starcut, back in its box under Classic. Its glow takes its color
+-- whenever the color is set. `glow` false: no glow (bars that come by the dozen, like nameplates).
+-- bar.scAlso: more of its own textures to cut to the shape; bar.scOnStyle(bar, on): the rest of what
+-- that bar changes (its icon, where its text sits).
+local scBars = setmetatable({}, { __mode = "k" })
+local function ScApplyOne(bar, glow)
+    local on = ns.StarcutOn()
+    ScBar(bar, on, glow)
+    local b = bar.suiBorder
+    if b then b:SetShown(not on); if b.outer then b.outer:SetShown(not on) end end
+    if bar.scOnStyle then pcall(bar.scOnStyle, bar, on) end
+    if on then ScTint(bar, 0.5) end
+end
+function ns:StarcutStyleBar(bar, glow)
+    if not bar then return end
+    scBars[bar] = glow ~= false
+    if glow ~= false and not bar.scTintHooked and hooksecurefunc then      -- (only a glowing bar needs its color followed)
+        bar.scTintHooked = true
+        hooksecurefunc(bar, "SetStatusBarColor", function(self) if self.sc then ScTint(self, 0.5) end end)
+    end
+    ScApplyOne(bar, scBars[bar])
+end
+ns:OnFrameStyle(function() for bar, glow in pairs(scBars) do ScApplyOne(bar, glow) end end)
+-- (the text inside a bar steps in from the points: `on` and the usual inset)
+function ns.StarcutInset(on, inset) return on and math.max(inset or 6, 14) or (inset or 6) end

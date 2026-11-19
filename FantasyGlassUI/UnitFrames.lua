@@ -92,6 +92,7 @@ local function NewBar(parent)
     else
         sheen:SetVertexColor(1, 1, 1, 0.05)
     end
+    bar.sheen = sheen                                         -- (Starcut cuts it to the bar's shape too)
     return bar
 end
 
@@ -104,6 +105,282 @@ local function Text(parent, size, justify)
 end
 
 ------------------------------------------------------------------------------------------
+-- Starcut (11.12): the frame style that leaves the plain box behind. Bars are cut to points at both
+-- ends and glow in their own color, with no panel around them; the portrait is a diamond with a
+-- soft halo, and on the player and target small stars sit on its points, a fine line runs from it
+-- past the end of the bars to a star, and the name sits above the bars. The raid mark takes the
+-- diamond's top point, the leader's crown its bottom point, and combat or resting its outer point.
+--
+-- Only the look changes: the same bars, texts and updates are used, so hidden combat values work
+-- exactly as before. Every shape is a mask on the game's own textures. "Classic" (ns.db.ufStyle) is
+-- the box the frames had before; the two can be swapped at any time out of a fight.
+------------------------------------------------------------------------------------------
+local SC = ns.MEDIA .. "starcut\\"
+-- (the bar shape itself is shared with the other bars of the add-on: Skin.lua)
+local ScMask, ScMasked, ScBar, ScGlowFit, ScTint = ns.StarcutMask, ns.StarcutMasked, ns.StarcutBar, ns.StarcutGlowFit, ns.StarcutTint
+
+local function ScTex(host, layer, sub, file, role, alpha)
+    local t = host:CreateTexture(nil, layer, nil, sub)
+    t:SetTexture(file)
+    if role then ns:Paint(t, "SetVertexColor", role, alpha or 1) end
+    return t
+end
+
+-- The diamond portrait and, on the player and target, its stars, the line and the end star.
+local function ScParts(f)
+    if f.scParts then return f.scParts end
+    local s = {}
+    local p = f.portrait
+    if p then
+        s.halo = ScTex(p, "BACKGROUND", -8, SC .. "halo", "@accent", 0.30)
+        s.fill = ScTex(p, "BACKGROUND", -7, SC .. "diamond", "bg", 0.95)
+        s.ring = ScTex(p, "OVERLAY", 5, SC .. "ring", "@rim", 1)
+        s.ring:SetAllPoints(p)
+        s.fill:SetAllPoints(p)
+        s.mask = ScMask(p, "diamond", p, -2)
+    end
+    if f.opt.stars then
+        s.line = ScTex(f, "BACKGROUND", -8, ns.FLAT, "@border", 0.55)
+        s.line:SetHeight(1)
+        s.endStar = ScTex(f, "ARTWORK", 0, SC .. "star", "@accent", 1)
+        s.endStar:SetSize(16, 16)
+        local layer = f.textLayer
+        s.top = ScTex(layer, "OVERLAY", 1, SC .. "star", "@rim", 1)
+        s.bottom = ScTex(layer, "OVERLAY", 1, SC .. "star", "@rim", 1)
+        s.outer = ScTex(layer, "OVERLAY", 1, SC .. "star", "@rim", 1)
+        for _, t in ipairs({ s.top, s.bottom, s.outer }) do t:SetSize(11, 11) end
+        if f.opt.status then                                  -- combat swords or resting, on the outer point
+            s.state = layer:CreateTexture(nil, "OVERLAY", nil, 2)
+            s.state:SetTexture("Interface\\CharacterFrame\\UI-StateIcon")
+            s.state:SetSize(20, 20)
+            s.state:Hide()
+        end
+    end
+    f.scParts = s
+    return s
+end
+local function ScShow(s, on)
+    for _, k in ipairs({ "halo", "fill", "ring", "line", "endStar", "top", "bottom", "outer" }) do
+        if s[k] then s[k]:SetShown(on) end
+    end
+    if s.state and not on then s.state:Hide() end
+end
+
+-- the diamond is S across; the line and stars hang off it; `mirror` puts it on the right
+local function ScPortrait(f, S, mirror)
+    local p, s = f.portrait, ScParts(f)
+    if not p then return end
+    p:ClearAllPoints()
+    p:SetSize(S, S)
+    if mirror then p:SetPoint("CENTER", f, "RIGHT", S / 2 + 6, 0) else p:SetPoint("CENTER", f, "LEFT", -(S / 2 + 6), 0) end
+    if p.bg then p.bg:Hide() end
+    if p.sep then p.sep:Hide() end
+    s.halo:ClearAllPoints()
+    s.halo:SetPoint("CENTER", p, "CENTER", 0, 0)
+    s.halo:SetSize(S * 1.35, S * 1.35)
+    -- the picture fills the diamond; the 3D model, which can't be cut to shape, sits in the square inside it
+    p.tex:ClearAllPoints()
+    p.tex:SetPoint("TOPLEFT", p, "TOPLEFT", 2, -2); p.tex:SetPoint("BOTTOMRIGHT", p, "BOTTOMRIGHT", -2, 2)
+    ScMasked(p.tex, s.mask, true)
+    p.model:ClearAllPoints()
+    p.model:SetPoint("TOPLEFT", p, "TOPLEFT", S / 4 + 1, -(S / 4 + 1)); p.model:SetPoint("BOTTOMRIGHT", p, "BOTTOMRIGHT", -(S / 4 + 1), S / 4 + 1)
+    if p.emblem then
+        p.emblem:ClearAllPoints()
+        p.emblem:SetPoint("TOPLEFT", p, "TOPLEFT", S * 0.2, -S * 0.2); p.emblem:SetPoint("BOTTOMRIGHT", p, "BOTTOMRIGHT", -S * 0.2, S * 0.2)
+    end
+    if s.top then
+        local side = mirror and "RIGHT" or "LEFT"
+        s.top:ClearAllPoints(); s.top:SetPoint("CENTER", p, "TOP", 0, 2)
+        s.bottom:ClearAllPoints(); s.bottom:SetPoint("CENTER", p, "BOTTOM", 0, -2)
+        s.outer:ClearAllPoints(); s.outer:SetPoint("CENTER", p, side, mirror and 2 or -2, 0)
+        if s.state then s.state:ClearAllPoints(); s.state:SetPoint("CENTER", p, side, mirror and 4 or -4, 0) end
+    end
+    -- the raid mark on the top point, the leader's crown on the bottom one
+    if f.raidIcon then f.raidIcon:ClearAllPoints(); f.raidIcon:SetPoint("CENTER", p, "TOP", 0, 1); f.raidIcon:SetSize(18, 18) end
+    if f.leader then f.leader:ClearAllPoints(); f.leader:SetPoint("CENTER", p, "BOTTOM", 0, -1); f.leader:SetSize(13, 13) end
+end
+-- (back to the box: the pieces Starcut moved go home)
+local function ClassicPortrait(f)
+    local p, s = f.portrait, f.scParts
+    if p then
+        if p.bg then p.bg:Show() end
+        if p.sep then p.sep:Show() end
+        p.tex:ClearAllPoints(); p.tex:SetPoint("TOPLEFT", 1, -1); p.tex:SetPoint("BOTTOMRIGHT", -1, 1)
+        p.model:ClearAllPoints(); p.model:SetPoint("TOPLEFT", 1, -1); p.model:SetPoint("BOTTOMRIGHT", -1, 1)
+        if p.emblem then p.emblem:ClearAllPoints(); p.emblem:SetPoint("TOPLEFT", 1, -1); p.emblem:SetPoint("BOTTOMRIGHT", -1, 1) end
+        if s then ScMasked(p.tex, s.mask, false) end
+    end
+    if s then ScShow(s, false) end
+    if f.raidIcon then f.raidIcon:ClearAllPoints(); f.raidIcon:SetPoint("CENTER", f, "TOP", 0, 0); f.raidIcon:SetSize(16, 16) end
+    if f.leader then f.leader:ClearAllPoints(); f.leader:SetPoint("CENTER", f, "TOPLEFT", 8, 0); f.leader:SetSize(12, 12) end
+end
+
+-- The point stars give way to what stands on their point (a raid mark, the crown, combat or rest).
+local function ScPoints(f)
+    local s = f.scParts
+    if not (s and s.top and ns.StarcutOn()) then return end
+    s.top:SetShown(not (f.raidIcon and f.raidIcon:IsShown()))
+    s.bottom:SetShown(not (f.leader and f.leader:IsShown()))
+    s.outer:SetShown(not (s.state and s.state:IsShown()))
+end
+
+-- name (and level) above the bars, on the player and target; it is cut short with "..." before it
+-- reaches the far end
+local function ScName(f, mirror, d)
+    if not (f.name and f.opt.stars) then return end
+    local where = d and d.name
+    f.name:SetAlpha(where == "OFF" and 0 or 1)
+    f.name:ClearAllPoints()
+    f.name:SetJustifyH(mirror and "RIGHT" or "LEFT")
+    if mirror then f.name:SetPoint("BOTTOMRIGHT", f, "TOPRIGHT", -14, 5) else f.name:SetPoint("BOTTOMLEFT", f, "TOPLEFT", 14, 5) end
+    f.scNameMax = math.max(60, (f:GetWidth() or 200) - 70)
+    if f.level then
+        f.level:ClearAllPoints()
+        if mirror then f.level:SetPoint("RIGHT", f.name, "LEFT", -8, 0) else f.level:SetPoint("LEFT", f.name, "RIGHT", 8, 0) end
+    end
+end
+-- (the name's width follows its text, up to the room there is; set after each new name)
+local function ScNameFit(f)
+    if not f.scNameMax or not ns.StarcutOn() or not f.opt.stars then return end
+    local ok, w = pcall(function() return (f.name.GetUnboundedStringWidth and f.name:GetUnboundedStringWidth()) or f.name:GetStringWidth() end)
+    if ok and type(w) == "number" and not Secret(w) then f.name:SetWidth(math.min(w + 2, f.scNameMax)) else f.name:SetWidth(f.scNameMax) end
+end
+
+local function ScLayout(f)
+    local o = f.opt
+    local mirror = o.portrait == "RIGHT"
+    local W, H = f:GetWidth(), f:GetHeight()
+    ScName(f, mirror, f.designKey and ns.FrameDesign(f.designKey) or {})
+    local style = ns.db.ufPortrait or "3D"
+    if f.bg then f.bg:Hide() end
+    if f.suiBorder then f.suiBorder:Hide(); if f.suiBorder.outer then f.suiBorder.outer:Hide() end end
+    for _, t in ipairs(f.corners or {}) do t:Hide() end
+    -- bars: health on top, power under it, set in from the points
+    local ph = o.power or 0
+    if ph > 0 and o.stars then ph = math.max(ph, 12) end
+    local gap = ph > 0 and 5 or 0
+    f.health:ClearAllPoints()
+    f.health:SetPoint("TOPLEFT", f, "TOPLEFT", 0, 0)
+    f.health:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, ph + gap)
+    if f.health.SetReverseFill then f.health:SetReverseFill(mirror) end
+    ScBar(f.health, true)
+    ScGlowFit(f.health, W, H - ph - gap)
+    if f.power then
+        f.power:SetShown(ph > 0)
+        if ph > 0 then
+            f.power:ClearAllPoints()
+            f.power:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 16, 0)
+            f.power:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -16, 0)
+            f.power:SetHeight(ph)
+            if f.power.SetReverseFill then f.power:SetReverseFill(mirror) end
+            ScBar(f.power, true)
+            ScGlowFit(f.power, W - 32, ph)
+        end
+        -- a power bar tall enough carries its own text, at the same end as the health text
+        if f.ppct and ph >= 10 then
+            f.ppct:ClearAllPoints()
+            if mirror then f.ppct:SetPoint("LEFT", f.power, "LEFT", 12, 0); f.ppct:SetJustifyH("LEFT")
+            else f.ppct:SetPoint("RIGHT", f.power, "RIGHT", -12, 0); f.ppct:SetJustifyH("RIGHT") end
+            f.ppct:SetTextColor(1, 1, 1)
+            f.ppctInline = false
+        end
+    end
+    -- the portrait diamond
+    local s = ScParts(f)
+    if f.portrait then
+        if style == "OFF" or f.portraitOff then
+            f.portrait:Hide()
+            ScShow(s, false)
+        else
+            f.portrait:Show()
+            ScShow(s, true)
+            ScPortrait(f, math.floor(H * (o.stars and 1.7 or 1.3) + 0.5), mirror)        -- (smaller off the player and target: party frames sit close)
+        end
+    end
+    -- the line from the diamond past the bars to a star
+    if s.line then
+        local hy = -(H - ph - gap) / 2
+        s.line:ClearAllPoints(); s.endStar:ClearAllPoints()
+        if mirror then
+            s.line:SetPoint("LEFT", f, "TOPLEFT", -16, hy); s.line:SetPoint("RIGHT", f, "TOPRIGHT", 6, hy)
+            s.endStar:SetPoint("CENTER", f, "TOPLEFT", -20, hy)
+        else
+            s.line:SetPoint("LEFT", f, "TOPLEFT", -6, hy); s.line:SetPoint("RIGHT", f, "TOPRIGHT", 16, hy)
+            s.endStar:SetPoint("CENTER", f, "TOPRIGHT", 20, hy)
+        end
+        s.line:SetShown(true); s.endStar:SetShown(true)
+    end
+    if f.level and not o.stars and f.textLayer then         -- (inside the bar: clear of its point)
+        f.level:ClearAllPoints(); f.level:SetPoint("LEFT", f.textLayer, "LEFT", 14, 0)
+    end
+    if f.combo then ScBar(f.combo, true, false) end           -- combo points: the same cut, no glow
+    if f.combat then f.combat:Hide() end                      -- (the red line over the box: the swords take its place)
+    if f.rest then f.rest:Hide() end
+    -- the cast bar under the frame, cut to points, its icon a small diamond
+    local bar = f.cast
+    if bar then
+        bar:ClearAllPoints()
+        bar:SetPoint("TOPLEFT", f, "BOTTOMLEFT", 26, -8)
+        bar:SetPoint("TOPRIGHT", f, "BOTTOMRIGHT", -16, -8)
+        bar:SetHeight(14)
+        ScBar(bar, true)
+        ScGlowFit(bar, W - 42, 14)
+        if bar.suiBorder then bar.suiBorder:Hide(); if bar.suiBorder.outer then bar.suiBorder.outer:Hide() end end
+        if not bar.scIconMask then bar.scIconMask = ScMask(bar, "diamond", bar.icon, 0) end
+        ScMasked(bar.icon, bar.scIconMask, true)
+        bar.icon:SetSize(20, 20)
+        bar.icon:ClearAllPoints(); bar.icon:SetPoint("RIGHT", bar, "LEFT", -4, 0)
+    end
+    -- clicks reach the diamond and the name too
+    if not InCombatLockdown() and f.SetHitRectInsets then
+        local reach = (f.portrait and f.portrait:IsShown()) and -(f.portrait:GetWidth() + 8) or 0
+        local top = o.stars and -20 or 0
+        if mirror then pcall(f.SetHitRectInsets, f, 0, reach, top, 0) else pcall(f.SetHitRectInsets, f, reach, 0, top, 0) end
+    end
+end
+
+-- back to the box
+local function ClassicRestore(f)
+    if not f.scLaidOut then return end
+    f.scLaidOut = nil
+    if f.bg then f.bg:Show() end
+    if f.suiBorder then f.suiBorder:Show(); if f.suiBorder.outer then f.suiBorder.outer:Show() end end
+    for _, t in ipairs(f.corners or {}) do t:Show() end
+    ScBar(f.health, false); ScBar(f.power, false); ScBar(f.combo, false)
+    if f.health.SetReverseFill then f.health:SetReverseFill(false) end
+    if f.power and f.power.SetReverseFill then f.power:SetReverseFill(false) end
+    ClassicPortrait(f)
+    if f.ppct then
+        f.ppct:ClearAllPoints()
+        if f.ppctInlineBase then
+            f.ppct:SetPoint("RIGHT", f.pct, "LEFT", -6, 0)
+        else
+            f.ppct:SetPoint("RIGHT", f.power, "RIGHT", -4, 0)
+            f.ppct:SetTextColor(1, 1, 1)
+        end
+        f.ppct:SetJustifyH("RIGHT")
+        f.ppctInline = f.ppctInlineBase
+    end
+    if f.level and f.textLayer then
+        f.level:ClearAllPoints(); f.level:SetPoint("LEFT", f.textLayer, "LEFT", 6, 0)
+    end
+    if f.name then f.name:SetWidth(0); f.scNameMax = nil end
+    local bar = f.cast
+    if bar then
+        ScBar(bar, false)
+        if bar.scIconMask then ScMasked(bar.icon, bar.scIconMask, false) end
+        if bar.suiBorder then bar.suiBorder:Show(); if bar.suiBorder.outer then bar.suiBorder.outer:Show() end end
+        bar:ClearAllPoints()
+        bar:SetPoint("TOPLEFT", f, "BOTTOMLEFT", 16, -5)
+        bar:SetPoint("TOPRIGHT", f, "BOTTOMRIGHT", 0, -5)
+        bar:SetHeight(14)
+        bar.icon:SetSize(14, 14)
+        bar.icon:ClearAllPoints(); bar.icon:SetPoint("RIGHT", bar, "LEFT", -2, 0)
+    end
+    if not InCombatLockdown() and f.SetHitRectInsets then pcall(f.SetHitRectInsets, f, 0, 0, 0, 0) end
+end
+
+------------------------------------------------------------------------------------------
 -- Portrait: live 3D model, 2D picture, class icon, or off
 ------------------------------------------------------------------------------------------
 -- Our own class emblems (Media\emblem): a medallion in the theme, tinted in the class color (see ns:CreateEmblem).
@@ -112,7 +389,7 @@ local OUR_CLASSES = { WARRIOR = 1, PALADIN = 1, HUNTER = 1, ROGUE = 1, PRIEST = 
 
 local function UpdatePortrait(f)
     local p = f.portrait
-    if not p or not p:IsShown() then return end
+    if not p or not p:IsShown() or f.showcase == true then return end           -- (screenshot mode keeps its sample)
     local unit, style = f.unit, ns.db.ufPortrait or "3D"
     p.model:Hide()
     p.tex:Hide()
@@ -148,6 +425,7 @@ end
 -- Updates
 ------------------------------------------------------------------------------------------
 local function UpdateHealth(f)
+    if f.showcase == true then return end
     local u = f.unit
     pcall(function()
         f.health:SetMinMaxValues(0, UnitHealthMax(u))
@@ -263,11 +541,13 @@ end
 function ns:ForgetPowerCall() powerCall, powerGuess = nil, nil end       -- (for tests)
 
 UpdatePower = function(f)
+    if f.showcase == true then return end
     if not f.power then return end
     local u = f.unit
     local ptype, token = UnitPowerType(u)
     local c = PowerBarColor and (PowerBarColor[token] or PowerBarColor[ptype])
     if c and c.r then f.power:SetStatusBarColor(c.r, c.g, c.b) else f.power:SetStatusBarColor(0.25, 0.5, 1) end
+    if f.power.sc then ScTint(f.power, 0.6) end
     pcall(function()
         f.power:SetMinMaxValues(0, UnitPowerMax(u))
         ns:SetBar(f.power, UnitPower(u))
@@ -296,6 +576,7 @@ function ns:PowerTextColor(unit)
 end
 
 local function UpdateInfo(f)
+    if f.showcase == true then return end
     local u = f.unit
     f.health:SetStatusBarColor(UnitColor(u))
     f.name:SetText(UnitName(u) or "")
@@ -323,9 +604,21 @@ local function UpdateInfo(f)
     if f.leader then
         if UnitIsGroupLeader and UnitIsGroupLeader(u) then f.leader:Show() else f.leader:Hide() end
     end
+    if f.health.sc then ScTint(f.health, 0.5) end
+    if f.scNameMax then ScNameFit(f) end
+    if f.scParts then ScPoints(f) end
 end
 
 local function UpdateStatus(f)   -- player only: combat edge + resting mark
+    local state = f.scParts and f.scParts.state
+    if state and ns.StarcutOn() then                          -- Starcut: crossed swords or a resting sign on the outer point
+        local fighting, resting = UnitAffectingCombat("player"), IsResting and IsResting()
+        if ns.Yes(fighting) then state:SetTexCoord(0.5, 1, 0, 0.484375); state:Show()
+        elseif ns.Yes(resting) then state:SetTexCoord(0, 0.5, 0, 0.421875); state:Show()
+        else state:Hide() end
+        ScPoints(f)
+        return
+    end
     if f.combat then
         if UnitAffectingCombat("player") then f.combat:Show() else f.combat:Hide() end
     end
@@ -381,8 +674,16 @@ local function AuraRowLayout(row)
     row.size, row.max = d.size, (d.show == "none") and 0 or d.max
     row:ClearAllPoints()
     row:SetHeight(d.size)
-    local pad = (f.cast and f.cast:GetParent() == f) and 6 or 6
-    if d.side == "below" then
+    local pad = 6
+    local side = d.side
+    local sc = ns.StarcutOn()
+    if sc then
+        local saved = type(ns.db.auraDesign) == "table" and type(ns.db.auraDesign[row.kind]) == "table" and ns.db.auraDesign[row.kind].side
+        if not saved then side = "below" end                         -- (no side chosen yet)
+        if side == "above" and f.opt.stars then pad = pad + 20 end     -- (above the name)
+        if side == "below" and f.cast then pad = pad + 6 end           -- (Starcut's cast bar sits a little lower)
+    end
+    if side == "below" then
         row:SetPoint("TOPLEFT", f, "BOTTOMLEFT", 0, -(pad + ((row.kind ~= "player" and f.cast) and 22 or 0)))
         row:SetPoint("TOPRIGHT", f, "BOTTOMRIGHT", 0, -(pad + ((row.kind ~= "player" and f.cast) and 22 or 0)))
     else
@@ -473,6 +774,7 @@ end
 
 -- Cast bar (target / focus) -----------------------------------------------------------------
 local function CastCheck(f)
+    if f.cast and f.cast.showcase == true then return end
     local bar = f.cast
     if not bar or bar.preview then return end
     local unit = f.unit
@@ -492,14 +794,77 @@ local function CastCheck(f)
     pcall(bar.icon.SetTexture, bar.icon, texture)
     local a = ns.theme.accent
     if channel then bar:SetStatusBarColor(0.35, 0.85, 0.45) else bar:SetStatusBarColor(a[1], a[2], a[3]) end
+    if bar.sc then ScTint(bar, 0.55) end
     -- remember the end time only when the client lets us read it (used as a safety net)
     bar.endsAt = (not Secret(endMS) and endMS) and (endMS / 1000) or nil
     bar.active = true
     bar:Show()
 end
 
-local function UpdateAll(f)
-    if not UnitExists(f.unit) then return end
+-- Screenshot mode (/fgui showcase): a frame shows made-up data and stops listening to its unit until
+-- the mode ends. d = { name, level, levelColor, class (for color and picture), color {r,g,b},
+-- hp, pp, powerColor {r,g,b}, cast = { name, icon, done } }.
+local CLASS_FALLBACK = { WARRIOR = { 0.78, 0.61, 0.43 }, PALADIN = { 0.96, 0.55, 0.73 }, HUNTER = { 0.67, 0.83, 0.45 }, ROGUE = { 1, 0.96, 0.41 },
+                         PRIEST = { 1, 1, 1 }, SHAMAN = { 0, 0.44, 0.87 }, MAGE = { 0.25, 0.78, 0.92 }, WARLOCK = { 0.53, 0.53, 0.93 }, DRUID = { 1, 0.49, 0.04 } }
+function ns.UnitFrameSample(f, d)
+    if not d then
+        f.showcase = nil
+        if f.cast and f.cast.showcase == true then f.cast.showcase = nil; f.cast.active = false; f.cast:Hide() end
+        return
+    end
+    f.showcase = true
+    local c = d.color
+    if not c and d.class then
+        local rc = RAID_CLASS_COLORS and RAID_CLASS_COLORS[d.class]
+        c = rc and { rc.r, rc.g, rc.b } or CLASS_FALLBACK[d.class] or { 0.2, 0.6, 1 }
+    end
+    c = c or { 0.2, 0.6, 1 }
+    f.health:SetMinMaxValues(0, 100); f.health:SetValue(d.hp or 100)
+    f.health:SetStatusBarColor(c[1], c[2], c[3])
+    if f.health.sc then ScTint(f.health, 0.5) end
+    if f.pct then f.pct:SetText((d.hp or 100) .. "%") end
+    if f.power then
+        local pc = d.powerColor or { 0.25, 0.5, 1 }
+        f.power:SetMinMaxValues(0, 100); f.power:SetValue(d.pp or 0)
+        f.power:SetStatusBarColor(pc[1], pc[2], pc[3])
+        if f.power.sc then ScTint(f.power, 0.6) end
+        if f.ppct then f.ppct:SetText(d.pp and (d.pp .. "%") or "") end
+    end
+    if f.name then f.name:SetText(d.name or ""); f.name:SetTextColor(1, 1, 1) end
+    if f.level then
+        f.level:SetText(d.level or "")
+        local lc = d.levelColor or { 1, 0.82, 0 }
+        f.level:SetTextColor(lc[1], lc[2], lc[3])
+    end
+    if f.scNameMax then ScNameFit(f) end
+    local p = f.portrait
+    if p and p:IsShown() then                                      -- a class picture, or the one given
+        p.model:Hide(); if p.emblem then p.emblem:Hide() end
+        if d.class and CLASS_ICON_TCOORDS and CLASS_ICON_TCOORDS[d.class] then
+            p.tex:SetTexture("Interface\\TargetingFrame\\UI-Classes-Circles")
+            local t = CLASS_ICON_TCOORDS[d.class]
+            p.tex:SetTexCoord(t[1], t[2], t[3], t[4])
+        elseif d.icon then
+            p.tex:SetTexture(d.icon); p.tex:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        end
+        p.tex:SetVertexColor(1, 1, 1); p.tex:Show()
+    end
+    if f.cast then
+        if d.cast then
+            f.cast.showcase = true; f.cast.preview = true
+            f.cast:SetMinMaxValues(0, 100); f.cast:SetValue(d.cast.done or 60)
+            f.cast.text:SetText(d.cast.name); f.cast.icon:SetTexture(d.cast.icon or 136243)
+            f.cast:SetStatusBarColor(0.95, 0.55, 0.2)
+            f.cast:Show()
+        else
+            f.cast.showcase = nil; f.cast:Hide()
+        end
+    end
+end
+
+local UpdateAll
+function UpdateAll(f)
+    if f.showcase == true or not UnitExists(f.unit) then return end
     -- each step on its own: if the client refuses one read, the rest still update
     pcall(UpdateHealth, f)
     pcall(UpdatePower, f)
@@ -509,11 +874,22 @@ local function UpdateAll(f)
     pcall(UpdateStatus, f)
     pcall(CastCheck, f)
 end
+ns.UnitFrameUpdate = UpdateAll                                 -- (screenshot mode hands a frame back to its unit)
 
 ------------------------------------------------------------------------------------------
 -- Layout (portrait side / hidden)
 ------------------------------------------------------------------------------------------
 local function Layout(f)
+    local want = ns.StarcutOn()
+    local switched = f.scStyleWas ~= nil and f.scStyleWas ~= want
+    f.scStyleWas = want
+    if want then
+        if switched then pcall(ns.ApplyDesign, f) end         -- (the name moves above the bars, the target's text to its left)
+        f.scLaidOut = true
+        return ScLayout(f)
+    end
+    ClassicRestore(f)
+    if switched then pcall(ns.ApplyDesign, f) end
     local o = f.opt
     local style = ns.db.ufPortrait or "3D"
     local h = f:GetHeight()
@@ -610,7 +986,10 @@ function ns.ApplyDesign(f)
     end
     local size = math.max(8, math.min(22, tonumber(d.font) or base.font))
     local layer = f.textLayer
-    if f.name and layer then
+    if f.name and layer and ns.StarcutOn() and f.opt.stars then
+        ns:Font(f.name, size)
+        ScName(f, f.opt.portrait == "RIGHT", d)
+    elseif f.name and layer then
         ns:Font(f.name, size)
         f.name:ClearAllPoints()
         local where = d.name or "LEFT"
@@ -621,19 +1000,21 @@ function ns.ApplyDesign(f)
             f.name:SetJustifyH("CENTER")
         else
             f.name:SetJustifyH("LEFT")
-            if f.level then f.name:SetPoint("LEFT", f.level, "RIGHT", 4, 0) else f.name:SetPoint("LEFT", layer, "LEFT", 6, 0) end
+            local edge = ns.StarcutOn() and 14 or 6              -- (Starcut: clear of the bar's points)
+            if f.level then f.name:SetPoint("LEFT", f.level, "RIGHT", 4, 0) else f.name:SetPoint("LEFT", layer, "LEFT", edge, 0) end
             local right = (d.health or "RIGHT") == "RIGHT" and (f.ppctInline and f.ppct or f.pct) or nil
-            if right then f.name:SetPoint("RIGHT", right, "LEFT", -6, 0) else f.name:SetPoint("RIGHT", layer, "RIGHT", -6, 0) end
+            if right then f.name:SetPoint("RIGHT", right, "LEFT", -6, 0) else f.name:SetPoint("RIGHT", layer, "RIGHT", -edge, 0) end
         end
     end
     if f.pct and layer then
         ns:Font(f.pct, size)
         f.pct:ClearAllPoints()
-        local where = d.health or "RIGHT"
+        local where = d.health or ((ns.StarcutOn() and f.opt.portrait == "RIGHT") and "LEFT") or "RIGHT"
         f.pct:SetAlpha(where == "OFF" and 0 or 1)
+        local inset = ns.StarcutOn() and 16 or 6                 -- (Starcut: clear of the bar's points)
         if where == "CENTER" then f.pct:SetPoint("CENTER", layer, "CENTER", 0, 0); f.pct:SetJustifyH("CENTER")
-        elseif where == "LEFT" then f.pct:SetPoint("LEFT", layer, "LEFT", 6, 0); f.pct:SetJustifyH("LEFT")
-        else f.pct:SetPoint("RIGHT", layer, "RIGHT", -6, 0); f.pct:SetJustifyH("RIGHT") end
+        elseif where == "LEFT" then f.pct:SetPoint("LEFT", layer, "LEFT", inset, 0); f.pct:SetJustifyH("LEFT")
+        else f.pct:SetPoint("RIGHT", layer, "RIGHT", -inset, 0); f.pct:SetJustifyH("RIGHT") end
     end
     return true
 end
@@ -680,6 +1061,7 @@ local function CreateUnit(key, unit, w, h, opt)
         else
             sep:SetPoint("TOPRIGHT", p, "TOPRIGHT", 0, 0); sep:SetPoint("BOTTOMRIGHT", p, "BOTTOMRIGHT", 0, 0)
         end
+        p.sep = sep
         f.portrait = p
     end
 
@@ -688,7 +1070,7 @@ local function CreateUnit(key, unit, w, h, opt)
     f.textLayer = layer
     layer:SetAllPoints(f.health)
     layer:SetFrameLevel(f:GetFrameLevel() + 6)
-    if opt.ornate then ns:Corners(layer, f, opt.ornate, -3) end       -- gold filigree hugging the frame's corners
+    if opt.ornate then f.corners = ns:Corners(layer, f, opt.ornate, -3) end     -- gold filigree hugging the frame's corners
     local fs = opt.font or 12
     f.pct = Text(layer, fs, "RIGHT")
     f.pct:SetPoint("RIGHT", layer, "RIGHT", -6, 0)
@@ -702,6 +1084,7 @@ local function CreateUnit(key, unit, w, h, opt)
             f.ppct:SetPoint("RIGHT", f.pct, "LEFT", -6, 0)
             f.ppctInline = true
         end
+        f.ppctInlineBase = f.ppctInline
         if f.ppct.SetShadowOffset then f.ppct:SetShadowOffset(1, -1); f.ppct:SetShadowColor(0, 0, 0, 1) end   -- readable on any color
     end
     local anchor, ax = layer, 6
@@ -824,12 +1207,12 @@ ns:NewModule("unitFrames", function()
     local th = ns.theme
 
     local player = CreateUnit("Player", "player", ns.db.ufW, ns.db.ufH,
-        { portrait = "LEFT", power = 8, font = 13, level = true, leader = true, status = true, ornate = 16, flash = true, auraKind = "player",
+        { portrait = "LEFT", power = 8, font = 13, level = true, leader = true, status = true, ornate = 16, flash = true, auraKind = "player", stars = true,
           events = { "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "PLAYER_UPDATE_RESTING", "PARTY_LEADER_CHANGED" } })
     player:SetPoint("CENTER", UIParent, "CENTER", -250, -180)
 
     local target = CreateUnit("Target", "target", ns.db.ufW, ns.db.ufH,
-        { portrait = "RIGHT", power = 8, font = 13, level = true, cast = true, auraKind = "target", ornate = 16, flash = true,
+        { portrait = "RIGHT", power = 8, font = 13, level = true, cast = true, auraKind = "target", ornate = 16, flash = true, stars = true,
           events = { "PLAYER_TARGET_CHANGED" } })
     target:SetPoint("CENTER", UIParent, "CENTER", 250, -180)
     player.sizeKey, target.sizeKey = "main", "main"
@@ -901,6 +1284,7 @@ ns:NewModule("unitFrames", function()
         end
         player.combo = combo
         combo.Update()
+        Layout(player)                                        -- (so the combo bar takes the frame style too)
     end
 
     -- Party ------------------------------------------------------------------------------------
@@ -1074,7 +1458,10 @@ ns:NewModule("unitFrames", function()
     do
         local later = CreateFrame("Frame")
         later:RegisterEvent("PLAYER_REGEN_ENABLED")
-        later:SetScript("OnEvent", ns:Guard("UnitFrames events", function() if ns.designPending then ns.designPending = nil; ns:ApplyFrameDesign() end end))
+        later:SetScript("OnEvent", ns:Guard("UnitFrames events", function()
+            if ns.designPending then ns.designPending = nil; ns:ApplyFrameDesign() end
+            if ns.RunFrameStyleHooks then ns:RunFrameStyleHooks() end
+        end))
     end
     -- Live resize (size sliders in /fgui layout)
     function ns:ResizeUnitFrames()

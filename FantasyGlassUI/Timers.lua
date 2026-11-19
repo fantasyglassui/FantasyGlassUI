@@ -89,6 +89,13 @@ local function Build()
         bar.time = ns:NewText(bar, 11, "RIGHT")
         bar.time:SetPoint("RIGHT", -6, 0)
         bar.name:SetPoint("RIGHT", bar.time, "LEFT", -6, 0)
+        bar.scOnStyle = function(self, on)                     -- the frame style: text in from the points
+            local inset = ns.StarcutInset(on, 6)
+            self.name:ClearAllPoints(); self.time:ClearAllPoints()
+            self.time:SetPoint("RIGHT", -inset, 0)
+            self.name:SetPoint("LEFT", inset, 0); self.name:SetPoint("RIGHT", self.time, "LEFT", -6, 0)
+        end
+        ns:StarcutStyleBar(bar, true)
         bar:EnableMouse(true)
         bar:SetScript("OnMouseUp", function(self) if self.timer then Remove(self.timer) end end)
         bar:SetScript("OnEnter", function(self)

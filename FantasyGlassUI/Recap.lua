@@ -72,6 +72,7 @@ function ns.RecapLines(week, names)
         if (tonumber(e.played) or 0) >= 60 then return true end
         if (tonumber(e.goldEnd) or 0) ~= (tonumber(e.goldStart) or 0) then return true end
         if (tonumber(e.levelEnd) or 0) > (tonumber(e.levelStart) or 0) then return true end
+        if type(e.farm) == "table" and (tonumber(e.farm.n) or 0) > 0 then return true end
         return (type(e.loot) == "table" and #e.loot > 0) or (type(e.instances) == "table" and next(e.instances) ~= nil)
     end
     local keys = {}
@@ -112,6 +113,12 @@ function ns.RecapLines(week, names)
         if e.levelStart and e.levelEnd and e.levelEnd > e.levelStart then
             lines[#lines + 1] = { left = "    " .. format(ns:Tr("Levels %d to %d"), e.levelStart, e.levelEnd) }
         end
+        if type(e.farm) == "table" and (tonumber(e.farm.n) or 0) > 0 then
+            local f = e.farm
+            local hours = math.max(1, tonumber(f.secs) or 0) / 3600
+            lines[#lines + 1] = { left = "    " .. format(ns:TrN(f.n, "Farmed %d time", "Farmed %d times"), f.n) .. ", " .. Hours(f.secs),
+                                  right = ns:Coins(math.floor(((tonumber(f.gold) or 0) + (tonumber(f.value) or 0)) / hours / 100) * 100) .. " " .. ns:Tr("an hour") }
+        end
         local inst = {}
         for n in pairs(type(e.instances) == "table" and e.instances or {}) do inst[#inst + 1] = n end
         table.sort(inst)
@@ -121,6 +128,19 @@ function ns.RecapLines(week, names)
         end
     end
     return lines
+end
+
+-- A finished farming session, into this character's week.
+function ns.RecapAddFarm(secs, gold, value)
+    if type(ns.root) ~= "table" then return false end
+    local week, now = ThisWeek()
+    local e = ns.RecapEntry(Store(), week, ns:CharKey(), now)
+    e.farm = type(e.farm) == "table" and e.farm or { secs = 0, gold = 0, value = 0, n = 0 }
+    e.farm.secs = (tonumber(e.farm.secs) or 0) + (tonumber(secs) or 0)
+    e.farm.gold = (tonumber(e.farm.gold) or 0) + (tonumber(gold) or 0)
+    e.farm.value = (tonumber(e.farm.value) or 0) + (tonumber(value) or 0)
+    e.farm.n = (tonumber(e.farm.n) or 0) + 1
+    return true
 end
 
 -- Is there a finished week whose recap has not been looked at?

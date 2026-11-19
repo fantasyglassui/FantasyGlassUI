@@ -42,7 +42,8 @@ ns:NewModule("aggroWarn", function()
     ev:SetScript("OnEvent", ns:Guard("Aggro warning", Check))
     ns:Every(0.5, "Aggro warning", Check)
 
-    ns:RegisterPreview(function(on)
+    ns:RegisterPreview(function(on, mode)
+        if on and mode == "showcase" then return end           -- (screenshot mode keeps the screen clear)
         preview = on
         was = false
         if on then f:Show(); pulse:Play() else pulse:Stop(); f:Hide() end
@@ -117,6 +118,6 @@ ns:NewModule("combatTimer", function()
         Draw()
     end))
     ns:Every(0.2, "Combat timer", function() if startedAt or endedAt or preview then Draw() end end)
-    ns:RegisterPreview(function(on) preview = on and true or false; Draw() end)
+    ns:RegisterPreview(function(on, mode) preview = (on and mode ~= "showcase") and true or false; Draw() end)
     ns:RegisterMovable(holder, "combatTimer", "Combat timer")
 end)

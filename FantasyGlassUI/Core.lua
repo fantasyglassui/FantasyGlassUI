@@ -1,6 +1,6 @@
 local ADDON, ns = ...
 _G.FantasyGlassUI = ns
-ns.version = "11.11.0"
+ns.version = "11.13.0"
 ns.author = "DustyMouse"
 
 ns.modules = {}
@@ -68,6 +68,9 @@ ns.defaults = {
     loginBriefing    = true,        -- what is waiting, a few seconds after you log in (11.11)
     skillUps         = true,        -- "Skill-ups" on the profession window (11.11)
     weeklyRecap      = true,        -- each character's week, noted as you play (11.11)
+    lootBook         = true,        -- what bosses drop, noted as you kill them; /fgui drops (11.13)
+    farming          = true,        -- farming sessions: /fgui farm, gold and item value an hour (11.13)
+    threatMeter      = true,        -- who has how much threat on your target, in a group (11.13)
     accent           = "AZURE",
     theme            = "SMOKE",
     panelAlpha       = 78,          -- glass HUD panel opacity, percent
@@ -92,6 +95,7 @@ ns.defaults = {
     autoRes          = false,       -- accept a resurrection, unless whoever cast it is in a fight
     autoSummon       = false,       -- accept a summon after a few seconds
     equipSets        = true,        -- a button for each saved gear set, under the character window
+    setOnFrame       = true,        -- the gear set you are wearing, named over your player frame (11.13)
     autoGreed        = false,       -- roll Greed on green items (not on bind-on-pickup ones or upgrades)
     chatEditTop      = false,       -- the typing bar above the chat box (it covers the chat tabs there) rather than under it
     chatStampsOffered = false,      -- chat timestamps were switched on once (a later "None" in the game's settings is kept)
@@ -124,6 +128,7 @@ ns.defaults = {
     bagCombatUse     = false,       -- every bag slot carries its own secure button, so items can be used in combat (new; off until tried)
     mirrorBars       = true,        -- our breath / fatigue bar in place of the game's
     ufPortrait       = "3D",
+    ufStyle          = "STARCUT",     -- unit frame style: "STARCUT" (cut bars, a diamond portrait) or "CLASSIC" (the box)
     raidFrames       = true,
     playerCast       = true,
     swingTimer       = true,
@@ -1529,6 +1534,15 @@ end
 
 -- What's new: shown once after an update (never on a first install, where the setup opens instead).
 ns.whatsNew = {
+    { "11.13.0", { "Starcut reaches every bar: your cast bar, the class resource (its dots become small diamonds), raid frames, nameplates, timers, experience and totems.",
+                   "Screenshot mode: /fgui showcase fills every frame with a picture-worthy sample (a boss with a breath on its way, a party of four) and clears the screen of everything else.",
+                   "A loot browser: /fgui drops lists what each boss dropped while you were there, raid by raid, with the upgrades for you first.",
+                   "A threat meter of its own: in a group, who has how much threat on your target, and a warning color as you near the top.",
+                   "Farming sessions: /fgui farm shows the time and what you make an hour, in gold and in loot, and each session counts in your weekly recap.",
+                   "Gear sets: the set you wear is named over your player frame, /fgui set <name> puts one on, and the first five sets can have keys." } },
+    { "11.12.0", { "A new look for your unit frames, Starcut: bars cut to points that glow in their own color, a diamond portrait with stars on its points, and the name above the bars.",
+                   "Prefer the box? Look tab, Frame style: Classic brings it back at once.",
+                   "Open windows do far less work: the character window, vendor, mailbox, auction house, collections and every scrolling list are looked over more cheaply while they are open." } },
     { "11.11.0", { "A login briefing: a few seconds after you log in, one small window says what is waiting: crafts ready, mail on your other characters, lockouts reset, rested experience, jobs left. /fgui briefing shows it again.",
                    "Skill-ups on the profession window: the recipes that still give skill points, best first, with what each needs.",
                    "Your weekly recap: what each character did last week, gold, time, levels, raids and best loot (/fgui recap).",
@@ -1921,6 +1935,7 @@ BINDING_NAME_FANTASYGLASSUI_HELP = "Every command (/fgui help)"
 BINDING_NAME_FANTASYGLASSUI_BRIEFING = "Login briefing (what is waiting)"
 BINDING_NAME_FANTASYGLASSUI_RECAP = "Weekly recap"
 BINDING_NAME_FANTASYGLASSUI_SKILLUPS = "Skill-ups (profession window open)"
+for i = 1, 5 do _G["BINDING_NAME_FANTASYGLASSUI_GEARSET" .. i] = format("Gear set %d (A to Z)", i) end
 for i = 1, 4 do _G["BINDING_NAME_CLICK FantasyGlassUIConsumable" .. i .. ":LeftButton"] = format("Consumables bar: button %d", i) end
 -- The names above in the player's language, once the translations are loaded (the game's Key
 -- Bindings window reads them only when it opens, so this is in time).
@@ -1931,10 +1946,13 @@ function ns:TranslateBindings()
         if type(_G[g]) == "string" then _G[g] = ns:Tr(_G[g]) end
     end
     for i = 1, 4 do _G["BINDING_NAME_CLICK FantasyGlassUIConsumable" .. i .. ":LeftButton"] = format(ns:Tr("Consumables bar: button %d"), i) end
+    for i = 1, 5 do _G["BINDING_NAME_FANTASYGLASSUI_GEARSET" .. i] = format(ns:Tr("Gear set %d (A to Z)"), i) end
 end
 function FantasyGlassUI_Binding(which, keystate)
     if not ns.db then return end
     if which == "KEYS" then if ns.ShowKeySheet then ns:ShowKeySheet(keystate ~= "up") end; return end
+    local setNumber = tonumber(tostring(which):match("^GEARSET(%d)$"))
+    if setNumber then if ns.WearSetNumber then ns:WearSetNumber(setNumber) end; return end
     if which == "OPTIONS" then ns:ToggleConfig()
     elseif which == "MOVE" then ns:ToggleMove()
     elseif which == "KEYBIND" then ns:ToggleKeybindMode()
@@ -2220,6 +2238,11 @@ ns.helpLines = {
     { "/fgui pull 10", "a pull countdown for everyone in the group (/fgui break 5 is a break, in minutes)" },
     { "/fgui kicks <name> <name> ...", "the order your group takes turns interrupting (empty: everyone, A to Z)" },
     { "/fgui testgroup", "group practice: made-up group mates, to see group cooldowns, the interrupt rotation and buff coverage alone" },
+    { "/fgui showcase", "screenshot mode: every frame with sample data and nothing in the way; again to end" },
+    { "/fgui drops [raid]", "the loot browser: what each boss dropped, with the upgrades for you first" },
+    { "/fgui farm [stop]", "a farming session: time, and gold and item value an hour; again to see it, stop to end it" },
+    { "/fgui threat", "show or hide the threat meter" },
+    { "/fgui set [name]", "put on a gear set by name (part of the name will do); on its own, the list of your sets" },
     { "/fgui raidsort role", "order the raid frames by group, role or name" },
     { "/fgui resetinstances", "reset your instances and tell the group" },
     { "/fgui meter", "tuck the damage meter drawer away, or bring it out" },
@@ -2326,6 +2349,12 @@ ns.toolCommands = {
     keys = function() ns:ShowKeySheet() end,
     quiet = function() ns:ToggleQuiet() end,
     testgroup = function() ns:ToggleTestGroup() end,
+    showcase = function() ns:ToggleShowcase() end,
+    drops = function(t) ns:ShowDrops(t) end,
+    farm = function(t) ns:Farm(t) end,
+    set = function(t) ns:SetCommand(t) end,
+    threat = function() if ns.ToggleThreatMeter then ns:ToggleThreatMeter() else ns:Print("The threat meter is switched off (Features tab).") end end,
+    screenshot = function() ns:ToggleShowcase() end,
     checknew = function() ns:CheckNew() end,
     bossnote = function(t) ns:BossNoteCommand(t) end,
     death = function() ns:ShowDeathRecap() end,

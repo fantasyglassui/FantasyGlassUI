@@ -42,6 +42,11 @@ Mistype one and the add-on suggests the nearest command instead.
 | `/fgui pull 10` | a pull countdown for everyone in the group (/fgui break 5 is a break, in minutes) |
 | `/fgui kicks <name> <name> ...` | the order your group takes turns interrupting (empty: everyone, A to Z) |
 | `/fgui testgroup` | group practice: made-up group mates, to see group cooldowns, the interrupt rotation and buff coverage alone |
+| `/fgui showcase` | screenshot mode: every frame with sample data and nothing in the way; again to end |
+| `/fgui drops [raid]` | the loot browser: what each boss dropped, with the upgrades for you first |
+| `/fgui farm [stop]` | a farming session: time, and gold and item value an hour; again to see it, stop to end it |
+| `/fgui threat` | show or hide the threat meter |
+| `/fgui set [name]` | put on a gear set by name (part of the name will do); on its own, the list of your sets |
 | `/fgui raidsort role` | order the raid frames by group, role or name |
 | `/fgui resetinstances` | reset your instances and tell the group |
 | `/fgui meter` | tuck the damage meter drawer away, or bring it out |

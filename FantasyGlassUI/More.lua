@@ -173,6 +173,8 @@ ns:NewModule("classResource", function()
         d.bg:SetAllPoints(); d.bg:SetTexture(ns.FLAT)
         ns:Paint(d.bg, "SetVertexColor", "trough", 0.9)
         ns:AddBorder(d, 0, 0, 0, 1)
+        d.scMaskFile = "diamond"                               -- Starcut: each dot a small diamond, like a cut gem
+        ns:StarcutStyleBar(d, false)
         f.dots[i] = d
         return d
     end
@@ -183,6 +185,7 @@ ns:NewModule("classResource", function()
     f.bar.bg:SetAllPoints(); f.bar.bg:SetTexture(ns.FLAT)
     ns:Paint(f.bar.bg, "SetVertexColor", "trough", 0.9)
     ns:AddBorder(f.bar, 0, 0, 0, 1)
+    ns:StarcutStyleBar(f.bar, true)                            -- (the bar style: cut to points, glowing)
     f.num = ns:NewText(f, 16, "CENTER", true)
     f.num:SetPoint("CENTER")
     local function Max()

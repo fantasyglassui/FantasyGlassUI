@@ -210,7 +210,8 @@ ns:NewModule("toasts", function()
     end
     supplies:SetScript("OnEvent", ns:Guard("Notifications", function() CheckSupplies() end))
 
-    ns:RegisterPreview(function(on)
+    ns:RegisterPreview(function(on, mode)
+        if on and mode == "showcase" then return end           -- (screenshot mode keeps the screen clear)
         if on then ns:Toast(nil, ns:Tr("Notifications appear here"), ns:Tr("Loot, new levels, mail, whispers, full bags and worn gear."), "!") end
     end)
     ns:RegisterMovable(anchor, "toasts", "Notifications")

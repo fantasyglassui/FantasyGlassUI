@@ -75,4 +75,19 @@
     <Binding name="FANTASYGLASSUI_SKILLUPS" category="ADDONS">
         FantasyGlassUI_Binding("SKILLUPS")
     </Binding>
+    <Binding name="FANTASYGLASSUI_GEARSET1" category="ADDONS">
+        FantasyGlassUI_Binding("GEARSET1")
+    </Binding>
+    <Binding name="FANTASYGLASSUI_GEARSET2" category="ADDONS">
+        FantasyGlassUI_Binding("GEARSET2")
+    </Binding>
+    <Binding name="FANTASYGLASSUI_GEARSET3" category="ADDONS">
+        FantasyGlassUI_Binding("GEARSET3")
+    </Binding>
+    <Binding name="FANTASYGLASSUI_GEARSET4" category="ADDONS">
+        FantasyGlassUI_Binding("GEARSET4")
+    </Binding>
+    <Binding name="FANTASYGLASSUI_GEARSET5" category="ADDONS">
+        FantasyGlassUI_Binding("GEARSET5")
+    </Binding>
 </Bindings>

@@ -58,6 +58,11 @@ ns:NewModule("nameplates", function()
             if selected then ns:Paint(rim, "SetBackdropBorderColor", "@accent", 1)
             else ns:Paint(rim, "SetBackdropBorderColor", "@border", 1) end           -- back to the rim every plate has
         end
+        -- Starcut has no box round the bar: its edge line takes the accent instead
+        local edge = bar.sc and bar.sc.edge
+        if edge then
+            if selected then ns:Paint(edge, "SetVertexColor", "@accent", 1) else ns:Paint(edge, "SetVertexColor", "@rim", 0.55) end
+        end
     end
 
     local function Skin(uf)
@@ -68,6 +73,16 @@ ns:NewModule("nameplates", function()
             bar:SetStatusBarTexture(ns.BAR or ns.FLAT)
             ns:Kill(bar.border)
             ns:AddBorder(bar, 0, 0, 0, 1)
+            -- the frame style: Starcut cuts the bar to points, with what the game draws on it (its
+            -- background, heal prediction and absorbs); no glow, as plates come by the dozen
+            local also = {}
+            pcall(function()
+                for _, r in ipairs({ bar:GetRegions() }) do
+                    if IsTexture(r) and r ~= bar:GetStatusBarTexture() then also[#also + 1] = r end
+                end
+            end)
+            bar.scAlso = also
+            ns:StarcutStyleBar(bar, false)
         end
         local badge = uf.PlayerLevelDiffFrame                  -- the level badge beside the bar
         if type(badge) == "table" and badge.CreateTexture and not badge.suiBorder then
@@ -237,6 +252,14 @@ ns:NewModule("nameplates", function()
         bar.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
         bar.text = ns:NewText(bar, ns.PlateDesign().castTextSize, "CENTER")
         bar.text:SetPoint("TOP", bar, "BOTTOM", 0, -1)
+        local iconMask                                         -- the frame style: cut, its icon a small diamond
+        bar.scAlso = { bar.lock }
+        bar.scOnStyle = function(self, on)
+            if on and not iconMask then iconMask = ns.StarcutMask(self, "diamond", self.icon, 0) end
+            ns.StarcutMasked(self.icon, iconMask, on)
+            self.icon:SetSize(on and 15 or 12, on and 15 or 12)
+        end
+        ns:StarcutStyleBar(bar, false)
         bar:Hide()
         bar:SetScript("OnUpdate", ns:Guard("Nameplate casts", function(self)
             if not self.active then return end

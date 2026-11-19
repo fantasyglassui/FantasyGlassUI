@@ -19,6 +19,8 @@ ns:NewModule("xpBar", function()
     rested:SetPoint("TOPLEFT", xp:GetStatusBarTexture(), "TOPRIGHT", 0, 0)
     rested:SetPoint("BOTTOMLEFT", xp:GetStatusBarTexture(), "BOTTOMRIGHT", 0, 0)
     rested:Hide()
+    xp.scAlso = { rested }                                   -- (cut to the bar's shape with it)
+    ns:StarcutStyleBar(xp, true)
 
     -- how far through the level you are, written on the bar: a percentage, or the amounts with the
     -- "XP as numbers" option
@@ -31,6 +33,7 @@ ns:NewModule("xpBar", function()
     rep:SetSize(W, 8)                                        -- the same height as the XP bar, so it can carry text too
     rep:SetPoint("BOTTOM", xp, "TOP", 0, 5)
     rep:Hide()
+    ns:StarcutStyleBar(rep, true)
     -- how far through the current standing you are with the watched faction, written the same way as XP
     local repText = ns:NewText(rep, 10, "CENTER")
     repText:SetPoint("CENTER", rep, "CENTER", 0, 0)

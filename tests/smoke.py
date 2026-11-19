@@ -34,6 +34,7 @@ do
     only({ "SetValue", "GetValue", "SetMinMaxValues", "GetMinMaxValues" }, { "Slider", "StatusBar" })
     only({ "SetValueStep", "SetThumbTexture", "SetOrientation", "SetObeyStepOnDrag" }, { "Slider", "StatusBar" })
     only({ "SetStatusBarTexture", "SetStatusBarColor", "GetStatusBarTexture" }, { "StatusBar" })
+    only({ "SetReverseFill", "GetReverseFill" }, { "StatusBar" })
     only({ "SetChecked", "GetChecked" }, { "CheckButton" })
     only({ "Click", "SetNormalTexture", "GetNormalTexture", "SetPushedTexture", "GetPushedTexture", "SetHighlightTexture",
            "GetHighlightTexture", "RegisterForClicks", "SetDisabledTexture", "GetDisabledTexture", "Enable", "Disable" }, { "Button", "CheckButton" })
@@ -1721,7 +1722,7 @@ try("Rename", function()
     if type(env.SlashCmdList.FANTASYGLASSUI) ~= "function" then error("the slash handler is not registered under the new name") end
     if type(env.FantasyGlassUI_Binding) ~= "function" then error("key bindings are not under the new name") end
     -- every key binding has a name in the key bindings window, and does something without an error
-    for _, which in ipairs({ "OPTIONS", "MOVE", "KEYBIND", "CLEAN", "METER", "ALTS", "MOUNT", "PET", "SORT", "KEYS", "QUIET", "NOTEPAD", "WHISPERS", "TODO", "WHATSTHIS", "TOOLS", "EQUIPBEST", "DEATH", "BOSSNOTE", "HELP", "BRIEFING", "RECAP", "SKILLUPS" }) do
+    for _, which in ipairs({ "OPTIONS", "MOVE", "KEYBIND", "CLEAN", "METER", "ALTS", "MOUNT", "PET", "SORT", "KEYS", "QUIET", "NOTEPAD", "WHISPERS", "TODO", "WHATSTHIS", "TOOLS", "EQUIPBEST", "DEATH", "BOSSNOTE", "HELP", "BRIEFING", "RECAP", "SKILLUPS", "GEARSET1", "GEARSET5" }) do
         if which ~= "KEYS" and type(env["BINDING_NAME_FANTASYGLASSUI_" .. which]) ~= "string" then error("the " .. which .. " key binding has no name") end
         local ok, err = pcall(env.FantasyGlassUI_Binding, which, "down")
         if not ok then error("the " .. which .. " key binding failed: " .. tostring(err)) end
@@ -7725,6 +7726,281 @@ try("Class resource: a new design table is read at once", function()
     if w ~= 250 then error("the resource bar kept its old width: " .. tostring(w)) end
     rawset(f, "SetSize", nil)
     ns.resourceTest.Update()
+end)
+try("Lists: a list with no new rows is not walked again", function()
+    if type(ns.StyleList) ~= "function" then error("no list styler") end
+    local list, walks, count = newmock(), 0, 3
+    local rows = { newmock(), newmock(), newmock(), newmock() }
+    rawset(list, "IsVisible", function() return true end)
+    rawset(list, "GetNumChildren", function() return count end)
+    rawset(list, "GetChildren", function() walks = walks + 1; return table.unpack(rows, 1, count) end)
+    ns.StyleList(list); ns.StyleList(list)
+    if walks ~= 1 then error("walked an unchanged list again: " .. walks) end
+    count = 4
+    ns.StyleList(list)
+    if walks ~= 2 then error("a new row was not styled") end
+    if not rawget(rows[4], "suiRow") then error("the new row has no style") end
+end)
+try("Starcut frames: the style, switching to Classic and back", function()
+    if type(ns.StarcutOn) ~= "function" then error("no frame style") end
+    local P, T
+    for _, f in ipairs(ns.unitFrameList or {}) do
+        if f.designKey == "Player" then P = f elseif f.designKey == "Target" then T = f end
+    end
+    if not (P and T) then error("no player or target frame") end
+    local keep = ns.db.ufStyle
+    ns.db.ufStyle = nil
+    if not ns.StarcutOn() then error("Starcut is the style a new install starts with") end
+    ns:RefreshUnitFrames()
+    if not rawget(P, "scLaidOut") or not rawget(P.health, "sc") or not rawget(P, "scParts") or not rawget(P.scParts, "line") then error("the player frame was not laid out as Starcut") end
+    if not rawget(P.health.bg, "scMasked") then error("the health bar is not cut to points") end
+    if not rawget(P, "scNameMax") then error("the player's name is not set above the bars") end
+    if rawget(T.scParts, "line") == nil or rawget(T.scParts, "endStar") == nil then error("the target has no line and end star") end
+    -- the target is mirrored: its bars fill from the right, its health text sits at the left
+    local rev
+    rawset(T.health, "SetReverseFill", function(_, v) rev = v end)
+    local pctAt
+    rawset(T.pct, "SetPoint", function(_, point) pctAt = pctAt or point end)
+    ns.db.ufStyle = "CLASSIC"; ns:RefreshUnitFrames()
+    if rev ~= false then error("Classic: the target fills from the left again") end
+    if rawget(T, "scLaidOut") then error("Classic: the target is still laid out as Starcut") end
+    if rawget(P.health.bg, "scMasked") then error("Classic: the health bar is still cut") end
+    pctAt = nil
+    ns.db.ufStyle = "STARCUT"; ns:RefreshUnitFrames()
+    if rev ~= true then error("Starcut: the target fills from the right") end
+    if pctAt ~= "LEFT" then error("Starcut: the target's health text sits at its left, not " .. tostring(pctAt)) end
+    rawset(T.health, "SetReverseFill", nil); rawset(T.pct, "SetPoint", nil)
+    -- combat on the outer point
+    local state = rawget(P.scParts, "state")
+    if not state then error("the player frame has no combat / resting sign") end
+    local shown
+    rawset(state, "Show", function() shown = true end)
+    rawset(state, "Hide", function() shown = false end)
+    local realCombat = env.UnitAffectingCombat
+    env.UnitAffectingCombat = function() return true end
+    for i = 1, #handlers do local h = handlers[i]; if h.self == P and h.name == "OnEvent" then h.fn(P, "PLAYER_REGEN_DISABLED") end end
+    env.UnitAffectingCombat = realCombat
+    rawset(state, "Show", nil); rawset(state, "Hide", nil)
+    if shown ~= true then error("in combat: the swords on the outer point") end
+    -- auras below the frame by default, above when chosen (and then above the name)
+    local row = T.auras
+    ns.db.auraDesign = ns.db.auraDesign or {}
+    local keepAura = ns.db.auraDesign.target
+    ns.db.auraDesign.target = nil
+    local sides = {}
+    rawset(row, "SetPoint", function(_, point, _, _, _, y) sides[#sides + 1] = { point, y } end)
+    ns:ApplyAuraDesign()
+    if not sides[1] or sides[1][1] ~= "TOPLEFT" then error("Starcut: the target's auras sit below it") end
+    ns.db.auraDesign = ns.db.auraDesign or {}
+    ns.db.auraDesign.target = { side = "above" }
+    sides = {}
+    ns:ApplyAuraDesign()
+    if not sides[1] or sides[1][1] ~= "BOTTOMLEFT" or (tonumber(sides[1][2]) or 0) < 20 then error("auras chosen above sit above the name") end
+    ns.db.auraDesign.target = keepAura
+    rawset(row, "SetPoint", nil)
+    ns:ApplyAuraDesign()
+    ns.db.ufStyle = keep
+    ns:RefreshUnitFrames()
+end)
+try("Look tab: the frame style buttons", function()
+    local page = ns.lookPage
+    local bs = page and rawget(page, "frameStyleButtons")
+    if not bs or not bs.CLASSIC or not bs.STARCUT then error("no Starcut / Classic buttons on the Look tab") end
+    local function click(b) for i = 1, #handlers do local h = handlers[i]; if h.self == b and h.name == "OnClick" then h.fn(b, "LeftButton") end end end
+    local keep = ns.db.ufStyle
+    click(bs.CLASSIC)
+    if ns.db.ufStyle ~= "CLASSIC" or ns.StarcutOn() then error("Classic was not chosen") end
+    click(bs.STARCUT)
+    if ns.db.ufStyle ~= "STARCUT" or not ns.StarcutOn() then error("Starcut was not chosen") end
+    ns.db.ufStyle = keep
+end)
+try("Starcut reaches every bar: cut, back to the box, and after a fight", function()
+    if type(ns.StarcutStyleBar) ~= "function" or type(ns.ApplyFrameStyle) ~= "function" then error("no shared frame style") end
+    local keep = ns.db.ufStyle
+    ns.db.ufStyle = "STARCUT"
+    -- any bar made with NewStatusBar
+    local bar = ns:NewStatusBar(UIParent, true)
+    local styled
+    bar.scOnStyle = function(_, on) styled = on end
+    local borderShown
+    rawset(bar.suiBorder, "SetShown", function(_, v) borderShown = v end)
+    ns:StarcutStyleBar(bar, true)
+    if not rawget(bar.bg, "scMasked") or styled ~= true or borderShown ~= false then error("a bar is not cut under Starcut") end
+    ns.db.ufStyle = "CLASSIC"; ns:ApplyFrameStyle()
+    if rawget(bar.bg, "scMasked") or styled ~= false or borderShown ~= true then error("Classic: a bar is not back in its box") end
+    -- asked for during a fight: it waits for the fight to end
+    local realLock = env.InCombatLockdown
+    env.InCombatLockdown = function() return true end
+    ns.db.ufStyle = "STARCUT"; ns:ApplyFrameStyle()
+    env.InCombatLockdown = realLock
+    if rawget(bar.bg, "scMasked") then error("the style changed during a fight") end
+    ns:RunFrameStyleHooks()
+    if not rawget(bar.bg, "scMasked") then error("the style did not change once the fight was over") end
+    -- a raid cell
+    local cell = newmock()
+    ns.RaidStyle(cell)
+    if not rawget(rawget(cell, "health"), "sc") then error("a raid cell's health bar is not cut") end
+    local bgShown
+    rawset(cell.bg, "SetShown", function(_, v) bgShown = v end)
+    ns.db.ufStyle = "CLASSIC"; ns:ApplyFrameStyle()
+    if bgShown ~= true then error("Classic: the raid cell's box is not back") end
+    ns.db.ufStyle = "STARCUT"; ns:ApplyFrameStyle()
+    if bgShown ~= false then error("Starcut: the raid cell's box is still there") end
+    -- the class resource's dots are diamonds
+    local rt = ns.resourceTest
+    if rt and rt.frame and rt.frame.dots then
+        for _, d in ipairs(rt.frame.dots) do
+            if rawget(d, "scMaskFile") ~= "diamond" then error("a resource dot is not a diamond") end
+        end
+    end
+    -- totem slots are diamonds
+    local tt = ns.totemTest
+    if tt and tt.icons and tt.icons[1] and not rawget(tt.icons[1], "scMask") then error("a totem slot is not a diamond") end
+    ns.db.ufStyle = keep; ns:ApplyFrameStyle()
+end)
+try("Screenshot mode: samples on, the frames handed back, and a fight ends it", function()
+    if type(ns.ToggleShowcase) ~= "function" then error("no screenshot mode") end
+    local T, A
+    for _, f in ipairs(ns.unitFrameList or {}) do
+        if f.realUnit == "target" then T = f elseif f.realUnit == "arena1" then A = f end
+    end
+    if not T then error("no target frame") end
+    local said
+    rawset(T.name, "SetText", function(_, v) said = v end)
+    local hidden
+    if A then rawset(A, "Hide", function() hidden = true end) end
+    ns:ToggleShowcase(true)
+    if not ns.showcasing or rawget(T, "showcase") ~= true then error("screenshot mode did not start") end
+    if said ~= "Onyxia" then error("the target does not show the sample boss: " .. tostring(said)) end
+    if A and not hidden then error("the arena frames were not put away") end
+    ns:ToggleShowcase(false)
+    if ns.showcasing or rawget(T, "showcase") == true then error("the target was not handed back") end
+    if ns.previewing then error("the preview is still on") end
+    ns:ToggleShowcase(true)
+    fireEvent("PLAYER_REGEN_DISABLED")
+    if ns.showcasing or rawget(T, "showcase") == true then error("a fight did not end screenshot mode") end
+    rawset(T.name, "SetText", nil); if A then rawset(A, "Hide", nil) end
+end)
+try("Loot browser: a kill, its drops from three places, and the browser", function()
+    if type(ns.ShowDrops) ~= "function" or not ns.lootBookTest then error("no loot browser") end
+    local realInst, realNum, realLink, realRoll = env.GetInstanceInfo, env.GetNumLootItems, env.GetLootSlotLink, env.GetLootRollItemLink
+    env.GetInstanceInfo = function() return "Onyxia's Lair", "raid" end
+    env.GetNumLootItems = function() return 2 end
+    local A = "|cffa335ee|Hitem:17078::::::::60:::::|h[Sapphiron Drape]|h|r"
+    local B = "|cffa335ee|Hitem:17068::::::::60:::::|h[Deathbringer]|h|r"
+    local C = "|cff0070dd|Hitem:18205::::::::60:::::|h[Eskhandar's Collar]|h|r"
+    env.GetLootSlotLink = function(slot) return slot == 1 and A or B end
+    env.GetLootRollItemLink = function() return C end
+    fireEvent("ENCOUNTER_END", 1084, "Onyxia", 9, 40, 1)
+    fireEvent("LOOT_OPENED")
+    fireEvent("START_LOOT_ROLL", 7)
+    fireEvent("CHAT_MSG_LOOT", "Brannoc receives loot: " .. A .. ".")      -- (the same drape again: once per kill)
+    -- (the harness loads the add-on twice, so each kill may be heard twice: compare counts with each other)
+    local rec = ns.root.lootBook["Onyxia's Lair"] and ns.root.lootBook["Onyxia's Lair"]["Onyxia"]
+    if not rec or (rec.kills or 0) < 1 then error("the kill was not noted") end
+    if not rec.items[17078] or rec.items[17078].n ~= rec.kills then error("the drape was not noted once per kill") end
+    if not rec.items[17068] or not rec.items[18205] then error("the other drops were not noted") end
+    local kills = rec.kills
+    -- a wipe is not a kill
+    fireEvent("ENCOUNTER_END", 1084, "Onyxia", 9, 40, 0)
+    if rec.kills ~= kills then error("a wipe counted as a kill") end
+    -- the browser: raids, bosses, loot
+    local lines = ns.LootBookLines({ level = 0 })
+    local found
+    for _, l in ipairs(lines) do if l.left == "Onyxia's Lair" then found = true end end
+    if not found then error("the raid is not listed") end
+    lines = ns.LootBookLines({ level = 2, instance = "Onyxia's Lair", boss = "Onyxia" })
+    local items = 0
+    for _, l in ipairs(lines) do if l.link then items = items + 1 end end
+    if items ~= 3 then error("the boss shows " .. items .. " items, not 3") end
+    if ns:ShowDrops("onyx") < 2 then error("/fgui drops onyx did not open the raid") end
+    env.GetInstanceInfo, env.GetNumLootItems, env.GetLootSlotLink, env.GetLootRollItemLink = realInst, realNum, realLink, realRoll
+end)
+try("Threat meter: rows from the group, your row's colors, hidden when there is nothing", function()
+    local t = ns.threatMeterTest
+    if not t then error("no threat meter") end
+    if ns.ThreatRowColor(120, true) ~= "bad" or ns.ThreatRowColor(85, true) ~= "warn" or ns.ThreatRowColor(40, false) ~= "@accent" then
+        error("row colors wrong") end
+    if ns.previewing then ns:TogglePreview(true) end            -- (the preview shows its own sample rows)
+    ns.db.threatHidden = nil                                     -- (the run of every command hid it)
+    local realThreat = ns.ThreatOnTarget
+    ns.ThreatOnTarget = function(_, most)
+        if most ~= 5 then error("asked for " .. tostring(most) .. " rows, not 5") end
+        return { { unit = "party1", pct = 100 }, { unit = "player", pct = 90 } }
+    end
+    t.Update()
+    local shown = 0
+    for _, b in ipairs(t.frame.rows) do if rawget(b, "inUse") == true then shown = shown + 1 end end
+    if shown ~= 2 then error(shown .. " rows shown, not 2") end
+    ns.ThreatOnTarget = function() return nil end
+    t.Update()
+    if rawget(t.frame, "inUse") == true then error("still shown with no target") end
+    ns.ThreatOnTarget = realThreat
+end)
+try("Farming: a session's loot, its value an hour, a reload, and the weekly recap", function()
+    if type(ns.Farm) ~= "function" then error("no farming") end
+    -- values: the auction price when it beats the vendor's
+    local seen = { [100] = { price = 5000, hist = { [1] = 5000 } } }
+    if ns.FarmItemValue(100, 200, seen) ~= 5000 or ns.FarmItemValue(101, 200, seen) ~= 200 then error("item values wrong") end
+    local s = { elapsed = 1800, gold = 10000, items = {} }
+    ns.FarmAdd(s, "|cffffffff|Hitem:101::::::::60:::::|h[Linen Cloth]|h|r", 4, 50)
+    ns.FarmAdd(s, "|cffffffff|Hitem:101::::::::60:::::|h[Linen Cloth]|h|r", 2, 50)
+    if s.items[101].n ~= 6 then error("counts not added up") end
+    local t = ns.FarmTotals(s, 0, nil)
+    if t.value ~= 300 or math.abs(t.goldHour - 20000) > 1 or math.abs(t.totalHour - 20600) > 1 then error("totals wrong: " .. t.value .. " " .. t.goldHour) end
+    -- a real session
+    local key = ns:CharKey()
+    ns.root.farming[key] = nil
+    ns:Farm("")
+    local cur = ns.root.farming[key]
+    if type(cur) ~= "table" then error("no session started") end
+    fireEvent("CHAT_MSG_LOOT", "You receive loot: |cffffffff|Hitem:2589::::::::60:::::|h[Linen Cloth]|h|rx3.")
+    if not cur.items[2589] then error("loot not counted") end
+    fireEvent("PLAYER_LOGOUT")
+    if cur.resumed ~= nil then error("the clock did not stop at logout") end
+    fireEvent("PLAYER_ENTERING_WORLD")
+    if not cur.resumed then error("the clock did not start again") end
+    ns:Farm("")                                                  -- (the window)
+    local done = ns:Farm("stop")
+    if type(done) ~= "table" or ns.root.farming[key] ~= nil then error("stop did not end it") end
+    local lines = ns.RecapLines({ chars = { [key] = { farm = { secs = 3600, gold = 50000, value = 10000, n = 1 }, played = 0 } } }, {})
+    local found
+    for _, l in ipairs(lines) do if tostring(l.left):find("Farmed", 1, true) then found = true end end
+    if not found then error("the recap has no farming line") end
+end)
+try("Gear sets: /fgui set by name, the set keys, and the name over the player frame", function()
+    if type(ns.SetCommand) ~= "function" or type(ns.FindSet) ~= "function" then error("no set command") end
+    local sets = { { name = "Healing" }, { name = "Heroic Tank" }, { name = "PvP" } }
+    if ns.FindSet(sets, "heal").name ~= "Healing" or ns.FindSet(sets, "tank").name ~= "Heroic Tank" or ns.FindSet(sets, "pvp").name ~= "PvP" then
+        error("names not matched") end
+    if ns.FindSet(sets, "dps") ~= nil then error("a set that is not there was matched") end
+    local E = env.C_EquipmentSet
+    local realE = E
+    local used
+    env.C_EquipmentSet = {
+        GetEquipmentSetIDs = function() return { 7, 9 } end,
+        GetEquipmentSetInfo = function(id)
+            if id == 7 then return "Healing", 134, 7, true, 16, 16, 0, 0 end
+            return "Heroic Tank", 135, 9, false, 16, 4, 0, 0
+        end,
+        UseEquipmentSet = function(id) used = id; return true end,
+    }
+    local realLock = env.InCombatLockdown
+    env.InCombatLockdown = function() return false end
+    local set = ns:SetCommand("tank")
+    if not set or used ~= 9 then error("/fgui set tank did not put the tank set on: " .. tostring(used)) end
+    used = nil
+    env.FantasyGlassUI_Binding("GEARSET1", "down")
+    if used ~= nil then error("the key for a set already worn changed gear") end
+    env.FantasyGlassUI_Binding("GEARSET2", "down")
+    if used ~= 9 then error("the second set's key did not put it on") end
+    ns:SetCommand("")                                            -- (the list)
+    if ns.setOnFrameTest then
+        ns.setOnFrameTest.Update()
+        local label = ns.setOnFrameTest.Label()
+        if label and rawget(label, "setName") ~= "Healing" then error("the frame does not name the worn set: " .. tostring(rawget(label, "setName"))) end
+    end
+    env.C_EquipmentSet, env.InCombatLockdown = realE, realLock
 end)
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)

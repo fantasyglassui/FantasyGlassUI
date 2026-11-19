@@ -28,6 +28,12 @@ ns:NewModule("mirrorBars", function()
         bar.label:SetPoint("LEFT", 6, 0)
         bar.time = ns:NewText(bar, 11, "RIGHT")
         bar.time:SetPoint("RIGHT", -6, 0)
+        bar.scOnStyle = function(self, on)                     -- the frame style: text in from the points
+            local inset = ns.StarcutInset(on, 6)
+            self.label:ClearAllPoints(); self.label:SetPoint("LEFT", inset, 0)
+            self.time:ClearAllPoints(); self.time:SetPoint("RIGHT", -inset, 0)
+        end
+        ns:StarcutStyleBar(bar, true)
         bar:Hide()
         bars[i] = bar
         return bar

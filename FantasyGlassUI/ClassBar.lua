@@ -14,14 +14,20 @@ ns:NewModule("classBar", function()
 
     local host = CreateFrame("Frame", "FantasyGlassUIClassBar", UIParent)
     host:SetSize(220, 6)
-    if type(player) == "table" then
-        -- rogues and druids have the combo bar in the first slot under the frame; sit below it
-        local drop = (class == "ROGUE" or class == "DRUID") and -14 or -4
-        host:SetPoint("TOPLEFT", player, "BOTTOMLEFT", 0, drop)
-        host:SetPoint("TOPRIGHT", player, "BOTTOMRIGHT", 0, drop)
-    else
-        host:SetPoint("CENTER", UIParent, "CENTER", 0, -200)      -- unit frames are off: stand alone
+    local function Place(on)
+        host:ClearAllPoints()
+        if type(player) == "table" then
+            -- rogues and druids have the combo bar in the first slot under the frame; sit below it
+            local drop = (class == "ROGUE" or class == "DRUID") and -14 or -4
+            local inset = on and 16 or 0                       -- (Starcut: set in from the frame's points, like its power bar)
+            host:SetPoint("TOPLEFT", player, "BOTTOMLEFT", inset, drop)
+            host:SetPoint("TOPRIGHT", player, "BOTTOMRIGHT", -inset, drop)
+        else
+            host:SetPoint("CENTER", UIParent, "CENTER", 0, -200)      -- unit frames are off: stand alone
+        end
     end
+    Place(ns.StarcutOn())
+    ns:OnFrameStyle(Place)
 
     local function Bar(height)
         local bar = CreateFrame("StatusBar", nil, host)
@@ -32,6 +38,7 @@ ns:NewModule("classBar", function()
         bar.bg:SetTexture(ns.FLAT)
         ns:Paint(bar.bg, "SetVertexColor", "trough", 0.9)
         ns:AddBorder(bar, 0, 0, 0, 1)
+        ns:StarcutStyleBar(bar, false)                         -- (thin: cut to points, no glow)
         bar:Hide()
         return bar
     end

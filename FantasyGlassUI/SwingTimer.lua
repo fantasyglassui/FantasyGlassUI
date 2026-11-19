@@ -37,6 +37,12 @@ ns:NewModule("swingTimer", function()
         b.label:SetText(d[1])
         b.time = ns:NewText(b, 9, "RIGHT")
         b.time:SetPoint("RIGHT", -3, 0)
+        b.scOnStyle = function(self, on)                       -- the frame style: text in from the points
+            local inset = on and 10 or 3
+            self.label:ClearAllPoints(); self.label:SetPoint("LEFT", inset, 0)
+            self.time:ClearAllPoints(); self.time:SetPoint("RIGHT", -inset, 0)
+        end
+        ns:StarcutStyleBar(b, true)
         b:Hide()
         bars[i] = b
     end
