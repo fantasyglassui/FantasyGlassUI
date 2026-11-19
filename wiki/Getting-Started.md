@@ -50,6 +50,8 @@ Open the options with `/fgui` and go to the **Look** tab.
 
 Switching to another family finishes after a `/reload`.
 
+- **Frame style:** under **Portraits and class colors** on the Look tab. **Starcut** (new in 11.12) cuts health and power bars to points that glow in their own color, beside a diamond portrait with stars on its points, and since 11.13 it reaches every bar: your cast bar, the crafting bar, the class resource, raid frames, nameplates, timers, experience and totems. **Classic** brings back the box everywhere at once (chosen during a fight, it changes when the fight is over).
+
 - **Text and interface size:** on the **Layout** tab, **Text size** (70 to 150%) sets the add-on's lettering and **Interface size** (50 to 150%) scales the whole interface. From chat: `/fgui textsize 120` and `/fgui uisize 90` (`reset` puts either back). On the sliders, both take effect when you let go.
 
 ## 5. Pick your features
@@ -84,12 +86,22 @@ The **Tools** button on the menu bar (or `/fgui tools`) opens a button for every
 | `/fgui equipbest` | Put on every upgrade in your bags |
 | `/fgui testgroup` | Practice the group panels alone |
 | `/fgui quiet` | Hide chat and names for screenshots and streaming |
+| `/fgui showcase` | Screenshot mode: every frame with sample data, nothing in the way |
+| `/fgui drops` | The loot browser: what each boss dropped, your upgrades first |
+| `/fgui farm` | A farming session: gold and item value an hour (`stop` ends it) |
+| `/fgui set <name>` | Put on a gear set by name; on its own, the list of your sets |
+| `/fgui threat` | Show or hide the threat meter |
 
 - **Every command:** `/fgui help` opens all of them in a window you can search (`/fgui help bags`). Click one to put it in the chat box. See [Commands](Commands).
 - **Without typing:** Shift-click the minimap button for the Tools menu, or set key bindings for the most used tools. See [Keys and Shortcuts](Keys-and-Shortcuts).
 - **Mistyped a command?** The add-on suggests the right one.
 - **Login briefing:** a few seconds after you log in, one small window says what is waiting. Click a line to open the window it comes from. It only shows when something is waiting.
 - **Weekly recap:** each character's week is noted as you play it. When a new week starts, the login briefing says the recap is ready.
+- **Screenshot mode:** `/fgui showcase` gives every frame a sample worth a picture (a boss as your target mid-cast, a party of four) and clears away the options, movers, tooltip and busier samples. The same command or a fight ends it.
+- **Loot browser:** what each boss drops is noted as you kill it, from your loot window, the loot rolls and your group's loot lines, and shared by all your characters. `/fgui drops` lists it raid by raid and boss by boss; `/fgui drops <name>` goes straight to one raid or dungeon.
+- **Threat meter:** in a group with a hostile target, a small panel shows the top five on threat. Your row turns the warning color near the top and the danger color when you would pull. Move it with `/fgui move`.
+- **Farming sessions:** `/fgui farm` starts one; a small panel shows the time and what you make an hour, in gold and in looted items (the auction price you have seen, or the vendor's). A `/reload` keeps it going, and each finished session counts in your weekly recap.
+- **Gear sets:** the set you are wearing is named over your player frame. `/fgui set <name>` puts one on (part of the name will do), and the first five sets can have keys.
 - **Skill-ups:** the profession window gets a Skill-ups button listing the recipes that still give skill points, best first: what you can make now, then what needs the least.
 
 ## 8. Tooltips your way

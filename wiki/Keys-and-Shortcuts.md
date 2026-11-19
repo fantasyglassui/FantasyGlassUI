@@ -30,6 +30,7 @@ Set these in the game's key bindings: **Esc → Key Bindings → AddOns → Fant
 | Login briefing (what is waiting) | the login briefing, at any time |
 | Weekly recap | your last week on every character |
 | Skill-ups (profession window open) | the recipes that still give skill points |
+| Gear set 1 to Gear set 5 (A to Z) | put on your first five gear sets, in the order the buttons under the character window show them |
 
 ## The minimap button
 
