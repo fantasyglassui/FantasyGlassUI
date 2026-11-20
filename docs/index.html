@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -758,6 +758,7 @@ window.FG_NEWS=[{"v": "11.17.2", "items": ["Fixes: nameplates on name-only plate
   });
   // wear a theme: the whole page takes its colors (and goes dark, as every theme is)
   var root = document.documentElement, before = null;
+  if (!root.getAttribute("data-theme")) root.setAttribute("data-theme", "dark");     // a night sky: always dark
   function mix(a, b, f) {
     var x = parseInt(a.slice(1), 16), y = parseInt(b.slice(1), 16);
     var c = [16, 8, 0].map(function (sh) { var p = (x >> sh) & 255, q = (y >> sh) & 255; return Math.round(p + (q - p) * f); });
