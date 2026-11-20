@@ -1,6 +1,6 @@
 local ADDON, ns = ...
 _G.FantasyGlassUI = ns
-ns.version = "11.17.4"
+ns.version = "11.18.0"
 ns.author = "DustyMouse"
 
 ns.modules = {}
@@ -1544,6 +1544,10 @@ end
 
 -- What's new: shown once after an update (never on a first install, where the setup opens instead).
 ns.whatsNew = {
+    { "11.18.0", { "Report a problem: the window now also gives the Discord invite, so you can attach the saved report in #bug-reports there instead of using the form.",
+                  "The add-on's own action bars do far less work while you stand still, and macro icons that change with Shift, Ctrl or Alt now change at once.",
+                  "Forgetting a deleted character in the characters list now clears everything else kept for it too: its stats, farming, gold history, cooldowns and the rest.",
+                  "A farming session stopped with nothing made says so, and one under a minute stays out of the weekly recap. /fgui buttons is in /fgui help." } },
     { "11.17.4", { "Fantasy Glass UI has a Discord server for help, ideas and sharing themes: the Discord button at the foot of the settings window, or /fgui discord, gives you the invite to copy." } },
     { "11.17.3", { "The add-on has a website: fantasyglassui.com, with every theme, switch and command, and a theme maker. /fgui website gives you the address to copy." } },
     { "11.17.2", { "Fixes: nameplates on name-only plates, the group gear check and your own inspect window, item goals counted on every character, and the upgrade notice putting on the right copy." } },

@@ -2,7 +2,7 @@
 ## Title: |cff33ccffFantasy Glass|r UI
 ## Notes: A complete interface in glass, fantasy and celestial themes: unit frames, raid frames, action bars, bags, quests, minimap, chat and restyled windows. Type /fgui.
 ## Author: DustyMouse
-## Version: 11.17.4
+## Version: 11.18.0
 ## Notes-deDE: Ein komplettes Interface in Glas-, Fantasy- und Himmels-Themen: Einheitenfenster, Schlachtzugsfenster, Aktionsleisten, Taschen, Quests, Minikarte, Chat und neu gestaltete Fenster. /fgui eingeben.
 ## Notes-frFR: Une interface complète en thèmes verre, fantasy et célestes : cadres d'unité, cadres de raid, barres d'action, sacs, quêtes, minicarte, discussion et fenêtres restylées. Tapez /fgui.
 ## Notes-esES: Una interfaz completa en temas de cristal, fantasía y celestes: marcos de unidad, marcos de banda, barras de acción, bolsas, misiones, minimapa, chat y ventanas con nuevo estilo. Escribe /fgui.

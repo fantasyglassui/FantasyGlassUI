@@ -6,7 +6,7 @@ A complete interface replacement for **WoW Forever** (interface 16001): unit fra
 bars, action bars, bags and bank, quest tracker and quest log, minimap, buffs, nameplates, chat and
 the game's own windows, in one look that you choose from 114 glass, fantasy and celestial themes.
 
-Version 11.17.4
+Version 11.18.0
 
 ## Install
 
@@ -394,6 +394,10 @@ the ones below. Hover a switch to read what it does.
   the game lays the bar out. This needs a layout of your own: the game's two presets cannot be
   changed (Esc, Edit Mode, Layout, New Layout makes one).
 - A bar that is not showing is see-through; its buttons can still be pressed where they were.
+
+**Added in 11.18**
+- Report a problem also gives the Discord invite, to attach the saved report in #bug-reports.
+- The add-on's own action bars do far less work while you stand still.
 
 **Added in 11.17**
 - An upgrade notice when you loot something better, with a button to put it on (it waits until a fight is over).
