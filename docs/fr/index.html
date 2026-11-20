@@ -87,6 +87,10 @@ h2 { font-size: clamp(1.6rem, 3vw, 2.2rem); }
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--ink); }
 header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: color-mix(in srgb, var(--ink) 86%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
 header.top .wrap { display: flex; align-items: center; gap: 20px; padding-block: 10px; flex-wrap: wrap; }
+header.top .wrap { max-width: 1280px; gap: 16px; }
+header.top nav.links { gap: 4px 14px; }
+@media (max-width: 560px) { header.top > .wrap { column-gap: 10px; } header.top .lang svg { display: none; } header.top .brand { gap: 8px; font-size: 1rem; } header.top .dc { padding: 7px 9px; } header.top .dc span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } }
+@media (min-width: 901px) and (max-width: 1260px) { header.top .dc { padding: 7px 9px; } header.top .dc span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } }
 .brand { display: flex; align-items: center; gap: 10px; font: 400 1.12rem/1 var(--display); color: var(--text); text-decoration: none; }
 .brand img { width: 30px; height: 30px; display: block; }
 nav.links { display: flex; gap: 4px 16px; flex-wrap: wrap; margin-left: auto; }
@@ -264,6 +268,10 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: 
 .compare .mock { top: auto; bottom: 14px; }
 /* ---- language ---- */
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.dc { display: inline-flex; align-items: center; gap: 6px; order: 4; padding: 7px 12px; font: 700 0.86rem/1 var(--body); color: #fff; background: #4752c4; text-decoration: none; }
+.dc:hover, .dc:focus-visible { background: #5865f2; }
+#mkshare { margin-top: 10px; }
+#mkshare a { color: var(--gold); }
 .lang { display: inline-flex; align-items: center; gap: 6px; color: var(--dim); margin-left: auto; order: 3; }
 .lang select { background: var(--ink-3); color: var(--text); border: 0; box-shadow: inset 0 0 0 1px var(--line); padding: 5px 8px; font: 600 .85rem/1.2 var(--body); cursor: pointer; }
 .lang select:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
@@ -271,6 +279,7 @@ header.top nav.links { order: 2; }
 @media (max-width: 900px) {
   header.top .wrap { gap: 8px 16px; padding-block: 8px; }
   header.top .lang { order: 1; margin-left: auto; }
+  header.top .dc { order: 1; padding: 6px 10px; }
   header.top .draft { order: 1; }
   header.top nav.links { order: 4; flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; scrollbar-width: none; padding-bottom: 2px; -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); mask-image: linear-gradient(90deg, #000 88%, transparent); }
   header.top nav.links::-webkit-scrollbar { display: none; }
@@ -350,6 +359,7 @@ section.block::before { content: ""; position: absolute; top: -6px; left: 50%; w
     <a class="brand" href="#top"><img src="/logo-64.webp" alt="" width="30" height="30">Fantasy Glass UI</a>
     <button class="chip cut wearing" id="unwear" type="button" hidden>Wearing <b id="wearname"></b>: back to the site's colors</button>
     <label class="lang"><span class="sr-only">Language</span><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><select id="lang" aria-label="Language"></select></label>
+    <a class="dc cut" href="https://discord.gg/qeSMwQWyPR" target="_blank" rel="noopener" aria-label="Join the Discord"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="9" cy="10.5" r="1.2" fill="currentColor"/><circle cx="15" cy="10.5" r="1.2" fill="currentColor"/></svg><span>Discord</span></a>
     <nav class="links" aria-label="Sections">
       <a href="#look">The look</a>
       <a href="#themes">Themes</a>
@@ -376,6 +386,7 @@ section.block::before { content: ""; position: absolute; top: -6px; left: 50%; w
         <div class="cta">
           <a class="btn primary cut" href="https://www.curseforge.com/wow/addons/fantasy-glass-ui" target="_blank" rel="noopener">Download on CurseForge</a>
           <a class="btn ghost cut" href="#themes">See the themes</a>
+          <a class="btn ghost cut" href="https://discord.gg/qeSMwQWyPR" target="_blank" rel="noopener">Join the Discord</a>
         </div>
         <div class="facts" id="facts">
           <span><b>114</b> <span class="w">themes</span></span>
@@ -496,6 +507,7 @@ section.block::before { content: ""; position: absolute; top: -6px; left: 50%; w
           </div>
           <label class="mk-row"><span>Code for the game</span><textarea class="code cut" id="mkcode" rows="3" readonly spellcheck="false"></textarea></label>
           <div class="cta"><button class="btn primary cut" type="button" id="mkcopy">Copy the code</button><button class="btn soft cut" type="button" id="mklink">Copy a link to it</button></div>
+          <p class="count" id="mkshare">Made one you like? Share the code in <b>#themes</b> on <a href="https://discord.gg/qeSMwQWyPR" target="_blank" rel="noopener">our Discord</a>.</p>
           <details class="mk-paste"><summary>Have a theme code already? Paste it here to see it</summary>
             <textarea class="code cut" id="mkin" rows="3" spellcheck="false" placeholder="SUIT1!{...}" aria-label="A theme code"></textarea>
             <p class="count" id="mkinmsg" aria-live="polite"></p>
@@ -556,7 +568,7 @@ section.block::before { content: ""; position: absolute; top: -6px; left: 50%; w
         <div class="eyebrow">Questions</div>
         <h2>Asked often</h2>
       </header>
-      <div class="faq"><details class="q cut"><summary>Which game is it for?</summary><p><b>WoW Forever</b> (interface 16001). It goes in <code>World of Warcraft/_forever_/Interface/AddOns</code>, as three folders side by side.</p></details><details class="q cut"><summary>Does it work with my other add-ons?</summary><p>Yes. When you already use an add-on that does the same job, like Plater for nameplates, Bagnon or Baganator for bags, or Grid2, VuhDo or Cell for raid frames, Fantasy Glass UI steps aside for that part and keeps everything else. <code>/fgui conflicts off</code> makes it keep its own instead.</p></details><details class="q cut"><summary>Can I use only some of it?</summary><p>Yes. Every part has its own switch on the Features tab of <code>/fgui</code>, so you can keep the bags and nameplates, say, and leave the rest to the game.</p></details><details class="q cut"><summary>I prefer square frames. Can I get the classic look?</summary><p>Yes. On the Look tab, choose Classic instead of Starcut and every frame, bar and button goes back to the box shape, in whichever theme you have.</p></details><details class="q cut"><summary>Will it slow my game down?</summary><p>Parts you turn off do not run at all. To see for yourself, <code>/fgui perf</code> shows how much time each part takes, <code>/fgui perf fight</code> measures your next fight, and <code>/fgui memory</code> shows its memory.</p></details><details class="q cut"><summary>Something looks wrong. How do I put it back?</summary><p><code>/fgui undo</code> puts back your last move or resize, and <code>/fgui history</code> lists what you changed so you can undo any of it. <code>/fgui reset</code> (typed twice) returns the profile to how it came, and a backup is kept first: <code>/fgui backup</code> lists them. <code>/fgui safe</code> reloads with every feature off, to find out whether a problem is ours.</p></details><details class="q cut"><summary>Can I share my setup with a friend?</summary><p>Yes. <code>/fgui pack</code> puts your whole interface (profile, layout, theme, bars and mail rules) in one string to paste, and <code>/fgui send &lt;name&gt; layout</code> sends it straight to another player who has the add-on.</p></details><details class="q cut"><summary>Which languages does it speak?</summary><p>English, German, French, Spanish, Russian, Portuguese, Italian, Korean and Chinese. It follows your game's language.</p></details><details class="q cut"><summary>Is it free?</summary><p>Yes, free, with no ads and nothing to buy.</p></details></div>
+      <div class="faq"><details class="q cut"><summary>Which game is it for?</summary><p><b>WoW Forever</b> (interface 16001). It goes in <code>World of Warcraft/_forever_/Interface/AddOns</code>, as three folders side by side.</p></details><details class="q cut"><summary>Does it work with my other add-ons?</summary><p>Yes. When you already use an add-on that does the same job, like Plater for nameplates, Bagnon or Baganator for bags, or Grid2, VuhDo or Cell for raid frames, Fantasy Glass UI steps aside for that part and keeps everything else. <code>/fgui conflicts off</code> makes it keep its own instead.</p></details><details class="q cut"><summary>Can I use only some of it?</summary><p>Yes. Every part has its own switch on the Features tab of <code>/fgui</code>, so you can keep the bags and nameplates, say, and leave the rest to the game.</p></details><details class="q cut"><summary>I prefer square frames. Can I get the classic look?</summary><p>Yes. On the Look tab, choose Classic instead of Starcut and every frame, bar and button goes back to the box shape, in whichever theme you have.</p></details><details class="q cut"><summary>Will it slow my game down?</summary><p>Parts you turn off do not run at all. To see for yourself, <code>/fgui perf</code> shows how much time each part takes, <code>/fgui perf fight</code> measures your next fight, and <code>/fgui memory</code> shows its memory.</p></details><details class="q cut"><summary>Something looks wrong. How do I put it back?</summary><p><code>/fgui undo</code> puts back your last move or resize, and <code>/fgui history</code> lists what you changed so you can undo any of it. <code>/fgui reset</code> (typed twice) returns the profile to how it came, and a backup is kept first: <code>/fgui backup</code> lists them. <code>/fgui safe</code> reloads with every feature off, to find out whether a problem is ours.</p></details><details class="q cut"><summary>Can I share my setup with a friend?</summary><p>Yes. <code>/fgui pack</code> puts your whole interface (profile, layout, theme, bars and mail rules) in one string to paste, and <code>/fgui send &lt;name&gt; layout</code> sends it straight to another player who has the add-on.</p></details><details class="q cut"><summary>Where can I get help, or show off my setup?</summary><p>On <a href="https://discord.gg/qeSMwQWyPR" target="_blank" rel="noopener">our Discord</a>: ask in <b>#fgui-help</b>, post screenshots in <b>#show-your-ui</b> and share theme codes in <b>#themes</b>. Bugs and ideas have their own channels there too.</p></details><details class="q cut"><summary>Which languages does it speak?</summary><p>English, German, French, Spanish, Russian, Portuguese, Italian, Korean and Chinese. It follows your game's language.</p></details><details class="q cut"><summary>Is it free?</summary><p>Yes, free, with no ads and nothing to buy.</p></details></div>
     </div>
   </section>
 
@@ -1060,7 +1072,7 @@ window.FG_NEWS=[{"v": "11.17.2", "items": ["Fixes: nameplates on name-only plate
   // languages: the page's own words come from i18n/<code>.json; the switches, commands and news use the
   // add-on's own translations, so they read the same as in the game ------------------------------------
   var LANGS = [["en", "English"], ["de", "Deutsch"], ["fr", "Français"], ["es", "Español"], ["ru", "Русский"], ["pt", "Português"], ["it", "Italiano"], ["ko", "한국어"], ["zh", "中文"]];
-  var SEL = "header.top nav a, #unwear, .hero .eyebrow, .hero h1, .hero .lede, .hero .cta a, .facts .w, .ribbon span, .mock, section.block .wrap > header .eyebrow, section.block .wrap > header h2, section.block .wrap > header .lede, .compare .tag, .piece h3, .piece p, #copyall, .mk-row > span, .mk-color b, #mkwear, #mkrandom, #mkcopy, #mklink, .mk-paste summary, .q summary, .q p, .step h3, .step p, .help h3, .help p, .help .btn, #fby, #trnote";
+  var SEL = "header.top nav a, #unwear, .hero .eyebrow, .hero h1, .hero .lede, .hero .cta a, .facts .w, .ribbon span, .mock, section.block .wrap > header .eyebrow, section.block .wrap > header h2, section.block .wrap > header .lede, .compare .tag, .piece h3, .piece p, #copyall, .mk-row > span, .mk-color b, #mkwear, #mkrandom, #mkcopy, #mklink, #mkshare, .mk-paste summary, .q summary, .q p, .step h3, .step p, .help h3, .help p, .help .btn, #fby, #trnote";
   var EN = [], lang = "en";
   document.querySelectorAll(SEL).forEach(function (el) { EN.push([el, el.innerHTML.replace(/\s+/g, " ").trim()]); });
   var PH = [["fsearch", "placeholder"], ["csearch", "placeholder"]].map(function (p) { var el = $(p[0]); return [el, p[1], el.getAttribute(p[1])]; });
