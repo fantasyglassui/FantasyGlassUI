@@ -1,10 +1,12 @@
 # Fantasy Glass UI
 
-**Trade the plain game UI for gleaming glass, gilded fantasy or glowing runes.**
+**Trade the plain game UI for gleaming glass, gilded fantasy or a sky full of stars.**
 
 Fantasy Glass UI restyles your whole interface in one add-on. Unit frames, action bars, raid frames, nameplates, bags, quests, the minimap, chat, tooltips and every one of the game's own windows all share one look, and you choose it.
 
 A guided setup has you playing in two minutes. Every character after your first starts from your main's setup, fitted to its class.
+
+**[Website](https://fantasyglassui.com)**: try every theme, make your own, and see every switch and command.
 
 **[Wiki](https://github.com/fantasyglassui/FantasyGlassUI/wiki)**: getting started, every feature and command, and troubleshooting.
 
@@ -12,9 +14,9 @@ A guided setup has you playing in two minutes. Every character after your first 
 
 - **Glass:** clear panes with soft shadows and a bright top edge. You set how see-through they are.
 - **Fantasy:** solid panels with a rich grain, a dark rim and gold corner ornaments.
-- **Runic:** carved stone with an engraved edge and runes that glow in your accent color, with rune-cut class emblems, a band of runes round the minimap and carved action buttons.
+- **Celestial:** a moving night sky with twinkling stars, a faint Milky Way, a real constellation on big windows and now and then a shooting star, with a star-chart minimap.
 
-There are 38 themes in each family, including one in your own class color. You also get 19 accent colors and 34 lettering styles, a preview of every theme, and an editor to make your own. You can even give each kind of place its own theme: one for cities, another for raids.
+There are 38 themes in each family, including one in your own class color. You also get 31 accent colors and 34 lettering styles, a preview of every theme, and an editor to make your own (or make one on [the website](https://fantasyglassui.com) and paste its code in). You can even give each kind of place its own theme: one for cities, another for raids.
 
 ## What you get
 

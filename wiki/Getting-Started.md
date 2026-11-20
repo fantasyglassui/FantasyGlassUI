@@ -106,6 +106,9 @@ The **Tools** button on the menu bar (or `/fgui tools`) opens a button for every
 - **Loot browser:** what each boss drops is noted as you kill it, from your loot window, the loot rolls and your group's loot lines, and shared by all your characters. `/fgui drops` lists it raid by raid and boss by boss; `/fgui drops <name>` goes straight to one raid or dungeon.
 - **Threat meter:** in a group with a hostile target, a small panel shows the top five on threat. Your row turns the warning color near the top and the danger color when you would pull. Move it with `/fgui move`.
 - **Farming sessions:** `/fgui farm` starts one; a small panel shows the time and what you make an hour, in gold and in looted items (the auction price you have seen, or the vendor's). A `/reload` keeps it going, and each finished session counts in your weekly recap.
+- **Equip prompt:** loot an upgrade and a small notice offers to put it on; for a ring or a trinket you choose which one it replaces.
+- **Milestones:** your 1,000th kill, 100th quest, first boss and more get a short notice, and `/fgui stats` lists them with the day.
+- **Boss guide:** when you target or pull a boss, its abilities from the dungeon journal show under your boss note.
 - **Roll advice:** the loot roll window lights the button to press and says why: Need for a wish or an upgrade, Pass for gear you can't use, Greed for the rest. Nothing is rolled for you.
 - **Group gear check:** `/fgui gear` lists everyone in your group with their item level, filling in as the game sends each player's gear.
 - **Lifetime stats:** `/fgui stats` gives totals for this character and all of them, with your best run times.

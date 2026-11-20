@@ -626,9 +626,12 @@ local function AllGold() local _, total = ns:Characters(); return tonumber(total
 -- An item on all your characters (bags and bank), or this one if that is more up to date.
 local function CountEverywhere(id)
     local n = 0
-    local owners = ns.ItemOwners and ns:ItemOwners("item:" .. tostring(id))
-    for _, o in pairs(type(owners) == "table" and owners or {}) do n = n + (tonumber(o.bags) or 0) + (tonumber(o.bank) or 0) end
-    return math.max(n, Count(id, true))
+    local owners, me = nil, nil
+    if ns.ItemOwners then owners, me = ns:ItemOwners("item:" .. tostring(id)) end
+    for who, o in pairs(type(owners) == "table" and owners or {}) do       -- the others, from what was last seen of them;
+        if who ~= me then n = n + (tonumber(o.bags) or 0) + (tonumber(o.bank) or 0) end
+    end
+    return n + Count(id, true)                                             -- and you, as you are now
 end
 -- Where an item drops, from the loot browser: "Boss (Instance)", times seen, kills.
 function ns.GoalDropsFrom(id)
@@ -725,22 +728,37 @@ function ns:GoalCommand(text)
         if not id then ns:Print("No reputation called \"%s\" (open the reputation window once, then try again).", rest); return end
         goals[#goals + 1] = { kind = "rep", id = id, name = name }
         ns:Print("Goal added: %s.", name)
-    elseif first == "gold" and tonumber((rest:gsub("[,%.%sgG]", ""))) then
-        local need = math.max(1, math.min(100000000, tonumber((rest:gsub("[,%.%sgG]", "")))))
-        goals[#goals + 1] = { kind = "gold", need = need, name = format(ns:Tr("%s gold on all characters"), Short(need)) }
-        ns:Print("Goal added: %s.", goals[#goals].name)
-    elseif first == "level" and tonumber(rest) then
-        local need = math.max(2, math.min(200, tonumber(rest)))
-        goals[#goals + 1] = { kind = "level", need = need, char = ns:CharKey(), name = format(ns:Tr("Level %d"), need) }
-        ns:Print("Goal added: %s.", goals[#goals].name)
-    elseif first == "mount" and rest ~= "" then
-        local id, name = FindMount(rest)
-        if not id then
-            ns:Print(type(C_MountJournal) == "table" and "No mount called \"%s\"." or "This game client has no mount collection an add-on can use.", rest)
+    elseif first == "gold" or first == "level" or first == "mount" then
+        -- (11.17.1) a goal already reached when it is set is said so at once, not as "reached" a moment later
+        local function Added(g)
+            local okP, done = pcall(ns.GoalProgress, g, {})
+            if okP and type(done) == "number" and done >= 1 then
+                g.reached = true
+                ns:Print("Goal added: %s (already reached).", g.name)
+            else
+                ns:Print("Goal added: %s.", g.name)
+            end
+        end
+        if first == "gold" and tonumber((rest:gsub("[,%.%sgG]", ""))) then
+            local need = math.max(1, math.min(100000000, tonumber((rest:gsub("[,%.%sgG]", "")))))
+            goals[#goals + 1] = { kind = "gold", need = need, name = format(ns:Tr("%s gold on all characters"), Short(need)) }
+            Added(goals[#goals])
+        elseif first == "level" and tonumber(rest) then
+            local need = math.max(2, math.min(200, tonumber(rest)))
+            goals[#goals + 1] = { kind = "level", need = need, char = ns:CharKey(), name = format(ns:Tr("Level %d"), need) }
+            Added(goals[#goals])
+        elseif first == "mount" and rest ~= "" then
+            local id, name = FindMount(rest)
+            if not id then
+                ns:Print(type(C_MountJournal) == "table" and "No mount called \"%s\"." or "This game client has no mount collection an add-on can use.", rest)
+                return
+            end
+            goals[#goals + 1] = { kind = "mount", id = id, name = name }
+            Added(goals[#goals])
+        else
+            ns:Print("Goals: /fgui goal gold 10000, /fgui goal level 60, or /fgui goal mount <name>.")
             return
         end
-        goals[#goals + 1] = { kind = "mount", id = id, name = name }
-        ns:Print("Goal added: %s.", name)
     elseif first == "add" and rest ~= "" then
         -- a goal of your own: /fgui goal add 50 Kill raptors   (click it on the panel to count)
         local need, what = rest:match("^(%d+)%s+(.+)$")

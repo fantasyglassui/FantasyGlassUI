@@ -102,6 +102,7 @@ function ns:ShowGear()
         else right = "|cff9aa4b4" .. ns:Tr("asking...") .. "|r" end
         lines[#lines + 1] = { left = ClassHex(r.class) .. tostring(r.name) .. "|r", right = right }
     end
+    if #rows == 1 then lines[#lines + 1] = { left = "|cff9aa4b4" .. ns:Tr("You are not in a group, so only you are listed.") .. "|r" } end   -- (11.17.1)
     local note = format(ns:Tr("%d of %d known. Players fill in as the game sends their gear; anyone far away shows when they come closer."), n, #rows)
     ns:ShowList("GearCheck", "Group gear", lines, note, 360, math.min(460, 90 + #lines * 18))
     return lines, avg
@@ -112,17 +113,27 @@ ns:NewModule("gearCheck", function()
     pcall(ev.RegisterEvent, ev, "INSPECT_READY")
     pcall(ev.RegisterEvent, ev, "GROUP_ROSTER_UPDATE")
     local function Done(redraw)
-        if asking and ClearInspectPlayer then pcall(ClearInspectPlayer) end
+        local insp = _G.InspectFrame                          -- (your own inspect window, opened meanwhile: left alone)
+        local yours = type(insp) == "table" and insp.IsShown and insp:IsShown()
+        if asking and ClearInspectPlayer and not yours then pcall(ClearInspectPlayer) end
         asking = nil
         if redraw and open then ns:ShowGear() end
     end
     ev:SetScript("OnEvent", ns:Guard("Group gear", function(_, event, guid)
         if event == "INSPECT_READY" and asking and guid == asking.guid then farAt[guid] = nil end
         if event == "GROUP_ROSTER_UPDATE" then if open then ns:After(1, function() if open then ns:ShowGear() end end) end return end
-        if not asking or guid ~= asking.guid then return end
+        if not asking or guid ~= asking.guid or asking.reading then return end
         local level = ns.GearLevelOf(asking.unit)
-        if level then known[asking.guid] = { level = level, at = GetTime() } end
-        Done(true)
+        if level then known[asking.guid] = { level = level, at = GetTime() }; Done(true); return end
+        -- the gear came, but the game has not looked all of it up yet: one more look in a second
+        asking.reading = true
+        local was = asking
+        ns:After(1, function()
+            if asking ~= was then return end
+            local again = ns.GearLevelOf(was.unit)
+            if again then known[was.guid] = { level = again, at = GetTime() } else farAt[was.guid] = GetTime() end
+            Done(true)
+        end)
     end))
     local last = 0
     ns:Every(0.3, "Group gear", function()
@@ -131,7 +142,7 @@ ns:NewModule("gearCheck", function()
         if win and win.IsShown and not win:IsShown() then open = false; queue = {}; return end
         local now = GetTime()
         if asking then
-            if now - asking.at > WAIT then farAt[asking.guid] = now; Done(true) end        -- (no answer: too far, or the game was busy)
+            if now - asking.at > WAIT + (asking.reading and 2 or 0) then farAt[asking.guid] = now; Done(true) end        -- (no answer: too far, or the game was busy)
             return
         end
         if now - last < GAP or InCombatLockdown() then return end

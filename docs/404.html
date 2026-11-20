@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Not found · Fantasy Glass UI</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="/icon.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Source+Sans+3:wght@400;600&display=swap">
+<style>
+  :root { --ink: #06070d; --text: #eef0f8; --dim: #aab3d2; --gold: #f0c66b; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--ink); color: var(--text); font: 400 1.05rem/1.6 "Source Sans 3", system-ui, sans-serif; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; }
+  main { position: relative; min-height: 100%; display: grid; place-items: center; text-align: center; padding: 32px 16px; }
+  .gem { width: 56px; height: 56px; margin: 0 auto 26px; transform: rotate(45deg); border: 2px solid var(--gold); box-shadow: 0 0 24px rgba(240,198,107,.45), inset 0 0 18px rgba(240,198,107,.2); }
+  h1 { font: 400 clamp(2rem, 7vw, 3.4rem)/1.1 Marcellus, Georgia, serif; margin: 0 0 12px; letter-spacing: .02em; }
+  p { color: var(--dim); margin: 0 auto 28px; max-width: 34ch; }
+  a.btn { display: inline-block; padding: 12px 24px; background: var(--gold); color: #1a1408; font-weight: 600; text-decoration: none; clip-path: polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px), 0 10px); }
+  a.btn:focus-visible { outline: 2px solid #fff; outline-offset: 4px; }
+</style>
+</head>
+<body>
+<canvas id="sky" aria-hidden="true"></canvas>
+<main>
+  <div>
+    <div class="gem" aria-hidden="true"></div>
+    <h1>This star isn't on the map</h1>
+    <p>The page you were looking for isn't here. It may have moved, or the address has a typo.</p>
+    <a class="btn" href="/">Back to Fantasy Glass UI</a>
+  </div>
+</main>
+<script>
+(function () {
+  var c = document.getElementById("sky"), x = c.getContext && c.getContext("2d"); if (!x) return;
+  var still = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches, s = [], w, h;
+  function size() { w = c.width = innerWidth; h = c.height = innerHeight; s = []; for (var i = 0; i < w * h / 7000; i++) s.push([Math.random() * w, Math.random() * h, Math.random() * 1.2 + .2, Math.random() * 6]); }
+  function draw(t) { x.clearRect(0, 0, w, h); s.forEach(function (p) { x.fillStyle = "rgba(220,230,255," + (still ? .6 : .35 + .35 * Math.sin(p[3] + t / 900)) + ")"; x.beginPath(); x.arc(p[0], p[1], p[2], 0, 6.3); x.fill(); }); if (!still) requestAnimationFrame(draw); }
+  size(); addEventListener("resize", size); requestAnimationFrame(draw);
+})();
+</script>
+</body>
+</html>

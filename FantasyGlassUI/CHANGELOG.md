@@ -2,6 +2,72 @@
 
 The releases published on CurseForge. Each lists what changed since the release before it.
 
+## 11.17.3
+
+**New**
+- Website: Fantasy Glass UI has its own site at [fantasyglassui.com](https://fantasyglassui.com), with every
+  theme to try on the page, every switch and command, answers to common questions, and a theme maker
+  whose code you paste into `/fgui sharepreview` to use the theme in the game. `/fgui website` shows
+  the address in a box to copy.
+
+**Polish**
+- The add-on's description in the game's add-on list now says glass, fantasy and celestial themes
+  (it still said runic, which became Celestial).
+
+## 11.17.2
+
+**Fixes**
+- Nameplates: our health bar now sits in the same place as the game's, so where the game hides the
+  whole health area (friendly plates that show only a name) ours goes too. If the game fades its own
+  bar back in, it is put straight back out, with no flicker of the old bar.
+- Group gear check: it no longer clears what your own inspect window is showing if you open it while
+  the check is asking someone. A player whose gear arrives before the game has looked it all up
+  gets a second look a moment later, instead of being asked over and over.
+- Goals: an item goal counted this character's bags twice over (once from the last snapshot, once as
+  they are now) when the item was also on another character. Each character is now counted once,
+  this one as it is now.
+- Upgrade notice: with two copies of the same item in your bags, it puts on the very one you looted,
+  not whichever comes first.
+- Lifetime stats: the page now says that kills are counted from the experience they give, so they do
+  not go up at the level cap.
+
+## 11.17.1
+
+**Polish**
+- Upgrade notice: several upgrades looted at once now wait their turn ("2 more" says how many), the
+  next one coming up as you put one on or close it. A notice goes by itself once the item is worn,
+  however it was put on (Equip best, dragging it), or is no longer an upgrade.
+- Goals: a gold, level or mount goal that is already reached when you set it says so at once, rather
+  than announcing "Goal reached" a moment later.
+- Group gear check: on your own, the window says you are not in a group instead of listing only you
+  without a word.
+- Lifetime stats: the "This character / All characters" heading sits over the numbers it names.
+
+## 11.17.0
+
+**New: put on an upgrade as you loot it**
+- Loot something that is an upgrade and a small notice shows it, with by how many item levels it
+  beats what you wear and an **Equip** button.
+- For a ring or a trinket there is a button for each of the two you wear, so you choose which one it
+  replaces.
+- In a fight the click waits until the fight is over. An item not yet bound to you is put on the same
+  way, and the game asks you first, as it always does. The notice goes after a minute, or with its
+  cross; move it with `/fgui move`. Features tab: "Looted an upgrade: a button to put it on".
+
+**New: milestones**
+- Your 100th, 1,000th and 10,000th kill, 10th and 100th quest, first boss and 100th, first dungeon or
+  raid run, 1,000 gold made, items looted and more each get a short notice and a sound when reached.
+- `/fgui stats` lists the milestones each character has reached, with the day.
+- Bosses and runs already in your run log when this version first runs are counted as reached
+  quietly, so you are not greeted with a pile of old ones.
+
+**New: boss guide**
+- When you target or pull a boss, its abilities from the game's dungeon journal show one line each,
+  with their icons, under your boss note. A boss without a note of yours now opens the panel for the
+  guide alone.
+- Only on game clients with the journal, and never while you have the journal open yourself.
+  Features tab: "Boss guide: abilities from the journal".
+
 ## 11.16.0
 
 **New: roll advice**

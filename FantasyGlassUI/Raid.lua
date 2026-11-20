@@ -163,6 +163,77 @@ function ns.TargetBoss()
     return (okN and type(name) == "string" and not Secret(name)) and name or nil
 end
 
+-- Boss guide (11.17): the boss's abilities from the game's dungeon journal, one line each, shown
+-- under your note when you target or pull it. Only where the game has a journal; the journal is not
+-- touched while you have it open yourself.
+local guideCache = {}
+local function SectionInfo(id)
+    if C_EncounterJournal and C_EncounterJournal.GetSectionInfo then
+        local ok, info = pcall(C_EncounterJournal.GetSectionInfo, id)
+        if ok and type(info) == "table" then return info end
+    end
+    if type(EJ_GetSectionInfo) == "function" then
+        local ok, title, desc, headerType, icon, _, sibling, child, filtered = pcall(EJ_GetSectionInfo, id)
+        if ok and title then
+            return { title = title, description = desc, headerType = headerType, abilityIcon = icon,
+                     siblingSectionID = sibling, firstChildSectionID = child, filteredByDifficulty = filtered }
+        end
+    end
+end
+-- Short: the first sentence of a description, without its color codes, at most `max` letters.
+function ns.GuideShort(text, max)
+    if type(text) ~= "string" or Secret(text) then return "" end
+    local t = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|T.-|t", ""):gsub("%$bullet;?", ""):gsub("%s+", " ")
+    t = ns.Trim(t)
+    local first = t:match("^(.-[%.!])%s") or t
+    max = max or 90
+    if #first > max then first = first:sub(1, max - 3):gsub("%s+%S*$", "") .. "..." end
+    return first
+end
+-- The abilities of a boss by name: { { icon, title, text } } (at most 8), or nil.
+function ns.BossGuide(name)
+    if type(name) ~= "string" or Secret(name) or ns.db.bossGuide == false then return nil end
+    if guideCache[name] ~= nil then return guideCache[name] or nil end
+    if type(EJ_GetInstanceByIndex) ~= "function" or type(EJ_GetEncounterInfoByIndex) ~= "function" or type(EJ_SelectInstance) ~= "function" then return nil end
+    local ej = _G.EncounterJournal
+    if type(ej) == "table" and ej.IsShown and ej:IsShown() then return nil end   -- (yours is open: leave it be)
+    local root
+    pcall(function()
+        if EJ_SelectTier and EJ_GetCurrentTier then EJ_SelectTier(EJ_GetCurrentTier()) end
+        for _, raid in ipairs({ false, true }) do
+            for i = 1, 60 do
+                local id = EJ_GetInstanceByIndex(i, raid)
+                if not id then break end
+                for j = 1, 30 do
+                    local bossName, _, _, rootSection = EJ_GetEncounterInfoByIndex(j, id)
+                    if not bossName then break end
+                    if bossName == name then root = rootSection; return end
+                end
+            end
+        end
+    end)
+    local out = {}
+    local function Walk(id, depth)
+        local guard = 0
+        while id and id > 0 and #out < 8 and guard < 40 do
+            guard = guard + 1
+            local info = SectionInfo(id)
+            if not info then return end
+            if not info.filteredByDifficulty then
+                local icon = info.abilityIcon
+                if type(icon) == "number" and icon > 0 or type(icon) == "string" and icon ~= "" then
+                    out[#out + 1] = { icon = icon, title = info.title, text = ns.GuideShort(info.description) }
+                end
+                if depth < 4 and info.firstChildSectionID then Walk(info.firstChildSectionID, depth + 1) end
+            end
+            id = info.siblingSectionID
+        end
+    end
+    if root then pcall(Walk, root, 0) end
+    guideCache[name] = #out > 0 and out or false
+    return #out > 0 and out or nil
+end
+
 local panel, editor
 local function Panel()
     if panel then return panel end
@@ -193,7 +264,8 @@ local function Panel()
 end
 function ns:ShowBossNote(name, quietIfNone)
     local mine, sent = ns:BossNote(name)
-    if not mine and not sent then
+    local guide = ns.BossGuide(name)
+    if not mine and not sent and not (guide and quietIfNone) then
         if not quietIfNone then ns:Print("No note for %s yet: |cffffff00/fgui bossnote|r with it targeted writes one.", tostring(name)) end
         return false
     end
@@ -203,6 +275,13 @@ function ns:ShowBossNote(name, quietIfNone)
     local parts = {}
     if mine then parts[#parts + 1] = mine.text end
     if sent then parts[#parts + 1] = "|cff9aa4b4" .. format(ns:Tr("From %s:"), tostring(sent.from)) .. "|r " .. sent.text end
+    if guide then
+        local g = { ns:AccentHex() .. ns:Tr("From the journal:") .. "|r" }
+        for _, a in ipairs(guide) do
+            g[#g + 1] = "|T" .. tostring(a.icon) .. ":14:14:0:0:64:64:5:59:5:59|t |cffffd100" .. tostring(a.title) .. "|r" .. ((a.text ~= "") and (" - " .. a.text) or "")
+        end
+        parts[#parts + 1] = table.concat(g, "\n")
+    end
     p.text:SetText(table.concat(parts, "\n\n"))
     local h = p.text.GetStringHeight and p.text:GetStringHeight()
     p:SetHeight(math.max(60, math.min(400, ((type(h) == "number" and not Secret(h)) and h or 60) + 40)))

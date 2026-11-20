@@ -1,6 +1,6 @@
 # Features
 
-Every switch on the **Features** tab (`/fgui`, Features), in its section, with what it does and whether it is on when you first install. Version 11.16.0.
+Every switch on the **Features** tab (`/fgui`, Features), in its section, with what it does and whether it is on when you first install. Version 11.17.3.
 
 The search box at the top of the options finds any of them, and pointing at a switch shows what it does.
 
@@ -165,6 +165,8 @@ The search box at the top of the options finds any of them, and pointing at a sw
 | "Loaded" line in chat at login | on | The one line in chat when you log in, with the version. Off: Fantasy Glass UI only speaks up in chat when something needs you (a new version, a problem). |
 | Login briefing: what is waiting | on | A few seconds after you log in, one small window says what is waiting: crafts ready, mail on your other characters, lockouts that have reset, rested experience and the jobs left on your checklist. Only when something is waiting; /fgui briefing shows it at any time. |
 | Weekly recap | on | Notes each character's week as you play it: gold made or spent, time played, levels, raids and dungeons, best loot. /fgui recap shows the last week; the login briefing says when a new one is ready. |
+| Milestones: a notice when one is reached | on | A short notice and a sound when you reach a milestone: 100, 1,000, 10,000 kills; 100 quests; your first boss and your 100th; your first run; 1,000 gold made; and more. They are listed with the day on the stats page (/fgui stats). Needs Lifetime stats. |
+| Boss guide: abilities from the journal | on | When you target or pull a boss, its abilities from the game's dungeon journal show one line each under your boss note, with their icons. Only on game clients with the journal, and never while you have the journal open yourself. Needs Boss notes. |
 | Combat text in your lettering | off | The numbers that float up in combat use the add-on's lettering. The game reads that font as the world loads, so a change shows after a relog. |
 | Rounded corners (glass) | on | Rounded corners on panels and buttons, on glass themes. |
 | Ring round the mouse pointer | off | A ring in the accent color round the mouse pointer, so it is easy to find in a fight. It hides while you hold a mouse button to turn or look around. |
@@ -215,6 +217,7 @@ The search box at the top of the options finds any of them, and pointing at a sw
 |---|---|---|
 | One-window bags | on | All your bags in one window with categories, search and sorting. |
 | Upgrade arrows on loot and quest rewards | on | A green arrow on gear with a higher item level than what you wear in that slot: on loot rolls, quest rewards and the game's own bags (the one-window bags always have it). Item tooltips say by how much. /fgui equipbest puts on every upgrade that is already bound to you. |
+| Looted an upgrade: a button to put it on | on | Loot an upgrade and a small notice shows it, with by how many item levels it beats what you wear and a button to put it on. For a ring or a trinket there is a button for each of the two you wear. In a fight the click waits for the fight to end; an item not yet bound to you is put on only once the game has asked you. Move the notice with /fgui move. |
 | One-window bank | on | The bank in one window, in the same style. |
 | Remember bags & bank | on | Remembers each character's bags and bank so you can look at them from any character (/storage). |
 | Bags: BoE tag on unbound gear | on | Marks gear in your bags that binds when equipped and is not bound to you yet, so it can still be sold or traded. |

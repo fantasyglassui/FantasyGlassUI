@@ -83,7 +83,10 @@ ns:NewModule("nameplates", function()
     -- its bar - the health, its color - is passed straight on to ours, hidden values included.
     function ns.PlateOwnBar(uf, bar)
         if type(bar) ~= "table" or rawget(bar, "suiOwn") then return rawget(bar, "suiOwn") end
-        local own = ns:NewStatusBar(uf, true)
+        -- (in the bar's own parent: where the game hides the whole health area for a name-only plate, ours goes too)
+        local holder = (bar.GetParent and bar:GetParent()) or uf
+        if type(holder) ~= "table" or not holder.CreateTexture or holder.suiKilled then holder = uf end
+        local own = ns:NewStatusBar(holder, true)
         own:SetAllPoints(bar)
         own:SetFrameLevel((bar.GetFrameLevel and bar:GetFrameLevel() or 1) + 1)
         if own.bg then own.bg:SetVertexColor(0.04, 0.04, 0.05, 0.9) end
@@ -108,6 +111,11 @@ ns:NewModule("nameplates", function()
         local okS, shown = pcall(bar.IsShown, bar)
         if okS and shown == false then own:Hide() end
         ns:Kill(bar)                                           -- (the game's bar: out of sight, still running)
+        if hooksecurefunc then                                 -- (and if the game fades it back in, straight back out)
+            hooksecurefunc(bar, "SetAlpha", function(self, a)
+                if a ~= 0 and not self.suiZeroing then self.suiZeroing = true; pcall(self.SetAlpha, self, 0); self.suiZeroing = nil end
+            end)
+        end
         return own
     end
     -- Our level, in the game's difficulty color, just left of the name ("??" for a boss).

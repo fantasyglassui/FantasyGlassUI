@@ -1,6 +1,6 @@
 local ADDON, ns = ...
 _G.FantasyGlassUI = ns
-ns.version = "11.16.0"
+ns.version = "11.17.3"
 ns.author = "DustyMouse"
 
 ns.modules = {}
@@ -71,6 +71,7 @@ ns.defaults = {
     lootBossTip      = true,        -- a boss's tooltip lists what it drops for you (11.15)
     lootBook         = true,        -- what bosses drop, noted as you kill them; /fgui drops (11.13)
     lifetimeStats    = true,        -- /fgui stats: totals for this character and all of them (11.16)
+    milestones       = true,        -- a short notice when a milestone is reached: 1,000 kills, a first boss (11.17)
     gearCheck        = true,        -- /fgui gear: everyone in your group with their item level (11.16)
     groupLoot        = true,        -- in a group: whose upgrade a boss drop is, among players with the add-on (11.14)
     runLog           = true,        -- dungeon and raid runs: times, kills, wipes, deaths, loot; /fgui runs (11.14)
@@ -87,8 +88,10 @@ ns.defaults = {
     ufArena          = false,       -- arena enemy frames (UnitFrames.lua)
     enemyCDs         = true,        -- enemy trinket, interrupt and dispel cooldowns, in arenas and battlegrounds (Arena.lua)
     upgradeArrows    = true,        -- upgrade arrows on loot rolls, quest rewards and the game's bags (Upgrades.lua)
+    upgradePrompt    = true,        -- loot an upgrade: a notice with a button to put it on (11.17)
     loginLine        = true,        -- the "loaded" line in chat at login
     bossNotes        = true,        -- a note for each boss, opened on target or pull (Raid.lua)
+    bossGuide        = true,        -- under the note: the boss's abilities from the dungeon journal (11.17)
     deathRecap       = true,        -- what hit you before you died (Raid.lua)
     homeKey          = true,        -- one key for the best way home (QuickKeys.lua)
     auctionHelper    = true,        -- auction house: lowest -1c and worth selling (Auction.lua)
@@ -1541,6 +1544,12 @@ end
 
 -- What's new: shown once after an update (never on a first install, where the setup opens instead).
 ns.whatsNew = {
+    { "11.17.3", { "The add-on has a website: fantasyglassui.com, with every theme, switch and command, and a theme maker. /fgui website gives you the address to copy." } },
+    { "11.17.2", { "Fixes: nameplates on name-only plates, the group gear check and your own inspect window, item goals counted on every character, and the upgrade notice putting on the right copy." } },
+    { "11.17.1", { "Polish: several upgrades looted at once wait their turn, a notice goes once the item is worn, and a goal already reached says so when you set it." } },
+    { "11.17.0", { "Loot an upgrade and a notice offers to put it on; for a ring or a trinket you choose which one it replaces.",
+                   "Milestones: your 1,000th kill, 100th quest, first boss and more get a short notice, and a list on the stats page.",
+                   "Boss guide: when you target or pull a boss, its abilities from the dungeon journal show under your boss note." } },
     { "11.16.0", { "Roll advice: the loot roll window lights the button to press and says why - Need for a wish or an upgrade, Pass for gear you can't use.",
                    "A group gear check: /fgui gear lists everyone in your group with their item level, the lowest first, and the group's average.",
                    "Lifetime stats: /fgui stats gives totals for this character and all of them - time played, quests, kills, gold, loot, bosses and runs.",
@@ -2322,6 +2331,7 @@ ns.helpLines = {
     { "/fgui send <name> layout", "send your layout (or profile, or theme) to another player who has the add-on" },
     { "/fgui pack", "your whole UI (profile, layout, theme, bars, mail rules) in one string to share" },
     { "/fgui sharepreview", "look at a shared profile, layout or theme string before taking it" },
+    { "/fgui website", "the add-on's website, to copy: every theme, switch and command, and a theme maker" },
     { "The world" },
     { "/fgui way 45 62", "a waypoint with an arrow and the distance (alone, it clears)" },
     { "/fgui mapsize 70", "how large the smaller world map is" },
@@ -2408,6 +2418,7 @@ ns.toolCommands = {
     bagrules = function(t) ns:BagRulesCommand(t) end,
     mailrules = function(t) ns:MailRulesCommand(t) end,
     sharepreview = function(t) if ns.Trim(t) ~= "" then ns:PreviewShared(t) else ns:ShowSharePreview() end end,
+    website = function() ns:ShowCopyBox("https://fantasyglassui.com", ns:Tr("The add-on's website: Ctrl+C to copy, then paste it in your browser.")) end,
     pull = function(t) ns:CountdownCommand("pull", t) end,
     ["break"] = function(t) ns:CountdownCommand("break", t) end,
     toolmenu = function() ns:ToggleToolsMenu() end,

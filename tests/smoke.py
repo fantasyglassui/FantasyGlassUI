@@ -3097,7 +3097,17 @@ try("Helpers start switched off", function()
         for _, group in ipairs(ns.featureGroups) do for _, opt in ipairs(group[2]) do if opt[1] == key then found = true end end end
         if not found then error("a section heading hangs on a switch that does not exist: " .. key) end
     end
-    if page.contentHeight < lowest + 24 then error("the Features tab's contents are taller than it allows for") end
+    -- (only the section on show has to fit: the others are laid out when they are chosen)
+    local shownLowest = 0
+    for _, key in ipairs(rawget(page, "shownKeys") or {}) do
+        local cb = page.boxes[key]
+        if cb and -rawget(cb, "row") > shownLowest then shownLowest = -rawget(cb, "row") end
+    end
+    if page.contentHeight < shownLowest + 24 then error("the Features tab's contents are taller than it allows for") end
+    for i, sec in ipairs(rawget(page, "sections") or {}) do
+        local half = math.ceil(#sec.keys / 2)
+        if half > 30 then error("section " .. i .. " is too long for one screen of the Features tab") end
+    end
     ns:ToggleConfig()
 end)
 try("Who counts as someone you know", function()
@@ -8235,6 +8245,66 @@ try("Best times: one record, kept by the run log", function()
     local log = { r, { instance = "Deadmines", fights = { Sneed = 80 }, kills = { Sneed = 50 }, start = 0, wipes = {}, loot = {} } }
     if ns.RunBossBest(log, "Deadmines", "Sneed") ~= 80 then error("the boss best is wrong") end
     if ns.RunPlaceBest(log, "Deadmines") == nil then error("no place best") end
+end)
+try("Equip prompt: the slots to choose from, and the notice", function()
+    if type(ns.EquipChoices) ~= "function" then error("no equip prompt") end
+    local worn = { [11] = { ilvl = 50 }, [12] = { ilvl = 40 }, [5] = { ilvl = 30 } }
+    local ring = ns.EquipChoices("INVTYPE_FINGER", worn)
+    if #ring ~= 2 or ring[1].slot ~= 11 or ring[2].slot ~= 12 then error("a ring should offer both ring slots") end
+    local chest = ns.EquipChoices("INVTYPE_CHEST", worn)
+    if #chest ~= 1 or chest[1].slot ~= 5 then error("a chest should offer its one slot") end
+    if #ns.EquipChoices("INVTYPE_BAG", worn) ~= 0 then error("a bag is not gear") end
+    if ns.upgradePromptTest then
+        local realW = env.GetInventoryItemLink
+        ns.upgradePromptTest.Show("|cff0070dd|Hitem:424260::::::::60:::::|h[Test Ring]|h|r", 7)
+        env.GetInventoryItemLink = realW
+    end
+end)
+try("Milestones: crossed once, written down, shown on the stats page", function()
+    if type(ns.MilestonesCrossed) ~= "function" then error("no milestones") end
+    local c = ns.MilestonesCrossed("kills", 95, 1005)
+    if #c ~= 3 or c[1] ~= 100 or c[3] ~= 1000 then error("crossed wrong") end
+    if #ns.MilestonesCrossed("kills", 1000, 1001) ~= 0 then error("a milestone was crossed twice") end
+    if ns.MilestoneText("bosses", 1) == ns.MilestoneText("bosses", 10) then error("the first boss should read differently") end
+    if not tostring(ns.MilestoneText("goldMade", 10000000)):find("1") then error("gold milestone text wrong") end
+    if ns.db.lifetimeStats then
+        local me = ns.root.lifetime[ns:CharKey()]
+        me.quests = 9
+        local before = type(me.milestones) == "table" and #me.milestones or 0
+        ns.LifetimeCount("quests", 1)
+        if #(me.milestones or {}) ~= before + 1 then error("10 quests was not noted") end
+        ns.LifetimeCount("quests", 0)
+        if ns.MilestoneReach(me, "quests", 10) ~= false then error("the same milestone was noted twice") end
+        ns:ShowLifetime()
+    end
+end)
+try("Boss guide: a short line for each ability", function()
+    if type(ns.GuideShort) ~= "function" then error("no boss guide") end
+    local s = ns.GuideShort("|cffff0000Deep Breath|r: Onyxia takes a deep breath. Everyone burns. More text here.", 90)
+    if s ~= "Deep Breath: Onyxia takes a deep breath." then error("short line wrong: " .. s) end
+    if #ns.GuideShort(string.rep("word ", 50), 40) > 40 then error("too long") end
+    ns.BossGuide("Nobody Here")
+end)
+try("Polish 11.17.1: upgrades wait their turn, and a goal already reached says so", function()
+    local t = ns.upgradePromptTest
+    if t then
+        local f = t.frame
+        rawset(f, "IsShown", function() return true end)
+        local q = t.Queue()
+        for i = #q, 1, -1 do q[i] = nil end
+        f.link = "|cff0070dd|Hitem:424270::::::::60:::::|h[First]|h|r"
+        t.Show("|cff0070dd|Hitem:424271::::::::60:::::|h[Second]|h|r", 5)
+        if #t.Queue() ~= 1 then error("the second upgrade did not wait its turn: " .. tostring(f:IsShown()) .. " " .. tostring(f.link) .. " " .. #t.Queue()) end
+        t.Show("|cff0070dd|Hitem:424271::::::::60:::::|h[Second]|h|r", 5)
+        if #t.Queue() ~= 1 then error("the same upgrade waited twice") end
+        rawset(f, "IsShown", nil)
+        t.Next()
+    end
+    local goals = ns.db.goals
+    ns.db.goals = {}
+    ns:GoalCommand("level 2")
+    if ns.db.goals[1] and ns.db.goals[1].reached ~= true then error("a level already reached was not marked so") end
+    ns.db.goals = goals
 end)
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
