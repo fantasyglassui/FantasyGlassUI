@@ -142,6 +142,7 @@ Mistype one and the add-on suggests the nearest command instead.
 | `/fgui volume 60` | the master volume |
 | `/fgui currency <id>` | the currency shown on the info bar |
 | `/fgui mute <number>` | never play that sound file again |
+| `/fgui buttons` | the minimap buttons the collector has gathered, by name |
 | `/fgui media` | fonts and bar textures other add-ons offer (/fgui font, /fgui bartexture) |
 
 ## Settings and backups

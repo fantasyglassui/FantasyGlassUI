@@ -2358,6 +2358,7 @@ ns.helpLines = {
     { "/fgui volume 60", "the master volume" },
     { "/fgui currency <id>", "the currency shown on the info bar" },
     { "/fgui mute <number>", "never play that sound file again" },
+    { "/fgui buttons", "the minimap buttons the collector has gathered, by name" },
     { "/fgui media", "fonts and bar textures other add-ons offer (/fgui font, /fgui bartexture)" },
     { "Settings and backups" },
     { "/fgui textsize 120", "all the add-on's lettering at that size, in percent (70 to 150; \"reset\" is as it came)" },

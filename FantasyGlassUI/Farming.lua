@@ -225,10 +225,15 @@ function ns:Farm(text)
     if cmd == "stop" or cmd == "end" then
         if type(s) ~= "table" then ns:Print("No farming session is running. /fgui farm starts one.") return end
         local t = ns.FarmTotals(s, Now(), Money())
-        ToRecap(t)
+        local nothing = (t.gold or 0) <= 0 and (t.value or 0) <= 0
+        if not (nothing and (t.secs or 0) < 60) then ToRecap(t) end      -- (a session started by mistake is not a week's farming)
         ns.FarmZonesSave(s, ZoneHistory(), Now())
         store[key] = nil
-        ns:Print(format(ns:Tr("Farming ended after %s: %s made, %s in items (%s an hour)."), Clock(t.secs), Gold(t.gold), Gold(t.value), Gold(t.totalHour)))
+        if nothing then
+            ns:Print(format(ns:Tr("Farming ended after %s, with nothing made."), Clock(t.secs)))
+        else
+            ns:Print(format(ns:Tr("Farming ended after %s: %s made, %s in items (%s an hour)."), Clock(t.secs), Gold(t.gold), Gold(t.value), Gold(t.totalHour)))
+        end
         Refresh()
         return t
     end
