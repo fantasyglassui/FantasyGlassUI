@@ -263,6 +263,10 @@ header.top nav.links { order: 2; }
   header.top nav.links::-webkit-scrollbar { display: none; }
   header.top #unwear { order: 5; }
 }
+#visits { display: inline-flex; align-items: center; gap: 7px; margin-left: 10px; color: var(--dim); font-variant-numeric: tabular-nums; }
+#visits::before { content: ""; width: 6px; height: 6px; transform: rotate(45deg); background: var(--gold); box-shadow: 0 0 8px var(--gold); }
+#visits b { color: var(--text); font-weight: 600; }
+#trnote[hidden], #visits[hidden] { display: none; }
 #trnote { display: block; color: var(--faint); font-size: .8rem; margin-top: 4px; }
 /* ---- theme maker ---- */
 .maker { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 22px; align-items: start; }
@@ -568,7 +572,7 @@ section.block::before { content: ""; position: absolute; top: -6px; left: 50%; w
 
 <footer>
   <div class="wrap">
-    <span><span id="fby">Fantasy Glass UI by DustyMouse. Free, for WoW Forever.</span> <small id="trnote" hidden>This page was translated without a native speaker's check. Corrections are welcome.</small></span>
+    <span><span id="fby">Fantasy Glass UI by DustyMouse. Free, for WoW Forever.</span> <span id="visits" hidden></span> <small id="trnote" hidden>This page was translated without a native speaker's check. Corrections are welcome.</small></span>
     <span><a href="https://www.curseforge.com/wow/addons/fantasy-glass-ui" target="_blank" rel="noopener">CurseForge</a> · <a href="https://github.com/fantasyglassui/FantasyGlassUI" target="_blank" rel="noopener">GitHub</a> · <a href="https://github.com/fantasyglassui/FantasyGlassUI/wiki" target="_blank" rel="noopener">Wiki</a> · <a href="https://github.com/fantasyglassui/FantasyGlassUI/issues/new/choose" target="_blank" rel="noopener">Report a bug</a> · <a href="mailto:email-forwarding@fantasyglassui.com">Contact</a></span>
   </div>
 </footer>
@@ -1031,7 +1035,7 @@ window.FG_NEWS=[{"v": "11.17.2", "items": ["Fixes: nameplates on name-only plate
     $("wearname").textContent = worn;
     PH.forEach(function (p) { p[0].setAttribute(p[1], L(p[2])); });
     root.setAttribute("lang", lang); $("trnote").hidden = lang === "en";
-    drawChosen(); drawGallery(); drawThumbs(); $("shot-cap").textContent = L(SHOTS[shotIdx][2]); drawNews(curNews); drawMaker(); drawFeatures(); drawCommands();
+    drawChosen(); drawGallery(); drawThumbs(); $("shot-cap").textContent = L(SHOTS[shotIdx][2]); drawNews(curNews); drawMaker(); drawFeatures(); drawCommands(); drawVisits();
   }
   function setLang(code, save) {
     if (!LANGS.some(function (l) { return l[0] === code; })) code = "en";
@@ -1045,6 +1049,12 @@ window.FG_NEWS=[{"v": "11.17.2", "items": ["Fixes: nameplates on name-only plate
   $("lang").addEventListener("change", function () { setLang(this.value, true); });
   fetch("features.json").then(function (r) { return r.json(); }).then(function (d) { DATA = d; drawFeatures(); drawCommands(); })
     .catch(function () { $("flist").innerHTML = '<p class="count">' + L("The list of switches could not be loaded. Reload the page to try again.") + '</p>'; });
+  // a small visit count in the footer, from GoatCounter (shown only once its counter answers)
+  var visits = null;
+  function drawVisits() { var v = $("visits"); if (!v || visits === null) return; v.innerHTML = F("%s visits", "<b>" + esc(visits) + "</b>"); v.hidden = false; }
+  if (window.fetch && /fantasyglassui\.com$/.test(location.hostname)) fetch("https://fantasyglassui.goatcounter.com/counter/TOTAL.json")
+    .then(function (r) { if (!r.ok) throw 0; return r.json(); })
+    .then(function (d) { if (d && d.count) { visits = String(d.count); drawVisits(); } })["catch"](function () {});
   // first visit: the link's ?lang=, then the last choice, then the browser's language
   (function () {
     var code = null, m = /[?&]lang=([a-z]{2})/.exec(location.search);
