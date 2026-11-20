@@ -271,6 +271,7 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: 
 .dc { display: inline-flex; align-items: center; gap: 6px; order: 4; padding: 7px 12px; font: 700 0.86rem/1 var(--body); color: #fff; background: #4752c4; text-decoration: none; }
 .dc:hover, .dc:focus-visible { background: #5865f2; }
 #mkshare { margin-top: 10px; }
+.q code { overflow-wrap: anywhere; }                      /* (a long folder path breaks instead of running off a phone screen) */
 #mkshare a { color: var(--gold); }
 .lang { display: inline-flex; align-items: center; gap: 6px; color: var(--dim); margin-left: auto; order: 3; }
 .lang select { background: var(--ink-3); color: var(--text); border: 0; box-shadow: inset 0 0 0 1px var(--line); padding: 5px 8px; font: 600 .85rem/1.2 var(--body); cursor: pointer; }
@@ -683,15 +684,19 @@ window.FG_NEWS=[{"v": "11.17.2", "items": ["Fixes: nameplates on name-only plate
   // a quiet night sky behind everything
   (function sky() {
     var c = $("sky"); if (!c || !c.getContext) return;
-    var ctx = c.getContext("2d"), stars = [], w = 0, h = 0, dpr = Math.min(2, window.devicePixelRatio || 1);
+    var ctx = c.getContext("2d"), stars = [], w = 0, h = 0, dpr = Math.min(2, window.devicePixelRatio || 1), dark = true, last = 0;
     function size() {
+      dark = getComputedStyle(document.documentElement).colorScheme.indexOf("dark") !== -1;   // (asked here, not every frame: asking makes the browser work out the page's styles again)
       w = c.clientWidth; h = c.clientHeight; c.width = w * dpr; c.height = h * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       stars = []; var n = Math.round(w * h / 9000);
       for (var i = 0; i < n; i++) stars.push({ x: Math.random() * w, y: Math.random() * h, r: Math.random() * 1.1 + 0.2, p: Math.random() * 6.28, s: 0.4 + Math.random() * 1.2 });
     }
     function draw(t) {
+      // the twinkle is slow: twenty frames a second look the same as sixty, and spare a phone's battery.
+      // Full speed only while something moves quickly (the pointer's constellation, a shooting star).
+      if (!reduce && px < 0 && !shot && t - last < 50) { requestAnimationFrame(draw); return; }
+      last = t;
       ctx.clearRect(0, 0, w, h);
-      var dark = getComputedStyle(document.documentElement).colorScheme.indexOf("dark") !== -1;
       for (var i = 0; i < stars.length; i++) {
         var st = stars[i], a = reduce ? 0.55 : 0.35 + 0.35 * Math.sin(st.p + t / 1000 * st.s);
         ctx.fillStyle = dark ? "rgba(220,230,255," + a + ")" : "rgba(60,70,120," + (a * 0.35) + ")";

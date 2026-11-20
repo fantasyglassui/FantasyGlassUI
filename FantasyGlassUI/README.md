@@ -6,7 +6,7 @@ A complete interface replacement for **WoW Forever** (interface 16001): unit fra
 bars, action bars, bags and bank, quest tracker and quest log, minimap, buffs, nameplates, chat and
 the game's own windows, in one look that you choose from 114 glass, fantasy and celestial themes.
 
-Version 11.11.0
+Version 11.17.4
 
 ## Install
 
@@ -102,6 +102,45 @@ get two of everything.
 | `/fgui reset` | Reset the current profile to defaults |
 | `/ql` | Open the quest log |
 | `/storage` | Open the storage viewer (bags, bank and guild bank of any character) |
+| `/fgui help [word]` | Every command in a window you can search; click one to put it in the chat box |
+| `/fgui keys` | Every action bar with its keys (or hold the key you bind for it) |
+| `/fgui quiet` | Quiet mode: no chat, names or info bar, for screenshots and streaming (again to undo) |
+| `/fgui bossnote` | Your target's boss note, to read or write (/fgui bossnote send: to the group; list: all of them) |
+| `/fgui death` | What hit you before you last died |
+| `/fgui kicks <name> <name> ...` | The order your group takes turns interrupting (empty: everyone, A to Z) |
+| `/fgui testgroup` | Group practice: made-up group mates, to see group cooldowns, the interrupt rotation and buff coverage alone |
+| `/fgui showcase` | Screenshot mode: every frame with sample data and nothing in the way; again to end |
+| `/fgui drops [raid]` | The loot browser: what each boss dropped, with the upgrades for you first |
+| `/fgui wish` | Your wishlist: the items you starred in the loot browser, and where each drops |
+| `/fgui farm [stop|zones]` | A farming session: time, and gold and item value an hour; again to see it, stop to end it, zones for your best spots |
+| `/fgui threat` | Show or hide the threat meter |
+| `/fgui stats` | Lifetime stats: time played, quests, kills, deaths, gold, loot, bosses and runs, for this character and all of them |
+| `/fgui gear` | Everyone in your group with their item level, the lowest first, and the group's average |
+| `/fgui runs` | Your dungeon and raid runs: times, bosses, wipes, deaths and loot, with the best time for each place |
+| `/fgui meter` | Tuck the damage meter drawer away, or bring it out |
+| `/fgui meter reset` | Clear the damage meter |
+| `/fgui hideonframe <aura>` | Never show that buff or debuff on the unit frames, raid frames or nameplates (again to show it) |
+| `/fgui briefing` | What is waiting for you: crafts ready, mail on your other characters, lockouts reset, rested experience, jobs left |
+| `/fgui main` | Make this character your main: new characters copy its setup |
+| `/fgui skillups` | With a profession window open: the recipes that still give skill points, best first, with what each needs |
+| `/fgui crafts <search>` | What all your characters can craft; search their recipes |
+| `/fgui reps` | Reputations and currencies on all your characters; click one to pin it |
+| `/fgui equipbest` | Put on every upgrade in your bags (higher item level, already bound to you) |
+| `/fgui sort` | Sort your bags in the order of your bag sections (again to stop) |
+| `/fgui ah` | What in your bags is worth more at the auction house than at a vendor |
+| `/fgui send <name> layout` | Send your layout (or profile, or theme) to another player who has the add-on |
+| `/fgui pack` | Your whole UI (profile, layout, theme, bars, mail rules) in one string to share |
+| `/fgui website` | The add-on's website, to copy: every theme, switch and command, and a theme maker |
+| `/fgui discord` | The invite to the Discord server, to copy: help, ideas, themes and other players |
+| `/fgui home` | Which way home the home key would use |
+| `/fgui pet` | A random favorite pet (/fgui mount for a mount) |
+| `/fgui backup` | The backups of your settings, made before each update, once a day and before a reset; click one to see how to put it back |
+| `/fgui history` | What you changed in this profile, and when; click a change to undo it |
+| `/fgui blocked` | Anything the game refused to let the add-on do, and where |
+| `/fgui recap` | Your last week on every character: gold, time played, levels, raids and dungeons, best loot ("this": this week so far) |
+| `/fgui invword <word>` | The word a whisper must be for an invite (see "Invite by whisper") |
+| `/fgui textsize 120` | All the add-on's lettering at that size, in percent (70 to 150; "reset" is as it came) |
+| `/fgui uisize 90` | The whole interface at that size, in percent of the game's (50 to 150; "reset" is as it came) |
 
 ## Features
 
@@ -355,6 +394,39 @@ the ones below. Hover a switch to read what it does.
   the game lays the bar out. This needs a layout of your own: the game's two presets cannot be
   changed (Esc, Edit Mode, Layout, New Layout makes one).
 - A bar that is not showing is see-through; its buttons can still be pressed where they were.
+
+**Added in 11.17**
+- An upgrade notice when you loot something better, with a button to put it on (it waits until a fight is over).
+- Milestones for kills, quests, bosses and runs; `/fgui stats` lists them by character, with the day.
+- A boss's abilities from the game's dungeon journal, one line each, when you target or pull it.
+- `/fgui website` and `/fgui discord` give the website and the Discord invite to copy. The Discord
+  button at the foot of the settings window does the same.
+
+**Added in 11.16**
+- Loot rolls: the button to press lights up, with the reason beside the item. Nothing is rolled for you.
+- `/fgui gear`: everyone in your group by item level, lowest first. `/fgui stats`: lifetime totals.
+- Nameplates have the add-on's own health bar, and the level in its difficulty color beside the name.
+
+**Added in 11.15**
+- A wishlist: star items in `/fgui drops`, see them with `/fgui wish`, and get a notice when one drops or its boss is your target.
+- Nameplates mark the mobs you still need for a quest, with how many are left.
+- Starcut windows and tooltips: their corners cut away, with a fine rim.
+
+**Added in 11.14**
+- Gem-cut action buttons and bag slots, and a diamond minimap.
+- In a group, a panel says whose upgrade a boss's drop is (between players who use Fantasy Glass UI).
+- A run log: `/fgui runs` lists every dungeon and raid run, with best times.
+- `/fgui farm zones` lists your best farming spots. Goals for gold on all characters, a level and a mount.
+
+**Added in 11.13**
+- `/fgui showcase` (or `/fgui screenshot`): every frame with sample data, ready for a picture.
+- `/fgui drops`: what each boss dropped while you were there, upgrades first.
+- A threat panel in groups (`/fgui threat` hides or shows it).
+- Farming sessions: `/fgui farm` starts one, shows what it makes an hour, and `/fgui farm stop` ends it.
+- Equipment sets: the set you wear is named over your player frame; `/fgui set <name>` puts one on.
+
+**Added in 11.12**
+- Starcut unit frames: bars cut to points and a diamond portrait. Frame style: Classic brings the box back.
 
 **Added in 11.11**
 - **Celestial themes** take the place of Runic: a third family of 38, night-sky panels with a fine

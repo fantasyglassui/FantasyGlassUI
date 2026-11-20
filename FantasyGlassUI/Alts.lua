@@ -65,6 +65,15 @@ function ns:ForgetCharacter(key)
     if key == ns:CharKey() then return false end              -- (not the one you are playing)
     if type(ns.root) == "table" and type(ns.root.alts) == "table" and ns.root.alts[key] then
         ns.root.alts[key] = nil
+        -- and whatever else was kept for that character alone (the capped histories, runs and weekly
+        -- recaps, keep their lines: they are about the past, and they trim themselves)
+        local root = ns.root
+        for _, store in ipairs({ "lifetime", "farming", "goldDays", "profCD", "timers", "runNow", "lastSession", "specSets", "chars" }) do
+            if type(root[store]) == "table" then root[store][key] = nil end
+        end
+        if type(root.checklist) == "table" and type(root.checklist.done) == "table" then root.checklist.done[key] = nil end
+        if type(root.inventory) == "table" and type(root.inventory.chars) == "table" then root.inventory.chars[key] = nil end
+        if root.mainChar == key then root.mainChar = nil end
         return true
     end
     return false

@@ -5,7 +5,7 @@ These are the same checks run before each build:
     with combat values readable and once with them hidden as the game does in a fight;
   * the hidden-value audit: no value the game hides in combat is ever compared;
   * the combat audit: nothing the game locks in a fight is shown, hidden, moved or resized then;
-  * the version numbers of the three folders agree.
+  * the version numbers of the three folders agree, and the README is up to date.
 """
 import os
 import re
@@ -33,6 +33,18 @@ def test_versions_agree():
     assert core == main, f"Core.lua says {core}, the TOC says {main}"
     assert toc_version("FantasyGlassUI_Options") == main
     assert toc_version("FantasyGlassUI_Locales") == main
+
+
+def test_readme_current():
+    """The README that ships in the add-on folder: this version, and every command /fgui help lists."""
+    readme = open(os.path.join(ROOT, "FantasyGlassUI", "README.md"), encoding="utf-8").read()
+    main = toc_version("FantasyGlassUI")
+    assert f"Version {main}" in readme, f"FantasyGlassUI/README.md should say Version {main}"
+    core = open(os.path.join(ROOT, "FantasyGlassUI", "Core.lua"), encoding="utf-8").read()
+    block = core[core.index("ns.helpLines = {"):core.index("ns.toolCommands = {")]
+    section = readme[readme.index("## Commands"):readme.index("## Features")]
+    missing = [c for c in re.findall(r'\{ "(/fgui [a-z]+)', block) if c not in section]
+    assert not missing, "README.md's Commands table lacks: " + ", ".join(sorted(set(missing)))
 
 
 def test_harness():

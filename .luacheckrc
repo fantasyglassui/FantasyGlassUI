@@ -2,7 +2,7 @@
 -- names the add-on uses, so a misspelled name in new code is still caught).
 std = "lua51"
 max_line_length = false
-exclude_files = { ".release", "FantasyGlassUI_Locales/Locales.lua" }
+exclude_files = { ".release", "FantasyGlassUI_Locales/Locales.lua", "tests/.cache" }
 ignore = {
     "212",                  -- unused arguments (the game passes many; handlers keep their full shape)
     "213",                  -- unused loop variables

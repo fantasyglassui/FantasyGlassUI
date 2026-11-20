@@ -5778,7 +5778,10 @@ try("Characters overview and timers", function()
     for _, c in ipairs(list) do if c.current then current = c end end
     if not current or current.key ~= ns:CharKey() then error("the character you are on should be marked") end
     if ns:ForgetCharacter(ns:CharKey()) then error("the character being played cannot be forgotten") end
+    ns.root.lifetime = ns.root.lifetime or {}; ns.root.lifetime["Lift - Roshar"] = { since = 1 }
+    ns.root.goldDays = ns.root.goldDays or {}; ns.root.goldDays["Lift - Roshar"] = { [1] = 5 }
     if not ns:ForgetCharacter("Lift - Roshar") or #(ns:Characters()) ~= 2 then error("a deleted character can be forgotten") end
+    if ns.root.lifetime["Lift - Roshar"] or ns.root.goldDays["Lift - Roshar"] then error("forgetting a character should clear what was kept for it") end
     local window, shownList = ns:ShowCharacters()
     if not window or #shownList ~= 2 then error("/fgui alts should open the list") end
     ns.root.alts = keepAlts
