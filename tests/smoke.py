@@ -6720,6 +6720,18 @@ try("11.0: own action bars", function()
     local bars = ns.engine and ns.engine.bars
     if type(bars) ~= "table" then error("the bar engine should run: " .. tostring(ns.barEngineState)) end
     if #bars ~= 8 then error("eight bars") end
+    -- (11.18) the quarter-second look is the light one: usable, range and lit, not the icon all over again
+    do
+        local b = ns.engine.all[1]
+        local asked = 0
+        local realTex = env.GetActionTexture
+        rawset(env, "GetActionTexture", function(...) asked = asked + 1; if type(realTex) == "function" then return realTex(...) end end)
+        b.suiHas = true
+        pcall(ns.engine.UpdateState, b)
+        rawset(env, "GetActionTexture", realTex)
+        if asked ~= 0 then error("the light look at a button should not ask for its icon") end
+        if type(ns.engine.events) ~= "table" then error("the bars' timer should be kept, to start with the bars") end
+    end
     -- (11.4.3) our buttons keep themselves up to date (no game action button template)
     local b1 = bars[1].buttons[1]
     local realHas, realTex = env.HasAction, env.GetActionTexture

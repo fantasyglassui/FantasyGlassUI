@@ -187,6 +187,27 @@ local function ActionOf(b)
     return a
 end
 engine.ActionOf = ActionOf
+-- (one of each handler, shared by every button)
+local function ButtonEnter(self)
+    local a = ActionOf(self)
+    if not a then return end
+    if GameTooltip_SetDefaultAnchor then GameTooltip_SetDefaultAnchor(GameTooltip, self) else GameTooltip:SetOwner(self, "ANCHOR_RIGHT") end
+    if pcall(GameTooltip.SetAction, GameTooltip, a) then GameTooltip:Show() end
+end
+local function ButtonLeave() GameTooltip:Hide() end
+local function ButtonDragStart(self)                         -- (not in a fight)
+    if InCombatLockdown() then return end
+    local Get = (C_CVar and C_CVar.GetCVar) or GetCVar
+    local okL, locked = pcall(Get, "lockActionBars")
+    if okL and locked == "1" and not (IsModifiedClick and IsModifiedClick("PICKUPACTION")) then return end
+    local a = ActionOf(self)
+    if a and PickupAction then pcall(PickupAction, a); pcall(engine.UpdateButton, self) end
+end
+local function ButtonReceiveDrag(self)
+    if InCombatLockdown() then return end
+    local a = ActionOf(self)
+    if a and PlaceAction then pcall(PlaceAction, a); pcall(engine.UpdateButton, self) end
+end
 function engine.Dress(b)
     b.icon = b.icon or b.Icon or _G[(b:GetName() or "") .. "Icon"]
     if not b.icon then
@@ -217,29 +238,30 @@ function engine.Dress(b)
         if ok and cd then cd:SetAllPoints(); b.cooldown = cd end
     end
     if b.RegisterForDrag then b:RegisterForDrag("LeftButton", "RightButton") end
-    b:SetScript("OnEnter", function(self)
-        local a = ActionOf(self)
-        if not a then return end
-        if GameTooltip_SetDefaultAnchor then GameTooltip_SetDefaultAnchor(GameTooltip, self) else GameTooltip:SetOwner(self, "ANCHOR_RIGHT") end
-        if pcall(GameTooltip.SetAction, GameTooltip, a) then GameTooltip:Show() end
-    end)
-    b:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    -- dragging abilities on and off, as on the game's bars (not in a fight)
-    b:SetScript("OnDragStart", function(self)
-        if InCombatLockdown() then return end
-        local Get = (C_CVar and C_CVar.GetCVar) or GetCVar
-        local okL, locked = pcall(Get, "lockActionBars")
-        if okL and locked == "1" and not (IsModifiedClick and IsModifiedClick("PICKUPACTION")) then return end
-        local a = ActionOf(self)
-        if a and PickupAction then pcall(PickupAction, a); pcall(engine.UpdateButton, self) end
-    end)
-    b:SetScript("OnReceiveDrag", function(self)
-        if InCombatLockdown() then return end
-        local a = ActionOf(self)
-        if a and PlaceAction then pcall(PlaceAction, a); pcall(engine.UpdateButton, self) end
-    end)
+    b:SetScript("OnEnter", ButtonEnter)
+    b:SetScript("OnLeave", ButtonLeave)
+    b:SetScript("OnDragStart", ButtonDragStart)               -- dragging abilities on and off, as on the game's bars
+    b:SetScript("OnReceiveDrag", ButtonReceiveDrag)
 end
 local function Num(v) return type(v) == "number" and not ns:IsSecret(v) and v or nil end
+-- What changes without any event: usable (dimmed when not, blue when short of mana), in range (red
+-- when not), and lit while it is the current or repeating action. The timer checks only this; the
+-- icon, count, name and cooldown come with events (and a full look once a second besides).
+local function ApplyState(b, a)
+    local okU, usable, noMana = pcall(IsUsableAction, a)
+    local okR, inRange = pcall(IsActionInRange, a)
+    if okR and inRange == false and not ns:IsSecret(inRange) then b.icon:SetVertexColor(0.85, 0.25, 0.25)
+    elseif okU and not ns:IsSecret(usable) and usable then b.icon:SetVertexColor(1, 1, 1)
+    elseif okU and not ns:IsSecret(noMana) and noMana then b.icon:SetVertexColor(0.35, 0.45, 1)
+    elseif okU and not ns:IsSecret(usable) then b.icon:SetVertexColor(0.4, 0.4, 0.4)
+    else b.icon:SetVertexColor(1, 1, 1) end
+    local cur = (IsCurrentAction and IsCurrentAction(a)) or (IsAutoRepeatAction and IsAutoRepeatAction(a))
+    if b.suiLit and not ns:IsSecret(cur) then b.suiLit:SetShown(cur and true or false) end
+end
+function engine.UpdateState(b)
+    local a = b.suiHas and ActionOf(b)
+    if a then ApplyState(b, a) end
+end
 function engine.UpdateButton(b)
     local a = ActionOf(b)
     if not a then return end
@@ -274,17 +296,7 @@ function engine.UpdateButton(b)
             end
             if start ~= nil and dur ~= nil then pcall(b.cooldown.SetCooldown, b.cooldown, start, dur) else pcall(b.cooldown.Clear, b.cooldown) end
         end
-        -- usable (dimmed when not, blue when short of mana) and in range (red when not)
-        local okU, usable, noMana = pcall(IsUsableAction, a)
-        local okR, inRange = pcall(IsActionInRange, a)
-        if okR and inRange == false and not ns:IsSecret(inRange) then b.icon:SetVertexColor(0.85, 0.25, 0.25)
-        elseif okU and not ns:IsSecret(usable) and usable then b.icon:SetVertexColor(1, 1, 1)
-        elseif okU and not ns:IsSecret(noMana) and noMana then b.icon:SetVertexColor(0.35, 0.45, 1)
-        elseif okU and not ns:IsSecret(usable) then b.icon:SetVertexColor(0.4, 0.4, 0.4)
-        else b.icon:SetVertexColor(1, 1, 1) end
-        -- lit while it is the current or repeating action
-        local cur = (IsCurrentAction and IsCurrentAction(a)) or (IsAutoRepeatAction and IsAutoRepeatAction(a))
-        if b.suiLit and not ns:IsSecret(cur) then b.suiLit:SetShown(cur and true or false) end
+        ApplyState(b, a)
     else
         b.icon:SetTexture(nil)
         b.Count:SetText("")
@@ -313,16 +325,21 @@ local function UpdateAllButtons()
         if b:IsVisible() then pcall(engine.UpdateButton, b) end
     end
 end
+local function UpdateAllStates()
+    for _, b in ipairs(engine.all) do
+        if b.suiHas and b:IsVisible() then pcall(engine.UpdateState, b) end
+    end
+end
 engine.UpdateAll = UpdateAllButtons
 do
     local ev = CreateFrame("Frame")
     for _, e in ipairs({ "ACTIONBAR_SLOT_CHANGED", "ACTIONBAR_UPDATE_STATE", "ACTIONBAR_UPDATE_USABLE", "ACTIONBAR_UPDATE_COOLDOWN",
                          "SPELL_UPDATE_COOLDOWN", "SPELL_UPDATE_USABLE", "SPELL_UPDATE_CHARGES", "UPDATE_SHAPESHIFT_FORM", "PLAYER_TARGET_CHANGED",
                          "BAG_UPDATE_DELAYED", "PLAYER_ENTERING_WORLD", "UPDATE_BINDINGS", "UNIT_INVENTORY_CHANGED", "LEARNED_SPELL_IN_TAB",
-                         "START_AUTOREPEAT_SPELL", "STOP_AUTOREPEAT_SPELL", "PLAYER_ENTER_COMBAT", "PLAYER_LEAVE_COMBAT", "UPDATE_MACROS" }) do
+                         "START_AUTOREPEAT_SPELL", "STOP_AUTOREPEAT_SPELL", "PLAYER_ENTER_COMBAT", "PLAYER_LEAVE_COMBAT", "UPDATE_MACROS", "MODIFIER_STATE_CHANGED" }) do
         pcall(ev.RegisterEvent, ev, e)
     end
-    local dirty, acc = true, 0
+    local dirty, acc, ticks = true, 0, 0
     ev:SetScript("OnEvent", ns:Guard("BarEngine events", function(_, event, arg)
         if #engine.all == 0 then return end
         if event == "UPDATE_BINDINGS" or event == "PLAYER_ENTERING_WORLD" then
@@ -334,14 +351,26 @@ do
         end
         dirty = true
     end))
-    -- (and a few times a second: range and usability change without any event)
+    -- (and a few times a second: range and usability change without any event. Everything else is
+    -- looked at again only after an event, and once a second in case one never came.)
     ev:SetScript("OnUpdate", function(_, e)
         acc = acc + e
         if acc < (dirty and 0.05 or 0.25) then return end
-        acc, dirty = 0, false
-        if #engine.all > 0 then UpdateAllButtons() end
+        acc, ticks = 0, ticks + 1
+        if dirty or ticks >= 4 then
+            dirty, ticks = false, 0
+            UpdateAllButtons()
+        else
+            UpdateAllStates()
+        end
     end)
+    ev:Hide()                                                -- (until there are bars: see Bind)
+    engine.events = ev
 end
+local function ButtonAttribute(self, attr)
+    if attr == "action" then pcall(engine.UpdateButton, self) end
+end
+local function ButtonShown(self) pcall(engine.UpdateButton, self) end
 local function Saved(k)
     if type(ns.db.engineBars) ~= "table" then ns.db.engineBars = {} end
     return ns.db.engineBars[k]
@@ -456,11 +485,9 @@ ns:NewModule("barEngine", function()
             b.suiCommand = def.bind .. i                     -- (for keybind mode: which binding this button is)
             b.suiName = name .. "Button" .. i
             b.suiBarKey = "fgbar" .. k
-            b:HookScript("OnAttributeChanged", function(self, attr)
-                if attr == "action" then pcall(engine.UpdateButton, self) end
-            end)
+            b:HookScript("OnAttributeChanged", ButtonAttribute)
             engine.all[#engine.all + 1] = b
-            b:HookScript("OnShow", function(self) pcall(engine.UpdateButton, self) end)
+            b:HookScript("OnShow", ButtonShown)
             bar:SetFrameRef("b" .. i, b)
             if ns.SkinActionButton then pcall(ns.SkinActionButton, b) end
             bar.buttons[i] = b
@@ -487,6 +514,7 @@ ns:NewModule("barEngine", function()
         table.insert(ns.barHandles, math.min(k, #ns.barHandles + 1), info)       -- (before the stance and pet bars)
         engine.bars[k] = bar
     end
+    if engine.events then engine.events:Show() end           -- (the bars' own timer runs from now on)
     -- (11.4.2) A stance bar of our own too: the game's, laid out by its own code, was refused in fights
     -- as long as the add-on had anything to do with it. Ours has a secure button for each form the
     -- game lists; the game's own is put out of sight like its other bars and otherwise left alone.
