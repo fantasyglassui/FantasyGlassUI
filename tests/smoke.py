@@ -1519,11 +1519,17 @@ try("Clean screen", function()
     rawset(env.UIParent, "SetAlpha", realSet)
 end)
 try("Problem report", function()
+    local realShow, gotLink, gotAlt = ns.ShowTextWindow, nil, nil
+    ns.ShowTextWindow = function(self, title, text, toBottom, link, alt) gotLink, gotAlt = link, alt; return realShow(self, title, text, toBottom, link, alt) end
     local out = ns:ProblemReport()
+    ns.ShowTextWindow = realShow
     local text = table.concat(out, "\n")
     for _, want in ipairs({ "WHAT WENT WRONG", "self-check", "SETTINGS CHANGED FROM THE DEFAULTS", "OTHER ADD-ONS RUNNING" }) do
         if not text:find(want, 1, true) then error("the report lacks: " .. want) end
     end
+    -- (11.18) two places to send it: the form, and the Discord server's #bug-reports
+    if gotLink ~= ns:ReportLink() then error("the first address should still be the form") end
+    if type(gotAlt) ~= "table" or gotAlt.link ~= ns.discordInvite then error("the second address should be the Discord invite") end
 end)
 try("Notifications", function()
     if type(ns.Toast) ~= "function" then error("the notification module did not start") end

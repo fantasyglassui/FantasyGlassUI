@@ -585,7 +585,8 @@ function ns:ProblemReport()
         end
         out[#out + 1] = row
     end
-    ns:ShowTextWindow("Report a problem", table.concat(out, "\n"), false, ns:ReportLink())
+    local alt = ns.discordInvite and { label = "Or attach the saved file in #bug-reports on Discord:", link = ns.discordInvite } or nil
+    ns:ShowTextWindow("Report a problem", table.concat(out, "\n"), false, ns:ReportLink(), alt)
     return out
 end
 

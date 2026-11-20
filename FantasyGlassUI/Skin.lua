@@ -2956,7 +2956,9 @@ end
 
 -- link (optional): an address to send the text to. It gets a row of its own under the title: the
 -- address in a box that selects itself when clicked, and a numbered list of what to do with it.
-function ns:ShowTextWindow(title, text, toBottom, link)
+-- alt (optional, with a link): a second place, { label = "...", link = "..." }, in a row of its own
+-- under the first (the report: the Discord server, besides the form).
+function ns:ShowTextWindow(title, text, toBottom, link, alt)
     if not textWin then
         textWin = CreateFrame("Frame", "FantasyGlassUIText", UIParent, ns.template)
         textWin:SetSize(640, 440)
@@ -3015,6 +3017,17 @@ function ns:ShowTextWindow(title, text, toBottom, link)
         lb:SetScript("OnTextChanged", function(self, byUser)           -- it is for copying from, not for typing in
             if byUser then self:SetText(self.link or ""); self:HighlightText() end
         end)
+        local altLabel = ns:NewText(textWin, 12, "LEFT", true)
+        altLabel:SetPoint("TOPLEFT", 16, -76)
+        ns:Paint(altLabel, "SetTextColor", "@accent")
+        local ab = ns:CreateEditBox(textWin, 300, 22)
+        ab:SetPoint("LEFT", altLabel, "RIGHT", 10, 0)
+        ab:SetScript("OnEditFocusGained", function(self) self:HighlightText() end)
+        ab:SetScript("OnMouseUp", function(self) self:SetFocus(); self:HighlightText() end)
+        ab:SetScript("OnTextChanged", function(self, byUser)
+            if byUser then self:SetText(self.link or ""); self:HighlightText() end
+        end)
+        textWin.altLabel, textWin.altBox = altLabel, ab
         local how = ns:NewText(textWin, 12, "LEFT", true)
         how:SetPoint("TOPLEFT", 16, -76)
         how:SetText(ns:Tr("How to send it"))
@@ -3062,13 +3075,27 @@ function ns:ShowTextWindow(title, text, toBottom, link)
         for _, piece in ipairs({ textWin.linkLabel, textWin.linkBox, textWin.linkHow, textWin.linkRule }) do
             if link then piece:Show() else piece:Hide() end
         end
+        local hasAlt = link and type(alt) == "table" and type(alt.link) == "string" and alt.link ~= ""
+        textWin.linkHow:ClearAllPoints()
+        textWin.linkHow:SetPoint("TOPLEFT", 16, hasAlt and -108 or -76)
+        if hasAlt then
+            textWin.altLabel:SetText(ns:Tr(alt.label or ""))
+            textWin.altBox.link = alt.link
+            textWin.altBox:SetText(alt.link)
+            if textWin.altBox.SetCursorPosition then textWin.altBox:SetCursorPosition(0) end
+            local w = tonumber(textWin.altLabel.GetStringWidth and textWin.altLabel:GetStringWidth()) or 300
+            textWin.altBox:SetWidth(math.max(160, math.min(400, 598 - w)))     -- (whatever room the label leaves)
+            textWin.altLabel:Show(); textWin.altBox:Show()
+        else
+            textWin.altLabel:Hide(); textWin.altBox:Hide()
+        end
         if lastStep then
             textWin.linkRule:ClearAllPoints()
             textWin.linkRule:SetPoint("TOPLEFT", lastStep, "BOTTOMLEFT", -4, -9)
             textWin.linkRule:SetWidth(608)
         end
     end
-    textWin:SetHeight(lastStep and 540 or 440)               -- taller with instructions, so the report keeps its room
+    textWin:SetHeight(lastStep and (textWin.altBox and textWin.altBox:IsShown() and 572 or 540) or 440)   -- taller with instructions, so the report keeps its room
     if textWin.hint then                                     -- the one-line hint would only repeat the first step
         if lastStep then textWin.hint:Hide() else textWin.hint:Show() end
     end
