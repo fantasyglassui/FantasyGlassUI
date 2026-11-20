@@ -785,6 +785,14 @@ try("Scale", function() if not ns:SetPanelScale({ "ufPlayer", "minimap" }, 1.2) 
     if ns.db.scale.ufPlayer ~= 1.2 then error("scale not saved") end
     ns.db.ufW = 280; ns:ResizeUnitFrames(); ns.db.raidW = 90; if ns.ResizeRaid then ns:ResizeRaid() end end)
 try("slash", function() env.SlashCmdList["FANTASYGLASSUI"]("status"); env.SlashCmdList["FANTASYGLASSUI"]("help"); env.SlashCmdList["FANTASYGLASSUI"]("layout") end)
+try("Discord invite", function()
+    local shown
+    local real = ns.ShowCopyBox
+    ns.ShowCopyBox = function(_, text) shown = text end
+    env.SlashCmdList["FANTASYGLASSUI"]("discord")
+    ns.ShowCopyBox = real
+    if shown ~= "https://discord.gg/qeSMwQWyPR" then error("/fgui discord should show the invite to copy, got " .. tostring(shown)) end
+end)
 
 -- fire every registered script / hook with plausible arguments
 local events = { "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_DISABLED", "PLAYER_TARGET_CHANGED", "PLAYER_REGEN_ENABLED",

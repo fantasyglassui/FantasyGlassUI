@@ -115,6 +115,7 @@ Mistype one and the add-on suggests the nearest command instead.
 | `/fgui pack` | your whole UI (profile, layout, theme, bars, mail rules) in one string to share |
 | `/fgui sharepreview` | look at a shared profile, layout or theme string before taking it |
 | `/fgui website` | the add-on's website, to copy: every theme, switch and command, and a theme maker |
+| `/fgui discord` | the invite to the Discord server, to copy: help, ideas, themes and other players |
 
 ## The world
 

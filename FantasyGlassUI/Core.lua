@@ -1,6 +1,6 @@
 local ADDON, ns = ...
 _G.FantasyGlassUI = ns
-ns.version = "11.17.3"
+ns.version = "11.17.4"
 ns.author = "DustyMouse"
 
 ns.modules = {}
@@ -1544,6 +1544,7 @@ end
 
 -- What's new: shown once after an update (never on a first install, where the setup opens instead).
 ns.whatsNew = {
+    { "11.17.4", { "Fantasy Glass UI has a Discord server for help, ideas and sharing themes: the Discord button at the foot of the settings window, or /fgui discord, gives you the invite to copy." } },
     { "11.17.3", { "The add-on has a website: fantasyglassui.com, with every theme, switch and command, and a theme maker. /fgui website gives you the address to copy." } },
     { "11.17.2", { "Fixes: nameplates on name-only plates, the group gear check and your own inspect window, item goals counted on every character, and the upgrade notice putting on the right copy." } },
     { "11.17.1", { "Polish: several upgrades looted at once wait their turn, a notice goes once the item is worn, and a goal already reached says so when you set it." } },
@@ -2197,6 +2198,12 @@ end
 
 -- What the help says of a command: "/fgui death" → its line. With `arg`, a line naming it is preferred.
 local HELP_ALIAS = { checknew = { "check", "new" } }            -- (a word the menu uses for a two-word command)
+-- The Discord server: an add-on cannot open a web page, so the invite goes in a box to copy.
+ns.discordInvite = "https://discord.gg/qeSMwQWyPR"
+function ns:ShowDiscord()
+    self:ShowCopyBox(self.discordInvite, self:Tr("The Discord server: Ctrl+C to copy the invite, then paste it in your browser or in Discord."))
+end
+
 function ns.HelpAbout(word, arg)
     if HELP_ALIAS[word] and not arg then word, arg = HELP_ALIAS[word][1], HELP_ALIAS[word][2] end
     local plain
@@ -2332,6 +2339,7 @@ ns.helpLines = {
     { "/fgui pack", "your whole UI (profile, layout, theme, bars, mail rules) in one string to share" },
     { "/fgui sharepreview", "look at a shared profile, layout or theme string before taking it" },
     { "/fgui website", "the add-on's website, to copy: every theme, switch and command, and a theme maker" },
+    { "/fgui discord", "the invite to the Discord server, to copy: help, ideas, themes and other players" },
     { "The world" },
     { "/fgui way 45 62", "a waypoint with an arrow and the distance (alone, it clears)" },
     { "/fgui mapsize 70", "how large the smaller world map is" },
@@ -2419,6 +2427,7 @@ ns.toolCommands = {
     mailrules = function(t) ns:MailRulesCommand(t) end,
     sharepreview = function(t) if ns.Trim(t) ~= "" then ns:PreviewShared(t) else ns:ShowSharePreview() end end,
     website = function() ns:ShowCopyBox("https://fantasyglassui.com", ns:Tr("The add-on's website: Ctrl+C to copy, then paste it in your browser.")) end,
+    discord = function() ns:ShowDiscord() end,
     pull = function(t) ns:CountdownCommand("pull", t) end,
     ["break"] = function(t) ns:CountdownCommand("break", t) end,
     toolmenu = function() ns:ToggleToolsMenu() end,
