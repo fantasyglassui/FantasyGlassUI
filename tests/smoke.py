@@ -8698,6 +8698,77 @@ try("13.0 planner: reading Questie", function()
     rawset(env, "Questie", realQ); rawset(env, "QuestieLoader", realLoader)
     if not ok then error(err, 0) end
 end)
+try("13.0 planner: travel", function()
+    local real = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), taxi = rawget(env, "C_TaxiMap"), nodeType = rawget(env, "TaxiNodeGetType"),
+                   num = rawget(env, "NumTaxiNodes"), onTaxi = rawget(env, "UnitOnTaxi"), time = env.GetTime, bind = rawget(env, "GetTaxiMapID") }
+    local savedRoot, savedKey = ns.root.planner, ns.root.guideKey
+    local pos, clock, taxi = { 1, 10, 10 }, 1000, false
+    local at = function(map, x, y) pos = { map, x, y } end
+    local cm = {}
+    for k, v in pairs(real.map) do cm[k] = v end
+    cm.GetWorldPosFromMapPos = function(map, v)
+        local x, y = v.x * 1000, v.y * 1000
+        if map == 1 then return 0, { x = x, y = y } end
+        if map == 2 then return 0, { x = x + 3000, y = y } end
+        if map == 3 then return 1, { x = x, y = y } end
+    end
+    cm.GetBestMapForUnit = function() return pos[1] end
+    cm.GetPlayerMapPosition = function() return { GetXY = function() return pos[2] / 100, pos[3] / 100 end } end
+    env.C_Map = cm
+    env.CreateVector2D = function(x, y) return { x = x, y = y } end
+    env.GetTime = function() return clock end
+    env.UnitOnTaxi = function() return taxi end
+    env.GetTaxiMapID = function() return 1 end
+    env.C_TaxiMap = { GetAllTaxiNodes = function() return {
+        { nodeID = 5, slotIndex = 1, name = "Five", position = { x = 0.10, y = 0.10 } },
+        { nodeID = 6, slotIndex = 2, name = "Six", position = { x = 0.0, y = 0.0 } },
+        { nodeID = 7, slotIndex = 3, name = "Seven", position = { x = 0.9, y = 0.9 } } } end }
+    env.NumTaxiNodes = function() return 3 end
+    env.TaxiNodeGetType = function(i) return i == 3 and "UNREACHABLE" or (i == 1 and "CURRENT" or "REACHABLE") end
+    ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
+    local ok, err = pcall(function()
+        local c, wx, wy = ns.PlannerWorldPos(2, 50, 50)
+        if c ~= 0 or wx ~= 3500 or wy ~= 500 then error("world position") end
+        if ns.PlannerWorldPos(9, 1, 1) ~= nil then error("an unplaceable map is nil") end
+        local crossings = { { id = "fake", a = { map = 1, x = 90, y = 90 }, b = { map = 3, x = 10, y = 10 }, faction = "Alliance", seconds = 100 } }
+        local ctx = { speed = 7, faction = "Alliance", crossings = crossings,
+            flights = { { node = 1, map = 1, x = 10, y = 10, known = true }, { node = 2, map = 2, x = 50, y = 50, known = true } },
+            flightTime = function() return 60 end }
+        local A, B = { map = 1, x = 10, y = 10 }, { map = 1, x = 20, y = 10 }
+        local s, legs = ns.PlannerTravel(A, B, ctx); if math.abs(s - 100 / 7) > 0.5 or legs[1].kind ~= "run" then error("a short run") end
+        local far = { map = 2, x = 50, y = 50 }
+        s, legs = ns.PlannerTravel(A, far, ctx); if legs[2] == nil or legs[2].kind ~= "fly" then error("far: a known flight is used") end
+        ctx.flights[2].known = false
+        s, legs = ns.PlannerTravel(A, far, ctx); for _, l in ipairs(legs) do if l.kind == "fly" then error("never an unknown flight") end end
+        ctx.hearth = { map = 2, x = 50, y = 49 }; s, legs = ns.PlannerTravel(A, far, ctx); if legs[1].kind ~= "hearth" then error("hearth when faster") end
+        ctx.hearth = nil; ctx.flights[2].known = true
+        s, legs = ns.PlannerTravel(A, { map = 3, x = 50, y = 50 }, ctx); local sailed = false; for _, l in ipairs(legs) do sailed = sailed or (l.kind == "sail" and l.crossing == "fake") end
+        if not sailed then error("the other continent: by boat") end
+        ctx.faction = "Horde"; s = ns.PlannerTravel(A, { map = 3, x = 50, y = 50 }, ctx); if s ~= math.huge then error("no crossing for this faction") end
+        -- flights are learned at the flight master, and timed
+        fireEvent("TAXIMAP_OPENED")
+        if not ns.PlannerKnownFlight(5) or not ns.PlannerKnownFlight(6) or ns.PlannerKnownFlight(7) then error("known flight points") end
+        at(1, 10, 10); taxi = true; fireEvent("PLAYER_CONTROL_LOST")
+        clock = clock + 60; at(1, 0, 0); fireEvent("PLAYER_CONTROL_GAINED"); taxi = false
+        if ns.root.plannerFlightTimes["5-6"] ~= 60 then error("flight time recorded: " .. tostring(ns.root.plannerFlightTimes and ns.root.plannerFlightTimes["5-6"])) end
+        if not ns.PlannerLandedAt(6) or ns.PlannerLandedAt(5) then error("landed at") end
+        local pts = ns.PlannerFlightPoints()
+        if #pts ~= 3 then error("flight points for the planner") end
+        -- a boat ride: leaving near one dock, arriving at the other
+        local real2 = ns.PLANNER_CROSSINGS
+        ns.PLANNER_CROSSINGS = crossings
+        at(1, 90, 90); fireEvent("PLAYER_LEAVING_WORLD")
+        clock = clock + 120; at(3, 10, 10); fireEvent("PLAYER_ENTERING_WORLD")
+        ns.PLANNER_CROSSINGS = real2
+        if not ns.PlannerCrossed("fake") or ns.PlannerCrossed("other") then error("crossed") end
+        if ns.root.plannerCrossTimes.fake ~= 120 then error("crossing time recorded") end
+        if #ns.PLANNER_CROSSINGS ~= 7 then error("seven crossings") end
+    end)
+    env.C_Map = real.map; rawset(env, "CreateVector2D", real.vec); rawset(env, "C_TaxiMap", real.taxi); rawset(env, "TaxiNodeGetType", real.nodeType)
+    rawset(env, "NumTaxiNodes", real.num); rawset(env, "UnitOnTaxi", real.onTaxi); env.GetTime = real.time; rawset(env, "GetTaxiMapID", real.bind)
+    ns.root.planner, ns.root.guideKey = savedRoot, savedKey
+    if not ok then error(err, 0) end
+end)
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()

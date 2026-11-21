@@ -63,6 +63,7 @@ MapExtras.lua
 Guide.lua
 GuideEditor.lua
 PlannerSource.lua
+PlannerTravel.lua
 Polish.lua
 Bags.lua
 BagWindow.lua
