@@ -33,23 +33,42 @@ jobs:
 
       - name: Tag the version ([release] commits)
         if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           version=$(grep -m1 '^## Version:' FantasyGlassUI/FantasyGlassUI.toc | sed 's/^## Version: *//' | tr -d '\r')
           echo "Version in the TOC: $version"
           if ! echo "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then echo "not a release version: $version"; exit 1; fi
-          if git rev-parse -q --verify "refs/tags/$version" >/dev/null; then
-            echo "$version is already tagged: raise the version before releasing again"; exit 1
-          fi
           for f in FantasyGlassUI_Options/FantasyGlassUI_Options.toc FantasyGlassUI_Locales/FantasyGlassUI_Locales.toc; do
             grep -q "^## Version: $version" "$f" || { echo "$f does not say $version"; exit 1; }
           done
           grep -q "^ns.version = \"$version\"" FantasyGlassUI/Core.lua || { echo "Core.lua does not say $version"; exit 1; }
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "$version" -m "$version"
-          git push origin "refs/tags/$version"
+          if git rev-parse -q --verify "refs/tags/$version" >/dev/null; then
+            # already tagged: release it only if it has not been released yet (a run that stopped part way)
+            if gh release view "$version" >/dev/null 2>&1; then
+              echo "$version is already released: raise the version before releasing again"; exit 1
+            fi
+            echo "$version is tagged but not released yet: releasing that tag"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a "$version" -m "$version"
+            git push origin "refs/tags/$version"
+          fi
+          echo "RELEASE_TAG=$version" >> "$GITHUB_ENV"
 
-      - name: Build and upload
+      # A tag pushed from here starts no run of its own, so this run packages it. The packager skips a
+      # branch build whose commit is tagged, so it is told it is building the tag.
+      - name: Build and upload ([release] commits)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git checkout -q "refs/tags/$RELEASE_TAG"
+          curl -fsSL https://raw.githubusercontent.com/BigWigsMods/packager/v2/release.sh -o "$RUNNER_TEMP/release.sh"
+          GITHUB_REF="refs/tags/$RELEASE_TAG" GITHUB_REF_NAME="$RELEASE_TAG" GITHUB_REF_TYPE=tag \
+            bash "$RUNNER_TEMP/release.sh" -n "Fantasy Glass UI {project-version}:FantasyGlassUI-{project-version}"
+
+      - name: Build and upload (tag pushes)
+        if: github.ref != 'refs/heads/main'
         uses: BigWigsMods/packager@v2
         with:
           args: -n "Fantasy Glass UI {project-version}:FantasyGlassUI-{project-version}"
