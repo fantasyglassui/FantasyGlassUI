@@ -69,18 +69,42 @@ end
 ------------------------------------------------------------------------------------------
 -- Saved data (created when first needed; ns.root may be absent early)
 ------------------------------------------------------------------------------------------
-local function CharData()
+-- Saved tables: read without creating (nil when absent); create = true only when writing.
+local function CharData(create)
     if type(ns.root) ~= "table" then return nil end
-    ns.root.planner = type(ns.root.planner) == "table" and ns.root.planner or {}
     local key = ns:CharKey()
-    ns.root.planner[key] = type(ns.root.planner[key]) == "table" and ns.root.planner[key] or {}
+    if type(ns.root.planner) ~= "table" then
+        if not create then return nil end
+        ns.root.planner = {}
+    end
+    if type(ns.root.planner[key]) ~= "table" then
+        if not create then return nil end
+        ns.root.planner[key] = {}
+    end
     return ns.root.planner[key]
 end
 
-local function Account(name)
+local function Account(name, create)
     if type(ns.root) ~= "table" then return nil end
-    ns.root[name] = type(ns.root[name]) == "table" and ns.root[name] or {}
+    if type(ns.root[name]) ~= "table" then
+        if not create then return nil end
+        ns.root[name] = {}
+    end
     return ns.root[name]
+end
+
+-- A time for a route: the average of the last 5 recordings, so one odd trip can't spoil it.
+local function RecordTime(tableName, key, secs)
+    local times, samples = Account(tableName, true), Account("plannerTimeSamples", true)
+    if not (times and samples) then return end
+    local id = tableName .. ":" .. key
+    local list = type(samples[id]) == "table" and samples[id] or {}
+    list[#list + 1] = secs
+    while #list > 5 do table.remove(list, 1) end
+    samples[id] = list
+    local sum = 0
+    for _, v in ipairs(list) do sum = sum + v end
+    times[key] = sum / #list
 end
 
 function ns.PlannerKnownFlight(node)
@@ -104,6 +128,7 @@ function ns.PlannerFlightPoints()
 end
 
 -- The known flight point nearest to a map position, or nil.
+local NEAR = 300   -- yards
 local function NearestKnown(map, x, y)
     local c, wx, wy = WorldPos(map, x, y)
     if not c then return nil end
@@ -112,7 +137,7 @@ local function NearestKnown(map, x, y)
         if f.known then
             local c2, x2, y2 = WorldPos(f.map, f.x, f.y)
             local d = c2 and Dist(c, wx, wy, c2, x2, y2) or huge
-            if d < huge and (not bestD or d < bestD) then best, bestD = f.node, d end
+            if d <= NEAR and (not bestD or d < bestD) then best, bestD = f.node, d end
         end
     end
     return best
@@ -124,7 +149,7 @@ local function LearnFlights()
     local map = (GetTaxiMapID and GetTaxiMapID()) or (C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player"))
     local ok, list = pcall(C_TaxiMap.GetAllTaxiNodes, map)
     if not ok or type(list) ~= "table" then return end
-    local data, nodes = CharData(), Account("plannerNodes")
+    local data, nodes = CharData(true), Account("plannerNodes", true)
     if not data or not nodes then return end
     data.flights = type(data.flights) == "table" and data.flights or {}
     local learned = false
@@ -147,54 +172,72 @@ end
 ------------------------------------------------------------------------------------------
 -- Recording trips
 ------------------------------------------------------------------------------------------
-local takeoff, leaving
+local takeoff, dock
 
-local function NearDock(spot, dock, radius)
+local function NearDock(spot, d, radius)
     local c, wx, wy = WorldPos(spot.map, spot.x, spot.y)
-    local c2, x2, y2 = WorldPos(dock.map, dock.x, dock.y)
+    local c2, x2, y2 = WorldPos(d.map, d.x, d.y)
     return c ~= nil and c2 ~= nil and Dist(c, wx, wy, c2, x2, y2) <= radius
 end
 
 local function ControlLost()
     if not (UnitOnTaxi and UnitOnTaxi("player")) then return end
     local map, x, y = PlayerSpot()
-    local node = map and NearestKnown(map, x, y)
-    takeoff = node and { node = node, time = GetTime() } or nil
+    takeoff = { node = map and NearestKnown(map, x, y) or nil, time = GetTime() }
 end
 
 local function ControlGained()
     local from = takeoff
     takeoff = nil
+    if not from then return end                          -- a stun or a fear, not a flight
     local map, x, y = PlayerSpot()
     local node = map and NearestKnown(map, x, y)
     if not node then return end
     landed = node
-    if from and from.node ~= node then
+    if from.node and from.node ~= node then
         local secs = GetTime() - from.time
-        local times = Account("plannerFlightTimes")
-        if times and secs > 0 then times[from.node .. "-" .. node] = secs end
+        if secs > 0 then RecordTime("plannerFlightTimes", from.node .. "-" .. node, secs) end
     end
 end
 
-local function LeavingWorld()
-    local map, x, y = PlayerSpot()
-    leaving = map and { map = map, x = x, y = y, time = GetTime() } or nil
-end
-
--- Back from a loading screen: did it carry us from one dock of a crossing to its other end?
-local function EnteringWorld()
-    local from = leaving
-    leaving = nil
-    if not from then return end
+-- Every couple of seconds: which dock are we standing at, and since when?
+local function DockTick()
+    if not ns:GuideUnlocked() then return end
     local map, x, y = PlayerSpot()
     if not map then return end
     local here = { map = map, x = x, y = y }
     for _, c in ipairs(ns.PLANNER_CROSSINGS) do
-        if (NearDock(from, c.a, 300) and NearDock(here, c.b, 300)) or (NearDock(from, c.b, 300) and NearDock(here, c.a, 300)) then
-            crossed = c.id
-            local times = Account("plannerCrossTimes")
-            local secs = GetTime() - from.time
-            if times and secs > 0 then times[c.id] = secs end
+        for side = 1, 2 do
+            if NearDock(here, side == 1 and c.a or c.b, NEAR) then
+                if dock and dock.id == c.id and dock.side == side then
+                    if not dock.inside then dock.since, dock.inside = GetTime(), true end
+                else
+                    dock = { id = c.id, side = side, since = GetTime(), inside = true }
+                end
+                return
+            end
+        end
+    end
+    if dock then dock.inside = false end
+end
+ns.PlannerDockTick = DockTick
+
+-- Back from a loading screen: are we at the other end of the crossing we waited for?
+local function EnteringWorld()
+    local from = dock
+    if not from then return end
+    local map, x, y = PlayerSpot()
+    if not map then return end
+    for _, c in ipairs(ns.PLANNER_CROSSINGS) do
+        if c.id == from.id then
+            if NearDock({ map = map, x = x, y = y }, from.side == 1 and c.b or c.a, NEAR) then
+                local secs = GetTime() - from.since
+                dock = nil
+                if secs >= 60 then
+                    crossed = c.id
+                    RecordTime("plannerCrossTimes", c.id, secs)
+                end
+            end
             return
         end
     end
@@ -202,15 +245,15 @@ end
 
 do
     local ev = CreateFrame("Frame")
-    for _, e in ipairs({ "TAXIMAP_OPENED", "PLAYER_CONTROL_LOST", "PLAYER_CONTROL_GAINED", "PLAYER_LEAVING_WORLD", "PLAYER_ENTERING_WORLD" }) do pcall(ev.RegisterEvent, ev, e) end
+    for _, e in ipairs({ "TAXIMAP_OPENED", "PLAYER_CONTROL_LOST", "PLAYER_CONTROL_GAINED", "PLAYER_ENTERING_WORLD" }) do pcall(ev.RegisterEvent, ev, e) end
     ev:SetScript("OnEvent", ns:Guard("Planner travel", function(_, event)
         if not ns:GuideUnlocked() then return end
         if event == "TAXIMAP_OPENED" then LearnFlights()
         elseif event == "PLAYER_CONTROL_LOST" then ControlLost()
         elseif event == "PLAYER_CONTROL_GAINED" then ControlGained()
-        elseif event == "PLAYER_LEAVING_WORLD" then LeavingWorld()
         elseif event == "PLAYER_ENTERING_WORLD" then EnteringWorld() end
     end))
+    if ns.Every then ns:Every(2, "Planner docks", DockTick) end
 end
 
 ------------------------------------------------------------------------------------------
@@ -228,13 +271,16 @@ end
 local function Local(from, to, ctx, hearth)
     local c1, x1, y1 = WorldPos(from.map, from.x, from.y)
     local c2, x2, y2 = WorldPos(to.map, to.x, to.y)
-    if not (c1 and c2) or c1 ~= c2 then return huge end
+    if not c2 then return huge end
     local speed = ctx.speed or ns.PLANNER_SPEED.run
-    local best = Dist(c1, x1, y1, c2, x2, y2) / speed
-    local legs = { { kind = "run", to = Spot(to), seconds = best } }
+    local best, legs = huge, {}
     local pts = {}
+    if c1 == c2 then
+        best = Dist(c1, x1, y1, c2, x2, y2) / speed
+        legs = { { kind = "run", to = Spot(to), seconds = best } }
+    end
     for _, f in ipairs(ctx.flights or {}) do
-        if f.known then
+        if f.known and c1 == c2 then
             local c, x, y = WorldPos(f.map, f.x, f.y)
             if c == c1 then pts[#pts + 1] = { f = f, x = x, y = y } end
         end
@@ -299,5 +345,9 @@ function ns.PlannerTravel(from, to, ctx)
         end
     end
     if best == huge then return huge, {} end
-    return best, legs
+    local speed, kept = ctx.speed or ns.PLANNER_SPEED.run, {}
+    for _, l in ipairs(legs) do
+        if l.kind ~= "run" or l.seconds * speed >= 1 then kept[#kept + 1] = l end   -- no zero-length runs
+    end
+    return best, kept
 end
