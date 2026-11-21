@@ -111,6 +111,7 @@ ns:NewModule("characterWindow", function()
         if type(id) ~= "number" then return end
         local quality = GetInventoryItemQuality and GetInventoryItemQuality("player", id)
         local c = type(quality) == "number" and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality]
+        ns:QualityPips(slot, quality)
         if c and quality > 1 then
             slot.suiBorder:SetBackdropBorderColor(c.r, c.g, c.b, 1)
         else

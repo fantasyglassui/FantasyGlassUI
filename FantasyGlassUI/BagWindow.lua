@@ -628,6 +628,7 @@ local function NewWindow(cfg)
         else b.listLine:Hide() end
         local upgrade = false
         local r, g, bl = ns:T("border")
+        ns:QualityPips(b, nil)                                   -- (an emptied slot loses its dots)
         if info then
             b.icon:SetTexture(info.iconFileID)
             b.icon:Show()
@@ -637,6 +638,7 @@ local function NewWindow(cfg)
             local q = info.quality
             local c = q and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[q]
             if c and q > 1 then r, g, bl = c.r, c.g, c.b elseif q == 0 then r, g, bl = 0.45, 0.45, 0.45 end
+            ns:QualityPips(b, q)
             if GetInstant and info.itemID then
                 local _, _, _, _, _, classID = GetInstant(info.itemID)
                 if (classID == 2 or classID == 4) and C_Item and C_Item.GetDetailedItemLevelInfo and info.hyperlink then

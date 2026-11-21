@@ -1341,7 +1341,7 @@ try("Talent tree", function()
 end)
 try("Theme palette", function()
     local function lum(c) return c[1] * 0.30 + c[2] * 0.59 + c[3] * 0.11 end
-    if #ns.themeOrder ~= 114 then error("expected 114 built-in themes, found " .. #ns.themeOrder) end
+    if #ns.themeOrder ~= 115 then error("expected 115 built-in themes, found " .. #ns.themeOrder) end
     local seen = {}
     for _, key in ipairs(ns.themeOrder) do
         if seen[key] then error("theme listed twice: " .. key) end
@@ -1400,7 +1400,7 @@ try("Setup offers every theme", function()
         local th = ns.themes[key]
         if not th.custom then if th.style == "GLASS" then glass = glass + 1 elseif th.style == "CELESTIAL" then celestial = celestial + 1 else fantasy = fantasy + 1 end end
     end
-    if glass ~= 38 or fantasy ~= 38 or celestial ~= 38 then error("expected 38 + 38 + 38 themes, found " .. glass .. " + " .. fantasy .. " + " .. celestial) end
+    if glass ~= 38 or fantasy ~= 39 or celestial ~= 38 then error("expected 38 + 39 + 38 themes, found " .. glass .. " + " .. fantasy .. " + " .. celestial) end
     -- (a family no longer has to fit four rows: the setup's grid scrolls, which is tested further down)
     ns.db.theme, ns.db.accent = "SMOKE", "AZURE"; ns:Retheme()
     ns:ShowSetup()
@@ -1759,6 +1759,21 @@ try("Rename", function()
     ns:InitDB()
     if ns.db ~= keepDb and ns.db.theme == nil then error("could not restore the test profile") end
 end)
+try("Accessibility (12.0)", function()
+    if not ns.themes.FCONTRAST or ns:ThemeName("FCONTRAST") == "" then error("a high-contrast fantasy theme should exist") end
+    local was = ns.db.colorblind
+    local slot = env.CreateFrame("Button", nil, env.UIParent)
+    ns.db.colorblind = false
+    ns:QualityPips(slot, 4)
+    if rawget(slot, "suiPips") then error("quality dots should not be made without the color-blind option") end
+    ns.db.colorblind = true
+    ns:QualityPips(slot, 4)
+    local pips = rawget(slot, "suiPips")
+    if type(pips) ~= "table" or #pips ~= 4 then error("an epic item should get its quality dots") end
+    ns:QualityPips(slot, nil)                                -- (an emptied slot)
+    ns.db.colorblind = was
+    if ns.lookPage and not (ns.lookPage.access and ns.lookPage.access.colorblind and ns.lookPage.access.FCONTRAST) then error("the Look tab should have its Accessibility section") end
+end)
 try("Simple settings (12.0)", function()
     local O = ns.optUI
     if not (O and O.SetSimple) then ns:ToggleConfig(); ns:ToggleConfig() end
@@ -1798,7 +1813,7 @@ try("Look tab sections", function()
     if not page or not page.themeGroups then error("the Look tab did not build its theme groups") end
     local glass, fantasy, skyG, mine = page.themeGroups[1], page.themeGroups[2], page.themeGroups[3], page.themeGroups[4]
     local function count(group) local n = 0; for _, b in ipairs(group.buttons) do if b.key and ns.themes[b.key] then n = n + 1 end end return n end
-    if count(glass) ~= 38 or count(fantasy) ~= 38 or count(skyG) ~= 38 then error("expected 38 glass, 38 fantasy and 38 celestial buttons, got " .. count(glass) .. ", " .. count(fantasy) .. " and " .. count(skyG)) end
+    if count(glass) ~= 38 or count(fantasy) ~= 39 or count(skyG) ~= 38 then error("expected 38 glass, 39 fantasy and 38 celestial buttons, got " .. count(glass) .. ", " .. count(fantasy) .. " and " .. count(skyG)) end
     for _, b in ipairs(glass.buttons) do if ns.themes[b.key].style ~= "GLASS" then error("a fantasy theme is under Glass: " .. b.key) end end
     for _, b in ipairs(fantasy.buttons) do if ns.themes[b.key].style == "GLASS" or ns.themes[b.key].style == "CELESTIAL" or ns.themes[b.key].custom then error("wrong theme under Fantasy: " .. b.key) end end
     for _, b in ipairs(skyG.buttons) do if b.key and ns.themes[b.key].style ~= "CELESTIAL" then error("wrong theme under Celestial: " .. b.key) end end
@@ -1809,7 +1824,7 @@ try("Look tab sections", function()
     local key = ns:SaveCustomTheme("Mine Own", { panel = { 0.1, 0.1, 0.1 }, rim = { 0.5, 0.5, 0.5 }, accent = { 1, 1, 1 }, style = "FANTASY" })
     page.Refresh()
     if count(mine) ~= 1 or mine.buttons[1].key ~= key then error("your own theme should be listed under Your themes") end
-    if count(fantasy) ~= 38 then error("your own fantasy theme must not be listed under Fantasy as well") end
+    if count(fantasy) ~= 39 then error("your own fantasy theme must not be listed under Fantasy as well") end
     ns:DeleteCustomTheme("Mine Own"); page.Refresh()
     -- the panel behind the action bars starts off, and the switch reaches the bars
     if ns.defaults.barPanel ~= false then error("the action bar panel should start off") end

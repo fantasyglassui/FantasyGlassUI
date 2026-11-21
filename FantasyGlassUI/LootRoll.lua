@@ -112,6 +112,7 @@ ns:NewModule("lootRoll", function()
         r.name:SetText(((type(count) == "number" and count > 1) and (count .. "x ") or "") .. tostring(name))
         local c = type(quality) == "number" and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality]
         if c then r.name:SetTextColor(c.r, c.g, c.b) else r.name:SetTextColor(1, 1, 1) end
+        ns:QualityPips(r.iconBox, quality)
         local link = GetLootRollItemLink and select(2, pcall(GetLootRollItemLink, rollID))
         if ns.db.upgradeArrows and ns.UpgradeAmount and type(link) == "string" and ns.UpgradeAmount(link) then r.upgrade:Show() else r.upgrade:Hide() end
         local function able(btn, ok) if ns.Is(ok, false) then btn:Hide() else btn:Show() end end

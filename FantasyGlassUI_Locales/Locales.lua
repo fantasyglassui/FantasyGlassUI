@@ -21,6 +21,11 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["Accessibility"] = "Barrierefreiheit",
+    ["High contrast"] = "Hoher Kontrast",
+    ["Fantasy: High contrast"] = "Fantasy: Hoher Kontrast",
+    ["Any size from 70 to 150: the Layout tab, or /fgui textsize."] = "Jede Größe von 70 bis 150: Reiter Anordnung oder /fgui textsize.",
+    ["Good and bad are shown in blue and orange instead of green and red, debuffs get a letter, and item quality gets dots: one for uncommon, two for rare, three for epic, four for legendary."] = "Gut und schlecht werden blau und orange statt grün und rot gezeigt, Schwächungen erhalten einen Buchstaben und die Qualität von Gegenständen Punkte: einen für selten, zwei für rar, drei für episch, vier für legendär.",
     ["Show all options"] = "Alle Optionen zeigen",
     ["Off: the options most players look for. On: every option, on every tab. The search at the top always looks through all of them."] = "Aus: die Optionen, die die meisten suchen. An: jede Option auf jedem Reiter. Die Suche oben durchsucht immer alle.",
     ["Your settings were from a version too old for 12.0, so they start afresh. The setup opens to help."] = "Deine Einstellungen stammen aus einer Version, die für 12.0 zu alt ist, daher beginnen sie neu. Die Einrichtung öffnet sich, um zu helfen.",
@@ -3008,6 +3013,11 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["Accessibility"] = "Accessibilité",
+    ["High contrast"] = "Contraste élevé",
+    ["Fantasy: High contrast"] = "Fantasy : Contraste élevé",
+    ["Any size from 70 to 150: the Layout tab, or /fgui textsize."] = "Toute taille de 70 à 150 : onglet Disposition, ou /fgui textsize.",
+    ["Good and bad are shown in blue and orange instead of green and red, debuffs get a letter, and item quality gets dots: one for uncommon, two for rare, three for epic, four for legendary."] = "Le bon et le mauvais sont en bleu et orange au lieu de vert et rouge, les affaiblissements ont une lettre et la qualité des objets des points : un pour inhabituel, deux pour rare, trois pour épique, quatre pour légendaire.",
     ["Show all options"] = "Afficher toutes les options",
     ["Off: the options most players look for. On: every option, on every tab. The search at the top always looks through all of them."] = "Désactivé : les options que la plupart des joueurs cherchent. Activé : toutes les options, sur chaque onglet. La recherche en haut parcourt toujours tout.",
     ["Your settings were from a version too old for 12.0, so they start afresh. The setup opens to help."] = "Vos réglages venaient d'une version trop ancienne pour la 12.0 : ils repartent de zéro. La configuration s'ouvre pour vous aider.",
@@ -5995,6 +6005,11 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["Accessibility"] = "Accesibilidad",
+    ["High contrast"] = "Alto contraste",
+    ["Fantasy: High contrast"] = "Fantasía: Alto contraste",
+    ["Any size from 70 to 150: the Layout tab, or /fgui textsize."] = "Cualquier tamaño de 70 a 150: pestaña Disposición o /fgui textsize.",
+    ["Good and bad are shown in blue and orange instead of green and red, debuffs get a letter, and item quality gets dots: one for uncommon, two for rare, three for epic, four for legendary."] = "Lo bueno y lo malo se muestran en azul y naranja en lugar de verde y rojo, los perjuicios llevan una letra y la calidad de los objetos puntos: uno para poco común, dos para raro, tres para épico, cuatro para legendario.",
     ["Show all options"] = "Mostrar todas las opciones",
     ["Off: the options most players look for. On: every option, on every tab. The search at the top always looks through all of them."] = "Desactivado: las opciones que más se buscan. Activado: todas las opciones, en cada pestaña. La búsqueda de arriba siempre las recorre todas.",
     ["Your settings were from a version too old for 12.0, so they start afresh. The setup opens to help."] = "Tus ajustes eran de una versión demasiado antigua para la 12.0, así que empiezan de nuevo. Se abre la configuración para ayudarte.",
@@ -8985,6 +9000,11 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["Accessibility"] = "Доступность",
+    ["High contrast"] = "Высокий контраст",
+    ["Fantasy: High contrast"] = "Фэнтези: Высокий контраст",
+    ["Any size from 70 to 150: the Layout tab, or /fgui textsize."] = "Любой размер от 70 до 150: вкладка «Расположение» или /fgui textsize.",
+    ["Good and bad are shown in blue and orange instead of green and red, debuffs get a letter, and item quality gets dots: one for uncommon, two for rare, three for epic, four for legendary."] = "Хорошее и плохое показаны синим и оранжевым вместо зелёного и красного, у дебаффов появляется буква, а у качества предметов точки: одна для необычных, две для редких, три для эпических, четыре для легендарных.",
     ["Show all options"] = "Показать все настройки",
     ["Off: the options most players look for. On: every option, on every tab. The search at the top always looks through all of them."] = "Выкл.: настройки, которые ищут чаще всего. Вкл.: все настройки на всех вкладках. Поиск вверху всегда ищет по всем.",
     ["Your settings were from a version too old for 12.0, so they start afresh. The setup opens to help."] = "Ваши настройки были из слишком старой для 12.0 версии, поэтому они начинаются заново. Откроется мастер настройки.",
@@ -11972,6 +11992,11 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["Accessibility"] = "Acessibilidade",
+    ["High contrast"] = "Alto contraste",
+    ["Fantasy: High contrast"] = "Fantasia: Alto contraste",
+    ["Any size from 70 to 150: the Layout tab, or /fgui textsize."] = "Qualquer tamanho de 70 a 150: aba Disposição ou /fgui textsize.",
+    ["Good and bad are shown in blue and orange instead of green and red, debuffs get a letter, and item quality gets dots: one for uncommon, two for rare, three for epic, four for legendary."] = "Bom e ruim aparecem em azul e laranja em vez de verde e vermelho, penalidades ganham uma letra e a qualidade dos itens pontos: um para incomum, dois para raro, três para épico, quatro para lendário.",
     ["Show all options"] = "Mostrar todas as opções",
     ["Off: the options most players look for. On: every option, on every tab. The search at the top always looks through all of them."] = "Desligado: as opções que a maioria procura. Ligado: todas as opções, em todas as abas. A busca no topo sempre procura em todas.",
     ["Your settings were from a version too old for 12.0, so they start afresh. The setup opens to help."] = "Suas configurações eram de uma versão antiga demais para a 12.0, então começam do zero. A configuração abre para ajudar.",
@@ -14959,6 +14984,11 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["Accessibility"] = "Accessibilità",
+    ["High contrast"] = "Alto contrasto",
+    ["Fantasy: High contrast"] = "Fantasy: Alto contrasto",
+    ["Any size from 70 to 150: the Layout tab, or /fgui textsize."] = "Qualsiasi dimensione da 70 a 150: scheda Disposizione o /fgui textsize.",
+    ["Good and bad are shown in blue and orange instead of green and red, debuffs get a letter, and item quality gets dots: one for uncommon, two for rare, three for epic, four for legendary."] = "Buono e cattivo sono in blu e arancione invece di verde e rosso, i malus hanno una lettera e la qualità degli oggetti dei punti: uno per non comune, due per raro, tre per epico, quattro per leggendario.",
     ["Show all options"] = "Mostra tutte le opzioni",
     ["Off: the options most players look for. On: every option, on every tab. The search at the top always looks through all of them."] = "Spento: le opzioni che cercano quasi tutti. Acceso: ogni opzione, in ogni scheda. La ricerca in alto cerca sempre in tutte.",
     ["Your settings were from a version too old for 12.0, so they start afresh. The setup opens to help."] = "Le tue impostazioni erano di una versione troppo vecchia per la 12.0, quindi ripartono da zero. Si apre la configurazione per aiutarti.",
@@ -17946,6 +17976,11 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["Accessibility"] = "접근성",
+    ["High contrast"] = "고대비",
+    ["Fantasy: High contrast"] = "판타지: 고대비",
+    ["Any size from 70 to 150: the Layout tab, or /fgui textsize."] = "70~150 사이 아무 크기나: 배치 탭 또는 /fgui textsize.",
+    ["Good and bad are shown in blue and orange instead of green and red, debuffs get a letter, and item quality gets dots: one for uncommon, two for rare, three for epic, four for legendary."] = "좋고 나쁨을 초록과 빨강 대신 파랑과 주황으로 보여 주고, 약화 효과에는 글자를, 아이템 등급에는 점을 붙입니다: 고급 하나, 희귀 둘, 영웅 셋, 전설 넷.",
     ["Show all options"] = "모든 옵션 보기",
     ["Off: the options most players look for. On: every option, on every tab. The search at the top always looks through all of them."] = "끔: 대부분이 찾는 옵션만. 켬: 모든 탭의 모든 옵션. 위쪽 검색은 언제나 전체를 찾습니다.",
     ["Your settings were from a version too old for 12.0, so they start afresh. The setup opens to help."] = "설정이 12.0에 비해 너무 오래된 버전의 것이라 새로 시작합니다. 설정 도우미가 열립니다.",
@@ -20936,6 +20971,11 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["Accessibility"] = "辅助功能",
+    ["High contrast"] = "高对比度",
+    ["Fantasy: High contrast"] = "奇幻：高对比度",
+    ["Any size from 70 to 150: the Layout tab, or /fgui textsize."] = "70 到 150 之间的任意大小：布局标签页，或 /fgui textsize。",
+    ["Good and bad are shown in blue and orange instead of green and red, debuffs get a letter, and item quality gets dots: one for uncommon, two for rare, three for epic, four for legendary."] = "好与坏以蓝色和橙色代替绿色和红色显示，减益效果带字母，物品品质带圆点：优秀一个、精良两个、史诗三个、传说四个。",
     ["Show all options"] = "显示全部选项",
     ["Off: the options most players look for. On: every option, on every tab. The search at the top always looks through all of them."] = "关：大多数玩家常用的选项。开：每个标签页的全部选项。顶部的搜索始终搜索全部选项。",
     ["Your settings were from a version too old for 12.0, so they start afresh. The setup opens to help."] = "你的设置来自对 12.0 来说过旧的版本，因此将重新开始。设置向导会打开来帮助你。",

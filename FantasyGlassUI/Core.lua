@@ -608,6 +608,10 @@ ns.themes = {
                bg = { 0.035, 0.035, 0.040 }, border = { 0.27, 0.27, 0.30 }, rim = { 0.00, 0.00, 0.00 },
                grain = { 0.50, 0.50, 0.56, 0.08 }, light = { 0.90, 0.92, 1.00 }, plate = { 0.10, 0.10, 0.115 },
                text = { 0.88, 0.88, 0.90 }, dim = { 0.72, 0.72, 0.76 }, faint = { 0.50, 0.50, 0.54 }, btn = { 0.92, 0.92, 0.95 } },
+    FCONTRAST = { name = "Fantasy: High contrast", accent = "GOLD",                -- (12.0: for low vision; pure black, gold and white)
+               bg = { 0, 0, 0 }, border = { 1.00, 0.82, 0.30 }, rim = { 0, 0, 0 },
+               grain = { 0.62, 0.47, 0.29, 0.04 }, light = { 1, 1, 1 }, plate = { 0.24, 0.20, 0.12 },
+               text = { 1, 1, 1 }, dim = { 0.95, 0.92, 0.84 }, faint = { 0.82, 0.78, 0.68 }, btn = { 1, 1, 1 } },
     COLD   = { name = "Fantasy: Cold (frost slate)", accent = "FROST",
                bg = { 0.045, 0.062, 0.085 }, border = { 0.36, 0.46, 0.58 }, rim = { 0.01, 0.02, 0.035 },
                grain = { 0.40, 0.55, 0.75, 0.12 }, light = { 0.75, 0.90, 1.00 }, plate = { 0.09, 0.13, 0.18 },
@@ -953,7 +957,7 @@ ns.themeOrder = { "SMOKE", "FROSTED", "MIDNIGHT", "AURORA", "BLUSH", "EMERALD", 
                   "SAPPHIRE", "RUBY", "TOPAZ", "PEARL", "OBSIDIAN", "MINTLEAF", "LAVENDER", "COPPER",
                   "DEEPSEA", "BLOSSOM", "LIME", "INDIGO", "STEELBLUE", "MOCHA", "VOID",
                   "GRAPHITE", "NOIR", "CONTRAST", "GCLASS",
-                  "WARM", "DARK", "COLD", "FOREST", "BLOOD", "ARCANE", "SAND", "FORGE", "ROYAL", "ABYSS", "FEL", "BONE", "ONYX",
+                  "WARM", "DARK", "COLD", "FOREST", "BLOOD", "ARCANE", "SAND", "FORGE", "ROYAL", "ABYSS", "FEL", "BONE", "ONYX", "FCONTRAST",
                   "DRAGON", "MOON", "VERDIGRIS", "AUTUMN", "TWILIGHT", "PLAGUE", "STEEL", "SUNWELL", "ROSEWOOD",
                   "FROSTFIRE", "DREAM", "SHADOW", "TITAN", "LIGHTFORGED", "NETHER", "TUNDRA", "JUNGLE",
                   "MOLTEN", "TIDAL", "WINE", "ASHEN", "OAK", "STORMCALLER", "STARLIGHT", "CLASS",
@@ -1875,6 +1879,36 @@ function ns:Signal(kind)
     if kind == "good" then if safe then return 0.30, 0.62, 1.00 end return 0.30, 0.90, 0.40 end
     if kind == "bad"  then if safe then return 1.00, 0.55, 0.10 end return 1.00, 0.25, 0.25 end
     return 1.00, 0.85, 0.20
+end
+-- Item quality as dots, for the color-blind option (12.0): one for uncommon, two for rare, three for
+-- epic, four for legendary and above, down the left edge of an item's square. Small squares, not a
+-- character of the font, so they look the same in every lettering and language. Hidden without the
+-- option, or for gray and white items.
+function ns:QualityPips(owner, quality)
+    if type(owner) ~= "table" or not owner.CreateTexture then return end
+    local pips = rawget(owner, "suiPips")
+    local n = (ns.db and ns.db.colorblind and type(quality) == "number" and not ns:IsSecret(quality) and quality >= 2) and math.min(4, quality - 1) or 0
+    if n == 0 and not pips then return end
+    if not pips then
+        pips = {}
+        for i = 1, 4 do
+            local edge = owner:CreateTexture(nil, "OVERLAY", nil, 6)            -- a dark edge, so a light dot reads on any icon
+            edge:SetTexture(ns.FLAT)
+            edge:SetVertexColor(0, 0, 0, 0.9)
+            edge:SetSize(5, 5)
+            edge:SetPoint("LEFT", owner, "LEFT", 2, 10.5 - (i - 1) * 7)
+            local dot = owner:CreateTexture(nil, "OVERLAY", nil, 7)
+            dot:SetTexture(ns.FLAT)
+            dot:SetVertexColor(1, 1, 1, 1)
+            dot:SetSize(3, 3)
+            dot:SetPoint("CENTER", edge, "CENTER", 0, 0)
+            pips[i] = { edge = edge, dot = dot }
+        end
+        owner.suiPips = pips
+    end
+    for i = 1, 4 do
+        if i <= n then pips[i].edge:Show(); pips[i].dot:Show() else pips[i].edge:Hide(); pips[i].dot:Hide() end
+    end
 end
 function ns:SignalHex(kind)
     local r, g, b = ns:Signal(kind)

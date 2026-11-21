@@ -23,11 +23,13 @@ local function ColorItem(btn)
     local bag = btn.GetBagID and btn:GetBagID() or (btn.GetParent and btn:GetParent() and btn:GetParent().GetID and btn:GetParent():GetID())
     local slot = btn:GetID()
     local r, g, b = ns:T("border")
+    ns:QualityPips(btn, nil)
     if bag and slot then
         local _, _, quality = ns:BagItem(bag, slot)
         local c = quality and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality]
         if c and quality > 1 then r, g, b = c.r, c.g, c.b
         elseif quality == 0 then r, g, b = 0.45, 0.45, 0.45 end
+        ns:QualityPips(btn, quality)
     end
     btn.suiBorder:SetBackdropBorderColor(r, g, b, 1)
 end
