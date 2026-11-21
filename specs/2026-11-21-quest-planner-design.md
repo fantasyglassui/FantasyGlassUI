@@ -252,6 +252,11 @@ Faster leveling:
     lasting, such as a pet, a form, a totem or a key ability, are always planned when you reach their
     level, whatever their experience, and marked as class quests in the panel. Which class quests count
     is a small table of our own (quest ids per class), because their value is not in the data.
+    **When to do them**: at the level they open, the panel says "Class quest ready: <name>". Ones that
+    give something you use in every fight (a pet, a form, a totem) go into the plan straight away; the
+    rest are fitted in when the route passes near their start, within the next level. Long chains are
+    shown with their length ("4 parts, about 25 min") so you can choose to do them now or later. The
+    table marks which kind each one is.
 14. **Timed and escort quests.** A timed quest (the game's quest timer, or Questie's data) is planned so
     you do it straight after accepting it, with nothing else in between. An escort quest is flagged in the
     panel ("Escort: start it when you are ready; it fails if the NPC dies") and planned as its own step.
