@@ -210,7 +210,7 @@ local SOURCE_LINES = { missing = "Install Questie to plan new quests too.", chan
 -- Pace, measured between marks: a route takes a hub's quests together (accept all, do all, hand in
 -- all), so one quest's own accept-to-hand-in time says little. The time from the mark to a run of
 -- hand-ins is set against the estimates of the quests handed in (and their share of the travel).
-local PACE_BATCH = 60                -- seconds without another hand-in that end a run of hand-ins
+local PACE_BATCH = 60                -- seconds without another hand-in that end a run of hand-ins (nothing else does)
 local PACE_AFK = 1800                -- more than this since the mark: away, no sample
 local PACE_LOW, PACE_HIGH = 0.5, 3
 local mark                           -- { time = seconds }; in memory only (a /reload starts afresh)
@@ -337,7 +337,7 @@ end
 
 do
     local ev = CreateFrame("Frame")
-    for _, e in ipairs({ "QUEST_ACCEPTED", "QUEST_TURNED_IN", "QUEST_REMOVED", "PLAYER_LEVEL_UP", "HEARTHSTONE_BOUND",
+    for _, e in ipairs({ "QUEST_TURNED_IN", "QUEST_REMOVED", "PLAYER_LEVEL_UP", "HEARTHSTONE_BOUND",
                          "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED" }) do pcall(ev.RegisterEvent, ev, e) end
     ev:SetScript("OnEvent", ns:Guard("Planner", function(_, event, a)
         if event == "PLAYER_REGEN_DISABLED" then fighting = true; return end
@@ -345,9 +345,8 @@ do
         local on, st = Following()
         if not on then return end
         local plan = type(st.plan) == "table" and st.plan or {}
-        if event == "QUEST_ACCEPTED" then
-            if batch then Flush() end                                -- (new work: the run of hand-ins is over)
-        elseif event == "QUEST_TURNED_IN" then
+        -- (an accept does not end a run of hand-ins: a chain's follow-up is offered at the hand-in)
+        if event == "QUEST_TURNED_IN" then
             if type(a) == "number" then HandedIn(a, plan) end
             ns:PlannerReplan("hand-in")
         elseif event == "HEARTHSTONE_BOUND" then
@@ -355,7 +354,7 @@ do
             if type(step) == "table" and step.kind == "bind" then ns:GuideSkip(false) end   -- (bound by place, not by the innkeeper's name)
             ns:PlannerReplan("bind")
         elseif event == "PLAYER_ENTERING_WORLD" then
-            ns:PlannerReplan("login")                                -- (a saved plan may be stale; the runner waits for a place and for Questie)
+            ns:PlannerReplan("loading screen")                       -- (every login, /reload and loading screen: a saved plan may be stale; the runner waits for a place and for Questie)
         elseif event == "PLAYER_LEVEL_UP" then
             ns:PlannerReplan("level")
         else

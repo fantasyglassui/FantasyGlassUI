@@ -9111,12 +9111,28 @@ try("13.0 planner: running it", function()
         if math.abs(ns.PlannerPace() - 1.1) > 0.01 then error("one hub of three quests: pace " .. ns.PlannerPace()) end
         settle()
         for _, s in ipairs(planned().steps) do if s.quest == 101 then error("the handed-in quest is still planned") end end
+        -- the same hub with a chain's follow-up accepted between the hand-ins: still one run
+        ns.root.planner = nil
+        ns:PlannerStart(); settle()
+        plan = planned()
+        plan.estimates, plan.travelShare = { [111] = 100, [112] = 100, [113] = 100 }, 0
+        clock = clock + 330
+        fireEvent("QUEST_TURNED_IN", 111, 400, 0)
+        accepted[121] = true; fireEvent("QUEST_ACCEPTED", 121); frame()
+        planned().estimates = { [112] = 100, [113] = 100 }          -- (the fake world has no 112 or 113; in the game the new plan still holds them)
+        clock = clock + 5
+        fireEvent("QUEST_TURNED_IN", 112, 400, 0); fireEvent("QUEST_TURNED_IN", 113, 400, 0)
+        if ns.PlannerPace() ~= 1 then error("an accept between hand-ins does not end the run") end
+        clock = clock + 61; frame()
+        if math.abs(ns.PlannerPace() - 335 / 300) > 0.01 then error("a follow-up accepted mid-run: pace " .. ns.PlannerPace()) end
+        accepted[121] = nil
+        settle()
         -- away for over half an hour: no sample
         clock = clock + 1900
         planned().estimates = { [105] = 100 }
         fireEvent("QUEST_TURNED_IN", 105, 0, 0)
         clock = clock + 61; frame()
-        if math.abs(ns.PlannerPace() - 1.1) > 0.01 then error("time away is no sample: " .. ns.PlannerPace()) end
+        if math.abs(ns.PlannerPace() - 335 / 300) > 0.01 then error("time away is no sample: " .. ns.PlannerPace()) end
         settle()
         fireEvent("PLAYER_LEVEL_UP", 11)
         if ns.plannerQueued ~= true then error("a level replans") end
