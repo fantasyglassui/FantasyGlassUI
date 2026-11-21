@@ -80,11 +80,13 @@ function ns.PlannerCandidates(source, ctx)
     local list, skipped = {}, { group = 0 }
     if type(source) ~= "table" or type(ctx) ~= "table" then return list, skipped end
     local level, done, onQuest = ctx.level or 1, ctx.done or function() return false end, ctx.onQuest or function() return false end
+    if source.begin then source.begin(level) end
     for _, id in ipairs(source.ids()) do
         ns.PlannerYield()
-        local rec = source.quest(id)
+        local logged = onQuest(id)
+        local rec = (logged or not source.inRange or source.inRange(id, level)) and source.quest(id) or nil
         if rec then
-            if onQuest(id) then
+            if logged then
                 list[#list + 1] = rec
             elseif rec.doable and not rec.repeatable and not done(id)
                 and rec.level >= level - 4 and rec.level <= level + 2
@@ -295,6 +297,7 @@ local function Tick()
     if not (ns.plannerBusy or ns.plannerQueued) then return end
     if not Following() then ns:PlannerStop(); return end
     if fighting or InCombatLockdown() or not Placed() then return end
+    if running and ns.plannerQueued then running = nil end   -- a replan asked for mid-run: that run's context is stale
     if not running then
         ns.plannerQueued, ns.plannerBusy = false, true
         running = coroutine.create(Plan)
@@ -304,6 +307,7 @@ local function Tick()
     local ok, guide, summary, ctx = coroutine.resume(running)
     if ok and coroutine.status(running) ~= "dead" then return end
     running, ns.plannerBusy = nil, false
+    if ns.plannerQueued then return end                      -- queued meanwhile: never apply a stale result
     if not ok then
         -- keep the last good plan; the panel says so (every time, not only the first), /fgui check lists it
         if #ns.errors < 60 then ns.errors[#ns.errors + 1] = "Planner: " .. tostring(guide) end

@@ -8675,6 +8675,8 @@ try("13.0 planner: reading Questie", function()
         if not src.quest(106).group or src.quest(101).group then error("group from Questie's IsGroupQuest") end
         if q.objectives[1].count ~= nil or q.objectives[1].countKnown ~= false then error("Questie has no kill counts") end
         local QL, realObj, realTag, realEnum = env.C_QuestLog, env.C_QuestLog.GetQuestObjectives, rawget(env.C_QuestLog, "GetQuestTagInfo"), env.Enum
+        local realOnQ = QL.IsOnQuest
+        QL.IsOnQuest = function() return true end                 -- (a quest in the log is rebuilt, not read from the cache)
         QL.GetQuestObjectives = function() return { { numRequired = 8 } } end
         local counted = src.quest(101).objectives[1]
         QL.GetQuestObjectives = realObj
@@ -8682,11 +8684,12 @@ try("13.0 planner: reading Questie", function()
         env.Enum = setmetatable({ QuestTag = { Group = 1, Dungeon = 81, Raid = 62, Raid10 = 88, Raid25 = 89 } }, { __index = realEnum })
         QL.GetQuestTagInfo = function(id) return { tagID = id == 101 and 81 or 88 } end
         local d, g = src.quest(101), src.quest(106)
+        QL.IsOnQuest = realOnQ
         QL.GetQuestTagInfo = realTag; env.Enum = realEnum
         if not d.dungeon or d.group or not g.group or g.dungeon then error("tags from the log through Enum.QuestTag") end
         meta = "5"; src, why = ns.PlannerSource(); if src or why ~= "changed" then error("another contract is a change") end
         meta = "4"; fakes.QuestieDB.GetQuest = function() error("boom") end
-        src, why = ns.PlannerSource(); local okQ = src and pcall(src.quest, 101); if src and (not okQ) then error("errors inside Questie are caught") end
+        src, why = ns.PlannerSource(); local okQ = src and pcall(src.quest, 999); if src and (not okQ) then error("errors inside Questie are caught") end
         src, why = ns.PlannerSource(); if src or why ~= "changed" then error("an error inside Questie is a change") end
         env.Questie.API.isReady = false; src, why = ns.PlannerSource(); if src or why ~= "waiting" then error("waits for Questie") end
         if not ready then error("registers for ready") end
@@ -8700,6 +8703,65 @@ try("13.0 planner: reading Questie", function()
         local log = ns.PlannerLogSource(); if log.kind ~= "log" or type(log.ids()) ~= "table" then error("log source") end
     end)
     ns.PlannerSourceReset()
+    env.C_AddOns.IsAddOnLoaded = realLoaded; rawset(env.C_AddOns, "GetAddOnMetadata", realMeta)
+    rawset(env, "Questie", realQ); rawset(env, "QuestieLoader", realLoader)
+    if not ok then error(err, 0) end
+end)
+try("13.0 planner: a cheap level check, a record cache, and quests in the log", function()
+    local realLoaded, realMeta, realQ, realLoader = env.C_AddOns.IsAddOnLoaded, rawget(env.C_AddOns, "GetAddOnMetadata"), rawget(env, "Questie"), rawget(env, "QuestieLoader")
+    local realOn = env.C_QuestLog.IsOnQuest
+    local inlog, built = {}, 0
+    local npcs = { [9] = { spawns = { [40] = { { 30, 40 } } }, minLevel = 9, maxLevel = 9, rank = 0 }, [11] = { minLevel = 5, maxLevel = 5, rank = 0 } }
+    local quests = {
+        [101] = { name = "Wolves", questLevel = 10, level = 10, startedBy = { { 9 } }, finishedBy = { { 9 } } },
+        [500] = { name = "From a drop", questLevel = 10, level = 10, startedBy = { { 11 } }, finishedBy = { { 9 } } },
+        [501] = { name = "Also from a drop", questLevel = 10, level = 10, startedBy = { { 11 } }, finishedBy = { { 9 } } },
+    }
+    local pointers = { [101] = true, [500] = true, [501] = true }
+    for id = 1000, 3999 do quests[id] = { name = "Far", questLevel = 40, level = 40, startedBy = { { 9 } }, finishedBy = { { 9 } } }; pointers[id] = true end
+    local fakes = {
+        QuestieDB = { QuestPointers = pointers,
+            GetQuest = function(id) built = built + 1; return quests[id] end, IsDoable = function() return true end,
+            QueryQuestSingle = function(id, key) return quests[id] and quests[id][key] end,
+            QueryNPCSingle = function(id, key) return npcs[id] and npcs[id][key] end },
+        QuestXP = { GetQuestLogRewardXP = function() return 100 end },
+        ZoneDB = { GetUiMapIdByAreaId = function(_, area) return area == 40 and 1436 or nil end },
+    }
+    env.Questie = { API = { isReady = true, RegisterOnReady = function() end } }
+    env.QuestieLoader = { ImportModule = function(_, name) return fakes[name] end }
+    env.C_AddOns.IsAddOnLoaded = function() return true end
+    rawset(env.C_AddOns, "GetAddOnMetadata", function() return "4" end)
+    env.C_QuestLog.IsOnQuest = function(id) return inlog[id] or false end
+    ns.PlannerSourceReset()
+    local ok, err = pcall(function()
+        local src = ns.PlannerSource()
+        if not src then error("questie source") end
+        local ctx = { level = 10, done = function() return false end, onQuest = function(id) return inlog[id] or false end }
+        local function ids(list) local o = {}; for _, r in ipairs(list) do o[r.id] = true end; return o end
+        local list = ns.PlannerCandidates(src, ctx)
+        local got = ids(list)
+        if not got[101] or got[500] or got[501] or #list ~= 1 then error("a quest with no placeable giver, not in the log, is skipped") end
+        if built ~= 3 then error("a record was built for a quest outside the level window: " .. built .. " builds") end
+        built = 0
+        ns.PlannerCandidates(src, ctx)
+        if built ~= 0 then error("cached records were rebuilt: " .. built) end
+        inlog[500] = true
+        list = ns.PlannerCandidates(src, ctx)
+        got = ids(list)
+        if not got[500] or not got[101] or #list ~= 2 then error("a quest in the log with no placeable giver is kept") end
+        if built ~= 1 then error("only the quest in the log is rebuilt: " .. built) end
+        built = 0
+        ctx.level = 11
+        ns.PlannerCandidates(src, ctx)
+        if built < 2 then error("a new level empties the cache: " .. built) end
+        built = 0
+        ns.PlannerSourceReset()
+        src = ns.PlannerSource()
+        ns.PlannerCandidates(src, ctx)
+        if built < 2 then error("a source reset empties the cache: " .. built) end
+    end)
+    ns.PlannerSourceReset()
+    env.C_QuestLog.IsOnQuest = realOn
     env.C_AddOns.IsAddOnLoaded = realLoaded; rawset(env.C_AddOns, "GetAddOnMetadata", realMeta)
     rawset(env, "Questie", realQ); rawset(env, "QuestieLoader", realLoader)
     if not ok then error(err, 0) end
@@ -9094,6 +9156,28 @@ try("13.0 planner: running it", function()
         for i = #ns.errors, nerr + 1, -1 do table.remove(ns.errors, i) end
         ns:PlannerReplan("test"); settle()
         if said.skipped == note then error("a good plan clears the note") end
+        -- a quest in the log that no giver is placed for still gets its do and turn-in steps
+        recs[105] = rec(105, 32, 40, { starts = {} }); accepted[105] = true
+        ids = { 101, 102, 103, 104, 105 }
+        ns:PlannerReplan("test"); settle()
+        local kinds105 = {}
+        for _, s in ipairs(planned().steps) do if s.quest == 105 then kinds105[s.kind] = true end end
+        if not (kinds105["do"] and kinds105.turnin) or kinds105.accept then error("a logged quest without a giver is routed: do and turn-in only") end
+        accepted[105] = nil; recs[105] = nil; ids = { 101, 102, 103, 104 }
+        -- a replan queued mid-run: the stale run is dropped, never applied
+        local applied, realSet = 0, ns.GuideSetPlan
+        ns.GuideSetPlan = function(...) applied = applied + 1; return realSet(...) end
+        ns.PLANNER_BUDGET_MS = 0
+        ns:PlannerReplan("stale"); frame(); frame()
+        if not ns.plannerBusy then error("the run should be under way") end
+        ids = { 101 }
+        ns:PlannerReplan("fresh"); settle()
+        ns.GuideSetPlan = realSet
+        ns.PLANNER_BUDGET_MS = real.budget
+        if applied ~= 1 then error("the plan was applied " .. applied .. " times") end
+        for _, s in ipairs(planned().steps) do if s.quest == 102 or s.quest == 103 then error("the stale plan was applied") end end
+        ids = { 101, 102, 103, 104 }
+        ns:PlannerReplan("test"); settle()
         -- logging in (or a /reload) plans again
         fireEvent("PLAYER_ENTERING_WORLD")
         if ns.plannerQueued ~= true then error("entering the world replans") end

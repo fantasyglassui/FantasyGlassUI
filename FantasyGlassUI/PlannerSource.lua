@@ -137,7 +137,15 @@ local function Tags(id, quest, db, zones, state)
     return elite and true or false, group, dungeon
 end
 
--- A Questie quest as a plain record, or nil when it cannot be placed on a known map.
+local function InLog(id)
+    local QL = C_QuestLog
+    if not (QL and QL.IsOnQuest) then return false end
+    local ok, v = Try(QL.IsOnQuest, id)
+    return ok and v and true or false
+end
+
+-- A Questie quest as a plain record, or nil when it cannot be placed on a known map (a quest in the
+-- log is kept even then: an item, object or drop started it, but its objectives and hand-in count).
 local function Record(env, id)
     local db, zones, xpMod = env.db, env.zones, env.xp
     local quest = db.GetQuest(id)
@@ -146,7 +154,7 @@ local function Record(env, id)
     local fin = type(quest.finishedBy) == "table" and quest.finishedBy or {}
     local starts, ends = {}, {}
     for _, npc in ipairs(Ids(by[1])) do Merge(starts, Spots(db, zones, npc)) end
-    if #starts == 0 then return nil end
+    if #starts == 0 and not InLog(id) then return nil end
     for _, npc in ipairs(Ids(fin[1])) do Merge(ends, Spots(db, zones, npc)) end
     local state = {}
     local objectives = Objectives(db, zones, quest, state)
@@ -166,6 +174,7 @@ local function Record(env, id)
 end
 
 local changed = false
+local recCache, cacheLevel = {}, nil   -- built records by quest id (not those in the log); emptied on a new level and by a reset
 
 -- Has `flags` the single bit `mask`? (bit.band when the client has it, else plain arithmetic.)
 local function HasFlag(flags, mask)
@@ -257,9 +266,40 @@ function ns.PlannerSource()
         changed = true
         return {}
     end
+    -- A new level empties the record cache (the level window moved).
+    function src.begin(level)
+        if level ~= cacheLevel then recCache, cacheLevel = {}, level end
+    end
+    -- Cheap: could this quest be inside the level window? (Questie's level, without building a record.)
+    function src.inRange(id, level)
+        if InLog(id) then return true end
+        local lv
+        if type(env.db.QueryQuestSingle) == "function" then
+            local ok, v = Try(env.db.QueryQuestSingle, id, "questLevel")
+            if ok then lv = tonumber(v) end
+        end
+        if lv == nil then
+            local ok, q = Try(env.db.GetQuest, id)
+            if ok and type(q) == "table" then lv = tonumber(q.level) or tonumber(q.questLevel) end
+        end
+        if not lv or lv <= 0 then return true end        -- unknown or scaling: the record decides
+        return lv >= level - 4 and lv <= level + 2
+    end
     function src.quest(id)
+        local logged = InLog(id)                            -- (progress changes: always rebuilt)
+        local hit
+        if not logged then hit = recCache[id] end
+        if hit ~= nil and hit ~= false then
+            local okD, doable = Try(env.db.IsDoable, id)    -- (a hand-in can open a follow-up)
+            if okD then hit.doable = doable and true or false end
+            return hit
+        end
+        if hit == false then return nil end
         local ok, rec = Try(Record, env, id)
-        if ok then return rec end
+        if ok then
+            if not logged then recCache[id] = rec or false end
+            return rec
+        end
         changed = true
         return nil
     end
@@ -304,4 +344,4 @@ function ns.PlannerLogSource()
     return src
 end
 
-function ns.PlannerSourceReset() changed, waiting, innCache = false, false, nil end
+function ns.PlannerSourceReset() changed, waiting, innCache, recCache, cacheLevel = false, false, nil, {}, nil end
