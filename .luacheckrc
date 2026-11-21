@@ -456,6 +456,7 @@ read_globals = {
     "UpdateAddOnMemoryUsage",
     "WorldFrame",
     "WorldMapFrame",
+    "bit",
     "date",
     "debugprofilestop",
     "debugstack",

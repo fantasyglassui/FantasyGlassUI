@@ -167,6 +167,45 @@ end
 
 local changed = false
 
+-- Has `flags` the single bit `mask`? (bit.band when the client has it, else plain arithmetic.)
+local function HasFlag(flags, mask)
+    flags, mask = tonumber(flags), tonumber(mask)
+    if not (flags and mask and mask > 0) then return false end
+    local band = type(bit) == "table" and bit.band
+    if type(band) == "function" then
+        local ok, r = pcall(band, flags, mask)
+        if ok and type(r) == "number" then return r == mask end
+    end
+    return math.floor(flags / mask) % 2 == 1
+end
+
+-- Every innkeeper Questie knows, { name, map, x, y } per spawn; gathered once per session.
+local innCache
+local function Inns(env)
+    if innCache then return innCache end
+    local db, zones, out = env.db, env.zones, {}
+    local flagsOk, flags = Try(function() return db.npcFlags end)
+    local mask = flagsOk and type(flags) == "table" and tonumber(flags.INNKEEPER)
+    local okP, pointers = Try(function() return db.NPCPointers end)
+    if not (mask and okP and type(pointers) == "table") then innCache = out; return out end
+    for k, v in pairs(pointers) do
+        ns.PlannerYield()
+        local id = type(v) == "number" and v or k
+        if type(id) == "number" then
+            local ok, f = Try(db.QueryNPCSingle, id, "npcFlags")
+            if ok and HasFlag(f, mask) then
+                local okN, name = Try(db.QueryNPCSingle, id, "name")
+                local okS, spots = Try(Spots, db, zones, id)
+                if okN and type(name) == "string" and okS then
+                    for _, sp in ipairs(spots) do out[#out + 1] = { name = name, map = sp.map, x = sp.x, y = sp.y } end
+                end
+            end
+        end
+    end
+    innCache = out
+    return out
+end
+
 -- Questie as a source, or nil and why: "missing", "waiting" (not ready yet), "changed".
 function ns.PlannerSource()
     if not IsLoaded() then return nil, "missing" end
@@ -209,6 +248,7 @@ function ns.PlannerSource()
         changed = true
         return nil
     end
+    function src.inns() return Inns(env) end
     return src
 end
 
@@ -245,7 +285,8 @@ function ns.PlannerLogSource()
             repeatable = false, doable = true,
         }
     end
+    function src.inns() return {} end
     return src
 end
 
-function ns.PlannerSourceReset() changed, waiting = false, false end
+function ns.PlannerSourceReset() changed, waiting, innCache = false, false, nil end
