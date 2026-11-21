@@ -304,6 +304,40 @@ Goals and gathering:
     gather (recorded per account). It never makes a detour of more than ~20 seconds for a node. What you
     gather is recorded, which the gold advisor (Part 2) can build on.
 
+More speed (fourth round):
+
+24. **Save hand-ins to level in town.** When a hand-in would take you to a level where your class trains
+    new spells, and the plan reaches a town with your trainer soon (proposal: within ~5 minutes), the
+    planner holds that hand-in (or one or two) and hands them in at the town, so the level and the
+    training happen in one stop. Only when holding costs no extra trip.
+25. **Experience from exploring.** Unexplored areas within a few seconds of the path (the game's map
+    exploration info, readable for each map) are put on the path, since discovering them gives experience.
+26. **Supplies at the vendor stop.** Hunters (arrows or bullets for their weapon) and classes that drink
+    (mana users) and everyone who eats: when the plan's next hour would run you low (counted from your
+    bags and how fast you have used them), the existing vendor stop adds "Buy 400 arrows" or "Buy 20 water",
+    choosing the best your level can use. The vendor stop is added for this alone when none is planned.
+27. **Talent points.** At each level with an unspent talent point, the panel says "1 talent point to spend"
+    with a button that opens your build (the add-on's talent builds).
+
+Choice and feel:
+
+28. **Speed or story.** A setting with two styles. **Speed** is everything above. **Story** keeps each
+    zone's quest chains whole and in order (it does not drop a chain's low-experience parts, and plans
+    a zone's main chain before side quests), while still planning the travel, flights and hubs well. The
+    panel says which style is on.
+29. **Preview the next hour.** Before following a plan (and on a "Preview" button any time), one page
+    shows: the stops in order, the experience, the level you would reach, the flights and crossings, and
+    anything skipped and why. "Follow" starts it; "Plan again" goes back to the settings that change it
+    (style, group quests, time you have).
+30. **A sound when a step is done.** A soft chime (a game sound, PlaySound) as each step completes.
+    Setting: on (default) / off. Also shown as a caption when captions are on (Accessibility).
+
+Groups (nothing sent for you):
+
+31. **Find a group.** When the plan reaches a group or elite quest (and the group setting allows it), a
+    button puts a ready-made line in your chat box ("LFG <quest name>, <zone>") for you to send yourself,
+    in the channel you pick. The add-on never sends it.
+
 ### Part 2: the gold farming advisor (to be designed before it is built)
 
 Wanted, and to be built after the planner; it needs its own design conversation first, since only the idea
@@ -335,6 +369,11 @@ is settled. What is known:
 - How long can you play: none (default), or a time.
 - Reputation I want: a list of factions, each with the standing to reach.
 - Gather on the way: on (default) / off.
+- Save hand-ins to level in town: on (default) / off.
+- Explore on the way: on (default) / off.
+- Buy supplies at the vendor stop: on (default) / off.
+- Style: Speed (default) / Story.
+- Sound when a step is done: on (default) / off.
 
 ### Tests
 
@@ -354,6 +393,10 @@ is settled. What is known:
 - The third round: a 30-minute plan ends at a stopping place; two deaths move a hub later; an account
   quest time changes a score; an upgrade reward raises a quest; a chosen reputation raises its quests;
   a gathering note appears for a node near the path and none for one far off it.
+- The fourth round: a held hand-in is handed in at the trainer town; an unexplored spot near the path is
+  added; a supply line appears when arrows run low; the talent line appears; Story keeps a chain whole;
+  the preview lists the same stops the plan follows; the chime plays; the group line goes into the chat
+  box and nothing is sent.
 - The planner runs in both smoke modes (combat values readable and secret) with no errors.
 
 ## Left to the builder
@@ -390,3 +433,4 @@ is settled. What is known:
 - The inn suggestion shows after an hour or more of play.
 - Two deaths in one hub within a level make it "too hard for now"; the mark clears after two levels.
 - Gathering detours are at most ~20 seconds.
+- Hand-ins are held only when the trainer town is within ~5 minutes on the plan and no extra trip is needed.
