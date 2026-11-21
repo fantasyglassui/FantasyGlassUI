@@ -1735,7 +1735,7 @@ end
 ns.optionIndex = {}
 function ns:IndexOption(label, frame, words)
     if not ns.indexingTab or type(label) ~= "string" or #label < 3 then return end
-    ns.optionIndex[#ns.optionIndex + 1] = { tab = ns.indexingTab, label = label, frame = frame, words = words }
+    ns.optionIndex[#ns.optionIndex + 1] = { tab = ns.indexingTab, label = label, frame = frame, words = words, head = ns.indexingHead }
 end
 function ns:SearchOptions(query, limit)
     local out = {}
@@ -1751,14 +1751,14 @@ function ns:SearchOptions(query, limit)
             local at = text:find(query, 1, true)
             if at then
                 seen[id] = true
-                local hit = { tab = entry.tab, label = shown, frame = entry.frame }
+                local hit = { tab = entry.tab, label = shown, frame = entry.frame, head = entry.head }
                 if at == 1 then first[#first + 1] = hit else rest[#rest + 1] = hit end       -- labels that start with it come first
             elseif shown ~= entry.label and strlower(entry.label):find(query, 1, true) then     -- (the English name too, as guides and help on Discord use it)
                 seen[id] = true
-                rest[#rest + 1] = { tab = entry.tab, label = shown, frame = entry.frame }
+                rest[#rest + 1] = { tab = entry.tab, label = shown, frame = entry.frame, head = entry.head }
             elseif type(entry.frame) == "table" and type(entry.frame.words) == "string" and entry.frame.words:find(query, 1, true) then
                 seen[id] = true
-                rest[#rest + 1] = { tab = entry.tab, label = shown, frame = entry.frame }
+                rest[#rest + 1] = { tab = entry.tab, label = shown, frame = entry.frame, head = entry.head }
             end
         end
     end

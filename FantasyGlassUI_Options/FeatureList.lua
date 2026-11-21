@@ -628,16 +628,12 @@ for _, key in ipairs({
     "autoInvite", "skipCinematics", "autoRes", "autoSummon", "fastLoot",
     "tweakCamera", "tweakAutoLoot", "tweakTutorials",
 }) do ns.simpleFeatures[key] = true end
--- and on the other tabs, the sections shown in simple settings (a tab not named here shows all of its own)
-ns.simpleSections = {
-    ["Combat"] = { ["Behavior"] = true, ["Cooldown tracker"] = true },
-    ["Bars and frames"] = { ["Bar 1"] = true, ["Bar 2"] = true, ["Bar 3"] = true, ["Player frame"] = true,
-                            ["Target frame"] = true, ["Raid frames"] = true, ["Nameplates"] = true },
-}
-ns.simpleHiddenTabs = { tools = true }
+-- (which sections show in simple settings is in Categories.lua: those with an everyday switch, and a few more)
 function ns:SettingsSimple() return type(ns.root) == "table" and ns.root.settingsMode == "simple" end
 
 ns.featureGroups, ns.featureDesc = groups, DESC
+ns.featureLabels = {}                                        -- each switch's name, by its key
+for _, group in ipairs(groups) do for _, opt in ipairs(group[2]) do ns.featureLabels[opt[1]] = opt[2] end end
 
 -- Switches that only do something while another is on (11.10.0): shown dimmed while it is off,
 -- and their card says which one they need.

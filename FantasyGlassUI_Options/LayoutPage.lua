@@ -125,7 +125,7 @@ local function BuildLayout(page)
     -- The page has room for about thirteen rows of sliders in all. If panels are ever added past that,
     -- the rows are packed a little closer rather than running into the buttons at the bottom.
     local scaleRows = math.ceil(#order / 4)
-    local PITCH = (scaleRows + 4 > 12) and 32 or 36          -- (up to four rows of size sliders follow)
+    local PITCH = 36
     page.scaleSliders, page.rowPitch = #order, PITCH
     for i, label in ipairs(order) do
         local keys = groups[label]
@@ -136,73 +136,13 @@ local function BuildLayout(page)
         s:SetPoint("TOPLEFT", col * 187, -58 - row * PITCH)
     end
 
-    local y = -58 - scaleRows * PITCH - 6
-    Header(page, "Frame size", 0, y)
-    local sizes = {
-        { "Player / Target width",  "ufW",    160, 340, 4, "ResizeUnitFrames" },
-        { "Player / Target height", "ufH",    32,  72,  2, "ResizeUnitFrames" },
-        { "Party width",            "partyW", 120, 260, 4, "ResizeUnitFrames" },
-        { "Party height",           "partyH", 24,  56,  2, "ResizeUnitFrames" },
-        { "Raid cell width",        "raidW",  56,  120, 2, "ResizeRaid" },
-        { "Raid cell height",       "raidH",  28,  64,  2, "ResizeRaid" },
-    }
-    if ns.raidMode ~= "ours" then                          -- the game's raid frames are sized in the game's own options
-        for i = #sizes, 1, -1 do
-            if sizes[i][2] == "raidW" or sizes[i][2] == "raidH" then table.remove(sizes, i) end
-        end
-    end
-    sizes[#sizes + 1] = { "Action bar size %", "barScale", 70, 140, 5, "ApplyBarScale" }
-    sizes[#sizes + 1] = { "Chat background %", "chatBg", 0, 80, 5, "ApplyChatBackground" }
-    sizes[#sizes + 1] = { "Info bar background %", "infobarBg", 0, 100, 5, "ApplyInfoBarBg" }
-    sizes[#sizes + 1] = { "HUD panel opacity %", "panelAlpha", 40, 100, 2, "Retheme" }
-    sizes[#sizes + 1] = { "Window opacity %", "windowAlpha", 60, 100, 1, "Retheme" }
-    sizes[#sizes + 1] = { "Chat bubble text size", "bubbleFont", 9, 20, 1, "NoteNothing" }
-    sizes[#sizes + 1] = { "Text size %", "fontScale", 70, 150, 5, "Retheme" }
-    sizes[#sizes + 1] = { "Interface size %", "uiScale", 50, 150, 5, "ApplyPixelScale" }
-    if ns.plateSizeSupport then                              -- (only where the game lets its nameplates be sized)
-        sizes[#sizes + 1] = { "Nameplate width %", "plateW", 60, 180, 5, "NameplateSizeChanged" }
-        sizes[#sizes + 1] = { "Nameplate height %", "plateH", 60, 270, 10, "NameplateSizeChanged" }
-    end
-    local SIZE_TIPS = {
-        ufW = "How wide the player and target frames are.", ufH = "How tall the player and target frames are.",
-        partyW = "How wide each party frame is.", partyH = "How tall each party frame is.",
-        raidW = "How wide each raid frame cell is.", raidH = "How tall each raid frame cell is.",
-        barScale = "The size of every action bar.", chatBg = "How dark the chat background is. 0 is none.",
-        infobarBg = "How dark the info bar's background is. 0 is none.",
-        panelAlpha = "How solid the panels on your screen are: unit frames, bars, minimap.",
-        windowAlpha = "How solid windows are: bags, the options, lists.",
-        bubbleFont = "The size of the text in chat bubbles.",
-        fontScale = "The size of all the add-on's lettering. 100 is as it came. Takes effect when you let go.",
-        uiScale = "The size of the whole interface, as a share of the game's own scale. 100 is as it came. Takes effect when you let go.",
-        plateW = "How wide nameplates are.", plateH = "How tall nameplates are.",
-    }
-    -- applied once the slider stops moving: these redraw or rescale everything, and the interface
-    -- changing size under the mouse would pull the slider away from it
-    local SETTLE = { fontScale = true, uiScale = true }
-    local waiting = {}
-    for i, d in ipairs(sizes) do
-        local col, row = (i - 1) % 4, math.floor((i - 1) / 4)
-        local s = ns:CreateSlider(page, d[1], d[3], d[4], d[5], ns.db[d[2]], "%d", function(v)
-            ns.db[d[2]] = v
-            if not ns[d[6]] then return end
-            if SETTLE[d[2]] then
-                waiting[d[2]] = (waiting[d[2]] or 0) + 1
-                local mine = waiting[d[2]]
-                ns:After(0.6, function() if waiting[d[2]] == mine then ns[d[6]](ns) end end)
-            else
-                ns[d[6]](ns)
-            end
-        end, 170)
-        s:SetPoint("TOPLEFT", col * 187, y - 20 - row * PITCH)
-        if SIZE_TIPS[d[2]] then O.Tip(s.slider or s, d[1], SIZE_TIPS[d[2]]) end
-    end
-    page.bottom = y - 20 - math.ceil(#sizes / 4) * PITCH     -- where the last row ends (the page is 520 tall)
-    -- what the info bar shows is chosen from a small list of its own
-    local piecesBtn = ns:CreateButton(page, "Info bar pieces", 170, 24, function(self) ns:ToggleInfoBarPieces(self) end)
-    piecesBtn:SetPoint("TOPLEFT", 0, page.bottom - 4)
+    -- (12.0: the sizes that were here are with what they size: the frames, the bars, chat, the info
+    -- bar, the windows, and Accessibility: see Categories.lua)
+    page.bottom = -58 - scaleRows * PITCH - 6
     local windowsBtn = ns:CreateButton(page, "Reset window positions", 200, 24, ns:ConfirmClick(function() ns:ResetWindowPositions() end))
-    windowsBtn:SetPoint("LEFT", piecesBtn, "RIGHT", 10, 0)
-    page.bottom = page.bottom - 30
+    windowsBtn:SetPoint("TOPLEFT", 0, page.bottom - 4)
+    O.Tip(windowsBtn, "Reset window positions", "Puts the game's windows you have dragged back where the game puts them.")
+    page.bottom = page.bottom - 34
     -- The tab scrolls if it has to: the list of panels grows with every feature that adds one.
     page.contentHeight = -page.bottom + 10
     if page.area then page.area:SetContentHeight(page.contentHeight) end

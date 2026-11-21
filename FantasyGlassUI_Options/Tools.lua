@@ -77,19 +77,19 @@ ns.guideTopics = {
     { title = "Moving things", tab = "layout", find = "Move panels", keys = "move panel frame bar window where layout lock verschieben bewegen mover déplacer deplacer",
       text = "Type /fgui move, drag anything to where you want it, and type /fgui move again to lock. While moving, right-click a panel for its own scale, nudge, centre and reset." },
     { title = "Size of panels", tab = "layout", find = "Panel scale", keys = "scale size width height panel frame slider größe groesse tamaño taille",
-      text = "The Layout tab has a scale slider for every panel and size sliders for unit frames, raid frames and action bars. In move mode, right-click a panel for its own scale." },
+      text = "Layout and profiles › Moving and scale has a scale slider for every panel. Unit frames, raid frames and action bars are sized with each of them, in Frames and bars. In move mode, right-click a panel for its own scale." },
     { title = "Themes", tab = "look", find = "Glass", keys = "theme glass fantasy look dark style thema design farbe tema thème",
-      text = "The Look tab lists every theme under Glass, Fantasy and Celestial; click one to see it at once. You can also make your own from three colors at the bottom of that tab." },
+      text = "Look and themes › Themes lists every theme under Glass, Fantasy and Celestial; click one to see it at once. Your own theme, beside it, makes one from three colors." },
     { title = "Lettering", tab = "look", find = "Lettering", keys = "lettering letters text face schrift schriftart fuente police",
-      text = "Lettering is chosen on the Look tab, separately from the theme. Fonts from other add-ons can be picked on the Tools tab." },
-    { title = "Text size", tab = "layout", find = "Text size %", keys = "text size letters read small large scale",
-      text = "The Layout tab has a text size slider that scales all lettering." },
+      text = "Lettering is chosen in Look and themes › Accent and lettering, separately from the theme. Fonts from other add-ons can be picked there too." },
+    { title = "Text size", tab = "look", find = "Accessibility", keys = "text size letters read small large scale",
+      text = "Look and themes › Accessibility has three text sizes; /fgui textsize 130 sets any size from 70 to 150." },
     { title = "Accent color", tab = "look", find = "Accent", keys = "accent highlight theme",
-      text = "The row of swatches under the themes on the Look tab changes the accent color." },
+      text = "The swatches in Look and themes › Accent and lettering change the accent color." },
     { title = "Key bindings", command = "/fgui bind", keys = "keybind key press button action taste tastenbelegung tecla touche raccourci",
       text = "Type /fgui bind, point at an action button and press the key. The game's own Key Bindings menu has an AddOns section for this add-on's keys (potion, food, mount and the rest)." },
     { title = "Profiles", tab = "profiles", keys = "profile character copy share export import settings profil perfil",
-      text = "The Profiles tab keeps separate sets of settings, copies one to another, and exports a layout as text to share." },
+      text = "Layout and profiles › Profiles keeps separate sets of settings, copies one to another, and exports them as text to share." },
     { title = "Language", command = "/fgui language", keys = "language german deutsch french français spanish español english italian italiano portuguese português russian русский язык korean 한국어 언어 chinese 中文 语言 translate sprache idioma langue lingua língua",
       text = "The Language button at the top right of this window, or /fgui language deutsch (english, français, español, auto)." },
     { title = "When something goes wrong", command = "/fgui report", keys = "error problem report help fix fail fehler hilfe ayuda erreur problema problème aide",
@@ -99,23 +99,23 @@ ns.guideTopics = {
     { title = "Starting again", command = "/fgui reset", keys = "reset default defaults start again fresh zurücksetzen restablecer réinitialiser",
       text = "/fgui reset puts the current profile back to how the add-on comes. /fgui windows reset only puts the game's windows back where they open." },
     { title = "Click casting", tab = "combat", find = "Click casting", keys = "click cast mouse heal mouseover unit frame spell",
-      text = "In the Click casting section of the Combat tab, bind a mouse button (with or without a modifier) to a spell. Clicking any unit frame then casts it on that player." },
+      text = "In Frames and bars › Raid frames, bind a mouse button (with or without a modifier) to a spell. Clicking any unit frame then casts it on that player." },
     { title = "Choosing cooldowns and buff alerts", tab = "combat", keys = "cooldown tracker choose add ability spell buff alert list",
-      text = "The Combat tab holds the list of abilities for the cooldown tracker and the buffs for buff alerts." },
+      text = "Combat › Cooldowns holds the abilities for the cooldown tracker, and Combat › Alerts and warnings the buffs for buff alerts." },
     { title = "Showing a panel only at certain times", tab = "layout", find = "Move panels", keys = "hide show only combat visible fade target panel",
       text = "In move mode, right-click a panel and click its \"Show:\" button to step through always, only in combat, only out of combat and only with a target." },
     { title = "Switching a feature on or off", tab = "features", low = true, keys = "switch feature turn schalter interruptor",
-      text = "Every feature has a switch on the Features tab. Hover one to read what it does; most need a /reload." },
+      text = "Every feature has a switch in its section of the settings. Point at one to read what it does; most need a /reload." },
     { title = "The setup", command = "/fgui setup", keys = "setup wizard first role tank healer begin",
       text = "/fgui setup (or Run setup again below) opens the guided setup: role, look, lettering, layout." },
     { title = "Other add-ons", command = "/fgui conflicts off", keys = "conflict other addon add-on bar bag nameplate compatible together",
       text = "When another add-on does the same job (bars, bags, nameplates, unit frames, chat), this one leaves that job to it and says so. /fgui conflicts off runs everything regardless." },
     { title = "What is new", command = "/fgui new", keys = "new change changelog update version latest",
       text = "/fgui new shows the note for the last few versions. /fgui help lists every command." },
-    { title = "Portraits", tab = "look", find = "Portraits and class colors", keys = "portraits 3d 2d face model emblem picture",
-      text = "In the Portraits and class colors section of the Look tab there are four choices for portraits: 3D model, 2D picture, class emblem, or none." },
-    { title = "Class colors", tab = "look", find = "Portraits and class colors", keys = "class colour color custom paint frame red green blue wheel",
-      text = "In the Portraits and class colors section of the Look tab, pick a class and set its color with the sliders or the color wheel. /fgui colors opens it." },
+    { title = "Portraits", tab = "look", find = "Frame style", keys = "portraits 3d 2d face model emblem picture",
+      text = "Frames and bars › Your frames has four choices for portraits: 3D model, 2D picture, class emblem, or none." },
+    { title = "Class colors", tab = "look", find = "Class colors", keys = "class colour color custom paint frame red green blue wheel",
+      text = "In Look and themes › Class colors, pick a class and set its color with the sliders or the color wheel. /fgui colors opens it." },
 }
 
 -- Everything the guide can answer with: { title, text, tab, find, command, key, label = {words}, keys = {words}, desc = {words} }.
@@ -141,7 +141,7 @@ function ns:GuideEntries()
             local key, label = opt[1], opt[2]
             local desc = (ns.featureDesc and ns.featureDesc[key]) or ""
             local shown = ns:Tr(label)
-            entries[#entries + 1] = { key = key, title = shown, text = desc, tab = "features", find = label,
+            entries[#entries + 1] = { key = key, title = shown, text = desc, tab = "sections", find = label,
                 label = Set(label .. " " .. shown), keys = {}, desc = Set(desc .. " " .. ns:Tr(desc)) }
         end
     end
@@ -194,7 +194,9 @@ function ns:GuideLines(question)
     local text = ns:Tr(best.text)
     if best.key then
         local on = ns.db and ns.db[best.key]
-        text = text .. "  " .. ns:Tr(on and "It is switched on." or "It is switched off: its switch is on the Features tab.")
+        local sec = ns.SectionOfRow and ns:SectionOfRow(best.key)
+        text = text .. "  " .. (on and ns:Tr("It is switched on.") or format(ns:Tr("It is switched off. Its switch is in %s."),
+            sec and (ns:Tr(sec.category.title) .. " › " .. ns:Tr(sec.title)) or ns:Tr("the settings")))
     end
     local lines = { ns:AccentHex() .. ns:Tr(best.title) .. "|r", text }
     if #others > 0 then
@@ -284,8 +286,6 @@ ns.toolActions = {
     { "Boss notes", function() ns:BossNoteCommand("list") end, "Your notes for each boss; with a boss targeted, /fgui bossnote writes one." },
     { "Death recap", function() ns:ShowDeathRecap() end, "What hit you before you last died." },
     { "Worth selling", function() ns:ShowWorthSelling() end, "What in your bags sells for more at the auction house than at a vendor." },
-    { "Backups", function() ns:BackupCommand("") end, "Your settings from before the last update and from the start of the day." },
-    { "Changes to this profile", function() ns:ShowSettingHistory() end, "What you changed, and when. Click one to undo it." },
     { "Measure a fight", function() ns:PerfFight() end, "Measures the add-on through your next fight, then gives a report to send." },
     { "Group practice", function() ns:ToggleTestGroup() end, "Made-up group mates for five minutes, to see group cooldowns, the interrupt rotation and buff coverage on your own." },
     { "Put on upgrades", function() ns:EquipBest() end, "Every piece in your bags with a higher item level than what you wear, already bound to you, goes on." },
@@ -460,6 +460,7 @@ local function Heading(parent, text, x, y, width)
     ns:Paint(fs, "SetTextColor", "@accent")
     ns:IndexOption(text, fs)
     ns.NoteSection(parent, text, x, y, fs)
+    if ns.optUI and ns.optUI.Mark then ns.optUI.Mark(parent, text, y, fs, x) end
     local line = parent:CreateTexture(nil, "ARTWORK")
     line:SetTexture(ns.FLAT)
     line:SetHeight(1)
@@ -484,23 +485,167 @@ local function Tip(button, text)
     button:HookScript("OnLeave", function() GameTooltip:Hide() end)
 end
 
+-- The Tools page: windows to open and things to do once. Its other pieces are built here too and
+-- shown where they belong (12.0): each of your lists and rules beside the switches it goes with, the
+-- guide's question box and the suggestions for your class on Home.
+--
+-- One list or one kind of rule: its entries in a scroll area with an x on each (and a second button
+-- where an entry has one: move up, use), a chooser where the kind needs one, a box and Add, and what
+-- it is for beside it.
+local function Editor(host, def, RowsOf, AddTo)
+    local E = { current = def, choice = 1 }
+    local rows = {}
+    local well = CreateFrame("Frame", nil, host, ns.template)  -- (a field behind the entries)
+    well:SetPoint("TOPLEFT", 0, 0)
+    well:SetSize(356, 144)
+    well:SetBackdrop(ns.BACKDROP)
+    ns:Paint(well, "SetBackdropColor", "field", 0.5)
+    ns:Paint(well, "SetBackdropBorderColor", "@border", 0.7)
+    local area, sheet = ns:ScrollArea(host, 340, 136)
+    area:SetPoint("TOPLEFT", 6, -4)
+    local y = -152
+    local chooser
+    if def.choices then
+        chooser = ns:CreateButton(host, "", 356, 22, function(_, button)
+            local list = E.current.choices and E.current.choices() or nil
+            if not list then return end
+            E.choice = (E.choice - 1 + (button == "RightButton" and -1 or 1)) % #list + 1
+            E.Draw()
+        end)
+        chooser:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        chooser:SetPoint("TOPLEFT", 0, y)
+        ns:Font(chooser.text, 11)
+        Tip(chooser, "Click for the next choice; right-click to step back.")
+        y = y - 28
+    end
+    local add = ns:CreateEditBox(host, 290, 22, " ")
+    add:SetPoint("TOPLEFT", 0, y)
+    local title = host:CreateFontString(nil, "OVERLAY")
+    ns:Font(title, 12, true)
+    title:SetPoint("TOPLEFT", 376, 0)
+    ns:Paint(title, "SetTextColor", "text")
+    title:SetText(ns:Tr(def.title))
+    local note = Small(host, 11)
+    note:SetPoint("TOPLEFT", 376, -20)
+    note:SetWidth(350)
+    ns:Paint(note, "SetTextColor", "dim")
+    function E.Draw()
+        local list = RowsOf(E.current, E.choice)
+        for i, item in ipairs(list) do
+            local row = rows[i]
+            if not row then
+                row = CreateFrame("Frame", nil, sheet)
+                row:SetSize(334, 22)
+                row:SetPoint("TOPLEFT", 0, -(i - 1) * 24)
+                row.text = Small(row, 12)
+                row.text:SetPoint("LEFT", 4, 0)
+                if row.text.SetWordWrap then row.text:SetWordWrap(false) end
+                row.x = ns:CreateButton(row, "x", 20, 18, function(self)
+                    if self.item then self.item.remove(); E.Draw() end
+                end)
+                row.x:SetPoint("RIGHT", -2, 0)
+                row.act = ns:CreateButton(row, "", 34, 18, function(self)
+                    if self.item and self.item.act then self.item.act(); E.Draw() end
+                end)
+                row.act:SetPoint("RIGHT", row.x, "LEFT", -3, 0)
+                ns:Font(row.act.text, 10)
+                rows[i] = row
+            end
+            row.text:SetText(item.text)
+            row.x.item, row.act.item = item, item
+            if item.act then
+                row.act.text:SetText(ns:Tr(item.actLabel or "Use"))
+                row.act:Show()
+                row.text:SetWidth(264)
+            else
+                row.act:Hide()
+                row.text:SetWidth(302)
+            end
+            row:Show()
+        end
+        for i = #list + 1, #rows do rows[i].x.item = nil; rows[i].act.item = nil; rows[i]:Hide() end
+        if area.SetContentHeight then area:SetContentHeight(math.max(1, #list) * 24) end
+        local choices = def.choices and def.choices() or nil
+        if chooser and choices then
+            if E.choice > #choices then E.choice = 1 end
+            chooser.text:SetText(ns:Tr(def.chooseLabel or "Kind") .. ":  " .. ns:Tr(choices[E.choice]))
+        end
+        if add.hint then
+            local hint = def.hint
+            if type(hint) == "function" then hint = hint(E.choice) end
+            add.hint:SetText(ns:Tr(hint or ""))
+        end
+        local off = def.need and not ns.db[def.need]
+        local extra = def.state and def.state() or nil
+        note:SetText(ns:Tr(def.note) .. (off and ("\n\n|cffffd100" .. format(ns:Tr("Needs \"%s\" switched on."), ns:Tr(ns:FeatureLabel(def.need, ns.featureLabels and ns.featureLabels[def.need] or def.need))) .. "|r") or "")
+            .. (extra and ("\n\n|cffffd100" .. ns:Tr(extra) .. "|r") or "")
+            .. ((#list == 0 and not extra) and ("\n\n" .. ns:Tr("Nothing on this list yet.")) or ""))
+        E.count = #list
+        return #list
+    end
+    function E.Add()
+        local ok = AddTo(E.current, add:GetText(), E.choice)
+        if ok then add:SetText("") end
+        add:ClearFocus()
+        E.Draw()
+        return ok
+    end
+    add:SetScript("OnEnterPressed", function() E.Add() end)
+    local addBtn = ns:CreateButton(host, "Add", 60, 22, function() E.Add() end)
+    addBtn:SetPoint("LEFT", add, "RIGHT", 6, 0)
+    E.addBox, E.addButton, E.chooser = add, addBtn, chooser
+    E.height = -y + 28
+    E.Set = function(choice) E.choice = choice or 1; return E.Draw() end
+    host:SetSize(736, E.height)
+    return E
+end
+
 function ns.BuildToolsPage(page)
     local T = {}
     ns.toolsPage = T
+    T.sheet = page
 
-    -- Ask the guide --------------------------------------------------------------------------
-    Heading(page, "Ask the guide", 0, 0, 736)
-    local ask = ns:CreateEditBox(page, 630, 24, "For example: how do I move the action bars")
-    ask:SetPoint("TOPLEFT", 0, -28)
-    local answerTitle = Small(page, 13)
-    answerTitle:SetPoint("TOPLEFT", 2, -60)
-    local answer = Small(page, 11)
-    answer:SetPoint("TOPLEFT", 2, -78)
-    answer:SetWidth(636)
+    -- Open a window, Do something once: four to a row ---------------------------------------
+    local COLS, W = 4, 178
+    Heading(page, "Open a window", 0, 0, 736)
+    T.windowButtons = {}
+    for i, def in ipairs(ns.toolWindows) do
+        local b = ns:CreateButton(page, def[1], W - 6, 22, function()
+            local fn = ns.toolCommands and ns.toolCommands[def[2]]
+            if def[2] == "alts" then fn = function() ns:ShowCharacters() end end
+            if ns.HideConfig then ns.HideConfig() end
+            if fn then fn(def[3] or "") end
+        end)
+        b:SetPoint("TOPLEFT", ((i - 1) % COLS) * W, -28 - math.floor((i - 1) / COLS) * 26)
+        ns:Font(b.text, 11)
+        T.windowButtons[i] = b
+    end
+    local y = -28 - math.ceil(#ns.toolWindows / COLS) * 26 - 16
+    Heading(page, "Do something once", 0, y, 736)
+    for i, def in ipairs(ns.toolActions) do
+        local b = ns:CreateButton(page, def[1], W - 6, 22, ns:Guard("Tools", def[2]))
+        b:SetPoint("TOPLEFT", ((i - 1) % COLS) * W, y - 28 - math.floor((i - 1) / COLS) * 26)
+        ns:Font(b.text, 11)
+        Tip(b, def[3])
+    end
+    local bottom = y - 28 - math.ceil(#ns.toolActions / COLS) * 26
+
+    -- Ask the guide (shown on Home) -----------------------------------------------------------
+    local askFrame = CreateFrame("Frame", nil, page)
+    askFrame:SetSize(736, 120)
+    askFrame:Hide()
+    T.askFrame = askFrame
+    local ask = ns:CreateEditBox(askFrame, 620, 24, "For example: how do I move the action bars")
+    ask:SetPoint("TOPLEFT", 0, 0)
+    local answerTitle = Small(askFrame, 13)
+    answerTitle:SetPoint("TOPLEFT", 2, -32)
+    local answer = Small(askFrame, 11)
+    answer:SetPoint("TOPLEFT", 2, -50)
+    answer:SetWidth(620)
     ns:Paint(answer, "SetTextColor", "dim")
-    local also = Small(page, 11)
+    local also = Small(askFrame, 11)
     also:SetPoint("TOPLEFT", answer, "BOTTOMLEFT", 0, -4)       -- (under the answer, however many lines that takes)
-    also:SetWidth(636)
+    also:SetWidth(620)
     answer:SetText(ns:Tr("Type a question and press Enter. The guide looks through every feature and command of this add-on; it knows nothing else."))
     local show
     local function Ask(text)
@@ -518,266 +663,24 @@ function ns.BuildToolsPage(page)
         return best
     end
     T.Ask = Ask
-    local go = ns:CreateButton(page, "Ask", 96, 24, function() ask:ClearFocus(); Ask() end)
+    local go = ns:CreateButton(askFrame, "Ask", 100, 24, function() ask:ClearFocus(); Ask() end)
     go:SetPoint("LEFT", ask, "RIGHT", 8, 0)
     ask:SetScript("OnEnterPressed", function(self) self:ClearFocus(); Ask() end)
-    show = ns:CreateButton(page, "Show me", 96, 24, function() ns:GuideShow(T.best) end)
-    show:SetPoint("TOPRIGHT", page, "TOPLEFT", 734, -60)
+    show = ns:CreateButton(askFrame, "Show me", 100, 24, function() ns:GuideShow(T.best) end)
+    show:SetPoint("TOPLEFT", 628, -32)
     show:Hide()
     T.askBox, T.showButton = ask, show
 
-    local TOP = -174
-    -- Column 1: windows and one-off actions -----------------------------------------------------
-    Heading(page, "Open a window", 0, TOP)
-    T.windowButtons = {}
-    for i, def in ipairs(ns.toolWindows) do
-        local b = ns:CreateButton(page, def[1], 110, 22, function()
-            local fn = ns.toolCommands and ns.toolCommands[def[2]]
-            if def[2] == "alts" then fn = function() ns:ShowCharacters() end end
-            if ns.HideConfig then ns.HideConfig() end
-            if fn then fn(def[3] or "") end
-        end)
-        b:SetPoint("TOPLEFT", ((i - 1) % 2) * 116, TOP - 28 - math.floor((i - 1) / 2) * 26)
-        ns:Font(b.text, 11)
-        T.windowButtons[i] = b
-    end
-    local y = TOP - 28 - math.ceil(#ns.toolWindows / 2) * 26 - 12
-    Heading(page, "Do something once", 0, y)
-    for i, def in ipairs(ns.toolActions) do
-        local b = ns:CreateButton(page, def[1], 110, 22, ns:Guard("Tools", def[2]))
-        b:SetPoint("TOPLEFT", ((i - 1) % 2) * 116, y - 28 - math.floor((i - 1) / 2) * 26)
-        ns:Font(b.text, 11)
-        Tip(b, def[3])
-    end
-    local bottom1 = y - 28 - math.ceil(#ns.toolActions / 2) * 26
-
-    -- Column 2: your lists, then your rules -------------------------------------------------------
-    local X2 = 252
-    -- One editor: tabs for each kind (two to a row), its entries in a scroll area with an x on each
-    -- (and a second button where an entry has one: move up, use), a chooser where the kind needs one,
-    -- a box and Add, and a note under it.
-    local function Editor(defs, title, y0, RowsOf, AddTo)
-        local E = { current = defs[1], choice = 1 }
-        Heading(page, title, X2, y0)
-        local tabs, rows = {}, {}
-        local tabRows = math.ceil(#defs / 2)
-        local areaTop = y0 - 28 - tabRows * 26 - 4
-        local area, sheet = ns:ScrollArea(page, 222, 150)
-        area:SetPoint("TOPLEFT", X2, areaTop)
-        local anyChoices = false
-        for _, def in ipairs(defs) do if def.choices then anyChoices = true end end
-        local yC = areaTop - 158
-        local chooser
-        if anyChoices then
-            chooser = ns:CreateButton(page, "", 222, 22, function(_, button)
-                local list = E.current.choices and E.current.choices() or nil
-                if not list then return end
-                E.choice = (E.choice - 1 + (button == "RightButton" and -1 or 1)) % #list + 1
-                E.Draw()
-            end)
-            chooser:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-            chooser:SetPoint("TOPLEFT", X2, yC)
-            ns:Font(chooser.text, 11)
-            Tip(chooser, "Click for the next choice; right-click to step back.")
-        end
-        local yA = anyChoices and (yC - 28) or yC
-        local add = ns:CreateEditBox(page, 160, 22, " ")
-        add:SetPoint("TOPLEFT", X2, yA)
-        local note = Small(page, 11)
-        note:SetPoint("TOPLEFT", X2, yA - 30)
-        note:SetWidth(226)
-        ns:Paint(note, "SetTextColor", "faint")
-        function E.Draw()
-            local def = E.current
-            for i, tab in ipairs(tabs) do
-                if defs[i] == def then ns:Paint(tab, "SetBackdropBorderColor", "@accent", 1) else ns:Paint(tab, "SetBackdropBorderColor", "@border", 1) end
-            end
-            local list = RowsOf(def)
-            for i, item in ipairs(list) do
-                local row = rows[i]
-                if not row then
-                    row = CreateFrame("Frame", nil, sheet)
-                    row:SetSize(218, 22)
-                    row:SetPoint("TOPLEFT", 0, -(i - 1) * 24)
-                    row.text = Small(row, 12)
-                    row.text:SetPoint("LEFT", 4, 0)
-                    if row.text.SetWordWrap then row.text:SetWordWrap(false) end
-                    row.x = ns:CreateButton(row, "x", 20, 18, function(self)
-                        if self.item then self.item.remove(); E.Draw() end
-                    end)
-                    row.x:SetPoint("RIGHT", -2, 0)
-                    row.act = ns:CreateButton(row, "", 34, 18, function(self)
-                        if self.item and self.item.act then self.item.act(); E.Draw() end
-                    end)
-                    row.act:SetPoint("RIGHT", row.x, "LEFT", -3, 0)
-                    ns:Font(row.act.text, 10)
-                    rows[i] = row
-                end
-                row.text:SetText(item.text)
-                row.x.item, row.act.item = item, item
-                if item.act then
-                    row.act.text:SetText(ns:Tr(item.actLabel or "Use"))
-                    row.act:Show()
-                    row.text:SetWidth(148)
-                else
-                    row.act:Hide()
-                    row.text:SetWidth(186)
-                end
-                row:Show()
-            end
-            for i = #list + 1, #rows do rows[i].x.item = nil; rows[i].act.item = nil; rows[i]:Hide() end
-            if area.SetContentHeight then area:SetContentHeight(math.max(1, #list) * 24) end
-            local choices = def.choices and def.choices() or nil
-            if chooser then
-                if choices then
-                    if E.choice > #choices then E.choice = 1 end
-                    chooser.text:SetText(ns:Tr(def.chooseLabel or "Kind") .. ":  " .. ns:Tr(choices[E.choice]))
-                    chooser:Show()
-                else
-                    chooser:Hide()
-                end
-            end
-            if add.hint then
-                local hint = def.hint
-                if type(hint) == "function" then hint = hint(E.choice) end
-                add.hint:SetText(ns:Tr(hint or ""))
-            end
-            local off = def.need and not ns.db[def.need]
-            local extra = def.state and def.state() or nil
-            note:SetText(ns:Tr(def.note) .. (off and ("\n|cffffd100" .. ns:Tr("This is switched off on the Features tab.") .. "|r") or "")
-                .. (extra and ("\n|cffffd100" .. ns:Tr(extra) .. "|r") or "")
-                .. ((#list == 0 and not extra) and ("\n" .. ns:Tr("Nothing on this list yet.")) or ""))
-            E.count = #list
-            return #list
-        end
-        function E.Add()
-            local ok = AddTo(E.current, add:GetText(), E.choice)
-            if ok then add:SetText("") end
-            add:ClearFocus()
-            E.Draw()
-            return ok
-        end
-        for i, def in ipairs(defs) do                         -- two to a row, so longer names in other languages fit
-            local tab = ns:CreateButton(page, def.title, 110, 22, function() E.current = def; E.choice = 1; add:SetText(""); E.Draw() end)
-            tab:SetPoint("TOPLEFT", X2 + ((i - 1) % 2) * 116, y0 - 28 - math.floor((i - 1) / 2) * 26)
-            ns:Font(tab.text, 11)
-            Tip(tab, def.note)
-            tabs[i] = tab
-        end
-        add:SetScript("OnEnterPressed", function() E.Add() end)
-        local addBtn = ns:CreateButton(page, "Add", 58, 22, function() E.Add() end)
-        addBtn:SetPoint("LEFT", add, "RIGHT", 6, 0)
-        E.addBox, E.addButton, E.chooser, E.bottom = add, addBtn, chooser, yA - 30 - 48
-        E.Set = function(i, choice) E.current = defs[i] or E.current; E.choice = choice or 1; return E.Draw() end
-        return E
-    end
-
-    local lists = Editor(ns.toolLists, "Your lists", TOP, function(def) return ns:ToolListRows(def) end,
-        function(def, text) return ns:ToolListAdd(def, text) end)
-    local add = lists.addBox
-    -- an item shift-clicked while this box is being typed in goes into it (for the restock list)
-    if type(hooksecurefunc) == "function" and type(ChatEdit_InsertLink) == "function" then
-        pcall(hooksecurefunc, "ChatEdit_InsertLink", function(link)
-            if type(link) == "string" and add.HasFocus and add:HasFocus() == true and add.Insert then add:Insert(link .. " ") end
-        end)
-    end
-    local function DrawList() local n = lists.Draw(); T.listCount = n; return n end
-    T.DrawList, T.AddNow, T.addBox = DrawList, function() local ok = lists.Add(); T.listCount = lists.count; return ok end, add
-    T.SetList = function(i) local n = lists.Set(i); T.listCount = n; return n end
-
-    local rules = Editor(ns.toolRules, "Your rules", lists.bottom - 16, function(def, choice) return def.rows() end,
-        function(def, text, choice) return def.add(Trim(text), choice) end)
-    T.rules = rules
-
-    -- Column 3: other add-ons' fonts and textures, numbers, suggestions ---------------------------
-    local X3 = 506
-    Heading(page, "From other add-ons", X3, TOP)
-    local mediaNote = Small(page, 11)
-    mediaNote:SetPoint("TOPLEFT", X3, TOP - 82)
-    mediaNote:SetWidth(226)
-    ns:Paint(mediaNote, "SetTextColor", "faint")
-    local pickers = {}
-    local function MediaNames(kind)
-        local lib = ns.SharedMedia and ns.SharedMedia()
-        if not lib then return nil end
-        local ok, names = pcall(lib.List, lib, kind == "font" and "font" or "statusbar")
-        return (ok and type(names) == "table") and names or {}
-    end
-    local function DrawMedia()
-        local any = ns.SharedMedia and ns.SharedMedia()
-        for _, p in ipairs(pickers) do
-            local chosen = ns.db[p.setting]
-            p.text:SetText(ns:Tr(p.label) .. ":  " .. (chosen and tostring(chosen) or ns:Tr("ours")))
-        end
-        mediaNote:SetText(ns:Tr(any and "Click to step through what other add-ons offer; right-click to step back. /reload shows it everywhere."
-            or "No add-on here brings LibSharedMedia, so there is nothing to choose from yet."))
-    end
-    -- The next choice after `now` in `names` ("ours" - nil - comes after the last and before the first).
-    function ns.NextChoice(names, now, back)
-        local at = 0
-        for i, name in ipairs(names) do if name == now then at = i end end
-        local n = #names + 1
-        local to = (at + (back and -1 or 1)) % n
-        return names[to]
-    end
-    for i, def in ipairs({ { "font", "sharedFont", "Font" }, { "bar", "sharedBar", "Bar texture" } }) do
-        local b = ns:CreateButton(page, "", 226, 22, function(self, button)
-            local names = MediaNames(def[1])
-            if not names then DrawMedia() return end
-            ns.db[def[2]] = ns.NextChoice(names, ns.db[def[2]], button == "RightButton")
-            if ns.Retheme then pcall(ns.Retheme, ns) end
-            DrawMedia()
-        end)
-        b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-        b:SetPoint("TOPLEFT", X3, TOP - 28 - (i - 1) * 26)
-        ns:Font(b.text, 11)
-        b.setting, b.label = def[2], def[3]
-        pickers[i] = b
-    end
-    T.DrawMedia, T.pickers = DrawMedia, pickers
-
-    local yN = TOP - 132
-    Heading(page, "Numbers", X3, yN)
-    local sliders = {
-        { "Execute line at %", 5, 50, 5, function() return tonumber(ns.db.executePct) or 20 end, function(v) ns.db.executePct = v; if ns.executeTest then pcall(ns.executeTest.Place) end end },
-        { "Smaller world map %", 40, 100, 5, function() return tonumber(ns.db.mapSize) or 75 end, function(v) ns.db.mapSize = v; if ns.smallMapTest then pcall(ns.smallMapTest.Apply) end end },
-        { "Master volume %", 0, 100, 5, function()
-            local Get = (C_CVar and C_CVar.GetCVar) or GetCVar
-            local ok, v = pcall(Get, "Sound_MasterVolume")
-            return math.floor(((ok and tonumber(v)) or 1) * 100 + 0.5)
-        end, function(v)
-            local Set = (C_CVar and C_CVar.SetCVar) or SetCVar
-            if type(Set) == "function" then pcall(Set, "Sound_MasterVolume", tostring(v / 100)) end
-        end },
-    }
-    T.sliders = {}
-    local syncing = false                                     -- (showing a value is not changing it: no volume set just by looking)
-    for i, def in ipairs(sliders) do
-        local s = ns:CreateSlider(page, def[1], def[2], def[3], def[4], def[5](), "%d", function(v) if not syncing then def[6](v) end end, 226)
-        s:SetPoint("TOPLEFT", X3, yN - 30 - (i - 1) * 38)
-        T.sliders[i] = s
-    end
-    local ORDER = { "group", "role", "name" }
-    local sortBtn
-    local function DrawSort() sortBtn.text:SetText(ns:Tr("Raid frames ordered by") .. ":  " .. ns:Tr(ns.db.raidSort or "group")) end
-    sortBtn = ns:CreateButton(page, "", 226, 22, function()
-        local at = 1
-        for i, name in ipairs(ORDER) do if name == (ns.db.raidSort or "group") then at = i end end
-        ns.db.raidSort = ORDER[at % #ORDER + 1]
-        if ns.ApplyRaidSort then ns:ApplyRaidSort() end
-        DrawSort()
-    end)
-    sortBtn:SetPoint("TOPLEFT", X3, yN - 30 - #sliders * 38)
-    ns:Font(sortBtn.text, 11)
-    T.sortButton = sortBtn
-
-    local yS = yN - 30 - #sliders * 38 - 36
+    -- Suggested for your class (shown on Home) -------------------------------------------------
+    local suggestFrame = CreateFrame("Frame", nil, page)
+    suggestFrame:SetSize(736, 96)
+    suggestFrame:Hide()
+    T.suggestFrame = suggestFrame
     local class = select(2, UnitClass("player"))
     if type(class) ~= "string" or ns:IsSecret(class) then class = nil end
-    Heading(page, "Suggested for your class", X3, yS)
-    local suggest = Small(page, 11)
-    suggest:SetPoint("TOPLEFT", X3, yS - 28)
-    suggest:SetWidth(226)
+    local suggest = Small(suggestFrame, 11)
+    suggest:SetPoint("TOPLEFT", 0, 0)
+    suggest:SetWidth(460)
     local turnOn
     local function DrawSuggest()
         local lines, off = {}, 0
@@ -789,22 +692,72 @@ function ns.BuildToolsPage(page)
         if off > 0 then turnOn:Show() else turnOn:Hide() end
         return off
     end
-    turnOn = ns:CreateButton(page, "Turn these on", 226, 22, function()
+    turnOn = ns:CreateButton(suggestFrame, "Turn these on", 200, 24, function()
         if ns:ApplySuggestions(class) > 0 and ns.ShowReloadNote then ns.ShowReloadNote() end
         DrawSuggest()
     end)
-    turnOn:SetPoint("TOPLEFT", X3, yS - 28 - 4 * 15 - 8)
+    turnOn:SetPoint("TOPLEFT", 480, 0)
     T.DrawSuggest, T.class = DrawSuggest, class
 
+    -- Your lists and your rules, one block each (shown in their sections) -----------------------
+    T.listBlocks, T.ruleBlocks = {}, {}
+    local function Block(def, RowsOf, AddTo)
+        local f = CreateFrame("Frame", nil, page)
+        f:Hide()
+        local E = Editor(f, def, RowsOf, AddTo)
+        f.editor = E
+        f.Refresh = E.Draw
+        return f
+    end
+    for i, def in ipairs(ns.toolLists) do
+        T.listBlocks[def.key] = Block(def, function(d) return ns:ToolListRows(d) end, function(d, text) return ns:ToolListAdd(d, text) end)
+        T.listBlocks[i] = T.listBlocks[def.key]
+    end
+    for i, def in ipairs(ns.toolRules) do
+        T.ruleBlocks[def.key] = Block(def, function(d) return d.rows() end, function(d, text, choice) return d.add(Trim(text), choice) end)
+        T.ruleBlocks[i] = T.ruleBlocks[def.key]
+    end
+    -- an item shift-clicked while the restock box is being typed in goes into it
+    local stock = T.listBlocks.restock and T.listBlocks.restock.editor.addBox
+    if stock and type(hooksecurefunc) == "function" and type(ChatEdit_InsertLink) == "function" then
+        pcall(hooksecurefunc, "ChatEdit_InsertLink", function(link)
+            if type(link) == "string" and stock.HasFocus and stock:HasFocus() == true and stock.Insert then stock:Insert(link .. " ") end
+        end)
+    end
+    -- (one list at a time, by its place in ns.toolLists: for the guide and the tests)
+    local at = 1
+    local function DrawList() local n = T.listBlocks[at].editor.Draw(); T.listCount = n; return n end
+    T.DrawList = DrawList
+    T.SetList = function(i) if T.listBlocks[i] then at = i end; return DrawList() end
+    T.AddNow = function() local ok = T.listBlocks[at].editor.Add(); T.listCount = T.listBlocks[at].editor.count; return ok end
+    local R = { at = 1 }
+    function R.Set(i, choice)
+        if T.ruleBlocks[i] then R.at = i end
+        local E = T.ruleBlocks[R.at].editor
+        R.addBox, R.chooser = E.addBox, E.chooser
+        return E.Set(choice)
+    end
+    function R.Add() return T.ruleBlocks[R.at].editor.Add() end
+    function R.Draw() local n = 0; for _, def in ipairs(ns.toolRules) do n = T.ruleBlocks[def.key].editor.Draw() end; return n end
+    R.addBox = T.ruleBlocks[1].editor.addBox
+    T.rules = R
+
+    -- stepping through other add-ons' fonts and textures: the next choice after `now` in `names`
+    -- ("ours" - nil - comes after the last and before the first)
+    function ns.NextChoice(names, now, back)
+        local found = 0
+        for i, name in ipairs(names) do if name == now then found = i end end
+        local n = #names + 1
+        local to = (found + (back and -1 or 1)) % n
+        return names[to]
+    end
+
     page.Refresh = function()
-        DrawList(); rules.Draw(); DrawMedia(); DrawSort(); DrawSuggest()
-        for i, def in ipairs(sliders) do                     -- (the volume may have been changed in the game's own settings)
-            local s, ok, v = T.sliders[i], pcall(def[5])
-            if ok and type(v) == "number" and s and s.SetValue then syncing = true; pcall(s.SetValue, s, v); syncing = false end
-        end
+        for _, def in ipairs(ns.toolLists) do T.listBlocks[def.key].editor.Draw() end
+        R.Draw(); DrawSuggest()
     end
     page.Refresh()
-    page.contentHeight = math.max(-bottom1, -rules.bottom, -(yS - 28 - 4 * 15 - 8 - 22), -(TOP - 330)) + 20
+    page.contentHeight = -bottom + 16
     if page.area then page.area:SetContentHeight(page.contentHeight) end
     return T
 end

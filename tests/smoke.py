@@ -1800,36 +1800,31 @@ try("Accessibility (12.0)", function()
     if ns.lookPage and not (ns.lookPage.access and ns.lookPage.access.colorblind and ns.lookPage.access.FCONTRAST) then error("the Look tab should have its Accessibility section") end
 end)
 try("Simple settings (12.0)", function()
+    ns:ToggleConfig("home")
     local O = ns.optUI
-    if not (O and O.SetSimple) then ns:ToggleConfig(); ns:ToggleConfig() end
-    O = ns.optUI
     if not O.SetSimple then error("the settings window should have simple settings") end
-    local fp = ns.featuresPage
-    local toolsShown = true
-    rawset(O.tabButtons.tools, "Hide", function() toolsShown = false end)
-    rawset(O.tabButtons.tools, "Show", function() toolsShown = true end)
     O.SetSimple(true)
     if not ns:SettingsSimple() or ns.root.settingsMode ~= "simple" then error("simple settings should be kept for the account") end
-    if toolsShown then error("the Tools tab should be tucked away in simple settings") end
-    fp.Select(1)
+    if O.CategoryShown(ns:SettingsCategory("tools")) then error("the Tools category should be tucked away in simple settings") end
+    local fp = ns.featuresPage
+    O.Open("items:Bags and bank")
     for _, key in ipairs(fp.shownKeys) do
-        if not ns.simpleFeatures[key] then error("a switch outside the everyday ones shows in simple settings: " .. key) end
+        if ns.featureLabels[key] and not ns.simpleFeatures[key] then error("a switch outside the everyday ones shows in simple settings: " .. key) end
     end
-    local found = fp.Filter("tooltip")
-    local outside = false
-    for _, key in ipairs(fp.shownKeys) do if not ns.simpleFeatures[key] then outside = true end end
-    if found == 0 or not outside then error("a search should find every switch, simple settings or not") end
-    fp.Filter("")
-    if not O.NavItemShown("Combat", { title = "Behavior" }) or O.NavItemShown("Combat", { title = "Click casting" }) then error("the Combat tab's simple sections are wrong") end
-    -- a switch the search of all options finds, outside the everyday ones: all options come back
-    fp.Reveal({ key = "tipGuildRank" })
+    if O.SectionShown(ns:SettingsSection("chat:Player tooltips")) then error("a section with no everyday switch is tucked away") end
+    -- the search of all options finds every switch, and says where it is
+    local hit
+    for _, h in ipairs(ns.configFrame.SearchOptions("realm in the name")) do if rawget(h.frame, "key") == "tipRealm" then hit = h end end
+    if not hit then error("a search should find every switch, simple settings or not") end
+    if hit.section.id ~= "chat:Player tooltips" or not O.Breadcrumb(hit.section):find(ns:Tr("in All options"), 1, true) then error("a result says where it lives: " .. O.Breadcrumb(hit.section)) end
+    ns.configFrame.GoToOption(hit)
     if ns:SettingsSimple() then error("going to a switch outside the everyday ones should show all options") end
-    if not toolsShown then error("the Tools tab should be back with all options") end
+    if not O.CategoryShown(ns:SettingsCategory("tools")) then error("the Tools category should be back with all options") end
+    if O.current ~= hit.section then error("going to a result opens its section") end
     for key in pairs(ns.simpleFeatures) do
-        local listed = false
-        for _, group in ipairs(ns.featureGroups) do for _, opt in ipairs(group[2]) do if opt[1] == key then listed = true end end end
-        if not listed then error("an everyday switch is not on the Features tab: " .. key) end
+        if not ns:SectionOfRow(key) then error("an everyday switch is in no section: " .. key) end
     end
+    ns:ToggleConfig()
 end)
 try("Look tab sections", function()
     ns.db.theme, ns.db.accent = "SMOKE", "AZURE"; ns:Retheme()
@@ -3074,14 +3069,17 @@ try("Every theme and lettering style can be reached", function()
     if fonts ~= #ns.fontOrder then error("the Look tab shows " .. fonts .. " of " .. #ns.fontOrder .. " lettering styles") end
     if not rawget(page, "area") then error("the Look tab should be on a scrolling page") end
     if page.contentHeight <= 542 then error("with this many choices the Look tab should need to scroll") end
-do   -- (the tab shows one section at a time: together the sections cover the page exactly, top to bottom)
-        local items, covered = page.navList, 0
-        if type(items) ~= "table" or #items == 0 then error("the tab has no sections") end
-        for i, item in ipairs(items) do
-            if item.top ~= covered and i > 1 then error("section " .. i .. " does not start where the one before it ends") end
-            covered = item.top + item.height
+do   -- (the sections show slices of the page: each starts at a heading, and the last reaches its foot)
+        local O = ns.optUI
+        for _, from in ipairs({ "Glass", "Accent", "Make your own theme", "Theme by place", "Frame style", "Class colors", "Accessibility" }) do
+            if not O.Band(page, from) then error("the Look page has no " .. from) end
         end
-        if covered ~= page.contentHeight then error("the sections should reach exactly to the foot of the page: " .. covered .. " of " .. page.contentHeight) end
+        local top = O.Band(page, "Glass", "Your themes")
+        if top ~= 0 then error("the themes start at the top") end
+        local at, ah = O.Band(page, "Accessibility")
+        if at + ah ~= page.contentHeight then error("the last slice should reach the foot of the page") end
+        local ct, ch = O.Band(page, "Class colors")
+        if ch < 36 + #ns.classOrder * 24 then error("Class colors should be tall enough for every class: " .. ch) end
     end
     -- groups sit one under another without overlapping
     local g, f, rg, m = page.themeGroups[1], page.themeGroups[2], page.themeGroups[3], page.themeGroups[4]
@@ -3146,48 +3144,35 @@ try("Helpers start switched off", function()
         if type(ns.featureDesc[key]) ~= "string" then error(key .. " has no description") end
     end
     if ns:PresetValue("EVERYTHING", "bagCombatUse") ~= nil then error("a preset must never switch the experimental bag option") end
-    -- the Features tab holds every switch by scrolling, however long a column gets
-    ns:ToggleConfig("features")
+    -- every switch has a place in the settings, once, and every section's rows fit
+    ns:ToggleConfig("home")
     local page = ns.featuresPage
-    if not page or not rawget(page, "area") then error("the Features tab should be on a scrolling page") end
-    -- the tab is laid out in sections: every switch appears once, under a heading, and nothing overlaps
-    local lowest, rows = 0, {}
-    local shown = 0
-    for key, cb in pairs(page.boxes) do
-        shown = shown + 1
-        local row = rawget(cb, "row")
-        if type(row) ~= "number" then error(key .. " was not given a place") end
-        if -row > lowest then lowest = -row end
-    end
-    local listed, sections, firstOfColumn = 0, 0, 0
-    for _, group in ipairs(ns.featureGroups) do
-        if not ns.featureSections[group[2][1][1]] then error("the " .. group[1] .. " column does not start with a heading") end
-        local seen = {}
-        for _, opt in ipairs(group[2]) do
-            listed = listed + 1
-            if not page.boxes[opt[1]] and not ns:FeatureHidden(opt[1]) then error(opt[1] .. " has no switch on the tab") end
-            if ns.featureSections[opt[1]] then sections = sections + 1 end
-            if seen[opt[1]] then error(opt[1] .. " is listed twice") end
-            seen[opt[1]] = true
+    if not page or not rawget(page, "area") then error("the sections should be on a scrolling page") end
+    local placed = {}
+    for _, cat in ipairs(ns.settingsCategories) do
+        for _, sec in ipairs(cat.sections or {}) do
+            for _, key in ipairs(sec.keys) do
+                if placed[key] then error(key .. " is in two sections") end
+                placed[key] = sec
+            end
         end
     end
-    if shown > listed or shown < listed - 2 then error("the Features tab shows " .. shown .. " of " .. listed .. " switches") end
-    if sections ~= 11 or page.sectionCount ~= 11 then error("expected eleven section headings, listed " .. sections .. ", drawn " .. tostring(page.sectionCount)) end
-    for key in pairs(ns.featureSections) do
-        local found = false
-        for _, group in ipairs(ns.featureGroups) do for _, opt in ipairs(group[2]) do if opt[1] == key then found = true end end end
-        if not found then error("a section heading hangs on a switch that does not exist: " .. key) end
+    for _, group in ipairs(ns.featureGroups) do
+        for _, opt in ipairs(group[2]) do
+            local key = opt[1]
+            if not placed[key] and key ~= "themeByPlace" then error(key .. " was not given a place") end
+            if not page.boxes[key] and not ns:FeatureHidden(key) and key ~= "themeByPlace" then error(key .. " has no switch") end
+        end
     end
-    -- (only the section on show has to fit: the others are laid out when they are chosen)
-    local shownLowest = 0
-    for _, key in ipairs(rawget(page, "shownKeys") or {}) do
-        local cb = page.boxes[key]
-        if cb and -rawget(cb, "row") > shownLowest then shownLowest = -rawget(cb, "row") end
+    for name in pairs(ns.settingRows) do
+        if name ~= "fontScale" and not ns:SectionOfRow(name) then error("the setting " .. name .. " is in no section") end
     end
-    if page.contentHeight < shownLowest + 24 then error("the Features tab's contents are taller than it allows for") end
-    for i, sec in ipairs(rawget(page, "sections") or {}) do
-        local half = math.ceil(#sec.keys / 2)
-        if half > 30 then error("section " .. i .. " is too long for one screen of the Features tab") end
+    for _, cat in ipairs(ns.settingsCategories) do
+        for _, sec in ipairs(cat.sections or {}) do
+            for _, name in ipairs(sec.rows) do
+                if not ns.settingRows[name] and not ns.featureLabels[name] then error(sec.id .. " lists " .. name .. ", which is no setting") end
+            end
+        end
     end
     ns:ToggleConfig()
 end)
@@ -3439,24 +3424,29 @@ try("Searching the options", function()
             if hit.tab == tab and hit.label:lower():find(part, 1, true) then return hit end
         end
     end
-    -- settings on four different tabs are all found from the one box
-    if not find("boss", "features", "boss frames") then error("a switch on the Features tab was not found") end
-    if not find("reduce motion", "combat", "reduce motion") then error("a switch on the Combat tab was not found") end
-    if not find("text size", "layout", "text size") then error("a slider on the Layout tab was not found") end
+    -- settings on different pages are all found from the one box
+    if not find("boss", "sections", "boss frames") then error("a feature's switch was not found") end
+    if not find("reduce motion", "look", "reduce motion") then error("a switch on the Look page was not found") end
+    if not find("interface size", "sections", "interface size") then error("a slider of a section was not found") end
     if not find("rosewood", "look", "rosewood") then error("a theme on the Look tab was not found") end
     if not find("calligraphy", "look", "calligraphy") then error("a lettering style on the Look tab was not found") end
     -- a word from a switch's description finds it too
-    if not find("guildmate", "features", "accept invites") then error("a switch should be found by a word from its description") end
+    if not find("guildmate", "sections", "accept invites") then error("a switch should be found by a word from its description") end
     -- nothing for nothing, or for one letter, or for nonsense
     if #ns:SearchOptions("") ~= 0 or #ns:SearchOptions("a") ~= 0 or #ns:SearchOptions("qqqqzz") ~= 0 or #ns:SearchOptions(nil) ~= 0 then error("an empty or meaningless search should find nothing") end
     if #ns:SearchOptions("e", 5) > 5 or #ns:SearchOptions("bar", 5) > 5 then error("the number of results should be capped") end
     -- labels that start with what was typed come first
     local hits = ns:SearchOptions("health", 10)
     if #hits == 0 or hits[1].label:lower():find("health", 1, true) ~= 1 then error("labels starting with the search should come first") end
-    -- choosing a result goes to its tab
-    local hit = find("reduce motion", "combat", "reduce motion")
+    -- choosing a result opens the section it is in
+    local hit = find("reduce motion", "look", "reduce motion")
     frame.GoToOption(hit)
-    if frame.currentPage ~= "combat" then error("choosing a result should open its tab, now on " .. tostring(frame.currentPage)) end
+    if not ns.optUI.current or ns.optUI.current.id ~= "look:Accessibility" then error("choosing a result should open its section, now on " .. tostring(ns.optUI.current and ns.optUI.current.id)) end
+    hit = find("auto-repair", "sections", "repair")
+    if not hit or frame.GoToOption(hit) ~= ns:SettingsSection("items:Vendors") then error("a switch's result opens its section") end
+    -- each result in the list says where it lives; Enter goes to the first
+    local listed = frame.SearchOptions("execute line")
+    if not listed[1] or not listed[1].section or listed[1].section.id ~= "combat:Alerts and warnings" then error("a result knows its section") end
     if ns.lastSearchHit ~= hit then error("the chosen result was not remembered") end
     -- typing in the box lists results; clearing it lists none
     if #frame.SearchOptions("boss") == 0 then error("typing should list results") end
@@ -4469,15 +4459,10 @@ try("Help and the Combat tab", function()
     ns:ToggleConfig("combat")
     local page = ns.combatPage
     if not page or not rawget(page, "area") then error("the Combat tab should be on a scrolling page") end
-    if page.contentHeight < 520 then error("the Combat tab's height should cover the AFK section") end
-do   -- (the tab shows one section at a time: together the sections cover the page exactly, top to bottom)
-        local items, covered = page.navList, 0
-        if type(items) ~= "table" or #items == 0 then error("the tab has no sections") end
-        for i, item in ipairs(items) do
-            if item.top ~= covered and i > 1 then error("section " .. i .. " does not start where the one before it ends") end
-            covered = item.top + item.height
-        end
-        if covered ~= page.contentHeight then error("the sections should reach exactly to the foot of the page: " .. covered .. " of " .. page.contentHeight) end
+    if page.contentHeight < 520 then error("the Combat page's height should cover everything on it") end
+    do   -- (the slices of the page shown in its sections reach exactly to its foot)
+        local t, h = ns.optUI.Band(page, "Click casting")
+        if t + h ~= page.contentHeight then error("the last slice should reach the foot of the page") end
     end
     -- opening the tab again shows the buff alerts you saved (it once read another setting and emptied them)
     local buffBoxes = rawget(page, "buffBoxes")
@@ -6249,49 +6234,82 @@ try("10.1: the Tools tab and the guide", function()
     ns.db.travelBar, ns.db.buffMissing = keepT, keepB
     ns:ToggleConfig()
 end)
-try("10.2: the Features tab, one section at a time", function()
-    ns:ToggleConfig("features")
+try("12.0: the settings window", function()
+    ns:ToggleConfig("home")
+    local O, frame = ns.optUI, ns.configFrame
+    O.SetSimple(false)
+    if not O.current or not O.current.home then error("the window opens on Home") end
+    -- the categories down the left; the open one lists its sections under it
+    local shown = 0
+    for _, b in ipairs(O.catButtons) do if rawget(b, "cat") then shown = shown + 1 end end
+    if shown < 10 then error("a line for every category, got " .. shown) end
+    O.Open("items")
+    if not O.current or O.current.id ~= "items:Bags and bank" then error("a category opens at its first section") end
+    local secs = 0
+    for _, b in ipairs(O.secButtons) do if rawget(b, "sec") and b.sec.category.id == "items" then secs = secs + 1 end end
+    if secs ~= #ns:SettingsCategory("items").sections then error("the open category lists its sections, got " .. secs) end
+    -- a section shows its rows: its feature switches first, then the others
     local page = ns.featuresPage
-    if #page.sections ~= 11 or #page.nav ~= 11 then error("a line in the list for every section") end
-    page.Select(2)
-    local keys = page.sections[2].keys
-    if page.currentSection ~= 2 or page.shownKeys ~= keys then error("choosing a section shows its switches") end
-    if not page.nav[2].picked or page.nav[1].picked then error("the chosen section is marked, and only that one") end
-    -- every switch belongs to exactly one section
-    local seen, total = {}, 0
-    for _, section in ipairs(page.sections) do
-        for _, key in ipairs(section.keys) do
-            if seen[key] then error(key .. " is in two sections") end
-            seen[key] = true; total = total + 1
-            if not page.boxes[key] then error(key .. " has no switch") end
-        end
+    O.Open("items:Vendors")
+    if page.shownKeys[1] ~= "autoSell" or not page.rows.autoSell then error("the section's switches are shown") end
+    if page.boxes.autoSell.checked ~= (ns.db.autoSell and true or false) then error("a switch shows its setting") end
+    -- and its larger pieces, lent while it shows and given back after
+    local restock = ns.toolsPage.listBlocks.restock
+    if rawget(restock, "lentTo") ~= page then error("Vendors shows the restock list") end
+    O.Open("look:Accessibility")
+    if rawget(restock, "lentTo") == page then error("the restock list is given back when another section opens") end
+    local lookArea = O.pages.look.area
+    if rawget(lookArea, "lentTo") ~= page or not lookArea.band then error("Accessibility shows its slice of the Look page") end
+    local top = ns.optUI.Band(O.pages.look.sheet, "Accessibility")
+    if lookArea.band.top ~= top then error("the slice starts at Accessibility") end
+    if page.shownKeys[1] ~= "uiScale" then error("Interface size % is with Accessibility now") end
+    O.Open("frames:Your frames")
+    if lookArea.band.top ~= ns.optUI.Band(O.pages.look.sheet, "Frame style") then error("Your frames shows the frame style and portraits") end
+    if rawget(O.pages.bars.area, "lentTo") ~= page then error("Your frames shows the frame designer") end
+    if not page.sampleButton:IsShown() then error("Frames and bars has the sample frames button") end
+    -- the old page names still open the right place
+    for old, want in pairs({ clickcast = "frames:Raid frames", colors = "look:Class colors", profiles = "layout:Profiles", tools = "tools:Tools", combat = "combat:Cooldowns" }) do
+        ns:ToggleConfig(old)
+        if not O.current or O.current.id ~= want then error(old .. " should open " .. want .. ", got " .. tostring(O.current and O.current.id)) end
+        if frame.currentPage ~= old then error("the window says it opened " .. old) end
     end
-    for key in pairs(page.boxes) do if not seen[key] then error(key .. " is in no section") end end
-    -- searching lists matches from every section together; clearing it returns to the section
-    local n = page.Filter("nameplate")
-    if n < 3 or #page.shownKeys ~= n then error("searching should list the matching switches, got " .. n) end
-    local from = {}
-    for _, key in ipairs(page.shownKeys) do for i, section in ipairs(page.sections) do for _, k in ipairs(section.keys) do if k == key then from[i] = true end end end end
-    local spread = 0
-    for _ in pairs(from) do spread = spread + 1 end
-    if spread < 2 then error("the matches should come from more than one section") end
-    if page.Filter("qqqqzz") ~= 0 or #page.shownKeys ~= 0 then error("nothing matches nonsense") end
-    page.Filter("")
-    if page.shownKeys ~= keys then error("clearing the search returns to the section that was open") end
-    -- a switch asked for from elsewhere (the search of all options, the guide) is brought into view
-    if not page.Reveal(page.boxes.fishingMode) then error("a switch should be revealed") end
-    local found = false
-    for _, key in ipairs(page.shownKeys) do if key == "fishingMode" then found = true end end
-    if not found or page.described ~= "fishingMode" then error("revealing a switch opens its section and describes it") end
-    if page.Reveal(newmock()) then error("something that is not on the tab cannot be revealed") end
-    -- the card describes whatever was pointed at
-    page.Describe("autoSell")
-    if page.described ~= "autoSell" then error("the card should follow the mouse") end
-    -- the counts beside each section follow the switches
-    local keep = ns.db.fishingMode
-    ns.db.fishingMode = false; page.Refresh()
-    if page.boxes.fishingMode.checked ~= false then error("the switches follow the settings") end
-    ns.db.fishingMode = keep; page.Refresh()
+    if not frame:IsShown() then frame:Show() end
+    -- Undo last change: what changed while the window was open, taken back one at a time
+    O.Open("items:Vendors")
+    O.NoteChange()
+    local function click(f) for _, h in ipairs(handlers) do if h.self == f and h.name == "OnClick" then h.fn(f, "LeftButton") end end end
+    local keep = ns.db.autoSell
+    click(page.boxes.autoSell)
+    if ns.db.autoSell == keep then error("the switch changes the setting") end
+    local last = O.changes[#O.changes]
+    if not last or last.key ~= "autoSell" or last.old ~= keep then error("the change is noted") end
+    if O.Undo().key ~= "autoSell" or ns.db.autoSell ~= keep then error("undo puts it back") end
+    if page.boxes.autoSell.checked ~= (keep and true or false) then error("the switch follows the undo") end
+    -- Reset a category to how it came: its switches and sliders, nothing else
+    local keepMap, keepCoords = ns.db.mapSize, ns.db.mapCoords
+    ns.db.mapSize, ns.db.mapCoords = 55, not ns.defaults.mapCoords
+    O.ResetCategory(ns:SettingsCategory("quests"))
+    if ns.db.mapSize ~= ns.settingRows.mapSize.default or ns.db.mapCoords ~= ns.defaults.mapCoords then error("resetting a category puts its settings back") end
+    ns.db.mapSize, ns.db.mapCoords = keepMap, keepCoords
+    -- what is new is marked until it has been seen
+    ns.root.seenNew = nil
+    local acc = ns:SettingsSection("look:Accessibility")
+    local keepV = ns.version
+    ns.version = "12.0.0"
+    if not ns:SectionIsNew(acc) then error("a new section is marked NEW") end
+    O.Open("look:Accessibility")
+    if ns:SectionIsNew(acc) then error("once seen it is not NEW any more") end
+    ns.version = "12.1.0"; ns.root.seenNew = nil
+    if ns:SectionIsNew(acc) then error("only in the version it came in") end
+    ns.version = keepV
+    -- the profile being changed is in the header; the corner resizes the window
+    if not frame.profileChip.text:GetText():find(tostring(ns.profile), 1, true) then error("the header names the profile") end
+    click(frame.profileChip)
+    if O.current.id ~= "layout:Profiles" then error("the profile button opens Profiles") end
+    if not frame.grip then error("the window can be resized from its corner") end
+    -- a change that needs a reload is counted by the Reload button
+    O.NeedReload("probe")
+    if (O.reloadCount or 0) < 1 or not frame.note:GetText():find(tostring(O.reloadCount), 1, true) then error("the reload note counts the changes") end
     ns:ToggleConfig()
 end)
 try("10.3: quest guides", function()
@@ -6509,9 +6527,13 @@ try("10.4: each action bar's own settings", function()
     -- the tab
     ns:ToggleConfig("bars")
     local T = ns.barsPage
-    if not T or T.empty or #T.sheet.nav ~= #ns.barHandles + #(ns.DESIGN_FRAMES or {}) + 4 then error("the Bars tab lists every bar, every frame, nameplates, raid frames, auras and class resource") end
+    if not T or T.empty or #T.sheet.navItems ~= #ns.barHandles + #(ns.DESIGN_FRAMES or {}) + 4 then error("the bars page holds every bar, every frame, nameplates, raid frames, auras and class resource") end
     T.Show(1)
-    if T.current ~= 1 or not T.sheet.nav[1].picked then error("choosing a bar") end
+    if T.current ~= 1 then error("choosing a bar") end
+    -- Action bars: a button for each bar above its settings
+    ns:ToggleConfig("frames:Action bars")
+    local chips = ns.featuresPage.chipCount or 0
+    if chips < #ns.barHandles then error("Action bars has a button for every bar, got " .. chips) end
     T.Show(#ns.barHandles)
     if T.canLayout then error("the pet bar has no rows to set") end
     ns:ToggleConfig()
@@ -6585,62 +6607,47 @@ try("10.5: tabs list their sections", function()
     local parent = {}
     ns.NoteSection(parent, "One", 0, 0); ns.NoteSection(parent, "Two", 0, -200)
     if #parent.suiHeads ~= 2 or parent.suiHeads[2].y ~= -200 then error("headings should be noted") end
-    -- the tabs
-    ns:ToggleConfig("look")
+    -- the pages are shown in slices, by heading, in the sections that need them
+    local O = ns.optUI
+    ns:ToggleConfig("home")
     local frame = ns.configFrame
-    local function sheetOf(id) ns:ToggleConfig(id); return frame.currentPage == id and ns.OptionsSheet(id) or nil end
-    local look = sheetOf("look")
-    if not look or not look.banded or #look.nav < 5 then error("the Look tab should list its sections (themes, accent, lettering...), has " .. tostring(look and #look.nav)) end
-    local titles = {}
-    for _, item in ipairs(look.navList) do titles[item.title] = item end
-    if not (titles["Glass"] and titles["Fantasy"] and titles["Accent and style"] and titles["Portraits and class colors"]) then error("Look: Glass, Fantasy, Accent and style, and Portraits and class colors are sections") end
-    for _, gone in ipairs({ "Accent", "Lettering", "Menu and bars", "Make your own theme", "Theme by place" }) do
-        if titles[gone] then error("Look: " .. gone .. " is part of Accent and style now, not a section of its own") end
+    for _, cat in ipairs(ns.settingsCategories) do
+        for _, sec in ipairs(cat.sections or {}) do
+            for _, block in ipairs(sec.blocks or {}) do
+                if block.host and O.pages[block.host] and block.from then
+                    if not O.Band(O.pages[block.host].sheet, block.from, block.to) then error(sec.id .. " needs the heading " .. block.from .. " on the " .. block.host .. " page") end
+                end
+                if block.list and not ns.toolsPage.listBlocks[block.list] then error(sec.id .. " shows a list that does not exist: " .. block.list) end
+                if block.rule and not ns.toolsPage.ruleBlocks[block.rule] then error(sec.id .. " shows rules that do not exist: " .. block.rule) end
+            end
+        end
     end
-    if titles["Fantasy"].top <= titles["Glass"].top or titles["Glass"].height <= 0 then error("each section is a slice of the page, one after the other") end
-    if look.SelectTitle("Portraits and class colors") == false or look.navCurrent == 1 then error("choosing a section by name") end
-    if look.SelectFor(titles["Accent and style"].top + 5) == false or look.navList[look.navCurrent].title ~= "Accent and style" then error("the section a place on the page belongs to") end
-    for _, id in ipairs({ "features", "look", "combat", "bars", "guide" }) do
-        local s = sheetOf(id)
-        if not s or type(s.nav) ~= "table" or #s.nav < 1 or type(s.NavSelect) ~= "function" then error("the " .. id .. " tab has no list of sections") end
+    -- no section shows two slices of one page (a page can be in one place at a time)
+    for _, cat in ipairs(ns.settingsCategories) do
+        for _, sec in ipairs(cat.sections or {}) do
+            local hosts = {}
+            for _, block in ipairs(sec.blocks or {}) do
+                local h = block.host or (block.bars and "bars")
+                if h then
+                    if hosts[h] then error(sec.id .. " shows the " .. h .. " page twice") end
+                    hosts[h] = true
+                end
+            end
+        end
     end
-    if #sheetOf("features").nav ~= 11 then error("Features: eleven sections in the shared list") end
-    -- Layout and Tools are whole pages, as they were before 10.5.0
-    for _, id in ipairs({ "layout", "tools", "profiles" }) do
-        local s = sheetOf(id)
-        if not s then error("the " .. id .. " tab did not open") end
-        if rawget(s, "nav") or rawget(s, "navList") or rawget(s, "banded") then error("the " .. id .. " tab should have no list of sections") end
-    end
-    do   -- the three groups of the Tools tab stand side by side again
-        local xs = {}
-        for _, h in ipairs(rawget(sheetOf("tools"), "suiHeads") or {}) do xs[h.x] = true end
-        if not (xs[0] and xs[252] and xs[506]) then error("the Tools tab should be in three columns") end
-    end
-    -- click casting is a section of Combat, and its old shortcut still works
-    local combat = sheetOf("combat")
-    local found
-    for i, item in ipairs(combat.navList) do if item.title == "Click casting" then found = i end end
-    if not found then error("Click casting should be a section of the Combat tab") end
-    ns:ToggleConfig("layout")
-    ns:ToggleConfig("clickcast")
-    if frame.currentPage ~= "combat" or combat.navCurrent ~= found then error("/fgui clickcast should open Combat at Click casting") end
-    for _, o in ipairs(ns.optionIndex) do if o.tab == "clickcast" then error("nothing should still point at a Click Cast tab") end end
-    -- class colors are part of the Look tab now, together with the portrait choice
-    if rawget(ns.OptionsSheet("look"), "suiHeads") == nil then error("Look: headings noted") end
-    local look2 = sheetOf("look")
-    local pc
-    for i, item in ipairs(look2.navList) do
-        if item.title == "Portraits and class colors" then pc = i end
-        if item.title == "Portraits" or item.title == "Class Colors" then error("Look: the old " .. item.title .. " section should be gone") end
-    end
-    if not pc then error("Look should have a Portraits and class colors section") end
-    if not (look2.classColors and look2.classColors.Refresh) then error("the class color editor should be on the Look tab") end
-    if look2.navList[pc].height < 36 + #ns.classOrder * 24 then error("the section should be tall enough for every class: " .. look2.navList[pc].height) end
-    ns:ToggleConfig("layout")
+    -- the Combat page: the AFK screen, alerts, the cooldown tracker and click casting, in that order
+    local combat = O.pages.combat.sheet
+    local order = {}
+    for _, h in ipairs(rawget(combat, "allHeads")) do order[#order + 1] = h.text end
+    if table.concat(order, ",") ~= "AFK screen,Custom alerts,Spoken alerts,Buff alerts,Cooldown tracker,Click casting" then error("the Combat page's order: " .. table.concat(order, ",")) end
+    -- class colors and the frame style are slices of the Look page
+    local look = O.pages.look.sheet
+    if not (look.classColors and look.classColors.Refresh) then error("the class color editor should be on the Look page") end
     ns:ToggleConfig("colors")
-    if frame.currentPage ~= "look" or look2.navCurrent ~= pc then error("/fgui colors should open Look at Portraits and class colors") end
-    if ns.OptionsSheet("colors") then error("there should be no Class Colors tab") end
-    for _, o in ipairs(ns.optionIndex) do if o.tab == "colors" then error("nothing should still point at a Class Colors tab") end end
+    if O.current.id ~= "look:Class colors" then error("/fgui colors should open Class colors") end
+    ns:ToggleConfig("clickcast")
+    if O.current.id ~= "frames:Raid frames" then error("/fgui clickcast should open Raid frames, where click casting is now") end
+    for _, o in ipairs(ns.optionIndex) do if o.tab == "colors" or o.tab == "clickcast" or o.tab == "features" then error("nothing should still point at an old tab: " .. o.tab) end end
     ns:ToggleConfig()
 end)
 try("10.8: the recommended features", function()
@@ -6999,12 +7006,11 @@ try("11.0: custom and spoken alerts", function()
         if not (saw[ns:Tr("a number")] or saw[ns:Tr("a name")]) then error("the hint should ask for a number or a name") end
     end
     local cs = ns.OptionsSheet("combat")
-    local titles = {}
-    for _, item in ipairs(cs.navList) do titles[item.title] = true end
-    if not titles["Behavior"] or not titles["Click casting"] or not titles["Cooldown tracker"] then error("Combat keeps Behavior, Cooldown tracker and Click casting") end
-    for _, gone in ipairs({ "AFK screen", "Custom alerts", "Spoken alerts" }) do
-        if titles[gone] then error(gone .. " should be part of Behavior, not a section of its own") end
-    end
+    -- custom and spoken alerts show with the alert switches, in Combat > Alerts and warnings
+    ns:ToggleConfig("combat:Alerts and warnings")
+    if rawget(ns.optUI.pages.combat.area, "lentTo") ~= ns.featuresPage then error("Alerts and warnings shows the alert editors") end
+    local top = ns.optUI.Band(cs, "Custom alerts", "Buff alerts")
+    if ns.optUI.pages.combat.area.band.top ~= top then error("the slice starts at Custom alerts") end
     ns:ToggleConfig()
 end)
 try("11.0: route editor and the route on the map", function()
@@ -7072,7 +7078,7 @@ try("11.0.1: bars on and off, nameplate and raid designers, checklist", function
     ns:ToggleConfig("bars")
     local T = ns.barsPage
     local pi, ri
-    for i, item in ipairs(T.sheet.navList or {}) do if item.title == "Nameplates" then pi = i elseif item.title == "Raid frames" then ri = i end end
+    for i, item in ipairs(T.sheet.navItems or {}) do if item.title == "Nameplates" then pi = i elseif item.title == "Raid frames" then ri = i end end
     if not (pi and ri) then error("Nameplates and Raid frames on the Bars and frames tab") end
     T.sheet.NavSelect(pi)
     if T.showing ~= "plates" then error("choosing Nameplates") end
@@ -7372,21 +7378,18 @@ try("11.2.0: tools menu, timers, bag and mail rules, talents, holidays, preview"
     local bw = 0
     for _, b in ipairs(rawget(lp, "topButtons") or {}) do bw = bw + (rawget(b, "suiW") or 0) end
     if bw > 0 and bw + 5 * 8 + 10 > 736 then error("the Layout tab's buttons overlap") end
-    local fs = ns.OptionsSheet("features")
+    local numbers = ns:SettingsSection("frames:Numbers on frames")
     local foundN = 0
-    for _, s in ipairs(fs.sections) do for _, k in ipairs(s.keys) do if k == "healthNumbers" or k == "powerNumbers" or k == "xpNumbers" then foundN = foundN + 1 end end end
-    if foundN ~= 3 then error("the three 'as numbers' switches are on the Features tab") end
-    -- the Features tab's Mail rules section has a box per material
-    ns:ToggleConfig("features")
-    local fp = ns.OptionsSheet and ns.OptionsSheet("features")
-    if not (fp and fp.sections) then error("the Features sheet") end
-    do
-        for i, s in ipairs(fp.sections) do if s.title == "Vendors, trainers and mail" then fp.Select(i) end end
-        local e = fp.extras and fp.extras["Vendors, trainers and mail"]
-        if not e or not e.frame.boxes.cloth then error("the Mail rules section has the Send to boxes") end
-        for i, s in ipairs(fp.sections) do if s.title == "Bags and bag rules" then fp.Select(i) end end
-        if not (fp.extras["Bags and bag rules"] and fp.extras["Bags and bag rules"].frame.button) then error("the Bag rules section") end
-    end
+    for _, k in ipairs(numbers.keys) do if k == "healthNumbers" or k == "powerNumbers" or k == "xpNumbers" then foundN = foundN + 1 end end
+    if foundN ~= 3 then error("the three 'as numbers' switches are in Numbers on frames") end
+    -- Mail has a box per material and the mail rules; Bag sections has the bag rules
+    ns:ToggleConfig("items:Mail")
+    local fp = ns.featuresPage
+    local e = fp.extras and fp.extras.mailTargets
+    if not e or not e.frame.boxes.cloth then error("the Mail section has the Send to boxes") end
+    if rawget(ns.toolsPage.ruleBlocks.mailRules, "lentTo") ~= fp then error("the Mail section has the mail rules") end
+    ns:ToggleConfig("items:Bag sections")
+    if rawget(ns.toolsPage.ruleBlocks.bagRules, "lentTo") ~= fp then error("the Bag sections section has the bag rules") end
     -- 11.6: the translations are a folder of their own, loaded only for a language other than English
     do
         local keepL, keepTried, keepLang, before = ns.locales, ns.localesLoadTried, ns.root.language, localeLoads

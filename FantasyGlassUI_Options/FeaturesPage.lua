@@ -4,33 +4,18 @@
 local ns = _G.FantasyGlassUI
 if type(ns) ~= "table" then return end
 local O = ns.optUI
-local groups, SECTIONS, DESC, INSTANT = ns.featureGroups, ns.featureSections, ns.featureDesc, ns.featureInstant
+local DESC, INSTANT = ns.featureDesc, ns.featureInstant
 local LOCKED_HIDE, LOCKED_LABEL = O.LOCKED_HIDE, O.LOCKED_LABEL
 
--- Some sections of the Features tab have more under their switches than switches: built once,
--- shown with their section. Each returns a frame and its height.
+-- The page a section of the settings window is shown on (12.0). At the top, where it is and a line on
+-- what is in it; then its rows, one setting to a line with what it does and its switch or slider;
+-- then its larger pieces (see Categories.lua): slices of the other pages, the frame and bar designers,
+-- your lists and rules.
+
+-- The "Send to" boxes of the mail section: a character's name for each kind of material.
 local EXTRAS = {}
-local function OpenRules(which)                              -- the Tools tab, at Your rules
-    ns:ToggleConfig("tools")
-    if ns.toolsPage and ns.toolsPage.rules then ns.toolsPage.rules.Set(which) end
-end
-EXTRAS["Bags and bag rules"] = function(page)
-    local f = CreateFrame("Frame", nil, page)
-    f:SetSize(736, 60)
-    local note = f:CreateFontString(nil, "OVERLAY")
-    ns:Font(note, 11)
-    note:SetPoint("TOPLEFT", 0, 0)
-    note:SetWidth(560)
-    note:SetJustifyH("LEFT")
-    ns:Paint(note, "SetTextColor", "dim")
-    note:SetText(ns:Tr("Your own rules come first, then the sections switched on here, in the order shown. Everything else stays in the usual sections. Needs the one-window bags."))
-    local b = ns:CreateButton(f, "Edit my own bag rules", 170, 22, function() OpenRules(1) end)
-    b:SetPoint("TOPLEFT", 0, -34)
-    f.button = b
-    return f, 60
-end
-EXTRAS["Vendors, trainers and mail"] = function(page)
-    local f = CreateFrame("Frame", nil, page)
+EXTRAS.mailTargets = function(parent)
+    local f = CreateFrame("Frame", nil, parent)
     local title = f:CreateFontString(nil, "OVERLAY")
     ns:Font(title, 12, true)
     title:SetPoint("TOPLEFT", 0, 0)
@@ -63,304 +48,530 @@ EXTRAS["Vendors, trainers and mail"] = function(page)
         f.boxes[kind] = box
     end
     local h = 22 + math.ceil(#(ns.MAIL_SWITCHES or {}) / 3) * 46
-    local b = ns:CreateButton(f, "Edit my own mail rules", 170, 22, function() OpenRules(2) end)
-    b:SetPoint("TOPLEFT", 0, -h - 4)
-    f.button = b
     f.Refresh = function()
         local t = ns.MailTargets()
         for kind, box in pairs(f.boxes) do if not box:HasFocus() then box:SetText(t[kind] or "") end end
     end
-    f:SetSize(736, h + 30)
-    return f, h + 30
+    f:SetSize(736, h)
+    return f, h
 end
 ns.FeatureExtras = EXTRAS
 
-local function BuildFeatures(page)
-    -- One section at a time: the sections are listed down the left, the switches of the chosen one
-    -- are on the right in two columns, and a card underneath says what the switch under the mouse
-    -- does. Searching lists the matching switches from every section in the same place.
-    local boxes = {}
-    local TOP = -36
-    local RX, COLW, PITCH = 0, 365, 26                        -- (the sections are listed by the window itself, down its left side)
-    local CARD_Y, CARD_H = -400, 104
+-- A setting's name, whichever kind it is.
+function O.RowLabel(name)
+    local def = ns.settingRows[name]
+    if def then return def.label end
+    local label = ns.featureLabels and ns.featureLabels[name]
+    return label and ((ns.aurasLocked and LOCKED_LABEL[name]) or label) or nil
+end
+function O.RowDesc(name)
+    local def = ns.settingRows[name]
+    return def and def.desc or DESC[name] or ""
+end
 
-    local search = ns:CreateEditBox(page, 230, 22, "Search switches")
-    search:SetPoint("TOPLEFT", 0, 0)
-    local found = page:CreateFontString(nil, "OVERLAY")
-    ns:Font(found, 11)
-    found:SetPoint("LEFT", search, "RIGHT", 10, 0)
-    ns:Paint(found, "SetTextColor", "faint")
+local ROW_H, SLIDER_H, BUTTON_H = 42, 48, 36
+local function BuildSections(page)
+    page.rows = {}                                            -- every row, made once: { [name] = frame }
+    page.boxes = {}                                           -- a feature's switch, by its key
+    local area = page.area
 
-    -- the sections, in the order of the lists above: { title, keys }
-    local sections, labelOf, sectionOf = {}, {}, {}
-    for _, group in ipairs(groups) do
-        local current
-        for _, opt in ipairs(group[2]) do
-            local key = opt[1]
-            if SECTIONS[key] then current = { title = SECTIONS[key], keys = {} }; sections[#sections + 1] = current end
-            if not current then current = { title = group[1], keys = {} }; sections[#sections + 1] = current end
-            if not (ns.aurasLocked and LOCKED_HIDE[key]) then
-                current.keys[#current.keys + 1] = key
-                labelOf[key] = (ns.aurasLocked and LOCKED_LABEL[key]) or opt[2]
-                sectionOf[key] = #sections
+    -- the top: where this is, its name, a line on what is in it, and two buttons
+    local crumb = page:CreateFontString(nil, "OVERLAY")
+    ns:Font(crumb, 11)
+    crumb:SetPoint("TOPLEFT", 0, 0)
+    ns:Paint(crumb, "SetTextColor", "faint")
+    local heading = page:CreateFontString(nil, "OVERLAY")
+    ns:Font(heading, 18, true)
+    heading:SetPoint("TOPLEFT", 0, -16)
+    ns:Paint(heading, "SetTextColor", "@accent")
+    local newTag = ns.NewTag(page)
+    newTag:SetPoint("LEFT", heading, "RIGHT", 10, 0)
+    local intro = page:CreateFontString(nil, "OVERLAY")
+    ns:Font(intro, 11)
+    intro:SetPoint("TOPLEFT", 0, -42)
+    intro:SetWidth(520)
+    intro:SetJustifyH("LEFT")
+    ns:Paint(intro, "SetTextColor", "dim")
+    page.heading, page.crumb, page.intro = heading, crumb, intro
+
+    local resetBtn = ns:CreateButton(page, "", 220, 22, ns:ConfirmClick(function() O.ResetCategory(page.category) end))
+    resetBtn:SetPoint("TOPRIGHT", page, "TOPRIGHT", -12, -14)
+    resetBtn:HookScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+        GameTooltip:AddLine(self.text:GetText())
+        GameTooltip:AddLine(ns:Tr("Every switch and slider of this category goes back to how Fantasy Glass UI comes. Your lists, rules, designs and positions are kept."), 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    resetBtn:HookScript("OnLeave", function() GameTooltip:Hide() end)
+    page.resetButton = resetBtn
+    local sampleBtn = ns:CreateButton(page, "", 170, 22, function()
+        if ns.TogglePreview then ns:TogglePreview() end
+        page.DrawSamples()
+    end)
+    sampleBtn:SetPoint("RIGHT", resetBtn, "LEFT", -8, 0)
+    O.Tip(sampleBtn, "Show sample frames", "Made-up party, raid and boss frames, bars and alerts, so you can see what you change. Click again to put them away.")
+    local sampleNote = page:CreateFontString(nil, "OVERLAY")
+    ns:Font(sampleNote, 10)
+    sampleNote:SetPoint("TOPRIGHT", sampleBtn, "BOTTOMRIGHT", 0, -4)
+    ns:Paint(sampleNote, "SetTextColor", "@accent")
+    page.sampleButton = sampleBtn
+    function page.DrawSamples()
+        sampleBtn.text:SetText(ns:Tr(ns.previewing and "Hide sample frames" or "Show sample frames"))
+        sampleNote:SetText(ns.previewing and ns:Tr("Showing sample frames") or "")
+    end
+
+    -- Rows ---------------------------------------------------------------------------------------
+    local function Hover(row, on)
+        if on then row.wash:Show() else row.wash:Hide() end
+    end
+    local function Explain(row)
+        local name = row.name
+        GameTooltip:SetOwner(row, "ANCHOR_NONE")
+        GameTooltip:SetPoint("BOTTOMLEFT", row, "TOPLEFT", 0, 4)
+        GameTooltip:AddLine(ns:Tr(O.RowLabel(name) or name))
+        local desc = O.RowDesc(name)
+        if desc ~= "" then GameTooltip:AddLine(ns:Tr(desc), 1, 1, 1, true) end
+        if row.feature then
+            local needs = ns.featureNeeds and ns.featureNeeds[name]
+            if needs and not ns.db[needs] then
+                GameTooltip:AddLine(format(ns:Tr("Needs \"%s\" switched on."), ns:Tr(O.RowLabel(needs) or needs)), 1, 0.82, 0, true)
+            end
+            GameTooltip:AddLine(ns:Tr(INSTANT[name] and "Takes effect at once." or "Takes effect after a /reload."), 0.6, 0.6, 0.6)
+        end
+        GameTooltip:Show()
+    end
+    local function Base(name, h)
+        local row = CreateFrame("Button", nil, page)
+        row:SetHeight(h)
+        row.name = name
+        row.wash = row:CreateTexture(nil, "BACKGROUND")
+        row.wash:SetAllPoints()
+        row.wash:SetTexture(ns.FLAT)
+        ns:Paint(row.wash, "SetVertexColor", "@accent", 0.08)
+        row.wash:Hide()
+        row.line = row:CreateTexture(nil, "BORDER")
+        row.line:SetTexture(ns.FLAT)
+        row.line:SetHeight(1)
+        row.line:SetPoint("TOPLEFT", 0, 0)
+        row.line:SetPoint("TOPRIGHT", 0, 0)
+        ns:Paint(row.line, "SetVertexColor", "@border", 0.45)
+        row:SetScript("OnEnter", function(self) Hover(self, true); Explain(self) end)
+        row:SetScript("OnLeave", function(self) Hover(self, false); GameTooltip:Hide() end)
+        row:Hide()
+        page.rows[name] = row
+        return row
+    end
+    local function Words(row, name)
+        row.words = strlower(ns:Tr(O.RowLabel(name) or name) .. " " .. ns:Tr(O.RowDesc(name)) .. " " .. name)
+    end
+    local function MakeSwitchRow(name, feature)
+        local row = Base(name, ROW_H)
+        row.feature = feature
+        row.title = row:CreateFontString(nil, "OVERLAY")
+        ns:Font(row.title, 12)
+        row.title:SetPoint("TOPLEFT", 10, -6)
+        row.title:SetJustifyH("LEFT")
+        if row.title.SetWordWrap then row.title:SetWordWrap(false) end
+        row.title:SetText(ns:Tr(O.RowLabel(name)))
+        row.tag = row:CreateFontString(nil, "OVERLAY")
+        ns:Font(row.tag, 10)
+        row.tag:SetPoint("LEFT", row.title, "RIGHT", 8, 0)
+        ns:Paint(row.tag, "SetTextColor", "faint")
+        row.tag:SetText((feature and not INSTANT[name]) and ns:Tr("after /reload") or "")
+        row.desc = row:CreateFontString(nil, "OVERLAY")
+        ns:Font(row.desc, 11)
+        row.desc:SetPoint("TOPLEFT", 10, -23)
+        row.desc:SetPoint("RIGHT", row, "RIGHT", -64, 0)
+        row.desc:SetJustifyH("LEFT")
+        if row.desc.SetWordWrap then row.desc:SetWordWrap(false) end
+        ns:Paint(row.desc, "SetTextColor", "dim")
+        row.desc:SetText(ns:Tr(O.RowDesc(name)))
+        local sw = ns:CreateCheckbox(row, O.RowLabel(name), ns.db[name], function(v)
+            ns.db[name] = v
+            if feature then
+                if INSTANT[name] then ns:ApplyInstant() else O.NeedReload(name) end
+                if page.Dim then page.Dim() end
+                if O.RefreshCounts then O.RefreshCounts() end
+            elseif ns.ApplyInstant then pcall(ns.ApplyInstant, ns) end
+            O.NoteChange()
+        end)
+        sw:SetWidth(36)
+        sw.label:Hide()
+        sw:ClearAllPoints()
+        sw:SetPoint("RIGHT", row, "RIGHT", -14, 0)
+        sw.key, sw.row = name, row
+        sw:HookScript("OnEnter", function() Hover(row, true); Explain(row) end)
+        sw:HookScript("OnLeave", function() Hover(row, false); GameTooltip:Hide() end)
+        row.switch = sw
+        row:SetScript("OnClick", function() sw:Click() end)
+        Words(row, name)
+        sw.words = row.words
+        if feature then page.boxes[name] = sw end
+        return row
+    end
+    local function MakeSliderRow(name, def)
+        local row = Base(name, SLIDER_H)
+        local value = def.get and def.get() or tonumber(ns.db[name]) or def.default or def.min
+        local syncing = false
+        local s = ns:CreateSlider(row, def.label, def.min, def.max, def.step, value, "%d", function(v)
+            if syncing then return end
+            if def.set then def.set(v) else ns.db[name] = v end
+            if def.apply then def.apply(v) end
+            O.NoteChange()
+        end, 300)
+        s:SetPoint("TOPLEFT", 10, -7)
+        row.slider = s
+        row.Sync = function()
+            local v = def.get and def.get() or tonumber(ns.db[name]) or def.default or def.min
+            syncing = true; pcall(s.SetValue, s, v); syncing = false
+        end
+        row.desc = row:CreateFontString(nil, "OVERLAY")
+        ns:Font(row.desc, 11)
+        row.desc:SetPoint("TOPLEFT", 336, -8)
+        row.desc:SetPoint("RIGHT", row, "RIGHT", -14, 0)
+        row.desc:SetJustifyH("LEFT")
+        ns:Paint(row.desc, "SetTextColor", "dim")
+        row.desc:SetText(ns:Tr(def.desc or ""))
+        if s.slider then s.slider:HookScript("OnEnter", function() Hover(row, true); Explain(row) end); s.slider:HookScript("OnLeave", function() Hover(row, false); GameTooltip:Hide() end) end
+        s.row = row
+        Words(row, name)
+        s.words = row.words
+        return row
+    end
+    local function MediaNames(kind)
+        local lib = ns.SharedMedia and ns.SharedMedia()
+        if not lib then return nil end
+        local ok, names = pcall(lib.List, lib, kind)
+        return (ok and type(names) == "table") and names or {}
+    end
+    local function MakeButtonRow(name, def)
+        local row = Base(name, BUTTON_H)
+        local b
+        local function Draw()
+            if def.kind == "cycle" then
+                b.text:SetText(ns:Tr(def.label) .. ":  " .. ns:Tr(ns.db[name] or def.default))
+            elseif def.kind == "media" then
+                b.text:SetText(ns:Tr(def.label) .. ":  " .. (ns.db[name] and tostring(ns.db[name]) or ns:Tr("ours")))
+            else
+                b.text:SetText(ns:Tr(def.label))
+            end
+        end
+        b = ns:CreateButton(row, def.label, 290, 24, function(self, button)
+            if def.kind == "cycle" then
+                local at = 1
+                for i, c in ipairs(def.choices) do if c == (ns.db[name] or def.default) then at = i end end
+                at = (button == "RightButton") and ((at - 2) % #def.choices + 1) or (at % #def.choices + 1)
+                ns.db[name] = def.choices[at]
+                if def.apply then def.apply() end
+            elseif def.kind == "media" then
+                local names = MediaNames(def.media)
+                if names then
+                    ns.db[name] = ns.NextChoice and ns.NextChoice(names, ns.db[name], button == "RightButton") or names[1]
+                    if ns.Retheme then pcall(ns.Retheme, ns) end
+                end
+            elseif def.run then
+                def.run(self)
+            end
+            Draw()
+            O.NoteChange()
+        end)
+        b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        b:SetPoint("TOPLEFT", 10, -6)
+        ns:Font(b.text, 11)
+        b:HookScript("OnEnter", function() Hover(row, true); Explain(row) end)
+        b:HookScript("OnLeave", function() Hover(row, false); GameTooltip:Hide() end)
+        b.row = row
+        row.button, row.Sync = b, Draw
+        row.desc = row:CreateFontString(nil, "OVERLAY")
+        ns:Font(row.desc, 11)
+        row.desc:SetPoint("TOPLEFT", 316, -11)
+        row.desc:SetPoint("RIGHT", row, "RIGHT", -14, 0)
+        row.desc:SetJustifyH("LEFT")
+        if row.desc.SetWordWrap then row.desc:SetWordWrap(false) end
+        ns:Paint(row.desc, "SetTextColor", "dim")
+        local desc = def.desc or ""
+        if def.kind == "media" and not (ns.SharedMedia and ns.SharedMedia()) then desc = "No add-on here brings LibSharedMedia, so there is nothing to choose from yet." end
+        row.desc:SetText(ns:Tr(desc))
+        Draw()
+        Words(row, name)
+        b.words = row.words
+        return row
+    end
+
+    -- every row of every section, made now, so the search finds them all
+    ns.indexingTab = "sections"
+    for _, cat in ipairs(ns.settingsCategories) do
+        for _, sec in ipairs(cat.sections or {}) do
+            for _, name in ipairs(sec.rows) do
+                local row = page.rows[name]
+                if not row then
+                    local def = ns.settingRows[name]
+                    if not def then
+                        if not (ns.aurasLocked and LOCKED_HIDE[name]) and ns.featureLabels[name] then row = MakeSwitchRow(name, true) end
+                    elseif def.kind == "check" then row = MakeSwitchRow(name, false)
+                    elseif def.kind == "slider" then row = MakeSliderRow(name, def)
+                    else row = MakeButtonRow(name, def) end
+                end
+                if row then
+                    row.section = row.section or sec
+                    local control = row.switch or row.slider or row.button
+                    if control then control.section = sec end
+                end
             end
         end
     end
-    page.sectionCount = #sections
-    page.sections = sections
-
-    -- the card: what the switch under the mouse does
-    local card = CreateFrame("Frame", nil, page, ns.template)
-    card:SetSize(736 - RX, CARD_H)
-    card:SetBackdrop(ns.BACKDROP)
-    ns:Paint(card, "SetBackdropColor", "field", 0.6)
-    ns:Paint(card, "SetBackdropBorderColor", "@border", 0.7)
-    card.title = card:CreateFontString(nil, "OVERLAY")
-    ns:Font(card.title, 13, true)
-    card.title:SetPoint("TOPLEFT", 12, -9)
-    ns:Paint(card.title, "SetTextColor", "@accent")
-    card.desc = card:CreateFontString(nil, "OVERLAY")
-    ns:Font(card.desc, 11)
-    card.desc:SetPoint("TOPLEFT", 12, -29)
-    card.desc:SetWidth(736 - RX - 24)
-    card.desc:SetJustifyH("LEFT")
-    if card.desc.SetWordWrap then card.desc:SetWordWrap(true) end
-    ns:Paint(card.desc, "SetTextColor", "dim")
-    card.foot = card:CreateFontString(nil, "OVERLAY")
-    ns:Font(card.foot, 10)
-    card.foot:SetPoint("BOTTOMLEFT", 12, 7)
-    ns:Paint(card.foot, "SetTextColor", "faint")
-    local function Describe(key)
-        if not key then
-            card.title:SetText("")
-            card.desc:SetText(ns:Tr("Point at a switch to read what it does."))
-            card.foot:SetText("")
-            return
-        end
-        card.title:SetText(ns:Tr(labelOf[key]))
-        card.desc:SetText(ns:Tr(DESC[key] or ""))
-        local needs = ns.featureNeeds and ns.featureNeeds[key]
-        if needs and not ns.db[needs] then
-            card.foot:SetText(format(ns:Tr("Needs \"%s\" switched on."), ns:Tr(labelOf[needs] or needs)))
-        else
-            card.foot:SetText(ns:Tr(INSTANT[key] and "Takes effect at once." or "Takes effect after a /reload."))
-        end
-        page.described = key
-    end
-    page.Describe = Describe
-
-    local heading = page:CreateFontString(nil, "OVERLAY")
-    ns:Font(heading, 15, true)
-    heading:SetPoint("TOPLEFT", RX, TOP)
-    ns:Paint(heading, "SetTextColor", "@accent")
-
-    -- the switches: made once, placed whenever a section is chosen
-    local Counts
-    for _, section in ipairs(sections) do
-        local half = math.ceil(#section.keys / 2)
-        for n, key in ipairs(section.keys) do
-            local label = labelOf[key]
-            local cb = ns:CreateCheckbox(page, label, ns.db[key], function(v)
-                ns.db[key] = v
-                if INSTANT[key] then ns:ApplyInstant() else O.frame.note:Show() end
-                Counts()
-                if page.Dim then page.Dim() end
-            end)
-            cb:SetWidth(COLW - 6)
-            cb.label:SetWidth(COLW - 6 - 36)                 -- (a name too long for its column is cut short; the card has it in full)
-            cb.label:SetJustifyH("LEFT")
-            if cb.label.SetWordWrap then cb.label:SetWordWrap(false) end
-            cb.row = TOP - 30 - ((n - 1) % half) * PITCH
-            cb.key = key
-            cb.words = strlower(ns:Tr(label) .. " " .. ns:Tr(DESC[key] or "") .. " " .. key)
-            cb:HookScript("OnEnter", function() Describe(key) end)
-            cb:Hide()
-            boxes[key] = cb
-        end
-    end
+    ns.indexingTab = nil
 
     -- a switch whose parent is off is dimmed (it can still be set, ready for when the parent is on)
     function page.Dim()
         local needs = ns.featureNeeds or {}
-        for key, cb in pairs(boxes) do
+        for key, sw in pairs(page.boxes) do
             local parent = needs[key]
-            if cb.SetAlpha then cb:SetAlpha((parent and not ns.db[parent]) and 0.45 or 1) end
+            if sw.row and sw.row.SetAlpha then sw.row:SetAlpha((parent and not ns.db[parent]) and 0.5 or 1) end
         end
     end
 
-    local navBottom = TOP
+    -- Blocks -------------------------------------------------------------------------------------
+    -- Each block is lent to the section while it shows, and given back when another is chosen.
+    local lent = {}
+    local function GiveBack()
+        for i = #lent, 1, -1 do pcall(lent[i]); lent[i] = nil end
+    end
+    local function Wheel(inner)                               -- (the wheel over a block scrolls the whole section)
+        if not inner.suiOwnWheel then inner.suiOwnWheel = inner:GetScript("OnMouseWheel") or false end
+        inner:SetScript("OnMouseWheel", function(_, delta) area:Scroll(-(tonumber(delta) or 0) * 42) end)
+        return function() inner:SetScript("OnMouseWheel", inner.suiOwnWheel or nil) end
+    end
+    local function Lend(frame, y, height)
+        local parent = frame:GetParent()
+        local points = {}
+        local n = tonumber(frame.GetNumPoints and frame:GetNumPoints()) or 0
+        for i = 1, n do points[i] = { frame:GetPoint(i) } end
+        local shown = frame.IsShown and frame:IsShown()
+        local w0, h0 = frame.GetWidth and frame:GetWidth(), frame.GetHeight and frame:GetHeight()
+        frame:SetParent(page)
+        frame.lentTo = page
+        frame:ClearAllPoints()
+        frame:SetPoint("TOPLEFT", page, "TOPLEFT", 0, y)
+        if height and frame.SetHeight then frame:SetHeight(height) end
+        frame:Show()
+        lent[#lent + 1] = function()
+            frame.lentTo = nil
+            frame:SetParent(parent)
+            frame:ClearAllPoints()
+            for _, p in ipairs(points) do frame:SetPoint(unpack(p)) end
+            if type(w0) == "number" and type(h0) == "number" and w0 > 0 and h0 > 0 and frame.SetSize then frame:SetSize(w0, h0) end
+            if not shown then frame:Hide() end
+        end
+    end
+    local hidden = {}                                         -- headings hidden while the section shows (its own name)
+    local function HideHead(sheet, title)
+        for _, h in ipairs(rawget(sheet, "allHeads") or {}) do
+            if h.text == title and h.fs and h.fs.Hide then
+                h.fs:Hide()
+                hidden[#hidden + 1] = h.fs
+            end
+        end
+    end
+    local function HostBlock(block, y, sec)
+        local host = O.pages[block.host]
+        if not host or not host.area then return 0 end
+        local sheet = host.sheet
+        local top, height = O.Band(sheet, block.from, block.to)
+        if not top then return 0 end
+        if block.from == sec.title then HideHead(sheet, block.from) end
+        local inner = host.area
+        Lend(inner, y, height)
+        inner:SetWidth(736)
+        inner:SetBand(top, height)
+        lent[#lent + 1] = Wheel(inner)
+        lent[#lent + 1] = function() inner:SetBand(nil) end
+        if host.Refresh then pcall(host.Refresh) end
+        page.shownHosts[block.host] = true
+        return height
+    end
+    -- the frame and bar designers: a row of buttons to choose between them, then the one chosen
+    local chips = {}
+    local function Chip(i)
+        local b = chips[i]
+        if not b then
+            b = ns:CreateButton(page, "", 100, 22, function(self) if self.pick then self.pick() end end)
+            ns:Font(b.text, 11)
+            chips[i] = b
+        end
+        return b
+    end
+    local function BarsBlock(block, y)
+        local host = O.pages.bars
+        local T = ns.barsPage
+        if not (host and host.area and T) then return 0 end
+        local items, at = host.sheet.navItems or {}, {}
+        local nBars = (type(ns.barHandles) == "table") and #ns.barHandles or 0
+        if T.empty then nBars = 0 end
+        for i, item in ipairs(items) do
+            local t = item.title
+            if block.bars == "bars" then if i <= nBars then at[#at + 1] = i end
+            elseif block.bars == "frames" then
+                if i > nBars and t ~= "Nameplates" and t ~= "Raid frames" then at[#at + 1] = i end
+            elseif t == block.bars then at[#at + 1] = i end
+        end
+        if #at == 0 then return 0 end
+        local h = 0
+        if #at > 1 then
+            local x, row = 0, 0
+            for n, i in ipairs(at) do
+                local b = Chip(n)
+                b.text:SetText(ns:Tr(items[i].title))
+                local w = b.text.GetStringWidth and b.text:GetStringWidth()
+                if type(w) ~= "number" or w <= 0 then w = #ns:Tr(items[i].title) * 7 end
+                w = math.floor(w + 20)
+                if x + w > 736 then x = 0; row = row + 1 end
+                b:SetWidth(w)
+                b:ClearAllPoints()
+                b:SetPoint("TOPLEFT", page, "TOPLEFT", x, y - row * 26)
+                b:Show()
+                b.pick = function()
+                    host.sheet.NavSelect(i)
+                    for k = 1, #at do
+                        local c = chips[k]
+                        if k == n then ns:Paint(c, "SetBackdropBorderColor", "@accent", 1) else ns:Paint(c, "SetBackdropBorderColor", "@border", 1) end
+                    end
+                end
+                x = x + w + 6
+                lent[#lent + 1] = function() b:Hide() end
+            end
+            h = (row + 1) * 26 + 8
+            page.chipCount = #at
+            chips[1].pick()
+        else
+            host.sheet.NavSelect(at[1])
+        end
+        local inner = host.area
+        Lend(inner, y - h, 540)
+        inner:SetWidth(736)
+        inner:SetBand(0, 540)
+        lent[#lent + 1] = Wheel(inner)
+        page.shownHosts.bars = true
+        return h + 540
+    end
     local extras = {}
     page.extras = extras
-    local function Layout(keys, title, extraName, all)
-        if not all and ns:SettingsSimple() then                -- (simple settings: the everyday switches of the section)
-            local few = {}
-            for _, key in ipairs(keys) do if ns.simpleFeatures[key] then few[#few + 1] = key end end
-            keys = few
-        end
-        for _, cb in pairs(boxes) do cb:Hide() end
-        for _, e in pairs(extras) do e.frame:Hide() end
-        local half = math.max(1, math.ceil(#keys / 2))
-        for n, key in ipairs(keys) do
-            local cb = boxes[key]
-            if cb then
-                cb:ClearAllPoints()
-                cb:SetPoint("TOPLEFT", RX + ((n > half) and (COLW + 6) or 0), TOP - 30 - ((n - 1) % half) * PITCH)
-                cb:Show()
-            end
-        end
-        heading:SetText(title)
-        if page.Dim then page.Dim() end
-        local below = TOP - 30 - half * PITCH - 12
-        local build = extraName and EXTRAS[extraName]
-        if build then
-            local e = extras[extraName]
+    local function ToolBlock(frame, y)
+        if not frame then return 0 end
+        Lend(frame, y)
+        if frame.Refresh then pcall(frame.Refresh) end
+        local h = frame.GetHeight and frame:GetHeight()
+        return (type(h) == "number" and h > 0) and h or 200
+    end
+    local function Block(block, y, sec)
+        if block.host then return HostBlock(block, y, sec)
+        elseif block.bars then return BarsBlock(block, y)
+        elseif block.list then return ToolBlock(ns.toolsPage and ns.toolsPage.listBlocks[block.list], y)
+        elseif block.rule then return ToolBlock(ns.toolsPage and ns.toolsPage.ruleBlocks[block.rule], y)
+        elseif block.extra and EXTRAS[block.extra] then
+            local e = extras[block.extra]
             if not e then
-                local f, h = build(page)
+                local f, h = EXTRAS[block.extra](page)
                 e = { frame = f, height = h }
-                extras[extraName] = e
+                extras[block.extra] = e
             end
             e.frame:ClearAllPoints()
-            e.frame:SetPoint("TOPLEFT", RX, below + 4)
+            e.frame:SetPoint("TOPLEFT", page, "TOPLEFT", 0, y)
             if e.frame.Refresh then e.frame.Refresh() end
             e.frame:Show()
-            below = below + 4 - e.height - 14
+            lent[#lent + 1] = function() e.frame:Hide() end
+            return e.height
         end
-        local cardY = math.min(CARD_Y, below)
-        card:ClearAllPoints()
-        card:SetPoint("TOPLEFT", RX, cardY)
-        page.shownKeys = keys
-        page.contentHeight = math.max(-navBottom, -cardY + CARD_H) + 12
-        if page.area then page.area:SetContentHeight(page.contentHeight) end
+        return 0
     end
 
-    -- the sections go in the list down the left of the window (see BuildNav), with how many are on
-    local current = 1
-    Counts = function() if page.NavCounts then page.NavCounts() end end
-    local function Mark(which) if page.NavMark then page.NavMark(which) end end
-    local function Select(i)
-        if not sections[i] then return end
-        current = i
-        Mark(i)
-        Layout(sections[i].keys, ns:Tr(sections[i].title), sections[i].title)
-        page.currentSection = i
+    -- Showing a section ----------------------------------------------------------------------------
+    -- Simple settings: a section's everyday switches, and its other rows.
+    function page.RowShown(name)
+        if ns:FeatureHidden(name) then return false end
+        if ns.settingRows[name] then return true end
+        return not ns:SettingsSimple() or ns.simpleFeatures[name] == true
     end
-    page.Select = Select
-    page.navItems = {}
-    for i, section in ipairs(sections) do
-        page.navItems[i] = { title = section.title, keys = section.keys, count = function()
-            local on, of = 0, 0
-            local simple = ns:SettingsSimple()
-            for _, key in ipairs(section.keys) do
-                if not simple or ns.simpleFeatures[key] then
-                    of = of + 1
-                    if ns.db[key] then on = on + 1 end
-                end
-            end
-            return on .. "/" .. of
-        end }
-    end
-    -- (when simple settings hide the chosen section, the first one shown takes its place)
-    page.ModeChanged = function()
-        local items = page.navItems
-        if ns:SettingsSimple() and not O.NavItemShown("Features", items[current]) then
-            for i, item in ipairs(items) do if O.NavItemShown("Features", item) then current = i; break end end
-        end
-        if search:GetText() == "" then Select(current) else page.Filter(search:GetText()) end
-        Counts()
-    end
-    page.NavSelect = function(i) search:SetText(""); Select(i) end
-
-    -- search: the matching switches of every section, listed together
-    local function Filter(given)
-        local q = (type(given) == "string") and given or search:GetText()
-        q = type(q) == "string" and strlower(strtrim(q)) or ""
-        if q == "" then
-            found:SetText("")
-            Select(current)
-            return page.sectionCount and #sections[current].keys or 0
-        end
-        local keys = {}
-        for _, section in ipairs(sections) do
-            for _, key in ipairs(section.keys) do
-                if boxes[key].words:find(q, 1, true) then keys[#keys + 1] = key end
+    function page.Show(sec)
+        GiveBack()
+        for _, fs in ipairs(hidden) do fs:Show() end
+        hidden = {}
+        for _, row in pairs(page.rows) do row:Hide() end
+        page.shownHosts, page.chipCount = {}, 0
+        page.section, page.category = sec, sec.category
+        crumb:SetText(ns:Tr(sec.category.title))
+        heading:SetText(ns:Tr(sec.title))
+        newTag:SetShown(ns:SectionIsNew(sec))
+        ns:SeeSection(sec)
+        intro:SetText(ns:Tr(sec.category.desc or ""))
+        resetBtn.text:SetText(format(ns:Tr("Reset %s to how it came"), ns:Tr(sec.category.title)))
+        resetBtn.suiArmed, resetBtn.suiLabel = false, nil
+        local w = resetBtn.text.GetStringWidth and resetBtn.text:GetStringWidth()
+        if type(w) == "number" and w > 0 then resetBtn:SetWidth(math.min(300, math.floor(w + 24))) end
+        resetBtn:SetShown(not sec.category.noReset and #(sec.category.sections or {}) > 0 and O.CategoryHasSettings(sec.category))
+        sampleBtn:SetShown(sec.category.samples and ns.TogglePreview ~= nil)
+        page.DrawSamples()
+        local y = -70
+        local shown = {}
+        for _, name in ipairs(sec.rows) do
+            local row = page.rows[name]
+            if row and page.RowShown(name) then
+                row:ClearAllPoints()
+                row:SetPoint("TOPLEFT", page, "TOPLEFT", 0, y)
+                row:SetPoint("RIGHT", page, "RIGHT", -12, 0)
+                if row.switch then row.switch:SetChecked(ns.db[name]) end
+                if row.Sync then row.Sync() end
+                row:Show()
+                y = y - row:GetHeight()
+                shown[#shown + 1] = name
             end
         end
-        Mark(0)
-        Layout(keys, format(ns:TrN(#keys, "%d match", "%d matches"), #keys), nil, true)     -- (a search finds every switch)
-        found:SetText(#keys == 0 and ("|cffffd100" .. format(ns:Tr("No switch matches \"%s\"."), strtrim(q)) .. "|r") or "")
-        return #keys
-    end
-    search:HookScript("OnTextChanged", Filter)
-    page.Filter = function(text) search:SetText(text or ""); return Filter(text or "") end
-    -- Bring a switch into view (the search of all options, and the guide, ask for this).
-    page.Reveal = function(target)
-        local key = type(target) == "table" and rawget(target, "key")
-        local at = key and sectionOf[key]
-        if not at then
-            for i, b in ipairs(page.nav or {}) do if b == target then at = i end end
+        page.shownKeys = shown
+        if #shown > 0 then y = y - 18 end
+        for _, block in ipairs(sec.blocks or {}) do
+            local h = Block(block, y, sec)
+            if h and h > 0 then y = y - h - 18 end
         end
-        if not at then return false end
-        if key and ns:SettingsSimple() and not ns.simpleFeatures[key] and O.SetSimple then O.SetSimple(false) end   -- (found by a search: shown in full)
-        search:SetText("")
-        Select(at)
-        if key then Describe(key) end
-        return true
+        if #shown == 0 and #(sec.blocks or {}) == 0 then
+            y = y - 10
+        end
+        page.Dim()
+        page.contentHeight = -y + 20
+        area:SetContentHeight(page.contentHeight)
+        area:ScrollTo(0)
+        return #shown
     end
-
-    local function Sync()                                   -- the switches follow the settings (the setup may have changed them)
-        for key, cb in pairs(boxes) do cb:SetChecked(ns.db[key]) end
-        Counts()
-        if page.Dim then page.Dim() end                          -- (a preset may have switched a parent on or off)
+    page.GiveBack = GiveBack
+    page.Refresh = function()
+        for name, row in pairs(page.rows) do
+            if row.switch then row.switch:SetChecked(ns.db[name]) end
+            if row.Sync and row:IsShown() then row.Sync() end
+        end
+        page.Dim()
+        page.DrawSamples()
+        for id in pairs(page.shownHosts or {}) do
+            local host = O.pages[id]
+            if host and host.Refresh then pcall(host.Refresh) end
+        end
     end
-    page.Refresh = Sync
-    -- presets: one click sets every switch (click twice, so a slip of the mouse changes nothing)
-    local function Apply(preset)
-        local changed = ns:ApplyPreset(preset)
-        Sync()
-        if changed > 0 then O.frame.note:Show() end
-        return changed
-    end
-    page.ApplyPreset = Apply
-    local x = 0
-    for _, def in ipairs({ { "EVERYTHING", "Everything" }, { "STANDARD", "Standard" }, { "MINIMAL", "Minimal" } }) do
-        local btn
-        btn = ns:CreateButton(page, def[2], 96, 22, function(self)
-            if self.armed then
-                self.armed = false
-                local n = Apply(def[1])
-                self.text:SetText(ns:Tr(def[2]))
-                found:SetText(format(ns:TrN(n, "%d switch changed", "%d switches changed"), n))
-            else
-                self.armed = true
-                self.text:SetText("|cffffd100" .. ns:Tr("Click to confirm") .. "|r")
-                ns:After(4, function() if btn.armed then btn.armed = false; btn.text:SetText(ns:Tr(def[2])) end end)
-            end
-        end)
-        btn:SetPoint("TOPRIGHT", page, "TOPRIGHT", -x, 0)
-        btn:HookScript("OnEnter", function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
-            GameTooltip:AddLine(ns:Tr(def[2]))
-            local text = def[1] == "EVERYTHING" and "Every feature on."
-                or def[1] == "MINIMAL" and "Only the core: frames, bars, minimap, quests, bags, chat and windows."
-                or "How Fantasy Glass UI comes: everything except the four that flash, pop up or act on their own - notifications, the aggro warning, the AFK screen and level-up screenshots."
-            GameTooltip:AddLine(ns:Tr(text), 1, 1, 1, true)
-            GameTooltip:AddLine(ns:Tr("Auto quest and the look options are left as they are."), 0.6, 0.6, 0.6, true)
-            GameTooltip:Show()
-        end)
-        btn:HookScript("OnLeave", function() GameTooltip:Hide() end)
-        x = x + 102
-    end
-    local label = page:CreateFontString(nil, "OVERLAY")
-    ns:Font(label, 11)
-    label:SetPoint("TOPRIGHT", page, "TOPRIGHT", -x - 4, -5)
-    label:SetText(ns:Tr("Presets"))
-    ns:Paint(label, "SetTextColor", "dim")
-
-
-    page.boxes = boxes
-    Describe(nil)
-    Counts()
-    Select(1)
     ns.featuresPage = page
 end
-O.BuildFeatures = BuildFeatures
+O.BuildSections = BuildSections
+
+-- A small NEW pill.
+function ns.NewTag(parent)
+    local f = CreateFrame("Frame", nil, parent, ns.template)
+    f:SetSize(34, 14)
+    f:SetBackdrop(ns.BACKDROP)
+    ns:Paint(f, "SetBackdropColor", "@accent", 0.25)
+    ns:Paint(f, "SetBackdropBorderColor", "@accent", 0.9)
+    f.text = f:CreateFontString(nil, "OVERLAY")
+    ns:Font(f.text, 9, true)
+    f.text:SetPoint("CENTER", 0, 0)
+    f.text:SetText(ns:Tr("NEW"))
+    ns:Paint(f.text, "SetTextColor", "@accent")
+    local w = f.text.GetStringWidth and f.text:GetStringWidth()
+    if type(w) == "number" and w > 0 then f:SetWidth(math.floor(w + 12)) end
+    f:Hide()
+    return f
+end

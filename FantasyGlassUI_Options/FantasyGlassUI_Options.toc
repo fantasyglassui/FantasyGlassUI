@@ -17,6 +17,7 @@ Designer.lua
 Bars.lua
 Shared.lua
 FeatureList.lua
+Categories.lua
 FeaturesPage.lua
 LookPage.lua
 LayoutPage.lua

@@ -78,47 +78,11 @@ local function BuildCombat(page)
     ns:Font(msg, 12)
     msg:SetPoint("BOTTOMLEFT", 0, 0)
 
-    -- behavior switches (these take effect straight away)
-    Header(page, "Behavior", 0, 0)
-    local toggles = {
-        { "smoothBars",    "Bars glide to their new value" },
-        { "fades",         "Windows fade in, alerts pop" },
-        { "hitFlash",      "Flash on critical hits and heals" },
-        { "idleFade",      "Dim my frame when idle" },
-        { "imbueCombatOnly", "Imbue reminder only in combat" },
-        { "colorblind",    "Color-blind safe colors" },
-        { "reduceMotion",  "Reduce motion" },
-        { "combatFocus",   "Dim tracker and info bar in fights" },
-        { "tooltipCursor", "Tooltips follow the mouse" },
-        { "emblemAnim",    "Animated class emblems" },
-    }
-    if ns.aurasLocked then                                 -- acts on debuffs we can't read in a fight
-        for i = #toggles, 1, -1 do
-            if toggles[i][1] == "myDebuffsOnly" then table.remove(toggles, i) end
-        end
-    end
-    -- Four rows of switches fit above the cooldown list. With a fifth (clients that have every switch),
-    -- the rows sit a little closer and everything below moves down by the difference (S).
-    local toggleRows = math.ceil(#toggles / 3)
-    local ROWH = (toggleRows > 4) and 22 or 24
-    local S = -math.max(0, toggleRows * ROWH - 96)   -- luacheck: ignore
-    page.toggleCount = #toggles
-    for i, t in ipairs(toggles) do
-        local key = t[1]
-        local cb = ns:CreateCheckbox(page, t[2], ns.db[key], function(v)
-            ns.db[key] = v
-            if (key == "healthNumbers" or key == "powerNumbers") and ns.RefreshHealthText then ns:RefreshHealthText() end   -- shows at once
-            if key == "xpNumbers" and ns.RefreshXPBar then ns:RefreshXPBar() end
-        end)
-        cb:SetWidth(235)
-        cb:SetPoint("TOPLEFT", ((i - 1) % 3) * 245, -24 - math.floor((i - 1) / 3) * ROWH)
-    end
-
-    -- The AFK screen, custom alerts and spoken alerts are part of Behavior: they follow its switches,
-    -- each under a smaller heading, and everything after them moves down by what they take.
-    local B0 = -24 - toggleRows * ROWH - 18
-    -- the AFK screen: when it starts
-    Header(page, "AFK screen", 0, B0, { sub = true })
+    -- (12.0: the switches that were here are rows of their sections now: see Categories.lua)
+    -- The AFK screen; then custom, spoken and buff alerts; then the cooldown tracker and click casting.
+    -- Each is shown in its own section of the settings window.
+    local B0 = 0
+    Header(page, "AFK screen", 0, B0)
     local afkSlider = ns:CreateSlider(page, "Start after idle minutes  (0 = when the game marks you away)", 0, 30, 1,
         tonumber(ns.db.afkDelay) or 0, "%d", function(v) ns.db.afkDelay = v end, 360)
     afkSlider:SetPoint("TOPLEFT", 0, B0 - 24)
@@ -139,7 +103,7 @@ local function BuildCombat(page)
     afkHint:SetJustifyH("LEFT")
     ns:Paint(afkHint, "SetTextColor", "faint")
     local A0 = B0 - 84
-    Header(page, "Custom alerts", 0, A0, { sub = true })
+    Header(page, "Custom alerts", 0, A0)
     local ab = CreateFrame("Frame", nil, page)
     ab:SetPoint("TOPLEFT", 0, A0 - 30)
     ab:SetSize(736, 300)
@@ -150,7 +114,7 @@ local function BuildCombat(page)
     sb:SetPoint("TOPLEFT", 0, P0 - 30)
     sb:SetSize(736, 130)
     if ns.BuildSpeakEditor then ns.BuildSpeakEditor(sb) end
-    S = (P0 - 30 - 130 - 16) + 138                           -- (the cooldown tracker's heading, at -138 + S, comes next)
+    local S = P0 - 30 - 130 - 16                             -- where the buff alerts start
 
     local function Boxes(title, note, y, count, saved)
         Header(page, title, 0, y)
@@ -180,34 +144,45 @@ local function BuildCombat(page)
         return list
     end
 
-    local cds = Boxes("Cooldown tracker", "A row of these abilities with their cooldowns. Type each spell's name exactly as in your spellbook. Spells you don't know are skipped.", -138 + S, 9, ns.db.cooldownSpells)
-    local alerts
+    local alerts, cdTop
     if ns.aurasLocked then
+        Header(page, "Buff alerts", 0, S)
         local gone = page:CreateFontString(nil, "OVERLAY")
         ns:Font(gone, 11)
-        gone:SetPoint("TOPLEFT", 0, -340 + S)
+        gone:SetPoint("TOPLEFT", 0, S - 24)
         gone:SetWidth(730)
         gone:SetJustifyH("LEFT")
         gone:SetText(ns:Tr("Not shown here: buff alerts and \"only my debuffs\". This game client hides buffs and debuffs from add-ons during combat, so they would have nothing to work with."))
         ns:Paint(gone, "SetTextColor", "faint")
+        cdTop = S - 70
     else
-        alerts = Boxes("Buff alerts", "When one of these buffs is on you, its icon pops up above the middle of the screen with its time left.", -288 + S, 6, ns.db.alertBuffs)
+        alerts = Boxes("Buff alerts", "When one of these buffs is on you, its icon pops up above the middle of the screen with its time left.", S, 6, ns.db.alertBuffs)
+        local bmsg = page:CreateFontString(nil, "OVERLAY")
+        ns:Font(bmsg, 12)
+        local applyB = ns:CreateButton(page, "Apply", 150, 26, function()
+            ns.db.alertBuffs = Read(alerts)
+            if ns.RefreshAlerts then pcall(ns.RefreshAlerts) end
+            bmsg:SetText(ns:SignalHex("good") .. format(ns:Tr(#ns.db.alertBuffs == 1 and "%d buff alert set." or "%d buff alerts set."), #ns.db.alertBuffs) .. "|r")
+        end)
+        applyB:SetPoint("TOPLEFT", 0, S - 44 - 2 * 28 - 6)
+        bmsg:SetPoint("LEFT", applyB, "RIGHT", 14, 0)
+        page.applyBuffs = applyB
+        cdTop = S - 44 - 2 * 28 - 6 - 26 - 24
     end
+    local cds = Boxes("Cooldown tracker", "A row of these abilities with their cooldowns. Type each spell's name exactly as in your spellbook. Spells you don't know are skipped.", cdTop, 9, ns.db.cooldownSpells)
 
     local apply = ns:CreateButton(page, "Apply", 150, 26, function()
         ns.db.cooldownSpells = Read(cds)
         if alerts then ns.db.alertBuffs = Read(alerts) end
         local found = ns.RebuildCooldowns and ns:RebuildCooldowns()
         if ns.RefreshAlerts then pcall(ns.RefreshAlerts) end
-        if found and not alerts then
+        if found then
             msg:SetText(ns:SignalHex("good") .. format(ns:Tr("%d of %d cooldown spells found."), found, #ns.db.cooldownSpells) .. "|r")
-        elseif found then
-            msg:SetText(ns:SignalHex("good") .. format(ns:Tr("%d of %d cooldown spells found."), found, #ns.db.cooldownSpells) .. "|r  " .. format(ns:Tr(#ns.db.alertBuffs == 1 and "%d buff alert set." or "%d buff alerts set."), #ns.db.alertBuffs))
         else
-            msg:SetText("|cffffd100" .. ns:Tr("Saved. Turn on the cooldown tracker on the Features tab and reload to see it.") .. "|r")
+            msg:SetText("|cffffd100" .. ns:Tr("Saved. Turn on the cooldown tracker and reload to see it.") .. "|r")
         end
     end)
-    apply:SetPoint("TOPLEFT", 0, (alerts and -404 or -298) + S)
+    apply:SetPoint("TOPLEFT", 0, cdTop - 44 - 3 * 28 - 6)
 
     -- fill the cooldown list from what is on the action bars, then apply it
     local fill = ns:CreateButton(page, "Fill from action bars", 190, 26, function()
@@ -220,9 +195,14 @@ local function BuildCombat(page)
         ns.db.cooldownSpells = Read(cds)
         local found = ns.RebuildCooldowns and ns:RebuildCooldowns()
         msg:SetText(format(ns:SignalHex("good") .. ns:TrN(#names, "%d ability taken from your action bars.", "%d abilities taken from your action bars.") .. "|r", #names)
-            .. (found and "" or "  " .. ns:Tr("Turn on the cooldown tracker on the Features tab and reload to see it.")))
+            .. (found and "" or "  " .. ns:Tr("Turn on the cooldown tracker and reload to see it.")))
     end)
     fill:SetPoint("LEFT", apply, "RIGHT", 10, 0)
+    msg:ClearAllPoints()
+    msg:SetPoint("LEFT", fill, "RIGHT", 14, 0)
+    msg:SetWidth(360)
+    msg:SetJustifyH("LEFT")
+    local cdBottom = cdTop - 44 - 3 * 28 - 6 - 26
 
     page.Refresh = function()
         -- the lists show what is saved now (the setup, or "Fill from action bars", may have changed it)
@@ -234,7 +214,7 @@ local function BuildCombat(page)
             or "The AFK screen is switched off (Features tab), so these do nothing yet."))
     end
     -- Click casting is a section of this tab (it used to be a tab of its own).
-    local ccTop = -(500 - S + 36) - 8
+    local ccTop = cdBottom - 24
     Header(page, "Click casting", 0, ccTop)
     local cc = CreateFrame("Frame", nil, page)
     cc:SetPoint("TOPLEFT", 0, ccTop - 30)

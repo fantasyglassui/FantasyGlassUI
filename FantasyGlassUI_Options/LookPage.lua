@@ -460,7 +460,7 @@ local function BuildLook(page)
         end
     end
     local PY = TY - 30 - 4 * 28 - 16
-    Header(page, "Portraits and class colors", 0, PY)
+    Header(page, "Frame style", 0, PY)                      -- (shown with the unit frames, in Frames and bars)
     -- the unit frames' style: Starcut (bars cut to points, a diamond portrait) or Classic (the box)
     local slabel = page:CreateFontString(nil, "OVERLAY")
     ns:Font(slabel, 12)
@@ -494,13 +494,14 @@ local function BuildLook(page)
         portraitButtons[def[1]] = b
     end
     local CC_H = 36 + #ns.classOrder * 24 + 8
+    Header(page, "Class colors", 0, PY - 70)
     local cc = CreateFrame("Frame", nil, page)
-    cc:SetPoint("TOPLEFT", 0, PY - 70)
+    cc:SetPoint("TOPLEFT", 0, PY - 70 - 26)
     cc:SetSize(736, CC_H)
     BuildColors(cc)
     page.classColors = cc
     -- Accessibility (12.0): what helps with color blindness, low vision and motion, in one place.
-    local AY = PY - 70 - CC_H - 24
+    local AY = PY - 70 - 26 - CC_H - 24
     Header(page, "Accessibility", 0, AY)
     local access = {}
     local function Flag(key, label, tip, x, y)
@@ -549,7 +550,7 @@ local function BuildLook(page)
     ns:Font(snote, 10)
     ns:Paint(snote, "SetTextColor", "faint")
     snote:SetPoint("LEFT", access.size140, "RIGHT", 10, 0)
-    snote:SetText(ns:Tr("Any size from 70 to 150: the Layout tab, or /fgui textsize."))
+    snote:SetText(ns:Tr("Any size from 70 to 150: /fgui textsize."))
     page.access = access
 
     local lookRefresh = Refresh

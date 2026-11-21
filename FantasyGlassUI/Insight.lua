@@ -24,7 +24,7 @@ end
 function ns:ShowSwitch(key)
     if not ns:LoadOptions() then return false end
     local label = SwitchLabel(key)
-    if label and ns.GuideShow then return ns:GuideShow({ tab = "features", find = label }) end
+    if label and ns.GuideShow then return ns:GuideShow({ tab = "sections", find = label }) end
     ns:ToggleConfig("features")
     return "tab"
 end

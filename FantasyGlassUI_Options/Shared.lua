@@ -21,31 +21,43 @@ function O.Header(parent, text, x, y, opts)
     ns:Paint(fs, "SetTextColor", "@accent")
     ns:IndexOption(text, fs)                                 -- (section headings can be searched for too)
     if ns.NoteSection and not (opts and opts.sub) then ns.NoteSection(parent, (opts and opts.nav) or text, x, y, fs) end
+    O.Mark(parent, text, y, fs, x)
     return fs
 end
-
--- Simple settings: is this section of a tab's list shown? (a section of switches: if any of them is an
--- everyday one; another tab's section: if the tab names it, or names none)
-function O.NavItemShown(tabTitle, item)
-    if type(item) ~= "table" or not ns:SettingsSimple() then return true end
-    if type(item.keys) == "table" then
-        for _, key in ipairs(item.keys) do if ns.simpleFeatures[key] then return true end end
-        return false
+-- Every heading (and every mark: a place on a page with no heading of its own) is noted with where
+-- it is, so the settings window can show a page from one of them to another (see Config.lua).
+function O.Mark(parent, text, y, fs, x)
+    if type(parent) ~= "table" then return end
+    local list = rawget(parent, "allHeads")
+    if not list then list = {}; rawset(parent, "allHeads", list) end
+    list[#list + 1] = { text = text, y = tonumber(y) or 0, x = x or 0, fs = fs }
+    if parent == O.buildingSheet and (x or 0) == 0 then ns.indexingHead = text end      -- (what is made next is under this heading)
+end
+-- The slice of a page from one heading to the one after `to` (or to its foot): top and height.
+function O.Band(sheet, from, to)
+    local heads = {}
+    for _, h in ipairs(rawget(sheet, "allHeads") or {}) do if (h.x or 0) == 0 then heads[#heads + 1] = h end end
+    table.sort(heads, function(a, b) return a.y > b.y end)
+    local total = tonumber(rawget(sheet, "contentHeight")) or 540
+    if not from then return 0, total end
+    local top, bottom
+    for i, h in ipairs(heads) do
+        if h.text == from and not top then top = math.max(0, -h.y - 4) end
+        if top and h.text == (to or from) then
+            local after = heads[i + 1]
+            bottom = after and math.max(0, -after.y - 4) or total
+            break
+        end
     end
-    local wanted = ns.simpleSections and ns.simpleSections[tabTitle]
-    return not wanted or wanted[item.title] == true
+    if not top then return nil end
+    return top, math.max(1, (bottom or total) - top)
 end
 
+-- The pages the window builds (Look, Layout, Combat, Profiles, Bars and frames, Tools, Guide) are not
+-- shown as they are: the sections show slices of them (see Config.lua). Showing a page by its old
+-- name opens the section it starts in.
 function O.ShowPage(id)
-    local th = ns.theme
-    for key, page in pairs(O.pages) do
-        if key == id then page:Show() else page:Hide() end
-    end
-    for key, b in pairs(O.tabButtons) do b:SetSelected(key == id) end
-    if O.frame then O.frame.currentPage = id end
-    if type(ns.root) == "table" and O.pages[id] then ns.root.optionsPage = id end      -- (opens there next time)
-    if O.pages[id] and O.pages[id].Refresh then O.pages[id].Refresh() end
-    if O.pages[id] and O.pages[id].NavRefresh then O.pages[id].NavRefresh() end
+    if O.OpenPage then return O.OpenPage(id) end
 end
 
 -- Hover help for a button or box: a title and a line or two of explanation.
