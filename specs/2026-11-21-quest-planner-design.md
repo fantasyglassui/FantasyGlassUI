@@ -1,0 +1,234 @@
+# Quest planner: the guide plans your leveling route
+
+Date: 2026-11-21 · Status: design, awaiting approval · Part of the quest guide, which is not released yet.
+
+## Intent
+
+Today the quest guide (FantasyGlassUI/Guide.lua) follows a route someone wrote, recorded or pasted: a fixed
+list of steps (accept, do, turn in, goto, note, level). The planner makes the guide work the route out for
+you. It looks at your quest log, asks Questie about every quest you could take, and picks the route that
+gets you the most experience per hour of play. After every quest you hand in and every level you gain it
+plans again, so the route stays right for where you are and what you have.
+
+**What matters most: efficiency**, meaning the most experience per hour, with the travel counted.
+
+## Goals
+
+- Plan a route from: the quests in your log, the quests Questie says you can take, your level, where you
+  are, and the flight points you know.
+- Work hub by hub: pick up everything worth doing at a hub, do it in one sweep, hand it in, move on.
+- Use flight paths when flying beats running, and route you to learn new flight points when that pays off.
+- Look across both continents: move you to the best zone for your level, using flights, your hearthstone,
+  and boats and zeppelins.
+- Let the player choose how group content is treated (Solo / When grouped / Everything).
+- Replan after each quest handed in and each level gained.
+- Show the plan in the guide's existing panel, with its arrow and auto-advance.
+
+## Non-goals
+
+- Gold farming suggestions: a separate project, brainstormed after this one.
+- Shipping our own quest database.
+- Copying any of Questie's code or data into Fantasy Glass UI (its license is mixed: GPLv3 for some
+  contributors, "all rights reserved" otherwise). We only read Questie's data in the game while it runs.
+- Dungeon routes inside instances (a dungeon can be a step: "Run Deadmines for these 4 quests"; what to do
+  inside is out of scope).
+- Replacing written guides: they keep working as they do today.
+
+## Anti-goals (would make this a failure even if it works)
+
+- A stutter or freeze while planning.
+- Lua errors when Questie is missing, old, or changed by an update.
+- Sending a solo player to elite or group quests while Solo is chosen.
+- Routing through a flight path the character does not know, or to a quest it cannot take
+  (wrong faction, class, profession, reputation, or prerequisites not done).
+- Presenting the quest guide as available to the public. Everything stays behind the existing unlock
+  (ns:GuideUnlocked) and its "coming soon" page.
+
+## Constraints
+
+- WoW Forever only (interface 16001, game type "camelot"). Every function and event used must pass
+  tests/forever_audit.py (the test_forever_api test); `luacheck . -q` must stay at 0 warnings;
+  tests/smoke.py must say "errors: no errors" in both modes.
+- Add-ons are restricted in combat on Forever: no planning in combat (pause at PLAYER_REGEN_DISABLED,
+  resume after), and nothing that needs COMBAT_LOG_EVENT_UNFILTERED.
+- Planning work is spread across frames with a small time budget per frame (ns:Every / OnUpdate slices),
+  never one long loop.
+- Every phrase the player sees is translated into all 9 languages (add_tr.py), like the rest of the add-on.
+- Questie is an optional dependency (## OptionalDeps: Questie in the TOC).
+
+### What Questie gives us (checked against Questie's source, Questie_Forever.toc, v12.11.1)
+
+- Questie ships a Forever build. Its official API (Questie.API) only offers RegisterOnReady,
+  RegisterForQuestUpdates and nameplate icons; it does **not** expose the quest database.
+- So we read its internals, read-only, through its module loader:
+  - `QuestieLoader:ImportModule("QuestieDB")`: `QuestieDB.GetQuest(id)` returns name, level,
+    requiredLevel, startedBy / finishedBy (NPC, object, item), objectives, preQuestSingle / preQuestGroup,
+    exclusiveTo, nextQuestInChain, requiredRaces / Classes / Skill / MinRep, specialFlags (repeatable,
+    event), zoneOrSort, and so on. `QuestieDB.IsDoable(id)` says whether this character can take it.
+    `QuestieDB.QueryNPCSingle(id, key)` gives NPC spawns (zone and coordinates).
+  - `QuestieLoader:ImportModule("QuestXP")`: `QuestXP:GetQuestLogRewardXP(questId)` gives the
+    experience a quest gives at your level.
+  - Wait for `Questie.API.RegisterOnReady` before reading anything.
+- The TOC carries `## X-QuestieDB-Contract: 4`. The planner reads it (C_AddOns.GetAddOnMetadata) and
+  every internal call goes through pcall. If the contract is not one we know, or a call fails, the
+  planner says "Questie changed; planning from your quest log only" and falls back (below).
+
+## Approaches considered
+
+- **A. A live planner in the game that reads Questie. Chosen.** Always current, every zone, nothing
+  to ship, no license problem. Costs: needs Questie installed, and a Questie update can move what we read
+  (handled by the contract check and fallback).
+- **B. Ship our own quest data.** Works without Questie, but the data cannot be taken from Questie, so it
+  means gathering it for every zone and keeping it current, and several MB more to download. Rejected.
+- **C. Pre-planned routes shipped as written guides.** Simplest, but cannot adapt to your quest log,
+  flight points or group choice, which is the point. Rejected.
+
+## The design
+
+### Starting it
+
+- `/fgui guide plan` and a "Plan my route" button on the guide list start the planner; the panel title
+  says "planned" instead of a guide's name. Following a written guide (`/fgui guide <name>`) stops it,
+  and the reverse.
+- The plan is turned into ordinary guide steps (accept / do / turnin / goto / note) plus two new kinds,
+  so the panel, arrow and auto-advance in Guide.lua do the following:
+  - `fly <node> | <destination name>`: done when you land there (or are near it).
+  - `learnflight <node> | <name>`: done when that flight point becomes known.
+
+### What it can choose from
+
+- Quests in your log (always candidates; already "picked up").
+- Quests Questie says you can take now: IsDoable, not repeatable, not an event, not hidden, and within
+  a level window round you (proposal: quest level from your level − 4 to your level + 2; quests lower
+  than that give little experience and are dropped; a field the builder may tune).
+- Quests whose prerequisites you would finish on this route (chains), so a follow-up can be planned.
+
+### Group content (the player decides)
+
+A setting on the Guide tab, "Group quests": **Solo** (default) leaves out elite quests, group quests and
+dungeon quests; **When grouped** includes them while you are in a party; **Everything** always includes
+them. Which quests count comes from the game's quest tags when the quest is in the log
+(C_QuestLog.GetQuestTagInfo) and from Questie's data otherwise. When something is left out, the panel
+shows one line: "Skipped: 2 group quests (Solo is on)".
+
+### How it judges a route: experience per hour
+
+- **Experience**: QuestXP:GetQuestLogRewardXP for each quest; for quests in the log without Questie data,
+  the game's GetQuestLogRewardXP.
+- **Time** = travel + doing the objectives.
+  - Travel within a continent: straight-line distance between points on the world map, at the character's run speed
+    (mounted speed when the character has a mount), or a flight or the hearthstone when that is faster.
+    Between continents: a boat or zeppelin crossing (see "How far it looks").
+  - Doing: an estimate per objective (kills, items to collect, places to go), based on its count and how
+    spread out its spawn points are. The constants are the builder's call.
+  - **It learns from you**: it records how long each objective and each quest actually took you, and
+    after a few quests scales its estimates to your pace (saved per character).
+- **Chains** add the value of the follow-up quests a quest unlocks, discounted because they are later.
+- **Hubs**: quest givers and hand-ins close together (proposal: within ~150 yards on the same map) form
+  a hub. A route is a sequence of hub loops: pick up at the hub, do the objectives in a sweep ordered to
+  cut travel, hand in, go on.
+- **Horizon**: it plans about two hubs ahead, then plans again; it never tries to plan the whole level
+  range at once.
+
+### How far it looks: both continents (the player's choice)
+
+The planner may send you anywhere in the world, using running, flights, your hearthstone, and boats and
+zeppelins.
+
+- **Two levels of planning**, to keep the work small:
+  1. **Pick the zone.** Every few levels, or when the current zone runs dry, it scores each zone suited to
+     your level (on both continents) by the experience per hour its quests offer, and subtracts the time
+     to get there. The zone list and its quests are gathered once per level and cached.
+  2. **Plan hubs inside the chosen zone**, as below. Only this step looks at quests one by one.
+- **Moving zones** becomes steps: "Go to Arathi Highlands: fly to Refuge Pointe" or "Take the boat from
+  Menethil Harbor to Theramore".
+- **Boats and zeppelins**: a small table of our own (written by us, not taken from Questie) holds each
+  crossing: its two docks (map and coordinates), the faction(s) that can use it, and an expected time
+  that includes waiting for the ship. Like flights, the real time of each crossing you take replaces the
+  estimate (saved per account). A new step kind, `sail <crossing> | <name>`, is done when you arrive on
+  the far side.
+- **Hearthstone**: the planner knows where you are bound (GetBindLocation, plus the inn you last set it
+  at, saved per character) and its cooldown (the item's cooldown). It uses the existing `hearth` step
+  when that is faster than running or flying, and may add "Set your hearthstone at <inn>" (a new step kind,
+  `bind <inn> | <name>`, done when the bind location changes to it) when the plan will come back there.
+- When nothing worth doing is left anywhere suited to your level, the panel says so
+  ("No quests left worth the trip; grinding or a dungeon may be faster") instead of a route.
+
+### Flight paths
+
+- All flight points on a map come from C_TaxiMap.GetTaxiNodesForMap, readable anywhere.
+- Which ones this character knows is learned when a flight master's map opens (TAXIMAP_OPENED,
+  TaxiNodeGetType) and saved per character.
+- Flight times: estimated from distance at first, then replaced by the real time of each flight you take
+  (recorded from take-off to landing, saved per account since routes are the same for everyone of a faction).
+- A trip uses a flight only when flying (with the run to the flight master and from the landing) beats
+  running.
+- **Learning new flight points**: when an unknown flight point is near the route, or on the way to the
+  next hub, the route stops there to learn it, even when that costs a minute or two, because later
+  trips get faster. Proposal: the guide takes the detour when it is under 2 minutes, or when the planner
+  expects to use that point later in its horizon.
+
+### When it plans again
+
+After QUEST_TURNED_IN and PLAYER_LEVEL_UP (what was asked), also when a flight point is learned, when you
+abandon a quest, and on "Plan again" (a button and `/fgui guide plan`). Never in combat; it waits until
+the fight ends.
+
+### Without Questie (or when Questie changed)
+
+The planner plans from your quest log alone: it orders the quests you already have into hub loops using
+the game's own quest positions (C_QuestLog / quest POIs and the waypoint the game gives), with flights.
+It cannot add new quests, and the panel says so once: "Install Questie to plan new quests too."
+
+### What the panel shows
+
+```
+Quest guide ── planned ─ Hillsbrad, level 24 → 26
+▸ Fly to Southshore                (saves ~3 min)
+  Accept 3 quests at Southshore    (+4,100 xp)
+  Do: Crushridge Bounty, Syndicate Assassins …
+  Hand in at Southshore, then run to Tarren Mill
+Skipped: 2 group quests (Solo is on)
+```
+
+The first line says where the plan is and the level it expects to reach by its end. Each step can show
+why it is there (xp gained, minutes saved).
+
+### Settings (Guide tab)
+
+- Group quests: Solo / When grouped / Everything.
+- Learn new flight points on the way: on (default) / off.
+- Show why each step is there: on (default) / off.
+
+### Tests
+
+- smoke.py gets a fake Questie (QuestieLoader, QuestieDB, QuestXP, Questie.API) with a small world:
+  a few hubs in two zones on two continents, a chain, an elite quest, a group quest, two flight points and
+  a boat. It checks the route picked, that Solo leaves out group quests, that a known flight is used and
+  an unknown one is learned, that the hearthstone and the boat are used when faster, that
+  replanning happens after a hand-in, and that a missing or changed Questie falls back without errors.
+- The planner runs in both smoke modes (combat values readable and secret) with no errors.
+
+## Left to the builder
+
+- The file layout (proposal: a new Planner.lua after Guide.lua in the TOC), and how the steps are made.
+- The hub clustering method and the route search (for example: greedy by experience per hour, then a
+  little local improvement), within the frame budget.
+- The time constants for objectives and the frame budget.
+- Exactly how a "fly" or "learnflight" step is detected as done.
+
+## Saved data
+
+- Per character: known flight points, the inn your hearthstone is set at, the learned pace factor,
+  the planner's settings.
+- Per account: recorded flight and crossing times.
+
+## Calls made in writing this up (the builder's or Claude's, not the player's)
+
+- Level window for candidates: your level − 4 to + 2.
+- Hub size: givers within ~150 yards on the same map.
+- Planning horizon: about two hubs ahead inside a zone; the zone is re-picked every few levels or when it
+  runs dry.
+- Learn a new flight point when the detour is under 2 minutes, or when the plan will use it.
+- Default group setting: Solo.
+- Crossing times include an average wait for the ship.
