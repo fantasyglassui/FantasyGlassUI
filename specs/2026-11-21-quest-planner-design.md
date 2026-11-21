@@ -338,6 +338,46 @@ Groups (nothing sent for you):
     button puts a ready-made line in your chat box ("LFG <quest name>, <zone>") for you to send yourself,
     in the channel you pick. The add-on never sends it.
 
+Seeing the plan (fifth round):
+
+32. **Zones scored on the map.** On the world map, each hub has a mark coloured by its experience per hour
+    for you now (bright for the best, dim for the worst; with marks as well as colour when a colour-vision
+    setting is on), and its number on hover. Clicking a hub asks "Plan from here?" so you can pick a spot
+    yourself. Setting to switch off.
+33. **"Why this?"** Right-click a step → "Why this?": a small page with the numbers behind it (experience,
+    travel, time to do, experience per hour, and the best thing it beat and by how much).
+34. **Your own balance.** Three sliders on the Guide tab: **Speed**, **Safety** and **Story**. The two styles
+    (#28) become presets of these (Speed: 100/0/0, Story: 40/0/100, with safety at your choice); moving a
+    slider makes the style "Custom". Safety weighs: monsters above your level near the path, elites near
+    the path, escort quests, and hubs where you died (#19): with Safety up, the plan goes round them even
+    when it costs time.
+
+Playing with others:
+
+35. **Duo mode.** "Plan with a friend": sends your plan to a player you name (add-on message, the same way
+    talent builds are sent; outside instances only, as the game requires). Both follow the same steps, and
+    each sees the other's progress on the panel ("Mira: done"). The plan waits at hand-ins and flights
+    until both are ready. Replans happen on the leader's side and are sent again. If they don't have the
+    add-on or don't answer, it says so.
+36. **Elites your class can solo.** When you finish an elite quest solo (no group while its objectives
+    were done), it is recorded per account by class and the quest's level difference. After that, elite
+    quests of that kind (similar level difference, your class) are planned even in Solo.
+
+Goals:
+
+37. **Finish the zone.** A goal on the Guide tab: "Finish <zone>". The planner plans every quest in it that
+    you can do (still with the best order and travel), and shows "Zone: 34 of 52 quests". Group quests
+    follow the group setting. When the zone is done, it says so and goes back to leveling.
+38. **Catch me up.** When you log in after 14 days or more away (proposal), a short page before the plan:
+    where you were, what is in your log (and which quests the plan still wants), your level and pace,
+    what is new in the add-on since then, and "Plan my route".
+
+Wellbeing:
+
+39. **Break reminders.** Off by default (Guide tab, or the Calm part of Accessibility). After a time you
+    choose (default 2 hours), a gentle line when the plan reaches its next stopping place ("You've been
+    playing 2 hours; this is a good place to stop"). Never in combat, never mid-hub, at most once an hour.
+
 ### Part 2: the gold farming advisor (to be designed before it is built)
 
 Wanted, and to be built after the planner; it needs its own design conversation first, since only the idea
@@ -374,6 +414,10 @@ is settled. What is known:
 - Buy supplies at the vendor stop: on (default) / off.
 - Style: Speed (default) / Story.
 - Sound when a step is done: on (default) / off.
+- Hubs on the map: on (default) / off.
+- Speed / Safety / Story sliders (set by the style presets).
+- Goal: level up (default) / finish a zone.
+- Break reminders: off (default) / after a time you choose.
 
 ### Tests
 
@@ -397,6 +441,10 @@ is settled. What is known:
   added; a supply line appears when arrows run low; the talent line appears; Story keeps a chain whole;
   the preview lists the same stops the plan follows; the chime plays; the group line goes into the chat
   box and nothing is sent.
+- The fifth round: hubs on the map carry the planner's numbers; "Why this?" shows the step's numbers;
+  Safety up routes round a dangerous hub; a duo plan arrives and progress shows both ways (and nothing is
+  sent inside an instance); a solo elite is recorded and then planned; a zone goal plans every quest in
+  the zone; the catch-up page shows after a long break; the break line waits for a stopping place.
 - The planner runs in both smoke modes (combat values readable and secret) with no errors.
 
 ## Left to the builder
@@ -413,7 +461,9 @@ is settled. What is known:
   experience per kill by level difference, the skip list, the time and experience per hour of each level,
   the planner's settings.
 - Per account: recorded flight and crossing times, real quest times, gathering nodes seen.
-- Per character also: deaths by hub, reputation goals, the time-to-play choice.
+- Per character also: deaths by hub, reputation goals, the time-to-play choice, the slider values,
+  the zone goal, the last login time.
+- Per account also: elites soloed, by class and level difference.
 
 ## Calls made in writing this up (the builder's or Claude's, not the player's)
 
@@ -433,4 +483,5 @@ is settled. What is known:
 - The inn suggestion shows after an hour or more of play.
 - Two deaths in one hub within a level make it "too hard for now"; the mark clears after two levels.
 - Gathering detours are at most ~20 seconds.
+- "Catch me up" shows after 14 days or more away; break reminders default to 2 hours, at most once an hour.
 - Hand-ins are held only when the trainer town is within ~5 minutes on the plan and no extra trip is needed.
