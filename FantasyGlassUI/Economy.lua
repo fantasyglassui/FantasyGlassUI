@@ -2,7 +2,7 @@ local _, ns = ...
 local Secret = function(v) return ns:IsSecret(v) end
 
 local function Count(id, bank)
-    local Get = (C_Item and C_Item.GetItemCount) or GetItemCount
+    local Get = C_Item.GetItemCount
     if type(Get) ~= "function" then return 0 end
     local ok, n = pcall(Get, id, bank and true or false)
     return (ok and type(n) == "number" and not Secret(n)) and n or 0
@@ -62,13 +62,8 @@ ns:NewModule("restockOn", function()
             local want = type(id) == "number" and list[id]
             if want then
                 local price, per, stock
-                if C_MerchantFrame and C_MerchantFrame.GetItemInfo then
-                    local info = C_MerchantFrame.GetItemInfo(i)
-                    if type(info) == "table" then price, per, stock = info.price, info.stackCount, info.numAvailable end
-                elseif GetMerchantItemInfo then
-                    local _, _, p, q, a = GetMerchantItemInfo(i)
-                    price, per, stock = p, q, a
-                end
+                local info = C_MerchantFrame.GetItemInfo(i)
+                if type(info) == "table" then price, per, stock = info.price, info.stackCount, info.numAvailable end
                 local buys, cost = ns.RestockPlan(want, Count(id), GetMerchantItemMaxStack and GetMerchantItemMaxStack(i), stock, price, per, (GetMoney() or 0) - spent)
                 local n = 0
                 for _, amount in ipairs(buys) do pcall(BuyMerchantItem, i, amount); n = n + amount end
@@ -360,7 +355,7 @@ function ns:DepositMaterials()
     local bank = _G.BankFrame
     if not (type(bank) == "table" and bank.IsShown and ns.Yes(bank:IsShown())) then ns:Print("Open your bank first."); return 0 end
     local C = C_Container
-    local Instant = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+    local Instant = C_Item.GetItemInfoInstant
     if not (type(C) == "table" and C.GetContainerItemID and type(Instant) == "function") then return 0 end
     local queue = {}
     for bag = 0, 4 do
@@ -451,7 +446,7 @@ ns:NewModule("auctionMemory", function()
     ns.auctionTest = { Note = Note, seen = seen }
     ns.auctionState = "on; waiting for the auction house"
     local ev = CreateFrame("Frame")
-    for _, e in ipairs({ "AUCTION_HOUSE_BROWSE_RESULTS_UPDATED", "COMMODITY_SEARCH_RESULTS_UPDATED", "ITEM_SEARCH_RESULTS_UPDATED", "AUCTION_ITEM_LIST_UPDATE" }) do pcall(ev.RegisterEvent, ev, e) end
+    for _, e in ipairs({ "AUCTION_HOUSE_BROWSE_RESULTS_UPDATED", "COMMODITY_SEARCH_RESULTS_UPDATED", "ITEM_SEARCH_RESULTS_UPDATED" }) do pcall(ev.RegisterEvent, ev, e) end
     ev:SetScript("OnEvent", ns:Guard("Auction prices", function(_, event, a)
         local A = C_AuctionHouse
         if event == "AUCTION_HOUSE_BROWSE_RESULTS_UPDATED" and A and A.GetBrowseResults then
@@ -464,11 +459,6 @@ ns:NewModule("auctionMemory", function()
         elseif event == "ITEM_SEARCH_RESULTS_UPDATED" and A and A.GetItemSearchResultInfo and type(a) == "table" then
             local r = A.GetItemSearchResultInfo(a, 1)
             if type(r) == "table" then Note(a.itemID, r.buyoutAmount or r.bidAmount) end
-        elseif event == "AUCTION_ITEM_LIST_UPDATE" and GetNumAuctionItems and GetAuctionItemInfo then
-            for i = 1, tonumber((GetNumAuctionItems("list"))) or 0 do
-                local _, _, count, _, _, _, _, _, _, buyout, _, _, _, _, _, _, id = GetAuctionItemInfo("list", i)
-                if type(buyout) == "number" and type(count) == "number" and count > 0 then Note(id, math.floor(buyout / count)) end
-            end
         end
         ns.auctionState = "on; prices noted this session: " .. tostring(ns.auctionNoted or 0)
     end))

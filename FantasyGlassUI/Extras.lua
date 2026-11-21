@@ -262,7 +262,7 @@ ns:NewModule("vendorKnown", function()
     end
     ns.vendorKnownTest = { Mark = function() dirty = true; return Mark() end }
     local ev = CreateFrame("Frame")
-    for _, e in ipairs({ "MERCHANT_SHOW", "MERCHANT_UPDATE", "NEW_RECIPE_LEARNED", "LEARNED_SPELL_IN_TAB", "SPELLS_CHANGED" }) do pcall(ev.RegisterEvent, ev, e) end
+    for _, e in ipairs({ "MERCHANT_SHOW", "MERCHANT_UPDATE", "NEW_RECIPE_LEARNED", "LEARNED_SPELL_IN_SKILL_LINE", "SPELLS_CHANGED" }) do pcall(ev.RegisterEvent, ev, e) end
     ev:SetScript("OnEvent", ns:Guard("Extras events", function() dirty = true end))
     ns:Every(0.3, "Vendor: already known", function() Mark() end)
 end)
@@ -336,19 +336,13 @@ function ns:WatchFaction(name)
         local ok, now = pcall(R.GetWatchedFactionData)
         if ok and type(now) == "table" and now.name == name then return false end      -- already watching it
     end
-    if type(R) == "table" and R.GetNumFactions and R.GetFactionDataByIndex and (R.SetWatchedFactionByIndex or SetWatchedFactionIndex) then
+    if type(R) == "table" and R.GetNumFactions and R.GetFactionDataByIndex and R.SetWatchedFactionByIndex then
         local ok, n = pcall(R.GetNumFactions)
         for i = 1, (ok and tonumber(n)) or 0 do
             local okD, d = pcall(R.GetFactionDataByIndex, i)
             if okD and type(d) == "table" and d.name == name and (not d.isHeader or d.isHeaderWithRep) then
-                return (pcall(R.SetWatchedFactionByIndex or SetWatchedFactionIndex, i))
+                return (pcall(R.SetWatchedFactionByIndex, i))
             end
-        end
-    elseif type(GetNumFactions) == "function" and type(GetFactionInfo) == "function" and type(SetWatchedFactionIndex) == "function" then
-        local ok, n = pcall(GetNumFactions)
-        for i = 1, (ok and tonumber(n)) or 0 do
-            local okD, faction, _, _, _, _, _, _, _, isHeader, _, hasRep = pcall(GetFactionInfo, i)
-            if okD and faction == name and (not isHeader or hasRep) then return (pcall(SetWatchedFactionIndex, i)) end
         end
     end
     return false
@@ -465,13 +459,8 @@ ns:NewModule("vendorStack", function()
         local id = type(self) == "table" and self.GetID and self:GetID()
         if type(id) ~= "number" then return end
         local price, per, stock
-        if C_MerchantFrame and C_MerchantFrame.GetItemInfo then
-            local info = C_MerchantFrame.GetItemInfo(id)
-            if type(info) == "table" then price, per, stock = info.price, info.stackCount, info.numAvailable end
-        elseif GetMerchantItemInfo then
-            local _, _, p, q, a = GetMerchantItemInfo(id)
-            price, per, stock = p, q, a
-        end
+        local info = C_MerchantFrame.GetItemInfo(id)
+        if type(info) == "table" then price, per, stock = info.price, info.stackCount, info.numAvailable end
         local n = ns.StackToBuy(GetMerchantItemMaxStack and GetMerchantItemMaxStack(id), stock, price, per, GetMoney())
         if n > 1 then BuyMerchantItem(id, n) end
     end))

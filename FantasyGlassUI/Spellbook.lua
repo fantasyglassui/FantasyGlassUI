@@ -2,8 +2,7 @@ local _, ns = ...
 
 -- Spellbook in our style: the parchment pages are removed, the book sits on one of our panels,
 -- spell icons get our rims and the lettering is recolored so it reads on the dark background.
--- Handles both the classic two-page book (SpellBookFrame) and the modern one inside
--- PlayerSpellsFrame. The game rewrites text colors whenever a page turns, so while the book is
+-- The book is the one inside PlayerSpellsFrame. The game rewrites text colors whenever a page turns, so while the book is
 -- open the lettering is re-applied a few times a second.
 ns:NewModule("spellbook", function()
     local th = ns.theme
@@ -19,38 +18,6 @@ ns:NewModule("spellbook", function()
         pcall(ns.AddBorder, ns, btn, 0, 0, 0, 1)
     end
     local function Hide(o) if type(o) == "table" and o.SetAlpha then o:SetAlpha(0) end end
-
-    -- Classic book ---------------------------------------------------------------------------------
-    local function Classic()
-        local book = _G.SpellBookFrame
-        if type(book) ~= "table" or not book.IsShown or not book:IsShown() then return end
-        if not book.suiBook then
-            book.suiBook = true
-            ns:StripArt(book, LAYERS)                 -- the parchment and the ornate frame pieces
-            ns:SkinWindow(book)
-            ns:PaintPanel(book)
-            for i = 1, 8 do                            -- school tabs down the side
-                local tab = _G["SpellBookSkillLineTab" .. i]
-                if type(tab) == "table" then
-                    ns:StripArt(tab, { BACKGROUND = true })
-                    local icon = tab.GetNormalTexture and tab:GetNormalTexture()
-                    if icon and icon.SetTexCoord then icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
-                    pcall(ns.AddBorder, ns, tab, 0, 0, 0, 1)
-                end
-            end
-        end
-        for i = 1, 12 do
-            local name = "SpellButton" .. i
-            local btn = _G[name]
-            if type(btn) == "table" then
-                Icon(btn, _G[name .. "IconTexture"])
-                Hide(_G[name .. "SlotFrame"]); Hide(_G[name .. "Background"]); Hide(btn.SlotFrame); Hide(btn.EmptySlot)
-                Color(_G[name .. "SubSpellName"] or btn.SpellSubName, "dim")
-                Color(btn.RequiredLevelString, "faint")
-            end
-        end
-        Color(_G.SpellBookPageText, "text")
-    end
 
     -- Modern book -----------------------------------------------------------------------------------
     local function Modern()
@@ -122,7 +89,6 @@ ns:NewModule("spellbook", function()
         acc = acc + e
         if acc < 0.25 then return end
         acc = 0
-        pcall(Classic)
         pcall(Modern)
     end))
 end)

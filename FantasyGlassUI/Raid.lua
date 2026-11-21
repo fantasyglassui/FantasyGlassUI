@@ -25,7 +25,7 @@ local function ItemName(id)
     return (type(n) == "string" and not Secret(n)) and n or (ns:Tr("Item") .. " " .. id)
 end
 local function Count(id)
-    local fn = (C_Item and C_Item.GetItemCount) or GetItemCount
+    local fn = C_Item.GetItemCount
     if type(fn) ~= "function" then return nil end
     local ok, n = pcall(fn, id)
     return (ok and type(n) == "number" and not Secret(n)) and n or nil
@@ -77,10 +77,8 @@ end
 function ns:ReadyMeFacts()
     local _, class = UnitClass("player")
     local f = { buffs = MyBuffNames(), reagents = {} }
-    if GetWeaponEnchantInfo then
-        local ok, mh = pcall(GetWeaponEnchantInfo)
-        if ok and not Secret(mh) then f.weapon = mh and true or false end
-    end
+    local ok, mh = pcall(ns.WeaponEnchantInfo)
+    if ok and not Secret(mh) then f.weapon = mh and true or false end
     if ns.LowestDurability then local ok, d = pcall(ns.LowestDurability, ns); if ok then f.durability = d end end
     for _, id in ipairs(ns.CLASS_REAGENTS[class] or {}) do
         local n = Count(id)
@@ -172,13 +170,6 @@ local function SectionInfo(id)
         local ok, info = pcall(C_EncounterJournal.GetSectionInfo, id)
         if ok and type(info) == "table" then return info end
     end
-    if type(EJ_GetSectionInfo) == "function" then
-        local ok, title, desc, headerType, icon, _, sibling, child, filtered = pcall(EJ_GetSectionInfo, id)
-        if ok and title then
-            return { title = title, description = desc, headerType = headerType, abilityIcon = icon,
-                     siblingSectionID = sibling, firstChildSectionID = child, filteredByDifficulty = filtered }
-        end
-    end
 end
 -- Short: the first sentence of a description, without its color codes, at most `max` letters.
 function ns.GuideShort(text, max)
@@ -195,8 +186,6 @@ function ns.BossGuide(name)
     if type(name) ~= "string" or Secret(name) or ns.db.bossGuide == false then return nil end
     if guideCache[name] ~= nil then return guideCache[name] or nil end
     if type(EJ_GetInstanceByIndex) ~= "function" or type(EJ_GetEncounterInfoByIndex) ~= "function" or type(EJ_SelectInstance) ~= "function" then return nil end
-    local ej = _G.EncounterJournal
-    if type(ej) == "table" and ej.IsShown and ej:IsShown() then return nil end   -- (yours is open: leave it be)
     local root
     pcall(function()
         if EJ_SelectTier and EJ_GetCurrentTier then EJ_SelectTier(EJ_GetCurrentTier()) end

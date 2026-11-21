@@ -31,12 +31,11 @@ function ns:NeedLocale(code)
     if type(ns.locales[code]) == "table" then return true end
     if ns.localesLoadTried then return false end
     ns.localesLoadTried = true
-    local C = C_AddOns
-    local load = (type(C) == "table" and C.LoadAddOn) or LoadAddOn
+    local load = C_AddOns.LoadAddOn
     if type(load) ~= "function" then ns.localesState = "this game client cannot load an add-on on request"; return false end
     local ok, loaded, why = pcall(load, ns.localesAddon)
     if ok and not loaded and why == "DISABLED" then
-        local enable = (type(C) == "table" and C.EnableAddOn) or EnableAddOn
+        local enable = C_AddOns.EnableAddOn
         if type(enable) == "function" then pcall(enable, ns.localesAddon); ok, loaded, why = pcall(load, ns.localesAddon) end
     end
     ns.localesState = (ok and loaded) and "loaded" or ("not loaded (" .. tostring(ok and why or loaded) .. ")")

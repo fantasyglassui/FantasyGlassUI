@@ -36,12 +36,7 @@ function ns:Speak(text)
     local id = Voice() or 0
     local rate = tonumber(ns.db and ns.db.speakRate) or 0
     local volume = tonumber(ns.db and ns.db.speakVolume) or 100
-    -- the newer game asks (voice, text, rate, volume, overlap); the older (voice, text, destination, rate, volume)
-    local ok = pcall(V.SpeakText, id, text, rate, volume, true)
-    if not ok then
-        local dest = Enum and Enum.VoiceTtsDestination and (Enum.VoiceTtsDestination.LocalPlayback or Enum.VoiceTtsDestination.QueuedLocalPlayback) or 1
-        ok = pcall(V.SpeakText, id, text, dest, rate, volume)
-    end
+    local ok = pcall(V.SpeakText, id, text, rate, volume, true)          -- (voice, text, rate, volume, overlap)
     ns.speakCount = (ns.speakCount or 0) + (ok and 1 or 0)
     ns.speakState = ok and "on" or "the game refused to speak"
     ns.speakLast = text

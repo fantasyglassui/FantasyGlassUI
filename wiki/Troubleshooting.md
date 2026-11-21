@@ -17,6 +17,9 @@
 ## Panels won't move during a fight
 The game does not let any add-on move or resize frames in combat. Wait for the fight to end. Equip best, Sort bags and talent builds asked for during a fight happen by themselves when it ends.
 
+## Sending to another player does nothing in a dungeon
+Inside dungeons and raids, WoW Forever does not let add-ons send messages to other players. Sending a layout, a theme or a talent build, and the add-on's own whisper box, say so there; try again outside. The pull timer still starts the game's own countdown for the group.
+
 ## A command did nothing / I don't remember a command
 `/fgui help` lists every command in a window you can search. If you mistype one, the add-on suggests the nearest.
 

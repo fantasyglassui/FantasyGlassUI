@@ -9,8 +9,8 @@ local Secret = function(v) return ns:IsSecret(v) end
 -- when a fight ends.
 ------------------------------------------------------------------------------------------
 local function ItemInfo(id)
-    local Instant = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
-    local Info = (C_Item and C_Item.GetItemInfo) or GetItemInfo
+    local Instant = C_Item.GetItemInfoInstant
+    local Info = C_Item.GetItemInfo
     local out = { id = id }
     if type(Instant) == "function" then
         local ok, _, _, _, _, icon, class, sub = pcall(Instant, id)
@@ -28,11 +28,11 @@ local function ItemInfo(id)
 end
 -- What using this item does, in the game's own words (lower case), or "".
 local function UseText(id)
-    local GetSpell = (C_Item and C_Item.GetItemSpell) or GetItemSpell
+    local GetSpell = C_Item.GetItemSpell
     if type(GetSpell) ~= "function" then return "" end
     local ok, _, spellID = pcall(GetSpell, id)
     if not (ok and type(spellID) == "number") then return "" end
-    local Describe = (C_Spell and C_Spell.GetSpellDescription) or GetSpellDescription
+    local Describe = C_Spell.GetSpellDescription
     if type(Describe) ~= "function" then return "" end
     local ok2, text = pcall(Describe, spellID)
     return (ok2 and type(text) == "string" and not Secret(text)) and text:lower() or ""
@@ -292,7 +292,7 @@ ns.travelSpells = { 556,                                                        
     10059, 11416, 11417, 11418, 11419, 11420, 32266, 32267, 33691, 35717, 49360, 49361, 53142, 88345, 88346, 120146, 132620, 132626, 176244, 176246, 224871, 281400, 281402, 344597, 395289,
     18960, 193753, 50977, 126892, 126895 }
 local function Knows(spell)
-    for _, probe in ipairs({ C_SpellBook and C_SpellBook.IsSpellKnown, _G.IsPlayerSpell, _G.IsSpellKnown }) do
+    for _, probe in ipairs({ C_SpellBook.IsSpellKnown }) do
         if type(probe) == "function" then
             local ok, yes = pcall(probe, spell)
             if ok then return ns.Is(yes, true) end
@@ -302,7 +302,7 @@ local function Knows(spell)
 end
 function ns:TravelList()
     local list = {}
-    local Count = (C_Item and C_Item.GetItemCount) or GetItemCount
+    local Count = C_Item.GetItemCount
     for _, id in ipairs(ns.travelItems) do
         local ok, n = pcall(Count, id)
         if ok and type(n) == "number" and not Secret(n) and n > 0 then
@@ -313,8 +313,7 @@ function ns:TravelList()
     for _, id in ipairs(ns.travelSpells) do
         if Knows(id) then
             local icon
-            if C_Spell and C_Spell.GetSpellTexture then local ok, t = pcall(C_Spell.GetSpellTexture, id); if ok then icon = t end
-            elseif GetSpellTexture then local ok, t = pcall(GetSpellTexture, id); if ok then icon = t end end
+            local ok, t = pcall(C_Spell.GetSpellTexture, id); if ok then icon = t end
             list[#list + 1] = { kind = "spell", value = id, id = id, icon = icon }
         end
     end
@@ -338,10 +337,9 @@ ns:NewModule("travelBar", function()
                 pcall(function()
                     local start, duration
                     if e.kind == "spell" then
-                        if C_Spell and C_Spell.GetSpellCooldown then local cd = C_Spell.GetSpellCooldown(e.id); start, duration = cd.startTime, cd.duration
-                        else start, duration = GetSpellCooldown(e.id) end
+                        local cd = C_Spell.GetSpellCooldown(e.id); start, duration = cd.startTime, cd.duration
                     else
-                        local Get = (C_Container and C_Container.GetItemCooldown) or (C_Item and C_Item.GetItemCooldown) or GetItemCooldown
+                        local Get = C_Container.GetItemCooldown or C_Item.GetItemCooldown
                         start, duration = Get(e.id)
                     end
                     b.cd:SetCooldown(start, duration)
@@ -373,10 +371,9 @@ local HEARTHS = { [6948] = true, [64488] = true, [54452] = true, [93672] = true,
 local function Ready(e)
     local ok, start, duration = pcall(function()
         if e.kind == "spell" then
-            if C_Spell and C_Spell.GetSpellCooldown then local cd = C_Spell.GetSpellCooldown(e.id); return cd and cd.startTime, cd and cd.duration end
-            return GetSpellCooldown(e.id)
+            local cd = C_Spell.GetSpellCooldown(e.id); return cd and cd.startTime, cd and cd.duration
         end
-        local Get = (C_Container and C_Container.GetItemCooldown) or (C_Item and C_Item.GetItemCooldown) or GetItemCooldown
+        local Get = C_Container.GetItemCooldown or C_Item.GetItemCooldown
         return Get(e.id)
     end)
     if not ok or Secret(start) or Secret(duration) then return nil end

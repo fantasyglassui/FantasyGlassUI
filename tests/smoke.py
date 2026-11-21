@@ -119,7 +119,10 @@ local known = {
   UnitHealthPercent = function() return SV(25) end,
   CurveConstants = { ScaleTo100 = 1 },
   UnitGetIncomingHeals = function() return SV(40) end,
-  GetWeaponEnchantInfo = function() return true, 1750000, 0, 11, true, 42000, 5, 12 end,
+  C_PaperDollInfo = { GetTemporaryEnchantmentInfo = function(slot)
+                          if slot == 16 then return { remainingTimeMs = 1750000, chargesRemaining = 0, enchantID = 11 } end
+                          if slot == 17 then return { remainingTimeMs = 42000, chargesRemaining = 5, enchantID = 12 } end
+                      end, CancelTemporaryEnchantment = function() end },
   C_Bank = { FetchNumPurchasedBankTabs = function() return 1 end, CanPurchaseBankTab = function() return true end,
              FetchNextPurchasableBankTabData = function() return { tabCost = 25000 } end, PurchaseBankTab = function() end },
   time = function() return 1800000000 end,
@@ -130,7 +133,8 @@ local known = {
   C_DamageMeter = { GetCombatSessionFromType = function() return { maxAmount = SV(900), combatSources = {
       { name = 'Someone', classFilename = 'ROGUE', totalAmount = SV(900) }, { name = 'Other', classFilename = 'MAGE', totalAmount = SV(400) } } } end },
   C_Spell = { GetSpellInfo = function(name) if name ~= 'Unknown Spell' then return { spellID = 133, iconID = 135812, name = name } end end,
-              GetSpellCooldown = function() return { startTime = SV(90), duration = SV(8) } end },
+              GetSpellCooldown = function() return { startTime = SV(90), duration = SV(8) } end,
+              GetSpellName = function(id) return "Spell " .. tostring(id) end, GetSpellTexture = function() return 135812 end },
   GetLootRollItemInfo = function() return 135349, "Sword", 1, 3, false, true, true, false end,
   GetLootRollTimeLeft = function() return 20000 end, RollOnLoot = function() end,
   GetInboxNumItems = function() return 3 end, TakeInboxMoney = function() end, AutoLootMailItem = function() end,
@@ -168,14 +172,31 @@ local known = {
   GetGuildBankTabInfo = function() return "Materials" end,
   GetInventoryItemTexture = function() return 134400 end, CursorHasItem = function() return false end,
   IsBagOpen = function() return true end, CloseAllBags = function() end,
-  GetItemInfoInstant = function() return 1, "Armor", "Cloth", "INVTYPE_CHEST", 134400, 4, 1 end,
   UnitXP = function() return 1200 end, UnitXPMax = function() return 5000 end, GetXPExhaustion = function() return 300 end,
-  IsPlayerAtEffectiveMaxLevel = function() return false end,
+  GetMaxPlayerLevel = function() return 60 end,
   C_Reputation = { GetWatchedFactionData = function() return { name = "Stormwind", reaction = 5, currentReactionThreshold = 0, nextReactionThreshold = 6000, currentStanding = 1500 } end },
   FACTION_BAR_COLORS = { [5] = { r = 0, g = 0.6, b = 0.1 } }, FACTION_STANDING_LABEL5 = "Friendly",
   GetLocale = function() return "enUS" end, IsInRaid = function() return false end,
   IsModifiedClick = function(kind) return kind == 'SPLITSTACK' end,
-  ChatFrame_AddMessageEventFilter = function(ev, fn) if ev == "CHAT_MSG_SAY" then handlers[#handlers+1] = { self = newmock(), name = "chatfilter", fn = fn } end end,
+  ChatFrameUtil = { AddMessageEventFilter = function(ev, fn) if ev == "CHAT_MSG_SAY" then handlers[#handlers+1] = { self = newmock(), name = "chatfilter", fn = fn } end end,
+                    OpenChat = function() end, SendTell = function() end, GetActiveWindow = function() end,
+                    DeactivateChat = function() end, InsertLink = function() end },
+  C_ChatInfo = { SendChatMessage = function() end, PerformEmote = function() return true end, InChatMessagingLockdown = function() return false end,
+                 SendAddonMessage = function() return 0 end, RegisterAddonMessagePrefix = function() return true end },
+  C_PartyInfo = { DoReadyCheck = function() end, InviteUnit = function() end, DoCountdown = function() end },
+  C_ActionBar = { HasAction = function() return false end, GetActionTexture = function() end, GetActionText = function() end,
+                  GetActionUseCount = function() return 0 end, GetActionCooldown = function() return { startTime = 0, duration = 0, isEnabled = true } end,
+                  IsUsableAction = function() return true, false end, IsActionInRange = function() return nil end,
+                  IsCurrentAction = function() return false end, IsAutoRepeatAction = function() return false end,
+                  IsConsumableAction = function() return false end, IsStackableAction = function() return false end },
+  GetNumSpecGroups = function() return 1 end,
+  C_SpecializationInfo = { GetActiveSpecGroup = function() return 1 end, SetActiveSpecGroup = function() end,
+                           GetSpecialization = function() return 1 end, GetSpecializationInfo = function() return 262, "Elemental" end },
+  AuraUtil = { GetDebuffDisplayInfoTable = function() return { Magic = { color = { r = 0.2, g = 0.6, b = 1 } }, None = { color = { r = 0.8, g = 0, b = 0 } } } end },
+  C_CurrencyInfo = { GetCoinTextureString = function() return "5s" end },
+  StaticPopup_FindVisible = function(which)
+      for i = 1, 4 do local p = env["StaticPopup" .. i]; if type(p) == "table" and rawget(p, "which") == which then return p end end
+  end,
   Enum = { PlayerSwingType = { MainHand = 0, OffHand = 1, Ranged = 2 }, BankType = { Character = 0 }, DamageMeterType = { DamageDone = 0, Dps = 1, HealingDone = 2, Hps = 3, Absorbs = 4, Interrupts = 5, Dispels = 6, DamageTaken = 7, AvoidableDamageTaken = 8, Deaths = 9, EnemyDamageTaken = 10 }, DamageMeterSessionType = { Overall = 0, Current = 1 },
            BagIndex = { ReagentBag = 5, CharacterBankTab_1 = 6, CharacterBankTab_2 = 7, Keyring = -1, Characterbanktab = -2 } },
   GetRealmName = function() return 'Realm' end,
@@ -202,7 +223,6 @@ local known = {
   GetQuestLogRewardXP = function() return 100 end, GetQuestLogRewardMoney = function() return 500 end,
   GetNumQuestLogRewards = function() return 1 end, GetQuestLogRewardInfo = function() return "Item", "tex", 2 end,
   GetNumQuestLogChoices = function() return 2 end, GetQuestLogChoiceInfo = function() return "Choice", "tex", 1 end,
-  GetCoinTextureString = function() return "5s" end,
   GetQuestLogSpecialItemInfo = function() return "|Hitem:9|h[Thing]|h", 9, 1, false end,
   GetQuestDifficultyColor = function() return { r = 1, g = 1, b = 0 } end,
   GetQuestProgressBarPercent = function() return 40 end,
@@ -248,7 +268,7 @@ local known = {
                    GetActiveQuests = function() return { { isComplete = true, questID = 1 } } end,
                    GetAvailableQuests = function() return { { questID = 2 } } end,
                    SelectActiveQuest = function() end, SelectAvailableQuest = function() end },
-  UISpecialFrames = {}, NUM_CHAT_WINDOWS = 3, RAID_CLASS_COLORS = { ROGUE = { r = 1, g = 0.96, b = 0.41 } }, ChatTypeInfo = {},
+  UISpecialFrames = {}, Constants = { ChatFrameConstants = { MaxChatWindows = 3 } }, RAID_CLASS_COLORS = { ROGUE = { r = 1, g = 0.96, b = 0.41 } }, ChatTypeInfo = {},
   DEFAULT_CHAT_FRAME = newmock(), SlashCmdList = {}, BackdropTemplateMixin = {},
 }
 do
@@ -632,7 +652,7 @@ known.ConfirmLootSlot = function(slot) known.__bound[#known.__bound + 1] = slot 
 known.CompleteLFGRoleCheck = function() known.__roles = known.__roles + 1 end
 -- invites and duels: counted, for the tests
 known.__invited, known.__duels = {}, 0
-known.InviteUnit = function(name) known.__invited[#known.__invited + 1] = name end
+known.C_PartyInfo.InviteUnit = function(name) known.__invited[#known.__invited + 1] = name end
 known.CancelDuel = function() known.__duels = known.__duels + 1 end
 -- resurrections and summons: what the game would answer, changed by the tests
 known.__res = { offerer = "Healer", delay = 0, combat = false, accepted = 0 }
@@ -952,7 +972,6 @@ try("Tree of hovered window", function()
     local lines = ns:DumpTree()
     if not lines or lines < 5 then error("hover dump failed") end
     env.GetMouseFoci = function() return {} end
-    env.GetMouseFocus = function() return nil end
     if ns:DumpTree() ~= nil then error("nothing under the mouse should just print a hint") end
 end)
 try("Window polish", function()
@@ -990,7 +1009,7 @@ try("Layout sharing", function()
 end)
 try("Layout per talent set", function()
     local set = 1
-    env.GetActiveTalentGroup = function() return set end
+    env.C_SpecializationInfo.GetActiveSpecGroup = function() return set end
     ns.db.specLayouts = true; ns.db.groupLayouts = false; ns.db.layouts = {}; ns.db.layoutCtx = "1"
     ns.db.pos = { ufPlayer = { "CENTER", "CENTER", -100, -100 } }
     set = 2
@@ -1478,7 +1497,7 @@ try("Layout by group size", function()
     if ns.db.pos.ufPlayer[3] ~= -100 then error("coming back to solo did not restore its layout") end
     if ns.db.layouts.raid.pos.ufPlayer[3] ~= 400 then error("the raid layout was not saved") end
     -- both options together: the context names both
-    env.GetActiveTalentGroup = function() return 2 end
+    env.C_SpecializationInfo.GetActiveSpecGroup = function() return 2 end
     ns.db.specLayouts = true; kind = "party"
     if ns:LayoutContext() ~= "2/party" then error("combined context: " .. tostring(ns:LayoutContext())) end
     ns.db.specLayouts, ns.db.groupLayouts, ns.db.layouts, ns.db.pos, ns.db.layoutCtx = false, false, {}, {}, nil
@@ -1586,7 +1605,7 @@ try("Class extras", function()
         env.UnitClass = function() return class, class end
         env.UnitPowerMax = function() return 0 end
         env.UnitPowerType = function() return 0, "MANA" end
-        env.GetPetHappiness, env.GetRuneCooldown = nil, nil
+        env.C_PetInfo, env.GetRuneCooldown = nil, nil
         setup()
         module()
         local state = ns.classBarState()
@@ -1600,7 +1619,7 @@ try("Class extras", function()
         env.UnitPowerMax = function(_, kind) return (kind == 0 or kind == nil) and 800 or 100 end
     end, "mana bar shown")
     as("DRUID", function() env.UnitPowerMax = function() return 800 end end, "nothing for this class")   -- in caster form: mana is the main bar
-    as("HUNTER", function() env.GetPetHappiness = function() return 2, 100, 0 end end, "pet happiness available")
+    as("HUNTER", function() env.C_PetInfo = { GetPetHappiness = function() return 2, 100, 0 end } end, "pet happiness available")
     as("SHAMAN", function() end, "nothing for this class")
     env.UnitClass, env.UnitPowerMax, env.UnitPowerType = realClass, realMax, realType
 end)
@@ -1635,10 +1654,10 @@ try("Movable action bars", function()
 end)
 try("AFK idle time", function()
     local clock, afkFlag, sentAFK = 1000, false, 0
-    local realTime, realAFK, realSend = env.GetTime, env.UnitIsAFK, env.SendChatMessage
+    local realTime, realAFK, realSend = env.GetTime, env.UnitIsAFK, env.C_ChatInfo.SendChatMessage
     env.GetTime = function() return clock end
     env.UnitIsAFK = function() return afkFlag end
-    env.SendChatMessage = function(_, kind) if kind == "AFK" then sentAFK = sentAFK + 1 end end
+    env.C_ChatInfo.SendChatMessage = function(_, kind) if kind == "AFK" then sentAFK = sentAFK + 1 end end
     env.InCombatLockdown = function() return false end
     local alpha = 1
     local realSet = rawget(env.UIParent, "SetAlpha")
@@ -1667,7 +1686,7 @@ try("AFK idle time", function()
     if alpha ~= 0 then error("the game's away flag should show the screen") end
     afkFlag = false; tick()
     if alpha ~= 1 then error("and clearing it should bring the interface back") end
-    env.GetTime, env.UnitIsAFK, env.SendChatMessage = realTime, realAFK, realSend
+    env.GetTime, env.UnitIsAFK, env.C_ChatInfo.SendChatMessage = realTime, realAFK, realSend
     rawset(env.UIParent, "SetAlpha", realSet)
 end)
 try("Demo", function()
@@ -2749,8 +2768,8 @@ try("A tooltip for a unit the game keeps hidden", function()
 end)
 try("XP bar text", function()
     if type(ns.RefreshXPBar) ~= "function" then error("the XP bar module did not start") end
-    local realXP, realMax, realBreak, realAtMax = env.UnitXP, env.UnitXPMax, env.BreakUpLargeNumbers, env.IsPlayerAtEffectiveMaxLevel
-    env.IsPlayerAtEffectiveMaxLevel = function() return false end
+    local realXP, realMax, realBreak, realAtMax = env.UnitXP, env.UnitXPMax, env.BreakUpLargeNumbers, env.GetMaxPlayerLevel
+    env.GetMaxPlayerLevel = function() return 60 end
     env.BreakUpLargeNumbers = false                        -- (plain digits, so the text can be compared)
     env.UnitXP = function() return 4520 end
     env.UnitXPMax = function() return 10000 end
@@ -2774,7 +2793,7 @@ try("XP bar text", function()
         if ns.xpBarText ~= "" then error("hidden amounts should leave the text empty, got " .. tostring(ns.xpBarText)) end
         if #ns.errors ~= before then error("hidden amounts raised: " .. tostring(ns.errors[#ns.errors])) end
     end
-    env.UnitXP, env.UnitXPMax, env.BreakUpLargeNumbers, env.IsPlayerAtEffectiveMaxLevel = realXP, realMax, realBreak, realAtMax
+    env.UnitXP, env.UnitXPMax, env.BreakUpLargeNumbers, env.GetMaxPlayerLevel = realXP, realMax, realBreak, realAtMax
     ns.db.xpNumbers = false; ns:RefreshXPBar()
 end)
 try("What counts as a submenu", function()
@@ -3243,7 +3262,7 @@ try("Cutscenes, looting and the DELETE box", function()
     if type(ns.FillDeleteBox) == "function" then
         local typed
         local box = newmock(); rawset(box, "SetText", function(_, s) typed = s end)
-        local popup = newmock(); rawset(popup, "which", "DELETE_GOOD_ITEM"); rawset(popup, "editBox", box)
+        local popup = newmock(); rawset(popup, "which", "DELETE_GOOD_ITEM"); rawset(popup, "GetEditBox", function() return box end)
         local realPopup, realWord = env.StaticPopup1, env.DELETE_ITEM_CONFIRM_STRING
         env.StaticPopup1, env.DELETE_ITEM_CONFIRM_STRING = popup, "DELETE"
         if not ns.FillDeleteBox("DELETE_GOOD_ITEM") or typed ~= "DELETE" then error("the box should be filled with the game's word") end
@@ -4123,16 +4142,6 @@ try("Profession leveling helper", function()
     if ns:ShowSkillUps() ~= 2 then error("both recipes that still give points are listed") end
     env.C_TradeSkillUI = nil
     if ns:ShowSkillUps(true) ~= 0 then error("no profession open: nothing, and quietly when asked to be") end
-    -- the older profession window: recipes by place in its list, difficulty as a word
-    env.GetNumTradeSkills = function() return 3 end
-    env.GetTradeSkillInfo = function(i) return ({ "Leather", "Light Armor Kit", "Handstitched Boots" })[i], ({ "header", "optimal", "trivial" })[i] end
-    env.GetTradeSkillNumReagents = function() return 1 end
-    env.GetTradeSkillReagentInfo = function() return "Light Leather", nil, 1, 0 end
-    env.GetTradeSkillReagentItemLink = function() return "|cffffffff|Hitem:2318::::::::|h[Light Leather]|h|r" end
-    local legacy = ns.SkillUpLegacyRecipes()
-    if not legacy or #legacy ~= 2 or legacy[1].difficulty ~= 0 or legacy[1].reagents[1].id ~= 2318 then error("the older profession window's recipes") end
-    if ns:ShowSkillUps(true) ~= 1 then error("the older window: only the recipe that still gives points") end
-    env.GetNumTradeSkills, env.GetTradeSkillInfo, env.GetTradeSkillNumReagents, env.GetTradeSkillReagentInfo, env.GetTradeSkillReagentItemLink = nil, nil, nil, nil, nil
     -- the button on the profession window
     env.ProfessionsFrame = env.CreateFrame("Frame", "ProfessionsFrame")
     ns.skillUpTest.Dress()
@@ -4758,17 +4767,6 @@ try("Gear set buttons", function()
     E.GetEquipmentSetInfo = function(id) return string.format("Set %02d", id), 1, id, false, 1, 0, 1, 0, 0 end
     if T.Refresh(win) ~= 12 or not tostring(ns.setsState):find("(of 15)", 1, true) then error("fifteen sets: twelve buttons, and the count said") end
 
-    -- older game clients: sets by number, worn by name
-    local keepTable = env.C_EquipmentSet
-    env.C_EquipmentSet = false
-    env.GetNumEquipmentSets = function() return 1 end
-    env.GetEquipmentSetInfo = function() return "Old", 5, 0, true, 10, 10, 0, 0 end
-    env.UseEquipmentSet = function(name) used[#used + 1] = name end
-    sets = ns:EquipmentSets()
-    if #sets ~= 1 or sets[1].id ~= "Old" or not sets[1].worn then error("an older client's sets were not read") end
-    ns:WearSet(sets[1])
-    if used[#used] ~= "Old" then error("an older client is asked for a set by its name") end
-    env.C_EquipmentSet, env.GetNumEquipmentSets, env.GetEquipmentSetInfo, env.UseEquipmentSet = keepTable, nil, nil, nil
     E.GetEquipmentSetIDs, E.GetEquipmentSetInfo, E.UseEquipmentSet = keepIDs, keepInfo, keepUse
 end)
 try("Stand up and dismount when an action needs it", function()
@@ -4780,7 +4778,8 @@ try("Stand up and dismount when an action needs it", function()
     -- never off a mount in the air or on a flight path; never when not mounted
     local off, stood = 0, 0
     env.Dismount = function() off = off + 1 end
-    env.DoEmote = function(what) if what == "STAND" then stood = stood + 1 end end
+    local realEmote = env.C_ChatInfo.PerformEmote
+    env.C_ChatInfo.PerformEmote = function(what) if what == "STAND" then stood = stood + 1 end; return true end
     local flying, taxi, mounted = true, false, true
     env.IsFlying = function() return flying end
     env.UnitOnTaxi = function() return taxi end
@@ -4819,7 +4818,8 @@ try("Stand up and dismount when an action needs it", function()
         if ns.defaults[key] ~= false then error(key .. " acts for you: it must ship switched off") end
     end
     ns.db.autoStand, ns.db.autoDismount = keepStand, keepOff
-    for _, k in ipairs({ "GetTime", "Dismount", "DoEmote", "IsFlying", "UnitOnTaxi", "IsMounted", "SPELL_FAILED_NOT_STANDING", "ERR_ATTACK_MOUNTED" }) do env[k] = nil end
+    env.C_ChatInfo.PerformEmote = realEmote
+    for _, k in ipairs({ "GetTime", "Dismount", "IsFlying", "UnitOnTaxi", "IsMounted", "SPELL_FAILED_NOT_STANDING", "ERR_ATTACK_MOUNTED" }) do env[k] = nil end
 end)
 try("Accepting resurrections and summons", function()
     if ns.ResurrectDecision(false, false) ~= "accept" or ns.ResurrectDecision(true, false) ~= "fighting"
@@ -5224,23 +5224,22 @@ try("Crafting bar and profession icons", function()
     if not yes or not why:find("ProfessionsFrame", 1, true) then error("no flag at all, and the profession window open: taken as a craft") end
     if ns:IsCraft(false, 2881) then error("the game saying \"not a craft\" outweighs an open window") end
     for _, w in ipairs(windows) do env[w] = false end
-    -- the profession can be told from the recipe itself, or from an older client's name-only answer
+    -- the profession can be told from the recipe itself, or from the open profession's name alone
     local keepBase = env.C_TradeSkillUI.GetBaseProfessionInfo
     env.C_TradeSkillUI.GetBaseProfessionInfo = nil
     env.C_TradeSkillUI.GetProfessionInfoByRecipeID = function(id) if id == 2881 then return { professionID = 165, professionName = "Leatherworking" } end end
     local prof = ns:CraftProfession(2881)
     if not prof or prof.line ~= 165 or prof.via ~= "GetProfessionInfoByRecipeID" then error("the profession should be told from the recipe") end
     env.C_TradeSkillUI.GetProfessionInfoByRecipeID = nil
-    env.GetTradeSkillLine = function() return "Leatherworking", 75, 150 end
+    env.C_TradeSkillUI.GetBaseProfessionInfo = function() return { professionName = "Leatherworking" } end
     prof = ns:CraftProfession(2881)
     if not prof or prof.name ~= "Leatherworking" or ns:ProfessionIcon(prof) ~= "Interface\\Icons\\Trade_LeatherWorking" then error("a name alone is enough to find the icon") end
-    env.GetTradeSkillLine = function() return "UNKNOWN" end
+    env.C_TradeSkillUI.GetBaseProfessionInfo = function() return nil end
     if ns:CraftProfession(2881) ~= nil then error("no profession open: none is reported") end
     -- nothing known about the profession: the recipe's own picture is better than the placeholder
     env.C_TradeSkillUI.GetRecipeInfo = function() return { recipeID = 2881, name = "Light Leather", icon = 134251 } end
     if ns:CraftIcon(true, 136243, 2881) ~= 134251 then error("with no profession to be found, the recipe's own icon is used") end
     env.C_TradeSkillUI.GetRecipeInfo = nil
-    env.GetTradeSkillLine = nil
     env.C_TradeSkillUI.GetBaseProfessionInfo = keepBase
     for _, w in ipairs(windows) do env[w] = nil end
     -- what the self-check will say about a craft
@@ -5496,7 +5495,8 @@ try("Gear sets follow the talent set", function()
     E.GetEquipmentSetIDs = function() return { 1, 2 } end
     E.GetEquipmentSetInfo = function(id) return (id == 1) and "Tank" or "Heal", 1, id, worn == id, 10, 10, 0, 0, 0 end
     E.UseEquipmentSet = function(id) used[#used + 1] = id; worn = id; return true end
-    env.GetActiveTalentGroup = function() return spec end
+    local keepSpec = env.C_SpecializationInfo.GetActiveSpecGroup
+    env.C_SpecializationInfo.GetActiveSpecGroup = function() return spec end
     for k in pairs(T.memory) do T.memory[k] = nil end
     T.SetSpec(1)
     -- wearing a set while a talent set is active is what teaches it
@@ -5527,7 +5527,7 @@ try("Gear sets follow the talent set", function()
     fireEvent("PLAYER_REGEN_ENABLED")
     if #used ~= 2 or used[2] ~= 2 then error("after the fight the waiting gear set should go on") end
     env.InCombatLockdown = keepCombat
-    env.GetActiveTalentGroup = nil
+    env.C_SpecializationInfo.GetActiveSpecGroup = keepSpec
     for k in pairs(T.memory) do T.memory[k] = nil end
     E.GetEquipmentSetIDs, E.GetEquipmentSetInfo, E.UseEquipmentSet = keepIDs, keepInfo, keepUse
 end)
@@ -6881,23 +6881,25 @@ try("11.0: own action bars", function()
     do
         local b = ns.engine.all[1]
         local asked = 0
-        local realTex = env.GetActionTexture
-        rawset(env, "GetActionTexture", function(...) asked = asked + 1; if type(realTex) == "function" then return realTex(...) end end)
+        local AB = env.C_ActionBar
+        local realTex = AB.GetActionTexture
+        AB.GetActionTexture = function(...) asked = asked + 1; return realTex(...) end
         b.suiHas = true
         pcall(ns.engine.UpdateState, b)
-        rawset(env, "GetActionTexture", realTex)
+        AB.GetActionTexture = realTex
         if asked ~= 0 then error("the light look at a button should not ask for its icon") end
         if type(ns.engine.events) ~= "table" then error("the bars' timer should be kept, to start with the bars") end
     end
     -- (11.4.3) our buttons keep themselves up to date (no game action button template)
     local b1 = bars[1].buttons[1]
-    local realHas, realTex = env.HasAction, env.GetActionTexture
-    env.HasAction = function() return true end
-    env.GetActionTexture = function() return 135000 end
+    local AB = env.C_ActionBar
+    local realHas, realTex = AB.HasAction, AB.GetActionTexture
+    AB.HasAction = function() return true end
+    AB.GetActionTexture = function() return 135000 end
     if ns.engine.UpdateButton(b1) ~= true then error("a button with an action") end
-    env.HasAction = function() return false end
+    AB.HasAction = function() return false end
     if ns.engine.UpdateButton(b1) ~= false then error("an empty button") end
-    env.HasAction, env.GetActionTexture = realHas, realTex
+    AB.HasAction, AB.GetActionTexture = realHas, realTex
     ns.engine.UpdateHotkey(b1)
     if #ns.engine.all ~= 96 then error("every button is kept up to date: " .. #ns.engine.all) end
     -- (11.4.2) our own stance bar: a button for each form, casting its spell
@@ -7329,9 +7331,9 @@ try("11.2.0: tools menu, timers, bag and mail rules, talents, holidays, preview"
     if ns.SortPlan({ { item = A }, { item = R } })[1] ~= R then error("your own sections first") end
     ns.db.bagRules = nil
     -- 11.4: talent builds sent and received
-    local text = ns.EncodeTalentBuild("SHAMAN", "Resto", { [1] = { [2] = 3 }, [3] = { [1] = 5, [4] = 2 } })
-    local cls, nm, tal, pts = ns.DecodeTalentBuild(text)
-    if cls ~= "SHAMAN" or nm ~= "Resto" or tal[3][1] ~= 5 or pts[1] ~= 3 or pts[3] ~= 7 or pts[2] ~= 0 then error("a talent build as text and back") end
+    local text = ns.EncodeTalentBuild("SHAMAN", "Resto", "BkGAAAAAAAAAAAAAAAAAAAAAAMz+/=")
+    local cls, nm, code = ns.DecodeTalentBuild(text)
+    if cls ~= "SHAMAN" or nm ~= "Resto" or code ~= "BkGAAAAAAAAAAAAAAAAAAAAAAMz+/=" then error("a talent build as text and back") end
     if ns.DecodeTalentBuild("nonsense") then error("not a build") end
     -- 11.4: reputations across characters
     local store = { pins = { Darnassus = true }, chars = {
@@ -7477,38 +7479,37 @@ try("11.2.0: tools menu, timers, bag and mail rules, talents, holidays, preview"
         ns:LoadLocale()
     end
     -- talent builds
-    local steps = ns.TalentSteps({ [1] = { [2] = 3, [5] = 1 }, [2] = { [1] = 2 } }, { [1] = { [2] = 1 } })
-    if #steps ~= 3 or steps[1].ranks ~= 2 or steps[3].tab ~= 2 then error("talent steps") end
     ns:TalentCommand("")
     ns:HideLists()
 end)
-try("Talent builds are learned a point at a time, lowest tier first", function()
-    -- one tree: talent 1 is tier 2 (needs 5 points spent), talent 2 is tier 1 (5 ranks), talent 3 is tier 1 (3 ranks)
-    local tiers, maxR, ranks = { 2, 1, 1 }, { 3, 5, 3 }, { 0, 0, 0 }
-    local free = 10
-    local keep = {}
-    for _, k in ipairs({ "GetNumTalentTabs", "GetNumTalents", "GetTalentInfo", "LearnTalent", "UnitCharacterPoints" }) do keep[k] = env[k] end
-    env.GetNumTalentTabs = function() return 1 end
-    env.GetNumTalents = function() return 3 end
-    env.GetTalentInfo = function(_, i) return "T" .. i, "icon", tiers[i], 1, ranks[i], maxR[i] end
-    local log = {}
-    env.LearnTalent = function(_, i)
-        log[#log + 1] = tostring(i)
-        local spent = ranks[1] + ranks[2] + ranks[3]
-        if free <= 0 or ranks[i] >= maxR[i] or spent < (tiers[i] - 1) * 5 then return end
-        ranks[i] = ranks[i] + 1; free = free - 1
-    end
-    env.UnitCharacterPoints = function() return free end
-    ns.TalentBuilds()["Test build"] = { talents = { [1] = { [1] = 3, [2] = 5, [3] = 2 } }, points = { 10 } }
-    ns:ApplyTalentBuild("Test build")
-    for _ = 1, 60 do                                   -- (each step waits for the one before: run the chain through)
-        local batch = timers; timers = {}
-        for _, fn in ipairs(batch) do pcall(fn) end
-    end
-    for k, v in pairs(keep) do env[k] = v end
-    ns.TalentBuilds()["Test build"] = nil
-    if ranks[2] ~= 5 or ranks[1] ~= 3 or ranks[3] ~= 2 then error("the build landed as " .. table.concat(ranks, "/") .. " (wanted 3/5/2): " .. table.concat(log, ",") .. " learned=" .. tostring(ns.talentLearned)) end
-    if ns.talentLearned ~= 10 then error("points spent should be 10, said " .. tostring(ns.talentLearned)) end
+try("Talent builds are the game's loadout codes, put back through its own Import box", function()
+    local keep = { env.C_ClassTalents, env.C_Traits, env.PlayerSpellsUtil, env.ClassTalentLoadoutImportDialog }
+    local code = "BkGAAAAAAAAAAAAAAAAAAAAAAMzMjZmZMzYGzMjZGAAAAAAgZmZmZGzMzMzYmBAAAAgZmB"
+    env.C_ClassTalents = { GetActiveConfigID = function() return 7 end }
+    env.C_Traits = { GenerateImportString = function(id) if id == 7 then return code end end }
+    -- saving keeps the game's own code and the specialization's name
+    ns.TalentBuilds()["Old style"] = { talents = { [1] = { [1] = 3 } }, points = { 3 } }     -- (from the older talent system: dropped)
+    local b = ns:SaveTalentBuild("Elemental AoE")
+    if not b or b.code ~= code or b.spec ~= "Elemental" then error("a build is the game's code: " .. tostring(b and b.code)) end
+    if ns.TalentBuilds()["Old style"] then error("a build from the older talent system cannot be used and is dropped") end
+    -- putting it back: the talent window opens, and its Import box gets the code and the name
+    local opened, shown, typed = 0, 0, {}
+    env.PlayerSpellsUtil = { OpenToClassTalentsTab = function() opened = opened + 1 end }
+    local function box(key) local e = newmock(); rawset(e, "SetText", function(_, t) typed[key] = t end); local c = newmock(); rawset(c, "GetEditBox", function() return e end); return c end
+    local dialog = newmock()
+    rawset(dialog, "ShowDialog", function() shown = shown + 1 end)
+    rawset(dialog, "ImportControl", box("code")); rawset(dialog, "NameControl", box("name"))
+    rawset(dialog, "UpdateAcceptButtonEnabledState", function() end)
+    env.ClassTalentLoadoutImportDialog = dialog
+    if not ns:ApplyTalentBuild("Elemental AoE") then error("putting a build back") end
+    if opened ~= 1 or shown ~= 1 or typed.code ~= code or typed.name ~= "Elemental AoE" then error("the game's Import box should be filled in") end
+    if ns.talentImportState ~= "the game's Import box" then error("said: " .. tostring(ns.talentImportState)) end
+    -- without that box, the code is shown to copy instead
+    env.ClassTalentLoadoutImportDialog = false
+    if not ns:ApplyTalentBuild("Elemental AoE") or ns.talentImportState ~= "copy box" then error("no Import box: the code to copy") end
+    ns:HideLists()
+    ns.TalentBuilds()["Elemental AoE"] = nil
+    env.C_ClassTalents, env.C_Traits, env.PlayerSpellsUtil, env.ClassTalentLoadoutImportDialog = keep[1], keep[2], keep[3], keep[4]
 end)
 try("11.6: execute line, group practice, enemy cooldowns, upgrades, new characters", function()
     -- the execute line only on an enemy

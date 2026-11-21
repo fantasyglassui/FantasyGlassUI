@@ -27,7 +27,7 @@ function ns.GearLevelOf(unit)
     local okM, main = pcall(GetInventoryItemLink, unit, 16)
     local okO, off = pcall(GetInventoryItemLink, unit, 17)
     if okM and type(main) == "string" and not Secret(main) and not (okO and type(off) == "string") then
-        local GetInstant = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+        local GetInstant = C_Item.GetItemInfoInstant
         local okI, _, _, _, loc = pcall(GetInstant or error, main)
         if okI and loc == "INVTYPE_2HWEAPON" then levels[#levels + 1] = ns.InspectSlotLevel(unit, 16) end
     end

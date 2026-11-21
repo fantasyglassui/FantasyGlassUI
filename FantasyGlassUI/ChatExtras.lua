@@ -27,7 +27,7 @@ function ns.HighlightName(message, name, hex)
 end
 
 ns:NewModule("chatHighlight", function()
-    local addFilter = (ChatFrameUtil and ChatFrameUtil.AddMessageEventFilter) or ChatFrame_AddMessageEventFilter
+    local addFilter = ChatFrameUtil.AddMessageEventFilter
     if not addFilter then return end
     local me = UnitName and UnitName("player")
     if type(me) ~= "string" or ns:IsSecret(me) or #me < 3 then return end
@@ -67,7 +67,7 @@ ns:NewModule("chatExtras", function()
         end)
         return false, out, ...
     end
-    local addFilter = (ChatFrameUtil and ChatFrameUtil.AddMessageEventFilter) or ChatFrame_AddMessageEventFilter
+    local addFilter = ChatFrameUtil.AddMessageEventFilter
     if addFilter then
         for _, e in ipairs({ "CHAT_MSG_SAY", "CHAT_MSG_YELL", "CHAT_MSG_GUILD", "CHAT_MSG_OFFICER", "CHAT_MSG_PARTY",
                              "CHAT_MSG_PARTY_LEADER", "CHAT_MSG_RAID", "CHAT_MSG_RAID_LEADER", "CHAT_MSG_WHISPER",
@@ -111,7 +111,7 @@ ns:NewModule("chatExtras", function()
             local saved = root.chatHistory[key]
             local fresh = type(saved) == "table" and type(saved.at) == "number" and time and (time() - saved.at) < FRESH
             local restored = 0
-            for i = 1, (type(NUM_CHAT_WINDOWS) == "number" and NUM_CHAT_WINDOWS or 10) do
+            for i = 1, Constants.ChatFrameConstants.MaxChatWindows do
                 local chat = _G["ChatFrame" .. i]
                 local isLog = (i == 2)
                 if type(chat) == "table" and type(IsCombatLog) == "function" then
@@ -178,7 +178,7 @@ ns:NewModule("chatExtras", function()
     end
 
     -- a small "Copy" button in the corner of each chat tab, bright only on hover
-    for i = 1, NUM_CHAT_WINDOWS do
+    for i = 1, Constants.ChatFrameConstants.MaxChatWindows do
         local chat = _G["ChatFrame" .. i]
         if type(chat) == "table" and chat.GetMessageInfo then
             local b = ns:SizeToLabel(ns:CreateButton(chat, "Copy", 200, 16, function() ShowCopy(chat) end), 40)

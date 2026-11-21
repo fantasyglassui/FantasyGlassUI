@@ -16,11 +16,11 @@ function ns.RollAdvice(link, canNeed)
     if need and id and ns.LootWished and ns.LootWished(id) then return "need", ns:Tr("on your wishlist") end
     local up = ns.UpgradeAmount and ns.UpgradeAmount(link)
     if need and up then return "need", format(ns:Tr("upgrade +%d"), math.floor(up + 0.5)) end
-    local GetInstant = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+    local GetInstant = C_Item.GetItemInfoInstant
     local okI, _, _, _, equipLoc = pcall(GetInstant or error, link)
     local gear = okI and ns.EQUIP_SLOTS and ns.EQUIP_SLOTS[equipLoc]
     if gear then
-        local IsUsable = (C_Item and C_Item.IsUsableItem) or IsUsableItem
+        local IsUsable = C_Item.IsUsableItem
         local okU, usable = pcall(IsUsable or error, link)
         if okU and ns.Is(usable, false) then return "pass", ns:Tr("you can't use it") end
     end

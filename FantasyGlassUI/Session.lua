@@ -28,7 +28,7 @@ end
 local function AskPlayed()
     if not RequestTimePlayed or waiting then return end
     waiting = {}
-    for i = 1, (type(NUM_CHAT_WINDOWS) == "number" and NUM_CHAT_WINDOWS or 10) do
+    for i = 1, Constants.ChatFrameConstants.MaxChatWindows do
         local cf = _G["ChatFrame" .. i]
         if type(cf) == "table" and cf.IsEventRegistered and cf.UnregisterEvent then
             local ok, registered = pcall(cf.IsEventRegistered, cf, "TIME_PLAYED_MSG")

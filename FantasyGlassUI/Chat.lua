@@ -39,7 +39,7 @@ ns:NewModule("chat", function()
         if not ts or ts == "none" then SetCVar("showTimestamps", "%H:%M ") end
     end
 
-    for i = 1, NUM_CHAT_WINDOWS do
+    for i = 1, Constants.ChatFrameConstants.MaxChatWindows do
         local chat = _G["ChatFrame" .. i]
         if chat then
             -- Hide the clutter buttons

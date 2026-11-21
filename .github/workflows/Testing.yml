@@ -38,6 +38,12 @@ jobs:
       - name: Install what the tests need
         run: pip install -r tests/requirements.txt
 
+      # (the WoW: Forever audit asks luacheck which of the game's names the add-on reads)
+      - name: Install luacheck
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq lua-check
+
       # The hidden-value audit reads each file once and keeps what it learned; this keeps it between runs.
       - uses: actions/cache@v4
         with:

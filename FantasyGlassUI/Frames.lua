@@ -11,9 +11,9 @@ end
 
 local function HealthBars()
     return {
-        { Path(PlayerFrame, "PlayerFrameContent", "PlayerFrameContentMain", "HealthBarsContainer", "HealthBar") or _G.PlayerFrameHealthBar, "player" },
-        { Path(TargetFrame, "TargetFrameContent", "TargetFrameContentMain", "HealthBarsContainer", "HealthBar") or _G.TargetFrameHealthBar, "target" },
-        { Path(FocusFrame, "TargetFrameContent", "TargetFrameContentMain", "HealthBarsContainer", "HealthBar") or _G.FocusFrameHealthBar, "focus" },
+        { Path(PlayerFrame, "PlayerFrameContent", "PlayerFrameContentMain", "HealthBarsContainer", "HealthBar"), "player" },
+        { Path(TargetFrame, "TargetFrameContent", "TargetFrameContentMain", "HealthBarsContainer", "HealthBar"), "target" },
+        { Path(FocusFrame, "TargetFrameContent", "TargetFrameContentMain", "HealthBarsContainer", "HealthBar"), "focus" },
     }
 end
 
@@ -48,7 +48,7 @@ ns:NewModule("fallbacks", function()
         Path(FocusFrame, "TargetFrameContainer", "FrameTexture"),
         Path(TargetFrame, "totFrame", "FrameTexture"),
         Path(FocusFrame, "totFrame", "FrameTexture"),
-        _G.PetFrameTexture, _G.PlayerFrameTexture, _G.TargetFrameTextureFrameTexture,
+        _G.PetFrameTexture,
     }
     for i = 1, 4 do
         tex[#tex + 1] = Path(PartyFrame, "MemberFrame" .. i, "Texture")
@@ -61,7 +61,7 @@ end)
 -- Cast bar with countdown --------------------------------------------------------------
 ns:NewModule("fallbacks", function()
     if ns.db.playerCast then return end      -- our own cast bar replaces it
-    local cb = PlayerCastingBarFrame or CastingBarFrame
+    local cb = PlayerCastingBarFrame
     if not cb then return end
     for _, k in ipairs({ "Border", "TextBorder", "BorderShield", "Flash" }) do ns:Kill(cb[k]) end
     if cb.Text and cb.Text.SetFont then ns:Font(cb.Text, 11) end

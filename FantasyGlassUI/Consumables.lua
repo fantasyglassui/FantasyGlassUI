@@ -42,7 +42,7 @@ end
 function ns:BagConsumables()
     local list, seen = {}, {}
     local C = C_Container
-    local Instant = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+    local Instant = C_Item.GetItemInfoInstant
     if not (type(C) == "table" and type(C.GetContainerNumSlots) == "function" and type(C.GetContainerItemID) == "function" and type(Instant) == "function") then return list end
     for bag = 0, 4 do
         local okN, slots = pcall(C.GetContainerNumSlots, bag)
@@ -53,7 +53,7 @@ function ns:BagConsumables()
                 local ok, _, _, _, _, icon, class, sub = pcall(Instant, id)
                 if ok and class == 0 and ORDER[sub] then
                     local level = 0
-                    local GetInfo = (C_Item and C_Item.GetItemInfo) or GetItemInfo
+                    local GetInfo = C_Item.GetItemInfo
                     if type(GetInfo) == "function" then
                         local okL, _, _, _, itemLevel = pcall(GetInfo, id)
                         if okL and type(itemLevel) == "number" then level = itemLevel end
@@ -133,8 +133,8 @@ ns:NewModule("consumeBar", function()
         ns.consumeState = (#list == 0) and "on; nothing consumable in your bags" or format("on; %d items on the bar", #list)
         return #list
     end
-    local Count = (C_Item and C_Item.GetItemCount) or GetItemCount
-    local Cooldown = (C_Container and C_Container.GetItemCooldown) or (C_Item and C_Item.GetItemCooldown) or GetItemCooldown
+    local Count = C_Item.GetItemCount
+    local Cooldown = C_Container.GetItemCooldown or C_Item.GetItemCooldown
     -- how many are left, and the cooldown: any time
     local function Tick()
         for _, b in ipairs(buttons) do

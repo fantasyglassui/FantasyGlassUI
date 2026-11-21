@@ -7,7 +7,7 @@ local Secret = function(v) return ns:IsSecret(v) end
 -- a goals panel and a login splash.
 ------------------------------------------------------------------------------------------
 local function Count(id, bank)
-    local Get = (C_Item and C_Item.GetItemCount) or GetItemCount
+    local Get = C_Item.GetItemCount
     if type(Get) ~= "function" then return 0 end
     local ok, n = pcall(Get, id, bank and true or false)
     return (ok and type(n) == "number" and not Secret(n)) and n or 0
@@ -228,7 +228,6 @@ function ns.ReadyMissing(names, classes, buffNames)
 end
 local function SpellName(id)
     if C_Spell and C_Spell.GetSpellName then local ok, n = pcall(C_Spell.GetSpellName, id); if ok and type(n) == "string" then return n end end
-    if GetSpellInfo then local ok, n = pcall(GetSpellInfo, id); if ok and type(n) == "string" then return n end end
 end
 local function BuffNamesOf(unit)
     local names = {}

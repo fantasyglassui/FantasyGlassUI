@@ -248,14 +248,14 @@ local function Num(v) return type(v) == "number" and not ns:IsSecret(v) and v or
 -- when not), and lit while it is the current or repeating action. The timer checks only this; the
 -- icon, count, name and cooldown come with events (and a full look once a second besides).
 local function ApplyState(b, a)
-    local okU, usable, noMana = pcall(IsUsableAction, a)
-    local okR, inRange = pcall(IsActionInRange, a)
+    local okU, usable, noMana = pcall(C_ActionBar.IsUsableAction, a)
+    local okR, inRange = pcall(C_ActionBar.IsActionInRange, a)
     if okR and inRange == false and not ns:IsSecret(inRange) then b.icon:SetVertexColor(0.85, 0.25, 0.25)
     elseif okU and not ns:IsSecret(usable) and usable then b.icon:SetVertexColor(1, 1, 1)
     elseif okU and not ns:IsSecret(noMana) and noMana then b.icon:SetVertexColor(0.35, 0.45, 1)
     elseif okU and not ns:IsSecret(usable) then b.icon:SetVertexColor(0.4, 0.4, 0.4)
     else b.icon:SetVertexColor(1, 1, 1) end
-    local cur = (IsCurrentAction and IsCurrentAction(a)) or (IsAutoRepeatAction and IsAutoRepeatAction(a))
+    local cur = C_ActionBar.IsCurrentAction(a) or C_ActionBar.IsAutoRepeatAction(a)
     if b.suiLit and not ns:IsSecret(cur) then b.suiLit:SetShown(cur and true or false) end
 end
 function engine.UpdateState(b)
@@ -265,35 +265,30 @@ end
 function engine.UpdateButton(b)
     local a = ActionOf(b)
     if not a then return end
-    local has = HasAction and HasAction(a)
+    local has = C_ActionBar.HasAction(a)
     if ns:IsSecret(has) then has = true end
     if has then
-        local ok, tex = pcall(GetActionTexture, a)
+        local ok, tex = pcall(C_ActionBar.GetActionTexture, a)
         b.icon:SetTexture(ok and tex or nil)
         b.icon:Show()
         b.icon:SetAlpha(1)
         -- count (consumables, stacks), macro name
         local text = ""
-        if (IsConsumableAction and ns.Yes(IsConsumableAction(a))) or (IsStackableAction and ns.Yes(IsStackableAction(a))) then
-            local okC, n = pcall(GetActionCount, a)
+        if ns.Yes(C_ActionBar.IsConsumableAction(a)) or ns.Yes(C_ActionBar.IsStackableAction(a)) then
+            local okC, n = pcall(C_ActionBar.GetActionUseCount, a)
             n = okC and Num(n)
             text = n and ((n > 9999) and "*" or tostring(n)) or ""
         end
         b.Count:SetText(text)
-        if b.Name and GetActionText then
-            local okN, nm = pcall(GetActionText, a)
+        if b.Name then
+            local okN, nm = pcall(C_ActionBar.GetActionText, a)
             b.Name:SetText((okN and type(nm) == "string" and not ns:IsSecret(nm)) and nm or "")
         end
         -- cooldown (the game's own figures, whether or not they can be read)
         if b.cooldown then
             local start, dur, enable   -- luacheck: ignore
-            if C_ActionBar and C_ActionBar.GetActionCooldown then
-                local okI, info = pcall(C_ActionBar.GetActionCooldown, a)
-                if okI and type(info) == "table" then start, dur, enable = info.startTime, info.duration, info.isEnabled end
-            elseif GetActionCooldown then
-                local okI, s, d, e = pcall(GetActionCooldown, a)
-                if okI then start, dur, enable = s, d, e end
-            end
+            local okI, info = pcall(C_ActionBar.GetActionCooldown, a)
+            if okI and type(info) == "table" then start, dur, enable = info.startTime, info.duration, info.isEnabled end
             if start ~= nil and dur ~= nil then pcall(b.cooldown.SetCooldown, b.cooldown, start, dur) else pcall(b.cooldown.Clear, b.cooldown) end
         end
         ApplyState(b, a)
@@ -335,7 +330,7 @@ do
     local ev = CreateFrame("Frame")
     for _, e in ipairs({ "ACTIONBAR_SLOT_CHANGED", "ACTIONBAR_UPDATE_STATE", "ACTIONBAR_UPDATE_USABLE", "ACTIONBAR_UPDATE_COOLDOWN",
                          "SPELL_UPDATE_COOLDOWN", "SPELL_UPDATE_USABLE", "SPELL_UPDATE_CHARGES", "UPDATE_SHAPESHIFT_FORM", "PLAYER_TARGET_CHANGED",
-                         "BAG_UPDATE_DELAYED", "PLAYER_ENTERING_WORLD", "UPDATE_BINDINGS", "UNIT_INVENTORY_CHANGED", "LEARNED_SPELL_IN_TAB",
+                         "BAG_UPDATE_DELAYED", "PLAYER_ENTERING_WORLD", "UPDATE_BINDINGS", "UNIT_INVENTORY_CHANGED", "LEARNED_SPELL_IN_SKILL_LINE",
                          "START_AUTOREPEAT_SPELL", "STOP_AUTOREPEAT_SPELL", "PLAYER_ENTER_COMBAT", "PLAYER_LEAVE_COMBAT", "UPDATE_MACROS", "MODIFIER_STATE_CHANGED" }) do
         pcall(ev.RegisterEvent, ev, e)
     end
@@ -438,7 +433,7 @@ ns:NewModule("barEngine", function()
     -- the game's own bars step aside: unseen, unclickable, and out of the Bars tab's list
     local GAME = { "MainActionBar", "MultiBarBottomLeft", "MultiBarBottomRight", "MultiBarRight", "MultiBarLeft", "MultiBar5", "MultiBar6", "MultiBar7" }
     for _, name in ipairs(GAME) do
-        local f = _G[name] or (name == "MainActionBar" and _G.MainMenuBar) or nil
+        local f = _G[name]
         if f then ns:Silence(f) end
         for i = #ns.barHandles, 1, -1 do
             if ns.barHandles[i].key == "bar_" .. name then table.remove(ns.barHandles, i) end

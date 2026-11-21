@@ -68,7 +68,7 @@ local function NewWindow(cfg)
     local C = C_Container
     local th = ns.theme
     local BAGS = cfg.bags
-    local GetInstant = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+    local GetInstant = C_Item.GetItemInfoInstant
 
     local win = CreateFrame("Frame", cfg.name, UIParent, ns.template)
     win:SetSize(PAD * 2 + COLS * SIZE + (COLS - 1) * GAP, 200)
@@ -173,7 +173,7 @@ local function NewWindow(cfg)
     local function HasUseEffect(b)
         local link = b.info and b.info.hyperlink
         if not link then return false end
-        local get = (C_Item and C_Item.GetItemSpell) or GetItemSpell
+        local get = C_Item.GetItemSpell
         if type(get) ~= "function" then return true end      -- can't tell: treat it as protected, which is always safe
         local ok, spell = pcall(get, link)
         return (not ok) or spell ~= nil
@@ -241,9 +241,6 @@ local function NewWindow(cfg)
             b.SplitStack = function(_, amount) C.SplitContainerItem(b.bag, b.slot, amount) end
             if StackSplitFrame and StackSplitFrame.OpenStackSplitFrame then
                 StackSplitFrame:OpenStackSplitFrame(n, b, "BOTTOMLEFT", "TOPLEFT")
-                return
-            elseif OpenStackSplitFrame then
-                OpenStackSplitFrame(n, b, "BOTTOMLEFT", "TOPLEFT")
                 return
             end
         end
@@ -921,13 +918,8 @@ local function NewWindow(cfg)
     -- used up, a fight ends), so look a few times a second rather than only when the mouse enters.
     ns:Every(0.15, cfg.name .. " use button", function()
         if not overlay or InCombatLockdown() or not win:IsShown() then return end
-        local focus
-        if GetMouseFoci then
-            local ok, list = pcall(GetMouseFoci)
-            focus = ok and type(list) == "table" and list[1] or nil
-        elseif GetMouseFocus then
-            focus = GetMouseFocus()
-        end
+        local ok, list = pcall(GetMouseFoci)
+        local focus = ok and type(list) == "table" and list[1] or nil
         if not ns:Usable(focus) then return end
         if focus == overlay then
             local target = overlay.target

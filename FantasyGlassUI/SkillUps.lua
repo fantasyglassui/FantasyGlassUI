@@ -35,7 +35,7 @@ function ns.SkillUpPlan(recipes, have)
             local free = makeNow == math.huge                    -- (no materials at all)
             if free then makeNow = 1 end
             out[#out + 1] = { id = r.id, name = r.name, difficulty = r.difficulty, skillUps = r.skillUps or 1,
-                makeNow = makeNow, missing = missing, short = short, free = free, legacy = r.legacy }
+                makeNow = makeNow, missing = missing, short = short, free = free }
         end
     end
     table.sort(out, function(a, b)
@@ -48,38 +48,13 @@ function ns.SkillUpPlan(recipes, have)
     return out
 end
 
--- The older profession window (TradeSkillFrame): its list by index, the difficulty as a word.
-local LEGACY = { optimal = ORANGE, medium = YELLOW, easy = GREEN, trivial = GRAY }
-local function LegacyRecipes()
-    if type(GetNumTradeSkills) ~= "function" or type(GetTradeSkillInfo) ~= "function" then return nil end
-    local okN, n = pcall(GetNumTradeSkills)
-    if not okN or type(n) ~= "number" or Secret(n) or n == 0 then return nil end
-    local list = {}
-    for i = 1, n do
-        local ok, name, kind = pcall(GetTradeSkillInfo, i)
-        local diff = ok and type(kind) == "string" and LEGACY[kind]
-        if diff and type(name) == "string" and not Secret(name) then
-            local reagents = {}
-            local okR, count = pcall(GetTradeSkillNumReagents, i)
-            for r = 1, (okR and tonumber(count)) or 0 do
-                local okI, _, _, need = pcall(GetTradeSkillReagentInfo, i, r)
-                local okL, link = pcall(GetTradeSkillReagentItemLink, i, r)
-                local id = okL and type(link) == "string" and tonumber(link:match("item:(%d+)"))
-                if okI and id and (tonumber(need) or 0) > 0 then reagents[#reagents + 1] = { id = id, need = tonumber(need) } end
-            end
-            list[#list + 1] = { id = i, name = name, difficulty = diff, skillUps = 1, reagents = reagents, legacy = true }
-        end
-    end
-    return #list > 0 and list or nil
-end
-ns.SkillUpLegacyRecipes = LegacyRecipes
 
 -- The known recipes of the open profession, with their difficulty and materials.
 local function KnownRecipes()
     local T = C_TradeSkillUI
-    if not (T and T.GetAllRecipeIDs and T.GetRecipeInfo) then return LegacyRecipes() end
+    if not (T and T.GetAllRecipeIDs and T.GetRecipeInfo) then return nil end
     local okI, ids = pcall(T.GetAllRecipeIDs)
-    if not okI or type(ids) ~= "table" or #ids == 0 then return LegacyRecipes() end
+    if not okI or type(ids) ~= "table" or #ids == 0 then return nil end
     local list = {}
     for _, id in ipairs(ids) do
         local ok, info = pcall(T.GetRecipeInfo, id)
@@ -105,7 +80,7 @@ local function KnownRecipes()
 end
 local function Have(id)
     local mine = 0
-    local GetCount = (C_Item and C_Item.GetItemCount) or GetItemCount
+    local GetCount = C_Item.GetItemCount
     if type(GetCount) == "function" then
         local ok, n = pcall(GetCount, id, true)                     -- (bags and bank)
         if ok and type(n) == "number" and not Secret(n) then mine = n end
@@ -134,12 +109,6 @@ local function SkillLine()
                 and type(p.skillLevel) == "number" and type(p.maxSkillLevel) == "number" and p.maxSkillLevel > 0 then
                 return format("%s %d/%d", p.professionName, p.skillLevel, p.maxSkillLevel)
             end
-        end
-    end
-    if type(GetTradeSkillLine) == "function" then
-        local ok, name, rank, max = pcall(GetTradeSkillLine)
-        if ok and type(name) == "string" and name ~= "UNKNOWN" and not Secret(name) and type(rank) == "number" and type(max) == "number" and max > 0 then
-            return format("%s %d/%d", name, rank, max)
         end
     end
     return nil
@@ -181,11 +150,7 @@ function ns:ShowSkillUps(quiet)
             right = right,
             click = function()
                 local T = C_TradeSkillUI
-                if p.legacy then                                     -- (the older window: select it by its place in the list)
-                    if type(TradeSkillFrame_SetSelection) == "function" then pcall(TradeSkillFrame_SetSelection, p.id)
-                    elseif type(SelectTradeSkill) == "function" then pcall(SelectTradeSkill, p.id) end
-                    if type(TradeSkillFrame_Update) == "function" then pcall(TradeSkillFrame_Update) end
-                elseif T and T.OpenRecipe then pcall(T.OpenRecipe, p.id)
+                if T and T.OpenRecipe then pcall(T.OpenRecipe, p.id)
                 elseif T and T.SetRecipeItemNameFilter then pcall(T.SetRecipeItemNameFilter, p.name) end
             end,
             tip = tip,

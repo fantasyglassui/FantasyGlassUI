@@ -4,7 +4,7 @@ local PUBLIC = { "CHAT_MSG_SAY", "CHAT_MSG_YELL", "CHAT_MSG_CHANNEL" }
 local TALK = { "CHAT_MSG_SAY", "CHAT_MSG_YELL", "CHAT_MSG_GUILD", "CHAT_MSG_OFFICER", "CHAT_MSG_PARTY", "CHAT_MSG_PARTY_LEADER",
                "CHAT_MSG_RAID", "CHAT_MSG_RAID_LEADER", "CHAT_MSG_INSTANCE_CHAT", "CHAT_MSG_CHANNEL" }
 local function AddFilter(events, fn)
-    local add = (ChatFrameUtil and ChatFrameUtil.AddMessageEventFilter) or ChatFrame_AddMessageEventFilter
+    local add = ChatFrameUtil.AddMessageEventFilter
     if type(add) ~= "function" then return false end
     for _, e in ipairs(events) do pcall(add, e, fn) end
     return true
@@ -101,8 +101,8 @@ ns:NewModule("chatNames", function()
             if not name then return end
             ns.InvitePlayer(name)
             ns:Print("Invited %s.", name)
-            local box = ChatEdit_GetActiveWindow and ChatEdit_GetActiveWindow()       -- (the click also opened a whisper: close it)
-            if type(box) == "table" and box.Hide and ChatEdit_DeactivateChat then pcall(ChatEdit_DeactivateChat, box) end
+            local box = ChatFrameUtil.GetActiveWindow()       -- (the click also opened a whisper: close it)
+            if type(box) == "table" and box.Hide then pcall(ChatFrameUtil.DeactivateChat, box) end
         end))
     end
     local added = 0
@@ -116,8 +116,7 @@ ns:NewModule("chatNames", function()
                     root:CreateDivider()
                     root:CreateButton(ns:Tr("Copy name"), function() if ns.ShowCopyBox then ns:ShowCopyBox(name) end end)
                     root:CreateButton(ns:Tr("Guild invite"), function()
-                        local go = (C_GuildInfo and C_GuildInfo.Invite) or GuildInvite
-                        if type(go) == "function" then pcall(go, name) end
+                        pcall(C_GuildInfo.Invite, name)
                     end)
                 end)
             end)
@@ -216,9 +215,8 @@ function ns:ShowWhispers(name)
             box:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
             box:SetScript("OnEnterPressed", ns:Guard("Whispers", function(self)
                 local text = ns.Trim(self:GetText())
-                if text ~= "" and w.current then
-                    local Send = (C_ChatInfo and C_ChatInfo.SendChatMessage) or SendChatMessage
-                    if type(Send) == "function" then pcall(Send, text, "WHISPER", nil, w.current) end
+                if text ~= "" and w.current and not ns:SayMessagingLocked() then
+                    pcall(C_ChatInfo.SendChatMessage, text, "WHISPER", nil, w.current)
                 end
                 self:SetText("")
             end))
@@ -251,12 +249,12 @@ ns.chatTabPlans = {
     { name = "Whispers", groups = { "WHISPER", "BN_WHISPER" } },
 }
 function ns:SetupChatTabs()
-    if type(FCF_OpenNewWindow) ~= "function" or type(ChatFrame_AddMessageGroup) ~= "function" then
+    if type(FCF_OpenNewWindow) ~= "function" then
         ns:Print("This game client does not let add-ons make chat tabs.")
         return 0
     end
     local have = {}
-    for i = 1, tonumber(NUM_CHAT_WINDOWS) or 10 do
+    for i = 1, Constants.ChatFrameConstants.MaxChatWindows do
         local name = GetChatWindowInfo and GetChatWindowInfo(i)
         if type(name) == "string" and not Secret(name) then have[name] = true end
     end
@@ -266,9 +264,9 @@ function ns:SetupChatTabs()
         if not have[title] and not have[plan.name] then
             local ok, frame = pcall(FCF_OpenNewWindow, title)
             if ok and type(frame) == "table" then
-                if ChatFrame_RemoveAllMessageGroups then pcall(ChatFrame_RemoveAllMessageGroups, frame) end
-                if ChatFrame_RemoveAllChannels then pcall(ChatFrame_RemoveAllChannels, frame) end
-                for _, group in ipairs(plan.groups) do pcall(ChatFrame_AddMessageGroup, frame, group) end
+                if frame.RemoveAllMessageGroups then pcall(frame.RemoveAllMessageGroups, frame) end
+                if frame.RemoveAllChannels then pcall(frame.RemoveAllChannels, frame) end
+                for _, group in ipairs(plan.groups) do if frame.AddMessageGroup then pcall(frame.AddMessageGroup, frame, group) end end
                 made = made + 1
             end
         end
@@ -292,16 +290,15 @@ ns:NewModule("shortCommands", function()
         made[#made + 1] = slash
     end
     Add("/rl", "FANTASYGLASSUIRL", function() if ReloadUI then ReloadUI() end end)
-    Add("/rc", "FANTASYGLASSUIRC", function() if DoReadyCheck then DoReadyCheck() end end)
+    Add("/rc", "FANTASYGLASSUIRC", function() C_PartyInfo.DoReadyCheck() end)
     Add("/tt", "FANTASYGLASSUITT", function(text)
         if not (ns.Yes(UnitExists("target")) and ns.Yes(UnitIsPlayer("target"))) then ns:Print("Target a player first."); return end
         local name, realm = UnitName("target")
         if type(name) ~= "string" or Secret(name) then return end
         if type(realm) == "string" and not Secret(realm) and realm ~= "" then name = name .. "-" .. realm end
         text = ns.Trim(text)
-        if text == "" then if ChatFrame_SendTell then pcall(ChatFrame_SendTell, name) end return end
-        local Send = (C_ChatInfo and C_ChatInfo.SendChatMessage) or SendChatMessage
-        if type(Send) == "function" then pcall(Send, text, "WHISPER", nil, name) end
+        if text == "" then pcall(ChatFrameUtil.SendTell, name) return end
+        if not ns:SayMessagingLocked() then pcall(C_ChatInfo.SendChatMessage, text, "WHISPER", nil, name) end
     end)
     ns.shortCommandsState = (#made > 0) and ("on: " .. table.concat(made, " ")) or "on, but another add-on already has all three"
     ns.shortCommandsMade = made
@@ -335,8 +332,7 @@ ns:NewModule("guildNotices", function()
         elseif event == "CHAT_MSG_SYSTEM" then Online(text)
         else
             ns:After(8, function()
-                local get = (C_GuildInfo and C_GuildInfo.GetMOTD) or GetGuildRosterMOTD
-                if type(get) == "function" then local ok, motd = pcall(get); if ok then Motd(motd) end end
+                local ok, motd = pcall(C_GuildInfo.GetMOTD); if ok then Motd(motd) end
             end)
         end
     end))

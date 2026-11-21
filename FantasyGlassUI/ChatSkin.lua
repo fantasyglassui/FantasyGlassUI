@@ -17,7 +17,16 @@ ns:NewModule("chatSkin", function()
         return math.max(0, math.min(100, v)) / 100
     end
 
-    for i = 1, NUM_CHAT_WINDOWS do
+    -- the edit box rim takes the color of the channel you are typing in
+    local RimColor = ns:Safe("Chat edit box", function(eb)
+        if not eb.suiRim then return end
+        local t = eb:GetAttribute("chatType")
+        if t == "CHANNEL" then t = "CHANNEL" .. (eb:GetAttribute("channelTarget") or "") end
+        local info = t and ChatTypeInfo[t]
+        if info then eb.suiRim:SetColor(info.r, info.g, info.b, 1) end
+    end)
+
+    for i = 1, Constants.ChatFrameConstants.MaxChatWindows do
         local chat = _G["ChatFrame" .. i]
         if chat then
             -- our own tint, 4px larger than the text area
@@ -62,6 +71,7 @@ ns:NewModule("chatSkin", function()
                 ebFill:SetTexture(ns.FLAT)
                 ns:Paint(ebFill, "SetVertexColor", "@bg", 0.85)
                 eb.suiRim = ns:Outline(eb, 2, th.border[1], th.border[2], th.border[3], 1, "BACKGROUND")
+                if eb.UpdateHeader then hooksecurefunc(eb, "UpdateHeader", RimColor) end   -- (the game calls the box's own method)
             end
         end
     end
@@ -77,14 +87,4 @@ ns:NewModule("chatSkin", function()
     ns:SetChatBackground(ns.db.chatBg or 25)
     ns:OnTheme(function() ns:SetChatBackground(ns.db.chatBg or 25) end)
 
-    -- the edit box rim takes the color of the channel you are typing in
-    if ChatEdit_UpdateHeader then
-        hooksecurefunc("ChatEdit_UpdateHeader", ns:Safe("Chat edit box", function(eb)
-            if not eb.suiRim then return end
-            local t = eb:GetAttribute("chatType")
-            if t == "CHANNEL" then t = "CHANNEL" .. (eb:GetAttribute("channelTarget") or "") end
-            local info = t and ChatTypeInfo[t]
-            if info then eb.suiRim:SetColor(info.r, info.g, info.b, 1) end
-        end))
-    end
 end)

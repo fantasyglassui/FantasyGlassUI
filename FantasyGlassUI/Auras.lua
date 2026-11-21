@@ -15,8 +15,7 @@ ns:NewModule("auraBars", function()
     -- main hand / off hand / ranged enchants that are active right now
     local function Enchants()
         local list = {}
-        if not GetWeaponEnchantInfo then return list end
-        local ok, mh, mhTime, mhCharges, _, oh, ohTime, ohCharges, _, rh, rhTime, rhCharges = pcall(GetWeaponEnchantInfo)
+        local ok, mh, mhTime, mhCharges, _, oh, ohTime, ohCharges, _, rh, rhTime, rhCharges = pcall(ns.WeaponEnchantInfo)
         if not ok then return list end
         if mh then list[#list + 1] = { inv = 16, index = 1, left = mhTime, charges = mhCharges } end
         if oh then list[#list + 1] = { inv = 17, index = 2, left = ohTime, charges = ohCharges } end
@@ -68,7 +67,7 @@ ns:NewModule("auraBars", function()
             b:SetScript("OnClick", function(self)
                 if InCombatLockdown() then return end
                 if self.enchant then
-                    if CancelItemTempEnchantment then pcall(CancelItemTempEnchantment, self.enchant.index) end
+                    pcall(C_PaperDollInfo.CancelTemporaryEnchantment, self.enchant.inv)
                 elseif filter == "HELPFUL" and CancelUnitBuff then
                     pcall(CancelUnitBuff, "player", self.index, "HELPFUL")
                 end
@@ -167,10 +166,8 @@ ns:NewModule("auraBars", function()
         acc = 0
         if slow >= 5 then slow = 0; refresh(); return end
         local have = 0
-        if GetWeaponEnchantInfo then
-            local ok, mh, _, _, _, oh, _, _, _, rh = pcall(GetWeaponEnchantInfo)
-            if ok then have = (mh and 1 or 0) + (oh and 1 or 0) + (rh and 1 or 0) end
-        end
+        local ok, mh, _, _, _, oh, _, _, _, rh = pcall(ns.WeaponEnchantInfo)
+        if ok then have = (mh and 1 or 0) + (oh and 1 or 0) + (rh and 1 or 0) end
         if have > 0 or have ~= lastEnchants then refreshBuffs() end
         lastEnchants = have
     end)

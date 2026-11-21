@@ -46,7 +46,6 @@ function ns:RaidGameSetting(name, value)
     if InCombatLockdown() then return false end
     local set = (C_CVar and C_CVar.SetCVar) or SetCVar
     local ok = pcall(set, name, tostring(value))
-    if CompactUnitFrameProfiles_ApplyCurrentSettings then pcall(CompactUnitFrameProfiles_ApplyCurrentSettings) end
     if CompactRaidFrameContainer and CompactRaidFrameContainer.TryUpdate then pcall(CompactRaidFrameContainer.TryUpdate, CompactRaidFrameContainer) end
     return ok
 end

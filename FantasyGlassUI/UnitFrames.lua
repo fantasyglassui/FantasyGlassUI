@@ -14,8 +14,10 @@ local Secret = function(v) return ns:IsSecret(v) end
 -- A debuff's frame color: the game's color for what can remove it (magic, curse, poison, disease),
 -- red for the rest and whenever the game keeps the kind to itself.
 function ns:DebuffColor(kind)
-    local c = (not Secret(kind)) and type(kind) == "string" and type(DebuffTypeColor) == "table" and DebuffTypeColor[kind]
-    if type(c) == "table" and type(c.r) == "number" then return c.r, c.g, c.b, 1 end
+    local okT, info = pcall(AuraUtil.GetDebuffDisplayInfoTable)
+    local d = (not Secret(kind)) and type(kind) == "string" and okT and type(info) == "table" and info[kind]
+    local c = type(d) == "table" and d.color
+    if kind ~= "None" and type(c) == "table" and type(c.r) == "number" then return c.r, c.g, c.b, 1 end
     return 0.85, 0.18, 0.18, 1
 end
 
@@ -1360,9 +1362,7 @@ ns:NewModule("unitFrames", function()
             Park(_G.BossTargetFrameContainer)
         end
         if ns.db.ufArena then                             -- the game's arena frames, now that ours stand in for them
-            Park(_G.CompactArenaFrame)
             Park(_G.ArenaEnemyFramesContainer)
-            for i = 1, 5 do Park(_G["ArenaEnemyFrame" .. i]) end
         end
         -- shaman totems live on Blizzard's player frame: bring them to ours
         local totems = _G.TotemFrame

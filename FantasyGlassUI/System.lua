@@ -167,8 +167,7 @@ end
 function ns:ShowAddons()
     if type(UpdateAddOnMemoryUsage) ~= "function" or type(GetAddOnMemoryUsage) ~= "function" then ns:Print("This game client does not report add-on memory."); return end
     pcall(UpdateAddOnMemoryUsage)
-    local A = C_AddOns or {}
-    local Num, Info, Loaded = A.GetNumAddOns or GetNumAddOns, A.GetAddOnInfo or GetAddOnInfo, A.IsAddOnLoaded or IsAddOnLoaded
+    local Num, Info, Loaded = C_AddOns.GetNumAddOns, C_AddOns.GetAddOnInfo, C_AddOns.IsAddOnLoaded
     local list = {}
     for i = 1, (type(Num) == "function" and tonumber(Num())) or 0 do
         local name, title = Info(i)
@@ -196,7 +195,6 @@ ns:NewModule("talkingHeadHide", function()
             if ns:Locked(self) then return end
             -- closed the game's own way where it has one, which also stops the voice; otherwise hidden
             if type(self.CloseImmediately) == "function" then pcall(self.CloseImmediately, self)
-            elseif type(_G.TalkingHeadFrame_CloseImmediately) == "function" then pcall(_G.TalkingHeadFrame_CloseImmediately)
             else pcall(self.Hide, self) end
         end)
         ns.talkingHeadState = "hidden when it appears"

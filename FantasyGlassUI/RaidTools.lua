@@ -57,7 +57,7 @@ ns:NewModule("raidTools", function()
         b:SetPoint("TOPLEFT", x, y)
         return b
     end
-    Btn("Ready check", 106, 10, -12, function() if DoReadyCheck then DoReadyCheck() end end)
+    Btn("Ready check", 106, 10, -12, function() C_PartyInfo.DoReadyCheck() end)
     Btn("Role check", 106, 120, -12, function() if InitiateRolePoll then InitiateRolePoll() end end)
     local reset = ns:CreateButton(panel, "Reset instances", 236, 20, function() if ns.ResetInstancesNow then ns:ResetInstancesNow() end end)
     reset:SetPoint("TOPLEFT", panel, "BOTTOMLEFT", 0, -3)            -- (hangs under the panel, and shows with it)

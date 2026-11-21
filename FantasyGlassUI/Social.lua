@@ -101,7 +101,7 @@ function ns.RecentAdd(list, people, now, where)
     return list
 end
 local function Invite(name)
-    local go = (C_PartyInfo and C_PartyInfo.InviteUnit) or InviteUnit
+    local go = C_PartyInfo.InviteUnit
     if type(go) == "function" then pcall(go, name) end
 end
 ns.InvitePlayer = Invite
@@ -118,7 +118,7 @@ function ns:ShowRecent()
             tip = { p.name, p.where or "", note or "" },
             click = function(button)
                 if button == "RightButton" then Invite(p.name); ns:Print("Invited %s.", p.name)
-                elseif ChatFrame_SendTell then pcall(ChatFrame_SendTell, p.name) end
+                else pcall(ChatFrameUtil.SendTell, p.name) end
             end }
     end
     if #lines == 0 then lines[1] = { left = ns:Tr("Nobody yet: the players you group with are listed here.") } end
@@ -209,7 +209,7 @@ function ns:ShowMissing()
     end
     local lines = {}
     for _, m in ipairs(ns.MissingFrom(members, zone)) do
-        lines[#lines + 1] = { left = m.name, right = ns:Tr(m.why), click = function() if ChatFrame_SendTell then pcall(ChatFrame_SendTell, m.name) end end }
+        lines[#lines + 1] = { left = m.name, right = ns:Tr(m.why), click = function() pcall(ChatFrameUtil.SendTell, m.name) end }
     end
     if #lines == 0 then ns:Print("Everyone is here."); return lines end
     ns:ShowList("Missing", "Not here yet", lines, "Click a name to whisper.")
@@ -346,9 +346,8 @@ function ns:ResetInstancesNow()
     end
     pcall(ResetInstances)
     ns:Print("Instances reset.")
-    if ns.Yes(IsInGroup and IsInGroup()) then
-        local Send = (C_ChatInfo and C_ChatInfo.SendChatMessage) or SendChatMessage
-        if type(Send) == "function" then pcall(Send, ns:Tr("Instances have been reset."), ns.Yes(IsInRaid and IsInRaid()) and "RAID" or "PARTY") end
+    if ns.Yes(IsInGroup and IsInGroup()) and not ns:MessagingLocked() then
+        pcall(C_ChatInfo.SendChatMessage, ns:Tr("Instances have been reset."), ns.Yes(IsInRaid and IsInRaid()) and "RAID" or "PARTY")
     end
     return true
 end

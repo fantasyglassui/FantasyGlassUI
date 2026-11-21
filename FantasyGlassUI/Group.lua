@@ -15,7 +15,7 @@ function ns.GroupChannel()
     return nil
 end
 local function Send(msg, channel, target)
-    if not (C_ChatInfo and C_ChatInfo.SendAddonMessage) then return false end
+    if ns:MessagingLocked() then return false end
     local ok, result = pcall(C_ChatInfo.SendAddonMessage, PREFIX, msg, channel, target)
     return ok and result ~= false
 end
@@ -66,12 +66,10 @@ local KIND_ORDER = { res = 1, kick = 2, def = 3, raid = 4 }
 local byName, byID = {}, {}
 local function SpellName(id)
     if C_Spell and C_Spell.GetSpellName then local ok, n = pcall(C_Spell.GetSpellName, id); if ok and type(n) == "string" then return n end end
-    if GetSpellInfo then local ok, n = pcall(GetSpellInfo, id); if ok and type(n) == "string" then return n end end
     return nil
 end
 local function SpellIcon(id)
     if C_Spell and C_Spell.GetSpellTexture then local ok, t = pcall(C_Spell.GetSpellTexture, id); if ok and t then return t end end
-    if GetSpellTexture then local ok, t = pcall(GetSpellTexture, id); if ok and t then return t end end
     return 134400
 end
 local function Index()
@@ -91,10 +89,9 @@ function ns.GroupCDFor(spellID)
     return n and byName[n] or nil
 end
 local function Known(id)
-    for _, fn in ipairs({ IsPlayerSpell, IsSpellKnown }) do
-        if type(fn) == "function" then local ok, v = pcall(fn, id); if ok and v == true then return true end end
+    for _, fn in ipairs({ C_SpellBook.IsSpellKnown, C_SpellBook.IsSpellInSpellBook }) do
+        local ok, v = pcall(fn, id); if ok and v == true then return true end
     end
-    if C_SpellBook and C_SpellBook.IsSpellKnown then local ok, v = pcall(C_SpellBook.IsSpellKnown, id); if ok and v == true then return true end end
     return false
 end
 -- The tracked spells you have.
@@ -341,6 +338,7 @@ function ns:SendSetup(target, kind, given)
     kind = (kind == "profile" or kind == "theme" or kind == "pack" or (kind == "talents" and given)) and kind or "layout"
     if target == "" then ns:Print("Who to? /fgui send <name> [layout|profile|theme]"); return false end
     if target:lower() == tostring(UnitName("player")):lower() then ns:Print("That is you."); return false end
+    if ns:SayMessagingLocked() then return false end
     local text = given or (kind == "profile" and ns:ExportProfile()) or (kind == "theme" and ns:ExportTheme()) or (kind == "pack" and ns:ExportPack()) or ns:ExportLayout()
     if type(text) ~= "string" or text == "" then return false end
     local parts = ns.ShareChunks(text)

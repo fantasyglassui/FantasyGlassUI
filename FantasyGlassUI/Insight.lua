@@ -519,9 +519,7 @@ function ns:PerfShow(took, info)
         local rows = ns.PerfRows(ns.perfData, took)
         local lines = {}
         local mem
-        local C = C_AddOns
-        local update = (C and C.UpdateAddOnMemoryUsage) or UpdateAddOnMemoryUsage
-        local get = (C and C.GetAddOnMemoryUsage) or GetAddOnMemoryUsage
+        local update, get = UpdateAddOnMemoryUsage, GetAddOnMemoryUsage
         if update and get then pcall(update); local ok, kb = pcall(get, ADDON); if ok and type(kb) == "number" then mem = kb end end
         local total = 0
         for _, r in ipairs(rows) do total = total + r.perSec end

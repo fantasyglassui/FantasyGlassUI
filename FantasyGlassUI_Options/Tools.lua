@@ -224,7 +224,7 @@ function ns:GuideShow(entry)
         if hit and ns.GoToOption then ns.GoToOption(hit) else ns:ToggleConfig(entry.tab) end
         return "tab"
     elseif entry.command then
-        if ChatFrame_OpenChat then pcall(ChatFrame_OpenChat, entry.command:gsub("%s*[<%[].*$", "")) end
+        pcall(ChatFrameUtil.OpenChat, (entry.command:gsub("%s*[<%[].*$", "")))
         return "command"
     end
     return false
@@ -291,7 +291,7 @@ ns.toolActions = {
     { "Put on upgrades", function() ns:EquipBest() end, "Every piece in your bags with a higher item level than what you wear, already bound to you, goes on." },
     { "Pull timer", function() ns:CountdownCommand("pull", "10") end, "A 10 second pull countdown for the group (/fgui pull 15 for another length)." },
     { "Break timer", function() ns:CountdownCommand("break", "5") end, "A 5 minute break for the group (/fgui break 10 for another length)." },
-    { "Waypoint...", function() if ChatFrame_OpenChat then pcall(ChatFrame_OpenChat, "/fgui way ") end end, "Puts /fgui way in the typing bar: add two numbers, such as 45 62." },
+    { "Waypoint...", function() pcall(ChatFrameUtil.OpenChat, "/fgui way ") end, "Puts /fgui way in the typing bar: add two numbers, such as 45 62." },
 }
 ns.toolLists = {
     { key = "remindBuffs", title = "Buff reminders", hint = "a buff's name", need = "buffMissing", note = "An icon with a ! shows while one of these is missing." },
@@ -387,7 +387,7 @@ ns.toolRules = {
           return ns.ChecklistAdd(ns.ChecklistStore(), choice == 2 and "weekly" or "daily", text) ~= nil
       end },
     { key = "talents", title = "Talent builds",
-      note = "Type a name to keep the talents you have now. Use learns a build's points again, as far as your free points go. /fgui talents send <player> <build> sends one.",
+      note = "Type a name to keep the talents you have now. Use puts a build in the game's Import box: press Import there and it joins your loadouts. /fgui talents send <player> <build> sends one.",
       hint = "a name for your talents now",
       state = function() if ns.TalentAPI and not ns.TalentAPI() then return "This game client does not let add-ons read talents." end end,
       rows = function()
@@ -397,7 +397,7 @@ ns.toolRules = {
           table.sort(names)
           for _, name in ipairs(names) do
               local b = builds[name]
-              out[#out + 1] = { text = name .. "  |cff9aa4b4" .. table.concat(b.points or {}, "/") .. "|r",
+              out[#out + 1] = { text = name .. (b.spec and ("  |cff9aa4b4" .. b.spec .. "|r") or ""),
                   remove = function() builds[name] = nil end,
                   act = function() ns:ApplyTalentBuild(name) end, actLabel = "Use" }
           end
@@ -719,8 +719,8 @@ function ns.BuildToolsPage(page)
     end
     -- an item shift-clicked while the restock box is being typed in goes into it
     local stock = T.listBlocks.restock and T.listBlocks.restock.editor.addBox
-    if stock and type(hooksecurefunc) == "function" and type(ChatEdit_InsertLink) == "function" then
-        pcall(hooksecurefunc, "ChatEdit_InsertLink", function(link)
+    if stock and type(hooksecurefunc) == "function" then
+        pcall(hooksecurefunc, ChatFrameUtil, "InsertLink", function(link)
             if type(link) == "string" and stock.HasFocus and stock:HasFocus() == true and stock.Insert then stock:Insert(link .. " ") end
         end)
     end

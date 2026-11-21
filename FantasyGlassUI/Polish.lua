@@ -713,7 +713,6 @@ ns:NewModule("windows", function()
                     ns:StripArt(page)                       -- (the loose art drawn straight on it; ours is tagged and kept)
                 end
             end
-            Hide(_G.LFGListingFrameRoleBackground)
             ns:StripArt(win)                                -- the shell's own art
             Hide(_G.LFGParentFramePortrait)                 -- the eye in the portrait corner
             pcall(ns.AutoSkin, ns, win)                     -- the shell's close button and bottom tabs

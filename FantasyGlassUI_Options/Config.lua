@@ -600,11 +600,7 @@ local function Build()
 
     -- Drag the corner to make the window bigger or smaller; the size is kept.
     if O.frame.SetResizable then O.frame:SetResizable(true) end
-    if O.frame.SetResizeBounds then O.frame:SetResizeBounds(W, 600, 1600, 1200)
-    else
-        if O.frame.SetMinResize then O.frame:SetMinResize(W, 600) end
-        if O.frame.SetMaxResize then O.frame:SetMaxResize(1600, 1200) end
-    end
+    O.frame:SetResizeBounds(W, 600, 1600, 1200)
     local grip = CreateFrame("Button", nil, O.frame)
     grip:SetSize(16, 16)
     grip:SetPoint("BOTTOMRIGHT", -3, 3)

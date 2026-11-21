@@ -19,9 +19,6 @@ local function Spell(id, fallback, icon)
     if C_Spell and C_Spell.GetSpellInfo then
         local ok, info = pcall(C_Spell.GetSpellInfo, id)
         if ok and type(info) == "table" then name, tex = info.name, info.iconID end
-    elseif GetSpellInfo then
-        local ok, n, _, t = pcall(GetSpellInfo, id)
-        if ok then name, tex = n, t end
     end
     if type(name) ~= "string" or ns:IsSecret(name) or name == "" then name = fallback end
     return name, tex or icon

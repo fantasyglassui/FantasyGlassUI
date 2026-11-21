@@ -561,7 +561,7 @@ function ns:CountdownCommand(kind, text)
     local leader = (UnitIsGroupLeader and UnitIsGroupLeader("player")) or (UnitIsGroupAssistant and UnitIsGroupAssistant("player"))
     if not ns.Yes(leader) then ns:Print("Only the group leader or an assistant can start it."); return false end
     local channel = (IsInRaid and IsInRaid()) and "RAID" or "PARTY"
-    if C_ChatInfo and C_ChatInfo.SendAddonMessage then
+    if not ns:MessagingLocked() then         -- (inside an instance only the game's own pull countdown reaches the group)
         pcall(C_ChatInfo.SendAddonMessage, PREFIX, (kind == "pull" and "PULL:" or "BREAK:") .. seconds, channel)
     end
     if kind == "pull" and C_PartyInfo and C_PartyInfo.DoCountdown then pcall(C_PartyInfo.DoCountdown, seconds) end
@@ -641,15 +641,15 @@ ns:NewModule("bgHelper", function()
     if type(entry) == "table" then entry.offPage = true end
 end)
 function ns:ShowBattlegroundScore()
-    if type(GetNumBattlefieldScores) ~= "function" or type(GetBattlefieldScore) ~= "function" then ns:Print("This client gives no battleground scores."); return end
-    if RequestBattlefieldScoreData then pcall(RequestBattlefieldScoreData) end
+    pcall(RequestBattlefieldScoreData)
     local rows = {}
     local okN, n = pcall(GetNumBattlefieldScores)
-    for i = 1, (okN and tonumber(n)) or 0 do
-        local ok, name, kb, hk, deaths, honor, faction, _, _, class, classToken, damage, healing = pcall(GetBattlefieldScore, i)   -- luacheck: ignore
-        if ok and type(name) == "string" and not Secret(name) then
-            rows[#rows + 1] = { name = name, kb = tonumber(kb) or 0, hk = tonumber(hk) or 0, deaths = tonumber(deaths) or 0,
-                faction = faction, class = classToken, damage = tonumber(damage) or 0, healing = tonumber(healing) or 0 }
+    local function N(v) return (type(v) == "number" and not Secret(v)) and v or 0 end   -- (figures can be hidden while a match is on)
+    for i = 1, (okN and not Secret(n) and tonumber(n)) or 0 do
+        local ok, s = pcall(C_PvP.GetScoreInfo, i)
+        if ok and type(s) == "table" and type(s.name) == "string" and not Secret(s.name) then
+            rows[#rows + 1] = { name = s.name, kb = N(s.killingBlows), hk = N(s.honorableKills), deaths = N(s.deaths),
+                faction = s.faction, class = s.classToken, damage = N(s.damageDone), healing = N(s.healingDone) }
         end
     end
     table.sort(rows, function(a, b) if a.kb ~= b.kb then return a.kb > b.kb end return a.hk > b.hk end)
@@ -720,7 +720,7 @@ local function Facts(info, wantUpgrade)
     local link = info.hyperlink
     local item = { quality = info.quality, bound = ns.Is(info.isBound, true), name = nil }
     if info.itemID then
-        local GetInstant = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+        local GetInstant = C_Item.GetItemInfoInstant
         if GetInstant then
             local ok, _, _, _, _, _, classID, subclassID = pcall(GetInstant, info.itemID)
             if ok then item.classID, item.subclassID = classID, subclassID end
@@ -850,7 +850,7 @@ local function ItemsFor(rule)
     local out = {}
     local C = C_Container
     if not (C and C.GetContainerNumSlots and C.GetContainerItemInfo) then return out end
-    local GetInstant = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+    local GetInstant = C_Item.GetItemInfoInstant
     for bag = 0, 4 do
         for slot = 1, (tonumber(C.GetContainerNumSlots(bag)) or 0) do
             local ok, info = pcall(C.GetContainerItemInfo, bag, slot)
@@ -965,7 +965,7 @@ function ns:MailRulesCommand(text)
     local lines = {}
     for i, r in ipairs(rules) do
         lines[#lines + 1] = { left = format("%d. %s", i, r.what), right = ns:AccentHex() .. r.to .. "|r",
-            click = function(button) if button == "RightButton" then table.remove(MailRules(), i); ns:MailRulesCommand("") end end,
+            click = function(button) if button == "RightButton" and MailRules()[i] then table.remove(MailRules(), i); ns:MailRulesCommand("") end end,
             tip = { r.what .. " -> " .. r.to, ns:Tr("Right-click: remove it.") } }
     end
     if #lines == 0 then lines[1] = { left = ns:Tr("No rules yet. Example: /fgui mailrules add Mytailor cloth") } end
@@ -1051,89 +1051,70 @@ do
 end
 
 ------------------------------------------------------------------------------------------
--- Talent builds: save the talents you have under a name, see each build's points, and put one back
--- (as many of its points as you have free). Kept for each character.
+-- Talent builds: keep the talents you have under a name, and put one back later. A build is the
+-- game's own loadout code (the one its talent window exports), so putting one back opens the game's
+-- Import box with the code and the name filled in: press Import there and it joins your loadouts.
+-- Kept for each character.
 --   /fgui talents            the builds          /fgui talents save <name>
 ------------------------------------------------------------------------------------------
 local function TalentAPI()
-    return type(GetNumTalentTabs) == "function" and type(GetNumTalents) == "function" and type(GetTalentInfo) == "function"
+    return type(C_ClassTalents) == "table" and type(C_ClassTalents.GetActiveConfigID) == "function"
+        and type(C_Traits) == "table" and type(C_Traits.GenerateImportString) == "function"
 end
--- The talents you have now: { [tab] = { [index] = rank } }, and points per tab.
-local function ReadTalents()
-    local build, points = {}, {}
-    local okT, tabs = pcall(GetNumTalentTabs)
-    for tab = 1, (okT and tonumber(tabs)) or 0 do
-        build[tab], points[tab] = {}, 0
-        local okN, n = pcall(GetNumTalents, tab)
-        for i = 1, (okN and tonumber(n)) or 0 do
-            local ok, _, _, _, _, rank = pcall(GetTalentInfo, tab, i)
-            rank = ok and tonumber(rank) or 0
-            if rank > 0 then build[tab][i] = rank; points[tab] = points[tab] + rank end
-        end
-    end
-    return build, points
+-- The talents you have now, as the game's loadout code, or nil.
+local function CurrentCode()
+    local okC, configID = pcall(C_ClassTalents.GetActiveConfigID)
+    if not okC or type(configID) ~= "number" or Secret(configID) then return nil end
+    local ok, code = pcall(C_Traits.GenerateImportString, configID)
+    if ok and type(code) == "string" and not Secret(code) and code ~= "" then return code end
+    return nil
 end
--- What learning a build needs from where you are: { { tab, index, ranks } } in tier order.
-function ns.TalentSteps(want, have)
-    local steps = {}
-    for tab, list in pairs(want) do
-        for index, rank in pairs(list) do
-            local now = (have[tab] and have[tab][index]) or 0
-            if rank > now then steps[#steps + 1] = { tab = tab, index = index, ranks = rank - now } end
-        end
-    end
-    table.sort(steps, function(a, b) if a.tab ~= b.tab then return a.tab < b.tab end return a.index < b.index end)
-    return steps
+-- The name of the specialization you are in now (shown beside a build), or nil.
+local function SpecName()
+    local okI, index = pcall(C_SpecializationInfo.GetSpecialization)
+    if not okI or type(index) ~= "number" or Secret(index) then return nil end
+    local ok, _, name = pcall(C_SpecializationInfo.GetSpecializationInfo, index)
+    return (ok and type(name) == "string" and not Secret(name) and name ~= "") and name or nil
 end
 local function Builds()
     if type(ns.root) ~= "table" then return {} end
     if type(ns.root.talentBuilds) ~= "table" then ns.root.talentBuilds = {} end
     local key = ns:CharKey()
     if type(ns.root.talentBuilds[key]) ~= "table" then ns.root.talentBuilds[key] = {} end
-    return ns.root.talentBuilds[key]
+    local list = ns.root.talentBuilds[key]
+    for name, b in pairs(list) do                                 -- (builds from the older talent system cannot be used: gone)
+        if type(b) ~= "table" or type(b.code) ~= "string" then list[name] = nil end
+    end
+    return list
 end
 ns.TalentBuilds, ns.TalentAPI = Builds, TalentAPI
--- Keep the talents you have now as a build. Returns the points per tree, or nil.
+-- Keep the talents you have now as a build. Returns the build, or nil.
 function ns:SaveTalentBuild(name)
     name = ns.Trim(name)
     if name == "" or not TalentAPI() then return nil end
-    local t, points = ReadTalents()
-    Builds()[name:sub(1, 24)] = { talents = t, points = points }
-    return points
+    local code = CurrentCode()
+    if not code then return nil end
+    local b = { code = code, spec = SpecName(), at = time() }
+    Builds()[name:sub(1, 24)] = b
+    return b
 end
--- A build as text to send: "SHAMAN|Name|1.2.3,1.5.1" (tree.talent.rank), and back.
-function ns.EncodeTalentBuild(class, name, talents)
-    local parts = {}
-    for tab, list in pairs(talents or {}) do
-        for index, rank in pairs(list) do parts[#parts + 1] = format("%d.%d.%d", tab, index, rank) end
-    end
-    table.sort(parts)
-    return tostring(class) .. "|" .. tostring(name):gsub("|", "") .. "|" .. table.concat(parts, ",")
+-- A build as text to send: "SHAMAN|Name|<loadout code>", and back.
+function ns.EncodeTalentBuild(class, name, code)
+    return tostring(class) .. "|" .. tostring(name):gsub("|", "") .. "|" .. tostring(code or "")
 end
 function ns.DecodeTalentBuild(text)
-    local class, name, list = tostring(text or ""):match("^(%u+)|([^|]*)|([%d%.,]*)$")
+    local class, name, code = tostring(text or ""):match("^(%u+)|([^|]*)|([%w%+/=_%-]+)$")
     if not class then return nil end
-    local talents, points = {}, {}
-    for t1, i1, r1 in list:gmatch("(%d+)%.(%d+)%.(%d+)") do
-        local tab, index, rank = tonumber(t1), tonumber(i1), tonumber(r1)
-        if tab <= 5 and index <= 40 and rank <= 5 then
-            talents[tab] = talents[tab] or {}
-            talents[tab][index] = rank
-            points[tab] = (points[tab] or 0) + rank
-        end
-    end
-    for i = 1, #points do points[i] = points[i] or 0 end
-    for t = 1, 3 do points[t] = points[t] or 0 end
-    return class, name, talents, points
+    return class, name, code
 end
 function ns:SendTalentBuild(target, name)
     local b = Builds()[name or ""]
     if not b then ns:Print("No talent build called \"%s\". /fgui talents lists yours.", tostring(name)); return false end
     local _, class = UnitClass("player")
-    return ns.SendSetup and ns:SendSetup(target, "talents", ns.EncodeTalentBuild(class, name, b.talents))
+    return ns.SendSetup and ns:SendSetup(target, "talents", ns.EncodeTalentBuild(class, name, b.code))
 end
 function ns:ReceiveTalentBuild(from, text)
-    local class, name, talents, points = ns.DecodeTalentBuild(text)
+    local class, name, code = ns.DecodeTalentBuild(text)
     if not class then return false end
     local _, mine = UnitClass("player")
     if class ~= mine then
@@ -1141,62 +1122,33 @@ function ns:ReceiveTalentBuild(from, text)
         return false
     end
     local key = (name ~= "" and name or ns:Tr("Build")) .. " (" .. from .. ")"
-    Builds()[key:sub(1, 40)] = { talents = talents, points = points }
+    Builds()[key:sub(1, 40)] = { code = code, at = time() }
     ns:Print("%s sent you a talent build: \"%s\". It is with your builds (/fgui talents); nothing is learned until you choose it.", from, key)
     return key
 end
--- Learning a build: one point at a time, each once the game has taken the one before (the game
--- refuses a talent whose tier is not open yet, and it opens tiers only as points land), lowest tier
--- first in each tree. It stops when the build is done, the free points run out, or nothing moves.
-local learning
+-- Putting a build back: the game's talent window opens with its Import box filled in, and pressing
+-- Import there adds the build to your loadouts. Where that box cannot be reached, the code is shown to copy
+-- into the game's Import yourself.
 function ns:ApplyTalentBuild(name)
     if ns:AfterFight("Talent build", function() ns:ApplyTalentBuild(name) end) then return false end
     local b = Builds()[name]
-    if not b or not TalentAPI() or type(LearnTalent) ~= "function" then return false end
-    if learning then ns:Print("Still learning the talent build \"%s\".", learning); return false end
-    local function Tier(tab, index)
-        local ok, _, _, tier = pcall(GetTalentInfo, tab, index)
-        return ok and tonumber(tier) or 99
+    if not b then return false end
+    pcall(PlayerSpellsUtil.OpenToClassTalentsTab)
+    local dialog = _G.ClassTalentLoadoutImportDialog
+    local ok = type(dialog) == "table" and pcall(function()
+        dialog:ShowDialog()
+        dialog.ImportControl:GetEditBox():SetText(b.code)
+        dialog.NameControl:GetEditBox():SetText(name:sub(1, 24))
+        if dialog.UpdateAcceptButtonEnabledState then dialog:UpdateAcceptButtonEnabledState() end
+    end)
+    if ok then
+        ns:Print("%s: press Import in the talent window, then choose it from your loadouts.", name)
+        ns.talentImportState = "the game's Import box"
+        return true
     end
-    local function Total()
-        local _, points = ReadTalents()
-        local n = 0
-        for _, p in pairs(points) do n = n + p end
-        return n
-    end
-    local function Free()
-        if type(UnitCharacterPoints) ~= "function" then return nil end
-        local ok, n = pcall(UnitCharacterPoints, "player")
-        return (ok and type(n) == "number" and not Secret(n)) and n or nil
-    end
-    local start, last, still = Total(), Total(), 0
-    learning = name
-    local function Done(why)
-        learning = nil
-        local got = Total() - start
-        ns:Print("%s: %d points spent. Anything left needs free points (or a talent reset at a trainer).", name, got)
-        if why then ns:Print(why) end
-        ns.talentLearned = got
-    end
-    local function Step()
-        if InCombatLockdown() then Done("A fight started: the rest of the build waits. Choose it again afterwards."); return end
-        local now = Total()
-        if now > last then still = 0 else still = still + 1 end
-        last = now
-        local steps = ns.TalentSteps(b.talents, (ReadTalents()))
-        local free = Free()
-        if #steps == 0 or (free and free <= 0) or still > 4 then Done(); return end
-        table.sort(steps, function(x, y)
-            if x.tab ~= y.tab then return x.tab < y.tab end
-            local tx, ty = Tier(x.tab, x.index), Tier(y.tab, y.index)
-            if tx ~= ty then return tx < ty end
-            return x.index < y.index
-        end)
-        pcall(LearnTalent, steps[1].tab, steps[1].index)
-        ns:After(0.3, Step)
-    end
-    still = -1                                                -- (the first look is before anything was asked)
-    Step()
+    ns.talentImportState = "copy box"
+    ns:Print("In the talent window, choose Import and paste this build's code.")
+    if ns.ShowCopyBox then ns:ShowCopyBox(b.code) end
     return true
 end
 function ns:TalentCommand(text)
@@ -1207,8 +1159,8 @@ function ns:TalentCommand(text)
     local builds = Builds()
     if word == "save" then
         if rest == "" then ns:Print("Give the build a name: /fgui talents save <name>."); return false end
-        local points = ns:SaveTalentBuild(rest)
-        if points then ns:Print("Talent build saved: %s (%s).", rest, table.concat(points, "/")) end
+        local b = ns:SaveTalentBuild(rest)
+        if b then ns:Print("Talent build saved: %s.", rest) else ns:Print("The game gave no talents to save. Open your talents once, then try again.") end
     elseif (word == "delete" or word == "use") and not builds[rest] then
         ns:Print("No talent build called \"%s\". /fgui talents lists yours.", rest); return false
     elseif word == "delete" then
@@ -1226,12 +1178,12 @@ function ns:TalentCommand(text)
     table.sort(names)
     for _, name in ipairs(names) do
         local b = builds[name]
-        lines[#lines + 1] = { left = name, right = table.concat(b.points or {}, " / "),
+        lines[#lines + 1] = { left = name, right = b.spec or "",
             click = function(button)
                 if button == "RightButton" then Builds()[name] = nil; ns:TalentCommand("") else ns:ApplyTalentBuild(name) end
-            end, tip = { name, ns:Tr("Click: learn this build's points. Right-click: delete it.") } }
+            end, tip = { name, ns:Tr("Click: put this build in the game's Import box. Right-click: delete it.") } }
     end
-    if #lines == 0 then lines[1] = { left = ns:Tr("No builds yet: spend your points, then /fgui talents save <name>.") } end
+    if #lines == 0 then lines[1] = { left = ns:Tr("No builds yet: choose your talents, then /fgui talents save <name>.") } end
     return ns:ShowList("Talents", "Talent builds", lines, "Kept for this character. /fgui talents save <name>", 380, 280)
 end
 

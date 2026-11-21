@@ -430,8 +430,8 @@ function ns.KeySheetBars()
     return bars
 end
 local function ActionLabel(a)
-    if type(a) ~= "number" or not HasAction or not HasAction(a) then return nil end
-    local okT, text = pcall(GetActionText, a)
+    if type(a) ~= "number" or not C_ActionBar.HasAction(a) then return nil end
+    local okT, text = pcall(C_ActionBar.GetActionText, a)
     if okT and type(text) == "string" and not Secret(text) and text ~= "" then return text end
     local okI, kind, id = pcall(GetActionInfo, a)
     if okI and kind == "spell" and type(id) == "number" then
@@ -497,7 +497,7 @@ function ns:ShowKeySheet(show)
             local info = bar.buttons[i] or {}
             c:ClearAllPoints()
             c:SetPoint("TOPLEFT", 100 + (i - 1) * (CELL + GAP), y)
-            local tex = (type(info.action) == "number" and HasAction and HasAction(info.action)) and GetActionTexture(info.action) or nil
+            local tex = (type(info.action) == "number" and C_ActionBar.HasAction(info.action)) and C_ActionBar.GetActionTexture(info.action) or nil
             c.icon:SetTexture(tex)
             c.icon:SetAlpha(tex and 1 or 0.15)
             local key = info.command and GetBindingKey(info.command)
@@ -529,7 +529,7 @@ local coverMarks = setmetatable({}, { __mode = "k" })
 -- The names of the buff (and its group version) this character can give, or nil.
 function ns.CoverBuffNames(class, known)
     local ids = ns.COVER_BUFFS[class]
-    if not ids or not (known or IsPlayerSpell)(ids[1]) then return nil end
+    if not ids or not (known or C_SpellBook.IsSpellKnown)(ids[1]) then return nil end
     local names = {}
     for _, id in ipairs(ids) do
         local n = C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(id)
@@ -620,7 +620,7 @@ local QUIET_CVARS = { "UnitNameOwn", "UnitNamePlayerGuild", "UnitNamePlayerPVPTi
     "UnitNameEnemyPlayerName", "UnitNameNPC", "UnitNameFriendlyPetName", "UnitNameEnemyPetName", "UnitNameGuildTitle" }
 local function QuietFrames()
     local out = {}
-    for i = 1, (NUM_CHAT_WINDOWS or 10) do
+    for i = 1, Constants.ChatFrameConstants.MaxChatWindows do
         for _, suffix in ipairs({ "", "Tab", "EditBox", "ButtonFrame" }) do
             local f = _G["ChatFrame" .. i .. suffix]
             if f then out[#out + 1] = f end

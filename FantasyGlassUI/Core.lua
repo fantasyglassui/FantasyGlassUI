@@ -15,13 +15,12 @@ local OPTIONS = "FantasyGlassUI_Options"
 ns.optionsAddon = OPTIONS
 function ns:LoadOptions()
     if ns.optionsLoaded then return true end
-    local C = C_AddOns
-    local load = (type(C) == "table" and C.LoadAddOn) or LoadAddOn
+    local load = C_AddOns.LoadAddOn
     local reason = "this game client cannot load an add-on on request"
     if type(load) == "function" then
         local ok, loaded, why = pcall(load, OPTIONS)
         if ok and not loaded and why == "DISABLED" then      -- switched off in the add-on list: switch it on and try again
-            local enable = (type(C) == "table" and C.EnableAddOn) or EnableAddOn
+            local enable = C_AddOns.EnableAddOn
             if type(enable) == "function" then
                 pcall(enable, OPTIONS)
                 ok, loaded, why = pcall(load, OPTIONS)
@@ -1351,6 +1350,17 @@ end
 function ns:IsSecret(v)
     return issecretvalue ~= nil and issecretvalue(v) == true
 end
+-- WoW Forever stops add-ons messaging other players (add-on messages and chat) inside instances.
+function ns:MessagingLocked()
+    local ok, locked = pcall(C_ChatInfo.InChatMessagingLockdown)
+    return ok and locked == true
+end
+-- The same, said to the player when something they asked for could not be sent. True when locked.
+function ns:SayMessagingLocked()
+    if not ns:MessagingLocked() then return false end
+    ns:Print("WoW Forever does not let add-ons send messages to other players here. Try again outside the instance.")
+    return true
+end
 -- Is this value plainly equal to that one? In combat the game hands add-ons values they may hold but
 -- not look at, and comparing one of those is an error - even after a pcall that fetched it. So anything
 -- the game returns about a unit, a spell or an item is compared through here: a hidden value is
@@ -1562,7 +1572,8 @@ ns.whatsNew = {
                   "Color vision for each kind: red-green, blue-yellow, or no color at all, where brightness and marks carry the meaning. Threat on nameplates gets a mark too, and your target can have a thick outline.",
                   "Captions for sounds: a line on screen for ready checks, whispers, queues, invites, boss emotes, raid warnings, loot rolls and your alerts. And a key that reads aloud the tooltip, the quest or the last whisper.",
                   "Two lettering styles made to be read: Readable (Atkinson Hyperlegible) and Dyslexia-friendly (OpenDyslexic), with a thicker outline round letters and a dark band behind messages if you want them.",
-                  "Safe flashing, Calm mode, bigger controls, moving through the settings with the keyboard, and your accessibility settings as one line to share." } },
+                  "Safe flashing, Calm mode, bigger controls, moving through the settings with the keyboard, and your accessibility settings as one line to share.",
+                  "Made for WoW: Forever alone: everything the add-on calls is the game's own. Talent builds use Forever's loadouts, and the talent set buttons, pet happiness and debuff colors now show." } },
     { "12.0.0", { "A new settings window: the categories down the left, Home with a card for each, and every setting on a line of its own that says what it does. The search tells you where each setting lives, and Undo takes back your last change.",
                   "Simple or All options, at the top: the settings most players look for, or every one. The search always finds them all.",
                   "A new setup in four steps: how you play (your role and what you enjoy), your look, and what you chose. It can also keep the game's own frames and only restyle them.",
@@ -1804,7 +1815,7 @@ local EQUIP_SLOTS = {
 }
 function ns:IsUpgrade(link, level)
     if type(link) ~= "string" or type(level) ~= "number" then return false end
-    local GetInstant = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+    local GetInstant = C_Item.GetItemInfoInstant
     if not GetInstant then return false end
     local ok, _, _, _, equipLoc = pcall(GetInstant, link)
     local slots = ok and EQUIP_SLOTS[equipLoc]
@@ -1812,7 +1823,7 @@ function ns:IsUpgrade(link, level)
     local needLevel = select(5, ns:GetItemInfo(link))
     local myLevel = UnitLevel("player")
     if type(needLevel) == "number" and type(myLevel) == "number" and needLevel > myLevel then return false end     -- can't wear it yet
-    local IsUsable = (C_Item and C_Item.IsUsableItem) or IsUsableItem
+    local IsUsable = C_Item.IsUsableItem
     if IsUsable then
         local okU, usable = pcall(IsUsable, link)
         if okU and ns.Is(usable, false) then return false end                -- wrong armor or weapon type for your class
@@ -1845,9 +1856,7 @@ function ns:CooldownCandidates(max)
             end
             if base == nil or base >= 6000 then                        -- unknown, or longer than the global cooldown
                 local name
-                if C_Spell and C_Spell.GetSpellName then name = C_Spell.GetSpellName(id)
-                elseif C_Spell and C_Spell.GetSpellInfo then local info = C_Spell.GetSpellInfo(id); name = info and info.name
-                elseif GetSpellInfo then name = GetSpellInfo(id) end
+                name = C_Spell.GetSpellName(id)
                 if type(name) == "string" and name ~= "" and not seen[name] then
                     seen[name] = true
                     out[#out + 1] = name
@@ -1883,7 +1892,7 @@ local CONFLICTS = {
 }
 function ns:ConflictFor(key)
     if ns.db and ns.db.stepAside == false then return nil end
-    local isLoaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
+    local isLoaded = C_AddOns.IsAddOnLoaded
     if not isLoaded then return nil end
     for _, c in ipairs(CONFLICTS) do
         for _, k in ipairs(c[2]) do
@@ -2114,7 +2123,7 @@ end
 -- Money as coins. Uses the client's formatter when it has one, our own text otherwise.
 function ns:Coins(copper)
     copper = tonumber(copper) or 0
-    local fn = (C_CurrencyInfo and C_CurrencyInfo.GetCoinTextureString) or GetCoinTextureString
+    local fn = C_CurrencyInfo.GetCoinTextureString
     if fn then
         local ok, s = pcall(fn, copper)
         if ok and type(s) == "string" and s ~= "" then return s end
@@ -2128,37 +2137,26 @@ function ns:Coins(copper)
 end
 
 function ns:GetItemInfo(link)
-    if C_Item and C_Item.GetItemInfo then return C_Item.GetItemInfo(link) end
-    return GetItemInfo(link)
+    return C_Item.GetItemInfo(link)
 end
 
 function ns:NewModule(key, fn)
     table.insert(self.modules, { key = key, fn = fn })
 end
 
--- Bag helpers (modern C_Container API with old-global fallback) ---------------
+-- Bag helpers ------------------------------------------------------------------
 function ns:NumSlots(bag)
-    if C_Container and C_Container.GetContainerNumSlots then
-        return C_Container.GetContainerNumSlots(bag)
-    end
-    return GetContainerNumSlots(bag)
+    return C_Container.GetContainerNumSlots(bag)
 end
 
 function ns:BagItem(bag, slot)
-    if C_Container and C_Container.GetContainerItemInfo then
-        local info = C_Container.GetContainerItemInfo(bag, slot)
-        if info then return info.hyperlink, info.stackCount, info.quality end
-        return nil
-    end
-    return GetContainerItemLink(bag, slot), select(2, GetContainerItemInfo(bag, slot))
+    local info = C_Container.GetContainerItemInfo(bag, slot)
+    if info then return info.hyperlink, info.stackCount, info.quality end
+    return nil
 end
 
 function ns:UseBagItem(bag, slot)
-    if C_Container and C_Container.UseContainerItem then
-        C_Container.UseContainerItem(bag, slot)
-    else
-        UseContainerItem(bag, slot)
-    end
+    C_Container.UseContainerItem(bag, slot)
 end
 
 -- Bootstrapping ---------------------------------------------------------------
@@ -2170,7 +2168,7 @@ f:SetScript("OnEvent", function(_, event, name)
         -- The same add-on under its former name cannot run alongside this one: two full interfaces
         -- would fight over every frame. If the old folder is still there, this one stands down.
         do
-            local isLoaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
+            local isLoaded = C_AddOns.IsAddOnLoaded
             local ok, old = pcall(function() return isLoaded and isLoaded("StylishUI") end)
             if ok and old == true then
                 ns.oldCopy = true
@@ -2272,7 +2270,7 @@ function ns:ShowHelp(word)
             rows[#rows + 1] = {
                 left = "|cffffd100" .. line[1] .. "|r  " .. ns:Tr(line[2]),
                 click = function()
-                    local open = ChatFrame_OpenChat or (ChatFrameUtil and ChatFrameUtil.OpenChat)
+                    local open = ChatFrameUtil.OpenChat
                     if type(open) == "function" then pcall(open, cmd .. " ") end
                 end,
             }
@@ -2401,7 +2399,7 @@ ns.helpLines = {
     { "/fgui crafts <search>", "what all your characters can craft; search their recipes" },
     { "/fgui reps", "reputations and currencies on all your characters; click one to pin it" },
     { "/fgui spec", "change talent set" },
-    { "/fgui talents save <name>", "keep your talents as a build; /fgui talents lists them, click one to learn it" },
+    { "/fgui talents save <name>", "keep your talents as a build; /fgui talents lists them, click one to import it" },
     { "/fgui talents send <player> <build>", "send a saved talent build to another player of your class" },
     { "Bags, gear and trade" },
     { "/fgui equipbest", "put on every upgrade in your bags (higher item level, already bound to you)" },

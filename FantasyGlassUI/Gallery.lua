@@ -200,7 +200,7 @@ ns.OTHER_UIS = {
 -- Which of them are in your add-on list (enabled or not). isThere(name) -> true when installed.
 function ns.OtherUIsFound(isThere)
     if not isThere then
-        local info = (C_AddOns and C_AddOns.GetAddOnInfo) or GetAddOnInfo
+        local info = C_AddOns.GetAddOnInfo
         isThere = function(name)
             if type(info) ~= "function" then return false end
             local ok, _, title, _, _, reason = pcall(info, name)

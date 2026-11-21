@@ -5,6 +5,7 @@ These are the same checks run before each build:
     with combat values readable and once with them hidden as the game does in a fight;
   * the hidden-value audit: no value the game hides in combat is ever compared;
   * the combat audit: nothing the game locks in a fight is shown, hidden, moved or resized then;
+  * the WoW: Forever audit: every function, event, frame and setting the add-on uses is one Forever has;
   * the version numbers of the three folders agree, and the README is up to date.
 """
 import os
@@ -67,3 +68,9 @@ def test_combat_locks():
     blocked = [l for l in out.splitlines() if re.match(r"^ +[0-9]+  [A-Za-z_/]+\.lua:[0-9]+", l)]
     assert out.strip(), "the combat audit printed nothing"
     assert not blocked, "the add-on would be blocked here:\n" + "\n".join(blocked)
+
+
+def test_forever_api():
+    """Only what the WoW: Forever client offers: see tests/forever_audit.py."""
+    p = subprocess.run([sys.executable, os.path.join(TESTS, "forever_audit.py")], cwd=ROOT, capture_output=True, text=True, timeout=300)
+    assert p.returncode == 0, p.stdout + p.stderr

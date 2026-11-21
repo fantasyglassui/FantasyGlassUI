@@ -189,7 +189,7 @@ ns:NewModule("fishingMode", function()
     local function HoldingPole()
         local id = GetInventoryItemID and GetInventoryItemID("player", 16)
         if type(id) ~= "number" or Secret(id) then return false end
-        local Instant = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+        local Instant = C_Item.GetItemInfoInstant
         if type(Instant) ~= "function" then return false end
         local ok, _, _, _, _, _, class, sub = pcall(Instant, id)
         return ok and ns.IsFishingPole(class, sub)
@@ -329,10 +329,6 @@ function ns:OpenTrackingMenu()
     local button = cluster and ((cluster.Tracking and cluster.Tracking.Button) or (cluster.TrackingFrame and cluster.TrackingFrame.Button))
     if type(button) == "table" and button.OpenMenu then return pcall(button.OpenMenu, button) and "menu" or false end
     if type(button) == "table" and button.Click then return pcall(button.Click, button) and "click" or false end
-    if _G.MiniMapTrackingDropDown and ToggleDropDownMenu then
-        return pcall(ToggleDropDownMenu, 1, nil, _G.MiniMapTrackingDropDown, "cursor") and "dropdown" or false
-    end
-    if _G.MiniMapTrackingButton and _G.MiniMapTrackingButton.Click then return pcall(_G.MiniMapTrackingButton.Click, _G.MiniMapTrackingButton) and "click" or false end
     return false
 end
 ns:NewModule("mapTracking", function()

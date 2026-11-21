@@ -30,7 +30,6 @@ do
             local list = GetMouseFoci()
             f = type(list) == "table" and list[1] or nil
         end
-        if not f and GetMouseFocus then f = GetMouseFocus() end
         for _ = 1, 4 do                                        -- the button itself, or a piece sitting on it
             if not ns:Usable(f) then return nil end
             local name = f.GetName and f:GetName()
@@ -231,7 +230,7 @@ ns:NewModule("afkScreen", function()
             if GetTime() - lastActive >= delay then
                 if not away and ns.db.afkFlag then
                     local ok, afk = pcall(UnitIsAFK, "player")
-                    if ok and ns.Is(afk, false) and SendChatMessage then pcall(SendChatMessage, "", "AFK") end
+                    if ok and ns.Is(afk, false) then pcall(C_ChatInfo.SendChatMessage, "", "AFK") end
                 end
                 Enter()
             else

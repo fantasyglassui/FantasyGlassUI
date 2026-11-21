@@ -19,7 +19,7 @@ local function ItemLevel(link)
     if ok and type(v) == "number" and not Secret(v) then return v end
 end
 local function EquipLoc(link)
-    local GetInstant = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+    local GetInstant = C_Item.GetItemInfoInstant
     if type(GetInstant) ~= "function" or type(link) ~= "string" then return nil end
     local ok, _, _, _, loc = pcall(GetInstant, link)
     return ok and type(loc) == "string" and loc or nil
@@ -28,7 +28,7 @@ end
 function ns.UpgradeAmount(link)
     local lvl = ItemLevel(link)
     if not lvl or not ns.IsUpgrade then return nil end
-    local IsWorn = (C_Item and C_Item.IsEquippedItem) or IsEquippedItem
+    local IsWorn = C_Item.IsEquippedItem
     if type(IsWorn) == "function" then
         local okW, worn = pcall(IsWorn, link)
         if okW and worn == true then return nil end              -- (a ring you wear is no upgrade on the other one)
@@ -343,7 +343,7 @@ ns:NewModule("upgradePrompt", function()
         f.link, f.by = link, by
         f.shownAt = GetTime()
         local id = tonumber(tostring(link):match("item:(%d+)"))
-        local GetIcon = (C_Item and C_Item.GetItemIconByID) or GetItemIcon
+        local GetIcon = C_Item.GetItemIconByID
         local okT, tex = pcall(GetIcon or error, id)
         f.icon:SetTexture((okT and tex) or 134400)
         f.title:SetText(ns:SignalHex("good") .. format(ns:Tr("Upgrade: +%d item levels"), math.floor(by + 0.5)) .. "|r"

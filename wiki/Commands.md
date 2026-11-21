@@ -78,7 +78,7 @@ Mistype one and the add-on suggests the nearest command instead.
 | `/fgui crafts <search>` | what all your characters can craft; search their recipes |
 | `/fgui reps` | reputations and currencies on all your characters; click one to pin it |
 | `/fgui spec` | change talent set |
-| `/fgui talents save <name>` | keep your talents as a build; /fgui talents lists them, click one to learn it |
+| `/fgui talents save <name>` | keep your talents as a build; /fgui talents lists them, click one to import it |
 | `/fgui talents send <player> <build>` | send a saved talent build to another player of your class |
 
 ## Bags, gear and trade

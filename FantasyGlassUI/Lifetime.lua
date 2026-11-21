@@ -62,7 +62,7 @@ local function Reach(me, kind, n)
     local text = ns.MilestoneText(kind, n)
     ns:Print(format(ns:Tr("Milestone: %s!"), text))
     if ns.Flash then pcall(ns.Flash, ns, format(ns:Tr("Milestone: %s!"), text), 1, 0.82, 0.3) end
-    if PlaySound and SOUNDKIT then pcall(PlaySound, SOUNDKIT.LEVEL_UP or 888, "Master") end
+    pcall(PlaySound, 888, "Master")                          -- (the level-up fanfare)
     return true
 end
 ns.MilestoneReach = Reach

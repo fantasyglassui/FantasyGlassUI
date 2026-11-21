@@ -44,9 +44,8 @@ ns:NewModule("minimap", function()
 
     -- Remove Blizzard's minimap art
     local kill = {
-        Minimap.ZoomIn, Minimap.ZoomOut, _G.MinimapBackdrop, _G.MinimapCompassTexture, _G.MinimapBorder,
-        _G.MinimapBorderTop, _G.MiniMapWorldMapButton, _G.MinimapNorthTag, _G.MinimapZoomIn, _G.MinimapZoomOut,
-        cluster and cluster.BorderTop, cluster and cluster.ZoneTextButton, _G.MinimapZoneTextButton,
+        Minimap.ZoomIn, Minimap.ZoomOut, _G.MinimapBackdrop, _G.MinimapCompassTexture,
+        cluster and cluster.BorderTop, cluster and cluster.ZoneTextButton,
     }
     for _, obj in pairs(kill) do ns:Kill(obj) end
 
@@ -57,7 +56,7 @@ ns:NewModule("minimap", function()
     local ind = cluster and cluster.IndicatorFrame
     local items = {
         cluster and cluster.Tracking, _G.GameTimeFrame, ind and ind.MailFrame, ind and ind.CraftingOrderFrame,
-        _G.MiniMapMailFrame, cluster and cluster.InstanceDifficulty, _G.AddonCompartmentFrame,
+        cluster and cluster.InstanceDifficulty, _G.AddonCompartmentFrame,
     }
     local x = 0
     for _, f in pairs(items) do
@@ -111,7 +110,7 @@ ns:NewModule("minimap", function()
 
     -- Zone text, coordinates, clock ---------------------------------------------------------
     local function ZoneColor()
-        local fn = (C_PvP and C_PvP.GetZonePVPInfo) or GetZonePVPInfo
+        local fn = C_PvP.GetZonePVPInfo
         local t = fn and fn()
         if t == "sanctuary" then return 0.41, 0.80, 0.94
         elseif t == "friendly" then return 0.10, 1.00, 0.10

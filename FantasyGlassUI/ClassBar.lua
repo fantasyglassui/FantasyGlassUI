@@ -156,7 +156,7 @@ ns:NewModule("classBar", function()
     -- 4. Pet happiness (hunters) ---------------------------------------------------------------------------
     local petFrame = _G.FantasyGlassUI_Pet
     local mood
-    if type(GetPetHappiness) == "function" and type(petFrame) == "table" then
+    if type(C_PetInfo) == "table" and type(C_PetInfo.GetPetHappiness) == "function" and type(petFrame) == "table" then
         mood = CreateFrame("Frame", nil, petFrame, ns.template)
         mood:SetSize(12, 12)
         mood:SetPoint("RIGHT", petFrame, "LEFT", -4, 0)
@@ -176,7 +176,7 @@ ns:NewModule("classBar", function()
     end
     local function UpdateMood()
         if not mood then return end
-        local ok, level, damage = pcall(GetPetHappiness)
+        local ok, level, damage = pcall(C_PetInfo.GetPetHappiness)
         if not ok or type(level) ~= "number" or ns:IsSecret(level) or not UnitExists("pet") then mood:Hide(); return end
         mood.level, mood.damage = level, (type(damage) == "number" and not ns:IsSecret(damage)) and damage or nil
         mood:SetBackdropColor(ns:Signal(level >= 3 and "good" or level == 2 and "warn" or "bad"))

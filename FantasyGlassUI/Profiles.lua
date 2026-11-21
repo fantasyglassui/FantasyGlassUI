@@ -256,9 +256,7 @@ end
 -- in a raid). Whatever is switched on makes up the "context"; each context remembers its own layout,
 -- and when the context changes the old layout is saved and the new one put in place.
 function ns:TalentSet()
-    for _, probe in ipairs({ { "GetActiveTalentGroup", _G.GetActiveTalentGroup },
-                             { "C_SpecializationInfo.GetActiveSpecGroup", C_SpecializationInfo and C_SpecializationInfo.GetActiveSpecGroup },
-                             { "GetSpecialization", _G.GetSpecialization } }) do
+    for _, probe in ipairs({ { "C_SpecializationInfo.GetActiveSpecGroup", C_SpecializationInfo.GetActiveSpecGroup } }) do
         if type(probe[2]) == "function" then
             local ok, n = pcall(probe[2])
             if ok and type(n) == "number" and n >= 1 and n < 20 then return n, probe[1] end

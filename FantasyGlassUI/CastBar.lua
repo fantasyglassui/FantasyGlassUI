@@ -156,7 +156,7 @@ ns:NewModule("playerCast", function()
     end))
 
     -- Silence Blizzard's player cast bar
-    local blizz = _G.PlayerCastingBarFrame or _G.CastingBarFrame
+    local blizz = _G.PlayerCastingBarFrame
     if type(blizz) == "table" then
         local function Quiet() if blizz.UnregisterAllEvents then blizz:UnregisterAllEvents() end end
         Quiet()

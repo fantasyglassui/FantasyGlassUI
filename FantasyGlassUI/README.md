@@ -72,7 +72,7 @@ get two of everything.
 | `/fgui bagrules add ilvl 50 = Upgrades` | A bag section by rule (`ilvl`, `boe`, `set`, `quality`, `type`, `name`); `/fgui bagrules` lists them |
 | `/fgui mailrules add <character> cloth` | Mail rules; "Send by my rules" at the mailbox sends them |
 | `/fgui events` | Holidays and events, now and in the next two weeks |
-| `/fgui talents`, `/fgui talents save <name>` | Your saved talent builds; click one to learn it |
+| `/fgui talents`, `/fgui talents save <name>` | Your saved talent builds; click one to import it |
 | `/fgui sharepreview` | Look at a shared profile, layout or theme string before taking it |
 | `/fgui selftest` | Work through the add-on and list what passed and what did not |
 | `/fgui speak [text]` | Try the spoken alerts' voice |
@@ -562,8 +562,8 @@ Options, below). The list here is grouped a little differently. Point at a switc
   `/fgui mailrules add Mytailor cloth`) are sent too. Soulbound items are never sent.
 - **Events and holidays** (`/fgui events`): what the game's calendar has on now and in the next two
   weeks. A holiday that is on is added to your checklist, and taken off when it ends.
-- **Talent builds** (`/fgui talents`): keep your talents under a name and learn a build's points again
-  with a click. Where the game client does not let add-ons read talents, it says so.
+- **Talent builds** (`/fgui talents`): keep your talents under a name, as the game's own loadout code.
+  A click puts a build in the talent window's Import box; press Import and it joins your loadouts.
 - **Preview a shared string** (Tools, `/fgui sharepreview`): paste a profile, layout or theme
   string and see where its panels go and its colors before taking it.
 - **Hide the game's raid manager** (off): the panel that slides

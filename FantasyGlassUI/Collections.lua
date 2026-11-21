@@ -73,7 +73,7 @@ end
 local function ReadSlots()
     local C = C_Container
     local slots, locked = {}, false
-    local GetInstant = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+    local GetInstant = C_Item.GetItemInfoInstant
     for _, bag in ipairs(SortableBags()) do
         for slot = 1, (tonumber(C.GetContainerNumSlots(bag)) or 0) do
             local ok, info = pcall(C.GetContainerItemInfo, bag, slot)
@@ -194,15 +194,6 @@ function ns:RecordRepsAndCurrencies()
             if ok and type(d) == "table" and type(d.name) == "string" and not d.isHeader and not Secret(d.currentStanding) then
                 local lo, hi = tonumber(d.currentReactionThreshold) or 0, tonumber(d.nextReactionThreshold) or 0
                 mine.reps[d.name] = { reaction = d.reaction, now = (tonumber(d.currentStanding) or 0) - lo, max = math.max(0, hi - lo) }
-            end
-        end
-    elseif type(GetNumFactions) == "function" and type(GetFactionInfo) == "function" then       -- (the older reputation list)
-        local okN, n = pcall(GetNumFactions)
-        for i = 1, (okN and tonumber(n)) or 0 do
-            local ok, name, _, standing, lo, hi, value, _, _, isHeader, _, hasRep = pcall(GetFactionInfo, i)
-            if ok and type(name) == "string" and not Secret(name) and (not isHeader or hasRep) and type(value) == "number" and not Secret(value) then
-                lo, hi = tonumber(lo) or 0, tonumber(hi) or 0
-                mine.reps[name] = { reaction = standing, now = value - lo, max = math.max(0, hi - lo) }
             end
         end
     end

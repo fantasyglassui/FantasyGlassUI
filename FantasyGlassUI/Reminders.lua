@@ -53,8 +53,7 @@ ns:NewModule("buffMissing", function()
 
     local function TextureOf(name)
         local tex
-        if C_Spell and C_Spell.GetSpellTexture then local ok, t = pcall(C_Spell.GetSpellTexture, name); if ok then tex = t end
-        elseif GetSpellTexture then local ok, t = pcall(GetSpellTexture, name); if ok then tex = t end end
+        local ok, t = pcall(C_Spell.GetSpellTexture, name); if ok then tex = t end
         return tex or "Interface\\Icons\\INV_Misc_QuestionMark"
     end
     local function Refresh()
@@ -182,7 +181,7 @@ end
 ------------------------------------------------------------------------------------------
 ns:NewModule("locAlert", function()
     local L = C_LossOfControl
-    local Read = type(L) == "table" and (L.GetActiveLossOfControlData or L.GetEventInfo)
+    local Read = type(L) == "table" and L.GetActiveLossOfControlData
     if type(Read) ~= "function" then
         ns.locState = "this game client does not tell add-ons when you lose control"
         return

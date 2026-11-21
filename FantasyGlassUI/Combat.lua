@@ -1,14 +1,11 @@
 local _, ns = ...
 local Secret = function(v) return ns:IsSecret(v) end
 
--- Spell lookups that work on both the newer and the older spell functions.
+-- Spell lookups.
 local function SpellInfo(name)
     if C_Spell and C_Spell.GetSpellInfo then
         local ok, info = pcall(C_Spell.GetSpellInfo, name)
         if ok and type(info) == "table" then return info.spellID, info.iconID end
-    elseif GetSpellInfo then
-        local ok, _, _, icon, _, _, _, id = pcall(GetSpellInfo, name)
-        if ok then return id, icon end
     end
 end
 
@@ -50,9 +47,6 @@ ns:NewModule("cooldowns", function()
         if C_Spell and C_Spell.GetSpellCooldown then
             local ok, cd = pcall(C_Spell.GetSpellCooldown, id)
             if ok and type(cd) == "table" then return cd.startTime, cd.duration, cd.isEnabled, cd.isOnGCD end
-        elseif GetSpellCooldown then
-            local ok, start, duration, enabled = pcall(GetSpellCooldown, id)
-            if ok then return start, duration, enabled end
         end
     end
     local function State(id)

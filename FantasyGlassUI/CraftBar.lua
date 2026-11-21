@@ -89,8 +89,6 @@ function ns:CraftProfession(spellID)
             prof = { line = plain(info.professionID), parent = plain(info.parentProfessionID), kind = plain(info.profession), name = plain(info.professionName) }
         elseif via == "GetTradeSkillLineForRecipe" then
             prof = { line = plain(r[2]), name = plain(r[3]), parent = plain(r[4]) }
-        elseif via == "C_TradeSkillUI.GetTradeSkillLine" then
-            prof = { line = plain(r[2]), name = plain(r[3]), parent = plain(r[7]) }
         else
             prof = { name = plain(r[2]) }
         end
@@ -108,10 +106,9 @@ function ns:CraftProfession(spellID)
             if IsProfession(prof) then return prof end           -- (an ordinary spell has a line too, but not a profession's)
         end
         local prof = try("GetChildProfessionInfo", T.GetChildProfessionInfo) or try("GetBaseProfessionInfo", T.GetBaseProfessionInfo)
-                  or try("C_TradeSkillUI.GetTradeSkillLine", T.GetTradeSkillLine)
         if prof then return prof end
     end
-    return try("GetTradeSkillLine", GetTradeSkillLine)
+    return nil
 end
 ns.OpenProfession = function(self) return ns:CraftProfession(nil) end
 
@@ -267,7 +264,7 @@ local function Shaped(f)
     if type(f.Icon) ~= "table" or type(f.Text) ~= "table" then return false end
     local okN, name = pcall(f.GetName, f)
     if okN and type(name) == "string" and name:find("^FantasyGlassUI") then return false end
-    return f ~= _G.PlayerCastingBarFrame and f ~= _G.CastingBarFrame and f ~= _G.PetCastingBarFrame
+    return f ~= _G.PlayerCastingBarFrame and f ~= _G.PetCastingBarFrame
 end
 local function Visible(f)
     local ok, v = pcall(f.IsVisible, f)

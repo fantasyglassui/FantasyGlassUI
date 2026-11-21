@@ -74,10 +74,10 @@ end
 
 local FUNCTIONS = {
     "issecretvalue", "UnitHealthPercent", "CurveConstants.ScaleTo100", "UnitGetIncomingHeals", "UnitDetailedThreatSituation",
-    "C_UnitAuras.GetAuraDataByIndex", "C_UnitAuras.GetAuraDataBySpellName", "GetWeaponEnchantInfo", "C_ChatBubbles.GetAllChatBubbles",
-    "C_Spell.GetSpellInfo", "C_Spell.GetSpellCooldown", "GetSpellCooldown", "GetLootRollItemInfo", "RollOnLoot",
-    "AutoLootMailItem", "TakeInboxMoney", "GetTotemInfo", "GetPetHappiness", "GetRuneCooldown", "TalentButtonUtil.BaseVisualState", "UnitPowerPercent", "UnitThreatSituation",
-    "C_SwingTimer.IsTargetWithinSwingRange", "SetBinding", "MoveViewLeftStart", "Screenshot", "EditModeManagerFrame", "GetActiveTalentGroup", "GetSpecialization", "GetPaperDollSideBarFrame",
+    "C_UnitAuras.GetAuraDataByIndex", "C_UnitAuras.GetAuraDataBySpellName", "C_PaperDollInfo.GetTemporaryEnchantmentInfo", "C_ChatBubbles.GetAllChatBubbles",
+    "C_Spell.GetSpellInfo", "C_Spell.GetSpellCooldown", "GetLootRollItemInfo", "RollOnLoot",
+    "AutoLootMailItem", "TakeInboxMoney", "GetTotemInfo", "C_PetInfo.GetPetHappiness", "GetRuneCooldown", "TalentButtonUtil.BaseVisualState", "UnitPowerPercent", "UnitThreatSituation",
+    "C_SwingTimer.IsTargetWithinSwingRange", "SetBinding", "MoveViewLeftStart", "Screenshot", "EditModeManagerFrame", "GetNumSpecGroups", "GetPaperDollSideBarFrame",
     "C_Container.GetContainerItemInfo", "C_Container.SortBags", "C_Container.SortBankBags", "C_Container.SplitContainerItem",
     "C_Container.ContainerIDToInventoryID", "C_NewItems.IsNewItem", "StackSplitFrame",
     "C_Bank.FetchNumPurchasedBankTabs", "C_Bank.PurchaseBankTab", "C_Bank.CanPurchaseBankTab",
@@ -85,20 +85,20 @@ local FUNCTIONS = {
     "C_NamePlate.GetNamePlateForUnit", "CompactUnitFrame_UpdateHealthColor", "UnitFrameHealthBar_Update",
     "C_Map.GetPlayerMapPosition", "C_Reputation.GetWatchedFactionData", "C_GossipInfo.GetOptions", "C_PartyInfo.DoCountdown",
     "C_DamageMeter.GetCombatSessionFromType", "C_Item.GetItemInfoInstant", "C_Item.GetDetailedItemLevelInfo",
-    "C_CurrencyInfo.GetCoinTextureString", "GetCoinTextureString", "AbbreviateNumbers",
+    "C_CurrencyInfo.GetCoinTextureString", "AbbreviateNumbers",
     "Menu.GetManager", "TooltipDataProcessor.AddTooltipPostCall", "ShowUIPanel", "ColorPickerFrame",
-    "RegisterUnitWatch", "RegisterStateDriver", "CreateColor", "ChatEdit_UpdateHeader", "ActionButton_UpdateHotkeys",
-    "SetRaidTargetIconTexture", "DoReadyCheck", "C_AddOns.IsAddOnLoaded", "C_AddOns.LoadAddOn",
+    "RegisterUnitWatch", "RegisterStateDriver", "CreateColor", "ChatFrameUtil.InsertLink", "C_ActionBar.HasAction",
+    "SetRaidTargetIconTexture", "C_PartyInfo.DoReadyCheck", "C_AddOns.IsAddOnLoaded", "C_AddOns.LoadAddOn",
     "C_VignetteInfo.GetVignetteInfo", "BuyTrainerService", "GetTrainerServiceInfo", "MerchantItemButton_OnModifiedClick", "GetMerchantItemMaxStack",
-    "CanGuildBankRepair", "C_GossipInfo.SelectOption", "GetGameTime", "C_Reputation.SetWatchedFactionByIndex", "SetWatchedFactionIndex",
-    "C_EquipmentSet.GetEquipmentSetIDs", "C_EquipmentSet.UseEquipmentSet", "DoEmote", "Dismount", "IsFlying",
-    "C_TradeSkillUI.GetBaseProfessionInfo", "C_TradeSkillUI.GetTradeSkillTexture", "C_TradeSkillUI.GetRecipeInfo", "GetProfessions", "GetTradeSkillLine",
+    "CanGuildBankRepair", "C_GossipInfo.SelectOption", "GetGameTime", "C_Reputation.SetWatchedFactionByIndex",
+    "C_EquipmentSet.GetEquipmentSetIDs", "C_EquipmentSet.UseEquipmentSet", "C_ChatInfo.PerformEmote", "Dismount", "IsFlying",
+    "C_TradeSkillUI.GetBaseProfessionInfo", "C_TradeSkillUI.GetTradeSkillTexture", "C_TradeSkillUI.GetRecipeInfo", "GetProfessions",
     "C_QuestLog.UnitIsRelatedToActiveQuest", "C_Container.GetContainerItemID", "FlashClientIcon",
     "C_QuestLog.IsOnQuest", "C_QuestLog.IsQuestFlaggedCompleted", "C_QuestLog.IsComplete", "C_QuestLog.GetNextWaypoint", "C_QuestLog.GetQuestObjectives", "C_QuestLog.GetTitleForQuestID",
     "C_LossOfControl.GetActiveLossOfControlData", "C_MountJournal.SummonByID", "C_Map.GetPlayerMapPosition", "C_Map.GetMapWorldSize", "C_Map.SetUserWaypoint",
-    "LoggingCombat", "GetSavedInstanceInfo", "ResetInstances", "TakeTaxiNode", "MuteSoundFile", "C_AuctionHouse.GetBrowseResults", "GetAuctionItemInfo",
+    "LoggingCombat", "GetSavedInstanceInfo", "ResetInstances", "TakeTaxiNode", "MuteSoundFile", "C_AuctionHouse.GetBrowseResults",
     "C_TradeSkillUI.GetRecipeSchematic", "C_EquipmentSet.GetItemIDs", "FCF_OpenNewWindow", "Menu.ModifyMenu", "FriendsFrame_UpdateFriendButton",
-    "C_SpecializationInfo.SetActiveSpecGroup", "SetActiveTalentGroup", "C_Item.GetItemNumSockets", "C_DateAndTime.GetSecondsUntilDailyReset",
+    "C_SpecializationInfo.SetActiveSpecGroup", "C_ChatInfo.InChatMessagingLockdown", "C_Item.GetItemNumSockets", "C_DateAndTime.GetSecondsUntilDailyReset",
     "C_Spell.GetSpellDescription", "C_Item.GetItemSpell", "GetBattlefieldStatus", "C_Container.GetItemCooldown", "GetProfessions",
     "C_TooltipInfo.GetMerchantItem", "ConfirmLootSlot", "CompleteLFGRoleCheck", "GetUnitSpeed", "C_DamageMeter.GetCombatSessionSourceFromType",
     "IsRaidMarkerActive", "C_PartyInfo.InviteUnit", "CancelDuel", "C_DamageMeter.ResetAllCombatSessions",
@@ -113,11 +113,11 @@ local EVENTS = { "PLAYER_SWING", "UNIT_HEAL_PREDICTION", "PLAYERBANKSLOTS_CHANGE
                  "NAME_PLATE_UNIT_ADDED", "GUILDBANKBAGSLOTS_CHANGED", "UNIT_THREAT_LIST_UPDATE", "QUEST_WATCH_LIST_CHANGED" }
 local FRAMES = {
     "PlayerFrame", "TargetFrame", "FocusFrame", "PetFrame", "PartyFrame", "CompactRaidFrameContainer", "TotemFrame",
-    "MainActionBar", "MainMenuBar", "MicroMenu", "BagsBar", "StatusTrackingBarManager",
+    "MainActionBar", "MicroMenu", "BagsBar", "StatusTrackingBarManager",
     "MinimapCluster", "Minimap", "ObjectiveTrackerFrame", "WorldMapFrame",
     "ContainerFrameCombinedBags", "ContainerFrame1", "BankFrame", "GuildBankFrame", "MerchantFrame",
-    "PlayerCastingBarFrame", "CastingBarFrame", "OverlayPlayerCastingBarFrame", "ProfessionsFrame", "TradeSkillFrame", "BuffFrame", "DebuffFrame",
-    "SpellBookFrame", "PlayerSpellsFrame", "CommunitiesFrame", "GameMenuFrame", "DropDownList1", "DamageMeter",
+    "PlayerCastingBarFrame", "OverlayPlayerCastingBarFrame", "ProfessionsFrame", "BuffFrame", "DebuffFrame",
+    "PlayerSpellsFrame", "CommunitiesFrame", "GameMenuFrame", "DropDownList1", "DamageMeter",
     "MailFrame", "OpenAllMail", "GroupLootFrame1", "CharacterFrame", "PaperDollItemsFrame", "CharacterStatsPane",
     "CharacterHeadSlot", "CharacterRangedSlot",
 }
@@ -400,7 +400,6 @@ local function UnderMouse()
         local list = GetMouseFoci()
         f = type(list) == "table" and list[1] or nil
     end
-    if not f and GetMouseFocus then f = GetMouseFocus() end
     if type(f) ~= "table" or f == _G.WorldFrame or f == UIParent or not ns:Usable(f) then return nil end
     local top = f
     for _ = 1, 40 do                                   -- climb to the window itself
@@ -566,9 +565,9 @@ function ns:ProblemReport()
     out[#out + 1] = "OTHER ADD-ONS RUNNING"
     local names = {}
     pcall(function()
-        local count = (C_AddOns and C_AddOns.GetNumAddOns or GetNumAddOns)()
-        local info = (C_AddOns and C_AddOns.GetAddOnInfo) or GetAddOnInfo
-        local loaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
+        local count = C_AddOns.GetNumAddOns()
+        local info = C_AddOns.GetAddOnInfo
+        local loaded = C_AddOns.IsAddOnLoaded
         for i = 1, math.min(tonumber(count) or 0, 300) do
             local name = info(i)
             if type(name) == "string" and name ~= ADDON and loaded(i) then names[#names + 1] = name end

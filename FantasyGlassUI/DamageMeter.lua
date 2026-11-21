@@ -91,10 +91,6 @@ function ns.MeterSpells(detail, perSecond, max)
                     local ok, v = pcall(C_Spell.GetSpellName, id)
                     if ok and type(v) == "string" then name = v end
                 end
-                if not name and type(GetSpellInfo) == "function" then
-                    local ok, v = pcall(GetSpellInfo, id)
-                    if ok and type(v) == "string" then name = v end
-                end
             end
             if not name and type(e.name) == "string" and not Secret(e.name) then name = e.name end
             if type(e.creatureName) == "string" and not Secret(e.creatureName) and e.creatureName ~= "" then

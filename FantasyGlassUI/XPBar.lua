@@ -73,18 +73,13 @@ ns:NewModule("xpBar", function()
     local function Num(n) return BreakUpLargeNumbers and BreakUpLargeNumbers(n) or tostring(n) end
 
     local function AtMax()
-        if IsPlayerAtEffectiveMaxLevel then return IsPlayerAtEffectiveMaxLevel() end
-        if GetMaxPlayerLevel then return UnitLevel("player") >= GetMaxPlayerLevel() end
-        return false
+        local lvl, max = UnitLevel("player"), GetMaxPlayerLevel()
+        return type(lvl) == "number" and type(max) == "number" and lvl >= max
     end
 
     local function Watched()
-        if C_Reputation and C_Reputation.GetWatchedFactionData then
-            local d = C_Reputation.GetWatchedFactionData()
-            if d and d.name then return d.name, d.reaction, d.currentReactionThreshold, d.nextReactionThreshold, d.currentStanding end
-        elseif GetWatchedFactionInfo then
-            return GetWatchedFactionInfo()
-        end
+        local d = C_Reputation.GetWatchedFactionData()
+        if d and d.name then return d.name, d.reaction, d.currentReactionThreshold, d.nextReactionThreshold, d.currentStanding end
     end
 
     local function Update()

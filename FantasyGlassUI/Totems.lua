@@ -155,7 +155,7 @@ end)
 -- no temporary enchant, or when it is about to run out. Hidden whenever the game won't let us read it.
 ns:NewModule("imbueReminder", function()
     local _, class = UnitClass("player")
-    if (class ~= "SHAMAN" and class ~= "ROGUE") or not GetWeaponEnchantInfo then return end
+    if class ~= "SHAMAN" and class ~= "ROGUE" then return end
     local MAINHAND = 16
 
     local f = CreateFrame("Frame", "FantasyGlassUIImbue", UIParent, ns.template)
@@ -188,7 +188,7 @@ ns:NewModule("imbueReminder", function()
 
     ns:Every(1, "Imbue reminder", function()
         if preview then return end
-        local ok, has, left = pcall(GetWeaponEnchantInfo)
+        local ok, has, left = pcall(ns.WeaponEnchantInfo)
         if ok and not Secret(has) then
             seen.known, seen.has = true, has and true or false
             seen.expires = (has and not Secret(left) and type(left) == "number" and left > 0) and (GetTime() + left / 1000) or nil

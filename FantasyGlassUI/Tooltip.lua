@@ -157,7 +157,7 @@ ns:NewModule("tooltip", function()
                     end
                     return false
                 end
-                local GetInstant = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+                local GetInstant = C_Item.GetItemInfoInstant
                 local classID = GetInstant and select(6, GetInstant(link))
                 local levelLabel = type(ITEM_LEVEL) == "string" and ITEM_LEVEL:gsub("%%d.*$", "") or "Item Level "
                 if (classID == 2 or classID == 4) and C_Item and C_Item.GetDetailedItemLevelInfo and not HasLine(levelLabel) then

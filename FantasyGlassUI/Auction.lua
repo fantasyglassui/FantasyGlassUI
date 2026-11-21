@@ -61,12 +61,6 @@ local function PutOnSellPage(it)
     if type(ahf) == "table" and ahf.SetPostItem and ItemLocation and ItemLocation.CreateFromBagAndSlot then
         return pcall(ahf.SetPostItem, ahf, ItemLocation:CreateFromBagAndSlot(it.bag, it.slot))
     end
-    if C_Container and C_Container.PickupContainerItem and ClickAuctionSellItemButton then          -- (the older auction house)
-        pcall(C_Container.PickupContainerItem, it.bag, it.slot)
-        pcall(ClickAuctionSellItemButton)
-        if ClearCursor then pcall(ClearCursor) end
-        return true
-    end
     return false
 end
 function ns:ShowWorthSelling()

@@ -31,14 +31,6 @@ function ns:EquipmentSets()
                 add(id, name, icon, worn, items, wearing, missing)
             end)
         end
-    elseif type(GetNumEquipmentSets) == "function" and type(GetEquipmentSetInfo) == "function" then
-        local ok, count = pcall(GetNumEquipmentSets)
-        for i = 1, (ok and tonumber(count)) or 0 do
-            pcall(function()
-                local name, icon, _, worn, items, wearing, _, missing = GetEquipmentSetInfo(i)
-                add(name, name, icon, worn, items, wearing, missing)
-            end)
-        end
     end
     table.sort(list, function(a, b) return a.name < b.name end)
     return list
@@ -47,8 +39,7 @@ end
 -- Does this client have an equipment manager an add-on can use?
 function ns:CanUseSets()
     local E = C_EquipmentSet
-    if type(E) == "table" and type(E.GetEquipmentSetIDs) == "function" and type(E.UseEquipmentSet) == "function" then return true end
-    return type(GetNumEquipmentSets) == "function" and type(UseEquipmentSet) == "function"
+    return type(E) == "table" and type(E.GetEquipmentSetIDs) == "function" and type(E.UseEquipmentSet) == "function"
 end
 
 -- Put a set on. Returns true when the game was asked to.
@@ -58,9 +49,7 @@ function ns:WearSet(set)
         ns:Print("Gear sets can't be changed in combat.")
         return false
     end
-    local use = (type(C_EquipmentSet) == "table" and C_EquipmentSet.UseEquipmentSet) or UseEquipmentSet
-    if type(use) ~= "function" then return false end
-    return (pcall(use, set.id))
+    return (pcall(C_EquipmentSet.UseEquipmentSet, set.id))
 end
 
 -- What a set's tooltip says under its name.

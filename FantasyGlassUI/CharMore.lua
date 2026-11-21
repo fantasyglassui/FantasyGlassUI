@@ -6,12 +6,8 @@ local Secret = function(v) return ns:IsSecret(v) end
 -- talent set. Also /fgui spec (the other one) and /fgui spec 2.
 ------------------------------------------------------------------------------------------
 local function TalentSetCount()
-    for _, probe in ipairs({ _G.GetNumTalentGroups, C_SpecializationInfo and C_SpecializationInfo.GetNumSpecGroups }) do
-        if type(probe) == "function" then
-            local ok, n = pcall(probe)
-            if ok and type(n) == "number" and not Secret(n) and n >= 1 and n < 10 then return n end
-        end
-    end
+    local ok, n = pcall(GetNumSpecGroups)
+    if ok and type(n) == "number" and not Secret(n) and n >= 1 and n < 10 then return n end
     return 1
 end
 ns.TalentSetCount = TalentSetCount
@@ -23,9 +19,7 @@ function ns:SwitchTalentSet(n)
     if n < 1 or n > count then ns:Print("Give a talent set from 1 to %d.", count); return false end
     if n == now then ns:Print("You are already in talent set %d.", n); return false end
     if InCombatLockdown() then ns:Print("Not during a fight."); return false end
-    local set = (C_SpecializationInfo and C_SpecializationInfo.SetActiveSpecGroup) or _G.SetActiveTalentGroup or _G.SetActiveSpecGroup
-    if type(set) ~= "function" then ns:Print("This game client does not let add-ons change talent set."); return false end
-    return pcall(set, n) and n or false
+    return pcall(C_SpecializationInfo.SetActiveSpecGroup, n) and n or false
 end
 ns:NewModule("specButtons", function()
     local holder
@@ -137,7 +131,7 @@ function ns.ShortTime(seconds)
 end
 function ns.InfoPiece(piece)
     if piece == "hearth" then
-        local Get = (C_Container and C_Container.GetItemCooldown) or (C_Item and C_Item.GetItemCooldown) or GetItemCooldown
+        local Get = C_Container.GetItemCooldown or C_Item.GetItemCooldown
         if type(Get) ~= "function" then return nil end
         local ok, start, duration = pcall(Get, 6948)
         if not ok or type(start) ~= "number" or type(duration) ~= "number" or Secret(start) or Secret(duration) then return nil end

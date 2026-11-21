@@ -36,6 +36,28 @@ The releases published on CurseForge. Each lists what changed since the release 
 **Changed**
 - The ring round the mouse pointer and the quieter red error line are in Accessibility now.
 
+**Changed: made for WoW: Forever only**
+- Every function, event, frame and setting the add-on uses was checked against what the WoW: Forever
+  client actually has (its own interface code and the lists taken from the live client). Calls kept
+  for older game clients, and the older names Blizzard keeps only for backwards compatibility, are
+  gone: the add-on now calls Forever's own functions directly.
+- Talent builds (`/fgui talents`) work on Forever's talent trees: a build is the game's own loadout
+  code, and putting one back fills in the talent window's Import box (press Import and it joins
+  your loadouts). The older builds, from three talent tabs, were never usable here and are dropped.
+- Inside instances, where Forever stops add-ons messaging other players, sending a layout, a build
+  or a whisper from the add-on says so instead of failing without a word; the version check and the
+  pull timer's message wait until you are outside (the game's own pull countdown still runs).
+
+**Fixed**
+- The talent set buttons (1 and 2) on the character window never appeared: the number of talent sets
+  was asked for under names Forever does not have.
+- Hunter pet happiness was never shown: it is asked for where Forever keeps it now.
+- Debuffs on frames were all red: the colors for magic, curse, poison and disease come from where
+  Forever keeps them.
+- The typing bar's rim did not take the channel's color, and short key names on the game's action
+  buttons could be rewritten by the game: both followed functions the game no longer calls.
+- An item shift-clicked while typing in the restock list now goes into it.
+
 ## 12.0.0
 
 **New**

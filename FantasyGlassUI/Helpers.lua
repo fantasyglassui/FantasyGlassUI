@@ -54,13 +54,10 @@ ns:NewModule("autoInvite", function()
         if not who then return end
         AcceptGroup()
         -- the invitation box: mark it answered, so closing it does not decline what was just accepted
-        for i = 1, (type(STATICPOPUP_NUMDIALOGS) == "number" and STATICPOPUP_NUMDIALOGS or 4) do
-            local popup = _G["StaticPopup" .. i]
-            if type(popup) == "table" and popup.which == "PARTY_INVITE" then
-                popup.inviteAccepted = 1
-                if StaticPopup_Hide then pcall(StaticPopup_Hide, "PARTY_INVITE") end
-                break
-            end
+        local okP, popup = pcall(StaticPopup_FindVisible, "PARTY_INVITE")
+        if okP and type(popup) == "table" then
+            popup.inviteAccepted = 1
+            pcall(StaticPopup_Hide, "PARTY_INVITE")
         end
         ns:Print(format(ns:Tr("Joined %s's group (%s)."), tostring(name), ns:Tr(who)))
     end))
@@ -109,15 +106,12 @@ ns:NewModule("deleteFill", function()
     local function Fill(which)
         if not WHICH[which] then return false end
         local word = (type(DELETE_ITEM_CONFIRM_STRING) == "string" and DELETE_ITEM_CONFIRM_STRING ~= "") and DELETE_ITEM_CONFIRM_STRING or "DELETE"
-        for i = 1, (type(STATICPOPUP_NUMDIALOGS) == "number" and STATICPOPUP_NUMDIALOGS or 4) do
-            local popup = _G["StaticPopup" .. i]
-            if type(popup) == "table" and popup.which == which then
-                local box = popup.editBox or popup.EditBox or _G["StaticPopup" .. i .. "EditBox"]
-                if type(box) == "table" and box.SetText then
-                    box:SetText(word)
-                    return true
-                end
-            end
+        local okP, popup = pcall(StaticPopup_FindVisible, which)
+        if not okP or type(popup) ~= "table" then return false end
+        local box = (popup.GetEditBox and popup:GetEditBox()) or popup.editBox or popup.EditBox
+        if type(box) == "table" and box.SetText then
+            box:SetText(word)
+            return true
         end
         return false
     end
@@ -156,8 +150,7 @@ ns:NewModule("skipCinematics", function()
         if event == "PLAY_MOVIE" then
             if type(id) == "number" and ShouldSkip("film:" .. id) then
                 local frame = _G.MovieFrame
-                if type(frame) == "table" and frame.StopMovie then pcall(frame.StopMovie, frame)
-                elseif GameMovieFinished then pcall(GameMovieFinished) end
+                if type(frame) == "table" and frame.StopMovie then pcall(frame.StopMovie, frame) end
             end
         elseif ShouldSkip(PlaceKey()) then
             if CinematicFrame_CancelCinematic then pcall(CinematicFrame_CancelCinematic)
@@ -196,7 +189,7 @@ ns:NewModule("versionNotice", function()
     pcall(chat.RegisterAddonMessagePrefix, PREFIX)
     local lastSent = {}
     local function Send(channel)
-        if InCombatLockdown() then return false end
+        if InCombatLockdown() or ns:MessagingLocked() then return false end
         local now = GetTime()
         if lastSent[channel] and now - lastSent[channel] < 300 then return false end    -- at most once every five minutes
         lastSent[channel] = now
@@ -331,9 +324,24 @@ function ns.WhyFailed(message)
     end
     return nil
 end
+-- Temporary weapon enchants (poisons, sharpening stones, shaman imbues) as main hand, off hand and ranged, each as
+-- has, milliseconds left, charges, enchant id: the same order the older GetWeaponEnchantInfo gave them in.
+local ENCHANT_SLOTS = { 16, 17, 18 }
+function ns.WeaponEnchantInfo()
+    local values = {}
+    for i, slot in ipairs(ENCHANT_SLOTS) do
+        local ok, info = pcall(C_PaperDollInfo.GetTemporaryEnchantmentInfo, slot)
+        local at = (i - 1) * 4
+        if ok and type(info) == "table" then
+            values[at + 1], values[at + 2], values[at + 3], values[at + 4] = true, info.remainingTimeMs, info.chargesRemaining, info.enchantID
+        else
+            values[at + 1] = false
+        end
+    end
+    return unpack(values, 1, 12)
+end
 function ns:StandUp()
-    if type(DoEmote) ~= "function" then return false end
-    return (pcall(DoEmote, "STAND"))
+    return (pcall(C_ChatInfo.PerformEmote, "STAND"))
 end
 -- Is it safe to get off? Not in the air, not on a flight path, and only if actually mounted.
 function ns:CanDismount()
@@ -374,7 +382,7 @@ do
         end))
     end
     ns:NewModule("autoStand", function()
-        ns.standState = type(DoEmote) == "function" and "on" or "not possible (this game client gives add-ons no way to stand up)"
+        ns.standState = "on"
         Start()
     end)
     ns:NewModule("autoDismount", function()
@@ -454,10 +462,10 @@ function ns.SummonDecision(stillOffered, sameSummoner, inCombat)
 end
 ns:NewModule("autoSummon", function()
     local S = type(C_SummonInfo) == "table" and C_SummonInfo or {}
-    local confirm = S.ConfirmSummon or ConfirmSummon
-    local summoner = S.GetSummonConfirmSummoner or GetSummonConfirmSummoner
-    local area = S.GetSummonConfirmAreaName or GetSummonConfirmAreaName
-    local left = S.GetSummonConfirmTimeLeft or GetSummonConfirmTimeLeft
+    local confirm = S.ConfirmSummon
+    local summoner = S.GetSummonConfirmSummoner
+    local area = S.GetSummonConfirmAreaName
+    local left = S.GetSummonConfirmTimeLeft
     if type(confirm) ~= "function" then
         ns.summonState = "not possible (this game client gives add-ons no way to accept)"
         return
@@ -525,7 +533,7 @@ function ns:RollMightBeUpgrade(link)
         if ok and type(v) == "number" and not Secret(v) then level = v end
     end
     if level then return ns:IsUpgrade(link, level) and true or false end
-    local GetInstant = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+    local GetInstant = C_Item.GetItemInfoInstant
     if type(GetInstant) ~= "function" then return false end
     local ok, _, _, _, equipLoc = pcall(GetInstant, link)
     return ok and type(equipLoc) == "string" and equipLoc ~= "" and equipLoc ~= "INVTYPE_BAG" and equipLoc ~= "INVTYPE_NON_EQUIP_IGNORE"
@@ -580,11 +588,10 @@ end
 ns:NewModule("whisperInvite", function()
     local function Invite(name)
         local fn = type(C_PartyInfo) == "table" and C_PartyInfo.InviteUnit
-        if type(fn) ~= "function" then fn = InviteUnit end
         if type(fn) ~= "function" then return false end
         return (pcall(fn, name))
     end
-    if not ((type(C_PartyInfo) == "table" and type(C_PartyInfo.InviteUnit) == "function") or type(InviteUnit) == "function") then
+    if not (type(C_PartyInfo) == "table" and type(C_PartyInfo.InviteUnit) == "function") then
         ns.whisperInviteState = "not possible (this game client gives add-ons no way to invite)"
         return
     end

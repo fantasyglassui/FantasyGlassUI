@@ -141,7 +141,6 @@ ns:NewModule("actionBars", function()
     local panels = {}
     for _, def in ipairs(BARS) do
         local bar = _G[def[1]]
-        if not bar and def[1] == "MainActionBar" then bar = _G.MainMenuBar end
         local prefix, n = def[2], def[3]
 
         -- with the add-on's own bars on, the game's eight bars and its stance bar are only put out of
@@ -225,10 +224,13 @@ ns:NewModule("actionBars", function()
         pcall(kev.RegisterEvent, kev, e)
     end
     kev:SetScript("OnEvent", ns:Guard("Hotkeys", function() ns:After(0.2, AbbrevAll) end))
-    if ActionButton_UpdateHotkeys then
-        hooksecurefunc("ActionButton_UpdateHotkeys", ns:Guard("Hotkeys", function(self)
-            if self and self.GetName then Abbrev(self) end
-        end))
+    -- (each button rewrites its own label with its UpdateHotkeys method: follow it on every button)
+    local AfterHotkeys = ns:Guard("Hotkeys", function(self) if self and self.GetName then Abbrev(self) end end)
+    for _, def in ipairs(BARS) do
+        for i = 1, def[3] do
+            local btn = _G[def[2] .. i]
+            if type(btn) == "table" and btn.UpdateHotkeys then hooksecurefunc(btn, "UpdateHotkeys", AfterHotkeys) end
+        end
     end
 
     -- XP / reputation bar ornaments
@@ -414,8 +416,7 @@ ns:NewModule("microMenu", function()
         scaled = true
         for _, def in ipairs(BARS) do
             local bar = _G[def[1]]
-            if not bar and def[1] == "MainActionBar" then bar = _G.MainMenuBar end
-            local mine = math.max(50, math.min(150, tonumber(ns:BarSetting("bar_" .. def[1], "scale")) or 100))
+                local mine = math.max(50, math.min(150, tonumber(ns:BarSetting("bar_" .. def[1], "scale")) or 100))
             if type(bar) == "table" and bar.SetScale then pcall(ns.RawFrameCall and ns.RawFrameCall(bar, "SetScale") or bar.SetScale, bar, v / 100 * mine / 100) end
         end
     end
@@ -439,7 +440,6 @@ ns:NewModule("microMenu", function()
     local infos = {}
     for _, def in ipairs(BARS) do
         local bar = _G[def[1]]
-        if not bar and def[1] == "MainActionBar" then bar = _G.MainMenuBar end
         local key = "bar_" .. def[1]
         -- with the add-on's own bars on, the game's eight bars are put out of sight (BarEngine.lua):
         -- they are not moved or held in place at all, so nothing of theirs is touched

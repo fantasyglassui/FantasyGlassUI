@@ -152,7 +152,7 @@ ns:NewModule("toasts", function()
             if not link then return end
             local quality = select(3, ns:GetItemInfo(link))
             if type(quality) ~= "number" or quality < (tonumber(ns.db.toastQuality) or 2) then return end      -- uncommon and better
-            local GetInstant = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+            local GetInstant = C_Item.GetItemInfoInstant
             local icon = GetInstant and select(5, GetInstant(link))
             ns:Toast(icon, link, count > 1 and format(ns:Tr("You received %d"), count) or ns:Tr("You received"))
         elseif event == "PLAYER_LEVEL_UP" then
@@ -175,8 +175,7 @@ ns:NewModule("toasts", function()
     -- the situation has cleared and come back.
     local bagsWarned, repairWarned = false, false
     local function FreeSlots()
-        local C = C_Container
-        local slots, freeOf = (C and C.GetContainerNumSlots) or GetContainerNumSlots, (C and C.GetContainerNumFreeSlots) or GetContainerNumFreeSlots
+        local slots, freeOf = C_Container.GetContainerNumSlots, C_Container.GetContainerNumFreeSlots
         if not slots or not freeOf then return nil end
         local free, total = 0, 0
         for bag = 0, 4 do

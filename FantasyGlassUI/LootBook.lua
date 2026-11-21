@@ -64,7 +64,7 @@ function ns.LootJournal()
         return nil
     end
     local out = {}
-    local GetLoot = (C_EncounterJournal and C_EncounterJournal.GetLootInfoByIndex) or EJ_GetLootInfoByIndex
+    local GetLoot = C_EncounterJournal.GetLootInfoByIndex
     pcall(function()
         if EJ_SelectTier and EJ_GetCurrentTier then EJ_SelectTier(EJ_GetCurrentTier()) end
         for _, raid in ipairs({ false, true }) do

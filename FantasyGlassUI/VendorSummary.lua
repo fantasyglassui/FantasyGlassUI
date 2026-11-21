@@ -98,8 +98,7 @@ ns:NewModule("vendorSummary", function()
     -- what is watched (never changed): selling, buying, buying back and repairing
     if hooksecurefunc then
         local function Sold() if Open() then visit.soldCount = visit.soldCount + 1 end end
-        if C_Container and type(C_Container.UseContainerItem) == "function" then pcall(hooksecurefunc, C_Container, "UseContainerItem", Sold)
-        elseif type(UseContainerItem) == "function" then pcall(hooksecurefunc, "UseContainerItem", Sold) end
+        pcall(hooksecurefunc, C_Container, "UseContainerItem", Sold)
         if type(BuyMerchantItem) == "function" then
             pcall(hooksecurefunc, "BuyMerchantItem", function(_, qty)
                 if Open() then visit.boughtCount = visit.boughtCount + math.max(1, tonumber(qty) or 1) end
