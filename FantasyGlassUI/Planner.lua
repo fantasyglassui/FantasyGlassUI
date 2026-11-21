@@ -205,8 +205,39 @@ ns.PlannerCharRecord = PaceRecord
 ------------------------------------------------------------------------------------------
 local fighting = false
 local told = {}                      -- the Questie lines, once a session each
-local started = {}                   -- quest -> when its clock started (accepted, or in the log when planned)
 local SOURCE_LINES = { missing = "Install Questie to plan new quests too.", changed = "Questie changed; planning from your quest log only." }
+
+-- Pace, measured between marks: a route takes a hub's quests together (accept all, do all, hand in
+-- all), so one quest's own accept-to-hand-in time says little. The time from the mark to a run of
+-- hand-ins is set against the estimates of the quests handed in (and their share of the travel).
+local PACE_BATCH = 60                -- seconds without another hand-in that end a run of hand-ins
+local PACE_AFK = 1800                -- more than this since the mark: away, no sample
+local PACE_LOW, PACE_HIGH = 0.5, 3
+local mark                           -- { time = seconds }; in memory only (a /reload starts afresh)
+local batch                          -- { estimate = seconds, last = time of its last hand-in }
+
+local function Flush(now)
+    if not (batch and mark) then batch = nil; return end
+    if now and now - batch.last < PACE_BATCH then return end
+    local actual = batch.last - mark.time
+    if batch.estimate > 0 and actual > 0 then
+        local r = max(PACE_LOW, min(PACE_HIGH, actual / batch.estimate))
+        ns.PlannerRecordPace(r * batch.estimate, batch.estimate)
+    end
+    mark, batch = { time = batch.last }, nil
+end
+
+local function HandedIn(id, plan)
+    local now = GetTime()
+    Flush(now)
+    if not mark then mark = { time = now }; return end
+    if not batch and now - mark.time > PACE_AFK then mark = { time = now }; return end
+    local est = type(plan.estimates) == "table" and tonumber(plan.estimates[id]) or nil
+    if not est or est <= 0 then return end
+    est = est * (1 + (tonumber(plan.travelShare) or 0))
+    batch = batch or { estimate = 0 }
+    batch.estimate, batch.last = batch.estimate + est, now
+end
 
 local function Following()
     local st = ns.GuideState and ns.GuideState()
@@ -219,18 +250,24 @@ local function Placed()
     return ns.PlannerWorldPos(map, x, y) ~= nil
 end
 
--- Each planned quest's time at your usual pace of 1 (what the hand-in is measured against).
-local function Estimates(guide, ctx)
-    local out, src = {}, ctx.source
+-- Each planned quest's time at a pace of 1 (what hand-ins are measured against), and the travel
+-- between them as a share of that.
+local function Estimates(guide, summary, ctx)
+    local out, src, paced, total = {}, ctx.source, 0, 0
     for _, s in ipairs(guide.steps) do
         ns.PlannerYield()
         local id = s.quest
         if id and out[id] == nil and type(src) == "table" then
             local rec = src.quest(id)
             out[id] = rec and floor(ns.PlannerQuestTime(rec, { speed = ctx.speed }) + 0.5) or 0
+            if rec then paced, total = paced + ns.PlannerQuestTime(rec, ctx), total + out[id] end
         end
     end
-    return out
+    local share = nil
+    if paced > 0 and total > 0 and tonumber(summary.seconds) then
+        share = max(0, (summary.seconds - paced) / paced)
+    end
+    return out, share
 end
 
 -- The coroutine's body: guide, summary, ctx; nothing while Questie is still loading (it asks again).
@@ -243,20 +280,18 @@ local function Plan()
         ns:Print(line)
     end
     local guide, summary = ns.PlannerRoute(ctx)
-    guide.estimates = Estimates(guide, ctx)
+    guide.estimates, guide.travelShare = Estimates(guide, summary, ctx)
     return guide, summary, ctx
 end
 
 local function Apply(guide, summary, ctx)
-    local now = GetTime()
-    for id in pairs(guide.estimates) do
-        if not started[id] and ctx.onQuest(id) then started[id] = now end
-    end
+    if not mark then mark = { time = GetTime() } end
     if summary.newZone and summary.zone then ns.PlannerSetZone(summary.zone, ctx.level) end
     ns:GuideSetPlan(guide, summary)
 end
 
 local function Tick()
+    if batch then Flush(GetTime()) end
     if not (ns.plannerBusy or ns.plannerQueued) then return end
     if not Following() then ns:PlannerStop(); return end
     if fighting or InCombatLockdown() or not Placed() then return end
@@ -269,7 +304,12 @@ local function Tick()
     local ok, guide, summary, ctx = coroutine.resume(running)
     if ok and coroutine.status(running) ~= "dead" then return end
     running, ns.plannerBusy = nil, false
-    if not ok then error(guide, 0) end
+    if not ok then
+        -- keep the last good plan; the panel says so (every time, not only the first), /fgui check lists it
+        if #ns.errors < 60 then ns.errors[#ns.errors + 1] = "Planner: " .. tostring(guide) end
+        if ns.GuidePlanFailed then ns:GuidePlanFailed() end
+        return
+    end
     if guide then Apply(guide, summary, ctx) end
 end
 ns:Every(0, "Planner", Tick)
@@ -281,11 +321,12 @@ function ns:PlannerReplan(reason)
     return true
 end
 
--- Follow the planned route, and plan it (again).
+-- Follow the planned route, and plan it from scratch.
 function ns:PlannerStart()
     if not ns:GuideOn() then return false end
     if not Following() then ns:GuideSetPlan(nil) end
     ns:GuideShowPanel()
+    mark, batch = nil, nil
     ns.plannerQueued, ns.plannerReason = true, "start"
     return true
 end
@@ -297,27 +338,24 @@ end
 do
     local ev = CreateFrame("Frame")
     for _, e in ipairs({ "QUEST_ACCEPTED", "QUEST_TURNED_IN", "QUEST_REMOVED", "PLAYER_LEVEL_UP", "HEARTHSTONE_BOUND",
-                         "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED" }) do pcall(ev.RegisterEvent, ev, e) end
-    ev:SetScript("OnEvent", ns:Guard("Planner", function(_, event, a, b)
+                         "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED" }) do pcall(ev.RegisterEvent, ev, e) end
+    ev:SetScript("OnEvent", ns:Guard("Planner", function(_, event, a)
         if event == "PLAYER_REGEN_DISABLED" then fighting = true; return end
         if event == "PLAYER_REGEN_ENABLED" then fighting = false; return end
         local on, st = Following()
         if not on then return end
         local plan = type(st.plan) == "table" and st.plan or {}
-        local est = type(plan.estimates) == "table" and plan.estimates or {}
         if event == "QUEST_ACCEPTED" then
-            local id = (type(b) == "number") and b or a
-            if type(id) == "number" and est[id] and not started[id] then started[id] = GetTime() end
+            if batch then Flush() end                                -- (new work: the run of hand-ins is over)
         elseif event == "QUEST_TURNED_IN" then
-            if type(a) == "number" then
-                if started[a] and est[a] then ns.PlannerRecordPace(GetTime() - started[a], est[a]) end
-                started[a] = nil
-            end
+            if type(a) == "number" then HandedIn(a, plan) end
             ns:PlannerReplan("hand-in")
         elseif event == "HEARTHSTONE_BOUND" then
             local step = type(plan.steps) == "table" and plan.steps[st.at or 1]
             if type(step) == "table" and step.kind == "bind" then ns:GuideSkip(false) end   -- (bound by place, not by the innkeeper's name)
             ns:PlannerReplan("bind")
+        elseif event == "PLAYER_ENTERING_WORLD" then
+            ns:PlannerReplan("login")                                -- (a saved plan may be stale; the runner waits for a place and for Questie)
         elseif event == "PLAYER_LEVEL_UP" then
             ns:PlannerReplan("level")
         else

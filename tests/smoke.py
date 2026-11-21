@@ -9076,16 +9076,48 @@ try("13.0 planner: running it", function()
         pos = { 1, 30, 40 }
         settle()
         ns.PLANNER_BUDGET_MS = real.budget
-        -- hand-ins replan, and the time it took counts towards the pace
+        -- a step ticked off by hand stays ticked in the next plan
+        ns:GuideSkip(false)
+        if not ns.GuideState().ticked[1] then error("ticked") end
+        ns:PlannerReplan("test"); settle()
+        if not ns.GuideState().ticked[1] or ns.GuideState().at ~= 2 then error("a replan keeps the steps you ticked off") end
+        -- a plan that fails keeps the last good one, and the panel says so
+        local realRoute, nerr = ns.PlannerRoute, #ns.errors
+        ns.PlannerRoute = function() error("boom") end
+        ns:PlannerReplan("test"); settle()
+        ns.PlannerRoute = realRoute
+        if ns.GuideText(planned()) ~= text then error("a failed plan keeps the last good one") end
+        ns:GuideAdvance()
+        local note = ns:Tr("Couldn't plan the route; trying again after your next quest")
+        if said.skipped ~= note then error("the failed plan's note: " .. tostring(said.skipped)) end
+        if #ns.errors ~= nerr + 1 then error("a failed plan is listed for /fgui check") end
+        for i = #ns.errors, nerr + 1, -1 do table.remove(ns.errors, i) end
+        ns:PlannerReplan("test"); settle()
+        if said.skipped == note then error("a good plan clears the note") end
+        -- logging in (or a /reload) plans again
+        fireEvent("PLAYER_ENTERING_WORLD")
+        if ns.plannerQueued ~= true then error("entering the world replans") end
+        settle()
+        -- pace, between marks: one hub of three quests (100 s each), all handed in 330 s after the mark
         if ns.PlannerPace() ~= 1 then error("no pace yet") end
-        accepted[101] = true; fireEvent("QUEST_ACCEPTED", 101)
-        clock = clock + 2000
-        accepted[101], handed[101] = nil, true
-        fireEvent("QUEST_TURNED_IN", 101, 400, 0)
+        ns:PlannerStart(); settle()
+        local plan = planned()
+        plan.estimates, plan.travelShare = { [101] = 100, [102] = 100, [103] = 100 }, 0
+        clock = clock + 330
+        for _, id in ipairs({ 101, 102, 103 }) do handed[id] = true; fireEvent("QUEST_TURNED_IN", id, 400, 0) end
         if ns.plannerQueued ~= true then error("a hand-in queues a replan") end
-        if ns.PlannerPace() == 1 then error("the hand-in's time is recorded") end
+        if ns.PlannerPace() ~= 1 then error("a run of hand-ins is measured once it is over") end
+        clock = clock + 61; frame()
+        if math.abs(ns.PlannerPace() - 1.1) > 0.01 then error("one hub of three quests: pace " .. ns.PlannerPace()) end
         settle()
         for _, s in ipairs(planned().steps) do if s.quest == 101 then error("the handed-in quest is still planned") end end
+        -- away for over half an hour: no sample
+        clock = clock + 1900
+        planned().estimates = { [105] = 100 }
+        fireEvent("QUEST_TURNED_IN", 105, 0, 0)
+        clock = clock + 61; frame()
+        if math.abs(ns.PlannerPace() - 1.1) > 0.01 then error("time away is no sample: " .. ns.PlannerPace()) end
+        settle()
         fireEvent("PLAYER_LEVEL_UP", 11)
         if ns.plannerQueued ~= true then error("a level replans") end
         settle()

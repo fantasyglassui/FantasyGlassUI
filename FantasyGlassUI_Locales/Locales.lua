@@ -21,6 +21,7 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["Couldn't plan the route; trying again after your next quest"] = "Die Route konnte nicht geplant werden; neuer Versuch nach deiner nächsten Quest",
     ["Planned: %s, level %s → %s"] = "Geplant: %s, Stufe %s → %s",
     ["Skipped: %d group quests (Solo is on)"] = "Ausgelassen: %d Gruppenquests (Solo ist an)",
     ["Skipped: %d group quests"] = "Ausgelassen: %d Gruppenquests",
@@ -3301,6 +3302,7 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["Couldn't plan the route; trying again after your next quest"] = "Impossible de planifier l'itinéraire ; nouvel essai après votre prochaine quête",
     ["Planned: %s, level %s → %s"] = "Prévu : %s, niveau %s → %s",
     ["Skipped: %d group quests (Solo is on)"] = "Ignorées : %d quêtes de groupe (Solo activé)",
     ["Skipped: %d group quests"] = "Ignorées : %d quêtes de groupe",
@@ -6581,6 +6583,7 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["Couldn't plan the route; trying again after your next quest"] = "No se pudo planificar la ruta; se reintentará tras tu próxima misión",
     ["Planned: %s, level %s → %s"] = "Planificado: %s, nivel %s → %s",
     ["Skipped: %d group quests (Solo is on)"] = "Omitidas: %d misiones de grupo (Solo activado)",
     ["Skipped: %d group quests"] = "Omitidas: %d misiones de grupo",
@@ -9864,6 +9867,7 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["Couldn't plan the route; trying again after your next quest"] = "Не удалось проложить маршрут; новая попытка после следующего задания",
     ["Planned: %s, level %s → %s"] = "План: %s, уровень %s → %s",
     ["Skipped: %d group quests (Solo is on)"] = "Пропущено: %d групповых заданий (включено «Соло»)",
     ["Skipped: %d group quests"] = "Пропущено: %d групповых заданий",
@@ -13144,6 +13148,7 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["Couldn't plan the route; trying again after your next quest"] = "Não foi possível planejar a rota; nova tentativa após sua próxima missão",
     ["Planned: %s, level %s → %s"] = "Planejado: %s, nível %s → %s",
     ["Skipped: %d group quests (Solo is on)"] = "Ignoradas: %d missões de grupo (Solo ativado)",
     ["Skipped: %d group quests"] = "Ignoradas: %d missões de grupo",
@@ -16424,6 +16429,7 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["Couldn't plan the route; trying again after your next quest"] = "Impossibile pianificare il percorso; nuovo tentativo dopo la prossima missione",
     ["Planned: %s, level %s → %s"] = "Pianificato: %s, livello %s → %s",
     ["Skipped: %d group quests (Solo is on)"] = "Saltate: %d missioni di gruppo (Solo attivo)",
     ["Skipped: %d group quests"] = "Saltate: %d missioni di gruppo",
@@ -19704,6 +19710,7 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["Couldn't plan the route; trying again after your next quest"] = "경로를 계획하지 못했습니다. 다음 퀘스트 후에 다시 시도합니다",
     ["Planned: %s, level %s → %s"] = "계획: %s, 레벨 %s → %s",
     ["Skipped: %d group quests (Solo is on)"] = "건너뜀: 파티 퀘스트 %d개 (솔로 켜짐)",
     ["Skipped: %d group quests"] = "건너뜀: 파티 퀘스트 %d개",
@@ -22987,6 +22994,7 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["Couldn't plan the route; trying again after your next quest"] = "无法规划路线；将在你完成下一个任务后重试",
     ["Planned: %s, level %s → %s"] = "规划：%s，等级 %s → %s",
     ["Skipped: %d group quests (Solo is on)"] = "已跳过：%d 个组队任务（单人已开启）",
     ["Skipped: %d group quests"] = "已跳过：%d 个组队任务",

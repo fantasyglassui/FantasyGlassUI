@@ -307,14 +307,38 @@ function ns:GuideFollow(name)
     ns:Print("Following \"%s\": %d steps.", name, #guide.steps)
     return true
 end
+-- A step as the same thing to do, wherever it sits in a plan.
+local function StepKey(step)
+    return table.concat({ tostring(step.kind), tostring(step.quest), tostring(step.node), tostring(step.crossing), tostring(step.text) }, "\1")
+end
 -- Follow a new plan (Planner.lua), from its first step; nil = an empty one until the first is ready.
+-- Steps you ticked off yourself in the old plan stay ticked where the new plan has them too.
 function ns:GuideSetPlan(guide, summary)
     local _, state = Store()
-    state[ns:CharKey()] = { name = ns.GUIDE_PLANNED, at = 1, ticked = {}, summary = summary,
-        plan = guide or { name = ns.GUIDE_PLANNED, steps = {} } }
+    local old = state[ns:CharKey()]
+    local plan = guide or { name = ns.GUIDE_PLANNED, steps = {} }
+    local ticked, had = {}, {}
+    if type(old) == "table" and old.name == ns.GUIDE_PLANNED and type(old.plan) == "table" and type(old.plan.steps) == "table" and type(old.ticked) == "table" then
+        for i, on in pairs(old.ticked) do
+            local step = on and old.plan.steps[i]
+            if type(step) == "table" then local k = StepKey(step); had[k] = (had[k] or 0) + 1 end
+        end
+    end
+    for i, step in ipairs(plan.steps) do
+        local k = StepKey(step)
+        if (had[k] or 0) > 0 then had[k] = had[k] - 1; ticked[i] = true end
+    end
+    state[ns:CharKey()] = { name = ns.GUIDE_PLANNED, at = 1, ticked = ticked, summary = summary, plan = plan }
     pointed = nil
     ns:GuideShowPanel()
     ns:GuideAdvance()
+end
+-- Planning failed: keep the plan you have, and say so on the panel.
+function ns:GuidePlanFailed()
+    local st = State()
+    if not (type(st) == "table" and st.name == ns.GUIDE_PLANNED) then return end
+    st.planFailed = true
+    if Draw then Draw() end
 end
 function ns:GuideStop()
     if ns.PlannerStop then ns:PlannerStop() end
@@ -385,7 +409,7 @@ Draw = function()
     if not guide then panel:Hide(); return end
     local at, steps = st.at or 1, guide.steps
     panel.title:SetText(Title(st, guide))
-    local skipped = SkippedText(st)
+    local skipped = (Planned(st) and st.planFailed) and ns:Tr("Couldn't plan the route; trying again after your next quest") or SkippedText(st)
     panel.skipped:SetText(skipped or "")
     panel.skipped:SetShown(skipped ~= nil)
     panel:SetHeight(skipped and 131 or 118)
