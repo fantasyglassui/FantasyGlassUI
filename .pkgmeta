@@ -13,6 +13,8 @@ ignore:
   - tests
   - wiki
   - docs
+  - specs
+  - site-src
   - README.md
   - CHANGELOG.md
   - RELEASE.md

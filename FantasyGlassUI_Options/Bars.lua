@@ -310,12 +310,46 @@ function ns.BuildGuidePage(page)
     how:SetText(ns:Tr("While recording, every quest you accept, finish and hand in becomes a step, with where you stood and who you spoke to. In chat: /fgui guide (your guides), /fgui guide record <name>, stop, edit <name>, next, back, off."))
     T.onBox, T.recordButton, T.nameBox = on, recBtn, name
 
+    -- The route planner: a button, and what it takes into account. Changing a setting plans again, if it is running.
+    Heading(live, "Plan my route", 0, -270, 736)
+    local function Replan() if ns.PlannerReplan then ns:PlannerReplan("settings") end end
+    local plan = ns:CreateButton(live, "Plan my route", 170, 24, function() if ns.PlannerStart then ns:PlannerStart() end; page.Refresh() end)
+    plan:SetPoint("TOPLEFT", 0, -300)
+    local groups = { { "solo", "Solo" }, { "grouped", "When grouped" }, { "all", "Everything" } }
+    local function DrawGroup(b)
+        local now, name = ns.db.plannerGroup or "solo", nil
+        for _, g in ipairs(groups) do if g[1] == now then name = g[2] end end
+        b.text:SetText(ns:Tr("Group quests") .. ":  " .. ns:Tr(name or "Solo"))
+    end
+    local group = ns:CreateButton(live, "", 250, 24, function(b)
+        local now, at = ns.db.plannerGroup or "solo", 1
+        for i, g in ipairs(groups) do if g[1] == now then at = i end end
+        ns.db.plannerGroup = groups[at % #groups + 1][1]
+        DrawGroup(b)
+        Replan()
+    end)
+    group:SetPoint("LEFT", plan, "RIGHT", 8, 0)
+    local flights = ns:CreateCheckbox(live, "Learn new flight points on the way", ns.db.plannerLearnFlights ~= false, function(v)
+        ns.db.plannerLearnFlights = v
+        Replan()
+    end)
+    flights:SetPoint("TOPLEFT", 0, -334)
+    local why = ns:CreateCheckbox(live, "Show why each step is there", ns.db.plannerWhy ~= false, function(v)
+        ns.db.plannerWhy = v
+        Replan()
+    end)
+    why:SetPoint("TOPLEFT", 0, -360)
+    T.planButton, T.groupButton, T.flightsBox, T.whyBox = plan, group, flights, why
+
     page.Refresh = function()
         local open = ns.GuideUnlocked and ns:GuideUnlocked()
         T.unlocked = open and true or false
         if open then soon:Hide(); live:Show() else live:Hide(); soon:Show() return end
         on:SetChecked(ns.db.questGuide ~= false)
         sound:SetChecked(ns.db.guideSound ~= false)
+        flights:SetChecked(ns.db.plannerLearnFlights ~= false)
+        why:SetChecked(ns.db.plannerWhy ~= false)
+        DrawGroup(group)
         recBtn.text:SetText(ns:Tr(ns.guideRecording and "Stop recording" or "Record"))
         local st = ns.GuideState and ns.GuideState()
         if ns.guideRecording then status:SetText(ns:SignalHex("bad") .. ns:Tr("Recording") .. ":|r " .. tostring(ns.guideRecording.name) .. "  (" .. #ns.guideRecording.steps .. ")")

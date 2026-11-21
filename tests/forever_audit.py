@@ -34,6 +34,8 @@ LUA51 = set("assert collectgarbage dofile error getfenv getmetatable ipairs load
 NOT_THE_GAMES = {
     "LibStub": "the library loader other add-ons share; looked for, never required",
     "GetMinimapShape": "a function other add-ons ask the minimap for; this add-on sets it",
+    "Questie": "the optional quest add-on the planner reads, when it is loaded",
+    "QuestieLoader": "Questie's module loader, read only when Questie is loaded",
     "StylishUIDB": "the add-on's settings under its former name, read once to bring them over",
 }
 LAYERS = {"BACKGROUND", "BORDER", "ARTWORK", "OVERLAY", "HIGHLIGHT"}
@@ -162,7 +164,7 @@ for f in files:
     own_methods |= set(re.findall(r"[.:](\w+)\s*=\s*function", code[f]))
     own_methods |= set(re.findall(r"(?:^|[\s{,])(\w+)\s*=\s*function", code[f], re.M))
     own_methods |= set(re.findall(r"(?:^|[\s{,])(\w+)\s*=\s*[\w.]+\s*[,}\n]", code[f], re.M))
-LIBRARY_METHODS = {"NewDataObject", "DataObjectIterator"}       # LibDataBroker's, when another add-on brings it
+LIBRARY_METHODS = {"NewDataObject", "DataObjectIterator", "GetQuestLogRewardXP", "GetUiMapIdByAreaId"}       # LibDataBroker's and Questie's, when those add-ons are there
 LUA_STRING = set("byte char find format gmatch gsub len lower match rep reverse sub upper".split())   # ("text":lower() and the like)
 for f in files:
     s = src[f]

@@ -84,7 +84,7 @@ local env = {}
 local known = {
   ipairs=ipairs, pairs=pairs, pcall=pcall, select=select, type=type, tostring=tostring, tonumber=tonumber,
   table=table, math=math, string=string, setmetatable=setmetatable, getmetatable=getmetatable, rawset=rawset, rawget=rawget,
-  next=next, error=error, assert=assert,
+  next=next, error=error, assert=assert, coroutine=coroutine,
   unpack = table.unpack, floor = math.floor, max = math.max, min = math.min,
   format = string.format, strlower = string.lower,
   strtrim = function(s) return (s:gsub("^%s+",""):gsub("%s+$","")) end,
@@ -6570,17 +6570,23 @@ try("10.3: quest guides", function()
     if ns:GuideUnlocked() or ns:GuideOn() then error("quest guides start locked") end
     if ns:GuideCommand("") ~= false or ns:GuideShowPanel() ~= nil then error("locked: the guide does nothing") end
     if ns:GuideUnlock("open sesame") or ns:GuideUnlock("") or ns:GuideUnlocked() then error("a wrong phrase must not unlock") end
-    for _, file in ipairs({ "Guide.lua", "Core.lua" }) do
-        if (sources[file] or ""):find("denogh%-lightforged") then error("the phrase itself must not be written in the add-on") end
-    end
-    if not ns:GuideUnlock("  Denogh-Lightforged-58 ") or not ns:GuideUnlocked() then error("the phrase unlocks (capitals and spaces aside)") end
+    -- (the phrase is never written in any file, these tests included: they unlock with the stored number,
+    -- read from Guide.lua, and check the phrase's handling with a stand-in number)
+    local key = tonumber((sources["Guide.lua"] or ""):match("local GUIDE_KEY = (%d+)"))
+    if not key then error("Guide.lua keeps the number worked out from the phrase") end
+    if ns.GuideHash("abc") ~= 193485963 or ns.GuideHash("") ~= 5381 then error("the phrase's number is worked out the same way every time") end
+    ns.root.guideKey = key
+    if not ns:GuideUnlocked() then error("the stored number unlocks") end
+    ns:GuideLock()
+    if ns:GuideUnlocked() then error("locking again") end
+    ns.root.guideKey = key
     ns:ToggleConfig("guide")
     if not ns.guidePage or ns.guidePage.unlocked ~= true then error("unlocked: the Guide tab shows the controls") end
     ns:GuideLock()
     ns:ToggleConfig("guide")
     if ns.guidePage.unlocked ~= false then error("locked: the Guide tab says coming soon") end
     ns:ToggleConfig()
-    ns:GuideUnlock("denogh-lightforged-58")
+    ns.root.guideKey = key
     -- following one: saved, followed, and it moves on as the game changes
     local keepG, keepS, keepQ = ns.root.guides, ns.root.guideState, env.C_QuestLog
     ns.root.guides, ns.root.guideState = nil, nil
@@ -8607,6 +8613,716 @@ try("Polish 11.17.1: upgrades wait their turn, and a goal already reached says s
     ns:GoalCommand("level 2")
     if ns.db.goals[1] and ns.db.goals[1].reached ~= true then error("a level already reached was not marked so") end
     ns.db.goals = goals
+end)
+try("13.0 planner: step kinds", function()
+    local g = ns.GuideParse("guide: Kinds\nfly 23 | Southshore\nfly | Take the bat\nlearnflight 24 | Tarren Mill\nsail menethil-theramore | Theramore\nbind | Southshore\n")
+    local s = g.steps
+    if #s ~= 5 or s[1].node ~= 23 or s[2].node ~= nil or s[3].node ~= 24 or s[4].crossing ~= "menethil-theramore" or s[5].text ~= "Southshore" then error("the new kinds parse") end
+    local again = ns.GuideParse(ns.GuideText(g))
+    for i = 1, 5 do if ns.GuideLine(again.steps[i]) ~= ns.GuideLine(s[i]) then error("round trip " .. i) end end
+    local w = { knownFlight = function(n) return n == 24 end, landedAt = function(n) return n == 23 end,
+                crossed = function(c) return c == "menethil-theramore" end, bind = "Southshore", near = function() return false end }
+    if not ns.GuideStepDone(s[1], w) or ns.GuideStepDone(s[2], w) or not ns.GuideStepDone(s[3], w) or not ns.GuideStepDone(s[4], w) or not ns.GuideStepDone(s[5], w) then error("done") end
+    w.bind = "Booty Bay"; if ns.GuideStepDone(s[5], w) then error("bound elsewhere") end
+    if ns.GuideParseLine("learnflight | x") ~= nil then error("learnflight needs a node number") end
+end)
+try("13.0 planner: reading Questie", function()
+    local realLoaded, realMeta, realQ, realLoader = env.C_AddOns.IsAddOnLoaded, rawget(env.C_AddOns, "GetAddOnMetadata"), rawget(env, "Questie"), rawget(env, "QuestieLoader")
+    local loaded, meta, ready = true, "4", nil
+    local npcs = {
+        [9] = { spawns = { [40] = { { 30, 40 } } }, minLevel = 9, maxLevel = 9, rank = 0, npcFlags = 65536 + 2, name = "Innkeeper Nine" },
+        [11] = { minLevel = 5, maxLevel = 5, rank = 0 },
+        [20] = { spawns = { [40] = { { 50, 60 } } }, minLevel = 10, maxLevel = 10, rank = 0 },
+        [21] = { spawns = { [40] = { { 55, 65 } } }, minLevel = 12, maxLevel = 12, rank = 1 },
+    }
+    local quests = {
+        [101] = { name = "Wolves", questLevel = 10, level = 10, requiredLevel = 8, startedBy = { { 9 } }, finishedBy = { { 9 }, },
+                  objectives = { { { 20, "Wolf slain", 0 } } }, specialFlags = 0 },
+        [102] = { name = "From an item", startedBy = { nil, nil, { 5 } }, finishedBy = { { 9 } } },
+        [103] = { name = "Lost giver", startedBy = { { 11 } }, finishedBy = { { 9 } } },
+        [105] = { name = "Scaling", questLevel = -1, level = 12, requiredLevel = 7, startedBy = { { 9 } }, finishedBy = { { 9 } } },
+        [106] = { name = "Grouped", questLevel = 10, level = 10, startedBy = { { 9 } }, finishedBy = { { 9 } } },
+        [104] = { name = "Elite", startedBy = { { 9 } }, finishedBy = { { 9 } }, objectives = { { { 21, "Boss slain" } } } },
+    }
+    local fakes = {
+        QuestieDB = { QuestPointers = { [101] = 5432, [102] = true, [103] = true, [104] = true, [105] = true, [106] = true },
+            NPCPointers = { [9] = 777, [20] = 3, [21] = true }, npcFlags = { INNKEEPER = 65536 },
+            IsGroupQuest = function(id) return id == 106 end,
+            GetQuest = function(id) return quests[id] end, IsDoable = function() return true end,
+            QueryNPCSingle = function(id, key) return npcs[id] and npcs[id][key] end },
+        QuestXP = { GetQuestLogRewardXP = function() return 450 end },
+        ZoneDB = { GetUiMapIdByAreaId = function(_, area) return area == 40 and 1436 or nil end },
+    }
+    env.Questie = { API = { isReady = true, RegisterOnReady = function(f) ready = f end } }
+    env.QuestieLoader = { ImportModule = function(_, name) return fakes[name] end }
+    env.C_AddOns.IsAddOnLoaded = function() return loaded end
+    rawset(env.C_AddOns, "GetAddOnMetadata", function() return meta end)
+    local ok, err = pcall(function()
+        local src, why = ns.PlannerSource()
+        if not src or src.kind ~= "questie" then error("questie source: " .. tostring(why)) end
+        local q = src.quest(101)
+        if q.starts[1].map ~= 1436 or q.starts[1].x ~= 30 or q.objectives[1].kind ~= "kill" or q.objectives[1].mobLevel ~= 10 or q.xp ~= 450 then error("record 101") end
+        if q.objectives[1].spots[1].y ~= 60 or q.ends[1].map ~= 1436 then error("spots and ends") end
+        if src.quest(102) ~= nil or src.quest(103) ~= nil then error("no giver on a map: skipped") end
+        if not src.quest(104).elite then error("elite from the objective's rank") end
+        if #src.ids() ~= 6 then error("ids") end
+        local has101 = false
+        for _, id in ipairs(src.ids()) do if id == 101 then has101 = true end if id == 5432 then error("a pointer's offset is not an id") end end
+        if not has101 then error("ids are the pointer map's keys") end
+        local inns = src.inns()
+        if #inns ~= 1 or inns[1].name ~= "Innkeeper Nine" or inns[1].map ~= 1436 or inns[1].x ~= 30 then error("innkeepers from the npc flags") end
+        if src.quest(105).level ~= 12 or src.quest(105).minLevel ~= 7 then error("effective level, not the raw -1") end
+        if not src.quest(106).group or src.quest(101).group then error("group from Questie's IsGroupQuest") end
+        if q.objectives[1].count ~= nil or q.objectives[1].countKnown ~= false then error("Questie has no kill counts") end
+        local QL, realObj, realTag, realEnum = env.C_QuestLog, env.C_QuestLog.GetQuestObjectives, rawget(env.C_QuestLog, "GetQuestTagInfo"), env.Enum
+        local realOnQ = QL.IsOnQuest
+        QL.IsOnQuest = function() return true end                 -- (a quest in the log is rebuilt, not read from the cache)
+        QL.GetQuestObjectives = function() return { { numRequired = 8 } } end
+        local counted = src.quest(101).objectives[1]
+        QL.GetQuestObjectives = realObj
+        if counted.count ~= 8 or counted.countKnown ~= true then error("the quest log's count") end
+        env.Enum = setmetatable({ QuestTag = { Group = 1, Dungeon = 81, Raid = 62, Raid10 = 88, Raid25 = 89 } }, { __index = realEnum })
+        QL.GetQuestTagInfo = function(id) return { tagID = id == 101 and 81 or 88 } end
+        local d, g = src.quest(101), src.quest(106)
+        QL.IsOnQuest = realOnQ
+        QL.GetQuestTagInfo = realTag; env.Enum = realEnum
+        if not d.dungeon or d.group or not g.group or g.dungeon then error("tags from the log through Enum.QuestTag") end
+        meta = "5"; src, why = ns.PlannerSource(); if src or why ~= "changed" then error("another contract is a change") end
+        meta = "4"; fakes.QuestieDB.GetQuest = function() error("boom") end
+        src, why = ns.PlannerSource(); local okQ = src and pcall(src.quest, 999); if src and (not okQ) then error("errors inside Questie are caught") end
+        src, why = ns.PlannerSource(); if src or why ~= "changed" then error("an error inside Questie is a change") end
+        env.Questie.API.isReady = false; src, why = ns.PlannerSource(); if src or why ~= "waiting" then error("waits for Questie") end
+        if not ready then error("registers for ready") end
+        local replans, realReplan = {}, ns.PlannerReplan
+        ns.PlannerReplan = function(_, why2) replans[#replans + 1] = why2 end
+        ready(); ns.PlannerReplan = realReplan
+        if replans[1] ~= "questie" then error("ready callback replans") end
+        env.Questie.API.isReady = true; src, why = ns.PlannerSource(); if not src then error("ready clears waiting: " .. tostring(why)) end
+        env.Questie.API.isReady = false
+        loaded = false; src, why = ns.PlannerSource(); if src or why ~= "missing" then error("no Questie") end
+        local log = ns.PlannerLogSource(); if log.kind ~= "log" or type(log.ids()) ~= "table" then error("log source") end
+    end)
+    ns.PlannerSourceReset()
+    env.C_AddOns.IsAddOnLoaded = realLoaded; rawset(env.C_AddOns, "GetAddOnMetadata", realMeta)
+    rawset(env, "Questie", realQ); rawset(env, "QuestieLoader", realLoader)
+    if not ok then error(err, 0) end
+end)
+try("13.0 planner: a cheap level check, a record cache, and quests in the log", function()
+    local realLoaded, realMeta, realQ, realLoader = env.C_AddOns.IsAddOnLoaded, rawget(env.C_AddOns, "GetAddOnMetadata"), rawget(env, "Questie"), rawget(env, "QuestieLoader")
+    local realOn = env.C_QuestLog.IsOnQuest
+    local inlog, built = {}, 0
+    local npcs = { [9] = { spawns = { [40] = { { 30, 40 } } }, minLevel = 9, maxLevel = 9, rank = 0 }, [11] = { minLevel = 5, maxLevel = 5, rank = 0 } }
+    local quests = {
+        [101] = { name = "Wolves", questLevel = 10, level = 10, startedBy = { { 9 } }, finishedBy = { { 9 } } },
+        [500] = { name = "From a drop", questLevel = 10, level = 10, startedBy = { { 11 } }, finishedBy = { { 9 } } },
+        [501] = { name = "Also from a drop", questLevel = 10, level = 10, startedBy = { { 11 } }, finishedBy = { { 9 } } },
+    }
+    local pointers = { [101] = true, [500] = true, [501] = true }
+    for id = 1000, 3999 do quests[id] = { name = "Far", questLevel = 40, level = 40, startedBy = { { 9 } }, finishedBy = { { 9 } } }; pointers[id] = true end
+    local fakes = {
+        QuestieDB = { QuestPointers = pointers,
+            GetQuest = function(id) built = built + 1; return quests[id] end, IsDoable = function() return true end,
+            QueryQuestSingle = function(id, key) return quests[id] and quests[id][key] end,
+            QueryNPCSingle = function(id, key) return npcs[id] and npcs[id][key] end },
+        QuestXP = { GetQuestLogRewardXP = function() return 100 end },
+        ZoneDB = { GetUiMapIdByAreaId = function(_, area) return area == 40 and 1436 or nil end },
+    }
+    env.Questie = { API = { isReady = true, RegisterOnReady = function() end } }
+    env.QuestieLoader = { ImportModule = function(_, name) return fakes[name] end }
+    env.C_AddOns.IsAddOnLoaded = function() return true end
+    rawset(env.C_AddOns, "GetAddOnMetadata", function() return "4" end)
+    env.C_QuestLog.IsOnQuest = function(id) return inlog[id] or false end
+    ns.PlannerSourceReset()
+    local ok, err = pcall(function()
+        local src = ns.PlannerSource()
+        if not src then error("questie source") end
+        local ctx = { level = 10, done = function() return false end, onQuest = function(id) return inlog[id] or false end }
+        local function ids(list) local o = {}; for _, r in ipairs(list) do o[r.id] = true end; return o end
+        local list = ns.PlannerCandidates(src, ctx)
+        local got = ids(list)
+        if not got[101] or got[500] or got[501] or #list ~= 1 then error("a quest with no placeable giver, not in the log, is skipped") end
+        if built ~= 3 then error("a record was built for a quest outside the level window: " .. built .. " builds") end
+        built = 0
+        ns.PlannerCandidates(src, ctx)
+        if built ~= 0 then error("cached records were rebuilt: " .. built) end
+        inlog[500] = true
+        list = ns.PlannerCandidates(src, ctx)
+        got = ids(list)
+        if not got[500] or not got[101] or #list ~= 2 then error("a quest in the log with no placeable giver is kept") end
+        if built ~= 1 then error("only the quest in the log is rebuilt: " .. built) end
+        built = 0
+        ctx.level = 11
+        ns.PlannerCandidates(src, ctx)
+        if built < 2 then error("a new level empties the cache: " .. built) end
+        built = 0
+        ns.PlannerSourceReset()
+        src = ns.PlannerSource()
+        ns.PlannerCandidates(src, ctx)
+        if built < 2 then error("a source reset empties the cache: " .. built) end
+    end)
+    ns.PlannerSourceReset()
+    env.C_QuestLog.IsOnQuest = realOn
+    env.C_AddOns.IsAddOnLoaded = realLoaded; rawset(env.C_AddOns, "GetAddOnMetadata", realMeta)
+    rawset(env, "Questie", realQ); rawset(env, "QuestieLoader", realLoader)
+    if not ok then error(err, 0) end
+end)
+try("13.0 planner: travel", function()
+    local real = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), taxi = rawget(env, "C_TaxiMap"), nodeType = rawget(env, "TaxiNodeGetType"),
+                   num = rawget(env, "NumTaxiNodes"), onTaxi = rawget(env, "UnitOnTaxi"), time = env.GetTime, bind = rawget(env, "GetTaxiMapID") }
+    local savedRoot, savedKey = ns.root.planner, ns.root.guideKey
+    local saved = { nodes = ns.root.plannerNodes, ft = ns.root.plannerFlightTimes, ct = ns.root.plannerCrossTimes, smp = ns.root.plannerTimeSamples }
+    local pos, clock, taxi = { 1, 10, 10 }, 1000, false
+    local at = function(map, x, y) pos = { map, x, y } end
+    local cm = {}
+    for k, v in pairs(real.map) do cm[k] = v end
+    cm.GetWorldPosFromMapPos = function(map, v)
+        local x, y = v.x * 1000, v.y * 1000
+        if map == 1 then return 0, { x = x, y = y } end
+        if map == 2 then return 0, { x = x + 3000, y = y } end
+        if map == 3 then return 1, { x = x, y = y } end
+    end
+    cm.GetBestMapForUnit = function() return pos[1] end
+    cm.GetPlayerMapPosition = function() return { GetXY = function() return pos[2] / 100, pos[3] / 100 end } end
+    env.C_Map = cm
+    env.CreateVector2D = function(x, y) return { x = x, y = y } end
+    env.GetTime = function() return clock end
+    env.UnitOnTaxi = function() return taxi end
+    env.GetTaxiMapID = function() return 1 end
+    env.C_TaxiMap = { GetAllTaxiNodes = function() return {
+        { nodeID = 5, slotIndex = 1, name = "Five", position = { x = 0.10, y = 0.10 } },
+        { nodeID = 6, slotIndex = 2, name = "Six", position = { x = 0.0, y = 0.0 } },
+        { nodeID = 7, slotIndex = 3, name = "Seven", position = { x = 0.9, y = 0.9 } } } end }
+    env.NumTaxiNodes = function() return 3 end
+    env.TaxiNodeGetType = function(i) return i == 3 and "UNREACHABLE" or (i == 1 and "CURRENT" or "REACHABLE") end
+    ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
+    local ok, err = pcall(function()
+        local c, wx, wy = ns.PlannerWorldPos(2, 50, 50)
+        if c ~= 0 or wx ~= 3500 or wy ~= 500 then error("world position") end
+        if ns.PlannerWorldPos(9, 1, 1) ~= nil then error("an unplaceable map is nil") end
+        local crossings = { { id = "fake", a = { map = 1, x = 90, y = 90 }, b = { map = 3, x = 10, y = 10 }, faction = "Alliance", seconds = 100 } }
+        local ctx = { speed = 7, faction = "Alliance", crossings = crossings,
+            flights = { { node = 1, map = 1, x = 12, y = 10, known = true }, { node = 2, map = 2, x = 50, y = 50, known = true } },
+            flightTime = function() return 60 end }
+        local A, B = { map = 1, x = 10, y = 10 }, { map = 1, x = 20, y = 10 }
+        local s, legs = ns.PlannerTravel(A, B, ctx); if math.abs(s - 100 / 7) > 0.5 or legs[1].kind ~= "run" then error("a short run") end
+        local far = { map = 2, x = 50, y = 50 }
+        s, legs = ns.PlannerTravel(A, far, ctx); if legs[2] == nil or legs[2].kind ~= "fly" then error("far: a known flight is used") end
+        ctx.flights[2].known = false
+        s, legs = ns.PlannerTravel(A, far, ctx); for _, l in ipairs(legs) do if l.kind == "fly" then error("never an unknown flight") end end
+        ctx.hearth = { map = 2, x = 50, y = 49 }; s, legs = ns.PlannerTravel(A, far, ctx); if legs[1].kind ~= "hearth" then error("hearth when faster") end
+        ctx.hearth = nil; ctx.flights[2].known = true
+        if #ns.PlannerFlightPoints() ~= 0 then error("a plain read creates nothing") end
+        ctx.hearth = { map = 3, x = 50, y = 49 }
+        s, legs = ns.PlannerTravel(A, { map = 3, x = 50, y = 50 }, ctx); if legs[1].kind ~= "hearth" or legs[1].to.map ~= 3 then error("the hearth across the sea when faster than the boat") end
+        ctx.hearth = nil
+        for _, l in ipairs(legs) do if l.kind == "run" and l.seconds * 7 < 1 then error("no zero-length runs") end end
+        if select(2, ns.PlannerTravel(A, A, ctx))[1] ~= nil then error("nowhere to go") end
+        s, legs = ns.PlannerTravel(A, { map = 3, x = 50, y = 50 }, ctx); local sailed = false; for _, l in ipairs(legs) do sailed = sailed or (l.kind == "sail" and l.crossing == "fake") end
+        if not sailed then error("the other continent: by boat") end
+        ctx.faction = "Horde"; s = ns.PlannerTravel(A, { map = 3, x = 50, y = 50 }, ctx); if s ~= math.huge then error("no crossing for this faction") end
+        -- flights are learned at the flight master, and timed
+        fireEvent("TAXIMAP_OPENED")
+        if not ns.PlannerKnownFlight(5) or not ns.PlannerKnownFlight(6) or ns.PlannerKnownFlight(7) then error("known flight points") end
+        at(1, 10, 10); taxi = true; fireEvent("PLAYER_CONTROL_LOST")
+        clock = clock + 60; at(1, 0, 0); fireEvent("PLAYER_CONTROL_GAINED"); taxi = false
+        if ns.root.plannerFlightTimes["5-6"] ~= 60 then error("flight time recorded: " .. tostring(ns.root.plannerFlightTimes and ns.root.plannerFlightTimes["5-6"])) end
+        if not ns.PlannerLandedAt(6) or ns.PlannerLandedAt(5) then error("landed at") end
+        at(1, 10, 10); fireEvent("PLAYER_CONTROL_GAINED")
+        if ns.PlannerLandedAt(5) or not ns.PlannerLandedAt(6) then error("control regained without a takeoff is no landing") end
+        local pts = ns.PlannerFlightPoints()
+        if #pts ~= 3 then error("flight points for the planner") end
+        -- a boat ride: standing at one dock, waiting and riding, then a loading screen at the other
+        local real2 = ns.PLANNER_CROSSINGS
+        ns.PLANNER_CROSSINGS = crossings
+        at(3, 10, 10); ns.PlannerDockTick(); clock = clock + 5; at(1, 90, 90); fireEvent("PLAYER_ENTERING_WORLD")
+        if ns.PlannerCrossed("fake") or (ns.root.plannerCrossTimes and ns.root.plannerCrossTimes.fake) then error("a short loading screen is no crossing") end
+        at(1, 90, 90); ns.PlannerDockTick()
+        clock = clock + 200; at(3, 10, 10); fireEvent("PLAYER_ENTERING_WORLD")
+        if not ns.PlannerCrossed("fake") then error("crossed") end
+        if math.abs(ns.root.plannerCrossTimes.fake - 200) > 1 then error("crossing time recorded") end
+        ns.root.plannerTimeSamples = nil
+        at(1, 10, 10); taxi = true; fireEvent("PLAYER_CONTROL_LOST"); clock = clock + 120; at(1, 0, 0); fireEvent("PLAYER_CONTROL_GAINED"); taxi = false
+        if ns.root.plannerFlightTimes["5-6"] ~= 120 then error("fresh samples: " .. tostring(ns.root.plannerFlightTimes["5-6"])) end
+        at(1, 10, 10); taxi = true; fireEvent("PLAYER_CONTROL_LOST"); clock = clock + 60; at(1, 0, 0); fireEvent("PLAYER_CONTROL_GAINED"); taxi = false
+        if ns.root.plannerFlightTimes["5-6"] ~= 90 then error("the average of the recordings") end
+        ns.PLANNER_CROSSINGS = real2
+        if #ns.PLANNER_CROSSINGS ~= 7 then error("seven crossings") end
+    end)
+    env.C_Map = real.map; rawset(env, "CreateVector2D", real.vec); rawset(env, "C_TaxiMap", real.taxi); rawset(env, "TaxiNodeGetType", real.nodeType)
+    rawset(env, "NumTaxiNodes", real.num); rawset(env, "UnitOnTaxi", real.onTaxi); env.GetTime = real.time; rawset(env, "GetTaxiMapID", real.bind)
+    ns.root.planner, ns.root.guideKey = savedRoot, savedKey
+    ns.root.plannerNodes, ns.root.plannerFlightTimes, ns.root.plannerCrossTimes, ns.root.plannerTimeSamples = saved.nodes, saved.ft, saved.ct, saved.smp
+    if not ok then error(err, 0) end
+end)
+try("13.0 planner: what a quest is worth", function()
+    local function rec(id, t)
+        local r = { id = id, name = "Q" .. id, level = 9, minLevel = 1, xp = 300, starts = {}, ends = {}, objectives = {},
+            pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+        for k, v in pairs(t or {}) do r[k] = v end
+        return r
+    end
+    local recs = {
+        [201] = rec(201, { objectives = { { kind = "kill", count = 6, countKnown = true, mobLevel = 9, spots = {} } } }),
+        [202] = rec(202, { level = 3 }),
+        [203] = rec(203, { level = 10, elite = true }),
+        [204] = rec(204, { level = 10, group = true }),
+        [205] = rec(205, { level = 11, pre = { 201 } }),
+        [206] = rec(206, { repeatable = true }),
+    }
+    local fakeSource = { kind = "questie", ids = function() return { 201, 202, 203, 204, 205, 206 } end, quest = function(id) return recs[id] end }
+    if ns.PlannerKillXP(10, 10) ~= 95 or ns.PlannerKillXP(10, 12) ~= 104 or ns.PlannerKillXP(10, 4) ~= 0 or ns.PlannerKillXP(10, 10, true) ~= 190 then error("kill xp") end
+    local list, skipped = ns.PlannerCandidates(fakeSource, { level = 10, group = "solo", inGroup = false, done = function() return false end, onQuest = function() return false end })
+    local ids = {}; for _, r in ipairs(list) do ids[r.id] = true end
+    if not ids[201] or ids[202] or ids[203] or ids[204] or ids[205] or ids[206] or skipped.group ~= 2 then error("solo candidates") end
+    list = ns.PlannerCandidates(fakeSource, { level = 10, group = "grouped", inGroup = true, done = function(id) return id == 201 end, onQuest = function() return false end })
+    ids = {}; for _, r in ipairs(list) do ids[r.id] = true end
+    if not (ids[203] and ids[204] and ids[205]) or ids[201] then error("grouped, with 201 done") end
+    list = ns.PlannerCandidates(fakeSource, { level = 10, group = "solo", inGroup = false, done = function() return false end, onQuest = function(id) return id == 202 end })
+    ids = {}; for _, r in ipairs(list) do ids[r.id] = true end
+    if not ids[202] then error("a quest in the log is always kept") end
+    if ns.PlannerQuestXP(fakeSource.quest(201), { level = 10 }) <= fakeSource.quest(201).xp then error("kills add experience") end
+    -- unknown kill count counts as 8
+    local unk = rec(300, { objectives = { { kind = "kill", mobLevel = 10, spots = {} }, { kind = "item", spots = {} }, { kind = "other", spots = {} }, { kind = "place", spots = {} } } })
+    if ns.PlannerQuestTime(unk, {}) ~= 8 * 25 + 8 * 25 / 0.5 + 60 then error("quest time " .. ns.PlannerQuestTime(unk, {})) end
+    if ns.PlannerQuestTime(unk, { pace = 2 }) ~= 2 * (8 * 25 + 8 * 25 / 0.5 + 60) then error("pace scales time") end
+    if ns.PlannerQuestXP(unk, { level = 10 }) ~= 300 + 8 * 95 then error("unknown kill count xp") end
+    -- the follow-up counts half when it is a candidate
+    local chain = rec(301, { nextQuest = 302 })
+    if ns.PlannerQuestXP(chain, { level = 10, candidate = function(id) return id == 302 and rec(302) or nil end }) ~= 450 then error("next quest half") end
+    -- pace
+    local savedRoot = ns.root.planner
+    ns.root.planner = nil
+    if ns.PlannerPace() ~= 1 or ns.root.planner ~= nil then error("a read creates nothing") end
+    ns.PlannerRecordPace(200, 100)
+    if ns.PlannerPace() ~= 2 then error("first sample") end
+    ns.PlannerRecordPace(100, 100)
+    if math.abs(ns.PlannerPace() - 1.5) > 1e-9 then error("average") end
+    for _ = 1, 10 do ns.PlannerRecordPace(1000, 100) end
+    if ns.PlannerPace() ~= 3 then error("clamped high") end
+    for _ = 1, 10 do ns.PlannerRecordPace(1, 100) end
+    if ns.PlannerPace() ~= 0.5 then error("clamped low, last 10 only") end
+    ns.root.planner = savedRoot
+end)
+try("13.0 planner: hubs and the route", function()
+    local real = { map = env.C_Map, vec = rawget(env, "CreateVector2D") }
+    local cm = {}
+    for k, v in pairs(real.map) do cm[k] = v end
+    cm.GetWorldPosFromMapPos = function(map, v)
+        local x, y = v.x * 1000, v.y * 1000
+        if map == 1 then return 0, { x = x, y = y } end
+        if map == 2 then return 0, { x = x + 1000, y = y } end
+        if map == 3 then return 1, { x = x, y = y } end
+    end
+    env.C_Map = cm
+    env.CreateVector2D = function(x, y) return { x = x, y = y } end
+    local function rec(id, map, x, y, xp, ox, oy)
+        return { id = id, name = "Quest " .. id, level = 10, minLevel = 1, xp = xp,
+            starts = { { map = map, x = x, y = y } }, ends = { { map = map, x = x, y = y } },
+            objectives = { { kind = "kill", count = 4, countKnown = true, mobLevel = 10, spots = { { map = map, x = ox, y = oy } } } },
+            pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+    end
+    local recs = {
+        [401] = rec(401, 1, 30, 40, 300, 35, 45), [402] = rec(402, 1, 31, 40, 300, 36, 45), [403] = rec(403, 1, 30, 41, 300, 34, 46),
+        [404] = rec(404, 1, 80, 80, 300, 82, 82),
+        [411] = rec(411, 2, 20, 40, 3000, 25, 45), [412] = rec(412, 2, 21, 40, 3000, 25, 46), [413] = rec(413, 2, 20, 41, 3000, 24, 45),
+        [421] = rec(421, 3, 50, 50, 99999, 52, 52),
+    }
+    local ids = { 401, 402, 403, 404, 411, 412, 413, 421 }
+    local inns = { { name = "Bluebell Inn", map = 2, x = 21, y = 41 } }
+    local source = { kind = "questie", ids = function() return ids end, quest = function(id) return recs[id] end, inns = function() return inns end }
+    local doneSet = {}
+    local ctx = { source = source, level = 10, group = "solo", inGroup = false, speed = 7, faction = "Alliance",
+        done = function(id) return doneSet[id] == true end, onQuest = function() return false end,
+        here = { map = 1, x = 30, y = 40 }, crossings = {}, learnFlights = true, bind = "Elsewhere", bindSpot = { map = 1, x = 30, y = 40 }, pace = 1,
+        flights = { { node = 5, map = 1, x = 30, y = 42, known = true, name = "Five" }, { node = 6, map = 1, x = 70, y = 40, known = false, name = "Six" } },
+        flightTime = function() return nil end }
+    local ok, err = pcall(function()
+        if ns.GUIDE_PLANNED ~= "\1planned" then error("the planned guide's name") end
+        local cands = ns.PlannerCandidates(source, ctx)
+        local zoneA = {}
+        for _, r in ipairs(cands) do if r.starts[1].map == 1 then zoneA[#zoneA + 1] = r end end
+        local hubs = ns.PlannerHubs(zoneA, ctx)
+        if #hubs ~= 2 then error("zone A has two hubs: " .. #hubs) end
+        local three
+        for _, h in ipairs(hubs) do if #h.quests == 3 then three = h end end
+        if not three or three.map ~= 1 or not (three.xp > 0 and three.seconds > 0) then error("the three-quest hub") end
+        if ns.PlannerPickZone(cands, ctx) ~= 2 then error("zone B is worth the trip") end
+        ctx.lastZone, ctx.lastZoneLevel = 1, 8
+        if ns.PlannerPickZone(cands, ctx) ~= 1 then error("the last zone stays within three levels") end
+        ctx.lastZoneLevel = 7
+        if ns.PlannerPickZone(cands, ctx) ~= 2 then error("three levels on, the zone is picked again") end
+        ctx.lastZone, ctx.lastZoneLevel = 3, 10
+        if ns.PlannerPickZone(cands, ctx) ~= 2 then error("a last zone out of reach is picked again") end
+        ctx.lastZone, ctx.lastZoneLevel = nil, nil
+        -- the route into zone B: learn flight 6 on the way, accept all, bind, do, hand in
+        local guide, summary = ns.PlannerRoute(ctx)
+        if guide.name ~= ns.GUIDE_PLANNED or summary.zone ~= 2 or summary.empty or summary.fromLevel ~= 10 or not (summary.xp > 0 and summary.seconds > 0) then error("summary") end
+        local at = { accept = {}, ["do"] = {}, turnin = {} }
+        local learned, binds = 0, 0
+        for i, s in ipairs(guide.steps) do
+            if at[s.kind] then at[s.kind][s.quest] = i end
+            if s.kind == "learnflight" and s.node == 6 then learned = learned + 1 end
+            if s.kind == "bind" then binds = binds + 1 end
+            if s.kind == "accept" and not (s.why and s.why.xp and s.why.xp > 0) then error("an accept says what it is worth") end
+        end
+        local lastAccept, firstDo = 0, math.huge
+        for _, id in ipairs({ 411, 412, 413 }) do
+            if not (at.accept[id] and at["do"][id] and at.turnin[id]) then error("steps for " .. id) end
+            lastAccept = math.max(lastAccept, at.accept[id]); firstDo = math.min(firstDo, at["do"][id])
+            if at.turnin[id] < at["do"][id] then error("hand in after doing " .. id) end
+        end
+        if lastAccept > firstDo then error("every accept before any do") end
+        if learned ~= 1 then error("learn flight 6 on the way: " .. learned) end
+        if binds ~= 1 then error("one bind in the new zone: " .. binds) end
+        local again = ns.GuideParse(ns.GuideText(guide))
+        if #again.steps ~= #guide.steps then error("round trip count") end
+        for i, s in ipairs(guide.steps) do
+            local p = again.steps[i]
+            if ns.GuideLine(p) ~= ns.GuideLine(s) or p.kind ~= s.kind or p.quest ~= s.quest or p.node ~= s.node or p.map ~= s.map or p.x ~= s.x or p.y ~= s.y then
+                error("round trip step " .. i .. ": " .. ns.GuideLine(s) .. " / " .. ns.GuideLine(p)) end
+        end
+        ctx.learnFlights = false
+        guide = ns.PlannerRoute(ctx)
+        for _, s in ipairs(guide.steps) do if s.kind == "learnflight" then error("no flights learned when that is off") end end
+        ctx.bindSpot = { map = 2, x = 21.2, y = 41.1 }
+        guide = ns.PlannerRoute(ctx)
+        for _, s in ipairs(guide.steps) do if s.kind == "bind" then error("already bound there") end end
+        -- zone B done: back to zone A, two hubs
+        for _, id in ipairs({ 411, 412, 413 }) do doneSet[id] = true end
+        cands = ns.PlannerCandidates(source, ctx)
+        if ns.PlannerPickZone(cands, ctx) ~= 1 then error("zone A once B is done") end
+        guide, summary = ns.PlannerRoute(ctx)
+        if summary.zone ~= 1 then error("route in zone A") end
+        local n = 0
+        for _, s in ipairs(guide.steps) do if s.kind == "turnin" then n = n + 1 end end
+        if n ~= 4 then error("two hubs in zone A: " .. n) end
+        -- a zone stays picked until three levels have passed or it runs dry
+        ctx.lastZone, ctx.lastZoneLevel = 1, 10
+        if ns.PlannerPickZone(cands, ctx) ~= 1 then error("the zone stays") end
+        ctx.lastZone, ctx.lastZoneLevel = nil, nil
+        -- nothing left
+        for _, id in ipairs(ids) do doneSet[id] = true end
+        guide, summary = ns.PlannerRoute(ctx)
+        if not summary.empty or #guide.steps ~= 0 then error("nothing left: empty") end
+        -- fly, hearth and sail, each saying what it saves; a flight point learned because the plan uses it
+        local function solo(extra)
+            local one = { [501] = rec(501, 2, 80, 80, 3000, 81, 81) }
+            local c = { source = { kind = "questie", ids = function() return { 501 } end, quest = function(id) return one[id] end },
+                level = 10, group = "solo", speed = 7, faction = "Alliance", done = function() return false end, onQuest = function() return false end,
+                here = { map = 1, x = 10, y = 10 }, crossings = {}, flights = {}, learnFlights = false, pace = 1, flightTime = function() return nil end }
+            for k, v in pairs(extra) do c[k] = v end
+            local g = ns.PlannerRoute(c)
+            local back = ns.GuideParse(ns.GuideText(g))
+            for i, st in ipairs(g.steps) do
+                local b = back.steps[i]
+                for _, f in ipairs({ "kind", "node", "crossing", "quest", "title", "text", "map", "x", "y" }) do
+                    if not b or b[f] ~= st[f] then error("round trip " .. ns.GuideLine(st) .. " field " .. f) end
+                end
+            end
+            return g.steps
+        end
+        local function find(steps, kind)
+            for _, st in ipairs(steps) do if st.kind == kind then return st end end
+        end
+        local st = find(solo({ flights = { { node = 7, map = 1, x = 11, y = 10, known = true, name = "Seven" }, { node = 8, map = 2, x = 80, y = 79, known = true, name = "Eight" } } }), "fly")
+        if not st or st.node ~= 8 or not (st.why and st.why.saves and st.why.saves > 0) then error("a fly step that saves time") end
+        st = find(solo({ hearth = { map = 2, x = 80, y = 80 } }), "hearth")
+        if not st or not (st.why and st.why.saves and st.why.saves > 0) then error("a hearth step that saves time") end
+        st = find(solo({ crossings = { { id = "ferry", a = { map = 1, x = 11, y = 10 }, b = { map = 2, x = 80, y = 79 }, seconds = 20 } } }), "sail")
+        if not st or st.crossing ~= "ferry" or not (st.why and st.why.saves and st.why.saves > 0) then error("a sail step that saves time") end
+        local steps = solo({ learnFlights = true, flights = { { node = 9, map = 1, x = 0, y = 100, known = false, name = "Nine" }, { node = 8, map = 2, x = 80, y = 79, known = true, name = "Eight" } } })
+        st = find(steps, "learnflight")
+        if not st or st.node ~= 9 or not find(steps, "fly") then error("flight 9 is learned because the route flies from it") end
+        -- the live context builds without error
+        local live = ns.PlannerContext()
+        if type(live) ~= "table" or not live.source or type(live.done) ~= "function" or not live.speed or type(live.flights) ~= "table" then error("live context") end
+        if live.bindSpot ~= nil and type(live.bindSpot) ~= "table" then error("bindSpot") end
+    end)
+    env.C_Map = real.map; rawset(env, "CreateVector2D", real.vec)
+    if not ok then error(err, 0) end
+end)
+try("13.0 planner: running it", function()
+    local real = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), ql = env.C_QuestLog, level = env.UnitLevel, time = env.GetTime,
+                   loaded = env.C_AddOns.IsAddOnLoaded, source = ns.PlannerSource, combat = env.InCombatLockdown, budget = ns.PLANNER_BUDGET_MS }
+    local saved = { key = ns.root.guideKey, guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner }
+    local pos, clock = { 1, 30, 40 }, 5000
+    local cm = {}
+    for k, v in pairs(real.map) do cm[k] = v end
+    cm.GetWorldPosFromMapPos = function(map, v) if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end end
+    cm.GetBestMapForUnit = function() return pos and pos[1] or nil end
+    cm.GetPlayerMapPosition = function() return pos and { GetXY = function() return pos[2] / 100, pos[3] / 100 end } or nil end
+    cm.GetMapInfo = function(map) return map == 1 and { name = "Testshire" } or nil end
+    env.C_Map = cm
+    env.CreateVector2D = function(x, y) return { x = x, y = y } end
+    env.UnitLevel = function() return 10 end
+    env.GetTime = function() return clock end
+    local accepted, handed, logged = {}, {}, {}
+    env.C_QuestLog = { IsOnQuest = function(id) return accepted[id] or false end, IsQuestFlaggedCompleted = function(id) return handed[id] or false end,
+        IsComplete = function() return false end, ReadyForTurnIn = function() return false end,
+        GetTitleForQuestID = function(id) return "Quest " .. id end,
+        GetNumQuestLogEntries = function() return #logged end,
+        GetInfo = function(i) return logged[i] and { questID = logged[i], title = "Logged " .. logged[i], questLevel = 10 } or nil end,
+        GetLogIndexForQuestID = function(id) for i, q in ipairs(logged) do if q == id then return i end end end,
+        GetNextWaypoint = function() return 1, 0.31, 0.41 end }
+    local function rec(id, x, y, extra)
+        local r = { id = id, name = "Quest " .. id, level = 10, minLevel = 1, xp = 400,
+            starts = { { map = 1, x = x, y = y } }, ends = { { map = 1, x = x, y = y } },
+            objectives = { { kind = "kill", count = 4, countKnown = true, mobLevel = 10, spots = { { map = 1, x = x + 4, y = y + 4 } } } },
+            pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+        for k, v in pairs(extra or {}) do r[k] = v end
+        return r
+    end
+    local recs = { [101] = rec(101, 30, 40), [102] = rec(102, 31, 40), [103] = rec(103, 30, 41), [104] = rec(104, 31, 41, { group = true }) }
+    local ids = { 101, 102, 103, 104 }
+    local world = { kind = "questie", ids = function() return ids end, quest = function(id) return recs[id] end, inns = function() return {} end }
+    ns.PlannerSource = function() return world end
+    ns.root.guides, ns.root.guideState, ns.root.planner = nil, nil, nil
+    fireEvent("PLAYER_REGEN_ENABLED")                        -- (out of any fight an earlier test left the game in)
+    ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
+    local function frame()
+        for i = 1, #handlers do local h = handlers[i]; if h.name == "OnUpdate" then pcall(h.fn, h.self, 0.02) end end
+        runTimers()
+    end
+    local function settle()
+        for _ = 1, 3000 do
+            if not ns.plannerBusy and not ns.plannerQueued then return end
+            frame()
+        end
+        error("the planner never finished: busy " .. tostring(ns.plannerBusy) .. ", queued " .. tostring(ns.plannerQueued) .. ", " .. tostring(ns.plannerReason) .. ", steps " .. tostring(ns.plannerSteps) .. ", here " .. table.concat({ tostring(ns.GuideHere()) }, ",") .. ", placed " .. tostring(ns.PlannerWorldPos(ns.GuideHere())))
+    end
+    local function planned() return ns:GuideGet(ns.GUIDE_PLANNED) end
+    local ok, err = pcall(function()
+        -- a plan, followed
+        local panel, said = nil, {}
+        if ns:PlannerStart() ~= true then error("PlannerStart") end
+        settle()
+        if ns.GuideState().name ~= ns.GUIDE_PLANNED or not planned() or #planned().steps == 0 then error("following the planned guide") end
+        panel = ns:GuideShowPanel()
+        for _, k in ipairs({ "title", "now", "skipped" }) do
+            if not panel[k] then error("the panel has no " .. k) end
+            rawset(panel[k], "SetText", function(_, t) said[k] = t end)
+        end
+        ns:GuideAdvance()
+        if not tostring(said.title):find(string.format(ns:Tr("Planned: %s, level %s → %s"), "Testshire", "10", ""), 1, true) then error("the panel's title: " .. tostring(said.title)) end
+        if said.skipped ~= string.format(ns:Tr("Skipped: %d group quests (Solo is on)"), 1) then error("the skipped line: " .. tostring(said.skipped)) end
+        if not (planned().estimates and (planned().estimates[101] or 0) > 0) then error("each quest's estimate is kept with the plan") end
+        local text = ns.GuideText(planned())
+        -- the same plan, a little at a time
+        ns.PLANNER_BUDGET_MS = 0
+        local before = ns.plannerSteps
+        ns:PlannerReplan("test"); settle()
+        if ns.plannerSteps - before < 5 then error("planned in slices: " .. (ns.plannerSteps - before)) end
+        if ns.GuideText(planned()) ~= text then error("sliced and unsliced plans differ") end
+        -- never in a fight
+        ns:PlannerReplan("test"); frame(); frame()
+        if not ns.plannerBusy then error("the plan should be under way") end
+        env.InCombatLockdown = function() return true end
+        before = ns.plannerSteps
+        for _ = 1, 10 do frame() end
+        if ns.plannerSteps ~= before then error("planned in combat") end
+        env.InCombatLockdown = real.combat
+        fireEvent("PLAYER_REGEN_DISABLED")
+        for _ = 1, 10 do frame() end
+        if ns.plannerSteps ~= before then error("planned after the fight started") end
+        fireEvent("PLAYER_REGEN_ENABLED")
+        settle()
+        if ns.GuideText(planned()) ~= text then error("a fight changed the plan") end
+        -- nowhere in the world: wait, quietly
+        local quiet = #printed
+        pos = nil
+        ns:PlannerReplan("test")
+        before = ns.plannerSteps
+        for _ = 1, 10 do frame() end
+        if ns.plannerSteps ~= before or not (ns.plannerBusy or ns.plannerQueued) then error("planned with no position") end
+        if #printed ~= quiet then error("said something with no position: " .. printed[#printed]) end
+        pos = { 1, 30, 40 }
+        settle()
+        ns.PLANNER_BUDGET_MS = real.budget
+        -- a step ticked off by hand stays ticked in the next plan
+        ns:GuideSkip(false)
+        if not ns.GuideState().ticked[1] then error("ticked") end
+        ns:PlannerReplan("test"); settle()
+        if not ns.GuideState().ticked[1] or ns.GuideState().at ~= 2 then error("a replan keeps the steps you ticked off") end
+        -- a plan that fails keeps the last good one, and the panel says so
+        local realRoute, nerr = ns.PlannerRoute, #ns.errors
+        ns.PlannerRoute = function() error("boom") end
+        ns:PlannerReplan("test"); settle()
+        ns.PlannerRoute = realRoute
+        if ns.GuideText(planned()) ~= text then error("a failed plan keeps the last good one") end
+        ns:GuideAdvance()
+        local note = ns:Tr("Couldn't plan the route; trying again after your next quest")
+        if said.skipped ~= note then error("the failed plan's note: " .. tostring(said.skipped)) end
+        if #ns.errors ~= nerr + 1 then error("a failed plan is listed for /fgui check") end
+        for i = #ns.errors, nerr + 1, -1 do table.remove(ns.errors, i) end
+        ns:PlannerReplan("test"); settle()
+        if said.skipped == note then error("a good plan clears the note") end
+        -- a quest in the log that no giver is placed for still gets its do and turn-in steps
+        recs[105] = rec(105, 32, 40, { starts = {} }); accepted[105] = true
+        ids = { 101, 102, 103, 104, 105 }
+        ns:PlannerReplan("test"); settle()
+        local kinds105 = {}
+        for _, s in ipairs(planned().steps) do if s.quest == 105 then kinds105[s.kind] = true end end
+        if not (kinds105["do"] and kinds105.turnin) or kinds105.accept then error("a logged quest without a giver is routed: do and turn-in only") end
+        accepted[105] = nil; recs[105] = nil; ids = { 101, 102, 103, 104 }
+        -- a replan queued mid-run: the stale run is dropped, never applied
+        local applied, realSet = 0, ns.GuideSetPlan
+        ns.GuideSetPlan = function(...) applied = applied + 1; return realSet(...) end
+        ns.PLANNER_BUDGET_MS = 0
+        ns:PlannerReplan("stale"); frame(); frame()
+        if not ns.plannerBusy then error("the run should be under way") end
+        ids = { 101 }
+        ns:PlannerReplan("fresh"); settle()
+        ns.GuideSetPlan = realSet
+        ns.PLANNER_BUDGET_MS = real.budget
+        if applied ~= 1 then error("the plan was applied " .. applied .. " times") end
+        for _, s in ipairs(planned().steps) do if s.quest == 102 or s.quest == 103 then error("the stale plan was applied") end end
+        ids = { 101, 102, 103, 104 }
+        ns:PlannerReplan("test"); settle()
+        -- logging in (or a /reload) plans again
+        fireEvent("PLAYER_ENTERING_WORLD")
+        if ns.plannerQueued ~= true then error("entering the world replans") end
+        settle()
+        -- pace, between marks: one hub of three quests (100 s each), all handed in 330 s after the mark
+        if ns.PlannerPace() ~= 1 then error("no pace yet") end
+        ns:PlannerStart(); settle()
+        local plan = planned()
+        plan.estimates, plan.travelShare = { [101] = 100, [102] = 100, [103] = 100 }, 0
+        clock = clock + 330
+        for _, id in ipairs({ 101, 102, 103 }) do handed[id] = true; fireEvent("QUEST_TURNED_IN", id, 400, 0) end
+        if ns.plannerQueued ~= true then error("a hand-in queues a replan") end
+        if ns.PlannerPace() ~= 1 then error("a run of hand-ins is measured once it is over") end
+        clock = clock + 61; frame()
+        if math.abs(ns.PlannerPace() - 1.1) > 0.01 then error("one hub of three quests: pace " .. ns.PlannerPace()) end
+        settle()
+        for _, s in ipairs(planned().steps) do if s.quest == 101 then error("the handed-in quest is still planned") end end
+        -- the same hub with a chain's follow-up accepted between the hand-ins: still one run
+        ns.root.planner = nil
+        ns:PlannerStart(); settle()
+        plan = planned()
+        plan.estimates, plan.travelShare = { [111] = 100, [112] = 100, [113] = 100 }, 0
+        clock = clock + 330
+        fireEvent("QUEST_TURNED_IN", 111, 400, 0)
+        accepted[121] = true; fireEvent("QUEST_ACCEPTED", 121); frame()
+        planned().estimates = { [112] = 100, [113] = 100 }          -- (the fake world has no 112 or 113; in the game the new plan still holds them)
+        clock = clock + 5
+        fireEvent("QUEST_TURNED_IN", 112, 400, 0); fireEvent("QUEST_TURNED_IN", 113, 400, 0)
+        if ns.PlannerPace() ~= 1 then error("an accept between hand-ins does not end the run") end
+        clock = clock + 61; frame()
+        if math.abs(ns.PlannerPace() - 335 / 300) > 0.01 then error("a follow-up accepted mid-run: pace " .. ns.PlannerPace()) end
+        accepted[121] = nil
+        settle()
+        -- away for over half an hour: no sample
+        clock = clock + 1900
+        planned().estimates = { [105] = 100 }
+        fireEvent("QUEST_TURNED_IN", 105, 0, 0)
+        clock = clock + 61; frame()
+        if math.abs(ns.PlannerPace() - 335 / 300) > 0.01 then error("time away is no sample: " .. ns.PlannerPace()) end
+        settle()
+        fireEvent("PLAYER_LEVEL_UP", 11)
+        if ns.plannerQueued ~= true then error("a level replans") end
+        settle()
+        -- the hearthstone set at a bind step ticks it off
+        local st = ns.GuideState()
+        st.plan = { name = ns.GUIDE_PLANNED, steps = { { kind = "bind", text = "Bluebell Inn" }, { kind = "note", text = "after" } } }
+        st.at, st.ticked, st.finished = 1, {}, nil
+        fireEvent("HEARTHSTONE_BOUND")
+        if ns.GuideState().at ~= 2 or not ns.plannerQueued then error("bound: the bind step is ticked off and a replan queued") end
+        settle()
+        -- no Questie: the quest log, and the install line once
+        ns.PlannerSource = real.source
+        env.C_AddOns.IsAddOnLoaded = function() return false end
+        logged = { 701 }; accepted[701] = true
+        local told = 0
+        quiet = #printed
+        ns:PlannerReplan("test"); settle()
+        ns:PlannerReplan("test"); settle()
+        for i = quiet + 1, #printed do if printed[i]:find(ns:Tr("Install Questie to plan new quests too."), 1, true) then told = told + 1 end end
+        if told ~= 1 then error("the install line once: " .. told) end
+        local fromLog = false
+        for _, s in ipairs(planned().steps) do if s.kind == "turnin" and s.quest == 701 then fromLog = true end end
+        if not fromLog then error("the plan comes from the quest log") end
+        -- nothing worth the trip
+        ns.PlannerSource = function() return { kind = "questie", ids = function() return {} end, quest = function() end, inns = function() return {} end } end
+        logged = {}
+        ns:PlannerReplan("test"); settle()
+        ns:GuideAdvance()
+        if said.now ~= ns:Tr("No quests left worth the trip; grinding or a dungeon may be faster") then error("the empty plan's line: " .. tostring(said.now)) end
+        for _, k in ipairs({ "title", "now", "skipped" }) do rawset(panel[k], "SetText", nil) end
+        -- /fgui guide plan, and off
+        if ns:GuideCommand("plan") ~= true then error("/fgui guide plan") end
+        ns:GuideCommand("off")
+        if ns.plannerBusy or ns.plannerQueued then error("off stops the planner") end
+        -- locked: nothing
+        ns.root.guideKey = nil
+        if ns:PlannerStart() ~= false or ns.plannerBusy or ns.plannerQueued then error("locked: no planning") end
+    end)
+    ns:PlannerStop()
+    env.C_Map = real.map; rawset(env, "CreateVector2D", real.vec); env.C_QuestLog = real.ql; env.UnitLevel = real.level; env.GetTime = real.time
+    env.C_AddOns.IsAddOnLoaded = real.loaded; ns.PlannerSource = real.source; env.InCombatLockdown = real.combat; ns.PLANNER_BUDGET_MS = real.budget
+    ns.PlannerSourceReset()
+    ns.root.guideKey, ns.root.guides, ns.root.guideState, ns.root.planner = saved.key, saved.guides, saved.state, saved.planner
+    if not ok then error(err, 0) end
+end)
+try("13.0 planner: settings", function()
+    local saved = { key = ns.root.guideKey, guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner,
+                    group = ns.db.plannerGroup, flights = ns.db.plannerLearnFlights, why = ns.db.plannerWhy }
+    local ok, err = pcall(function()
+        ns.root.guideKey = tonumber((sources["Guide.lua"] or ""):match("local GUIDE_KEY = (%d+)"))
+        ns.root.guides, ns.root.guideState = nil, nil
+        ns.db.plannerGroup, ns.db.plannerLearnFlights, ns.db.plannerWhy = "solo", true, true
+        ns:ToggleConfig("guide")
+        local P = ns.guidePage
+        if not P or P.unlocked ~= true then error("unlocked: the Guide tab shows the controls") end
+        if not (P.planButton and P.groupButton and P.flightsBox and P.whyBox) then error("the planner controls exist") end
+        local function click(b)
+            local f = b:GetScript("OnClick")
+            if type(f) ~= "function" then for _, h in ipairs(handlers) do if h.self == b and h.name == "OnClick" then f = h.fn end end end
+            f(b)
+        end
+        if not P.planButton.text:GetText():find(ns:Tr("Plan my route"), 1, true) then error("the button's words: " .. tostring(P.planButton.text:GetText())) end
+        click(P.planButton)
+        if ns.GuideState().name ~= ns.GUIDE_PLANNED then error("the button plans") end
+        ns.plannerQueued = false
+        click(P.groupButton)
+        if ns.db.plannerGroup ~= "grouped" or not ns.plannerQueued then error("the group choice replans: " .. tostring(ns.db.plannerGroup)) end
+        click(P.groupButton)
+        if ns.db.plannerGroup ~= "all" then error("then everything") end
+        click(P.groupButton)
+        if ns.db.plannerGroup ~= "solo" then error("and round again") end
+        ns.plannerQueued = false
+        click(P.flightsBox)
+        if ns.db.plannerLearnFlights ~= false then error("flights setting off") end
+        if not ns.plannerQueued then error("flights setting replans") end
+        ns.plannerQueued = false
+        click(P.whyBox)
+        if ns.db.plannerWhy ~= false or not ns.plannerQueued then error("why setting replans") end
+        click(P.whyBox)
+        -- show why
+        local acc = { kind = "accept", quest = 5, title = "Q", why = { xp = 4100 } }
+        local fly = { kind = "fly", text = "Fly", why = { saves = 200 } }
+        local plain = ns.GuideStepText({ kind = "accept", quest = 5, title = "Q" })
+        local planned = { name = ns.GUIDE_PLANNED, steps = { acc, fly } }
+        local withWhy = ns.GuideStepText(acc, planned)
+        if withWhy == plain or not withWhy:find("4", 1, true) or not withWhy:find("xp", 1, true) then error("xp why: " .. withWhy) end
+        if not ns.GuideStepText(fly, planned):find("~3", 1, true) then error("saves why: " .. ns.GuideStepText(fly, planned)) end
+        if not ns.GuideStepText({ kind = "fly", text = "Fly", why = { saves = 10 } }, planned):find("~1", 1, true) then error("at least a minute") end
+        if ns.GuideStepText(acc) ~= plain then error("not on the planned guide: no why") end
+        ns.db.plannerWhy = false
+        if ns.GuideStepText(acc, planned) ~= plain then error("switched off: no why") end
+        -- not running: no replan
+        ns:GuideStop(); ns:PlannerStop(); ns.plannerQueued = false
+        click(P.groupButton)
+        if ns.plannerQueued then error("planner not running: no replan") end
+        -- locked
+        ns:GuideLock()
+        ns:ToggleConfig("guide")
+        if ns.guidePage.unlocked ~= false then error("locked: coming soon") end
+    end)
+    ns:PlannerStop()
+    ns:ToggleConfig()
+    ns.root.guideKey, ns.root.guides, ns.root.guideState, ns.root.planner = saved.key, saved.guides, saved.state, saved.planner
+    ns.db.plannerGroup, ns.db.plannerLearnFlights, ns.db.plannerWhy = saved.group, saved.flights, saved.why
+    if not ok then error(err, 0) end
 end)
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)

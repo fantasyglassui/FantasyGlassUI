@@ -1,0 +1,5 @@
+# made by the build, not kept
+site/index.html
+site/public.html
+site/i18n/
+__pycache__/
