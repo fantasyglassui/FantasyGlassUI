@@ -378,6 +378,34 @@ Wellbeing:
     choose (default 2 hours), a gentle line when the plan reaches its next stopping place ("You've been
     playing 2 hours; this is a good place to stop"). Never in combat, never mid-hub, at most once an hour.
 
+Sixth round:
+
+40. **Profession training on the way.** When a profession's skill reaches its current cap (for example
+    75/75), the route adds a stop at that profession's trainer when it passes a town with one (Questie's
+    NPC data: trainer flag and title), or says where the nearest is. Done when the trainer window closes.
+41. **Mail on the way.** When mail is waiting (HasNewMail) and the route passes a mailbox (Questie's object
+    data, or mailboxes the add-on has seen you use), a quick "Check your mail" stop is added, only when it
+    costs under ~20 seconds.
+42. **Mount reminder.** At the level your character can ride, a stop at your race's mount vendor (and the
+    riding trainer) is added. If you can't afford it yet, the panel shows how much gold you are short
+    ("Riding: 38g to go"), and later the gold advisor (Part 2) can take it from there.
+43. **Race your best.** The panel shows how you are doing against your fastest character at the same level
+    ("ahead by 4 min" / "behind by 2 min"), from the level times (#17). Setting: on / off (default off, so
+    it never pressures anyone who didn't ask).
+
+Your plan on the website:
+
+44. **A plan code.** "Share plan" turns the plan (its steps, the places on them, and your level range) into
+    a line of text, like the theme codes. Pasting it on a new page of fantasyglassui.com (/plan/) shows:
+    - **the route drawn as a map**: each zone as a labelled panel with the stops placed by their
+      coordinates, numbered, joined by the path, flights and crossings marked. The site draws this itself;
+      it does not show Blizzard's map art.
+    - **a checklist** of the steps you can tick off on your phone while you play (kept in that browser only).
+    - the totals: experience, time, levels, flights.
+    Nothing is sent anywhere: the code is copied and pasted by you, and the page reads it in the browser.
+    The page is built and translated like the rest of the site (build_site.py, the 9 languages) and is
+    marked as part of the quest guide, so it is not linked from the site until the guide is released.
+
 ### Part 2: the gold farming advisor (to be designed before it is built)
 
 Wanted, and to be built after the planner; it needs its own design conversation first, since only the idea
@@ -418,6 +446,8 @@ is settled. What is known:
 - Speed / Safety / Story sliders (set by the style presets).
 - Goal: level up (default) / finish a zone.
 - Break reminders: off (default) / after a time you choose.
+- Profession training stops, mail stops, mount reminder: on (default) / off each.
+- Race your best: off (default) / on.
 
 ### Tests
 
@@ -445,6 +475,10 @@ is settled. What is known:
   Safety up routes round a dangerous hub; a duo plan arrives and progress shows both ways (and nothing is
   sent inside an instance); a solo elite is recorded and then planned; a zone goal plans every quest in
   the zone; the catch-up page shows after a long break; the break line waits for a stopping place.
+- The sixth round: a capped profession adds a trainer stop; waiting mail adds a mailbox stop only when it
+  is cheap; the mount stop and the gold-short line appear at riding level; the race line compares with the
+  best character's level time; a plan code round-trips (made in the game, read back by the same parser the
+  website uses, checked in tests with a fixed code).
 - The planner runs in both smoke modes (combat values readable and secret) with no errors.
 
 ## Left to the builder
@@ -484,4 +518,7 @@ is settled. What is known:
 - Two deaths in one hub within a level make it "too hard for now"; the mark clears after two levels.
 - Gathering detours are at most ~20 seconds.
 - "Catch me up" shows after 14 days or more away; break reminders default to 2 hours, at most once an hour.
+- Race your best is off by default.
+- The website draws its own zone panels instead of using Blizzard's map art, and the /plan/ page stays
+  unlinked until the quest guide is released.
 - Hand-ins are held only when the trainer town is within ~5 minutes on the plan and no extra trip is needed.
