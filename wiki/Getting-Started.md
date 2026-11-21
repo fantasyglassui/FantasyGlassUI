@@ -38,7 +38,7 @@ Type `/fgui move`. Every panel shows a handle, and you can drag it anywhere.
 
 Open the settings with `/fgui` and choose **Look and themes** in the list on the left.
 
-- **Themes:** 115 of them, in three families.
+- **Themes:** 116 of them, in three families.
   - **Glass:** see-through panes with soft shadows.
   - **Fantasy:** solid panels with gold ornaments.
   - **Celestial:** a night sky with stars and constellations.

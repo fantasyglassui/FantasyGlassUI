@@ -729,7 +729,7 @@ function ns:CheckNew(quiet)
     try("Celestial themes", function()
         local n = 0
         for _, key in ipairs(ns.themeOrder) do local t = ns.themes[key]; if t and t.style == "CELESTIAL" and not t.custom then n = n + 1 end end
-        return (n == 38) and "OK" or "CHECK", format("%d celestial themes; this one is %s", n, tostring(ns.style))
+        return (n == 39) and "OK" or "CHECK", format("%d celestial themes; this one is %s", n, tostring(ns.style))
     end)
     try("Celestial art", function()
         if ns.style ~= "CELESTIAL" then return "OK", "shown with a Celestial theme (pick one and /reload to see it)" end

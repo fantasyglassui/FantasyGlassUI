@@ -86,6 +86,25 @@ ns.settingRows = {
                       desc = "Reads what is under the mouse, the quest you are reading, or the last whisper. Give it a key in the game's Key Bindings (AddOns, Fantasy Glass UI), or type /fgui read." },
     spokenAlerts  = { kind = "button", label = "Spoken alerts", run = function() ns:ToggleConfig("combat:Alerts and warnings") end,
                       desc = "Ready checks, whispers, missing buffs and your own alerts said aloud. They are with the other alerts, in Combat." },
+    -- accessibility (12.2)
+    highContrast  = { kind = "button", label = "Use the high-contrast theme", run = function() ns:UseHighContrast() end,
+                      desc = "Pure black panels, white lettering and the strongest rims, in the family you use: glass, fantasy or celestial." },
+    stillSky      = { kind = "check", label = "Still sky", desc = "The celestial sky keeps its stars but holds still: no twinkling, no breathing light, no shooting stars. Everything else moves as usual." },
+    tooltipDelay  = { kind = "slider", label = "Wait before a tooltip shows (ms)", min = 0, max = 2000, step = 250, default = 0,
+                      desc = "How long the mouse must rest on something before its tooltip shows, so sweeping across the screen does not throw one up after another. 0 shows them at once." },
+    readDialog    = { kind = "check", label = "Read talk and quests aloud",
+                      desc = "What an NPC says (and the choices), a quest's text and a book or letter are read as soon as they open, and the reading stops when you close them." },
+    readHover     = { kind = "check", label = "Read what I point at",
+                      desc = "When the mouse rests on something for half a second, its tooltip is read aloud. The game's own screen narrator only works before you log in." },
+    windowKeys    = { kind = "check", label = "Move through the game's windows with the keyboard",
+                      desc = "With an NPC's talk, a quest, a vendor, the mailbox, loot, a trainer, a flight master or a question box open: Tab or Down goes to the next thing to press, Shift+Tab or Up to the one before, Enter or Space presses it. A ring shows where you are. Never while you type, and not in a fight." },
+    windowKeysSay = { kind = "check", label = "Say each choice as I reach it", desc = "With the keyboard in the game's windows: each button is said aloud as the ring reaches it, with where it is in the list." },
+    keysLeft      = { kind = "button", label = "Keys for the left hand only", run = function() ns:UseKeyPreset("left") end,
+                      desc = "Moving on W, A, S and D, strafing on Q and E, jumping on Space, the first twelve action buttons on 1 to 5 and the keys round them, Tab to target and F to interact. The keys these take are noted, to be put back." },
+    keysNumpad    = { kind = "button", label = "Keys for the number pad only", run = function() ns:UseKeyPreset("numpad") end,
+                      desc = "Everything on the number pad, for the right hand: 8, 5, 4 and 6 move and turn, 7 and 9 strafe, 0 jumps, 1, 2, 3, / , * and - are the first six action buttons, + targets and . interacts." },
+    keysBack      = { kind = "button", label = "Put my keys back", run = function() ns:RestoreKeys() end,
+                      desc = "Every key a one-hand set took goes back to what it did before." },
     accessCopy    = { kind = "button", label = "Copy my accessibility settings", run = function() ns:AccessCommand("copy") end,
                       desc = "All of these settings in one line of text, to keep or give to someone." },
     accessPaste   = { kind = "button", label = "Paste accessibility settings", run = function() ns:ShowAccessPaste() end,
@@ -112,13 +131,13 @@ ns.settingsCategories = {
         { title = "Away and screenshots", blocks = { { host = "combat", from = "AFK screen" } } },
     } },
     { id = "access", title = "Accessibility", desc = "Seeing, hearing, flashing, calm, reading aloud and the keyboard.", new = true, sections = {
-        { title = "Seeing", simple = true, new = true, rows = { "colorblind", "colorVision", "readableFont", "textOutline", "textBands", "targetOutline", "uiScale" },
+        { title = "Seeing", simple = true, new = true, rows = { "highContrast", "colorblind", "colorVision", "readableFont", "textOutline", "textBands", "targetOutline", "uiScale" },
           blocks = { { host = "look", from = "Contrast and text size" } } },
         { title = "Hearing", simple = true, new = true, rows = { "spokenAlerts" } },
-        { title = "Flashing and motion", simple = true, new = true, rows = { "reduceMotion", "safeFlash" } },
-        { title = "Focus and calm", new = true, rows = { "calmMode" } },
-        { title = "Reading aloud", new = true, rows = { "readNow" } },
-        { title = "Hands and keys", new = true, rows = { "bigControls", "keyNav" } },
+        { title = "Flashing and motion", simple = true, new = true, rows = { "reduceMotion", "stillSky", "safeFlash" } },
+        { title = "Focus and calm", new = true, rows = { "calmMode", "tooltipDelay" } },
+        { title = "Reading aloud", simple = true, new = true, rows = { "readDialog", "readHover", "readNow" } },
+        { title = "Hands and keys", new = true, rows = { "bigControls", "keyNav", "windowKeys", "windowKeysSay", "keysLeft", "keysNumpad", "keysBack" } },
         { title = "Share", new = true, rows = { "accessCopy", "accessPaste" } },
     } },
     { id = "frames", title = "Frames and bars", desc = "Unit frames, raid frames, action bars and nameplates.", samples = true, sections = {
@@ -258,7 +277,7 @@ function ns:SectionOfRow(name)
 end
 
 -- What is new in this version: shown with a NEW tag until the section has been opened once.
-ns.settingsNewIn = "12.1"
+ns.settingsNewIn = "12.2"
 function ns:SectionIsNew(sec)
     if type(sec) ~= "table" or not sec.new then return false end
     if not tostring(ns.version or ""):find("^" .. ns.settingsNewIn:gsub("%.", "%%.")) then return false end

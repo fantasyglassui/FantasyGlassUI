@@ -99,9 +99,10 @@ end
 -- Your accessibility settings as one line of text, to keep or give to someone; pasting one back
 -- sets them all. Only these settings travel: nothing else of the profile.
 ns.ACCESS_KEYS = { "colorblind", "colorVision", "reduceMotion", "safeFlash", "calmMode", "captions", "textOutline", "textBands",
-                   "targetOutline", "bigControls", "fontScale", "uiScale", "cursorRing", "tooltipCursor", "speakAlerts", "fontStyle", "theme" }
+                   "targetOutline", "bigControls", "fontScale", "uiScale", "cursorRing", "tooltipCursor", "speakAlerts", "fontStyle", "theme",
+                   "readDialog", "readHover", "windowKeys", "windowKeysSay", "stillSky", "tooltipDelay" }
 local KEEP_STYLE = { READABLE = true, DYSLEXIC = true }
-local KEEP_THEME = { CONTRAST = true, FCONTRAST = true }
+local KEEP_THEME = { CONTRAST = true, FCONTRAST = true, C_CONTRAST = true }
 local HEAD = "FGUI-ACCESS:1;"
 function ns:AccessExport()
     local parts = {}
@@ -139,6 +140,7 @@ function ns:AccessParse(text)
     if out.fontScale then out.fontScale = math.max(70, math.min(150, out.fontScale)) end
     if out.uiScale then out.uiScale = math.max(50, math.min(150, out.uiScale)) end
     if out.targetOutline then out.targetOutline = math.max(0, math.min(8, out.targetOutline)) end
+    if out.tooltipDelay then out.tooltipDelay = math.max(0, math.min(2000, out.tooltipDelay)) end
     return out, n
 end
 function ns:AccessImport(text)
@@ -222,4 +224,204 @@ function ns:SetColorVision(which)
     if which == "off" then ns.db.colorblind = false
     else ns.db.colorblind = true; ns.db.colorVision = which end
     if ns.Retheme then pcall(ns.Retheme, ns) end
+end
+
+------------------------------------------------------------------------------------------
+-- 12.2: more for everyone.
+------------------------------------------------------------------------------------------
+
+-- Reading on its own ------------------------------------------------------------------------
+-- "Read talk and quests aloud": what an NPC says, a quest's text and a book or letter are read as their
+-- window opens, and the reading stops when it closes. "Read what I point at": a tooltip is read once the
+-- mouse rests on something. (The game's own screen narrator works only before you log in.)
+local function Join(parts)
+    local out = ""
+    for _, t in ipairs(parts) do
+        t = Plain(t)
+        if t then
+            if out == "" then out = t
+            elseif out:find("[%.!%?:]$") then out = out .. " " .. t      -- (a sentence that ends already)
+            else out = out .. ". " .. t end
+        end
+    end
+    return out ~= "" and out or nil
+end
+local function Call(fn, ...)
+    if type(fn) ~= "function" then return nil end
+    local ok, v = pcall(fn, ...)
+    return ok and v or nil
+end
+-- The text of the window that just opened, by the event that opened it.
+function ns:DialogText(event)
+    if event == "GOSSIP_SHOW" then
+        local parts = { Call(C_GossipInfo.GetText) }
+        local okO, options = pcall(C_GossipInfo.GetOptions)
+        local names = {}
+        if okO and type(options) == "table" then
+            for _, o in ipairs(options) do local n = type(o) == "table" and Plain(o.name); if n then names[#names + 1] = n end end
+        end
+        for _, get in ipairs({ C_GossipInfo.GetAvailableQuests, C_GossipInfo.GetActiveQuests }) do
+            local okQ, quests = pcall(get)
+            if okQ and type(quests) == "table" then
+                for _, q in ipairs(quests) do local n = type(q) == "table" and Plain(q.title); if n then names[#names + 1] = n end end
+            end
+        end
+        if #names > 0 then parts[#parts + 1] = ns:Tr("Choices") .. ": " .. table.concat(names, ", ") end
+        return Join(parts)
+    elseif event == "QUEST_DETAIL" then
+        return Join({ Call(GetTitleText), Call(GetQuestText), Call(GetObjectiveText) })
+    elseif event == "QUEST_PROGRESS" then
+        return Join({ Call(GetTitleText), Call(GetProgressText) })
+    elseif event == "QUEST_COMPLETE" then
+        return Join({ Call(GetTitleText), Call(GetRewardText) })
+    elseif event == "QUEST_GREETING" then
+        return Join({ Call(GetGreetingText) })
+    elseif event == "ITEM_TEXT_READY" then
+        return Join({ Call(ItemTextGetItem), Call(ItemTextGetText) })
+    end
+    return nil
+end
+function ns:StopReading()
+    pcall(C_VoiceChat.StopSpeakingText)
+end
+do
+    local opens = { "GOSSIP_SHOW", "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_COMPLETE", "QUEST_GREETING", "ITEM_TEXT_READY" }
+    local closes = { GOSSIP_CLOSED = true, QUEST_FINISHED = true, ITEM_TEXT_CLOSED = true }
+    local ev = CreateFrame("Frame")
+    for _, e in ipairs(opens) do pcall(ev.RegisterEvent, ev, e) end
+    for e in pairs(closes) do pcall(ev.RegisterEvent, ev, e) end
+    ev:SetScript("OnEvent", ns:Guard("Read aloud", function(_, event)
+        if not (ns.db and ns.db.readDialog) then return end
+        if closes[event] then ns:StopReading(); return end
+        local text = ns:DialogText(event)
+        if not text then return end
+        ns:StopReading()                                              -- (the page before stops: this one is read)
+        if ns:Speak(text) then ns.readLast = event end
+    end))
+end
+-- What the mouse rests on: a tooltip that has stayed the same for half a second is read, once.
+do
+    local heard, since, last = nil, 0, nil
+    function ns.HoverReadTick(now)
+        if not (ns.db and ns.db.readHover) then heard, last = nil, nil; return nil end
+        local text = GameTooltip and GameTooltip.IsShown and GameTooltip:IsShown() and ns:ReadText("tooltip")
+        if not text then heard, last = nil, nil; return nil end
+        now = now or GetTime()
+        if text ~= last then last, since = text, now; return nil end           -- (still settling)
+        if text == heard or now - since < 0.5 then return nil end
+        heard = text
+        ns:StopReading()
+        if ns:Speak(text) then ns.readLast = "hover"; return text end
+        return nil
+    end
+    local f = CreateFrame("Frame")
+    f:RegisterEvent("PLAYER_LOGIN")
+    f:SetScript("OnEvent", function()
+        if ns.Every then ns:Every(0.2, "Read what I point at", function() ns.HoverReadTick() end) end
+    end)
+end
+
+-- Tooltip delay -----------------------------------------------------------------------------
+-- The mouse must rest a moment before a tooltip shows, so sweeping across the screen does not
+-- throw up one after another. (The tooltip is there all along, unseen until the time is up.)
+do
+    local shownAt
+    function ns.TooltipDelayTick(now)
+        local tip = GameTooltip
+        local wait = (tonumber(ns.db and ns.db.tooltipDelay) or 0) / 1000
+        if not (tip and tip.IsShown and tip:IsShown()) then shownAt = nil; return nil end
+        if wait <= 0 then
+            if shownAt then tip:SetAlpha(1); shownAt = nil end
+            return nil
+        end
+        now = now or GetTime()
+        if not shownAt then shownAt = now; tip:SetAlpha(0); return false end
+        if now - shownAt >= wait then tip:SetAlpha(1); return true end
+        return false
+    end
+    local f = CreateFrame("Frame")
+    f:RegisterEvent("PLAYER_LOGIN")
+    f:SetScript("OnEvent", function()
+        if GameTooltip and GameTooltip.HookScript then
+            GameTooltip:HookScript("OnShow", function(self)
+                shownAt = nil
+                if (tonumber(ns.db and ns.db.tooltipDelay) or 0) > 0 then shownAt = GetTime(); self:SetAlpha(0) end
+            end)
+            GameTooltip:HookScript("OnHide", function(self) shownAt = nil; self:SetAlpha(1) end)
+        end
+        if ns.Every then ns:Every(0.05, "Tooltip delay", function() ns.TooltipDelayTick() end) end
+    end)
+end
+
+-- Keys for one hand ---------------------------------------------------------------------------
+-- Moving, jumping, the first action buttons and targeting, all within reach of one hand: the left
+-- hand round W, A, S and D, or the right hand on the number pad. The keys these take are noted
+-- first, so "Put my keys back" returns every one of them as it was.
+ns.KEY_PRESETS = {
+    left = { MOVEFORWARD = "W", MOVEBACKWARD = "S", TURNLEFT = "A", TURNRIGHT = "D", STRAFELEFT = "Q", STRAFERIGHT = "E",
+             JUMP = "SPACE", TOGGLEAUTORUN = "R", TARGETNEARESTENEMY = "TAB", INTERACTTARGET = "F",
+             ACTIONBUTTON1 = "1", ACTIONBUTTON2 = "2", ACTIONBUTTON3 = "3", ACTIONBUTTON4 = "4", ACTIONBUTTON5 = "5",
+             ACTIONBUTTON6 = "G", ACTIONBUTTON7 = "T", ACTIONBUTTON8 = "Z", ACTIONBUTTON9 = "X", ACTIONBUTTON10 = "C",
+             ACTIONBUTTON11 = "V", ACTIONBUTTON12 = "B" },
+    numpad = { MOVEFORWARD = "NUMPAD8", MOVEBACKWARD = "NUMPAD5", TURNLEFT = "NUMPAD4", TURNRIGHT = "NUMPAD6",
+               STRAFELEFT = "NUMPAD7", STRAFERIGHT = "NUMPAD9", JUMP = "NUMPAD0", TARGETNEARESTENEMY = "NUMPADPLUS",
+               INTERACTTARGET = "NUMPADDECIMAL", ACTIONBUTTON1 = "NUMPAD1", ACTIONBUTTON2 = "NUMPAD2", ACTIONBUTTON3 = "NUMPAD3",
+               ACTIONBUTTON4 = "NUMPADDIVIDE", ACTIONBUTTON5 = "NUMPADMULTIPLY", ACTIONBUTTON6 = "NUMPADMINUS" },
+}
+local function KeysWere()
+    if type(ns.root) ~= "table" then return nil end
+    if type(ns.root.keysWere) ~= "table" then ns.root.keysWere = {} end
+    return ns.root.keysWere
+end
+local function SaveKeys()
+    local ok, set = pcall(GetCurrentBindingSet)
+    pcall(SaveBindings, (ok and type(set) == "number") and set or 1)
+end
+-- Bind one preset. Returns how many keys it set, or false and why.
+function ns:UseKeyPreset(which)
+    local preset = ns.KEY_PRESETS[which]
+    if not preset then return false, "no such key set" end
+    if InCombatLockdown() then ns:Print("Keys can't be changed during a fight: try again after it."); return false, "fight" end
+    local was = KeysWere()
+    if not was then return false, "not ready" end
+    local n = 0
+    for action, key in pairs(preset) do
+        if was[key] == nil then                                        -- (note each key once: the first time it is taken)
+            local okA, before = pcall(GetBindingAction, key)
+            was[key] = (okA and type(before) == "string") and before or ""
+        end
+        if pcall(SetBinding, key, action) then n = n + 1 end
+    end
+    SaveKeys()
+    ns.db.keyPreset = which
+    ns:Print("%d keys set for one hand. \"Put my keys back\" returns them as they were.", n)
+    return n
+end
+function ns:RestoreKeys()
+    if InCombatLockdown() then ns:Print("Keys can't be changed during a fight: try again after it."); return false end
+    local was = KeysWere()
+    if not was or next(was) == nil then ns:Print("Your keys are as they were."); return 0 end
+    local n = 0
+    for key, action in pairs(was) do
+        if action == "" then pcall(SetBinding, key) else pcall(SetBinding, key, action) end
+        n = n + 1
+        was[key] = nil
+    end
+    SaveKeys()
+    ns.db.keyPreset = nil
+    ns:Print("%d keys put back as they were.", n)
+    return n
+end
+
+-- High contrast: the high-contrast theme of the family you use ------------------------------------
+ns.CONTRAST_THEMES = { GLASS = "CONTRAST", FANTASY = "FCONTRAST", CELESTIAL = "C_CONTRAST" }
+function ns:UseHighContrast()
+    local t = ns.themes[ns.db.theme]
+    local family = (t and t.style) or "FANTASY"
+    local key = ns.CONTRAST_THEMES[family] or "FCONTRAST"
+    ns.db.theme = key
+    ns.db.accent = ns.themes[key].accent or ns.db.accent
+    if ns.NoteHomeTheme then pcall(ns.NoteHomeTheme, ns) end
+    if ns.Retheme then pcall(ns.Retheme, ns) end
+    return key
 end

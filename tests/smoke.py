@@ -1360,7 +1360,7 @@ try("Talent tree", function()
 end)
 try("Theme palette", function()
     local function lum(c) return c[1] * 0.30 + c[2] * 0.59 + c[3] * 0.11 end
-    if #ns.themeOrder ~= 115 then error("expected 115 built-in themes, found " .. #ns.themeOrder) end
+    if #ns.themeOrder ~= 116 then error("expected 116 built-in themes, found " .. #ns.themeOrder) end
     local seen = {}
     for _, key in ipairs(ns.themeOrder) do
         if seen[key] then error("theme listed twice: " .. key) end
@@ -1419,7 +1419,7 @@ try("Setup offers every theme", function()
         local th = ns.themes[key]
         if not th.custom then if th.style == "GLASS" then glass = glass + 1 elseif th.style == "CELESTIAL" then celestial = celestial + 1 else fantasy = fantasy + 1 end end
     end
-    if glass ~= 38 or fantasy ~= 39 or celestial ~= 38 then error("expected 38 + 39 + 38 themes, found " .. glass .. " + " .. fantasy .. " + " .. celestial) end
+    if glass ~= 38 or fantasy ~= 39 or celestial ~= 39 then error("expected 38 + 39 + 39 themes, found " .. glass .. " + " .. fantasy .. " + " .. celestial) end
     -- (a family no longer has to fit four rows: the setup's grid scrolls, which is tested further down)
     ns.db.theme, ns.db.accent = "SMOKE", "AZURE"; ns:Retheme()
     ns:ShowSetup()
@@ -1852,7 +1852,7 @@ try("Look tab sections", function()
     if not page or not page.themeGroups then error("the Look tab did not build its theme groups") end
     local glass, fantasy, skyG, mine = page.themeGroups[1], page.themeGroups[2], page.themeGroups[3], page.themeGroups[4]
     local function count(group) local n = 0; for _, b in ipairs(group.buttons) do if b.key and ns.themes[b.key] then n = n + 1 end end return n end
-    if count(glass) ~= 38 or count(fantasy) ~= 39 or count(skyG) ~= 38 then error("expected 38 glass, 39 fantasy and 38 celestial buttons, got " .. count(glass) .. ", " .. count(fantasy) .. " and " .. count(skyG)) end
+    if count(glass) ~= 38 or count(fantasy) ~= 39 or count(skyG) ~= 39 then error("expected 38 glass, 39 fantasy and 39 celestial buttons, got " .. count(glass) .. ", " .. count(fantasy) .. " and " .. count(skyG)) end
     for _, b in ipairs(glass.buttons) do if ns.themes[b.key].style ~= "GLASS" then error("a fantasy theme is under Glass: " .. b.key) end end
     for _, b in ipairs(fantasy.buttons) do if ns.themes[b.key].style == "GLASS" or ns.themes[b.key].style == "CELESTIAL" or ns.themes[b.key].custom then error("wrong theme under Fantasy: " .. b.key) end end
     for _, b in ipairs(skyG.buttons) do if b.key and ns.themes[b.key].style ~= "CELESTIAL" then error("wrong theme under Celestial: " .. b.key) end end
@@ -6306,6 +6306,134 @@ try("12.1: accessibility", function()
     for k, v in pairs(keep) do ns.db[k] = v end
     ns:Retheme()
 end)
+try("12.2: reading on its own, the game's windows by keyboard, keys for one hand", function()
+    local keep = {}
+    for _, k in ipairs({ "readDialog", "readHover", "windowKeys", "windowKeysSay", "stillSky", "tooltipDelay", "theme", "accent", "reduceMotion" }) do keep[k] = ns.db[k] end
+    local realVoice, realTime, realTip = env.C_VoiceChat, env.GetTime, env.GameTooltip
+    local said, stopped, now = {}, 0, 1000
+    env.GetTime = function() return now end
+    env.C_VoiceChat = { GetTtsVoices = function() return { { voiceID = 1 } } end, SpeakText = function(_, text) said[#said + 1] = text end,
+                        StopSpeakingText = function() stopped = stopped + 1 end }
+    -- talk and quests are read as they open, and stop when they close
+    env.C_GossipInfo = { GetText = function() return "Greetings, |cffffd100traveler|r." end,
+                         GetOptions = function() return { { name = "Train me" }, { name = "Goodbye" } } end,
+                         GetAvailableQuests = function() return { { title = "Wolves at the Gate" } } end, GetActiveQuests = function() return {} end }
+    local text = ns:DialogText("GOSSIP_SHOW")
+    if text ~= "Greetings, traveler. Choices: Train me, Goodbye, Wolves at the Gate" then error("an NPC's talk and its choices: " .. tostring(text)) end
+    env.GetTitleText, env.GetQuestText, env.GetObjectiveText = function() return "Wolves" end, function() return "Kill them." end, function() return "Kill 8 wolves." end
+    if ns:DialogText("QUEST_DETAIL") ~= "Wolves. Kill them. Kill 8 wolves." then error("a quest's text") end
+    ns.db.readDialog = true
+    fireEvent("QUEST_DETAIL")
+    local heardQuest = false                                     -- (the harness gives every event to every handler: others may speak too)
+    for _, t in ipairs(said) do if t == "Wolves. Kill them. Kill 8 wolves." then heardQuest = true end end
+    if not heardQuest or ns.readLast ~= "QUEST_DETAIL" then error("the quest is read as it opens") end
+    local before = stopped
+    fireEvent("QUEST_FINISHED")
+    if stopped ~= before + 1 then error("closing the quest stops the reading") end
+    ns.db.readDialog = false
+    said = {}
+    ns.readLast = nil
+    fireEvent("QUEST_DETAIL")
+    for _, t in ipairs(said) do if t == "Wolves. Kill them. Kill 8 wolves." then error("nothing is read with the switch off") end end
+    -- what the mouse rests on: read once, after it settles
+    local line = newmock(); rawset(line, "GetText", function() return "Peacebloom" end)
+    env.GameTooltipTextLeft1, env.GameTooltipTextRight1 = line, false
+    local tip = newmock()
+    rawset(tip, "IsShown", function() return true end); rawset(tip, "NumLines", function() return 1 end)
+    local alpha = 1
+    rawset(tip, "SetAlpha", function(_, a) alpha = a end)
+    env.GameTooltip = tip
+    ns.db.readHover = true
+    if ns.HoverReadTick(now) ~= nil then error("not yet: the tooltip has only just come") end
+    if ns.HoverReadTick(now + 0.6) ~= "Peacebloom" then error("a tooltip that stays is read") end
+    if ns.HoverReadTick(now + 1.2) ~= nil then error("and only once") end
+    ns.db.readHover = false
+    -- a wait before tooltips show
+    ns.db.tooltipDelay = 500
+    ns.TooltipDelayTick(now)                                      -- (a tooltip already up: the wait starts now)
+    if ns.TooltipDelayTick(now) ~= false or alpha ~= 0 then error("the tooltip waits unseen") end
+    if ns.TooltipDelayTick(now + 0.6) ~= true or alpha ~= 1 then error("then shows") end
+    ns.db.tooltipDelay = 0
+    ns.TooltipDelayTick(now + 1)
+    -- the game's windows by keyboard
+    local pressed = {}
+    local function Button(label, top, left)
+        local b = { label = label }
+        function b:IsObjectType(kind) return kind == "Button" end
+        function b:IsVisible() return true end
+        function b:IsEnabled() return true end
+        function b:IsMouseClickEnabled() return true end
+        function b:GetWidth() return 120 end
+        function b:GetHeight() return 22 end
+        function b:GetTop() return top end
+        function b:GetLeft() return left end
+        function b:GetText() return label end
+        function b:GetChildren() end
+        function b:Click() pressed[#pressed + 1] = label end
+        return b
+    end
+    local accept, decline, small = Button("Accept", 100, 10), Button("Decline", 100, 200), Button("Tiny", 300, 10)
+    function small:GetWidth() return 4 end                        -- (too small to be a button anyone presses)
+    local window = { IsVisible = function() return true end }
+    function window:GetChildren() return decline, accept, small end
+    local keepFrame = env.QuestFrame
+    for _, name in ipairs({ "StaticPopup1", "StaticPopup2", "StaticPopup3", "StaticPopup4" }) do env[name] = false end
+    for _, name in ipairs(ns.WINDOW_KEYS_FRAMES) do env[name] = false end
+    env.QuestFrame = window
+    local list = ns.WindowKeysButtons(window)
+    if #list ~= 2 or list[1] ~= accept or list[2] ~= decline then error("the buttons, left to right, without the tiny one") end
+    ns.db.windowKeys, ns.db.windowKeysSay = true, true
+    env.IsShiftKeyDown = function() return false end
+    env.GetCurrentKeyBoardFocus = function() return nil end
+    if not ns.WindowKeysPress("TAB") or ns.windowKeysFocus ~= accept or ns.windowKeysSaid ~= "Accept, 1 of 2" then error("Tab goes to the first: " .. tostring(ns.windowKeysSaid)) end
+    if said[#said] ~= "Accept, 1 of 2" then error("and says it") end
+    ns.WindowKeysPress("TAB")
+    if ns.windowKeysFocus ~= decline then error("Tab again: the next") end
+    ns.WindowKeysPress("UP")
+    if ns.windowKeysFocus ~= accept then error("Up: the one before") end
+    if not ns.WindowKeysPress("ENTER") or pressed[#pressed] ~= "Accept" then error("Enter presses it") end
+    if ns.WindowKeysPress("A") then error("other keys are the game's") end
+    env.GetCurrentKeyBoardFocus = function() return {} end
+    if ns.WindowKeysPress("TAB") then error("never while typing") end
+    env.GetCurrentKeyBoardFocus = function() return nil end
+    ns.db.windowKeys = false
+    if ns.WindowKeysPress("TAB") then error("nothing with the switch off") end
+    env.QuestFrame = keepFrame
+    -- keys for one hand, and back
+    local bound, set = { W = "MOVEFORWARD", NUMPAD8 = "CAMERAZOOMIN" }, {}
+    env.GetBindingAction = function(key) return bound[key] or "" end
+    env.SetBinding = function(key, action) set[#set + 1] = { key, action }; bound[key] = action; return true end
+    env.SaveBindings, env.GetCurrentBindingSet = function() end, function() return 1 end
+    ns.root.keysWere = nil
+    local n1 = ns:UseKeyPreset("numpad")
+    if n1 ~= 15 or bound.NUMPAD8 ~= "MOVEFORWARD" or bound.NUMPADPLUS ~= "TARGETNEARESTENEMY" then error("the number pad set: " .. tostring(n1)) end
+    if ns.root.keysWere.NUMPAD8 ~= "CAMERAZOOMIN" or ns.root.keysWere.NUMPAD1 ~= "" then error("what the keys did before is noted") end
+    ns:UseKeyPreset("numpad")
+    if ns.root.keysWere.NUMPAD8 ~= "CAMERAZOOMIN" then error("noted once: a second use keeps what they did before") end
+    ns:RestoreKeys()
+    if bound.NUMPAD8 ~= "CAMERAZOOMIN" or bound.NUMPAD1 ~= nil or next(ns.root.keysWere) ~= nil then error("put back as they were") end
+    if ns:UseKeyPreset("both hands") then error("an unknown set") end
+    -- high contrast in the family you use, and a still sky
+    ns.db.theme = "C_POLARIS"
+    if ns:UseHighContrast() ~= "C_CONTRAST" or ns.db.theme ~= "C_CONTRAST" then error("celestial: its high-contrast theme") end
+    ns.db.theme = "SMOKE"
+    if ns:UseHighContrast() ~= "CONTRAST" then error("glass: its high-contrast theme") end
+    ns.db.reduceMotion, ns.db.stillSky = false, true
+    if ns.SkyMoves() then error("a still sky does not move") end
+    if not ns:Motion() then error("but everything else still may") end
+    ns.db.stillSky = false
+    if not ns.SkyMoves() then error("the sky moves again") end
+    -- all of it travels in the shared line
+    ns.db.readDialog, ns.db.tooltipDelay = true, 750
+    local line2 = ns:AccessExport()
+    if not line2:find("readDialog=1", 1, true) or not line2:find("tooltipDelay=750", 1, true) then error("shared: " .. line2) end
+    local got = ns:AccessParse("FGUI-ACCESS:1;tooltipDelay=99999;stillSky=1")
+    if got.tooltipDelay ~= 2000 or got.stillSky ~= true then error("a shared line is kept in bounds") end
+    for k, v in pairs(keep) do ns.db[k] = v end
+    ns:ApplyTheme()
+    env.C_VoiceChat, env.GetTime, env.GameTooltip = realVoice, realTime, realTip
+    env.GameTooltipTextLeft1, env.GameTooltipTextRight1 = nil, nil
+end)
 try("12.0: the settings window", function()
     ns:ToggleConfig("home")
     local O, frame = ns.optUI, ns.configFrame
@@ -6369,11 +6497,11 @@ try("12.0: the settings window", function()
     ns.root.seenNew = nil
     local acc = ns:SettingsSection("access:Seeing")
     local keepV = ns.version
-    ns.version = "12.1.0"
+    ns.version = "12.2.0"
     if not ns:SectionIsNew(acc) then error("a new section is marked NEW") end
     O.Open("access:Seeing")
     if ns:SectionIsNew(acc) then error("once seen it is not NEW any more") end
-    ns.version = "12.2.0"; ns.root.seenNew = nil
+    ns.version = "12.3.0"; ns.root.seenNew = nil
     if ns:SectionIsNew(acc) then error("only in the version it came in") end
     ns.version = keepV
     -- the profile being changed is in the header; the corner resizes the window

@@ -2,7 +2,7 @@
 
 **Your whole interface, cut like a gem.**
 
-One add-on restyles everything you look at in WoW Forever: unit frames, action bars, raid frames, nameplates, bags, quests, the minimap, chat, tooltips and every one of the game's own windows. Pick a look from 115 themes, answer a two-minute setup, and play. Every part has its own switch, so you keep only what you want.
+One add-on restyles everything you look at in WoW Forever: unit frames, action bars, raid frames, nameplates, bags, quests, the minimap, chat, tooltips and every one of the game's own windows. Pick a look from 116 themes, answer a two-minute setup, and play. Every part has its own switch, so you keep only what you want.
 
 **[Website](https://fantasyglassui.com)**: try every theme, make your own, and search every switch and command · **[Discord](https://discord.gg/qeSMwQWyPR)**: help, screenshots and theme codes · **[Wiki](https://github.com/fantasyglassui/FantasyGlassUI/wiki)**: the full guide
 
@@ -12,12 +12,12 @@ One add-on restyles everything you look at in WoW Forever: unit frames, action b
 - **A sky that moves.** The Celestial themes are a living night sky: twinkling stars, a faint Milky Way, a real constellation on big windows, the odd shooting star, and a minimap drawn as a star chart.
 - **Make your own theme.** Pick three colors on [the website](https://fantasyglassui.com), see it on a full screen, and paste the code into the game. Or give each place its own theme: one for cities, another for raids.
 - **Built for WoW Forever, and only for it.** Every function, event and frame it uses is checked against the Forever client itself, on every update. Where the game hides information in combat, it works around it instead of breaking.
-- **Made for everyone.** Colors for each kind of color vision, lettering for low vision and dyslexia, captions for sounds, and a key that reads tooltips and quests aloud. See "Accessibility" below.
+- **Made for everyone.** Colors for each kind of color vision, high contrast, lettering for low vision and dyslexia, captions for sounds, talk and quests read aloud, the game's windows by keyboard, and keys for one hand. See "Accessibility" below.
 - **257 switches, one window.** A settings window with a search that finds any setting and tells you where it lives, an undo for every change, and Simple or All options.
 
 ## The look
 
-- **Three families, 115 themes.** **Glass** is clear panes with a bright top edge. **Fantasy** is solid panels with grain, dark rims and gold corners. **Celestial** is the night sky. Each family has a theme in your class color.
+- **Three families, 116 themes.** **Glass** is clear panes with a bright top edge. **Fantasy** is solid panels with grain, dark rims and gold corners. **Celestial** is the night sky. Each family has a theme in your class color.
 - **31 accent colors and 36 lettering styles**, a preview of every theme, and a theme editor in the game.
 - **A diamond or round minimap**, a glossy bar texture, panels that snap together, and your lettering on the combat text too.
 - **Screenshot mode, a login splash, and an AFK screen** where the camera drifts round your character and your session's stats show.
@@ -57,12 +57,14 @@ One add-on restyles everything you look at in WoW Forever: unit frames, action b
 
 ## Accessibility
 
-A whole category of its own:
+A whole category of its own, and a [page on the website](https://fantasyglassui.com/accessibility/) that lists it need by need:
 - **Color vision:** red-green, blue-yellow, or no color at all, where brightness and marks carry the meaning. Threat, debuffs and item quality get marks too.
-- **Lettering made to be read:** Atkinson Hyperlegible and OpenDyslexic, a thicker outline round letters and a dark band behind messages.
-- **Captions for sounds:** a line on screen for ready checks, whispers, queues, invites, boss emotes, raid warnings and loot rolls.
-- **Read aloud:** one key reads the tooltip, the quest or the last whisper, in the game's own voice.
-- **Safe flashing, a calm mode, bigger controls** and moving through the settings with the keyboard.
+- **Low vision:** high-contrast themes in all three families, Atkinson Hyperlegible and OpenDyslexic lettering, a thicker outline round letters, a dark band behind messages, and a ring round your target.
+- **Reading aloud:** NPC talk, quests and books read as they open, tooltips read when you rest the mouse on something, and a key that reads the quest or the last whisper, in the game's own voice.
+- **Hearing:** captions on screen for ready checks, whispers, queues, invites, boss emotes, raid warnings and loot rolls.
+- **Hands and keys:** keys for one hand (round W, A, S and D, or all on the number pad), the game's windows by keyboard (Tab to move, Enter to press, each choice said aloud), and bigger controls.
+- **Flashing and motion:** safe flashing, reduce motion, and a still sky.
+- **Calm:** calm mode and a wait before tooltips show.
 - **Share it:** all your accessibility settings as one line of text.
 
 ## Peace of mind
@@ -77,7 +79,7 @@ A whole category of its own:
 
 1. **Install** with the CurseForge app, or put the zip's **three folders** side by side in `Interface/AddOns`.
 2. **Log in:** the setup opens by itself. Choose your role, your look and your layout.
-3. **Make it yours:** `/fgui` opens the settings, `/fgui move` arranges your panels, and `/fgui help` lists all 124 commands.
+3. **Make it yours:** `/fgui` opens the settings, `/fgui move` arranges your panels, and `/fgui help` lists all 129 commands.
 
 Coming from ElvUI, Tukui, RealUI or GW2 UI? One click in the setup puts your frames where you're used to them.
 

@@ -4,9 +4,9 @@ by DustyMouse
 
 A complete interface replacement for **WoW Forever** (interface 16001): unit frames, raid frames, cast
 bars, action bars, bags and bank, quest tracker and quest log, minimap, buffs, nameplates, chat and
-the game's own windows, in one look that you choose from 115 glass, fantasy and celestial themes.
+the game's own windows, in one look that you choose from 116 glass, fantasy and celestial themes.
 
-Version 12.1.0
+Version 12.2.0
 
 ## Install
 
@@ -101,6 +101,8 @@ get two of everything.
 | `/fgui profiles` | Open Layout and profiles › Profiles |
 | `/fgui access` | Open Accessibility (`copy`: all its settings as one line to share; `paste`: take one) |
 | `/fgui read` | Read aloud the tooltip under the mouse, the quest you are reading, or the last whisper |
+| `/fgui keys left \| numpad \| back` | Keys for one hand (round W, A, S and D, or the number pad); `back` puts your keys as they were |
+| `/fgui contrast` | The high-contrast theme of the family you use |
 | `/fgui status` | List every feature and whether it loaded |
 | `/fgui reset` | Reset the current profile to defaults |
 | `/ql` | Open the quest log |
@@ -774,17 +776,25 @@ A category of its own in `/fgui` (`/fgui access`), and the Comfort step of the s
   blue-yellow (teal, pink and red), or no color at all (brightness and marks only). Debuffs get a
   letter, item quality gets dots, and threat on nameplates gets a mark. Readable lettering
   (Atkinson Hyperlegible) or Dyslexia-friendly (OpenDyslexic); an outline round letters; a dark
-  band behind messages; a thick outline round your target's nameplate; two high-contrast themes;
+  band behind messages; a thick outline round your target's nameplate; three high-contrast themes
+  (glass, fantasy and celestial; "Use the high-contrast theme" or `/fgui contrast` picks yours);
   text sizes and the interface size; the ring round the mouse pointer.
 - **Hearing.** Captions for sounds: ready checks, whispers, queues, invites, duels, boss emotes,
   raid warnings, loot rolls, the aggro warning and your own alerts, each with a mark for its kind.
   Spoken alerts are with the other alerts, in Combat.
-- **Flashing and motion.** Reduce motion, and Safe flashing: at most three flashes a second, all
-  gentle, and the game's low-health flash off where the client allows it.
-- **Focus and calm.** Calm mode (one notification at a time, until clicked), and the quieter red
-  error line.
-- **Reading aloud.** A key (and `/fgui read`) that reads the tooltip, the quest or the last whisper.
-- **Hands and keys.** Bigger controls in the settings, and moving through them with the keyboard.
+- **Flashing and motion.** Reduce motion; Still sky (the celestial stars stay but hold still); and
+  Safe flashing: at most three flashes a second, all gentle, and the game's low-health flash off
+  where the client allows it.
+- **Focus and calm.** Calm mode (one notification at a time, until clicked), a wait before tooltips
+  show, and the quieter red error line.
+- **Reading aloud.** Read talk and quests aloud (what an NPC says and its choices, a quest's text, a
+  book or letter, as they open); Read what I point at (a tooltip, when the mouse rests on it); and a
+  key (and `/fgui read`) that reads the tooltip, the quest or the last whisper.
+- **Hands and keys.** The game's windows by keyboard: in NPC talk, quests, vendors, the mailbox,
+  loot, trainers, flight masters and question boxes, Tab moves from button to button and Enter
+  presses, with a ring and, if you like, each choice said aloud. Keys for one hand: round W, A, S and
+  D, or all on the number pad, and back again (`/fgui keys left`, `numpad`, `back`). Bigger controls
+  in the settings, and moving through them with the keyboard.
 - **Share.** `/fgui access copy` and `/fgui access paste`: all of it as one line of text.
 
 ## Other add-ons

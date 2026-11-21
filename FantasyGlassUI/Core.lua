@@ -1,6 +1,6 @@
 local ADDON, ns = ...
 _G.FantasyGlassUI = ns
-ns.version = "12.1.0"
+ns.version = "12.2.0"
 ns.author = "DustyMouse"
 
 ns.modules = {}
@@ -239,6 +239,12 @@ ns.defaults = {
     targetOutline    = 0,           -- a thick outline round your target's nameplate, in pixels (0: off)
     bigControls      = false,       -- larger switches in the settings, and "click twice" waits longer
     captions         = false,       -- a caption on screen for things that make a sound
+    readDialog       = false,       -- (12.2) read NPC talk, quests and books aloud as they open
+    readHover        = false,       -- (12.2) read a tooltip aloud when the mouse rests on something
+    windowKeys       = false,       -- (12.2) move through the game's windows with the keyboard
+    windowKeysSay    = true,        -- (12.2) ...and hear each choice said as you reach it
+    stillSky         = false,       -- (12.2) the Celestial sky holds still: no twinkling, no shooting stars
+    tooltipDelay     = 0,           -- (12.2) milliseconds the mouse rests before a tooltip shows
     combatFocus      = false,       -- dim the quest tracker and info bar during a fight
     tooltipCursor    = false,       -- tooltips follow the mouse instead of sitting in the corner
     xpNumbers        = false,       -- the XP and reputation bars' text as amounts ("4,520 / 10,000") instead of a percentage
@@ -913,6 +919,10 @@ ns.themes = {
         bg = { 0.047, 0.046, 0.052 }, border = { 0.386, 0.371, 0.343 }, rim = { 0, 0, 0.01 },
         grain = { 1, 1, 1, 0 }, light = { 1, 0.919, 0.73 }, plate = { 0.136, 0.136, 0.155 },
         text = { 0.92, 0.909, 0.884 }, dim = { 0.76, 0.749, 0.724 }, faint = { 0.55, 0.541, 0.52 }, btn = { 1, 0.919, 0.73 } },
+    C_CONTRAST = { name = "Celestial: High contrast (black sky, white stars)", style = "CELESTIAL", accent = "GOLD",   -- (12.2: for low vision)
+        bg = { 0, 0, 0 }, border = { 1, 1, 1 }, rim = { 0, 0, 0 },
+        grain = { 1, 1, 1, 0 }, light = { 1, 1, 1 }, plate = { 0.22, 0.22, 0.22 },
+        text = { 1, 1, 1 }, dim = { 0.92, 0.92, 0.92 }, faint = { 0.78, 0.78, 0.78 }, btn = { 1, 1, 1 } },
     CCLASS = { name = "Celestial: your class color", style = "CELESTIAL", accent = "CLASS" },      -- built from your class color at login
 }
 -- Lettering styles. body / title are files in Media (left out = the game's own face).
@@ -977,7 +987,7 @@ ns.themeOrder = { "SMOKE", "FROSTED", "MIDNIGHT", "AURORA", "BLUSH", "EMERALD", 
                   "C_TIDES", "C_HARVEST", "C_CLEAR", "C_DAWN", "C_DUSK", "C_STARLIGHT", "C_REDPLANET",
                   "C_GILDED", "C_SILVERMIST", "C_EVENINGSTAR", "C_HONEYMOON", "C_OPALINE", "C_DEEPSPACE", "C_FELSKY",
                   "C_ASHENSKY", "C_PEARLMOON", "C_SPIRIT", "C_ARCANE", "C_NEBULA", "C_SAPPHIRE", "C_EMERALD",
-                  "C_CRYSTAL", "C_ASTROLABE", "CCLASS" }
+                  "C_CRYSTAL", "C_ASTROLABE", "C_CONTRAST", "CCLASS" }
 ns.colors = {}
 
 -- A theme derived from the player's class color: dark panels tinted with it, rims in a muted version of it.
@@ -1568,6 +1578,11 @@ end
 
 -- What's new: shown once after an update (never on a first install, where the setup opens instead).
 ns.whatsNew = {
+    { "12.2.0", { "Read talk and quests aloud: what an NPC says, a quest's text and a book are read as they open. Read what I point at: a tooltip is read when the mouse rests on it.",
+                  "Move through the game's windows with the keyboard: in NPC talk, quests, vendors, mail, loot and question boxes, Tab goes from button to button and Enter presses, with each choice said aloud if you like.",
+                  "Keys for one hand: everything round W, A, S and D, or all on the number pad, with one button, and one to put your keys back (/fgui keys).",
+                  "A celestial High contrast theme, and one button for the high-contrast theme of the family you use (/fgui contrast).",
+                  "Still sky: the stars stay and the motion goes. And a wait before tooltips show, for a calmer screen." } },
     { "12.1.0", { "Accessibility is a category of its own in the settings, with Seeing, Hearing, Flashing and motion, Focus and calm, Reading aloud, Hands and keys, and Share, and a Comfort step in the setup.",
                   "Color vision for each kind: red-green, blue-yellow, or no color at all, where brightness and marks carry the meaning. Threat on nameplates gets a mark too, and your target can have a thick outline.",
                   "Captions for sounds: a line on screen for ready checks, whispers, queues, invites, boss emotes, raid warnings, loot rolls and your alerts. And a key that reads aloud the tooltip, the quest or the last whisper.",
@@ -2452,6 +2467,8 @@ ns.helpLines = {
     { "Settings and backups" },
     { "/fgui access", "the accessibility settings (/fgui access copy: all of them in one line to share; paste: take one)" },
     { "/fgui read", "read aloud what is under the mouse, the quest you are reading, or the last whisper (tooltip, quest, whisper)" },
+    { "/fgui keys left | numpad | back", "keys for one hand: round W, A, S and D, or all on the number pad; back puts your keys as they were" },
+    { "/fgui contrast", "the high-contrast theme of the family you use" },
     { "/fgui textsize 120", "all the add-on's lettering at that size, in percent (70 to 150; \"reset\" is as it came)" },
     { "/fgui uisize 90", "the whole interface at that size, in percent of the game's (50 to 150; \"reset\" is as it came)" },
     { "/fgui backup", "the backups of your settings, made before each update, once a day and before a reset; click one to see how to put it back" },
@@ -2484,7 +2501,6 @@ ns.toolCommands = {
     sort = function() ns:SortBags() end,
     kicks = function(t) ns:KickCommand(t) end,
     crafts = function(t) ns:ShowCrafts(t) end,
-    keys = function() ns:ShowKeySheet() end,
     quiet = function() ns:ToggleQuiet() end,
     testgroup = function() ns:ToggleTestGroup() end,
     showcase = function() ns:ToggleShowcase() end,
@@ -2539,6 +2555,13 @@ ns.toolCommands = {
     uisize = function(t) ns:SizeCommand("uiScale", t, 50, 150) end,
     read = function(t) ns:ReadAloud(t) end,
     access = function(t) ns:AccessCommand(t) end,
+    keys = function(t)
+        local w = (t or ""):match("^%s*(%S*)"):lower()
+        if w == "left" or w == "numpad" then ns:UseKeyPreset(w)
+        elseif w == "back" then ns:RestoreKeys()
+        else ns:ShowKeySheet() end
+    end,
+    contrast = function() ns:UseHighContrast() end,
     perf = function(t) ns:PerfCommand(t) end,
     session = function() if ns.ShowSession then ns:ShowSession() else ns:PrintSession() end end,
     rares = function() ns:ShowRares() end,

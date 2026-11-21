@@ -659,7 +659,9 @@ end
 -- Celestial motion (11.11): stars that twinkle, the horizon, the Milky Way and the constellation
 -- breathing slowly, the top star turning, and now and then a shooting star across a large window.
 -- All of it is the game's own animation (nothing is redrawn by the add-on each frame), it runs only
--- on windows that are showing, and "Reduce motion" holds it all still.
+-- on windows that are showing, and "Reduce motion" or "Still sky" (12.2) holds it all still.
+local function SkyMoves() return ns:Motion() and not (ns.db and ns.db.stillSky) end
+ns.SkyMoves = SkyMoves
 local skyLoops, skyWindows, skyWatch = {}, setmetatable({}, { __mode = "k" }), false
 function ns:SkyLoop(region, kind, time, set, bounce)
     if not (region and region.CreateAnimationGroup) then return nil end
@@ -671,12 +673,12 @@ function ns:SkyLoop(region, kind, time, set, bounce)
     if a.SetDuration then a:SetDuration(time) end
     if a.SetSmoothing and bounce ~= false then a:SetSmoothing("IN_OUT") end
     skyLoops[#skyLoops + 1] = g
-    if ns:Motion() and g.Play then g:Play() end
+    if SkyMoves() and g.Play then g:Play() end
     if not skyWatch and ns.Every then
         skyWatch = true
-        local was = ns:Motion()
-        ns:Every(2, "Celestial motion", function()                -- (Reduce motion switched on or off)
-            local now = ns:Motion()
+        local was = SkyMoves()
+        ns:Every(2, "Celestial motion", function()                -- (Reduce motion or Still sky switched on or off)
+            local now = SkyMoves()
             if now == was then return end
             was = now
             for _, loop in ipairs(skyLoops) do
@@ -715,7 +717,7 @@ function ns:SkyMotes(frame, n)
             local wait = i * 0.9                                     -- (each mote starts a little after the one before)
             if rise.SetStartDelay then rise:SetStartDelay(wait); inA:SetStartDelay(wait); outA:SetStartDelay(time * 0.5 + wait) end
             skyLoops[#skyLoops + 1] = g
-            if ns:Motion() and g.Play then g:Play() end
+            if SkyMoves() and g.Play then g:Play() end
         end
         local motes = rawget(frame, "suiMotes") or {}
         motes[#motes + 1] = m
@@ -765,7 +767,7 @@ end
 ns.ShootingStar = ShootingStar
 local nextShot = 0
 local function ShootingTick()
-    if not ns:Motion() or ns.style ~= "CELESTIAL" then return end
+    if not SkyMoves() or ns.style ~= "CELESTIAL" then return end
     local now = GetTime()
     if now < nextShot then return end
     nextShot = now + 6 + math.random() * 8                         -- (one every ten seconds or so, somewhere)

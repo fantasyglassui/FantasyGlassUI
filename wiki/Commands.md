@@ -18,6 +18,8 @@ Mistype one and the add-on suggests the nearest command instead.
 | `/fgui bars` | Frames and bars: each action bar's size, opacity, when it shows, rows and spacing |
 | `/fgui bind` | keybind mode: hover an action button and press a key |
 | `/fgui keys` | every action bar with its keys (or hold the key you bind for it) |
+| `/fgui keys left \| numpad \| back` | keys for one hand: round W, A, S and D, or all on the number pad; back puts your keys as they were |
+| `/fgui contrast` | the high-contrast theme of the family you use |
 | `/fgui gallery` | whole screen layouts to choose from, each with a picture |
 | `/fgui tour` | the short tour of the interface |
 | `/fgui whatsthis` | point at any panel to see which feature made it |
