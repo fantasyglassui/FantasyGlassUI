@@ -8786,6 +8786,55 @@ try("13.0 planner: travel", function()
     ns.root.plannerNodes, ns.root.plannerFlightTimes, ns.root.plannerCrossTimes, ns.root.plannerTimeSamples = saved.nodes, saved.ft, saved.ct, saved.smp
     if not ok then error(err, 0) end
 end)
+try("13.0 planner: what a quest is worth", function()
+    local function rec(id, t)
+        local r = { id = id, name = "Q" .. id, level = 9, minLevel = 1, xp = 300, starts = {}, ends = {}, objectives = {},
+            pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+        for k, v in pairs(t or {}) do r[k] = v end
+        return r
+    end
+    local recs = {
+        [201] = rec(201, { objectives = { { kind = "kill", count = 6, countKnown = true, mobLevel = 9, spots = {} } } }),
+        [202] = rec(202, { level = 3 }),
+        [203] = rec(203, { level = 10, elite = true }),
+        [204] = rec(204, { level = 10, group = true }),
+        [205] = rec(205, { level = 11, pre = { 201 } }),
+        [206] = rec(206, { repeatable = true }),
+    }
+    local fakeSource = { kind = "questie", ids = function() return { 201, 202, 203, 204, 205, 206 } end, quest = function(id) return recs[id] end }
+    if ns.PlannerKillXP(10, 10) ~= 95 or ns.PlannerKillXP(10, 12) ~= 104 or ns.PlannerKillXP(10, 4) ~= 0 or ns.PlannerKillXP(10, 10, true) ~= 190 then error("kill xp") end
+    local list, skipped = ns.PlannerCandidates(fakeSource, { level = 10, group = "solo", inGroup = false, done = function() return false end, onQuest = function() return false end })
+    local ids = {}; for _, r in ipairs(list) do ids[r.id] = true end
+    if not ids[201] or ids[202] or ids[203] or ids[204] or ids[205] or ids[206] or skipped.group ~= 2 then error("solo candidates") end
+    list = ns.PlannerCandidates(fakeSource, { level = 10, group = "grouped", inGroup = true, done = function(id) return id == 201 end, onQuest = function() return false end })
+    ids = {}; for _, r in ipairs(list) do ids[r.id] = true end
+    if not (ids[203] and ids[204] and ids[205]) or ids[201] then error("grouped, with 201 done") end
+    list = ns.PlannerCandidates(fakeSource, { level = 10, group = "solo", inGroup = false, done = function() return false end, onQuest = function(id) return id == 202 end })
+    ids = {}; for _, r in ipairs(list) do ids[r.id] = true end
+    if not ids[202] then error("a quest in the log is always kept") end
+    if ns.PlannerQuestXP(fakeSource.quest(201), { level = 10 }) <= fakeSource.quest(201).xp then error("kills add experience") end
+    -- unknown kill count counts as 8
+    local unk = rec(300, { objectives = { { kind = "kill", mobLevel = 10, spots = {} }, { kind = "item", spots = {} }, { kind = "other", spots = {} }, { kind = "place", spots = {} } } })
+    if ns.PlannerQuestTime(unk, {}) ~= 8 * 25 + 8 * 25 / 0.5 + 60 then error("quest time " .. ns.PlannerQuestTime(unk, {})) end
+    if ns.PlannerQuestTime(unk, { pace = 2 }) ~= 2 * (8 * 25 + 8 * 25 / 0.5 + 60) then error("pace scales time") end
+    if ns.PlannerQuestXP(unk, { level = 10 }) ~= 300 + 8 * 95 then error("unknown kill count xp") end
+    -- the follow-up counts half when it is a candidate
+    local chain = rec(301, { nextQuest = 302 })
+    if ns.PlannerQuestXP(chain, { level = 10, candidate = function(id) return id == 302 and rec(302) or nil end }) ~= 450 then error("next quest half") end
+    -- pace
+    local savedRoot = ns.root.planner
+    ns.root.planner = nil
+    if ns.PlannerPace() ~= 1 or ns.root.planner ~= nil then error("a read creates nothing") end
+    ns.PlannerRecordPace(200, 100)
+    if ns.PlannerPace() ~= 2 then error("first sample") end
+    ns.PlannerRecordPace(100, 100)
+    if math.abs(ns.PlannerPace() - 1.5) > 1e-9 then error("average") end
+    for _ = 1, 10 do ns.PlannerRecordPace(1000, 100) end
+    if ns.PlannerPace() ~= 3 then error("clamped high") end
+    for _ = 1, 10 do ns.PlannerRecordPace(1, 100) end
+    if ns.PlannerPace() ~= 0.5 then error("clamped low, last 10 only") end
+    ns.root.planner = savedRoot
+end)
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()

@@ -64,6 +64,7 @@ Guide.lua
 GuideEditor.lua
 PlannerSource.lua
 PlannerTravel.lua
+Planner.lua
 Polish.lua
 Bags.lua
 BagWindow.lua
