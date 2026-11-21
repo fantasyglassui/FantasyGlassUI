@@ -1,6 +1,6 @@
 # Quest planner: the guide plans your leveling route
 
-Date: 2026-11-21 · Status: design, awaiting approval (reviewed twice by a builder) · Part of the quest guide, which is not released yet.
+Date: 2026-11-21 · Status: approved 2026-11-21 (reviewed twice by a builder) · Part of the quest guide, which is not released yet.
 
 ## Intent
 
@@ -415,7 +415,7 @@ Your plan on the website:
     - **a checklist** of the steps you can tick off on your phone while you play (kept in that browser only).
     - the totals: experience, time, levels, flights.
     Nothing is sent anywhere: the code is copied and pasted by you, and the page reads it in the browser.
-    The page is built and translated like the rest of the site (build_site.py, the 9 languages) and is
+    The page is built and translated like the rest of the site (site-src/build_site.py, the 9 languages) and is
     marked as part of the quest guide, so it is not linked from the site until the guide is released.
 
 ### Part 2: the gold farming advisor (to be designed before it is built)
@@ -491,7 +491,7 @@ is settled. What is known:
   is cheap; the mount stop and the gold-short line appear at riding level; the race line compares with the
   best character's level time; a plan code round-trips (made in the game, read back by the same parser the
   website uses, checked in tests with a fixed code).
-- The site is built by the build scripts (make_i18n.py, build_site.py) into docs/; its plan reader is
+- The site is built by site-src/ (make_i18n.py, build_site.py) into docs/; its plan reader is
   JavaScript. The same fixed plan codes are tested on both sides: by smoke.py in the add-on, and by a
   small Node check of the page's reader.
 - The planner runs in both smoke modes (combat values readable and secret) with no errors.
