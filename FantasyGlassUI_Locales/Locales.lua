@@ -21,6 +21,15 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["Plan my route"] = "Route planen",
+    ["Group quests"] = "Gruppenquests",
+    ["Solo"] = "Allein",
+    ["When grouped"] = "In einer Gruppe",
+    ["Learn new flight points on the way"] = "Neue Flugpunkte unterwegs lernen",
+    ["Show why each step is there"] = "Zeigen, warum jeder Schritt dabei ist",
+    ["(+%s xp)"] = "(+%s EP)",
+    ["(saves ~%d min)"] = "(spart ca. %d Min.)",
+    ["Quest guide: /fgui guide (your guides), record <name>, stop, edit <name>, route <name>, follow <name>, plan, next, back, off."] = "Quest-Guide: /fgui guide (eure Guides), record <Name>, stop, edit <Name>, route <Name>, follow <Name>, plan, next, back, off.",
     ["Couldn't plan the route; trying again after your next quest"] = "Die Route konnte nicht geplant werden; neuer Versuch nach deiner nächsten Quest",
     ["Planned: %s, level %s → %s"] = "Geplant: %s, Stufe %s → %s",
     ["Skipped: %d group quests (Solo is on)"] = "Ausgelassen: %d Gruppenquests (Solo ist an)",
@@ -3302,6 +3311,15 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["Plan my route"] = "Planifier mon itinéraire",
+    ["Group quests"] = "Quêtes de groupe",
+    ["Solo"] = "Seul",
+    ["When grouped"] = "En groupe",
+    ["Learn new flight points on the way"] = "Apprendre les nouveaux points de vol en chemin",
+    ["Show why each step is there"] = "Montrer pourquoi chaque étape est là",
+    ["(+%s xp)"] = "(+%s xp)",
+    ["(saves ~%d min)"] = "(économise ~%d min)",
+    ["Quest guide: /fgui guide (your guides), record <name>, stop, edit <name>, route <name>, follow <name>, plan, next, back, off."] = "Guide de quêtes : /fgui guide (vos guides), record <nom>, stop, edit <nom>, route <nom>, follow <nom>, plan, next, back, off.",
     ["Couldn't plan the route; trying again after your next quest"] = "Impossible de planifier l'itinéraire ; nouvel essai après votre prochaine quête",
     ["Planned: %s, level %s → %s"] = "Prévu : %s, niveau %s → %s",
     ["Skipped: %d group quests (Solo is on)"] = "Ignorées : %d quêtes de groupe (Solo activé)",
@@ -6583,6 +6601,15 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["Plan my route"] = "Planificar mi ruta",
+    ["Group quests"] = "Misiones de grupo",
+    ["Solo"] = "En solitario",
+    ["When grouped"] = "En grupo",
+    ["Learn new flight points on the way"] = "Aprender nuevos puntos de vuelo por el camino",
+    ["Show why each step is there"] = "Mostrar por qué está cada paso",
+    ["(+%s xp)"] = "(+%s xp)",
+    ["(saves ~%d min)"] = "(ahorra ~%d min)",
+    ["Quest guide: /fgui guide (your guides), record <name>, stop, edit <name>, route <name>, follow <name>, plan, next, back, off."] = "Guía de misiones: /fgui guide (tus guías), record <nombre>, stop, edit <nombre>, route <nombre>, follow <nombre>, plan, next, back, off.",
     ["Couldn't plan the route; trying again after your next quest"] = "No se pudo planificar la ruta; se reintentará tras tu próxima misión",
     ["Planned: %s, level %s → %s"] = "Planificado: %s, nivel %s → %s",
     ["Skipped: %d group quests (Solo is on)"] = "Omitidas: %d misiones de grupo (Solo activado)",
@@ -9867,6 +9894,15 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["Plan my route"] = "Спланировать маршрут",
+    ["Group quests"] = "Групповые задания",
+    ["Solo"] = "В одиночку",
+    ["When grouped"] = "В группе",
+    ["Learn new flight points on the way"] = "Открывать новые пункты полета по пути",
+    ["Show why each step is there"] = "Показывать, зачем нужен каждый шаг",
+    ["(+%s xp)"] = "(+%s опыта)",
+    ["(saves ~%d min)"] = "(экономит ~%d мин)",
+    ["Quest guide: /fgui guide (your guides), record <name>, stop, edit <name>, route <name>, follow <name>, plan, next, back, off."] = "Гид по заданиям: /fgui guide (ваши гиды), record <имя>, stop, edit <имя>, route <имя>, follow <имя>, plan, next, back, off.",
     ["Couldn't plan the route; trying again after your next quest"] = "Не удалось проложить маршрут; новая попытка после следующего задания",
     ["Planned: %s, level %s → %s"] = "План: %s, уровень %s → %s",
     ["Skipped: %d group quests (Solo is on)"] = "Пропущено: %d групповых заданий (включено «Соло»)",
@@ -13148,6 +13184,15 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["Plan my route"] = "Planejar minha rota",
+    ["Group quests"] = "Missões de grupo",
+    ["Solo"] = "Sozinho",
+    ["When grouped"] = "Em grupo",
+    ["Learn new flight points on the way"] = "Aprender novos pontos de voo pelo caminho",
+    ["Show why each step is there"] = "Mostrar por que cada passo está lá",
+    ["(+%s xp)"] = "(+%s xp)",
+    ["(saves ~%d min)"] = "(economiza ~%d min)",
+    ["Quest guide: /fgui guide (your guides), record <name>, stop, edit <name>, route <name>, follow <name>, plan, next, back, off."] = "Guia de missões: /fgui guide (seus guias), record <nome>, stop, edit <nome>, route <nome>, follow <nome>, plan, next, back, off.",
     ["Couldn't plan the route; trying again after your next quest"] = "Não foi possível planejar a rota; nova tentativa após sua próxima missão",
     ["Planned: %s, level %s → %s"] = "Planejado: %s, nível %s → %s",
     ["Skipped: %d group quests (Solo is on)"] = "Ignoradas: %d missões de grupo (Solo ativado)",
@@ -16429,6 +16474,15 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["Plan my route"] = "Pianifica il mio percorso",
+    ["Group quests"] = "Missioni di gruppo",
+    ["Solo"] = "Da solo",
+    ["When grouped"] = "In gruppo",
+    ["Learn new flight points on the way"] = "Imparare i nuovi punti di volo lungo la strada",
+    ["Show why each step is there"] = "Mostrare perché c'è ogni passo",
+    ["(+%s xp)"] = "(+%s xp)",
+    ["(saves ~%d min)"] = "(risparmia ~%d min)",
+    ["Quest guide: /fgui guide (your guides), record <name>, stop, edit <name>, route <name>, follow <name>, plan, next, back, off."] = "Guida alle missioni: /fgui guide (le tue guide), record <nome>, stop, edit <nome>, route <nome>, follow <nome>, plan, next, back, off.",
     ["Couldn't plan the route; trying again after your next quest"] = "Impossibile pianificare il percorso; nuovo tentativo dopo la prossima missione",
     ["Planned: %s, level %s → %s"] = "Pianificato: %s, livello %s → %s",
     ["Skipped: %d group quests (Solo is on)"] = "Saltate: %d missioni di gruppo (Solo attivo)",
@@ -19710,6 +19764,15 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["Plan my route"] = "내 경로 계획",
+    ["Group quests"] = "그룹 퀘스트",
+    ["Solo"] = "솔로",
+    ["When grouped"] = "파티 중일 때",
+    ["Learn new flight points on the way"] = "가는 길에 새 비행 경유지 배우기",
+    ["Show why each step is there"] = "각 단계가 있는 이유 표시",
+    ["(+%s xp)"] = "(+%s 경험치)",
+    ["(saves ~%d min)"] = "(약 %d분 절약)",
+    ["Quest guide: /fgui guide (your guides), record <name>, stop, edit <name>, route <name>, follow <name>, plan, next, back, off."] = "퀘스트 안내서: /fgui guide (내 안내서), record <이름>, stop, edit <이름>, route <이름>, follow <이름>, plan, next, back, off.",
     ["Couldn't plan the route; trying again after your next quest"] = "경로를 계획하지 못했습니다. 다음 퀘스트 후에 다시 시도합니다",
     ["Planned: %s, level %s → %s"] = "계획: %s, 레벨 %s → %s",
     ["Skipped: %d group quests (Solo is on)"] = "건너뜀: 파티 퀘스트 %d개 (솔로 켜짐)",
@@ -22994,6 +23057,15 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["Plan my route"] = "规划我的路线",
+    ["Group quests"] = "组队任务",
+    ["Solo"] = "单人",
+    ["When grouped"] = "组队时",
+    ["Learn new flight points on the way"] = "沿途学习新的飞行点",
+    ["Show why each step is there"] = "显示每一步的原因",
+    ["(+%s xp)"] = "(+%s 经验)",
+    ["(saves ~%d min)"] = "(节省约 %d 分钟)",
+    ["Quest guide: /fgui guide (your guides), record <name>, stop, edit <name>, route <name>, follow <name>, plan, next, back, off."] = "任务指南：/fgui guide（你的指南）、record <名称>、stop、edit <名称>、route <名称>、follow <名称>、plan、next、back、off。",
     ["Couldn't plan the route; trying again after your next quest"] = "无法规划路线；将在你完成下一个任务后重试",
     ["Planned: %s, level %s → %s"] = "规划：%s，等级 %s → %s",
     ["Skipped: %d group quests (Solo is on)"] = "已跳过：%d 个组队任务（单人已开启）",

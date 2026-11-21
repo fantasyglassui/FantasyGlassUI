@@ -110,8 +110,26 @@ function ns.GuideText(guide)
     for _, step in ipairs(guide.steps or {}) do lines[#lines + 1] = ns.GuideLine(step) end
     return table.concat(lines, "\n")
 end
--- What the panel says for a step.
-function ns.GuideStepText(step)
+-- Why a planned step is there: what an accept is worth, or the time a trip saves. Only on the planned guide, only if switched on.
+local function WhyText(step, guide)
+    if not (type(guide) == "table" and guide.name ~= nil and guide.name == ns.GUIDE_PLANNED and ns.db and ns.db.plannerWhy ~= false) then return "" end
+    local why = type(step.why) == "table" and step.why
+    if not why then return "" end
+    local xp, saves = tonumber(why.xp), tonumber(why.saves)
+    if xp and xp > 0 then
+        local n = xp - xp % 1
+        local good, nice = pcall(BreakUpLargeNumbers or tostring, n)
+        if not (good and type(nice) == "string") then nice = tostring(n) end
+        return "  " .. format(ns:Tr("(+%s xp)"), nice)
+    end
+    if saves and saves > 0 then return "  " .. format(ns:Tr("(saves ~%d min)"), math.max(1, math.floor(saves / 60 + 0.5))) end
+    return ""
+end
+-- What the panel says for a step. `guide`: the guide it is on, for the planned one's "why".
+function ns.GuideStepText(step, guide)
+    return ns.GuideStepBase(step) .. WhyText(step, guide)
+end
+function ns.GuideStepBase(step)
     local k = step.kind
     if k == "accept" then return ns:Tr("Accept") .. ": " .. (step.title or ("#" .. step.quest)) .. (step.text and ("  (" .. step.text .. ")") or "") end
     if k == "turnin" then return ns:Tr("Turn in") .. ": " .. (step.title or ("#" .. step.quest)) .. (step.text and ("  (" .. step.text .. ")") or "") end
@@ -419,14 +437,14 @@ Draw = function()
         local kind = ns.guideKinds[step.kind]
         panel.badge:SetText(kind[1])
         panel.badge:SetTextColor(kind[2][1], kind[2][2], kind[2][3])
-        panel.now:SetText(ns.GuideStepText(step))
+        panel.now:SetText(ns.GuideStepText(step, guide))
     else
         panel.badge:SetText("")
         panel.now:SetText(EndText(st))
     end
     for i = 1, 2 do
         local nextStep = steps[at + i]
-        panel.later[i]:SetText(nextStep and (ns.guideKinds[nextStep.kind][1] .. "  " .. ns.GuideStepText(nextStep)) or "")
+        panel.later[i]:SetText(nextStep and (ns.guideKinds[nextStep.kind][1] .. "  " .. ns.GuideStepText(nextStep, guide)) or "")
     end
     panel.bar:SetMinMaxValues(0, math.max(1, #steps))
     panel.bar:SetValue(math.min(at - 1, #steps))
@@ -739,5 +757,5 @@ function ns:GuideCommand(text)
     elseif word == "follow" then return ns:GuideFollow(rest)
     elseif word == "plan" then return ns.PlannerStart ~= nil and ns:PlannerStart()
     elseif ns:GuideGet(text) then return ns:GuideFollow(text)
-    else ns:Print("Quest guide: /fgui guide (your guides), record <name>, stop, edit <name>, route <name>, follow <name>, next, back, off.") end
+    else ns:Print("Quest guide: /fgui guide (your guides), record <name>, stop, edit <name>, route <name>, follow <name>, plan, next, back, off.") end
 end

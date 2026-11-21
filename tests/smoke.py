@@ -9179,6 +9179,67 @@ try("13.0 planner: running it", function()
     ns.root.guideKey, ns.root.guides, ns.root.guideState, ns.root.planner = saved.key, saved.guides, saved.state, saved.planner
     if not ok then error(err, 0) end
 end)
+try("13.0 planner: settings", function()
+    local saved = { key = ns.root.guideKey, guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner,
+                    group = ns.db.plannerGroup, flights = ns.db.plannerLearnFlights, why = ns.db.plannerWhy }
+    local ok, err = pcall(function()
+        ns.root.guideKey = tonumber((sources["Guide.lua"] or ""):match("local GUIDE_KEY = (%d+)"))
+        ns.root.guides, ns.root.guideState = nil, nil
+        ns.db.plannerGroup, ns.db.plannerLearnFlights, ns.db.plannerWhy = "solo", true, true
+        ns:ToggleConfig("guide")
+        local P = ns.guidePage
+        if not P or P.unlocked ~= true then error("unlocked: the Guide tab shows the controls") end
+        if not (P.planButton and P.groupButton and P.flightsBox and P.whyBox) then error("the planner controls exist") end
+        local function click(b)
+            local f = b:GetScript("OnClick")
+            if type(f) ~= "function" then for _, h in ipairs(handlers) do if h.self == b and h.name == "OnClick" then f = h.fn end end end
+            f(b)
+        end
+        if not P.planButton.text:GetText():find(ns:Tr("Plan my route"), 1, true) then error("the button's words: " .. tostring(P.planButton.text:GetText())) end
+        click(P.planButton)
+        if ns.GuideState().name ~= ns.GUIDE_PLANNED then error("the button plans") end
+        ns.plannerQueued = false
+        click(P.groupButton)
+        if ns.db.plannerGroup ~= "grouped" or not ns.plannerQueued then error("the group choice replans: " .. tostring(ns.db.plannerGroup)) end
+        click(P.groupButton)
+        if ns.db.plannerGroup ~= "all" then error("then everything") end
+        click(P.groupButton)
+        if ns.db.plannerGroup ~= "solo" then error("and round again") end
+        ns.plannerQueued = false
+        click(P.flightsBox)
+        if ns.db.plannerLearnFlights ~= false then error("flights setting off") end
+        if not ns.plannerQueued then error("flights setting replans") end
+        ns.plannerQueued = false
+        click(P.whyBox)
+        if ns.db.plannerWhy ~= false or not ns.plannerQueued then error("why setting replans") end
+        click(P.whyBox)
+        -- show why
+        local acc = { kind = "accept", quest = 5, title = "Q", why = { xp = 4100 } }
+        local fly = { kind = "fly", text = "Fly", why = { saves = 200 } }
+        local plain = ns.GuideStepText({ kind = "accept", quest = 5, title = "Q" })
+        local planned = { name = ns.GUIDE_PLANNED, steps = { acc, fly } }
+        local withWhy = ns.GuideStepText(acc, planned)
+        if withWhy == plain or not withWhy:find("4", 1, true) or not withWhy:find("xp", 1, true) then error("xp why: " .. withWhy) end
+        if not ns.GuideStepText(fly, planned):find("~3", 1, true) then error("saves why: " .. ns.GuideStepText(fly, planned)) end
+        if not ns.GuideStepText({ kind = "fly", text = "Fly", why = { saves = 10 } }, planned):find("~1", 1, true) then error("at least a minute") end
+        if ns.GuideStepText(acc) ~= plain then error("not on the planned guide: no why") end
+        ns.db.plannerWhy = false
+        if ns.GuideStepText(acc, planned) ~= plain then error("switched off: no why") end
+        -- not running: no replan
+        ns:GuideStop(); ns:PlannerStop(); ns.plannerQueued = false
+        click(P.groupButton)
+        if ns.plannerQueued then error("planner not running: no replan") end
+        -- locked
+        ns:GuideLock()
+        ns:ToggleConfig("guide")
+        if ns.guidePage.unlocked ~= false then error("locked: coming soon") end
+    end)
+    ns:PlannerStop()
+    ns:ToggleConfig()
+    ns.root.guideKey, ns.root.guides, ns.root.guideState, ns.root.planner = saved.key, saved.guides, saved.state, saved.planner
+    ns.db.plannerGroup, ns.db.plannerLearnFlights, ns.db.plannerWhy = saved.group, saved.flights, saved.why
+    if not ok then error(err, 0) end
+end)
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()
