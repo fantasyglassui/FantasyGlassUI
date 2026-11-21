@@ -21,6 +21,11 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["Learn the flight path"] = "Lernt den Flugpunkt",
+    ["Sail"] = "Segelt",
+    ["Set your hearthstone"] = "Legt Euren Ruhestein fest",
+    ["Take the boat"] = "Nehmt das Schiff",
+    ["Set your hearthstone here"] = "Legt Euren Ruhestein hier fest",
     ["Read talk and quests aloud: what an NPC says, a quest's text and a book are read as they open. Read what I point at: a tooltip is read when the mouse rests on it."] = "Gespräche und Quests vorlesen: Was ein NSC sagt, der Text einer Quest und ein Buch werden beim Öffnen vorgelesen. Vorlesen, worauf ich zeige: Ein Tooltip wird gelesen, wenn die Maus darauf ruht.",
     ["Move through the game's windows with the keyboard: in NPC talk, quests, vendors, mail, loot and question boxes, Tab goes from button to button and Enter presses, with each choice said aloud if you like."] = "Mit der Tastatur durch die Fenster des Spiels: In NSC-Gesprächen, Quests, bei Händlern, Post, Beute und Abfragen geht Tab von Knopf zu Knopf und Eingabe drückt, auf Wunsch mit Ansage jeder Auswahl.",
     ["Keys for one hand: everything round W, A, S and D, or all on the number pad, with one button, and one to put your keys back (/fgui keys)."] = "Tasten für eine Hand: alles rund um W, A, S und D oder alles auf dem Ziffernblock, mit einem Knopf, und einer, der Eure Tasten zurücksetzt (/fgui keys).",
@@ -3289,6 +3294,11 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["Learn the flight path"] = "Apprenez le point de vol",
+    ["Sail"] = "Embarquez",
+    ["Set your hearthstone"] = "Liez votre pierre de foyer",
+    ["Take the boat"] = "Prenez le bateau",
+    ["Set your hearthstone here"] = "Liez votre pierre de foyer ici",
     ["Read talk and quests aloud: what an NPC says, a quest's text and a book are read as they open. Read what I point at: a tooltip is read when the mouse rests on it."] = "Lire à voix haute dialogues et quêtes : ce que dit un PNJ, le texte d'une quête et un livre sont lus à l'ouverture. Lire ce que je pointe : une infobulle est lue quand la souris s'y pose.",
     ["Move through the game's windows with the keyboard: in NPC talk, quests, vendors, mail, loot and question boxes, Tab goes from button to button and Enter presses, with each choice said aloud if you like."] = "Parcourir les fenêtres du jeu au clavier : dans les dialogues de PNJ, les quêtes, chez les marchands, au courrier, au butin et dans les questions, Tab passe de bouton en bouton et Entrée l'actionne, chaque choix annoncé si vous le voulez.",
     ["Keys for one hand: everything round W, A, S and D, or all on the number pad, with one button, and one to put your keys back (/fgui keys)."] = "Touches pour une main : tout autour de W, A, S et D, ou tout sur le pavé numérique, en un bouton, et un autre pour remettre vos touches (/fgui keys).",
@@ -6557,6 +6567,11 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["Learn the flight path"] = "Aprende la ruta de vuelo",
+    ["Sail"] = "Navega",
+    ["Set your hearthstone"] = "Fija tu piedra de hogar",
+    ["Take the boat"] = "Toma el barco",
+    ["Set your hearthstone here"] = "Fija tu piedra de hogar aquí",
     ["Read talk and quests aloud: what an NPC says, a quest's text and a book are read as they open. Read what I point at: a tooltip is read when the mouse rests on it."] = "Leer en voz alta diálogos y misiones: lo que dice un PNJ, el texto de una misión y un libro se leen al abrirse. Leer lo que señalo: una descripción se lee cuando el ratón se queda sobre ella.",
     ["Move through the game's windows with the keyboard: in NPC talk, quests, vendors, mail, loot and question boxes, Tab goes from button to button and Enter presses, with each choice said aloud if you like."] = "Moverse por las ventanas del juego con el teclado: en diálogos de PNJ, misiones, vendedores, correo, botín y preguntas, Tab va de botón en botón e Intro lo pulsa, diciendo cada opción si quieres.",
     ["Keys for one hand: everything round W, A, S and D, or all on the number pad, with one button, and one to put your keys back (/fgui keys)."] = "Teclas para una mano: todo alrededor de W, A, S y D, o todo en el teclado numérico, con un botón, y otro para devolver tus teclas (/fgui keys).",
@@ -9828,6 +9843,11 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["Learn the flight path"] = "Узнайте маршрут полета",
+    ["Sail"] = "Плывите",
+    ["Set your hearthstone"] = "Привяжите камень возвращения",
+    ["Take the boat"] = "Сядьте на корабль",
+    ["Set your hearthstone here"] = "Привяжите камень возвращения здесь",
     ["Read talk and quests aloud: what an NPC says, a quest's text and a book are read as they open. Read what I point at: a tooltip is read when the mouse rests on it."] = "Чтение вслух разговоров и заданий: слова NPC, текст задания и книга читаются при открытии. Чтение того, на что указываю: подсказка читается, когда на ней задерживается мышь.",
     ["Move through the game's windows with the keyboard: in NPC talk, quests, vendors, mail, loot and question boxes, Tab goes from button to button and Enter presses, with each choice said aloud if you like."] = "Управление окнами игры с клавиатуры: в разговорах с NPC, заданиях, у торговцев, на почте, при добыче и в окнах вопросов Tab переходит от кнопки к кнопке, Enter нажимает, а варианты можно слышать вслух.",
     ["Keys for one hand: everything round W, A, S and D, or all on the number pad, with one button, and one to put your keys back (/fgui keys)."] = "Клавиши для одной руки: всё вокруг W, A, S и D или всё на цифровом блоке — одной кнопкой, и ещё одна, чтобы вернуть клавиши (/fgui keys).",
@@ -13096,6 +13116,11 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["Learn the flight path"] = "Aprenda a rota de voo",
+    ["Sail"] = "Navegue",
+    ["Set your hearthstone"] = "Defina sua pedra de regresso",
+    ["Take the boat"] = "Pegue o barco",
+    ["Set your hearthstone here"] = "Defina sua pedra de regresso aqui",
     ["Read talk and quests aloud: what an NPC says, a quest's text and a book are read as they open. Read what I point at: a tooltip is read when the mouse rests on it."] = "Ler em voz alta conversas e missões: o que um PNJ diz, o texto de uma missão e um livro são lidos ao abrir. Ler o que eu aponto: uma dica é lida quando o mouse para sobre ela.",
     ["Move through the game's windows with the keyboard: in NPC talk, quests, vendors, mail, loot and question boxes, Tab goes from button to button and Enter presses, with each choice said aloud if you like."] = "Navegar pelas janelas do jogo com o teclado: em conversas de PNJ, missões, vendedores, correio, saque e perguntas, Tab vai de botão em botão e Enter pressiona, com cada opção dita em voz alta se quiser.",
     ["Keys for one hand: everything round W, A, S and D, or all on the number pad, with one button, and one to put your keys back (/fgui keys)."] = "Teclas para uma mão: tudo ao redor de W, A, S e D, ou tudo no teclado numérico, com um botão, e outro para devolver suas teclas (/fgui keys).",
@@ -16364,6 +16389,11 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["Learn the flight path"] = "Impara il percorso di volo",
+    ["Sail"] = "Salpa",
+    ["Set your hearthstone"] = "Imposta la tua pietra del ritorno",
+    ["Take the boat"] = "Prendi la nave",
+    ["Set your hearthstone here"] = "Imposta qui la tua pietra del ritorno",
     ["Read talk and quests aloud: what an NPC says, a quest's text and a book are read as they open. Read what I point at: a tooltip is read when the mouse rests on it."] = "Leggi ad alta voce dialoghi e missioni: ciò che dice un PNG, il testo di una missione e un libro vengono letti all'apertura. Leggi ciò che indico: un suggerimento viene letto quando il mouse vi si ferma.",
     ["Move through the game's windows with the keyboard: in NPC talk, quests, vendors, mail, loot and question boxes, Tab goes from button to button and Enter presses, with each choice said aloud if you like."] = "Muoversi nelle finestre del gioco con la tastiera: nei dialoghi dei PNG, nelle missioni, dai mercanti, nella posta, nel bottino e nelle domande, Tab va da un pulsante all'altro e Invio lo preme, con ogni scelta detta ad alta voce se vuoi.",
     ["Keys for one hand: everything round W, A, S and D, or all on the number pad, with one button, and one to put your keys back (/fgui keys)."] = "Tasti per una mano: tutto intorno a W, A, S e D, o tutto sul tastierino, con un pulsante, e un altro per rimettere i tuoi tasti (/fgui keys).",
@@ -19632,6 +19662,11 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["Learn the flight path"] = "비행 경로 배우기",
+    ["Sail"] = "배 타기",
+    ["Set your hearthstone"] = "귀환석 설정",
+    ["Take the boat"] = "배를 타세요",
+    ["Set your hearthstone here"] = "여기에 귀환석 설정",
     ["Read talk and quests aloud: what an NPC says, a quest's text and a book are read as they open. Read what I point at: a tooltip is read when the mouse rests on it."] = "대화와 퀘스트 소리 내어 읽기: NPC의 말, 퀘스트 내용, 책이 열릴 때 읽힙니다. 가리키는 것 읽기: 마우스가 머무르면 툴팁을 읽습니다.",
     ["Move through the game's windows with the keyboard: in NPC talk, quests, vendors, mail, loot and question boxes, Tab goes from button to button and Enter presses, with each choice said aloud if you like."] = "키보드로 게임 창 이동: NPC 대화, 퀘스트, 상인, 우편, 전리품, 질문 창에서 Tab으로 버튼을 옮기고 Enter로 누르며, 원하면 각 선택지를 소리로 들려줍니다.",
     ["Keys for one hand: everything round W, A, S and D, or all on the number pad, with one button, and one to put your keys back (/fgui keys)."] = "한 손용 키: 버튼 하나로 W, A, S, D 주변 또는 숫자 키패드에 모두 배치하고, 다른 버튼으로 키를 되돌립니다 (/fgui keys).",
@@ -22903,6 +22938,11 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["Learn the flight path"] = "学习飞行路线",
+    ["Sail"] = "乘船",
+    ["Set your hearthstone"] = "设置炉石",
+    ["Take the boat"] = "乘船前往",
+    ["Set your hearthstone here"] = "在此设置炉石",
     ["Read talk and quests aloud: what an NPC says, a quest's text and a book are read as they open. Read what I point at: a tooltip is read when the mouse rests on it."] = "朗读对话和任务：NPC 的话、任务文本和书籍在打开时朗读。朗读我指向的内容：鼠标停留时朗读提示。",
     ["Move through the game's windows with the keyboard: in NPC talk, quests, vendors, mail, loot and question boxes, Tab goes from button to button and Enter presses, with each choice said aloud if you like."] = "用键盘在游戏窗口中移动：在 NPC 对话、任务、商人、邮件、拾取和询问框中，Tab 在按钮间移动，回车按下，并可读出每个选项。",
     ["Keys for one hand: everything round W, A, S and D, or all on the number pad, with one button, and one to put your keys back (/fgui keys)."] = "单手按键：一键把所有操作放在 W、A、S、D 周围或数字小键盘上，另一键恢复你的按键（/fgui keys）。",

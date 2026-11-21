@@ -23,6 +23,8 @@ ns.guideKinds = {
     ["do"] = { "*", { 0.92, 0.92, 0.92 }, "Do" },   ["goto"] = { ">", { 0.5, 0.8, 1 }, "Go to" },
     note = { "-", { 0.8, 0.8, 0.8 }, "Note" },      level = { "^", { 0.5, 1, 0.5 }, "Reach level" },
     hearth = { "H", { 0.6, 0.85, 1 }, "Hearth" },   fly = { "F", { 0.6, 0.85, 1 }, "Fly" },
+    learnflight = { "L", { 0.6, 0.85, 1 }, "Learn the flight path" },
+    sail = { "S", { 0.6, 0.85, 1 }, "Sail" },       bind = { "B", { 0.6, 0.85, 1 }, "Set your hearthstone" },
 }
 local QUEST_KIND = { accept = true, turnin = true, ["do"] = true }
 ns.builtinGuides = ns.builtinGuides or {}
@@ -44,7 +46,7 @@ function ns.GuideParseLine(line)
     if text and ns.Trim(text) ~= "" then step.text = ns.Trim(text) end
     local kind, rest = left:match("^(%S+)%s*(.*)$")
     kind = kind and kind:lower()
-    if not kind or not ns.guideKinds[kind] then return nil, "a step starts with accept, turnin, do, goto, note, level, hearth or fly" end
+    if not kind or not ns.guideKinds[kind] then return nil, "a step starts with accept, turnin, do, goto, note, level, hearth, fly, learnflight, sail or bind" end
     step.kind = kind
     rest = ns.Trim(rest)
     if QUEST_KIND[kind] then
@@ -55,6 +57,20 @@ function ns.GuideParseLine(line)
     elseif kind == "level" then
         step.level = tonumber(rest:match("^(%d+)"))
         if not step.level then return nil, "level needs a number" end
+    elseif kind == "fly" or kind == "learnflight" then
+        local node, more = rest:match("^(%d+)%s*(.*)$")
+        if node then
+            step.node = tonumber(node)
+            rest = more
+        elseif kind == "learnflight" then
+            return nil, "learnflight needs the flight point's number"
+        end
+        if rest ~= "" and not step.text then step.text = rest end
+    elseif kind == "sail" then
+        local crossing, more = rest:match("^(%S+)%s*(.*)$")
+        if not crossing then return nil, "sail needs the crossing's name" end
+        step.crossing = crossing
+        if more ~= "" and not step.text then step.text = more end
     elseif rest ~= "" and not step.text then
         step.text = rest
     end
@@ -81,6 +97,8 @@ function ns.GuideLine(step)
     local out = step.kind
     if step.quest then out = out .. " " .. step.quest .. (step.title and (" " .. step.title) or "") end
     if step.level then out = out .. " " .. step.level end
+    if step.node then out = out .. " " .. step.node end
+    if step.crossing then out = out .. " " .. step.crossing end
     if step.text then out = out .. " | " .. step.text end
     if step.x and step.y then
         out = out .. " @ " .. (step.map and (step.map .. ":") or "") .. format("%.1f,%.1f", step.x, step.y)
@@ -102,6 +120,9 @@ function ns.GuideStepText(step)
     if k == "level" then return ns:Tr("Reach level") .. " " .. step.level end
     if k == "hearth" then return step.text or ns:Tr("Use your hearthstone") end
     if k == "fly" then return step.text or ns:Tr("Take the flight") end
+    if k == "learnflight" then return step.text or ns:Tr("Learn the flight path") end
+    if k == "sail" then return step.text or ns:Tr("Take the boat") end
+    if k == "bind" then return step.text or ns:Tr("Set your hearthstone here") end
     return step.text or ""
 end
 
@@ -114,6 +135,14 @@ function ns.GuideStepDone(step, world, ticked)
     if k == "do" then return world.completed(q) or world.ready(q) end
     if k == "goto" then return world.near(step) end
     if k == "level" then return (world.level or 0) >= step.level end
+    local function Ask1(fn, arg) return type(fn) == "function" and fn(arg) == true end
+    if k == "fly" then
+        if step.node then return Ask1(world.landedAt, step.node) end
+        return step.x ~= nil and Ask1(world.near, step)
+    end
+    if k == "learnflight" then return Ask1(world.knownFlight, step.node) end
+    if k == "sail" then return Ask1(world.crossed, step.crossing) end
+    if k == "bind" then return world.bind ~= nil and world.bind == step.text end
     return false
 end
 -- The first step from `from` on that is not done (one past the end when all are).
@@ -142,7 +171,21 @@ ns.GUIDE_NEAR = 15                                            -- yards: close en
 function ns:GuideWorld()
     local Q = C_QuestLog or {}
     local level = UnitLevel and UnitLevel("player")
+    local bind
+    if GetBindLocation then
+        local ok, v = pcall(GetBindLocation)
+        if ok and type(v) == "string" and not Secret(v) and v ~= "" then bind = v end
+    end
+    local function Planner(fn, arg)
+        if type(fn) ~= "function" then return false end
+        local ok, v = pcall(fn, arg)
+        return ok and v == true
+    end
     return {
+        bind = bind,
+        knownFlight = function(node) return Planner(ns.PlannerKnownFlight, node) end,
+        landedAt = function(node) return Planner(ns.PlannerLandedAt, node) end,
+        crossed = function(crossing) return Planner(ns.PlannerCrossed, crossing) end,
         onQuest = function(id) return Ask(Q.IsOnQuest, id) end,
         completed = function(id) return Ask(Q.IsQuestFlaggedCompleted, id) end,
         ready = function(id) return Ask(Q.IsComplete, id) or Ask(Q.ReadyForTurnIn, id) end,

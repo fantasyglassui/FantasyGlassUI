@@ -8614,6 +8614,18 @@ try("Polish 11.17.1: upgrades wait their turn, and a goal already reached says s
     if ns.db.goals[1] and ns.db.goals[1].reached ~= true then error("a level already reached was not marked so") end
     ns.db.goals = goals
 end)
+try("13.0 planner: step kinds", function()
+    local g = ns.GuideParse("guide: Kinds\nfly 23 | Southshore\nfly | Take the bat\nlearnflight 24 | Tarren Mill\nsail menethil-theramore | Theramore\nbind | Southshore\n")
+    local s = g.steps
+    if #s ~= 5 or s[1].node ~= 23 or s[2].node ~= nil or s[3].node ~= 24 or s[4].crossing ~= "menethil-theramore" or s[5].text ~= "Southshore" then error("the new kinds parse") end
+    local again = ns.GuideParse(ns.GuideText(g))
+    for i = 1, 5 do if ns.GuideLine(again.steps[i]) ~= ns.GuideLine(s[i]) then error("round trip " .. i) end end
+    local w = { knownFlight = function(n) return n == 24 end, landedAt = function(n) return n == 23 end,
+                crossed = function(c) return c == "menethil-theramore" end, bind = "Southshore", near = function() return false end }
+    if not ns.GuideStepDone(s[1], w) or ns.GuideStepDone(s[2], w) or not ns.GuideStepDone(s[3], w) or not ns.GuideStepDone(s[4], w) or not ns.GuideStepDone(s[5], w) then error("done") end
+    w.bind = "Booty Bay"; if ns.GuideStepDone(s[5], w) then error("bound elsewhere") end
+    if ns.GuideParseLine("learnflight | x") ~= nil then error("learnflight needs a node number") end
+end)
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()

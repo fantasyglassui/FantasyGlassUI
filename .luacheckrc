@@ -175,6 +175,7 @@ read_globals = {
     "GetBattlefieldPortExpiration",
     "GetBattlefieldStatus",
     "GetBattlefieldTimeWaited",
+    "GetBindLocation",
     "GetBindingAction",
     "GetBindingKey",
     "GetBindingText",
