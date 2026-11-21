@@ -11,16 +11,14 @@ The download holds **three folders**: `FantasyGlassUI`, `FantasyGlassUI_Options`
 
 ## 2. The setup (first login)
 
-The setup opens by itself the first time you log in. It takes nine short steps:
+The setup opens by itself the first time you log in. It takes four short steps:
 
-- **Language:** your game's own, or any of the nine the add-on speaks.
-- **Role:** this places your frames where a tank, healer or damage player wants them.
-- **Look:** pick a family, Glass, Fantasy or Runic, then one of its 38 themes.
-- **Lettering:** the style of text across the whole interface.
-- **Features:** how much the add-on should take over.
-- **Layout:** where your panels go.
+- **Welcome:** your language, and how much the add-on should take over: the whole interface, only a new look for the game's own frames, or everything.
+- **How you play:** your role (this places your frames where a tank, healer or damage player wants them), and what you enjoy: questing, groups, PvP, collecting, being social. Each switches on what suits it.
+- **Your look:** pick a family, Glass, Fantasy or Celestial, then one of its themes, an accent and a text size.
+- **Ready:** a summary of what you chose, and a layout to start from.
 
-**Coming from another UI?** On the layout step, one click puts your frames where ElvUI or Tukui, RealUI, GW2 UI or the game's own interface had them.
+**Coming from another UI?** On the last step, one click puts your frames where ElvUI or Tukui, RealUI, GW2 UI or the game's own interface had them.
 
 Press **Finish and reload** at the end. You can run the setup again any time with `/fgui setup`.
 
@@ -38,29 +36,34 @@ Type `/fgui move`. Every panel shows a handle, and you can drag it anywhere.
 
 ## 4. Choose your look
 
-Open the options with `/fgui` and go to the **Look** tab.
+Open the settings with `/fgui` and choose **Look and themes** in the list on the left.
 
-- **Themes:** 114 of them, in three families.
+- **Themes:** 115 of them, in three families.
   - **Glass:** see-through panes with soft shadows.
   - **Fantasy:** solid panels with gold ornaments.
-  - **Runic:** carved stone with glowing runes.
+  - **Celestial:** a night sky with stars and constellations.
 - **Previews:** each theme button shows a small picture. Point at one to see a larger card, and click it to wear it.
-- **Make your own:** set three colors at the bottom of the Look tab.
-- **A theme for each kind of place** is also on the Look tab: cities, dungeons, raids and battlegrounds.
+- **Make your own:** set three colors in Look and themes › Your own theme.
+- **A theme for each kind of place** is in Look and themes › Theme by place: cities, dungeons, raids and battlegrounds.
 
 Switching to another family finishes after a `/reload`.
 
+- **Frame style:** in **Frames and bars › Your frames**. **Starcut** (new in 11.12) cuts health and power bars to points that glow in their own color, beside a diamond portrait with stars on its points, and since 11.13 it reaches every bar: your cast bar, the crafting bar, the class resource, raid frames, nameplates, timers, experience and totems. Since 11.14 action buttons and bag slots are cut like gems too (bag slots with their rim in the item's quality color), and `/fgui` has **Minimap: diamond**. Since 11.15 windows and tooltips have their corners cut too, with a fine rim along each cut and stars on big windows. **Classic** brings back the box everywhere at once (chosen during a fight, it changes when the fight is over).
+
+- **Text and interface size:** in **Look and themes › Accessibility**, three text sizes for the add-on's lettering and **Interface size** (50 to 150%) for the whole interface. From chat: `/fgui textsize 120` (any size from 70 to 150) and `/fgui uisize 90` (`reset` puts either back). The slider takes effect when you let go.
+
 ## 5. Pick your features
 
-The **Features** tab has every part of the add-on as a switch, in eleven sections.
+Every part of the add-on is a switch, in the category and section it belongs to: Frames and bars, Combat, Bags and items, Quests and map and the rest, listed down the left of `/fgui`. **Home** has a card for each. At the top, **Simple** shows the settings most players look for and **All options** shows every one.
 
-- **Descriptions:** point at a switch to read what it does.
+- **Descriptions:** every setting says what it does under its name; point at it for the whole story.
+- **Undo:** **Undo last change** at the foot of the window takes back what you changed, one step at a time.
 - **Safe defaults:** helpers that act for you (auto-accept, auto-sell and so on) are off until you choose them.
-- **Search:** the box at the top finds any setting.
+- **Search:** the box at the top of the list finds any setting and says where it lives.
 
 ## 6. Action bars
 
-- **Bars and frames tab** (`/fgui bars`): set each bar's buttons, rows, size, spacing, and when it shows (always, when pointed at, in combat and so on).
+- **Frames and bars › Action bars** (`/fgui bars`): set each bar's buttons, rows, size, spacing, and when it shows (always, when pointed at, in combat and so on).
 - **Fantasy Glass action bars:** switch these on to get eight bars of the add-on's own, plus a stance bar, without Edit Mode.
 - **Keybind mode** (`/fgui bind`): hover a button and press a key.
 - **Key binding sheet** (`/fgui keys`): every bar and its keys on one screen.
@@ -76,22 +79,68 @@ The **Tools** button on the menu bar (or `/fgui tools`) opens a button for every
 | `/fgui death` | What hit you before you died |
 | `/fgui alts` | All your characters, their gold and more |
 | `/fgui crafts` | What all your characters can craft |
+| `/fgui briefing` | What is waiting for you: crafts ready, mail, lockouts reset, jobs left |
+| `/fgui recap` | Your last week on every character: gold, time, levels, raids, best loot |
+| `/fgui skillups` | With a profession window open: the recipes that still give skill points |
 | `/fgui equipbest` | Put on every upgrade in your bags |
 | `/fgui testgroup` | Practice the group panels alone |
 | `/fgui quiet` | Hide chat and names for screenshots and streaming |
+| `/fgui showcase` | Screenshot mode: every frame with sample data, nothing in the way |
+| `/fgui drops` | The loot browser: what each boss dropped, your upgrades first |
+| `/fgui farm` | A farming session: gold and item value an hour (`stop` ends it, `zones` for your best spots) |
+| `/fgui wish` | Your loot wishlist: the items you starred in the loot browser, and where each drops |
+| `/fgui gear` | Everyone in your group with their item level, the lowest first, and the average |
+| `/fgui stats` | Lifetime stats for this character and all of them |
+| `/fgui runs` | Your dungeon and raid runs, with a best time for each place |
+| `/fgui goal` | Goals: `rep <faction>`, `gold 10000`, `level 60`, `mount <name>`, or an item and a number |
+| `/fgui set <name>` | Put on a gear set by name; on its own, the list of your sets |
+| `/fgui threat` | Show or hide the threat meter |
 
-Type `/fgui help` for the full list.
+- **Every command:** `/fgui help` opens all of them in a window you can search (`/fgui help bags`). Click one to put it in the chat box. See [Commands](Commands).
+- **Without typing:** Shift-click the minimap button for the Tools menu, or set key bindings for the most used tools. See [Keys and Shortcuts](Keys-and-Shortcuts).
+- **Mistyped a command?** The add-on suggests the right one.
+- **Login briefing:** a few seconds after you log in, one small window says what is waiting. Click a line to open the window it comes from. It only shows when something is waiting.
+- **Weekly recap:** each character's week is noted as you play it. When a new week starts, the login briefing says the recap is ready.
+- **Screenshot mode:** `/fgui showcase` gives every frame a sample worth a picture (a boss as your target mid-cast, a party of four) and clears away the options, movers, tooltip and busier samples. The same command or a fight ends it.
+- **Loot browser:** what each boss drops is noted as you kill it, from your loot window, the loot rolls and your group's loot lines, and shared by all your characters. `/fgui drops` lists it raid by raid and boss by boss; `/fgui drops <name>` goes straight to one raid or dungeon.
+- **Threat meter:** in a group with a hostile target, a small panel shows the top five on threat. Your row turns the warning color near the top and the danger color when you would pull. Move it with `/fgui move`.
+- **Farming sessions:** `/fgui farm` starts one; a small panel shows the time and what you make an hour, in gold and in looted items (the auction price you have seen, or the vendor's). A `/reload` keeps it going, and each finished session counts in your weekly recap.
+- **Equip prompt:** loot an upgrade and a small notice offers to put it on; for a ring or a trinket you choose which one it replaces.
+- **Milestones:** your 1,000th kill, 100th quest, first boss and more get a short notice, and `/fgui stats` lists them with the day.
+- **Boss guide:** when you target or pull a boss, its abilities from the dungeon journal show under your boss note.
+- **Roll advice:** the loot roll window lights the button to press and says why: Need for a wish or an upgrade, Pass for gear you can't use, Greed for the rest. Nothing is rolled for you.
+- **Group gear check:** `/fgui gear` lists everyone in your group with their item level, filling in as the game sends each player's gear.
+- **Lifetime stats:** `/fgui stats` gives totals for this character and all of them, with your best run times.
+- **Nameplates of our own:** the health bar on a nameplate is the add-on's own, on a black backing, with the level in its difficulty color beside the name.
+- **Loot wishlist:** click an item in the loot browser to star it. You are told when it drops, comes up in a roll, or a boss that drops it becomes your target; `/fgui wish` lists them with where each drops.
+- **Boss drops on the boss:** point at a boss and its tooltip lists what it drops that is on your wishlist or would be an upgrade for you.
+- **Quest mobs on nameplates:** the plate of a mob you still need for a quest gets a small quest mark with how many are left (Nameplates designer, "Quest mobs").
+- **Farming by zone:** each session also notes where you farmed. `/fgui farm zones` lists your best spots by what they make an hour, and whether your latest time there was up or down.
+- **Run log:** each dungeon and raid you go into is a run: its time, the bosses killed and when, wipes, your deaths and your rare and better loot. `/fgui runs` lists them place by place with a best time each (the quickest of the runs that killed the most bosses).
+- **Whose upgrade:** in a group, when a boss drops something rare or better, players with the add-on quietly tell each other whether it is an upgrade, and a small panel shows whose upgrade it is and by how many item levels, before anyone rolls.
+- **Goals panel:** gold on all your characters, a level and a mount join reputations, items, achievements and your own goals. An item counts on every character, and its tooltip says which boss drops it.
+- **Nameplates:** the threat color can sit on the plate's edge too (Nameplates designer, "Threat on the plate's edge"), so a tank sees which mob is slipping.
+- **Gear sets:** the set you are wearing is named over your player frame. `/fgui set <name>` puts one on (part of the name will do), and the first five sets can have keys.
+- **Skill-ups:** the profession window gets a Skill-ups button listing the recipes that still give skill points, best first: what you can make now, then what needs the least.
 
-## 8. Keep your setup safe and share it
+## 8. Tooltips your way
+
+- **Player tooltips:** every line of a player's tooltip can be hidden or shown: title, realm, guild, level line, faction, PvP and health bar.
+- **New lines:** you can also add their role, "Your friend" / "In your guild", and their health in numbers.
+- **During fights:** player tooltips can be put away while you fight.
+- **Where:** Chat and people › Player tooltips. See [Player Tooltips](Player-Tooltips).
+
+## 9. Keep your setup safe and share it
 
 - **Backups** are made by themselves before each update and once a day. `/fgui backup` lists them.
 - **History:** each profile remembers your changes. `/fgui history` lists them; click one to undo it.
-- **Profiles tab:** a profile per character, Tank, Healer and Damage templates, and **Copy my whole UI**. That button gives one string with your profile, layout, theme, bars and rules, for a friend or your guild to paste in.
+- **Reset:** `/fgui reset` starts a profile over. Type it twice; a backup is kept first. See [Backups and Undo](Backups-and-Undo).
+- **Layout and profiles › Profiles:** a profile per character, Tank, Healer and Damage templates, and **Copy my whole UI**. That button gives one string with your profile, layout, theme, bars and rules, for a friend or your guild to paste in.
 
-## 9. If something goes wrong
+## 10. If something goes wrong
 
 - **Safe mode:** `/fgui safe` reloads with every feature off, so you can always get back to the options.
 - **Self-check:** `/fgui check` writes a report on what is running.
-- **Report a Problem:** the button in `/fgui` gathers what is needed into text you can copy. Save it as a text file and upload it with the form on the add-on's page.
+- **Report a problem:** the button in `/fgui` gathers what is needed into text you can copy. Save it as a text file and upload it with the form on the add-on's page.
 
 Enjoy the game.

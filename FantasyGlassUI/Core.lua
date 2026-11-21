@@ -1,6 +1,6 @@
 local ADDON, ns = ...
 _G.FantasyGlassUI = ns
-ns.version = "11.18.0"
+ns.version = "12.0.0"
 ns.author = "DustyMouse"
 
 ns.modules = {}
@@ -1544,6 +1544,11 @@ end
 
 -- What's new: shown once after an update (never on a first install, where the setup opens instead).
 ns.whatsNew = {
+    { "12.0.0", { "A new settings window: the categories down the left, Home with a card for each, and every setting on a line of its own that says what it does. The search tells you where each setting lives, and Undo takes back your last change.",
+                  "Simple or All options, at the top: the settings most players look for, or every one. The search always finds them all.",
+                  "A new setup in four steps: how you play (your role and what you enjoy), your look, and what you chose. It can also keep the game's own frames and only restyle them.",
+                  "Accessibility, in one place: color-blind safe colors with dots for item quality, reduce motion, a second high-contrast theme (Fantasy) and three text sizes.",
+                  "Settings from before profiles (versions before 9.0) are no longer read: they start afresh, and the setup opens." } },
     { "11.18.0", { "Report a problem: the window now also gives the Discord invite, so you can attach the saved report in #bug-reports there instead of using the form.",
                   "The add-on's own action bars do far less work while you stand still, and macro icons that change with Shift, Ctrl or Alt now change at once.",
                   "Forgetting a deleted character in the characters list now clears everything else kept for it too: its stats, farming, gold history, cooldowns and the rest.",
@@ -2289,7 +2294,7 @@ ns.helpLines = {
     { "/fgui setup", "run the guided setup again" },
     { "/fgui tools", "the settings at Tools: every window, and things to do once" },
     { "/fgui toolmenu", "every tool window in one small panel (also \"Tools\" on the Menu button)" },
-    { "/fgui bars", "the Bars tab: each action bar's size, opacity, when it shows, rows and spacing" },
+    { "/fgui bars", "Frames and bars: each action bar's size, opacity, when it shows, rows and spacing" },
     { "/fgui bind", "keybind mode: hover an action button and press a key" },
     { "/fgui keys", "every action bar with its keys (or hold the key you bind for it)" },
     { "/fgui gallery", "whole screen layouts to choose from, each with a picture" },

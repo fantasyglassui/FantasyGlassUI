@@ -1,6 +1,6 @@
 # Features
 
-Every switch on the **Features** tab (`/fgui`, Features), in its section, with what it does and whether it is on when you first install. Version 11.17.3.
+Every feature's switch in `/fgui`, with what it does and whether it is on when you first install, grouped as the setup lists them. In the game, each is in its own category and section (Frames and bars, Combat, Bags and items and so on); the search at the top of the list finds any of them. Version 12.0.0.
 
 The search box at the top of the options finds any of them, and pointing at a switch shows what it does.
 
@@ -29,14 +29,14 @@ The search box at the top of the options finds any of them, and pointing at a sw
 | Nameplates | on | Restyled bars over enemies' heads, colored by threat. |
 | Nameplates: quest marks | on | A yellow ! beside the nameplate of anything you still need for a quest, so it can be picked out of a pack at a glance. |
 | Nameplate casts & debuffs | on | A cast bar under each enemy nameplate. |
-| Nameplate health text | on | Shows health on each nameplate's bar: a percentage, or the amount if "Health as numbers, not %" is switched on (Features tab, Frames). |
+| Nameplate health text | on | Shows health on each nameplate's bar: a percentage, or the amount if "Health as numbers, not %" is switched on (Frames and bars › Party, boss and arena). |
 
 ## Action bars
 
 | Switch | Starts | What it does |
 |---|---|---|
 | Action bars | on | Restyled action bars, and a Menu button in place of the game's micro menu. |
-| Fantasy Glass action bars | off | Our own action bars in place of the game's: eight bars of real action buttons, each with its own number of buttons, rows, size, spacing and direction, set at once on the Bars and frames tab without the game's Edit Mode. Bar 1 changes page with your stance, form or stealth. Your key bindings press them. Needs Action bars on, and a /reload. |
+| Fantasy Glass action bars | off | Our own action bars in place of the game's: eight bars of real action buttons, each with its own number of buttons, rows, size, spacing and direction, set at once below without the game's Edit Mode. Bar 1 changes page with your stance, form or stealth. Your key bindings press them. Needs Action bars on, and a /reload. |
 | Cooldown numbers | on | Seconds remaining, as numbers, on action buttons. |
 | Action bars: key text | on | The key each action button is bound to, in its top right corner. Switch off for buttons with no key text. Takes effect at once. |
 | Action bars: macro names | off | The name of a macro, along the bottom of its button. Takes effect at once. |
@@ -47,16 +47,16 @@ The search box at the top of the options finds any of them, and pointing at a sw
 |---|---|---|
 | Role HUD | on | A small display in the middle of the screen for your role: threat, party health, or target health. |
 | Class resources (under your frame) | on | Under your frame: your class's second resource (holy power, soul shards, chi and so on), rune cooldowns, your mana while in a form, and a hunter's pet happiness. Only what your class and this game have is shown. |
-| Class resource you design (Bars and frames) | off | Your combo points, holy power, soul shards, chi, arcane charges, essence or runes, shown the way you design it on the Bars and frames tab (Class resource): dots, a bar or a number, any size, anywhere. |
+| Class resource you design (Bars and frames) | off | Your combo points, holy power, soul shards, chi, arcane charges, essence or runes, shown the way you design it below (Class resource): dots, a bar or a number, any size, anywhere. |
 | Totem timers | on | An icon for each active totem with its time left. |
 | Weapon imbue reminder | on | A note when your weapon imbue (or poison) is missing or about to run out. |
 | Aggro warning (in groups) | off | A warning when a monster turns on you in a group and you are not the tank. |
-| Cooldown tracker | on | A row of abilities you choose, each showing its cooldown. Set it up on the Combat tab. |
-| Custom alerts | on | Alerts you make yourself on the Combat tab: when your health or mana is low, a buff is missing, an ability is ready, your target casts, your bags are nearly full... show a line, play a sound, or say it. |
-| Spoken alerts | off | Says things aloud with the game's own text-to-speech voice: ready checks, whispers, missing buffs, loss of control and your custom alerts. Choose which on the Combat tab. |
+| Cooldown tracker | on | A row of abilities you choose, each showing its cooldown. Choose them below. |
+| Custom alerts | on | Alerts you make yourself, below: when your health or mana is low, a buff is missing, an ability is ready, your target casts, your bags are nearly full... show a line, play a sound, or say it. |
+| Spoken alerts | off | Says things aloud with the game's own text-to-speech voice: ready checks, whispers, missing buffs, loss of control and your custom alerts. Choose which below. |
 | Cooldown timeline | off | The abilities on your cooldown tracker list sliding along one slim bar towards ready, with the last seconds stretched out so they are easy to read. In a fight the game may hide cooldowns: those wait at the right end with the game's own sweep. |
-| Cooldown pulse | on | When an ability on the cooldown tracker comes off cooldown, its icon appears in the middle of the screen for a moment. Choose the abilities on the Combat tab; place the pulse in move mode. |
-| Buff alerts | on | A large icon when a buff you chose is on you. Set it up on the Combat tab. |
+| Cooldown pulse | on | When an ability on the cooldown tracker comes off cooldown, its icon appears in the middle of the screen for a moment. Choose the abilities below; place the pulse in move mode. |
+| Buff alerts | on | A large icon when a buff you chose is on you. Choose them below. |
 | Loot browser: what bosses drop | on | Notes what each boss drops as you kill it in raids and dungeons - from your loot window, the loot rolls and what anyone in your group loots - shared by all your characters. /fgui drops shows it, raid by raid and boss by boss, with the upgrades for you first. On clients with the dungeon journal, its loot lists are there too. Click an item to star it for your wishlist (/fgui wish): you are told when it drops or comes up in a roll. |
 | Boss tooltips: what it drops for me | on | Point at a boss and its tooltip lists what it drops that is on your wishlist or would be an upgrade for you, with how often you have seen it drop. From the loot browser's book (and the dungeon journal where the game has one). |
 | Threat meter (in groups) | on | A small panel of its own: in a group, with a hostile target, who has how much threat on it, most first, up to five of you. Your row turns the warning color near the top and the danger color when you would pull the target. Works without the damage meter. Move it with /fgui move. |
@@ -99,7 +99,7 @@ The search box at the top of the options finds any of them, and pointing at a sw
 | Minimap | on | A square minimap with zone, coordinates and clock. |
 | Minimap: round | off | A round minimap instead of the square one, with a rim in your theme's color. The zone, coordinates and clock stay on it. |
 | Minimap: diamond | off | A diamond minimap, cut like the Starcut portrait, with a fine rim and a star on each point. It takes the place of round or square while it is on. The zone, coordinates and clock stay on it. |
-| Pixel-perfect scale | off | Sets the whole interface to the scale where one of its pixels is one of your screen's, so thin rims and lettering stay sharp. Switching it off puts back the scale the game had. Interface size on the Layout tab still works on top of it. |
+| Pixel-perfect scale | off | Sets the whole interface to the scale where one of its pixels is one of your screen's, so thin rims and lettering stay sharp. Switching it off puts back the scale the game had. Interface size, in Look and themes › Accessibility, still works on top of it. |
 | Minimap button collector | on | Gathers other add-ons' minimap buttons into one fold-out panel. |
 | Minimap button for these options | on | A small button on the minimap with the add-on's icon. Left-click opens these options, right-click starts moving panels, and it can be dragged along the minimap. |
 | Coordinates on the world map | on | Shows where you are, and where the mouse is pointing, in the bottom left corner of the world map. |
@@ -128,7 +128,7 @@ The search box at the top of the options finds any of them, and pointing at a sw
 | Character window: talent set buttons | on | A small 1 and 2 at the top of the character window: one click changes talent set (also /fgui spec). |
 | Character window: missing enchants | off | On the character window, a red E on a piece with no enchant where one usually goes, and a G where a gem socket is empty. |
 | Item levels when inspecting | on | On the inspect window, shows the item level of each piece the other player wears and their average, like your own character window. |
-| Drag the game's windows | on | Drag the character window, spellbook, vendor, mailbox and the game's other windows by any empty part of them; each opens where you left it. "Reset window positions" on the Layout tab puts them all back. Protected windows cannot be moved during combat. |
+| Drag the game's windows | on | Drag the character window, spellbook, vendor, mailbox and the game's other windows by any empty part of them; each opens where you left it. "Reset window positions" in Layout and profiles puts them all back. Protected windows cannot be moved during combat. |
 | Tooltips | on | Restyled tooltips with class colors. |
 | Item counts in tooltips | on | Adds how many of an item you own, across characters, to its tooltip. |
 | Item level & price in tooltips | on | Adds item level and vendor price to item tooltips when the game doesn't show them. |
@@ -160,7 +160,7 @@ The search box at the top of the options finds any of them, and pointing at a sw
 | Switch | Starts | What it does |
 |---|---|---|
 | Glossy bar texture | on | A glossy texture on health and power bars instead of a flat one. |
-| Theme by place | off | Switches to the theme you chose for cities and inns, dungeons, raids or everywhere else, as you travel. Choose them on the Look tab. Only between themes of the same family. |
+| Theme by place | off | Switches to the theme you chose for cities and inns, dungeons, raids or everywhere else, as you travel. Choose them below. Only between themes of the same family. |
 | Login splash | off | As you log in, the add-on's emblem, your character and where you are, for a moment. Click to close it sooner. (The loading screen itself is the game's: add-ons cannot draw over it.) |
 | "Loaded" line in chat at login | on | The one line in chat when you log in, with the version. Off: Fantasy Glass UI only speaks up in chat when something needs you (a new version, a problem). |
 | Login briefing: what is waiting | on | A few seconds after you log in, one small window says what is waiting: crafts ready, mail on your other characters, lockouts that have reset, rested experience and the jobs left on your checklist. Only when something is waiting; /fgui briefing shows it at any time. |
@@ -227,7 +227,7 @@ The search box at the top of the options finds any of them, and pointing at a sw
 | Loot log | on | Keeps a list of everything you loot this session. /fgui loot shows it with what a vendor would pay for it all. |
 | Profession cooldowns | on | Remembers each character's once-a-day crafts (transmutes and the like) whenever a profession window is open, and says when one is ready again. /fgui profcd lists them for all your characters. |
 | Profession leveling helper (Skill-ups) | on | A Skill-ups button on the profession window: the recipes you know that still give skill points, best first. What you can make now comes first, then what needs the fewest materials (counting your other characters), orange before yellow before green. |
-| Bags: my own rules (Tools tab) | on | The sections you make yourself under Your rules on the Tools tab (or /fgui bagrules). They come first: the first rule an item meets decides its section. |
+| Bags: my own rules | on | The sections you make yourself with the bag rules below (or /fgui bagrules). They come first: the first rule an item meets decides its section. |
 | Bags: Upgrades section | off | Gear better than what you wear (the green arrow) gets its own section at the top of the bags. |
 | Bags: Gear sets section | off | Items in a gear set from the equipment manager are kept together in a Gear sets section. |
 | Bags: Bind on equip section | off | Gear that binds when equipped and is not yet bound to you, so it can still be sold or traded, in a section of its own. |
@@ -253,7 +253,7 @@ The search box at the top of the options finds any of them, and pointing at a sw
 | Auction house helper | on | At the auction house: a "Lowest -1c" button on the sell page, and "Worth selling" (or /fgui ah), what in your bags sells for more there than at a vendor. Uses the prices you have seen, so search once first. |
 | Trade log | on | After a trade, a line in chat says what changed hands and with whom. /fgui trades lists the last fifty. |
 | Mail: Send by my rules button | on | A "Send by my rules" button above the mail window whenever there is something to send. It sends everything below that is switched on, twelve items to a letter. |
-| Mail: my own rules (Tools tab) | on | Your own mail rules from the Tools tab (or /fgui mailrules) are sent too. |
+| Mail: my own rules | on | Your own mail rules, below (or /fgui mailrules), are sent too. |
 | Mail: send cloth | off | Cloth is sent to the character typed beside "Cloth" below. Soulbound items are never sent. |
 | Mail: send leather | off | Leather is sent to the character typed beside "Leather" below. |
 | Mail: send ore and stone | off | Ore, stone and bars are sent to the character typed beside "Ore and stone" below. |

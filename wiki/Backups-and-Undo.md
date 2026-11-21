@@ -43,7 +43,7 @@ If something is broken badly enough that you can't reach the options, type `/fgu
 
 ## Profiles and sharing
 
-- **Profiles tab** in `/fgui`:
+- **Layout and profiles › Profiles** in `/fgui`:
   - **Profiles:** one per character, or shared between characters.
   - **Templates:** Tank, Healer and Damage, to start a profile from.
   - **Copy my whole UI:** one string with your profile, layout, theme, bars and rules.

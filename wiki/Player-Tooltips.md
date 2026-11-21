@@ -1,6 +1,6 @@
 # Player tooltips
 
-New in 11.10.0. Every line of a player's tooltip is your choice. The switches are on the **Features** tab, in **Windows, tooltips and quests**, under **Player tooltips: choose the lines**. Every switch works at once, with no reload, and presets never change them.
+New in 11.10.0. Every line of a player's tooltip is your choice. The switches are in **Chat and people › Player tooltips** in `/fgui`. Every switch works at once, with no reload, and presets never change them.
 
 ## The game's own lines
 
@@ -48,4 +48,4 @@ An item's quality colors the edge. The health bar under a player's tooltip takes
 - **Players only:** these switches change player tooltips. Creature and item tooltips are not affected.
 - **The master switch:** with **Player tooltips: choose the lines** off, the game's lines stay exactly as the game writes them.
 - **Hidden information:** anything the game keeps hidden from add-ons is left exactly as it is, so a tooltip may sometimes keep a line you have hidden. That is the game, not a fault.
-- **Other tooltip switches:** **Tooltips**, **Item counts in tooltips**, **Item level & price in tooltips** and **Item & spell IDs in tooltips** are listed beside these on the Features tab. **Tooltips follow the mouse** is in the options too.
+- **Other tooltip switches:** **Tooltips**, **Item counts in tooltips**, **Item level & price in tooltips** and **Item & spell IDs in tooltips** are listed beside these in `/fgui`. **Tooltips follow the mouse** is in the options too.

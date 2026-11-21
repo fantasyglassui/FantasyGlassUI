@@ -70,11 +70,11 @@ At a vendor, right-clicking an item in the bag window sells it, gear included. A
 
 ## After a vendor visit
 
-When you close a vendor, one line in chat says what you sold, bought and repaired, and what it all came to. Switch it off with **Vendors: one-line summary** on the Features tab.
+When you close a vendor, one line in chat says what you sold, bought and repaired, and what it all came to. Switch it off with **Vendors: one-line summary** in `/fgui`.
 
 ## When you log in
 
-A few seconds after you log in, the **login briefing** lists what is waiting: crafts ready, mail on your other characters, lockouts that reset, rested experience, jobs left, gear that needs a repair and bags nearly full. Click a line to open that window. `/fgui briefing` shows it again; switch it off with **Login briefing: what is waiting** on the Features tab.
+A few seconds after you log in, the **login briefing** lists what is waiting: crafts ready, mail on your other characters, lockouts that reset, rested experience, jobs left, gear that needs a repair and bags nearly full. Click a line to open that window. `/fgui briefing` shows it again; switch it off with **Login briefing: what is waiting** in `/fgui`.
 
 ## In the profession window
 
@@ -86,7 +86,7 @@ The game doesn't allow some things during a fight. If you ask for **Equip best**
 
 ## Windows
 
-- **Tooltips:** point at a button in the options for what it does; the Layout tab's size sliders explain themselves too.
+- **Tooltips:** point at a button in the options for what it does; every setting says what it does under its name.
 - **Long lines:** in a list window, a line too long to fit is shown in full when you point at it.
 - **Close with Escape:** every window the add-on opens closes with **Escape**.
 - **Remembered places:** list windows such as help, boss notes and Worth selling stay where you drag them, for all your characters.

@@ -459,7 +459,7 @@ local function Build()
 
     -- Opening a place: Home, a category (its first section), a section, or one of the old page names.
     local OLD = { features = "home", look = "look:Themes", layout = "layout:Moving and scale", profiles = "layout:Profiles",
-                  combat = "combat:Cooldowns", bars = "frames:Your frames", tools = "tools:Tools", guide = "guide:Guide",
+                  combat = "combat:Cooldowns", bars = "frames:Action bars", tools = "tools:Tools", guide = "guide:Guide",
                   clickcast = "frames:Raid frames", colors = "look:Class colors" }
     O.OLD_PAGES = OLD
     function O.Open(id, asked)

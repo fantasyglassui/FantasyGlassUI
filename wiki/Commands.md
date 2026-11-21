@@ -13,9 +13,9 @@ Mistype one and the add-on suggests the nearest command instead.
 | `/fgui move` | arrange your panels; right-click one for its own settings |
 | `/fgui undo` | put back the last panel move, nudge, resize or reset |
 | `/fgui setup` | run the guided setup again |
-| `/fgui tools` | the Tools tab: every window, your lists, and the guide |
+| `/fgui tools` | the settings at Tools: every window, and things to do once |
 | `/fgui toolmenu` | every tool window in one small panel (also "Tools" on the Menu button) |
-| `/fgui bars` | the Bars tab: each action bar's size, opacity, when it shows, rows and spacing |
+| `/fgui bars` | Frames and bars: each action bar's size, opacity, when it shows, rows and spacing |
 | `/fgui bind` | keybind mode: hover an action button and press a key |
 | `/fgui keys` | every action bar with its keys (or hold the key you bind for it) |
 | `/fgui gallery` | whole screen layouts to choose from, each with a picture |

@@ -4,9 +4,9 @@ by DustyMouse
 
 A complete interface replacement for **WoW Forever** (interface 16001): unit frames, raid frames, cast
 bars, action bars, bags and bank, quest tracker and quest log, minimap, buffs, nameplates, chat and
-the game's own windows, in one look that you choose from 114 glass, fantasy and celestial themes.
+the game's own windows, in one look that you choose from 115 glass, fantasy and celestial themes.
 
-Version 11.18.0
+Version 12.0.0
 
 ## Install
 
@@ -20,11 +20,12 @@ Version 11.18.0
    game's add-on list they appear as "Fantasy Glass UI - options" and "Fantasy Glass UI -
    translations": leave both enabled.
 2. Start the game, or type `/reload` if you are already logged in.
-3. On first login a setup opens: a nine-step tour that takes about two minutes. It covers how much
-   of the interface to take over (three presets), your role, the theme and accent, lettering and
-   text size, the helpers worth a decision, bags and windows, small behaviors, and layout, and ends
-   with a summary. Choices apply as you click where they can; if any need the interface to reload,
-   the last button does that once. Everything can be changed later in `/fgui`.
+3. On first login a setup opens, in four steps: how much of the interface to take over (the whole
+   interface, only restyle the game's own frames, or everything), how you play (your role and what
+   you enjoy: questing, groups, PvP, collecting, being social), your look (theme family, theme,
+   accent and text size), and a summary with a layout to start from. Choices apply as you click
+   where they can; if any need the interface to reload, the last button does that once. Everything
+   can be changed later in `/fgui`.
 
 Fantasy Glass UI replaces the bags, unit frames and buff bars. Turn off other add-ons that do the same
 (for example Baganator or another UI suite), or untick the matching feature in `/fgui`, so you don't
@@ -38,15 +39,15 @@ get two of everything.
 | `/fgui setup` | Run the first-run setup again (also the "Run setup again" button in `/fgui`) |
 | `/fgui move` | Unlock every panel for dragging; type it again to lock |
 | `/fgui test` | Preview mode: sample unit frames, raid frames, casts and swings |
-| `/fgui layout` | Jump to the Layout tab (scale and size sliders) |
-| `/fgui colors` | Jump to Portraits and class colors on the Look tab |
-| `/fgui look` | Jump to the Look tab (themes, accent, lettering, your own theme) |
-| `/fgui tools` | Jump to the Tools tab (every window, your lists, the guide) |
+| `/fgui layout` | Open Layout and profiles › Moving and scale (move panels, a scale slider for each) |
+| `/fgui colors` | Open Look and themes › Class colors |
+| `/fgui look` | Open Look and themes (themes, accent, lettering, your own theme, accessibility) |
+| `/fgui tools` | Open Tools (a button for every window, and things to do once) |
 | `/fgui buttons` | A copyable list of the buttons gathered into the Add-ons panel and how the game is drawing each |
-| `/fgui bars` | Jump to the Bars tab (each action bar's own settings) |
+| `/fgui bars` | Open Frames and bars › Action bars (each action bar's own settings) |
 | `/fgui ask <question>` | Ask the guide where something is: `/fgui ask how do I move the bars` |
-| `/fgui clickcast` | Jump to Click casting on the Combat tab |
-| `/fgui combat` | Jump to the Combat tab (cooldown tracker, buff alerts, behavior) |
+| `/fgui clickcast` | Open Frames and bars › Raid frames, where click casting is |
+| `/fgui combat` | Open Combat (the cooldown tracker, alerts, timers, meters) |
 | `/fgui memory` | How much memory the add-on is using, and whether the options have been loaded |
 | `/fgui check` | Self-check: a copyable report of what the client supports and any errors |
 | `/fgui report` | Everything needed to report a problem, as text to copy (also the Report a problem button) |
@@ -97,7 +98,7 @@ get two of everything.
 | `/fgui new` | Show the "what's new" note again |
 | `/fgui strings` | Every label shown so far, laid out for translating (see Translating) |
 | `/fgui tree` | How the window under your mouse is built, as copyable text (`/fgui tree FrameName` by name, `/fgui tree target` for your target's nameplate) |
-| `/fgui profiles` | Jump to the Profiles tab |
+| `/fgui profiles` | Open Layout and profiles › Profiles |
 | `/fgui status` | List every feature and whether it loaded |
 | `/fgui reset` | Reset the current profile to defaults |
 | `/ql` | Open the quest log |
@@ -144,8 +145,8 @@ get two of everything.
 
 ## Features
 
-Every feature has its own switch on the Features tab of `/fgui`, grouped under headings much like
-the ones below. Hover a switch to read what it does.
+Every feature has its own switch in `/fgui`, in the category and section it belongs to (see
+Options, below). The list here is grouped a little differently. Point at a switch to read what it does.
 
 **Frames**
 - Player, target, target-of-target, focus, pet and party frames, with a live 3D portrait, a 2D
@@ -177,7 +178,7 @@ the ones below. Hover a switch to read what it does.
   drink, flasks, elixirs and scrolls in your bags, one button each, with how many you have. It is
   laid out again between fights.
 - Totem timers, and a reminder when a shaman's weapon imbue (or a rogue's poison) is missing or
-  about to run out. The reminder fades away outside combat (a switch on the Combat tab keeps it
+  about to run out. The reminder fades away outside combat (a switch in Combat keeps it
   showing).
 - An aggro warning in groups, and an
   "out of range" note on the swing timer.
@@ -225,7 +226,7 @@ the ones below. Hover a switch to read what it does.
   click an item link in chat, are covered along with the main tooltip.
 - **Drag the game's windows.** The character window, spellbook, vendor, mailbox, trainer and the
   game's other windows can be dragged by any empty part of them (the title bar is easiest), and each
-  opens where you left it. "Reset window positions" on the Layout tab, or `/fgui windows reset`,
+  opens where you left it. "Reset window positions" in Layout and profiles, or `/fgui windows reset`,
   puts them all back. A protected window cannot be moved during combat. Left to the game: the world
   map, the small question boxes, the loot window and the game menu.
 - The group finder window is restyled like the other windows.
@@ -237,28 +238,28 @@ the ones below. Hover a switch to read what it does.
   do the same. It puts back the last move, nudge, resize, Center, Reset or role layout, thirty steps
   deep. A run of nudges, or one drag of a size slider, counts as one step.
 - **Panels snap to each other.** A panel you drag lines up with the edges of nearby panels as well as
-  with the grid. Hold Shift to place it freely. ("Panels snap to each other" on the Features tab.)
+  with the grid. Hold Shift to place it freely. ("Panels snap to each other" in `/fgui`.)
 - **When each panel shows.** In move mode, right-click a panel and click the "Show:" button to step
   through: always, only in combat, only out of combat, only with a target. An ordinary panel is
   really hidden. A unit frame cannot be hidden by an add-on during combat, so it is made see-through
   instead (it can still be clicked where it was). While you are moving panels everything shows.
-- **Info bar pieces.** Right-click the info bar, or press "Info bar pieces" on the Layout tab, for a
+- **Info bar pieces.** Right-click the info bar, or press "Info bar pieces" in Layout and profiles, for a
   list of tick boxes: role, frame rate, latency, durability, gold, free bag slots, friends, guild,
   mail, clock. The bar shrinks to fit what is left.
 - Action bars that fade when not in use (per bar: right-click its handle in move mode), a combat
   focus that dims the quest tracker and info bar during fights, and tooltips that follow the mouse.
-- Nameplate width and height sliders on the Layout tab (where the game allows its nameplates to be sized).
+- Nameplate width and height sliders in Layout and profiles (where the game allows its nameplates to be sized).
 - **Search all options.** The box at the top of the options window finds a setting on any tab, by
   a word from its label or, for the Features switches, from its description. Choosing a result opens
   its tab, scrolls to it and rings it for a moment.
-- **Action bar text.** Two switches on the Features tab: the key text on each button, and macro names.
+- **Action bar text.** Two switches in `/fgui`: the key text on each button, and macro names.
 
 **Frames and combat**
 - **Focus's target.** A small frame for whatever your focus is targeting, under the focus frame. It
   shows only while your focus has a target, and moves like any panel.
 - Boss frames: up to five, down the right side, shown during boss fights. Click one to target it.
 - **Combat timer.** A small movable timer counting how long the fight has lasted, for any role. The
-  final time stays up for a few seconds afterwards. Off until chosen, on the Features tab.
+  final time stays up for a few seconds afterwards. Off until chosen, in `/fgui`.
 - Our own breath and fatigue bar in place of the game's.
 - **A ring round the mouse pointer,** in the accent color, to find it in a fight. Off until chosen.
 - **A quieter red error line.** Drops the lines that repeat constantly in a fight (not enough mana,
@@ -300,10 +301,10 @@ the ones below. Hover a switch to read what it does.
 - Notifications for an item you looted (uncommon or better), a new level, new mail, whispers, bags
   that are almost full and gear that needs repair.
 - **Update notice.** If someone in your guild or group runs a newer version, you are told once. Only
-  the version number is exchanged, and nothing during combat. ("Tell me when an update is out" on
-  the Features tab.)
+  the version number is exchanged, and nothing during combat. ("Tell me when an update is out" in
+  `/fgui`.)
 - The data other add-ons publish through LibDataBroker, shown in a strip under the info bar.
-- The AFK screen can start when the game marks you away, or after an idle time you set (Combat tab).
+- The AFK screen can start when the game marks you away, or after an idle time you set (Combat).
 - Keybind mode, an AFK screen (the interface fades and the camera drifts while you are away, with
   a panel of the session's statistics and your time played), and a screenshot each time you level up.
 
@@ -313,7 +314,7 @@ the ones below. Hover a switch to read what it does.
   - *Repair from guild funds first*: auto-repair uses your guild allowance when it covers the bill.
   - *Pick the only choice when talking*: a character with exactly one thing to say and no quests.
     Never inside a dungeon or raid; hold Shift to choose for yourself.
-- Helpers, each its own switch on the Features tab and each off until you choose it. Presets never
+- Helpers, each its own switch in `/fgui` and each off until you choose it. Presets never
   change them.
   - **Accept invites from friends & guild.** Invitations from anyone else are left for you.
   - **Faster auto-loot.** With auto-loot in effect, takes everything from a corpse at once.
@@ -335,7 +336,7 @@ the ones below. Hover a switch to read what it does.
   - **Accept role checks.** Your role is confirmed as you last set it.
   - **Greed on green items.** Rolls Greed for you on uncommon items. Blue or better, anything
     that binds when picked up, and gear better than what you wear are left for you.
-- **Game settings**, a section of the Features tab: maximum camera distance, mute the error
+- **Game settings**, a section of `/fgui`: maximum camera distance, mute the error
   voice, sound when tabbed out, best-quality screenshots, auto loot, loot window at the mouse,
   auto self-cast, nameplates from further away (41 yards), stacking nameplates, a camera that stays
   where you turn it, clear weather, a lower frame rate when tabbed out (30), no tutorial pop-ups,
@@ -386,7 +387,7 @@ the ones below. Hover a switch to read what it does.
   head hidden or moved.
 
 **Action bars, bar by bar**
-- The Bars tab of `/fgui` lists every action bar, with the stance and pet bars. Each has its own:
+- Frames and bars › Action bars in `/fgui` lists every action bar, with the stance and pet bars. Each has its own:
   size; opacity; rule for when it shows (always, when pointed at, in combat, out of combat, with a
   target, never); key text; and macro names. These apply as you change them.
 - Rows, buttons shown, button size, spacing and direction are set there too. They belong to the
@@ -394,6 +395,13 @@ the ones below. Hover a switch to read what it does.
   the game lays the bar out. This needs a layout of your own: the game's two presets cannot be
   changed (Esc, Edit Mode, Layout, New Layout makes one).
 - A bar that is not showing is see-through; its buttons can still be pressed where they were.
+
+**Added in 12.0**
+- A new settings window: categories down the left with their sections, Home, a search that says
+  where each setting lives, Simple / All options, Undo last change, Reset a category, NEW tags,
+  sample frames, and a window you can resize.
+- A new setup in four steps, with a way to keep the game's own frames and only restyle them.
+- Accessibility in one place, with dots for item quality and a fantasy high-contrast theme.
 
 **Added in 11.18**
 - Report a problem also gives the Discord invite, to attach the saved report in #bug-reports.
@@ -438,7 +446,7 @@ the ones below. Hover a switch to read what it does.
   becomes the Celestial theme made from it, with the same accent.
 
 **Added in 11.9**
-- Art for the third family for emblems, the minimap and the action bars; **theme previews** on the Look tab;
+- Art for the third family for emblems, the minimap and the action bars; **theme previews** in Look and themes;
   `/fgui check new` reports on every feature added since 11.6.
 
 **Added in 11.8**
@@ -454,52 +462,52 @@ the ones below. Hover a switch to read what it does.
   **auction house helper** ("Lowest -1c", "Worth selling", `/fgui ah`).
 - **Backups** before each update and daily (`/fgui backup`, `/fgui backup restore daily|update`), and
   **changes to this profile** with undo (`/fgui history`).
-- **Whole-UI packs** (`/fgui pack`, Profiles tab), **role templates** (Profiles tab), "Coming from
+- **Whole-UI packs** (`/fgui pack`, Layout and profiles › Profiles), **role templates** (Layout and profiles › Profiles), "Coming from
   another UI?" in the setup, `/fgui perf fight` and `/fgui perf load`.
 
 **Added in 11.6**
-- **Group practice** (`/fgui testgroup`, the Tools tab or the Tools menu): five made-up group mates
+- **Group practice** (`/fgui testgroup`, Tools or the Tools menu): five made-up group mates
   for five minutes, to see and place the group cooldowns, the interrupt rotation and buff coverage
   alone. They take turns to interrupt; on your turn use your own. Nothing is sent to anyone.
-- **Arena enemy frames** (Features tab, Frames, off): up to five, in place of the game's. Left-click
+- **Arena enemy frames** (off): up to five, in place of the game's. Left-click
   targets, right-click sets focus.
-- **Enemy cooldowns** (Features tab, Combat and groups): in arenas and battlegrounds, an enemy
+- **Enemy cooldowns** (a switch in `/fgui`): in arenas and battlegrounds, an enemy
   player's PvP trinket, interrupt and dispel, beside the arena frames and under your target and
   focus frames, counting down once used.
 - **Upgrade arrows** on loot rolls, quest rewards and the game's bags, and "Upgrade: +N item level"
   on item tooltips. **Equip best** (`/fgui equipbest`, or the button on the bags) puts on every
   upgrade already bound to you.
 - **New characters** get their own copy of your main's setup, fitted to their class. `/fgui main`
-  or the Profiles tab chooses your main (otherwise the character you played last).
+  or Layout and profiles › Profiles chooses your main (otherwise the character you played last).
 - The execute line shows only on enemies; the translations are a third folder, loaded only when
   needed.
 
 **Added in 11.5**
-- **Interrupt rotation** (Features tab, Combat and groups, off): who is next to interrupt, and a
+- **Interrupt rotation** (off): who is next to interrupt, and a
   warning (on screen, and aloud with spoken alerts) when it is you. `/fgui kicks <name> <name>` sets
   the order; the group leader's order is shared with everyone who has the add-on.
-- **Class resource designer** (Bars and frames tab, Class resource; switch "Class resource you
-  design" on the Features tab): dots, one bar or a number, with width, height, gap and number size.
+- **Class resource designer** (Frames and bars, Class resource; switch "Class resource you
+  design" in `/fgui`): dots, one bar or a number, with width, height, gap and number size.
 - **Professions** (`/fgui crafts`, `/fgui crafts <search>`): every character's recipes, noted when a
-  profession window is open; item tooltips say "Made by" (switch on the Features tab).
+  profession window is open; item tooltips say "Made by" (switch in `/fgui`).
 - **Key binding sheet** (`/fgui keys`, or a key in Key Bindings, AddOns: shown while held).
-- **Buff coverage** (Features tab, off): a mark on raid and party frames of anyone missing the buff
+- **Buff coverage** (in `/fgui`, off): a mark on raid and party frames of anyone missing the buff
   you can give. Checked out of fights.
-- **A layout for each screen size** (Layout tab, Share layout, third switch).
-- **Quiet mode** (`/fgui quiet`, the Tools tab, or a key): no chat, names over heads or info bar,
+- **A layout for each screen size** (Layout and profiles, Share layout, third switch).
+- **Quiet mode** (`/fgui quiet`, Tools, or a key): no chat, names over heads or info bar,
   then everything back as it was (names come back even after a reload).
 - **Simplified Chinese** (简体中文) as a language for the add-on's labels; every language now covers
   the whole options window.
 - The Features tab has 11 sections instead of 18.
 
 **Added in 11.4**
-- **Sort bags** (`/fgui sort`, the Tools tab or menu, or a key binding): your bags in the order of
+- **Sort bags** (`/fgui sort`, Tools or menu, or a key binding): your bags in the order of
   your bag sections - your own rules, the ready-made sections switched on, then gear, consumables,
   quest items, trade goods, the rest and junk - best quality first inside each. One move at a time,
   never in a fight; special bags and the reagent bag are left alone. Again to stop.
 - **Reputations and currencies** (`/fgui reps`): each character's are noted as you play it. Click a
   line to pin it, and it is listed first for every character.
-- **Mount and pet buttons** (Features tab, off): a random favorite mount and pet, as two movable
+- **Mount and pet buttons** (in `/fgui`, off): a random favorite mount and pet, as two movable
   buttons and as key bindings (Key Bindings, AddOns).
 - **Send a talent build** (`/fgui talents send <player> <build>`): kept with their builds, for their
   class only, and never learned until they choose it.
@@ -508,72 +516,72 @@ the ones below. Hover a switch to read what it does.
   (`/fgui goal ach <name or number>`) where the game client has them.
 
 **Added in 11.3**
-- **Group cooldowns** (Features tab, Combat and groups, off): a panel listing who in your group has
+- **Group cooldowns** (off): a panel listing who in your group has
   a battle resurrection, an interrupt, a big defensive or a raid cooldown, and whether it is ready
   or how long until it is. Group members with Fantasy Glass UI tell each other whenever they use one.
-- **Send your setup** (`/fgui send <name> layout|profile|theme`, or the Profiles tab): it goes
+- **Send your setup** (`/fgui send <name> layout|profile|theme`, or Layout and profiles › Profiles): it goes
   straight to the other player and opens in their preview, where they choose whether to take it.
-  "Accept setups other players send me" (Features tab) turns receiving off.
+  "Accept setups other players send me" (a switch in `/fgui`) turns receiving off.
 - **Totem bar** (Shamans, on): left-click drops the totem chosen for each element, right-click
   takes it away, the mouse wheel chooses another out of a fight.
-- **Aura designer** (Bars and frames tab, Auras): what shows on the target, focus and player frames
+- **Aura designer** (Frames and bars, Auras): what shows on the target, focus and player frames
   and where; heals over time, debuff icon and cleanse highlight on raid frames; all or only your
-  debuffs on nameplates. "Hidden on frames" (Tools tab, `/fgui hideonframe <name>`) keeps an aura
+  debuffs on nameplates. "Hidden on frames" (Tools, `/fgui hideonframe <name>`) keeps an aura
   off every frame.
 
 **Added in 11.2**
-- **Your rules on the Tools tab:** bag rules, mail rules, checklist jobs and talent builds have an
+- **Your rules in Tools:** bag rules, mail rules, checklist jobs and talent builds have an
   editor under "Your lists". Choose the kind with the button above the box (click for the next,
   right-click to step back), type, and Add. ^ moves a bag rule up; Use learns a talent build.
 - **Tools on the Menu button**: "Tools" in the Menu button's list opens a small panel with a button
   for every tool window, so they open without going to the options (`/fgui toolmenu` too).
-- **Pull and break timers** (`/fgui pull 10`, `/fgui break 5`, or the Tools tab): a big countdown for
+- **Pull and break timers** (`/fgui pull 10`, `/fgui break 5`, or Tools): a big countdown for
   everyone in the group who has the add-on. A pull also starts the game's own countdown. Group
   leaders and assistants.
-- **Battleground helper** (Features tab, on): while you wait, how long you have waited and the
+- **Battleground helper** (in `/fgui`, on): while you wait, how long you have waited and the
   game's estimate; with an invitation, how long it has left; inside, a countdown to the start.
   `/fgui bgscore` shows the score.
 - **Raid composition** (`/fgui comp`): your group's tanks, healers and damage, its classes, and who
   covers each group buff, dispel and battle resurrection (or that nobody does).
-- **Bag rules** (Features tab, Bag rules): ready-made sections you switch on one by one:
+- **Bag rules** (a switch in `/fgui`): ready-made sections you switch on one by one:
   Upgrades, Gear sets, Bind on equip, materials by kind (Cloth, Leather, Ore and stone, Herbs,
   Cooking ingredients, Elemental, Enchanting materials, Gems), potions, food, scrolls and bandages
-  apart, and Recipes. Your own rules (Tools tab, or `/fgui bagrules add ilvl 50 = Upgrades`) come
+  apart, and Recipes. Your own rules (Tools, or `/fgui bagrules add ilvl 50 = Upgrades`) come
   first: by item level, bind on equip, gear set, quality, kind of item or name, in the order you set.
-- **Mail rules** (Features tab, Mail rules): a switch for each material (cloth, leather, ore and
+- **Mail rules** (a switch in `/fgui`): a switch for each material (cloth, leather, ore and
   stone, herbs, cooking ingredients, elemental, enchanting materials, gems, potions and food), and a
   box beside each for the character it goes to. "Send by my rules" above the mail window sends it
-  all, one character at a time, twelve items to a letter. Your own rules (Tools tab, or
+  all, one character at a time, twelve items to a letter. Your own rules (Tools, or
   `/fgui mailrules add Mytailor cloth`) are sent too. Soulbound items are never sent.
 - **Events and holidays** (`/fgui events`): what the game's calendar has on now and in the next two
   weeks. A holiday that is on is added to your checklist, and taken off when it ends.
 - **Talent builds** (`/fgui talents`): keep your talents under a name and learn a build's points again
   with a click. Where the game client does not let add-ons read talents, it says so.
-- **Preview a shared string** (Tools tab, `/fgui sharepreview`): paste a profile, layout or theme
+- **Preview a shared string** (Tools, `/fgui sharepreview`): paste a profile, layout or theme
   string and see where its panels go and its colors before taking it.
-- **Hide the game's raid manager** (Features tab, Combat and groups, off): the panel that slides
+- **Hide the game's raid manager** (off): the panel that slides
   out from the left edge in a group. The Raid tools panel has ready checks, markers and role polls;
   leaving a group is in the game menu or on your portrait.
-- **Pixel-perfect scale** and **a round minimap** (Features tab, both off until you choose them).
+- **Pixel-perfect scale** and **a round minimap** (in `/fgui`, both off until you choose them).
 
 **Added in 11.1**
-- **Choose which of the add-on's own bars you use**: "Use this bar" on the Bars and frames tab. A bar
+- **Choose which of the add-on's own bars you use**: "Use this bar" in Frames and bars. A bar
   that is off is hidden altogether; its keys still press its buttons.
-- **Nameplate designer** (Bars and frames tab, Nameplates): width and height, name size or no
+- **Nameplate designer** (Frames and bars, Nameplates): width and height, name size or no
   names, where the health text sits and its size, cast bar height and text size, debuff icon size
   and how many show, threat colors, and the mark on your target's plate.
-- **Raid frame designer** (Bars and frames tab, Raid frames): size, space between frames, players
+- **Raid frame designer** (Frames and bars, Raid frames): size, space between frames, players
   in each column, down or across, order (group, role, name), and name and status text sizes. Where
   the game's own raid frames are used (clients that hide buffs from add-ons in a fight), their size
   is in the game's Edit Mode; here are their lettering and the game's raid frame settings (power
   bars, class colors, pets, only debuffs you can remove, aggro highlight, health text).
-- **Checklist** (`/fgui checklist`, or the Tools tab): your own daily and weekly jobs, ticked per
+- **Checklist** (`/fgui checklist`, or Tools): your own daily and weekly jobs, ticked per
   character and cleared by themselves at the game's resets, with this character's lockouts,
   once-a-day crafts that are ready, and how far your other characters have got.
   `/fgui checklist add daily <job>`, `/fgui checklist add weekly <job>`.
 
 **Added in 11.0**
-- **Fantasy Glass action bars** (Features tab, off until chosen; a `/reload` either way): eight bars
+- **Fantasy Glass action bars** (in `/fgui`, off until chosen; a `/reload` either way): eight bars
   of real action buttons made by the add-on, in place of the game's. Each has its own number of
   buttons (1 to 12), rows, button size, spacing and direction, set at once on the Bars and frames
   tab without the game's Edit Mode. Bar 1 changes page with your stance, form, stealth, a vehicle or
@@ -582,21 +590,21 @@ the ones below. Hover a switch to read what it does.
   in pet battles and vehicles. Everything else a bar has (when it shows, size, opacity, key text,
   macro names, moving it with `/fgui move`) works on them too. The stance and pet bars stay the
   game's.
-- **Frame designer**: on the Bars and frames tab, below the bars, each unit frame (player, target,
+- **Frame designer**: in Frames and bars, below the bars, each unit frame (player, target,
   target's target, focus, focus's target, pet) has its own width, height, power bar height (0
   hides it), text size, portrait side (left, right or none), and where its name and health text
   sit (left, middle, right, or hidden). Changes show at once; a size waits until a fight is over.
-- **Layout gallery**: `/fgui gallery` (or the Layout tab, or the Tools tab) shows six whole screen
+- **Layout gallery**: `/fgui gallery` (or Layout and profiles, or Tools) shows six whole screen
   setups - Classic, Healer raid, Tank, Wide screen, Minimal and Streamer - each drawn as a small
   picture of the screen. One click puts it in place; `/fgui undo` takes it back.
-- **Custom alerts** (Combat tab): when your health, your target's health or your mana is below a
+- **Custom alerts** (Combat): when your health, your target's health or your mana is below a
   number, a buff is missing or on you, an ability is ready, your target is casting, you are in
   combat, your bags are nearly full or your gear is worn: show a line, play a sound, and say it.
   While the game hides a value from add-ons (health and buffs in a fight, on this client), an
   alert that needs it keeps what it last knew rather than guessing.
-- **Spoken alerts** (Features tab, off until chosen): the game's own text-to-speech voice reads out
+- **Spoken alerts** (in `/fgui`, off until chosen): the game's own text-to-speech voice reads out
   ready checks, whispers (with who sent them), missing buffs, loss of control and your custom
-  alerts. Choose which on the Combat tab. `/fgui speak` tries the voice.
+  alerts. Choose which in Combat. `/fgui speak` tries the voice.
 - **Live self-test**: `/fgui selftest` works through the add-on in the real game (every options tab,
   every window, the preview, move mode, What's this?, the gallery, the bars, the alerts) and lists
   what passed and what did not, with the error. Not during a fight.
@@ -604,11 +612,11 @@ the ones below. Hover a switch to read what it does.
   down, change, delete or add after; Here writes a step for where you stand. While you follow a
   guide its next steps are numbered on the world map.
 - **API for other add-ons**: `FantasyGlassUI_API` lets other add-ons add info bar pieces, themes,
-  commands, Tools tab windows, guide answers and movable panels, and dress their windows in this
+  commands, Tools windows, guide answers and movable panels, and dress their windows in this
   add-on's look. `API.md` in the add-on's folder describes it.
 
 **Added in 10.8**
-- **Session card**: `/fgui session` (or Session on the Tools tab) shows time this session, XP an
+- **Session card**: `/fgui session` (or Session in Tools) shows time this session, XP an
   hour, gold, items looted, quests, kills and deaths, with your last session on this character.
 - **Cooldown timeline** (off until chosen): the abilities on your cooldown tracker list slide along
   one slim bar towards ready, the last seconds stretched out. In a fight the game may hide
@@ -619,7 +627,7 @@ the ones below. Hover a switch to read what it does.
   or elixir, or a class buff someone in the group can give. `/fgui ready` any time.
 - **Rare spawn memory**: where the rare alert saw each rare or treasure, marked on the world map.
   Only what you have found yourself. `/fgui rares` lists them; click one for a waypoint.
-- **Theme by place**: on the Look tab, under Accent and style.
+- **Theme by place**: in Look and themes › Theme by place.
 - **Combat text in your lettering** (off until chosen): the floating combat numbers use the
   add-on's lettering; a change shows after a relog.
 - **Crafting queue**: `/fgui queue` adds the recipe selected in your profession window (`/fgui
@@ -633,7 +641,7 @@ the ones below. Hover a switch to read what it does.
 **Added in 10.9**
 - **Tour**: once, after the setup, a few cards point at the main parts of the interface: your
   frames, the info bar, the minimap and Add-ons button, the quest tracker, chat, the options, the
-  guide and What's this. `/fgui tour` (or Tour on the Tools tab) plays it again.
+  guide and What's this. `/fgui tour` (or Tour in Tools) plays it again.
 - **What's this?**: `/fgui whatsthis` (or its key binding) covers every panel of this add-on on
   screen with its name. Point at one to see which feature made it and what it does; click it to go
   to that feature's switch, right-click to switch it off. Esc finishes.
@@ -653,63 +661,49 @@ the ones below. Hover a switch to read what it does.
 
 ## Options
 
-`/fgui` has eight tabs (Features, Look, Layout, Combat, Profiles, Bars and frames, Tools, Guide). Most list their sections down the left and show the one you choose by
-itself; Layout and Tools are each a single page with everything on it. The search box at the top
-of the window finds a setting on any tab and opens the section it is in, and the Language button
-at the top right changes the add-on's language.
+`/fgui` lists its categories down the left: **Home**, **Look and themes**, **Frames and bars**,
+**Combat**, **Groups and raids**, **Bags and items**, **Quests and map**, **Chat and people**,
+**Done for you**, **Layout and profiles** and **Tools**. The category that is open lists its
+sections under it, each with how many of its switches are on; choosing one shows it on the right.
+Every setting there has a line of its own, with what it does under its name and its switch or
+slider at the end, and "after /reload" where it needs one. Point at a line for the whole story.
+Under the lines come the larger pieces that go with them: the theme grid, the frame and bar
+designers, the cooldown list, your lists and rules, and so on.
 
-- **Features**: a switch for every feature, one section at a time. The sections are listed down
-  the left, each with how many of its switches are on; the switches of the chosen section are on
-  the right, and a card under them says what the switch under the mouse does and whether it needs
-  a `/reload`. The tab's own search box lists the matching switches from every section, and the three presets
-  set all the switches at once: Standard (how the add-on comes: everything except the four that
-  flash, pop up or act on their own - notifications, the aggro warning, the AFK screen and level-up
-  screenshots), Everything (those four too) and Minimal (the core interface only).
-- **Look**: five sections. **Glass** and **Fantasy** show every theme at a glance, and **Your
-  themes** the ones you have made. **Accent and style** holds the accent color, the lettering,
-  the game menu and the frame behind the action bars, making your own theme from three colors
-  (panel, rim, accent; watch the interface change as you pick, then save it under a name), and
-  **Theme by place**: a theme for cities and inns, dungeons, raids and everywhere else, switched
-  to by itself as you travel (between themes of the same family). **Portraits and class colors**
-  has the portrait style and your own color for each class, by slider or color wheel.
-- **Layout**: Move panels (right-click any panel while moving for its own settings: scale, nudge,
-  centre, reset, switch off; the action bars, stance bar and pet bar each have a handle too), Preview, Share layout, Role layout, a scale slider for every panel, size sliders for
-  unit and raid frames, an action bar size slider, a text size slider for all lettering, and strength sliders for the chat
-  background, info bar background, HUD panels and windows. Panels snap to a grid and to the screen's centre lines; hold Shift to place freely.
-  Share layout exports only where panels sit and how big they are, as a text string, and imports
-  one from someone else. It can also keep a separate layout for each talent set, and for solo,
-  party and raid, and swap the right one in by itself. **Layout gallery** opens six whole screen
-  setups, each with a picture of where everything goes.
-- **Combat**: the spells for the cooldown tracker, the buffs for alerts, and switches for smooth
-  bars, fades, hit flashes, dimming your frame when idle, showing only your own debuffs on the
-  target, and color-blind cues (letters for debuff types, a mark on dispellable raid members).
-  The **Behavior** section also holds the AFK screen's timing, **custom alerts** (make your own)
-  and **spoken alerts** (which things are said aloud). The last section is **Click casting**: up
-  to eight mouse bindings for unit frames.
-- **Bars and frames**: every action bar, then every unit frame, then nameplates and raid frames,
-  down the left. A bar has its size, opacity, when it shows, key text, macro names, and its rows,
-  buttons, button size, spacing and direction; each of the add-on's own bars can be switched off
-  ("Use this bar"). A frame has its own designer: width, height, power bar height, text size,
-  portrait side, and where its name and health text sit. Nameplates and raid frames have designers
-  of their own.
-- **Profiles**: create, switch and delete profiles, and share one as a text string. Each character
-  remembers which profile it uses.
-- **Tools**: *Ask the guide* at the top - type a question in plain words ("how do I make the bars
-  bigger") and it names the feature or command, with a Show me button that takes you to it. It
-  searches what this add-on knows about itself and nothing else; nothing leaves the game. Below:
-  a button for every window that otherwise needs a command (gold history, loot log, rolls, notes,
-  lockouts, to-do, notepad and the rest); your lists (buff reminders, hidden buffs, keywords,
-  restock) with an Add box and an x on each line; a font and a bar texture from other add-ons;
-  sliders for the execute line, the smaller world map and the master volume; the order of the raid
-  frames; and a few switches suggested for your class, with one button to turn them on.
+- **Home**: a card for each category, a few quick switches, what you changed lately, the three
+  presets (Standard, Everything, Minimal: click twice), *Ask the guide* - type a question in plain
+  words ("how do I make the bars bigger") and it names the feature or command, with a Show me
+  button that takes you to it - and a few switches suggested for your class.
+- **Search every option**, at the top of the list: it finds any setting, says where it lives
+  ("Auto-repair · Bags and items › Vendors"), and Enter goes to the first one.
+- **Simple / All options**, at the top: Simple shows the settings most players look for (it starts
+  that way for a new player); All options shows every one. The search always finds them all.
+- **Undo last change**, at the foot, takes back what you changed, one step at a time, and each
+  category has **Reset to how it came** for its switches and sliders (your lists, rules, designs
+  and positions are kept). Frames and bars has **Show sample frames**.
+- The header names the profile you are changing; click it for Layout and profiles › Profiles. Drag
+  the window's bottom right corner to make it bigger or smaller.
+- **Look and themes**: themes, accent and lettering (and fonts and bar textures from other
+  add-ons), your own theme from three colors, theme by place, class colors, the game's windows,
+  sounds and notifications, the AFK screen and screenshots, and Accessibility.
+- **Frames and bars**: your frames (frame style, portrait, sizes and a designer for each frame,
+  auras, class resource), party, boss and arena, raid frames (with click casting), numbers on
+  frames, the action bars (each with its own size, opacity, when it shows, rows, buttons and
+  spacing), and nameplates.
+- **Combat**: cooldowns, alerts and warnings (custom and spoken alerts, buff alerts and reminders),
+  timers, damage and threat, and against other players.
+- **Layout and profiles**: move panels, preview, share layout, role layout, the layout gallery and a
+  scale slider for every panel; and profiles: create, switch, copy and share them, role
+  templates, what new characters copy, backups and changes to the profile.
+- **Tools**: a button for every window that otherwise needs a command, and things to do once.
 
 ## Themes
 
 Thirty-eight glass themes (Smoke, Frost, Midnight, Aurora, Rose, Emerald, Ocean, Sunset, Crimson,
 Orchid, Gilded, Glacier, Amethyst, Lagoon, Honey, Storm, Coral, Jade, Nebula, Sapphire, Ruby, Topaz, Pearl, Obsidian, Mint, Lavender, Copper,
 Deep sea, Cherry blossom, Lime, Indigo, Steel blue, Mocha, Void, Graphite, Noir, High
-contrast, and one tinted with your class color) and thirty-eight fantasy themes with rims, grain and
-ornament (Warm, Dark, Cold, Forest, Blood, Arcane, Sand, Forge, Royal, Abyss, Fel, Bone, Onyx,
+contrast, and one tinted with your class color) and thirty-nine fantasy themes with rims, grain and
+ornament (Warm, Dark, Cold, Forest, Blood, Arcane, Sand, Forge, Royal, Abyss, Fel, Bone, Onyx, High contrast,
 Dragonfire, Moonlit, Verdigris, Autumn, Twilight, Plague, Steel, Sunwell, Rosewood, Frostfire, Emerald
 Dream, Shadow, Titan, Lightforged, Nether, Tundra, Jungle, Molten, Tidal, Wine, Ashen, Oak,
 Stormcaller, Starlight, and one in your class color), and thirty-eight celestial themes, night skies
@@ -720,10 +714,10 @@ Lettering is a separate choice, with thirty-four styles. Plain: Modern, Clean, S
 Rounded, Condensed, Terminal, Slab, Narrow, Future, Soft, Military, Circuit, Blocky, Heavy titles,
 Arcade. With character: Fantasy titles, Scholar, Manuscript, Storybook, Calligraphy, Celtic, Gothic,
 Engraved, Poster, Imperial, Chronicle, Roman, Medieval, Illuminated, Warband, Knightly. And the game's own fonts. You can also
-make your own theme on the Look tab, as a glass, fantasy or celestial theme, and share it as a text
-string with Export and Import. The Look tab lists themes under four headings: Glass, Fantasy, Celestial
-and Your themes. The tab scrolls (mouse wheel) so that every theme and lettering style has its own
-button; so do the theme and lettering grids in the setup. It also has a switch for a framed panel behind the action bars (off by default). Theme, accent and lettering
+make your own theme in Look and themes, as a glass, fantasy or celestial theme, and share it as a text
+string with Export and Import. Look and themes › Themes lists themes under four headings: Glass, Fantasy,
+Celestial and Your themes, every one with its own button; so do the theme and lettering grids in the
+setup. Frames and bars › Action bars has a switch for a framed panel behind the action bars (off by default). Theme, accent and lettering
 change on the spot; switching between the glass, fantasy and celestial families finishes after a `/reload`.
 Glass panels have rounded corners on clients that support it.
 
@@ -740,8 +734,8 @@ mode stays on through reloads and relogging until you leave it.
   special secure button. By default the bag window has one such button that follows the mouse, and
   it cannot be moved during a fight: so in combat, right-clicking an item with a "Use:" effect only
   prints a reminder. Keep potions and the like on an action bar.
-  There is a new option that removes this limit: **"Bags: use items in combat"** on the
-  Features tab. It gives every slot its own secure button. The price is that the bag window's
+  There is an option that removes this limit: **"Bags: use items in combat"** in Bags and
+  items › Bags and bank. It gives every slot its own secure button. The price is that the bag window's
   arrangement is frozen while you fight (icons and counts still update) and re-sorts afterwards. It
   is off until you choose it, and if your client cannot support it, it switches itself back off and
   says so in `/fgui check`.
@@ -767,11 +761,15 @@ mode stays on through reloads and relogging until you leave it.
 
 ## Accessibility
 
-- **High contrast**: a theme of pure black panels with white rims and text (Look tab).
+All in Look and themes › Accessibility:
+
 - **Color-blind safe colors**: good and bad are shown in blue and orange instead of green and red,
-  on talents, nameplates, the info bar and warnings (Combat tab).
-- **Reduce motion**: no fades, pulses, gliding bars or camera drift (Combat tab).
-- **Text size**: one slider scales all lettering (Layout tab).
+  on talents, nameplates, the info bar and warnings; debuffs get a letter, and item quality gets
+  dots (one for uncommon up to four for legendary) in bags, on gear and on loot rolls.
+- **Reduce motion**: no fades, pulses, gliding bars or camera drift.
+- **High contrast**: two themes of pure black panels, one glass (white rims) and one fantasy (gold).
+- **Text size**: 100, 120 or 140%, or any size from 70 to 150 with `/fgui textsize`; and an
+  interface size slider for the whole interface.
 
 ## Other add-ons
 

@@ -21,7 +21,7 @@ The game does not let any add-on move or resize frames in combat. Wait for the f
 `/fgui help` lists every command in a window you can search. If you mistype one, the add-on suggests the nearest.
 
 ## A player's tooltip is missing a line
-Check the **Player tooltips** switches on the Features tab ([Player Tooltips](Player-Tooltips)). The game also keeps some things hidden from add-ons, and those lines are left as the game writes them.
+Check the **Player tooltips** switches in `/fgui` ([Player Tooltips](Player-Tooltips)). The game also keeps some things hidden from add-ons, and those lines are left as the game writes them.
 
 ## Buffs look different in combat
 On WoW Forever, buffs and debuffs are hidden from add-ons during combat, so the game's own buff frames are restyled and used instead.

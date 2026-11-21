@@ -11,16 +11,14 @@ The download holds **three folders**: `FantasyGlassUI`, `FantasyGlassUI_Options`
 
 ## 2. The setup (first login)
 
-The setup opens by itself the first time you log in. It takes nine short steps:
+The setup opens by itself the first time you log in. It takes four short steps:
 
-- **Language:** your game's own, or any of the nine the add-on speaks.
-- **Role:** this places your frames where a tank, healer or damage player wants them.
-- **Look:** pick a family, Glass, Fantasy or Celestial, then one of its 38 themes.
-- **Lettering:** the style of text across the whole interface.
-- **Features:** how much the add-on should take over.
-- **Layout:** where your panels go.
+- **Welcome:** your language, and how much the add-on should take over: the whole interface, only a new look for the game's own frames, or everything.
+- **How you play:** your role (this places your frames where a tank, healer or damage player wants them), and what you enjoy: questing, groups, PvP, collecting, being social. Each switches on what suits it.
+- **Your look:** pick a family, Glass, Fantasy or Celestial, then one of its themes, an accent and a text size.
+- **Ready:** a summary of what you chose, and a layout to start from.
 
-**Coming from another UI?** On the layout step, one click puts your frames where ElvUI or Tukui, RealUI, GW2 UI or the game's own interface had them.
+**Coming from another UI?** On the last step, one click puts your frames where ElvUI or Tukui, RealUI, GW2 UI or the game's own interface had them.
 
 Press **Finish and reload** at the end. You can run the setup again any time with `/fgui setup`.
 
@@ -38,33 +36,34 @@ Type `/fgui move`. Every panel shows a handle, and you can drag it anywhere.
 
 ## 4. Choose your look
 
-Open the options with `/fgui` and go to the **Look** tab.
+Open the settings with `/fgui` and choose **Look and themes** in the list on the left.
 
-- **Themes:** 114 of them, in three families.
+- **Themes:** 115 of them, in three families.
   - **Glass:** see-through panes with soft shadows.
   - **Fantasy:** solid panels with gold ornaments.
   - **Celestial:** a night sky with stars and constellations.
 - **Previews:** each theme button shows a small picture. Point at one to see a larger card, and click it to wear it.
-- **Make your own:** set three colors at the bottom of the Look tab.
-- **A theme for each kind of place** is also on the Look tab: cities, dungeons, raids and battlegrounds.
+- **Make your own:** set three colors in Look and themes › Your own theme.
+- **A theme for each kind of place** is in Look and themes › Theme by place: cities, dungeons, raids and battlegrounds.
 
 Switching to another family finishes after a `/reload`.
 
-- **Frame style:** under **Portraits and class colors** on the Look tab. **Starcut** (new in 11.12) cuts health and power bars to points that glow in their own color, beside a diamond portrait with stars on its points, and since 11.13 it reaches every bar: your cast bar, the crafting bar, the class resource, raid frames, nameplates, timers, experience and totems. Since 11.14 action buttons and bag slots are cut like gems too (bag slots with their rim in the item's quality color), and the Features tab has **Minimap: diamond**. Since 11.15 windows and tooltips have their corners cut too, with a fine rim along each cut and stars on big windows. **Classic** brings back the box everywhere at once (chosen during a fight, it changes when the fight is over).
+- **Frame style:** in **Frames and bars › Your frames**. **Starcut** (new in 11.12) cuts health and power bars to points that glow in their own color, beside a diamond portrait with stars on its points, and since 11.13 it reaches every bar: your cast bar, the crafting bar, the class resource, raid frames, nameplates, timers, experience and totems. Since 11.14 action buttons and bag slots are cut like gems too (bag slots with their rim in the item's quality color), and `/fgui` has **Minimap: diamond**. Since 11.15 windows and tooltips have their corners cut too, with a fine rim along each cut and stars on big windows. **Classic** brings back the box everywhere at once (chosen during a fight, it changes when the fight is over).
 
-- **Text and interface size:** on the **Layout** tab, **Text size** (70 to 150%) sets the add-on's lettering and **Interface size** (50 to 150%) scales the whole interface. From chat: `/fgui textsize 120` and `/fgui uisize 90` (`reset` puts either back). On the sliders, both take effect when you let go.
+- **Text and interface size:** in **Look and themes › Accessibility**, three text sizes for the add-on's lettering and **Interface size** (50 to 150%) for the whole interface. From chat: `/fgui textsize 120` (any size from 70 to 150) and `/fgui uisize 90` (`reset` puts either back). The slider takes effect when you let go.
 
 ## 5. Pick your features
 
-The **Features** tab has every part of the add-on as a switch, in eleven sections.
+Every part of the add-on is a switch, in the category and section it belongs to: Frames and bars, Combat, Bags and items, Quests and map and the rest, listed down the left of `/fgui`. **Home** has a card for each. At the top, **Simple** shows the settings most players look for and **All options** shows every one.
 
-- **Descriptions:** point at a switch to read what it does.
+- **Descriptions:** every setting says what it does under its name; point at it for the whole story.
+- **Undo:** **Undo last change** at the foot of the window takes back what you changed, one step at a time.
 - **Safe defaults:** helpers that act for you (auto-accept, auto-sell and so on) are off until you choose them.
-- **Search:** the box at the top finds any setting.
+- **Search:** the box at the top of the list finds any setting and says where it lives.
 
 ## 6. Action bars
 
-- **Bars and frames tab** (`/fgui bars`): set each bar's buttons, rows, size, spacing, and when it shows (always, when pointed at, in combat and so on).
+- **Frames and bars › Action bars** (`/fgui bars`): set each bar's buttons, rows, size, spacing, and when it shows (always, when pointed at, in combat and so on).
 - **Fantasy Glass action bars:** switch these on to get eight bars of the add-on's own, plus a stance bar, without Edit Mode.
 - **Keybind mode** (`/fgui bind`): hover a button and press a key.
 - **Key binding sheet** (`/fgui keys`): every bar and its keys on one screen.
@@ -129,14 +128,14 @@ The **Tools** button on the menu bar (or `/fgui tools`) opens a button for every
 - **Player tooltips:** every line of a player's tooltip can be hidden or shown: title, realm, guild, level line, faction, PvP and health bar.
 - **New lines:** you can also add their role, "Your friend" / "In your guild", and their health in numbers.
 - **During fights:** player tooltips can be put away while you fight.
-- **Where:** the Features tab, under **Player tooltips: choose the lines**. See [Player Tooltips](Player-Tooltips).
+- **Where:** Chat and people › Player tooltips. See [Player Tooltips](Player-Tooltips).
 
 ## 9. Keep your setup safe and share it
 
 - **Backups** are made by themselves before each update and once a day. `/fgui backup` lists them.
 - **History:** each profile remembers your changes. `/fgui history` lists them; click one to undo it.
 - **Reset:** `/fgui reset` starts a profile over. Type it twice; a backup is kept first. See [Backups and Undo](Backups-and-Undo).
-- **Profiles tab:** a profile per character, Tank, Healer and Damage templates, and **Copy my whole UI**. That button gives one string with your profile, layout, theme, bars and rules, for a friend or your guild to paste in.
+- **Layout and profiles › Profiles:** a profile per character, Tank, Healer and Damage templates, and **Copy my whole UI**. That button gives one string with your profile, layout, theme, bars and rules, for a friend or your guild to paste in.
 
 ## 10. If something goes wrong
 

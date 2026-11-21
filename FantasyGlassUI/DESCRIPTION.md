@@ -10,13 +10,13 @@ A guided setup has you playing in two minutes. Every character after your first 
 
 **[Wiki](https://github.com/fantasyglassui/FantasyGlassUI/wiki)**: getting started, every feature and command, and troubleshooting.
 
-## Three families, 114 themes
+## Three families, 115 themes
 
 - **Glass:** clear panes with soft shadows and a bright top edge. You set how see-through they are.
 - **Fantasy:** solid panels with a rich grain, a dark rim and gold corner ornaments.
 - **Celestial:** a moving night sky with twinkling stars, a faint Milky Way, a real constellation on big windows and now and then a shooting star, with a star-chart minimap.
 
-There are 38 themes in each family, including one in your own class color. You also get 31 accent colors and 34 lettering styles, a preview of every theme, and an editor to make your own (or make one on [the website](https://fantasyglassui.com) and paste its code in). You can even give each kind of place its own theme: one for cities, another for raids.
+Glass and Celestial have 38 themes each and Fantasy has 39, and each family has one in your own class color. You also get 31 accent colors and 34 lettering styles, a preview of every theme, and an editor to make your own (or make one on [the website](https://fantasyglassui.com) and paste its code in). You can even give each kind of place its own theme: one for cities, another for raids.
 
 ## What you get
 

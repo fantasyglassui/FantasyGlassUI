@@ -6,13 +6,13 @@
 
 **Does it replace ElvUI / Bartender / bag add-ons?** It does all of those jobs. If you keep another add-on for one of them, Fantasy Glass UI leaves that job to it. Coming from ElvUI, Tukui, RealUI or GW2 UI, the setup has a one-click layout close to what you are used to.
 
-**Will my settings carry to my other characters?** A new character gets its own copy of your main's setup, fitted to its class. `/fgui main` chooses your main; the Profiles tab can share one profile instead.
+**Will my settings carry to my other characters?** A new character gets its own copy of your main's setup, fitted to its class. `/fgui main` chooses your main; Layout and profiles › Profiles can share one profile instead.
 
-**Can I share my setup?** Yes: the Profiles tab's **Copy my whole UI** gives one string with your profile, layout, theme, bars and rules; **Send whole UI** sends it to another player who has the add-on.
+**Can I share my setup?** Yes: **Copy my whole UI** in Layout and profiles › Profiles gives one string with your profile, layout, theme, bars and rules; **Send whole UI** sends it to another player who has the add-on.
 
 **Which languages?** English, German, French, Spanish, Italian, Portuguese, Russian, Korean and Simplified Chinese: the options, the chat messages, the window notes and the command help. `/fgui language` switches. Names of items, spells and places come from the game, in the game's language.
 
-**Can I change what player tooltips show?** Yes, line by line, on the Features tab. See [Player Tooltips](Player-Tooltips).
+**Can I change what player tooltips show?** Yes, line by line, in `/fgui`. See [Player Tooltips](Player-Tooltips).
 
 **Is there a key binding for ...?** Nineteen: Esc, Key Bindings, AddOns. See [Keys and Shortcuts](Keys-and-Shortcuts).
 

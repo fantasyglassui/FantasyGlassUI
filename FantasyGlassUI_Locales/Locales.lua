@@ -21,6 +21,12 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["A new settings window: the categories down the left, Home with a card for each, and every setting on a line of its own that says what it does. The search tells you where each setting lives, and Undo takes back your last change."] = "Ein neues Einstellungsfenster: die Kategorien links, Start mit einer Karte für jede, und jede Einstellung in einer eigenen Zeile, die sagt, was sie tut. Die Suche sagt, wo jede Einstellung liegt, und Rückgängig nimmt Eure letzte Änderung zurück.",
+    ["Simple or All options, at the top: the settings most players look for, or every one. The search always finds them all."] = "Einfach oder Alle Optionen, oben: die Einstellungen, die die meisten suchen, oder jede. Die Suche findet immer alle.",
+    ["A new setup in four steps: how you play (your role and what you enjoy), your look, and what you chose. It can also keep the game's own frames and only restyle them."] = "Eine neue Einrichtung in vier Schritten: wie Ihr spielt (Eure Rolle und was Euch gefällt), Euer Aussehen und was Ihr gewählt habt. Sie kann auch die Fenster des Spiels behalten und nur neu gestalten.",
+    ["Accessibility, in one place: color-blind safe colors with dots for item quality, reduce motion, a second high-contrast theme (Fantasy) and three text sizes."] = "Barrierefreiheit an einem Ort: farbenblind-sichere Farben mit Punkten für die Gegenstandsqualität, weniger Bewegung, ein zweites kontrastreiches Thema (Fantasy) und drei Textgrößen.",
+    ["Settings from before profiles (versions before 9.0) are no longer read: they start afresh, and the setup opens."] = "Einstellungen aus der Zeit vor den Profilen (Versionen vor 9.0) werden nicht mehr gelesen: sie beginnen neu, und die Einrichtung öffnet sich.",
+    ["Frames and bars: each action bar's size, opacity, when it shows, rows and spacing"] = "Fenster und Leisten: Größe, Deckkraft, Sichtbarkeit, Reihen und Abstand jeder Aktionsleiste",
     ["Bar size is set for all bars together, in Frames and bars › Action bars."] = "Die Leistengröße gilt für alle Leisten zusammen, unter Fenster und Leisten › Aktionsleisten.",
     ["|cffffff00/fgui setup|r goes through it yourself; Layout and profiles › Profiles shares another profile instead."] = "|cffffff00/fgui setup|r geht es selbst durch; Anordnung und Profile › Profile übernimmt stattdessen ein anderes Profil.",
     ["off (switch on \"Bags: use items in combat\" in Bags and items › Bags and bank to try it)"] = "aus (schaltet \"Bags: use items in combat\" unter Taschen und Gegenstände › Taschen und Bank an, um es zu probieren)",
@@ -3162,6 +3168,12 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["A new settings window: the categories down the left, Home with a card for each, and every setting on a line of its own that says what it does. The search tells you where each setting lives, and Undo takes back your last change."] = "Une nouvelle fenêtre de réglages : les catégories à gauche, l'accueil avec une carte pour chacune, et chaque réglage sur sa propre ligne qui dit ce qu'il fait. La recherche indique où se trouve chaque réglage, et Annuler défait votre dernière modification.",
+    ["Simple or All options, at the top: the settings most players look for, or every one. The search always finds them all."] = "Simple ou Toutes les options, en haut : les réglages que la plupart cherchent, ou tous. La recherche les trouve toujours tous.",
+    ["A new setup in four steps: how you play (your role and what you enjoy), your look, and what you chose. It can also keep the game's own frames and only restyle them."] = "Une nouvelle configuration en quatre étapes : votre façon de jouer (votre rôle et ce que vous aimez), votre apparence et ce que vous avez choisi. Elle peut aussi garder les cadres du jeu et seulement les restyler.",
+    ["Accessibility, in one place: color-blind safe colors with dots for item quality, reduce motion, a second high-contrast theme (Fantasy) and three text sizes."] = "L'accessibilité au même endroit : couleurs adaptées au daltonisme avec des points pour la qualité des objets, mouvements réduits, un second thème à fort contraste (Fantasy) et trois tailles de texte.",
+    ["Settings from before profiles (versions before 9.0) are no longer read: they start afresh, and the setup opens."] = "Les réglages d'avant les profils (versions antérieures à 9.0) ne sont plus lus : ils repartent de zéro et la configuration s'ouvre.",
+    ["Frames and bars: each action bar's size, opacity, when it shows, rows and spacing"] = "Cadres et barres : taille, opacité, affichage, rangées et espacement de chaque barre d'action",
     ["Bar size is set for all bars together, in Frames and bars › Action bars."] = "La taille des barres se règle pour toutes ensemble, dans Cadres et barres › Barres d'action.",
     ["|cffffff00/fgui setup|r goes through it yourself; Layout and profiles › Profiles shares another profile instead."] = "|cffffff00/fgui setup|r la parcourt vous-même ; Disposition et profils › Profils partage plutôt un autre profil.",
     ["off (switch on \"Bags: use items in combat\" in Bags and items › Bags and bank to try it)"] = "désactivé (activez « Bags: use items in combat » dans Sacs et objets › Sacs et banque pour l'essayer)",
@@ -6303,6 +6315,12 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["A new settings window: the categories down the left, Home with a card for each, and every setting on a line of its own that says what it does. The search tells you where each setting lives, and Undo takes back your last change."] = "Una nueva ventana de ajustes: las categorías a la izquierda, Inicio con una tarjeta para cada una y cada ajuste en su propia línea que dice qué hace. La búsqueda dice dónde está cada ajuste y Deshacer revierte tu último cambio.",
+    ["Simple or All options, at the top: the settings most players look for, or every one. The search always finds them all."] = "Sencillo o Todas las opciones, arriba: los ajustes que busca la mayoría, o todos. La búsqueda siempre los encuentra todos.",
+    ["A new setup in four steps: how you play (your role and what you enjoy), your look, and what you chose. It can also keep the game's own frames and only restyle them."] = "Una nueva configuración en cuatro pasos: cómo juegas (tu rol y lo que te gusta), tu aspecto y lo que elegiste. También puede conservar los marcos del juego y solo cambiarles el estilo.",
+    ["Accessibility, in one place: color-blind safe colors with dots for item quality, reduce motion, a second high-contrast theme (Fantasy) and three text sizes."] = "Accesibilidad en un solo sitio: colores seguros para daltónicos con puntos para la calidad de los objetos, menos movimiento, un segundo tema de alto contraste (Fantasía) y tres tamaños de texto.",
+    ["Settings from before profiles (versions before 9.0) are no longer read: they start afresh, and the setup opens."] = "Los ajustes de antes de los perfiles (versiones anteriores a 9.0) ya no se leen: empiezan de cero y se abre la configuración.",
+    ["Frames and bars: each action bar's size, opacity, when it shows, rows and spacing"] = "Marcos y barras: tamaño, opacidad, cuándo se muestra, filas y espaciado de cada barra de acción",
     ["Bar size is set for all bars together, in Frames and bars › Action bars."] = "El tamaño se ajusta para todas las barras a la vez, en Marcos y barras › Barras de acción.",
     ["|cffffff00/fgui setup|r goes through it yourself; Layout and profiles › Profiles shares another profile instead."] = "|cffffff00/fgui setup|r la recorre tú mismo; Disposición y perfiles › Perfiles comparte otro perfil en su lugar.",
     ["off (switch on \"Bags: use items in combat\" in Bags and items › Bags and bank to try it)"] = "desactivado (activa \"Bags: use items in combat\" en Bolsas y objetos › Bolsas y banco para probarlo)",
@@ -9447,6 +9465,12 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["A new settings window: the categories down the left, Home with a card for each, and every setting on a line of its own that says what it does. The search tells you where each setting lives, and Undo takes back your last change."] = "Новое окно настроек: категории слева, главная страница с карточкой для каждой и каждая настройка на своей строке с пояснением. Поиск показывает, где находится настройка, а «Отменить» возвращает последнее изменение.",
+    ["Simple or All options, at the top: the settings most players look for, or every one. The search always finds them all."] = "«Просто» или «Все настройки» вверху: настройки, которые ищут чаще всего, или все. Поиск всегда находит любые.",
+    ["A new setup in four steps: how you play (your role and what you enjoy), your look, and what you chose. It can also keep the game's own frames and only restyle them."] = "Новая настройка в четыре шага: как вы играете (ваша роль и что вам нравится), ваш вид и что вы выбрали. Можно также оставить рамки самой игры и лишь обновить их вид.",
+    ["Accessibility, in one place: color-blind safe colors with dots for item quality, reduce motion, a second high-contrast theme (Fantasy) and three text sizes."] = "Доступность в одном месте: цвета для дальтоников с точками для качества предметов, меньше движения, вторая высококонтрастная тема (фэнтези) и три размера текста.",
+    ["Settings from before profiles (versions before 9.0) are no longer read: they start afresh, and the setup opens."] = "Настройки времён до профилей (версии до 9.0) больше не читаются: они начинаются заново, и открывается настройка.",
+    ["Frames and bars: each action bar's size, opacity, when it shows, rows and spacing"] = "Рамки и панели: размер, прозрачность, когда видна, ряды и отступы каждой панели действий",
     ["Bar size is set for all bars together, in Frames and bars › Action bars."] = "Размер задаётся сразу для всех панелей в разделе «Рамки и панели › Панели действий».",
     ["|cffffff00/fgui setup|r goes through it yourself; Layout and profiles › Profiles shares another profile instead."] = "|cffffff00/fgui setup|r — пройти самому; «Расположение и профили › Профили» — взять другой профиль.",
     ["off (switch on \"Bags: use items in combat\" in Bags and items › Bags and bank to try it)"] = "выкл. (включите «Bags: use items in combat» в разделе «Сумки и предметы › Сумки и банк», чтобы попробовать)",
@@ -12588,6 +12612,12 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["A new settings window: the categories down the left, Home with a card for each, and every setting on a line of its own that says what it does. The search tells you where each setting lives, and Undo takes back your last change."] = "Uma nova janela de configurações: as categorias à esquerda, o Início com um cartão para cada uma e cada opção numa linha própria que diz o que faz. A busca diz onde cada opção fica, e Desfazer reverte sua última mudança.",
+    ["Simple or All options, at the top: the settings most players look for, or every one. The search always finds them all."] = "Simples ou Todas as opções, no topo: as opções que a maioria procura, ou todas. A busca sempre acha todas.",
+    ["A new setup in four steps: how you play (your role and what you enjoy), your look, and what you chose. It can also keep the game's own frames and only restyle them."] = "Uma nova configuração em quatro passos: como você joga (sua função e o que gosta), seu visual e o que escolheu. Ela também pode manter os quadros do próprio jogo e só mudar o estilo.",
+    ["Accessibility, in one place: color-blind safe colors with dots for item quality, reduce motion, a second high-contrast theme (Fantasy) and three text sizes."] = "Acessibilidade num só lugar: cores seguras para daltônicos com pontos para a qualidade dos itens, menos movimento, um segundo tema de alto contraste (Fantasia) e três tamanhos de texto.",
+    ["Settings from before profiles (versions before 9.0) are no longer read: they start afresh, and the setup opens."] = "Configurações de antes dos perfis (versões anteriores à 9.0) não são mais lidas: começam do zero e a configuração abre.",
+    ["Frames and bars: each action bar's size, opacity, when it shows, rows and spacing"] = "Quadros e barras: tamanho, opacidade, quando aparece, fileiras e espaçamento de cada barra de ação",
     ["Bar size is set for all bars together, in Frames and bars › Action bars."] = "O tamanho vale para todas as barras juntas, em Quadros e barras › Barras de ação.",
     ["|cffffff00/fgui setup|r goes through it yourself; Layout and profiles › Profiles shares another profile instead."] = "|cffffff00/fgui setup|r percorre tudo você mesmo; Disposição e perfis › Perfis compartilha outro perfil.",
     ["off (switch on \"Bags: use items in combat\" in Bags and items › Bags and bank to try it)"] = "desligado (ligue \"Bags: use items in combat\" em Bolsas e itens › Bolsas e banco para testar)",
@@ -15729,6 +15759,12 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["A new settings window: the categories down the left, Home with a card for each, and every setting on a line of its own that says what it does. The search tells you where each setting lives, and Undo takes back your last change."] = "Una nuova finestra delle impostazioni: le categorie a sinistra, la Home con una scheda per ciascuna e ogni impostazione su una riga sua che dice cosa fa. La ricerca dice dove si trova ogni impostazione e Annulla ritira l'ultima modifica.",
+    ["Simple or All options, at the top: the settings most players look for, or every one. The search always finds them all."] = "Semplice o Tutte le opzioni, in alto: le impostazioni che cercano quasi tutti, oppure tutte. La ricerca le trova sempre tutte.",
+    ["A new setup in four steps: how you play (your role and what you enjoy), your look, and what you chose. It can also keep the game's own frames and only restyle them."] = "Una nuova configurazione in quattro passi: come giochi (il tuo ruolo e cosa ti piace), il tuo aspetto e cosa hai scelto. Può anche tenere i riquadri del gioco e solo ridisegnarli.",
+    ["Accessibility, in one place: color-blind safe colors with dots for item quality, reduce motion, a second high-contrast theme (Fantasy) and three text sizes."] = "Accessibilità in un unico posto: colori adatti ai daltonici con punti per la qualità degli oggetti, meno movimento, un secondo tema ad alto contrasto (Fantasy) e tre dimensioni del testo.",
+    ["Settings from before profiles (versions before 9.0) are no longer read: they start afresh, and the setup opens."] = "Le impostazioni di prima dei profili (versioni precedenti alla 9.0) non vengono più lette: ripartono da capo e si apre la configurazione.",
+    ["Frames and bars: each action bar's size, opacity, when it shows, rows and spacing"] = "Riquadri e barre: dimensione, opacità, quando si vede, righe e spaziatura di ogni barra delle azioni",
     ["Bar size is set for all bars together, in Frames and bars › Action bars."] = "La dimensione vale per tutte le barre insieme, in Riquadri e barre › Barre delle azioni.",
     ["|cffffff00/fgui setup|r goes through it yourself; Layout and profiles › Profiles shares another profile instead."] = "|cffffff00/fgui setup|r la percorri da te; Disposizione e profili › Profili condivide invece un altro profilo.",
     ["off (switch on \"Bags: use items in combat\" in Bags and items › Bags and bank to try it)"] = "disattivo (attiva \"Bags: use items in combat\" in Borse e oggetti › Borse e banca per provarlo)",
@@ -18870,6 +18906,12 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["A new settings window: the categories down the left, Home with a card for each, and every setting on a line of its own that says what it does. The search tells you where each setting lives, and Undo takes back your last change."] = "새 설정 창: 왼쪽에 분류, 분류마다 카드가 있는 홈, 설정마다 무엇을 하는지 알려 주는 한 줄. 검색은 설정이 어디 있는지 알려 주고, 되돌리기는 마지막 변경을 취소합니다.",
+    ["Simple or All options, at the top: the settings most players look for, or every one. The search always finds them all."] = "위쪽의 간단히 또는 모든 옵션: 대부분이 찾는 설정만, 또는 전부. 검색은 언제나 모두 찾습니다.",
+    ["A new setup in four steps: how you play (your role and what you enjoy), your look, and what you chose. It can also keep the game's own frames and only restyle them."] = "새 설정은 네 단계입니다: 플레이 방식(역할과 즐기는 것), 모양, 고른 내용. 게임 자체 프레임은 그대로 두고 모양만 바꿀 수도 있습니다.",
+    ["Accessibility, in one place: color-blind safe colors with dots for item quality, reduce motion, a second high-contrast theme (Fantasy) and three text sizes."] = "접근성을 한곳에: 아이템 등급 점이 있는 색각 이상 친화 색상, 움직임 줄이기, 두 번째 고대비 테마(판타지), 글자 크기 세 가지.",
+    ["Settings from before profiles (versions before 9.0) are no longer read: they start afresh, and the setup opens."] = "프로필 이전(9.0 이전 버전)의 설정은 더 이상 읽지 않습니다: 새로 시작하며 설정이 열립니다.",
+    ["Frames and bars: each action bar's size, opacity, when it shows, rows and spacing"] = "프레임 및 바: 행동 단축바마다 크기, 불투명도, 표시 조건, 줄, 간격",
     ["Bar size is set for all bars together, in Frames and bars › Action bars."] = "바 크기는 프레임 및 바 › 행동 단축바에서 모든 바에 함께 정합니다.",
     ["|cffffff00/fgui setup|r goes through it yourself; Layout and profiles › Profiles shares another profile instead."] = "|cffffff00/fgui setup|r 으로 직접 진행하거나, 배치 및 프로필 › 프로필에서 다른 프로필을 가져옵니다.",
     ["off (switch on \"Bags: use items in combat\" in Bags and items › Bags and bank to try it)"] = "꺼짐 (가방 및 아이템 › 가방 및 은행에서 \"Bags: use items in combat\"를 켜 보세요)",
@@ -22014,6 +22056,12 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["A new settings window: the categories down the left, Home with a card for each, and every setting on a line of its own that says what it does. The search tells you where each setting lives, and Undo takes back your last change."] = "全新的设置窗口：左侧是类别，首页每个类别一张卡片，每项设置单独一行并说明用途。搜索会告诉你每项设置在哪里，撤销可还原你的上次更改。",
+    ["Simple or All options, at the top: the settings most players look for, or every one. The search always finds them all."] = "顶部的“简洁”或“全部选项”：大多数玩家要找的设置，或全部设置。搜索总能找到所有设置。",
+    ["A new setup in four steps: how you play (your role and what you enjoy), your look, and what you chose. It can also keep the game's own frames and only restyle them."] = "全新的四步设置：你的玩法（职责和喜好）、外观，以及你的选择。也可以保留游戏自带的框体，只换外观。",
+    ["Accessibility, in one place: color-blind safe colors with dots for item quality, reduce motion, a second high-contrast theme (Fantasy) and three text sizes."] = "辅助功能集中在一处：适合色盲的颜色（物品品质用圆点标出）、减少动效、第二套高对比度主题（奇幻）和三种文字大小。",
+    ["Settings from before profiles (versions before 9.0) are no longer read: they start afresh, and the setup opens."] = "配置功能之前（9.0 以前版本）的设置不再读取：将重新开始，并打开设置向导。",
+    ["Frames and bars: each action bar's size, opacity, when it shows, rows and spacing"] = "框体与动作条：每条动作条的大小、不透明度、显示时机、行数和间距",
     ["Bar size is set for all bars together, in Frames and bars › Action bars."] = "动作条大小在“框体与动作条 › 动作条”中统一设置。",
     ["|cffffff00/fgui setup|r goes through it yourself; Layout and profiles › Profiles shares another profile instead."] = "|cffffff00/fgui setup|r 自己逐步设置；或在“布局与配置 › 配置”中共用另一个配置。",
     ["off (switch on \"Bags: use items in combat\" in Bags and items › Bags and bank to try it)"] = "关（在“背包与物品 › 背包与银行”中开启“Bags: use items in combat”试试）",

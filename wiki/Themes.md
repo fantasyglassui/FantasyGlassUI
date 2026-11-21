@@ -1,12 +1,12 @@
 # Themes
 
-114 themes in three families, on the **Look** tab (`/fgui look`) and in the setup. Each theme button shows a small picture; point at one for a larger card, click to wear it. Switching to another family finishes after a `/reload`.
+115 themes in three families, in **Look and themes** (`/fgui look`) and in the setup. Each theme button shows a small picture; point at one for a larger card, click to wear it. Switching to another family finishes after a `/reload`.
 
-- **Glass:** see-through panes with soft shadows and a bright top edge. How see-through is yours to set (Layout tab).
+- **Glass:** see-through panes with soft shadows and a bright top edge. How see-through is yours to set (Look and themes › Game windows).
 - **Fantasy:** solid panels with a dark rim, a grain and gold corner ornaments.
 - **Celestial:** moving night skies (twinkling stars, a slowly breathing horizon, now and then a shooting star) that deepen toward the top and glow along the foot, sparse stars and a faint Milky Way, one real constellation and an orbit on large windows, buttons lit from inside, and the minimap as a star chart (square with degree marks and the sun or moon along the top, or round with a slowly turning orbit). (Celestial took the place of Runic in 11.11: a Runic theme in use became the Celestial theme made from it.)
 
-Each family also has one theme in **your class color**. You can make your own from three colors (panel, edge, accent) at the bottom of the Look tab, in any family, and share a theme as a line of text.
+Each family also has one theme in **your class color**. You can make your own from three colors (panel, edge, accent) in Look and themes › Your own theme, in any family, and share a theme as a line of text.
 
 ## Glass (38, one in your class color)
 
@@ -26,4 +26,4 @@ Tooltips wear the theme too: glass panes on Glass, leather with small gold corne
 
 ## Lettering and accents
 
-34 lettering styles and 31 accent colors, also on the Look tab. **A theme for each kind of place** (cities, dungeons, raids, battlegrounds and more) switches by itself when you go there.
+34 lettering styles and 31 accent colors, also in Look and themes. **A theme for each kind of place** (cities, dungeons, raids, battlegrounds and more) switches by itself when you go there.
