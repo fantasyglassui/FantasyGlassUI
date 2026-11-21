@@ -1,6 +1,6 @@
 # Quest planner: the guide plans your leveling route
 
-Date: 2026-11-21 · Status: design, awaiting approval · Part of the quest guide, which is not released yet.
+Date: 2026-11-21 · Status: design, awaiting approval (reviewed twice by a builder) · Part of the quest guide, which is not released yet.
 
 ## Intent
 
@@ -38,7 +38,8 @@ plans again, so the route stays right for where you are and what you have.
 
 - A stutter or freeze while planning.
 - Lua errors when Questie is missing, old, or changed by an update.
-- Sending a solo player to elite or group quests while Solo is chosen.
+- Sending a solo player to elite or group quests while Solo is chosen (the one exception is #36, elites
+  your class has already soloed, behind its own switch).
 - Routing through a flight path the character does not know, or to a quest it cannot take
   (wrong faction, class, profession, reputation, or prerequisites not done).
 - Presenting the quest guide as available to the public. Everything stays behind the existing unlock
@@ -364,14 +365,15 @@ Seeing the plan (fifth round):
 
 Playing with others:
 
-35. **Duo mode.** "Plan with a friend": sends your plan to a player you name (add-on message, the same way
-    talent builds are sent; outside instances only, as the game requires). Both follow the same steps, and
-    each sees the other's progress on the panel ("Mira: done"). The plan waits at hand-ins and flights
-    until both are ready. Replans happen on the leader's side and are sent again. If they don't have the
-    add-on or don't answer, it says so.
-36. **Elites your class can solo.** When you finish an elite quest solo (no group while its objectives
-    were done), it is recorded per account by class and the quest's level difference. After that, elite
-    quests of that kind (similar level difference, your class) are planned even in Solo.
+35. **Duo mode.** "Plan with a friend": the two add-ons talk by add-on message (the same way talent
+    builds are sent; outside instances only, as the game requires). **The plan fits both of you**: the
+    friend's add-on sends their level, quest log (ids and progress), known flight points, hearthstone inn
+    and what they can take (faction, class; Questie's IsDoable answered on their side), and the leader's
+    planner uses only quests and travel both can do. The plan is sent to the friend; both follow the same
+    steps and each sees the other's progress on the panel ("Mira: done"). The plan waits at hand-ins and
+    flights until both are ready. Replans happen on the leader's side after either player's hand-in or
+    level, with the friend's latest state. If the friend has no add-on, or no answer comes, it says so and
+    plans for you alone.
 
 Goals:
 
@@ -493,6 +495,30 @@ is settled. What is known:
   JavaScript. The same fixed plan codes are tested on both sides: by smoke.py in the add-on, and by a
   small Node check of the page's reader.
 - The planner runs in both smoke modes (combat values readable and secret) with no errors.
+
+## Build order (the player's choice: core first, then batches)
+
+Each batch is its own release, built and tested (smoke.py both modes, luacheck, the Forever audit) before
+the next starts. Everything stays behind the guide's unlock.
+
+1. **The core planner**: Questie reading with the contract check and fallback; candidates; experience per
+   hour with kill experience (#1) and learned pace; hubs; zone picking on both continents; flights and
+   learning flight points; hearthstone and bind; boats and zeppelins; the group setting; replanning; the
+   panel with the new step kinds; the basic settings. Built so later batches plug in: a scoring term per
+   feature, a stop maker per stop kind, a hook per event.
+2. **Stops on the way**: trainers (#2), selling and repairing (#3), supplies (#26), talent points (#27),
+   held hand-ins (#24), exploring (#25), gathering (#23), profession training (#40), mail (#41), the mount
+   reminder (#42).
+3. **Smarter choices**: dry-zone suggestions (#4), rewards (#6, #21), skip list (#7), rested experience
+   (#10), the quest log (#11), quests from loot (#12), class quests (#13), timed and escort quests (#14),
+   deaths (#19), alts (#20), reputation goals (#22), soloed elites (#36).
+4. **Seeing and feel**: time to level (#5), the map line (#8), save as guide (#9), where you left off
+   (#15), read aloud (#16), level times (#17), the time you have (#18), speed or story and the sliders
+   (#28, #34), preview (#29), the chime (#30), hubs on the map (#32), why this (#33), finish the zone (#37),
+   catch me up (#38), break reminders (#39), race your best (#43).
+5. **With others and outside the game**: find a group (#31), duo mode (#35), the plan on the website (#44).
+
+Then Part 2, the gold farming advisor, designed first.
 
 ## Left to the builder
 
