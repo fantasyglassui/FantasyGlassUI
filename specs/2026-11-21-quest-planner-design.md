@@ -274,6 +274,36 @@ Keeping you informed:
     experience per hour, per character. `/fgui stats` (Lifetime.lua) gets a "Levels" part: your fastest and
     slowest levels, and the average; the run log gets a line per level.
 
+Smarter about you (third round):
+
+18. **Plan for the time you have.** "How long can you play?" (a button on the panel, or
+    `/fgui guide plan 30` for 30 minutes). The plan is cut so it ends on time somewhere useful (an inn,
+    a flight point or a town), never halfway through a hub, and the last step says "Good place to stop".
+    Without a time, it plans as before.
+19. **Learn from deaths.** Two deaths in the same hub (within a level) mark that hub too hard for now:
+    it is planned a level or two later instead, and the panel says why ("Moved: you died twice here").
+    Deaths are recorded with where they happened (PLAYER_DEAD); the mark clears after two levels.
+20. **Learn from your alts.** The real time of each quest (accept to hand-in, less time away from the
+    keyboard and in towns) is kept for the whole account. A quest's time estimate blends that record with
+    the formula, so a quest that took your first character far longer than expected scores lower for the
+    next one. Per-account, keyed by quest id.
+21. **Rewards count as value.** A quest whose reward is an upgrade for you (the existing upgrade arrows'
+    test, run on Questie's reward items or the game's reward info once the quest is in the log) scores
+    higher: an upgrade is worth a share of experience equal to the time it is expected to save (proposal:
+    a fixed bonus per item level gained; the builder tunes it).
+
+Goals and gathering:
+
+22. **Reputation goals.** On the Guide tab, pick factions you want ("Reputation I want: Stormwind,
+    Argent Dawn ..."), optionally with the standing you are aiming for. Quests that give that reputation
+    (Questie's reputationReward) get extra weight until you reach it. The panel shows progress
+    ("Argent Dawn: 2,300 to Honored") when such a quest is in the plan.
+23. **Gather on the way.** With Herbalism or Mining (and Skinning for monsters you kill anyway), the route
+    notes nodes near the path it already takes that your skill can gather ("3 Peacebloom on the way"),
+    from Questie's object spawn data where it has them, otherwise from nodes the add-on has seen you
+    gather (recorded per account). It never makes a detour of more than ~20 seconds for a node. What you
+    gather is recorded, which the gold advisor (Part 2) can build on.
+
 ### Part 2: the gold farming advisor (to be designed before it is built)
 
 Wanted, and to be built after the planner; it needs its own design conversation first, since only the idea
@@ -302,6 +332,9 @@ is settled. What is known:
 - Suggest an inn when you stop while rested: on (default) / off.
 - Where you left off, at login: on (default) / off.
 - Read the route aloud: on (default), working only while reading aloud is on in Accessibility.
+- How long can you play: none (default), or a time.
+- Reputation I want: a list of factions, each with the standing to reach.
+- Gather on the way: on (default) / off.
 
 ### Tests
 
@@ -318,6 +351,9 @@ is settled. What is known:
   a quest from loot is counted; a class quest is planned regardless of experience; a timed quest is done
   straight after accepting; the login line appears; a step is spoken only when reading aloud is on; a level
   time is recorded and shows in /fgui stats.
+- The third round: a 30-minute plan ends at a stopping place; two deaths move a hub later; an account
+  quest time changes a score; an upgrade reward raises a quest; a chosen reputation raises its quests;
+  a gathering note appears for a node near the path and none for one far off it.
 - The planner runs in both smoke modes (combat values readable and secret) with no errors.
 
 ## Left to the builder
@@ -333,7 +369,8 @@ is settled. What is known:
 - Per character: known flight points, the inn your hearthstone is set at, the learned pace factor,
   experience per kill by level difference, the skip list, the time and experience per hour of each level,
   the planner's settings.
-- Per account: recorded flight and crossing times.
+- Per account: recorded flight and crossing times, real quest times, gathering nodes seen.
+- Per character also: deaths by hub, reputation goals, the time-to-play choice.
 
 ## Calls made in writing this up (the builder's or Claude's, not the player's)
 
@@ -351,3 +388,5 @@ is settled. What is known:
 - Abandon suggestions show at 3 or fewer free log places; the add-on never abandons a quest itself.
 - Class quests that count come from a small table of our own.
 - The inn suggestion shows after an hour or more of play.
+- Two deaths in one hub within a level make it "too hard for now"; the mark clears after two levels.
+- Gathering detours are at most ~20 seconds.
