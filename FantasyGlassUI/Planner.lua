@@ -4,7 +4,23 @@ local _, ns = ...
 -- Planner: what a quest is worth (experience with kills, time, learned pace), and which quests
 -- are candidates at all. Works on plain records from PlannerSource; nothing here sees Questie.
 ------------------------------------------------------------------------------------------
-ns.PlannerYield = ns.PlannerYield or function() end
+ns.PLANNER_BUDGET_MS = 4
+ns.plannerBusy, ns.plannerQueued, ns.plannerSteps = false, false, 0
+
+local running, sliceStart            -- the planning coroutine, and when its slice began
+
+local function Clock()
+    local v = debugprofilestop and debugprofilestop()
+    return type(v) == "number" and v or 0
+end
+
+-- Called in the planner's loops: inside the planning coroutine it hands the frame back once this
+-- slice has used its time; anywhere else it does nothing.
+function ns.PlannerYield()
+    if running and coroutine.running() == running and Clock() - sliceStart >= (ns.PLANNER_BUDGET_MS or 4) then
+        coroutine.yield()
+    end
+end
 
 local ipairs, type, tonumber, math = ipairs, type, tonumber, math
 local floor, min, max, sqrt = math.floor, math.min, math.max, math.sqrt
@@ -181,3 +197,131 @@ end
 
 -- The saved per-character planner record (PlannerRoute.lua keeps the bind place and the zone there).
 ns.PlannerCharRecord = PaceRecord
+
+------------------------------------------------------------------------------------------
+-- Running it: a slice per frame (ns.PLANNER_BUDGET_MS), never in a fight or without a place in the
+-- world, and again after each hand-in, level, lost quest, new flight point and set hearthstone.
+-- The plan becomes the guide you follow (Guide.lua keeps it with your place in it).
+------------------------------------------------------------------------------------------
+local fighting = false
+local told = {}                      -- the Questie lines, once a session each
+local started = {}                   -- quest -> when its clock started (accepted, or in the log when planned)
+local SOURCE_LINES = { missing = "Install Questie to plan new quests too.", changed = "Questie changed; planning from your quest log only." }
+
+local function Following()
+    local st = ns.GuideState and ns.GuideState()
+    return (ns:GuideOn() and type(st) == "table" and st.name == ns.GUIDE_PLANNED) and true or false, st
+end
+
+local function Placed()
+    if not ns.GuideHere then return false end
+    local map, x, y = ns.GuideHere()
+    return ns.PlannerWorldPos(map, x, y) ~= nil
+end
+
+-- Each planned quest's time at your usual pace of 1 (what the hand-in is measured against).
+local function Estimates(guide, ctx)
+    local out, src = {}, ctx.source
+    for _, s in ipairs(guide.steps) do
+        ns.PlannerYield()
+        local id = s.quest
+        if id and out[id] == nil and type(src) == "table" then
+            local rec = src.quest(id)
+            out[id] = rec and floor(ns.PlannerQuestTime(rec, { speed = ctx.speed }) + 0.5) or 0
+        end
+    end
+    return out
+end
+
+-- The coroutine's body: guide, summary, ctx; nothing while Questie is still loading (it asks again).
+local function Plan()
+    local ctx = ns.PlannerContext()
+    if ctx.sourceWhy == "waiting" then return nil end
+    local line = SOURCE_LINES[ctx.sourceWhy]
+    if line and not told[ctx.sourceWhy] then
+        told[ctx.sourceWhy] = true
+        ns:Print(line)
+    end
+    local guide, summary = ns.PlannerRoute(ctx)
+    guide.estimates = Estimates(guide, ctx)
+    return guide, summary, ctx
+end
+
+local function Apply(guide, summary, ctx)
+    local now = GetTime()
+    for id in pairs(guide.estimates) do
+        if not started[id] and ctx.onQuest(id) then started[id] = now end
+    end
+    if summary.newZone and summary.zone then ns.PlannerSetZone(summary.zone, ctx.level) end
+    ns:GuideSetPlan(guide, summary)
+end
+
+local function Tick()
+    if not (ns.plannerBusy or ns.plannerQueued) then return end
+    if not Following() then ns:PlannerStop(); return end
+    if fighting or InCombatLockdown() or not Placed() then return end
+    if not running then
+        ns.plannerQueued, ns.plannerBusy = false, true
+        running = coroutine.create(Plan)
+    end
+    sliceStart = Clock()
+    ns.plannerSteps = ns.plannerSteps + 1
+    local ok, guide, summary, ctx = coroutine.resume(running)
+    if ok and coroutine.status(running) ~= "dead" then return end
+    running, ns.plannerBusy = nil, false
+    if not ok then error(guide, 0) end
+    if guide then Apply(guide, summary, ctx) end
+end
+ns:Every(0, "Planner", Tick)
+
+-- Plan again (soon, a slice at a time). `reason` is only for debugging.
+function ns:PlannerReplan(reason)
+    if not Following() then return false end
+    ns.plannerQueued, ns.plannerReason = true, reason
+    return true
+end
+
+-- Follow the planned route, and plan it (again).
+function ns:PlannerStart()
+    if not ns:GuideOn() then return false end
+    if not Following() then ns:GuideSetPlan(nil) end
+    ns:GuideShowPanel()
+    ns.plannerQueued, ns.plannerReason = true, "start"
+    return true
+end
+
+function ns:PlannerStop()
+    running, ns.plannerBusy, ns.plannerQueued = nil, false, false
+end
+
+do
+    local ev = CreateFrame("Frame")
+    for _, e in ipairs({ "QUEST_ACCEPTED", "QUEST_TURNED_IN", "QUEST_REMOVED", "PLAYER_LEVEL_UP", "HEARTHSTONE_BOUND",
+                         "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED" }) do pcall(ev.RegisterEvent, ev, e) end
+    ev:SetScript("OnEvent", ns:Guard("Planner", function(_, event, a, b)
+        if event == "PLAYER_REGEN_DISABLED" then fighting = true; return end
+        if event == "PLAYER_REGEN_ENABLED" then fighting = false; return end
+        local on, st = Following()
+        if not on then return end
+        local plan = type(st.plan) == "table" and st.plan or {}
+        local est = type(plan.estimates) == "table" and plan.estimates or {}
+        if event == "QUEST_ACCEPTED" then
+            local id = (type(b) == "number") and b or a
+            if type(id) == "number" and est[id] and not started[id] then started[id] = GetTime() end
+        elseif event == "QUEST_TURNED_IN" then
+            if type(a) == "number" then
+                if started[a] and est[a] then ns.PlannerRecordPace(GetTime() - started[a], est[a]) end
+                started[a] = nil
+            end
+            ns:PlannerReplan("hand-in")
+        elseif event == "HEARTHSTONE_BOUND" then
+            local step = type(plan.steps) == "table" and plan.steps[st.at or 1]
+            if type(step) == "table" and step.kind == "bind" then ns:GuideSkip(false) end   -- (bound by place, not by the innkeeper's name)
+            ns:PlannerReplan("bind")
+        elseif event == "PLAYER_LEVEL_UP" then
+            ns:PlannerReplan("level")
+        else
+            ns:PlannerReplan("quest removed")
+        end
+    end))
+end

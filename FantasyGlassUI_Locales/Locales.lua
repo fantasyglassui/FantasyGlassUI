@@ -21,6 +21,13 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["Planned: %s, level %s → %s"] = "Geplant: %s, Stufe %s → %s",
+    ["Skipped: %d group quests (Solo is on)"] = "Ausgelassen: %d Gruppenquests (Solo ist an)",
+    ["Skipped: %d group quests"] = "Ausgelassen: %d Gruppenquests",
+    ["No quests left worth the trip; grinding or a dungeon may be faster"] = "Keine Quests mehr, die den Weg lohnen; Monster schlagen oder ein Dungeon ist vielleicht schneller",
+    ["Install Questie to plan new quests too."] = "Installiere Questie, um auch neue Quests zu planen.",
+    ["Questie changed; planning from your quest log only."] = "Questie hat sich geändert; geplant wird nur aus deinem Questlog.",
+    ["Planning your route..."] = "Deine Route wird geplant...",
     ["Learn the flight path"] = "Lernt den Flugpunkt",
     ["Sail"] = "Segelt",
     ["Set your hearthstone"] = "Legt Euren Ruhestein fest",
@@ -3294,6 +3301,13 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["Planned: %s, level %s → %s"] = "Prévu : %s, niveau %s → %s",
+    ["Skipped: %d group quests (Solo is on)"] = "Ignorées : %d quêtes de groupe (Solo activé)",
+    ["Skipped: %d group quests"] = "Ignorées : %d quêtes de groupe",
+    ["No quests left worth the trip; grinding or a dungeon may be faster"] = "Plus aucune quête ne vaut le déplacement ; tuer des monstres ou un donjon sera peut-être plus rapide",
+    ["Install Questie to plan new quests too."] = "Installez Questie pour planifier aussi de nouvelles quêtes.",
+    ["Questie changed; planning from your quest log only."] = "Questie a changé ; planification depuis votre journal de quêtes uniquement.",
+    ["Planning your route..."] = "Planification de votre itinéraire...",
     ["Learn the flight path"] = "Apprenez le point de vol",
     ["Sail"] = "Embarquez",
     ["Set your hearthstone"] = "Liez votre pierre de foyer",
@@ -6567,6 +6581,13 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["Planned: %s, level %s → %s"] = "Planificado: %s, nivel %s → %s",
+    ["Skipped: %d group quests (Solo is on)"] = "Omitidas: %d misiones de grupo (Solo activado)",
+    ["Skipped: %d group quests"] = "Omitidas: %d misiones de grupo",
+    ["No quests left worth the trip; grinding or a dungeon may be faster"] = "No quedan misiones que valgan el viaje; matar monstruos o una mazmorra puede ser más rápido",
+    ["Install Questie to plan new quests too."] = "Instala Questie para planificar también misiones nuevas.",
+    ["Questie changed; planning from your quest log only."] = "Questie ha cambiado; se planifica solo con tu registro de misiones.",
+    ["Planning your route..."] = "Planificando tu ruta...",
     ["Learn the flight path"] = "Aprende la ruta de vuelo",
     ["Sail"] = "Navega",
     ["Set your hearthstone"] = "Fija tu piedra de hogar",
@@ -9843,6 +9864,13 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["Planned: %s, level %s → %s"] = "План: %s, уровень %s → %s",
+    ["Skipped: %d group quests (Solo is on)"] = "Пропущено: %d групповых заданий (включено «Соло»)",
+    ["Skipped: %d group quests"] = "Пропущено: %d групповых заданий",
+    ["No quests left worth the trip; grinding or a dungeon may be faster"] = "Не осталось заданий, ради которых стоит идти; фарм или подземелье может быть быстрее",
+    ["Install Questie to plan new quests too."] = "Установите Questie, чтобы планировать и новые задания.",
+    ["Questie changed; planning from your quest log only."] = "Questie изменился; план строится только по журналу заданий.",
+    ["Planning your route..."] = "Прокладываем маршрут...",
     ["Learn the flight path"] = "Узнайте маршрут полета",
     ["Sail"] = "Плывите",
     ["Set your hearthstone"] = "Привяжите камень возвращения",
@@ -13116,6 +13144,13 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["Planned: %s, level %s → %s"] = "Planejado: %s, nível %s → %s",
+    ["Skipped: %d group quests (Solo is on)"] = "Ignoradas: %d missões de grupo (Solo ativado)",
+    ["Skipped: %d group quests"] = "Ignoradas: %d missões de grupo",
+    ["No quests left worth the trip; grinding or a dungeon may be faster"] = "Não restam missões que valham a viagem; matar monstros ou uma masmorra pode ser mais rápido",
+    ["Install Questie to plan new quests too."] = "Instale o Questie para planejar também missões novas.",
+    ["Questie changed; planning from your quest log only."] = "O Questie mudou; planejando apenas pelo seu registro de missões.",
+    ["Planning your route..."] = "Planejando sua rota...",
     ["Learn the flight path"] = "Aprenda a rota de voo",
     ["Sail"] = "Navegue",
     ["Set your hearthstone"] = "Defina sua pedra de regresso",
@@ -16389,6 +16424,13 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["Planned: %s, level %s → %s"] = "Pianificato: %s, livello %s → %s",
+    ["Skipped: %d group quests (Solo is on)"] = "Saltate: %d missioni di gruppo (Solo attivo)",
+    ["Skipped: %d group quests"] = "Saltate: %d missioni di gruppo",
+    ["No quests left worth the trip; grinding or a dungeon may be faster"] = "Non restano missioni che valgano il viaggio; uccidere mostri o un dungeon potrebbe essere più veloce",
+    ["Install Questie to plan new quests too."] = "Installa Questie per pianificare anche nuove missioni.",
+    ["Questie changed; planning from your quest log only."] = "Questie è cambiato; pianificazione solo dal tuo registro missioni.",
+    ["Planning your route..."] = "Pianificazione del percorso...",
     ["Learn the flight path"] = "Impara il percorso di volo",
     ["Sail"] = "Salpa",
     ["Set your hearthstone"] = "Imposta la tua pietra del ritorno",
@@ -19662,6 +19704,13 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["Planned: %s, level %s → %s"] = "계획: %s, 레벨 %s → %s",
+    ["Skipped: %d group quests (Solo is on)"] = "건너뜀: 파티 퀘스트 %d개 (솔로 켜짐)",
+    ["Skipped: %d group quests"] = "건너뜀: 파티 퀘스트 %d개",
+    ["No quests left worth the trip; grinding or a dungeon may be faster"] = "이동할 가치가 있는 퀘스트가 남지 않았습니다. 사냥이나 던전이 더 빠를 수 있습니다",
+    ["Install Questie to plan new quests too."] = "새 퀘스트도 계획하려면 Questie를 설치하세요.",
+    ["Questie changed; planning from your quest log only."] = "Questie가 바뀌었습니다. 퀘스트 목록만으로 계획합니다.",
+    ["Planning your route..."] = "경로를 계획하는 중...",
     ["Learn the flight path"] = "비행 경로 배우기",
     ["Sail"] = "배 타기",
     ["Set your hearthstone"] = "귀환석 설정",
@@ -22938,6 +22987,13 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["Planned: %s, level %s → %s"] = "规划：%s，等级 %s → %s",
+    ["Skipped: %d group quests (Solo is on)"] = "已跳过：%d 个组队任务（单人已开启）",
+    ["Skipped: %d group quests"] = "已跳过：%d 个组队任务",
+    ["No quests left worth the trip; grinding or a dungeon may be faster"] = "没有值得跑一趟的任务了；刷怪或下副本可能更快",
+    ["Install Questie to plan new quests too."] = "安装 Questie 即可同时规划新任务。",
+    ["Questie changed; planning from your quest log only."] = "Questie 已变更；仅根据你的任务日志进行规划。",
+    ["Planning your route..."] = "正在规划你的路线...",
     ["Learn the flight path"] = "学习飞行路线",
     ["Sail"] = "乘船",
     ["Set your hearthstone"] = "设置炉石",

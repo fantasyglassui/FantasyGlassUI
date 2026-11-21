@@ -84,7 +84,7 @@ local env = {}
 local known = {
   ipairs=ipairs, pairs=pairs, pcall=pcall, select=select, type=type, tostring=tostring, tonumber=tonumber,
   table=table, math=math, string=string, setmetatable=setmetatable, getmetatable=getmetatable, rawset=rawset, rawget=rawget,
-  next=next, error=error, assert=assert,
+  next=next, error=error, assert=assert, coroutine=coroutine,
   unpack = table.unpack, floor = math.floor, max = math.max, min = math.min,
   format = string.format, strlower = string.lower,
   strtrim = function(s) return (s:gsub("^%s+",""):gsub("%s+$","")) end,
@@ -8977,6 +8977,158 @@ try("13.0 planner: hubs and the route", function()
         if live.bindSpot ~= nil and type(live.bindSpot) ~= "table" then error("bindSpot") end
     end)
     env.C_Map = real.map; rawset(env, "CreateVector2D", real.vec)
+    if not ok then error(err, 0) end
+end)
+try("13.0 planner: running it", function()
+    local real = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), ql = env.C_QuestLog, level = env.UnitLevel, time = env.GetTime,
+                   loaded = env.C_AddOns.IsAddOnLoaded, source = ns.PlannerSource, combat = env.InCombatLockdown, budget = ns.PLANNER_BUDGET_MS }
+    local saved = { key = ns.root.guideKey, guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner }
+    local pos, clock = { 1, 30, 40 }, 5000
+    local cm = {}
+    for k, v in pairs(real.map) do cm[k] = v end
+    cm.GetWorldPosFromMapPos = function(map, v) if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end end
+    cm.GetBestMapForUnit = function() return pos and pos[1] or nil end
+    cm.GetPlayerMapPosition = function() return pos and { GetXY = function() return pos[2] / 100, pos[3] / 100 end } or nil end
+    cm.GetMapInfo = function(map) return map == 1 and { name = "Testshire" } or nil end
+    env.C_Map = cm
+    env.CreateVector2D = function(x, y) return { x = x, y = y } end
+    env.UnitLevel = function() return 10 end
+    env.GetTime = function() return clock end
+    local accepted, handed, logged = {}, {}, {}
+    env.C_QuestLog = { IsOnQuest = function(id) return accepted[id] or false end, IsQuestFlaggedCompleted = function(id) return handed[id] or false end,
+        IsComplete = function() return false end, ReadyForTurnIn = function() return false end,
+        GetTitleForQuestID = function(id) return "Quest " .. id end,
+        GetNumQuestLogEntries = function() return #logged end,
+        GetInfo = function(i) return logged[i] and { questID = logged[i], title = "Logged " .. logged[i], questLevel = 10 } or nil end,
+        GetLogIndexForQuestID = function(id) for i, q in ipairs(logged) do if q == id then return i end end end,
+        GetNextWaypoint = function() return 1, 0.31, 0.41 end }
+    local function rec(id, x, y, extra)
+        local r = { id = id, name = "Quest " .. id, level = 10, minLevel = 1, xp = 400,
+            starts = { { map = 1, x = x, y = y } }, ends = { { map = 1, x = x, y = y } },
+            objectives = { { kind = "kill", count = 4, countKnown = true, mobLevel = 10, spots = { { map = 1, x = x + 4, y = y + 4 } } } },
+            pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+        for k, v in pairs(extra or {}) do r[k] = v end
+        return r
+    end
+    local recs = { [101] = rec(101, 30, 40), [102] = rec(102, 31, 40), [103] = rec(103, 30, 41), [104] = rec(104, 31, 41, { group = true }) }
+    local ids = { 101, 102, 103, 104 }
+    local world = { kind = "questie", ids = function() return ids end, quest = function(id) return recs[id] end, inns = function() return {} end }
+    ns.PlannerSource = function() return world end
+    ns.root.guides, ns.root.guideState, ns.root.planner = nil, nil, nil
+    fireEvent("PLAYER_REGEN_ENABLED")                        -- (out of any fight an earlier test left the game in)
+    ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
+    local function frame()
+        for i = 1, #handlers do local h = handlers[i]; if h.name == "OnUpdate" then pcall(h.fn, h.self, 0.02) end end
+        runTimers()
+    end
+    local function settle()
+        for _ = 1, 3000 do
+            if not ns.plannerBusy and not ns.plannerQueued then return end
+            frame()
+        end
+        error("the planner never finished: busy " .. tostring(ns.plannerBusy) .. ", queued " .. tostring(ns.plannerQueued) .. ", " .. tostring(ns.plannerReason) .. ", steps " .. tostring(ns.plannerSteps) .. ", here " .. table.concat({ tostring(ns.GuideHere()) }, ",") .. ", placed " .. tostring(ns.PlannerWorldPos(ns.GuideHere())))
+    end
+    local function planned() return ns:GuideGet(ns.GUIDE_PLANNED) end
+    local ok, err = pcall(function()
+        -- a plan, followed
+        local panel, said = nil, {}
+        if ns:PlannerStart() ~= true then error("PlannerStart") end
+        settle()
+        if ns.GuideState().name ~= ns.GUIDE_PLANNED or not planned() or #planned().steps == 0 then error("following the planned guide") end
+        panel = ns:GuideShowPanel()
+        for _, k in ipairs({ "title", "now", "skipped" }) do
+            if not panel[k] then error("the panel has no " .. k) end
+            rawset(panel[k], "SetText", function(_, t) said[k] = t end)
+        end
+        ns:GuideAdvance()
+        if not tostring(said.title):find(string.format(ns:Tr("Planned: %s, level %s → %s"), "Testshire", "10", ""), 1, true) then error("the panel's title: " .. tostring(said.title)) end
+        if said.skipped ~= string.format(ns:Tr("Skipped: %d group quests (Solo is on)"), 1) then error("the skipped line: " .. tostring(said.skipped)) end
+        if not (planned().estimates and (planned().estimates[101] or 0) > 0) then error("each quest's estimate is kept with the plan") end
+        local text = ns.GuideText(planned())
+        -- the same plan, a little at a time
+        ns.PLANNER_BUDGET_MS = 0
+        local before = ns.plannerSteps
+        ns:PlannerReplan("test"); settle()
+        if ns.plannerSteps - before < 5 then error("planned in slices: " .. (ns.plannerSteps - before)) end
+        if ns.GuideText(planned()) ~= text then error("sliced and unsliced plans differ") end
+        -- never in a fight
+        ns:PlannerReplan("test"); frame(); frame()
+        if not ns.plannerBusy then error("the plan should be under way") end
+        env.InCombatLockdown = function() return true end
+        before = ns.plannerSteps
+        for _ = 1, 10 do frame() end
+        if ns.plannerSteps ~= before then error("planned in combat") end
+        env.InCombatLockdown = real.combat
+        fireEvent("PLAYER_REGEN_DISABLED")
+        for _ = 1, 10 do frame() end
+        if ns.plannerSteps ~= before then error("planned after the fight started") end
+        fireEvent("PLAYER_REGEN_ENABLED")
+        settle()
+        if ns.GuideText(planned()) ~= text then error("a fight changed the plan") end
+        -- nowhere in the world: wait, quietly
+        local quiet = #printed
+        pos = nil
+        ns:PlannerReplan("test")
+        before = ns.plannerSteps
+        for _ = 1, 10 do frame() end
+        if ns.plannerSteps ~= before or not (ns.plannerBusy or ns.plannerQueued) then error("planned with no position") end
+        if #printed ~= quiet then error("said something with no position: " .. printed[#printed]) end
+        pos = { 1, 30, 40 }
+        settle()
+        ns.PLANNER_BUDGET_MS = real.budget
+        -- hand-ins replan, and the time it took counts towards the pace
+        if ns.PlannerPace() ~= 1 then error("no pace yet") end
+        accepted[101] = true; fireEvent("QUEST_ACCEPTED", 101)
+        clock = clock + 2000
+        accepted[101], handed[101] = nil, true
+        fireEvent("QUEST_TURNED_IN", 101, 400, 0)
+        if ns.plannerQueued ~= true then error("a hand-in queues a replan") end
+        if ns.PlannerPace() == 1 then error("the hand-in's time is recorded") end
+        settle()
+        for _, s in ipairs(planned().steps) do if s.quest == 101 then error("the handed-in quest is still planned") end end
+        fireEvent("PLAYER_LEVEL_UP", 11)
+        if ns.plannerQueued ~= true then error("a level replans") end
+        settle()
+        -- the hearthstone set at a bind step ticks it off
+        local st = ns.GuideState()
+        st.plan = { name = ns.GUIDE_PLANNED, steps = { { kind = "bind", text = "Bluebell Inn" }, { kind = "note", text = "after" } } }
+        st.at, st.ticked, st.finished = 1, {}, nil
+        fireEvent("HEARTHSTONE_BOUND")
+        if ns.GuideState().at ~= 2 or not ns.plannerQueued then error("bound: the bind step is ticked off and a replan queued") end
+        settle()
+        -- no Questie: the quest log, and the install line once
+        ns.PlannerSource = real.source
+        env.C_AddOns.IsAddOnLoaded = function() return false end
+        logged = { 701 }; accepted[701] = true
+        local told = 0
+        quiet = #printed
+        ns:PlannerReplan("test"); settle()
+        ns:PlannerReplan("test"); settle()
+        for i = quiet + 1, #printed do if printed[i]:find(ns:Tr("Install Questie to plan new quests too."), 1, true) then told = told + 1 end end
+        if told ~= 1 then error("the install line once: " .. told) end
+        local fromLog = false
+        for _, s in ipairs(planned().steps) do if s.kind == "turnin" and s.quest == 701 then fromLog = true end end
+        if not fromLog then error("the plan comes from the quest log") end
+        -- nothing worth the trip
+        ns.PlannerSource = function() return { kind = "questie", ids = function() return {} end, quest = function() end, inns = function() return {} end } end
+        logged = {}
+        ns:PlannerReplan("test"); settle()
+        ns:GuideAdvance()
+        if said.now ~= ns:Tr("No quests left worth the trip; grinding or a dungeon may be faster") then error("the empty plan's line: " .. tostring(said.now)) end
+        for _, k in ipairs({ "title", "now", "skipped" }) do rawset(panel[k], "SetText", nil) end
+        -- /fgui guide plan, and off
+        if ns:GuideCommand("plan") ~= true then error("/fgui guide plan") end
+        ns:GuideCommand("off")
+        if ns.plannerBusy or ns.plannerQueued then error("off stops the planner") end
+        -- locked: nothing
+        ns.root.guideKey = nil
+        if ns:PlannerStart() ~= false or ns.plannerBusy or ns.plannerQueued then error("locked: no planning") end
+    end)
+    ns:PlannerStop()
+    env.C_Map = real.map; rawset(env, "CreateVector2D", real.vec); env.C_QuestLog = real.ql; env.UnitLevel = real.level; env.GetTime = real.time
+    env.C_AddOns.IsAddOnLoaded = real.loaded; ns.PlannerSource = real.source; env.InCombatLockdown = real.combat; ns.PLANNER_BUDGET_MS = real.budget
+    ns.PlannerSourceReset()
+    ns.root.guideKey, ns.root.guides, ns.root.guideState, ns.root.planner = saved.key, saved.guides, saved.state, saved.planner
     if not ok then error(err, 0) end
 end)
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)

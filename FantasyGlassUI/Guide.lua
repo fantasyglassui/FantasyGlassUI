@@ -212,7 +212,12 @@ local function Store()
     return ns.root.guides, ns.root.guideState
 end
 function ns:GuideGet(name)
-    local guides = Store()
+    local guides, state = Store()
+    if name ~= nil and name == ns.GUIDE_PLANNED then                -- the planned route: kept with your place in it
+        local st = state[ns:CharKey()]
+        local plan = type(st) == "table" and st.name == name and st.plan
+        return (type(plan) == "table" and type(plan.steps) == "table") and plan or nil
+    end
     return guides[name] or ns.builtinGuides[name]
 end
 function ns:GuideNames()
@@ -281,26 +286,38 @@ function ns:GuideAdvance()
     if st.at ~= before and PlaySound and SOUNDKIT and ns.db.guideSound ~= false then pcall(PlaySound, SOUNDKIT.IG_QUEST_LIST_SELECT or 875) end
     if not step and not st.finished then
         st.finished = true
-        ns:Print("Guide finished: %s", tostring(guide.name))
+        if st.name ~= ns.GUIDE_PLANNED then ns:Print("Guide finished: %s", tostring(guide.name)) end
     end
     Point(step, st.at)
     if Draw then Draw() end
     return step, st.at
 end
 function ns:GuideFollow(name)
+    if name ~= nil and name == ns.GUIDE_PLANNED then return ns.PlannerStart ~= nil and ns:PlannerStart() end
     local guide = ns:GuideGet(name)
     if not guide then ns:Print("There is no guide called \"%s\". /fgui guide lists them.", tostring(name)); return false end
     local _, state = Store()
     local old = state[ns:CharKey()]
     state[ns:CharKey()] = (old and old.name == name) and old or { name = name, at = 1, ticked = {} }
     state[ns:CharKey()].finished = nil
+    if ns.PlannerStop then ns:PlannerStop() end
     pointed = nil
     ns:GuideShowPanel()
     ns:GuideAdvance()
     ns:Print("Following \"%s\": %d steps.", name, #guide.steps)
     return true
 end
+-- Follow a new plan (Planner.lua), from its first step; nil = an empty one until the first is ready.
+function ns:GuideSetPlan(guide, summary)
+    local _, state = Store()
+    state[ns:CharKey()] = { name = ns.GUIDE_PLANNED, at = 1, ticked = {}, summary = summary,
+        plan = guide or { name = ns.GUIDE_PLANNED, steps = {} } }
+    pointed = nil
+    ns:GuideShowPanel()
+    ns:GuideAdvance()
+end
 function ns:GuideStop()
+    if ns.PlannerStop then ns:PlannerStop() end
     local _, state = Store()
     state[ns:CharKey()] = nil
     Point(nil)
@@ -326,13 +343,52 @@ function ns:GuideSkip(back)
 end
 
 -- The panel -------------------------------------------------------------------------------------
+local function LevelText(v)
+    v = tonumber(v)
+    if not v then return "?" end
+    return (v == math.floor(v)) and format("%d", v) or format("%.1f", v)
+end
+local function ZoneName(map)
+    if not (map and C_Map and C_Map.GetMapInfo) then return nil end
+    local ok, info = pcall(C_Map.GetMapInfo, map)
+    local name = ok and type(info) == "table" and info.name
+    if type(name) == "string" and not Secret(name) and name ~= "" then return name end
+end
+local function Planned(st) return st.name ~= nil and st.name == ns.GUIDE_PLANNED end
+local function Title(st, guide)
+    if not Planned(st) then return guide.name end
+    local s = type(st.summary) == "table" and st.summary
+    local zone = s and ZoneName(s.zone)
+    if not zone then return ns:Tr("Quest guide") end
+    return format(ns:Tr("Planned: %s, level %s → %s"), zone, LevelText(s.fromLevel), LevelText(s.toLevel))
+end
+-- What the panel says when the guide has no step left: a plan still being made, or nothing worth doing.
+local function EndText(st)
+    if not Planned(st) then return ns:Tr("This guide is finished.") end
+    local s = type(st.summary) == "table" and st.summary
+    if not s then return ns:Tr("Planning your route...") end
+    if s.empty then return ns:Tr("No quests left worth the trip; grinding or a dungeon may be faster") end
+    return ns:Tr("This guide is finished.")
+end
+local function SkippedText(st)
+    local s = Planned(st) and type(st.summary) == "table" and st.summary
+    local n = s and type(s.skipped) == "table" and tonumber(s.skipped.group) or 0
+    if n <= 0 then return nil end
+    local group = ns.db and ns.db.plannerGroup
+    local solo = group == nil or group == "solo"
+    return format(ns:Tr(solo and "Skipped: %d group quests (Solo is on)" or "Skipped: %d group quests"), n)
+end
 Draw = function()
     if not panel then return end
     local st = State()
     local guide = st and ns:GuideGet(st.name)
     if not guide then panel:Hide(); return end
     local at, steps = st.at or 1, guide.steps
-    panel.title:SetText(guide.name)
+    panel.title:SetText(Title(st, guide))
+    local skipped = SkippedText(st)
+    panel.skipped:SetText(skipped or "")
+    panel.skipped:SetShown(skipped ~= nil)
+    panel:SetHeight(skipped and 131 or 118)
     panel.count:SetText(math.min(at, #steps) .. "/" .. #steps)
     local step = steps[at]
     if step then
@@ -342,7 +398,7 @@ Draw = function()
         panel.now:SetText(ns.GuideStepText(step))
     else
         panel.badge:SetText("")
-        panel.now:SetText(ns:Tr("This guide is finished."))
+        panel.now:SetText(EndText(st))
     end
     for i = 1, 2 do
         local nextStep = steps[at + i]
@@ -391,6 +447,11 @@ function ns:GuideShowPanel()
             ns:Paint(fs, "SetTextColor", "faint")
             panel.later[i] = fs
         end
+        panel.skipped = ns:NewText(panel, 10, "LEFT")              -- (a planned route: quests left out by the group setting)
+        panel.skipped:SetPoint("TOPLEFT", 12, -92)
+        panel.skipped:SetWidth(258)
+        if panel.skipped.SetWordWrap then panel.skipped:SetWordWrap(false) end
+        ns:Paint(panel.skipped, "SetTextColor", "faint")
         local back = ns:CreateButton(panel, "<", 22, 18, function() ns:GuideSkip(true) end)
         back:SetPoint("BOTTOMLEFT", 8, 6)
         local skip = ns:CreateButton(panel, ">", 22, 18, function() ns:GuideSkip(false) end)
@@ -652,6 +713,7 @@ function ns:GuideCommand(text)
     elseif word == "back" then ns:GuideSkip(true)
     elseif word == "off" then ns:GuideStop(); ns:Print("No longer following a guide.")
     elseif word == "follow" then return ns:GuideFollow(rest)
+    elseif word == "plan" then return ns.PlannerStart ~= nil and ns:PlannerStart()
     elseif ns:GuideGet(text) then return ns:GuideFollow(text)
     else ns:Print("Quest guide: /fgui guide (your guides), record <name>, stop, edit <name>, route <name>, follow <name>, next, back, off.") end
 end
