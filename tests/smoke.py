@@ -8645,8 +8645,8 @@ try("13.0 planner: reading Questie", function()
         [104] = { name = "Elite", startedBy = { { 9 } }, finishedBy = { { 9 } }, objectives = { { { 21, "Boss slain" } } } },
     }
     local fakes = {
-        QuestieDB = { QuestPointers = { [101] = true, [102] = true, [103] = true, [104] = true, [105] = true, [106] = true },
-            NPCPointers = { [9] = true, [20] = true, [21] = true }, npcFlags = { INNKEEPER = 65536 },
+        QuestieDB = { QuestPointers = { [101] = 5432, [102] = true, [103] = true, [104] = true, [105] = true, [106] = true },
+            NPCPointers = { [9] = 777, [20] = 3, [21] = true }, npcFlags = { INNKEEPER = 65536 },
             IsGroupQuest = function(id) return id == 106 end,
             GetQuest = function(id) return quests[id] end, IsDoable = function() return true end,
             QueryNPCSingle = function(id, key) return npcs[id] and npcs[id][key] end },
@@ -8666,6 +8666,9 @@ try("13.0 planner: reading Questie", function()
         if src.quest(102) ~= nil or src.quest(103) ~= nil then error("no giver on a map: skipped") end
         if not src.quest(104).elite then error("elite from the objective's rank") end
         if #src.ids() ~= 6 then error("ids") end
+        local has101 = false
+        for _, id in ipairs(src.ids()) do if id == 101 then has101 = true end if id == 5432 then error("a pointer's offset is not an id") end end
+        if not has101 then error("ids are the pointer map's keys") end
         local inns = src.inns()
         if #inns ~= 1 or inns[1].name ~= "Innkeeper Nine" or inns[1].map ~= 1436 or inns[1].x ~= 30 then error("innkeepers from the npc flags") end
         if src.quest(105).level ~= 12 or src.quest(105).minLevel ~= 7 then error("effective level, not the raw -1") end
@@ -8868,7 +8871,7 @@ try("13.0 planner: hubs and the route", function()
     local doneSet = {}
     local ctx = { source = source, level = 10, group = "solo", inGroup = false, speed = 7, faction = "Alliance",
         done = function(id) return doneSet[id] == true end, onQuest = function() return false end,
-        here = { map = 1, x = 30, y = 40 }, crossings = {}, learnFlights = true, bind = "Elsewhere", pace = 1,
+        here = { map = 1, x = 30, y = 40 }, crossings = {}, learnFlights = true, bind = "Elsewhere", bindSpot = { map = 1, x = 30, y = 40 }, pace = 1,
         flights = { { node = 5, map = 1, x = 30, y = 42, known = true, name = "Five" }, { node = 6, map = 1, x = 70, y = 40, known = false, name = "Six" } },
         flightTime = function() return nil end }
     local ok, err = pcall(function()
@@ -8882,6 +8885,13 @@ try("13.0 planner: hubs and the route", function()
         for _, h in ipairs(hubs) do if #h.quests == 3 then three = h end end
         if not three or three.map ~= 1 or not (three.xp > 0 and three.seconds > 0) then error("the three-quest hub") end
         if ns.PlannerPickZone(cands, ctx) ~= 2 then error("zone B is worth the trip") end
+        ctx.lastZone, ctx.lastZoneLevel = 1, 8
+        if ns.PlannerPickZone(cands, ctx) ~= 1 then error("the last zone stays within three levels") end
+        ctx.lastZoneLevel = 7
+        if ns.PlannerPickZone(cands, ctx) ~= 2 then error("three levels on, the zone is picked again") end
+        ctx.lastZone, ctx.lastZoneLevel = 3, 10
+        if ns.PlannerPickZone(cands, ctx) ~= 2 then error("a last zone out of reach is picked again") end
+        ctx.lastZone, ctx.lastZoneLevel = nil, nil
         -- the route into zone B: learn flight 6 on the way, accept all, bind, do, hand in
         local guide, summary = ns.PlannerRoute(ctx)
         if guide.name ~= ns.GUIDE_PLANNED or summary.zone ~= 2 or summary.empty or summary.fromLevel ~= 10 or not (summary.xp > 0 and summary.seconds > 0) then error("summary") end
@@ -8912,7 +8922,7 @@ try("13.0 planner: hubs and the route", function()
         ctx.learnFlights = false
         guide = ns.PlannerRoute(ctx)
         for _, s in ipairs(guide.steps) do if s.kind == "learnflight" then error("no flights learned when that is off") end end
-        ctx.bind = "Bluebell Inn"
+        ctx.bindSpot = { map = 2, x = 21.2, y = 41.1 }
         guide = ns.PlannerRoute(ctx)
         for _, s in ipairs(guide.steps) do if s.kind == "bind" then error("already bound there") end end
         -- zone B done: back to zone A, two hubs
@@ -8932,9 +8942,39 @@ try("13.0 planner: hubs and the route", function()
         for _, id in ipairs(ids) do doneSet[id] = true end
         guide, summary = ns.PlannerRoute(ctx)
         if not summary.empty or #guide.steps ~= 0 then error("nothing left: empty") end
+        -- fly, hearth and sail, each saying what it saves; a flight point learned because the plan uses it
+        local function solo(extra)
+            local one = { [501] = rec(501, 2, 80, 80, 3000, 81, 81) }
+            local c = { source = { kind = "questie", ids = function() return { 501 } end, quest = function(id) return one[id] end },
+                level = 10, group = "solo", speed = 7, faction = "Alliance", done = function() return false end, onQuest = function() return false end,
+                here = { map = 1, x = 10, y = 10 }, crossings = {}, flights = {}, learnFlights = false, pace = 1, flightTime = function() return nil end }
+            for k, v in pairs(extra) do c[k] = v end
+            local g = ns.PlannerRoute(c)
+            local back = ns.GuideParse(ns.GuideText(g))
+            for i, st in ipairs(g.steps) do
+                local b = back.steps[i]
+                for _, f in ipairs({ "kind", "node", "crossing", "quest", "title", "text", "map", "x", "y" }) do
+                    if not b or b[f] ~= st[f] then error("round trip " .. ns.GuideLine(st) .. " field " .. f) end
+                end
+            end
+            return g.steps
+        end
+        local function find(steps, kind)
+            for _, st in ipairs(steps) do if st.kind == kind then return st end end
+        end
+        local st = find(solo({ flights = { { node = 7, map = 1, x = 11, y = 10, known = true, name = "Seven" }, { node = 8, map = 2, x = 80, y = 79, known = true, name = "Eight" } } }), "fly")
+        if not st or st.node ~= 8 or not (st.why and st.why.saves and st.why.saves > 0) then error("a fly step that saves time") end
+        st = find(solo({ hearth = { map = 2, x = 80, y = 80 } }), "hearth")
+        if not st or not (st.why and st.why.saves and st.why.saves > 0) then error("a hearth step that saves time") end
+        st = find(solo({ crossings = { { id = "ferry", a = { map = 1, x = 11, y = 10 }, b = { map = 2, x = 80, y = 79 }, seconds = 20 } } }), "sail")
+        if not st or st.crossing ~= "ferry" or not (st.why and st.why.saves and st.why.saves > 0) then error("a sail step that saves time") end
+        local steps = solo({ learnFlights = true, flights = { { node = 9, map = 1, x = 0, y = 100, known = false, name = "Nine" }, { node = 8, map = 2, x = 80, y = 79, known = true, name = "Eight" } } })
+        st = find(steps, "learnflight")
+        if not st or st.node ~= 9 or not find(steps, "fly") then error("flight 9 is learned because the route flies from it") end
         -- the live context builds without error
         local live = ns.PlannerContext()
         if type(live) ~= "table" or not live.source or type(live.done) ~= "function" or not live.speed or type(live.flights) ~= "table" then error("live context") end
+        if live.bindSpot ~= nil and type(live.bindSpot) ~= "table" then error("bindSpot") end
     end)
     env.C_Map = real.map; rawset(env, "CreateVector2D", real.vec)
     if not ok then error(err, 0) end

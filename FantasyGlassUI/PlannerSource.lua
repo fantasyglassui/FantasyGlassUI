@@ -179,6 +179,25 @@ local function HasFlag(flags, mask)
     return math.floor(flags / mask) % 2 == 1
 end
 
+-- The ids in one of Questie's pointer tables. They are maps keyed by id (the values may be offsets
+-- into its data, not ids); only a plain sequence of numbers is read as a list of ids.
+local function PointerIds(t)
+    local out, n = {}, #t
+    if n > 0 and t[1] ~= nil then
+        local count, numbers = 0, true
+        for _, v in pairs(t) do
+            count = count + 1
+            if type(v) ~= "number" then numbers = false end
+        end
+        if count == n and numbers then
+            for i = 1, n do out[i] = t[i] end
+            return out
+        end
+    end
+    for k in pairs(t) do if type(k) == "number" then out[#out + 1] = k end end
+    return out
+end
+
 -- Every innkeeper Questie knows, { name, map, x, y } per spawn; gathered once per session.
 local innCache
 local function Inns(env)
@@ -188,17 +207,15 @@ local function Inns(env)
     local mask = flagsOk and type(flags) == "table" and tonumber(flags.INNKEEPER)
     local okP, pointers = Try(function() return db.NPCPointers end)
     if not (mask and okP and type(pointers) == "table") then innCache = out; return out end
-    for k, v in pairs(pointers) do
+    local okI, ids = Try(PointerIds, pointers)
+    for _, id in ipairs(okI and ids or {}) do
         ns.PlannerYield()
-        local id = type(v) == "number" and v or k
-        if type(id) == "number" then
-            local ok, f = Try(db.QueryNPCSingle, id, "npcFlags")
-            if ok and HasFlag(f, mask) then
-                local okN, name = Try(db.QueryNPCSingle, id, "name")
-                local okS, spots = Try(Spots, db, zones, id)
-                if okN and type(name) == "string" and okS then
-                    for _, sp in ipairs(spots) do out[#out + 1] = { name = name, map = sp.map, x = sp.x, y = sp.y } end
-                end
+        local ok, f = Try(db.QueryNPCSingle, id, "npcFlags")
+        if ok and HasFlag(f, mask) then
+            local okN, name = Try(db.QueryNPCSingle, id, "name")
+            local okS, spots = Try(Spots, db, zones, id)
+            if okN and type(name) == "string" and okS then
+                for _, sp in ipairs(spots) do out[#out + 1] = { name = name, map = sp.map, x = sp.x, y = sp.y } end
             end
         end
     end
@@ -235,12 +252,10 @@ function ns.PlannerSource()
     end
     local src = { kind = "questie" }
     function src.ids()
-        local out = {}
-        for k, v in pairs(env.db.QuestPointers) do
-            local id = type(v) == "number" and v or k
-            if type(id) == "number" then out[#out + 1] = id end
-        end
-        return out
+        local ok, out = Try(PointerIds, env.db.QuestPointers)
+        if ok then return out end
+        changed = true
+        return {}
     end
     function src.quest(id)
         local ok, rec = Try(Record, env, id)
