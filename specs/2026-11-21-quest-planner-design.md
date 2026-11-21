@@ -90,10 +90,17 @@ plans again, so the route stays right for where you are and what you have.
 - `/fgui guide plan` and a "Plan my route" button on the guide list start the planner; the panel title
   says "planned" instead of a guide's name. Following a written guide (`/fgui guide <name>`) stops it,
   and the reverse.
-- The plan is turned into ordinary guide steps (accept / do / turnin / goto / note) plus two new kinds,
-  so the panel, arrow and auto-advance in Guide.lua do the following:
+- The plan is turned into ordinary guide steps (accept / do / turnin / goto / note / level / hearth / fly,
+  which Guide.lua already has) plus new kinds, so the panel, arrow and auto-advance in Guide.lua do the
+  following. Every stop the planner makes is a step kind, so it round-trips through ns:GuideSave (#9).
+  Old guide lines keep parsing as they do today (`fly | text` stays valid; `fly <node> | <name>` adds the
+  node, from which "done" is worked out).
   - `fly <node> | <destination name>`: done when you land there (or are near it).
   - `learnflight <node> | <name>`: done when that flight point becomes known.
+  - `sail <crossing> | <name>`, `bind <inn> | <name>`: see "How far it looks".
+  - `train | <trainer>` (class, profession and riding trainers), `vendor | <vendor>` (sell, repair,
+    supplies, the mount vendor), `mail | <mailbox>`: done when that window closes.
+  - `explore | <area>`, `gather | <node>`: done when the area is discovered / the node gathered or passed.
 
 ### What it can choose from
 
@@ -348,7 +355,10 @@ Seeing the plan (fifth round):
     travel, time to do, experience per hour, and the best thing it beat and by how much).
 34. **Your own balance.** Three sliders on the Guide tab: **Speed**, **Safety** and **Story**. The two styles
     (#28) become presets of these (Speed: 100/0/0, Story: 40/0/100, with safety at your choice); moving a
-    slider makes the style "Custom". Safety weighs: monsters above your level near the path, elites near
+    slider makes the style "Custom". **Story as a rule and a weight**: at 100 the #28 rules apply in full
+    (chains kept whole and in order); below 100 it is a weight, a bonus for keeping chains together and
+    for a zone's main chain, growing with the slider. The Settings line "Style: Speed / Story" is the
+    preset picker for these sliders, not a separate setting. Safety weighs: monsters above your level near the path, elites near
     the path, escort quests, and hubs where you died (#19): with Safety up, the plan goes round them even
     when it costs time.
 
@@ -479,6 +489,9 @@ is settled. What is known:
   is cheap; the mount stop and the gold-short line appear at riding level; the race line compares with the
   best character's level time; a plan code round-trips (made in the game, read back by the same parser the
   website uses, checked in tests with a fixed code).
+- The site is built by the build scripts (make_i18n.py, build_site.py) into docs/; its plan reader is
+  JavaScript. The same fixed plan codes are tested on both sides: by smoke.py in the add-on, and by a
+  small Node check of the page's reader.
 - The planner runs in both smoke modes (combat values readable and secret) with no errors.
 
 ## Left to the builder
