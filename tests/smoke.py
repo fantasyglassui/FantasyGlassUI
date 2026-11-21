@@ -8636,14 +8636,17 @@ try("13.0 planner: reading Questie", function()
         [21] = { spawns = { [40] = { { 55, 65 } } }, minLevel = 12, maxLevel = 12, rank = 1 },
     }
     local quests = {
-        [101] = { name = "Wolves", questLevel = 10, requiredLevel = 8, startedBy = { { 9 } }, finishedBy = { { 9 }, },
-                  objectives = { { { 20, "Wolf slain", 0, 8 } } }, specialFlags = 0 },
+        [101] = { name = "Wolves", questLevel = 10, level = 10, requiredLevel = 8, startedBy = { { 9 } }, finishedBy = { { 9 }, },
+                  objectives = { { { 20, "Wolf slain", 0 } } }, specialFlags = 0 },
         [102] = { name = "From an item", startedBy = { nil, nil, { 5 } }, finishedBy = { { 9 } } },
         [103] = { name = "Lost giver", startedBy = { { 11 } }, finishedBy = { { 9 } } },
+        [105] = { name = "Scaling", questLevel = -1, level = 12, requiredLevel = 7, startedBy = { { 9 } }, finishedBy = { { 9 } } },
+        [106] = { name = "Grouped", questLevel = 10, level = 10, startedBy = { { 9 } }, finishedBy = { { 9 } } },
         [104] = { name = "Elite", startedBy = { { 9 } }, finishedBy = { { 9 } }, objectives = { { { 21, "Boss slain" } } } },
     }
     local fakes = {
-        QuestieDB = { QuestPointers = { [101] = true, [102] = true, [103] = true, [104] = true },
+        QuestieDB = { QuestPointers = { [101] = true, [102] = true, [103] = true, [104] = true, [105] = true, [106] = true },
+            IsGroupQuest = function(id) return id == 106 end,
             GetQuest = function(id) return quests[id] end, IsDoable = function() return true end,
             QueryNPCSingle = function(id, key) return npcs[id] and npcs[id][key] end },
         QuestXP = { GetQuestLogRewardXP = function() return 450 end },
@@ -8657,20 +8660,40 @@ try("13.0 planner: reading Questie", function()
         local src, why = ns.PlannerSource()
         if not src or src.kind ~= "questie" then error("questie source: " .. tostring(why)) end
         local q = src.quest(101)
-        if q.starts[1].map ~= 1436 or q.starts[1].x ~= 30 or q.objectives[1].kind ~= "kill" or q.objectives[1].count ~= 8 or q.objectives[1].mobLevel ~= 10 or q.xp ~= 450 then error("record 101") end
+        if q.starts[1].map ~= 1436 or q.starts[1].x ~= 30 or q.objectives[1].kind ~= "kill" or q.objectives[1].mobLevel ~= 10 or q.xp ~= 450 then error("record 101") end
         if q.objectives[1].spots[1].y ~= 60 or q.ends[1].map ~= 1436 then error("spots and ends") end
         if src.quest(102) ~= nil or src.quest(103) ~= nil then error("no giver on a map: skipped") end
         if not src.quest(104).elite then error("elite from the objective's rank") end
-        if #src.ids() ~= 4 then error("ids") end
+        if #src.ids() ~= 6 then error("ids") end
+        if src.quest(105).level ~= 12 or src.quest(105).minLevel ~= 7 then error("effective level, not the raw -1") end
+        if not src.quest(106).group or src.quest(101).group then error("group from Questie's IsGroupQuest") end
+        if q.objectives[1].count ~= nil or q.objectives[1].countKnown ~= false then error("Questie has no kill counts") end
+        local QL, realObj, realTag, realEnum = env.C_QuestLog, env.C_QuestLog.GetQuestObjectives, rawget(env.C_QuestLog, "GetQuestTagInfo"), env.Enum
+        QL.GetQuestObjectives = function() return { { numRequired = 8 } } end
+        local counted = src.quest(101).objectives[1]
+        QL.GetQuestObjectives = realObj
+        if counted.count ~= 8 or counted.countKnown ~= true then error("the quest log's count") end
+        env.Enum = setmetatable({ QuestTag = { Group = 1, Dungeon = 81, Raid = 62, Raid10 = 88, Raid25 = 89 } }, { __index = realEnum })
+        QL.GetQuestTagInfo = function(id) return { tagID = id == 101 and 81 or 88 } end
+        local d, g = src.quest(101), src.quest(106)
+        QL.GetQuestTagInfo = realTag; env.Enum = realEnum
+        if not d.dungeon or d.group or not g.group or g.dungeon then error("tags from the log through Enum.QuestTag") end
         meta = "5"; src, why = ns.PlannerSource(); if src or why ~= "changed" then error("another contract is a change") end
         meta = "4"; fakes.QuestieDB.GetQuest = function() error("boom") end
         src, why = ns.PlannerSource(); local okQ = src and pcall(src.quest, 101); if src and (not okQ) then error("errors inside Questie are caught") end
         src, why = ns.PlannerSource(); if src or why ~= "changed" then error("an error inside Questie is a change") end
         env.Questie.API.isReady = false; src, why = ns.PlannerSource(); if src or why ~= "waiting" then error("waits for Questie") end
         if not ready then error("registers for ready") end
+        local replans, realReplan = {}, ns.PlannerReplan
+        ns.PlannerReplan = function(_, why2) replans[#replans + 1] = why2 end
+        ready(); ns.PlannerReplan = realReplan
+        if replans[1] ~= "questie" then error("ready callback replans") end
+        env.Questie.API.isReady = true; src, why = ns.PlannerSource(); if not src then error("ready clears waiting: " .. tostring(why)) end
+        env.Questie.API.isReady = false
         loaded = false; src, why = ns.PlannerSource(); if src or why ~= "missing" then error("no Questie") end
         local log = ns.PlannerLogSource(); if log.kind ~= "log" or type(log.ids()) ~= "table" then error("log source") end
     end)
+    ns.PlannerSourceReset()
     env.C_AddOns.IsAddOnLoaded = realLoaded; rawset(env.C_AddOns, "GetAddOnMetadata", realMeta)
     rawset(env, "Questie", realQ); rawset(env, "QuestieLoader", realLoader)
     if not ok then error(err, 0) end

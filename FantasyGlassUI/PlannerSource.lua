@@ -43,26 +43,14 @@ end
 
 local function Merge(into, from) for _, s in ipairs(from) do into[#into + 1] = s end end
 
--- How many of a thing a quest wants: a count in the entry, or "slain: 3/8" / "Kill 8 ..." in its text.
-local function CountOf(entry, countAt)
-    local n = tonumber(entry.count or entry[countAt])
-    if n and n > 0 then return n end
-    local text = entry[2]
-    if type(text) == "string" then
-        n = tonumber(text:match("%d+%s*/%s*(%d+)")) or tonumber(text:match("^%D-(%d+)"))
-        if n and n > 0 then return n end
-    end
-    return 1
-end
-
 local function Level(db, id)
     local lv = db.QueryNPCSingle(id, "maxLevel") or db.QueryNPCSingle(id, "minLevel")
     return tonumber(lv)
 end
 
 -- One objective from an NPC list (kill credit) or the NPCs that drop an item.
-local function NpcObjective(db, zones, ids, count, state)
-    local o = { kind = "kill", count = count, spots = {} }
+local function NpcObjective(db, zones, ids, state)
+    local o = { kind = "kill", spots = {} }
     for _, npc in ipairs(ids) do
         Merge(o.spots, Spots(db, zones, npc))
         local lv = Level(db, npc)
@@ -77,25 +65,25 @@ local function Objectives(db, zones, quest, state)
     local out, raw = {}, quest.objectives
     if type(raw) == "table" then
         for _, e in ipairs(type(raw[1]) == "table" and raw[1] or {}) do
-            out[#out + 1] = NpcObjective(db, zones, { e[1] }, CountOf(e, 4), state)
+            out[#out + 1] = NpcObjective(db, zones, { e[1] }, state)
         end
         for _, e in ipairs(type(raw[5]) == "table" and raw[5] or {}) do
             local ids = type(e[1]) == "table" and e[1] or { e[2] }
-            out[#out + 1] = NpcObjective(db, zones, ids, CountOf(e, 5), state)
+            out[#out + 1] = NpcObjective(db, zones, ids, state)
         end
         for _, e in ipairs(type(raw[3]) == "table" and raw[3] or {}) do
             local drops = db.QueryItemSingle and db.QueryItemSingle(e[1], "npcDrops")
-            local o = NpcObjective(db, zones, type(drops) == "table" and drops or {}, CountOf(e, 4), state)
+            local o = NpcObjective(db, zones, type(drops) == "table" and drops or {}, state)
             o.kind = "item"
             out[#out + 1] = o
         end
         for _, e in ipairs(type(raw[2]) == "table" and raw[2] or {}) do
-            out[#out + 1] = { kind = "other", count = CountOf(e, 4), spots = {} }
+            out[#out + 1] = { kind = "other", spots = {} }
         end
     end
     local trig = quest.triggerEnd
     if type(trig) == "table" then
-        local o = { kind = "place", count = 1, spots = {} }
+        local o = { kind = "place", count = 1, countKnown = true, spots = {} }
         for area, list in pairs(type(trig[2]) == "table" and trig[2] or {}) do
             local map = zones:GetUiMapIdByAreaId(area)
             if map and type(list) == "table" then
@@ -104,22 +92,44 @@ local function Objectives(db, zones, quest, state)
         end
         out[#out + 1] = o
     end
+    -- Questie has no kill counts: the quest log has them, for a quest being worked on.
+    local logged = C_QuestLog and C_QuestLog.GetLogIndexForQuestID and C_QuestLog.GetLogIndexForQuestID(quest.Id or 0)
+        and C_QuestLog.GetQuestObjectives and C_QuestLog.GetQuestObjectives(quest.Id)
+    for i, o in ipairs(out) do
+        local n = o.kind ~= "place" and type(logged) == "table" and type(logged[i]) == "table" and tonumber(logged[i].numRequired)
+        if n and n > 0 then o.count, o.countKnown = n, true
+        elseif o.kind ~= "place" then o.count, o.countKnown = nil, false end
+    end
     return out
 end
 
 local function Ids(list) return type(list) == "table" and list or {} end
 
-local function Tags(id, quest, zones, state)
-    local elite, group, dungeon = state.elite, false, false -- group: only the quest log says
+-- Group and dungeon from a quest-log tag (Enum.QuestTag names; the client supplies the numbers).
+local function TagKinds(tagID)
+    local T = Enum and Enum.QuestTag
+    if type(T) ~= "table" or tagID == nil then return false, false end
+    local group = tagID == T.Group or tagID == T.Raid or tagID == T.Raid10 or tagID == T.Raid25
+    return group and true or false, (T.Dungeon ~= nil and tagID == T.Dungeon) or false
+end
+
+local function Tags(id, quest, db, zones, state)
+    local elite, group, dungeon = state.elite
     local info = C_QuestLog and C_QuestLog.GetQuestTagInfo and C_QuestLog.GetLogIndexForQuestID
         and C_QuestLog.GetLogIndexForQuestID(id) and C_QuestLog.GetQuestTagInfo(id)
     if type(info) == "table" then
         elite = elite or info.isElite or false
-        group = info.tagID == 1 or false
-        dungeon = info.tagID == 81 or false
+        group, dungeon = TagKinds(info.tagID)
     else
+        local function Ask(name)
+            if type(db[name]) ~= "function" then return false end
+            local ok, v = Try(db[name], id)
+            return ok and v and true or false
+        end
+        group = Ask("IsGroupQuest") or Ask("IsRaidQuest")
+        dungeon = Ask("IsDungeonQuest")
         local sort = tonumber(quest.zoneOrSort)
-        if sort and sort > 0 and zones.IsDungeonZone then
+        if not dungeon and sort and sort > 0 and zones.IsDungeonZone then
             local ok, d = Try(zones.IsDungeonZone, sort)
             dungeon = ok and d and true or false
         end
@@ -140,11 +150,11 @@ local function Record(env, id)
     for _, npc in ipairs(Ids(fin[1])) do Merge(ends, Spots(db, zones, npc)) end
     local state = {}
     local objectives = Objectives(db, zones, quest, state)
-    local elite, group, dungeon = Tags(id, quest, zones, state)
+    local elite, group, dungeon = Tags(id, quest, db, zones, state)
     local repeatable = tonumber(quest.specialFlags) and tonumber(quest.specialFlags) % 2 == 1 or false
     return {
         id = id, name = quest.name or ("Quest " .. id),
-        level = tonumber(quest.questLevel or quest.level) or 1,
+        level = tonumber(quest.level) or tonumber(quest.questLevel) or 1,
         minLevel = tonumber(quest.requiredLevel) or 1,
         xp = tonumber(xpMod:GetQuestLogRewardXP(id)) or 0,
         starts = starts, ends = ends, objectives = objectives,
@@ -163,7 +173,7 @@ function ns.PlannerSource()
     local Q = _G.Questie
     local api = type(Q) == "table" and Q.API
     if type(api) ~= "table" or type(api.RegisterOnReady) ~= "function" then return nil, "changed" end
-    if not api.isReady then
+    if api.isReady then waiting = false else
         if not waiting then
             waiting = true
             local ok = Try(api.RegisterOnReady, function()
@@ -174,6 +184,7 @@ function ns.PlannerSource()
         end
         return nil, "waiting"
     end
+    if changed then changed = false; return nil, "changed" end -- told once; the next check starts fresh
     local meta = C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata("Questie", "X-QuestieDB-Contract")
     if meta ~= ns.PLANNER_CONTRACT then return nil, "changed" end
     local env = { db = Import("QuestieDB"), xp = Import("QuestXP"), zones = Import("ZoneDB") }
@@ -183,7 +194,6 @@ function ns.PlannerSource()
         or type(env.xp.GetQuestLogRewardXP) ~= "function" or type(env.zones.GetUiMapIdByAreaId) ~= "function" then
         return nil, "changed"
     end
-    if changed then return nil, "changed" end
     local src = { kind = "questie" }
     function src.ids()
         local out = {}
@@ -225,14 +235,17 @@ function ns.PlannerLogSource()
             if map and x and y then ends[1] = { map = map, x = x * 100, y = y * 100 } end
         end
         local tag = QL.GetQuestTagInfo and QL.GetQuestTagInfo(id)
+        local group, dungeon = TagKinds(type(tag) == "table" and tag.tagID or nil)
         return {
             id = id, name = (QL.GetTitleForQuestID and QL.GetTitleForQuestID(id)) or (info and info.title) or ("Quest " .. id),
             level = info and info.questLevel or 1, minLevel = 1, xp = 0,
             starts = {}, ends = ends, objectives = {}, pre = {}, preAny = {}, exclusive = {},
-            elite = type(tag) == "table" and tag.isElite or false, group = type(tag) == "table" and tag.tagID == 1 or false,
-            dungeon = type(tag) == "table" and tag.tagID == 81 or false,
+            elite = type(tag) == "table" and tag.isElite or false, group = group,
+            dungeon = dungeon,
             repeatable = false, doable = true,
         }
     end
     return src
 end
+
+function ns.PlannerSourceReset() changed, waiting = false, false end
