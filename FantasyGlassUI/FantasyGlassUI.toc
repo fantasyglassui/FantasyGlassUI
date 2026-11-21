@@ -17,6 +17,7 @@
 ## X-License: All Rights Reserved
 ## X-Curse-Project-ID: 1798626
 ## IconTexture: Interface\AddOns\FantasyGlassUI\Media\icon.tga
+## OptionalDeps: Questie
 ## SavedVariables: FantasyGlassUIDB
 
 Core.lua
@@ -61,6 +62,7 @@ Social.lua
 MapExtras.lua
 Guide.lua
 GuideEditor.lua
+PlannerSource.lua
 Polish.lua
 Bags.lua
 BagWindow.lua

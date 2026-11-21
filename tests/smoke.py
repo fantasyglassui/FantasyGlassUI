@@ -8626,6 +8626,55 @@ try("13.0 planner: step kinds", function()
     w.bind = "Booty Bay"; if ns.GuideStepDone(s[5], w) then error("bound elsewhere") end
     if ns.GuideParseLine("learnflight | x") ~= nil then error("learnflight needs a node number") end
 end)
+try("13.0 planner: reading Questie", function()
+    local realLoaded, realMeta, realQ, realLoader = env.C_AddOns.IsAddOnLoaded, rawget(env.C_AddOns, "GetAddOnMetadata"), rawget(env, "Questie"), rawget(env, "QuestieLoader")
+    local loaded, meta, ready = true, "4", nil
+    local npcs = {
+        [9] = { spawns = { [40] = { { 30, 40 } } }, minLevel = 9, maxLevel = 9, rank = 0 },
+        [11] = { minLevel = 5, maxLevel = 5, rank = 0 },
+        [20] = { spawns = { [40] = { { 50, 60 } } }, minLevel = 10, maxLevel = 10, rank = 0 },
+        [21] = { spawns = { [40] = { { 55, 65 } } }, minLevel = 12, maxLevel = 12, rank = 1 },
+    }
+    local quests = {
+        [101] = { name = "Wolves", questLevel = 10, requiredLevel = 8, startedBy = { { 9 } }, finishedBy = { { 9 }, },
+                  objectives = { { { 20, "Wolf slain", 0, 8 } } }, specialFlags = 0 },
+        [102] = { name = "From an item", startedBy = { nil, nil, { 5 } }, finishedBy = { { 9 } } },
+        [103] = { name = "Lost giver", startedBy = { { 11 } }, finishedBy = { { 9 } } },
+        [104] = { name = "Elite", startedBy = { { 9 } }, finishedBy = { { 9 } }, objectives = { { { 21, "Boss slain" } } } },
+    }
+    local fakes = {
+        QuestieDB = { QuestPointers = { [101] = true, [102] = true, [103] = true, [104] = true },
+            GetQuest = function(id) return quests[id] end, IsDoable = function() return true end,
+            QueryNPCSingle = function(id, key) return npcs[id] and npcs[id][key] end },
+        QuestXP = { GetQuestLogRewardXP = function() return 450 end },
+        ZoneDB = { GetUiMapIdByAreaId = function(_, area) return area == 40 and 1436 or nil end },
+    }
+    env.Questie = { API = { isReady = true, RegisterOnReady = function(f) ready = f end } }
+    env.QuestieLoader = { ImportModule = function(_, name) return fakes[name] end }
+    env.C_AddOns.IsAddOnLoaded = function() return loaded end
+    rawset(env.C_AddOns, "GetAddOnMetadata", function() return meta end)
+    local ok, err = pcall(function()
+        local src, why = ns.PlannerSource()
+        if not src or src.kind ~= "questie" then error("questie source: " .. tostring(why)) end
+        local q = src.quest(101)
+        if q.starts[1].map ~= 1436 or q.starts[1].x ~= 30 or q.objectives[1].kind ~= "kill" or q.objectives[1].count ~= 8 or q.objectives[1].mobLevel ~= 10 or q.xp ~= 450 then error("record 101") end
+        if q.objectives[1].spots[1].y ~= 60 or q.ends[1].map ~= 1436 then error("spots and ends") end
+        if src.quest(102) ~= nil or src.quest(103) ~= nil then error("no giver on a map: skipped") end
+        if not src.quest(104).elite then error("elite from the objective's rank") end
+        if #src.ids() ~= 4 then error("ids") end
+        meta = "5"; src, why = ns.PlannerSource(); if src or why ~= "changed" then error("another contract is a change") end
+        meta = "4"; fakes.QuestieDB.GetQuest = function() error("boom") end
+        src, why = ns.PlannerSource(); local okQ = src and pcall(src.quest, 101); if src and (not okQ) then error("errors inside Questie are caught") end
+        src, why = ns.PlannerSource(); if src or why ~= "changed" then error("an error inside Questie is a change") end
+        env.Questie.API.isReady = false; src, why = ns.PlannerSource(); if src or why ~= "waiting" then error("waits for Questie") end
+        if not ready then error("registers for ready") end
+        loaded = false; src, why = ns.PlannerSource(); if src or why ~= "missing" then error("no Questie") end
+        local log = ns.PlannerLogSource(); if log.kind ~= "log" or type(log.ids()) ~= "table" then error("log source") end
+    end)
+    env.C_AddOns.IsAddOnLoaded = realLoaded; rawset(env.C_AddOns, "GetAddOnMetadata", realMeta)
+    rawset(env, "Questie", realQ); rawset(env, "QuestieLoader", realLoader)
+    if not ok then error(err, 0) end
+end)
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()
