@@ -689,12 +689,12 @@ end)
 local printed = {}
 function ns:PrintRaw(msg) printed[#printed+1] = tostring(msg) end       -- every message ends up here, errors included
 
-if secretMode then env.FantasyGlassUIDB = { actionBars = true, accent = "VIOLET", role = "TANK", pos = { minimap = { "TOPRIGHT", "TOPRIGHT", -30, -30 } } } end
+if secretMode then env.FantasyGlassUIDB = { profiles = { Default = { actionBars = true, accent = "VIOLET", role = "TANK", pos = { minimap = { "TOPRIGHT", "TOPRIGHT", -30, -30 } } } }, chars = {} } end
 ns:InitDB(); ns:ApplyTheme()
 if secretMode then
     local okMig = ns.profile == "Default" and ns.db.accent == "AZURE" and ns.db.theme == "SMOKE" and ns.db.pos.minimap[3] == -30
-        and env.FantasyGlassUIDB.profiles.Default == ns.db and env.FantasyGlassUIDB.accent == nil and env.FantasyGlassUIDB.chars["Someone - Realm"] == "Default"
-    if not okMig then out[#out+1] = "MIGRATION of old settings FAILED" end
+        and env.FantasyGlassUIDB.profiles.Default == ns.db and env.FantasyGlassUIDB.chars["Someone - Realm"] == "Default" and not ns.settingsReset
+    if not okMig then out[#out+1] = "settings in the current format were not read as they are" end
 end
 for _, m in ipairs(ns.modules) do
     ns.startingModule = m.key                    -- (as the add-on itself does: panels made now belong to this feature)
@@ -1743,24 +1743,53 @@ try("Rename", function()
     end
     if ns.HideLists then ns:HideLists() end
     if not ns.MEDIA:find("FantasyGlassUI", 1, true) then error("media is not loaded from the new folder: " .. ns.MEDIA) end
-    -- settings saved under the former name are adopted, once
+    -- (12.0) settings from before profiles start afresh, and say so; current settings are kept as they are
     local keepRoot, keepDb = env.FantasyGlassUIDB, ns.db
-    local legacy = { profiles = { Default = { barScale = 120, role = "HEALER" } }, chars = {} }
-    ns.db, env.FantasyGlassUIDB, env.StylishUIDB, ns.migrated = nil, nil, legacy, nil
+    local flat = { barScale = 120, role = "HEALER" }
+    ns.db, env.FantasyGlassUIDB, ns.settingsReset, ns.freshInstall = nil, flat, nil, nil
     ns:InitDB()
-    if env.FantasyGlassUIDB ~= legacy then error("settings from the former name were not adopted") end
-    if env.StylishUIDB ~= nil then error("the former settings table should be released after adoption") end
-    if not ns.migrated or ns.db.barScale ~= 120 or ns.db.role ~= "HEALER" then
-        error("the adopted settings are not in use: migrated=" .. tostring(ns.migrated) .. " barScale=" .. tostring(ns.db.barScale) .. " role=" .. tostring(ns.db.role))
-    end
-    -- and when there are settings under the new name already, the old ones are ignored
+    if not ns.settingsReset or not ns.freshInstall then error("settings from before profiles should start afresh, with the setup") end
+    if env.FantasyGlassUIDB.barScale ~= nil or ns.db.barScale == 120 then error("the old flat settings should be gone") end
     local current = { profiles = { Default = { barScale = 90 } }, chars = {} }
-    ns.db, env.FantasyGlassUIDB, env.StylishUIDB, ns.migrated = nil, current, legacy, nil
+    ns.db, env.FantasyGlassUIDB, ns.settingsReset = nil, current, nil
     ns:InitDB()
-    if env.FantasyGlassUIDB ~= current or ns.migrated or ns.db.barScale ~= 90 then error("existing settings must win over old ones") end
-    ns.db, env.FantasyGlassUIDB, ns.migrated = nil, keepRoot, nil
+    if env.FantasyGlassUIDB ~= current or ns.settingsReset or ns.db.barScale ~= 90 then error("current settings must be kept as they are") end
+    ns.freshInstall = nil
+    ns.db, env.FantasyGlassUIDB = nil, keepRoot
     ns:InitDB()
     if ns.db ~= keepDb and ns.db.theme == nil then error("could not restore the test profile") end
+end)
+try("Simple settings (12.0)", function()
+    local O = ns.optUI
+    if not (O and O.SetSimple) then ns:ToggleConfig(); ns:ToggleConfig() end
+    O = ns.optUI
+    if not O.SetSimple then error("the settings window should have simple settings") end
+    local fp = ns.featuresPage
+    local toolsShown = true
+    rawset(O.tabButtons.tools, "Hide", function() toolsShown = false end)
+    rawset(O.tabButtons.tools, "Show", function() toolsShown = true end)
+    O.SetSimple(true)
+    if not ns:SettingsSimple() or ns.root.settingsMode ~= "simple" then error("simple settings should be kept for the account") end
+    if toolsShown then error("the Tools tab should be tucked away in simple settings") end
+    fp.Select(1)
+    for _, key in ipairs(fp.shownKeys) do
+        if not ns.simpleFeatures[key] then error("a switch outside the everyday ones shows in simple settings: " .. key) end
+    end
+    local found = fp.Filter("tooltip")
+    local outside = false
+    for _, key in ipairs(fp.shownKeys) do if not ns.simpleFeatures[key] then outside = true end end
+    if found == 0 or not outside then error("a search should find every switch, simple settings or not") end
+    fp.Filter("")
+    if not O.NavItemShown("Combat", { title = "Behavior" }) or O.NavItemShown("Combat", { title = "Click casting" }) then error("the Combat tab's simple sections are wrong") end
+    -- a switch the search of all options finds, outside the everyday ones: all options come back
+    fp.Reveal({ key = "tipGuildRank" })
+    if ns:SettingsSimple() then error("going to a switch outside the everyday ones should show all options") end
+    if not toolsShown then error("the Tools tab should be back with all options") end
+    for key in pairs(ns.simpleFeatures) do
+        local listed = false
+        for _, group in ipairs(ns.featureGroups) do for _, opt in ipairs(group[2]) do if opt[1] == key then listed = true end end end
+        if not listed then error("an everyday switch is not on the Features tab: " .. key) end
+    end
 end)
 try("Look tab sections", function()
     ns.db.theme, ns.db.accent = "SMOKE", "AZURE"; ns:Retheme()

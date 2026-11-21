@@ -100,7 +100,7 @@ local function BuildNav(page, sheet, area, tabTitle)
         local n = 0
         for i, b in ipairs(buttons) do
             local fs = items[i].fs
-            if fs and fs.IsShown and fs:IsShown() == false then
+            if (fs and fs.IsShown and fs:IsShown() == false) or not O.NavItemShown(tabTitle, items[i]) then
                 b:Hide()
             else
                 b:ClearAllPoints()
@@ -249,6 +249,7 @@ local function Build()
         wide = math.floor(wide + 22)
         b:SetSize(wide, 26)
         b:SetPoint("TOPLEFT", tabX, -42)
+        b.wide = wide
         tabX = tabX + wide + 2
         b.line = b:CreateTexture(nil, "ARTWORK")
         b.line:SetTexture(ns.FLAT)
@@ -287,6 +288,51 @@ local function Build()
         page.Refresh = function() if sheet.Refresh then sheet.Refresh() end end
         ns.indexingTab = nil
     end
+
+    -- Simple settings (12.0): the everyday options, or all of them. One switch at the end of the tab row;
+    -- it is kept for the account. It starts on simple for a new player, and on all options for one who
+    -- already knows the add-on.
+    if type(ns.root) == "table" and ns.root.settingsMode == nil then ns.root.settingsMode = ns.freshInstall and "simple" or "all" end
+    local function LayoutTabs()
+        local x = 18
+        for _, d in ipairs(defs) do
+            local b = O.tabButtons[d[1]]
+            if b then
+                if ns:SettingsSimple() and ns.simpleHiddenTabs[d[1]] then b:Hide()
+                else
+                    b:ClearAllPoints()
+                    b:SetPoint("TOPLEFT", x, -42)
+                    b:Show()
+                    x = x + (b.wide or 80) + 2
+                end
+            end
+        end
+    end
+    local allBox = ns:CreateCheckbox(O.frame, "Show all options", not ns:SettingsSimple(), function(v) O.SetSimple(not v) end)
+    do                                                        -- (as wide as its words, so it never reaches over the tabs)
+        local w = allBox.label and allBox.label.GetStringWidth and allBox.label:GetStringWidth()
+        if type(w) == "number" and w > 0 then allBox:SetWidth(math.floor(w + 46)) end
+    end
+    allBox:SetPoint("TOPRIGHT", -28, -44)
+    O.Tip(allBox, "Show all options", "Off: the options most players look for. On: every option, on every tab. The search at the top always looks through all of them.")
+    function O.SetSimple(simple)
+        if type(ns.root) == "table" then ns.root.settingsMode = simple and "simple" or "all" end
+        if allBox.SetChecked then allBox:SetChecked(not simple) end
+        LayoutTabs()
+        for _, page in pairs(O.pages) do
+            if page.sheet and page.sheet.ModeChanged then pcall(page.sheet.ModeChanged) end
+            if page.NavRefresh then pcall(page.NavRefresh) end
+            -- (the section that was open is hidden now: open the first one shown)
+            local nav, cur = page.sheet and rawget(page.sheet, "nav"), page.sheet and rawget(page.sheet, "navCurrent")
+            if simple and type(nav) == "table" and type(cur) == "number" and nav[cur] and nav[cur].IsShown and not nav[cur]:IsShown() then
+                for _, b in ipairs(nav) do if b:IsShown() then b:Click(); break end end
+            end
+            if page.sheet and page.sheet.NavCounts then pcall(page.sheet.NavCounts) end
+        end
+        local cur = O.frame.currentPage
+        if simple and cur and ns.simpleHiddenTabs[cur] then O.ShowPage("features") end
+    end
+    LayoutTabs()
 
     local rule = ns:Divider(O.frame, 12)
     rule:SetPoint("TOPLEFT", 40, -69)
@@ -361,6 +407,7 @@ local function Build()
     local function GoTo(hit)
         results:Hide()
         searchBox:ClearFocus()
+        if ns:SettingsSimple() and ns.simpleHiddenTabs[hit.tab] then O.SetSimple(false) end     -- (found by a search: shown in full)
         O.ShowPage(hit.tab)
         local page, target = O.pages[hit.tab], hit.frame
         if page and page.sheet and page.sheet.Reveal then page.sheet.Reveal(target) end      -- (a tab that shows one section at a time)

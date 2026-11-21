@@ -787,14 +787,10 @@ clean screen.
 
 ## Coming from StylishUI
 
-Fantasy Glass UI is StylishUI under a new name. To keep your settings:
-
-1. Exit the game completely.
-2. Delete the old `Interface/AddOns/StylishUI` folder and put `FantasyGlassUI` in its place. The two
-   cannot run together; if both are present, Fantasy Glass UI stands down and says so in chat.
-3. In `WTF/Account/<your account>/SavedVariables/`, copy `StylishUI.lua` and name the copy
-   `FantasyGlassUI.lua`. (Without this step you start fresh, with the setup.)
-4. Start the game. A chat line confirms the settings were carried over.
+Fantasy Glass UI is StylishUI under a new name. Delete the old `Interface/AddOns/StylishUI` folder
+and put `FantasyGlassUI` in its place: the two cannot run together, and if both are present, Fantasy
+Glass UI stands down and says so in chat. Since 12.0, settings saved by StylishUI are not carried
+over; the setup opens on your first login instead.
 
 The command is now `/fgui`. `/sui` still works, as does `/fantasyglass`. Profile, layout and theme
 strings exported from StylishUI still import.

@@ -191,7 +191,12 @@ local function BuildFeatures(page)
     local navBottom = TOP
     local extras = {}
     page.extras = extras
-    local function Layout(keys, title, extraName)
+    local function Layout(keys, title, extraName, all)
+        if not all and ns:SettingsSimple() then                -- (simple settings: the everyday switches of the section)
+            local few = {}
+            for _, key in ipairs(keys) do if ns.simpleFeatures[key] then few[#few + 1] = key end end
+            keys = few
+        end
         for _, cb in pairs(boxes) do cb:Hide() end
         for _, e in pairs(extras) do e.frame:Hide() end
         local half = math.max(1, math.ceil(#keys / 2))
@@ -242,11 +247,26 @@ local function BuildFeatures(page)
     page.Select = Select
     page.navItems = {}
     for i, section in ipairs(sections) do
-        page.navItems[i] = { title = section.title, count = function()
-            local on = 0
-            for _, key in ipairs(section.keys) do if ns.db[key] then on = on + 1 end end
-            return on .. "/" .. #section.keys
+        page.navItems[i] = { title = section.title, keys = section.keys, count = function()
+            local on, of = 0, 0
+            local simple = ns:SettingsSimple()
+            for _, key in ipairs(section.keys) do
+                if not simple or ns.simpleFeatures[key] then
+                    of = of + 1
+                    if ns.db[key] then on = on + 1 end
+                end
+            end
+            return on .. "/" .. of
         end }
+    end
+    -- (when simple settings hide the chosen section, the first one shown takes its place)
+    page.ModeChanged = function()
+        local items = page.navItems
+        if ns:SettingsSimple() and not O.NavItemShown("Features", items[current]) then
+            for i, item in ipairs(items) do if O.NavItemShown("Features", item) then current = i; break end end
+        end
+        if search:GetText() == "" then Select(current) else page.Filter(search:GetText()) end
+        Counts()
     end
     page.NavSelect = function(i) search:SetText(""); Select(i) end
 
@@ -266,7 +286,7 @@ local function BuildFeatures(page)
             end
         end
         Mark(0)
-        Layout(keys, format(ns:TrN(#keys, "%d match", "%d matches"), #keys))
+        Layout(keys, format(ns:TrN(#keys, "%d match", "%d matches"), #keys), nil, true)     -- (a search finds every switch)
         found:SetText(#keys == 0 and ("|cffffd100" .. format(ns:Tr("No switch matches \"%s\"."), strtrim(q)) .. "|r") or "")
         return #keys
     end
@@ -280,6 +300,7 @@ local function BuildFeatures(page)
             for i, b in ipairs(page.nav or {}) do if b == target then at = i end end
         end
         if not at then return false end
+        if key and ns:SettingsSimple() and not ns.simpleFeatures[key] and O.SetSimple then O.SetSimple(false) end   -- (found by a search: shown in full)
         search:SetText("")
         Select(at)
         if key then Describe(key) end

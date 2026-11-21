@@ -17,7 +17,7 @@
 ## X-License: All Rights Reserved
 ## X-Curse-Project-ID: 1798626
 ## IconTexture: Interface\AddOns\FantasyGlassUI\Media\icon.tga
-## SavedVariables: FantasyGlassUIDB, StylishUIDB
+## SavedVariables: FantasyGlassUIDB
 
 Core.lua
 Contact.lua

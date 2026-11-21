@@ -21,6 +21,9 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["Show all options"] = "Alle Optionen zeigen",
+    ["Off: the options most players look for. On: every option, on every tab. The search at the top always looks through all of them."] = "Aus: die Optionen, die die meisten suchen. An: jede Option auf jedem Reiter. Die Suche oben durchsucht immer alle.",
+    ["Your settings were from a version too old for 12.0, so they start afresh. The setup opens to help."] = "Deine Einstellungen stammen aus einer Version, die für 12.0 zu alt ist, daher beginnen sie neu. Die Einrichtung öffnet sich, um zu helfen.",
     ["\"%s\" is not a command. Did you mean |cffffff00/fgui %s|r?"] = "„%s“ ist kein Befehl. Meintet ihr |cffffff00/fgui %s|r?",
     ["\"%s\" is not a command. These mention it:"] = "„%s“ ist kein Befehl. Diese erwähnen es:",
     ["\"%s\" is not a command. |cffffff00/fgui help|r lists them all."] = "„%s“ ist kein Befehl. |cffffff00/fgui help|r listet alle auf.",
@@ -3005,6 +3008,9 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["Show all options"] = "Afficher toutes les options",
+    ["Off: the options most players look for. On: every option, on every tab. The search at the top always looks through all of them."] = "Désactivé : les options que la plupart des joueurs cherchent. Activé : toutes les options, sur chaque onglet. La recherche en haut parcourt toujours tout.",
+    ["Your settings were from a version too old for 12.0, so they start afresh. The setup opens to help."] = "Vos réglages venaient d'une version trop ancienne pour la 12.0 : ils repartent de zéro. La configuration s'ouvre pour vous aider.",
     ["\"%s\" is not a command. Did you mean |cffffff00/fgui %s|r?"] = "« %s » n'est pas une commande. Vouliez-vous dire |cffffff00/fgui %s|r ?",
     ["\"%s\" is not a command. These mention it:"] = "« %s » n'est pas une commande. Celles-ci en parlent :",
     ["\"%s\" is not a command. |cffffff00/fgui help|r lists them all."] = "« %s » n'est pas une commande. |cffffff00/fgui help|r les liste toutes.",
@@ -5989,6 +5995,9 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["Show all options"] = "Mostrar todas las opciones",
+    ["Off: the options most players look for. On: every option, on every tab. The search at the top always looks through all of them."] = "Desactivado: las opciones que más se buscan. Activado: todas las opciones, en cada pestaña. La búsqueda de arriba siempre las recorre todas.",
+    ["Your settings were from a version too old for 12.0, so they start afresh. The setup opens to help."] = "Tus ajustes eran de una versión demasiado antigua para la 12.0, así que empiezan de nuevo. Se abre la configuración para ayudarte.",
     ["\"%s\" is not a command. Did you mean |cffffff00/fgui %s|r?"] = "«%s» no es un comando. ¿Querías decir |cffffff00/fgui %s|r?",
     ["\"%s\" is not a command. These mention it:"] = "«%s» no es un comando. Estos lo mencionan:",
     ["\"%s\" is not a command. |cffffff00/fgui help|r lists them all."] = "«%s» no es un comando. |cffffff00/fgui help|r los muestra todos.",
@@ -8976,6 +8985,9 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["Show all options"] = "Показать все настройки",
+    ["Off: the options most players look for. On: every option, on every tab. The search at the top always looks through all of them."] = "Выкл.: настройки, которые ищут чаще всего. Вкл.: все настройки на всех вкладках. Поиск вверху всегда ищет по всем.",
+    ["Your settings were from a version too old for 12.0, so they start afresh. The setup opens to help."] = "Ваши настройки были из слишком старой для 12.0 версии, поэтому они начинаются заново. Откроется мастер настройки.",
     ["\"%s\" is not a command. Did you mean |cffffff00/fgui %s|r?"] = "«%s» — не команда. Возможно, |cffffff00/fgui %s|r?",
     ["\"%s\" is not a command. These mention it:"] = "«%s» — не команда. Вот где это упоминается:",
     ["\"%s\" is not a command. |cffffff00/fgui help|r lists them all."] = "«%s» — не команда. |cffffff00/fgui help|r покажет все.",
@@ -11960,6 +11972,9 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["Show all options"] = "Mostrar todas as opções",
+    ["Off: the options most players look for. On: every option, on every tab. The search at the top always looks through all of them."] = "Desligado: as opções que a maioria procura. Ligado: todas as opções, em todas as abas. A busca no topo sempre procura em todas.",
+    ["Your settings were from a version too old for 12.0, so they start afresh. The setup opens to help."] = "Suas configurações eram de uma versão antiga demais para a 12.0, então começam do zero. A configuração abre para ajudar.",
     ["\"%s\" is not a command. Did you mean |cffffff00/fgui %s|r?"] = "\"%s\" não é um comando. Você quis dizer |cffffff00/fgui %s|r?",
     ["\"%s\" is not a command. These mention it:"] = "\"%s\" não é um comando. Estes o mencionam:",
     ["\"%s\" is not a command. |cffffff00/fgui help|r lists them all."] = "\"%s\" não é um comando. |cffffff00/fgui help|r lista todos.",
@@ -14944,6 +14959,9 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["Show all options"] = "Mostra tutte le opzioni",
+    ["Off: the options most players look for. On: every option, on every tab. The search at the top always looks through all of them."] = "Spento: le opzioni che cercano quasi tutti. Acceso: ogni opzione, in ogni scheda. La ricerca in alto cerca sempre in tutte.",
+    ["Your settings were from a version too old for 12.0, so they start afresh. The setup opens to help."] = "Le tue impostazioni erano di una versione troppo vecchia per la 12.0, quindi ripartono da zero. Si apre la configurazione per aiutarti.",
     ["\"%s\" is not a command. Did you mean |cffffff00/fgui %s|r?"] = "\"%s\" non è un comando. Intendevi |cffffff00/fgui %s|r?",
     ["\"%s\" is not a command. These mention it:"] = "\"%s\" non è un comando. Questi lo menzionano:",
     ["\"%s\" is not a command. |cffffff00/fgui help|r lists them all."] = "\"%s\" non è un comando. |cffffff00/fgui help|r li elenca tutti.",
@@ -17928,6 +17946,9 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["Show all options"] = "모든 옵션 보기",
+    ["Off: the options most players look for. On: every option, on every tab. The search at the top always looks through all of them."] = "끔: 대부분이 찾는 옵션만. 켬: 모든 탭의 모든 옵션. 위쪽 검색은 언제나 전체를 찾습니다.",
+    ["Your settings were from a version too old for 12.0, so they start afresh. The setup opens to help."] = "설정이 12.0에 비해 너무 오래된 버전의 것이라 새로 시작합니다. 설정 도우미가 열립니다.",
     ["\"%s\" is not a command. Did you mean |cffffff00/fgui %s|r?"] = "\"%s\"은(는) 명령이 아닙니다. |cffffff00/fgui %s|r 말씀인가요?",
     ["\"%s\" is not a command. These mention it:"] = "\"%s\"은(는) 명령이 아닙니다. 다음 명령에 나옵니다:",
     ["\"%s\" is not a command. |cffffff00/fgui help|r lists them all."] = "\"%s\"은(는) 명령이 아닙니다. |cffffff00/fgui help|r에서 모두 볼 수 있습니다.",
@@ -20915,6 +20936,9 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["Show all options"] = "显示全部选项",
+    ["Off: the options most players look for. On: every option, on every tab. The search at the top always looks through all of them."] = "关：大多数玩家常用的选项。开：每个标签页的全部选项。顶部的搜索始终搜索全部选项。",
+    ["Your settings were from a version too old for 12.0, so they start afresh. The setup opens to help."] = "你的设置来自对 12.0 来说过旧的版本，因此将重新开始。设置向导会打开来帮助你。",
     ["\"%s\" is not a command. Did you mean |cffffff00/fgui %s|r?"] = "“%s”不是命令。你是想输入 |cffffff00/fgui %s|r 吗？",
     ["\"%s\" is not a command. These mention it:"] = "“%s”不是命令。以下命令提到了它：",
     ["\"%s\" is not a command. |cffffff00/fgui help|r lists them all."] = "“%s”不是命令。|cffffff00/fgui help|r 会列出全部命令。",

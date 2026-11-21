@@ -607,6 +607,31 @@ function ns:PresetValue(preset, key)
 end
 
 -- Shared with the setup wizard: the switches, what each does, and the presets.
+-- Simple settings (12.0): the switches most players look for, shown when "Show all options" is off.
+-- The rest are still there, one click away, and the search of all options always finds them.
+ns.simpleFeatures = {}
+for _, key in ipairs({
+    "unitFrames", "ufParty", "raidFrames", "nameplates", "playerCast", "xpBar",
+    "actionBars", "barEngine", "cooldownText",
+    "roleHUD", "classBar", "cooldowns", "threatMeter", "damageMeter", "deathRecap", "bossTimer", "buffMissing",
+    "minimap", "buttonBag", "infobar", "mapCoords", "clock12",
+    "windows", "characterWindow", "tooltip", "itemCounts", "questTracker", "questLog", "autoQuest",
+    "toasts", "lootRoll", "rollAdvice", "bossGuide", "weeklyRecap", "afkScreen",
+    "chat", "chatSkin", "whisperWindow", "shortCommands",
+    "bagWindow", "bankWindow", "upgradeArrows", "upgradePrompt",
+    "autoSell", "autoRepair", "trainAll", "mailTools",
+    "autoInvite", "skipCinematics", "autoRes", "autoSummon", "fastLoot",
+    "tweakCamera", "tweakAutoLoot", "tweakTutorials",
+}) do ns.simpleFeatures[key] = true end
+-- and on the other tabs, the sections shown in simple settings (a tab not named here shows all of its own)
+ns.simpleSections = {
+    ["Combat"] = { ["Behavior"] = true, ["Cooldown tracker"] = true },
+    ["Bars and frames"] = { ["Bar 1"] = true, ["Bar 2"] = true, ["Bar 3"] = true, ["Player frame"] = true,
+                            ["Target frame"] = true, ["Raid frames"] = true, ["Nameplates"] = true },
+}
+ns.simpleHiddenTabs = { tools = true }
+function ns:SettingsSimple() return type(ns.root) == "table" and ns.root.settingsMode == "simple" end
+
 ns.featureGroups, ns.featureDesc = groups, DESC
 
 -- Switches that only do something while another is on (11.10.0): shown dimmed while it is off,

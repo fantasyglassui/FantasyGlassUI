@@ -24,6 +24,18 @@ function O.Header(parent, text, x, y, opts)
     return fs
 end
 
+-- Simple settings: is this section of a tab's list shown? (a section of switches: if any of them is an
+-- everyday one; another tab's section: if the tab names it, or names none)
+function O.NavItemShown(tabTitle, item)
+    if type(item) ~= "table" or not ns:SettingsSimple() then return true end
+    if type(item.keys) == "table" then
+        for _, key in ipairs(item.keys) do if ns.simpleFeatures[key] then return true end end
+        return false
+    end
+    local wanted = ns.simpleSections and ns.simpleSections[tabTitle]
+    return not wanted or wanted[item.title] == true
+end
+
 function O.ShowPage(id)
     local th = ns.theme
     for key, page in pairs(O.pages) do

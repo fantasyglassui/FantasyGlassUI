@@ -1753,6 +1753,9 @@ function ns:SearchOptions(query, limit)
                 seen[id] = true
                 local hit = { tab = entry.tab, label = shown, frame = entry.frame }
                 if at == 1 then first[#first + 1] = hit else rest[#rest + 1] = hit end       -- labels that start with it come first
+            elseif shown ~= entry.label and strlower(entry.label):find(query, 1, true) then     -- (the English name too, as guides and help on Discord use it)
+                seen[id] = true
+                rest[#rest + 1] = { tab = entry.tab, label = shown, frame = entry.frame }
             elseif type(entry.frame) == "table" and type(entry.frame.words) == "string" and entry.frame.words:find(query, 1, true) then
                 seen[id] = true
                 rest[#rest + 1] = { tab = entry.tab, label = shown, frame = entry.frame }

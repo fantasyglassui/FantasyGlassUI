@@ -1422,22 +1422,18 @@ end
 
 function ns:InitDB()
     if ns.db then return ns.db end
-    -- Settings saved under this add-on's former name (StylishUI). They are loaded only if the saved
-    -- file was carried over (README, "Coming from StylishUI"); if so they become ours, once.
-    if type(FantasyGlassUIDB) ~= "table" and type(StylishUIDB) == "table" then
-        FantasyGlassUIDB = StylishUIDB
-        ns.migrated = true
-    end
-    StylishUIDB = nil
     if type(FantasyGlassUIDB) ~= "table" then FantasyGlassUIDB = {} end
     local root = FantasyGlassUIDB
     ns.freshInstall = type(root.profiles) ~= "table" and next(root) == nil      -- nothing saved yet: a first run
     if type(root.profiles) ~= "table" then
-        -- first run of this version: the old flat settings become the "Default" profile
-        local old = {}
-        for k, v in pairs(root) do old[k] = v end
-        for k in pairs(old) do root[k] = nil end
-        root.profiles = { Default = old }
+        -- Settings from before profiles (before 9.0) are not read any more since 12.0: they start
+        -- afresh, and say so once.
+        if next(root) ~= nil then
+            for k in pairs(root) do root[k] = nil end
+            ns.settingsReset = true
+            ns.freshInstall = true                             -- (so the setup opens, as on a first install)
+        end
+        root.profiles = { Default = {} }
     end
     if type(root.chars) ~= "table" then root.chars = {} end
     if type(root.profiles.Default) ~= "table" then root.profiles.Default = {} end
@@ -2091,7 +2087,7 @@ f:SetScript("OnEvent", function(_, event, name)
                 return
             end
         end
-        if ns.migrated then ns:Print("Your settings from StylishUI have been carried over.") end
+        if ns.settingsReset then ns:Print("Your settings were from a version too old for 12.0, so they start afresh. The setup opens to help.") end
         ns:ApplyTheme()
         -- Safe mode: nothing is started. The options, the setup and every /fgui command still work, so
         -- whatever was wrong can be switched off, and then safe mode left.
