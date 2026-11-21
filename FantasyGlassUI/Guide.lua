@@ -559,7 +559,7 @@ end
 -- Quest guides are not released yet. Everyone sees a "coming soon" page; the guide itself runs only
 -- where it has been unlocked with the author's phrase (/fgui unlock <phrase>; /fgui lock undoes it).
 -- Only a number worked out from the phrase is kept here, not the phrase.
-local GUIDE_KEY = 3873659120
+local GUIDE_KEY = 1859047492
 function ns.GuideHash(text)
     local h = 5381
     text = tostring(text or "")

@@ -6570,17 +6570,23 @@ try("10.3: quest guides", function()
     if ns:GuideUnlocked() or ns:GuideOn() then error("quest guides start locked") end
     if ns:GuideCommand("") ~= false or ns:GuideShowPanel() ~= nil then error("locked: the guide does nothing") end
     if ns:GuideUnlock("open sesame") or ns:GuideUnlock("") or ns:GuideUnlocked() then error("a wrong phrase must not unlock") end
-    for _, file in ipairs({ "Guide.lua", "Core.lua" }) do
-        if (sources[file] or ""):find("denogh%-lightforged") then error("the phrase itself must not be written in the add-on") end
-    end
-    if not ns:GuideUnlock("  Denogh-Lightforged-58 ") or not ns:GuideUnlocked() then error("the phrase unlocks (capitals and spaces aside)") end
+    -- (the phrase is never written in any file, these tests included: they unlock with the stored number,
+    -- read from Guide.lua, and check the phrase's handling with a stand-in number)
+    local key = tonumber((sources["Guide.lua"] or ""):match("local GUIDE_KEY = (%d+)"))
+    if not key then error("Guide.lua keeps the number worked out from the phrase") end
+    if ns.GuideHash("abc") ~= 193485963 or ns.GuideHash("") ~= 5381 then error("the phrase's number is worked out the same way every time") end
+    ns.root.guideKey = key
+    if not ns:GuideUnlocked() then error("the stored number unlocks") end
+    ns:GuideLock()
+    if ns:GuideUnlocked() then error("locking again") end
+    ns.root.guideKey = key
     ns:ToggleConfig("guide")
     if not ns.guidePage or ns.guidePage.unlocked ~= true then error("unlocked: the Guide tab shows the controls") end
     ns:GuideLock()
     ns:ToggleConfig("guide")
     if ns.guidePage.unlocked ~= false then error("locked: the Guide tab says coming soon") end
     ns:ToggleConfig()
-    ns:GuideUnlock("denogh-lightforged-58")
+    ns.root.guideKey = key
     -- following one: saved, followed, and it moves on as the game changes
     local keepG, keepS, keepQ = ns.root.guides, ns.root.guideState, env.C_QuestLog
     ns.root.guides, ns.root.guideState = nil, nil
