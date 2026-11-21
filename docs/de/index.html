@@ -394,7 +394,7 @@ section.block::before { content: ""; position: absolute; top: -6px; left: 50%; w
           <span><b id="f-switches">256</b> <span class="w">switches</span></span>
           <span><b id="f-commands">123</b> <span class="w">commands</span></span>
           <span><b>9</b> <span class="w">languages</span></span>
-          <span><span class="w">version</span> <b id="f-version">11.17</b></span>
+          <span><span class="w">version</span> <b id="f-version">12.0</b></span>
         </div>
       </div>
 
@@ -967,6 +967,9 @@ window.FG_NEWS=[{"v": "12.0.0", "items": ["A new settings window: the categories
   }
   var curNews = NEWS.slice(0, 2);
   drawNews(curNews);
+  (function () {                                   // the version shown at the top: the newest in the page's own list
+    var fv = $("f-version"); if (fv && NEWS.length) fv.textContent = NEWS[0].v.split(".").slice(0, 2).join(".");
+  })();
   // keep itself current: read the changelog on GitHub and use it when it is newer than what is built in
   function newer(a, b) { a = a.split(".").map(Number); b = b.split(".").map(Number); for (var i = 0; i < 3; i++) { if ((a[i] || 0) !== (b[i] || 0)) return (a[i] || 0) > (b[i] || 0); } return false; }
   function fromChangelog(md) {
