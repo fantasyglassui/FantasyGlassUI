@@ -30,7 +30,7 @@ plans again, so the route stays right for where you are and what you have.
 - Shipping our own quest database.
 - Copying any of Questie's code or data into Fantasy Glass UI (its license is mixed: GPLv3 for some
   contributors, "all rights reserved" otherwise). We only read Questie's data in the game while it runs.
-- Dungeon routes inside instances (a dungeon can be a step: "Run Deadmines for these 4 quests"; what to do
+- Dungeon routes inside instances (a dungeon can be suggested, with its quests; what to do
   inside is out of scope).
 - Replacing written guides: they keep working as they do today.
 
@@ -194,11 +194,56 @@ Skipped: 2 group quests (Solo is on)
 The first line says where the plan is and the level it expects to reach by its end. Each step can show
 why it is there (xp gained, minutes saved).
 
+### More that it does (added 2026-11-21, items 1–9)
+
+1. **Experience from kills along the way.** A kill objective is worth its quest reward plus the
+   experience of the monsters it takes, and the monsters you meet on the way. Monster levels come from
+   Questie's NPC data (minLevel / maxLevel); experience per kill uses the game's usual formula by level
+   difference (the builder writes it from the known formula and checks it against a few real kills, then
+   it learns: actual experience per kill at each level difference is recorded per character, from
+   PLAYER_XP_UPDATE outside quest hand-ins). This is part of "experience per hour" for every hub.
+2. **Trainer visits.** At each level where your class has new spells (every two levels), the route adds
+   "Train at <trainer>" at a hub or town it already passes that has your class trainer, or the nearest
+   one if none is on the way. Trainers are found from Questie's NPC data (trainer flag and their title).
+   Done when the trainer window closes. Setting to switch off.
+3. **Selling and repairing.** When your bags are nearly full (proposal: 3 or fewer free slots, the same
+   check "Am I ready?" uses) or your gear is under 30% durability, the next hub with a vendor (or a repair
+   vendor) gets a "Sell and repair at <vendor>" step. Vendors come from Questie's NPC data (vendor / repair
+   flags). Done when the merchant window closes.
+4. **When quests run dry**, instead of only saying so, it suggests the best option:
+   - a **dungeon** for your level, when the group setting allows (When grouped while in a party, or
+     Everything), with the number of its quests you can take and where to pick them up. Dungeons come from
+     a small table of our own (name, level range, entrance map and coordinates); their quests from Questie
+     (quests whose zone is that dungeon).
+   - a **grinding spot**: the nearest place with many monsters 0–2 levels above you, from Questie's NPC
+     spawn data, with the experience per hour expected from your recorded kill rate.
+   It shows the better of the two first, and both when both apply.
+5. **Time to your next level**: the panel's first line adds "level 26 in ~48 min", worked out from the
+   plan and your learned pace. It shows only once the pace has a few quests behind it.
+6. **The best quest reward for you.** When a quest hand-in offers a choice, the reward with the upgrade
+   arrow is selected for you (the arrows already exist); when none is an upgrade, the one that sells for
+   the most. It only selects: you still press Complete yourself. Setting to switch off.
+7. **A skip list.** Right-click a step in the panel → "Never suggest this quest". Kept per character,
+   listed on the Guide tab where a quest can be taken off the list. Skipped quests are never planned and
+   the plan is made again at once.
+8. **The route on the map.** On the world map, a line joins the next stops of the plan (proposal: up to the
+   end of the current hub loop and the trip to the next), with a small number at each stop. Drawn with the
+   map tools MapExtras.lua already uses. Setting to switch off.
+9. **Save as a guide.** A "Save as guide" button turns the steps planned so far into an ordinary written
+   guide (ns:GuideSave, the existing text format), named by zone and levels, to follow again on another
+   character or share. The new step kinds (fly, learnflight, sail, bind, train, vendor) are written in
+   the same one-line format, so a pasted guide keeps them.
+
 ### Settings (Guide tab)
 
 - Group quests: Solo / When grouped / Everything.
 - Learn new flight points on the way: on (default) / off.
 - Show why each step is there: on (default) / off.
+- Visit your trainer on the way: on (default) / off.
+- Sell and repair stops: on (default) / off.
+- Pick the best quest reward: on (default) / off.
+- The route on the map: on (default) / off.
+- Never suggest these quests: the skip list, with a way to take one off.
 
 ### Tests
 
@@ -207,6 +252,10 @@ why it is there (xp gained, minutes saved).
   a boat. It checks the route picked, that Solo leaves out group quests, that a known flight is used and
   an unknown one is learned, that the hearthstone and the boat are used when faster, that
   replanning happens after a hand-in, and that a missing or changed Questie falls back without errors.
+- The extras: kill experience changes which hub wins; a trainer step appears at a training level; a
+  vendor step appears with full bags; a dungeon or grinding spot is suggested when quests run dry; the
+  upgrade reward is selected; a skipped quest is never planned; the map line is drawn; a saved guide
+  parses back into the same steps.
 - The planner runs in both smoke modes (combat values readable and secret) with no errors.
 
 ## Left to the builder
@@ -220,7 +269,7 @@ why it is there (xp gained, minutes saved).
 ## Saved data
 
 - Per character: known flight points, the inn your hearthstone is set at, the learned pace factor,
-  the planner's settings.
+  experience per kill by level difference, the skip list, the planner's settings.
 - Per account: recorded flight and crossing times.
 
 ## Calls made in writing this up (the builder's or Claude's, not the player's)
@@ -232,3 +281,7 @@ why it is there (xp gained, minutes saved).
 - Learn a new flight point when the detour is under 2 minutes, or when the plan will use it.
 - Default group setting: Solo.
 - Crossing times include an average wait for the ship.
+- Sell and repair when 3 or fewer bag slots are free or gear is under 30%.
+- Grinding spots: monsters 0–2 levels above you.
+- The map line covers the current hub loop and the trip to the next.
+- Reward picking only selects; it never presses Complete.
