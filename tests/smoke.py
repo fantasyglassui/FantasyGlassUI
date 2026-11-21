@@ -1411,8 +1411,12 @@ try("Setup offers every theme", function()
     ns.db.theme, ns.db.accent = "SMOKE", "AZURE"; ns:Retheme()
 end)
 try("Setup tour", function()
-    if ns:SetupStepCount() ~= 9 then error("expected nine steps") end
-    for stepNumber = 1, 9 do ns:ShowSetup(stepNumber) end            -- every step opens without error
+    if ns:SetupStepCount() ~= 4 then error("expected four steps (12.0)") end
+    for stepNumber = 1, 4 do ns:ShowSetup(stepNumber) end            -- every step opens without error
+    -- (12.0) Just restyle the game's own: the look without replacing the game's frames and bags
+    ns:ApplyPreset("RESTYLE")
+    if ns:CurrentPreset() ~= "RESTYLE" then error("after applying Restyle it should be recognised") end
+    if ns.db.unitFrames or ns.db.bagWindow or not ns.db.windows or not ns.db.tooltip then error("Restyle: wrong switches") end
     -- presets, as the welcome step uses them
     ns:ApplyPreset("MINIMAL")
     if ns:CurrentPreset() ~= "MINIMAL" then error("after applying Minimal it should be recognised") end
@@ -1428,7 +1432,28 @@ try("Setup tour", function()
     ns:ApplyPreset("EVERYTHING")                                      -- leave every feature on for the tests that follow
     local on, total = ns:CountFeatures()
     if not (total > 40 and on > 20 and on <= total) then error("feature count looks wrong: " .. on .. " of " .. total) end
-    ns:ShowSetup(9)                                                   -- the summary reads all of that back
+    ns:ShowSetup(4)                                                   -- the summary reads all of that back
+    -- (12.0) how you play: a choice switches its features on, taking it back puts them as they were
+    ns:ApplyPreset("MINIMAL")
+    local wasRole = ns.db.role
+    ns.db.role = "NONE"
+    local before = ns.db.lootBook and true or false
+    ns:SetPlayStyle("GROUPS", true)
+    if not ns:PlayStyleOn("GROUPS") or not ns.db.lootBook or not ns.db.bossGuide then error("Dungeons and raids should switch on its features") end
+    ns:SetPlayStyle("TANK", true); ns.db.role = "TANK"
+    ns:SetPlayStyle("GROUPS", false)
+    if (ns.db.lootBook and true or false) ~= before then error("taking a choice back should put its switches as they were") end
+    if not ns.db.threatMeter then error("a switch another choice still wants (Tank: threat meter) must stay on") end
+    ns.db.role = nil; ns:SetPlayStyle("TANK", false)
+    for style in pairs(ns.playStyles) do
+        for _, key in ipairs(ns.playStyles[style]) do
+            if key == "autoQuest" then error("a play style must never switch on auto quest") end
+        end
+        if #ns:PlayStyleKeys(style) == 0 then error("a play style with no feature: " .. style) end
+    end
+    ns.db.role = wasRole
+    ns:ShowSetup(2)
+    ns:ApplyPreset("EVERYTHING")                                      -- leave every feature on for the tests that follow
 end)
 try("Panel settings", function()
     local key = ns.movables[1].key
@@ -3067,8 +3092,8 @@ do   -- (the tab shows one section at a time: together the sections cover the pa
     ns:ToggleConfig()
     -- the setup: both grids hold everything too
     ns:ShowSetup()
-    local look, lettering = ns.setupLookPage, ns.setupLetteringPage
-    if not look or not lettering then error("the setup's look and lettering steps did not build") end
+    local look = ns.setupLookPage
+    if not look then error("the setup's look step did not build") end
     for _, family in ipairs({ "GLASS", "FANTASY", "CELESTIAL" }) do
         look.SetFamily(family)
         local want = 0
@@ -3081,8 +3106,6 @@ do   -- (the tab shows one section at a time: together the sections cover the pa
         if look.themeGrid.most <= 0 then error("the setup's theme grid should scroll for " .. family) end
         if not (look.themeButtons[1] and look.themeButtons[1].swatch) then error("the setup's theme buttons show a picture") end
     end
-    if lettering.letteringCount ~= #ns.fontOrder then error("the setup shows " .. tostring(lettering.letteringCount) .. " lettering styles") end
-    if lettering.letteringGrid.most <= 0 then error("the setup's lettering grid should scroll") end
     -- picking a theme far down the list works like any other
     look.Pick("ROSEWOOD")
     if ns.db.theme ~= "ROSEWOOD" then error("a theme at the end of the list could not be picked") end

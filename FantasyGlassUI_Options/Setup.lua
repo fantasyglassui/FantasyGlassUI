@@ -4,15 +4,18 @@
 local ns = _G.FantasyGlassUI
 if type(ns) ~= "table" then return end
 
--- First-run setup: a guided tour in nine steps. It opens on first login, and again from the
--- "Run setup again" button in /fgui or with /fgui setup. Where it can, each choice applies as you
--- click; choices that need the interface to reload are collected, and the last step reloads once.
+-- First-run setup (12.0): four steps. Welcome (language, and how much to take over), how you play
+-- (your role and what you enjoy, each switching on the features made for it), your look (theme,
+-- accent and text size), and ready (what you chose, where your frames go). It opens on first login,
+-- and again from the "Run setup again" button in /fgui or with /fgui setup. Each choice applies as
+-- you click; choices that need the interface to reload are collected, and the last step reloads once.
+-- Everything the setup no longer asks (lettering, opacity, small behaviors) is in the settings.
 local frame
 local step, pages, dots = 1, {}, {}
 local refreshers = {}          -- re-mark every choice from the current settings when the wizard opens
 local needReload = false       -- a feature switch or the theme family changed
-local STEPS = { "Welcome", "Your role", "The look", "Lettering", "Features", "Bags and windows", "How it behaves", "Layout", "All set" }
-local PAGE_W = 474
+local STEPS = { "Welcome", "How you play", "Your look", "Ready" }
+local PAGE_W = 580
 
 function ns:SetRole(key)
     ns:InitDB()
@@ -116,7 +119,7 @@ local function FeatureName(key)
     return key
 end
 
--- Step 1: welcome, and how much of the interface to take over ---------------------------------------------
+-- Step 1: welcome: language, and how much of the interface to take over ----------------------------------
 -- Picking a language in the setup. Every label was written when its window was built, so the change
 -- needs a reload; the setup then opens again by itself, in the language chosen.
 function ns:SetupPickLanguage(code)
@@ -127,11 +130,9 @@ function ns:SetupPickLanguage(code)
 end
 
 local function BuildWelcome(page)
-    Heading(page, "Welcome to Fantasy Glass UI", "A short tour of the choices worth making; about two minutes. Each choice applies as you click where it can, and all of it can be changed later in /fgui.")
+    Heading(page, "Welcome to Fantasy Glass UI", "Three quick questions, about a minute. Every choice applies as you click, and all of it can be changed later in /fgui.")
 
-    -- language: each under its own name, so it can be found whatever is showing now
     Label(page, "Language", 0, -66)
-    -- one button showing the language in use; it opens the list of all of them, each under its own name
     local langButtons = {}
     local pick = ns:CreateButton(page, "", 200, 24, nil)
     pick:SetPoint("TOPLEFT", 96, -62)
@@ -169,86 +170,218 @@ local function BuildWelcome(page)
     refreshers[#refreshers + 1] = MarkLanguage
     Note(page, "Choosing a language reloads the interface and brings you straight back here.", -92)
 
-    Label(page, "How much should Fantasy Glass UI do?", 0, -114)
+    Label(page, "How much should Fantasy Glass UI do?", 0, -122)
     local cards = {}
     local defs = {
-        { "STANDARD",   "Standard",   "How it comes: everything except the four that flash, pop up or act on their own. Step 5 lets you switch those on." },
-        { "EVERYTHING", "Everything", "Every feature on, those four included." },
-        { "MINIMAL",    "Minimal",    "Only the core: frames, bars, minimap, quests, bags, chat and windows. No extra helpers." },
+        { "STANDARD",   "The whole interface", "Fantasy Glass UI's own frames, bars, bags, minimap, quest tracker and windows, with its helpers. Recommended." },
+        { "RESTYLE",    "Just restyle the game's own", "The game's own unit frames, bags and quest tracker stay; the windows, tooltips, chat, minimap and action bars get the look." },
+        { "EVERYTHING", "Everything", "Every feature on, those that pop up or act on their own included." },
     }
-    local custom = Note(page, "", -310)
+    local custom = Note(page, "", -340)
     function page.Mark()
         local current = ns.CurrentPreset and ns:CurrentPreset()
         for key, card in pairs(cards) do
             if key == current then ns:Paint(card, "SetBackdropBorderColor", "@accent", 1) else ns:Paint(card, "SetBackdropBorderColor", "@border", 1) end
         end
-        custom:SetText(current and "" or ns:Tr("Your switches have been set by hand, so none of the three is marked."))
+        custom:SetText(current and "" or ns:Tr("Your switches are your own mix, so none of the three is marked. The next step adds to them."))
     end
     for i, def in ipairs(defs) do
-        local card = ns:CreateButton(page, "", PAGE_W, 52, function()
+        local card = ns:CreateButton(page, "", PAGE_W, 60, function()
             if ns.ApplyPreset and ns:ApplyPreset(def[1]) > 0 then needReload = true end
-            for _, refresh in ipairs(refreshers) do pcall(refresh) end      -- the switches on later steps follow
+            for _, refresh in ipairs(refreshers) do pcall(refresh) end
         end)
-        card:SetPoint("TOPLEFT", 0, -136 - (i - 1) * 58)
+        card:SetPoint("TOPLEFT", 0, -146 - (i - 1) * 66)
         card.text:ClearAllPoints()
-        card.text:SetPoint("TOPLEFT", 14, -7)
+        card.text:SetPoint("TOPLEFT", 14, -9)
         ns:Font(card.text, 15, true)
         card.text:SetText(ns:Tr(def[2]))
         card:HookScript("OnLeave", function() page.Mark() end)
         local desc = card:CreateFontString(nil, "OVERLAY")
         ns:Font(desc, 11)
-        desc:SetPoint("TOPLEFT", 14, -26)
+        desc:SetPoint("TOPLEFT", 14, -29)
         desc:SetWidth(PAGE_W - 30)
         desc:SetJustifyH("LEFT")
         desc:SetText(ns:Tr(def[3]))
         ns:Paint(desc, "SetTextColor", "dim")
         cards[def[1]] = card
     end
+    page.cards = cards
     page.Mark()
     refreshers[#refreshers + 1] = page.Mark
 end
 
--- Step 2: role ------------------------------------------------------------------------------------------------
-local function BuildRole(page)
-    Heading(page, "What do you play?", "This sets up the role HUD, and the layout offered in the last step.")
-    for i, key in ipairs(ns.roleOrder) do
-        local role = ns.roles[key]
-        local r, g, b = role.color[1], role.color[2], role.color[3]
-        local btn = ns:CreateButton(page, "", 474, 62, function() ns:SetRole(key); page.Mark() end)
-        btn:SetPoint("TOPLEFT", 0, -62 - (i - 1) * 70)
-        btn.text:ClearAllPoints()
-        btn.text:SetPoint("TOPLEFT", 14, -8)
-        ns:Font(btn.text, 16, true)
-        btn.text:SetText(ns:Tr(role.label))
-        btn.text:SetTextColor(r, g, b)
-        btn:HookScript("OnLeave", function(self) self.text:SetTextColor(r, g, b); page.Mark() end)
-        local desc = btn:CreateFontString(nil, "OVERLAY")
-        ns:Font(desc, 11)
-        desc:SetPoint("TOPLEFT", 14, -30)
-        desc:SetWidth(444)
-        desc:SetJustifyH("LEFT")
-        desc:SetText(ns:Tr(role.desc))
-        ns:Paint(desc, "SetTextColor", "dim")
-        btn.role = key
-        page[key] = btn
+-- Step 2: how you play ------------------------------------------------------------------------------------
+-- Your role (one), and what you enjoy (any). Each switches on the features made for it, and says which;
+-- taking one back restores what those switches were before, unless another choice still wants them.
+-- (Features that act on their own, auto quest above all, are never switched on here.)
+ns.playStyles = {
+    TANK     = { "roleHUD", "cooldowns", "threatMeter", "aggroWarn", "bossTimer", "ufBoss", "deathRecap" },
+    HEALER   = { "roleHUD", "cooldowns", "raidFrames", "ufParty", "groupCDs", "buffCoverage", "deathRecap" },
+    DAMAGE   = { "roleHUD", "cooldowns", "damageMeter", "executeLine", "cooldownPulse", "deathRecap" },
+    QUESTING = { "questTracker", "questRewards", "questLog", "quests", "plateQuest", "xpBar", "mapCoords", "upgradeArrows", "upgradePrompt" },
+    GROUPS   = { "lootBook", "lootBossTip", "bossGuide", "bossTimer", "runLog", "groupLoot", "gearCheck", "lootRoll", "rollAdvice", "readyAlert", "threatMeter" },
+    PVP      = { "bgHelper", "enemyCDs", "ufArena", "queueAlert", "locAlert" },
+    COLLECT  = { "storage", "itemCounts", "skillUps", "profCooldowns", "craftBar", "auctionMemory", "auctionHelper", "mailTools", "rareAlert", "rareMemory", "farming" },
+    SOCIAL   = { "chatSkin", "chatExtras", "chatClassColors", "chatHighlight", "whisperWindow", "playerNotes", "recentMates", "guildNotices", "friendColors", "groupNotices" },
+}
+local INTERESTS = {
+    { "QUESTING", "Questing and leveling", "Quest marks on mobs, rewards in the tracker, upgrades shown as you loot." },
+    { "GROUPS",   "Dungeons and raids",    "Boss guides and timers, what drops, whose upgrade, your best run times." },
+    { "PVP",      "PvP",                   "Battleground help, enemy cooldowns, arena frames, queue alerts." },
+    { "COLLECT",  "Collecting and crafting", "What your characters own, profession help, auction prices, farming." },
+    { "SOCIAL",   "Casual and social",     "A better chat, a whisper window, notes on players, guild notices." },
+}
+local function Usable(key)
+    if ns.FeatureHidden and ns:FeatureHidden(key) then return false end
+    for _, group in ipairs(ns.featureGroups or {}) do
+        for _, opt in ipairs(group[2]) do if opt[1] == key then return true end end
     end
-    function page.Mark()
-        for _, key in ipairs(ns.roleOrder) do
-            if ns.db.role == key then ns:Paint(page[key], "SetBackdropBorderColor", "@accent", 1)
-            else ns:Paint(page[key], "SetBackdropBorderColor", "@border", 1) end
+    return false
+end
+function ns:PlayStyleKeys(style)
+    local out = {}
+    for _, key in ipairs(ns.playStyles[style] or {}) do if Usable(key) then out[#out + 1] = key end end
+    return out
+end
+-- Is this play style chosen? (the role is one of them: TANK, HEALER or DAMAGE)
+function ns:PlayStyleOn(style)
+    if ns.roles[style] then return ns.db.role == style end
+    return type(ns.db.playStyles) == "table" and ns.db.playStyles[style] == true
+end
+local function WantedByOthers(key, except)
+    for style in pairs(ns.playStyles) do
+        if style ~= except and ns:PlayStyleOn(style) then
+            for _, k in ipairs(ns.playStyles[style]) do if k == key then return true end end
         end
     end
-    page.Mark()
-    refreshers[#refreshers + 1] = page.Mark
+    return false
+end
+function ns:SetPlayStyle(style, on)
+    ns.db.playStyles = type(ns.db.playStyles) == "table" and ns.db.playStyles or {}
+    ns.db.playStylePrev = type(ns.db.playStylePrev) == "table" and ns.db.playStylePrev or {}
+    local prev = ns.db.playStylePrev
+    local changed = 0
+    if on then
+        for _, key in ipairs(ns:PlayStyleKeys(style)) do
+            if prev[key] == nil then prev[key] = ns.db[key] and true or false end     -- (as it was before any choice wanted it)
+            if not ns.db[key] then ns.db[key] = true; changed = changed + 1 end
+        end
+        if not ns.roles[style] then ns.db.playStyles[style] = true end
+    else
+        if not ns.roles[style] then ns.db.playStyles[style] = nil end
+        for _, key in ipairs(ns:PlayStyleKeys(style)) do
+            if not WantedByOthers(key, style) and prev[key] ~= nil then
+                if (ns.db[key] and true or false) ~= prev[key] then ns.db[key] = prev[key]; changed = changed + 1 end
+                prev[key] = nil
+            end
+        end
+    end
+    if changed > 0 then needReload = true end
+    return changed
 end
 
+local function BuildPlay(page)
+    Heading(page, "How do you play?", "Each choice switches on the features made for it; hover one to see which. Taking a choice back puts them as they were.")
+    ns.setupPlayPage = page
+    local cards = {}
+    local count = Note(page, "", -344)
+    local function Mark()
+        for style, card in pairs(cards) do
+            if ns:PlayStyleOn(style) then ns:Paint(card, "SetBackdropBorderColor", "@accent", 1) else ns:Paint(card, "SetBackdropBorderColor", "@border", 1) end
+        end
+        local n, seen = 0, {}
+        for style in pairs(ns.playStyles) do
+            if ns:PlayStyleOn(style) then
+                for _, key in ipairs(ns:PlayStyleKeys(style)) do if not seen[key] then seen[key] = true; n = n + 1 end end
+            end
+        end
+        count:SetText(n > 0 and format(ns:TrN(n, "Your choices use %d feature. Every switch is on the Features tab of /fgui.", "Your choices use %d features. Every switch is on the Features tab of /fgui."), n)
+            or ns:Tr("Pick none at all if you like: the features you have stay as they are."))
+    end
+    page.Mark = Mark
+    local function Tip(card, style, desc)
+        card:HookScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:AddLine(self.text:GetText() or "")
+            if desc then GameTooltip:AddLine(ns:Tr(desc), 1, 1, 1, true) end
+            GameTooltip:AddLine(" ")
+            GameTooltip:AddLine(ns:Tr("Switches on:"), 0.6, 0.6, 0.6)
+            for _, key in ipairs(ns:PlayStyleKeys(style)) do GameTooltip:AddLine("  " .. FeatureName(key), 1, 1, 1) end
+            GameTooltip:Show()
+        end)
+        card:HookScript("OnLeave", function() GameTooltip:Hide(); Mark() end)
+    end
 
--- Step 3: the look: glass or fantasy first, then every theme of that family, then the accent color.
--- (Themes you made yourself get a third group, which only appears once you have some.)
+    Label(page, "Your role", 0, -58)
+    local roleW = math.floor((PAGE_W - 3 * 6) / 4)
+    local roleDefs = {}
+    for _, key in ipairs(ns.roleOrder) do roleDefs[#roleDefs + 1] = key end
+    roleDefs[#roleDefs + 1] = "NONE"
+    for i, key in ipairs(roleDefs) do
+        local role = ns.roles[key]
+        local card = ns:CreateButton(page, "", roleW, 44, function()
+            local old = ns.db.role
+            if old == key then return end
+            if ns.roles[old] then ns.db.role = nil; ns:SetPlayStyle(old, false) end
+            ns:SetRole(key)
+            if role then ns:SetPlayStyle(key, true) end
+            Mark()
+        end)
+        card:SetPoint("TOPLEFT", (i - 1) * (roleW + 6), -80)
+        card.text:ClearAllPoints()
+        card.text:SetPoint("CENTER", 0, 0)
+        ns:Font(card.text, 14, true)
+        if role then
+            card.text:SetText(ns:Tr(role.label))
+            card.text:SetTextColor(role.color[1], role.color[2], role.color[3])
+            card:HookScript("OnLeave", function(self) self.text:SetTextColor(role.color[1], role.color[2], role.color[3]) end)
+            Tip(card, key, role.desc)
+            cards[key] = card
+        else
+            card.text:SetText(ns:Tr("No role"))
+            card:HookScript("OnLeave", function() if ns.db.role == "NONE" then ns:Paint(card, "SetBackdropBorderColor", "@accent", 1) end end)
+            page.noRole = card
+        end
+    end
+
+    Label(page, "What do you enjoy? (pick any)", 0, -140)
+    local cardW = math.floor((PAGE_W - 6) / 2)
+    for i, def in ipairs(INTERESTS) do
+        local style = def[1]
+        local card = ns:CreateButton(page, "", cardW, 58, function()
+            ns:SetPlayStyle(style, not ns:PlayStyleOn(style))
+            Mark()
+        end)
+        card:SetPoint("TOPLEFT", ((i - 1) % 2) * (cardW + 6), -162 - math.floor((i - 1) / 2) * 62)
+        card.text:ClearAllPoints()
+        card.text:SetPoint("TOPLEFT", 12, -8)
+        ns:Font(card.text, 13, true)
+        card.text:SetText(ns:Tr(def[2]))
+        local desc = card:CreateFontString(nil, "OVERLAY")
+        ns:Font(desc, 10)
+        desc:SetPoint("TOPLEFT", 12, -26)
+        desc:SetWidth(cardW - 24)
+        desc:SetJustifyH("LEFT")
+        desc:SetText(ns:Tr(def[3]))
+        ns:Paint(desc, "SetTextColor", "dim")
+        Tip(card, style, nil)
+        cards[style] = card
+    end
+    page.cards = cards
+    -- the quest guide: on or off here (quest guides are not released yet: only where they have been unlocked)
+    if ns.GuideUnlocked and ns:GuideUnlocked() then
+        page.guideToggle = Toggle(page, cardW + 6, -162 - 2 * 62 + 14, "questGuide", "Quest guides", "Follow a quest route one step at a time, with a panel for the step you are on and an arrow pointing to it. Nothing shows until you follow a guide.")
+    end
+    Mark()
+    refreshers[#refreshers + 1] = Mark
+end
+
+-- Step 3: your look: a family, a theme of it, the accent, and how big the lettering is ----------------------
+-- (Themes you made yourself get a fourth group, which only appears once you have some.)
 local function BuildLook(page)
-    Heading(page, "Pick a look", "Choose glass, fantasy or celestial, then a theme. The accent is the highlight color. Everything applies as you click, and all of it can be changed later on the Look tab of /fgui.")
+    Heading(page, "Your look", "Choose glass, fantasy or celestial, then a theme. The accent is the highlight color. Everything applies as you click; the lettering style and much more are on the Look tab of /fgui.")
 
-    local COLS, BW = 4, 114
+    local COLS, BW = 5, 115
     local family = "GLASS"
     ns.setupLookPage = page
     local familyButtons, themeButtons, swatches = {}, {}, {}
@@ -274,8 +407,8 @@ local function BuildLook(page)
 
     local note = page:CreateFontString(nil, "OVERLAY")
     ns:Font(note, 11)
-    note:SetPoint("TOPLEFT", 0, -284)
-    note:SetWidth(474)
+    note:SetPoint("TOPLEFT", 0, -362)
+    note:SetWidth(PAGE_W)
     note:SetJustifyH("LEFT")
     ns:Paint(note, "SetTextColor", "faint")
 
@@ -291,8 +424,8 @@ local function BuildLook(page)
 
     local families = { { "GLASS", "Glass" }, { "FANTASY", "Fantasy" }, { "CELESTIAL", "Celestial" }, { "MINE", "My themes" } }
     for i, def in ipairs(families) do
-        local b = ns:CreateButton(page, def[2], 112, 26, function() family = def[1]; Refresh() end)
-        b:SetPoint("TOPLEFT", (i - 1) * 118, -70)
+        local b = ns:CreateButton(page, def[2], 140, 26, function() family = def[1]; Refresh() end)
+        b:SetPoint("TOPLEFT", (i - 1) * 146, -74)
         b:HookScript("OnLeave", function(self) Mark(self, self.picked) end)
         familyButtons[def[1]] = b
     end
@@ -302,7 +435,7 @@ local function BuildLook(page)
     -- the themes of the chosen family: four rows show at a time, and the grid scrolls for the rest
     local ROWS_SHOWN = 4
     local grid, sheet = ns:ScrollArea(page, PAGE_W - 12, ROWS_SHOWN * 30 - 4)
-    grid:SetPoint("TOPLEFT", 0, -106)
+    grid:SetPoint("TOPLEFT", 0, -110)
     page.themeGrid = grid
     local function ThemeButton(i)
         if themeButtons[i] then return themeButtons[i] end
@@ -324,13 +457,13 @@ local function BuildLook(page)
 
     local label = page:CreateFontString(nil, "OVERLAY")
     ns:Font(label, 12)
-    label:SetPoint("TOPLEFT", 0, -241)
+    label:SetPoint("TOPLEFT", 0, -247)
     label:SetText(ns:Tr("Accent"))
     ns:Paint(label, "SetTextColor", "dim")
     for i, key in ipairs(ns.accentOrder) do
         local sw = CreateFrame("Button", nil, page, ns.template)
         sw:SetSize(18, 18)
-        sw:SetPoint("TOPLEFT", 58 + ((i - 1) % 16) * 22, -236 - math.floor((i - 1) / 16) * 21)   -- two rows of sixteen
+        sw:SetPoint("TOPLEFT", 80 + ((i - 1) % 20) * 24, -242 - math.floor((i - 1) / 20) * 22)   -- rows of twenty
         sw:SetBackdrop(ns.BACKDROP)
         local r, g, b = ns:AccentColor(key)
         sw:SetBackdropColor(r, g, b, 1)
@@ -343,6 +476,12 @@ local function BuildLook(page)
         sw:SetScript("OnLeave", function() GameTooltip:Hide() end)
         swatches[key] = sw
     end
+    local rows = math.ceil(#ns.accentOrder / 20)
+    local y = -242 - rows * 22 - 12
+    Label(page, "Text size", 0, y - 4)
+    Choices(page, y - 26, { { 90, "Small" }, { 100, "Normal" }, { 115, "Large" }, { 130, "Larger" } },
+        function() return tonumber(ns.db.fontScale) or 100 end,
+        function(v) ns.db.fontScale = v; ns:Retheme() end, 4, 136)
 
     Refresh = function()
         ns:RegisterCustomThemes()
@@ -375,215 +514,90 @@ local function BuildLook(page)
         end
         note:SetText(needReload and ns:Tr("Each family of themes is built differently, so this change finishes when the setup reloads the interface at the end.") or "")
     end
-    -- each time the setup opens: show the family of the theme in use
     refreshers[#refreshers + 1] = function() family = FamilyOf(ns.db.theme or "SMOKE"); Refresh() end
     family = FamilyOf(ns.db.theme or "SMOKE")
     Refresh()
 end
 
+-- Step 4: ready: what you chose, where your frames go, and where everything else is -------------------------
+local function BuildReady(page)
+    Heading(page, "Ready", "Here is what you chose. Use Back to change anything, then put your frames where you want them.")
+    ns.setupReadyPage = page
+    local rows = {}
+    for i = 1, 5 do
+        local label = page:CreateFontString(nil, "OVERLAY")
+        ns:Font(label, 12)
+        label:SetPoint("TOPLEFT", 0, -52 - (i - 1) * 20)
+        ns:Paint(label, "SetTextColor", "dim")
+        local value = page:CreateFontString(nil, "OVERLAY")
+        ns:Font(value, 12)
+        value:SetPoint("TOPLEFT", 150, -52 - (i - 1) * 20)
+        value:SetWidth(PAGE_W - 150)
+        value:SetJustifyH("LEFT")
+        if value.SetWordWrap then value:SetWordWrap(false) end
+        rows[i] = { label = label, value = value }
+    end
 
--- Step 4: lettering, text size, portraits -----------------------------------------------------------------
-local function BuildLettering(page)
-    ns.setupLetteringPage = page
-    Heading(page, "Lettering", "The lettering style changes every label. Text size scales all of it. Portraits are what the unit frames show beside the health bar.")
-    local lettering = {}
-    for _, key in ipairs(ns.fontOrder) do lettering[#lettering + 1] = { key, ns.fontStyles[key].name } end
-    -- three and a half rows show at a time (the half row says "there is more"), and the grid scrolls
-    local grid, sheet = ns:ScrollArea(page, PAGE_W - 12, 110)
-    grid:SetPoint("TOPLEFT", 0, -62)
-    local bottom = Choices(sheet, 0, lettering, function() return ns.db.fontStyle or "GLASS" end,
-        function(key) ns.db.fontStyle = key; ns:Retheme() end, 3, 148)
-    grid:SetContentHeight(-bottom - 6)
-    page.letteringGrid, page.letteringCount = grid, #lettering
-    refreshers[#refreshers + 1] = function()                 -- each time the setup opens: show the style in use
-        for i, item in ipairs(lettering) do
-            if item[1] == (ns.db.fontStyle or "GLASS") then grid:ScrollToShow(math.floor((i - 1) / 3) * 32, 26) end
-        end
-    end
-    local y = -62 - 110 - 8
-    Label(page, "Text size", 0, y - 4)
-    y = Choices(page, y - 26, { { 90, "Small" }, { 100, "Normal" }, { 115, "Large" }, { 130, "Larger" } },
-        function() return tonumber(ns.db.fontScale) or 100 end,
-        function(v) ns.db.fontScale = v; ns:Retheme() end, 4, 112)
-    Label(page, "Portraits", 0, y - 4)
-    Choices(page, y - 26, { { "3D", "3D model" }, { "2D", "2D picture" }, { "CLASS", "Class emblem" }, { "OFF", "None" } },
-        function() return ns.db.ufPortrait or "3D" end,
-        function(key)
-            ns.db.ufPortrait = key
-            if ns.RefreshUnitFrames then ns:RefreshUnitFrames() end
-        end, 4, 112)
-end
-
--- Step 5: the helpers most worth a decision ---------------------------------------------------------------
-local function BuildFeatures(page)
-    Heading(page, "Choose your features", "The helpers most worth a decision. Hover one to read what it does. Every switch the add-on has is on the Features tab of /fgui.")
-    local _, class = UnitClass("player")
-    local fight = { "cooldowns", "damageMeter", "swingTimer", "aggroWarn", "classBar", "roleHUD" }
-    if class == "SHAMAN" then fight[#fight + 1] = "totems" end
-    if class == "SHAMAN" or class == "ROGUE" then fight[#fight + 1] = "imbueReminder" end
-    local around = { "toasts", "chatBubbles", "lootRoll", "buttonBag", "afkScreen", "levelShot", "autoSell", "autoRepair", "autoQuest" }
-    Label(page, "In a fight", 0, -68)
-    for i, key in ipairs(fight) do
-        if not (ns.FeatureHidden and ns:FeatureHidden(key)) then Toggle(page, 0, -68 - i * 24, key, FeatureName(key), nil, true) end
-    end
-    Label(page, "Around the game", 244, -68)
-    for i, key in ipairs(around) do Toggle(page, 244, -68 - i * 24, key, FeatureName(key), nil, true) end
-    -- the quest guide: on or off here, and it applies at once (no reload)
-    -- (under the left column, which is the shorter one, so the page keeps its height)
-    -- (quest guides are not released yet: the switch is only offered where they have been unlocked)
-    if ns.GuideUnlocked and ns:GuideUnlocked() then
-        page.guideToggle = Toggle(page, 0, -68 - (#fight + 1) * 24, "questGuide", "Quest guides", "Follow a quest route one step at a time, with a panel for the step you are on and an arrow pointing to it. Nothing shows until you follow a guide.")
-    end
-    Note(page, "Auto quest accepts and hands in quests without asking, so it is off unless you tick it.", -302)
-end
-
--- Step 6: bags, bank, the game's windows, and how see-through panels are ------------------------------
-local function BuildWindows(page)
-    Heading(page, "Bags and windows", "Fantasy Glass UI can replace the game's bags and bank with a single window of its own, and restyle the game's other windows to match.")
-    for i, key in ipairs({ "bagWindow", "bankWindow", "storage", "itemCounts" }) do
-        Toggle(page, 0, -44 - i * 24, key, FeatureName(key), nil, true)
-    end
-    for i, key in ipairs({ "windows", "characterWindow", "spellbook", "rounded" }) do
-        Toggle(page, 244, -44 - i * 24, key, FeatureName(key), nil, true)
-    end
-    Label(page, "Panels on screen", 0, -172)
-    local y = Choices(page, -194, { { 55, "See-through" }, { 78, "Normal" }, { 90, "Dense" }, { 100, "Solid" } },
-        function() return tonumber(ns.db.panelAlpha) or 78 end,
-        function(v) ns.db.panelAlpha = v; ns:Retheme() end, 4, 112)
-    Label(page, "Windows", 0, y - 4)
-    Choices(page, y - 26, { { 85, "Lighter" }, { 95, "Normal" }, { 100, "Solid" } },
-        function() return tonumber(ns.db.windowAlpha) or 95 end,
-        function(v) ns.db.windowAlpha = v; ns:Retheme() end, 4, 112)
-    Note(page, "The two opacity settings apply to glass themes; fantasy panels are always solid.", -304)
-end
-
--- Step 7: small touches that apply straight away, and the cooldown tracker ----------------------------
-local function BuildBehavior(page)
-    Heading(page, "How it behaves", "Small touches. These apply straight away.")
-    local _, class = UnitClass("player")
-    local list = {
-        { "smoothBars", "Bars glide to their new value", "Health and power bars slide to a new value instead of jumping." },
-        { "fades",      "Windows fade in",               "Windows fade in when they open." },
-        { "hitFlash",   "Flash on critical hits and heals", "Your frame and your target's flash red on a critical hit taken, green on a critical heal." },
-        { "idleFade",   "Dim my frame when idle",        "Out of combat, at full health and with no target, your own frame dims." },
-    }
-    list[#list + 1] = { "combatFocus", "Dim tracker and info bar in fights", "During combat the quest tracker and the info bar dim right down, and return when the fight ends." }
-    list[#list + 1] = { "tooltipCursor", "Tooltips follow the mouse", "Tooltips appear at the pointer instead of in the bottom-right corner." }
-    list[#list + 1] = { "healthNumbers", "Health as numbers, not %", "Unit frames show how much health is left as an amount (12.4k) instead of a percentage (85%)." }
-    list[#list + 1] = { "powerNumbers", "Mana & resources as numbers, not %", "Mana, rage, energy and so on are written as an amount (1.2k) instead of a percentage." }
-    list[#list + 1] = { "emblemAnim", "Animated class emblems", "Class emblems move, glow and turn. Off, they hold still. (Choose \"Class emblem\" under Portraits to use them on your frames.)" }
-    list[#list + 1] = { "reduceMotion", "Reduce motion", "No fades, pulses, gliding bars or camera drift: things appear and change at once." }
-    list[#list + 1] = { "colorblind", "Color-blind safe colors", "Good and bad are shown in blue and orange instead of green and red: on talents, nameplates, the info bar and warnings." }
-    if not ns.aurasLocked then
-        list[#list + 1] = { "myDebuffsOnly", "Target: only my debuffs", "Shows only the debuffs you applied on the target frame." }
-    end
-    if class == "SHAMAN" or class == "ROGUE" then
-        list[#list + 1] = { "imbueCombatOnly", "Imbue reminder only in combat", "The weapon imbue reminder fades away outside combat." }
-    end
-    for i, def in ipairs(list) do
-        Toggle(page, ((i - 1) % 2) * 244, -44 - math.ceil(i / 2) * 24, def[1], def[2], def[3], false)
-    end
-    local y = -44 - math.ceil(#list / 2) * 24 - 40
-    Label(page, "Cooldown tracker", 0, y)
-    local msg = Note(page, "A row of your abilities that have a cooldown, each showing when it is ready. One click fills it from your action bars; you can edit the list later on the Combat tab.", y - 22)   -- luacheck: ignore
-    local result = page:CreateFontString(nil, "OVERLAY")
-    ns:Font(result, 12)
-    result:SetPoint("TOPLEFT", 236, y - 76)
-    result:SetWidth(238)
-    result:SetJustifyH("LEFT")
-    local fill = ns:CreateButton(page, "Fill from my action bars", 220, 26, function()
-        local names = ns.CooldownCandidates and ns:CooldownCandidates(9) or {}
-        if #names == 0 then
-            result:SetText("|cffffd100" .. ns:Tr("No abilities with a cooldown were found on your action bars.") .. "|r")
-            return
-        end
-        ns.db.cooldownSpells = names
-        if ns.RebuildCooldowns then ns:RebuildCooldowns() end
-        result:SetText(ns:SignalHex("good") .. format(ns:TrN(#names, "%d ability taken from your action bars.", "%d abilities taken from your action bars."), #names) .. "|r")
-    end)
-    fill:SetPoint("TOPLEFT", 0, y - 72)
-    page.FillCooldowns = function() fill:Click() end
-    refreshers[#refreshers + 1] = function() result:SetText("") end
-end
-
--- Step 8: layout ----------------------------------------------------------------------------------------------
-local function BuildLayout(page)
-    Heading(page, "Place your frames", "Start from a layout made for your role, look at it with sample frames, then drag anything that isn't where you want it.")
-    local apply = ns:CreateButton(page, "Use the layout for my role", 230, 28, function() ns:ApplyRoleLayout() end)
-    apply:SetPoint("TOPLEFT", 0, -70)
-    local preview = ns:CreateButton(page, "Show sample frames", 230, 28, function() ns:TogglePreview() end)
-    preview:SetPoint("TOPLEFT", 0, -106)
-    local move = ns:CreateButton(page, "Move panels", 230, 28, function() ns:ToggleMove() end)
-    move:SetPoint("TOPLEFT", 0, -142)
-    Note(page, "Panels snap to a grid and to the centre lines; hold Shift to place one freely. Sizes and scales are on the Layout tab of /fgui, where you can also share a layout as a text string or keep one per talent set.", -186)
+    local BW3 = math.floor((PAGE_W - 12) / 3)
+    Label(page, "Place your frames", 0, -164)
+    local apply = ns:CreateButton(page, "Use the layout for my role", BW3, 26, function() ns:ApplyRoleLayout() end)
+    apply:SetPoint("TOPLEFT", 0, -184)
+    local preview = ns:CreateButton(page, "Show sample frames", BW3, 26, function() ns:TogglePreview() end)
+    preview:SetPoint("TOPLEFT", BW3 + 6, -184)
+    local move = ns:CreateButton(page, "Move panels", BW3, 26, function() ns:ToggleMove() end)
+    move:SetPoint("TOPLEFT", 2 * (BW3 + 6), -184)
 
     -- coming from another interface: the closest whole-screen setup, one click (Gallery.lua)
-    Label(page, "Coming from another UI?", 0, -230)
+    Label(page, "Coming from another UI?", 0, -222)
     local found = ns.OtherUIsFound and ns.OtherUIsFound() or {}
     local foundKey = found[1] and found[1].ui.key
     page.otherUI = {}
     for i, ui in ipairs(ns.OTHER_UIS or {}) do
-        local b = ns:CreateButton(page, ui.label, 230, 24, function()
+        local b = ns:CreateButton(page, ui.label, BW3, 24, function()
             if ns.ApplyGallery then ns:ApplyGallery(ui.gallery) end
         end)
-        b:SetPoint("TOPLEFT", ((i - 1) % 2) * 240, -250 - math.floor((i - 1) / 2) * 28)
+        b:SetPoint("TOPLEFT", ((i - 1) % 3) * (BW3 + 6), -242 - math.floor((i - 1) / 3) * 28)
         if ui.key == foundKey then ns:Paint(b, "SetBackdropBorderColor", "@accent", 1) end
         page.otherUI[ui.key] = b
     end
+    local otherRows = math.ceil(#(ns.OTHER_UIS or {}) / 3)
+    local y = -242 - otherRows * 28 - 4
     Note(page, found[1] and format(ns:Tr("You have %s: the marked one is the closest. Fantasy Glass UI leaves the jobs that add-on does to it."), found[1].addon)
-        or "Each puts your frames where that interface does. One undo (/fgui undo) takes it back.", -308)
-end
-
--- Step 9: what you chose, and what to remember ------------------------------------------------------------
-local function BuildFinish(page)
-    Heading(page, "All set", "Here is what you chose. Use Back to change anything.")
-    local rows = {}
-    for i = 1, 6 do
-        local label = page:CreateFontString(nil, "OVERLAY")
-        ns:Font(label, 12)
-        label:SetPoint("TOPLEFT", 0, -50 - (i - 1) * 20)
-        ns:Paint(label, "SetTextColor", "dim")
-        local value = page:CreateFontString(nil, "OVERLAY")
-        ns:Font(value, 12)
-        value:SetPoint("TOPLEFT", 150, -50 - (i - 1) * 20)
-        value:SetWidth(320)
-        value:SetJustifyH("LEFT")
-        rows[i] = { label = label, value = value }
-    end
-    Label(page, "Worth remembering", 0, -184)
+        or "Each puts your frames where that interface does. One undo (/fgui undo) takes it back.", y)
+    local more = ns:CreateButton(page, "Fine-tune in all settings", BW3, 24, function()
+        if type(ns.root) == "table" then ns.root.settingsMode = "all" end
+        frame:Hide()
+        ns:ToggleConfig()
+        if ns.optUI and ns.optUI.SetSimple then ns.optUI.SetSimple(false) end
+    end)
+    more:SetPoint("TOPLEFT", 0, y - 34)
     local tips = page:CreateFontString(nil, "OVERLAY")
-    ns:Font(tips, 12)
-    tips:SetPoint("TOPLEFT", 0, -206)
-    tips:SetWidth(PAGE_W)
+    ns:Font(tips, 11)
+    tips:SetPoint("LEFT", more, "RIGHT", 12, 0)
+    tips:SetWidth(PAGE_W - BW3 - 12)
     tips:SetJustifyH("LEFT")
-    if tips.SetSpacing then tips:SetSpacing(4) end
-    tips:SetText("|cffffff00/fgui|r  " .. ns:Tr("all the options") .. "\n"
-        .. "|cffffff00/fgui move|r  " .. ns:Tr("arrange panels") .. "\n"
-        .. "|cffffff00/fgui bind|r  " .. ns:Tr("set keys by hovering an action button and pressing a key") .. "\n"
-        .. "|cffffff00/fgui check|r  " .. ns:Tr("a report to copy if something looks wrong"))
-    local reload = Note(page, "", -290)
+    ns:Paint(tips, "SetTextColor", "faint")
+    tips:SetText("|cffffff00/fgui|r " .. ns:Tr("all the options") .. "   |cffffff00/fgui move|r " .. ns:Tr("arrange panels") .. "   |cffffff00/fgui check|r " .. ns:Tr("if something looks wrong"))
 
-    local PRESETS = { STANDARD = "Standard", EVERYTHING = "Everything", MINIMAL = "Minimal" }
+    local PRESETS = { STANDARD = "The whole interface", EVERYTHING = "Everything", MINIMAL = "Minimal", RESTYLE = "Just restyle the game's own" }
     function page.Refresh()
-        local accent = ns.db.accent or "AZURE"
-        local font = ns.fontStyles[ns.db.fontStyle or "GLASS"] or ns.fontStyles.GLASS
         local role = ns.roles[ns.db.role]
+        local liked = {}
+        for _, def in ipairs(INTERESTS) do if ns:PlayStyleOn(def[1]) then liked[#liked + 1] = ns:Tr(def[2]) end end
         local on, total = 0, 0
         if ns.CountFeatures then on, total = ns:CountFeatures() end
         local preset = ns.CurrentPreset and ns:CurrentPreset()
         local data = {
+            { "How much", ns:Tr(PRESETS[preset] or "your own mix") },
             { "Role", role and ns:Tr(role.label) or ns:Tr("not chosen") },
-            { "Theme", ns:ThemeName(ns.themes[ns.db.theme or "SMOKE"] and (ns.db.theme or "SMOKE") or "SMOKE", "plain") },
-            { "Accent", accent == "CUSTOM" and ns:Tr("your own color") or accent == "CLASS" and ns:Tr("your class color") or ns:AccentName(accent) },
-            { "Lettering", ns:Tr(font.name) .. "  (" .. ns:Tr(font.face) .. ")" },
-            { "Features", format(ns:Tr("%d of %d switched on"), on, total) .. "  (" .. ns:Tr(PRESETS[preset] or "set by hand") .. ")" },
-            { "Bags", ns:Tr(ns.db.bagWindow and "Fantasy Glass UI's single window" or "the game's own") },
+            { "You enjoy", #liked > 0 and table.concat(liked, ", ") or ns:Tr("not chosen") },
+            { "Theme", ns:ThemeName(ns.themes[ns.db.theme or "SMOKE"] and (ns.db.theme or "SMOKE") or "SMOKE", "plain") .. "  (" .. (tonumber(ns.db.fontScale) or 100) .. "%)" },
+            { "Features", format(ns:Tr("%d of %d switched on"), on, total) },
         }
         for i, row in ipairs(rows) do
             row.label:SetText(data[i] and ns:Tr(data[i][1]) or "")
             row.value:SetText(data[i] and data[i][2] or "")
         end
-        reload:SetText(ns:Tr("Finish & reload puts everything you chose in place at once."))
     end
     page.Refresh()
 end
@@ -604,7 +618,7 @@ end
 
 local function Build()
     frame = CreateFrame("Frame", "FantasyGlassUISetup", UIParent, ns.template)
-    frame:SetSize(540, 440)
+    frame:SetSize(PAGE_W + 60, 500)
     frame:SetPoint("CENTER", UIParent, "CENTER", 0, 40)
     frame:SetFrameStrata("DIALOG")
     frame:SetBackdrop(ns.BACKDROP)
@@ -641,7 +655,7 @@ local function Build()
     end)
     close:HookScript("OnLeave", function() GameTooltip:Hide() end)
 
-    local builders = { BuildWelcome, BuildRole, BuildLook, BuildLettering, BuildFeatures, BuildWindows, BuildBehavior, BuildLayout, BuildFinish }
+    local builders = { BuildWelcome, BuildPlay, BuildLook, BuildReady }
     for i, build in ipairs(builders) do
         local page = CreateFrame("Frame", nil, frame)
         page:SetPoint("TOPLEFT", 30, -48)
@@ -651,14 +665,14 @@ local function Build()
         pages[i] = page
         local dot = frame:CreateTexture(nil, "ARTWORK")
         dot:SetTexture(ns.FLAT)
-        dot:SetSize(16, 3)
-        dot:SetPoint("BOTTOM", frame, "BOTTOM", (i - (#builders + 1) / 2) * 21, 26)
+        dot:SetSize(28, 3)
+        dot:SetPoint("BOTTOM", frame, "BOTTOM", (i - (#builders + 1) / 2) * 34, 26)
         dots[i] = dot
     end
 
     frame.back = ns:CreateButton(frame, "Back", 90, 26, function() if step > 1 then Show(step - 1) end end)
     frame.back:SetPoint("BOTTOMLEFT", 30, 16)
-    frame.next = ns:CreateButton(frame, "Next", 140, 26, function()
+    frame.next = ns:CreateButton(frame, "Next", 160, 26, function()
         if step < #STEPS then
             Show(step + 1)
         else
@@ -689,4 +703,5 @@ function ns:ShowSetup(startAt)
     Show(tonumber(startAt) or 1)
     frame:Show()
 end
+function ns:HideSetup() if frame then frame:Hide() end end
 function ns:SetupStepCount() return #STEPS end

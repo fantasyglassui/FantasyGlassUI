@@ -592,6 +592,10 @@ local MINIMAL = {
     actionBars = true, cooldownText = true, minimap = true, infobar = true, questTracker = true, questLog = true, windows = true,
     tooltip = true, bagWindow = true, bankWindow = true, storage = true, chat = true, chatSkin = true,
 }
+-- RESTYLE (12.0, "Just restyle the game's own"): Minimal without the parts that replace the game's own
+-- frames, bags and quest tracker; the windows, tooltips, chat, minimap and action bars get the look.
+local REPLACES = { unitFrames = true, ufParty = true, ufBoss = true, raidFrames = true, playerCast = true, auraBars = true,
+                   nameplates = true, bagWindow = true, bankWindow = true, questTracker = true, questLog = true }
 -- What a preset would set a switch to; nil means "leave it as it is".
 --   EVERYTHING  every feature on
 --   STANDARD    how the add-on comes: everything except the four that flash, pop up or act on their
@@ -601,6 +605,7 @@ function ns:PresetValue(preset, key)
     if NO_PRESET[key] then return nil end
     if preset == "EVERYTHING" then return true end
     if preset == "MINIMAL" then return MINIMAL[key] and true or false end
+    if preset == "RESTYLE" then return (MINIMAL[key] and not REPLACES[key]) and true or false end
     local d = ns.defaults[key]
     if type(d) == "boolean" then return d end
     return nil
@@ -668,7 +673,7 @@ function ns:ApplyPreset(preset)
 end
 -- Which preset the switches match right now, or nil when they have been set by hand.
 function ns:CurrentPreset()
-    for _, preset in ipairs({ "STANDARD", "EVERYTHING", "MINIMAL" }) do
+    for _, preset in ipairs({ "STANDARD", "EVERYTHING", "MINIMAL", "RESTYLE" }) do
         local same = true
         EachFeature(function(key)
             local v = ns:PresetValue(preset, key)
