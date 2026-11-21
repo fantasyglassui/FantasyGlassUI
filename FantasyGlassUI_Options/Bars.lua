@@ -103,7 +103,7 @@ function ns.BuildBarsPage(page)
     if nBars == 0 then
         local none = Small(box, 12, 700)
         none:SetPoint("TOPLEFT", 0, -10)
-        none:SetText(ns:Tr("The action bars are not being looked after by this add-on: either \"Action bars\" is switched off on the Features tab, or another add-on has the bars."))
+        none:SetText(ns:Tr("The action bars are not being looked after by this add-on: either \"Action bars\" is switched off, above, or another add-on has the bars."))
         T.empty = true
         page.contentHeight = 540
         if page.area then page.area:SetContentHeight(page.contentHeight) end

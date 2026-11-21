@@ -273,7 +273,7 @@ ns:NewModule("classResource", function()
     end
     ns:Every(0.25, "Class resource", Update)
     local entry = ns:RegisterMovable(f, "classResource", "Class resource")
-    if type(entry) == "table" then entry.noScale = "Sized on the Bars and frames tab (Class resource)." end
+    if type(entry) == "table" then entry.noScale = "Sized in Frames and bars › Your frames (Class resource)." end
 end)
 
 ------------------------------------------------------------------------------------------

@@ -211,7 +211,7 @@ local function BuildCombat(page)
         afkSlider:SetValue(tonumber(ns.db.afkDelay) or 0)
         afkFlag:SetChecked(ns.db.afkFlag)
         afkHint:SetText(ns:Tr(ns.db.afkScreen and "Idle means no moving, casting, targeting or mouse movement."
-            or "The AFK screen is switched off (Features tab), so these do nothing yet."))
+            or "The AFK screen is switched off, above, so these do nothing yet."))
     end
     -- Click casting is a section of this tab (it used to be a tab of its own).
     local ccTop = cdBottom - 24

@@ -2287,7 +2287,7 @@ ns.helpLines = {
     { "/fgui move", "arrange your panels; right-click one for its own settings" },
     { "/fgui undo", "put back the last panel move, nudge, resize or reset" },
     { "/fgui setup", "run the guided setup again" },
-    { "/fgui tools", "the Tools tab: every window, your lists, and the guide" },
+    { "/fgui tools", "the settings at Tools: every window, and things to do once" },
     { "/fgui toolmenu", "every tool window in one small panel (also \"Tools\" on the Menu button)" },
     { "/fgui bars", "the Bars tab: each action bar's size, opacity, when it shows, rows and spacing" },
     { "/fgui bind", "keybind mode: hover an action button and press a key" },
@@ -2439,7 +2439,7 @@ ns.toolCommands = {
     gear = function() if ns.ShowGear then ns:ShowGear() end end,
     stats = function() ns:ShowLifetime() end,
     set = function(t) ns:SetCommand(t) end,
-    threat = function() if ns.ToggleThreatMeter then ns:ToggleThreatMeter() else ns:Print("The threat meter is switched off (Features tab).") end end,
+    threat = function() if ns.ToggleThreatMeter then ns:ToggleThreatMeter() else ns:Print("The threat meter is switched off (Combat › Damage and threat).") end end,
     screenshot = function() ns:ToggleShowcase() end,
     checknew = function() ns:CheckNew() end,
     bossnote = function(t) ns:BossNoteCommand(t) end,
@@ -2531,7 +2531,7 @@ ns.toolCommands = {
         ns:ShowTextWindow("Minimap buttons", table.concat(ns:ButtonBagLines(), "\n"))
     end,
     unlock = function(t)
-        if ns:GuideUnlock(t) then ns:Print("Quest guides are unlocked on this account. They are on the Guide tab of /fgui.")
+        if ns:GuideUnlock(t) then ns:Print("Quest guides are unlocked on this account. They are under Guide in /fgui.")
         else ns:Print("That is not the phrase.") end
     end,
     lock = function() ns:GuideLock(); ns:Print("Quest guides are locked again.") end,
@@ -2650,9 +2650,9 @@ SlashCmdList["FANTASYGLASSUI"] = function(msg)
         if want:find("%s") then ns:Print("The invite word is one word, with no spaces."); return end
         if want ~= "" then ns.db.whisperInviteWord = want end
         ns:Print("Whisper invites answer to the word \"%s\".", ns.InviteWord and ns:InviteWord() or "inv")
-        if not ns.db.whisperInvite then ns:Print("They are switched off: see \"Invite by whisper\" on the Features tab.") end
+        if not ns.db.whisperInvite then ns:Print("They are switched off: see \"Invite by whisper\" in Chat and people › Whispers and invites.") end
     elseif msg == "meter" then
-        if ns.ToggleMeter then ns:ToggleMeter() else ns:Print("The damage meter is not a drawer right now (see \"Damage meter: drawer on the chat box\" on the Features tab).") end
+        if ns.ToggleMeter then ns:ToggleMeter() else ns:Print("The damage meter is not a drawer right now (see \"Damage meter: drawer on the chat box\" in Combat › Damage and threat).") end
     elseif msg == "blocked" then
         -- what the game counts as "Interface actions failed because of this AddOn", with the place each came from
         local lines = ns.BlockedLines and ns:BlockedLines(8) or { "Blocked actions: not being counted." }

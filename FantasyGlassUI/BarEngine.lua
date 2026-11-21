@@ -509,7 +509,7 @@ ns:NewModule("barEngine", function()
         Lay(bar)
         local key = "fgbar" .. k
         local entry = ns:RegisterMovable(bar, key, def.label)
-        if type(entry) == "table" then entry.fadeKey = key; entry.noScale = "Sized on the Bars and frames tab." end
+        if type(entry) == "table" then entry.fadeKey = key; entry.noScale = "Sized in Frames and bars › Action bars." end
         local info = { key = key, bar = bar, holder = bar, entry = entry, label = def.label, layout = true, engine = k }
         table.insert(ns.barHandles, math.min(k, #ns.barHandles + 1), info)       -- (before the stance and pet bars)
         engine.bars[k] = bar

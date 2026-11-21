@@ -319,7 +319,7 @@ function ns.BuildPlateDesigner(box)
         P.Refresh()
     end)
     reset:SetPoint("TOPLEFT", 360, -288)
-    P.note = Note(box, "Size uses the game's own nameplate scale and waits until you are out of combat. Cast bars and debuff icons need \"Nameplate casts & debuffs\" on (Features tab); names and highlighting apply to plates as they appear.", 0, -322)
+    P.note = Note(box, "Size uses the game's own nameplate scale and waits until you are out of combat. Cast bars and debuff icons need \"Nameplate casts & debuffs\" on, above; names and highlighting apply to plates as they appear.", 0, -322)
     function P.Refresh()
         local pd = ns.PlateDesign and ns.PlateDesign() or ns.PLATE_DEFAULT or {}
         syncing = true
@@ -519,7 +519,7 @@ function ns.BuildAuraDesigner(box)
             A.mine:SetChecked(d.auraMine ~= false)
             A.plateSize:SetValue(d.auraSize or 18)
             A.plateMax:SetValue(d.auraMax or 5)
-            A.note:SetText(ns:Tr("Debuffs on nameplates need \"Nameplate casts & debuffs\" on (Features tab)."))
+            A.note:SetText(ns:Tr("Debuffs on nameplates need \"Nameplate casts & debuffs\" on, in Frames and bars › Nameplates."))
         else
             for _, c in ipairs(UNIT) do c:Show() end
             A.mine:Show()
@@ -585,7 +585,7 @@ function ns.BuildResourceDesigner(box)
         syncing = false
         local _, class = UnitClass("player")
         local has = ns.ClassResource and ns.ClassResource(class)
-        R.note:SetText(ns:Tr(not ns.db.classResource and "Switch on \"Class resource\" on the Features tab to see it. Move it with move mode."
+        R.note:SetText(ns:Tr(not ns.db.classResource and "Switch on \"Class resource\", above, to see it. Move it with move mode."
             or (has and "It moves with move mode like any panel." or "Your class has no second resource to show.")))
     end
     R.Refresh()

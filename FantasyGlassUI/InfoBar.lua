@@ -218,7 +218,7 @@ ns:NewModule("infobar", function()
             note:SetPoint("BOTTOMLEFT", 12, 10)
             note:SetWidth(348)
             note:SetWordWrap(true)
-            note:SetText(ns:Tr("Bags, friends, guild and mail also need their switch on the Features tab."))
+            note:SetText(ns:Tr("Bags, friends, guild and mail also need their switch on in the settings."))
             ns:Paint(note, "SetTextColor", "faint")
             tinsert(UISpecialFrames, "FantasyGlassUIInfoBarPieces")
         end

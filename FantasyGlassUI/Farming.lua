@@ -238,7 +238,7 @@ function ns:Farm(text)
         return t
     end
     if type(s) ~= "table" then
-        if not ns.db.farming then ns:Print("Farming sessions are switched off (Features tab).") return end
+        if not ns.db.farming then ns:Print("Farming sessions are switched off (Bags and items › Gold and farming).") return end
         store[key] = { started = Now(), resumed = Now(), elapsed = 0, gold = 0, moneyMark = Money(), items = {}, lastMoney = Money() }
         ns.FarmZoneSwitch(store[key], ZoneName())
         ns:Print("Farming session started. /fgui farm shows it, /fgui farm stop ends it.")

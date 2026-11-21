@@ -42,7 +42,7 @@ function ns:ApplySharedMedia()
 end
 function ns:MediaCommand(kind, text)
     local lib = Library()
-    if not lib then ns:Print("No add-on here has brought LibSharedMedia, so there are only our own fonts and textures (Look tab)."); return false end
+    if not lib then ns:Print("No add-on here has brought LibSharedMedia, so there are only our own fonts and textures (Look and themes › Accent and lettering)."); return false end
     local key = (kind == "font") and "sharedFont" or "sharedBar"
     local media = (kind == "font") and "font" or "statusbar"
     text = ns.Trim(text)

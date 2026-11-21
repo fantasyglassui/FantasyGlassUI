@@ -631,7 +631,7 @@ function ns:CheckNew(quiet)
         return (ns.localesState == "loaded" or ns.locales[GetLocale()]) and "OK" or "CHECK", tostring(ns.localesState or "not asked for")
     end)
     try("Arena enemy frames", function()
-        if not on("ufArena") then return "OFF", "Features tab, Frames" end
+        if not on("ufArena") then return "OFF", "Frames and bars › Party, boss and arena" end
         local n = #(ns.arenaFrames or {})
         if n == 0 then return "WAIT", "switched on since you logged in: /reload to make them" end
         return (n == 5) and "OK" or "CHECK", format("%d frames made; they show in an arena (or with /fgui test)", n)
@@ -714,7 +714,7 @@ function ns:CheckNew(quiet)
     end)
     try("Role templates", function()
         local t = ns.TemplateProfile("HEALER", ns.db)
-        return (t and t.role == "HEALER") and "OK" or "CHECK", "Tank, Healer and Damage on the Profiles tab"
+        return (t and t.role == "HEALER") and "OK" or "CHECK", "Tank, Healer and Damage in Layout and profiles › Profiles"
     end)
     try("Coming from another UI", function()
         local found = ns.OtherUIsFound()
@@ -740,7 +740,7 @@ function ns:CheckNew(quiet)
         local fam = _G.GameFontHighlight
         return "OK", (type(fam) == "table") and "Korean and Chinese use the game's font family" or "Korean and Chinese use the font files by name"
     end)
-    try("Theme previews", function() return "OK", "a picture on each theme button of the Look tab" end)
+    try("Theme previews", function() return "OK", "a picture on each theme button in Look and themes › Themes" end)
     add("")
     add(format("%d OK, %d switched off, %d waiting for a place or moment, %d to look at.", counts.OK, counts.OFF, counts.WAIT, counts.CHECK))
     if not quiet then ns:ShowTextWindow("Check of the new features", table.concat(out, "\n")) end

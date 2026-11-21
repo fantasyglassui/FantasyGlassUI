@@ -110,8 +110,8 @@ ns.TOUR = {
     { frame = "FantasyGlassUIMinimap", title = "Minimap and add-ons", text = "Other add-ons' minimap buttons are gathered into one Add-ons button here. Right-click the minimap for tracking." },
     { frame = "FantasyGlassUITracker", title = "Quests", text = "Your quests, with the experience and gold each one gives. Click a quest to open it; the + and - fold the list." },
     { frame = "ChatFrame1", title = "Chat", text = "Links, a copy button and your name picked out in chat. Alt-click a name to invite." },
-    { title = "Options", text = "Type /fgui for the options: a switch for every feature, themes on the Look tab, and the Tools tab for every window and list." },
-    { title = "Ask the guide", text = "Not sure where something is? On the Tools tab, type a question in plain words, such as how do I make the bars bigger, and it shows you." },
+    { title = "Options", text = "Type /fgui for the settings: every feature by category, themes under Look and themes, and a search that finds any setting." },
+    { title = "Ask the guide", text = "Not sure where something is? On the Home page of /fgui, ask the guide in plain words, such as how do I make the bars bigger, and it shows you." },
     { title = "What's this?", text = "Type /fgui whatsthis (or set a key for it) and point at any panel: it tells you which feature made it, and takes you to its switch." },
 }
 local tourAt   -- luacheck: ignore

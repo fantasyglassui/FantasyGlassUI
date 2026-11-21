@@ -122,7 +122,7 @@ ns:NewModule("cooldowns", function()
         end
     end
     function ns:CooldownTrackerState()
-        if #active == 0 then return "no abilities chosen (Combat tab)" end
+        if #active == 0 then return "no abilities chosen (Combat › Cooldowns)" end
         return #active .. " abilities" .. (hiddenSeen and "; in combat the game hides their cooldowns, so sweeps are drawn but icons are not grayed" or "")
     end
     ns.cooldownTest = { Refresh = Refresh, active = function() return active end }

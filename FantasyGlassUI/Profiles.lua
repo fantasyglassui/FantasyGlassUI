@@ -243,7 +243,7 @@ end
 function ns:ImportLayout(text)
     if type(text) ~= "string" then return false, "Nothing to import." end
     text = strtrim(text)
-    if text:sub(1, #HEADER) == HEADER then return false, "That is a whole profile, not a layout. Import it on the Profiles tab." end
+    if text:sub(1, #HEADER) == HEADER then return false, "That is a whole profile, not a layout. Import it in Layout and profiles › Profiles." end
     if text:sub(1, #LAYOUT_HEADER) ~= LAYOUT_HEADER then return false, "That isn't a Fantasy Glass UI layout string." end
     local ok, data, stop = pcall(Decode, text, #LAYOUT_HEADER + 1, 0)
     if not ok or type(data) ~= "table" or stop ~= #text + 1 then return false, "The layout string is damaged or incomplete." end

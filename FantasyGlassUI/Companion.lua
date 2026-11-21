@@ -412,14 +412,14 @@ function ns:PreviewShared(text)
             local name = "Pack " .. date("%m-%d %H%M")
             local editMode
             ok, msg, editMode = ns:ImportPack(name, text)
-            if ok then msg = format(ns:Tr("Saved as the profile \"%s\": choose it on the Profiles tab."), name) end
+            if ok then msg = format(ns:Tr("Saved as the profile \"%s\": choose it in Layout and profiles › Profiles."), name) end
             if ok and editMode and ns.ShowCopyBox then
                 ns:After(0.2, function() ns:ShowCopyBox(editMode, ns:Tr("The game's bar layout from the pack: Esc, Edit Mode, Import, and paste this.")) end)
             end
         else
             local name = "Shared " .. date("%m-%d %H%M")
             ok, msg = ns:ImportProfile(name, text)
-            if ok then msg = format(ns:Tr("Saved as the profile \"%s\": choose it on the Profiles tab."), name) end
+            if ok then msg = format(ns:Tr("Saved as the profile \"%s\": choose it in Layout and profiles › Profiles."), name) end
         end
         p.info:SetText((ok and ns:SignalHex("good") or ns:SignalHex("bad")) .. ns:Tr(tostring(msg or (ok and "Done." or "Not taken."))) .. "|r")
     end
@@ -918,7 +918,7 @@ function ns:SendByMailRules()
     if InCombatLockdown() then ns:Print("Not during a fight."); return false end
     if not (MailFrame and MailFrame:IsShown()) then ns:Print("Open a mailbox first."); return false end
     sending = Jobs()
-    if #sending == 0 then ns:Print("Nothing to send: switch on a material under Mail rules (Features tab) and say who it goes to."); sending = nil; return false end
+    if #sending == 0 then ns:Print("Nothing to send: switch on a material in Bags and items › Mail and say who it goes to."); sending = nil; return false end
     SendNext()
     return true
 end

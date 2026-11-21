@@ -247,7 +247,7 @@ function ns:MapSizeCommand(text)
     local n = tonumber((ns.Trim(text):gsub("%%", "")))
     if n then ns.db.mapSize = math.floor(ns.MapScale(n) * 100) end
     ns:Print("The world map opens at %d%% of its size.", math.floor(ns.MapScale(ns.db.mapSize) * 100))
-    if not ns.db.smallMap then ns:Print("It is switched off: see \"Smaller world map\" on the Features tab.") end
+    if not ns.db.smallMap then ns:Print("It is switched off: see \"Smaller world map\" in Quests and map › World map and travel.") end
     if ns.smallMapTest then pcall(ns.smallMapTest.Apply) end
 end
 

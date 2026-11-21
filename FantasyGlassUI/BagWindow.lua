@@ -357,7 +357,7 @@ local function NewWindow(cfg)
     local function BagUseState()
         if not cfg.combatUse then return nil end
         if abandoned then return "not possible (" .. abandoned .. ")" end
-        if not ns.db.bagCombatUse then return "off (switch on \"Bags: use items in combat\" on the Features tab to try it)" end
+        if not ns.db.bagCombatUse then return "off (switch on \"Bags: use items in combat\" in Bags and items › Bags and bank to try it)" end
         return secure > 0 and ("on: " .. secure .. " slots each have their own secure button") or "on, waiting for the bags to be drawn"
     end
     if cfg.combatUse then ns.BagUseState = BagUseState end

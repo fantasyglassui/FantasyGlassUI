@@ -123,7 +123,7 @@ function ns:ToggleTestGroup(on)
         end
         ns:Print("Group practice on: five made-up group mates for five minutes. |cffffff00/fgui testgroup|r again to end it.")
         if not t.myKick then ns:Print("You have no interrupt the rotation knows, so the others take turns without you.") end
-        if #off > 0 then ns:Print("Switched off on the Features tab, so not shown: %s.", table.concat(off, ", ")) end
+        if #off > 0 then ns:Print("Switched off in the settings, so not shown: %s.", table.concat(off, ", ")) end
         if ns.coverTest then pcall(ns.coverTest.Update) end
         if ns.groupCDTest then pcall(ns.groupCDTest.Update) end
         if ns.kickTest then pcall(ns.kickTest.Update) end

@@ -131,7 +131,7 @@ function ns:ShowBriefing(quietIfEmpty)
     end
     local name = UnitName and UnitName("player")
     local title = (type(name) == "string" and not ns:IsSecret(name)) and format(ns:Tr("Welcome back, %s"), name) or ns:Tr("Welcome back")
-    ns:ShowList("Briefing", title, lines, "Click a line to open it. /fgui briefing shows this again; the Features tab can turn it off.", 460, math.min(360, 80 + #lines * 18))
+    ns:ShowList("Briefing", title, lines, "Click a line to open it. /fgui briefing shows this again; Quests and map › Progress can turn it off.", 460, math.min(360, 80 + #lines * 18))
     return #lines
 end
 

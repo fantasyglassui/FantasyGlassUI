@@ -295,7 +295,7 @@ local function BuildPlay(page)
                 for _, key in ipairs(ns:PlayStyleKeys(style)) do if not seen[key] then seen[key] = true; n = n + 1 end end
             end
         end
-        count:SetText(n > 0 and format(ns:TrN(n, "Your choices use %d feature. Every switch is on the Features tab of /fgui.", "Your choices use %d features. Every switch is on the Features tab of /fgui."), n)
+        count:SetText(n > 0 and format(ns:TrN(n, "Your choices use %d feature. Every switch is in /fgui, by category.", "Your choices use %d features. Every switch is in /fgui, by category."), n)
             or ns:Tr("Pick none at all if you like: the features you have stay as they are."))
     end
     page.Mark = Mark
@@ -379,7 +379,7 @@ end
 -- Step 3: your look: a family, a theme of it, the accent, and how big the lettering is ----------------------
 -- (Themes you made yourself get a fourth group, which only appears once you have some.)
 local function BuildLook(page)
-    Heading(page, "Your look", "Choose glass, fantasy or celestial, then a theme. The accent is the highlight color. Everything applies as you click; the lettering style and much more are on the Look tab of /fgui.")
+    Heading(page, "Your look", "Choose glass, fantasy or celestial, then a theme. The accent is the highlight color. Everything applies as you click; the lettering style and much more are under Look and themes in /fgui.")
 
     local COLS, BW = 5, 115
     local family = "GLASS"

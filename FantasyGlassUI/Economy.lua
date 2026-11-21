@@ -50,7 +50,7 @@ function ns:RestockCommand(text)
     if not id or not n then ns:Print("Shift-click an item into the line, then a space and how many to keep: /fgui restock [item] 5."); return end
     list[id] = (n > 0) and math.min(n, 10000) or nil
     if n > 0 then ns:Print("Restock: keep %d of %s.", n, Name(id)) else ns:Print("Restock: %s is off the list.", Name(id)) end
-    if not ns.db.restockOn then ns:Print("It is switched off: see \"Vendors: restock list\" on the Features tab.") end
+    if not ns.db.restockOn then ns:Print("It is switched off: see \"Vendors: restock list\" in Bags and items › Vendors.") end
 end
 ns:NewModule("restockOn", function()
     local function Shop()
@@ -543,6 +543,6 @@ function ns:ShowLoot(text)
     end
     if #lines == 0 then lines[1] = { left = "|cff9aa4b4" .. ns:Tr("Nothing looted yet this session.") .. "|r" } end
     table.insert(lines, 1, { left = ns:Tr("Vendor value of it all"), right = ns:Coins(total), color = { 1, 0.82, 0.3 } })
-    if not ns.db.lootLog then lines[#lines + 1] = { left = ns:Tr("The loot log is switched off (Features tab).") } end
+    if not ns.db.lootLog then lines[#lines + 1] = { left = ns:Tr("The loot log is switched off (Bags and items › Bags and bank).") } end
     return ns:ShowList("Loot", "Looted this session", lines, "/fgui loot clear empties the list.", 460, 360), total
 end

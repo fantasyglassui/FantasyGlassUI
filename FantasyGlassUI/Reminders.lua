@@ -174,7 +174,7 @@ function ns:ExecuteCommand(text)
         if ns.executeTest then pcall(ns.executeTest.Place) end
     end
     ns:Print("The execute line is at %d%% of the target's health.", tonumber(ns.db.executePct) or 20)
-    if not ns.db.executeLine then ns:Print("It is switched off: see \"Execute line on the target\" on the Features tab.") end
+    if not ns.db.executeLine then ns:Print("It is switched off: see \"Execute line on the target\" in Combat › Alerts and warnings.") end
 end
 
 ------------------------------------------------------------------------------------------

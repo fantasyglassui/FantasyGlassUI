@@ -594,7 +594,7 @@ function ns:GuideCommand(text)
     text = ns.Trim(text)
     if not ns:GuideUnlocked() then ns:Print("Quest guides are coming soon."); return false end
     if not ns:GuideOn() then
-        ns:Print("Quest guides are switched off. Switch them on on the Guide tab of /fgui, or in the setup.")
+        ns:Print("Quest guides are switched off. Switch them on under Guide in /fgui, or in the setup.")
         return false
     end
     local word, rest = text:match("^(%S+)%s*(.*)$")

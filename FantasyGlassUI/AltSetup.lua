@@ -158,7 +158,7 @@ do  -- say what was done, once the world is up
                 for _, key in ipairs(note.changed.switched) do labels[#labels + 1] = names[key] or key end
                 ns:Print("Switched on for this class: %s.", table.concat(labels, ", "))
             end
-            ns:Print("|cffffff00/fgui setup|r goes through it yourself; the Profiles tab shares another profile instead.")
+            ns:Print("|cffffff00/fgui setup|r goes through it yourself; Layout and profiles › Profiles shares another profile instead.")
         end)
     end))
 end

@@ -766,6 +766,37 @@ function O.BuildHome(page)
     intro:SetJustifyH("LEFT")
     ns:Paint(intro, "SetTextColor", "dim")
     page.intro = intro
+    -- presets: one click sets every switch (click twice, so a slip of the mouse changes nothing)
+    local px = 0
+    page.presetButtons = {}
+    for _, def in ipairs({ { "EVERYTHING", "Everything" }, { "STANDARD", "Standard" }, { "MINIMAL", "Minimal" } }) do
+        local btn = ns:CreateButton(page, def[2], 96, 22, ns:ConfirmClick(function()
+            local n = ns:ApplyPreset(def[1])
+            if n > 0 then O.NeedReload("preset") end
+            O.NoteChange(true)
+            O.RefreshAll()
+            ns:Print(ns:TrN(n, "%d switch changed", "%d switches changed"), n)
+        end))
+        btn:SetPoint("TOPRIGHT", page, "TOPRIGHT", -12 - px, 0)
+        btn:HookScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+            GameTooltip:AddLine(ns:Tr(def[2]))
+            local text = def[1] == "EVERYTHING" and "Every feature on."
+                or def[1] == "MINIMAL" and "Only the core: frames, bars, minimap, quests, bags, chat and windows."
+                or "How Fantasy Glass UI comes: everything except the four that flash, pop up or act on their own - notifications, the aggro warning, the AFK screen and level-up screenshots."
+            GameTooltip:AddLine(ns:Tr(text), 1, 1, 1, true)
+            GameTooltip:AddLine(ns:Tr("Click twice. Auto quest and the look options are left as they are."), 0.6, 0.6, 0.6, true)
+            GameTooltip:Show()
+        end)
+        btn:HookScript("OnLeave", function() GameTooltip:Hide() end)
+        page.presetButtons[def[1]] = btn
+        px = px + 102
+    end
+    local plabel = page:CreateFontString(nil, "OVERLAY")
+    ns:Font(plabel, 11)
+    plabel:SetPoint("TOPRIGHT", page, "TOPRIGHT", -12 - px - 4, -5)
+    plabel:SetText(ns:Tr("Presets"))
+    ns:Paint(plabel, "SetTextColor", "dim")
     page.cards = {}
     local CW, CH = 240, 72
     for i, id in ipairs(ns.homeCards) do

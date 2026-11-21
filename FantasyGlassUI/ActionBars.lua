@@ -444,7 +444,7 @@ ns:NewModule("microMenu", function()
         -- with the add-on's own bars on, the game's eight bars are put out of sight (BarEngine.lua):
         -- they are not moved or held in place at all, so nothing of theirs is touched
         if ns.db.barEngine and (def[3] == 12 or def[1] == "StanceBar") then bar = nil end
-        local info, entry = ns:AdoptGameFrame(bar, key, LABELS[def[1]] or def[1], "Bar size is set for all bars together, on the Layout tab.")
+        local info, entry = ns:AdoptGameFrame(bar, key, LABELS[def[1]] or def[1], "Bar size is set for all bars together, in Frames and bars › Action bars.")
         if info then
             info.label = LABELS[def[1]] or def[1]
             info.layout = (def[3] == 12)                     -- (the eight action bars have rows and spacing; stance and pet do not)
