@@ -26,7 +26,7 @@ plans again, so the route stays right for where you are and what you have.
 
 ## Non-goals
 
-- Gold farming suggestions: a separate project, brainstormed after this one.
+- Building the gold farming advisor now: it is Part 2 below, designed in its own conversation first.
 - Shipping our own quest database.
 - Copying any of Questie's code or data into Fantasy Glass UI (its license is mixed: GPLv3 for some
   contributors, "all rights reserved" otherwise). We only read Questie's data in the game while it runs.
@@ -234,6 +234,56 @@ why it is there (xp gained, minutes saved).
    character or share. The new step kinds (fly, learnflight, sail, bind, train, vendor) are written in
    the same one-line format, so a pasted guide keeps them.
 
+### Still more (added 2026-11-21, second round)
+
+Faster leveling:
+
+10. **Rested experience.** While you are rested (GetXPExhaustion), kills are worth double, so kill-heavy
+    hubs score higher until it runs out (the planner works out where in the plan it runs out). At the end
+    of a session (when you open the game menu after an hour or more of play, or `/fgui guide stop`), the
+    panel suggests the nearest inn to log out at, if one is close.
+11. **A tidy quest log.** The log holds 25 quests. When it has 3 or fewer free places, or a quest the plan
+    wants would not fit, the panel lists the quests worth abandoning, worst first: gray quests, quests the
+    planner would never pick, quests far off the route. It only suggests: you abandon them yourself.
+12. **Quests that start from loot.** When Questie says a monster on the route drops an item that starts a
+    quest (startedBy item, and the item's drop sources), that quest counts in the plan and the step says
+    "Keep the <item> that drops here". When the item is in your bags, the step says to use it.
+13. **Class quests at the right level.** Quests for your class (requiredClasses) that give something
+    lasting, such as a pet, a form, a totem or a key ability, are always planned when you reach their
+    level, whatever their experience, and marked as class quests in the panel. Which class quests count
+    is a small table of our own (quest ids per class), because their value is not in the data.
+14. **Timed and escort quests.** A timed quest (the game's quest timer, or Questie's data) is planned so
+    you do it straight after accepting it, with nothing else in between. An escort quest is flagged in the
+    panel ("Escort: start it when you are ready; it fails if the NPC dies") and planned as its own step.
+
+Keeping you informed:
+
+15. **Where you left off.** When you log in with a plan going, one line in chat (and on the panel): where
+    you are in the plan, the next step, and the time to your next level. Setting to switch off.
+16. **The route read aloud.** Each new step the panel moves to is said aloud in the game's voice
+    (ns:Speak), and the panel can be used by keyboard like the game's windows (WindowKeys.lua: Tab between
+    its buttons, Enter to press). **It only works when reading aloud is on in the Accessibility settings**
+    (readDialog); a setting on the Guide tab, "Read the route aloud", on by default, lets someone who has
+    reading aloud on switch it off just for the guide.
+17. **Level times in your stats.** Each level gained records the time it took (played time) and the
+    experience per hour, per character. `/fgui stats` (Lifetime.lua) gets a "Levels" part: your fastest and
+    slowest levels, and the average; the run log gets a line per level.
+
+### Part 2: the gold farming advisor (to be designed before it is built)
+
+Wanted, and to be built after the planner; it needs its own design conversation first, since only the idea
+is settled. What is known:
+
+- It suggests where and how to make gold, the way the planner suggests where to level. It cannot use an
+  online AI (add-ons have no internet); it is "smart" by using what the add-on already knows about you.
+- It can build on: farming sessions and "farming by zone" (Farming.lua: gold and loot per hour, by zone),
+  auction prices seen at the auction house (Economy.lua), your professions and skill, your level, and
+  Questie's data on where monsters and gathering spots are.
+- It reuses the planner's travel model (flights, hearthstone, boats and zeppelins) to plan a farming run
+  and the trip to it.
+- Open, for that conversation: what it optimizes (gold per hour, or something else), whether it covers
+  gathering, crafting for profit and auction flipping or only farming, and how it shows its suggestion.
+
 ### Settings (Guide tab)
 
 - Group quests: Solo / When grouped / Everything.
@@ -244,6 +294,9 @@ why it is there (xp gained, minutes saved).
 - Pick the best quest reward: on (default) / off.
 - The route on the map: on (default) / off.
 - Never suggest these quests: the skip list, with a way to take one off.
+- Suggest an inn when you stop while rested: on (default) / off.
+- Where you left off, at login: on (default) / off.
+- Read the route aloud: on (default), working only while reading aloud is on in Accessibility.
 
 ### Tests
 
@@ -256,6 +309,10 @@ why it is there (xp gained, minutes saved).
   vendor step appears with full bags; a dungeon or grinding spot is suggested when quests run dry; the
   upgrade reward is selected; a skipped quest is never planned; the map line is drawn; a saved guide
   parses back into the same steps.
+- The second round: rested experience changes the winning hub; abandon suggestions appear with a full log;
+  a quest from loot is counted; a class quest is planned regardless of experience; a timed quest is done
+  straight after accepting; the login line appears; a step is spoken only when reading aloud is on; a level
+  time is recorded and shows in /fgui stats.
 - The planner runs in both smoke modes (combat values readable and secret) with no errors.
 
 ## Left to the builder
@@ -269,7 +326,8 @@ why it is there (xp gained, minutes saved).
 ## Saved data
 
 - Per character: known flight points, the inn your hearthstone is set at, the learned pace factor,
-  experience per kill by level difference, the skip list, the planner's settings.
+  experience per kill by level difference, the skip list, the time and experience per hour of each level,
+  the planner's settings.
 - Per account: recorded flight and crossing times.
 
 ## Calls made in writing this up (the builder's or Claude's, not the player's)
@@ -285,3 +343,6 @@ why it is there (xp gained, minutes saved).
 - Grinding spots: monsters 0–2 levels above you.
 - The map line covers the current hub loop and the trip to the next.
 - Reward picking only selects; it never presses Complete.
+- Abandon suggestions show at 3 or fewer free log places; the add-on never abandons a quest itself.
+- Class quests that count come from a small table of our own.
+- The inn suggestion shows after an hour or more of play.
