@@ -157,6 +157,11 @@ function ns:Flash(text, r, g, b, arg)
         flash:SetPoint("CENTER", UIParent, "CENTER", 0, 170)
         flash.text = ns:NewText(flash, 22, "CENTER")
         flash.text:SetPoint("CENTER")
+        flash.band = flash:CreateTexture(nil, "BACKGROUND")          -- (12.1: "Dark band behind messages")
+        flash.band:SetTexture(ns.FLAT)
+        flash.band:SetVertexColor(0, 0, 0, 0.72)
+        flash.band:SetPoint("TOPLEFT", flash.text, "TOPLEFT", -14, 6)
+        flash.band:SetPoint("BOTTOMRIGHT", flash.text, "BOTTOMRIGHT", 14, -6)
         if flash.text.SetShadowOffset then flash.text:SetShadowOffset(1, -1); flash.text:SetShadowColor(0, 0, 0, 1) end
         flash.left = 0
         flash:SetScript("OnUpdate", function(self, elapsed)
@@ -173,7 +178,8 @@ function ns:Flash(text, r, g, b, arg)
         flash.text:SetText(text)
     end
     flash.text:SetTextColor(r or 1, g or 0.82, b or 0.2)
-    flash.left = ns.FLASH_TIME
+    flash.left = (ns.db and ns.db.calmMode) and math.max(ns.FLASH_TIME, 4) or ns.FLASH_TIME     -- (Calm mode: longer to read)
+    if ns.db and ns.db.textBands then flash.band:Show() else flash.band:Hide() end
     flash:SetAlpha(1)
     ns.flashCount = (ns.flashCount or 0) + 1
     ns.flashLast = text

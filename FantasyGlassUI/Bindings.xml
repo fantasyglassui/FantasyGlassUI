@@ -90,4 +90,7 @@
     <Binding name="FANTASYGLASSUI_GEARSET5" category="ADDONS">
         FantasyGlassUI_Binding("GEARSET5")
     </Binding>
+    <Binding name="FANTASYGLASSUI_READ" category="ADDONS">
+        FantasyGlassUI_Binding("READ")
+    </Binding>
 </Bindings>

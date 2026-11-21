@@ -1,34 +1,33 @@
-## 12.0.0
+## 12.1.0
 
-**New**
-- A new settings window. The categories are listed down the left (Look and themes, Frames and
-  bars, Combat, Groups and raids, Bags and items, Quests and map, Chat and people, Done for you,
-  Layout and profiles, Tools), and the one that is open lists its sections under it. Each section
-  shows its settings one to a line, with what each does under its name and "after /reload" where
-  it needs one, then the larger pieces that go with them: the theme grid, the frame and bar
-  designers, the cooldown list, your lists and rules. Every setting was moved to the section it
-  belongs to: the behavior switches, size sliders and numbers that were on the Combat, Layout and
-  Tools tabs now sit with what they change, and settings that were in two places are in one.
-- Home: a card for each category, quick switches, what you changed lately, the presets, the guide's
-  question box and suggestions for your class.
-- The search at the top of the list says where each setting lives ("Auto-repair · Bags and items ›
-  Vendors"), and Enter goes to the first result.
-- Undo last change, at the foot of the window, takes back what you changed, one step at a time.
-  Each category can be reset to how it came (its switches and sliders; lists, rules, designs and
-  positions are kept).
-- Simple / All options, at the top: Simple shows the settings most players look for, and is where
-  a new player starts. The search always finds every setting.
-- A new setup in four steps: how much to take over (the whole interface, only restyle the game's
-  own frames, or everything), how you play (your role, and what you enjoy: questing, groups, PvP,
-  collecting, being social), your look, and a summary.
-- Accessibility in one place (Look and themes › Accessibility): color-blind safe colors, now with
-  dots for item quality in bags, on gear and on loot rolls; reduce motion; two high-contrast themes,
-  with a new fantasy one in black, gold and white; and three text sizes.
-- NEW tags on what is new in this version, Show sample frames in Frames and bars, the profile you
-  are changing in the header, and a window you can resize from its corner.
+**New: accessibility**
+- Accessibility is a category of its own in `/fgui`, with seven sections: Seeing, Hearing,
+  Flashing and motion, Focus and calm, Reading aloud, Hands and keys, and Share. The setup has a
+  Comfort step for the same things.
+- Color vision for each kind: red-green (blue and orange), blue-yellow (teal, pink and red), or no
+  color at all, where brightness and marks carry the meaning. With any of them, threat on
+  nameplates gets a mark ("!" when it is slipping, "!!" when it is lost or on you), as debuffs get
+  a letter and item quality gets dots.
+- Outline round my target: a thick ring, 1 to 8 pixels, round your target's nameplate.
+- Captions for sounds: a line on screen, with a mark for its kind, for ready checks, whispers,
+  dungeon and battleground queues, group invites, duels, resurrections, summons, boss emotes,
+  raid warnings, loot rolls, the aggro warning and your own alerts that play a sound. Movable in
+  move mode; click one to put it away.
+- Read aloud: a key binding (and `/fgui read`) that says the tooltip under the mouse, the quest you
+  are reading, or the last whisper, with the game's own voice.
+- Two lettering styles made to be read: Readable (Atkinson Hyperlegible, made for low vision) and
+  Dyslexia-friendly (OpenDyslexic). An outline round letters (thin or thick) and a dark band
+  behind messages in the middle of the screen.
+- Safe flashing: nothing flashes more than three times a second, flashes are gentle, pulsing
+  warnings hold still, and the game's red low-health flash is off where this client allows it.
+- Calm mode: one notification at a time, held for fifteen seconds and put away with a click;
+  messages in the middle of the screen stay up longer; captions wait their turn.
+- Bigger controls in the settings, and "click twice" buttons wait ten seconds for the second click.
+- Move through the settings with the keyboard (off until chosen): Tab and the arrow keys go from
+  setting to setting, Space and Enter use one, Left and Right move a slider or step a choice, Page
+  Up and Page Down change section.
+- Share: `/fgui access copy` gives all your accessibility settings as one line of text, and
+  `/fgui access paste` (or the setup's Comfort step) takes one back.
 
 **Changed**
-- Settings saved before profiles existed (versions before 9.0), and the old StylishUI settings, are
-  no longer read: they start afresh, and the setup opens.
-- `/fgui look`, `/fgui layout`, `/fgui bars`, `/fgui combat`, `/fgui colors`, `/fgui clickcast`,
-  `/fgui profiles` and `/fgui tools` open the matching place in the new window.
+- The ring round the mouse pointer and the quieter red error line are in Accessibility now.

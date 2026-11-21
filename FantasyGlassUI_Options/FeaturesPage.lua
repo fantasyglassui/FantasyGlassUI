@@ -192,7 +192,11 @@ local function BuildSections(page)
                 if INSTANT[name] then ns:ApplyInstant() else O.NeedReload(name) end
                 if page.Dim then page.Dim() end
                 if O.RefreshCounts then O.RefreshCounts() end
-            elseif ns.ApplyInstant then pcall(ns.ApplyInstant, ns) end
+            else
+                local def = ns.settingRows[name]
+                if def and def.apply then pcall(def.apply, v) end
+                if ns.ApplyInstant then pcall(ns.ApplyInstant, ns) end
+            end
             O.NoteChange()
         end)
         sw:SetWidth(36)
@@ -247,9 +251,16 @@ local function BuildSections(page)
     local function MakeButtonRow(name, def)
         local row = Base(name, BUTTON_H)
         local b
+        local function Value()
+            if def.get then return def.get() end
+            local v = ns.db[name]
+            if v == nil then v = def.default end
+            return v
+        end
         local function Draw()
             if def.kind == "cycle" then
-                b.text:SetText(ns:Tr(def.label) .. ":  " .. ns:Tr(ns.db[name] or def.default))
+                local v = Value()
+                b.text:SetText(ns:Tr(def.label) .. ":  " .. ns:Tr((def.names and def.names[v]) or tostring(v)))
             elseif def.kind == "media" then
                 b.text:SetText(ns:Tr(def.label) .. ":  " .. (ns.db[name] and tostring(ns.db[name]) or ns:Tr("ours")))
             else
@@ -259,9 +270,9 @@ local function BuildSections(page)
         b = ns:CreateButton(row, def.label, 290, 24, function(self, button)
             if def.kind == "cycle" then
                 local at = 1
-                for i, c in ipairs(def.choices) do if c == (ns.db[name] or def.default) then at = i end end
+                for i, c in ipairs(def.choices) do if c == Value() then at = i end end
                 at = (button == "RightButton") and ((at - 2) % #def.choices + 1) or (at % #def.choices + 1)
-                ns.db[name] = def.choices[at]
+                if def.set then def.set(def.choices[at]) else ns.db[name] = def.choices[at] end
                 if def.apply then def.apply() end
             elseif def.kind == "media" then
                 local names = MediaNames(def.media)
@@ -494,6 +505,8 @@ local function BuildSections(page)
     end
     function page.Show(sec)
         GiveBack()
+        page.focused = nil
+        if page.focusRing then page.focusRing:Hide() end
         for _, fs in ipairs(hidden) do fs:Show() end
         hidden = {}
         for _, row in pairs(page.rows) do row:Hide() end
@@ -521,6 +534,12 @@ local function BuildSections(page)
                 row:SetPoint("RIGHT", page, "RIGHT", -12, 0)
                 if row.switch then row.switch:SetChecked(ns.db[name]) end
                 if row.Sync then row.Sync() end
+                -- (12.1) "Bigger controls": taller lines and larger switches and buttons
+                local big = ns.db.bigControls
+                row.suiBase = row.suiBase or row:GetHeight()
+                row:SetHeight(row.suiBase + (big and 12 or 0))
+                local control = row.switch or row.button or (row.slider and row.slider.slider)
+                if control and control.SetScale then control:SetScale(big and 1.35 or 1) end
                 row:Show()
                 y = y - row:GetHeight()
                 shown[#shown + 1] = name
@@ -542,6 +561,57 @@ local function BuildSections(page)
         return #shown
     end
     page.GiveBack = GiveBack
+
+    -- Moving through the settings with the keyboard (12.1, "Hands and keys") ---------------------------------
+    -- The focus is a ring round one line; Tab and the arrows move it, Space and Enter use it, Left
+    -- and Right move a slider or step a choice. Page Up and Page Down go to the section before or after.
+    local focusRing = CreateFrame("Frame", nil, page, ns.template)
+    focusRing:SetBackdrop({ edgeFile = ns.FLAT, edgeSize = 2 })
+    ns:Paint(focusRing, "SetBackdropBorderColor", "@accent", 1)
+    focusRing:SetFrameLevel((page:GetFrameLevel() or 1) + 20)
+    focusRing:Hide()
+    page.focusRing = focusRing
+    function page.Focus(i)
+        local list = page.shownKeys or {}
+        if #list == 0 then focusRing:Hide(); page.focused = nil; return nil end
+        i = ((i - 1) % #list) + 1
+        page.focused = i
+        local row = page.rows[list[i]]
+        focusRing:ClearAllPoints()
+        focusRing:SetPoint("TOPLEFT", row, "TOPLEFT", -3, 3)
+        focusRing:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 3, -3)
+        focusRing:Show()
+        local top, mine = page:GetTop(), row:GetTop()
+        if type(top) == "number" and type(mine) == "number" then area:ScrollToShow(top - mine - 12, (row:GetHeight() or 40) + 24) end
+        return list[i]
+    end
+    function page.Use(step)
+        local list = page.shownKeys or {}
+        local name = page.focused and list[page.focused]
+        local row = name and page.rows[name]
+        if not row then return false end
+        if step then                                          -- Left / Right
+            if row.slider and row.slider.slider then
+                local s = row.slider.slider
+                local def = ns.settingRows[name]
+                local v = tonumber(s:GetValue()) or def.min
+                s:SetValue(math.max(def.min, math.min(def.max, v + step * def.step)))
+                return true
+            elseif row.button then
+                local click = row.button:GetScript("OnClick")
+                if click then click(row.button, step < 0 and "RightButton" or "LeftButton") end
+                return true
+            end
+            return false
+        end
+        if row.switch then row.switch:Click(); return true end
+        if row.button then
+            local click = row.button:GetScript("OnClick")
+            if click then click(row.button, "LeftButton") end
+            return true
+        end
+        return false
+    end
     page.Refresh = function()
         for name, row in pairs(page.rows) do
             if row.switch then row.switch:SetChecked(ns.db[name]) end

@@ -56,6 +56,29 @@ ns:NewModule("nameplates", function()
             else ns:Paint(edge, "SetVertexColor", "@rim", 0.55) end
         end
         bar.scEdgeShown = selected and "target" or (t and "threat") or "plain"
+        -- (12.1) "Outline round my target": a thick ring of its own, as wide as chosen, so the target
+        -- stands out from a crowd of plates even at a glance
+        local width = tonumber(ns.db and ns.db.targetOutline) or 0
+        local ring = rawget(bar, "suiTargetRing")
+        if selected and width > 0 then
+            if not ring then
+                ring = CreateFrame("Frame", nil, bar, ns.template)
+                ring:SetFrameLevel((bar:GetFrameLevel() or 1) + 4)
+                bar.suiTargetRing = ring
+            end
+            if ring.suiWidth ~= width then
+                ring:SetBackdrop({ edgeFile = ns.FLAT, edgeSize = width })
+                ring:ClearAllPoints()
+                ring:SetPoint("TOPLEFT", bar, "TOPLEFT", -width - 1, width + 1)
+                ring:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", width + 1, -width - 1)
+                ring.suiWidth = width
+            end
+            if ns:ColorVision() == "none" then ns:Unpaint(ring, "SetBackdropBorderColor"); ring:SetBackdropBorderColor(1, 1, 1, 1)
+            else ns:Paint(ring, "SetBackdropBorderColor", "@accent", 1) end
+            ring:Show()
+        elseif ring then
+            ring:Hide()
+        end
         return bar
     end
     local function Marks(uf)
@@ -201,6 +224,30 @@ ns:NewModule("nameplates", function()
         end
         if tr and pd.threat then r, g, b = tr, tg, tb end
         if r then bar:SetStatusBarColor(r, g, b) end
+        -- (12.1) with the color-blind option the threat has a mark too, not only a color: "!" when it is
+        -- slipping, "!!" when it is lost (for a tank) or when it is on you (for anyone else)
+        local mark = rawget(bar, "suiThreatMark")
+        local level
+        if tr and ns.db.colorblind then
+            local s3 = UnitThreatSituation("player", unit)
+            if not ns:IsSecret(s3) then
+                if ns.db.role == "TANK" then level = (s3 == 2 and "!") or ((s3 == 0 or s3 == 1) and "!!") or nil
+                else level = (s3 == 2 and "!") or (s3 == 3 and "!!") or nil end
+            end
+        end
+        if level then
+            if not mark then
+                mark = bar:CreateFontString(nil, "OVERLAY")
+                ns:Font(mark, 13, true)
+                mark:SetPoint("LEFT", bar, "RIGHT", 3, 0)
+                bar.suiThreatMark = mark
+            end
+            mark:SetText(level)
+            mark:SetTextColor(tr, tg, tb)
+            mark:Show()
+        elseif mark then
+            mark:Hide()
+        end
         -- the edge: a tank's "good" (holding it) stays plain, so only the mobs slipping away stand out
         local edgeColor = (tr and pd.threatEdge and not (ns.db.role == "TANK" and tr == (ns:Signal("good")))) and { tr, tg, tb } or nil
         local old = rawget(bar, "scThreat")

@@ -16,7 +16,7 @@ A guided setup has you playing in two minutes. Every character after your first 
 - **Fantasy:** solid panels with a rich grain, a dark rim and gold corner ornaments.
 - **Celestial:** a moving night sky with twinkling stars, a faint Milky Way, a real constellation on big windows and now and then a shooting star, with a star-chart minimap.
 
-Glass and Celestial have 38 themes each and Fantasy has 39, and each family has one in your own class color. You also get 31 accent colors and 34 lettering styles, a preview of every theme, and an editor to make your own (or make one on [the website](https://fantasyglassui.com) and paste its code in). You can even give each kind of place its own theme: one for cities, another for raids.
+Glass and Celestial have 38 themes each and Fantasy has 39, and each family has one in your own class color. You also get 31 accent colors and 36 lettering styles, a preview of every theme, and an editor to make your own (or make one on [the website](https://fantasyglassui.com) and paste its code in). You can even give each kind of place its own theme: one for cities, another for raids.
 
 ## What you get
 
@@ -44,6 +44,10 @@ Glass and Celestial have 38 themes each and Fantasy has 39, and each family has 
 - **Backups** of your settings, made by themselves, and an undo for every change
 - **Share your whole UI** as one line of text, or send it straight to a guildmate
 - **Safe mode** and a one-click problem report, if anything ever goes wrong
+
+## Made for everyone
+
+A whole category for accessibility: colors for each kind of color vision (or none at all, with marks instead), lettering made for low vision and for dyslexia, captions on screen for everything that makes a sound, a key that reads tooltips, quests and whispers aloud, safe flashing, a calm mode, bigger controls and moving through the settings with the keyboard. Your accessibility settings can be shared as one line of text.
 
 ## Made for WoW Forever
 

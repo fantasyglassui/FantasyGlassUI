@@ -26,4 +26,4 @@ Tooltips wear the theme too: glass panes on Glass, leather with small gold corne
 
 ## Lettering and accents
 
-34 lettering styles and 31 accent colors, also in Look and themes. **A theme for each kind of place** (cities, dungeons, raids, battlegrounds and more) switches by itself when you go there.
+36 lettering styles (two made to be read easily) and 31 accent colors, also in Look and themes. **A theme for each kind of place** (cities, dungeons, raids, battlegrounds and more) switches by itself when you go there.

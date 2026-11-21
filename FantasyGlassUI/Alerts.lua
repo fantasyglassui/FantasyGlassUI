@@ -180,6 +180,7 @@ ns:NewModule("customAlerts", function()
             on[a] = now
             if started then
                 if a.sound and PlaySound and SOUNDKIT then pcall(PlaySound, SOUNDKIT.RAID_WARNING or 8959, "Master") end
+                if a.sound and ns.Caption then ns:Caption("alert", (a.text ~= "" and a.text) or ns:Tr(t and t.label or "?")) end
                 if a.speak then ns:SpeakEvent("custom", (a.text ~= "" and a.text) or ns:Tr(t.label)) end
             end
             if now or (ns.moving and i == 1) then

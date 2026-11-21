@@ -1265,7 +1265,7 @@ try("Auction house", function()
     if rawget(a.hidden, "suiAuto") or rawget(a.hiddenRow, "suiPolish") then error("hidden pages should wait until they are opened") end
 end)
 try("Lettering styles", function()
-    if #ns.fontOrder ~= 34 then error("expected thirty-four lettering styles, found " .. #ns.fontOrder) end
+    if #ns.fontOrder ~= 36 then error("expected thirty-six lettering styles, found " .. #ns.fontOrder) end
     local names = {}
     for _, key in ipairs(ns.fontOrder) do
         local n = ns.fontStyles[key] and ns.fontStyles[key].name
@@ -1411,7 +1411,7 @@ try("Setup offers every theme", function()
     ns.db.theme, ns.db.accent = "SMOKE", "AZURE"; ns:Retheme()
 end)
 try("Setup tour", function()
-    if ns:SetupStepCount() ~= 4 then error("expected four steps (12.0)") end
+    if ns:SetupStepCount() ~= 5 then error("expected five steps (12.1)") end
     for stepNumber = 1, 4 do ns:ShowSetup(stepNumber) end            -- every step opens without error
     -- (12.0) Just restyle the game's own: the look without replacing the game's frames and bags
     ns:ApplyPreset("RESTYLE")
@@ -1520,7 +1520,7 @@ try("Accessibility", function()
     ns.db.colorblind = false
     local gr, gg = ns:Signal("good"); local br, bg2 = ns:Signal("bad")
     if not (gg > gr and br > bg2) then error("default signals should be green and red") end
-    ns.db.colorblind = true
+    ns.db.colorblind, ns.db.colorVision = true, "redgreen"
     local r, g, b = ns:Signal("good"); local r2, g2, b2 = ns:Signal("bad")
     if not (b > r and b > g) then error("color-blind good should be blue") end
     if not (r2 > 0.9 and g2 > 0.4 and b2 < 0.3) then error("color-blind bad should be orange") end
@@ -1797,7 +1797,7 @@ try("Accessibility (12.0)", function()
     if type(pips) ~= "table" or #pips ~= 4 then error("an epic item should get its quality dots") end
     ns:QualityPips(slot, nil)                                -- (an emptied slot)
     ns.db.colorblind = was
-    if ns.lookPage and not (ns.lookPage.access and ns.lookPage.access.colorblind and ns.lookPage.access.FCONTRAST) then error("the Look tab should have its Accessibility section") end
+    if ns.lookPage and not (ns.lookPage.access and ns.lookPage.access.FCONTRAST and ns.lookPage.access.size140) then error("the Look page should have its contrast and text size buttons") end
 end)
 try("Simple settings (12.0)", function()
     ns:ToggleConfig("home")
@@ -3071,12 +3071,12 @@ try("Every theme and lettering style can be reached", function()
     if page.contentHeight <= 542 then error("with this many choices the Look tab should need to scroll") end
 do   -- (the sections show slices of the page: each starts at a heading, and the last reaches its foot)
         local O = ns.optUI
-        for _, from in ipairs({ "Glass", "Accent", "Make your own theme", "Theme by place", "Frame style", "Class colors", "Accessibility" }) do
+        for _, from in ipairs({ "Glass", "Accent", "Make your own theme", "Theme by place", "Frame style", "Class colors", "Contrast and text size" }) do
             if not O.Band(page, from) then error("the Look page has no " .. from) end
         end
         local top = O.Band(page, "Glass", "Your themes")
         if top ~= 0 then error("the themes start at the top") end
-        local at, ah = O.Band(page, "Accessibility")
+        local at, ah = O.Band(page, "Contrast and text size")
         if at + ah ~= page.contentHeight then error("the last slice should reach the foot of the page") end
         local ct, ch = O.Band(page, "Class colors")
         if ch < 36 + #ns.classOrder * 24 then error("Class colors should be tall enough for every class: " .. ch) end
@@ -3426,7 +3426,8 @@ try("Searching the options", function()
     end
     -- settings on different pages are all found from the one box
     if not find("boss", "sections", "boss frames") then error("a feature's switch was not found") end
-    if not find("reduce motion", "look", "reduce motion") then error("a switch on the Look page was not found") end
+    if not find("high contrast", "look", "high contrast") then error("a heading on the Look page was not found") end
+    if not find("reduce motion", "sections", "reduce motion") then error("an accessibility switch was not found") end
     if not find("interface size", "sections", "interface size") then error("a slider of a section was not found") end
     if not find("rosewood", "look", "rosewood") then error("a theme on the Look tab was not found") end
     if not find("calligraphy", "look", "calligraphy") then error("a lettering style on the Look tab was not found") end
@@ -3439,9 +3440,9 @@ try("Searching the options", function()
     local hits = ns:SearchOptions("health", 10)
     if #hits == 0 or hits[1].label:lower():find("health", 1, true) ~= 1 then error("labels starting with the search should come first") end
     -- choosing a result opens the section it is in
-    local hit = find("reduce motion", "look", "reduce motion")
+    local hit = find("reduce motion", "sections", "reduce motion")
     frame.GoToOption(hit)
-    if not ns.optUI.current or ns.optUI.current.id ~= "look:Accessibility" then error("choosing a result should open its section, now on " .. tostring(ns.optUI.current and ns.optUI.current.id)) end
+    if not ns.optUI.current or ns.optUI.current.id ~= "access:Flashing and motion" then error("choosing a result should open its section, now on " .. tostring(ns.optUI.current and ns.optUI.current.id)) end
     hit = find("auto-repair", "sections", "repair")
     if not hit or frame.GoToOption(hit) ~= ns:SettingsSection("items:Vendors") then error("a switch's result opens its section") end
     -- each result in the list says where it lives; Enter goes to the first
@@ -6234,6 +6235,77 @@ try("10.1: the Tools tab and the guide", function()
     ns.db.travelBar, ns.db.buffMissing = keepT, keepB
     ns:ToggleConfig()
 end)
+try("12.1: accessibility", function()
+    local keep = {}
+    for _, k in ipairs({ "colorblind", "colorVision", "safeFlash", "calmMode", "captions", "fontStyle", "textOutline", "keyNav", "reduceMotion", "theme", "fontScale" }) do keep[k] = ns.db[k] end
+    -- a palette for each kind of color vision
+    ns.db.colorblind, ns.db.colorVision = true, "blueyellow"
+    local r, g, b = ns:Signal("good")
+    if not (g > 0.6 and b > 0.6 and r < 0.3) then error("blue-yellow: good should be teal") end
+    ns.db.colorVision = "none"
+    local gr, gg, gb = ns:Signal("good"); local wr = ns:Signal("warn"); local br = ns:Signal("bad")
+    if not (gr == gg and gg == gb) or not (br > wr and wr > gr) then error("no color: brightness only, bad brightest") end
+    if ns:ColorVisionChoice() ~= "none" then error("the choice") end
+    ns:SetColorVision("off")
+    if ns.db.colorblind or ns:ColorVision() ~= nil then error("usual colors") end
+    -- safe flashing
+    ns.db.safeFlash, ns.db.reduceMotion = true, false
+    if ns:Flashy() then error("safe flashing: no pulses") end
+    ns.flashTimes = nil
+    if not ns:FlashAllowed("probe") or ns:FlashAllowed("probe") then error("safe flashing: at most three a second from one source") end
+    ns.db.safeFlash = false
+    if not ns:Flashy() or not ns:FlashAllowed("probe") then error("without safe flashing everything may flash") end
+    -- captions
+    ns.db.captions, ns.db.calmMode = true, false
+    if not ns:Caption("ready", "Ready check from Bob") or ns.captionLast ~= "Ready check from Bob" then error("a caption shows") end
+    ns.db.captions = false
+    if ns:Caption("ready", "x") then error("no captions while they are off") end
+    -- calm mode holds notifications longer
+    -- readable lettering, and back
+    ns.db.fontStyle = "SLAB"
+    ns:SetReadableFont("DYSLEXIC")
+    if ns.db.fontStyle ~= "DYSLEXIC" or ns:ReadableFont() ~= "DYSLEXIC" or not ns.fontStyles.DYSLEXIC then error("dyslexia-friendly lettering") end
+    ns:SetReadableFont("READABLE")
+    ns:SetReadableFont("off")
+    if ns.db.fontStyle ~= "SLAB" then error("back to the lettering chosen before: " .. tostring(ns.db.fontStyle)) end
+    -- a thick outline round letters
+    ns.db.textOutline = "thick"; ns:ApplyTheme()
+    if ns.FONTFLAGS ~= "THICKOUTLINE" then error("thick outline") end
+    ns.db.textOutline = "normal"; ns:ApplyTheme()
+    -- read aloud: the last whisper
+    ns.ReadSetLastWhisper("Bob: are you ready")
+    local text, kind = ns:ReadText("whisper")
+    if text ~= "Bob: are you ready" or kind ~= "whisper" then error("reading the last whisper") end
+    -- sharing: one line, and back
+    ns.db.colorblind, ns.db.colorVision, ns.db.calmMode, ns.db.fontScale, ns.db.theme = true, "none", true, 140, "FCONTRAST"
+    local line = ns:AccessExport()
+    if line:sub(1, 14) ~= "FGUI-ACCESS:1;" or not line:find("colorVision=none", 1, true) or not line:find("theme=FCONTRAST", 1, true) then error("the shared line: " .. line) end
+    ns.db.colorblind, ns.db.calmMode, ns.db.fontScale, ns.db.theme = false, false, 100, "SMOKE"
+    if (ns:AccessImport(line) or 0) < 4 or not ns.db.colorblind or ns.db.colorVision ~= "none" or ns.db.fontScale ~= 140 or ns.db.theme ~= "FCONTRAST" then error("taking a shared line") end
+    if ns:AccessParse("hello") or ns:AccessParse("FGUI-ACCESS:1;nothing=1") or ns:AccessParse("FGUI-ACCESS:1;theme=SMOKE") then error("a bad line is refused") end
+    local only = ns:AccessParse("FGUI-ACCESS:1;fontScale=999;profile=1")
+    if not only or only.fontScale ~= 150 or only.profile ~= nil then error("only accessibility settings travel, within their bounds") end
+    -- the settings: a category of its own, and the keyboard
+    ns:ToggleConfig("access")
+    local O, page = ns.optUI, ns.featuresPage
+    if not O.current or O.current.id ~= "access:Seeing" then error("/fgui access opens Accessibility") end
+    for _, name in ipairs({ "colorblind", "colorVision", "readableFont", "targetOutline", "cursorRing" }) do
+        if not page.rows[name] then error("Seeing has " .. name) end
+    end
+    ns.db.keyNav = true
+    O.KeyPress("TAB")
+    if page.focused ~= 1 then error("Tab focuses the first setting") end
+    O.KeyPress("DOWN")
+    if page.focused ~= 2 then error("Down moves to the next") end
+    O.KeyPress("PAGEDOWN")
+    if O.current.id ~= "access:Hearing" then error("Page Down goes to the next section: " .. tostring(O.current.id)) end
+    ns.db.keyNav = false
+    if O.KeyPress("TAB") then error("the keyboard is left alone unless it is switched on") end
+    if ns:SettingsSection("access:Hearing").keys[1] ~= "captions" then error("captions are with Hearing") end
+    ns:ToggleConfig()
+    for k, v in pairs(keep) do ns.db[k] = v end
+    ns:Retheme()
+end)
 try("12.0: the settings window", function()
     ns:ToggleConfig("home")
     local O, frame = ns.optUI, ns.configFrame
@@ -6256,13 +6328,15 @@ try("12.0: the settings window", function()
     -- and its larger pieces, lent while it shows and given back after
     local restock = ns.toolsPage.listBlocks.restock
     if rawget(restock, "lentTo") ~= page then error("Vendors shows the restock list") end
-    O.Open("look:Accessibility")
+    O.Open("access:Seeing")
     if rawget(restock, "lentTo") == page then error("the restock list is given back when another section opens") end
     local lookArea = O.pages.look.area
-    if rawget(lookArea, "lentTo") ~= page or not lookArea.band then error("Accessibility shows its slice of the Look page") end
-    local top = ns.optUI.Band(O.pages.look.sheet, "Accessibility")
-    if lookArea.band.top ~= top then error("the slice starts at Accessibility") end
-    if page.shownKeys[1] ~= "uiScale" then error("Interface size % is with Accessibility now") end
+    if rawget(lookArea, "lentTo") ~= page or not lookArea.band then error("Seeing shows its slice of the Look page") end
+    local top = ns.optUI.Band(O.pages.look.sheet, "Contrast and text size")
+    if lookArea.band.top ~= top then error("the slice starts at Contrast and text size") end
+    local hasScale = false
+    for _, k in ipairs(page.shownKeys) do if k == "uiScale" then hasScale = true end end
+    if not hasScale then error("Interface size % is with Seeing") end
     O.Open("frames:Your frames")
     if lookArea.band.top ~= ns.optUI.Band(O.pages.look.sheet, "Frame style") then error("Your frames shows the frame style and portraits") end
     if rawget(O.pages.bars.area, "lentTo") ~= page then error("Your frames shows the frame designer") end
@@ -6293,13 +6367,13 @@ try("12.0: the settings window", function()
     ns.db.mapSize, ns.db.mapCoords = keepMap, keepCoords
     -- what is new is marked until it has been seen
     ns.root.seenNew = nil
-    local acc = ns:SettingsSection("look:Accessibility")
+    local acc = ns:SettingsSection("access:Seeing")
     local keepV = ns.version
-    ns.version = "12.0.0"
+    ns.version = "12.1.0"
     if not ns:SectionIsNew(acc) then error("a new section is marked NEW") end
-    O.Open("look:Accessibility")
+    O.Open("access:Seeing")
     if ns:SectionIsNew(acc) then error("once seen it is not NEW any more") end
-    ns.version = "12.1.0"; ns.root.seenNew = nil
+    ns.version = "12.2.0"; ns.root.seenNew = nil
     if ns:SectionIsNew(acc) then error("only in the version it came in") end
     ns.version = keepV
     -- the profile being changed is in the header; the corner resizes the window

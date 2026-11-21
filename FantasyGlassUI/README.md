@@ -6,7 +6,7 @@ A complete interface replacement for **WoW Forever** (interface 16001): unit fra
 bars, action bars, bags and bank, quest tracker and quest log, minimap, buffs, nameplates, chat and
 the game's own windows, in one look that you choose from 115 glass, fantasy and celestial themes.
 
-Version 12.0.0
+Version 12.1.0
 
 ## Install
 
@@ -99,6 +99,8 @@ get two of everything.
 | `/fgui strings` | Every label shown so far, laid out for translating (see Translating) |
 | `/fgui tree` | How the window under your mouse is built, as copyable text (`/fgui tree FrameName` by name, `/fgui tree target` for your target's nameplate) |
 | `/fgui profiles` | Open Layout and profiles › Profiles |
+| `/fgui access` | Open Accessibility (`copy`: all its settings as one line to share; `paste`: take one) |
+| `/fgui read` | Read aloud the tooltip under the mouse, the quest you are reading, or the last whisper |
 | `/fgui status` | List every feature and whether it loaded |
 | `/fgui reset` | Reset the current profile to defaults |
 | `/ql` | Open the quest log |
@@ -395,6 +397,11 @@ Options, below). The list here is grouped a little differently. Point at a switc
   the game lays the bar out. This needs a layout of your own: the game's two presets cannot be
   changed (Esc, Edit Mode, Layout, New Layout makes one).
 - A bar that is not showing is see-through; its buttons can still be pressed where they were.
+
+**Added in 12.1**
+- Accessibility as a category of its own: color vision for each kind, captions for sounds, read
+  aloud, readable and dyslexia-friendly lettering, safe flashing, calm mode, bigger controls,
+  keyboard moving through the settings, a target outline, and sharing it all as one line.
 
 **Added in 12.0**
 - A new settings window: categories down the left with their sections, Home, a search that says
@@ -710,7 +717,7 @@ Stormcaller, Starlight, and one in your class color), and thirty-eight celestial
 with a fine starfield, constellations and star points (Polaris, Eclipse, Blue Hour, Zenith, Desert Sky, Moonlight, Blood Moon, Aurora, Winter Sky, Comet, Starstorm, Solstice, Void, Moonlit Grove, Tides, Harvest Moon, Clear Night, Dawn, Dusk, Starlight, Red Planet, Gilded Sky, Silver Mist, Evening Star, Honey Moon, Opaline, Deep Space, Fel Sky, Ashen Sky, Pearl Moon, Spirit Lights, Arcane Sky, Crimson Nebula, Sapphire Night, Emerald Night, Crystal Sky, Astrolabe, and one in your class color). Noir and Onyx are black and red. There are thirty-one accent colors. Picking a theme also
 picks a matching accent, which you can change afterwards.
 
-Lettering is a separate choice, with thirty-four styles. Plain: Modern, Clean, Sharp, Squared, Tech,
+Lettering is a separate choice, with thirty-six styles (two of them, Readable and Dyslexia-friendly, made to be read easily). Plain: Modern, Clean, Sharp, Squared, Tech,
 Rounded, Condensed, Terminal, Slab, Narrow, Future, Soft, Military, Circuit, Blocky, Heavy titles,
 Arcade. With character: Fantasy titles, Scholar, Manuscript, Storybook, Calligraphy, Celtic, Gothic,
 Engraved, Poster, Imperial, Chronicle, Roman, Medieval, Illuminated, Warband, Knightly. And the game's own fonts. You can also
@@ -761,15 +768,24 @@ mode stays on through reloads and relogging until you leave it.
 
 ## Accessibility
 
-All in Look and themes › Accessibility:
+A category of its own in `/fgui` (`/fgui access`), and the Comfort step of the setup:
 
-- **Color-blind safe colors**: good and bad are shown in blue and orange instead of green and red,
-  on talents, nameplates, the info bar and warnings; debuffs get a letter, and item quality gets
-  dots (one for uncommon up to four for legendary) in bags, on gear and on loot rolls.
-- **Reduce motion**: no fades, pulses, gliding bars or camera drift.
-- **High contrast**: two themes of pure black panels, one glass (white rims) and one fantasy (gold).
-- **Text size**: 100, 120 or 140%, or any size from 70 to 150 with `/fgui textsize`; and an
-  interface size slider for the whole interface.
+- **Seeing.** Color-blind safe colors for your kind of color vision: red-green (blue and orange),
+  blue-yellow (teal, pink and red), or no color at all (brightness and marks only). Debuffs get a
+  letter, item quality gets dots, and threat on nameplates gets a mark. Readable lettering
+  (Atkinson Hyperlegible) or Dyslexia-friendly (OpenDyslexic); an outline round letters; a dark
+  band behind messages; a thick outline round your target's nameplate; two high-contrast themes;
+  text sizes and the interface size; the ring round the mouse pointer.
+- **Hearing.** Captions for sounds: ready checks, whispers, queues, invites, duels, boss emotes,
+  raid warnings, loot rolls, the aggro warning and your own alerts, each with a mark for its kind.
+  Spoken alerts are with the other alerts, in Combat.
+- **Flashing and motion.** Reduce motion, and Safe flashing: at most three flashes a second, all
+  gentle, and the game's low-health flash off where the client allows it.
+- **Focus and calm.** Calm mode (one notification at a time, until clicked), and the quieter red
+  error line.
+- **Reading aloud.** A key (and `/fgui read`) that reads the tooltip, the quest or the last whisper.
+- **Hands and keys.** Bigger controls in the settings, and moving through them with the keyboard.
+- **Share.** `/fgui access copy` and `/fgui access paste`: all of it as one line of text.
 
 ## Other add-ons
 

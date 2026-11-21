@@ -59,6 +59,37 @@ ns.settingRows = {
     volume    = { kind = "slider", label = "Master volume %", min = 0, max = 100, step = 5, get = Volume,
                   set = function(v) local Set = (C_CVar and C_CVar.SetCVar) or SetCVar; if type(Set) == "function" then pcall(Set, "Sound_MasterVolume", tostring(v / 100)) end end,
                   desc = "The game's master volume, without opening its sound settings." },
+    -- accessibility (12.1)
+    colorblind    = { kind = "check", label = "Color-blind safe colors", apply = After("Retheme"),
+                      desc = "Good and bad are shown in colors chosen for your kind of color vision (below), debuffs get a letter, item quality gets dots, and threat gets a mark." },
+    colorVision   = { kind = "cycle", label = "Color vision", choices = { "redgreen", "blueyellow", "none" }, default = "redgreen", apply = After("Retheme"),
+                      names = { redgreen = "Red-green", blueyellow = "Blue-yellow", none = "No color" },
+                      desc = "Red-green: the most common, blue and orange. Blue-yellow: teal, pink and red. No color: brightness and marks only." },
+    readableFont  = { kind = "cycle", label = "Readable lettering", choices = { "off", "READABLE", "DYSLEXIC" },
+                      names = { off = "As chosen", READABLE = "Readable", DYSLEXIC = "Dyslexia-friendly" },
+                      get = function() return ns:ReadableFont() end, set = function(v) ns:SetReadableFont(v) end,
+                      desc = "Readable: Atkinson Hyperlegible, made for low vision. Dyslexia-friendly: OpenDyslexic, with weighted letters that are hard to flip. Western European letters only." },
+    textOutline   = { kind = "cycle", label = "Outline round letters", choices = { "normal", "thin", "thick" }, default = "normal", apply = After("Retheme"),
+                      names = { normal = "As the lettering has it", thin = "Thin", thick = "Thick" },
+                      desc = "A dark outline round every letter, so text stands out from what is behind it." },
+    textBands     = { kind = "check", label = "Dark band behind messages", desc = "Messages in the middle of the screen sit on a dark band, so they read over anything." },
+    targetOutline = { kind = "slider", label = "Outline round my target (pixels)", min = 0, max = 8, step = 1,
+                      desc = "A thick ring round your target's nameplate, so it stands out in a crowd. 0 is off. Shows on the next target you pick." },
+    reduceMotion  = { kind = "check", label = "Reduce motion", apply = After("Retheme"), desc = "No fades, pulses, gliding bars or camera drift: things appear and change at once." },
+    safeFlash     = { kind = "check", label = "Safe flashing", apply = After("ApplySafeFlash"),
+                      desc = "Nothing flashes more than three times a second, flashes are gentle, pulsing warnings hold still, and the game's red low-health flash is off where this client allows it." },
+    calmMode      = { kind = "check", label = "Calm mode", desc = "One notification at a time, held for fifteen seconds and put away with a click; messages stay up longer; captions wait their turn." },
+    bigControls   = { kind = "check", label = "Bigger controls in the settings", desc = "Larger switches and lines in this window, and \"click twice\" buttons wait ten seconds for the second click." },
+    keyNav        = { kind = "check", label = "Move through the settings with the keyboard",
+                      desc = "Tab or the arrow keys go from setting to setting, Space or Enter switches one, Left and Right move a slider, Page Up and Page Down change section. While this window is open, those keys do nothing else." },
+    readNow       = { kind = "button", label = "Read aloud now", run = function() ns:ReadAloud() end,
+                      desc = "Reads what is under the mouse, the quest you are reading, or the last whisper. Give it a key in the game's Key Bindings (AddOns, Fantasy Glass UI), or type /fgui read." },
+    spokenAlerts  = { kind = "button", label = "Spoken alerts", run = function() ns:ToggleConfig("combat:Alerts and warnings") end,
+                      desc = "Ready checks, whispers, missing buffs and your own alerts said aloud. They are with the other alerts, in Combat." },
+    accessCopy    = { kind = "button", label = "Copy my accessibility settings", run = function() ns:AccessCommand("copy") end,
+                      desc = "All of these settings in one line of text, to keep or give to someone." },
+    accessPaste   = { kind = "button", label = "Paste accessibility settings", run = function() ns:ShowAccessPaste() end,
+                      desc = "Takes a line someone gave you and sets everything in it at once." },
     -- buttons that step through choices, or do something
     raidSort  = { kind = "cycle", label = "Raid frames ordered by", choices = { "group", "role", "name" }, default = "group", apply = After("ApplyRaidSort"),
                   desc = "Click for the next order: by group, by role, or by name." },
@@ -70,7 +101,7 @@ ns.settingRows = {
 -- The categories, in the order they are listed. `desc` is the line under the category's name.
 ns.settingsCategories = {
     { id = "home", title = "Home", home = true },
-    { id = "look", title = "Look and themes", desc = "Themes, accent, lettering, sounds and accessibility.", sections = {
+    { id = "look", title = "Look and themes", desc = "Themes, accent, lettering, the game's windows and sounds.", sections = {
         { title = "Themes", simple = true, blocks = { { host = "look", from = "Glass", to = "Your themes" } } },
         { title = "Accent and lettering", simple = true, rows = { "sharedFont", "sharedBar" }, blocks = { { host = "look", from = "Accent", to = "Lettering" } } },
         { title = "Your own theme", blocks = { { host = "look", from = "Make your own theme" } } },
@@ -79,7 +110,16 @@ ns.settingsCategories = {
         { title = "Game windows" , rows = { "fades", "panelAlpha", "windowAlpha" } },
         { title = "Sounds and notifications" },
         { title = "Away and screenshots", blocks = { { host = "combat", from = "AFK screen" } } },
-        { title = "Accessibility", simple = true, new = true, rows = { "uiScale" }, blocks = { { host = "look", from = "Accessibility" } } },
+    } },
+    { id = "access", title = "Accessibility", desc = "Seeing, hearing, flashing, calm, reading aloud and the keyboard.", new = true, sections = {
+        { title = "Seeing", simple = true, new = true, rows = { "colorblind", "colorVision", "readableFont", "textOutline", "textBands", "targetOutline", "uiScale" },
+          blocks = { { host = "look", from = "Contrast and text size" } } },
+        { title = "Hearing", simple = true, new = true, rows = { "spokenAlerts" } },
+        { title = "Flashing and motion", simple = true, new = true, rows = { "reduceMotion", "safeFlash" } },
+        { title = "Focus and calm", new = true, rows = { "calmMode" } },
+        { title = "Reading aloud", new = true, rows = { "readNow" } },
+        { title = "Hands and keys", new = true, rows = { "bigControls", "keyNav" } },
+        { title = "Share", new = true, rows = { "accessCopy", "accessPaste" } },
     } },
     { id = "frames", title = "Frames and bars", desc = "Unit frames, raid frames, action bars and nameplates.", samples = true, sections = {
         { title = "Your frames", simple = true, rows = { "ufW", "ufH", "smoothBars", "hitFlash", "idleFade" },
@@ -137,7 +177,10 @@ ns.settingsCategories = {
 
 -- Every feature's switch, by section (the same order as the list in the setup).
 local PLACE = {
-    ["Look and themes › Game windows"] = { "windows", "spellbook", "characterWindow", "moveWindows", "rounded", "barTexture", "combatTextFont", "cursorRing", "quietErrors", "snapPanels" },
+    ["Look and themes › Game windows"] = { "windows", "spellbook", "characterWindow", "moveWindows", "rounded", "barTexture", "combatTextFont", "snapPanels" },
+    ["Accessibility › Seeing"] = { "cursorRing" },
+    ["Accessibility › Hearing"] = { "captions" },
+    ["Accessibility › Focus and calm"] = { "quietErrors" },
     ["Look and themes › Sounds and notifications"] = { "toasts", "versionNotice", "questSounds", "loginSplash", "loginLine" },
     ["Look and themes › Away and screenshots"] = { "afkScreen", "levelShot", "bossShot" },
     ["Frames and bars › Your frames"] = { "unitFrames", "ufFocusTarget", "playerCast", "xpBar", "mirrorBars", "auraBars", "auraFilter", "classBar", "classResource", "consumeBar" },
@@ -215,7 +258,7 @@ function ns:SectionOfRow(name)
 end
 
 -- What is new in this version: shown with a NEW tag until the section has been opened once.
-ns.settingsNewIn = "12.0"
+ns.settingsNewIn = "12.1"
 function ns:SectionIsNew(sec)
     if type(sec) ~= "table" or not sec.new then return false end
     if not tostring(ns.version or ""):find("^" .. ns.settingsNewIn:gsub("%.", "%%.")) then return false end
@@ -229,5 +272,5 @@ function ns:SeeSection(sec)
 end
 
 -- Home: which places get a card, with a few words on each.
-ns.homeCards = { "look", "frames", "combat", "groups", "items", "quests", "chat", "auto", "layout" }
+ns.homeCards = { "look", "access", "frames", "combat", "groups", "items", "quests", "chat", "auto", "layout", "tools" }
 ns.homeQuick = { "bagWindow", "damageMeter", "autoSell", "autoRepair", "questTracker", "plateQuest" }

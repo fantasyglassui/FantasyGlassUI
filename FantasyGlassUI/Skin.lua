@@ -1388,7 +1388,7 @@ function ns:ConfirmClick(fn)
         self.suiArmed = true
         self.suiLabel = self.suiLabel or (self.text and self.text:GetText())
         if self.text then self.text:SetText(ns:SignalHex("bad") .. ns:Tr("Click to confirm") .. "|r") end
-        ns:After(4, function()
+        ns:After((ns.db and ns.db.bigControls) and 10 or 4, function()          -- (12.1: more time, with "Bigger controls")
             if self.suiArmed then
                 self.suiArmed = false
                 if self.text and self.suiLabel then self.text:SetText(self.suiLabel) end
@@ -3185,6 +3185,10 @@ function ns:Flasher(bar)
     a:SetToAlpha(0)
     a:SetDuration(0.45)
     return function(r, g, b)
+        if not ns:FlashAllowed(bar) then return end               -- (Safe flashing: at most three a second)
+        local gentle = ns.db and ns.db.safeFlash
+        a:SetFromAlpha(gentle and 0.22 or 0.55)
+        a:SetDuration(gentle and 0.8 or 0.45)
         t:SetVertexColor(r, g, b)
         group:Stop()
         group:Play()

@@ -14,7 +14,7 @@ local frame
 local step, pages, dots = 1, {}, {}
 local refreshers = {}          -- re-mark every choice from the current settings when the wizard opens
 local needReload = false       -- a feature switch or the theme family changed
-local STEPS = { "Welcome", "How you play", "Your look", "Ready" }
+local STEPS = { "Welcome", "How you play", "Your look", "Comfort", "Ready" }
 local PAGE_W = 580
 
 function ns:SetRole(key)
@@ -519,6 +519,30 @@ local function BuildLook(page)
     Refresh()
 end
 
+-- Step 4 (12.1): comfort: whatever makes the game easier to see, hear or follow -------------------------------
+local function BuildComfort(page)
+    Heading(page, "Comfort", "Anything that makes the game easier to see, hear or follow. All of it can be changed later in /fgui, under Accessibility.")
+    Label(page, "Color vision", 0, -64)
+    Choices(page, -88, { { "off", "Usual colors" }, { "redgreen", "Red-green" }, { "blueyellow", "Blue-yellow" }, { "none", "No color" } },
+        function() return ns:ColorVisionChoice() end, function(v) ns:SetColorVision(v) end, 4, 136)
+    Label(page, "Lettering", 0, -132)
+    Choices(page, -156, { { "off", "As chosen" }, { "READABLE", "Readable" }, { "DYSLEXIC", "Dyslexia-friendly" } },
+        function() return ns:ReadableFont() end, function(v) ns:SetReadableFont(v) end, 3, 186)
+    Label(page, "More", 0, -200)
+    local items = {
+        { "captions", "Captions for sounds", true }, { "reduceMotion", "Reduce motion" },
+        { "safeFlash", "Safe flashing" }, { "calmMode", "Calm mode" },
+        { "cursorRing", "Ring round the mouse pointer", true }, { "bigControls", "Bigger controls in the settings" },
+    }
+    for i, it in ipairs(items) do
+        local desc = ns.settingRows and ns.settingRows[it[1]] and ns.settingRows[it[1]].desc
+        Toggle(page, ((i - 1) % 2) * 290, -224 - math.floor((i - 1) / 2) * 30, it[1], it[2], desc, it[3])
+    end
+    local paste = ns:CreateButton(page, "Paste shared settings", 200, 24, function() if ns.ShowAccessPaste then ns:ShowAccessPaste() end end)
+    paste:SetPoint("TOPLEFT", 0, -324)
+    Note(page, "Someone gave you a line of accessibility settings? Paste it here and they are all set at once.", -356)
+end
+
 -- Step 4: ready: what you chose, where your frames go, and where everything else is -------------------------
 local function BuildReady(page)
     Heading(page, "Ready", "Here is what you chose. Use Back to change anything, then put your frames where you want them.")
@@ -655,7 +679,7 @@ local function Build()
     end)
     close:HookScript("OnLeave", function() GameTooltip:Hide() end)
 
-    local builders = { BuildWelcome, BuildPlay, BuildLook, BuildReady }
+    local builders = { BuildWelcome, BuildPlay, BuildLook, BuildComfort, BuildReady }
     for i, build in ipairs(builders) do
         local page = CreateFrame("Frame", nil, frame)
         page:SetPoint("TOPLEFT", 30, -48)

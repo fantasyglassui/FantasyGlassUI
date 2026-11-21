@@ -1,6 +1,6 @@
 local ADDON, ns = ...
 _G.FantasyGlassUI = ns
-ns.version = "12.0.0"
+ns.version = "12.1.0"
 ns.author = "DustyMouse"
 
 ns.modules = {}
@@ -231,6 +231,15 @@ ns.defaults = {
     myDebuffsOnly    = false,       -- target frame: only the debuffs you applied
     colorblind       = false,       -- color-blind safe signal colors, plus letters and marks where we can
     reduceMotion     = false,       -- no fades, pulses, gliding bars or camera drift
+    -- accessibility (12.1)
+    colorVision      = "redgreen",  -- with colorblind on: redgreen, blueyellow or none (no color at all: shapes and brightness)
+    safeFlash        = false,       -- nothing flashes more than three times a second; flashes become gentle
+    calmMode         = false,       -- one notification at a time, shown until clicked; longer messages
+    textOutline      = "normal",    -- normal (the lettering's own), thin or thick: an outline round every letter
+    textBands        = false,       -- a dark band behind messages in the middle of the screen
+    targetOutline    = 0,           -- a thick outline round your target's nameplate, in pixels (0: off)
+    bigControls      = false,       -- larger switches in the settings, and "click twice" waits longer
+    captions         = false,       -- a caption on screen for things that make a sound
     combatFocus      = false,       -- dim the quest tracker and info bar during a fight
     tooltipCursor    = false,       -- tooltips follow the mouse instead of sitting in the corner
     xpNumbers        = false,       -- the XP and reputation bars' text as amounts ("4,520 / 10,000") instead of a percentage
@@ -912,6 +921,9 @@ ns.themes = {
 -- without it the face is Latin-only and other languages fall back to the game's fonts.
 ns.fontStyles = {
     GLASS     = { name = "Modern",         face = "Exo 2",                body = "Exo2-Medium.ttf", title = "Exo2-SemiBold.ttf", wide = true },
+    -- (12.1) made to be read easily: for low vision, and with weighted, distinct letters for dyslexia
+    READABLE  = { name = "Readable",       face = "Atkinson Hyperlegible", body = "AtkinsonHyperlegible-Regular.ttf", title = "AtkinsonHyperlegible-Bold.ttf" },
+    DYSLEXIC  = { name = "Dyslexia-friendly", face = "OpenDyslexic",      body = "OpenDyslexic-Regular.ttf", title = "OpenDyslexic-Bold.ttf" },
     TITILLIUM = { name = "Sharp",          face = "Titillium Web",        body = "TitilliumWeb-Regular.ttf", title = "TitilliumWeb-SemiBold.ttf" },
     RAJDHANI  = { name = "Squared",        face = "Rajdhani",             body = "Rajdhani-Medium.ttf", title = "Rajdhani-SemiBold.ttf" },
     PLAY      = { name = "Rounded",        face = "Play",                 body = "Play-Regular.ttf", title = "Play-Bold.ttf" },
@@ -950,7 +962,7 @@ ns.fontStyles = {
 ns.fontOrder = { "GLASS", "BARLOW", "TITILLIUM", "RAJDHANI", "CHAKRA", "PLAY", "CLEAN", "MONO", "SLAB",
                  "SAIRA", "TOMORROW", "BAI", "QUANTICO", "ELECTRO", "ALDRICH", "RUSSO", "AUDIO",
                  "ELEGANT", "SCHOLAR", "CAUDEX", "STORYBOOK", "FONDA", "UNCIAL", "PIRATA", "RUNIC", "POSTER",
-                 "IMPERIAL", "CHRONICLE", "ROMAN", "MEDIEVAL", "ILLUMINED", "WARBAND", "KNIGHTLY", "CLASSIC" }
+                 "IMPERIAL", "CHRONICLE", "ROMAN", "MEDIEVAL", "ILLUMINED", "WARBAND", "KNIGHTLY", "READABLE", "DYSLEXIC", "CLASSIC" }
 
 ns.themeOrder = { "SMOKE", "FROSTED", "MIDNIGHT", "AURORA", "BLUSH", "EMERALD", "OCEAN", "SUNSET", "CRIMSON", "ORCHID", "GILDED",
                   "GLACIER", "AMETHYST", "LAGOON", "HONEY", "STORM", "CORALREEF", "JADE", "NEBULA",
@@ -1261,6 +1273,8 @@ function ns:ApplyTheme()
         ns.TITLEFONT = gameTitle
     end
     ns.FONTFLAGS = (ownBody and style.flags) or ""
+    if ns.db.textOutline == "thin" then ns.FONTFLAGS = "OUTLINE"                     -- (12.1: an outline round every letter)
+    elseif ns.db.textOutline == "thick" then ns.FONTFLAGS = "THICKOUTLINE" end
     ns.BAR = ns.db.barTexture and (ns.MEDIA .. ((ns.style == "GLASS") and "bar_glass.tga" or "bar.tga")) or ns.FLAT
     if ns.ApplySharedMedia then pcall(ns.ApplySharedMedia, ns) end        -- (a font or bar texture chosen from another add-on)
 end
@@ -1544,6 +1558,11 @@ end
 
 -- What's new: shown once after an update (never on a first install, where the setup opens instead).
 ns.whatsNew = {
+    { "12.1.0", { "Accessibility is a category of its own in the settings, with Seeing, Hearing, Flashing and motion, Focus and calm, Reading aloud, Hands and keys, and Share, and a Comfort step in the setup.",
+                  "Color vision for each kind: red-green, blue-yellow, or no color at all, where brightness and marks carry the meaning. Threat on nameplates gets a mark too, and your target can have a thick outline.",
+                  "Captions for sounds: a line on screen for ready checks, whispers, queues, invites, boss emotes, raid warnings, loot rolls and your alerts. And a key that reads aloud the tooltip, the quest or the last whisper.",
+                  "Two lettering styles made to be read: Readable (Atkinson Hyperlegible) and Dyslexia-friendly (OpenDyslexic), with a thicker outline round letters and a dark band behind messages if you want them.",
+                  "Safe flashing, Calm mode, bigger controls, moving through the settings with the keyboard, and your accessibility settings as one line to share." } },
     { "12.0.0", { "A new settings window: the categories down the left, Home with a card for each, and every setting on a line of its own that says what it does. The search tells you where each setting lives, and Undo takes back your last change.",
                   "Simple or All options, at the top: the settings most players look for, or every one. The search always finds them all.",
                   "A new setup in four steps: how you play (your role and what you enjoy), your look, and what you chose. It can also keep the game's own frames and only restyle them.",
@@ -1876,13 +1895,31 @@ function ns:ConflictFor(key)
     end
 end
 
--- Meaning carried by color: good, caution, bad. With the color-blind option these change from
--- green / yellow / red to blue / yellow / orange, which stay apart for the common kinds of color
--- blindness. Everything that signals with color asks here.
+-- Meaning carried by color: good, caution, bad. With the color-blind option these change, for the
+-- kind of color vision chosen (12.1):
+--   redgreen    (red-weak and green-weak, the most common): blue / yellow / orange
+--   blueyellow  (blue-weak): teal / pink / red, which stay apart without blue against yellow
+--   none        (no color at all): brightness alone - bad brightest, caution middling, good dimmer -
+--               and everything that has a mark (letters, dots, "!") shows it
+-- Everything that signals with color asks here.
+local VISION = {
+    redgreen   = { good = { 0.30, 0.62, 1.00 }, warn = { 1.00, 0.85, 0.20 }, bad = { 1.00, 0.55, 0.10 } },
+    blueyellow = { good = { 0.15, 0.80, 0.78 }, warn = { 1.00, 0.55, 0.80 }, bad = { 0.95, 0.22, 0.25 } },
+    none       = { good = { 0.62, 0.62, 0.62 }, warn = { 0.82, 0.82, 0.82 }, bad = { 1.00, 1.00, 1.00 } },
+}
+ns.COLOR_VISIONS = { "redgreen", "blueyellow", "none" }
+function ns:ColorVision()
+    if not (ns.db and ns.db.colorblind) then return nil end
+    return VISION[ns.db.colorVision] and ns.db.colorVision or "redgreen"
+end
 function ns:Signal(kind)
-    local safe = ns.db and ns.db.colorblind
-    if kind == "good" then if safe then return 0.30, 0.62, 1.00 end return 0.30, 0.90, 0.40 end
-    if kind == "bad"  then if safe then return 1.00, 0.55, 0.10 end return 1.00, 0.25, 0.25 end
+    local v = ns:ColorVision()
+    if v then
+        local c = VISION[v][kind] or VISION[v].warn
+        return c[1], c[2], c[3]
+    end
+    if kind == "good" then return 0.30, 0.90, 0.40 end
+    if kind == "bad"  then return 1.00, 0.25, 0.25 end
     return 1.00, 0.85, 0.20
 end
 -- Item quality as dots, for the color-blind option (12.0): one for uncommon, two for rare, three for
@@ -1921,6 +1958,19 @@ function ns:SignalHex(kind)
 end
 -- Is movement allowed? (fades, pulses, gliding bars, the AFK camera). Off with "Reduce motion".
 function ns:Motion() return not (ns.db and ns.db.reduceMotion) end
+-- May something flash or pulse? Not with "Reduce motion", nor with "Safe flashing" (12.1).
+function ns:Flashy() return ns:Motion() and not (ns.db and ns.db.safeFlash) end
+-- "Safe flashing": at most three flashes a second from any one source, each gentle. Returns true
+-- when this one may go ahead (and notes it), false when it comes too soon after the last.
+function ns:FlashAllowed(source)
+    if not (ns.db and ns.db.safeFlash) then return true end
+    ns.flashTimes = ns.flashTimes or {}
+    local now = GetTime()
+    local last = ns.flashTimes[source or "?"]
+    if last and now - last < 0.34 then return false end
+    ns.flashTimes[source or "?"] = now
+    return true
+end
 
 -- Clean screen: the whole interface fades away for a few seconds, for a screenshot, then comes back
 -- by itself. (The game's own Alt+Z hides the interface until you press it again; this one returns
@@ -2008,13 +2058,14 @@ BINDING_NAME_FANTASYGLASSUI_HELP = "Every command (/fgui help)"
 BINDING_NAME_FANTASYGLASSUI_BRIEFING = "Login briefing (what is waiting)"
 BINDING_NAME_FANTASYGLASSUI_RECAP = "Weekly recap"
 BINDING_NAME_FANTASYGLASSUI_SKILLUPS = "Skill-ups (profession window open)"
+BINDING_NAME_FANTASYGLASSUI_READ = "Read aloud (tooltip, quest or last whisper)"
 for i = 1, 5 do _G["BINDING_NAME_FANTASYGLASSUI_GEARSET" .. i] = format("Gear set %d (A to Z)", i) end
 for i = 1, 4 do _G["BINDING_NAME_CLICK FantasyGlassUIConsumable" .. i .. ":LeftButton"] = format("Consumables bar: button %d", i) end
 -- The names above in the player's language, once the translations are loaded (the game's Key
 -- Bindings window reads them only when it opens, so this is in time).
 function ns:TranslateBindings()
     for _, k in ipairs({ "OPTIONS", "MOVE", "KEYBIND", "CLEAN", "METER", "ALTS", "MOUNT", "PET", "NOTEPAD", "WHISPERS", "TODO", "SORT",
-                         "KEYS", "QUIET", "WHATSTHIS", "TOOLS", "EQUIPBEST", "DEATH", "BOSSNOTE", "HELP", "BRIEFING", "RECAP", "SKILLUPS" }) do
+                         "KEYS", "QUIET", "WHATSTHIS", "TOOLS", "EQUIPBEST", "DEATH", "BOSSNOTE", "HELP", "BRIEFING", "RECAP", "SKILLUPS", "READ" }) do
         local g = "BINDING_NAME_FANTASYGLASSUI_" .. k
         if type(_G[g]) == "string" then _G[g] = ns:Tr(_G[g]) end
     end
@@ -2026,6 +2077,7 @@ function FantasyGlassUI_Binding(which, keystate)
     if which == "KEYS" then if ns.ShowKeySheet then ns:ShowKeySheet(keystate ~= "up") end; return end
     local setNumber = tonumber(tostring(which):match("^GEARSET(%d)$"))
     if setNumber then if ns.WearSetNumber then ns:WearSetNumber(setNumber) end; return end
+    if which == "READ" then if ns.ReadAloud then ns:ReadAloud() end; return end
     if which == "OPTIONS" then ns:ToggleConfig()
     elseif which == "MOVE" then ns:ToggleMove()
     elseif which == "KEYBIND" then ns:ToggleKeybindMode()
@@ -2400,6 +2452,8 @@ ns.helpLines = {
     { "/fgui buttons", "the minimap buttons the collector has gathered, by name" },
     { "/fgui media", "fonts and bar textures other add-ons offer (/fgui font, /fgui bartexture)" },
     { "Settings and backups" },
+    { "/fgui access", "the accessibility settings (/fgui access copy: all of them in one line to share; paste: take one)" },
+    { "/fgui read", "read aloud what is under the mouse, the quest you are reading, or the last whisper (tooltip, quest, whisper)" },
     { "/fgui textsize 120", "all the add-on's lettering at that size, in percent (70 to 150; \"reset\" is as it came)" },
     { "/fgui uisize 90", "the whole interface at that size, in percent of the game's (50 to 150; \"reset\" is as it came)" },
     { "/fgui backup", "the backups of your settings, made before each update, once a day and before a reset; click one to see how to put it back" },
@@ -2485,6 +2539,8 @@ ns.toolCommands = {
     skillups = function() ns:ShowSkillUps() end,
     textsize = function(t) ns:SizeCommand("fontScale", t, 70, 150) end,
     uisize = function(t) ns:SizeCommand("uiScale", t, 50, 150) end,
+    read = function(t) ns:ReadAloud(t) end,
+    access = function(t) ns:AccessCommand(t) end,
     perf = function(t) ns:PerfCommand(t) end,
     session = function() if ns.ShowSession then ns:ShowSession() else ns:PrintSession() end end,
     rares = function() ns:ShowRares() end,

@@ -29,8 +29,9 @@ ns:NewModule("aggroWarn", function()
         if on and not was then
             f:Show()
             text:SetTextColor(ns:Signal("bad"))
-            if ns:Motion() then pulse:Play() end
+            if ns:Flashy() then pulse:Play() end
             if PlaySound and SOUNDKIT and SOUNDKIT.RAID_WARNING then pcall(PlaySound, SOUNDKIT.RAID_WARNING) end
+            if ns.Caption then ns:Caption("aggro", ns:Tr("A monster is attacking you")) end
         elseif was and not on then
             pulse:Stop(); f:Hide()
         end

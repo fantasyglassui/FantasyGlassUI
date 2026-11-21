@@ -552,6 +552,52 @@ local function Build()
     end)
     O.frame:HookScript("OnShow", function() watch.snap = nil; O.NoteChange() end)
 
+    -- (12.1) The keyboard, with "Move through the settings with the keyboard" on: Tab and the arrows
+    -- move from setting to setting, Space and Enter use one, Left and Right move a slider or step a
+    -- choice, Page Up and Page Down change section. Every other key goes on to the game, and in a
+    -- fight every key does (the game does not let a window hold keys then).
+    local function Sections()
+        local list = {}
+        for _, cat in ipairs(ns.settingsCategories) do
+            if CategoryShown(cat) then
+                if cat.home then list[#list + 1] = "home" end
+                for _, sec in ipairs(cat.sections or {}) do if SectionShown(sec) then list[#list + 1] = sec.id end end
+            end
+        end
+        return list
+    end
+    function O.KeyPress(key)
+        if not (ns.db and ns.db.keyNav) then return false end
+        local page = O.sections
+        local onPage = O.current and not O.current.home
+        local shift = IsShiftKeyDown and IsShiftKeyDown()
+        if key == "TAB" or key == "DOWN" or key == "UP" then
+            if not onPage then return false end
+            local back = (key == "UP") or (key == "TAB" and shift)
+            page.Focus((page.focused or (back and 1 or 0)) + (back and -1 or 1))
+            return true
+        elseif key == "SPACE" or key == "ENTER" then
+            return onPage and page.Use() or false
+        elseif key == "LEFT" or key == "RIGHT" then
+            return onPage and page.Use(key == "LEFT" and -1 or 1) or false
+        elseif key == "PAGEDOWN" or key == "PAGEUP" then
+            local list, at = Sections(), 1
+            local id = O.current and (O.current.home and "home" or O.current.id)
+            for i, v in ipairs(list) do if v == id then at = i end end
+            at = ((at - 1 + (key == "PAGEDOWN" and 1 or -1)) % #list) + 1
+            O.Open(list[at])
+            return true
+        end
+        return false
+    end
+    if O.frame.EnableKeyboard then O.frame:EnableKeyboard(true) end
+    if O.frame.SetPropagateKeyboardInput and not (InCombatLockdown and InCombatLockdown()) then O.frame:SetPropagateKeyboardInput(true) end
+    O.frame:SetScript("OnKeyDown", function(self, key)
+        if InCombatLockdown and InCombatLockdown() then return end
+        local used = O.KeyPress(key)
+        if self.SetPropagateKeyboardInput then self:SetPropagateKeyboardInput(not used) end
+    end)
+
     -- Drag the corner to make the window bigger or smaller; the size is kept.
     if O.frame.SetResizable then O.frame:SetResizable(true) end
     if O.frame.SetResizeBounds then O.frame:SetResizeBounds(W, 600, 1600, 1200)

@@ -6,6 +6,9 @@ local _, ns = ...
 ns:NewModule("toasts", function()
     local W, H, GAP, MAX = 290, 44, 6, 4
     local HOLD, FADE_IN, FADE_OUT = 4.5, 0.2, 0.5
+    -- (12.1) Calm mode: one at a time, held for fifteen seconds, and a click puts it away
+    local function Hold() return (ns.db and ns.db.calmMode) and 15 or HOLD end
+    local function Room() return (ns.db and ns.db.calmMode) and 1 or MAX end
 
     local anchor = CreateFrame("Frame", "FantasyGlassUIToasts", UIParent)
     anchor:SetSize(W, MAX * (H + GAP))
@@ -38,6 +41,8 @@ ns:NewModule("toasts", function()
         r.text:SetPoint("TOPLEFT", 46, -24)
         r.text:SetPoint("RIGHT", -8, 0)
         ns:Paint(r.text, "SetTextColor", "dim")
+        r:EnableMouse(true)
+        r:SetScript("OnMouseUp", function(self) self.started = GetTime() - FADE_IN - Hold() end)     -- (a click: it goes now)
         r:Hide()
         rows[i] = r
         return r
@@ -79,20 +84,20 @@ ns:NewModule("toasts", function()
             local r = rows[i]
             if r and r:IsShown() then
                 local age = now - r.started
-                if age >= FADE_IN + HOLD + FADE_OUT then
+                if age >= FADE_IN + Hold() + FADE_OUT then
                     r:Hide()
                 else
                     if ns:Motion() then
                         local a = 1
                         if age < FADE_IN then a = age / FADE_IN
-                        elseif age > FADE_IN + HOLD then a = 1 - (age - FADE_IN - HOLD) / FADE_OUT end
+                        elseif age > FADE_IN + Hold() then a = 1 - (age - FADE_IN - Hold()) / FADE_OUT end
                         r:SetAlpha(math.max(0, math.min(1, a)))
                     end
                     shown[#shown + 1] = r
                 end
             end
         end
-        while #queue > 0 and #shown < MAX do                 -- room for another
+        while #queue > 0 and #shown < Room() do              -- room for another
             local free
             for i = 1, MAX do
                 local r = Row(i)

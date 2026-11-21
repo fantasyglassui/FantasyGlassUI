@@ -87,7 +87,7 @@ local function PointAt(c, target)
     c.ring:SetPoint("TOPLEFT", target, "TOPLEFT", -5, 5)
     c.ring:SetPoint("BOTTOMRIGHT", target, "BOTTOMRIGHT", 5, -5)
     c.ring:Show()
-    if c.pulse and ns:Motion() then c.pulse:Play() end
+    if c.pulse and ns:Flashy() then c.pulse:Play() end
     -- the card goes on whichever side of the target has room
     local okX, x = pcall(target.GetCenter, target)
     local okY, _, y = pcall(target.GetCenter, target)

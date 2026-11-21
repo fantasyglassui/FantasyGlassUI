@@ -2,6 +2,7 @@
 - [Installation](Installation)
 - [Getting Started](Getting-Started)
 - [Themes](Themes)
+- [Accessibility](Accessibility)
 - [Features](Features)
 - [Commands](Commands)
 - [Keys and Shortcuts](Keys-and-Shortcuts)

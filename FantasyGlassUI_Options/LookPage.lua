@@ -500,26 +500,14 @@ local function BuildLook(page)
     cc:SetSize(736, CC_H)
     BuildColors(cc)
     page.classColors = cc
-    -- Accessibility (12.0): what helps with color blindness, low vision and motion, in one place.
+    -- Contrast and text size (12.0; since 12.1 shown in Accessibility › Seeing, with the rest there).
     local AY = PY - 70 - 26 - CC_H - 24
-    Header(page, "Accessibility", 0, AY)
+    Header(page, "Contrast and text size", 0, AY)
     local access = {}
-    local function Flag(key, label, tip, x, y)
-        local cb = ns:CreateCheckbox(page, label, ns.db[key], function(v)
-            ns.db[key] = v
-            if ns.ApplyInstant then pcall(ns.ApplyInstant, ns) end
-            if ns.Retheme then pcall(ns.Retheme, ns) end
-        end)
-        cb:SetPoint("TOPLEFT", x, y)
-        O.Tip(cb, label, tip)
-        access[key] = cb
-    end
-    Flag("colorblind", "Color-blind safe colors", "Good and bad are shown in blue and orange instead of green and red, debuffs get a letter, and item quality gets dots: one for uncommon, two for rare, three for epic, four for legendary.", 0, AY - 30)
-    Flag("reduceMotion", "Reduce motion", "No fades, pulses, gliding bars or camera drift: things appear and change at once.", 370, AY - 30)
     local hlabel = page:CreateFontString(nil, "OVERLAY")
     ns:Font(hlabel, 12)
     ns:Paint(hlabel, "SetTextColor", "dim")
-    hlabel:SetPoint("TOPLEFT", 0, AY - 70)
+    hlabel:SetPoint("TOPLEFT", 0, AY - 36)
     hlabel:SetText(ns:Tr("High contrast"))
     for i, key in ipairs({ "CONTRAST", "FCONTRAST" }) do
         local b = Choice(ns:ThemeName(key), 200, function()
@@ -530,20 +518,20 @@ local function BuildLook(page)
             if ns.NoteHomeTheme then ns:NoteHomeTheme() end
             Changed()
         end)
-        b:SetPoint("TOPLEFT", 120 + (i - 1) * 206, AY - 64)
+        b:SetPoint("TOPLEFT", 120 + (i - 1) * 206, AY - 30)
         access[key] = b
     end
     local tlabel = page:CreateFontString(nil, "OVERLAY")
     ns:Font(tlabel, 12)
     ns:Paint(tlabel, "SetTextColor", "dim")
-    tlabel:SetPoint("TOPLEFT", 0, AY - 104)
+    tlabel:SetPoint("TOPLEFT", 0, AY - 70)
     tlabel:SetText(ns:Tr("Text size"))
     for i, size in ipairs({ 100, 120, 140 }) do
         local b = Choice(size .. "%", 96, function()
             ns:SizeCommand("fontScale", tostring(size), 70, 150)
             Refresh()
         end)
-        b:SetPoint("TOPLEFT", 120 + (i - 1) * 102, AY - 98)
+        b:SetPoint("TOPLEFT", 120 + (i - 1) * 102, AY - 64)
         access["size" .. size] = b
     end
     local snote = page:CreateFontString(nil, "OVERLAY")
@@ -557,10 +545,9 @@ local function BuildLook(page)
     page.Refresh = function()
         lookRefresh()
         if cc.Refresh then cc.Refresh() end
-        for key, cb in pairs(access) do if cb.SetChecked and (key == "colorblind" or key == "reduceMotion") then cb:SetChecked(ns.db[key]) end end
     end
     ns.lookPage = page                                       -- (lets the page be checked without the mouse)
-    page.contentHeight = -(AY - 130) + 12                    -- down to the foot of Accessibility
+    page.contentHeight = -(AY - 96) + 12                     -- down to the foot of Contrast and text size
     if page.area then page.area:SetContentHeight(page.contentHeight) end
     Refresh()
 end
