@@ -121,12 +121,14 @@ function ns.PlannerLevelRunLines()
     if type(list) ~= "table" then return lines end
     local levels = {}
     for level, e in pairs(list) do
-        if type(level) == "number" and type(e) == "table" and not e.partial and tonumber(e.s) then levels[#levels + 1] = level end
+        if type(level) == "number" and type(e) == "table" and tonumber(e.s) then levels[#levels + 1] = level end
     end
     table.sort(levels, function(a, b) return a > b end)
     for i = 1, min(20, #levels) do
         local e = list[levels[i]]
-        lines[#lines + 1] = { left = format(ns:Tr("Level %d: %s, %s xp an hour"), levels[i], Span(e.s), Commas(e.xph)) }
+        local text = format(ns:Tr("Level %d: %s, %s xp an hour"), levels[i], Span(e.s), Commas(e.xph))
+        if e.partial then text = text .. "  |cff9aa4b4(" .. ns:Tr("partly timed") .. ")|r" end     -- (not counted in fastest, slowest, average or the race)
+        lines[#lines + 1] = { left = text }
     end
     return lines
 end
@@ -228,6 +230,10 @@ function ns.PlannerSaveAsGuide()
         floor(tonumber(s.fromLevel) or 1), math.ceil(tonumber(s.toLevel) or tonumber(s.fromLevel) or 1))
     local name, n = base, 1
     while ns:GuideGet(name) and n < 99 do n = n + 1; name = format("%s (%d)", base, n) end
+    if ns:GuideGet(name) then                              -- (every name to 99 is taken: nothing is overwritten)
+        ns:Print("Too many guides called \"%s\": rename or delete one first.", base)
+        return nil
+    end
     local saved = ns:GuideSave({ name = name, steps = steps })
     if not saved then return nil end
     ns:Print("Saved as guide \"%s\": %d steps.", name, #steps)
@@ -245,6 +251,7 @@ ns.GuideRegisterAction("panel", "saveAsGuide", "Save as guide", function() ns.Pl
 -- The step you are on changed: read it aloud (only with reading aloud on), and caption the chime.
 ns.GuideRegisterAdvance("records", function(_, _, step, _, moved)
     if not Unlocked() or not ns.db then return end
+    ns.PlannerKeyFrames()                                  -- (unlocked in this session: the key windows join now, not at the next login)
     if ns.db.readDialog and ns.db.plannerSpeak ~= false and type(step) == "table" then
         ns:Speak(ns.GuideStepBase(step))
     end
@@ -292,6 +299,8 @@ do
         end
     end))
     local acc, last = 0, nil
+    ns.plannerRecordsFrame = ev
+    function ns.PlannerLevelGapReset() acc, last = 0, nil end      -- (as after a reload: the next tick adds nothing)
     ev:SetScript("OnUpdate", ns:Guard("Planner records", function(_, elapsed)
         acc = acc + (tonumber(elapsed) or 0)
         if acc < TICK then return end
@@ -300,5 +309,6 @@ do
         local gap = last and (now - last) or 0           -- (the first tick after a login or a reload adds nothing)
         last = now
         ns.PlannerLevelTick(gap)
+        if ns.db and ns.db.plannerRace == true and ns.GuideRedraw then ns:GuideRedraw() end     -- (the race line follows the clock)
     end))
 end

@@ -12721,8 +12721,25 @@ try("13.4 feel D: level times, race, where you left off", function()
         ns.GuideUnlocked = function() return true end
         local runs = ns.RunLines({ level = 0 })
         if not has(runs, "Level 10: 10m, 30,000 xp an hour") then error("the run log shows level 10") end
-        if has(runs, "Level 9:") or not (runs[#runs].left or ""):find("Level 10", 1, true) then error("whole levels only, newest first") end
-        if not (runs[#runs - 2].left or ""):find("Level 12", 1, true) then error("level 12 first") end
+        if not (runs[#runs].left or ""):find("Level 9: 1m, ", 1, true) or not (runs[#runs].left or ""):find(ns:Tr("partly timed"), 1, true) then error("a partial level is listed, marked partly timed: " .. tostring(runs[#runs].left)) end
+        if not (runs[#runs - 3].left or ""):find("Level 12", 1, true) or not (runs[#runs - 1].left or ""):find("Level 10", 1, true) or (runs[#runs - 1].left or ""):find(ns:Tr("partly timed"), 1, true) then error("newest first, whole levels unmarked") end
+        -- (the play clock off a reload: the first tick after it adds nothing; later ones add the GetTime gap, at most 30 s)
+        now = 710000
+        rec0.levelClock = { level = 11, seconds = 100, xpMax = 5000, partial = false }
+        lvl = 11
+        local frame = ns.plannerRecordsFrame
+        local function tick() for _, h in ipairs(handlers) do if h.self == frame and h.name == "OnUpdate" then h.fn(frame, 10) end end end
+        ns.PlannerLevelGapReset()
+        tick()
+        if rec0.levelClock.seconds ~= 100 then error("the first tick after a load adds nothing: " .. rec0.levelClock.seconds) end
+        now = now + 10; tick()
+        if rec0.levelClock.seconds ~= 110 then error("the next adds its gap: " .. rec0.levelClock.seconds) end
+        now = now + 600; tick()
+        if rec0.levelClock.seconds ~= 140 then error("a long gap adds at most 30 s: " .. rec0.levelClock.seconds) end
+        ns.PlannerLevelGapReset()
+        now = now + 600; tick()
+        if rec0.levelClock.seconds ~= 140 then error("after a reload (gap reset) the long gap adds nothing") end
+        now = 700000
 
         -- race your best
         ns.root.plannerLevels = { [key] = ns.root.plannerLevels[key], ["Other - Realm"] = { [11] = { s = 1200, xph = 1 }, [12] = { s = 100, xph = 1, partial = true } } }
@@ -12809,6 +12826,8 @@ try("13.4 feel D: save as guide, read aloud, chime", function()
             for _, v in ipairs(ns.WINDOW_KEYS_FRAMES) do if v == name then n = n + 1 end end
             if n ~= 1 then error(name .. " is in the key windows " .. n .. " times") end
         end
+        -- (unlocked mid-session: the next step change adds the key windows)
+        for i = #ns.WINDOW_KEYS_FRAMES, 1, -1 do if ns.WINDOW_KEYS_FRAMES[i] == mine[1] then table.remove(ns.WINDOW_KEYS_FRAMES, i) end end
         local read0, sound0, caps0, speak0 = ns.db.readDialog, ns.db.guideSound, ns.db.captions, ns.db.plannerSpeak
         local ok2, err2 = pcall(function()
             ns.root.guideState, ns.root.guides = {}, {}
@@ -12834,6 +12853,14 @@ try("13.4 feel D: save as guide, read aloud, chime", function()
                 if b.kind ~= step.kind or b.node ~= step.node or b.crossing ~= step.crossing then error("step " .. i .. " reads back as the same kind, node and crossing") end
                 if first.steps[i].why or b.why or first.steps[i].hub then error("only what the text keeps: no why or hub on step " .. i) end
             end
+            -- (a name never overwrites: with every name to 99 taken, nothing is saved)
+            local before = {}
+            for i = 3, 99 do ns.root.guides[string.format("Elwynn Forest 8-10 (%d)", i)] = { name = "x" .. i, steps = {} } end
+            ns.root.guides["Elwynn Forest 8-10 (2)"] = { name = "keep", steps = { { kind = "note", text = "mine" } } }
+            local mineBefore = ns.root.guides["Elwynn Forest 8-10 (99)"]
+            if ns.PlannerSaveAsGuide() ~= nil then error("every name taken: no save") end
+            if ns.root.guides["Elwynn Forest 8-10 (99)"] ~= mineBefore or ns.root.guides["Elwynn Forest 8-10 (2)"].name ~= "keep" then error("an existing guide was overwritten") end
+            for i = 2, 99 do ns.root.guides[string.format("Elwynn Forest 8-10 (%d)", i)] = nil end
             local second = ns.PlannerSaveAsGuide()
             if second ~= "Elwynn Forest 8-10 (2)" then error("the second save: " .. tostring(second)) end
             if ns:GuideGet(name) ~= first or #first.steps ~= #plan then error("the first is unchanged") end
@@ -12858,12 +12885,15 @@ try("13.4 feel D: save as guide, read aloud, chime", function()
             end
 
             -- read aloud
+            local hasKey = false
             local spoken = {}
             ns.Speak = function(_, text) spoken[#spoken + 1] = text; return true end
             local notes = { { kind = "note", text = "speak one" }, { kind = "note", text = "speak two" }, { kind = "note", text = "speak three", why = { xp = 100 } } }
             ns.db.readDialog, ns.db.plannerSpeak = false, true
             ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = notes }, { zone = 12, fromLevel = 8, toLevel = 9 })
             ns:GuideSkip(false)
+            for _, v in ipairs(ns.WINDOW_KEYS_FRAMES) do if v == mine[1] then hasKey = true end end
+            if not hasKey then error("a step change adds the key windows after an unlock mid-session") end
             if #spoken ~= 0 then error("reading aloud off: nothing spoken") end
             ns.db.readDialog = true
             ns:GuideSkip(false)

@@ -280,7 +280,7 @@ local function FeelRecordsSection(live, y, Replan, T)
     ns:Paint(hint, "SetTextColor", "dim")
     hint:SetText(ns:Tr("Needs reading aloud on in Accessibility"))
     T.raceBox, T.leftOffBox, T.speakBox = race, leftOff, speak
-    return y - 78, function()
+    local function Refresh()
         race:SetChecked(ns.db.plannerRace == true)
         leftOff:SetChecked(ns.db.plannerLeftOff ~= false)
         speak:SetChecked(ns.db.plannerSpeak ~= false)
@@ -288,6 +288,8 @@ local function FeelRecordsSection(live, y, Replan, T)
         speak:SetAlpha(on and 1 or 0.45)
         hint:SetShown(not on)
     end
+    Refresh()                                              -- (right from the start, not only after the first page refresh)
+    return y - 78, Refresh
 end
 
 ------------------------------------------------------------------------------------------

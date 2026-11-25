@@ -178,5 +178,25 @@
     "Passo completato",
     "단계 완료",
     "步骤完成"
+  ],
+  "partly timed": [
+    "teilweise gemessen",
+    "chronométré en partie",
+    "medido en parte",
+    "время учтено частично",
+    "cronometrado em parte",
+    "cronometrato in parte",
+    "일부만 측정됨",
+    "部分计时"
+  ],
+  "Too many guides called \"%s\": rename or delete one first.": [
+    "Zu viele Anleitungen namens \"%s\": benenne oder lösche zuerst eine.",
+    "Trop de guides nommés « %s » : renommez ou supprimez-en un d'abord.",
+    "Demasiadas guías llamadas \"%s\": cambia el nombre o borra una antes.",
+    "Слишком много гайдов с именем «%s»: сначала переименуйте или удалите один.",
+    "Guias demais chamados \"%s\": renomeie ou apague um antes.",
+    "Troppe guide chiamate \"%s\": rinomina o elimina prima una.",
+    "\"%s\" 이름의 가이드가 너무 많습니다. 먼저 하나를 이름 변경하거나 삭제하세요.",
+    "名为“%s”的指南太多:请先重命名或删除一个。"
   ]
 }
