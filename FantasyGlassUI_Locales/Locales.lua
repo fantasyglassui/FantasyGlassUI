@@ -21,6 +21,12 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["Reputation I want"] = "Ruf, den ich will",
+    ["Honored"] = "Wohlwollend",
+    ["Revered"] = "Respektvoll",
+    ["Exalted"] = "Ehrfürchtig",
+    ["%s: %s to %s"] = "%s: %s bis %s",
+    ["Click a faction to cycle: Honored, Revered, Exalted, off. Quests that give it count for more."] = "Klicke auf eine Fraktion: Wohlwollend, Respektvoll, Ehrfürchtig, aus. Quests mit diesem Ruf zählen mehr.",
     ["Count rested experience"] = "Erholungsbonus mitzählen",
     ["Count upgrades in rewards"] = "Verbesserungen in Belohnungen mitzählen",
     ["(+%d s detour)"] = "(+%d s Umweg)",
@@ -3346,6 +3352,12 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["Reputation I want"] = "Réputation voulue",
+    ["Honored"] = "Honoré",
+    ["Revered"] = "Révéré",
+    ["Exalted"] = "Exalté",
+    ["%s: %s to %s"] = "%s : %s pour %s",
+    ["Click a faction to cycle: Honored, Revered, Exalted, off. Quests that give it count for more."] = "Cliquez sur une faction : Honoré, Révéré, Exalté, désactivé. Les quêtes qui la donnent comptent davantage.",
     ["Count rested experience"] = "Compter l'expérience reposée",
     ["Count upgrades in rewards"] = "Compter les améliorations dans les récompenses",
     ["(+%d s detour)"] = "(+%d s de détour)",
@@ -6671,6 +6683,12 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["Reputation I want"] = "Reputación que quiero",
+    ["Honored"] = "Honrado",
+    ["Revered"] = "Reverenciado",
+    ["Exalted"] = "Exaltado",
+    ["%s: %s to %s"] = "%s: %s para %s",
+    ["Click a faction to cycle: Honored, Revered, Exalted, off. Quests that give it count for more."] = "Haz clic en una facción: Honrado, Reverenciado, Exaltado, desactivado. Las misiones que la dan cuentan más.",
     ["Count rested experience"] = "Contar la experiencia de descanso",
     ["Count upgrades in rewards"] = "Contar las mejoras en las recompensas",
     ["(+%d s detour)"] = "(+%d s de desvío)",
@@ -9999,6 +10017,12 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["Reputation I want"] = "Нужная репутация",
+    ["Honored"] = "Уважение",
+    ["Revered"] = "Почтение",
+    ["Exalted"] = "Превосходство",
+    ["%s: %s to %s"] = "%s: %s до уровня «%s»",
+    ["Click a faction to cycle: Honored, Revered, Exalted, off. Quests that give it count for more."] = "Нажмите на фракцию: Уважение, Почтение, Превосходство, выкл. Задания с её репутацией ценятся выше.",
     ["Count rested experience"] = "Учитывать бонус отдыха",
     ["Count upgrades in rewards"] = "Учитывать улучшения в наградах",
     ["(+%d s detour)"] = "(+%d с крюка)",
@@ -13324,6 +13348,12 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["Reputation I want"] = "Reputação que quero",
+    ["Honored"] = "Honrado",
+    ["Revered"] = "Reverenciado",
+    ["Exalted"] = "Exaltado",
+    ["%s: %s to %s"] = "%s: %s para %s",
+    ["Click a faction to cycle: Honored, Revered, Exalted, off. Quests that give it count for more."] = "Clique numa facção: Honrado, Reverenciado, Exaltado, desligado. Missões que a dão valem mais.",
     ["Count rested experience"] = "Contar a experiência de descanso",
     ["Count upgrades in rewards"] = "Contar melhorias nas recompensas",
     ["(+%d s detour)"] = "(+%d s de desvio)",
@@ -16649,6 +16679,12 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["Reputation I want"] = "Reputazione che voglio",
+    ["Honored"] = "Onorato",
+    ["Revered"] = "Riverito",
+    ["Exalted"] = "Eccelso",
+    ["%s: %s to %s"] = "%s: %s per %s",
+    ["Click a faction to cycle: Honored, Revered, Exalted, off. Quests that give it count for more."] = "Clicca su una fazione: Onorato, Riverito, Eccelso, disattivo. Le missioni che la danno contano di più.",
     ["Count rested experience"] = "Conta l'esperienza da riposo",
     ["Count upgrades in rewards"] = "Conta i miglioramenti nelle ricompense",
     ["(+%d s detour)"] = "(+%d s di deviazione)",
@@ -19974,6 +20010,12 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["Reputation I want"] = "원하는 평판",
+    ["Honored"] = "우호적",
+    ["Revered"] = "매우 우호적",
+    ["Exalted"] = "확고한 동맹",
+    ["%s: %s to %s"] = "%s: %s 필요 (%s)",
+    ["Click a faction to cycle: Honored, Revered, Exalted, off. Quests that give it count for more."] = "진영을 누르면 우호적, 매우 우호적, 확고한 동맹, 꺼짐 순으로 바뀝니다. 해당 평판을 주는 퀘스트가 더 높이 평가됩니다.",
     ["Count rested experience"] = "휴식 경험치 반영",
     ["Count upgrades in rewards"] = "보상의 장비 개선 반영",
     ["(+%d s detour)"] = "(+%d초 우회)",
@@ -23302,6 +23344,12 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["Reputation I want"] = "我想要的声望",
+    ["Honored"] = "尊敬",
+    ["Revered"] = "崇敬",
+    ["Exalted"] = "崇拜",
+    ["%s: %s to %s"] = "%s:%s(升至%s)",
+    ["Click a faction to cycle: Honored, Revered, Exalted, off. Quests that give it count for more."] = "点击阵营切换:尊敬、崇敬、崇拜、关。给予该声望的任务权重更高。",
     ["Count rested experience"] = "计算休息经验",
     ["Count upgrades in rewards"] = "计算奖励中的装备提升",
     ["(+%d s detour)"] = "(+%d 秒绕路)",

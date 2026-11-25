@@ -10961,6 +10961,122 @@ try("13.3 choices: rested, upgrades, alts", function()
     ns.plannerQueued = false
     if not ok then error(err, 0) end
 end)
+try("13.3 choices: reputation goals", function()
+    local saved = { repGoalsFn = ns.PlannerRepGoals, rep = env.C_Reputation, max = env.UnitXPMax, on = ns.GuideOn, here = ns.GuideHere, state = ns.GuideState,
+                    loaded = env.C_AddOns.IsAddOnLoaded, meta = rawget(env.C_AddOns, "GetAddOnMetadata"), q = rawget(env, "Questie"),
+                    loader = rawget(env, "QuestieLoader"), goals = (function() local r = ns.PlannerCharRecord(false); return r and r.repGoals end)() }
+    local ok, err = pcall(function()
+        -- the record keeps what Questie says a quest gives
+        local npcs = { [9] = { spawns = { [40] = { { 30, 40 } } }, minLevel = 9, maxLevel = 9, rank = 0 } }
+        local quests = { [101] = { name = "Wolves", questLevel = 10, level = 10, startedBy = { { 9 } }, finishedBy = { { 9 } }, reputationReward = { { 72, 250 } } },
+                         [102] = { name = "Plain", questLevel = 10, level = 10, startedBy = { { 9 } }, finishedBy = { { 9 } } } }
+        local fakes = {
+            QuestieDB = { QuestPointers = { [101] = true, [102] = true }, GetQuest = function(id) return quests[id] end, IsDoable = function() return true end,
+                QueryQuestSingle = function(id, key) return quests[id] and quests[id][key] end,
+                QueryNPCSingle = function(id, key) return npcs[id] and npcs[id][key] end },
+            QuestXP = { GetQuestLogRewardXP = function() return 100 end },
+            ZoneDB = { GetUiMapIdByAreaId = function(_, area) return area == 40 and 1436 or nil end },
+        }
+        env.Questie = { API = { isReady = true, RegisterOnReady = function() end } }
+        env.QuestieLoader = { ImportModule = function(_, name) return fakes[name] end }
+        env.C_AddOns.IsAddOnLoaded = function() return true end
+        rawset(env.C_AddOns, "GetAddOnMetadata", function() return "4" end)
+        ns.PlannerSourceReset()
+        local src = ns.PlannerSource()
+        if not src then error("questie source") end
+        local q = src.quest(101)
+        local r = q and q.reputation and q.reputation[1]
+        if not (r and r[1] == 72 and r[2] == 250 and #q.reputation == 1) then error("record.reputation[1] is { 72, 250 }") end
+        local none = src.quest(102)
+        if type(none.reputation) ~= "table" or #none.reputation ~= 0 then error("no reputation: an empty list") end
+        quests[101].reputationReward = "junk"
+        ns.PlannerSourceReset(); src = ns.PlannerSource()
+        if #src.quest(101).reputation ~= 0 then error("junk is ignored") end
+        ns.PlannerSourceReset()
+        -- the game's numbers
+        local standing = 6700
+        local data = { name = "Stormwind", reaction = 5, currentStanding = standing, currentReactionThreshold = 3000, nextReactionThreshold = 9000 }
+        env.C_Reputation = { GetFactionDataByID = function(id) if id == 72 then return data end end }
+        env.UnitXPMax = function() return 10000 end
+        local rec = { id = 1, name = "Q", level = 10, minLevel = 1, xp = 0, starts = {}, ends = {}, objectives = {}, pre = {}, preAny = {},
+                      exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true, reputation = { { 72, 250 } } }
+        if ns.PlannerRepNeeded(72, 5) ~= 2300 then error("2,300 to Honored: " .. tostring(ns.PlannerRepNeeded(72, 5))) end
+        if ns.PlannerRepNeeded(72, 6) ~= 14300 or ns.PlannerRepNeeded(72, 7) ~= 35300 then error("Revered and Exalted") end
+        local c = { level = 10, xpMax = 10000, repGoals = { [72] = 5 }, repCache = {} }
+        if ns.PlannerQuestXP(rec, c) ~= 500 then error("250 x 0.0002 x 10,000 = 500, got " .. ns.PlannerQuestXP(rec, c)) end
+        data.currentStanding = 8900
+        if ns.PlannerQuestXP(rec, { level = 10, xpMax = 10000, repGoals = { [72] = 5 } }) ~= 200 then error("100 still needed: 200") end
+        data.reaction, data.currentStanding = 6, 9500
+        if ns.PlannerRepNeeded(72, 5) ~= nil then error("reached: nil") end
+        if ns.PlannerQuestXP(rec, { level = 10, xpMax = 10000, repGoals = { [72] = 5 } }) ~= 0 then error("goal reached: 0") end
+        data.reaction, data.currentStanding = 5, 6700
+        if ns.PlannerQuestXP(rec, { level = 10, xpMax = 10000 }) ~= 0 then error("no goal: 0") end
+        if ns.PlannerQuestXP(rec, { level = 10, xpMax = 10000, repGoals = { [99] = 5 } }) ~= 0 then error("another faction: 0") end
+        -- read once per plan
+        local reads = 0
+        env.C_Reputation.GetFactionDataByID = function(id) reads = reads + 1; return data end
+        local cc = { level = 10, xpMax = 10000, repGoals = { [72] = 5 }, repCache = {} }
+        ns.PlannerQuestXP(rec, cc); local once = reads
+        ns.PlannerQuestXP(rec, cc)
+        if once == 0 or reads ~= once then error("cached per plan: " .. once .. " " .. reads) end
+        -- unreadable
+        env.C_Reputation.GetFactionDataByID = function() error("boom") end
+        if ns.PlannerRepNeeded(72, 5) ~= nil or ns.PlannerQuestXP(rec, { level = 10, xpMax = 10000, repGoals = { [72] = 5 } }) ~= 0 then error("an erroring API: nil and 0") end
+        env.C_Reputation.GetFactionDataByID = function() return { name = "X" } end
+        if ns.PlannerRepNeeded(72, 5) ~= nil then error("fields missing: nil") end
+        env.C_Reputation = nil
+        if ns.PlannerRepNeeded(72, 5) ~= nil then error("no API: nil") end
+        env.C_Reputation = { GetFactionDataByID = function(id) return data end }
+        -- the panel line
+        ns.GuideOn = function() return true end
+        ns.GuideHere = function() return 1, 30, 40 end
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "x" } } }, { reputation = { [72] = 250 } })
+        local panel = ns:GuideShowPanel()
+        if not (panel and panel.rep) then error("the panel has a reputation line") end
+        local said = {}
+        rawset(panel.rep, "SetText", function(_, t) said.rep = t end)
+        ns.PlannerRepGoals = function() return { [72] = 5 } end
+        ns:GuideShowPanel()
+        if said.rep ~= "Stormwind: 2,300 to Honored" then error("the line: " .. tostring(said.rep)) end
+        ns.PlannerRepGoals = function() return {} end
+        ns:GuideShowPanel()
+        if said.rep and said.rep ~= "" then error("no goal: no line") end
+        ns.PlannerRepGoals = function() return { [73] = 5 } end
+        ns:GuideShowPanel()
+        if said.rep and said.rep ~= "" then error("a goal the plan doesn't give: no line") end
+        ns.PlannerRepGoals = saved.repGoalsFn
+        -- the picker
+        env.C_Reputation = { GetNumFactions = function() return 3 end,
+            GetFactionDataByIndex = function(i)
+                if i == 1 then return { name = "Header", factionID = 0, isHeader = true } end
+                if i == 2 then return { name = "Stormwind", factionID = 72 } end
+                return { name = "Darnassus", factionID = 69 }
+            end,
+            GetFactionDataByID = function() return nil end }
+        local w = ns:GuideReputation()
+        if not (w and #w.lines == 2) then error("two factions listed, the header skipped: " .. tostring(w and #w.lines)) end
+        local function goal() local rr = ns.PlannerCharRecord(false); return rr and rr.repGoals and rr.repGoals[72] end
+        local function click() for _, l in ipairs(w.lines) do if l.left:find("Stormwind", 1, true) then l.click("LeftButton"); return end end error("no Stormwind row") end
+        click(); w = ns:GuideReputation()
+        if goal() ~= 5 then error("off -> Honored") end
+        click(); w = ns:GuideReputation()
+        if goal() ~= 6 then error("-> Revered") end
+        click(); w = ns:GuideReputation()
+        if goal() ~= 7 then error("-> Exalted") end
+        click(); w = ns:GuideReputation()
+        if goal() ~= nil then error("-> off") end
+        if ns.PlannerRepName and ns.PlannerRepStandingName(5) ~= "Honored" then error("standing name") end
+    end)
+    env.C_Reputation, env.UnitXPMax = saved.rep, saved.max
+    ns.GuideOn, ns.GuideHere, ns.GuideState, ns.PlannerRepGoals = saved.on, saved.here, saved.state, saved.repGoalsFn
+    env.C_AddOns.IsAddOnLoaded = saved.loaded; rawset(env.C_AddOns, "GetAddOnMetadata", saved.meta)
+    rawset(env, "Questie", saved.q); rawset(env, "QuestieLoader", saved.loader)
+    local rr = ns.PlannerCharRecord(false)
+    if rr then rr.repGoals = saved.goals end
+    ns.PlannerSourceReset()
+    ns.plannerQueued = false
+    if not ok then error(err, 0) end
+end)
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()

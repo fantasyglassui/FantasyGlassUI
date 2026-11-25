@@ -454,6 +454,46 @@ local function RidingText()
     if not r or r.short <= 0 or not ns.PlannerGoldText then return nil end
     return format(ns:Tr("Riding: %s to go"), ns.PlannerGoldText(r.short))
 end
+-- "Stormwind: 2,300 to Honored": a faction you want that a quest in the plan gives reputation with.
+local function RepText(st)
+    local sum = Planned(st) and type(st.summary) == "table" and st.summary.reputation
+    local goals = ns.PlannerRepGoals and ns.PlannerRepGoals()
+    if type(sum) ~= "table" or type(goals) ~= "table" or not ns.PlannerRepNeeded then return nil end
+    local ids = {}
+    for id, value in pairs(sum) do
+        if type(id) == "number" and goals[id] and tonumber(value) then ids[#ids + 1] = id end
+    end
+    table.sort(ids)
+    for _, id in ipairs(ids) do
+        local need = ns.PlannerRepNeeded(id, goals[id])
+        local name = ns.PlannerRepName and ns.PlannerRepName(id)
+        local standing = ns.PlannerRepStandingName and ns.PlannerRepStandingName(goals[id])
+        if need and name and standing then
+            local good, nice = pcall(BreakUpLargeNumbers or tostring, math.floor(need))
+            if not (good and type(nice) == "string") then nice = tostring(math.floor(need)) end
+            return format(ns:Tr("%s: %s to %s"), name, nice, standing)
+        end
+    end
+    return nil
+end
+-- The factions you want reputation with: a list to click, each cycling Honored, Revered, Exalted, off.
+function ns:GuideReputation()
+    local lines = {}
+    local goals = ns.PlannerRepGoals and ns.PlannerRepGoals() or {}
+    for _, f in ipairs(ns.PlannerKnownFactions and ns.PlannerKnownFactions() or {}) do
+        local now = goals[f.id]
+        local at = 0
+        for i, s in ipairs(ns.PLANNER_REP_STANDINGS or {}) do if s == now then at = i end end
+        local nextStanding = (ns.PLANNER_REP_STANDINGS or {})[at + 1]
+        lines[#lines + 1] = { left = f.name, right = now and ns.PlannerRepStandingName(now) or ("|cff9aa4b4" .. ns:Tr("off") .. "|r"),
+            color = now and { 1, 0.82, 0.3 } or nil,
+            click = function()
+                if ns.PlannerSetRepGoal then ns.PlannerSetRepGoal(f.id, nextStanding) end
+                ns:GuideReputation()
+            end }
+    end
+    return ns:ShowList("Reputation", "Reputation I want", lines, "Click a faction to cycle: Honored, Revered, Exalted, off. Quests that give it count for more.", 400, 340)
+end
 Draw = function()
     if not panel then return end
     local st = State()
@@ -477,7 +517,12 @@ Draw = function()
     panel.riding:SetShown(riding ~= nil)
     panel.riding:ClearAllPoints()
     panel.riding:SetPoint("TOPLEFT", 12, -92 - (skipped and 13 or 0) - (talents and 13 or 0))
-    panel:SetHeight(118 + (skipped and 13 or 0) + (talents and 13 or 0) + (riding and 13 or 0))
+    local rep = Planned(st) and RepText(st) or nil
+    panel.rep:SetText(rep or "")
+    panel.rep:SetShown(rep ~= nil)
+    panel.rep:ClearAllPoints()
+    panel.rep:SetPoint("TOPLEFT", 12, -92 - (skipped and 13 or 0) - (talents and 13 or 0) - (riding and 13 or 0))
+    panel:SetHeight(118 + (skipped and 13 or 0) + (talents and 13 or 0) + (riding and 13 or 0) + (rep and 13 or 0))
     panel.count:SetText(math.min(at, #steps) .. "/" .. #steps)
     local step = steps[at]
     if step then
@@ -557,6 +602,12 @@ function ns:GuideShowPanel()
         if panel.riding.SetWordWrap then panel.riding:SetWordWrap(false) end
         ns:Paint(panel.riding, "SetTextColor", "faint")
         panel.riding:Hide()
+        panel.rep = ns:NewText(panel, 10, "LEFT")                  -- (a planned route: a wanted faction's reputation a quest gives)
+        panel.rep:SetPoint("TOPLEFT", 12, -92)
+        panel.rep:SetWidth(206)
+        if panel.rep.SetWordWrap then panel.rep:SetWordWrap(false) end
+        ns:Paint(panel.rep, "SetTextColor", "faint")
+        panel.rep:Hide()
         local back = ns:CreateButton(panel, "<", 22, 18, function() ns:GuideSkip(true) end)
         back:SetPoint("BOTTOMLEFT", 8, 6)
         local skip = ns:CreateButton(panel, ">", 22, 18, function() ns:GuideSkip(false) end)

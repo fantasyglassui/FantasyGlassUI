@@ -220,12 +220,119 @@ function ns.PlannerRewardBonus(rec, ctx)
     return bonus
 end
 
+------------------------------------------------------------------------------------------
+-- Reputation you want: per character rec.repGoals = { [factionID] = standing } (5 Honored, 6 Revered,
+-- 7 Exalted). A quest that gives such reputation earns bonus experience: the reputation it gives (at most
+-- what is still needed) x 0.0002 x a level.
+------------------------------------------------------------------------------------------
+-- Where each standing starts (the game's own ids are one higher: 6 Honored, 7 Revered, 8 Exalted).
+local REP_START = { [5] = 9000, [6] = 21000, [7] = 42000 }
+local REP_FALLBACK = { [5] = "Honored", [6] = "Revered", [7] = "Exalted" }
+ns.PLANNER_REP_STANDINGS = { 5, 6, 7 }
+
+function ns.PlannerRepStandingName(standing)
+    local word = REP_FALLBACK[standing]
+    if not word then return nil end
+    local label = _G["FACTION_STANDING_LABEL" .. (standing + 1)]
+    if type(label) == "string" and label ~= "" and not ns:IsSecret(label) then return label end
+    return ns:Tr(word)
+end
+
+local function RepData(factionID)
+    local C = C_Reputation
+    if type(factionID) ~= "number" or not (C and C.GetFactionDataByID) then return nil end
+    local ok, data = pcall(C.GetFactionDataByID, factionID)
+    return (ok and type(data) == "table") and data or nil
+end
+
+function ns.PlannerRepName(factionID)
+    local data = RepData(factionID)
+    local name = data and data.name
+    if type(name) ~= "string" or ns:IsSecret(name) then return nil end
+    return name
+end
+
+-- Reputation still needed to reach the standing, or nil (unreadable, or already there).
+function ns.PlannerRepNeeded(factionID, standing)
+    local start = REP_START[standing]
+    local data = start and RepData(factionID)
+    if not data then return nil end
+    local reaction, now = data.reaction, data.currentStanding
+    if type(reaction) ~= "number" or type(now) ~= "number" or ns:IsSecret(reaction) or ns:IsSecret(now) then return nil end
+    if reaction >= standing + 1 then return nil end
+    local need = start - now
+    return need > 0 and need or nil
+end
+
+-- The goals of this character (a plain table; empty when there are none).
+function ns.PlannerRepGoals()
+    local rec = ns.PlannerCharRecord(false)
+    local goals = rec and rec.repGoals
+    return type(goals) == "table" and goals or {}
+end
+
+-- Set one goal (standing nil: none) and plan again.
+function ns.PlannerSetRepGoal(factionID, standing)
+    if type(factionID) ~= "number" or (standing ~= nil and not REP_START[standing]) then return end
+    local rec = ns.PlannerCharRecord(true)
+    if not rec then return end
+    if type(rec.repGoals) ~= "table" then rec.repGoals = {} end
+    rec.repGoals[factionID] = standing
+    if ns.PlannerReplan then ns:PlannerReplan("settings") end
+end
+
+-- The factions this character knows: { { id, name } }, headers left out.
+function ns.PlannerKnownFactions()
+    local out, seen = {}, {}
+    local C = C_Reputation
+    if not (C and C.GetNumFactions and C.GetFactionDataByIndex) then return out end
+    local okN, n = pcall(C.GetNumFactions)
+    n = okN and tonumber(n) or 0
+    for i = 1, min(n, 300) do
+        local ok, d = pcall(C.GetFactionDataByIndex, i)
+        if ok and type(d) == "table" and not d.isHeader and type(d.factionID) == "number" and d.factionID > 0
+            and type(d.name) == "string" and not ns:IsSecret(d.name) and not seen[d.factionID] then
+            seen[d.factionID] = true
+            out[#out + 1] = { id = d.factionID, name = d.name }
+        end
+    end
+    return out
+end
+
+-- Bonus experience for the wanted reputation a quest gives. The need is read once per plan (ctx.repCache).
+function ns.PlannerRepBonus(rec, ctx)
+    ctx = ctx or {}
+    local goals = ctx.repGoals
+    if type(goals) ~= "table" or type(rec) ~= "table" or type(rec.reputation) ~= "table" or next(goals) == nil then return 0 end
+    local need = tonumber(ctx.xpMax)
+    if not need then
+        local okM, v = pcall(UnitXPMax, "player")
+        need = okM and tonumber(v) or nil
+    end
+    if not need or need <= 0 or ns:IsSecret(need) then return 0 end
+    local cache = type(ctx.repCache) == "table" and ctx.repCache or nil
+    local bonus = 0
+    for _, e in ipairs(rec.reputation) do
+        local id, value = e[1], tonumber(e[2])
+        local standing = goals[id]
+        if standing and value and value > 0 then
+            local left = cache and cache[id]
+            if left == nil then
+                left = ns.PlannerRepNeeded(id, standing) or false
+                if cache then cache[id] = left end
+            end
+            if left then bonus = bonus + min(value, left) * 0.0002 * need end
+        end
+    end
+    return bonus
+end
+
 -- ctx.candidate(id) -> record, when that quest is itself a candidate (its follow-up counts half).
 function ns.PlannerQuestXP(rec, ctx)
     ctx = ctx or {}
     local xp = (rec.xp or 0) + KillPart(rec, ctx.level or 1)
     local extra = ns.PlannerRestedExtra(rec, ctx)
-    xp = xp + extra + ns.PlannerRewardBonus(rec, ctx)
+    xp = xp + extra + ns.PlannerRewardBonus(rec, ctx) + ns.PlannerRepBonus(rec, ctx)
     if rec.nextQuest and ctx.candidate then
         local nxt = ctx.candidate(rec.nextQuest)
         if nxt then xp = xp + (nxt.xp or 0) / 2 end

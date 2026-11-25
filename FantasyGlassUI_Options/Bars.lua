@@ -272,7 +272,7 @@ function ns.BuildGuidePage(page)
 
     local live = CreateFrame("Frame", nil, page)
     live:SetPoint("TOPLEFT", 0, 0)
-    local LIVE_HEIGHT = 688                 -- (the last switch ends at y = -672)
+    local LIVE_HEIGHT = 716                 -- (the last button ends at y = -700)
     live:SetSize(736, LIVE_HEIGHT)
     T.live = live
     Heading(live, "Quest guides", 0, 0, 736)
@@ -395,7 +395,9 @@ function ns.BuildGuidePage(page)
         Replan()
     end)
     rewards:SetPoint("TOPLEFT", 0, -646)
-    T.restedBox, T.rewardsBox = rested, rewards
+    local repButton = ns:CreateButton(live, "Reputation I want", 170, 24, function() if ns.GuideReputation then ns:GuideReputation() end end)
+    repButton:SetPoint("TOPLEFT", 0, -676)
+    T.restedBox, T.rewardsBox, T.reputationButton = rested, rewards, repButton
     T.planButton, T.groupButton, T.flightsBox, T.whyBox, T.trainerBox, T.holdBox = plan, group, flights, why, trainer, hold
     T.vendorBox, T.suppliesBox, T.professionBox, T.mountBox = vendor, supplies, profession, mount
     T.mailBox, T.exploreBox, T.gatherBox = mail, explore, gather

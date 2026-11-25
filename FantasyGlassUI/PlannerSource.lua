@@ -105,6 +105,17 @@ end
 
 local function Ids(list) return type(list) == "table" and list or {} end
 
+-- Questie's reputationReward: { { factionID, value }, ... } as a plain list (anything else: none).
+local function Reputation(list)
+    local out = {}
+    if type(list) ~= "table" then return out end
+    for _, e in ipairs(list) do
+        local id, value = type(e) == "table" and tonumber(e[1]), type(e) == "table" and tonumber(e[2])
+        if id and value and value > 0 then out[#out + 1] = { id, value } end
+    end
+    return out
+end
+
 -- Group and dungeon from a quest-log tag (Enum.QuestTag names; the client supplies the numbers).
 local function TagKinds(tagID)
     local T = Enum and Enum.QuestTag
@@ -169,6 +180,7 @@ local function Record(env, id)
         pre = Ids(quest.preQuestGroup), preAny = Ids(quest.preQuestSingle), exclusive = Ids(quest.exclusiveTo),
         nextQuest = tonumber(quest.nextQuestInChain) and quest.nextQuestInChain > 0 and quest.nextQuestInChain or nil,
         elite = elite, group = group, dungeon = dungeon, repeatable = repeatable,
+        reputation = Reputation(quest.reputationReward),
         doable = db.IsDoable(id) and true or false,
     }
 end
@@ -487,7 +499,7 @@ function ns.PlannerLogSource()
             starts = {}, ends = ends, objectives = {}, pre = {}, preAny = {}, exclusive = {},
             elite = type(tag) == "table" and tag.isElite or false, group = group,
             dungeon = dungeon,
-            repeatable = false, doable = true,
+            repeatable = false, doable = true, reputation = {},
         }
     end
     function src.places(kind, arg) return Places("log", nil, kind, arg) end

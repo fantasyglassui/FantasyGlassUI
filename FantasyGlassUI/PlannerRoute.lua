@@ -391,6 +391,15 @@ end
 -- A hub's steps; xp and seconds of what could be reached. A quest whose giver or objective can't be
 -- reached is left out from there on. Each of its own steps carries step.hub = n (in memory only: the
 -- stops pass puts a stop near a hub after the hub's last accept).
+-- The wanted reputation a kept quest gives, added up for the panel line (state.ctx.repGoals: the wanted factions).
+local function AddRep(state, q)
+    local goals = state.ctx and state.ctx.repGoals
+    if type(goals) ~= "table" or type(q.reputation) ~= "table" then return end
+    for _, e in ipairs(q.reputation) do
+        if goals[e[1]] and tonumber(e[2]) then state.rep[e[1]] = (state.rep[e[1]] or 0) + e[2] end
+    end
+end
+
 local function HubSteps(state, hub, steps, inn, n)
     local t, xp, gone, first, kept = 0, 0, {}, true, 0
     local function Go(spot)
@@ -440,6 +449,7 @@ local function HubSteps(state, hub, steps, inn, n)
     for _, q in ipairs(hub.quests) do
         if not gone[q.id] then
             kept = kept + 1
+            AddRep(state, q)
             t = t + ns.PlannerQuestTime(q, state.ctx)
             local qxp, extra = ns.PlannerQuestXP(q, state.ctx)
             xp = xp + qxp
@@ -466,6 +476,7 @@ function ns.PlannerRoute(ctx)
     local c = WithCandidates(ctx, candidates)
     c.restedLeft = tonumber(ctx.rested)              -- the route uses this pool up as it lays hubs out (hub scoring before that deliberately sees all of it)
     c.rewardCache = {}                               -- quest id -> reward bonus, read once per plan
+    c.repCache = {}                                  -- faction id -> reputation still needed, read once per plan
     local zone, newly, hubs = ns.PlannerPickZone(candidates, c)
     if not zone then return guide, summary end
     local left = {}
@@ -479,7 +490,7 @@ function ns.PlannerRoute(ctx)
     local tctx = {}
     for k, v in pairs(c) do tctx[k] = v end
     tctx.flights = flights
-    local state = { pos = Here(ctx), flights = flights, tctx = tctx, ctx = c, learn = ctx.learnFlights and true or false }
+    local state = { rep = {}, pos = Here(ctx), flights = flights, tctx = tctx, ctx = c, learn = ctx.learnFlights and true or false }
     local xp, seconds = 0, 0
     for n = 1, ns.PLANNER_HORIZON do
         if #left == 0 then break end
@@ -501,6 +512,7 @@ function ns.PlannerRoute(ctx)
         seconds, xp = seconds + t, xp + gained
     end
     summary.zone, summary.newZone = zone, newly
+    summary.reputation = state.rep                   -- wanted reputation the plan gives: { [factionID] = amount }
     summary.xp, summary.seconds = floor(xp + 0.5), floor(seconds + 0.5)
     summary.toLevel = ToLevel(ctx, xp)
     if ns.PlannerAddStops then ns.PlannerAddStops(guide, summary, ctx) end   -- (stops on the way: PlannerStops.lua)
@@ -586,6 +598,7 @@ function ns.PlannerContext()
         crossings = ns.PLANNER_CROSSINGS,
         learnFlights = db.plannerLearnFlights ~= false,
         pace = ns.PlannerPace(),
+        repGoals = next(ns.PlannerRepGoals()) and ns.PlannerRepGoals() or nil,
         rested = (db.plannerRested ~= false) and Num(Call(GetXPExhaustion)) or nil,
         lastZone = d and tonumber(d.zone) or nil, lastZoneLevel = d and tonumber(d.zoneLevel) or nil,
         trainerLevel = d and tonumber(d.trainerLevel) or nil,   -- the level you last closed your class trainer's window at
