@@ -255,6 +255,7 @@ local function Record(env, id)
 end
 
 local changed = false
+local mapCache = nil              -- quest ids by zone map (one scan of every quest a session; a reset empties it)
 local zoneCache, grindCache = {}, {}   -- dungeon quest ids by area, grinding spots by level and continent (static data: a reset empties them)
 local recCache, cacheLevel = {}, nil   -- built records by quest id (not those in the log); emptied on a new level and by a reset
 
@@ -551,6 +552,34 @@ function ns.PlannerSource()
         zoneCache[zone] = hit
         return hit
     end
+    -- The ids of the quests Questie files under an area that maps to this zone map (zoneOrSort, through the
+    -- zone database): one scan of every quest per session, then read from the cache.
+    function src.mapQuests(map)
+        if type(map) ~= "number" or type(env.db.QueryQuestSingle) ~= "function" then return {} end
+        if not mapCache then
+            local scan, areas, ids = {}, {}, src.ids()
+            for _, id in ipairs(ids) do
+                ns.PlannerYield()
+                local ok, v = Try(env.db.QueryQuestSingle, id, "zoneOrSort")
+                local area = ok and tonumber(v) or nil
+                if area and area > 0 then
+                    local m = areas[area]
+                    if m == nil then
+                        local okM, value = Try(env.zones.GetUiMapIdByAreaId, env.zones, area)
+                        m = okM and tonumber(value) or false
+                        areas[area] = m
+                    end
+                    if m then
+                        scan[m] = scan[m] or {}
+                        scan[m][#scan[m] + 1] = id
+                    end
+                end
+            end
+            if #ids == 0 then return {} end                 -- (Questie knows nothing yet: ask again later)
+            mapCache = scan
+        end
+        return mapCache[map] or {}
+    end
     -- Where to grind at this level: { { map, x, y, count, name, mobLevel } }, best first (at most 3). Hostile,
     -- non-elite monsters 0 to 2 levels above you, their spawns on a 200-yard grid on your continent. Read once per
     -- level per session (the scan is long: it goes a slice at a time).
@@ -649,6 +678,17 @@ function ns.PlannerLogSource()
             repeatable = false, doable = true, reputation = {}, escort = ns.PLANNER_ESCORTS[id] == true,
         }
     end
+    -- The logged quests whose next waypoint is on this map.
+    function src.mapQuests(map)
+        local out = {}
+        local QL = C_QuestLog
+        if type(map) ~= "number" or not (QL and QL.GetNextWaypoint) then return out end
+        for _, id in ipairs(src.ids()) do
+            local ok, m = Try(QL.GetNextWaypoint, id)
+            if ok and tonumber(m) == map then out[#out + 1] = id end
+        end
+        return out
+    end
     function src.places(kind, arg) return Places("log", nil, kind, arg) end
     function src.inns() return {} end
     return src
@@ -656,7 +696,7 @@ end
 
 function ns.PlannerSourceReset()
     changed, waiting, placeCaches, recCache, cacheLevel = false, false, { questie = {}, log = {}, questieScan = {}, logScan = {} }, {}, nil
-    zoneCache, grindCache = {}, {}
+    zoneCache, grindCache, mapCache = {}, {}, nil
     ns.plannerExploreMaps = {}                  -- (PlannerPath.lua: the maps known to report exploration)
 end
 
