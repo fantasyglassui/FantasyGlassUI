@@ -14117,8 +14117,12 @@ try("13.4 feel D: save as guide, read aloud, chime", function()
         -- keys first (a login runs the add-on's own login again): the six names, once each
         local mine = { "FantasyGlassUIGuideMenu", "FantasyGlassUIListPlanPreview", "FantasyGlassUIListPlanWhy", "FantasyGlassUIListPlanTime",
                        "FantasyGlassUIListPlanCatchUp", "FantasyGlassUIListPlanHere" }
-        fireEvent("PLAYER_LOGIN"); runTimers()
-        fireEvent("PLAYER_LOGIN"); runTimers()
+        -- (the records frame's own login handler, twice: firing PLAYER_LOGIN itself would start every module again)
+        local rf = ns.plannerRecordsFrame
+        local onEvent
+        for _, h in ipairs(handlers) do if h.self == rf and h.name == "OnEvent" then onEvent = h.fn end end
+        if not onEvent then error("the records frame's event handler") end
+        onEvent(rf, "PLAYER_LOGIN"); onEvent(rf, "PLAYER_LOGIN")
         ns.PlannerKeyFrames()
         for _, name in ipairs(mine) do
             local n = 0
