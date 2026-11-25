@@ -11,11 +11,20 @@ local O = ns.optUI
 -- section shows the slices of them it needs (see Categories.lua and FeaturesPage.lua).
 local VIEW_H = 542
 O.VIEW_H = VIEW_H
-local W, H = 1012, 680
+local W, H = 1000, 680
+local MIN_W = 820                                   -- (12.3) the narrowest the window goes: the pages follow its width
+O.W, O.MIN_W = W, MIN_W
 local HEAD_H, FOOT_H = 60, 52                       -- (12.3) the header and footer, a rule under / over each
 local BODY_Y = HEAD_H + 12
 local SIDE_X, SIDE_W = 14, 216
 local CONTENT_X = SIDE_X + SIDE_W + 14
+local CONTENT_R, AREA_R = 16, 10                    -- the content's gap to the window's right, and its scroll area's to the content's
+-- The width of the pages (Home's and a section's sheet) in a window `w` wide.
+function O.PageWidth(w)
+    w = tonumber(w)
+    if not w or w <= 0 then w = W end
+    return math.max(MIN_W, w) - CONTENT_X - CONTENT_R - AREA_R
+end
 
 -- Is a category or section shown? (simple settings: those with an everyday switch, and a few more)
 local function SectionShown(sec)
@@ -143,6 +152,7 @@ function O.NeedReload(key)
     if O.frame and O.frame.note then
         O.frame.note:SetText("|cffffd100" .. format(ns:TrN(n, "%d change needs a reload", "%d changes need a reload"), n) .. "|r")
         O.frame.note.ShowNow(O.frame.note)
+        if O.LayoutFooter then O.LayoutFooter() end         -- (the note takes room in the footer)
     end
 end
 
@@ -160,7 +170,7 @@ local function Build()
     ns:SetLook(O.frame, "settings")                                   -- (O.frame.suiLook = "settings")
     ns.configFrame = O.frame
     local size = type(ns.root) == "table" and type(ns.root.optionsSize) == "table" and ns.root.optionsSize or nil
-    O.frame:SetSize(size and tonumber(size[1]) or W, size and tonumber(size[2]) or H)
+    O.frame:SetSize(math.max(MIN_W, size and tonumber(size[1]) or W), size and tonumber(size[2]) or H)
     O.frame:SetPoint("CENTER")
     O.frame:SetFrameStrata("DIALOG")
     O.frame:SetBackdrop(ns.BACKDROP)
@@ -337,16 +347,17 @@ local function Build()
     -- the right side: Home, or a section
     local content = CreateFrame("Frame", nil, O.frame)
     content:SetPoint("TOPLEFT", CONTENT_X, -BODY_Y)
-    content:SetPoint("BOTTOMRIGHT", -16, FOOT_H + 6)
+    content:SetPoint("BOTTOMRIGHT", -CONTENT_R, FOOT_H + 6)
     O.content = content
-    local sArea, sSheet = ns:ScrollArea(content, 748, VIEW_H)
+    local startW = O.PageWidth(size and tonumber(size[1]) or W)
+    local sArea, sSheet = ns:ScrollArea(content, startW, VIEW_H)
     sArea:SetPoint("TOPLEFT", 0, 0)
-    sArea:SetPoint("BOTTOMRIGHT", -10, 0)
+    sArea:SetPoint("BOTTOMRIGHT", -AREA_R, 0)
     O.BuildSections(sSheet)
     O.sections = sSheet
-    local hArea, hSheet = ns:ScrollArea(content, 748, VIEW_H)
+    local hArea, hSheet = ns:ScrollArea(content, startW, VIEW_H)
     hArea:SetPoint("TOPLEFT", 0, 0)
-    hArea:SetPoint("BOTTOMRIGHT", -10, 0)
+    hArea:SetPoint("BOTTOMRIGHT", -AREA_R, 0)
     O.BuildHome(hSheet)
     O.home = hSheet
     O.sectionArea, O.homeArea = sArea, hArea
@@ -500,6 +511,7 @@ local function Build()
         if place.home then
             O.sections.GiveBack()
             if O.resetButton then O.resetButton:Hide() end
+            if O.LayoutFooter then O.LayoutFooter() end
             sArea:Hide(); hArea:Show()
             O.current = place
             O.home.Refresh()
@@ -557,7 +569,7 @@ local function Build()
     resetBtn:SetPoint("LEFT", discord, "RIGHT", 8, 0)
     resetBtn:HookScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:AddLine(self.text:GetText())
+        GameTooltip:AddLine(self.suiFull or self.text:GetText())
         GameTooltip:AddLine(ns:Tr("Every switch and slider of this category goes back to how Fantasy Glass UI comes. Your lists, rules, designs and positions are kept."), 1, 1, 1, true)
         GameTooltip:Show()
     end)
@@ -653,7 +665,7 @@ local function Build()
 
     -- Drag the corner to make the window bigger or smaller; the size is kept.
     if O.frame.SetResizable then O.frame:SetResizable(true) end
-    O.frame:SetResizeBounds(W, 600, 1600, 1200)
+    O.frame:SetResizeBounds(MIN_W, 600, 1600, 1200)
     local grip = CreateFrame("Button", nil, O.frame)
     grip:SetSize(16, 16)
     grip:SetPoint("BOTTOMRIGHT", -3, 3)
@@ -668,6 +680,70 @@ local function Build()
     end)
     O.Tip(grip, "Drag to resize", "Drag the corner to make the window bigger or smaller. The size is kept.")
     O.frame.grip = grip
+
+    -- (12.3) The pages follow the window's width: Home's cards, a section's card and rows, the blocks
+    -- lent to it (the theme grid among them) are laid out again for the new width, and the footer
+    -- makes room. While the corner is dragged this runs once a frame at most.
+    local function Fit(b, least, most)                       -- (a button as wide as its label, between `least` and `most`)
+        local w = b.text and b.text.GetStringWidth and b.text:GetStringWidth()
+        if type(w) == "number" and w > 0 then b:SetWidth(math.min(most or 400, math.max(least, math.floor(w + 24)))) end
+        local got = b:GetWidth()
+        return type(got) == "number" and got or least
+    end
+    local function FrameWidth()
+        local got = O.frame:GetWidth()
+        return (type(got) == "number" and got > 0) and got or W
+    end
+    -- The footer in a window `w` wide. Its two ends must not meet: in a narrow window the version
+    -- goes first, then the buttons are only as wide as their labels, then "Reset <category> to how
+    -- it came" is cut to "Reset" and "Undo last change" to "Undo" (their tooltips still say all).
+    function O.LayoutFooter(w)
+        w = tonumber(w) or FrameWidth()
+        local full = resetBtn.suiFull
+        local armed = resetBtn.suiArmed
+        local nw = note.GetStringWidth and note:GetStringWidth()
+        nw = (type(nw) == "number" and nw > 0) and (nw + 12) or 0
+        local vw = version.GetStringWidth and version:GetStringWidth()
+        vw = (type(vw) == "number" and vw > 0) and (vw + 14) or 50
+        local function Try(stage)
+            local snug = stage >= 2
+            if full and not armed then resetBtn.text:SetText(stage >= 3 and ns:Tr("Reset") or full) end
+            undo.text:SetText(ns:Tr(stage >= 4 and "Undo" or "Undo last change"))
+            local left = 18 + Fit(setup, snug and 60 or 132) + 8 + Fit(report, snug and 60 or 132) + 8 + Fit(discord, snug and 60 or 96)
+            if resetBtn:IsShown() then left = left + 8 + Fit(resetBtn, 60, 260) end
+            local right = 24 + 110 + 12 + nw + Fit(undo, snug and 60 or 140) + ((stage == 0) and vw or 0)
+            return left, right
+        end
+        local left, right, stage
+        for s = 0, 4 do
+            stage = s
+            left, right = Try(s)
+            if left + right + 24 <= w then break end
+        end
+        version:SetShown(stage == 0)
+        O.footer = { left = left, right = right, width = w, stage = stage }
+        return O.footer
+    end
+    function O.Relayout(w)
+        w = tonumber(w) or FrameWidth()
+        local pw = O.PageWidth(w)
+        O.pageWidth = pw
+        O.sections:SetWidth(pw)
+        O.home:SetWidth(pw)
+        O.LayoutFooter(w)
+        if O.current and O.current.home then
+            if O.home.Layout then O.home.Layout() end
+        elseif O.current and O.sections.section then
+            O.sections.Show(O.sections.section, true)
+        end
+        return pw
+    end
+    local pending = false
+    O.frame:HookScript("OnSizeChanged", function()
+        if pending then return end
+        pending = true
+        ns:After(0, function() pending = false; O.Relayout() end)
+    end)
 
     -- Search: one box that finds any setting. Each result says where it lives; Enter goes to the first.
     local results = CreateFrame("Frame", nil, O.frame, ns.template)
@@ -885,8 +961,16 @@ function O.NewIn()
     return tostring(entry and entry[1] or ""):match("^(%d+%.%d+)") or tostring(entry and entry[1] or ""), lines
 end
 function O.BuildHome(page)
-    local WIDTH, GAP = 742, 12
-    local CW = math.floor((WIDTH - 2 * GAP) / 3)
+    local GAP = 12
+    -- (12.3) Home follows the window's width: the page's own width, read at every layout
+    local function Width()
+        local w = page.GetWidth and page:GetWidth()
+        return (type(w) == "number" and w > 300) and w or O.PageWidth()
+    end
+    local WIDTH = Width()
+    local function Cols(w) return (w >= 640) and 3 or 2 end    -- (three quick cards to a row; two in a narrow window)
+    local function CardW(w) local n = Cols(w); return math.floor((w - (n - 1) * GAP) / n) end
+    local CW = CardW(WIDTH)
     local title = page:CreateFontString(nil, "OVERLAY")
     ns:Font(title, 24, true)
     title:SetPoint("TOPLEFT", 0, -2)
@@ -1023,7 +1107,7 @@ function O.BuildHome(page)
         page.newDots[#page.newDots + 1] = dot
     end
     -- "Ask the guide": the question box, then what suits your class
-    local askCard = Card(page, WIDTH, 290)
+    local askCard = Card(page, WIDTH, 200)                     -- (as tall as what is in it: see Layout)
     page.askCard = askCard
     local askTitle = askCard:CreateFontString(nil, "OVERLAY")
     ns:Font(askTitle, 14, true)
@@ -1033,19 +1117,15 @@ function O.BuildHome(page)
     local T = ns.toolsPage
     if T and T.askFrame then
         T.askFrame:SetParent(askCard); T.askFrame:ClearAllPoints(); T.askFrame:SetPoint("TOPLEFT", 16, -44)
-        T.askFrame:SetWidth(WIDTH - 32)
-        if T.askBox and T.askBox.SetWidth then T.askBox:SetWidth(WIDTH - 32 - 108) end
-        if T.showButton then T.showButton:ClearAllPoints(); T.showButton:SetPoint("TOPRIGHT", T.askFrame, "TOPRIGHT", 0, -32) end
         T.askFrame:Show()
     end
     local classTitle = askCard:CreateFontString(nil, "OVERLAY")
     ns:Font(classTitle, 13, true)
-    classTitle:SetPoint("TOPLEFT", 16, -176)
     classTitle:SetText(Upper(ns:Tr("Suggested for your class")))
     ns:Paint(classTitle, "SetTextColor", "faint")
+    page.classTitle = classTitle
     if T and T.suggestFrame then
-        T.suggestFrame:SetParent(askCard); T.suggestFrame:ClearAllPoints(); T.suggestFrame:SetPoint("TOPLEFT", 16, -198)
-        T.suggestFrame:SetWidth(WIDTH - 32)
+        T.suggestFrame:SetParent(askCard)
         T.suggestFrame:Show()
     end
 
@@ -1056,9 +1136,17 @@ function O.BuildHome(page)
         return (type(h) == "number" and h > 0) and h or 16
     end
     function page.Layout()
+        local w = Width()
+        local cols = Cols(w)
+        CW = CardW(w)
+        page.width, page.cols, page.cardWidth = w, cols, CW
+        intro:SetWidth(w)
         local top, rows = quickTop, {}
         for i, c in ipairs(page.quickCards) do
-            local row = math.floor((i - 1) / 3) + 1
+            local row = math.floor((i - 1) / cols) + 1
+            c:SetWidth(CW)
+            c.name:SetWidth(CW - 28 - 44)
+            c.hint:SetWidth(CW - 28)
             c.name:SetText(ns:Tr(c.label))
             local nameH = Lines(c.name)
             c.hint:ClearAllPoints()
@@ -1074,20 +1162,38 @@ function O.BuildHome(page)
         end
         for i, c in ipairs(page.quickCards) do
             c:ClearAllPoints()
-            c:SetPoint("TOPLEFT", page, "TOPLEFT", ((i - 1) % 3) * (CW + GAP), page.quickRows[math.floor((i - 1) / 3) + 1].top)
+            c:SetPoint("TOPLEFT", page, "TOPLEFT", ((i - 1) % cols) * (CW + GAP), page.quickRows[math.floor((i - 1) / cols) + 1].top)
         end
         -- "New in" lines: the card is as tall as its lines turn out to be
+        newCard:SetWidth(w)
         local h = 44
-        for _, fs in ipairs(page.newLines) do h = h + Lines(fs) + 8 end
+        for _, fs in ipairs(page.newLines) do fs:SetWidth(w - 32 - 20); h = h + Lines(fs) + 8 end
         h = math.max(60, h + 8)
         newCard:SetHeight(h)
         newCard:ClearAllPoints()
         newCard:SetPoint("TOPLEFT", page, "TOPLEFT", 0, at + 4)
+        -- "Ask the guide": as tall as the box with its answer, the heading and the suggestions
+        askCard:SetWidth(w)
+        local inner = w - 32
+        local askH = (T and T.LayoutAsk) and T.LayoutAsk(inner) or 120
+        local cy = -44 - askH - 18
+        classTitle:ClearAllPoints()
+        classTitle:SetPoint("TOPLEFT", askCard, "TOPLEFT", 16, cy)
+        local sugH = 0
+        if T and T.suggestFrame then
+            T.suggestFrame:ClearAllPoints()
+            T.suggestFrame:SetPoint("TOPLEFT", askCard, "TOPLEFT", 16, cy - 22)
+            sugH = T.LayoutSuggest and T.LayoutSuggest(inner) or 96
+        end
+        local askCardH = -(cy - 22) + sugH + 16
+        askCard:SetHeight(askCardH)
+        page.askCardHeight = askCardH
         askCard:ClearAllPoints()
         askCard:SetPoint("TOPLEFT", newCard, "BOTTOMLEFT", 0, -12)
-        page.contentHeight = -(at + 4) + h + 12 + 290 + 16
+        page.contentHeight = -(at + 4) + h + 12 + askCardH + 16
         page.area:SetContentHeight(page.contentHeight)
     end
+    if T then T.OnAnswer = function() if page.Layout then page.Layout() end end end
     function page.Refresh()
         title:SetText(O.Greeting())
         intro:SetText(O.HomeLine())

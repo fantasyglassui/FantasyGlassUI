@@ -64,8 +64,8 @@ local function BuildLook(page)
         return StyleFamily(t)
     end
     local TOP, GRID_H = 40, 420                              -- the grid starts under the family control and is this tall
-    local PV_W, GAP = 250, 16                                -- the preview column, and the space between it and the grid
-    local CELL_W, CELL_H, TILE_W = 112, 88, 104
+    local PV_W, PV_MIN, GAP = 250, 180, 16                   -- the preview column (narrower in a narrow window), and the space between it and the grid
+    local CELL_W, CELL_H, TILE_W = 98, 88, 90
     local picker = { cols = 4, width = 736, tiles = {}, list = {}, family = "GLASS", cell = { CELL_W, CELL_H } }
     page.themePicker = picker
     local Swatch, ShowSwatch = O.ThemeSwatch, O.ShowThemeSwatch     -- (Shared.lua: the setup uses the small kind too)
@@ -155,19 +155,23 @@ local function BuildLook(page)
             grid:ScrollToShow(math.floor((at - 1) / cols) * CELL_H, CELL_H)
         end
     end
-    -- 4 columns at the page's usual width, 3 and then 2 as it narrows; the preview keeps its 250
+    -- 4 columns at the window's usual width, 3 (and at last 2) as it narrows; the preview column takes
+    -- what is left, from 180 up to 250. (8: the grid's scroll track, drawn right of the grid.)
     function picker.Layout(w)
         w = (type(w) == "number" and w > 0) and w or 736
         picker.width = w
-        picker.cols = math.max(2, math.min(4, math.floor((w - PV_W - GAP - 8) / CELL_W)))
+        picker.cols = math.max(2, math.min(4, math.floor((w - PV_MIN - GAP - 8) / CELL_W)))
         picker.gridW = picker.cols * CELL_W
-        picker.previewX = w - PV_W
+        picker.pvW = math.max(PV_MIN, math.min(PV_W, w - picker.gridW - GAP - 8))
+        picker.previewX = w - picker.pvW
         grid:SetWidth(picker.gridW)
+        if picker.SizePreview then picker.SizePreview(picker.pvW) end
         picker.pv:ClearAllPoints()
         picker.pv:SetPoint("TOPLEFT", page, "TOPLEFT", picker.previewX, -TOP)
         Place()
     end
     page:HookScript("OnSizeChanged", function(_, w) if picker.pv then picker.Layout(w) end end)
+    page.FollowWidth = function(w) if picker.pv then picker.Layout(w) end end
 
     -- the family control
     local function ShowFamily(which)
@@ -228,6 +232,7 @@ local function BuildLook(page)
     pvName:SetPoint("TOPLEFT", sf, "BOTTOMLEFT", 0, -12)
     pvName:SetWidth(PV_W)
     pvName:SetJustifyH("LEFT")
+    if pvName.SetWordWrap then pvName:SetWordWrap(false) end      -- (one line: "In use now" sits under it)
     ns:Paint(pvName, "SetTextColor", "text")
     local pvNow = pv:CreateFontString(nil, "OVERLAY")
     ns:Font(pvNow, 12)
@@ -259,6 +264,15 @@ local function BuildLook(page)
     end)
     own:SetPoint("TOPLEFT", use, "BOTTOMLEFT", 0, -8)
     picker.own = own
+    -- the column's width: the sample frame's bars and the lines and buttons under it follow it
+    function picker.SizePreview(pw)
+        pv:SetWidth(pw); sf:SetWidth(pw)
+        pvName:SetWidth(pw); pvDesc:SetWidth(pw)
+        use:SetWidth(pw); own:SetWidth(pw)
+        local bar = math.max(60, pw - 64 - 22)
+        S.hpBack:SetWidth(bar); S.hp:SetWidth(math.floor(bar * 0.72))
+        S.mpBack:SetWidth(bar); S.mp:SetWidth(math.floor(bar * 0.51))
+    end
 
     Preview = function()
         local key = picker.picked

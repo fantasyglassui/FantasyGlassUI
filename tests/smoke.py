@@ -9480,6 +9480,14 @@ try("12.3 settings look: buttons and the window's corners", function()
         local wash = rawget(b1.wash, "rgba")
         if hex(wash) ~= "262b36" or wash[4] ~= 1 then error("under the mouse a lighter plate, got " .. hex(wash) .. "/" .. tostring(wash[4])) end
         if not rawget(out.plate, "gradient") then error("a button elsewhere keeps its lit edge") end
+        -- under the mouse its label is the look's text colour (#e9ecf3), not white; elsewhere white as before
+        local function Hovered(b)
+            rawset(b.text, "SetTextColor", function(x, r, g, bl) rawset(x, "rgb", { r, g, bl }) end)
+            for _, h in ipairs(handlers) do if h.self == b and h.name == "OnEnter" then h.fn(b); break end end
+            return rawget(b.text, "rgb") and hex(rawget(b.text, "rgb")) or "none"
+        end
+        if Hovered(b1) ~= "e9ecf3" then error("a hovered button's label in the window is #e9ecf3, got " .. Hovered(b1)) end
+        if Hovered(out) ~= "ffffff" then error("a hovered button's label elsewhere stays white, got " .. Hovered(out)) end
         local glassPlate, glassWash, glassOut = plate(b1), hex(wash) .. tostring(wash[4]), plate(out)
         ns.db.theme = "WARM"; ns:Retheme()
         if ns.style ~= "FANTASY" then error("WARM is a Fantasy theme") end
@@ -10206,31 +10214,197 @@ try("12.3 settings look: themes page", function()
             end
             if not found then error("the high-contrast theme " .. key .. " is a tile in its family") end
         end
-        -- the grid reflows: fewer columns when narrower, and no tile under the preview column
+        -- (the grid's reflow at the window's real widths: "12.3 settings look: pages follow the window's width")
         pk.family = "GLASS"; pk.Draw()
-        pk.Layout(736)
-        local wide = pk.cols
-        if wide ~= 4 then error("four columns at the usual width, got " .. wide) end
-        local seen = { [wide] = true }
-        for _, w in ipairs({ 736, 650, 560, 500 }) do
-            pk.Layout(w)
-            seen[pk.cols] = true
-            if pk.cols > wide then error("never more columns than at the usual width") end
-            if pk.gridW + 8 > pk.previewX then error("at width " .. w .. " the grid reaches the preview column: " .. pk.gridW .. " vs " .. pk.previewX) end
-            for i, key in ipairs(pk.list) do
-                local b = pk.tiles[i]
-                if b.px + 104 > pk.gridW then error("a tile sticks out of the grid at width " .. w) end
-            end
-        end
-        pk.Layout(500)
-        if pk.cols >= wide then error("fewer columns when narrow, got " .. pk.cols) end
-        if not (seen[3] and seen[2]) then error("the grid goes 4, 3, 2 columns") end
         pk.Layout(736)
         ns:ToggleConfig()
     end)
     for name in pairs(ns.db.customThemes) do ns:DeleteCustomTheme(name) end
     ns.db.theme, ns.db.accent = keep.theme, keep.accent
     ns:Retheme()
+    if not ok then error(err, 0) end
+end)
+try("12.3 settings look: pages follow the window's width", function()
+    local keep = { theme = ns.db.theme, lang = ns.root.language, size = ns.root.optionsSize, sec = ns.root.optionsSection, mode = ns.root.settingsMode, scale = ns.fontScale }
+    local realCF = env.CreateFrame
+    -- stand-in frames that keep their width, height, anchors, scripts and text, so a layout can be measured
+    local function Geo(f, parent)
+        local st = { w = nil, h = nil, pts = {}, shown = true, scripts = {} }
+        rawset(f, "geo", st)
+        rawset(f, "GetParent", function() return parent end)
+        rawset(f, "SetParent", function(_, p) parent = p end)
+        rawset(f, "SetSize", function(_, w, h) st.w, st.h = w, h end)
+        rawset(f, "SetWidth", function(_, w) st.w = w end)
+        rawset(f, "SetHeight", function(_, h) st.h = h end)
+        rawset(f, "GetWidth", function() return st.w or 0 end)
+        rawset(f, "GetHeight", function() return st.h or 0 end)
+        rawset(f, "ClearAllPoints", function() st.pts = {} end)
+        rawset(f, "SetPoint", function(_, point, a, b, c, d)
+            local rel, x, y = a, b, c
+            if type(a) ~= "table" then rel, x, y = parent, a, b end
+            if type(b) == "string" then x, y = c, d end
+            st.pts[point] = { rel = rel, x = tonumber(x) or 0, y = tonumber(y) or 0 }
+        end)
+        rawset(f, "Show", function() st.shown = true end)
+        rawset(f, "Hide", function() st.shown = false end)
+        rawset(f, "SetShown", function(_, v) st.shown = v and true or false end)
+        rawset(f, "IsShown", function() return st.shown end)
+        rawset(f, "SetScript", function(_, name, fn) st.scripts[name] = fn end)
+        rawset(f, "HookScript", function(_, name, fn) local old = st.scripts[name]; st.scripts[name] = old and function(...) old(...); fn(...) end or fn end)
+        rawset(f, "GetScript", function(_, name) return st.scripts[name] end)
+        rawset(f, "SetResizeBounds", function(_, ...) st.bounds = { ... } end)
+        return f
+    end
+    local function Region(owner)
+        local t = Geo(newmock(), owner)
+        local st = rawget(t, "geo")
+        rawset(t, "SetText", function(_, v) st.text = v end)
+        rawset(t, "GetText", function() return st.text end)
+        rawset(t, "GetStringWidth", function() return #(tostring(st.text or ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) * 6 end)
+        rawset(t, "GetStringHeight", function()                  -- (14 px a line, as many lines as the text takes at its width)
+            local text = tostring(st.text or "")
+            if text == "" then return 0 end
+            local w = (st.w and st.w > 0) and st.w or 400
+            return math.max(1, math.ceil(#text * 6 / w)) * 14
+        end)
+        return t
+    end
+    local function W(f) return rawget(f, "geo").w or 0 end
+    local function Pt(f, p) return rawget(f, "geo").pts[p] end
+    local ok, err = pcall(function()
+        ns.db.theme, ns.root.language, ns.root.optionsSize, ns.root.settingsMode = "MIDNIGHT", "enUS", nil, "all"
+        ns:Retheme()
+        local O = ns.optUI
+        if O.frame and O.frame:IsShown() then ns:ToggleConfig() end
+        O.frame = nil
+        env.CreateFrame = function(kind, name, parent, ...)
+            local f = Geo(realCF(kind, name, parent, ...), parent)
+            rawset(f, "CreateFontString", function(self) return Region(self) end)
+            rawset(f, "CreateTexture", function(self) return Region(self) end)
+            return f
+        end
+        ns:ToggleConfig("home")
+        -- the window: 1000 wide to start with, and as narrow as 820
+        local bounds = rawget(O.frame, "geo").bounds
+        if not bounds or bounds[1] ~= 820 or O.MIN_W ~= 820 then error("the window's minimum width is 820, got " .. tostring(bounds and bounds[1])) end
+        if W(O.frame) ~= 1000 then error("the window starts 1000 wide, got " .. W(O.frame)) end
+        local function Size(w)
+            O.frame:SetSize(w, 680)
+            local f = O.frame:GetScript("OnSizeChanged")
+            if type(f) ~= "function" then error("the window follows its size") end
+            f(O.frame, w, 680)
+            runTimers()
+            if O.pageWidth ~= O.PageWidth(w) or W(O.sections) ~= O.pageWidth or W(O.home) ~= O.pageWidth then error("at " .. w .. " the pages are as wide as the window gives them") end
+            return O.pageWidth
+        end
+        local function Inside(what, left, width, pw)
+            if left < 0 or left + width > pw + 0.5 then error(what .. " leaves the page: " .. left .. " + " .. width .. " of " .. pw) end
+        end
+        local cols = {}
+        for _, w in ipairs({ 1000, 820 }) do
+            -- Home: the quick cards, New and Ask the guide inside the page
+            O.Open("home")
+            local pw = Size(w)
+            local home = O.home
+            if home.width ~= pw then error("Home is laid out for the page's width at " .. w) end
+            for _, c in ipairs(home.quickCards) do
+                local at = Pt(c, "TOPLEFT")
+                Inside("a quick card at " .. w, at.x, W(c), pw)
+            end
+            Inside("the New card at " .. w, 0, W(home.newCard), pw)
+            Inside("the Ask card at " .. w, 0, W(home.askCard), pw)
+            local T = ns.toolsPage
+            -- the guide's answer stops short of "Show me" (it was ~10 px under it)
+            local af = W(T.askFrame)
+            if 16 + af > W(home.askCard) then error("the question box is inside its card at " .. w) end
+            if 2 + W(T.answer) + 12 > af - W(T.showButton) then error("at " .. w .. " the answer runs under Show me: " .. W(T.answer) .. " of " .. af) end
+            if Pt(T.showButton, "TOPRIGHT").rel ~= T.askFrame then error("Show me sits at the box's right") end
+            -- the Ask card is as tall as what is in it: a long answer makes it taller
+            T.answer:SetText("short")
+            home.Layout()
+            local short = home.askCardHeight
+            T.answer:SetText(string.rep("A long answer from the guide. ", 30))
+            home.Layout()
+            local long = home.askCardHeight
+            if not (long > short) or rawget(home.askCard, "geo").h ~= long then error("the Ask card grows with its answer: " .. tostring(short) .. " -> " .. tostring(long)) end
+            if long == 290 or short == 290 then error("the Ask card is not a fixed 290") end
+            T.answer:SetText("")
+            home.Layout()
+            local empty = home.askCardHeight
+            T.Ask("how do I move the action bars")                   -- (asking lays Home out again for the answer)
+            if not (home.askCardHeight > empty) then error("the Ask card follows a new answer: " .. empty .. " -> " .. home.askCardHeight) end
+            T.answer:SetText("")
+            home.Layout()
+            cols["home" .. w] = home.cols
+            -- a section: the card, the rows and the blocks inside the page
+            O.Open("frames:Your frames")
+            local page = O.sections
+            if W(page) ~= pw then error("the section page is as wide as the window gives it") end
+            local rowW = pw - 12
+            local c = Pt(page.card, "TOPRIGHT")
+            if not page.card:IsShown() or Pt(page.card, "TOPLEFT").x ~= 0 or not c or c.rel ~= page or c.x ~= -12 then error("the rows' card spans the page at " .. w) end
+            local n = 0
+            for _, name in ipairs(page.shownKeys) do
+                local row = page.rows[name]
+                n = n + 1
+                local r = Pt(row, "RIGHT")
+                if Pt(row, "TOPLEFT").x ~= 0 or not r or r.x ~= -12 then error(name .. "'s row spans the card at " .. w) end
+                for _, part in ipairs({ "title", "desc" }) do
+                    local fs = row[part]
+                    if fs and rawget(fs, "geo") and W(fs) > 0 then
+                        local at = Pt(fs, "TOPLEFT")
+                        Inside(name .. "'s " .. part .. " at " .. w, at and at.x or 0, W(fs), rowW - ((part == "title" or row.switch and row.switch.key == name) and (row.reserve or 0) or 0))
+                    end
+                end
+            end
+            if n == 0 then error("rows shown") end
+            local blocks = 0
+            for i = 1, page.blockUsed do
+                local bc = page.blockCards[i]
+                local r = Pt(bc, "TOPRIGHT")
+                if not r or r.x ~= -12 then error("a block's card spans the page at " .. w) end
+                blocks = blocks + 1
+            end
+            if blocks == 0 or page.blockInner.left + page.blockInner.width > rowW - 18 + 0.5 then error("a block's content sits inside its card at " .. w) end
+            if page.sampleButton:IsShown() and page.introWidth + 170 + 24 > rowW then error("the line under the title runs under Show sample frames at " .. w) end
+            -- the footer: its two ends do not meet
+            local foot = O.footer
+            if not O.resetButton:IsShown() or not foot or foot.left + foot.right + 24 > w then error("the footer fits at " .. w .. ": " .. tostring(foot and foot.left) .. " + " .. tostring(foot and foot.right)) end
+            -- the Themes section: the grid's columns, and no tile under the preview column
+            O.Open("look:Themes")
+            local pk = O.pages.look.sheet.themePicker
+            local inner = page.blockInner.width
+            if pk.width ~= inner then error("the theme grid is laid out for its card's width at " .. w .. ": " .. tostring(pk.width) .. " vs " .. inner) end
+            cols[w] = pk.cols
+            if pk.gridW + 8 + 8 > pk.previewX then error("at " .. w .. " the grid reaches the preview column: " .. pk.gridW .. " vs " .. pk.previewX) end
+            if pk.previewX + pk.pvW > pk.width or W(pk.pv) ~= pk.pvW or W(pk.use) ~= pk.pvW then error("the preview column fits at " .. w) end
+            for i = 1, #pk.list do
+                local b = pk.tiles[i]
+                if b.px + W(b) > pk.gridW then error("a tile sticks out of the grid at " .. w) end
+                if W(pk.grid) + 8 > pk.previewX then error("the grid's scroll track reaches the preview at " .. w) end
+            end
+        end
+        if cols[1000] ~= 4 or cols[820] ~= 3 then error("the theme grid has 4 columns at 1000 and 3 at 820, got " .. tostring(cols[1000]) .. " and " .. tostring(cols[820])) end
+        if cols.home1000 ~= 3 or cols.home820 ~= 2 then error("Home's quick cards: 3 to a row at 1000, 2 at 820") end
+        if ns.homeCards ~= nil then error("the old Home cards list is gone (Home shows the quick switches)") end
+        -- in a narrow window a long Reset label is cut to "Reset", and its tooltip still names the category;
+        -- with a reload waiting, the note too finds room
+        Size(1000)
+        O.Open("frames:Your frames")
+        if rawget(O.resetButton.text, "geo").text ~= O.resetButton.suiFull then error("at 1000 the Reset label is whole") end
+        Size(820)
+        O.Open("frames:Your frames")
+        if rawget(O.resetButton.text, "geo").text ~= ns:Tr("Reset") or not tostring(O.resetButton.suiFull):find("Frames and bars", 1, true) then error("the narrow footer's Reset label, got " .. tostring(rawget(O.resetButton.text, "geo").text)) end
+        O.NeedReload("testA"); O.NeedReload("testB")
+        local foot = O.footer
+        if foot.left + foot.right + 24 > 820 then error("with the reload note the footer still fits at 820: " .. foot.left .. " + " .. foot.right) end
+        if O.frame.version:IsShown() then error("in a narrow window the version gives way first") end
+        ns:ToggleConfig()
+    end)
+    env.CreateFrame = realCF
+    ns.db.theme, ns.root.language, ns.root.optionsSize, ns.root.optionsSection, ns.root.settingsMode, ns.fontScale = keep.theme, keep.lang, keep.size, keep.sec, keep.mode, keep.scale
+    ns:Retheme()
+    if ns.optUI.frame and ns.optUI.frame:IsShown() then ns:ToggleConfig() end
     if not ok then error(err, 0) end
 end)
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)

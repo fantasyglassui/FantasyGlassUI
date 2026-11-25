@@ -660,6 +660,7 @@ function ns.BuildToolsPage(page)
         else
             show:Hide()
         end
+        if T.OnAnswer then pcall(T.OnAnswer) end             -- (Home sizes its card to the answer)
         return best
     end
     T.Ask = Ask
@@ -670,6 +671,34 @@ function ns.BuildToolsPage(page)
     show:SetPoint("TOPLEFT", 628, -32)
     show:Hide()
     T.askBox, T.showButton = ask, show
+    T.answerTitle, T.answer, T.also = answerTitle, answer, also
+    -- (12.3) the box and its answer at a width: the answer stops short of "Show me" at its right, and
+    -- the frame is as tall as the answer turns out to be
+    local SHOW_W, SHOW_GAP = 100, 12
+    local function Height(fs, size, width)
+        local h = fs.GetStringHeight and fs:GetStringHeight()
+        if type(h) == "number" and h > 0 then return h end
+        local text = fs.GetText and fs:GetText()
+        if type(text) ~= "string" or text == "" then return 0 end
+        local scale = ns.fontScale or 1
+        return math.max(1, math.ceil(#text * 0.5 * size * scale / math.max(80, width))) * size * scale * 1.25
+    end
+    function T.LayoutAsk(w)
+        w = math.max(300, tonumber(w) or 736)
+        askFrame:SetWidth(w)
+        ask:SetWidth(w - 108)
+        show:ClearAllPoints()
+        show:SetPoint("TOPRIGHT", askFrame, "TOPRIGHT", 0, -32)
+        local textW = w - 2 - SHOW_W - SHOW_GAP
+        answerTitle:SetWidth(textW); answer:SetWidth(textW); also:SetWidth(textW)
+        T.answerWidth = textW
+        local alsoH = Height(also, 11, textW)
+        local h = 50 + Height(answer, 11, textW) + ((alsoH > 0) and (4 + alsoH) or 0)
+        h = math.max(56, math.ceil(h))
+        askFrame:SetHeight(h)
+        T.askHeight = h
+        return h
+    end
 
     -- Suggested for your class (shown on Home) -------------------------------------------------
     local suggestFrame = CreateFrame("Frame", nil, page)
@@ -698,6 +727,27 @@ function ns.BuildToolsPage(page)
     end)
     turnOn:SetPoint("TOPLEFT", 480, 0)
     T.DrawSuggest, T.class = DrawSuggest, class
+    T.suggestText, T.turnOn = suggest, turnOn
+    -- (12.3) the suggestions at a width: the list, and "Turn these on" at its right; as tall as the list
+    function T.LayoutSuggest(w)
+        w = math.max(300, tonumber(w) or 736)
+        suggestFrame:SetWidth(w)
+        local textW = math.min(460, w - 200 - 20)
+        suggest:SetWidth(textW)
+        turnOn:ClearAllPoints()
+        turnOn:SetPoint("TOPRIGHT", suggestFrame, "TOPRIGHT", 0, 0)
+        local h = suggest.GetStringHeight and suggest:GetStringHeight()
+        if type(h) ~= "number" or h <= 0 then
+            local text = suggest.GetText and suggest:GetText()
+            local n = 1
+            if type(text) == "string" then for _ in text:gmatch("\n") do n = n + 1 end end
+            h = n * 11 * (ns.fontScale or 1) * 1.25
+        end
+        h = math.max(24, math.ceil(h))
+        suggestFrame:SetHeight(h)
+        T.suggestHeight = h
+        return h
+    end
 
     -- Your lists and your rules, one block each (shown in their sections) -----------------------
     T.listBlocks, T.ruleBlocks = {}, {}

@@ -475,6 +475,8 @@ local function BuildSections(page)
         local inner = host.area
         Lend(inner, y, height)
         inner:SetWidth(BW())
+        sheet:SetWidth(BW())                                  -- (the lent page follows the card's width: the theme grid reflows)
+        if sheet.FollowWidth then pcall(sheet.FollowWidth, BW()) end
         inner:SetBand(top, height)
         lent[#lent + 1] = Wheel(inner)
         lent[#lent + 1] = function() inner:SetBand(nil) end
@@ -600,7 +602,8 @@ local function BuildSections(page)
         if ns.settingRows[name] then return true end
         return not ns:SettingsSimple() or ns.simpleFeatures[name] == true
     end
-    function page.Show(sec)
+    function page.Show(sec, keepScroll)                       -- (keepScroll: laid out again where it is, for a new width)
+        local was = keepScroll and area.offset or 0
         GiveBack()
         page.focused = nil
         if page.focusRing then page.focusRing:Hide() end
@@ -620,15 +623,22 @@ local function BuildSections(page)
         intro:SetText(ns:Tr(sec.category.desc or ""))
         local resetBtn = O.resetButton
         if resetBtn then
-            resetBtn.text:SetText(format(ns:Tr("Reset %s to how it came"), ns:Tr(sec.category.title)))
+            resetBtn.suiFull = format(ns:Tr("Reset %s to how it came"), ns:Tr(sec.category.title))
+            resetBtn.text:SetText(resetBtn.suiFull)
             resetBtn.suiArmed, resetBtn.suiLabel = false, nil
             local w = resetBtn.text.GetStringWidth and resetBtn.text:GetStringWidth()
             if type(w) == "number" and w > 0 then resetBtn:SetWidth(math.min(260, math.floor(w + 24))) end
             resetBtn:SetShown(not sec.category.noReset and #(sec.category.sections or {}) > 0 and O.CategoryHasSettings(sec.category))
+            if O.LayoutFooter then O.LayoutFooter() end           -- (in a narrow window the label is cut to "Reset")
         end
         sampleBtn:SetShown(sec.category.samples and ns.TogglePreview ~= nil)
         page.DrawSamples()
-        local top = -92
+        -- the line under the title keeps clear of the sample frames button, and the card starts under it
+        local introW = math.min(520, RowWidth() - (sampleBtn:IsShown() and (170 + 24) or 0))
+        intro:SetWidth(introW)
+        page.introWidth = introW
+        local introH = (sec.category.desc and sec.category.desc ~= "") and TextHeight(intro, 13, introW) or 0
+        local top = math.min(-92, -(54 + introH + 16))
         local y = top
         local shown, switches = {}, 0
         for _, name in ipairs(sec.rows) do
@@ -676,7 +686,7 @@ local function BuildSections(page)
         page.Dim()
         page.contentHeight = -y + 20
         area:SetContentHeight(page.contentHeight)
-        area:ScrollTo(0)
+        area:ScrollTo(was)
         return #shown
     end
     page.GiveBack = GiveBack
