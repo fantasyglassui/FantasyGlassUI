@@ -59,7 +59,9 @@ with tempfile.TemporaryDirectory() as tmp:
     # a plain build: no plan folder, no code header, no link to it, none of the page's own words
     if any(n.startswith("plan/") for n in fa):
         fail("a plain build has a plan/ folder")
-    COMMON = {"Time", "Levels", "Language"}            # (plain words the site uses itself)
+    # The scan is of whole English phrases of words.json. Three are single everyday words that the public site already uses
+    # for its own reasons (so they prove nothing about the page); every other phrase must be absent from a plain build.
+    COMMON = {"Time", "Levels", "Language"}
     english = [tr["en"] for tr in words.values() if tr["en"] not in COMMON]
     for name, p in fa.items():
         t = text(p)

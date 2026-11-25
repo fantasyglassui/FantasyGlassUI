@@ -90,12 +90,15 @@ var WORDS = /*@WORDS@*/;
 
   function minutes(s) {
     var m = Math.round(s / 60), h = Math.floor(m / 60);
-    return h > 0 ? h + " h " + (m % 60) + " min" : m + " min";
+    return h > 0 ? T("%d h %d min").replace("%d", h).replace("%d", m % 60) : T("%d min").replace("%d", m);
+  }
+  function number(n) {                                                 // (in the language picked on the page, not the browser's)
+    try { return new Intl.NumberFormat(lang).format(n); } catch (e) { return String(n); }
   }
   function drawTotals(plan) {
     var t = FGPlan.totals(plan), box = $("totals");
     box.textContent = "";
-    [["Experience", t.xp.toLocaleString()], ["Time", minutes(t.seconds)], ["Levels", t.from + " → " + t.to],
+    [["Experience", number(t.xp)], ["Time", minutes(t.seconds)], ["Levels", t.from + " → " + t.to],
      ["Flights", String(t.flights)], ["Crossings", String(t.crossings)], ["Steps", String(t.steps)]].forEach(function (r) {
       var d = el("div"); d.appendChild(el("dt", "", T(r[0]))); d.appendChild(el("dd", "", r[1])); box.appendChild(d);
     });
@@ -103,11 +106,16 @@ var WORDS = /*@WORDS@*/;
   function esc(t) { return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
   function drawPanel(p) {                                              // (the markup is built from numbers and escaped text only)
     var wrap = el("div", "panel"), byN = {}, d = "", m = "";
-    p.stops.forEach(function (st, i) { byN[st.n] = st; d += (i ? " L" : "M") + st.x + " " + st.y; });
-    if (p.stops.length > 1) m += '<path d="' + d + '" fill="none" stroke="#f0c66b" stroke-width="0.8"/>';
-    p.legs.forEach(function (lg) {                                     // (a leg inside this zone is drawn dashed; one from another zone is marked between the panels)
+    var inside = {};
+    p.legs.forEach(function (lg) { if (lg.from === lg.to) inside[lg.a + ":" + lg.b] = true; });
+    p.stops.forEach(function (st, i) {                                 // (the solid route skips a leg made by flying, sailing or the hearthstone: that is drawn dashed, on top)
+      byN[st.n] = st;
+      if (i && !inside[p.stops[i - 1].n + ":" + st.n]) d += "M" + p.stops[i - 1].x + " " + p.stops[i - 1].y + " L" + st.x + " " + st.y + " ";
+    });
+    if (d) m += '<path d="' + d + '" fill="none" stroke="#f0c66b" stroke-width="0.8"/>';
+    p.legs.forEach(function (lg) {                                     // (a leg inside this zone; one from another zone is marked between the panels)
       if (lg.from === lg.to && byN[lg.a] && byN[lg.b]) {
-        m += '<line x1="' + byN[lg.a].x + '" y1="' + byN[lg.a].y + '" x2="' + byN[lg.b].x + '" y2="' + byN[lg.b].y + '" stroke="#8fd3ff" stroke-width="0.8" stroke-dasharray="2 2"/>';
+        m += '<line x1="' + byN[lg.a].x + '" y1="' + byN[lg.a].y + '" x2="' + byN[lg.b].x + '" y2="' + byN[lg.b].y + '" stroke="#8fd3ff" stroke-width="1" stroke-dasharray="2 2"/>';
       }
     });
     p.stops.forEach(function (st) {

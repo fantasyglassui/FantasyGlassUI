@@ -207,5 +207,27 @@
   "it": "Lingua",
   "ko": "언어",
   "zh": "语言"
+ },
+ "%d h %d min": {
+  "en": "%d h %d min",
+  "de": "%d Std. %d Min.",
+  "fr": "%d h %d min",
+  "es": "%d h %d min",
+  "ru": "%d ч %d мин",
+  "pt": "%d h %d min",
+  "it": "%d h %d min",
+  "ko": "%d시간 %d분",
+  "zh": "%d小时%d分钟"
+ },
+ "%d min": {
+  "en": "%d min",
+  "de": "%d Min.",
+  "fr": "%d min",
+  "es": "%d min",
+  "ru": "%d мин",
+  "pt": "%d min",
+  "it": "%d min",
+  "ko": "%d분",
+  "zh": "%d分钟"
  }
 }

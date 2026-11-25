@@ -14678,6 +14678,7 @@ try("13.5 together C: the plan code", function()
         if one("|cff00ff00Kill|r 8 wolves") ~= "Kill 8 wolves" then error("escapes are cleaned: " .. tostring(one("|cff00ff00Kill|r 8 wolves"))) end
         if one("a|Tinterface\\icons\\x:0|tb|Hitem:1|h[c]|hd") ~= "ab[c]d" then error("textures and links are cleaned: " .. tostring(one("a|Tinterface\\icons\\x:0|tb|Hitem:1|h[c]|hd"))) end
         if one("tab\there\1") ~= "tab here" then error("control characters are cleaned: " .. tostring(one("tab\there\1"))) end
+        if one("a|nb|Aatlas-name:12:12|ac") ~= "abc" then error("|n and atlas escapes are cleaned: " .. tostring(one("a|nb|Aatlas-name:12:12|ac"))) end
         if #one(string.rep("a", 300)) ~= 80 then error("a long text is cut to 80 bytes") end
         local cut = one(string.rep("\195\169", 60))
         if #cut ~= 80 or cut:sub(-2) ~= "\195\169" then error("a cut never splits a character: " .. #cut) end
@@ -14685,7 +14686,7 @@ try("13.5 together C: the plan code", function()
         for i = 1, 70 do steps70[i] = { kind = "note", text = "n" .. i } end
         local big = ns.PlannerReadPlanCode(ns.PlannerPlanCode({ steps = steps70 }, summary))
         if not (big and #big.st == 60 and big.more == 10 and big.st[60].t == "n60") then error("60 steps and more = 10") end
-        if ns.PlannerReadPlanCode(code).more ~= nil then error("no more when all fit") end
+        if ns.PlannerReadPlanCode(code).more ~= 0 then error("no more when all fit") end
         -- Share plan
         local shown
         ns.ShowCopyBox = function(_, text, caption) shown = { text, caption } end
@@ -14712,8 +14713,25 @@ try("13.5 together C: the plan code", function()
         if ns.PlannerCodeFollowing() then error("not following") end
         -- the Guide tab's button
         ns.GuideState = function() return { name = ns.GUIDE_PLANNED, at = 1, summary = summary } end
+        ns.GuideState = function() return nil end
         local page = env.CreateFrame("Frame")
-        ns.BuildGuidePage(page)
+        local T = ns.BuildGuidePage(page)
+        local share = T and T.sharePlanButton
+        if not share then error("the Guide tab has the Share plan button") end
+        local alpha
+        rawset(share, "SetAlpha", function(_, a) alpha = a end)
+        page.Refresh()
+        if alpha ~= 0.45 then error("no plan: the Share plan button is greyed: " .. tostring(alpha)) end
+        local f = share:GetScript("OnClick")
+        if type(f) ~= "function" then for _, h in ipairs(handlers) do if h.self == share and h.name == "OnClick" then f = h.fn end end end
+        shown = nil
+        f(share)
+        if shown ~= nil then error("greyed: the click does nothing") end
+        ns.GuideState = function() return { name = ns.GUIDE_PLANNED, at = 1, summary = summary } end
+        page.Refresh()
+        if alpha ~= 1 then error("following a plan: the button is enabled: " .. tostring(alpha)) end
+        f(share)
+        if not (shown and shown[1] == code) then error("the button shares the plan") end
         -- Profiles: the encoder is the one theme codes use
         local t = { name = "x", n = { 1, 2.5, -3 }, s = "a:b{}", f = false, deep = { a = { b = { c = true } } } }
         local back, nextAt = ns.ShareDecode(ns.ShareEncode(t), 1)
@@ -14727,6 +14745,11 @@ try("13.5 together C: the plan code", function()
         if not same(t, back) or nextAt ~= #ns.ShareEncode(t) + 1 then error("ShareDecode(ShareEncode(t), 1) gives t back") end
         if ns.ShareDecode("{S1:", 1) ~= nil or ns.ShareDecode("Q", 1) ~= nil or ns.ShareDecode(nil, 1) ~= nil then error("a bad text decodes to nil, not an error") end
         if ns.ShareEncode({ a = 1, b = "x" }) ~= "{S1:aN1;S1:bS1:x}" then error("the encoding's bytes: " .. ns.ShareEncode({ a = 1, b = "x" })) end
+        -- a theme code saved before this change (made by the old Encode, run on its own): the same bytes now
+        local pinned = "SUIT1!{S6:accent{N1;N0.1;N2;N0.2;N3;N0.3;}S1:nN-3;S4:nameS6:PinnedS2:noFS2:okTS5:panel{N1;N0.25;N2;N0.5;N3;N0.125;}S3:rim{N1;N1;N2;N0.75;N3;N0;}S5:styleS5:GLASS}"
+        local pinnedData, pinnedStop = ns.ShareDecode(pinned, 7)
+        if not pinnedData or pinnedStop ~= #pinned + 1 or "SUIT1!" .. ns.ShareEncode(pinnedData) ~= pinned then error("a theme code saved before the change decodes and encodes to the same bytes") end
+        if "SUIT1!" .. ns.ShareEncode({ name = "Pinned", panel = { 0.25, 0.5, 0.125 }, rim = { 1, 0.75, 0 }, accent = { 0.1, 0.2, 0.3 }, style = "GLASS", n = -3, ok = true, no = false }) ~= pinned then error("the same table gives the old bytes") end
         local theme = ns:ExportTheme()
         local data, stop = ns.ShareDecode(theme, 7)
         if theme:sub(1, 6) ~= "SUIT1!" or ns.ShareEncode(data) ~= theme:sub(7) or stop ~= #theme + 1 then error("a theme exports the same bytes through the exported encoder") end

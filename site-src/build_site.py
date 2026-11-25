@@ -9,7 +9,10 @@ REPO = os.path.normpath(S + '/..')
 # --plan: also write the plan page (plan_page.py) into the output; nothing links to it.
 _args = sys.argv[1:]
 OUT = None
-if '--out' in _args: OUT = os.path.abspath(_args[_args.index('--out') + 1])
+if '--out' in _args:
+    _i = _args.index('--out')
+    if _i + 1 >= len(_args) or _args[_i + 1].startswith('--'): sys.exit('build_site.py: --out needs a folder: --out DIR')
+    OUT = os.path.abspath(_args[_i + 1])
 WITH_PLAN = '--plan' in _args
 from lang_meta import META, OG_LOCALE
 D = S + '/site'

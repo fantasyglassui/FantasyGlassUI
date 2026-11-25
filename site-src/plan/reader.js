@@ -35,11 +35,10 @@ var FGPlan = (function () {
       }
       if (c === "{") {
         i++;
-        var t = Object.create(null);
+        var t = { s: Object.create(null), n: Object.create(null) };      // (string keys and number keys apart, as in the game)
         while (i >= bytes.length ? fail() : bytes[i] !== 125) {
           var k = one(depth + 1), v = one(depth + 1);
-          if (typeof k !== "string" && typeof k !== "number") fail();
-          t[k] = v;
+          if (typeof k === "string") t.s[k] = v; else if (typeof k === "number") t.n[String(k)] = v; else fail();
         }
         i++; return t;
       }
@@ -50,41 +49,55 @@ var FGPlan = (function () {
     return v;
   }
 
-  // A table keyed 1..n becomes an array in key order; anything else is not a list (undefined).
+  // The reader and the add-on's own refuse exactly the same codes (tests/plan_codes.txt): a list is a table
+  // keyed 1..n and nothing else; a field that is there must have its type; text after the code is damage.
+  function isTable(t) { return !!t && typeof t === "object" && !!t.s && !!t.n; }
   function list(t) {
-    if (!t || typeof t !== "object") return undefined;
-    var keys = Object.keys(t), out = [], n = keys.length;
-    for (var k = 1; k <= n; k++) { if (!(String(k) in t)) return undefined; out.push(t[String(k)]); }
+    if (!isTable(t) || Object.keys(t.s).length > 0) return undefined;
+    var n = Object.keys(t.n).length, out = [];
+    for (var k = 1; k <= n; k++) { if (!(String(k) in t.n)) return undefined; out.push(t.n[String(k)]); }
     return out;
   }
-  function num(v, dflt) { return typeof v === "number" && isFinite(v) ? v : dflt; }
+  // A number that may be left out (dflt); undefined when it is there and not a number.
+  function opt(v, dflt) {
+    if (v === undefined) return dflt;
+    return typeof v === "number" && isFinite(v) ? v : undefined;
+  }
+  var BAD = { ok: false, why: "damaged" };
 
   function read(code) {
     if (typeof code !== "string") return { ok: false, why: "empty" };
-    code = code.replace(/^\s+|\s+$/g, "");
+    code = code.replace(/^[ \t\r\n\f\v]+|[ \t\r\n\f\v]+$/g, "");
     if (code === "") return { ok: false, why: "empty" };
     if (code.slice(0, HEADER.length) !== HEADER) {
-      return { ok: false, why: "kind", other: /^[A-Za-z]+[0-9]+!/.test(code) };      // (other: a theme or layout code)
+      var newer = /^SUIP([0-9]+)!/.exec(code);
+      if (newer && parseInt(newer[1], 10) > 1) return { ok: false, why: "version" };
+      return { ok: false, why: "kind", other: !newer && /^[A-Za-z]+[0-9]+!/.test(code) };      // (other: a theme or layout code)
     }
-    var data, bad = { ok: false, why: "damaged" };
-    try { data = decode(new TextEncoder().encode(code), new TextEncoder().encode(HEADER).length); } catch (e) { return bad; }
-    if (!data || typeof data !== "object" || typeof data.v !== "number") return bad;
-    if (data.v > 1) return { ok: false, why: "version" };
-    if (data.v !== 1) return bad;
-    var lv = list(data.lv), z = list(data.z), st = list(data.st);
-    if (!lv || lv.length !== 2 || !z || !st) return bad;
-    var plan = { v: 1, lv: [num(lv[0], 0), num(lv[1], 0)], xp: num(data.xp, 0), s: num(data.s, 0), fl: num(data.fl, 0), cr: num(data.cr, 0),
-                 more: num(data.more, 0), z: [], st: [] };
+    var data;
+    try { data = decode(new TextEncoder().encode(code), HEADER.length); } catch (e) { return BAD; }
+    if (!isTable(data) || typeof data.s.v !== "number") return BAD;
+    if (data.s.v > 1) return { ok: false, why: "version" };
+    if (data.s.v !== 1) return BAD;
+    var lv = list(data.s.lv), z = list(data.s.z), st = list(data.s.st);
+    if (!lv || lv.length !== 2 || !z || !st) return BAD;
+    if (!isFinite(lv[0]) || !isFinite(lv[1]) || typeof lv[0] !== "number" || typeof lv[1] !== "number") return BAD;
+    var plan = { v: 1, lv: [lv[0], lv[1]], xp: opt(data.s.xp, 0), s: opt(data.s.s, 0), fl: opt(data.s.fl, 0), cr: opt(data.s.cr, 0),
+                 more: opt(data.s.more, 0), z: [], st: [] };
+    if (plan.xp === undefined || plan.s === undefined || plan.fl === undefined || plan.cr === undefined || plan.more === undefined) return BAD;
     for (var a = 0; a < z.length; a++) {
-      if (!z[a] || typeof z[a] !== "object" || typeof z[a].n !== "string") return bad;
-      plan.z.push({ m: num(z[a].m, null), n: z[a].n });
+      if (!isTable(z[a]) || typeof z[a].s.n !== "string") return BAD;
+      var m = opt(z[a].s.m, null);
+      if (m === undefined) return BAD;
+      plan.z.push({ m: m, n: z[a].s.n });
     }
     for (var b = 0; b < st.length; b++) {
       var s = st[b];
-      if (!s || typeof s !== "object" || typeof s.k !== "string" || !Object.prototype.hasOwnProperty.call(KINDS, s.k) || typeof s.t !== "string") return bad;
-      var zi = s.z === undefined ? null : s.z;
-      if (zi !== null && (typeof zi !== "number" || zi < 1 || zi > plan.z.length || zi % 1 !== 0)) return bad;
-      plan.st.push({ k: s.k, t: s.t, z: zi, x: num(s.x, null), y: num(s.y, null) });
+      if (!isTable(s) || typeof s.s.k !== "string" || !Object.prototype.hasOwnProperty.call(KINDS, s.s.k) || typeof s.s.t !== "string") return BAD;
+      var zi = s.s.z === undefined ? null : s.s.z, x = opt(s.s.x, null), y = opt(s.s.y, null);
+      if (x === undefined || y === undefined) return BAD;
+      if (zi !== null && (typeof zi !== "number" || zi < 1 || zi > plan.z.length || zi % 1 !== 0)) return BAD;
+      plan.st.push({ k: s.s.k, t: s.s.t, z: zi, x: x, y: y });
     }
     return { ok: true, plan: plan };
   }

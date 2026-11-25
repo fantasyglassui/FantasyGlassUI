@@ -17,7 +17,7 @@ local MAX_STEPS, MAX_TEXT, MAX_ZONE = 60, 80, 40
 -- (never in the middle of a UTF-8 character).
 local function Clean(text, limit)
     text = tostring(text or "")
-    text = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|T.-|t", ""):gsub("|H.-|h", ""):gsub("|h", ""):gsub("|", "")
+    text = text:gsub("|A.-|a", ""):gsub("|n", ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|T.-|t", ""):gsub("|H.-|h", ""):gsub("|h", ""):gsub("|", "")
     text = text:gsub("[%z\1-\31\127]", " ")
     text = ns.Trim(text)
     if #text > limit then
@@ -66,30 +66,62 @@ function ns.PlannerPlanCode(guide, summary)
     return ns.PLANNER_CODE_HEADER .. ns.ShareEncode(data)
 end
 
+-- The reader and the website's reader (site-src/plan/reader.js) refuse exactly the same codes (tests/plan_codes.txt):
+-- a list is a table keyed 1..n and nothing else; a field that is there must have its type; text after the code is damage.
+local function ListSize(t)
+    if type(t) ~= "table" then return nil end
+    local n = 0
+    for k in pairs(t) do
+        if type(k) ~= "number" then return nil end
+        n = n + 1
+    end
+    for i = 1, n do if t[i] == nil then return nil end end
+    return n
+end
+local function Finite(v) return type(v) == "number" and v == v and v ~= math.huge and v ~= -math.huge end
+-- A number that may be left out (default `d`); false when it is there and not a number.
+local function Opt(v, d)
+    if v == nil then return d end
+    if Finite(v) then return v end
+    return false
+end
+
 -- A code back into the plan (what the website's page does): plan, or nil and why: empty, kind, damaged, version.
 function ns.PlannerReadPlanCode(code)
     if type(code) ~= "string" then return nil, "empty" end
     code = ns.Trim(code)
     if code == "" then return nil, "empty" end
     local head = ns.PLANNER_CODE_HEADER
-    if code:sub(1, #head) ~= head then return nil, "kind" end
+    if code:sub(1, #head) ~= head then
+        local newer = code:match("^SUIP(%d+)!")
+        if newer and tonumber(newer) > 1 then return nil, "version" end
+        return nil, "kind"
+    end
     local data, stop = ns.ShareDecode(code, #head + 1)
     if type(data) ~= "table" or stop ~= #code + 1 then return nil, "damaged" end
     if type(data.v) ~= "number" then return nil, "damaged" end
     if data.v > 1 then return nil, "version" end
-    if data.v ~= 1 or type(data.st) ~= "table" or type(data.z) ~= "table" or type(data.lv) ~= "table" then return nil, "damaged" end
-    local plan = { v = 1, lv = { tonumber(data.lv[1]) or 0, tonumber(data.lv[2]) or 0 }, xp = tonumber(data.xp) or 0, s = tonumber(data.s) or 0,
-                   fl = tonumber(data.fl) or 0, cr = tonumber(data.cr) or 0, more = tonumber(data.more), z = {}, st = {} }
-    for i = 1, #data.z do
+    if data.v ~= 1 then return nil, "damaged" end
+    local nlv, nz, nst = ListSize(data.lv), ListSize(data.z), ListSize(data.st)
+    if nlv ~= 2 or not nz or not nst then return nil, "damaged" end
+    local plan = { v = 1, lv = { data.lv[1], data.lv[2] }, xp = Opt(data.xp, 0), s = Opt(data.s, 0), fl = Opt(data.fl, 0),
+                   cr = Opt(data.cr, 0), more = Opt(data.more, 0), z = {}, st = {} }
+    if not Finite(plan.lv[1]) or not Finite(plan.lv[2]) then return nil, "damaged" end
+    if plan.xp == false or plan.s == false or plan.fl == false or plan.cr == false or plan.more == false then return nil, "damaged" end
+    for i = 1, nz do
         local z = data.z[i]
         if type(z) ~= "table" or type(z.n) ~= "string" then return nil, "damaged" end
-        plan.z[i] = { m = tonumber(z.m), n = z.n }
+        local m = Opt(z.m, nil)
+        if m == false then return nil, "damaged" end
+        plan.z[i] = { m = m, n = z.n }
     end
-    for i = 1, #data.st do
+    for i = 1, nst do
         local s = data.st[i]
         if type(s) ~= "table" or type(s.k) ~= "string" or not ns.guideKinds[s.k] or type(s.t) ~= "string" then return nil, "damaged" end
-        if s.z ~= nil and not plan.z[tonumber(s.z) or 0] then return nil, "damaged" end
-        plan.st[i] = { k = s.k, t = s.t, z = tonumber(s.z), x = tonumber(s.x), y = tonumber(s.y) }
+        local zi, x, y = s.z, Opt(s.x, nil), Opt(s.y, nil)
+        if x == false or y == false then return nil, "damaged" end
+        if zi ~= nil and (type(zi) ~= "number" or zi < 1 or zi > nz or zi % 1 ~= 0) then return nil, "damaged" end
+        plan.st[i] = { k = s.k, t = s.t, z = zi, x = x, y = y }
     end
     return plan
 end
