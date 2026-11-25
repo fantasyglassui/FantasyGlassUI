@@ -21,6 +21,19 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["Use this theme"] = "Dieses Design verwenden",
+    ["Make my own"] = "Eigenes erstellen",
+    ["In use now"] = "Derzeit aktiv",
+    ["Good morning, %s"] = "Guten Morgen, %s",
+    ["Good afternoon, %s"] = "Guten Tag, %s",
+    ["Good evening, %s"] = "Guten Abend, %s",
+    ["adventurer"] = "Abenteurer",
+    ["%s · %s frames · %d settings, %d switched off"] = "%s · %s-Rahmen · %d Einstellungen, %d ausgeschaltet",
+    ["New in %s"] = "Neu in %s",
+    ["All"] = "Alle",
+    ["On"] = "An",
+    ["Off"] = "Aus",
+    ["Set up"] = "Einrichten",
     ["Plan my route"] = "Route planen",
     ["Group quests"] = "Gruppenquests",
     ["Solo"] = "Allein",
@@ -3316,6 +3329,19 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["Use this theme"] = "Utiliser ce thème",
+    ["Make my own"] = "Créer le mien",
+    ["In use now"] = "Utilisé actuellement",
+    ["Good morning, %s"] = "Bonjour, %s",
+    ["Good afternoon, %s"] = "Bon après-midi, %s",
+    ["Good evening, %s"] = "Bonsoir, %s",
+    ["adventurer"] = "aventurier",
+    ["%s · %s frames · %d settings, %d switched off"] = "%s · cadres %s · %d réglages, %d désactivés",
+    ["New in %s"] = "Nouveautés de la %s",
+    ["All"] = "Tout",
+    ["On"] = "Activé",
+    ["Off"] = "Désactivé",
+    ["Set up"] = "Configurer",
     ["Plan my route"] = "Planifier mon itinéraire",
     ["Group quests"] = "Quêtes de groupe",
     ["Solo"] = "Seul",
@@ -6611,6 +6637,19 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["Use this theme"] = "Usar este tema",
+    ["Make my own"] = "Crear el mío",
+    ["In use now"] = "En uso ahora",
+    ["Good morning, %s"] = "Buenos días, %s",
+    ["Good afternoon, %s"] = "Buenas tardes, %s",
+    ["Good evening, %s"] = "Buenas noches, %s",
+    ["adventurer"] = "aventurero",
+    ["%s · %s frames · %d settings, %d switched off"] = "%s · marcos %s · %d ajustes, %d desactivados",
+    ["New in %s"] = "Novedades de la %s",
+    ["All"] = "Todo",
+    ["On"] = "Activado",
+    ["Off"] = "Desactivado",
+    ["Set up"] = "Configurar",
     ["Plan my route"] = "Planificar mi ruta",
     ["Group quests"] = "Misiones de grupo",
     ["Solo"] = "En solitario",
@@ -9909,6 +9948,19 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["Use this theme"] = "Использовать эту тему",
+    ["Make my own"] = "Создать свою",
+    ["In use now"] = "Сейчас используется",
+    ["Good morning, %s"] = "Доброе утро, %s",
+    ["Good afternoon, %s"] = "Добрый день, %s",
+    ["Good evening, %s"] = "Добрый вечер, %s",
+    ["adventurer"] = "искатель приключений",
+    ["%s · %s frames · %d settings, %d switched off"] = "%s · рамки: %s · настроек: %d, выключено: %d",
+    ["New in %s"] = "Что нового в %s",
+    ["All"] = "Все",
+    ["On"] = "Вкл",
+    ["Off"] = "Выкл",
+    ["Set up"] = "Настроить",
     ["Plan my route"] = "Спланировать маршрут",
     ["Group quests"] = "Групповые задания",
     ["Solo"] = "В одиночку",
@@ -13204,6 +13256,19 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["Use this theme"] = "Usar este tema",
+    ["Make my own"] = "Criar o meu",
+    ["In use now"] = "Em uso agora",
+    ["Good morning, %s"] = "Bom dia, %s",
+    ["Good afternoon, %s"] = "Boa tarde, %s",
+    ["Good evening, %s"] = "Boa noite, %s",
+    ["adventurer"] = "aventureiro",
+    ["%s · %s frames · %d settings, %d switched off"] = "%s · molduras %s · %d ajustes, %d desligados",
+    ["New in %s"] = "Novo na %s",
+    ["All"] = "Tudo",
+    ["On"] = "Ligado",
+    ["Off"] = "Desligado",
+    ["Set up"] = "Configurar",
     ["Plan my route"] = "Planejar minha rota",
     ["Group quests"] = "Missões de grupo",
     ["Solo"] = "Sozinho",
@@ -16499,6 +16564,19 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["Use this theme"] = "Usa questo tema",
+    ["Make my own"] = "Crea il mio",
+    ["In use now"] = "In uso ora",
+    ["Good morning, %s"] = "Buongiorno, %s",
+    ["Good afternoon, %s"] = "Buon pomeriggio, %s",
+    ["Good evening, %s"] = "Buonasera, %s",
+    ["adventurer"] = "avventuriero",
+    ["%s · %s frames · %d settings, %d switched off"] = "%s · riquadri %s · %d impostazioni, %d disattivate",
+    ["New in %s"] = "Novità della %s",
+    ["All"] = "Tutto",
+    ["On"] = "Attivo",
+    ["Off"] = "Spento",
+    ["Set up"] = "Imposta",
     ["Plan my route"] = "Pianifica il mio percorso",
     ["Group quests"] = "Missioni di gruppo",
     ["Solo"] = "Da solo",
@@ -19794,6 +19872,19 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["Use this theme"] = "이 테마 사용",
+    ["Make my own"] = "직접 만들기",
+    ["In use now"] = "현재 사용 중",
+    ["Good morning, %s"] = "좋은 아침입니다, %s",
+    ["Good afternoon, %s"] = "안녕하세요, %s",
+    ["Good evening, %s"] = "좋은 저녁입니다, %s",
+    ["adventurer"] = "모험가",
+    ["%s · %s frames · %d settings, %d switched off"] = "%s · %s 프레임 · 설정 %d개, %d개 꺼짐",
+    ["New in %s"] = "%s의 새로운 기능",
+    ["All"] = "전체",
+    ["On"] = "켜짐",
+    ["Off"] = "꺼짐",
+    ["Set up"] = "설정",
     ["Plan my route"] = "내 경로 계획",
     ["Group quests"] = "그룹 퀘스트",
     ["Solo"] = "솔로",
@@ -23092,6 +23183,19 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["Use this theme"] = "使用此主题",
+    ["Make my own"] = "自己制作",
+    ["In use now"] = "当前使用中",
+    ["Good morning, %s"] = "早上好，%s",
+    ["Good afternoon, %s"] = "下午好，%s",
+    ["Good evening, %s"] = "晚上好，%s",
+    ["adventurer"] = "冒险者",
+    ["%s · %s frames · %d settings, %d switched off"] = "%s · %s 框体 · %d 项设置，%d 项已关闭",
+    ["New in %s"] = "%s 新内容",
+    ["All"] = "全部",
+    ["On"] = "开",
+    ["Off"] = "关",
+    ["Set up"] = "设置",
     ["Plan my route"] = "规划我的路线",
     ["Group quests"] = "组队任务",
     ["Solo"] = "单人",

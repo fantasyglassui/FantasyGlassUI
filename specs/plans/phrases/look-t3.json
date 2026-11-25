@@ -1,8 +1,0 @@
-{
-  "Good morning, %s": ["Guten Morgen, %s", "Bonjour, %s", "Buenos días, %s", "Доброе утро, %s", "Bom dia, %s", "Buongiorno, %s", "좋은 아침입니다, %s", "早上好，%s"],
-  "Good afternoon, %s": ["Guten Tag, %s", "Bon après-midi, %s", "Buenas tardes, %s", "Добрый день, %s", "Boa tarde, %s", "Buon pomeriggio, %s", "안녕하세요, %s", "下午好，%s"],
-  "Good evening, %s": ["Guten Abend, %s", "Bonsoir, %s", "Buenas noches, %s", "Добрый вечер, %s", "Boa noite, %s", "Buonasera, %s", "좋은 저녁입니다, %s", "晚上好，%s"],
-  "adventurer": ["Abenteurer", "aventurier", "aventurero", "искатель приключений", "aventureiro", "avventuriero", "모험가", "冒险者"],
-  "%s · %s frames · %d settings, %d switched off": ["%s · %s-Rahmen · %d Einstellungen, %d ausgeschaltet", "%s · cadres %s · %d réglages, %d désactivés", "%s · marcos %s · %d ajustes, %d desactivados", "%s · рамки: %s · настроек: %d, выключено: %d", "%s · molduras %s · %d ajustes, %d desligados", "%s · riquadri %s · %d impostazioni, %d disattivate", "%s · %s 프레임 · 설정 %d개, %d개 꺼짐", "%s · %s 框体 · %d 项设置，%d 项已关闭"],
-  "New in %s": ["Neu in %s", "Nouveautés de la %s", "Novedades de la %s", "Что нового в %s", "Novo na %s", "Novità della %s", "%s의 새로운 기능", "%s 新内容"]
-}
