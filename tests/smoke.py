@@ -12678,12 +12678,13 @@ try("13.4 feel A: the route and hubs on the map", function()
         if #ns.PlannerMapStops(many, 1) ~= 30 then error("at most 30 stops") end
         if #ns.PlannerMapStops({}, 1) ~= 0 or #ns.PlannerMapStops(steps, 99) ~= 0 then error("nothing to cover") end
         -- drawing on a fake canvas
-        local canvas = { GetWidth = function() return 1000 end, GetHeight = function() return 500 end, GetScale = function() return 1 end, GetFrameLevel = function() return 1 end }
+        local zoom = 1
+        local canvas = { GetWidth = function() return 1000 end, GetHeight = function() return 500 end, GetScale = function() return zoom end, GetFrameLevel = function() return 1 end }
         rawset(env, "WorldMapFrame", { ScrollContainer = { Child = canvas }, GetMapID = function() return 1436 end, IsShown = function() return true end })
         local hubs = { { map = 1436, x = 20, y = 20, xp = 3, seconds = 1, rate = 3, quests = 4 }, { map = 1436, x = 40, y = 40, xp = 2, seconds = 1, rate = 2, quests = 2 },
                        { map = 1436, x = 60, y = 60, xp = 1, seconds = 1, rate = 1, quests = 1 }, { map = 1429, x = 30, y = 30, xp = 9, seconds = 1, rate = 9, quests = 1 } }
-        local at = 2
-        ns.GuideState = function() return { name = ns.GUIDE_PLANNED, at = at, summary = { hubs = hubs } } end
+        local at, taken = 2, nil
+        ns.GuideState = function() return { name = ns.GUIDE_PLANNED, at = at, summary = { hubs = hubs, taken = taken } } end
         ns.GuideGet = function(_, name) return { name = name, steps = steps } end
         local nl, nm, nd = ns.PlannerMapDraw(1436)
         if nl ~= 2 or nd ~= 3 or nm ~= 3 then error("2 lines, 3 stop dots and 3 hub marks: " .. nl .. " " .. nd .. " " .. nm) end
@@ -12697,6 +12698,21 @@ try("13.4 feel A: the route and hubs on the map", function()
         ns.db.colorblind = false
         local tip = ns.PlannerMapTest.tip(byRate[3])
         if not tip[1]:find("10,800 xp an hour", 1, true) or tip[2] ~= "4 quests" or tip[3] ~= "Click: plan from here" then error("a hub's tooltip: " .. tostring(tip[1]) .. " | " .. tostring(tip[2])) end
+        -- a hub the plan took that summary.hubs (cut to 80) no longer lists still gets a mark, once
+        local crowd = {}
+        for i = 1, 80 do crowd[i] = { map = 1429, x = 1 + i / 100, y = 2, xp = 99, seconds = 1, rate = 99, quests = 1 } end
+        local fewer = hubs
+        hubs = crowd
+        taken = { { map = 1436, x = 80, y = 80, xp = 6, seconds = 2, travel = 30 }, { map = 1436, x = 60, y = 60, xp = 1, seconds = 1 } }
+        nl, nm, nd = ns.PlannerMapDraw(1436)
+        if nm ~= 2 then error("the taken hubs get marks when summary.hubs lacks them: " .. nm) end
+        local took
+        for i = 1, nm do if ns.PlannerMapTest.marks[i].x == 80 then took = ns.PlannerMapTest.marks[i] end end
+        if not took or took.rate ~= 3 or ns.PlannerMapTest.tip(took)[2] ~= false then error("a taken hub's mark: own xp over its own seconds, no quest count") end
+        hubs = fewer
+        nl, nm = ns.PlannerMapDraw(1436)
+        if nm ~= 4 then error("a taken hub that is also listed is drawn once: " .. nm) end
+        taken = nil
         -- another map: only its own hubs, and no line from a stop on another map
         nl, nm, nd = ns.PlannerMapDraw(1429)
         if nl ~= 0 or nm ~= 1 or nd ~= 0 then error("the other map shows its own hub only: " .. nl .. " " .. nm .. " " .. nd) end
@@ -12706,6 +12722,27 @@ try("13.4 feel A: the route and hubs on the map", function()
         if nd ~= 3 or nl ~= 1 then error("a stop on another map is left out and breaks the line: " .. nl .. " " .. nd) end
         steps = { step(1436, 10, 1), step(1436, 12, 1), step(1436, 14, 1), { kind = "note", text = "n" }, step(1436, 50, 2), step(1436, 52, 2) }
         at = 2
+        -- zoom and losing the route redraw by themselves
+        ns.PlannerMapRedraw()
+        local holderNow, gotScale = ns.PlannerMapTest.holder(), nil
+        rawset(holderNow, "SetScale", function(_, v) gotScale = v end)
+        zoom = 2
+        ns.PlannerMapTest.tick()
+        if gotScale ~= 0.5 then error("the marks follow the map's zoom: " .. tostring(gotScale)) end
+        gotScale = nil
+        ns.PlannerMapTest.tick()
+        if gotScale ~= nil then error("nothing changed: nothing redrawn") end
+        zoom = 1
+        ns.PlannerMapTest.tick()
+        if gotScale ~= 1 then error("zoomed back out: " .. tostring(gotScale)) end
+        local hidden = false
+        rawset(ns.PlannerMapTest.marks[1], "Hide", function() hidden = true end)
+        local keep = ns.GuideState
+        ns.GuideState = function() return { name = "Some guide", at = 1 } end
+        ns.PlannerMapTest.tick()
+        if not hidden then error("the marks go when the planned guide is no longer followed") end
+        ns.GuideState = keep
+        ns.PlannerMapRedraw()
         -- the switches, the lock, combat
         ns.db.plannerMapLine = false
         nl, nm, nd = ns.PlannerMapDraw(1436)
@@ -12739,22 +12776,22 @@ try("13.4 feel A: the route and hubs on the map", function()
         if not (w and w.lines and #w.lines == 2) then error("the question has two answers") end
         w.lines[2].click()
         if ns.plannerFromHere or #asked ~= 0 then error("Cancel plans nothing") end
-        click(byRate[1])
-        w.lines[1].click()
-        if #asked ~= 1 or asked[1] ~= "from here" then error("Plan from here plans again: " .. tostring(asked[1])) end
-        local from = ns.plannerFromHere
-        if not (from and from.map == 1436 and from.x == 60 and from.y == 60) then error("the spot is kept") end
-        ns.plannerFromHere = nil
         ns.PlannerReplan = function() return false end
         click(byRate[1])
         w.lines[1].click()
         if asked[#asked] ~= "start" then error("not following: the planner starts") end
         ns.plannerFromHere = nil
+        ns.PlannerReplan = function(_, why) asked[#asked + 1] = why; return true end
+        click(byRate[1])
+        w.lines[1].click()
+        if asked[#asked] ~= "from here" then error("Plan from here plans again: " .. tostring(asked[#asked])) end
+        local from = ns.plannerFromHere
+        if not (from and from.map == 1436 and from.x == 60 and from.y == 60) then error("the spot is kept") end
         ns.PlannerReplan, ns.PlannerStart = saved.replan, saved.start
 
         -- the route itself: the picked hub first even with the worst rate, once
         env.C_Map = setmetatable({ GetWorldPosFromMapPos = function(map, v)
-            if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end
+            if map == 1436 then return 0, { x = v.x * 1000, y = v.y * 1000 } end
             if map == 2 then return 0, { x = v.x * 1000 + 5000, y = v.y * 1000 } end
         end }, { __index = saved.map })
         env.CreateVector2D = function(x, y) return { x = x, y = y } end
@@ -12768,15 +12805,15 @@ try("13.4 feel A: the route and hubs on the map", function()
         local function kill(map, x, y) return { { kind = "kill", count = 0, countKnown = true, mobLevel = 14, spots = place(map, x, y) } } end
         local recs, order = {}, {}
         local function add(r) recs[r.id] = r; order[#order + 1] = r.id end
-        add(q(301, { xp = 2000, starts = place(1, 30, 40), ends = place(1, 30, 40), objectives = kill(1, 32, 42) }))
-        add(q(302, { xp = 800, starts = place(1, 60, 60), ends = place(1, 60, 60), objectives = kill(1, 62, 62) }))
+        add(q(301, { xp = 2000, starts = place(1436, 30, 40), ends = place(1436, 30, 40), objectives = kill(1436, 32, 42) }))
+        add(q(302, { xp = 800, starts = place(1436, 60, 60), ends = place(1436, 60, 60), objectives = kill(1436, 62, 62) }))
         add(q(401, { level = 8, xp = 50, starts = place(2, 50, 50), ends = place(2, 50, 50) }))
         order = { 301, 302 }
         local source = { kind = "test", ids = function() return order end, quest = function(id) return recs[id] end, inns = function() return {} end,
                          inRange = function() return true end }
         local function ctxFor(extra)
             local c = { source = source, level = 14, group = "solo", inGroup = false, speed = 7, faction = "Alliance", xp = 0, xpMax = 10000,
-                done = function() return false end, onQuest = function() return false end, here = { map = 1, x = 30, y = 40 },
+                done = function() return false end, onQuest = function() return false end, here = { map = 1436, x = 30, y = 40 },
                 crossings = {}, learnFlights = false, bind = "Elsewhere", bindSpot = { map = 9, x = 1, y = 1 }, pace = 1, flights = {},
                 flightTime = function() return nil end, timed = function() return false end, itemCount = function() return 0 end }
             for k, v in pairs(extra or {}) do c[k] = v end
@@ -12787,12 +12824,14 @@ try("13.4 feel A: the route and hubs on the map", function()
             for _, s in ipairs(g.steps) do if s.quest then o[s.quest] = true; first = first or s.quest end end
             return o, first
         end
+        local picked = ns.plannerFromHere                  -- (the pick the click above made)
+        ns.plannerFromHere = nil
         local _, f1 = planned((ns.PlannerRoute(ctxFor())))
+        ns.plannerFromHere = picked
         if f1 ~= 301 then error("the best rate first without a pick: " .. tostring(f1)) end
-        ns.plannerFromHere = { map = 1, x = 60, y = 60 }
         local g2, s2 = ns.PlannerRoute(ctxFor())
         local _, f2 = planned(g2)
-        if f2 ~= 302 then error("the picked hub first, though its rate is the worst: " .. tostring(f2)) end
+        if f2 ~= 302 then error("the hub picked on the map first, though its rate is the worst: " .. tostring(f2)) end
         order = { 301, 302, 401 }
         local g3 = ns.PlannerRoute(ctxFor({ classQuests = { { id = 401, level = 8, kind = "always", parts = 1 } } }))
         local set3, f3 = planned(g3)
@@ -12802,6 +12841,10 @@ try("13.4 feel A: the route and hubs on the map", function()
         if ns.plannerFromHere then error("the pick is used once") end
         local _, f4 = planned((ns.PlannerRoute(ctxFor())))
         if f4 ~= 301 then error("the plan after that does not take it first: " .. tostring(f4)) end
+        -- a pick the planner never used is dropped after a while
+        ns.plannerFromHere = { map = 1436, x = 60, y = 60, at = (tonumber(env.GetTime()) or 0) - 1000 }
+        local _, f5 = planned((ns.PlannerRoute(ctxFor())))
+        if f5 ~= 301 or ns.plannerFromHere then error("an old pick is dropped: " .. tostring(f5)) end
     end)
     ns.GuideOn, ns.GuideState, ns.GuideGet, ns.GuideUnlocked, ns.PlannerWorldPos = saved.on, saved.state, saved.get, saved.unlocked, saved.world
     ns.PlannerReplan, ns.PlannerStart = saved.replan, saved.start

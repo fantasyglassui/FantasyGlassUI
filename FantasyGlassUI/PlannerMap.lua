@@ -38,6 +38,8 @@ function ns.PlannerMapStops(steps, at)
     return out
 end
 
+local function Now() return tonumber(GetTime and GetTime()) or 0 end
+
 local function Switch(key) return ns.db and ns.db[key] ~= false end
 
 -- Is there a planned route to draw: unlocked, following the planned guide, out of combat.
@@ -84,6 +86,7 @@ ns.PlannerMapTest = test
 
 local function Holder(canvas)
     if holder and holderCanvas == canvas then return holder end
+    if holder and holder.Hide then holder:Hide() end
     holder = CreateFrame("Frame", nil, canvas)
     holderCanvas = canvas
     holder:SetSize(1, 1)
@@ -129,10 +132,11 @@ end
 -- What a hub's tooltip says.
 local function HubTip(m)
     return { format(ns:Tr("%s xp an hour"), Num((tonumber(m.rate) or 0) * 3600)),
-             format(ns:Tr("%d quests"), tonumber(m.quests) or 0),
+             m.quests and format(ns:Tr("%d quests"), tonumber(m.quests) or 0) or false,
              ns:Tr("Click: plan from here") }
 end
 test.tip = HubTip
+test.holder = function() return holder end
 
 -- Plan from here: ask once, then plan again with this hub taken first.
 function ns.PlannerMapPick(spot)
@@ -142,7 +146,7 @@ function ns.PlannerMapPick(spot)
     w = ns:ShowList("PlanHere", "Plan from here?", {
         { left = ns:Tr("Plan from here"), click = function()
             Close()
-            ns.plannerFromHere = { map = spot.map, x = spot.x, y = spot.y }
+            ns.plannerFromHere = { map = spot.map, x = spot.x, y = spot.y, at = Now() }
             if not ns:PlannerReplan("from here") then ns:PlannerStart() end
         end },
         { left = ns:Tr("Cancel"), click = Close },
@@ -166,12 +170,13 @@ local function Mark(i)
         m.tier:SetPoint("CENTER")
         m.tier:SetTextColor(0, 0, 0)
         if m.RegisterForClicks then m:RegisterForClicks("LeftButtonUp") end
+        if m.SetPropagateMouseClicks then pcall(m.SetPropagateMouseClicks, m, true) end     -- (the map's own right-click zoom-out still works over a mark)
         m:SetScript("OnClick", function(self) ns.PlannerMapPick({ map = self.map, x = self.x, y = self.y }) end)
         m:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             local tip = HubTip(self)
             GameTooltip:AddLine(tip[1], 1, 0.82, 0.2)
-            GameTooltip:AddLine(tip[2], 1, 1, 1)
+            if tip[2] then GameTooltip:AddLine(tip[2], 1, 1, 1) end
             GameTooltip:AddLine(tip[3], 0.7, 0.7, 0.7)
             GameTooltip:Show()
         end)
@@ -222,13 +227,22 @@ function ns.PlannerMapDraw(mapID)
                 end
             end
             if Switch("plannerMapHubs") and type(st.summary) == "table" and type(st.summary.hubs) == "table" then
-                local here, best, worst = {}, nil, nil
-                for _, hb in ipairs(st.summary.hubs) do
-                    if hb.map == mapID and hb.x and hb.y then
-                        here[#here + 1] = hb
-                        local r = tonumber(hb.rate) or 0
-                        if not best or r > best then best = r end
-                        if not worst or r < worst then worst = r end
+                local here, best, worst, have = {}, nil, nil, {}
+                local function Take(hb)
+                    local key = tostring(hb.x) .. "," .. tostring(hb.y)
+                    if hb.map ~= mapID or not (hb.x and hb.y) or have[key] then return end
+                    have[key] = true
+                    here[#here + 1] = hb
+                    local r = tonumber(hb.rate) or 0
+                    if not best or r > best then best = r end
+                    if not worst or r < worst then worst = r end
+                end
+                for _, hb in ipairs(st.summary.hubs) do Take(hb) end
+                -- summary.hubs is cut to the best 80: the hubs the plan took are added from summary.taken
+                for _, tk in pairs(type(st.summary.taken) == "table" and st.summary.taken or {}) do
+                    if type(tk) == "table" then
+                        local secs = tonumber(tk.seconds) or 0
+                        Take({ map = tk.map, x = tk.x, y = tk.y, rate = secs > 0 and (tonumber(tk.xp) or 0) / secs or 0 })
                     end
                 end
                 local vision = ns:ColorVision()
@@ -236,7 +250,7 @@ function ns.PlannerMapDraw(mapID)
                     local r = tonumber(hb.rate) or 0
                     nMarks = nMarks + 1
                     local m = Mark(nMarks)
-                    m.map, m.x, m.y, m.rate, m.quests = hb.map, hb.x, hb.y, r, hb.quests
+                    m.map, m.x, m.y, m.rate, m.quests = hb.map, hb.x, hb.y, r, tonumber(hb.quests) or false
                     m.alpha = (best > worst) and (0.35 + 0.65 * (r - worst) / (best - worst)) or 1
                     local rank = 1                                    -- (1 = the best rate on this map)
                     for _, o in ipairs(here) do if (tonumber(o.rate) or 0) > r then rank = rank + 1 end end
@@ -256,35 +270,54 @@ function ns.PlannerMapDraw(mapID)
     return nLines, nMarks, nDots
 end
 
-local lastMap
+local lastSig
+local function Signature(canvas, map)
+    local id = map.GetMapID and map:GetMapID()
+    if type(id) ~= "number" or ns:IsSecret(id) then return nil, nil end
+    local scale = canvas.GetScale and canvas:GetScale()
+    return id, id .. "|" .. tostring(type(scale) == "number" and scale or 1) .. "|" .. (Following() and "on" or "off")
+end
 function ns.PlannerMapRedraw()
     local canvas, map = Canvas()
     if not canvas or not (map.IsShown and ns.Yes(map:IsShown())) then return false end
-    local id = map.GetMapID and map:GetMapID()
-    if type(id) ~= "number" or ns:IsSecret(id) then return false end
-    lastMap = id
+    local id, sig = Signature(canvas, map)
+    if not id then return false end
+    lastSig = sig
     ns.PlannerMapDraw(id)
     return true
 end
 
-ns:Every(0.5, "Planner on the map", function()
+-- Every half second while the map is shown: again when the map, its zoom or whether the route is followed changed.
+local function Tick()
     local canvas, map = Canvas()
-    if not canvas or not (map.IsShown and ns.Yes(map:IsShown())) then lastMap = nil return end
-    local id = map.GetMapID and map:GetMapID()
-    if id ~= lastMap and type(id) == "number" and not ns:IsSecret(id) then ns.PlannerMapRedraw() end
-end)
+    if not canvas or not (map.IsShown and ns.Yes(map:IsShown())) then lastSig = nil return end
+    local id, sig = Signature(canvas, map)
+    if id and sig ~= lastSig then ns.PlannerMapRedraw() end
+end
+test.tick = Tick
+ns:Every(0.5, "Planner on the map", Tick)
 if ns.GuideRegisterAdvance then ns.GuideRegisterAdvance("map", function() ns.PlannerMapRedraw() end) end
 
 ------------------------------------------------------------------------------------------
 -- Plan from here, through the planner's hooks: the map the hub is on, the hub taken first, once.
 ------------------------------------------------------------------------------------------
-ns.PlannerHook("zone", "map", function()
+ns.PLANNER_FROM_HERE_SECONDS = 120               -- a pick the planner has not used by then is dropped
+local function FromHere()
     local from = ns.plannerFromHere
-    if type(from) == "table" and ns.GuideUnlocked and ns:GuideUnlocked() then return from.map end
+    if type(from) ~= "table" then return nil end
+    if not (ns.GuideUnlocked and ns:GuideUnlocked()) or Now() - (tonumber(from.at) or 0) > ns.PLANNER_FROM_HERE_SECONDS then
+        ns.plannerFromHere = nil
+        return nil
+    end
+    return from
+end
+ns.PlannerHook("zone", "map", function()
+    local from = FromHere()
+    if from then return from.map end
 end)
 ns.PlannerHook("rank", "map", function(ranked, _, info)
-    local from = ns.plannerFromHere
-    if type(from) ~= "table" or not (ns.GuideUnlocked and ns:GuideUnlocked()) then return end
+    local from = FromHere()
+    if not from then return end
     local fc, fx, fy
     if ns.PlannerWorldPos then fc, fx, fy = ns.PlannerWorldPos(from.map, from.x, from.y) end
     local r2 = ns.PLANNER_HUB_YARDS * ns.PLANNER_HUB_YARDS
