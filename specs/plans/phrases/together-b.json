@@ -218,5 +218,95 @@
     "Ora pianifico solo per te: non pianifichi più con %s.",
     "이제 혼자 계획합니다: %s 님과의 함께 계획을 마칩니다.",
     "现在仅为你规划：不再与 %s 一起规划。"
+  ],
+  "%s stopped planning together.": [
+    "%s plant nicht mehr mit dir.",
+    "%s a arrêté de planifier ensemble.",
+    "%s dejó de planificar juntos.",
+    "%s прекратил совместное планирование.",
+    "%s parou de planejar juntos.",
+    "%s ha smesso di pianificare insieme.",
+    "%s 님이 함께 계획을 중지했습니다.",
+    "%s 已停止一起规划。"
+  ],
+  "Planning together is paused inside an instance.": [
+    "Gemeinsames Planen ist in einer Instanz pausiert.",
+    "La planification commune est en pause dans une instance.",
+    "La planificación conjunta está en pausa dentro de una instancia.",
+    "Совместное планирование приостановлено в подземелье.",
+    "O planejamento em conjunto fica pausado dentro de uma instância.",
+    "La pianificazione insieme è in pausa dentro un'istanza.",
+    "인스턴스 안에서는 함께 계획이 일시 중지됩니다.",
+    "在副本内一起规划会暂停。"
+  ],
+  "Wait for %s here": [
+    "Warte hier auf %s",
+    "Attendez %s ici",
+    "Espera aquí a %s",
+    "Подождите здесь %s",
+    "Espere %s aqui",
+    "Aspetta %s qui",
+    "여기서 %s 님을 기다리세요",
+    "在这里等待 %s"
+  ],
+  "%s: done": [
+    "%s: fertig",
+    "%s : terminé",
+    "%s: hecho",
+    "%s: готово",
+    "%s: concluído",
+    "%s: fatto",
+    "%s: 완료",
+    "%s：已完成"
+  ],
+  "%s: on this step": [
+    "%s: bei diesem Schritt",
+    "%s : à cette étape",
+    "%s: en este paso",
+    "%s: на этом шаге",
+    "%s: nesta etapa",
+    "%s: a questo passo",
+    "%s: 이 단계",
+    "%s：在这一步"
+  ],
+  "%s: 1 step behind": [
+    "%s: 1 Schritt zurück",
+    "%s : 1 étape de retard",
+    "%s: 1 paso por detrás",
+    "%s: отстаёт на 1 шаг",
+    "%s: 1 etapa atrás",
+    "%s: 1 passo indietro",
+    "%s: 1단계 뒤",
+    "%s：落后 1 步"
+  ],
+  "%s: %d steps behind": [
+    "%s: %d Schritte zurück",
+    "%s : %d étapes de retard",
+    "%s: %d pasos por detrás",
+    "%s: отстаёт на %d шагов",
+    "%s: %d etapas atrás",
+    "%s: %d passi indietro",
+    "%s: %d단계 뒤",
+    "%s：落后 %d 步"
+  ],
+  "with %s": [
+    "mit %s",
+    "avec %s",
+    "con %s",
+    "с %s",
+    "com %s",
+    "con %s",
+    "%s 님과 함께",
+    "与 %s"
+  ],
+  "Let friends ask to plan with you": [
+    "Freunde dürfen fragen, ob ihr gemeinsam plant",
+    "Laisser des amis proposer de planifier avec vous",
+    "Permitir que amigos pidan planificar contigo",
+    "Разрешить друзьям предлагать совместный план",
+    "Permitir que amigos peçam para planejar com você",
+    "Permetti agli amici di chiederti di pianificare insieme",
+    "친구가 함께 계획하자고 요청할 수 있게 하기",
+    "允许好友邀请你一起规划"
   ]
 }

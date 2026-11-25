@@ -431,7 +431,16 @@ end
 
 -- Group B: plan with a friend (the duo).
 local function TogetherDuoSection(live, y, Replan, T)
-    return y, function() end
+    local ask = ns:CreateCheckbox(live, "Let friends ask to plan with you", ns.db.plannerDuoAsk ~= false, function(v) ns.db.plannerDuoAsk = v end)
+    ask:SetPoint("TOPLEFT", 0, y)
+    local start = ns:CreateButton(live, "Plan with a friend", 180, 24, function()
+        if ns.PlannerDuoStart then ns:PlannerDuoStart() end         -- (your target, your one party member, or it says how)
+    end)
+    start:SetPoint("TOPLEFT", 0, y - 30)
+    T.duoAskBox, T.duoButton = ask, start
+    local function Refresh() ask:SetChecked(ns.db.plannerDuoAsk ~= false) end
+    Refresh()
+    return y - 62, Refresh
 end
 
 -- Group C: the plan code for the website's plan page.

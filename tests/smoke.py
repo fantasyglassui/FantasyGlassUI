@@ -14889,6 +14889,211 @@ try("13.5 together B: asking, the state and a plan for both", function()
     if ns.HideLists then ns:HideLists() end
     if not ok then error(err, 0) end
 end)
+-- batch 5 B (duo): one plan followed together, each other's progress, staying in touch
+try("13.5 together B: following together", function()
+    local CI = env.C_ChatInfo
+    local saved = { on = ns.GuideOn, here = ns.GuideHere, unlocked = ns.GuideUnlocked, raw = ns.PrintRaw, show = ns.ShowList,
+                    guideState = ns.root.guideState, guides = ns.root.guides, planner = ns.root.planner,
+                    level = env.UnitLevel, name = env.UnitName, isPlayer = env.UnitIsPlayer, isFriend = rawget(env, "UnitIsFriend"), isUnit = env.UnitIsUnit,
+                    time = env.GetTime, combat = env.InCombatLockdown, send = CI.SendAddonMessage, lock = CI.InChatMessagingLockdown,
+                    context = ns.PlannerContext, ask = ns.db.plannerDuoAsk, duo = ns.plannerDuo, guidePage = ns.guidePage, errors = #ns.errors }
+    local sends, clock, panelBits = {}, 5000, {}
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        ns.GuideOn = function() return true end
+        ns.GuideHere = function() return 1429, 30, 40 end
+        ns.root.planner, ns.root.guides, ns.root.guideState = {}, {}, {}
+        ns.db.plannerDuoAsk = true
+        env.GetTime = function() return clock end
+        env.UnitLevel = function() return 20 end
+        env.UnitName = function(u) if u == "target" then return "Mira" end if u == "player" then return "Leo" end return "Someone" end
+        env.UnitIsPlayer = function() return true end
+        rawset(env, "UnitIsFriend", function() return true end)
+        env.UnitIsUnit = function() return false end
+        env.InCombatLockdown = function() return false end
+        CI.InChatMessagingLockdown = function() return false end
+        CI.SendAddonMessage = function(prefix, text, channel, target)
+            if prefix == "FGUIPlan" then sends[#sends + 1] = { text = text, target = target } end
+            return 0
+        end
+        ns.PlannerContext = function()                         -- (the friend's state, when one is asked for: a small one)
+            local c = { source = { kind = "log", ids = function() return {} end, quest = function() return nil end }, level = 20, flights = {} }
+            for _, h in ipairs(ns.PlannerHookList("context")) do h.fn(c) end
+            return c
+        end
+        local said = {}
+        ns.PrintRaw = function(_, m) said[#said + 1] = tostring(m) end
+        local function heard(text) for _, l in ipairs(said) do if l:find(text, 1, true) then return true end end return false end
+        local lists = {}
+        ns.ShowList = function(self, key, title, lines, ...) lists[key] = lines; return saved.show(self, key, title, lines, ...) end
+        local function flush(k) for _ = 1, k or 120 do ns.PlannerDuoFlush() end end
+        local function addon(text, from) fireEvent("CHAT_MSG_ADDON", "FGUIPlan", text, "WHISPER", from or "Mira-Realm") end
+        local function frames(k) for _ = 1, k or 300 do for i = 1, #handlers do local h = handlers[i]; if h.name == "OnUpdate" then pcall(h.fn, h.self, 0.02) end end end end
+        local function joined(from, kind)
+            local whole
+            for i = from, #sends do
+                local id, k, n, kd, piece = ns.ParseSharePiece(sends[i].text)
+                if id and kd == kind then whole = ns.ShareReceive("test4", id, k, n, kd, piece, clock) or whole end
+            end
+            return whole
+        end
+        local function stepsOf(guide) local o = {} for _, st in ipairs(guide.steps) do o[#o + 1] = st.kind .. ":" .. tostring(st.quest or st.node or "") end return table.concat(o, " ") end
+        local guide = { name = ns.GUIDE_PLANNED, steps = {
+            { kind = "accept", quest = 7101, title = "Q7101", map = 1429, x = 30, y = 40 }, { kind = "accept", quest = 7103, title = "Q7103", map = 1429, x = 30.1, y = 40 },
+            { kind = "accept", quest = 7104, title = "Q7104", map = 1429, x = 30.2, y = 40 }, { kind = "fly", node = 41, text = "Fly to the camp", map = 1429, x = 31, y = 41 },
+            { kind = "turnin", quest = 7101, title = "Q7101", map = 1429, x = 50, y = 50 }, { kind = "note", text = "Sell and repair" } } }
+        local summary = { zone = 1429, fromLevel = 20, toLevel = 21 }
+        local panel = ns:GuideShowPanel()
+        rawset(panel.title, "SetText", function(_, t) panelBits.title = t end)
+        panelBits.panel = panel
+
+        -- the leader: a duo with Mira's state, then a plan applied goes to her
+        ns:GuideSetPlan(nil); ns:PlannerStop(); ns.plannerQueued = false
+        ns:PlannerDuoStart(); flush()
+        local s = sends[#sends].text:match("^D1:ASK:(%x+):")
+        addon("D1:YES:" .. s)
+        addon(string.format("SS:%sz1:1:1:state:%s", s, ns.PlannerDuoStateText({ level = 21, questie = true, log = {}, can = { [7101] = true }, flights = {} })))
+        if not (ns.plannerDuo and ns.plannerDuo.state and ns.plannerQueued and ns.plannerReason == "duo") then error("the leader: a state arriving replans (\"duo\")") end
+        ns:PlannerStop(); ns.plannerQueued = false
+        local before = #sends
+        ns:GuideSetPlan(guide, summary)
+        for _, h in ipairs(ns.PlannerHookList("applied")) do h.fn(guide, summary, {}, "duo") end
+        flush()
+        local text = joined(before + 1, "plan")
+        local back = text and ns.PlannerDuoReadPlan(text)
+        if not (back and stepsOf(back) == stepsOf(guide)) then error("the plan sent reads back the same: " .. tostring(back and stepsOf(back))) end
+        local planId = ns.plannerDuo.planId
+        local atSent = false
+        for i = before + 1, #sends do if sends[i].text == string.format("D1:AT:%s:%d:1:6", s, planId) then atSent = true end end
+        if not atSent then error("the leader says its step") end
+        ns:GuideRedraw()
+        if not (panelBits.title or ""):find(" · with Mira", 1, true) then error("the leader's title: " .. tostring(panelBits.title)) end
+        -- progress, both ways
+        local st, steps = ns.GuideState(), guide.steps
+        local function line(theirs, mine, id)
+            addon(string.format("D1:AT:%s:%d:%d:6", s, id or planId, theirs))
+            return ns.PlannerDuoLine(st, steps, mine)
+        end
+        if line(5, 3) ~= "Mira: done" then error("ahead: done") end
+        if line(3, 3) ~= "Mira: on this step" then error("the same step") end
+        if line(1, 3) ~= "Mira: 2 steps behind" then error("behind: " .. tostring(ns.PlannerDuoLine(st, steps, 3))) end
+        if line(2, 4) ~= "Wait for Mira here" then error("the flight waits for her") end
+        if line(5, 3, planId - 1) ~= nil then error("an older plan's step: no line") end
+        line(3, 3)
+        -- inside an instance: nothing sent, the pause line, no lost touch; out again, five minutes of silence is
+        addon("D1:HI:" .. s)
+        ns.PlannerDuoTick()
+        CI.InChatMessagingLockdown = function() return true end
+        before = #sends
+        ns.PlannerDuoSend("D1:HI:" .. s)
+        clock = clock + 400
+        ns.PlannerDuoTick(); flush()
+        if #sends ~= before then error("nothing is sent inside an instance") end
+        if ns.PlannerDuoLine(st, steps, 3) ~= "Planning together is paused inside an instance." then error("the pause line") end
+        if not ns.plannerDuo then error("silence inside an instance does not end it") end
+        CI.InChatMessagingLockdown = function() return false end
+        clock = clock + 301
+        ns.PlannerDuoTick()
+        if ns.plannerDuo ~= nil or not heard("Lost touch with Mira") then error("301 s of silence: lost touch") end
+        flush(); ns:PlannerStop(); ns.plannerQueued = false
+
+        -- the friend: Leo asks, his plans are followed
+        env.UnitName = function(u) if u == "player" then return "Mira" end return "Someone" end
+        addon("D1:ASK:ab12:20", "Leo-Realm")
+        for _, r in ipairs(lists.PlanDuoAsk or {}) do if r.click and r.left:find("Plan together", 1, true) then r.click() end end
+        if ns.PlannerDuoRole() ~= "friend" then error("following Leo") end
+        frames(); flush()
+        local function feed(t, id)
+            local parts = ns.ShareChunks(t)
+            for i, p in ipairs(parts) do addon(string.format("SS:%s:%d:%d:plan:%s", id, i, #parts, p), "Leo-Realm") end
+        end
+        before = #sends
+        feed(ns.PlannerDuoPlanText(guide, summary, 1), "ab12z1")
+        st = ns.GuideState()
+        local now = ns:GuideGet(ns.GUIDE_PLANNED)
+        if not (st.name == ns.GUIDE_PLANNED and now and stepsOf(now) == stepsOf(guide)) then error("the friend follows Leo's plan") end
+        ns:GuideRedraw()
+        if not (panelBits.title or ""):find(" · with Leo$") then error("the friend's title: " .. tostring(panelBits.title)) end
+        flush()
+        atSent = false
+        for i = before + 1, #sends do if sends[i].text:match("^D1:AT:ab12:1:1:6$") then atSent = true end end
+        if not atSent then error("the friend says its step at once") end
+        -- plans that are wrong: the old one kept
+        local small = { name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "One" }, { kind = "note", text = "Two" }, { kind = "note", text = "Three" } } }
+        feed(ns.PlannerDuoPlanText(small, summary, 2) .. "\nbogus 12 line", "ab12z2")
+        local many = { "# duo ab12 3 1429 20 21" }
+        for i = 1, 81 do many[#many + 1] = "note Step " .. i end
+        feed(table.concat(many, "\n"), "ab12z3")
+        feed((ns.PlannerDuoPlanText(small, summary, 4):gsub("^# duo ab12", "# duo cd34")), "ab12z4")
+        if #ns:GuideGet(ns.GUIDE_PLANNED).steps ~= 6 then error("a bad line, 81 steps or another session: not applied") end
+        -- one that comes in a fight: after it
+        env.InCombatLockdown = function() return true end
+        feed(ns.PlannerDuoPlanText(small, summary, 5), "ab12z5")
+        if #ns:GuideGet(ns.GUIDE_PLANNED).steps ~= 6 then error("not in a fight") end
+        env.InCombatLockdown = function() return false end
+        fireEvent("PLAYER_REGEN_ENABLED")
+        if #ns:GuideGet(ns.GUIDE_PLANNED).steps ~= 3 or ns.plannerDuo.planId ~= 5 then error("after the fight") end
+        -- the friend's replans: refused, and one state sent within 2 s
+        ns:PlannerStop(); ns.plannerQueued = false; flush()
+        local okR, why = ns:PlannerReplan("hand-in")
+        ns:PlannerReplan("hand-in")
+        if okR ~= false or why ~= "refused" or ns.plannerQueued ~= false then error("the friend does not plan") end
+        before = #sends
+        clock = clock + 1; ns.PlannerDuoTick(); frames(); flush()
+        if #sends ~= before then error("not yet") end
+        clock = clock + 1.1; ns.PlannerDuoTick(); frames(); flush()
+        local ids = {}
+        for i = before + 1, #sends do
+            local id, _, _, kd = ns.ParseSharePiece(sends[i].text)
+            if kd == "state" then ids[id] = true end
+        end
+        local nIds = 0
+        for _ in pairs(ids) do nIds = nIds + 1 end
+        if nIds ~= 1 then error("two hand-ins: one state sent: " .. nIds) end
+        -- its own "Plan my route": the duo ends and it plans alone
+        if ns:PlannerStart() ~= true or ns.plannerDuo ~= nil or not (ns.plannerQueued and ns.plannerReason == "start") then error("plan my route: alone") end
+        flush()
+        if sends[#sends].text ~= "D1:END:ab12" then error("the end is sent") end
+        ns:PlannerStop(); ns.plannerQueued = false
+        -- an END from the partner
+        addon("D1:ASK:ab13:20", "Leo-Realm")
+        for _, r in ipairs(lists.PlanDuoAsk or {}) do if r.click and r.left:find("Plan together", 1, true) then r.click() end end
+        addon("D1:END:ab13", "Leo-Realm")
+        if ns.plannerDuo ~= nil or not heard("Leo stopped planning together.") then error("Leo stopped") end
+        ns:PlannerStop(); ns.plannerQueued = false; flush()
+        -- following a written guide ends it, and keeps that guide
+        addon("D1:ASK:ab14:20", "Leo-Realm")
+        for _, r in ipairs(lists.PlanDuoAsk or {}) do if r.click and r.left:find("Plan together", 1, true) then r.click() end end
+        frames(); flush()
+        feed(ns.PlannerDuoPlanText(guide, summary, 1), "ab14z1")
+        ns.root.guides["Duo test"] = { name = "Duo test", steps = { { kind = "note", text = "x" } } }
+        ns:GuideFollow("Duo test")
+        clock = clock + 1.5
+        ns.PlannerDuoTick(); flush()
+        if ns.plannerDuo ~= nil or sends[#sends].text ~= "D1:END:ab14" or ns.GuideState().name ~= "Duo test" or ns.plannerQueued then error("a written guide ends the duo, and stays") end
+
+        -- the Guide tab: the switch and the button
+        local page = env.CreateFrame("Frame")
+        ns.BuildGuidePage(page)
+        local T = ns.guidePage
+        if not (T and T.duoAskBox and T.duoButton) then error("the Guide tab's switch and button") end
+        if #ns.errors ~= saved.errors then error("no errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    if ns.plannerDuo then ns:PlannerDuoEnd(nil, true, true) end
+    CI.InChatMessagingLockdown, env.InCombatLockdown = saved.lock, saved.combat
+    for _ = 1, 50 do ns.PlannerDuoFlush() end
+    ns:PlannerStop(); ns.plannerQueued = false
+    if panelBits.panel then rawset(panelBits.panel.title, "SetText", nil) end
+    ns:GuideSetPlan(nil)
+    ns.GuideOn, ns.GuideHere, ns.GuideUnlocked, ns.PrintRaw, ns.ShowList, ns.PlannerContext = saved.on, saved.here, saved.unlocked, saved.raw, saved.show, saved.context
+    env.UnitLevel, env.UnitName, env.UnitIsPlayer, env.UnitIsUnit, env.GetTime = saved.level, saved.name, saved.isPlayer, saved.isUnit, saved.time
+    rawset(env, "UnitIsFriend", saved.isFriend)
+    CI.SendAddonMessage = saved.send
+    ns.root.guideState, ns.root.guides, ns.root.planner = saved.guideState, saved.guides, saved.planner
+    ns.db.plannerDuoAsk, ns.plannerDuo, ns.guidePage = saved.ask, saved.duo, saved.guidePage
+    if ns.HideLists then ns:HideLists() end
+    if not ok then error(err, 0) end
+end)
 -- batch 5 tests B (duo): end
 -- batch 5 tests C (code): begin
 -- batch 5 tests C (code): end
