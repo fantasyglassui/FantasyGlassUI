@@ -396,7 +396,16 @@ local function AddRep(state, q)
     local goals = state.ctx and state.ctx.repGoals
     if type(goals) ~= "table" or type(q.reputation) ~= "table" then return end
     for _, e in ipairs(q.reputation) do
-        if goals[e[1]] and tonumber(e[2]) then state.rep[e[1]] = (state.rep[e[1]] or 0) + e[2] end
+        local value = tonumber(e[2])
+        if goals[e[1]] and value then
+            state.rep[e[1]] = (state.rep[e[1]] or 0) + value
+            local ctx = state.ctx
+            local left = ns.PlannerRepLeft(ctx, e[1], goals[e[1]])      -- (the pool of this faction: the plan never credits more than is needed)
+            if left then
+                if type(ctx.repLeft) ~= "table" then ctx.repLeft = {} end
+                ctx.repLeft[e[1]] = max(0, left - value)
+            end
+        end
     end
 end
 
@@ -449,12 +458,12 @@ local function HubSteps(state, hub, steps, inn, n)
     for _, q in ipairs(hub.quests) do
         if not gone[q.id] then
             kept = kept + 1
-            AddRep(state, q)
             t = t + ns.PlannerQuestTime(q, state.ctx)
             local qxp, extra = ns.PlannerQuestXP(q, state.ctx)
             xp = xp + qxp
             local left = tonumber(state.ctx.restedLeft)
             if left and left > 0 then state.ctx.restedLeft = max(0, left - extra) end
+            AddRep(state, q)                                 -- (after its experience is counted: the pool of each faction goes down)
         end
     end
     return t, xp, kept

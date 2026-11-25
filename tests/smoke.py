@@ -10962,7 +10962,7 @@ try("13.3 choices: rested, upgrades, alts", function()
     if not ok then error(err, 0) end
 end)
 try("13.3 choices: reputation goals", function()
-    local saved = { repGoalsFn = ns.PlannerRepGoals, rep = env.C_Reputation, max = env.UnitXPMax, on = ns.GuideOn, here = ns.GuideHere, state = ns.GuideState,
+    local saved = { breakUp = rawget(env, "BreakUpLargeNumbers"), repGoalsFn = ns.PlannerRepGoals, rep = env.C_Reputation, max = env.UnitXPMax, on = ns.GuideOn, here = ns.GuideHere, state = ns.GuideState,
                     loaded = env.C_AddOns.IsAddOnLoaded, meta = rawget(env.C_AddOns, "GetAddOnMetadata"), q = rawget(env, "Questie"),
                     loader = rawget(env, "QuestieLoader"), goals = (function() local r = ns.PlannerCharRecord(false); return r and r.repGoals end)() }
     local ok, err = pcall(function()
@@ -11000,34 +11000,84 @@ try("13.3 choices: reputation goals", function()
         env.UnitXPMax = function() return 10000 end
         local rec = { id = 1, name = "Q", level = 10, minLevel = 1, xp = 0, starts = {}, ends = {}, objectives = {}, pre = {}, preAny = {},
                       exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true, reputation = { { 72, 250 } } }
-        if ns.PlannerRepNeeded(72, 5) ~= 2300 then error("2,300 to Honored: " .. tostring(ns.PlannerRepNeeded(72, 5))) end
-        if ns.PlannerRepNeeded(72, 6) ~= 14300 or ns.PlannerRepNeeded(72, 7) ~= 35300 then error("Revered and Exalted") end
-        local c = { level = 10, xpMax = 10000, repGoals = { [72] = 5 }, repCache = {} }
+        if ns.PlannerRepNeeded(72, 6) ~= 2300 then error("2,300 to Honored: " .. tostring(ns.PlannerRepNeeded(72, 6))) end
+        if ns.PlannerRepNeeded(72, 7) ~= 14300 or ns.PlannerRepNeeded(72, 8) ~= 35300 then error("Revered and Exalted") end
+        local c = { level = 10, xpMax = 10000, repGoals = { [72] = 6 }, repCache = {} }
         if ns.PlannerQuestXP(rec, c) ~= 500 then error("250 x 0.0002 x 10,000 = 500, got " .. ns.PlannerQuestXP(rec, c)) end
         data.currentStanding = 8900
-        if ns.PlannerQuestXP(rec, { level = 10, xpMax = 10000, repGoals = { [72] = 5 } }) ~= 200 then error("100 still needed: 200") end
+        if ns.PlannerQuestXP(rec, { level = 10, xpMax = 10000, repGoals = { [72] = 6 } }) ~= 200 then error("100 still needed: 200") end
         data.reaction, data.currentStanding = 6, 9500
-        if ns.PlannerRepNeeded(72, 5) ~= nil then error("reached: nil") end
-        if ns.PlannerQuestXP(rec, { level = 10, xpMax = 10000, repGoals = { [72] = 5 } }) ~= 0 then error("goal reached: 0") end
+        if ns.PlannerRepNeeded(72, 6) ~= nil then error("reached: nil") end
+        if ns.PlannerQuestXP(rec, { level = 10, xpMax = 10000, repGoals = { [72] = 6 } }) ~= 0 then error("goal reached: 0") end
         data.reaction, data.currentStanding = 5, 6700
         if ns.PlannerQuestXP(rec, { level = 10, xpMax = 10000 }) ~= 0 then error("no goal: 0") end
         if ns.PlannerQuestXP(rec, { level = 10, xpMax = 10000, repGoals = { [99] = 5 } }) ~= 0 then error("another faction: 0") end
         -- read once per plan
         local reads = 0
         env.C_Reputation.GetFactionDataByID = function(id) reads = reads + 1; return data end
-        local cc = { level = 10, xpMax = 10000, repGoals = { [72] = 5 }, repCache = {} }
+        local cc = { level = 10, xpMax = 10000, repGoals = { [72] = 6 }, repCache = {} }
         ns.PlannerQuestXP(rec, cc); local once = reads
         ns.PlannerQuestXP(rec, cc)
         if once == 0 or reads ~= once then error("cached per plan: " .. once .. " " .. reads) end
         -- unreadable
         env.C_Reputation.GetFactionDataByID = function() error("boom") end
-        if ns.PlannerRepNeeded(72, 5) ~= nil or ns.PlannerQuestXP(rec, { level = 10, xpMax = 10000, repGoals = { [72] = 5 } }) ~= 0 then error("an erroring API: nil and 0") end
+        if ns.PlannerRepNeeded(72, 6) ~= nil or ns.PlannerQuestXP(rec, { level = 10, xpMax = 10000, repGoals = { [72] = 6 } }) ~= 0 then error("an erroring API: nil and 0") end
         env.C_Reputation.GetFactionDataByID = function() return { name = "X" } end
-        if ns.PlannerRepNeeded(72, 5) ~= nil then error("fields missing: nil") end
+        if ns.PlannerRepNeeded(72, 6) ~= nil then error("fields missing: nil") end
         env.C_Reputation = nil
-        if ns.PlannerRepNeeded(72, 5) ~= nil then error("no API: nil") end
+        if ns.PlannerRepNeeded(72, 6) ~= nil then error("no API: nil") end
         env.C_Reputation = { GetFactionDataByID = function(id) return data end }
+        -- the game's own threshold wins when the reaction is the one below the goal
+        data.nextReactionThreshold = 9100
+        if ns.PlannerRepNeeded(72, 6) ~= 2400 then error("nextReactionThreshold - standing: " .. tostring(ns.PlannerRepNeeded(72, 6))) end
+        data.nextReactionThreshold = 9000
+        -- a plan with two quests for one faction never credits more than is still needed
+        data.currentStanding = 8700
+        local cm = {}
+        for k, v in pairs(env.C_Map) do cm[k] = v end
+        cm.GetWorldPosFromMapPos = function(map, v) if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end end
+        local realMap, realVec = env.C_Map, rawget(env, "CreateVector2D")
+        env.C_Map = cm
+        env.CreateVector2D = function(x, y) return { x = x, y = y } end
+        local okR, errR = pcall(function()
+            local function hubRec(id, x, y)
+                return { id = id, name = "Q" .. id, level = 10, minLevel = 1, xp = 680, starts = { { map = 1, x = x, y = y } }, ends = { { map = 1, x = x, y = y } },
+                    objectives = { { kind = "kill", count = 0, countKnown = true, mobLevel = 10, spots = { { map = 1, x = x + 2, y = y + 2 } } } },
+                    pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true,
+                    reputation = { { 72, 250 } } }
+            end
+            local recs = { [501] = hubRec(501, 30, 40), [502] = hubRec(502, 80, 80) }
+            local source = { kind = "questie", ids = function() return { 501, 502 } end, quest = function(id) return recs[id] end, inns = function() return {} end }
+            local function route(goals)
+                local ctx = { source = source, level = 10, group = "solo", inGroup = false, speed = 7, faction = "Alliance", xpMax = 10000, repGoals = goals,
+                    done = function() return false end, onQuest = function() return false end, here = { map = 1, x = 30, y = 40 },
+                    crossings = {}, learnFlights = false, bind = "Elsewhere", bindSpot = { map = 1, x = 30, y = 40 }, pace = 1, flights = {},
+                    flightTime = function() return nil end }
+                local _, summary = ns.PlannerRoute(ctx)
+                return summary
+            end
+            local plain, wanted = route(nil), route({ [72] = 6 })
+            if wanted.xp - plain.xp ~= 600 then error("300 needed, two 250 quests: 300 x 2 = 600 in all, got " .. (wanted.xp - plain.xp)) end
+            if not (wanted.reputation and wanted.reputation[72] == 500) then error("the summary has what the plan gives: 500") end
+        end)
+        env.C_Map, env.CreateVector2D = realMap, realVec
+        if not okR then error(errR, 0) end
+        data.currentStanding = 6700
+        -- changing a goal queues a replan while following
+        ns.GuideOn = function() return true end
+        ns.GuideState = function() return { name = ns.GUIDE_PLANNED, at = 1, plan = {} } end
+        ns.plannerQueued = false
+        ns.PlannerSetRepGoal(72, 7)
+        if ns.plannerQueued ~= true or ns.PlannerRepGoals()[72] ~= 7 then error("a goal change replans while following") end
+        ns.PlannerSetRepGoal(72, nil)
+        ns.GuideState = function() return nil end
+        ns.plannerQueued = false
+        ns.PlannerSetRepGoal(72, 6)
+        if ns.plannerQueued then error("not following: no replan") end
+        ns.PlannerSetRepGoal(72, nil)
+        ns.GuideState = saved.state
         -- the panel line
+        env.BreakUpLargeNumbers = function(n) local t = tostring(n); while true do local r, k = t:gsub("^(-?%d+)(%d%d%d)", "%1,%2"); t = r; if k == 0 then break end end return t end
         ns.GuideOn = function() return true end
         ns.GuideHere = function() return 1, 30, 40 end
         ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "x" } } }, { reputation = { [72] = 250 } })
@@ -11035,13 +11085,20 @@ try("13.3 choices: reputation goals", function()
         if not (panel and panel.rep) then error("the panel has a reputation line") end
         local said = {}
         rawset(panel.rep, "SetText", function(_, t) said.rep = t end)
-        ns.PlannerRepGoals = function() return { [72] = 5 } end
+        ns.PlannerRepGoals = function() return { [72] = 6 } end
         ns:GuideShowPanel()
         if said.rep ~= "Stormwind: 2,300 to Honored" then error("the line: " .. tostring(said.rep)) end
+        ns.GuideState = saved.state
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "x" } } }, { reputation = { [72] = 250, [69] = 900 } })
+        env.C_Reputation = { GetFactionDataByID = function(id) return { name = id == 72 and "Stormwind" or "Darnassus", reaction = 5, currentStanding = id == 72 and 6700 or 8000, nextReactionThreshold = 9000 } end }
+        ns.PlannerRepGoals = function() return { [72] = 6, [69] = 6 } end
+        ns:GuideShowPanel()
+        if said.rep ~= "Darnassus: 1,000 to Honored" then error("the faction with the most in the plan: " .. tostring(said.rep)) end
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "x" } } }, { reputation = { [72] = 250 } })
         ns.PlannerRepGoals = function() return {} end
         ns:GuideShowPanel()
         if said.rep and said.rep ~= "" then error("no goal: no line") end
-        ns.PlannerRepGoals = function() return { [73] = 5 } end
+        ns.PlannerRepGoals = function() return { [73] = 6 } end
         ns:GuideShowPanel()
         if said.rep and said.rep ~= "" then error("a goal the plan doesn't give: no line") end
         ns.PlannerRepGoals = saved.repGoalsFn
@@ -11058,15 +11115,16 @@ try("13.3 choices: reputation goals", function()
         local function goal() local rr = ns.PlannerCharRecord(false); return rr and rr.repGoals and rr.repGoals[72] end
         local function click() for _, l in ipairs(w.lines) do if l.left:find("Stormwind", 1, true) then l.click("LeftButton"); return end end error("no Stormwind row") end
         click(); w = ns:GuideReputation()
-        if goal() ~= 5 then error("off -> Honored") end
+        if goal() ~= 6 then error("off -> Honored") end
         click(); w = ns:GuideReputation()
-        if goal() ~= 6 then error("-> Revered") end
+        if goal() ~= 7 then error("-> Revered") end
         click(); w = ns:GuideReputation()
-        if goal() ~= 7 then error("-> Exalted") end
+        if goal() ~= 8 then error("-> Exalted") end
         click(); w = ns:GuideReputation()
         if goal() ~= nil then error("-> off") end
-        if ns.PlannerRepName and ns.PlannerRepStandingName(5) ~= "Honored" then error("standing name") end
+        if ns.PlannerRepName and ns.PlannerRepStandingName(6) ~= "Honored" then error("standing name") end
     end)
+    rawset(env, "BreakUpLargeNumbers", saved.breakUp)
     env.C_Reputation, env.UnitXPMax = saved.rep, saved.max
     ns.GuideOn, ns.GuideHere, ns.GuideState, ns.PlannerRepGoals = saved.on, saved.here, saved.state, saved.repGoalsFn
     env.C_AddOns.IsAddOnLoaded = saved.loaded; rawset(env.C_AddOns, "GetAddOnMetadata", saved.meta)

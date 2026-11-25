@@ -459,22 +459,21 @@ local function RepText(st)
     local sum = Planned(st) and type(st.summary) == "table" and st.summary.reputation
     local goals = ns.PlannerRepGoals and ns.PlannerRepGoals()
     if type(sum) ~= "table" or type(goals) ~= "table" or not ns.PlannerRepNeeded then return nil end
-    local ids = {}
+    local best, bestValue                           -- (the wanted faction the plan gives most with)
     for id, value in pairs(sum) do
-        if type(id) == "number" and goals[id] and tonumber(value) then ids[#ids + 1] = id end
-    end
-    table.sort(ids)
-    for _, id in ipairs(ids) do
-        local need = ns.PlannerRepNeeded(id, goals[id])
-        local name = ns.PlannerRepName and ns.PlannerRepName(id)
-        local standing = ns.PlannerRepStandingName and ns.PlannerRepStandingName(goals[id])
-        if need and name and standing then
-            local good, nice = pcall(BreakUpLargeNumbers or tostring, math.floor(need))
-            if not (good and type(nice) == "string") then nice = tostring(math.floor(need)) end
-            return format(ns:Tr("%s: %s to %s"), name, nice, standing)
+        value = tonumber(value)
+        if type(id) == "number" and goals[id] and value and (not bestValue or value > bestValue or (value == bestValue and id < best)) then
+            local need = ns.PlannerRepNeeded(id, goals[id])
+            local name = ns.PlannerRepName and ns.PlannerRepName(id)
+            local standing = ns.PlannerRepStandingName and ns.PlannerRepStandingName(goals[id])
+            if need and name and standing then best, bestValue = id, value end
         end
     end
-    return nil
+    if not best then return nil end
+    local need = ns.PlannerRepNeeded(best, goals[best])
+    local good, nice = pcall(BreakUpLargeNumbers or tostring, math.floor(need))
+    if not (good and type(nice) == "string") then nice = tostring(math.floor(need)) end
+    return format(ns:Tr("%s: %s to %s"), ns.PlannerRepName(best), nice, ns.PlannerRepStandingName(goals[best]))
 end
 -- The factions you want reputation with: a list to click, each cycling Honored, Revered, Exalted, off.
 function ns:GuideReputation()

@@ -221,19 +221,19 @@ function ns.PlannerRewardBonus(rec, ctx)
 end
 
 ------------------------------------------------------------------------------------------
--- Reputation you want: per character rec.repGoals = { [factionID] = standing } (5 Honored, 6 Revered,
--- 7 Exalted). A quest that gives such reputation earns bonus experience: the reputation it gives (at most
+-- Reputation you want: per character rec.repGoals = { [factionID] = standing } (the game's own ids:
+-- 6 Honored, 7 Revered, 8 Exalted). A quest that gives such reputation earns bonus experience: the reputation it gives (at most
 -- what is still needed) x 0.0002 x a level.
 ------------------------------------------------------------------------------------------
--- Where each standing starts (the game's own ids are one higher: 6 Honored, 7 Revered, 8 Exalted).
-local REP_START = { [5] = 9000, [6] = 21000, [7] = 42000 }
-local REP_FALLBACK = { [5] = "Honored", [6] = "Revered", [7] = "Exalted" }
-ns.PLANNER_REP_STANDINGS = { 5, 6, 7 }
+-- Where each standing starts: only a fallback, for when the game gives no threshold for the next standing.
+local REP_START = { [6] = 9000, [7] = 21000, [8] = 42000 }
+local REP_FALLBACK = { [6] = "Honored", [7] = "Revered", [8] = "Exalted" }
+ns.PLANNER_REP_STANDINGS = { 6, 7, 8 }
 
 function ns.PlannerRepStandingName(standing)
     local word = REP_FALLBACK[standing]
     if not word then return nil end
-    local label = _G["FACTION_STANDING_LABEL" .. (standing + 1)]
+    local label = _G["FACTION_STANDING_LABEL" .. standing]
     if type(label) == "string" and label ~= "" and not ns:IsSecret(label) then return label end
     return ns:Tr(word)
 end
@@ -259,7 +259,9 @@ function ns.PlannerRepNeeded(factionID, standing)
     if not data then return nil end
     local reaction, now = data.reaction, data.currentStanding
     if type(reaction) ~= "number" or type(now) ~= "number" or ns:IsSecret(reaction) or ns:IsSecret(now) then return nil end
-    if reaction >= standing + 1 then return nil end
+    if reaction >= standing then return nil end
+    local nextAt = tonumber(data.nextReactionThreshold)
+    if reaction == standing - 1 and nextAt and not ns:IsSecret(nextAt) and nextAt > now then start = nextAt end   -- (the game's own threshold)
     local need = start - now
     return need > 0 and need or nil
 end
@@ -299,7 +301,22 @@ function ns.PlannerKnownFactions()
     return out
 end
 
--- Bonus experience for the wanted reputation a quest gives. The need is read once per plan (ctx.repCache).
+-- Reputation still needed with a wanted faction, or false: ctx.repLeft (which the route lowers as it lays
+-- hubs out) when it has the faction, else read once per plan (ctx.repCache).
+function ns.PlannerRepLeft(ctx, id, standing)
+    local lowered = nil
+    if type(ctx.repLeft) == "table" then lowered = ctx.repLeft[id] end
+    if lowered ~= nil then return lowered end
+    local cache = type(ctx.repCache) == "table" and ctx.repCache or nil
+    local left = cache and cache[id]
+    if left == nil then
+        left = ns.PlannerRepNeeded(id, standing) or false
+        if cache then cache[id] = left end
+    end
+    return left
+end
+
+-- Bonus experience for the wanted reputation a quest gives.
 function ns.PlannerRepBonus(rec, ctx)
     ctx = ctx or {}
     local goals = ctx.repGoals
@@ -310,17 +327,12 @@ function ns.PlannerRepBonus(rec, ctx)
         need = okM and tonumber(v) or nil
     end
     if not need or need <= 0 or ns:IsSecret(need) then return 0 end
-    local cache = type(ctx.repCache) == "table" and ctx.repCache or nil
     local bonus = 0
     for _, e in ipairs(rec.reputation) do
         local id, value = e[1], tonumber(e[2])
         local standing = goals[id]
         if standing and value and value > 0 then
-            local left = cache and cache[id]
-            if left == nil then
-                left = ns.PlannerRepNeeded(id, standing) or false
-                if cache then cache[id] = left end
-            end
+            local left = ns.PlannerRepLeft(ctx, id, standing)
             if left then bonus = bonus + min(value, left) * 0.0002 * need end
         end
     end
