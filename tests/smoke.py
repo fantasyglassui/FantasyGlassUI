@@ -12653,6 +12653,166 @@ end)
 -- batch 4 tests A (map): begin
 -- batch 4 tests A (map): end
 -- batch 4 tests B (panel): begin
+try("13.4 feel B: time to level, why this, preview", function()
+    local saved = { on = ns.GuideOn, here = ns.GuideHere, unlocked = ns.GuideUnlocked, level = env.UnitLevel, xp = env.UnitXP, xpMax = env.UnitXPMax,
+                    brk = env.BreakUpLargeNumbers, context = ns.PlannerContext, route = ns.PlannerRoute, world = ns.PlannerWorldPos, show = ns.ShowList,
+                    guideState = ns.root.guideState, guides = ns.root.guides, key = ns.root.guideKey, plannerGroup = ns.db.plannerGroup }
+    local rec0 = ns.PlannerCharRecord(false)
+    local oldPace = rec0 and rec0.pace
+    local function click(frame, ...)
+        local f = frame:GetScript("OnClick")
+        if type(f) ~= "function" then
+            for _, h in ipairs(handlers) do if h.self == frame and h.name == "OnClick" then f = h.fn end end
+        end
+        return f(frame, ...)
+    end
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        ns.db.plannerGroup = nil
+        env.BreakUpLargeNumbers = function(n) return (tostring(n):reverse():gsub("(%d%d%d)", "%1,"):reverse():gsub("^,", "")) end
+        env.UnitLevel = function() return 25 end
+        env.UnitXP = function() return 2000 end
+        env.UnitXPMax = function() return 10000 end
+        local rec = ns.PlannerCharRecord(true)
+        rec.pace = { samples = { 1, 1, 1 }, value = 1 }
+        -- time to level: (10000 - 2000) / (6000 / 3600) / 60 = 80 minutes
+        local summary = { xp = 6000, seconds = 3600 }
+        if ns.PlannerTimeToLevel(summary) ~= 80 then error("80 minutes: " .. tostring(ns.PlannerTimeToLevel(summary))) end
+        if ns.PlannerTimeToLevel({ xp = 6000, seconds = 0.001 }) ~= 1 then error("at least 1 minute") end
+        rec.pace.samples = { 1, 1 }
+        if ns.PlannerTimeToLevel(summary) ~= nil then error("two samples: nothing") end
+        rec.pace.samples = { 1, 1, 1 }
+        env.UnitXPMax = function() return 0 end
+        if ns.PlannerTimeToLevel(summary) ~= nil then error("no experience maximum: nothing") end
+        env.UnitXPMax = function() return 10000 end
+        if ns.PlannerTimeToLevel({ xp = 6000, seconds = 0 }) ~= nil or ns.PlannerTimeToLevel({ xp = 0, seconds = 60 }) ~= nil then error("no seconds or no experience: nothing") end
+        -- the title of the planned guide
+        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
+        ns.GuideOn = function() return true end
+        ns.GuideHere = function() return 1, 30, 40 end
+        local panel = ns:GuideShowPanel()
+        local titleText
+        rawset(panel.title, "SetText", function(_, t) titleText = t end)
+        local step1 = { kind = "accept", quest = 201, title = "Q201", hub = 1 }
+        local hub = { xp = 1200, seconds = 480, travel = 120, rate = 2, beat = { rate = 1.5, name = "Wolves" } }
+        summary = { zone = 1, fromLevel = 25, toLevel = 26, xp = 6000, seconds = 3600, taken = { hub }, skipped = { group = 3 } }
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { step1, { kind = "fly", text = "Fly" }, { kind = "fly", text = "Fly again" }, { kind = "sail", text = "Boat" } } }, summary)
+        ns:GuideRedraw()
+        if type(titleText) ~= "string" or titleText:sub(-#" · level 26 in ~80 min") ~= " · level 26 in ~80 min" then error("the title ends with the time: " .. tostring(titleText)) end
+        rec.pace.samples = { 1, 1 }
+        ns:GuideRedraw()
+        if titleText:find("level 26", 1, true) then error("two samples: no time in the title") end
+        rec.pace.samples = { 1, 1, 1 }
+
+        -- why this
+        local function text(lines) local o = {} for _, l in ipairs(lines) do o[#o + 1] = tostring(l.left) .. " " .. tostring(l.right or "") end return table.concat(o, "\n") end
+        local why = text(ns.PlannerWhyLines(step1, summary))
+        for _, want in ipairs({ "1,200", "2 min", "8 min", "7,200", "Beat Wolves at 5,400 an hour (33% better)" }) do
+            if not why:find(want, 1, true) then error("the why lines carry " .. want .. ":\n" .. why) end
+        end
+        hub.beat = nil
+        if not text(ns.PlannerWhyLines(step1, summary)):find("Nothing else was worth the trip", 1, true) then error("no beat: nothing else was worth the trip") end
+        hub.beat = { rate = 3, name = "Boars" }
+        local first = text(ns.PlannerWhyLines(step1, summary))
+        if first:find("better", 1, true) or not first:find("Taken first", 1, true) then error("a beat that is not slower: taken first, no negative percent:\n" .. first) end
+        hub.beat = nil; hub.lead = true
+        if not text(ns.PlannerWhyLines(step1, summary)):find("Taken first", 1, true) then error("a lead-in: taken first") end
+        hub.lead = nil
+        local vendor = { kind = "vendor", text = "Sell", why = { detour = 90 } }
+        local vtext = text(ns.PlannerWhyLines(vendor, summary))
+        if not (vtext:find("A stop on the way", 1, true) and vtext:find("About 2 min out of the way", 1, true)) then error("a stop's detour:\n" .. vtext) end
+        if not text(ns.PlannerWhyLines({ kind = "mail", why = { saves = 300 } }, summary)):find("Saves about 5 min", 1, true) then error("a stop's saving") end
+        if #ns.PlannerWhyLines({ kind = "goto", x = 1, y = 1 }, summary) ~= 0 then error("a step with no hub and no why: no lines") end
+        local shown = {}
+        ns.ShowList = function(self, key, title, lines, ...) shown[#shown + 1] = { key = key, title = title, lines = lines }; return saved.show(self, key, title, lines, ...) end
+        local menu = ns:GuideStepMenu(step1)
+        local whyButton
+        for _, b in ipairs(menu and menu.buttons or {}) do if b.entryLabel == "Why this?" then whyButton = b end end
+        if not whyButton then error("the step's menu lists Why this?") end
+        click(whyButton)
+        if #shown ~= 1 or shown[1].key ~= "PlanWhy" or shown[1].title ~= "Why this?" or not text(shown[1].lines):find("1,200", 1, true) then error("Why this? opens the lines") end
+        if ns:GuideStepMenu({ kind = "goto", x = 1, y = 1 }) ~= nil then error("a step with nothing to say has no menu") end
+
+        -- the preview
+        local steps = ns:GuideGet(ns.GUIDE_PLANNED).steps
+        local lines = ns.PlannerPreviewLines({ name = ns.GUIDE_PLANNED, steps = steps }, summary)
+        for i, s in ipairs(steps) do
+            if lines[i].left ~= i .. ". " .. ns.GuideStepBase(s) then error("step " .. i .. " in order: " .. tostring(lines[i].left)) end
+        end
+        local all = text(lines)
+        for _, want in ipairs({ "Experience: 6,000", "Level 25 → 26", "Flights: 2, crossings: 1", "Skipped: 3 group quests (Solo is on)" }) do
+            if not all:find(want, 1, true) then error("the preview says " .. want .. ":\n" .. all) end
+        end
+        if all:find("Moved:", 1, true) then error("no moved line without a moved hub") end
+        summary.moved = 14
+        if not text(ns.PlannerPreviewLines({ steps = steps }, summary)):find("Moved: you died twice here (back at level 14)", 1, true) then error("the moved line") end
+        summary.moved = nil
+        shown = {}
+        if ns:PlannerPreview() ~= true or #shown ~= 1 or shown[1].key ~= "PlanPreview" or shown[1].title ~= "Preview the next hour" then error("the Preview action opens the page") end
+        local pe = ns.GuidePanelEntries(nil)
+        local hasPreview = false
+        for _, e in ipairs(pe) do if e[1] == "Preview" then hasPreview = true end end
+        if not hasPreview then error("the panel menu lists Preview") end
+
+        -- the first plan after Plan my route opens the preview, once
+        local source = { kind = "test", ids = function() return {} end, quest = function() return nil end, inns = function() return {} end }
+        ns.PlannerContext = function() return { source = source, speed = 7, pace = 1 } end
+        ns.PlannerRoute = function()
+            return { name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "n" }, { kind = "fly", text = "F" }, { kind = "sail", text = "S" } } },
+                   { seconds = 300, zone = 1, xp = 100, fromLevel = 25, toLevel = 25.1 }
+        end
+        ns.PlannerWorldPos = function(map, x, y) if map == 1 then return 0, x * 10, y * 10 end end
+        fireEvent("PLAYER_REGEN_ENABLED")
+        local function runIt()
+            for _ = 1, 50 do
+                if not ns.plannerBusy and not ns.plannerQueued then break end
+                for i = 1, #handlers do local h = handlers[i]; if h.name == "OnUpdate" then pcall(h.fn, h.self, 0.02) end end
+            end
+        end
+        shown = {}
+        ns:PlannerStart()
+        runIt()
+        local n = 0
+        local window
+        for _, s in ipairs(shown) do if s.key == "PlanPreview" then n = n + 1 end end
+        if n ~= 1 then error("the first plan opens the preview once: " .. n) end
+        ns:PlannerReplan("hand-in")
+        runIt()
+        n = 0
+        for _, s in ipairs(shown) do if s.key == "PlanPreview" then n = n + 1 end end
+        if n ~= 1 then error("a replan after a hand-in does not open it: " .. n) end
+        -- Follow hides it; Plan again hides it and opens the Guide tab
+        ns.ShowList = function(self, key, title, l, ...) window = saved.show(self, key, title, l, ...); shown[#shown + 1] = { key = key, lines = l }; return window end
+        ns:PlannerPreview()
+        local pl = shown[#shown].lines
+        local follow, again = pl[#pl - 1], pl[#pl]
+        if follow.left ~= "Follow" or again.left ~= "Plan again" then error("Follow and Plan again close the lines") end
+        local hid = 0
+        rawset(window, "Hide", function() hid = hid + 1 end)
+        follow.click()
+        if hid ~= 1 then error("Follow hides the page") end
+        local opened
+        local realToggle = ns.ToggleConfig
+        ns.ToggleConfig = function(_, tab) opened = tab end
+        again.click()
+        ns.ToggleConfig = realToggle
+        if hid ~= 2 or opened ~= "guide" then error("Plan again hides it and opens the Guide tab: " .. tostring(opened)) end
+        rawset(window, "Hide", nil)
+    end)
+    ns.ShowList = saved.show
+    ns:PlannerStop()
+    ns.plannerQueued = false
+    ns.GuideOn, ns.GuideHere, ns.GuideUnlocked = saved.on, saved.here, saved.unlocked
+    env.UnitLevel, env.UnitXP, env.UnitXPMax, env.BreakUpLargeNumbers = saved.level, saved.xp, saved.xpMax, saved.brk
+    ns.PlannerContext, ns.PlannerRoute, ns.PlannerWorldPos = saved.context, saved.route, saved.world
+    ns.db.plannerGroup = saved.plannerGroup
+    local rr = ns.PlannerCharRecord(false)
+    if rr then rr.pace = oldPace end
+    ns:GuideSetPlan(nil)
+    ns.root.guideState, ns.root.guides, ns.root.guideKey = saved.guideState, saved.guides, saved.key
+    if ns.guideStepMenu then ns.guideStepMenu:Hide() end
+    if not ok then error(err, 0) end
+end)
 -- batch 4 tests B (panel): end
 -- batch 4 tests C (pace): begin
 -- batch 4 tests C (pace): end
