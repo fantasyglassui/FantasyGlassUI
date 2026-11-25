@@ -56,6 +56,10 @@ EXTRAS.mailTargets = function(parent)
     return f, h
 end
 ns.FeatureExtras = EXTRAS
+-- (12.3) The blocks lent from the older pages are laid out for 736 px. Each sits on a card with this
+-- padding at either side, and the card stops this far short of the page's right; the window's least
+-- width is worked out from these (Config.lua), so none is ever cut.
+O.LEGACY_W, O.BLOCK_PAD, O.CARD_GAP = 736, 18, 12
 
 -- A setting's name, whichever kind it is.
 function O.RowLabel(name)
@@ -86,15 +90,17 @@ local function BuildSections(page)
     ns:Font(heading, 24, true)
     heading:SetPoint("TOPLEFT", 0, -18)
     ns:Paint(heading, "SetTextColor", "text")
+    heading:SetJustifyH("LEFT")
+    if heading.SetWordWrap then heading:SetWordWrap(true) end      -- (a long title wraps under itself, clear of the filter)
     local newTag = ns.NewTag(page)
-    newTag:SetPoint("LEFT", heading, "RIGHT", 10, 0)
+    newTag:SetPoint("TOPLEFT", heading, "TOPLEFT", 0, -8)          -- (put after the title's text by page.Show)
     local intro = page:CreateFontString(nil, "OVERLAY")
     ns:Font(intro, 13)
-    intro:SetPoint("TOPLEFT", 0, -54)
+    intro:SetPoint("TOPLEFT", 0, -54)                              -- (moved under a title that wraps by page.Show)
     intro:SetWidth(520)
     intro:SetJustifyH("LEFT")
     ns:Paint(intro, "SetTextColor", "dim")
-    page.heading, page.crumb, page.intro = heading, crumb, intro
+    page.heading, page.crumb, page.intro, page.newTag = heading, crumb, intro, newTag
 
     page.filter = "all"
     page.filterButtons = {}
@@ -108,6 +114,7 @@ local function BuildSections(page)
         page.DrawFilter()
         if page.section then page.Show(page.section) end
     end
+    local FILTER_W = 3 * 56 + 2 * 6                           -- (the filter's width, at the title's right)
     local prev
     for i = 3, 1, -1 do
         local mode = ({ "all", "on", "off" })[i]
@@ -151,9 +158,10 @@ local function BuildSections(page)
     local card = NewCard()
     page.card = card
     page.blockCards = {}                                      -- a card behind each block of another page's settings
+    page.lentFrames = {}
     local function RowWidth()
         local w = page.GetWidth and page:GetWidth()
-        return (type(w) == "number" and w > 300) and (w - 12) or 724
+        return (type(w) == "number" and w > 300) and (w - O.CARD_GAP) or (O.LEGACY_W + 2 * O.BLOCK_PAD)
     end
     -- the height of a text: what the game says, or an estimate where it cannot (before it is drawn)
     local function TextHeight(fs, size, width)
@@ -432,7 +440,7 @@ local function BuildSections(page)
         inner:SetScript("OnMouseWheel", function(_, delta) area:Scroll(-(tonumber(delta) or 0) * 42) end)
         return function() inner:SetScript("OnMouseWheel", inner.suiOwnWheel or nil) end
     end
-    local BX, BY = 18, 14                                     -- (12.3) a block's padding inside its card
+    local BX, BY = O.BLOCK_PAD, 14                            -- (12.3) a block's padding inside its card
     local function BW() return math.max(300, RowWidth() - 2 * BX) end
     local function Lend(frame, y, height)
         local parent = frame:GetParent()
@@ -447,6 +455,7 @@ local function BuildSections(page)
         frame:SetPoint("TOPLEFT", page, "TOPLEFT", BX, y)
         if height and frame.SetHeight then frame:SetHeight(height) end
         frame:Show()
+        page.lentFrames[#page.lentFrames + 1] = frame
         lent[#lent + 1] = function()
             frame.lentTo = nil
             frame:SetParent(parent)
@@ -524,6 +533,7 @@ local function BuildSections(page)
                 b:ClearAllPoints()
                 b:SetPoint("TOPLEFT", page, "TOPLEFT", x, y - row * 26)
                 b:Show()
+                page.lentFrames[#page.lentFrames + 1] = b
                 b.pick = function()
                     host.sheet.NavSelect(i)
                     for k = 1, #at do
@@ -573,6 +583,7 @@ local function BuildSections(page)
             e.frame:SetPoint("TOPLEFT", page, "TOPLEFT", BX, y)
             if e.frame.Refresh then e.frame.Refresh() end
             e.frame:Show()
+            page.lentFrames[#page.lentFrames + 1] = e.frame
             lent[#lent + 1] = function() e.frame:Hide() end
             return e.height
         end
@@ -589,7 +600,7 @@ local function BuildSections(page)
         if not c then c = NewCard(); page.blockCards[page.blockUsed] = c end
         c:ClearAllPoints()
         c:SetPoint("TOPLEFT", page, "TOPLEFT", 0, y)
-        c:SetPoint("TOPRIGHT", page, "TOPRIGHT", -12, y)
+        c:SetPoint("TOPRIGHT", page, "TOPRIGHT", -O.CARD_GAP, y)
         c:SetHeight(h + 2 * BY)
         c:Show()
         return h + 2 * BY
@@ -611,6 +622,7 @@ local function BuildSections(page)
         hidden = {}
         for _, row in pairs(page.rows) do row:Hide() end
         page.shownHosts, page.chipCount = {}, 0
+        page.lentFrames = {}                                  -- (what the blocks put on the page, for the width test)
         if page.section ~= sec then page.filter = "all"; page.DrawFilter() end
         page.section, page.category = sec, sec.category
         card:Hide()
@@ -633,12 +645,35 @@ local function BuildSections(page)
         end
         sampleBtn:SetShown(sec.category.samples and ns.TogglePreview ~= nil)
         page.DrawSamples()
+        -- the title keeps clear of the All / On / Off filter at its right (and the NEW tag after it): a long
+        -- one wraps, and the line under it and the card move down
+        local hasFilter = false
+        for _, name in ipairs(sec.rows or {}) do
+            local row = page.rows[name]
+            if row and row.switch and row.switch.key == name and page.RowShown(name) then hasFilter = true; break end
+        end
+        local tagW = 0
+        if newTag:IsShown() then
+            local w = newTag:GetWidth()
+            tagW = ((type(w) == "number" and w > 0) and w or 34) + 10
+        end
+        local headW = math.max(160, RowWidth() - (hasFilter and (FILTER_W + 16) or 0) - tagW)
+        heading:SetWidth(headW)
+        local textW = heading.GetStringWidth and heading:GetStringWidth()
+        textW = (type(textW) == "number" and textW > 0) and math.min(textW, headW) or headW
+        newTag:ClearAllPoints()
+        newTag:SetPoint("TOPLEFT", heading, "TOPLEFT", math.floor(textW + 10), -8)
+        local headH = TextHeight(heading, 24, headW)
+        local introY = -math.max(54, 18 + math.ceil(headH) + 8)
+        intro:ClearAllPoints()
+        intro:SetPoint("TOPLEFT", page, "TOPLEFT", 0, introY)
+        page.headWidth, page.headHeight, page.introY, page.filterWidth = headW, headH, introY, FILTER_W
         -- the line under the title keeps clear of the sample frames button, and the card starts under it
         local introW = math.min(520, RowWidth() - (sampleBtn:IsShown() and (170 + 24) or 0))
         intro:SetWidth(introW)
         page.introWidth = introW
         local introH = (sec.category.desc and sec.category.desc ~= "") and TextHeight(intro, 13, introW) or 0
-        local top = math.min(-92, -(54 + introH + 16))
+        local top = math.min(-92, introY - introH - 16)
         local y = top
         local shown, switches = {}, 0
         for _, name in ipairs(sec.rows) do

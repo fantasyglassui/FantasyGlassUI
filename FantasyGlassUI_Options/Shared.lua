@@ -12,15 +12,19 @@ ns.optUI = O
 
 -- opts.nav: the name this heading's section has in the list down the left (when it differs);
 -- opts.sub: a heading inside a section, not a section of its own.
+-- (12.3) A section label's lettering: in capitals in English; other languages keep their own case
+-- (the game's upper-casing is byte-wise, so it would garble their letters).
+function O.LabelCase(shown)
+    local lang = ns:Language()
+    if lang == "auto" then lang = GetLocale and GetLocale() or "enUS" end
+    if type(shown) == "string" and (lang == "enUS" or lang == "enGB") then return string.upper(shown) end
+    return shown
+end
 function O.Header(parent, text, x, y, opts)
     local fs = parent:CreateFontString(nil, "OVERLAY")
     ns:Font(fs, 13, true)                                    -- (12.3) a section label: 13, secondary, upper-case
     fs:SetPoint("TOPLEFT", x, y)
-    local shown = ns:Tr(text)
-    local lang = ns:Language()
-    if lang == "auto" then lang = GetLocale and GetLocale() or "enUS" end
-    if type(shown) == "string" and (lang == "enUS" or lang == "enGB") then shown = string.upper(shown) end     -- (only English: the game's upper-casing is byte-wise, so other languages keep their own case)
-    fs:SetText(shown)
+    fs:SetText(O.LabelCase(ns:Tr(text)))
     ns:Paint(fs, "SetTextColor", "dim")
     ns:IndexOption(text, fs)                                 -- (section headings can be searched for too)
     if ns.NoteSection and not (opts and opts.sub) then ns.NoteSection(parent, (opts and opts.nav) or text, x, y, fs) end

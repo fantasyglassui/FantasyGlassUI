@@ -155,12 +155,15 @@ local function BuildLook(page)
             grid:ScrollToShow(math.floor((at - 1) / cols) * CELL_H, CELL_H)
         end
     end
-    -- 4 columns at the window's usual width, 3 (and at last 2) as it narrows; the preview column takes
-    -- what is left, from 180 up to 250. (8: the grid's scroll track, drawn right of the grid.)
+    -- 4 columns at the window's usual width, and one more for each 98 px it is made wider (the preview
+    -- column keeps its 250); in a narrower card 3, at last 2, and the preview column takes what is left,
+    -- down to 180. (8: the grid's scroll track, drawn right of the grid.)
     function picker.Layout(w)
         w = (type(w) == "number" and w > 0) and w or 736
         picker.width = w
-        picker.cols = math.max(2, math.min(4, math.floor((w - PV_MIN - GAP - 8) / CELL_W)))
+        local cols = math.floor((w - PV_W - GAP - 8) / CELL_W)
+        if cols < 4 then cols = math.floor((w - PV_MIN - GAP - 8) / CELL_W) end
+        picker.cols = math.max(2, math.min(12, cols))
         picker.gridW = picker.cols * CELL_W
         picker.pvW = math.max(PV_MIN, math.min(PV_W, w - picker.gridW - GAP - 8))
         picker.previewX = w - picker.pvW
@@ -252,11 +255,7 @@ local function BuildLook(page)
     use:SetPoint("TOPLEFT", sf, "BOTTOMLEFT", 0, -116)
     ns:Paint(use, "SetBackdropColor", "@accent", 1)          -- the accent fill: the one button here that is not a plain plate
     ns:Paint(use, "SetBackdropBorderColor", "@accent", 1)
-    use:HookScript("OnEnter", function(self)
-        self.wash:Hide()
-        local c = self.suiTextColor
-        if c then self.text:SetTextColor(c[1], c[2], c[3]) end
-    end)
+    use:HookScript("OnEnter", function(self) self.wash:Hide() end)     -- (its label keeps its own colour: see UseLabel)
     use:HookScript("OnLeave", function(self) ns:Paint(self, "SetBackdropBorderColor", "@accent", 1) end)
     picker.use = use
     local own = ns:CreateButton(pv, "Make my own", PV_W, 28, function()
@@ -303,12 +302,21 @@ local function BuildLook(page)
         pvDesc:SetText(picker.descText)
         S.panel, S.rim, S.key = c.bg, c.border, key
         pvNow:SetText(key == (ns.db.theme or "SMOKE") and ns:Tr("In use now") or "")
-        local a = ns.theme.accent                            -- text on the accent fill: dark on a light accent, white on a dark one
-        local light = (a[1] * 0.299 + a[2] * 0.587 + a[3] * 0.114) > 0.55
-        use.suiTextColor = light and { 0.07, 0.08, 0.1 } or { 1, 1, 1 }
-        use.text:SetTextColor(use.suiTextColor[1], use.suiTextColor[2], use.suiTextColor[3])
+        picker.UseLabel()
     end
     picker.Preview = Preview
+    -- "Use this theme" sits on the accent: its label is dark on a light accent and white on a dark one.
+    -- The colour is its own (no remembered role puts the button colour back over it), and it is worked
+    -- out again after every theme or accent change, wherever that change was made.
+    function picker.UseLabel()
+        local a = ns.theme and ns.theme.accent
+        if type(a) ~= "table" then return end
+        local light = (a[1] * 0.299 + a[2] * 0.587 + a[3] * 0.114) > 0.55
+        use.suiTextColor = light and { 0.07, 0.08, 0.1 } or { 1, 1, 1 }
+        ns:Unpaint(use.text, "SetTextColor")
+        use.text:SetTextColor(use.suiTextColor[1], use.suiTextColor[2], use.suiTextColor[3])
+    end
+    ns:OnTheme(picker.UseLabel)
 
     -- everything that changes with the family, the theme in use or the colours
     function picker.Draw()
@@ -329,9 +337,16 @@ local function BuildLook(page)
         Place()
         Preview()
     end
-    -- the theme in use shows: its family, its tile ringed, its name in the preview
+    -- the theme in use shows: its family, its tile ringed, its name in the preview. Only when that
+    -- theme has changed: a page laid out again (the window resized, a switch flipped) keeps the tile
+    -- being previewed, its family and where the grid was scrolled to.
     function picker.Sync()
         local now = ns.db.theme or "SMOKE"
+        if picker.synced == now and picker.picked and ns.themes[picker.picked] then
+            picker.Draw()
+            return
+        end
+        picker.synced = now
         local t = ns.themes[now]
         picker.picked = now
         if t then picker.family = GroupOf(t) end

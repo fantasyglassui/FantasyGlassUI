@@ -1435,7 +1435,11 @@ function ns:CreateButton(parent, text, w, h, onClick, template, name)
     ns:Paint(b.text, "SetTextColor", "@btn")
     b:SetScript("OnEnter", function(self)
         ns:Paint(self, "SetBackdropBorderColor", "@accent", 1)
-        if ns:LookOf(self) then ns:Paint(self.text, "SetTextColor", "text") else self.text:SetTextColor(1, 1, 1) end   -- (in the window's look: its text colour)
+        local own = self.suiTextColor                       -- (a label in a colour of its own keeps it under the mouse too)
+        if type(own) == "table" then
+            ns:Unpaint(self.text, "SetTextColor")
+            self.text:SetTextColor(own[1], own[2], own[3])
+        elseif ns:LookOf(self) then ns:Paint(self.text, "SetTextColor", "text") else self.text:SetTextColor(1, 1, 1) end   -- (in the window's look: its text colour)
         self.wash:Show()
         local tip = self.suiTip or (type(text) == "string" and ns.BUTTON_TIPS[text])
         local cut = self.text.IsTruncated and ns.Yes(self.text:IsTruncated())
@@ -1451,7 +1455,7 @@ function ns:CreateButton(parent, text, w, h, onClick, template, name)
     b:SetScript("OnLeave", function(self)
         ns:Paint(self, "SetBackdropBorderColor", "@border", 1)
         local c = self.suiTextColor                         -- (a label in a color of its own, such as a class color, keeps it)
-        if type(c) == "table" then self.text:SetTextColor(c[1], c[2], c[3]) else ns:Paint(self.text, "SetTextColor", "@btn") end
+        if type(c) == "table" then ns:Unpaint(self.text, "SetTextColor"); self.text:SetTextColor(c[1], c[2], c[3]) else ns:Paint(self.text, "SetTextColor", "@btn") end
         self.wash:Hide()
         if self.suiTipShown then self.suiTipShown = nil; GameTooltip:Hide() end
     end)

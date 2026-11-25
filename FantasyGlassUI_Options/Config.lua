@@ -11,14 +11,18 @@ local O = ns.optUI
 -- section shows the slices of them it needs (see Categories.lua and FeaturesPage.lua).
 local VIEW_H = 542
 O.VIEW_H = VIEW_H
-local W, H = 1000, 680
-local MIN_W = 820                                   -- (12.3) the narrowest the window goes: the pages follow its width
-O.W, O.MIN_W = W, MIN_W
 local HEAD_H, FOOT_H = 60, 52                       -- (12.3) the header and footer, a rule under / over each
 local BODY_Y = HEAD_H + 12
 local SIDE_X, SIDE_W = 14, 216
 local CONTENT_X = SIDE_X + SIDE_W + 14
 local CONTENT_R, AREA_R = 16, 10                    -- the content's gap to the window's right, and its scroll area's to the content's
+-- (12.3) The window starts, and goes no narrower than, the width at which the widest block lent from
+-- the older pages (laid out for 736) fits inside its card: the block, its card's padding at either
+-- side, the card's gap to the page's right, then the sidebar and the margins (1054). Wider, the pages
+-- follow the window up to 1600 and the theme grid takes more columns.
+local MIN_W = (O.LEGACY_W or 736) + 2 * (O.BLOCK_PAD or 18) + (O.CARD_GAP or 12) + CONTENT_X + CONTENT_R + AREA_R
+local W, H = MIN_W, 680
+O.W, O.MIN_W = W, MIN_W
 -- The width of the pages (Home's and a section's sheet) in a window `w` wide.
 function O.PageWidth(w)
     w = tonumber(w)
@@ -576,6 +580,13 @@ local function Build()
     resetBtn:HookScript("OnLeave", function() GameTooltip:Hide() end)
     resetBtn:Hide()
     O.resetButton = resetBtn
+    -- its label changes when a click arms it ("Click to confirm") and when that runs out: the footer is
+    -- laid out again for it, so in a narrow window the new label is not cut short
+    local footerBusy = false                                     -- (while the footer is laid out, its own label changes are not news)
+    hooksecurefunc(resetBtn.text, "SetText", function()
+        if footerBusy or not O.LayoutFooter then return end
+        pcall(O.LayoutFooter)
+    end)
     local reload = ns:CreateButton(O.frame, "Reload UI", 110, 26, ReloadUI)
     ns:ReloadButton(reload)                                       -- (OnClick stays the game's own ReloadUI)
     reload:SetPoint("BOTTOMRIGHT", -24, 13)
@@ -697,7 +708,7 @@ local function Build()
     -- The footer in a window `w` wide. Its two ends must not meet: in a narrow window the version
     -- goes first, then the buttons are only as wide as their labels, then "Reset <category> to how
     -- it came" is cut to "Reset" and "Undo last change" to "Undo" (their tooltips still say all).
-    function O.LayoutFooter(w)
+    local function LayoutFooter(w)
         w = tonumber(w) or FrameWidth()
         local full = resetBtn.suiFull
         local armed = resetBtn.suiArmed
@@ -723,6 +734,13 @@ local function Build()
         version:SetShown(stage == 0)
         O.footer = { left = left, right = right, width = w, stage = stage }
         return O.footer
+    end
+    function O.LayoutFooter(w)
+        footerBusy = true
+        local ok, got = pcall(LayoutFooter, w)
+        footerBusy = false
+        if not ok then error(got, 0) end
+        return got
     end
     function O.Relayout(w)
         w = tonumber(w) or FrameWidth()
@@ -924,11 +942,7 @@ end
 
 -- Home (12.3): a greeting with the theme and the counts, the quick switches as cards, what is new,
 -- and the guide's question box with what suits your class.
-local function Upper(text)                                    -- (section labels in capitals: only where plain letters make that safe)
-    text = tostring(text or "")
-    if text:find("[\128-\255]") then return text end
-    return text:upper()
-end
+local function Upper(text) return O.LabelCase(tostring(text or "")) end     -- (section labels in capitals: in English only, as O.Header)
 function O.Greeting()
     local hour
     local ok, h = pcall(GetGameTime)
@@ -1069,6 +1083,7 @@ function O.BuildHome(page)
             cb:SetSize(40, 22)
             cb:SetPoint("TOPRIGHT", c, "TOPRIGHT", -14, -12)
             if cb.label then cb.label:Hide() end
+            c:EnableMouse(true)                                      -- (the card takes the mouse, so pointing anywhere on it shows what the switch does)
             O.Tip(c, label, (ns.featureDesc[key] or "") .. "\n\n" .. ns:Tr(ns.featureInstant[key] and "Takes effect at once." or "Takes effect after a /reload."))
             O.Tip(cb, label, (ns.featureDesc[key] or "") .. "\n\n" .. ns:Tr(ns.featureInstant[key] and "Takes effect at once." or "Takes effect after a /reload."))
             cb.key = key

@@ -9830,7 +9830,9 @@ try("12.3 settings look: rows and switches", function()
             if not ix then error(id .. ": the content frame was placed") end
             if ix - cx < 18 then error(id .. ": 18 inside the card at the left, got " .. (ix - cx)) end
             if cy - iy < 14 then error(id .. ": 14 inside the card at the top, got " .. (cy - iy)) end
-            if iw and ix + iw > 724 - 18 then error(id .. ": 18 inside the card at the right: " .. (ix + iw)) end
+            local cardW = O.LEGACY_W + 2 * O.BLOCK_PAD                   -- (the card a page with no width of its own is laid out for)
+            if iw and ix + iw > cardW - 18 then error(id .. ": 18 inside the card at the right: " .. (ix + iw) .. " of " .. cardW) end
+            if iw and iw < O.LEGACY_W then error(id .. ": the content gets the 736 it is laid out for, got " .. iw) end
         end
         ns:ToggleConfig("access:Hearing")
         if page.blockUsed ~= 0 then error("a section with no block has no block card") end
@@ -10225,26 +10227,39 @@ try("12.3 settings look: themes page", function()
     if not ok then error(err, 0) end
 end)
 try("12.3 settings look: pages follow the window's width", function()
-    local keep = { theme = ns.db.theme, lang = ns.root.language, size = ns.root.optionsSize, sec = ns.root.optionsSection, mode = ns.root.settingsMode, scale = ns.fontScale }
-    local realCF = env.CreateFrame
+    local keep = { accent = ns.db.accent, theme = ns.db.theme, lang = ns.root.language, size = ns.root.optionsSize, sec = ns.root.optionsSection, mode = ns.root.settingsMode, scale = ns.fontScale, dbScale = ns.db.fontScale }
+    local realCF, realHook = env.CreateFrame, env.hooksecurefunc
     -- stand-in frames that keep their width, height, anchors, scripts and text, so a layout can be measured
+    local function Adopt(parent, f)                         -- (each frame and region is listed under its parent, so a block's parts can be walked)
+        local pst = type(parent) == "table" and rawget(parent, "geo")
+        if pst then pst.kids[#pst.kids + 1] = f end
+    end
+    local function Disown(parent, f)
+        local pst = type(parent) == "table" and rawget(parent, "geo")
+        if not pst then return end
+        for i = #pst.kids, 1, -1 do if pst.kids[i] == f then table.remove(pst.kids, i) end end
+    end
     local function Geo(f, parent)
-        local st = { w = nil, h = nil, pts = {}, shown = true, scripts = {} }
+        local st = { w = nil, h = nil, pts = {}, shown = true, scripts = {}, kids = {} }
         rawset(f, "geo", st)
+        Adopt(parent, f)
         rawset(f, "GetParent", function() return parent end)
-        rawset(f, "SetParent", function(_, p) parent = p end)
+        rawset(f, "SetParent", function(_, p) Disown(parent, f); parent = p; Adopt(p, f) end)
         rawset(f, "SetSize", function(_, w, h) st.w, st.h = w, h end)
         rawset(f, "SetWidth", function(_, w) st.w = w end)
         rawset(f, "SetHeight", function(_, h) st.h = h end)
         rawset(f, "GetWidth", function() return st.w or 0 end)
         rawset(f, "GetHeight", function() return st.h or 0 end)
-        rawset(f, "ClearAllPoints", function() st.pts = {} end)
+        rawset(f, "ClearAllPoints", function() st.pts = {}; st.all = nil end)
         rawset(f, "SetPoint", function(_, point, a, b, c, d)
-            local rel, x, y = a, b, c
+            local rel, rp, x, y = a, point, b, c
             if type(a) ~= "table" then rel, x, y = parent, a, b end
-            if type(b) == "string" then x, y = c, d end
-            st.pts[point] = { rel = rel, x = tonumber(x) or 0, y = tonumber(y) or 0 }
+            if type(a) == "string" then rel, rp, x, y = parent, a, b, c end
+            if type(b) == "string" then rp, x, y = b, c, d end
+            st.pts[point] = { rel = rel, rp = rp, x = tonumber(x) or 0, y = tonumber(y) or 0 }
         end)
+        rawset(f, "SetAllPoints", function(_, to) st.pts = {}; st.all = (type(to) == "table") and to or parent end)
+        rawset(f, "SetScrollChild", function(_, c) local cst = type(c) == "table" and rawget(c, "geo"); if cst then cst.scrollParent = f end end)
         rawset(f, "Show", function() st.shown = true end)
         rawset(f, "Hide", function() st.shown = false end)
         rawset(f, "SetShown", function(_, v) st.shown = v and true or false end)
@@ -10253,6 +10268,7 @@ try("12.3 settings look: pages follow the window's width", function()
         rawset(f, "HookScript", function(_, name, fn) local old = st.scripts[name]; st.scripts[name] = old and function(...) old(...); fn(...) end or fn end)
         rawset(f, "GetScript", function(_, name) return st.scripts[name] end)
         rawset(f, "SetResizeBounds", function(_, ...) st.bounds = { ... } end)
+        rawset(f, "EnableMouse", function(_, v) st.mouse = v and true or false end)
         return f
     end
     local function Region(owner)
@@ -10260,23 +10276,80 @@ try("12.3 settings look: pages follow the window's width", function()
         local st = rawget(t, "geo")
         rawset(t, "SetText", function(_, v) st.text = v end)
         rawset(t, "GetText", function() return st.text end)
-        rawset(t, "GetStringWidth", function() return #(tostring(st.text or ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) * 6 end)
-        rawset(t, "GetStringHeight", function()                  -- (14 px a line, as many lines as the text takes at its width)
-            local text = tostring(st.text or "")
+        rawset(t, "SetFont", function(_, _, size) st.size = tonumber(size) end)
+        rawset(t, "SetTextColor", function(_, r, g, b) st.color = { r, g, b } end)
+        local function CharW() return (st.size or 11) * 0.55 end         -- (a letter: about half its size wide, 6 px at 11)
+        local function Plain() return (tostring(st.text or ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) end
+        rawset(t, "GetStringWidth", function() return #Plain() * CharW() end)
+        rawset(t, "GetStringHeight", function()                  -- (as many lines as the text takes at its width)
+            local text = Plain()
             if text == "" then return 0 end
             local w = (st.w and st.w > 0) and st.w or 400
-            return math.max(1, math.ceil(#text * 6 / w)) * 14
+            return math.max(1, math.ceil(#text * CharW() / w)) * (st.size or 11) * 1.25
         end)
         return t
     end
     local function W(f) return rawget(f, "geo").w or 0 end
     local function Pt(f, p) return rawget(f, "geo").pts[p] end
+    -- Where a frame or region lies across, in `root`'s coordinates: its anchors followed to `root`
+    -- (nil where they lead elsewhere, or it has none). A text with no width set is as wide as its text.
+    local function Span(f, root, memo)
+        local m = memo[f]
+        if m ~= nil then if m then return m[1], m[2] end; return nil end
+        memo[f] = false                                      -- (a loop of anchors places nothing)
+        local st = type(f) == "table" and rawget(f, "geo")
+        if not st then return nil end
+        if f == root then memo[f] = { 0, st.w or 0 }; return 0, st.w or 0 end
+        local L, R, C
+        local function X(rel, rp)
+            local l, r = Span(rel, root, memo)
+            if not l then return nil end
+            if rp:find("LEFT") then return l elseif rp:find("RIGHT") then return r end
+            return (l + r) / 2
+        end
+        if st.all then L, R = Span(st.all, root, memo) end
+        for point, p in pairs(st.pts) do
+            local x = X(p.rel, p.rp or point)
+            if x then
+                x = x + p.x
+                if point:find("LEFT") then L = x elseif point:find("RIGHT") then R = x else C = x end
+            else
+                return nil
+            end
+        end
+        if not (L or R or C) and st.scrollParent then L = Span(st.scrollParent, root, memo) end
+        if not (L or R or C) then return nil end
+        local w = st.w or 0
+        if w <= 0 and rawget(f, "GetStringWidth") then w = f:GetStringWidth() end
+        if not (L and R) then
+            if L then R = L + w elseif R then L = R - w else L, R = C - w / 2, C + w / 2 end
+        end
+        memo[f] = { L, R }
+        return L, R
+    end
+    -- every part of a frame that shows, the frame included
+    local function Shown(f, list, seen)
+        local st = type(f) == "table" and rawget(f, "geo")
+        if not st or not st.shown or seen[f] then return list end
+        seen[f] = true
+        list[#list + 1] = f
+        for _, k in ipairs(st.kids) do Shown(k, list, seen) end
+        return list
+    end
     local ok, err = pcall(function()
         ns.db.theme, ns.root.language, ns.root.optionsSize, ns.root.settingsMode = "MIDNIGHT", "enUS", nil, "all"
         ns:Retheme()
         local O = ns.optUI
         if O.frame and O.frame:IsShown() then ns:ToggleConfig() end
         O.frame = nil
+        env.hooksecurefunc = function(a, b, c)                   -- (a frame's own method hooked as the game does: a switch's label follows its width)
+            if type(a) == "table" and type(b) == "string" and type(c) == "function" and type(rawget(a, b)) == "function" then
+                local was = rawget(a, b)
+                rawset(a, b, function(...) local r = table.pack(was(...)); c(...); return table.unpack(r, 1, r.n) end)
+                return
+            end
+            return realHook(a, b, c)
+        end
         env.CreateFrame = function(kind, name, parent, ...)
             local f = Geo(realCF(kind, name, parent, ...), parent)
             rawset(f, "CreateFontString", function(self) return Region(self) end)
@@ -10284,10 +10357,14 @@ try("12.3 settings look: pages follow the window's width", function()
             return f
         end
         ns:ToggleConfig("home")
-        -- the window: 1000 wide to start with, and as narrow as 820
+        -- the window: it starts, and goes no narrower than, the width at which a block laid out for 736
+        -- fits inside its card (its padding at both sides, the card's gap, the sidebar and the margins)
+        local MIN = 736 + 2 * 18 + 12 + (14 + 216 + 14) + 16 + 10
         local bounds = rawget(O.frame, "geo").bounds
-        if not bounds or bounds[1] ~= 820 or O.MIN_W ~= 820 then error("the window's minimum width is 820, got " .. tostring(bounds and bounds[1])) end
-        if W(O.frame) ~= 1000 then error("the window starts 1000 wide, got " .. W(O.frame)) end
+        if MIN ~= 1054 or not bounds or bounds[1] ~= MIN or O.MIN_W ~= MIN or bounds[3] ~= 1600 then error("the window's width goes from " .. MIN .. " to 1600, got " .. tostring(bounds and bounds[1]) .. " to " .. tostring(bounds and bounds[3])) end
+        if W(O.frame) ~= MIN or O.W ~= MIN then error("the window starts " .. MIN .. " wide, got " .. W(O.frame)) end
+        if O.PageWidth(MIN) - 12 - 2 * 18 ~= 736 then error("at its least width a block's card is 736 inside, got " .. (O.PageWidth(MIN) - 48)) end
+        if O.PageWidth(900) ~= O.PageWidth(MIN) then error("the pages are never laid out narrower than the window's least width") end
         local function Size(w)
             O.frame:SetSize(w, 680)
             local f = O.frame:GetScript("OnSizeChanged")
@@ -10300,8 +10377,52 @@ try("12.3 settings look: pages follow the window's width", function()
         local function Inside(what, left, width, pw)
             if left < 0 or left + width > pw + 0.5 then error(what .. " leaves the page: " .. left .. " + " .. width .. " of " .. pw) end
         end
+        -- every section's blocks, at the window's width: each shown part of what is lent to the page lies
+        -- inside its card's inner edge (the walk follows the real frames and their anchors)
+        local function LentInside(edge)
+            local bad, most, seen = {}, 0, 0
+            for _, cat in ipairs(ns.settingsCategories) do
+                for _, sec in ipairs(cat.sections or {}) do
+                    if sec.blocks and #sec.blocks > 0 then
+                        O.Open(sec.id)
+                        local page = O.sections
+                        local pw = W(page)
+                        local left, right = 18, edge or (pw - 12 - 18)
+                        local memo = {}
+                        for _, f in ipairs(page.lentFrames or {}) do
+                            for _, part in ipairs(Shown(f, {}, {})) do
+                                local l, r = Span(part, page, memo)
+                                if l and r > l then
+                                    seen = seen + 1
+                                    if r - left > most then most = r - left end
+                                    if l < left - 0.5 or r > right + 0.5 then
+                                        local st = rawget(part, "geo")
+                                        bad[#bad + 1] = sec.id .. ": " .. (st.text and ("'" .. tostring(st.text) .. "'") or "a part") .. " at " .. l .. ".." .. r
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+            return bad, most, seen
+        end
+        for _, w in ipairs({ MIN, 1600 }) do                      -- (at the least width, which is where it starts, and the widest)
+            Size(w)
+            local bad, most, seen = LentInside()
+            if seen < 1000 then error("the walk found the blocks' parts at " .. w .. ": " .. seen) end
+            if #bad > 0 then error(#bad .. " parts of the blocks leave their card at " .. w .. ":\n" .. table.concat(bad, "\n", 1, math.min(#bad, 20))) end
+            if w == MIN and most ~= 736 then error("the widest block is laid out for 736, got " .. most) end
+        end
+        -- and the walk does see a part that is cut: the window made narrower than it may be
+        do
+            O.sections:SetWidth(O.PageWidth(MIN) - 60)
+            local bad = LentInside()
+            O.sections:SetWidth(O.pageWidth)
+            if #bad == 0 then error("the walk finds a block's part past its card") end
+        end
         local cols = {}
-        for _, w in ipairs({ 1000, 820 }) do
+        for _, w in ipairs({ MIN, 1300 }) do
             -- Home: the quick cards, New and Ask the guide inside the page
             O.Open("home")
             local pw = Size(w)
@@ -10310,6 +10431,8 @@ try("12.3 settings look: pages follow the window's width", function()
             for _, c in ipairs(home.quickCards) do
                 local at = Pt(c, "TOPLEFT")
                 Inside("a quick card at " .. w, at.x, W(c), pw)
+                -- pointing at the card, not only its switch, shows what it does
+                if rawget(c, "geo").mouse ~= true or type(c:GetScript("OnEnter")) ~= "function" then error("a quick card takes the mouse and has a tooltip: " .. tostring(c.label)) end
             end
             Inside("the New card at " .. w, 0, W(home.newCard), pw)
             Inside("the Ask card at " .. w, 0, W(home.askCard), pw)
@@ -10384,25 +10507,134 @@ try("12.3 settings look: pages follow the window's width", function()
                 if W(pk.grid) + 8 > pk.previewX then error("the grid's scroll track reaches the preview at " .. w) end
             end
         end
-        if cols[1000] ~= 4 or cols[820] ~= 3 then error("the theme grid has 4 columns at 1000 and 3 at 820, got " .. tostring(cols[1000]) .. " and " .. tostring(cols[820])) end
-        if cols.home1000 ~= 3 or cols.home820 ~= 2 then error("Home's quick cards: 3 to a row at 1000, 2 at 820") end
+        if cols[MIN] ~= 4 or cols[1300] ~= 7 then error("the theme grid has 4 columns at " .. MIN .. " and more as it widens (7 at 1300), got " .. tostring(cols[MIN]) .. " and " .. tostring(cols[1300])) end
+        if cols["home" .. MIN] ~= 3 or cols.home1300 ~= 3 then error("Home's quick cards: 3 to a row") end
         if ns.homeCards ~= nil then error("the old Home cards list is gone (Home shows the quick switches)") end
-        -- in a narrow window a long Reset label is cut to "Reset", and its tooltip still names the category;
-        -- with a reload waiting, the note too finds room
-        Size(1000)
+        Size(1600)
+        O.Open("look:Themes")
+        if O.pages.look.sheet.themePicker.cols ~= 10 then error("at 1600 the theme grid has 10 columns, got " .. tostring(O.pages.look.sheet.themePicker.cols)) end
+
+        -- the footer at the least width: its two ends do not meet, with a reload waiting too; made
+        -- narrower than the window can be, the version gives way first, then "Reset ..." is cut to "Reset"
+        Size(MIN)
         O.Open("frames:Your frames")
-        if rawget(O.resetButton.text, "geo").text ~= O.resetButton.suiFull then error("at 1000 the Reset label is whole") end
-        Size(820)
-        O.Open("frames:Your frames")
-        if rawget(O.resetButton.text, "geo").text ~= ns:Tr("Reset") or not tostring(O.resetButton.suiFull):find("Frames and bars", 1, true) then error("the narrow footer's Reset label, got " .. tostring(rawget(O.resetButton.text, "geo").text)) end
-        O.NeedReload("testA"); O.NeedReload("testB")
+        local rb = O.resetButton
+        local function Label() return rawget(rb.text, "geo").text end
         local foot = O.footer
-        if foot.left + foot.right + 24 > 820 then error("with the reload note the footer still fits at 820: " .. foot.left .. " + " .. foot.right) end
-        if O.frame.version:IsShown() then error("in a narrow window the version gives way first") end
+        if foot.left + foot.right + 24 > MIN then error("the footer fits at " .. MIN .. ": " .. foot.left .. " + " .. foot.right) end
+        if foot.stage < 3 and Label() ~= rb.suiFull then error("at " .. MIN .. " the Reset label is whole, got " .. tostring(Label())) end
+        if not tostring(rb.suiFull):find("Frames and bars", 1, true) then error("Reset names its category: " .. tostring(rb.suiFull)) end
+        O.NeedReload("testA"); O.NeedReload("testB")
+        foot = O.footer
+        if foot.left + foot.right + 24 > MIN then error("with the reload note the footer still fits at " .. MIN .. ": " .. foot.left .. " + " .. foot.right) end
+        if O.frame.version:IsShown() ~= (foot.stage == 0) then error("the version shows only when everything else has room") end
+        O.LayoutFooter(760)
+        if O.footer.stage < 3 or O.frame.version:IsShown() or Label() ~= ns:Tr("Reset") then error("in a footer too narrow the version goes, then Reset is cut short: stage " .. O.footer.stage .. ", " .. tostring(Label())) end
+        O.LayoutFooter()
+        if O.footer.width ~= MIN then error("the footer is laid out for the window again") end
+        -- arming "Reset ..." ("Click to confirm") and its running out lay the footer out again
+        local whole = rb:GetWidth()
+        O.footer = nil
+        rb:GetScript("OnClick")(rb)
+        if not rb.suiArmed or not tostring(Label()):find(ns:Tr("Click to confirm"), 1, true) then error("one click arms Reset: " .. tostring(Label())) end
+        if not O.footer or O.footer.left + O.footer.right + 24 > MIN then error("the footer is laid out again for the armed label") end
+        if rb:GetWidth() == whole then error("the armed Reset button is fitted to its new label") end
+        O.footer = nil
+        runTimers()                                              -- (it runs out)
+        if rb.suiArmed or not O.footer or Label() ~= rb.suiFull and Label() ~= ns:Tr("Reset") then error("Reset disarms and the footer is laid out again: " .. tostring(Label())) end
+
+        -- a tile being previewed stays when the window is resized or the page refreshed; "Use this theme" wears it
+        O.Open("look:Themes")
+        local pk = O.pages.look.sheet.themePicker
+        local other
+        for _, key in ipairs(pk.list) do if key ~= ns.db.theme then other = key; break end end
+        pk.Pick(other)
+        Size(1300)
+        if pk.picked ~= other then error("a resize keeps the previewed tile, got " .. tostring(pk.picked)) end
+        if O.RefreshAll then O.RefreshAll() end
+        if pk.picked ~= other or pk.nameText == nil or not pk.nameText:find(ns:ThemeName(other, "short"), 1, true) then error("a refresh keeps the previewed tile, got " .. tostring(pk.picked)) end
+        pk.use:GetScript("OnClick")(pk.use)
+        if ns.db.theme ~= other or pk.picked ~= other then error("Use this theme wears the previewed one") end
+        Size(MIN)
+        -- its label: dark on a light accent, white on a dark one, after hovering it and after the
+        -- accent is changed from somewhere else (a repaint puts no button colour back over it)
+        local light, dark, most, least = nil, nil, 0, 1
+        for _, key in ipairs(ns.accentOrder) do                  -- (the lightest accent and the darkest)
+            local r, g, b = ns:AccentColor(key)
+            local lum = r * 0.299 + g * 0.587 + b * 0.114
+            if lum > most then light, most = key, lum end
+            if lum < least then dark, least = key, lum end
+        end
+        if not (most > 0.55 and least < 0.55) then error("(the check needs a light accent and a dark one: " .. most .. ", " .. least .. ")") end
+        local function UseColor() return rawget(pk.use.text, "geo").color or {} end
+        ns.db.accent = light
+        ns:Retheme()
+        if (UseColor()[1] or 1) > 0.2 then error("on a light accent (" .. tostring(light) .. ") the label is dark") end
+        pk.use:GetScript("OnEnter")(pk.use)
+        pk.use:GetScript("OnLeave")(pk.use)
+        ns:Repaint()
+        if (UseColor()[1] or 1) > 0.2 then error("after a hover and a repaint the label is still dark, got " .. tostring(UseColor()[1])) end
+        ns.db.accent = dark
+        ns:Retheme()
+        if UseColor()[1] ~= 1 then error("on a dark accent (" .. tostring(dark) .. ") the label is white") end
+
+        -- a long section title wraps clear of the All / On / Off filter, and what is under it moves down
+        -- (French, lettering at 130%), at the window's least width (where it starts) and wider
+        ns:SetLanguage("frFR")
+        ns.db.fontScale = 130
+        ns:Retheme()
+        local queues
+        for _, cat in ipairs(ns.settingsCategories) do
+            for _, sec in ipairs(cat.sections or {}) do if sec.title == "Queues and battlegrounds" then queues = sec end end
+        end
+        for _, w in ipairs({ MIN, 1300 }) do
+            Size(w)
+            O.Open(queues.id)
+            local page = O.sections
+            local hd = page.heading
+            local hst = rawget(hd, "geo")
+            if hst.text ~= "Files d'attente et champs de bataille" or math.abs((hst.size or 0) - 24 * 1.3) > 0.01 then error("the French title at 130%: " .. tostring(hst.text) .. " " .. tostring(hst.size)) end
+            if not page.filterButtons.all:IsShown() then error("the section has the filter") end
+            local memo = {}
+            local fl = Span(page.filterButtons.off, page, memo)
+            local fr = select(2, Span(page.filterButtons.all, page, memo))
+            local hl, hr = Span(hd, page, memo)
+            if not (fl and hl) or fr > W(page) - 12 + 0.5 then error("the filter and title are placed") end
+            if hr > fl - 8 then error("at " .. w .. " the title runs into the filter: " .. hr .. " vs " .. fl) end
+            if page.newTag:IsShown() then
+                local _, tr = Span(page.newTag, page, memo)
+                if tr > fl - 4 then error("the NEW tag runs into the filter at " .. w) end
+            end
+            local natural = #hst.text * hst.size * 0.55
+            if w == MIN and natural <= page.headWidth then error("the test's title is long enough to wrap at " .. w) end
+            local lines = math.ceil(natural / page.headWidth)
+            if math.abs(hd:GetStringHeight() - page.headHeight) > 0.5 or (lines > 1 and page.headHeight < lines * hst.size) then error("the title's height is what it wraps to") end
+            local introTop = Pt(page.intro, "TOPLEFT").y
+            if -introTop < 18 + page.headHeight then error("at " .. w .. " the line under the title starts under it: " .. introTop .. " vs " .. page.headHeight) end
+            local cardTop = Pt(page.card, "TOPLEFT").y
+            if cardTop > introTop - page.intro:GetStringHeight() then error("the card starts under the line under the title at " .. w) end
+        end
+        -- Home's section labels: in capitals in English only, as the section pages' labels
+        ns:ToggleConfig()
+        O.frame = nil
+        ns:ToggleConfig("home")
+        local fr = ns:Tr("Quick switches")
+        local found
+        for _, part in ipairs(Shown(O.home, {}, {})) do
+            local t = rawget(part, "geo").text
+            if t == fr then found = true end
+            if t == fr:upper() and fr ~= fr:upper() then error("a French Home label is upper-cased: " .. t) end
+        end
+        if fr == "Quick switches" or not found then error("Home's Quick switches label in French: " .. tostring(fr)) end
+        if O.LabelCase("Quick switches") ~= "Quick switches" then error("labels keep their case outside English") end
+        ns:SetLanguage("enUS")
+        if O.LabelCase("Quick switches") ~= "QUICK SWITCHES" then error("English labels are in capitals") end
         ns:ToggleConfig()
     end)
-    env.CreateFrame = realCF
+    env.CreateFrame, env.hooksecurefunc = realCF, realHook
     ns.db.theme, ns.root.language, ns.root.optionsSize, ns.root.optionsSection, ns.root.settingsMode, ns.fontScale = keep.theme, keep.lang, keep.size, keep.sec, keep.mode, keep.scale
+    ns.db.fontScale, ns.db.accent = keep.dbScale, keep.accent
+    pcall(ns.LoadLocale, ns)
     ns:Retheme()
     if ns.optUI.frame and ns.optUI.frame:IsShown() then ns:ToggleConfig() end
     if not ok then error(err, 0) end
