@@ -434,7 +434,7 @@ local function TogetherGroupSection(live, y, Replan, T)
     local function DrawChannel(b)
         local name = ns.db.plannerLFGChannel
         if type(name) ~= "string" or name == "" then name = ns:Tr("Chat box") end
-        b.text:SetText(format(ns:Tr("Find a group in: %s"), name))
+        b.text:SetText(string.format(ns:Tr("Find a group in: %s"), name))
     end
     local channel = ns:CreateButton(live, "", 300, 24, function(b)
         local list = { "" }

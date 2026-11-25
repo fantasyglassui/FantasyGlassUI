@@ -6,7 +6,7 @@ local _, ns = ...
 -- registries (Guide.lua) and its section of the Guide tab (Bars.lua). Everything here is behind ns:GuideUnlocked().
 -- The add-on never sends the line: it only puts it in your chat box (ChatFrameUtil.OpenChat) and you press Enter.
 ------------------------------------------------------------------------------------------
-local format, floor, max = string.format, math.floor, math.max
+local format, floor = string.format, math.floor
 
 local function Unlocked() return ns.GuideUnlocked ~= nil and ns:GuideUnlocked() == true end
 local function Clean(s)                                   -- (text from a quest: a string we can show, without |-escapes or control characters)
@@ -74,25 +74,31 @@ end
 local function Title(step)
     return Clean(step.title) or RecordName(step.quest) or ("#" .. tostring(step.quest))
 end
+local function Cut(s, n)                                 -- (at most n bytes, cut before a whole character)
+    if #s <= n then return s end
+    n = math.max(0, n)
+    while n > 0 do
+        local c = s:byte(n + 1)
+        if c and c >= 128 and c < 192 then n = n - 1 else break end
+    end
+    return s:sub(1, n)
+end
+local ZONE_MAX, MAX_LINE = 60, 200
 local function ZoneName(map)
     if type(map) ~= "number" or not (C_Map and C_Map.GetMapInfo) then return nil end
     local ok, info = pcall(C_Map.GetMapInfo, map)
-    return ok and type(info) == "table" and Clean(info.name) or nil
+    local name = ok and type(info) == "table" and Clean(info.name) or nil
+    return name and Cut(name, ZONE_MAX) or nil
 end
 
-local MAX_LINE = 200
--- "LFG <title>, <zone>" (no zone: "LFG <title>"), at most 200 bytes: the title is cut short (on a whole character) to fit.
-function ns.PlannerLFGText(step)
+-- "LFG <title>, <zone>" (no zone: "LFG <title>"), at most 200 bytes with `reserve` bytes more in front of it
+-- (a "/4 " channel): the title is cut short, on a whole character, to fit.
+function ns.PlannerLFGText(step, reserve)
     if type(step) ~= "table" then return "" end
     local title, zone = Title(step), ZoneName(step.map)
     local pattern = ns:Tr(zone and "LFG %s, %s" or "LFG %s")
     local fixed = #(zone and format(pattern, "", zone) or format(pattern, ""))
-    local room = MAX_LINE - fixed
-    if #title > room then
-        local cut = max(1, room)
-        while cut > 1 and title:byte(cut + 1) and title:byte(cut + 1) >= 128 and title:byte(cut + 1) < 192 do cut = cut - 1 end
-        title = title:sub(1, cut)
-    end
+    title = Cut(title, MAX_LINE - (tonumber(reserve) or 0) - fixed)
     return zone and format(pattern, title, zone) or format(pattern, title)
 end
 
@@ -112,8 +118,7 @@ end
 -- Put the line in your chat box (true), or print it for you to copy when the chat box can't be opened (false).
 function ns.PlannerFindGroup(step)
     if not Unlocked() or type(step) ~= "table" then return false end
-    local text = ns.PlannerLFGText(step)
-    if text == "" then return false end
+    local prefix = ""
     local channel = ns.db and ns.db.plannerLFGChannel
     if type(channel) == "string" and channel ~= "" then
         local n = 0
@@ -121,14 +126,15 @@ function ns.PlannerFindGroup(step)
             local ok, id = pcall(GetChannelName, channel)
             n = ok and floor(tonumber(id) or 0) or 0
         end
-        if n > 0 then text = "/" .. n .. " " .. text
+        if n > 0 then prefix = "/" .. n .. " "
         else ns:Print("You are not in %s: the line is in your chat box for its current channel.", channel) end
     end
+    local text = ns.PlannerLFGText(step, #prefix)
+    if text == "" then return false end
+    text = prefix .. text
     local opener = type(ChatFrameUtil) == "table" and ChatFrameUtil.OpenChat
     local opened = false
-    if type(opener) == "function" and not (type(InCombatLockdown) == "function" and InCombatLockdown()) then
-        opened = pcall(opener, text) and true or false
-    end
+    if type(opener) == "function" then opened = pcall(opener, text) and true or false end
     if not opened then ns:Print("Copy this line into your chat: %s", text) end
     return opened
 end

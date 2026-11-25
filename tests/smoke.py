@@ -14598,7 +14598,7 @@ try("13.5 together A: find a group", function()
                     guideState = ns.root.guideState, guides = ns.root.guides, key = ns.root.guideKey, map = env.C_Map, chat = rawget(env, "ChatFrameUtil"),
                     sendChat = rawget(env, "SendChatMessage"), cinfo = rawget(env, "C_ChatInfo"), members = rawget(env, "GetNumGroupMembers"),
                     channelName = rawget(env, "GetChannelName"), channelList = rawget(env, "GetChannelList"), group = ns.db.plannerGroup,
-                    find = ns.db.plannerFindGroup, lfg = ns.db.plannerLFGChannel, errors = #ns.errors, page = ns.guidePage }
+                    find = ns.db.plannerFindGroup, lfg = ns.db.plannerLFGChannel, raid = env.IsInRaid, combat = env.InCombatLockdown, errors = #ns.errors, page = ns.guidePage }
     local ok, err = pcall(function()
         ns.GuideUnlocked = function() return true end
         ns.GuideOn = function() return true end
@@ -14672,8 +14672,41 @@ try("13.5 together A: find a group", function()
         if ns.PlannerLFGText(dirty) ~= "LFG Hogger, Elwynn Forest" then error("escapes cleaned: " .. ns.PlannerLFGText(dirty)) end
         local long = ns.PlannerLFGText({ kind = "accept", quest = 7001, title = string.rep("x", 300), map = 1429 })
         if #long > 200 or not long:find("^LFG x+, Elwynn Forest$") then error("a long title is cut: " .. #long) end
+        local function validUtf8(t)                      -- (every lead byte followed by its continuation bytes, nothing cut)
+            local i = 1
+            while i <= #t do
+                local c = t:byte(i)
+                local n = c < 128 and 0 or (c >= 240 and 3) or (c >= 224 and 2) or (c >= 192 and 1) or -1
+                if n < 0 then return false end
+                for k = 1, n do local d = t:byte(i + k); if not d or d < 128 or d >= 192 then return false end end
+                i = i + n + 1
+            end
+            return true
+        end
         local wide = ns.PlannerLFGText({ kind = "accept", quest = 7001, title = string.rep("\xc3\xa9", 150), map = 1429 })
-        if #wide > 200 or #(wide:gsub("[\xc3][\xa9]", "")) ~= #wide - 2 * select(2, wide:gsub("[\xc3][\xa9]", "")) then error("cut on whole characters") end
+        if #wide > 200 or #wide < 190 or not validUtf8(wide) then error("a multibyte title is cut on a whole character: " .. #wide) end
+        local wide3 = ns.PlannerLFGText({ kind = "accept", quest = 7001, title = string.rep("\xe4\xb8\xad", 100), map = 1429 })
+        if #wide3 > 200 or not validUtf8(wide3) then error("a three-byte title is cut on a whole character: " .. #wide3) end
+        -- a long zone name is cut, and the line still fits
+        local zoneName = string.rep("\xe4\xb8\xad", 83)               -- (249 bytes)
+        env.C_Map = setmetatable({ GetMapInfo = function() return { name = zoneName } end }, { __index = saved.map })
+        local bigZone = ns.PlannerLFGText({ kind = "accept", quest = 7001, title = string.rep("x", 300), map = 1429 })
+        if #bigZone > 200 or not validUtf8(bigZone) or not bigZone:find("^LFG x+, ") then error("a long zone name: " .. #bigZone) end
+        if #ns.PlannerLFGText({ kind = "accept", quest = 7001, title = "Hogger", map = 1429 }) > 200 then error("a long zone name, short title") end
+        env.C_Map = setmetatable({ GetMapInfo = function(map) if map == 1429 then return { name = "Elwynn Forest", mapID = map } end end }, { __index = saved.map })
+        -- the channel prefix counts inside the 200 bytes
+        env.ChatFrameUtil = { OpenChat = function(text) opened[#opened + 1] = text end }
+        ns.db.plannerLFGChannel, joined = "LookingForGroup", 12
+        opened = {}
+        ns.PlannerFindGroup({ kind = "accept", quest = 7001, title = string.rep("x", 300), map = 1429 })
+        if not opened[1] or #opened[1] > 200 or opened[1]:sub(1, 4) ~= "/12 " then error("the prefix counts: " .. tostring(opened[1] and #opened[1])) end
+        ns.db.plannerLFGChannel, joined = "", 0
+        -- combat: the chat box still opens
+        env.InCombatLockdown = function() return true end
+        opened = {}
+        local fought = ns.PlannerFindGroup(steps[1])
+        env.InCombatLockdown = function() return false end
+        if fought ~= true or opened[1] ~= "LFG Hogger, Elwynn Forest" then error("in combat the line still goes in the chat box") end
         if ns.PlannerLFGText({ kind = "accept", quest = 7001, title = "Hogger" }) ~= "LFG Hogger" then error("no map: no zone") end
         if ns.PlannerLFGText({ kind = "accept", quest = 7001, map = 1429 }) ~= "LFG Hogger, Elwynn Forest" then error("the title from the record") end
 
@@ -14697,9 +14730,10 @@ try("13.5 together A: find a group", function()
         if shown() then error("not in a full party") end
         members = 3
         if not shown() then error("a party of 3 is fine") end
+        local realRaid = env.IsInRaid
         env.IsInRaid = function() return true end
         local raidHid = not shown()
-        env.IsInRaid = function() return false end
+        env.IsInRaid = realRaid
         if not raidHid then error("not in a raid") end
         follow("Mine", 1)
         if ns.PlannerFindGroupStep(ns.GuideState(), ns.root.guides.Mine.steps, 1) then error("not for a written guide") end
@@ -14742,7 +14776,8 @@ try("13.5 together A: find a group", function()
     ns.root.guideState, ns.root.guides, ns.root.guideKey, env.C_Map, ns.guidePage = saved.guideState, saved.guides, saved.key, saved.map, saved.page
     rawset(env, "ChatFrameUtil", saved.chat); rawset(env, "SendChatMessage", saved.sendChat); rawset(env, "C_ChatInfo", saved.cinfo)
     rawset(env, "GetNumGroupMembers", saved.members); rawset(env, "GetChannelName", saved.channelName); rawset(env, "GetChannelList", saved.channelList)
-    env.IsInRaid = function() return false end
+    env.IsInRaid = saved.raid
+    env.InCombatLockdown = saved.combat
     ns.db.plannerGroup, ns.db.plannerFindGroup, ns.db.plannerLFGChannel = saved.group, saved.find, saved.lfg
     if ns.PlannerNeedsGroupReset then ns.PlannerNeedsGroupReset() end
     while #ns.errors > saved.errors do table.remove(ns.errors) end
