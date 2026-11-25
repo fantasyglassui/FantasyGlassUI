@@ -14593,6 +14593,161 @@ try("13.5 together: seams", function()
 end)
 
 -- batch 5 tests A (group): begin
+try("13.5 together A: find a group", function()
+    local saved = { on = ns.GuideOn, unlocked = ns.GuideUnlocked, source = ns.PlannerSource, duo = ns.PlannerDuoRole, raw = ns.PrintRaw,
+                    guideState = ns.root.guideState, guides = ns.root.guides, key = ns.root.guideKey, map = env.C_Map, chat = rawget(env, "ChatFrameUtil"),
+                    sendChat = rawget(env, "SendChatMessage"), cinfo = rawget(env, "C_ChatInfo"), members = rawget(env, "GetNumGroupMembers"),
+                    channelName = rawget(env, "GetChannelName"), channelList = rawget(env, "GetChannelList"), group = ns.db.plannerGroup,
+                    find = ns.db.plannerFindGroup, lfg = ns.db.plannerLFGChannel, errors = #ns.errors, page = ns.guidePage }
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        ns.GuideOn = function() return true end
+        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
+        ns.root.guides = { Mine = { name = "Mine", steps = { { kind = "accept", quest = 7001, title = "Hogger", map = 1429, x = 24.5, y = 79.6 } } } }
+        local plannedSteps = { ns.GuideParseLine("accept 7001 Hogger @ 1429:24.5,79.6"), ns.GuideParseLine("accept 7002 Plain @ 1429:30,30") }
+        if not (plannedSteps[1] and plannedSteps[2]) then error("the fake steps parse") end
+        local function follow(name, at)
+            ns.root.guideState = { [ns:CharKey()] = { name = name, at = at or 1, ticked = {},
+                plan = name == ns.GUIDE_PLANNED and { name = ns.GUIDE_PLANNED, steps = plannedSteps } or nil } }
+        end
+        follow(ns.GUIDE_PLANNED, 1)
+        local recs = { [7001] = { id = 7001, name = "Hogger", elite = true }, [7002] = { id = 7002, name = "Plain" },
+                       [7003] = { id = 7003, name = "Both", elite = true, group = true, dungeon = true }, [7004] = { id = 7004, name = "Pair", elite = true, group = true } }
+        local source = { kind = "test", quest = function(id) return recs[id] end }
+        ns.PlannerSource = function() return source end
+        ns.PlannerNeedsGroupReset()
+        env.C_Map = setmetatable({ GetMapInfo = function(map) if map == 1429 then return { name = "Elwynn Forest", mapID = map } end end }, { __index = saved.map })
+        ns.db.plannerGroup, ns.db.plannerFindGroup, ns.db.plannerLFGChannel = "grouped", true, ""
+        local members, joined = 0, 0
+        env.GetNumGroupMembers = function() return members end
+        env.GetChannelName = function() return joined end
+        local said, sends, opened = {}, 0, {}
+        ns.PrintRaw = function(_, m) said[#said + 1] = tostring(m) end
+        env.SendChatMessage = function() sends = sends + 1 end
+        env.C_ChatInfo = setmetatable({ SendChatMessage = function() sends = sends + 1 end, SendAddonMessage = function() sends = sends + 1 end }, { __index = saved.cinfo })
+        env.ChatFrameUtil = { OpenChat = function(text) opened[#opened + 1] = text end }
+
+        if ns.PlannerNeedsGroup(7001) ~= "elite" or ns.PlannerNeedsGroup(7002) ~= nil then error("needs a group") end
+        if ns.PlannerNeedsGroup(7003) ~= "dungeon" or ns.PlannerNeedsGroup(7004) ~= "group" or ns.PlannerNeedsGroup(7999) ~= nil then error("dungeon before group before elite; no record: nil") end
+        local st = ns.GuideState()
+        local steps = plannedSteps
+        local line = ns.PlannerGroupLine(st, steps, 1)
+        if line ~= "Group quest: Hogger" then error("the panel line: " .. tostring(line)) end
+        if ns.PlannerGroupLine(st, steps, 2) ~= nil then error("no line on a plain quest") end
+        local function labels(step)
+            local out = {}
+            for _, e in ipairs(ns.GuidePanelEntries(step)) do out[#out + 1] = e[1] end
+            return table.concat(out, "|")
+        end
+        local function stepLabels(step)
+            local out = {}
+            for _, e in ipairs(ns.GuideStepEntries(step)) do out[#out + 1] = e[1] end
+            return table.concat(out, "|")
+        end
+        if not labels(steps[1]):find("Find a group", 1, true) or not stepLabels(steps[1]):find("Find a group", 1, true) then error("the entries list Find a group: " .. labels(steps[1])) end
+        if ns.PlannerLFGText(steps[1]) ~= "LFG Hogger, Elwynn Forest" then error("the line: " .. ns.PlannerLFGText(steps[1])) end
+
+        -- the click: your chat box, nothing sent
+        local function panelClick()
+            for _, e in ipairs(ns.GuidePanelEntries(steps[1])) do if e[1] == "Find a group" then return e[2]() end end
+            error("no Find a group entry")
+        end
+        panelClick()
+        if #opened ~= 1 or opened[1] ~= "LFG Hogger, Elwynn Forest" then error("the chat box got: " .. table.concat(opened, ";")) end
+        ns.db.plannerLFGChannel, joined = "LookingForGroup", 4
+        panelClick()
+        if opened[2] ~= "/4 LFG Hogger, Elwynn Forest" then error("the channel: " .. tostring(opened[2])) end
+        joined = 0
+        said = {}
+        panelClick()
+        if opened[3] ~= "LFG Hogger, Elwynn Forest" then error("not joined: no prefix: " .. tostring(opened[3])) end
+        local told = false
+        for _, m in ipairs(said) do if m:find("You are not in LookingForGroup", 1, true) then told = true end end
+        if not told then error("the not-joined line is printed: " .. table.concat(said, ";")) end
+        ns.db.plannerLFGChannel = ""
+        if sends ~= 0 then error("nothing is ever sent: " .. sends) end
+
+        -- cleaning and the size
+        local dirty = { kind = "accept", quest = 7001, title = "|cffff0000Hogger|r", map = 1429 }
+        if ns.PlannerLFGText(dirty) ~= "LFG Hogger, Elwynn Forest" then error("escapes cleaned: " .. ns.PlannerLFGText(dirty)) end
+        local long = ns.PlannerLFGText({ kind = "accept", quest = 7001, title = string.rep("x", 300), map = 1429 })
+        if #long > 200 or not long:find("^LFG x+, Elwynn Forest$") then error("a long title is cut: " .. #long) end
+        local wide = ns.PlannerLFGText({ kind = "accept", quest = 7001, title = string.rep("\xc3\xa9", 150), map = 1429 })
+        if #wide > 200 or #(wide:gsub("[\xc3][\xa9]", "")) ~= #wide - 2 * select(2, wide:gsub("[\xc3][\xa9]", "")) then error("cut on whole characters") end
+        if ns.PlannerLFGText({ kind = "accept", quest = 7001, title = "Hogger" }) ~= "LFG Hogger" then error("no map: no zone") end
+        if ns.PlannerLFGText({ kind = "accept", quest = 7001, map = 1429 }) ~= "LFG Hogger, Elwynn Forest" then error("the title from the record") end
+
+        -- not shown
+        local function shown() return ns.PlannerFindGroupStep(ns.GuideState(), steps, ns.GuideState().at) ~= nil and labels(steps[ns.GuideState().at]):find("Find a group", 1, true) ~= nil end
+        if not shown() then error("shown to start with") end
+        ns.db.plannerGroup = "solo"
+        if shown() or stepLabels(steps[1]):find("Find a group", 1, true) then error("not in Solo") end
+        ns.PlannerDuoRole = function() return "friend" end
+        if not shown() then error("the duo friend sees it in Solo") end
+        ns.PlannerDuoRole = nil
+        ns.db.plannerGroup = "all"
+        if not shown() then error("Everything shows it") end
+        ns.db.plannerFindGroup = false
+        if shown() then error("not with the switch off") end
+        ns.db.plannerFindGroup = true
+        follow(ns.GUIDE_PLANNED, 2)
+        if shown() then error("not on a plain step") end
+        follow(ns.GUIDE_PLANNED, 1)
+        members = 5
+        if shown() then error("not in a full party") end
+        members = 3
+        if not shown() then error("a party of 3 is fine") end
+        env.IsInRaid = function() return true end
+        local raidHid = not shown()
+        env.IsInRaid = function() return false end
+        if not raidHid then error("not in a raid") end
+        follow("Mine", 1)
+        if ns.PlannerFindGroupStep(ns.GuideState(), ns.root.guides.Mine.steps, 1) then error("not for a written guide") end
+        follow(ns.GUIDE_PLANNED, 1)
+        ns.GuideUnlocked = function() return false end
+        if shown() or ns.PlannerFindGroup(steps[1]) ~= false then error("locked: nothing") end
+        ns.GuideUnlocked = function() return true end
+
+        -- the chat box can't be opened: the line is printed
+        said, opened = {}, {}
+        rawset(env, "ChatFrameUtil", false)               -- (no chat box: the harness's fallback table would still have one)
+        if ns.PlannerFindGroup(steps[1]) ~= false then error("no chat box: false") end
+        local printed = false
+        for _, m in ipairs(said) do if m:find("LFG Hogger, Elwynn Forest", 1, true) then printed = true end end
+        if not printed then error("the line is printed: " .. table.concat(said, ";")) end
+        if sends ~= 0 then error("still nothing sent: " .. sends) end
+
+        -- the cycle button
+        local list = { 1, "General", false, 2, "Trade", false, 4, "LookingForGroup", false }
+        env.GetChannelList = function() return (unpack or table.unpack)(list, 1, 9) end
+        local page = env.CreateFrame("Frame")
+        local T = ns.BuildGuidePage(page)
+        if not (T.findGroupChannel and T.findGroupBox) then error("the page has the two controls") end
+        local label
+        rawset(T.findGroupChannel.text, "SetText", function(_, t) label = t end)
+        local function click(frame)
+            local f = frame:GetScript("OnClick")
+            if type(f) ~= "function" then for _, h in ipairs(handlers) do if h.self == frame and h.name == "OnClick" then f = h.fn end end end
+            return f(frame)
+        end
+        local seen = {}
+        for _ = 1, 4 do click(T.findGroupChannel); seen[#seen + 1] = label end
+        if table.concat(seen, ";") ~= "Find a group in: General;Find a group in: Trade;Find a group in: LookingForGroup;Find a group in: Chat box" then
+            error("the cycle: " .. table.concat(seen, ";"))
+        end
+        if ns.db.plannerLFGChannel ~= "" then error("back to the chat box") end
+        if sends ~= 0 then error("the settings send nothing") end
+    end)
+    ns.GuideOn, ns.GuideUnlocked, ns.PlannerSource, ns.PlannerDuoRole, ns.PrintRaw = saved.on, saved.unlocked, saved.source, saved.duo, saved.raw
+    ns.root.guideState, ns.root.guides, ns.root.guideKey, env.C_Map, ns.guidePage = saved.guideState, saved.guides, saved.key, saved.map, saved.page
+    rawset(env, "ChatFrameUtil", saved.chat); rawset(env, "SendChatMessage", saved.sendChat); rawset(env, "C_ChatInfo", saved.cinfo)
+    rawset(env, "GetNumGroupMembers", saved.members); rawset(env, "GetChannelName", saved.channelName); rawset(env, "GetChannelList", saved.channelList)
+    env.IsInRaid = function() return false end
+    ns.db.plannerGroup, ns.db.plannerFindGroup, ns.db.plannerLFGChannel = saved.group, saved.find, saved.lfg
+    if ns.PlannerNeedsGroupReset then ns.PlannerNeedsGroupReset() end
+    while #ns.errors > saved.errors do table.remove(ns.errors) end
+    if not ok then error(err) end
+end)
 -- batch 5 tests A (group): end
 -- batch 5 tests B (duo): begin
 -- batch 5 tests B (duo): end

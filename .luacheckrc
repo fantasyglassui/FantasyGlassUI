@@ -187,6 +187,8 @@ read_globals = {
     "GetCVarBool",
     "GetCategoryList",
     "GetCategoryNumAchievements",
+    "GetChannelList",
+    "GetChannelName",
     "GetChatWindowInfo",
     "GetCorpseRecoveryDelay",
     "GetCreatureDifficultyColor",

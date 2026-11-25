@@ -225,6 +225,8 @@ ns.defaults = {
     plannerSpeak     = true,        -- read the route aloud (only while reading aloud is on in Accessibility)
     -- batch 4 D (records): end
     -- batch 5 A (group): begin
+    plannerFindGroup = true,        -- the "Find a group" button on a group quest (it only fills your chat box)
+    plannerLFGChannel = "",         -- the channel it uses: "" is your chat box's current one, else a channel you have joined
     -- batch 5 A (group): end
     -- batch 5 B (duo): begin
     -- batch 5 B (duo): end

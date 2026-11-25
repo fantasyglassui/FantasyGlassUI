@@ -426,7 +426,30 @@ end
 -- Each group writes only inside its own function's body.
 -- Group A: find a group for a group quest.
 local function TogetherGroupSection(live, y, Replan, T)
-    return y, function() end
+    local find = ns:CreateCheckbox(live, "Find a group button", ns.db.plannerFindGroup ~= false, function(v)
+        ns.db.plannerFindGroup = v
+        if ns.GuideRedraw then ns:GuideRedraw() end
+    end)
+    find:SetPoint("TOPLEFT", 0, y)
+    local function DrawChannel(b)
+        local name = ns.db.plannerLFGChannel
+        if type(name) ~= "string" or name == "" then name = ns:Tr("Chat box") end
+        b.text:SetText(format(ns:Tr("Find a group in: %s"), name))
+    end
+    local channel = ns:CreateButton(live, "", 300, 24, function(b)
+        local list = { "" }
+        for _, name in ipairs(ns.PlannerLFGChannels and ns.PlannerLFGChannels() or {}) do list[#list + 1] = name end
+        local at = 1
+        for i, name in ipairs(list) do if name == (ns.db.plannerLFGChannel or "") then at = i end end
+        ns.db.plannerLFGChannel = list[at % #list + 1]
+        DrawChannel(b)
+    end)
+    channel:SetPoint("TOPLEFT", 0, y - 28)
+    T.findGroupBox, T.findGroupChannel = find, channel
+    return y - 58, function()
+        find:SetChecked(ns.db.plannerFindGroup ~= false)
+        DrawChannel(channel)
+    end
 end
 
 -- Group B: plan with a friend (the duo).
