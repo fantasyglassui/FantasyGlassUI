@@ -292,7 +292,8 @@ local function FeelPanelSection(live, y, Replan, T)
     end)
     goal:SetPoint("TOPLEFT", 0, y)
     T.zoneGoalButton = goal
-    return y - 34, function() Draw(goal) end
+    T.zoneGoalDraw = function() Draw(goal) end          -- (the goal can end by itself: "Zone done" redraws the label)
+    return y - 34, T.zoneGoalDraw
 end
 
 -- Group C: the time you have, break reminders, catch me up, speed or story.

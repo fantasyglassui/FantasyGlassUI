@@ -13326,6 +13326,12 @@ try("13.4 feel B: finish the zone", function()
         if ns.PlannerZoneGoal() ~= 1429 or label ~= "Goal: Finish Elwynn Forest" then error("the zone you are in: " .. tostring(ns.PlannerZoneGoal()) .. " " .. tostring(label)) end
         f(btn)
         if ns.PlannerZoneGoal() ~= nil or label ~= "Goal: Level up" then error("back to leveling: " .. tostring(label)) end
+        f(btn)
+        if label ~= "Goal: Finish Elwynn Forest" then error("the goal again") end
+        for _, h in ipairs(ns.PlannerHookList("context")) do if h.key == "zoneGoal" then h.fn({ level = 12, windowLo = 8 }) end end
+        for _, h in ipairs(ns.PlannerHookList("zone")) do if h.key == "zoneGoal" then h.fn({ [1429] = {} }) end end
+        for _, h in ipairs(ns.PlannerHookList("applied")) do if h.key == "zoneGoal" then h.fn({ steps = {} }, { taken = {} }, { source = { kind = "test" } }) end end
+        if ns.PlannerZoneGoal() ~= nil or label ~= "Goal: Level up" then error("Zone done while the Guide tab is open: the button says Level up: " .. tostring(label)) end
         if ns.PlannerGoalZone() ~= 1429 then error("the zone-level map you are in") end
     end)
     ns.PlannerSourceReset()
@@ -14232,6 +14238,29 @@ try("13.4 feel D: save as guide, read aloud, chime", function()
     if not ok then error(err, 0) end
 end)
 -- batch 4 tests D (records): end
+try("13.4 feel: locked, the options search shows no planner control", function()
+    local saved = ns.GuideUnlocked
+    local frame = ns.configFrame
+    if not (frame and frame.SearchOptions) then return end
+    local found = {}
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return false end
+        for _, words in ipairs({ "Speed", "Safety", "Story", "Style", "Read the route aloud", "Race your best", "Where you left off", "Remind me to take a break",
+                                 "Draw the route on the world map", "Goal", "time to play" }) do
+            for _, h in ipairs(frame.SearchOptions(words) or {}) do
+                if h.tab == "guide" then found[#found + 1] = words .. " -> " .. tostring(h.label) end
+            end
+        end
+        ns.GuideUnlocked = function() return true end
+        local unlockedHit = false
+        for _, h in ipairs(ns:SearchOptions("Speed or story", 20)) do if h.tab == "guide" then unlockedHit = true end end
+        if not unlockedHit then error("unlocked: the search finds the guide's controls") end
+        frame.SearchOptions("")
+    end)
+    ns.GuideUnlocked = saved
+    if not ok then error(err, 0) end
+    if #found > 0 then error("locked: the search lists the guide's controls: " .. table.concat(found, ", ")) end
+end)
 -- batch 4 tests: all four groups on one plan
 try("13.4 feel: together", function()
     local saved = { on = ns.GuideOn, here = ns.GuideHere, unlocked = ns.GuideUnlocked, map = env.C_Map, vec = rawget(env, "CreateVector2D"),

@@ -266,6 +266,8 @@ ns.PlannerHook("applied", "zoneGoal", function(_, summary, ctx)
     if took or not (asked == false or finished or nothing) then return end
     local rec = ns.PlannerCharRecord(true)
     rec.zoneGoal = nil
+    local page = ns.guidePage                            -- (the Guide tab's goal button, when the tab was built)
+    if type(page) == "table" and type(page.zoneGoalDraw) == "function" then pcall(page.zoneGoalDraw) end
     ns:Print("Zone done: %s", ns.PlannerMapName(goal))
     if ns.PlannerReplan then ns:PlannerReplan("zone done") end
 end)
