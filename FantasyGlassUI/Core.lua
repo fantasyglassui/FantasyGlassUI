@@ -227,6 +227,7 @@ ns.defaults = {
     -- batch 5 A (group): begin
     -- batch 5 A (group): end
     -- batch 5 B (duo): begin
+    plannerDuoAsk    = true,        -- let friends ask to plan your route together (the duo)
     -- batch 5 B (duo): end
     -- batch 5 C (code): begin
     -- batch 5 C (code): end

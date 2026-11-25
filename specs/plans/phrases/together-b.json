@@ -1,0 +1,222 @@
+{
+  "Plan with a friend": [
+    "Mit einem Freund planen",
+    "Planifier avec un ami",
+    "Planificar con un amigo",
+    "Планировать с другом",
+    "Planejar com um amigo",
+    "Pianifica con un amico",
+    "친구와 함께 계획",
+    "与好友一起规划"
+  ],
+  "Stop planning together": [
+    "Gemeinsames Planen beenden",
+    "Arrêter de planifier ensemble",
+    "Dejar de planificar juntos",
+    "Перестать планировать вместе",
+    "Parar de planejar juntos",
+    "Smetti di pianificare insieme",
+    "함께 계획 중지",
+    "停止一起规划"
+  ],
+  "%s asks to plan your route together.": [
+    "%s möchte eure Route gemeinsam planen.",
+    "%s propose de planifier votre itinéraire ensemble.",
+    "%s quiere planificar vuestra ruta juntos.",
+    "%s предлагает спланировать маршрут вместе.",
+    "%s quer planejar a rota de vocês juntos.",
+    "%s chiede di pianificare il vostro percorso insieme.",
+    "%s 님이 경로를 함께 계획하자고 합니다.",
+    "%s 想和你一起规划路线。"
+  ],
+  "Plan together": [
+    "Gemeinsam planen",
+    "Planifier ensemble",
+    "Planificar juntos",
+    "Планировать вместе",
+    "Planejar juntos",
+    "Pianifica insieme",
+    "함께 계획",
+    "一起规划"
+  ],
+  "No thanks": [
+    "Nein, danke",
+    "Non merci",
+    "No, gracias",
+    "Нет, спасибо",
+    "Não, obrigado",
+    "No, grazie",
+    "괜찮습니다",
+    "不用了"
+  ],
+  "Target your friend or group with them, or type /fgui guide duo <name>.": [
+    "Nimm deinen Freund ins Ziel oder geh mit ihm in eine Gruppe, oder tippe /fgui guide duo <Name>.",
+    "Ciblez votre ami ou groupez-vous avec lui, ou tapez /fgui guide duo <nom>.",
+    "Selecciona a tu amigo o agrúpate con él, o escribe /fgui guide duo <nombre>.",
+    "Выберите друга целью или вступите с ним в группу, либо введите /fgui guide duo <имя>.",
+    "Selecione seu amigo ou agrupe-se com ele, ou digite /fgui guide duo <nome>.",
+    "Seleziona il tuo amico o entra in gruppo con lui, oppure scrivi /fgui guide duo <nome>.",
+    "친구를 대상으로 지정하거나 파티를 맺거나, /fgui guide duo <이름>을 입력하세요.",
+    "选中你的好友或与其组队，或输入 /fgui guide duo <名字>。"
+  ],
+  "No answer from %s: planning for you alone.": [
+    "Keine Antwort von %s: es wird nur für dich geplant.",
+    "Pas de réponse de %s : planification pour vous seul.",
+    "Sin respuesta de %s: se planifica solo para ti.",
+    "%s не отвечает: маршрут только для вас.",
+    "Sem resposta de %s: planejando só para você.",
+    "Nessuna risposta da %s: pianificazione solo per te.",
+    "%s 님의 응답이 없습니다: 혼자 계획합니다.",
+    "%s 没有回应：仅为你规划。"
+  ],
+  "%s is offline: planning for you alone.": [
+    "%s ist offline: es wird nur für dich geplant.",
+    "%s est hors ligne : planification pour vous seul.",
+    "%s está desconectado: se planifica solo para ti.",
+    "%s не в сети: маршрут только для вас.",
+    "%s está offline: planejando só para você.",
+    "%s non è in linea: pianificazione solo per te.",
+    "%s 님은 오프라인입니다: 혼자 계획합니다.",
+    "%s 已离线：仅为你规划。"
+  ],
+  "Could not reach %s: planning for you alone.": [
+    "%s ist nicht erreichbar: es wird nur für dich geplant.",
+    "Impossible de joindre %s : planification pour vous seul.",
+    "No se pudo contactar con %s: se planifica solo para ti.",
+    "Не удалось связаться с %s: маршрут только для вас.",
+    "Não foi possível falar com %s: planejando só para você.",
+    "Impossibile raggiungere %s: pianificazione solo per te.",
+    "%s 님에게 연결할 수 없습니다: 혼자 계획합니다.",
+    "无法联系 %s：仅为你规划。"
+  ],
+  "%s would rather not plan together: planning for you alone.": [
+    "%s möchte lieber nicht gemeinsam planen: es wird nur für dich geplant.",
+    "%s préfère ne pas planifier ensemble : planification pour vous seul.",
+    "%s prefiere no planificar juntos: se planifica solo para ti.",
+    "%s не хочет планировать вместе: маршрут только для вас.",
+    "%s prefere não planejar juntos: planejando só para você.",
+    "%s preferisce non pianificare insieme: pianificazione solo per te.",
+    "%s 님은 함께 계획하지 않기로 했습니다: 혼자 계획합니다.",
+    "%s 不想一起规划：仅为你规划。"
+  ],
+  "Could not read your level: try again out of combat.": [
+    "Deine Stufe konnte nicht gelesen werden: versuche es außerhalb des Kampfes erneut.",
+    "Impossible de lire votre niveau : réessayez hors combat.",
+    "No se pudo leer tu nivel: inténtalo de nuevo fuera de combate.",
+    "Не удалось узнать ваш уровень: попробуйте снова вне боя.",
+    "Não foi possível ler seu nível: tente de novo fora de combate.",
+    "Impossibile leggere il tuo livello: riprova fuori dal combattimento.",
+    "레벨을 읽을 수 없습니다: 전투가 끝난 뒤 다시 시도하세요.",
+    "无法读取你的等级：请在脱离战斗后重试。"
+  ],
+  "You are %d levels apart: planning together needs 6 or fewer. Planning for you alone.": [
+    "Ihr seid %d Stufen auseinander: gemeinsames Planen braucht 6 oder weniger. Es wird nur für dich geplant.",
+    "Vous avez %d niveaux d'écart : planifier ensemble demande 6 ou moins. Planification pour vous seul.",
+    "Os separan %d niveles: planificar juntos necesita 6 o menos. Se planifica solo para ti.",
+    "Между вами %d уровней: для совместного плана нужно не больше 6. Маршрут только для вас.",
+    "Vocês estão a %d níveis de distância: planejar juntos exige 6 ou menos. Planejando só para você.",
+    "Siete a %d livelli di distanza: per pianificare insieme ne servono 6 o meno. Pianificazione solo per te.",
+    "레벨 차이가 %d입니다: 함께 계획하려면 6 이하여야 합니다. 혼자 계획합니다.",
+    "你们相差 %d 级：一起规划需要相差 6 级或更少。仅为你规划。"
+  ],
+  "%s has no Questie: planning the quests you both have.": [
+    "%s hat kein Questie: es werden die Quests geplant, die ihr beide habt.",
+    "%s n'a pas Questie : planification des quêtes que vous avez tous les deux.",
+    "%s no tiene Questie: se planifican las misiones que tenéis ambos.",
+    "У %s нет Questie: в плане только задания, которые есть у вас обоих.",
+    "%s não tem o Questie: planejando as missões que vocês dois têm.",
+    "%s non ha Questie: pianifico le missioni che avete entrambi.",
+    "%s 님은 Questie가 없습니다: 둘 다 가진 퀘스트만 계획합니다.",
+    "%s 没有 Questie：只规划你们都有的任务。"
+  ],
+  "You stopped planning together: planning for you alone.": [
+    "Ihr plant nicht mehr gemeinsam: es wird nur für dich geplant.",
+    "Vous ne planifiez plus ensemble : planification pour vous seul.",
+    "Dejaste de planificar juntos: se planifica solo para ti.",
+    "Совместное планирование остановлено: маршрут только для вас.",
+    "Vocês pararam de planejar juntos: planejando só para você.",
+    "Hai smesso di pianificare insieme: pianificazione solo per te.",
+    "함께 계획을 중지했습니다: 혼자 계획합니다.",
+    "你已停止一起规划：仅为你规划。"
+  ],
+  "Asking %s to plan your route together...": [
+    "%s wird gefragt, ob ihr eure Route gemeinsam plant...",
+    "Demande à %s de planifier votre itinéraire ensemble...",
+    "Preguntando a %s si queréis planificar la ruta juntos...",
+    "Предлагаем %s спланировать маршрут вместе...",
+    "Perguntando a %s se querem planejar a rota juntos...",
+    "Chiedo a %s di pianificare il percorso insieme...",
+    "%s 님에게 경로를 함께 계획하자고 요청하는 중...",
+    "正在邀请 %s 一起规划路线..."
+  ],
+  "%s will plan with you: waiting for what they can do...": [
+    "%s plant mit dir: warte darauf, was dein Freund tun kann...",
+    "%s va planifier avec vous : en attente de ce qu'il peut faire...",
+    "%s planificará contigo: esperando lo que puede hacer...",
+    "%s будет планировать с вами: ждём, что он может делать...",
+    "%s vai planejar com você: aguardando o que pode fazer...",
+    "%s pianificherà con te: in attesa di ciò che può fare...",
+    "%s 님이 함께 계획합니다: 할 수 있는 것을 기다리는 중...",
+    "%s 将与你一起规划：正在等待其可做的内容..."
+  ],
+  "Planning together with %s: they plan the route, you follow it.": [
+    "Gemeinsames Planen mit %s: dein Freund plant die Route, du folgst ihr.",
+    "Planification avec %s : il planifie l'itinéraire, vous le suivez.",
+    "Planificando con %s: planifica la ruta y tú la sigues.",
+    "Совместное планирование с %s: маршрут составляет он, вы следуете ему.",
+    "Planejando com %s: ele planeja a rota e você a segue.",
+    "Pianificazione con %s: pianifica il percorso e tu lo segui.",
+    "%s 님과 함께 계획 중: 상대가 경로를 짜고 당신은 따라갑니다.",
+    "正在与 %s 一起规划：由对方规划路线，你跟随。"
+  ],
+  "You are already planning with %s. /fgui guide duo off stops it.": [
+    "Du planst bereits mit %s. /fgui guide duo off beendet es.",
+    "Vous planifiez déjà avec %s. /fgui guide duo off l'arrête.",
+    "Ya estás planificando con %s. /fgui guide duo off lo detiene.",
+    "Вы уже планируете с %s. /fgui guide duo off прекращает это.",
+    "Você já está planejando com %s. /fgui guide duo off encerra.",
+    "Stai già pianificando con %s. /fgui guide duo off lo interrompe.",
+    "이미 %s 님과 함께 계획 중입니다. /fgui guide duo off로 중지합니다.",
+    "你已在与 %s 一起规划。/fgui guide duo off 可停止。"
+  ],
+  "You are not planning with a friend.": [
+    "Du planst gerade nicht mit einem Freund.",
+    "Vous ne planifiez pas avec un ami.",
+    "No estás planificando con un amigo.",
+    "Вы не планируете с другом.",
+    "Você não está planejando com um amigo.",
+    "Non stai pianificando con un amico.",
+    "친구와 함께 계획하고 있지 않습니다.",
+    "你没有在与好友一起规划。"
+  ],
+  "Lost touch with %s: planning for you alone.": [
+    "Verbindung zu %s verloren: es wird nur für dich geplant.",
+    "Contact perdu avec %s : planification pour vous seul.",
+    "Se perdió el contacto con %s: se planifica solo para ti.",
+    "Связь с %s потеряна: маршрут только для вас.",
+    "Contato perdido com %s: planejando só para você.",
+    "Contatto perso con %s: pianificazione solo per te.",
+    "%s 님과 연결이 끊겼습니다: 혼자 계획합니다.",
+    "与 %s 失去联系：仅为你规划。"
+  ],
+  "You follow another guide now: no longer planning with %s.": [
+    "Du folgst jetzt einem anderen Leitfaden: kein gemeinsames Planen mehr mit %s.",
+    "Vous suivez un autre guide : vous ne planifiez plus avec %s.",
+    "Ahora sigues otra guía: ya no planificas con %s.",
+    "Вы следуете другому руководству: совместное планирование с %s закончено.",
+    "Você segue outro guia agora: não planeja mais com %s.",
+    "Ora segui un'altra guida: non pianifichi più con %s.",
+    "이제 다른 가이드를 따릅니다: %s 님과의 함께 계획을 마칩니다.",
+    "你正在跟随其他指南：不再与 %s 一起规划。"
+  ],
+  "Planning for you alone now: no longer planning with %s.": [
+    "Es wird jetzt nur für dich geplant: kein gemeinsames Planen mehr mit %s.",
+    "Planification pour vous seul : vous ne planifiez plus avec %s.",
+    "Ahora se planifica solo para ti: ya no planificas con %s.",
+    "Теперь маршрут только для вас: совместное планирование с %s закончено.",
+    "Planejando só para você agora: não planeja mais com %s.",
+    "Ora pianifico solo per te: non pianifichi più con %s.",
+    "이제 혼자 계획합니다: %s 님과의 함께 계획을 마칩니다.",
+    "现在仅为你规划：不再与 %s 一起规划。"
+  ]
+}

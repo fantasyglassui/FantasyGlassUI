@@ -14595,6 +14595,300 @@ end)
 -- batch 5 tests A (group): begin
 -- batch 5 tests A (group): end
 -- batch 5 tests B (duo): begin
+-- batch 5 B (duo): asking a friend, their state, a plan both can do; the queue's rules
+try("13.5 together B: asking, the state and a plan for both", function()
+    local CI = env.C_ChatInfo
+    local saved = { on = ns.GuideOn, here = ns.GuideHere, unlocked = ns.GuideUnlocked, map = env.C_Map, vec = rawget(env, "CreateVector2D"),
+                    context = ns.PlannerContext, world = ns.PlannerWorldPos, show = ns.ShowList, raw = ns.PrintRaw,
+                    guideState = ns.root.guideState, guides = ns.root.guides, planner = ns.root.planner,
+                    level = env.UnitLevel, name = env.UnitName, isPlayer = env.UnitIsPlayer, isFriend = rawget(env, "UnitIsFriend"), isUnit = env.UnitIsUnit,
+                    time = env.GetTime, combat = env.InCombatLockdown, send = CI.SendAddonMessage, chat = CI.SendChatMessage, lock = CI.InChatMessagingLockdown,
+                    sendChat = rawget(env, "SendChatMessage"), openChat = env.ChatFrameUtil.OpenChat, enum = env.Enum.SendAddonMessageResult,
+                    ql = env.C_QuestLog, faction = rawget(env, "UnitFactionGroup"), ask = ns.db.plannerDuoAsk, duo = ns.plannerDuo, errors = #ns.errors }
+    local sends, bad, results, publicChat = {}, nil, {}, 0
+    local clock = 1000
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        ns.GuideOn = function() return true end
+        ns.GuideHere = function() return 1429, 30, 40 end
+        ns.root.planner, ns.root.guides, ns.root.guideState = {}, {}, {}
+        ns.db.plannerDuoAsk = true
+        env.GetTime = function() return clock end
+        env.UnitLevel = function() return 20 end
+        env.UnitName = function(u) if u == "target" then return "Mira" end if u == "player" then return "Leo" end return "Someone" end
+        env.UnitIsPlayer = function() return true end
+        rawset(env, "UnitIsFriend", function() return true end)
+        env.UnitIsUnit = function() return false end
+        rawset(env, "UnitFactionGroup", function() return "Alliance" end)
+        env.InCombatLockdown = function() return false end
+        CI.InChatMessagingLockdown = function() return false end
+        env.Enum.SendAddonMessageResult = { Success = 0, AddonMessageThrottle = 3, ChannelThrottle = 8, AddOnMessageLockdown = 11, TargetOffline = 12 }
+        CI.SendAddonMessage = function(prefix, text, channel, target)
+            for _, v in ipairs({ prefix, text, channel, target }) do if env.issecretvalue(v) then bad = "a hidden value was handed to SendAddonMessage" end end
+            if prefix == "FGUIPlan" then sends[#sends + 1] = { prefix = prefix, text = text, channel = channel, target = target } end
+            local r = table.remove(results, 1)
+            return r == nil and 0 or r
+        end
+        CI.SendChatMessage = function() publicChat = publicChat + 1 end
+        rawset(env, "SendChatMessage", function() publicChat = publicChat + 1 end)
+        env.ChatFrameUtil.OpenChat = function() publicChat = publicChat + 1 end
+        env.C_Map = setmetatable({
+            GetWorldPosFromMapPos = function(map, v) if map == 1429 then return 0, { x = v.x * 100000, y = v.y * 100000 } end end,
+            GetMapInfo = function(map) return { name = map == 1429 and "Elwynn Forest" or "Somewhere", mapType = 3, mapID = map } end,
+        }, { __index = saved.map })
+        env.CreateVector2D = function(x, y) return { x = x, y = y } end
+        ns.PlannerWorldPos = function(map, x, y) if map == 1429 then return 0, x * 1000, y * 1000 end end   -- (1% of the map is 1000 yards)
+        local lists = {}
+        ns.ShowList = function(self, key, title, lines, ...) lists[key] = lines; return saved.show(self, key, title, lines, ...) end
+        local said = {}
+        ns.PrintRaw = function(_, m) said[#said + 1] = tostring(m) end
+        local function heard(text) for _, l in ipairs(said) do if l:find(text, 1, true) then return true end end return false end
+        local function flush(k) for _ = 1, k or 40 do ns.PlannerDuoFlush() end end
+        local function addon(text, from) fireEvent("CHAT_MSG_ADDON", "FGUIPlan", text, "WHISPER", from or "Mira-Realm") end
+        local function frames(k) for _ = 1, k or 400 do for i = 1, #handlers do local h = handlers[i]; if h.name == "OnUpdate" then pcall(h.fn, h.self, 0.02) end end end end
+        local function runIt()
+            for _ = 1, 400 do
+                if not ns.plannerBusy and not ns.plannerQueued then break end
+                frames(1)
+            end
+            if ns.plannerBusy or ns.plannerQueued then error("the plan did not finish") end
+        end
+
+        -- the quests: 7101-7105 at levels 20-21, all doable for the leader; 7105 is in the leader's log
+        local function q(id, level)
+            local spot = { { map = 1429, x = 30 + (id - 7100) * 0.02, y = 40 } }
+            return { id = id, name = "Q" .. id, level = level, minLevel = 1, xp = 400, starts = spot, ends = spot,
+                     objectives = { { kind = "kill", count = 0, countKnown = true, mobLevel = level, spots = { { map = 1429, x = 30 + (id - 7100) * 0.02, y = 40.5 } } } },
+                     pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+        end
+        local recs, order = {}, {}
+        for id = 7101, 7105 do recs[id] = q(id, id % 2 == 0 and 21 or 20); order[#order + 1] = id end
+        local source = { kind = "test", ids = function() return order end, quest = function(id) return recs[id] end, inns = function() return {} end,
+                         inRange = function() return true end, mapQuests = function(map) return map == 1429 and order or {} end }
+        local logged = { [7105] = true }
+        ns.PlannerContext = function()
+            local c = { source = source, level = 20, group = "solo", inGroup = false, speed = 7, faction = "Alliance", xp = 1000, xpMax = 5000,
+                done = function() return false end, onQuest = function(id) return logged[id] == true end, here = { map = 1429, x = 30, y = 40 },
+                crossings = {}, learnFlights = false, bind = "Inn", bindSpot = { map = 1429, x = 30, y = 40 }, hearth = { map = 1429, x = 30, y = 40 }, pace = 1,
+                flights = { { node = 2, map = 1429, x = 31, y = 41, known = true }, { node = 6, map = 1429, x = 60, y = 60, known = true } },
+                flightTime = function() return nil end, timed = function() return false end, itemCount = function() return 0 end }
+            c.windowLo, c.windowHi, c.horizon = c.level - 4, c.level + 2, ns.PLANNER_HORIZON
+            for _, h in ipairs(ns.PlannerHookList("context")) do h.fn(c) end
+            return c
+        end
+        ns:GuideSetPlan(nil)                                 -- (following the planned guide)
+        ns:PlannerStop(); ns.plannerQueued = false
+
+        -- the leader asks the target
+        if ns.PLANNER_DUO_PREFIX ~= "FGUIPlan" then error("the prefix") end
+        if ns:PlannerDuoStart() ~= true or #sends ~= 0 or ns.PlannerDuoPending() ~= 1 then error("the ask is queued, not sent at once") end
+        if ns.PlannerDuoRole() ~= "lead" or ns.PlannerDuoPartner() ~= "Mira" then error("leading, with Mira") end
+        flush()
+        local m = sends[1]
+        local s = m and m.text:match("^D1:ASK:(%x+):20$")
+        if not (s and #s >= 4 and #s <= 8 and m.prefix == "FGUIPlan" and m.channel == "WHISPER" and m.target == "Mira" and #sends == 1) then error("the ask goes as a whisper to Mira: " .. tostring(m and m.text)) end
+        -- (a yes from someone else, or for another session, or hidden: nothing)
+        addon("D1:YES:" .. s, "Other-Realm")
+        addon("D1:YES:" .. (s == "abcd" and "abce" or "abcd"))
+        if secretMode then ns.PlannerDuoEvent("CHAT_MSG_ADDON", "FGUIPlan", SV("D1:YES:" .. s), "WHISPER", "Mira-Realm") end   -- (to the duo's own handler only)
+        if ns.plannerDuo.accepted then error("a yes from another player or session is ignored") end
+        addon("D1:YES:" .. s)
+        if not ns.plannerDuo.accepted then error("Mira's yes") end
+        -- (pieces that are wrong: ignored, no error)
+        addon("SS:x:1:999:state:level 21")
+        addon("SS:" .. s .. "z1:1:999:state:level 21")
+        addon(string.rep("D", 300))
+        addon("D1:AT:" .. s .. ":" .. string.rep("9", 280))
+        if ns.plannerDuo.state then error("broken pieces give no state") end
+        -- the friend's state, in two pieces
+        local state = { level = 21, faction = "Alliance", class = "MAGE", questie = true, log = { [7104] = { 0, 5 } }, can = { [7101] = true, [7103] = true },
+                        flights = { [2] = true }, hearth = { map = 1429, x = 30.4, y = 40, ready = true } }   -- (its hearthstone goes 400 yards from yours)
+        local text = ns.PlannerDuoStateText(state)
+        local half = math.floor(#text / 2)
+        addon(string.format("SS:%sz7:1:2:state:%s", s, text:sub(1, half)))
+        if ns.plannerDuo.state then error("one piece is not the state") end
+        addon(string.format("SS:%sz7:2:2:state:%s", s, text:sub(half + 1)))
+        local got = ns.plannerDuo and ns.plannerDuo.state
+        if not (got and got.level == 21 and got.can[7101] and got.log[7104]) then error("the state arrived") end
+        if not (ns.plannerQueued and ns.plannerReason == "duo") then error("a state arriving replans: " .. tostring(ns.plannerReason)) end
+        -- the plan fits both: the window, the flights both know, no hearthstone that goes elsewhere for the friend
+        local c = ns.PlannerContext()
+        if c.duo ~= got or c.windowLo ~= 17 or c.windowHi ~= 22 then error("the level window of both: " .. tostring(c.windowLo) .. " " .. tostring(c.windowHi)) end
+        local known = {}
+        for _, f in ipairs(c.flights) do known[f.node] = f.known end
+        if known[2] ~= true or known[6] ~= false then error("a flight point only the leader knows is not known") end
+        if c.hearth ~= nil then error("the friend's hearthstone goes 400 yards away: not used") end
+        got.hearth.x = 30.1
+        if ns.PlannerContext().hearth == nil then error("100 yards away and ready: used") end
+        got.hearth.ready = false
+        if ns.PlannerContext().hearth ~= nil then error("not ready: not used") end
+        got.hearth.x, got.hearth.ready = 30.4, true
+        runIt()
+        if #ns.errors ~= saved.errors then error("no errors: " .. tostring(ns.errors[#ns.errors])) end
+        local guide = ns:GuideGet(ns.GUIDE_PLANNED)
+        local planned = {}
+        for _, st in ipairs(guide and guide.steps or {}) do
+            if st.quest then planned[st.quest] = true end
+            if st.kind == "hearth" then error("no hearth step") end
+            if st.kind == "fly" and st.node == 6 then error("no flight to a point the friend does not know") end
+        end
+        if not (planned[7101] and planned[7103] and planned[7104]) or planned[7105] or planned[7102] then
+            local o = {} for k in pairs(planned) do o[#o + 1] = k end table.sort(o)
+            error("the plan holds the quests both can do: " .. table.concat(o, ","))
+        end
+        -- levels too far apart: said, and a plan for you alone
+        local far = ns.PlannerDuoStateText({ level = 28, questie = true, log = {}, can = {}, flights = {} })
+        addon(string.format("SS:%sz8:1:1:state:%s", s, far))
+        if ns.plannerDuo ~= nil or not heard("You are 8 levels apart") then error("8 levels apart: the duo ends") end
+        if not (ns.plannerQueued and ns.plannerReason == "duo end") then error("and you plan alone") end
+        flush()
+        if sends[#sends].text ~= "D1:END:" .. s then error("the end is sent: " .. tostring(sends[#sends].text)) end
+        if ns.PlannerHookList("candidate")[1] and ns.PlannerHookList("candidate")[1].key == "duo" then error("the duo's hooks go with it") end
+        ns:PlannerStop(); ns.plannerQueued = false
+
+        -- no yes in 30 s: no answer, and you plan alone
+        ns:PlannerDuoStart()
+        flush()
+        clock = clock + 29
+        ns.PlannerDuoTick()
+        if not ns.plannerDuo then error("29 s: still waiting") end
+        clock = clock + 2
+        ns.PlannerDuoTick()
+        if ns.plannerDuo ~= nil or not heard("No answer from Mira") then error("no answer in 30 s") end
+        flush(); ns:PlannerStop(); ns.plannerQueued = false
+
+        -- the queue: held inside an instance and in a fight, a throttle tried again after 2 s, offline ends it
+        ns:PlannerDuoStart()
+        local s3 = ns.plannerDuo.session
+        CI.InChatMessagingLockdown = function() return true end
+        ns.PlannerDuoSend("D1:HI:" .. s3)
+        local before = #sends
+        flush(); ns.PlannerDuoTick()
+        if #sends ~= before then error("nothing is sent inside an instance") end
+        CI.InChatMessagingLockdown = function() return false end
+        flush()
+        if #sends ~= before + 2 or sends[before + 1].text:sub(1, 7) ~= "D1:ASK:" or sends[before + 2].text ~= "D1:HI:" .. s3 then error("out again: the queue goes, in order") end
+        env.InCombatLockdown = function() return true end
+        ns.PlannerDuoSend("D1:HI:" .. s3)
+        flush()
+        if #sends ~= before + 2 then error("nothing is sent in a fight") end
+        env.InCombatLockdown = function() return false end
+        flush()
+        if #sends ~= before + 3 then error("after the fight it goes") end
+        if ns.PlannerDuoSend(string.rep("x", 256)) or ns.PlannerDuoSend("") then error("over 255 bytes, or nothing, is not queued") end
+        if secretMode and ns.PlannerDuoSend(SV("D1:HI:" .. s3)) then error("a hidden text is not queued") end
+        results = { 3 }
+        ns.PlannerDuoSend("D1:HI:" .. s3)
+        before = #sends
+        flush()
+        clock = clock + 1; flush()
+        if #sends ~= before + 1 then error("a throttled message waits") end
+        clock = clock + 1.5; flush()
+        if #sends ~= before + 2 or sends[before + 2].text ~= sends[before + 1].text then error("and is sent again after 2 s") end
+        results = { 12 }
+        ns.PlannerDuoSend("D1:HI:" .. s3)
+        flush()
+        if ns.plannerDuo ~= nil or not heard("Mira is offline: planning for you alone.") or ns.PlannerDuoPending() ~= 0 then error("offline: the duo ends") end
+        ns:PlannerStop(); ns.plannerQueued = false
+        ns:PlannerDuoStart(); flush()
+        results = { 3, 3, 3 }
+        ns.PlannerDuoSend("D1:HI:" .. ns.plannerDuo.session)
+        flush(); clock = clock + 2.1; flush(); clock = clock + 2.1; flush()
+        if ns.plannerDuo ~= nil or not heard("Could not reach Mira") then error("three throttles: the duo ends") end
+        ns:PlannerStop(); ns.plannerQueued = false; results = {}
+
+        -- the friend's side: Leo asks
+        env.UnitName = function(u) if u == "player" then return "Mira" end return "Someone" end
+        logged = { [7104] = true }
+        env.C_QuestLog = setmetatable({ GetNumQuestLogEntries = function() return 1 end, GetInfo = function(i) if i == 1 then return { questID = 7104 } end end,
+                                        GetQuestObjectives = function(id) if id == 7104 then return { { numFulfilled = 2, numRequired = 5 } } end end }, { __index = saved.ql })
+        addon("D1:ASK:ab12:20", "Leo-Realm")
+        local rows = lists.PlanDuoAsk
+        if not (rows and rows[1].left == "Leo asks to plan your route together.") then error("the ask page: " .. tostring(rows and rows[1].left)) end
+        local yes, no
+        for _, r in ipairs(rows) do
+            if r.click and r.left:find("Plan together", 1, true) then yes = r.click end
+            if r.click and r.left:find("No thanks", 1, true) then no = r.click end
+        end
+        if not (yes and no) then error("Plan together and No thanks") end
+        before = #sends
+        yes()
+        if ns.PlannerDuoRole() ~= "friend" or ns.PlannerDuoPartner() ~= "Leo" then error("following Leo") end
+        flush()
+        if not (sends[before + 1] and sends[before + 1].text == "D1:YES:ab12" and sends[before + 1].target == "Leo-Realm") then error("the yes goes back to Leo") end
+        frames(300); flush(80)
+        local whole
+        for i = before + 2, #sends do
+            local id, k, n, kind, piece = ns.ParseSharePiece(sends[i].text)
+            if not (id and kind == "state" and id:match("^ab12z%d+$")) then error("only state pieces: " .. sends[i].text) end
+            whole = ns.ShareReceive("test", id, k, n, kind, piece, clock) or whole
+        end
+        local back = ns.PlannerDuoParseState(whole)
+        if not (back and back.level == 20 and back.log[7104] and back.log[7104][1] == 2 and back.log[7104][2] == 5 and back.questie == true and back.can[7101]
+                and back.faction ~= nil and back.flights[2] and back.hearth and back.hearth.map == 1429) then error("the friend's state, read back: " .. tostring(whole):gsub("\n", " | ")) end
+        -- the text, both ways
+        local t = "level 24\nfaction Alliance\nclass MAGE\nquestie 1\nlog 123=1/8 456=2/2\ncan 11 12 13\nflights 2 6 12\nhearth 1453 60.1 75.3 1"
+        if ns.PlannerDuoStateText(ns.PlannerDuoParseState(t)) ~= t then error("the state text round trip: " .. tostring(ns.PlannerDuoStateText(ns.PlannerDuoParseState(t)))) end
+        if ns.PlannerDuoParseState("faction Alliance\nclass MAGE") ~= nil then error("no level: no state") end
+        local many = {}
+        for i = 1, 40 do many[#many + 1] = (1000 + i) .. "=0/1" end
+        local capped = ns.PlannerDuoParseState("level 5\nfaction Al1iance\nwhat is this\nlog " .. table.concat(many, " "))
+        local nlog = 0
+        for _ in pairs(capped.log) do nlog = nlog + 1 end
+        if nlog ~= 25 or capped.faction ~= nil then error("at most 25 log entries; a word is letters only") end
+        ns:PlannerDuoEnd(nil, true); flush()
+
+        -- a locked guide, or asking switched off: nothing shown, nothing sent
+        ns.GuideUnlocked = function() return false end
+        lists.PlanDuoAsk = nil
+        before = #sends
+        addon("D1:ASK:cd34:20", "Leo-Realm")
+        ns.PlannerDuoTick(); flush()
+        if lists.PlanDuoAsk or #sends ~= before or ns.plannerDuo then error("a locked guide answers nothing") end
+        ns.GuideUnlocked = function() return true end
+        ns.db.plannerDuoAsk = false
+        addon("D1:ASK:cd34:20", "Leo-Realm")
+        ns.PlannerDuoTick(); flush()
+        if lists.PlanDuoAsk or #sends ~= before or ns.plannerDuo then error("asking switched off: nothing") end
+        ns.db.plannerDuoAsk = true
+        addon("D1:ASK:cd35:20", "Leo-Realm")
+        for _, r in ipairs(lists.PlanDuoAsk or {}) do if r.click and r.left:find("No thanks", 1, true) then r.click() end end
+        flush()
+        if #sends ~= before + 1 or sends[#sends].text ~= "D1:NO:cd35" or ns.plannerDuo then error("No thanks: no") end
+
+        -- a level the game hides: no state is sent, and nothing hidden reaches the game
+        if secretMode then
+            env.UnitLevel = function() return SV(20) end
+            addon("D1:ASK:ef56:20", "Leo-Realm")
+            for _, r in ipairs(lists.PlanDuoAsk or {}) do if r.click and r.left:find("Plan together", 1, true) then r.click() end end
+            before = #sends
+            frames(300); flush(80)
+            if #sends ~= before + 1 or sends[#sends].text ~= "D1:YES:ef56" then error("a hidden level: only the yes is sent") end
+            ns:PlannerDuoEnd(nil, true); flush()
+        end
+        for _, x in ipairs(sends) do
+            if x.prefix ~= "FGUIPlan" or x.channel ~= "WHISPER" or #x.text > 255 then error("every message: our prefix, a whisper, 255 bytes at most") end
+        end
+        if bad then error(bad) end
+        if publicChat ~= 0 then error("nothing goes to public chat") end
+        if #ns.errors ~= saved.errors then error("no errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    if ns.plannerDuo then ns:PlannerDuoEnd(nil, true, true) end
+    CI.InChatMessagingLockdown, env.InCombatLockdown = saved.lock, saved.combat
+    for _ = 1, 50 do ns.PlannerDuoFlush() end
+    ns:PlannerStop(); ns.plannerQueued = false
+    ns:GuideSetPlan(nil)
+    ns.GuideOn, ns.GuideHere, ns.GuideUnlocked = saved.on, saved.here, saved.unlocked
+    env.C_Map, env.UnitLevel, env.UnitName, env.UnitIsPlayer, env.UnitIsUnit, env.GetTime = saved.map, saved.level, saved.name, saved.isPlayer, saved.isUnit, saved.time
+    rawset(env, "CreateVector2D", saved.vec); rawset(env, "UnitIsFriend", saved.isFriend); rawset(env, "UnitFactionGroup", saved.faction); rawset(env, "SendChatMessage", saved.sendChat)
+    CI.SendAddonMessage, CI.SendChatMessage = saved.send, saved.chat
+    env.ChatFrameUtil.OpenChat, env.Enum.SendAddonMessageResult, env.C_QuestLog = saved.openChat, saved.enum, saved.ql
+    ns.PlannerContext, ns.PlannerWorldPos, ns.ShowList, ns.PrintRaw = saved.context, saved.world, saved.show, saved.raw
+    ns.root.guideState, ns.root.guides, ns.root.planner = saved.guideState, saved.guides, saved.planner
+    ns.db.plannerDuoAsk, ns.plannerDuo = saved.ask, saved.duo
+    if ns.HideLists then ns:HideLists() end
+    if not ok then error(err, 0) end
+end)
 -- batch 5 tests B (duo): end
 -- batch 5 tests C (code): begin
 -- batch 5 tests C (code): end
