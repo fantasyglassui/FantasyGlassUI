@@ -209,6 +209,14 @@ ns.defaults = {
     plannerExplore   = true,        -- unexplored spots close to the route
     plannerGather    = true,        -- herbs and ore you have gathered before, close to the route (and a note to skin kills)
     plannerMount     = true,        -- riding at level 40: the riding trainer, your mount, and what is still to find
+    -- batch 4 A (map): begin
+    -- batch 4 A (map): end
+    -- batch 4 B (panel): begin
+    -- batch 4 B (panel): end
+    -- batch 4 C (pace): begin
+    -- batch 4 C (pace): end
+    -- batch 4 D (records): begin
+    -- batch 4 D (records): end
     groupWatch       = true,        -- (internal: watches who is in your group for the three below)
     playerNotes      = true,        -- your own note on a player, in their tooltip
     recentMates      = true,        -- the people you grouped with lately

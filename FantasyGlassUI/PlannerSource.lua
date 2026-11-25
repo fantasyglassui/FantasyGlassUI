@@ -502,7 +502,8 @@ function ns.PlannerSource()
         if level ~= cacheLevel then recCache, cacheLevel = {}, level end
     end
     -- Cheap: could this quest be inside the level window? (Questie's level, without building a record.)
-    function src.inRange(id, level)
+    -- lo, hi: the window's bounds (level - 4 and level + 2 when not given).
+    function src.inRange(id, level, lo, hi)
         if InLog(id) then return true end
         local lv
         if type(env.db.QueryQuestSingle) == "function" then
@@ -514,7 +515,7 @@ function ns.PlannerSource()
             if ok and type(q) == "table" then lv = tonumber(q.level) or tonumber(q.questLevel) end
         end
         if not lv or lv <= 0 then return true end        -- unknown or scaling: the record decides
-        return lv >= level - 4 and lv <= level + 2
+        return lv >= (tonumber(lo) or level - 4) and lv <= (tonumber(hi) or level + 2)
     end
     function src.quest(id)
         local logged = InLog(id)                            -- (progress changes: always rebuilt)

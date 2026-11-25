@@ -247,6 +247,32 @@ function ns.BuildBarsPage(page)
 end
 
 ------------------------------------------------------------------------------------------
+-- Batch 4's sections of the Guide tab, one per group. Each gets the live frame, the y its first
+-- control goes at, Replan (plans again while following) and the page's table T; it returns the y
+-- below its last control and a refresh function (run by page.Refresh while the guide is unlocked).
+-- Each group writes only inside its own function's body.
+------------------------------------------------------------------------------------------
+-- Group A: the route and the hubs on the map.
+local function FeelMapSection(live, y, Replan, T)
+    return y, function() end
+end
+
+-- Group B: time to level, "Why this?", the preview, finish the zone.
+local function FeelPanelSection(live, y, Replan, T)
+    return y, function() end
+end
+
+-- Group C: the time you have, break reminders, catch me up, speed or story.
+local function FeelPaceSection(live, y, Replan, T)
+    return y, function() end
+end
+
+-- Group D: level times, race your best, where you left off, save as guide, read aloud.
+local function FeelRecordsSection(live, y, Replan, T)
+    return y, function() end
+end
+
+------------------------------------------------------------------------------------------
 -- Guide: quest guides are not released yet. Everyone sees "coming soon"; where they have been
 -- unlocked (see Guide.lua) this tab holds their switch and controls instead.
 ------------------------------------------------------------------------------------------
@@ -272,8 +298,8 @@ function ns.BuildGuidePage(page)
 
     local live = CreateFrame("Frame", nil, page)
     live:SetPoint("TOPLEFT", 0, 0)
-    local LIVE_HEIGHT = 888                 -- (the last box ends at y = -886)
-    live:SetSize(736, LIVE_HEIGHT)
+    local LIVE_HEIGHT                       -- (set below the last section)
+    live:SetSize(736, 896)
     T.live = live
     Heading(live, "Quest guides", 0, 0, 736)
     local status = Small(live, 12, 700)
@@ -436,6 +462,16 @@ function ns.BuildGuidePage(page)
     T.vendorBox, T.suppliesBox, T.professionBox, T.mountBox = vendor, supplies, profession, mount
     T.mailBox, T.exploreBox, T.gatherBox = mail, explore, gather
 
+    -- batch 4's sections, in this order, from below the last box
+    local y, refreshes = -892, {}
+    for _, section in ipairs({ FeelMapSection, FeelPanelSection, FeelPaceSection, FeelRecordsSection }) do
+        local nextY, refresh = section(live, y, Replan, T)
+        y = tonumber(nextY) or y
+        if type(refresh) == "function" then refreshes[#refreshes + 1] = refresh end
+    end
+    LIVE_HEIGHT = -y + 4
+    live:SetSize(736, LIVE_HEIGHT)
+
     page.Refresh = function()
         local open = ns.GuideUnlocked and ns:GuideUnlocked()
         T.unlocked = open and true or false
@@ -468,6 +504,7 @@ function ns.BuildGuidePage(page)
         if ns.guideRecording then status:SetText(ns:SignalHex("bad") .. ns:Tr("Recording") .. ":|r " .. tostring(ns.guideRecording.name) .. "  (" .. #ns.guideRecording.steps .. ")")
         elseif st then status:SetText(ns:Tr("Following") .. ": " .. ns:AccentHex() .. tostring(st.name) .. "|r  -  " .. tostring(st.at))
         else status:SetText(ns:Tr("You are not following a guide.")) end
+        for _, refresh in ipairs(refreshes) do refresh() end
     end
     page.Refresh()
     page.contentHeight = LIVE_HEIGHT

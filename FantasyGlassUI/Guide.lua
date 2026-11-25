@@ -282,6 +282,70 @@ ns.GuideState = State
 
 local panel
 local Draw
+
+-- What other files add to the panel (each list in the order first added; the same key again replaces
+-- in place, fn nil removes):
+--   ns.GuideRegisterLine(key, fn(st, steps, at) -> text|nil)    a faint line under the advice
+--   ns.GuideRegisterTitle(key, fn(st) -> text|nil)              " · text" after the title
+--   ns.GuideRegisterAction("step"|"panel", key, label, fn(step), shown(step))   a menu entry (label: English, or fn(step) -> text)
+--   ns.GuideRegisterAdvance(key, fn(st, guide, step, at, moved))  the step you are on changed
+--   ns.GuideRegisterCommand(word, fn(rest))                      /fgui guide <word> ...
+-- Each is called through pcall; a failure goes to ns.errors as "Guide hook <key>: <error>".
+local extraLines, titleParts, stepActions, panelActions, advanceHooks, commands = {}, {}, {}, {}, {}, {}
+local function Register(list, key, entry)
+    if key == nil then return end
+    for i, e in ipairs(list) do
+        if e.key == key then
+            if entry then entry.key = key; list[i] = entry else table.remove(list, i) end
+            return
+        end
+    end
+    if entry then entry.key = key; list[#list + 1] = entry end
+end
+local function Hook(key, fn, ...)
+    local ok, v = pcall(fn, ...)
+    if ok then return v end
+    if type(ns.errors) == "table" and #ns.errors < 60 then ns.errors[#ns.errors + 1] = "Guide hook " .. tostring(key) .. ": " .. tostring(v) end
+    return nil
+end
+local function Fn(fn, entry) return type(fn) == "function" and entry or nil end
+function ns.GuideRegisterLine(key, fn) Register(extraLines, key, Fn(fn, { fn = fn })) end
+function ns.GuideRegisterTitle(key, fn) Register(titleParts, key, Fn(fn, { fn = fn })) end
+function ns.GuideRegisterAction(where, key, label, fn, shown)
+    local list = (where == "step" and stepActions) or (where == "panel" and panelActions) or nil
+    if list then Register(list, key, Fn(fn, { label = label, fn = fn, shown = shown })) end
+end
+function ns.GuideRegisterAdvance(key, fn) Register(advanceHooks, key, Fn(fn, { fn = fn })) end
+function ns.GuideRegisterCommand(word, fn)
+    if type(word) ~= "string" or word == "" then return end
+    commands[word:lower()] = type(fn) == "function" and fn or nil
+end
+-- Is an action's entry shown for this step (no shown(): always)? Its label.
+local function ActionShown(e, step)
+    if type(e.shown) ~= "function" then return true end
+    return Hook(e.key, e.shown, step) == true
+end
+local function ActionLabel(e, step)
+    if type(e.label) == "function" then
+        local t = Hook(e.key, e.label, step)
+        return type(t) == "string" and t or tostring(e.key)
+    end
+    return ns:Tr(tostring(e.label))
+end
+local function StepEntries(step)
+    local out = {}
+    for _, e in ipairs(stepActions) do
+        if ActionShown(e, step) then out[#out + 1] = { ActionLabel(e, step), function() e.fn(step) end } end
+    end
+    return out
+end
+local function PanelEntries(step)
+    local out = {}
+    for _, e in ipairs(panelActions) do
+        if ActionShown(e, step) then out[#out + 1] = { ActionLabel(e, step), function() e.fn(step) end } end
+    end
+    return out
+end
 -- Where the step is, for the arrow: its own place, or where the game says the quest goes next.
 local function PlaceOf(step)
     if step.x and step.y then return step.map, step.x, step.y end
@@ -304,6 +368,8 @@ local function Point(step, index)
     elseif ns.waypoint and ns.waypoint.quiet then ns:ClearWaypoint(true) end
 end
 
+local StepKey
+local seenKey, freshPlan = nil, false               -- (the last step the advance hooks saw; a new plan's first advance)
 -- Move on to the first step that is not done. Returns the step and its number (nil at the end).
 function ns:GuideAdvance()
     local st = State()
@@ -327,6 +393,13 @@ function ns:GuideAdvance()
     end
     Point(step, st.at)
     if Draw then Draw() end
+    local key = step and StepKey(step) or "\1end"           -- (the step you are on changed: the advance hooks; nil step at the end)
+    if key ~= seenKey then
+        seenKey = key
+        local moved = st.at ~= before and not freshPlan
+        for _, e in ipairs(advanceHooks) do Hook(e.key, e.fn, st, guide, step, st.at, moved) end
+    end
+    freshPlan = false
     return step, st.at
 end
 function ns:GuideFollow(name)
@@ -338,14 +411,14 @@ function ns:GuideFollow(name)
     state[ns:CharKey()] = (old and old.name == name) and old or { name = name, at = 1, ticked = {} }
     state[ns:CharKey()].finished = nil
     if ns.PlannerStop then ns:PlannerStop() end
-    pointed = nil
+    pointed, freshPlan = nil, true
     ns:GuideShowPanel()
     ns:GuideAdvance()
     ns:Print("Following \"%s\": %d steps.", name, #guide.steps)
     return true
 end
 -- A step as the same thing to do, wherever it sits in a plan.
-local function StepKey(step)
+StepKey = function(step)
     -- (a planner stop is known by its stopKey: its words, such as what to buy, may change between plans)
     return table.concat({ tostring(step.kind), tostring(step.quest), tostring(step.node), tostring(step.crossing), step.stopKey and "" or tostring(step.text), tostring(step.stopKey) }, "\1")
 end
@@ -368,7 +441,7 @@ function ns:GuideSetPlan(guide, summary)
         if (had[k] or 0) > 0 then had[k] = had[k] - 1; ticked[i] = true end
     end
     state[ns:CharKey()] = { name = ns.GUIDE_PLANNED, at = 1, ticked = ticked, summary = summary, plan = plan }
-    pointed = nil
+    pointed, freshPlan = nil, true
     ns:GuideShowPanel()
     ns:GuideAdvance()
 end
@@ -384,6 +457,7 @@ function ns:GuideStop()
     local _, state = Store()
     state[ns:CharKey()] = nil
     Point(nil)
+    seenKey = nil
     if panel then panel:Hide() end
 end
 -- Tick the step you are on off yourself (a note, or one the game cannot check), or step back one.
@@ -418,7 +492,16 @@ local function ZoneName(map)
     if type(name) == "string" and not Secret(name) and name ~= "" then return name end
 end
 local function Planned(st) return st.name ~= nil and st.name == ns.GUIDE_PLANNED end
+local TitleBase
 local function Title(st, guide)
+    local text = TitleBase(st, guide)
+    for _, e in ipairs(titleParts) do
+        local t = Hook(e.key, e.fn, st)
+        if type(t) == "string" and t ~= "" then text = text .. " · " .. t end
+    end
+    return text
+end
+TitleBase = function(st, guide)
     if not Planned(st) then return guide.name end
     local s = type(st.summary) == "table" and st.summary
     local zone = s and ZoneName(s.zone)
@@ -515,10 +598,21 @@ function ns:GuideSkipped()
     end
     return ns:ShowList("Skipped", "Quests you skipped", lines, "Click a quest to suggest it again.", 400, 340)
 end
--- The small menu on a quest step (right click): one entry, to never suggest the quest (or to allow it again).
+-- The guide's small menu (one frame, FantasyGlassUIGuideMenu): entries = { { label, fn } }, a 192x20 button
+-- each (labels are English phrases or text already in your language). A click runs fn after the menu closes;
+-- Escape or a click anywhere else closes it. Nil (and nothing shown) for no entries.
 local stepMenu
-function ns:GuideStepMenu(step)
-    if type(step) ~= "table" or type(step.quest) ~= "number" then return nil end
+local function MenuOver()
+    if not stepMenu then return false end
+    if stepMenu:IsMouseOver() then return true end
+    for _, b in ipairs(stepMenu.buttons) do if b:IsShown() and b:IsMouseOver() then return true end end
+    return false
+end
+function ns:GuideMenu(entries)
+    if type(entries) ~= "table" or #entries == 0 then
+        if stepMenu then stepMenu:Hide() end
+        return nil
+    end
     if not stepMenu then
         stepMenu = CreateFrame("Frame", "FantasyGlassUIGuideMenu", UIParent, ns.template)
         stepMenu:SetSize(200, 26)
@@ -526,26 +620,36 @@ function ns:GuideStepMenu(step)
         stepMenu:SetBackdrop(ns.BACKDROP)
         ns:Paint(stepMenu, "SetBackdropColor", "window", 0.95)
         ns:Paint(stepMenu, "SetBackdropBorderColor", "@border", 1)
-        stepMenu.button = ns:CreateButton(stepMenu, "", 192, 20, function()
-            local id = stepMenu.quest
-            stepMenu:Hide()
-            if id and ns.PlannerSkip then ns.PlannerSkip(id, not stepMenu.skipped) end
-        end)
-        stepMenu.button:SetPoint("CENTER")
-        stepMenu:SetScript("OnLeave", function(self) if not (self:IsMouseOver() or stepMenu.button:IsMouseOver()) then self:Hide() end end)
-        stepMenu.button:HookScript("OnLeave", function() if not stepMenu:IsMouseOver() then stepMenu:Hide() end end)
+        stepMenu.buttons = {}
+        stepMenu:SetScript("OnLeave", function(self) if not MenuOver() then self:Hide() end end)
         stepMenu:Hide()
         if type(UISpecialFrames) == "table" then tinsert(UISpecialFrames, "FantasyGlassUIGuideMenu") end   -- (Escape closes it)
         ns.guideStepMenu = stepMenu
         local away = CreateFrame("Frame")                    -- (a click anywhere else closes it)
         pcall(away.RegisterEvent, away, "GLOBAL_MOUSE_DOWN")
         away:SetScript("OnEvent", function()
-            if stepMenu:IsShown() and not (stepMenu:IsMouseOver() or stepMenu.button:IsMouseOver()) then stepMenu:Hide() end
+            if stepMenu:IsShown() and not MenuOver() then stepMenu:Hide() end
         end)
     end
-    stepMenu.quest = step.quest
-    stepMenu.skipped = (ns.PlannerSkipList and ns.PlannerSkipList()[step.quest]) and true or false
-    stepMenu.button.text:SetText(ns:Tr(stepMenu.skipped and "Suggest again" or "Never suggest this quest"))
+    for i, e in ipairs(entries) do
+        local b = stepMenu.buttons[i]
+        if not b then
+            b = ns:CreateButton(stepMenu, "", 192, 20, function(self)
+                local fn = self.entryFn
+                stepMenu:Hide()
+                if type(fn) == "function" then fn() end
+            end)
+            b:SetPoint("TOP", stepMenu, "TOP", 0, -3 - (i - 1) * 22)
+            b:HookScript("OnLeave", function() if not MenuOver() then stepMenu:Hide() end end)
+            stepMenu.buttons[i] = b
+        end
+        b.entryFn, b.entryLabel = e[2], ns:Tr(tostring(e[1]))
+        b.text:SetText(b.entryLabel)
+        b:Show()
+    end
+    for i = #entries + 1, #stepMenu.buttons do stepMenu.buttons[i]:Hide() end
+    stepMenu.button = stepMenu.buttons[1]
+    stepMenu:SetSize(200, 6 + #entries * 20 + (#entries - 1) * 2)
     stepMenu:ClearAllPoints()
     local ok, cx, cy = pcall(GetCursorPosition)
     local scale = UIParent and UIParent.GetEffectiveScale and UIParent:GetEffectiveScale() or 1
@@ -556,6 +660,27 @@ function ns:GuideStepMenu(step)
     end
     stepMenu:Show()
     return stepMenu
+end
+-- The menu on a step (right click): on a quest step, never suggest the quest (or allow it again), then the
+-- registered step actions shown for it. Nil when there is nothing to offer.
+function ns:GuideStepMenu(step)
+    if type(step) ~= "table" then return nil end
+    local entries, quest, skipped = {}, nil, false
+    if type(step.quest) == "number" then
+        quest = step.quest
+        skipped = (ns.PlannerSkipList and ns.PlannerSkipList()[quest]) and true or false
+        entries[1] = { skipped and "Suggest again" or "Never suggest this quest", function()
+            if ns.PlannerSkip then ns.PlannerSkip(quest, not skipped) end
+        end }
+    end
+    for _, e in ipairs(StepEntries(step)) do entries[#entries + 1] = e end
+    local menu = ns:GuideMenu(entries)
+    if menu and quest then menu.quest, menu.skipped = quest, skipped end
+    return menu
+end
+-- Redraw the panel, if it is there.
+function ns:GuideRedraw()
+    if panel and Draw then Draw() end
 end
 -- The factions you want reputation with: a list to click, each cycling Honored, Revered, Exalted, off.
 function ns:GuideReputation()
@@ -618,11 +743,23 @@ Draw = function()
     panel.advice:SetShown(#advice > 0)
     panel.advice:ClearAllPoints()
     panel.advice:SetPoint("TOPLEFT", 12, -92 - (skipped and 13 or 0) - (talents and 13 or 0) - (riding and 13 or 0) - (rep and 13 or 0) - (moved and 13 or 0) - (classq and 13 or 0))
-    panel:SetHeight(118 + (skipped and 13 or 0) + (talents and 13 or 0) + (riding and 13 or 0) + (rep and 13 or 0) + (moved and 13 or 0) + (classq and 13 or 0) + #advice * 13)
+    local extra = {}                                -- (lines other files add: GuideRegisterLine)
+    for _, e in ipairs(extraLines) do
+        local t = Hook(e.key, e.fn, st, steps, at)
+        if type(t) == "string" and t ~= "" then extra[#extra + 1] = t end
+    end
+    panel.extra:SetText(table.concat(extra, "\n"))
+    panel.extra:SetShown(#extra > 0)
+    panel.extra:ClearAllPoints()
+    panel.extra:SetPoint("TOPLEFT", 12, -92 - (skipped and 13 or 0) - (talents and 13 or 0) - (riding and 13 or 0) - (rep and 13 or 0) - (moved and 13 or 0) - (classq and 13 or 0) - #advice * 13)
+    panel:SetHeight(118 + (skipped and 13 or 0) + (talents and 13 or 0) + (riding and 13 or 0) + (rep and 13 or 0) + (moved and 13 or 0) + (classq and 13 or 0) + #advice * 13 + #extra * 13)
     panel.count:SetText(math.min(at, #steps) .. "/" .. #steps)
     local step = steps[at]
-    if panel.stepButton then                        -- (it takes the mouse only while a planned quest step is shown)
-        panel.stepButton:SetShown(Planned(st) and type(step) == "table" and type(step.quest) == "number")
+    if panel.stepButton then                        -- (it takes the mouse only while a planned step with a menu is shown)
+        panel.stepButton:SetShown(Planned(st) and type(step) == "table" and (type(step.quest) == "number" or #StepEntries(step) > 0))
+    end
+    if panel.more then                              -- (the panel's menu: only while following the plan and some entry is there)
+        panel.more:SetShown(Planned(st) and #PanelEntries(step) > 0)
     end
     if step then
         local kind = ns.guideKinds[step.kind]
@@ -725,6 +862,12 @@ function ns:GuideShowPanel()
         if panel.advice.SetWordWrap then panel.advice:SetWordWrap(false) end
         ns:Paint(panel.advice, "SetTextColor", "faint")
         panel.advice:Hide()
+        panel.extra = ns:NewText(panel, 10, "LEFT")                -- (lines other files add: GuideRegisterLine)
+        panel.extra:SetPoint("TOPLEFT", 12, -92)
+        panel.extra:SetWidth(258)
+        if panel.extra.SetWordWrap then panel.extra:SetWordWrap(false) end
+        ns:Paint(panel.extra, "SetTextColor", "faint")
+        panel.extra:Hide()
         panel.stepButton = CreateFrame("Button", nil, panel)         -- (right click on a quest step: never suggest it)
         panel.stepButton:SetPoint("TOPLEFT", 34, -34)
         panel.stepButton:SetSize(236, 30)
@@ -734,7 +877,7 @@ function ns:GuideShowPanel()
             local st = State()
             local guide = st and Planned(st) and ns:GuideGet(st.name)
             local step = guide and guide.steps[st.at or 1]
-            if type(step) == "table" and type(step.quest) == "number" then ns:GuideStepMenu(step) end
+            if type(step) == "table" then ns:GuideStepMenu(step) end
         end)
         local back = ns:CreateButton(panel, "<", 22, 18, function() ns:GuideSkip(true) end)
         back:SetPoint("BOTTOMLEFT", 8, 6)
@@ -742,6 +885,13 @@ function ns:GuideShowPanel()
         skip:SetPoint("LEFT", back, "RIGHT", 4, 0)
         local list = ns:CreateButton(panel, "Guides", 64, 18, function() ns:GuideList() end)
         list:SetPoint("BOTTOMRIGHT", -8, 6)
+        panel.more = ns:CreateButton(panel, "...", 22, 18, function()   -- (the panel's menu: GuideRegisterAction("panel", ...))
+            local st = State()
+            local guide = st and Planned(st) and ns:GuideGet(st.name)
+            ns:GuideMenu(PanelEntries(guide and guide.steps[st.at or 1] or nil))
+        end)
+        panel.more:SetPoint("RIGHT", list, "LEFT", -4, 0)
+        panel.more:Hide()
         for _, def in ipairs({ { back, "Back one step" }, { skip, "Tick this step off and move on" }, { list, "Your guides: follow another, record, write or paste one" }, { panel.talentButton, "Open your talent builds" } }) do
             def[1]:HookScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine(ns:Tr(def[2]), 1, 1, 1); GameTooltip:Show() end)
             def[1]:HookScript("OnLeave", function() GameTooltip:Hide() end)
@@ -987,6 +1137,7 @@ function ns:GuideCommand(text)
     end
     local word, rest = text:match("^(%S+)%s*(.*)$")
     word = word and word:lower() or ""
+    if commands[word] then return commands[word](rest) end      -- (a word another file registered comes first)
     if word == "" or word == "list" then return ns:GuideList()
     elseif word == "record" then return ns:GuideRecord(rest)
     elseif word == "stop" then

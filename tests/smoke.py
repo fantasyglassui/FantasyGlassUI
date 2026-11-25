@@ -12240,6 +12240,382 @@ try("13.3 choices: final review fixes", function()
     if not ok then error(err, 0) end
 end)
 
+try("13.4 feel: seams", function()
+    local saved = { on = ns.GuideOn, here = ns.GuideHere, state = ns.GuideState, unlocked = ns.GuideUnlocked, level = env.UnitLevel,
+                    map = env.C_Map, vec = rawget(env, "CreateVector2D"), context = ns.PlannerContext, route = ns.PlannerRoute, world = ns.PlannerWorldPos,
+                    guideState = ns.root.guideState, guides = ns.root.guides, key = ns.root.guideKey, guidePage = ns.guidePage }
+    local function click(frame, ...)
+        local f = frame:GetScript("OnClick")
+        if type(f) ~= "function" then
+            for _, h in ipairs(handlers) do if h.self == frame and h.name == "OnClick" then f = h.fn end end
+        end
+        return f(frame, ...)
+    end
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        env.C_Map = setmetatable({ GetWorldPosFromMapPos = function(map, v)
+            if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end
+            if map == 2 then return 0, { x = v.x * 1000 + 5000, y = v.y * 1000 } end
+        end }, { __index = saved.map })
+        env.CreateVector2D = function(x, y) return { x = x, y = y } end
+        local function q(id, extra)
+            local r = { id = id, name = "Q" .. id, level = 14, minLevel = 1, xp = 100, starts = {}, ends = {}, objectives = {}, pre = {}, preAny = {}, exclusive = {},
+                        elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+            for k, v in pairs(extra or {}) do r[k] = v end
+            return r
+        end
+        local function at(map, x, y) return { { map = map, x = x, y = y } } end
+        local function kill(map, x, y) return { { kind = "kill", count = 0, countKnown = true, mobLevel = 14, spots = at(map, x, y) } } end
+        local recs, order, ranges = {}, {}, {}
+        local function add(r) recs[r.id] = r; order[#order + 1] = r.id end
+        local source = { kind = "test", ids = function() return order end, quest = function(id) return recs[id] end, inns = function() return {} end,
+                         inRange = function(id, level, lo, hi) ranges[#ranges + 1] = { id = id, lo = lo, hi = hi }; return true end }
+        local function ctxFor(extra)
+            local c = { source = source, level = 14, group = "solo", inGroup = false, speed = 7, faction = "Alliance", xp = 0, xpMax = 10000,
+                done = function() return false end, onQuest = function() return false end, here = { map = 1, x = 30, y = 40 },
+                crossings = {}, learnFlights = false, bind = "Elsewhere", bindSpot = { map = 9, x = 1, y = 1 }, pace = 1, flights = {},
+                flightTime = function() return nil end, timed = function() return false end, itemCount = function() return 0 end }
+            for k, v in pairs(extra or {}) do c[k] = v end
+            return c
+        end
+        local function firstQuest(guide) for _, s in ipairs(guide.steps) do if s.quest then return s.quest end end end
+
+        -- the planner's hooks: the context, and the level window
+        env.UnitLevel = function() return 12 end
+        ns.PlannerHook("context", "seams", function(ctx) ctx.seen = true; ctx.windowLo = 1 end)
+        local live = ns.PlannerContext()
+        if not live.seen then error("a context hook adds to the context") end
+        if live.windowLo ~= 1 or live.windowHi ~= 14 or live.horizon ~= ns.PLANNER_HORIZON then error("the window's bounds and the horizon: " .. tostring(live.windowLo) .. " " .. tostring(live.windowHi) .. " " .. tostring(live.horizon)) end
+        if #ns.PlannerHookList("context") ~= 1 or ns.PlannerHookList("context")[1].key ~= "seams" then error("the hook list") end
+        ns.PlannerHook("context", "seams", function(ctx) ctx.seen = "again" end)
+        if #ns.PlannerHookList("context") ~= 1 or ns.PlannerContext().seen ~= "again" then error("the same key replaces the hook") end
+        ns.PlannerHook("context", "seams", nil)
+        if #ns.PlannerHookList("context") ~= 0 or ns.PlannerContext().seen then error("nil removes the hook") end
+        add(q(31, { level = 3, starts = at(1, 30, 40), ends = at(1, 30, 40) }))
+        local function has(list, id) for _, r in ipairs(list) do if r.id == id then return true end end return false end
+        local wctx = ctxFor({ level = 12, windowLo = 1, windowHi = 14 })
+        if has(ns.PlannerCandidates(source, wctx), 31) then error("a level-3 quest is outside the window at 12") end
+        ns.PlannerHook("window", "seams", function(rec, ctx, lo, hi) return 1, hi end)
+        ranges = {}
+        if not has(ns.PlannerCandidates(source, wctx), 31) then error("a window hook lets the level-3 quest through") end
+        if not (ranges[1] and ranges[1].lo == 1 and ranges[1].hi == 14) then error("the source's cheap check gets the context's bounds: " .. tostring(ranges[1] and ranges[1].lo)) end
+        local lo, hi = ns.PlannerWindow(recs[31], wctx)
+        if lo ~= 1 or hi ~= 14 then error("ns.PlannerWindow folds the hooks: " .. lo .. " " .. hi) end
+        ns.PlannerHook("window", "seams", nil)
+        -- experience
+        local base = ns.PlannerQuestXP(recs[31], { level = 12 })
+        ns.PlannerHook("xp", "seams", function() return 100 end)
+        if ns.PlannerQuestXP(recs[31], { level = 12 }) ~= base + 100 then error("an xp hook adds to the score") end
+        ns.PlannerHook("xp", "seams", nil)
+        recs, order = {}, {}
+
+        -- the zone
+        add(q(301, { xp = 2000, starts = at(1, 30, 40), ends = at(1, 30, 40), objectives = kill(1, 32, 42) }))
+        add(q(302, { xp = 800, starts = at(1, 60, 60), ends = at(1, 60, 60), objectives = kill(1, 62, 62) }))
+        add(q(311, { xp = 300, starts = at(2, 30, 40), ends = at(2, 30, 40), objectives = kill(2, 32, 42) }))
+        local cands = ns.PlannerCandidates(source, ctxFor())
+        local zone = ns.PlannerPickZone(cands, ctxFor())
+        if zone ~= 1 then error("the test's best zone is map 1: " .. tostring(zone)) end
+        local seenMaps
+        ns.PlannerHook("zone", "seams", function(maps, order2) seenMaps = order2; return maps[2] and 2 or nil end)
+        local z2, newly = ns.PlannerPickZone(cands, ctxFor())
+        if z2 ~= 2 or newly ~= true or type(seenMaps) ~= "table" then error("a zone hook picks the second map: " .. tostring(z2)) end
+        ns.PlannerHook("zone", "seams", function() return 7 end)
+        if ns.PlannerPickZone(cands, ctxFor()) ~= 1 then error("a map without hubs is not taken") end
+        ns.PlannerHook("zone", "seams", nil)
+        recs[311] = nil; order = { 301, 302 }
+
+        -- the route's rounds: summary data, then a rank hook
+        local guide, summary = ns.PlannerRoute(ctxFor())
+        local t1 = summary.taken and summary.taken[1]
+        if firstQuest(guide) ~= 301 or not t1 then error("the best hub first: " .. tostring(firstQuest(guide))) end
+        if not (t1.beat and t1.beat.rate < t1.rate and t1.beat.name == "Q302") then error("what the first hub beat: " .. tostring(t1.beat and t1.beat.rate) .. " " .. tostring(t1.rate)) end
+        if not (summary.taken[2] and summary.taken[2].beat == nil) then error("the second round had nothing left to beat") end
+        local hubs = summary.hubs or {}
+        if #hubs ~= 2 then error("every hub is listed: " .. #hubs) end
+        for i, h in ipairs(hubs) do
+            if math.abs(h.rate - h.xp / h.seconds) > 1e-9 then error("a hub's rate is xp / seconds") end
+            if i > 1 and h.rate > hubs[i - 1].rate then error("best first") end
+            if not (h.map == 1 and h.x and h.y and h.quests == 1 and h.taken) then error("a hub's place, quests and round") end
+        end
+        local rounds = {}
+        ns.PlannerHook("rank", "seams", function(ranked, c, info)
+            rounds[#rounds + 1] = info.n
+            if info.n ~= 1 then return end
+            local top
+            for _, e in ipairs(ranked) do if not top or e.rate > top.rate then top = e end end
+            top.score = -1
+        end)
+        guide, summary = ns.PlannerRoute(ctxFor())
+        if firstQuest(guide) ~= 302 then error("a rank hook leaves the best hub out of round 1: " .. tostring(firstQuest(guide))) end
+        local b1 = summary.taken[1].beat
+        if b1 ~= nil and b1.name == "Q302" then error("the hub beaten is not the one taken") end
+        if rounds[1] ~= 1 or rounds[2] ~= 2 then error("the hook sees each round: " .. table.concat(rounds, ",")) end
+        ns.PlannerHook("rank", "seams", nil)
+        local sawGuide
+        ns.PlannerHook("route", "seams", function(g, s, ctx, c) sawGuide = type(g.steps) == "table" and #g.steps > 0 and s.empty ~= nil and type(c) == "table" end)
+        ns.PlannerRoute(ctxFor())
+        if not sawGuide then error("a route hook sees the guide") end
+        ns.PlannerHook("route", "seams", nil)
+
+        -- the applied hook: the reason the run was made for
+        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
+        ns.GuideOn = function() return true end
+        ns.GuideHere = function() return 1, 30, 40 end
+        local reason
+        ns.PlannerHook("applied", "seams", function(g, s, ctx, why) reason = why end)
+        ns.PlannerContext = function() return { source = source, speed = 7, pace = 1 } end
+        ns.PlannerRoute = function() return { name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "n" } } }, { seconds = 300, zone = 1 } end
+        ns.PlannerWorldPos = function(map, x, y) if map == 1 then return 0, x * 10, y * 10 end end
+        fireEvent("PLAYER_REGEN_ENABLED")
+        ns:PlannerStart()
+        for _ = 1, 50 do
+            if not ns.plannerBusy and not ns.plannerQueued then break end
+            for i = 1, #handlers do local h = handlers[i]; if h.name == "OnUpdate" then pcall(h.fn, h.self, 0.02) end end
+        end
+        if reason ~= "start" then error("the applied hook gets the run's reason: " .. tostring(reason)) end
+        ns.PlannerHook("applied", "seams", nil)
+        ns:PlannerStop()
+        ns.PlannerContext, ns.PlannerRoute, ns.PlannerWorldPos = saved.context, saved.route, saved.world
+
+        -- the panel: lines, the title, menus, the step-change hook and command words
+        local panel = ns:GuideShowPanel()
+        local height, extraText, extraShown, titleText, moreShown, stepShown
+        rawset(panel, "SetHeight", function(_, h) height = h end)
+        rawset(panel.extra, "SetText", function(_, t) extraText = t end)
+        rawset(panel.extra, "SetShown", function(_, v) extraShown = v end)
+        rawset(panel.title, "SetText", function(_, t) titleText = t end)
+        rawset(panel.more, "SetShown", function(_, v) moreShown = v end)
+        rawset(panel.stepButton, "SetShown", function(_, v) stepShown = v end)
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "a" }, { kind = "note", text = "b" }, { kind = "note", text = "c" } } }, { zone = 1, fromLevel = 12, toLevel = 13 })
+        local h0 = height
+        if extraShown ~= false then error("no lines: the extra line is hidden") end
+        ns.GuideRegisterLine("seams", function(st, steps, at) return "hello " .. #steps .. " " .. at end)
+        ns:GuideRedraw()
+        if extraText ~= "hello 3 1" or extraShown ~= true then error("a registered line shows: " .. tostring(extraText)) end
+        if height ~= h0 + 13 then error("the panel is 13 taller: " .. tostring(height) .. " " .. tostring(h0)) end
+        ns.GuideRegisterTitle("seams", function() return "x" end)
+        ns:GuideRedraw()
+        if type(titleText) ~= "string" or titleText:sub(-#" · x") ~= " · x" then error("a title part: " .. tostring(titleText)) end
+        ns.GuideRegisterLine("seams", nil); ns.GuideRegisterTitle("seams", nil)
+        ns:GuideRedraw()
+        if extraShown ~= false or height ~= h0 or titleText:find(" · x", 1, true) then error("removed: gone from the panel") end
+        -- step actions
+        if stepShown ~= false then error("a note with no action: no step menu") end
+        local acted
+        ns.GuideRegisterAction("step", "seams", "Do the thing", function(step) acted = step end, function(step) return step.kind == "note" or step.quest == 201 end)
+        ns:GuideRedraw()
+        if stepShown ~= true then error("a step with an action: the step menu is there") end
+        local qstep = { kind = "accept", quest = 201, title = "Q201" }
+        local menu = ns:GuideStepMenu(qstep)
+        if not (menu and menu.buttons and menu.buttons[2]) then error("the step's menu: the built-in entry and the action") end
+        if menu.buttons[1].entryLabel ~= ns:Tr("Never suggest this quest") then error("the built-in entry first: " .. tostring(menu.buttons[1].entryLabel)) end
+        if menu.buttons[2].entryLabel ~= "Do the thing" then error("the action after it: " .. tostring(menu.buttons[2].entryLabel)) end
+        click(menu.buttons[2])
+        if acted ~= qstep then error("the action's click calls fn(step)") end
+        local nmenu = ns:GuideStepMenu({ kind = "note", text = "a" })
+        if not (nmenu and nmenu.buttons[1].entryLabel == "Do the thing") then error("a note: only the action") end
+        if ns:GuideStepMenu({ kind = "goto", x = 1, y = 1 }) ~= nil then error("nothing shown: no menu") end
+        ns.GuideRegisterAction("step", "seams", nil)
+        -- panel actions and the "..." button
+        if moreShown ~= false then error("no panel action: the ... button is hidden") end
+        local panelActed
+        ns.GuideRegisterAction("panel", "seams", "Panel thing", function() panelActed = true end, function() return true end)
+        ns:GuideRedraw()
+        if moreShown ~= true then error("a panel action while following the plan: the ... button shows") end
+        click(panel.more)
+        local pm = ns.guideStepMenu
+        if not (pm and pm.buttons[1].entryLabel == "Panel thing") then error("the panel menu lists the action") end
+        click(pm.buttons[1])
+        if not panelActed then error("the panel action runs") end
+        ns.GuideRegisterAction("panel", "seams", "Panel thing", function() end, function() return false end)
+        ns:GuideRedraw()
+        if moreShown ~= false then error("no entry shown: the ... button hides") end
+        ns.GuideRegisterAction("panel", "seams", nil)
+        -- the step-change hook
+        local calls = {}
+        ns.GuideRegisterAdvance("seams", function(st, g, step, at, moved) calls[#calls + 1] = { step = step, at = at, moved = moved } end)
+        ns:GuideSkip(false)
+        if #calls ~= 1 or calls[1].moved ~= true or calls[1].at ~= 2 or calls[1].step.text ~= "b" then error("a step ticked off: one call, moved: " .. #calls) end
+        ns:GuideSkip(true)
+        if #calls ~= 1 then error("back: no call") end
+        calls = {}
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "z" } } }, {})
+        if #calls ~= 1 or calls[1].moved ~= false or calls[1].step.text ~= "z" then error("a new plan's first step: one call, not moved: " .. #calls) end
+        ns.GuideRegisterAdvance("seams", function() error("boom") end)
+        local nErr = #ns.errors
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "y" } } }, {})
+        if #ns.errors ~= nErr + 1 or not tostring(ns.errors[#ns.errors]):find("Guide hook seams:", 1, true) then error("a failing hook is noted, not raised") end
+        table.remove(ns.errors)
+        ns.GuideRegisterAdvance("seams", nil)
+        -- command words
+        local got
+        ns.GuideRegisterCommand("plan", function(rest) got = rest; return "mine" end)
+        if ns:GuideCommand("plan 30") ~= "mine" or got ~= "30" then error("a registered word comes first: " .. tostring(got)) end
+        ns.GuideRegisterCommand("plan", nil)
+        ns:GuideSetPlan(nil)
+
+        -- the Guide tab: four sections below the last box
+        local page = env.CreateFrame("Frame")
+        ns.BuildGuidePage(page)
+        if not (tonumber(page.contentHeight) and page.contentHeight >= 896) then error("the page's height: " .. tostring(page.contentHeight)) end
+        local src = sources["options/Bars.lua"] or ""
+        local a1, a2, a3, a4 = src:find("local function FeelMapSection", 1, true), src:find("local function FeelPanelSection", 1, true),
+                               src:find("local function FeelPaceSection", 1, true), src:find("local function FeelRecordsSection", 1, true)
+        local built = src:find("function ns.BuildGuidePage", 1, true)
+        if not (a1 and a2 and a3 and a4 and built and a1 < a2 and a2 < a3 and a3 < a4 and a4 < built) then error("the four sections, in order, above the page") end
+        if not src:find("{ FeelMapSection, FeelPanelSection, FeelPaceSection, FeelRecordsSection }", 1, true) then error("called in that order") end
+    end)
+    for _, point in ipairs({ "context", "window", "xp", "zone", "rank", "route", "applied" }) do ns.PlannerHook(point, "seams", nil) end
+    ns.GuideRegisterLine("seams", nil); ns.GuideRegisterTitle("seams", nil); ns.GuideRegisterAdvance("seams", nil)
+    ns.GuideRegisterAction("step", "seams", nil); ns.GuideRegisterAction("panel", "seams", nil); ns.GuideRegisterCommand("plan", nil)
+    ns:PlannerStop()
+    ns.plannerQueued = false
+    ns.GuideOn, ns.GuideHere, ns.GuideState, ns.GuideUnlocked = saved.on, saved.here, saved.state, saved.unlocked
+    env.UnitLevel, env.C_Map = saved.level, saved.map
+    rawset(env, "CreateVector2D", saved.vec)
+    ns.PlannerContext, ns.PlannerRoute, ns.PlannerWorldPos = saved.context, saved.route, saved.world
+    ns:GuideSetPlan(nil)
+    ns.root.guideState, ns.root.guides, ns.root.guideKey = saved.guideState, saved.guides, saved.key
+    ns.guidePage = saved.guidePage
+    if ns.guideStepMenu then ns.guideStepMenu:Hide() end
+    if not ok then error(err, 0) end
+end)
+
+try("13.4 feel: batch 3 leftovers", function()
+    local saved = { on = ns.GuideOn, state = ns.GuideState, unlocked = ns.GuideUnlocked, level = env.UnitLevel, group = env.IsInGroup,
+                    base = rawget(env, "UnitClassBase"), map = env.C_Map, vec = rawget(env, "CreateVector2D"), logQ = env.C_QuestLog, time = env.GetTime,
+                    elites = ns.root.plannerSoloElites, times = ns.root.plannerQuestTimes, rejects = ns.PlannerRejects }
+    local recC = ns.PlannerCharRecord(false)
+    local before = { soloAt = recC and recC.soloAt, pace = recC and recC.pace }
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        env.C_Map = setmetatable({ GetWorldPosFromMapPos = function(map, v)
+                if map == 1 or map == 5 then return 0, { x = v.x * 1000, y = v.y * 1000 } end
+                if map == 2 then return 0, { x = v.x * 1000 + 5000, y = v.y * 1000 } end
+                if map == 3 then return 1, { x = v.x * 1000, y = v.y * 1000 } end
+            end,
+            GetMapInfo = function(map)
+                if map == 6 then return { mapID = 6, mapType = 5, parentMapID = 7 } end     -- (a cave in a city in zone 2)
+                if map == 7 then return { mapID = 7, mapType = 4, parentMapID = 2 } end
+                if map == 2 then return { mapID = 2, mapType = 3, parentMapID = 9 } end
+                if map == 9 then return { mapID = 9, mapType = 2, parentMapID = 0 } end
+            end }, { __index = saved.map })
+        env.CreateVector2D = function(x, y) return { x = x, y = y } end
+        local function q(id, extra)
+            local r = { id = id, name = "Q" .. id, level = 14, minLevel = 1, xp = 100, starts = {}, ends = {}, objectives = {}, pre = {}, preAny = {}, exclusive = {},
+                        elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+            for k, v in pairs(extra or {}) do r[k] = v end
+            return r
+        end
+        local function at(map, x, y) return { { map = map, x = x, y = y } } end
+        local recs, order = {}, {}
+        local function add(r) recs[r.id] = r; order[#order + 1] = r.id end
+        local source = { kind = "test", ids = function() return order end, quest = function(id) return recs[id] end, inns = function() return {} end }
+        local logged = {}
+        local function route(extra)
+            local c = { source = source, level = 14, group = "solo", inGroup = false, speed = 7, faction = "Alliance", xp = 0, xpMax = 10000,
+                done = function() return false end, onQuest = function(id) return logged[id] or false end, here = { map = 1, x = 30, y = 40 },
+                crossings = {}, learnFlights = false, bind = "Elsewhere", pace = 1, flights = {}, flightTime = function() return nil end,
+                timed = function() return false end, itemCount = function() return 0 end }
+            for k, v in pairs(extra or {}) do c[k] = v end
+            return ns.PlannerRoute(c)
+        end
+
+        -- a. an empty plan's Moved line where you stand on a city or cave map: its zone's
+        local chain = table.concat(ns.PlannerZoneMaps(6), ",")
+        if chain ~= "6,7,2" then error("the maps up to the zone: " .. chain) end
+        add(q(541, { level = 12, starts = at(2, 30, 40), ends = at(2, 30, 40) }))
+        local deaths = { { level = 12, map = 2, x = 30, y = 40 }, { level = 12, map = 2, x = 30, y = 40 } }
+        local _, summary = route({ level = 12, deaths = deaths, here = { map = 6, x = 50, y = 50 } })
+        if not summary.empty or summary.moved ~= 14 then error("in a cave of the zone: back at 14, got " .. tostring(summary.moved)) end
+        _, summary = route({ level = 12, deaths = deaths, here = { map = 1, x = 50, y = 50 } })
+        if summary.moved ~= nil then error("another zone: no Moved line") end
+        recs, order = {}, {}
+
+        -- c. the log has room: nothing is asked about the quests the plan leaves out
+        for i = 0, 4 do add(q(301 + i, { xp = 2000, starts = at(1, 30 + i, 40), ends = at(1, 30 + i, 40) })) end    -- (one hub: five accepts)
+        add(q(306, { xp = 1500, starts = at(1, 60, 60), ends = at(1, 60, 60) }))                                     -- (the second hub; 502 is beyond the two)
+        add(q(502, { xp = 1, ends = at(1, 95, 95) }))
+        logged[502] = true
+        local asked = 0
+        ns.PlannerRejects = function(...) asked = asked + 1; return saved.rejects(...) end
+        _, summary = route({ logCount = 5, logMax = 25 })
+        if asked ~= 0 or summary.logFits ~= true or next(summary.logReasons or { 1 }) ~= nil then error("room in the log: nothing asked, got " .. asked) end
+        _, summary = route({ logCount = 23, logMax = 25 })
+        if asked == 0 or (summary.logReasons or {})[502] ~= "off the route" or summary.logFits then error("2 free: the reasons are worked out") end
+        asked = 0
+        _, summary = route({ logCount = 1, logMax = 5 })
+        if asked == 0 or (summary.logReasons or {})[502] ~= "off the route" then error("4 free but the plan's peak does not fit: worked out") end
+        asked = 0
+        _, summary = route()
+        if asked == 0 or (summary.logReasons or {})[502] ~= "off the route" then error("the log unknown: worked out") end
+        ns.PlannerRejects = saved.rejects
+        logged[502] = nil
+        -- (a quest taken outside such a plan plans again; one in the plan does not)
+        ns.GuideOn = function() return true end
+        ns.GuideState = function() return { name = ns.GUIDE_PLANNED, at = 1, summary = { logFits = true }, plan = { steps = { { kind = "accept", quest = 301 } } } } end
+        ns.plannerQueued = false
+        fireEvent("QUEST_ACCEPTED", 1, 301)
+        if ns.plannerQueued then error("a planned accept: no replan") end
+        fireEvent("QUEST_ACCEPTED", 1, 999)
+        if not ns.plannerQueued then error("an unplanned accept on a plan that asked nothing: plans again") end
+        ns.plannerQueued = false
+
+        -- b. QUEST_REMOVED before the quest is flagged, then QUEST_TURNED_IN within a second: a hand-in
+        local clock = 601000
+        env.GetTime = function() return clock end
+        local flagged = {}
+        env.UnitClassBase = function() return "WARRIOR" end
+        env.UnitLevel = function() return 12 end
+        env.IsInGroup = function() return false end
+        env.C_QuestLog = setmetatable({ GetLogIndexForQuestID = function(id) return id end,
+            GetInfo = function(id) return { questID = id, questLevel = 13, title = "T" } end,
+            GetQuestTagInfo = function() return { isElite = true, tagID = 0 } end,
+            GetTitleForQuestID = function() return "T" end,
+            IsQuestFlaggedCompleted = function(id) return flagged[id] or false end }, { __index = saved.logQ })
+        ns.root.plannerSoloElites = nil
+        ns.GuideState = function() return { name = ns.GUIDE_PLANNED, at = 1, plan = { estimates = { [912] = 100 }, travelShare = 0 } } end
+        fireEvent("QUEST_ACCEPTED", 1, 204)
+        clock = 601100; fireEvent("QUEST_REMOVED", 204)
+        clock = 601100.5; flagged[204] = true; fireEvent("QUEST_TURNED_IN", 204)
+        if not (ns.root.plannerSoloElites and ns.root.plannerSoloElites.WARRIOR == 1) then error("removed, then handed in at once: the soloed elite counts") end
+        if not (ns.root.plannerQuestTimes and ns.root.plannerQuestTimes[204] and math.abs(ns.root.plannerQuestTimes[204].avg - 100) < 1e-6) then error("and its time: 100 s") end
+        ns.root.plannerSoloElites = nil
+        clock = 602000; fireEvent("QUEST_ACCEPTED", 1, 205)
+        clock = 602100; fireEvent("QUEST_REMOVED", 205)
+        clock = 602103; fireEvent("QUEST_TURNED_IN", 205)
+        if ns.root.plannerSoloElites then error("more than a second later: abandoned") end
+        -- (and the pace counts that hand-in once)
+        local pr = ns.PlannerCharRecord(true)
+        pr.pace = nil
+        clock = 603000; fireEvent("QUEST_TURNED_IN", 911)                   -- (the mark)
+        clock = 603199.6; fireEvent("QUEST_REMOVED", 912)
+        clock = 603200; fireEvent("QUEST_TURNED_IN", 912)
+        clock = 603300; fireEvent("QUEST_TURNED_IN", 913)                   -- (ends the run of hand-ins)
+        local p = ns.PlannerCharRecord(false).pace
+        if not (p and p.samples and #p.samples == 1 and math.abs(p.samples[1] - 2) < 1e-6) then error("counted once: one sample of 2, got " .. tostring(p and p.samples and #p.samples)) end
+    end)
+    ns.GuideOn, ns.GuideState, ns.GuideUnlocked = saved.on, saved.state, saved.unlocked
+    env.UnitLevel, env.IsInGroup, env.C_Map, env.C_QuestLog, env.GetTime = saved.level, saved.group, saved.map, saved.logQ, saved.time
+    rawset(env, "UnitClassBase", saved.base); rawset(env, "CreateVector2D", saved.vec)
+    ns.root.plannerSoloElites, ns.root.plannerQuestTimes, ns.PlannerRejects = saved.elites, saved.times, saved.rejects
+    local rr = ns.PlannerCharRecord(false)
+    if rr then rr.soloAt, rr.pace = before.soloAt, before.pace end
+    ns:PlannerStop()
+    ns.plannerQueued = false
+    if not ok then error(err, 0) end
+end)
+
+-- batch 4 tests A (map): begin
+-- batch 4 tests A (map): end
+-- batch 4 tests B (panel): begin
+-- batch 4 tests B (panel): end
+-- batch 4 tests C (pace): begin
+-- batch 4 tests C (pace): end
+-- batch 4 tests D (records): begin
+-- batch 4 tests D (records): end
+
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()

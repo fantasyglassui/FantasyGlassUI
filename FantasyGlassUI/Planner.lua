@@ -8,6 +8,7 @@ ns.PLANNER_BUDGET_MS = 4
 ns.plannerBusy, ns.plannerQueued, ns.plannerSteps = false, false, 0
 
 local running, sliceStart            -- the planning coroutine, and when its slice began
+local runReason                      -- ns.plannerReason when that coroutine was made
 local job                            -- a small job run in slices while the planner is idle (ns.PlannerJob)
 
 local function Clock()
@@ -26,6 +27,48 @@ end
 
 local ipairs, type, tonumber, math = ipairs, type, tonumber, math
 local floor, min, max, sqrt = math.floor, math.min, math.max, math.sqrt
+
+------------------------------------------------------------------------------------------
+-- Hooks: where other planner files add to the planning without changing it here. A hook is
+-- called directly, never through pcall: it runs inside the planning coroutine and may call
+-- ns.PlannerYield() (only in plain loops). Points and their call sites:
+--   "context"  fn(ctx)                     end of ns.PlannerContext (may widen windowLo/windowHi, raise horizon)
+--   "window"   fn(rec, ctx, lo, hi) -> lo, hi   ns.PlannerWindow (the level window of one quest)
+--   "xp"       fn(rec, ctx) -> number      added to a quest's score in ns.PlannerQuestXP
+--   "zone"     fn(maps, order, ctx) -> map|nil   ns.PlannerPickZone: the first map with hubs wins
+--   "rank"     fn(ranked, c, info)         each round of the route's hubs (may change score and first)
+--   "route"    fn(guide, summary, ctx, c)  end of the route's Build
+--   "applied"  fn(guide, summary, ctx, reason)   after a plan became the guide you follow
+------------------------------------------------------------------------------------------
+local hooks, NONE = {}, {}
+-- Add a hook (a second fn with the same key replaces the first, in its place; fn nil removes it).
+function ns.PlannerHook(point, key, fn)
+    if type(point) ~= "string" or key == nil then return end
+    local list = hooks[point]
+    if not list then list = {}; hooks[point] = list end
+    for i, h in ipairs(list) do
+        if h.key == key then
+            if type(fn) == "function" then h.fn = fn else table.remove(list, i) end
+            return
+        end
+    end
+    if type(fn) == "function" then list[#list + 1] = { key = key, fn = fn } end
+end
+-- The hooks of a point, in the order they were first added: { { key = k, fn = f } } (read only).
+function ns.PlannerHookList(point)
+    return hooks[point] or NONE
+end
+
+-- The level window of a quest: level - 4 to level + 2, then every "window" hook.
+function ns.PlannerWindow(rec, ctx)
+    local level = type(ctx) == "table" and tonumber(ctx.level) or 1
+    local lo, hi = level - 4, level + 2
+    for _, h in ipairs(hooks.window or NONE) do
+        local a, b = h.fn(rec, ctx, lo, hi)
+        lo, hi = tonumber(a) or lo, tonumber(b) or hi
+    end
+    return lo, hi
+end
 
 local UNKNOWN_COUNT = 8 -- Questie gives no kill counts; the quest log does, once a quest is taken
 
@@ -75,6 +118,11 @@ local function AnyDone(list, done)
     return false
 end
 
+local function InWindow(rec, ctx)
+    local lo, hi = ns.PlannerWindow(rec, ctx)
+    return rec.level >= lo and rec.level <= hi
+end
+
 local function NeedsGroup(rec) return (rec.elite or rec.group or rec.dungeon) and true or false end
 
 -- Does the group setting let this quest through (an elite your class has soloed counts as solo)?
@@ -90,7 +138,7 @@ function ns.PlannerRejects(rec, ctx)
     if type(rec) ~= "table" or type(ctx) ~= "table" then return nil end
     local level = ctx.level or 1
     if type(ctx.skip) == "table" and ctx.skip[rec.id] then return "skipped" end
-    if tonumber(rec.level) and rec.level > level + 2 then return "hard" end
+    if tonumber(rec.level) and rec.level > select(2, ns.PlannerWindow(rec, ctx)) then return "hard" end
     if not GroupOK(rec, ctx, level) then return "group" end
     return nil
 end
@@ -122,12 +170,12 @@ function ns.PlannerCandidates(source, ctx)
     for _, id in ipairs(source.ids()) do
         ns.PlannerYield()
         local logged = onQuest(id)
-        local rec = (logged or not (never and never[id])) and (logged or not source.inRange or source.inRange(id, level)) and source.quest(id) or nil
+        local rec = (logged or not (never and never[id])) and (logged or not source.inRange or source.inRange(id, level, ctx.windowLo, ctx.windowHi)) and source.quest(id) or nil
         if rec then
             if logged then
                 list[#list + 1] = rec
             elseif rec.doable and not rec.repeatable and not done(id)
-                and rec.level >= level - 4 and rec.level <= level + 2
+                and InWindow(rec, ctx)
                 and AllDone(rec.pre, done) and AnyDone(rec.preAny, done) then
                 if not GroupOK(rec, ctx, level) then
                     skipped.group = skipped.group + 1
@@ -480,6 +528,7 @@ function ns.PlannerQuestXP(rec, ctx)
     local extra = ns.PlannerRestedExtra(rec, ctx)
     local real = (rec.xp or 0) + KillPart(rec, ctx.level or 1) + extra
     local xp = real + ns.PlannerRewardBonus(rec, ctx) + ns.PlannerRepBonus(rec, ctx)
+    for _, h in ipairs(hooks.xp or NONE) do xp = xp + (tonumber(h.fn(rec, ctx)) or 0) end
     if rec.nextQuest and ctx.candidate then
         local nxt = ctx.candidate(rec.nextQuest)
         if nxt then xp = xp + (nxt.xp or 0) / 2 end
@@ -613,10 +662,11 @@ local function Plan()
     return guide, summary, ctx
 end
 
-local function Apply(guide, summary, ctx)
+local function Apply(guide, summary, ctx, reason)
     if not mark then mark = { time = GetTime() } end
     if summary.newZone and summary.zone then ns.PlannerSetZone(summary.zone, ctx.level) end
     ns:GuideSetPlan(guide, summary)
+    for _, h in ipairs(hooks.applied or NONE) do h.fn(guide, summary, ctx, reason) end
 end
 
 -- Small jobs (the inn suggestion): one at a time, a slice per frame, never in a fight, only while
@@ -654,7 +704,7 @@ local function Tick()
     if running and ns.plannerQueued then running = nil end   -- a replan asked for mid-run: that run's context is stale
     if not running then
         ns.plannerQueued, ns.plannerBusy = false, true
-        running = coroutine.create(Plan)
+        running, runReason = coroutine.create(Plan), ns.plannerReason
     end
     sliceStart = Clock()
     ns.plannerSteps = ns.plannerSteps + 1
@@ -668,7 +718,7 @@ local function Tick()
         if ns.GuidePlanFailed then ns:GuidePlanFailed() end
         return
     end
-    if guide then Apply(guide, summary, ctx) end
+    if guide then Apply(guide, summary, ctx, runReason) end
 end
 ns:Every(0, "Planner", Tick)
 
@@ -793,6 +843,23 @@ do
         local okT, now = pcall(GetTime)
         if okT and type(now) == "number" and not ns:IsSecret(now) then return now end
     end
+    -- A QUEST_REMOVED of a quest not (yet) flagged completed: abandoned, unless QUEST_TURNED_IN for it follows
+    -- within a second (then it was a hand-in, counted once). questID -> { t, level = a soloed elite's, took = its time }.
+    local removed = {}
+    local function Removed(id, now)
+        for k, e in pairs(removed) do
+            if now and (e.t > now or now - e.t > 600) then removed[k] = nil end
+        end
+        local e = removed[id] or {}
+        e.t = now or 0
+        removed[id] = e
+        return e
+    end
+    local function JustRemoved(id, now)
+        local e = removed[id]
+        removed[id] = nil
+        if e and now and now >= e.t and now - e.t <= 1 then return e end
+    end
     -- elite questID -> its quest level, accepted while not in a group: kept per character, so a /reload
     -- or a new session in between still counts (cleared at hand-in or when the quest leaves the log)
     local function SoloAt(create)
@@ -826,6 +893,7 @@ do
             if ns:GuideUnlocked() then ns.PlannerRecordDeath() end
             return
         end
+        local recent = (event == "QUEST_TURNED_IN" and type(a) == "number") and JustRemoved(a, Now()) or nil   -- (removed a moment ago: a hand-in)
         if (event == "QUEST_ACCEPTED" or event == "QUEST_TURNED_IN" or event == "QUEST_REMOVED") and ns:GuideUnlocked() then
             local id = (event == "QUEST_ACCEPTED" and type(b) == "number") and b or a
             if type(id) == "number" then
@@ -841,13 +909,15 @@ do
                             if list then list[id] = q.level end
                         end
                     end
-                elseif event == "QUEST_REMOVED" and not Completed(id) then         -- (abandoned)
+                elseif event == "QUEST_REMOVED" and not Completed(id) then         -- (abandoned, unless QUEST_TURNED_IN follows at once)
                     local list = SoloAt(false)
-                    if list then list[id] = nil end
+                    local e = Removed(id, Now())
+                    if list then e.level = list[id]; list[id] = nil end
                 else                                                         -- (handed in: Forever may say so by QUEST_REMOVED first)
                     local list = SoloAt(false)
                     local questLevel = list and tonumber(list[id])
                     if list then list[id] = nil end
+                    if not questLevel and recent then questLevel = tonumber(recent.level) end
                     local level = UnitLevel and UnitLevel("player")
                     local class = ns.PlannerClassToken()
                     if questLevel and not grouped and class and type(level) == "number" and not ns:IsSecret(level) then
@@ -904,12 +974,21 @@ do
                 Share(now)
                 open[id], openN, since[id] = 0, openN + 1, now
             end
+            -- (a plan made while the log had room asked nothing about it: a quest taken outside the plan may fill it)
+            if type(id) == "number" and type(st.summary) == "table" and st.summary.logFits then
+                local inPlan = false
+                for _, s in ipairs(type(plan.steps) == "table" and plan.steps or {}) do
+                    if type(s) == "table" and s.quest == id then inPlan = true; break end
+                end
+                if not inPlan then ns:PlannerReplan("log") end
+            end
             return
         end
         if event == "QUEST_TURNED_IN" then
             if type(a) == "number" then
                 local now = Now()
                 local took = now and open[a] and Close(a, now)
+                if not took and recent then took = recent.took end
                 if took then ns.PlannerRecordQuestTime(a, took) end
                 CountHandIn(a, plan, now)
             end
@@ -929,6 +1008,7 @@ do
                     local took
                     if now then took = Close(a, now) else open[a], openN, since[a] = nil, openN - 1, nil end
                     if took and done then ns.PlannerRecordQuestTime(a, took) end
+                    if took and not done then Removed(a, now).took = took end    -- (kept a second, for a QUEST_TURNED_IN to come)
                 end
                 if done then CountHandIn(a, plan, now) end
             end
