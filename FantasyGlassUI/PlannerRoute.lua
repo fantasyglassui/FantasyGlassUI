@@ -124,6 +124,37 @@ local function HubLoop(hub, ctx)
     hub.xp, hub.seconds = xp, max(t, 1)
 end
 
+-- The level you died at when two deaths at that level or the one before lie within a hub's radius of
+-- it (same map) and you are still below that level + 2; nil otherwise. ctx.deaths = { { level, map, x, y } }.
+function ns.PlannerHubTooHard(hub, ctx)
+    local deaths, level = type(ctx) == "table" and ctx.deaths, type(ctx) == "table" and tonumber(ctx.level)
+    if type(deaths) ~= "table" or not level or type(hub) ~= "table" then return nil end
+    local c, hx, hy = Pos(hub)
+    if not c then return nil end
+    local pos = ctx.deathPos
+    if type(pos) ~= "table" then
+        pos = {}
+        for i, d in ipairs(deaths) do
+            if type(d) == "table" then
+                local dc, dx, dy = ns.PlannerWorldPos(d.map, d.x, d.y)
+                if dc then pos[i] = { c = dc, x = dx, y = dy } end
+            end
+        end
+        ctx.deathPos = pos
+    end
+    local r2, near = ns.PLANNER_HUB_YARDS * ns.PLANNER_HUB_YARDS, {}
+    for i, d in ipairs(deaths) do
+        local p = pos[i]
+        local lv = type(d) == "table" and tonumber(d.level)
+        if p and lv and d.map == hub.map and p.c == c and (p.x - hx) ^ 2 + (p.y - hy) ^ 2 <= r2 then near[lv] = (near[lv] or 0) + 1 end
+    end
+    local best
+    for lv, n in pairs(near) do
+        if n + (near[lv - 1] or 0) >= 2 and level < lv + 2 and (not best or lv > best) then best = lv end
+    end
+    return best
+end
+
 -- Single-link clustering of givers and hand-ins within PLANNER_HUB_YARDS on the same map.
 function ns.PlannerHubs(candidates, ctx)
     ctx = ctx or {}
@@ -182,6 +213,22 @@ function ns.PlannerHubs(candidates, ctx)
         hub.x, hub.y = hub.sx / #hub.quests, hub.sy / #hub.quests
         hub.sx, hub.sy = nil, nil
         HubLoop(hub, ctx)
+    end
+    if type(ctx.deaths) == "table" and #ctx.deaths > 0 then          -- (hubs where you died twice are left out for now, unless a quest of theirs is in your log)
+        local kept = {}
+        for _, hub in ipairs(hubs) do
+            local d = ns.PlannerHubTooHard(hub, ctx)
+            local logged = false
+            if d and ctx.onQuest then
+                for _, r in ipairs(hub.quests) do if ctx.onQuest(r.id) then logged = true; break end end
+            end
+            if d and not logged then
+                if not ctx.moved or d + 2 > ctx.moved then ctx.moved = d + 2 end
+            else
+                kept[#kept + 1] = hub
+            end
+        end
+        hubs = kept
     end
     return hubs
 end
@@ -487,6 +534,7 @@ function ns.PlannerRoute(ctx)
     c.rewardCache = {}                               -- quest id -> reward bonus, read once per plan
     c.repCache = {}                                  -- faction id -> reputation still needed, read once per plan
     local zone, newly, hubs = ns.PlannerPickZone(candidates, c)
+    summary.moved = c.moved                          -- the level a hub where you died twice is planned again at
     if not zone then return guide, summary end
     local left = {}
     for _, h in ipairs(hubs) do if h.map == zone then left[#left + 1] = h end end
@@ -607,6 +655,9 @@ function ns.PlannerContext()
         crossings = ns.PLANNER_CROSSINGS,
         learnFlights = db.plannerLearnFlights ~= false,
         pace = ns.PlannerPace(),
+        skip = next(ns.PlannerSkipList()) and ns.PlannerSkipList() or nil,
+        class = ns.PlannerClassToken(), soloElites = db.plannerSoloElites ~= false,
+        deaths = db.plannerDeaths ~= false and d and type(d.deaths) == "table" and #d.deaths > 0 and d.deaths or nil,
         repGoals = next(ns.PlannerRepGoals()) and ns.PlannerRepGoals() or nil,
         rested = (db.plannerRested ~= false) and Num(Call(GetXPExhaustion)) or nil,
         lastZone = d and tonumber(d.zone) or nil, lastZoneLevel = d and tonumber(d.zoneLevel) or nil,

@@ -272,7 +272,7 @@ function ns.BuildGuidePage(page)
 
     local live = CreateFrame("Frame", nil, page)
     live:SetPoint("TOPLEFT", 0, 0)
-    local LIVE_HEIGHT = 716                 -- (the last button ends at y = -700)
+    local LIVE_HEIGHT = 758                 -- (the last box ends at y = -756)
     live:SetSize(736, LIVE_HEIGHT)
     T.live = live
     Heading(live, "Quest guides", 0, 0, 736)
@@ -397,6 +397,19 @@ function ns.BuildGuidePage(page)
     rewards:SetPoint("TOPLEFT", 0, -646)
     local repButton = ns:CreateButton(live, "Reputation I want", 170, 24, function() if ns.GuideReputation then ns:GuideReputation() end end)
     repButton:SetPoint("TOPLEFT", 0, -676)
+    local skipButton = ns:CreateButton(live, "Quests you skipped", 170, 24, function() if ns.GuideSkipped then ns:GuideSkipped() end end)
+    skipButton:SetPoint("TOPLEFT", 180, -676)
+    local deaths = ns:CreateCheckbox(live, "Learn from my deaths", ns.db.plannerDeaths ~= false, function(v)
+        ns.db.plannerDeaths = v
+        Replan()
+    end)
+    deaths:SetPoint("TOPLEFT", 0, -706)
+    local soloElites = ns:CreateCheckbox(live, "Include elites my class has soloed", ns.db.plannerSoloElites ~= false, function(v)
+        ns.db.plannerSoloElites = v
+        Replan()
+    end)
+    soloElites:SetPoint("TOPLEFT", 0, -732)
+    T.deathsBox, T.soloElitesBox, T.skippedButton = deaths, soloElites, skipButton
     T.restedBox, T.rewardsBox, T.reputationButton = rested, rewards, repButton
     T.planButton, T.groupButton, T.flightsBox, T.whyBox, T.trainerBox, T.holdBox = plan, group, flights, why, trainer, hold
     T.vendorBox, T.suppliesBox, T.professionBox, T.mountBox = vendor, supplies, profession, mount
@@ -421,6 +434,8 @@ function ns.BuildGuidePage(page)
         gather:SetChecked(ns.db.plannerGather ~= false)
         rested:SetChecked(ns.db.plannerRested ~= false)
         rewards:SetChecked(ns.db.plannerRewards ~= false)
+        deaths:SetChecked(ns.db.plannerDeaths ~= false)
+        soloElites:SetChecked(ns.db.plannerSoloElites ~= false)
         DrawGroup(group)
         recBtn.text:SetText(ns:Tr(ns.guideRecording and "Stop recording" or "Record"))
         local st = ns.GuideState and ns.GuideState()

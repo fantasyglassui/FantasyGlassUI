@@ -21,6 +21,13 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["Never suggest this quest"] = "Diese Quest nie vorschlagen",
+    ["Quests you skipped"] = "Übersprungene Quests",
+    ["Click a quest to suggest it again."] = "Klicke auf eine Quest, um sie wieder vorzuschlagen.",
+    ["Suggest again"] = "Wieder vorschlagen",
+    ["Moved: you died twice here (back at level %d)"] = "Verlegt: Du bist hier zweimal gestorben (wieder ab Stufe %d)",
+    ["Learn from my deaths"] = "Aus meinen Toden lernen",
+    ["Include elites my class has soloed"] = "Elite-Quests einbeziehen, die meine Klasse allein geschafft hat",
     ["Reputation I want"] = "Ruf, den ich will",
     ["Honored"] = "Wohlwollend",
     ["Revered"] = "Respektvoll",
@@ -3352,6 +3359,13 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["Never suggest this quest"] = "Ne jamais proposer cette quête",
+    ["Quests you skipped"] = "Quêtes ignorées",
+    ["Click a quest to suggest it again."] = "Cliquez sur une quête pour la proposer de nouveau.",
+    ["Suggest again"] = "Proposer de nouveau",
+    ["Moved: you died twice here (back at level %d)"] = "Déplacé : vous êtes mort deux fois ici (retour au niveau %d)",
+    ["Learn from my deaths"] = "Tirer des leçons de mes morts",
+    ["Include elites my class has soloed"] = "Inclure les élites que ma classe a faites en solo",
     ["Reputation I want"] = "Réputation voulue",
     ["Honored"] = "Honoré",
     ["Revered"] = "Révéré",
@@ -6683,6 +6697,13 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["Never suggest this quest"] = "No sugerir nunca esta misión",
+    ["Quests you skipped"] = "Misiones omitidas",
+    ["Click a quest to suggest it again."] = "Haz clic en una misión para volver a sugerirla.",
+    ["Suggest again"] = "Sugerir de nuevo",
+    ["Moved: you died twice here (back at level %d)"] = "Cambiado: moriste dos veces aquí (de vuelta al nivel %d)",
+    ["Learn from my deaths"] = "Aprender de mis muertes",
+    ["Include elites my class has soloed"] = "Incluir élites que mi clase ha hecho en solitario",
     ["Reputation I want"] = "Reputación que quiero",
     ["Honored"] = "Honrado",
     ["Revered"] = "Reverenciado",
@@ -10017,6 +10038,13 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["Never suggest this quest"] = "Никогда не предлагать это задание",
+    ["Quests you skipped"] = "Пропущенные задания",
+    ["Click a quest to suggest it again."] = "Нажмите на задание, чтобы снова предлагать его.",
+    ["Suggest again"] = "Предлагать снова",
+    ["Moved: you died twice here (back at level %d)"] = "Пропущено: вы дважды погибли здесь (снова с уровня %d)",
+    ["Learn from my deaths"] = "Учиться на моих смертях",
+    ["Include elites my class has soloed"] = "Включать элитные задания, пройденные моим классом в одиночку",
     ["Reputation I want"] = "Нужная репутация",
     ["Honored"] = "Уважение",
     ["Revered"] = "Почтение",
@@ -13348,6 +13376,13 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["Never suggest this quest"] = "Nunca sugerir esta missão",
+    ["Quests you skipped"] = "Missões ignoradas",
+    ["Click a quest to suggest it again."] = "Clique em uma missão para voltar a sugeri-la.",
+    ["Suggest again"] = "Sugerir de novo",
+    ["Moved: you died twice here (back at level %d)"] = "Movido: você morreu duas vezes aqui (de volta no nível %d)",
+    ["Learn from my deaths"] = "Aprender com minhas mortes",
+    ["Include elites my class has soloed"] = "Incluir elites que minha classe fez sozinha",
     ["Reputation I want"] = "Reputação que quero",
     ["Honored"] = "Honrado",
     ["Revered"] = "Reverenciado",
@@ -16679,6 +16714,13 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["Never suggest this quest"] = "Non suggerire mai questa missione",
+    ["Quests you skipped"] = "Missioni saltate",
+    ["Click a quest to suggest it again."] = "Fai clic su una missione per suggerirla di nuovo.",
+    ["Suggest again"] = "Suggerisci di nuovo",
+    ["Moved: you died twice here (back at level %d)"] = "Spostato: sei morto due volte qui (di nuovo al livello %d)",
+    ["Learn from my deaths"] = "Impara dalle mie morti",
+    ["Include elites my class has soloed"] = "Includi le élite che la mia classe ha fatto da sola",
     ["Reputation I want"] = "Reputazione che voglio",
     ["Honored"] = "Onorato",
     ["Revered"] = "Riverito",
@@ -20010,6 +20052,13 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["Never suggest this quest"] = "이 퀘스트를 다시는 추천하지 않기",
+    ["Quests you skipped"] = "건너뛴 퀘스트",
+    ["Click a quest to suggest it again."] = "퀘스트를 클릭하면 다시 추천합니다.",
+    ["Suggest again"] = "다시 추천",
+    ["Moved: you died twice here (back at level %d)"] = "이동: 여기서 두 번 죽었습니다 (레벨 %d에 다시)",
+    ["Learn from my deaths"] = "내 죽음에서 배우기",
+    ["Include elites my class has soloed"] = "내 직업이 혼자 해낸 정예 포함",
     ["Reputation I want"] = "원하는 평판",
     ["Honored"] = "우호적",
     ["Revered"] = "매우 우호적",
@@ -23344,6 +23393,13 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["Never suggest this quest"] = "不再推荐此任务",
+    ["Quests you skipped"] = "已跳过的任务",
+    ["Click a quest to suggest it again."] = "点击任务即可重新推荐。",
+    ["Suggest again"] = "重新推荐",
+    ["Moved: you died twice here (back at level %d)"] = "已改道:你在这里死了两次(%d 级时再来)",
+    ["Learn from my deaths"] = "从我的死亡中学习",
+    ["Include elites my class has soloed"] = "包含我的职业曾单人完成的精英任务",
     ["Reputation I want"] = "我想要的声望",
     ["Honored"] = "尊敬",
     ["Revered"] = "崇敬",

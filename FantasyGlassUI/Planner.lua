@@ -76,22 +76,26 @@ end
 local function NeedsGroup(rec) return (rec.elite or rec.group or rec.dungeon) and true or false end
 
 -- list of records worth considering, skipped = { group = n } (left out only by the group setting).
+-- ctx.skip: quests never suggested (kept while they are in the log); ctx.soloElites + ctx.class: an elite
+-- your class has soloed at this level difference is let through (and is not counted as skipped).
 function ns.PlannerCandidates(source, ctx)
     local list, skipped = {}, { group = 0 }
     if type(source) ~= "table" or type(ctx) ~= "table" then return list, skipped end
     local level, done, onQuest = ctx.level or 1, ctx.done or function() return false end, ctx.onQuest or function() return false end
+    local never = type(ctx.skip) == "table" and ctx.skip or nil
     if source.begin then source.begin(level) end
     for _, id in ipairs(source.ids()) do
         ns.PlannerYield()
         local logged = onQuest(id)
-        local rec = (logged or not source.inRange or source.inRange(id, level)) and source.quest(id) or nil
+        local rec = (logged or not (never and never[id])) and (logged or not source.inRange or source.inRange(id, level)) and source.quest(id) or nil
         if rec then
             if logged then
                 list[#list + 1] = rec
             elseif rec.doable and not rec.repeatable and not done(id)
                 and rec.level >= level - 4 and rec.level <= level + 2
                 and AllDone(rec.pre, done) and AnyDone(rec.preAny, done) then
-                if NeedsGroup(rec) and ctx.group ~= "all" and not (ctx.group == "grouped" and ctx.inGroup) then
+                if NeedsGroup(rec) and ctx.group ~= "all" and not (ctx.group == "grouped" and ctx.inGroup)
+                    and not (ctx.soloElites and rec.elite and not rec.group and not rec.dungeon and ns.PlannerSoloEliteOK(ctx.class, rec.level - level)) then
                     skipped.group = skipped.group + 1
                 else
                     list[#list + 1] = rec
@@ -159,6 +163,68 @@ function ns.PlannerRecordQuestTime(questID, seconds)
     if type(e) ~= "table" or not tonumber(e.n) or not tonumber(e.avg) then e = { n = 0, avg = 0 }; root.plannerQuestTimes[questID] = e end
     e.avg = (e.avg * e.n + seconds) / (e.n + 1)
     e.n = e.n + 1
+end
+
+------------------------------------------------------------------------------------------
+-- Choices: the skip list, deaths and elites your class has soloed
+------------------------------------------------------------------------------------------
+local DEATHS_MAX = 50
+
+-- Never suggest this quest (on), or suggest it again (off); plans again at once.
+function ns.PlannerSkip(questID, on)
+    if type(questID) ~= "number" then return end
+    local rec = ns.PlannerCharRecord(on and true or false)
+    if not rec then return end
+    if on then
+        if type(rec.skip) ~= "table" then rec.skip = {} end
+        rec.skip[questID] = true
+    elseif type(rec.skip) == "table" then
+        rec.skip[questID] = nil
+    end
+    if ns.PlannerReplan then ns:PlannerReplan("settings") end
+end
+
+-- The quests this character never wants suggested: { [questID] = true } (empty when there are none).
+function ns.PlannerSkipList()
+    local rec = ns.PlannerCharRecord(false)
+    return rec and type(rec.skip) == "table" and rec.skip or {}
+end
+
+-- Where you died: remembered per character (the last 50), with the level you were.
+function ns.PlannerRecordDeath()
+    if not (ns.db and ns.db.plannerDeaths ~= false) then return end
+    local level = UnitLevel and UnitLevel("player")
+    if type(level) ~= "number" or ns:IsSecret(level) or not ns.GuideHere then return end
+    local map, x, y = ns.GuideHere()
+    if not (map and x and y and ns.PlannerWorldPos(map, x, y)) then return end        -- (no place in the outdoor world: a dungeon or a battleground)
+    local rec = ns.PlannerCharRecord(true)
+    if not rec then return end
+    if type(rec.deaths) ~= "table" then rec.deaths = {} end
+    rec.deaths[#rec.deaths + 1] = { level = level, map = map, x = x, y = y }
+    while #rec.deaths > DEATHS_MAX do table.remove(rec.deaths, 1) end
+end
+
+-- The class token of this character ("WARRIOR"), or nil.
+function ns.PlannerClassToken()
+    local ok, c = pcall(function() return (UnitClassBase and UnitClassBase("player")) or select(2, UnitClass("player")) end)
+    if ok and type(c) == "string" and not ns:IsSecret(c) and c ~= "" then return c end
+end
+
+-- An elite quest handed in alone: remember, per class, the biggest quest level over yours.
+function ns.PlannerRecordSoloElite(class, diff)
+    diff = tonumber(diff)
+    if type(class) ~= "string" or not diff or not ns.root then return end
+    if type(ns.root.plannerSoloElites) ~= "table" then ns.root.plannerSoloElites = {} end
+    local t = ns.root.plannerSoloElites
+    if type(t[class]) ~= "number" or t[class] < diff then t[class] = diff end
+end
+
+-- Has this class soloed an elite quest that many levels above (or more)?
+function ns.PlannerSoloEliteOK(class, diff)
+    local t = type(ns.root) == "table" and ns.root.plannerSoloElites
+    local best = type(t) == "table" and type(class) == "string" and t[class]
+    diff = tonumber(diff)
+    return type(best) == "number" and diff ~= nil and best >= diff
 end
 
 ------------------------------------------------------------------------------------------
@@ -582,11 +648,12 @@ end
 do
     local ev = CreateFrame("Frame")
     local acceptedAt = {}                            -- questID -> GetTime() at accept, while following (memory only)
+    local soloAt = {}                                -- elite questID -> its quest level, accepted while not in a group (memory only)
     local closes = {}                                -- window-closed event -> the stop kind it ticks (Guide.lua)
     for kind, e in pairs(ns.GUIDE_WINDOW_KINDS or {}) do closes[e] = kind end
     for _, e in ipairs({ "QUEST_ACCEPTED", "QUEST_TURNED_IN", "QUEST_REMOVED", "PLAYER_LEVEL_UP", "HEARTHSTONE_BOUND",
                          "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED",
-                         "TRAINER_SHOW", "TRAINER_CLOSED", "MERCHANT_CLOSED", "MAIL_CLOSED", "PLAYER_MOUNT_DISPLAY_CHANGED" }) do pcall(ev.RegisterEvent, ev, e) end
+                         "TRAINER_SHOW", "TRAINER_CLOSED", "MERCHANT_CLOSED", "MAIL_CLOSED", "PLAYER_MOUNT_DISPLAY_CHANGED", "PLAYER_DEAD" }) do pcall(ev.RegisterEvent, ev, e) end
     ev:SetScript("OnEvent", ns:Guard("Planner", function(_, event, a, b)
         if event == "PLAYER_REGEN_DISABLED" then fighting = true; return end
         if event == "PLAYER_REGEN_ENABLED" then fighting = false; return end
@@ -599,6 +666,32 @@ do
         if event == "PLAYER_MOUNT_DISPLAY_CHANGED" then          -- (seen mounted: you have a mount and ride; kept for the character)
             if ns:GuideUnlocked() and ns.PlannerMountSeen then ns.PlannerMountSeen() end
             return
+        end
+        if event == "PLAYER_DEAD" then                -- (where you died: a hub that took you twice is left alone for two levels)
+            if ns:GuideUnlocked() then ns.PlannerRecordDeath() end
+            return
+        end
+        if (event == "QUEST_ACCEPTED" or event == "QUEST_TURNED_IN") and ns:GuideUnlocked() and ns.db and ns.db.plannerSoloElites ~= false then
+            local id = (event == "QUEST_ACCEPTED" and type(b) == "number") and b or a
+            if type(id) == "number" then
+                local okG, grouped = pcall(IsInGroup)
+                grouped = not okG or grouped ~= false
+                if event == "QUEST_ACCEPTED" then
+                    soloAt[id] = nil
+                    if not grouped then
+                        local okQ, q = pcall(function() return ns.PlannerLogSource().quest(id) end)
+                        if okQ and type(q) == "table" and q.elite == true and type(q.level) == "number" then soloAt[id] = q.level end
+                    end
+                else
+                    local questLevel = soloAt[id]
+                    soloAt[id] = nil
+                    local level = UnitLevel and UnitLevel("player")
+                    local class = ns.PlannerClassToken()
+                    if questLevel and not grouped and class and type(level) == "number" and not ns:IsSecret(level) then
+                        ns.PlannerRecordSoloElite(class, questLevel - level)
+                    end
+                end
+            end
         end
         local on, st = Following()
         if not on then return end

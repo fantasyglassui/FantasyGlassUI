@@ -417,6 +417,7 @@ read_globals = {
     "UnitCastingInfo",
     "UnitChannelInfo",
     "UnitClass",
+    "UnitClassBase",
     "UnitClassification",
     "UnitDetailedThreatSituation",
     "UnitExists",

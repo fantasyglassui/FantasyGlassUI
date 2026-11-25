@@ -475,6 +475,71 @@ local function RepText(st)
     if not (good and type(nice) == "string") then nice = tostring(math.floor(need)) end
     return format(ns:Tr("%s: %s to %s"), ns.PlannerRepName(best), nice, ns.PlannerRepStandingName(goals[best]))
 end
+-- "Moved: you died twice here (back at level 14)": a hub left out of this plan because you died twice there.
+local function MovedText(st)
+    local s = Planned(st) and type(st.summary) == "table" and st.summary
+    local lv = s and tonumber(s.moved)
+    if not lv then return nil end
+    return format(ns:Tr("Moved: you died twice here (back at level %d)"), lv)
+end
+local function QuestName(id)
+    local f = C_QuestLog and C_QuestLog.GetTitleForQuestID
+    if type(f) == "function" then
+        local ok, t = pcall(f, id)
+        if ok and type(t) == "string" and not Secret(t) and t ~= "" then return t end
+    end
+    return "#" .. tostring(id)
+end
+-- The quests you told the planner never to suggest, each to click to allow again.
+function ns:GuideSkipped()
+    local lines, ids = {}, {}
+    for id in pairs(ns.PlannerSkipList and ns.PlannerSkipList() or {}) do if type(id) == "number" then ids[#ids + 1] = id end end
+    table.sort(ids)
+    for _, id in ipairs(ids) do
+        lines[#lines + 1] = { left = QuestName(id), right = ns:Tr("Suggest again"),
+            click = function()
+                if ns.PlannerSkip then ns.PlannerSkip(id, false) end
+                ns:GuideSkipped()
+            end }
+    end
+    return ns:ShowList("Skipped", "Quests you skipped", lines, "Click a quest to suggest it again.", 400, 340)
+end
+-- The small menu on a quest step (right click): one entry, to never suggest the quest (or to allow it again).
+local stepMenu
+function ns:GuideStepMenu(step)
+    if type(step) ~= "table" or type(step.quest) ~= "number" then return nil end
+    if not stepMenu then
+        stepMenu = CreateFrame("Frame", "FantasyGlassUIGuideMenu", UIParent, ns.template)
+        stepMenu:SetSize(200, 26)
+        stepMenu:SetFrameStrata("DIALOG")
+        stepMenu:SetBackdrop(ns.BACKDROP)
+        ns:Paint(stepMenu, "SetBackdropColor", "window", 0.95)
+        ns:Paint(stepMenu, "SetBackdropBorderColor", "@border", 1)
+        stepMenu.button = ns:CreateButton(stepMenu, "", 192, 20, function()
+            local id = stepMenu.quest
+            stepMenu:Hide()
+            if id and ns.PlannerSkip then ns.PlannerSkip(id, not stepMenu.skipped) end
+        end)
+        stepMenu.button:SetPoint("CENTER")
+        stepMenu:SetScript("OnLeave", function(self) if not (self:IsMouseOver() or stepMenu.button:IsMouseOver()) then self:Hide() end end)
+        stepMenu.button:HookScript("OnLeave", function() if not stepMenu:IsMouseOver() then stepMenu:Hide() end end)
+        stepMenu:Hide()
+        ns.guideStepMenu = stepMenu
+    end
+    stepMenu.quest = step.quest
+    stepMenu.skipped = (ns.PlannerSkipList and ns.PlannerSkipList()[step.quest]) and true or false
+    stepMenu.button.text:SetText(ns:Tr(stepMenu.skipped and "Suggest again" or "Never suggest this quest"))
+    stepMenu:ClearAllPoints()
+    local ok, cx, cy = pcall(GetCursorPosition)
+    local scale = UIParent and UIParent.GetEffectiveScale and UIParent:GetEffectiveScale() or 1
+    if ok and type(cx) == "number" and type(cy) == "number" and not Secret(cx) and not Secret(cy) and scale > 0 then
+        stepMenu:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", cx / scale - 10, cy / scale + 10)
+    else
+        stepMenu:SetPoint("CENTER", UIParent, "CENTER")
+    end
+    stepMenu:Show()
+    return stepMenu
+end
 -- The factions you want reputation with: a list to click, each cycling Honored, Revered, Exalted, off.
 function ns:GuideReputation()
     local lines = {}
@@ -521,7 +586,12 @@ Draw = function()
     panel.rep:SetShown(rep ~= nil)
     panel.rep:ClearAllPoints()
     panel.rep:SetPoint("TOPLEFT", 12, -92 - (skipped and 13 or 0) - (talents and 13 or 0) - (riding and 13 or 0))
-    panel:SetHeight(118 + (skipped and 13 or 0) + (talents and 13 or 0) + (riding and 13 or 0) + (rep and 13 or 0))
+    local moved = Planned(st) and MovedText(st) or nil
+    panel.moved:SetText(moved or "")
+    panel.moved:SetShown(moved ~= nil)
+    panel.moved:ClearAllPoints()
+    panel.moved:SetPoint("TOPLEFT", 12, -92 - (skipped and 13 or 0) - (talents and 13 or 0) - (riding and 13 or 0) - (rep and 13 or 0))
+    panel:SetHeight(118 + (skipped and 13 or 0) + (talents and 13 or 0) + (riding and 13 or 0) + (rep and 13 or 0) + (moved and 13 or 0))
     panel.count:SetText(math.min(at, #steps) .. "/" .. #steps)
     local step = steps[at]
     if step then
@@ -607,6 +677,23 @@ function ns:GuideShowPanel()
         if panel.rep.SetWordWrap then panel.rep:SetWordWrap(false) end
         ns:Paint(panel.rep, "SetTextColor", "faint")
         panel.rep:Hide()
+        panel.moved = ns:NewText(panel, 10, "LEFT")                -- (a planned route: a hub left out because you died twice there)
+        panel.moved:SetPoint("TOPLEFT", 12, -92)
+        panel.moved:SetWidth(258)
+        if panel.moved.SetWordWrap then panel.moved:SetWordWrap(false) end
+        ns:Paint(panel.moved, "SetTextColor", "faint")
+        panel.moved:Hide()
+        panel.stepButton = CreateFrame("Button", nil, panel)         -- (right click on a quest step: never suggest it)
+        panel.stepButton:SetPoint("TOPLEFT", 34, -34)
+        panel.stepButton:SetSize(236, 30)
+        panel.stepButton:RegisterForClicks("RightButtonUp")
+        panel.stepButton:SetScript("OnClick", function(_, button)
+            if button ~= "RightButton" then return end
+            local st = State()
+            local guide = st and Planned(st) and ns:GuideGet(st.name)
+            local step = guide and guide.steps[st.at or 1]
+            if type(step) == "table" and type(step.quest) == "number" then ns:GuideStepMenu(step) end
+        end)
         local back = ns:CreateButton(panel, "<", 22, 18, function() ns:GuideSkip(true) end)
         back:SetPoint("BOTTOMLEFT", 8, 6)
         local skip = ns:CreateButton(panel, ">", 22, 18, function() ns:GuideSkip(false) end)

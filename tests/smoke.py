@@ -11135,6 +11135,180 @@ try("13.3 choices: reputation goals", function()
     ns.plannerQueued = false
     if not ok then error(err, 0) end
 end)
+try("13.3 choices: skip list, deaths, soloed elites", function()
+    local saved = { on = ns.GuideOn, here = ns.GuideHere, state = ns.GuideState, level = env.UnitLevel, group = env.IsInGroup, base = rawget(env, "UnitClassBase"),
+                    map = env.C_Map, vec = rawget(env, "CreateVector2D"), unlocked = ns.GuideUnlocked, logQ = env.C_QuestLog, db = { deaths = ns.db.plannerDeaths, solo = ns.db.plannerSoloElites },
+                    pworld = ns.PlannerWorldPos }
+    local recC = ns.PlannerCharRecord(false)
+    local before = { skip = recC and recC.skip, deaths = recC and recC.deaths, elites = ns.root.plannerSoloElites }
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        ns.GuideOn = function() return true end
+        -- the skip list
+        local function q(id, extra)
+            local r = { id = id, name = "Q" .. id, level = 12, minLevel = 1, xp = 100, starts = {}, ends = {}, objectives = {}, pre = {}, preAny = {}, exclusive = {},
+                        elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+            for k, v in pairs(extra or {}) do r[k] = v end
+            return r
+        end
+        local recs = { [201] = q(201), [202] = q(202, { elite = true, level = 13 }), [203] = q(203, { elite = true, level = 14 }) }
+        local source = { kind = "test", ids = function() return { 201, 202, 203 } end, quest = function(id) return recs[id] end, inns = function() return {} end }
+        local inlog = {}
+        local ctx = { source = source, level = 12, group = "solo", inGroup = false, done = function() return false end, onQuest = function(id) return inlog[id] or false end }
+        local function ids(c) local list, skipped = ns.PlannerCandidates(source, c); local o = {}; for _, r in ipairs(list) do o[r.id] = true end return o, skipped end
+        if not ids(ctx)[201] then error("201 is a candidate") end
+        ns.PlannerSkip(201, true)
+        local rc = ns.PlannerCharRecord(false)
+        if not (rc and rc.skip and rc.skip[201] == true) then error("rec.skip[201] is true") end
+        ctx.skip = rc.skip
+        if ids(ctx)[201] then error("a skipped quest is not a candidate") end
+        inlog[201] = true
+        if not ids(ctx)[201] then error("a skipped quest in the log stays in the plan") end
+        inlog[201] = nil
+        ns.PlannerSkip(201, false)
+        ctx.skip = ns.PlannerCharRecord(false).skip
+        if not ids(ctx)[201] then error("unskipped: back") end
+        -- the menu on the panel's step
+        ns.GuideHere = function() return 1, 30, 40 end
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "accept", quest = 201, title = "Q201" } } }, {})
+        local function click(frame, ...)
+            local f = frame:GetScript("OnClick")
+            if type(f) ~= "function" then
+                for _, h in ipairs(handlers) do if h.self == frame and h.name == "OnClick" then f = h.fn end end
+            end
+            return f(frame, ...)
+        end
+        local panel = ns:GuideShowPanel()
+        local sb = panel and panel.stepButton
+        if not sb then error("the panel has a step button") end
+        click(sb, "LeftButton")
+        if rawget(ns, "guideStepMenu") then error("a left click opens nothing") end
+        click(sb, "RightButton")
+        local menu = ns.guideStepMenu
+        if not (menu and menu.button) then error("a right click opens the menu") end
+        click(menu.button)
+        local r2 = ns.PlannerCharRecord(false)
+        if not (r2.skip and r2.skip[201]) then error("the menu entry skips the quest") end
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "no quest" } } }, {})
+        ns.guideStepMenu.quest = false
+        click(sb, "RightButton")
+        if ns.guideStepMenu.quest ~= false then error("a step with no quest: no menu") end
+        local w = ns:GuideSkipped()
+        if not (w and #w.lines == 1) then error("the list shows the skipped quest: " .. tostring(w and #w.lines)) end
+        w.lines[1].click("LeftButton")
+        if ns.PlannerCharRecord(false).skip[201] then error("the remove button unskips") end
+        -- soloed elites
+        env.UnitClassBase = function() return "WARRIOR" end
+        env.UnitLevel = function() return 12 end
+        env.C_QuestLog = setmetatable({ GetLogIndexForQuestID = function(id) return id end,
+            GetInfo = function(id) return { questID = id, questLevel = id == 202 and 13 or 12, title = "T" } end,
+            GetQuestTagInfo = function(id) return { isElite = id == 202, tagID = 0 } end,
+            GetTitleForQuestID = function(id) return "T" end }, { __index = saved.logQ })
+        ns.db.plannerSoloElites = true
+        env.IsInGroup = function() return false end
+        fireEvent("QUEST_ACCEPTED", 1, 202)
+        fireEvent("QUEST_TURNED_IN", 202)
+        local elites = ns.root.plannerSoloElites
+        if not (elites and elites.WARRIOR == 1) then error("recorded diff 1 for the class: " .. tostring(elites and elites.WARRIOR)) end
+        if not ns.PlannerSoloEliteOK("WARRIOR", 1) or ns.PlannerSoloEliteOK("WARRIOR", 2) then error("diff 1 is ok, 2 is not") end
+        if ns.PlannerSoloEliteOK("MAGE", 1) then error("another class: no") end
+        ctx.class, ctx.soloElites = "WARRIOR", true
+        local got, skipped = ids(ctx)
+        if not got[202] or got[203] then error("diff 1 elite is a candidate, diff 2 is not") end
+        if skipped.group ~= 1 then error("only the diff 2 elite counts as skipped: " .. tostring(skipped.group)) end
+        ctx.soloElites = false
+        got, skipped = ids(ctx)
+        if got[202] or skipped.group ~= 2 then error("switch off: no elites, both counted") end
+        ctx.soloElites = true
+        env.IsInGroup = function() return true end
+        elites.WARRIOR = nil
+        fireEvent("QUEST_ACCEPTED", 1, 202)
+        env.IsInGroup = function() return false end
+        fireEvent("QUEST_TURNED_IN", 202)
+        if elites.WARRIOR then error("grouped at accept: not recorded") end
+        fireEvent("QUEST_ACCEPTED", 1, 202)
+        env.IsInGroup = function() return true end
+        fireEvent("QUEST_TURNED_IN", 202)
+        if elites.WARRIOR then error("grouped at hand-in: not recorded") end
+        ns.db.plannerSoloElites = false
+        env.IsInGroup = function() return false end
+        fireEvent("QUEST_ACCEPTED", 1, 202); fireEvent("QUEST_TURNED_IN", 202)
+        if elites.WARRIOR then error("switch off: not recorded") end
+        ns.db.plannerSoloElites = true
+        if ns.PlannerContext().soloElites ~= true or ns.PlannerContext().class ~= "WARRIOR" then error("the live context carries class and switch") end
+        -- deaths
+        env.C_Map = setmetatable({ GetWorldPosFromMapPos = function(map, v) if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end end }, { __index = saved.map })
+        env.CreateVector2D = function(x, y) return { x = x, y = y } end
+        local function hubRec(id, x, y)
+            return q(id, { level = 10, xp = 680, starts = { { map = 1, x = x, y = y } }, ends = { { map = 1, x = x, y = y } },
+                objectives = { { kind = "kill", count = 0, countKnown = true, mobLevel = 10, spots = { { map = 1, x = x + 2, y = y + 2 } } } } })
+        end
+        local hr = { [501] = hubRec(501, 30, 40) }
+        local hsrc = { kind = "test", ids = function() return { 501 } end, quest = function(id) return hr[id] end, inns = function() return {} end }
+        local level = 12
+        local function route()
+            local c = { source = hsrc, level = level, group = "solo", inGroup = false, speed = 7, faction = "Alliance", xpMax = 10000,
+                done = function() return false end, onQuest = function() return false end, here = { map = 1, x = 30, y = 40 },
+                crossings = {}, learnFlights = false, bind = "Elsewhere", bindSpot = { map = 1, x = 30, y = 40 }, pace = 1, flights = {},
+                flightTime = function() return nil end }
+            local live = ns.PlannerContext()
+            c.deaths = ns.db.plannerDeaths ~= false and live.deaths or nil
+            local _, summary = ns.PlannerRoute(c)
+            return summary
+        end
+        env.UnitLevel = function() return level end
+        ns.db.plannerDeaths = true
+        if route().empty ~= false then error("no death: planned") end
+        fireEvent("PLAYER_DEAD")
+        if route().empty ~= false then error("one death: planned") end
+        fireEvent("PLAYER_DEAD")
+        local s = route()
+        if s.empty ~= true or s.moved ~= 14 then error("two deaths at 12: not planned, back at 14: " .. tostring(s.empty) .. " " .. tostring(s.moved)) end
+        level = 13
+        if route().empty ~= true then error("not planned at 13") end
+        level = 14
+        s = route()
+        if s.empty ~= false or s.moved then error("planned at 14") end
+        level = 12
+        ns.db.plannerDeaths = false
+        if route().empty ~= false then error("switch off: planned") end
+        ns.db.plannerDeaths = true
+        -- a far hub is not marked; a death with no world position is not recorded
+        local n = #ns.PlannerCharRecord(false).deaths
+        ns.PlannerWorldPos = function() return nil end
+        fireEvent("PLAYER_DEAD")
+        ns.PlannerWorldPos = saved.pworld
+        if #ns.PlannerCharRecord(false).deaths ~= n then error("no world position: not recorded") end
+        -- a death in another place does not mark this hub
+        ns.PlannerCharRecord(true).deaths = {}
+        ns.GuideHere = function() return 1, 80, 80 end
+        fireEvent("PLAYER_DEAD"); fireEvent("PLAYER_DEAD")
+        if route().empty ~= false then error("deaths far away: planned") end
+        ns.GuideHere = function() return 2, 30, 40 end
+        fireEvent("PLAYER_DEAD"); fireEvent("PLAYER_DEAD")
+        if route().empty ~= false then error("deaths on another map: planned") end
+        -- at most 50
+        ns.GuideHere = function() return 1, 80, 80 end
+        for _ = 1, 60 do fireEvent("PLAYER_DEAD") end
+        if #ns.PlannerCharRecord(false).deaths ~= 50 then error("at most 50 deaths: " .. #ns.PlannerCharRecord(false).deaths) end
+        -- locked: nothing recorded
+        ns.GuideUnlocked = function() return false end
+        fireEvent("PLAYER_DEAD")
+        if #ns.PlannerCharRecord(false).deaths ~= 50 then error("locked: nothing recorded") end
+    end)
+    ns.GuideOn, ns.GuideHere, ns.GuideState, ns.GuideUnlocked = saved.on, saved.here, saved.state, saved.unlocked
+    env.UnitLevel, env.IsInGroup, env.C_Map, env.C_QuestLog = saved.level, saved.group, saved.map, saved.logQ
+    rawset(env, "UnitClassBase", saved.base); rawset(env, "CreateVector2D", saved.vec)
+    ns.PlannerWorldPos = saved.pworld
+    ns.db.plannerDeaths, ns.db.plannerSoloElites = saved.db.deaths, saved.db.solo
+    local rr = ns.PlannerCharRecord(true)
+    if rr then rr.skip, rr.deaths = before.skip, before.deaths end
+    ns.root.plannerSoloElites = before.elites
+    ns:GuideSetPlan(nil)
+    ns.plannerQueued = false
+    if not ok then error(err, 0) end
+end)
+
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()
