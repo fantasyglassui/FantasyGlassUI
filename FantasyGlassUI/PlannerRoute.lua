@@ -652,6 +652,7 @@ end
 
 -- Every hub that was worked out (all maps), best rate first, at most PLANNER_MAP_HUBS: summary.hubs.
 ns.PLANNER_MAP_HUBS = 80
+ns.PLANNER_LEAD_FIRST = 2.5             -- a lead-in hub's `first` in the rank rounds: above a hub's own (1, 2), below "plan from here" (3)
 local function HubList(hubs, roundOf)
     local list = {}
     for _, h in ipairs(hubs or {}) do
@@ -689,8 +690,9 @@ function ns.PlannerZoneMaps(map)
 end
 
 -- guide, summary, the hubs it took and the travel context. `candidates` are the quests to plan.
--- summary.hubs: every hub worked out (HubList); summary.taken[n]: round n's hub { xp, seconds, travel, rate,
--- score, beat = the runner-up { rate, name = its first quest, map, x, y } or nil, lead = true for a lead-in }.
+-- summary.hubs: every hub worked out (HubList, cut to the best 80: a taken hub may be missing; use summary.taken);
+-- summary.taken[n]: round n's hub { xp, seconds, travel, rate, score, map, x, y, beat = the runner-up { rate,
+-- name = its first quest, map, x, y } or nil, lead = true for a lead-in }.
 local function Build(ctx, candidates, skipped)
     local guide = { name = ns.GUIDE_PLANNED, steps = {} }
     local summary = { fromLevel = ctx.level, toLevel = ctx.level, xp = 0, seconds = 0, skipped = skipped, empty = true, hubs = {}, taken = {} }
@@ -755,16 +757,10 @@ local function Build(ctx, candidates, skipped)
         seconds, xp = seconds + t, xp + gained
     end
     local function Into(h) return h.accepts[1] and h.accepts[1].spot or h end
-    local n0 = 0
-    if lead then
-        n0 = 1
-        local travel = state.pos and ns.PlannerTravel(state.pos, Into(lead), tctx) or 0
-        local rate = travel < huge and lead.xp / (lead.seconds + travel) or -1
-        summary.taken[1] = { xp = lead.xp, seconds = lead.seconds, travel = travel, rate = rate, score = rate, lead = true }
-        Lay(lead, 1)
-    end
-    -- Each round: every hub left as { hub, index, travel, rate, score, first }; the "rank" hooks may change
-    -- score and first (a negative score leaves the hub out); the highest first, then score, is taken.
+    -- Each round n = 1 .. horizon (a lead-in hub counts): every hub left as { hub, index, travel, rate, score,
+    -- first }, plus, until it is taken, the lead-in as { hub, travel, rate, score, first = PLANNER_LEAD_FIRST,
+    -- lead = true } (no index). The "rank" hooks may change score and first (a negative score leaves the entry
+    -- out of that round); the highest first, then score, is taken. info = { n, round, seconds, xp, horizon, lead }.
     local rankHooks = ns.PlannerHookList("rank")
     local function Better(e, than)
         local s, f = tonumber(e.score) or -1, tonumber(e.first) or 0
@@ -773,8 +769,9 @@ local function Build(ctx, candidates, skipped)
         local ts, tf = tonumber(than.score) or -1, tonumber(than.first) or 0
         return f > tf or (f == tf and s > ts)
     end
-    for n = n0 + 1, n0 + (tonumber(c.horizon) or ns.PLANNER_HORIZON) do
-        if #left == 0 then break end
+    local horizon = tonumber(c.horizon) or ns.PLANNER_HORIZON
+    for n = 1, horizon do
+        if #left == 0 and not lead then break end
         local ranked = {}
         for i, h in ipairs(left) do
             ns.PlannerYield()
@@ -782,7 +779,12 @@ local function Build(ctx, candidates, skipped)
             local rate = travel < huge and h.xp / (h.seconds + travel) or -1
             ranked[#ranked + 1] = { hub = h, index = i, travel = travel, rate = rate, score = rate, first = (h.first and travel < huge) and h.first or 0 }
         end
-        local info = { n = n, seconds = seconds, xp = xp, horizon = c.horizon }
+        if lead then
+            local travel = state.pos and ns.PlannerTravel(state.pos, Into(lead), tctx) or 0
+            local rate = travel < huge and lead.xp / (lead.seconds + travel) or -1
+            ranked[#ranked + 1] = { hub = lead, travel = travel, rate = rate, score = rate, first = travel < huge and ns.PLANNER_LEAD_FIRST or 0, lead = true }
+        end
+        local info = { n = n, round = n, seconds = seconds, xp = xp, horizon = horizon, lead = lead ~= nil }
         for _, hk in ipairs(rankHooks) do hk.fn(ranked, c, info) end
         local best, runner
         for _, e in ipairs(ranked) do
@@ -795,8 +797,13 @@ local function Build(ctx, candidates, skipped)
             local q1 = runner.hub.quests and runner.hub.quests[1]
             beat = { rate = runner.rate, name = q1 and Clean(q1.name) or nil, map = runner.hub.map, x = runner.hub.x, y = runner.hub.y }
         end
-        summary.taken[n] = { xp = h.xp, seconds = h.seconds, travel = best.travel, rate = best.rate, score = best.score, beat = beat }
-        for i, e in ipairs(left) do if e == h then table.remove(left, i); break end end
+        summary.taken[n] = { xp = h.xp, seconds = h.seconds, travel = best.travel, rate = best.rate, score = best.score, beat = beat,
+                             map = h.map, x = h.x, y = h.y, lead = best.lead and true or nil }
+        if best.lead then
+            lead = nil
+        else
+            for i, e in ipairs(left) do if e == h then table.remove(left, i); break end end
+        end
         Lay(h, n)
     end
     summary.zone, summary.newZone = zone, newly

@@ -11963,7 +11963,7 @@ try("13.3 choices: final review fixes", function()
         add(q(401, { level = 8, xp = 50, starts = at(1, 50, 50), ends = at(1, 50, 50) }))
         innList = { { map = 1, x = 51, y = 51, name = "Class Inn" }, { map = 2, x = 31, y = 41, name = "Zone Inn" } }
         local always = { { id = 401, level = 8, kind = "always", parts = 1 } }
-        guide, summary = route({ classQuests = always, here = { map = 1, x = 10, y = 10 } })
+        guide, summary = route({ classQuests = always, here = { map = 1, x = 10, y = 10 }, horizon = 3 })   -- (the lead-in counts toward the horizon)
         local _, s1 = firstQuestStep(guide)
         if not (s1 and s1.quest == 401) then error("the class quest comes first: " .. seq(guide)) end
         if summary.zone ~= 2 or summary.newZone ~= true then error("the zone is still the best one: " .. tostring(summary.zone)) end
@@ -12351,6 +12351,37 @@ try("13.4 feel: seams", function()
         local b1 = summary.taken[1].beat
         if b1 ~= nil and b1.name == "Q302" then error("the hub beaten is not the one taken") end
         if rounds[1] ~= 1 or rounds[2] ~= 2 then error("the hook sees each round: " .. table.concat(rounds, ",")) end
+        if not (summary.taken[1].map == 1 and summary.taken[1].x and summary.taken[1].y) then error("a taken hub carries its place") end
+        ns.PlannerHook("rank", "seams", nil)
+        -- a lead-in hub (a class quest on another map): round 1 of the same rank rounds, and it counts toward the horizon
+        add(q(401, { level = 8, xp = 50, starts = at(2, 50, 50), ends = at(2, 50, 50) }))
+        local always = { { id = 401, level = 8, kind = "always", parts = 1 } }
+        local function plannedSet(g) local o = {} for _, st in ipairs(g.steps) do if st.quest then o[st.quest] = true end end return o end
+        local seen = {}
+        ns.PlannerHook("rank", "seams", function(ranked, c, info)
+            local leads = 0
+            for _, e in ipairs(ranked) do if e.lead then leads = leads + 1 end end
+            seen[#seen + 1] = info.round .. (info.lead and "L" or "") .. leads
+        end)
+        guide, summary = ns.PlannerRoute(ctxFor({ classQuests = always }))
+        local ps = plannedSet(guide)
+        if firstQuest(guide) ~= 401 or not summary.taken[1].lead or summary.zone ~= 1 then error("the lead-in is round 1: " .. tostring(firstQuest(guide))) end
+        if not ps[301] or ps[302] or summary.taken[3] then error("a horizon of 2 is the lead-in and one hub: " .. table.concat(seen, ",")) end
+        if table.concat(seen, ",") ~= "1L1,20" then error("the hooks see the lead-in in round 1: " .. table.concat(seen, ",")) end
+        ns.PlannerHook("rank", "seams", function(ranked) for _, e in ipairs(ranked) do if e.lead then e.score = -1 end end end)
+        guide, summary = ns.PlannerRoute(ctxFor({ classQuests = always }))
+        ps = plannedSet(guide)
+        if ps[401] or not (ps[301] and ps[302]) then error("a rank hook can veto the lead-in") end
+        ns.PlannerHook("rank", "seams", function(ranked, c, info)
+            if info.round ~= 1 then return end
+            for _, e in ipairs(ranked) do if e.hub.quests[1].id == 302 then e.first = 3 end end
+        end)
+        guide, summary = ns.PlannerRoute(ctxFor({ classQuests = always }))
+        ps = plannedSet(guide)
+        if firstQuest(guide) ~= 302 or summary.taken[1].lead or not (summary.taken[2] and summary.taken[2].lead) or ps[301] then
+            error("first = 3 beats the lead-in in round 1, which comes next: " .. tostring(firstQuest(guide)))
+        end
+        recs[401] = nil; order = { 301, 302 }
         ns.PlannerHook("rank", "seams", nil)
         local sawGuide
         ns.PlannerHook("route", "seams", function(g, s, ctx, c) sawGuide = type(g.steps) == "table" and #g.steps > 0 and s.empty ~= nil and type(c) == "table" end)
@@ -12368,12 +12399,19 @@ try("13.4 feel: seams", function()
         ns.PlannerRoute = function() return { name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "n" } } }, { seconds = 300, zone = 1 } end
         ns.PlannerWorldPos = function(map, x, y) if map == 1 then return 0, x * 10, y * 10 end end
         fireEvent("PLAYER_REGEN_ENABLED")
-        ns:PlannerStart()
-        for _ = 1, 50 do
-            if not ns.plannerBusy and not ns.plannerQueued then break end
-            for i = 1, #handlers do local h = handlers[i]; if h.name == "OnUpdate" then pcall(h.fn, h.self, 0.02) end end
+        local function runIt()
+            for _ = 1, 50 do
+                if not ns.plannerBusy and not ns.plannerQueued then break end
+                for i = 1, #handlers do local h = handlers[i]; if h.name == "OnUpdate" then pcall(h.fn, h.self, 0.02) end end
+            end
         end
+        ns:PlannerStart()
+        ns:PlannerReplan("loading screen")                      -- (a replan before the start run applies: still the start)
+        runIt()
         if reason ~= "start" then error("the applied hook gets the run's reason: " .. tostring(reason)) end
+        ns:PlannerReplan("level")
+        runIt()
+        if reason ~= "level" then error("the next run has its own reason: " .. tostring(reason)) end
         ns.PlannerHook("applied", "seams", nil)
         ns:PlannerStop()
         ns.PlannerContext, ns.PlannerRoute, ns.PlannerWorldPos = saved.context, saved.route, saved.world
@@ -12428,7 +12466,10 @@ try("13.4 feel: seams", function()
         if not (pm and pm.buttons[1].entryLabel == "Panel thing") then error("the panel menu lists the action") end
         click(pm.buttons[1])
         if not panelActed then error("the panel action runs") end
+        local pe = ns.GuidePanelEntries(nil)
+        if not (#pe == 1 and pe[1][1] == "Panel thing" and type(pe[1][2]) == "function") then error("ns.GuidePanelEntries lists the shown panel actions") end
         ns.GuideRegisterAction("panel", "seams", "Panel thing", function() end, function() return false end)
+        if #ns.GuidePanelEntries(nil) ~= 0 then error("ns.GuidePanelEntries: a hidden action is not listed") end
         ns:GuideRedraw()
         if moreShown ~= false then error("no entry shown: the ... button hides") end
         ns.GuideRegisterAction("panel", "seams", nil)
@@ -12439,6 +12480,8 @@ try("13.4 feel: seams", function()
         if #calls ~= 1 or calls[1].moved ~= true or calls[1].at ~= 2 or calls[1].step.text ~= "b" then error("a step ticked off: one call, moved: " .. #calls) end
         ns:GuideSkip(true)
         if #calls ~= 1 then error("back: no call") end
+        ns:GuideSkip(false)
+        if #calls ~= 2 or calls[2].moved ~= true or calls[2].at ~= 2 then error("back, then next: the hooks see the step again: " .. #calls) end
         calls = {}
         ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "z" } } }, {})
         if #calls ~= 1 or calls[1].moved ~= false or calls[1].step.text ~= "z" then error("a new plan's first step: one call, not moved: " .. #calls) end

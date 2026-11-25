@@ -9,6 +9,7 @@ ns.plannerBusy, ns.plannerQueued, ns.plannerSteps = false, false, 0
 
 local running, sliceStart            -- the planning coroutine, and when its slice began
 local runReason                      -- ns.plannerReason when that coroutine was made
+local startPending = false           -- ns:PlannerStart() asked, and no plan applied since: that plan's reason is "start"
 local job                            -- a small job run in slices while the planner is idle (ns.PlannerJob)
 
 local function Clock()
@@ -718,7 +719,11 @@ local function Tick()
         if ns.GuidePlanFailed then ns:GuidePlanFailed() end
         return
     end
-    if guide then Apply(guide, summary, ctx, runReason) end
+    if guide then
+        local reason = startPending and "start" or runReason   -- (a replan that replaced the start run is still the start)
+        startPending = false
+        Apply(guide, summary, ctx, reason)
+    end
 end
 ns:Every(0, "Planner", Tick)
 
@@ -735,12 +740,12 @@ function ns:PlannerStart()
     if not Following() then ns:GuideSetPlan(nil) end
     ns:GuideShowPanel()
     mark, batch = nil, nil
-    ns.plannerQueued, ns.plannerReason = true, "start"
+    ns.plannerQueued, ns.plannerReason, startPending = true, "start", true
     return true
 end
 
 function ns:PlannerStop()
-    running, ns.plannerBusy, ns.plannerQueued = nil, false, false
+    running, ns.plannerBusy, ns.plannerQueued, startPending = nil, false, false, false
 end
 
 -- The level of your last class trainer visit. The trainer whose window opened is yours when it is no

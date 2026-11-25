@@ -290,7 +290,8 @@ local Draw
 --   ns.GuideRegisterAction("step"|"panel", key, label, fn(step), shown(step))   a menu entry (label: English, or fn(step) -> text)
 --   ns.GuideRegisterAdvance(key, fn(st, guide, step, at, moved))  the step you are on changed
 --   ns.GuideRegisterCommand(word, fn(rest))                      /fgui guide <word> ...
--- Each is called through pcall; a failure goes to ns.errors as "Guide hook <key>: <error>".
+-- Each is called through pcall (a command word too); a failure goes to ns.errors as "Guide hook <key>: <error>".
+-- Menu labels stay English (or text a label fn made) until ns:GuideMenu, the one place they go through ns:Tr.
 local extraLines, titleParts, stepActions, panelActions, advanceHooks, commands = {}, {}, {}, {}, {}, {}
 local function Register(list, key, entry)
     if key == nil then return end
@@ -330,7 +331,7 @@ local function ActionLabel(e, step)
         local t = Hook(e.key, e.label, step)
         return type(t) == "string" and t or tostring(e.key)
     end
-    return ns:Tr(tostring(e.label))
+    return tostring(e.label)
 end
 local function StepEntries(step)
     local out = {}
@@ -346,6 +347,9 @@ local function PanelEntries(step)
     end
     return out
 end
+-- The entries shown for a step: { { label, fn } } (labels as registered: ns:GuideMenu translates them).
+ns.GuideStepEntries = StepEntries          -- the registered step actions only (not the built-in skip entry)
+ns.GuidePanelEntries = PanelEntries        -- the registered panel actions shown now (what the "..." button lists)
 -- Where the step is, for the arrow: its own place, or where the game says the quest goes next.
 local function PlaceOf(step)
     if step.x and step.y then return step.map, step.x, step.y end
@@ -471,7 +475,9 @@ function ns:GuideSkip(back)
         st.finished = nil
         pointed = nil
         local guide = ns:GuideGet(st.name)
-        Point(guide and guide.steps[st.at], st.at)
+        local step = guide and guide.steps[st.at]
+        Point(step, st.at)
+        seenKey = step and StepKey(step) or seenKey        -- (no advance hook for Back; the next step is new to them again)
         if Draw then Draw() end
     else
         st.ticked[st.at or 1] = true
@@ -1137,7 +1143,7 @@ function ns:GuideCommand(text)
     end
     local word, rest = text:match("^(%S+)%s*(.*)$")
     word = word and word:lower() or ""
-    if commands[word] then return commands[word](rest) end      -- (a word another file registered comes first)
+    if commands[word] then return Hook(word, commands[word], rest) end      -- (a word another file registered comes first)
     if word == "" or word == "list" then return ns:GuideList()
     elseif word == "record" then return ns:GuideRecord(rest)
     elseif word == "stop" then
