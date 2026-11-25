@@ -22,3 +22,11 @@ Prices section, the public-early exception and answer 3.
 - Ruling: rows still unread after the retries are counted in `ns.priceScanState` ("last scan: n items, m rows unread"), shown on the self-check's auction line — the plan says they are "dropped and counted" but names no place.
 - Ruling: the button sits at `TOPRIGHT -186, -30` of `AuctionHouseFrame`, 6 px left of Worth selling (`-60`, 120 wide), and stays there when the helper is off.
 
+## Task 3: Sell now, Hold, Vendor it
+
+- Ruling: `ns.SellHint` returns a third value for "vendor", `"pays"` or `"unlisted"`, which picks the tooltip's line ("a vendor pays about as much" or "nobody lists it here") — the plan has two Vendor it lines but one kind.
+- Ruling: `ns.SellHintFor(id, bound)` counts an item as bound when the bag slot says so, or when its bind type is 1 (binds when picked up) or 4 (quest item) — a tooltip has no bag slot, and such items can never be sold at the auction house.
+- Ruling: rule 4's "`u > vendor × 1.15`" applies only to Hold, as written; Sell needs `u > 0` and at least 3 days of history. Percentages are rounded to the nearest whole number.
+- Ruling: the tooltip line's right side is `ns.AuctionSeenText` when the entry was never listed by a scan (`listedDay` unset: browsed only), otherwise `ns.PriceFreshText` of the house — the plan's "for browsed-only prices the existing AuctionSeenText".
+- Ruling: the bag marker sits at `BOTTOMLEFT 2, 2`, and is hidden when the junk coin shows (as the plan says) and also when the green upgrade arrow shows, which uses the same corner — gear better than what you wear is not for selling, and the tooltip still gives the hint.
+- Ruling: the tooltip line is hooked by the `sellHints` module itself, through `TooltipDataProcessor` as Economy's `Tip` is, so it works with "Auction prices in tooltips" off; a hidden item id gives no line.

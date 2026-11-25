@@ -209,6 +209,7 @@ ns.defaults = {
     tradeLog         = true,        -- what changed hands, with whom
     auctionMemory    = true,        -- the last auction price you saw, in tooltips
     auctionScan      = true,        -- a Scan prices button on the auction house
+    sellHints        = true,        -- Sell now / Hold / Vendor it in tooltips and on the bag window
     lootLog          = true,        -- /fgui loot
     chatKeywords     = true,        -- words you chose are picked out (nothing until you choose one)
     chatSpam         = false,       -- the same line repeated within seconds is hidden

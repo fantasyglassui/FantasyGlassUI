@@ -21,6 +21,12 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["Sell now: %d%% above its usual price"] = "Jetzt verkaufen: %d%% über dem üblichen Preis",
+    ["Hold: %d%% under its usual price"] = "Behalten: %d%% unter dem üblichen Preis",
+    ["Vendor it: a vendor pays about as much"] = "An Händler verkaufen: ein Händler zahlt etwa gleich viel",
+    ["Vendor it: nobody lists it here"] = "An Händler verkaufen: niemand bietet es hier an",
+    ["Sell now, Hold and Vendor it hints"] = "Hinweise: Jetzt verkaufen, Behalten, An Händler verkaufen",
+    ["In item tooltips and on the bag window: Sell now when an item is well above its usual price, Hold when it is cheap today, Vendor it when a vendor pays about as much or nobody lists it. From the prices you have seen and scanned."] = "In Gegenstands-Tooltips und im Taschenfenster: Jetzt verkaufen, wenn ein Gegenstand deutlich über seinem üblichen Preis liegt, Behalten, wenn er heute billig ist, An Händler verkaufen, wenn ein Händler etwa gleich viel zahlt oder niemand ihn anbietet. Aus den Preisen, die du gesehen und gescannt hast.",
     ["Scan prices"] = "Preise scannen",
     ["Scan in %d:%02d"] = "Scan in %d:%02d",
     ["Reading %d%%"] = "Lese %d%%",
@@ -3344,6 +3350,12 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["Sell now: %d%% above its usual price"] = "Vendre maintenant : %d%% au-dessus de son prix habituel",
+    ["Hold: %d%% under its usual price"] = "Garder : %d%% sous son prix habituel",
+    ["Vendor it: a vendor pays about as much"] = "Au marchand : un marchand paie à peu près autant",
+    ["Vendor it: nobody lists it here"] = "Au marchand : personne ne le met en vente ici",
+    ["Sell now, Hold and Vendor it hints"] = "Conseils Vendre maintenant, Garder et Au marchand",
+    ["In item tooltips and on the bag window: Sell now when an item is well above its usual price, Hold when it is cheap today, Vendor it when a vendor pays about as much or nobody lists it. From the prices you have seen and scanned."] = "Dans les infobulles des objets et sur la fenêtre des sacs : Vendre maintenant quand un objet est bien au-dessus de son prix habituel, Garder quand il est bon marché aujourd'hui, Au marchand quand un marchand paie à peu près autant ou que personne ne le met en vente. D'après les prix que vous avez vus et analysés.",
     ["Scan prices"] = "Analyser les prix",
     ["Scan in %d:%02d"] = "Analyse dans %d:%02d",
     ["Reading %d%%"] = "Lecture %d%%",
@@ -6667,6 +6679,12 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["Sell now: %d%% above its usual price"] = "Vender ya: %d%% por encima de su precio habitual",
+    ["Hold: %d%% under its usual price"] = "Guardar: %d%% por debajo de su precio habitual",
+    ["Vendor it: a vendor pays about as much"] = "Al vendedor: un vendedor paga más o menos lo mismo",
+    ["Vendor it: nobody lists it here"] = "Al vendedor: nadie lo pone a la venta aquí",
+    ["Sell now, Hold and Vendor it hints"] = "Pistas Vender ya, Guardar y Al vendedor",
+    ["In item tooltips and on the bag window: Sell now when an item is well above its usual price, Hold when it is cheap today, Vendor it when a vendor pays about as much or nobody lists it. From the prices you have seen and scanned."] = "En las descripciones de objetos y en la ventana de bolsas: Vender ya cuando un objeto está muy por encima de su precio habitual, Guardar cuando hoy está barato, Al vendedor cuando un vendedor paga más o menos lo mismo o nadie lo pone a la venta. Según los precios que has visto y escaneado.",
     ["Scan prices"] = "Escanear precios",
     ["Scan in %d:%02d"] = "Escanear en %d:%02d",
     ["Reading %d%%"] = "Leyendo %d%%",
@@ -9993,6 +10011,12 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["Sell now: %d%% above its usual price"] = "Продать сейчас: на %d%% выше обычной цены",
+    ["Hold: %d%% under its usual price"] = "Придержать: на %d%% ниже обычной цены",
+    ["Vendor it: a vendor pays about as much"] = "Продать торговцу: торговец платит примерно столько же",
+    ["Vendor it: nobody lists it here"] = "Продать торговцу: здесь его никто не выставляет",
+    ["Sell now, Hold and Vendor it hints"] = "Подсказки «Продать сейчас», «Придержать» и «Продать торговцу»",
+    ["In item tooltips and on the bag window: Sell now when an item is well above its usual price, Hold when it is cheap today, Vendor it when a vendor pays about as much or nobody lists it. From the prices you have seen and scanned."] = "В подсказках предметов и в окне сумок: «Продать сейчас», когда предмет заметно дороже обычной цены, «Придержать», когда сегодня он дешёвый, «Продать торговцу», когда торговец платит примерно столько же или его никто не выставляет. По ценам, которые вы видели и сканировали.",
     ["Scan prices"] = "Сканировать цены",
     ["Scan in %d:%02d"] = "Скан. через %d:%02d",
     ["Reading %d%%"] = "Чтение %d%%",
@@ -13316,6 +13340,12 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["Sell now: %d%% above its usual price"] = "Venda agora: %d%% acima do preço habitual",
+    ["Hold: %d%% under its usual price"] = "Segure: %d%% abaixo do preço habitual",
+    ["Vendor it: a vendor pays about as much"] = "Venda ao vendedor: um vendedor paga quase o mesmo",
+    ["Vendor it: nobody lists it here"] = "Venda ao vendedor: ninguém o anuncia aqui",
+    ["Sell now, Hold and Vendor it hints"] = "Dicas Venda agora, Segure e Venda ao vendedor",
+    ["In item tooltips and on the bag window: Sell now when an item is well above its usual price, Hold when it is cheap today, Vendor it when a vendor pays about as much or nobody lists it. From the prices you have seen and scanned."] = "Nas dicas dos itens e na janela das bolsas: Venda agora quando um item está bem acima do preço habitual, Segure quando está barato hoje, Venda ao vendedor quando um vendedor paga quase o mesmo ou ninguém o anuncia. Pelos preços que você viu e escaneou.",
     ["Scan prices"] = "Escanear preços",
     ["Scan in %d:%02d"] = "Escanear em %d:%02d",
     ["Reading %d%%"] = "Lendo %d%%",
@@ -16639,6 +16669,12 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["Sell now: %d%% above its usual price"] = "Vendi ora: %d%% sopra il suo prezzo abituale",
+    ["Hold: %d%% under its usual price"] = "Tieni: %d%% sotto il suo prezzo abituale",
+    ["Vendor it: a vendor pays about as much"] = "Al mercante: un mercante paga più o meno lo stesso",
+    ["Vendor it: nobody lists it here"] = "Al mercante: qui nessuno lo mette in vendita",
+    ["Sell now, Hold and Vendor it hints"] = "Consigli Vendi ora, Tieni e Al mercante",
+    ["In item tooltips and on the bag window: Sell now when an item is well above its usual price, Hold when it is cheap today, Vendor it when a vendor pays about as much or nobody lists it. From the prices you have seen and scanned."] = "Nei suggerimenti degli oggetti e nella finestra delle borse: Vendi ora quando un oggetto è ben sopra il suo prezzo abituale, Tieni quando oggi costa poco, Al mercante quando un mercante paga più o meno lo stesso o nessuno lo mette in vendita. Dai prezzi che hai visto e scansionato.",
     ["Scan prices"] = "Scansiona prezzi",
     ["Scan in %d:%02d"] = "Scansione tra %d:%02d",
     ["Reading %d%%"] = "Lettura %d%%",
@@ -19962,6 +19998,12 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["Sell now: %d%% above its usual price"] = "지금 판매: 평소 가격보다 %d%% 높음",
+    ["Hold: %d%% under its usual price"] = "보관: 평소 가격보다 %d%% 낮음",
+    ["Vendor it: a vendor pays about as much"] = "상인에게 판매: 상인이 비슷하게 지불함",
+    ["Vendor it: nobody lists it here"] = "상인에게 판매: 여기서는 아무도 등록하지 않음",
+    ["Sell now, Hold and Vendor it hints"] = "지금 판매, 보관, 상인에게 판매 힌트",
+    ["In item tooltips and on the bag window: Sell now when an item is well above its usual price, Hold when it is cheap today, Vendor it when a vendor pays about as much or nobody lists it. From the prices you have seen and scanned."] = "아이템 툴팁과 가방 창에서: 평소 가격보다 훨씬 높으면 지금 판매, 오늘 싸면 보관, 상인이 비슷하게 지불하거나 아무도 등록하지 않으면 상인에게 판매. 본 가격과 검색한 가격을 바탕으로 합니다.",
     ["Scan prices"] = "가격 검색",
     ["Scan in %d:%02d"] = "%d:%02d 후 검색",
     ["Reading %d%%"] = "읽는 중 %d%%",
@@ -23288,6 +23330,12 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["Sell now: %d%% above its usual price"] = "现在出售：比平常价格高 %d%%",
+    ["Hold: %d%% under its usual price"] = "暂留：比平常价格低 %d%%",
+    ["Vendor it: a vendor pays about as much"] = "卖给商人：商人给的价钱差不多",
+    ["Vendor it: nobody lists it here"] = "卖给商人：这里没人出售它",
+    ["Sell now, Hold and Vendor it hints"] = "“现在出售”“暂留”“卖给商人”提示",
+    ["In item tooltips and on the bag window: Sell now when an item is well above its usual price, Hold when it is cheap today, Vendor it when a vendor pays about as much or nobody lists it. From the prices you have seen and scanned."] = "在物品鼠标提示和背包窗口中：物品远高于平常价格时显示“现在出售”，今天便宜时显示“暂留”，商人给的价钱差不多或没人出售时显示“卖给商人”。依据你看到和扫描到的价格。",
     ["Scan prices"] = "扫描价格",
     ["Scan in %d:%02d"] = "%d:%02d 后扫描",
     ["Reading %d%%"] = "读取中 %d%%",

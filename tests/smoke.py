@@ -8037,6 +8037,59 @@ try("11.7: ready me, boss notes, death recap, backups, history, templates, packs
         if not okW then error(errW, 0) end
         ns.auctionScanTest.Dress()
     end
+    -- Sell now, Hold, Vendor it
+    do
+        local today = 20261125
+        local hist = { [20261120] = 1000, [20261121] = 1000, [20261122] = 1000, [20261123] = 950, [20261124] = 1050 }
+        local function E(price, day, extra) local e = { price = price, day = day or today, hist = hist }; for k, v in pairs(extra or {}) do e[k] = v end; return e end
+        local H = ns.SellHint
+        local k, pct = H(E(1200), 0, 2, false, today, nil)
+        if k ~= "sell" or pct ~= 20 then error("sell now: " .. tostring(k) .. " " .. tostring(pct)) end
+        k, pct = H(E(700), 0, 2, false, today, nil)
+        if k ~= "hold" or pct ~= 30 then error("hold: " .. tostring(k) .. " " .. tostring(pct)) end
+        if H(E(700), 650, 2, false, today, nil) ~= "vendor" then error("a vendor pays about as much (700 <= 747.5)") end
+        if H(E(1200, today - 8), 0, 2, false, today, nil) ~= nil then error("an old price gives no sell or hold") end
+        if H(nil, 50, 1, false, today, today - 1) ~= "vendor" then error("nobody lists it: uncommon or lower") end
+        if H(nil, 50, 3, false, today, today - 1) ~= nil then error("a rare nobody lists is never vendor it") end
+        if H(nil, 50, 1, false, today, today - 5) ~= nil then error("an old scan says nothing about who lists it") end
+        if H(nil, 50, 1, false, today, nil) ~= nil then error("never scanned: nothing about who lists it") end
+        if H(E(1200, nil, { listed = 0 }), 50, 2, false, today, today) ~= "vendor" then error("listed 0, uncommon: vendor it") end
+        if H(E(1200), 50, 2, true, today, today) ~= nil then error("bound: no hint") end
+        if H(nil, 0, 1, false, today, today) ~= nil then error("no vendor price, never seen: no hint") end
+        if H({ price = 1200, day = today, hist = { [1] = 1000, [2] = 1000 } }, 0, 2, false, today, nil) ~= nil then error("two days of history are not enough") end
+        if H({ day = today, listed = 2 }, 50, 1, false, today, today) ~= nil then error("bid only, listed: no hint") end
+        -- the tooltip line, and the bag window
+        local oldRealm, oldFaction, keepPrices, realGII, keepTip = env.GetRealmName, env.UnitFactionGroup, ns.root.prices, ns.GetItemInfo, env.GameTooltip
+        local realFor, keepOn = ns.SellHintFor, ns.db.sellHints
+        local okT, errT = pcall(function()
+            env.GetRealmName = function() return "Stormreach" end; env.UnitFactionGroup = function() return "Alliance" end
+            ns.root.prices = { v = 1, houses = { ["Stormreach|Alliance"] = { items = { [4242] = { price = 1200, day = ns.Today(), hist = hist, listed = 3, listedDay = ns.Today() } }, scanAt = env.time() } } }
+            ns.GetItemInfo = function(self, id) if id == 4242 then return "Thing", "|Hitem:4242|h[Thing]|h", 2, 10, 1, "Trade Goods", "", 20, "", 1, 50, 7, 0, 0 end return realGII(self, id) end
+            local lines = {}
+            local tip = setmetatable({ AddDoubleLine = function(_, l, r) lines[#lines + 1] = { l, r } end }, { __index = function() return function() end end })
+            env.GameTooltip = tip
+            ns.sellHintsTest.Tip(tip, { id = 4242 })
+            if #lines ~= 1 or lines[1][1] ~= string.format(ns:Tr("Sell now: %d%% above its usual price"), 20) or lines[1][2] ~= ns:Tr("Scanned today") then error("the tooltip line: " .. tostring(lines[1] and lines[1][1])) end
+            ns.root.prices.houses["Stormreach|Alliance"].items[4242].listedDay = nil
+            lines = {}
+            ns.sellHintsTest.Tip(tip, { id = 4242 })
+            if not lines[1] or lines[1][2] ~= ns:Tr("today") then error("browsed only: when it was seen") end
+            ns.sellHintsTest.Tip(tip, { id = setmetatable({ __secret = true }, secretmt) })
+            env.UnitFactionGroup = function() return nil end
+            lines = {}
+            ns.sellHintsTest.Tip(tip, { id = 4242 })
+            if #lines ~= 0 then error("no house: no hint") end
+            ns.SellHintFor = function() return "sell", 20 end
+            ns.db.sellHints = true
+            ns:RefreshBagWindow()
+            ns.db.sellHints = false
+            ns:RefreshBagWindow()
+        end)
+        env.GetRealmName, env.UnitFactionGroup, ns.root.prices, ns.GetItemInfo, env.GameTooltip = oldRealm, oldFaction, keepPrices, realGII, keepTip
+        ns.SellHintFor, ns.db.sellHints = realFor, keepOn
+        if not okT then error(errT, 0) end
+        ns:RefreshBagWindow()
+    end
     -- home key
     local ways = { { kind = "spell", id = 3561 }, { kind = "spell", id = 556 }, { kind = "item", id = 6948 }, { kind = "item", id = 64488 } }
     local best, ready = ns.BestWayHome(ways, function() return true end)
