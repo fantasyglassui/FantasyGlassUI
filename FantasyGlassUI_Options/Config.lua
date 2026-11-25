@@ -12,6 +12,8 @@ local O = ns.optUI
 local VIEW_H = 542
 O.VIEW_H = VIEW_H
 local W, H = 1000, 680
+local HEAD_H, FOOT_H = 60, 52                       -- (12.3) the header and footer, a rule under / over each
+local BODY_Y = HEAD_H + 12
 local SIDE_X, SIDE_W = 14, 204
 local CONTENT_X = SIDE_X + SIDE_W + 14
 
@@ -157,15 +159,18 @@ end
 
 local function Build()
     O.frame = CreateFrame("Frame", "FantasyGlassUIConfig", UIParent, ns.template)
+    -- (12.3) The window wears a calm look of its own whatever the theme (ns.LOOKS.settings: dark
+    -- grounds, Barlow lettering); only the accent comes from the theme. No sky, grain or glass.
+    ns:SetLook(O.frame, "settings")                                   -- (O.frame.suiLook = "settings")
     ns.configFrame = O.frame
     local size = type(ns.root) == "table" and type(ns.root.optionsSize) == "table" and ns.root.optionsSize or nil
     O.frame:SetSize(size and tonumber(size[1]) or W, size and tonumber(size[2]) or H)
     O.frame:SetPoint("CENTER")
     O.frame:SetFrameStrata("DIALOG")
     O.frame:SetBackdrop(ns.BACKDROP)
-    ns:Paint(O.frame, "SetBackdropColor", "window", 0.97)
-    ns:Paint(O.frame, "SetBackdropBorderColor", "@border", 1)
-    ns:Dress(O.frame)
+    ns:Paint(O.frame, "SetBackdropColor", "window", 1)
+    ns:Paint(O.frame, "SetBackdropBorderColor", "@rim", 1)            -- (a 1 px rim)
+    if ns.After then ns:After(0, function() if ns.StarcutWindow then pcall(ns.StarcutWindow, O.frame) end end) end   -- (the Starcut corner cut stays)
     O.frame:EnableMouse(true)
     O.frame:SetMovable(true)
     O.frame:SetClampedToScreen(true)
@@ -175,20 +180,21 @@ local function Build()
     ns:KeepPlace(O.frame, "Options")
     tinsert(UISpecialFrames, "FantasyGlassUIConfig")
 
-    -- the header: the add-on's name, the profile being edited, simple or all options, language, close
+    -- the header (60 px): the logo and name, the search filling the middle, language, the profile
+    -- being edited, close
     local logo = O.frame:CreateTexture(nil, "OVERLAY")
-    logo:SetSize(24, 24)
-    logo:SetPoint("TOPLEFT", 16, -14)
+    logo:SetSize(26, 26)
+    logo:SetPoint("TOPLEFT", 18, -17)
     logo:SetTexture(ns.MEDIA .. "icon.tga")
     local title = O.frame:CreateFontString(nil, "OVERLAY")
-    ns:Font(title, 17, true)
-    title:SetPoint("TOPLEFT", 48, -18)
+    ns:Font(title, 16, true)
+    title:SetPoint("LEFT", logo, "RIGHT", 10, 0)
     title:SetJustifyH("LEFT")
+    ns:Paint(title, "SetTextColor", "text")
     if title.SetWordWrap then title:SetWordWrap(false) end
     O.frame.title = title
-    local chip = ns:CreateButton(O.frame, "", 150, 22, function() O.Open("layout:Profiles") end)
-    chip:SetPoint("LEFT", title, "RIGHT", 14, 0)
-    ns:Font(chip.text, 11)
+    local chip = ns:CreateButton(O.frame, "", 150, 28, function() O.Open("layout:Profiles") end)
+    ns:Font(chip.text, 12)
     chip:HookScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
         GameTooltip:AddLine(ns:Tr("The profile these settings are saved in"))
@@ -200,7 +206,8 @@ local function Build()
     chip:HookScript("OnLeave", function() GameTooltip:Hide() end)
     O.frame.profileChip = chip
     local function Heading()
-        title:SetText(ns:AccentHex() .. "Fantasy Glass|r UI  |cff9c8c6cv" .. ns.version .. "|r")
+        title:SetText(ns:AccentHex() .. "Fantasy Glass|r UI")
+        if O.frame.version then O.frame.version:SetText("v" .. tostring(ns.version)) end
         chip.text:SetText(ns:Tr("Profile:") .. " " .. ns:AccentHex() .. tostring(ns.profile) .. "|r")
         local w = chip.text.GetStringWidth and chip.text:GetStringWidth()
         if type(w) == "number" and w > 0 then chip:SetWidth(math.min(240, math.floor(w + 22))) end
@@ -209,13 +216,14 @@ local function Build()
     O.frame:HookScript("OnShow", Heading)
     ns:OnTheme(function() if O.frame:IsShown() then Heading() end end)
 
-    local close = ns:CreateButton(O.frame, "X", 24, 24, function() O.frame:Hide() end)
-    close:SetPoint("TOPRIGHT", -12, -13)
+    local close = ns:CreateButton(O.frame, "X", 28, 28, function() O.frame:Hide() end)
+    close:SetPoint("TOPRIGHT", -16, -16)
+    chip:SetPoint("RIGHT", close, "LEFT", -10, 0)
 
     -- Language: the word on the button is never translated, so the way back can be found by someone
     -- who picked a language they cannot read.
     local langList
-    local langBtn = ns:CreateButton(O.frame, "Language", 100, 24, function(self)
+    local langBtn = ns:CreateButton(O.frame, "Language", 100, 28, function(self)
         if langList and langList:IsShown() then langList:Hide() return end
         if not langList then
             langList = CreateFrame("Frame", nil, O.frame, ns.template)
@@ -245,7 +253,7 @@ local function Build()
         end
         langList:Show()
     end)
-    langBtn:SetPoint("RIGHT", close, "LEFT", -8, 0)
+    langBtn:SetPoint("RIGHT", chip, "LEFT", -10, 0)
     langBtn.text:SetText("Language")                         -- (set directly: this one word is never translated)
     function O.frame.RefreshLanguage() end
     O.frame.languageButton = langBtn
@@ -261,10 +269,9 @@ local function Build()
     -- Simple or all options: two buttons side by side, kept for the account. A new player starts on
     -- simple, one who already knows the add-on on all options. The search always looks through all.
     if type(ns.root) == "table" and ns.root.settingsMode == nil then ns.root.settingsMode = ns.freshInstall and "simple" or "all" end
-    local modeAll = ns:CreateButton(O.frame, "All options", 100, 24, function() O.SetSimple(false) end)
-    modeAll:SetPoint("RIGHT", langBtn, "LEFT", -14, 0)
-    local modeSimple = ns:CreateButton(O.frame, "Simple", 80, 24, function() O.SetSimple(true) end)
-    modeSimple:SetPoint("RIGHT", modeAll, "LEFT", -2, 0)
+    -- (12.3: at the top of the list down the left, where the search was; placed with it below)
+    local modeAll = ns:CreateButton(O.frame, "All options", SIDE_W / 2 - 1, 24, function() O.SetSimple(false) end)
+    local modeSimple = ns:CreateButton(O.frame, "Simple", SIDE_W / 2 - 1, 24, function() O.SetSimple(true) end)
     O.Tip(modeSimple, "Simple", "The options most players look for. The search still finds every one.")
     O.Tip(modeAll, "All options", "Every option there is.")
     O.frame.modeButtons = { simple = modeSimple, all = modeAll }
@@ -279,9 +286,18 @@ local function Build()
     end
     for _, b in pairs(O.frame.modeButtons) do b:HookScript("OnLeave", function() DrawMode() end) end
 
-    local rule = ns:Divider(O.frame, 12)
-    rule:SetPoint("TOPLEFT", 16, -48)
-    rule:SetPoint("TOPRIGHT", -16, -48)
+    -- plain rules under the header and over the footer
+    local function Rule(y, fromBottom)
+        local t = O.frame:CreateTexture(nil, "ARTWORK")
+        t:SetTexture(ns.FLAT)
+        t:SetHeight(1)
+        local edge = fromBottom and "BOTTOM" or "TOP"
+        t:SetPoint(edge .. "LEFT", 1, y)
+        t:SetPoint(edge .. "RIGHT", -1, y)
+        ns:Paint(t, "SetVertexColor", "@border", 1)
+        return t
+    end
+    O.frame.headRule, O.frame.footRule = Rule(-HEAD_H), Rule(FOOT_H, true)
 
     -- the reload note, by the Reload button (anything may ask for it: O.frame.note:Show())
     local note = O.frame:CreateFontString(nil, "OVERLAY")
@@ -302,7 +318,7 @@ local function Build()
     for _, d in ipairs(defs) do
         local id = d[1]
         local page = CreateFrame("Frame", nil, O.frame)
-        page:SetPoint("TOPLEFT", CONTENT_X, -60)
+        page:SetPoint("TOPLEFT", CONTENT_X, -BODY_Y)
         page:SetSize(736, VIEW_H)
         page:Hide()
         O.pages[id] = page
@@ -324,8 +340,8 @@ local function Build()
 
     -- the right side: Home, or a section
     local content = CreateFrame("Frame", nil, O.frame)
-    content:SetPoint("TOPLEFT", CONTENT_X, -60)
-    content:SetPoint("BOTTOMRIGHT", -16, 52)
+    content:SetPoint("TOPLEFT", CONTENT_X, -BODY_Y)
+    content:SetPoint("BOTTOMRIGHT", -16, FOOT_H + 6)
     O.content = content
     local sArea, sSheet = ns:ScrollArea(content, 748, VIEW_H)
     sArea:SetPoint("TOPLEFT", 0, 0)
@@ -341,8 +357,8 @@ local function Build()
 
     -- The left side: the search, then the categories, with the sections of the open one under it.
     local side = CreateFrame("Frame", nil, O.frame)
-    side:SetPoint("TOPLEFT", SIDE_X, -60)
-    side:SetPoint("BOTTOMLEFT", SIDE_X, 52)
+    side:SetPoint("TOPLEFT", SIDE_X, -BODY_Y)
+    side:SetPoint("BOTTOMLEFT", SIDE_X, FOOT_H + 6)
     side:SetWidth(SIDE_W)
     O.side = side
     local sideRule = O.frame:CreateTexture(nil, "ARTWORK")
@@ -350,9 +366,14 @@ local function Build()
     sideRule:SetWidth(1)
     sideRule:SetPoint("TOPLEFT", side, "TOPRIGHT", 6, 0)
     sideRule:SetPoint("BOTTOMLEFT", side, "BOTTOMRIGHT", 6, 0)
-    ns:Paint(sideRule, "SetVertexColor", "@border", 0.6)
-    local searchBox = ns:CreateEditBox(side, SIDE_W, 24, "Search every option")
-    searchBox:SetPoint("TOPLEFT", 0, 0)
+    ns:Paint(sideRule, "SetVertexColor", "@border", 1)
+    modeSimple:SetParent(side); modeAll:SetParent(side)
+    modeSimple:SetPoint("TOPLEFT", side, "TOPLEFT", 0, 0)
+    modeAll:SetPoint("TOPRIGHT", side, "TOPRIGHT", 0, 0)
+    -- the search, filling the middle of the header
+    local searchBox = ns:CreateEditBox(O.frame, 300, 28, "Search every option")
+    searchBox:SetPoint("LEFT", title, "RIGHT", 28, 0)
+    searchBox:SetPoint("RIGHT", langBtn, "LEFT", -24, 0)
     O.frame.searchBox = searchBox
     local catButtons, secButtons = {}, {}
     local function NavButton(list, i, indent, size)
@@ -508,7 +529,7 @@ local function Build()
     -- The foot: setup, report, Discord; then undo, the reload note and Reload.
     local setup = ns:CreateButton(O.frame, "Run setup again", 132, 24, function() O.frame:Hide(); ns:ShowSetup() end)
     O.Tip(setup, "Run setup again", "Opens the first-run setup: how you play, your look, your layout. It starts from your current choices and changes nothing until you click.")
-    setup:SetPoint("BOTTOMLEFT", 18, 14)
+    setup:SetPoint("BOTTOMLEFT", 18, 14)                          -- (the footer: 52 px, buttons centred in it)
     local report = ns:CreateButton(O.frame, "Report a problem", 132, 24, function() ns:ProblemReport() end)
     report:SetPoint("LEFT", setup, "RIGHT", 8, 0)
     report:HookScript("OnEnter", function(self)
@@ -527,6 +548,13 @@ local function Build()
     note:SetPoint("RIGHT", reload, "LEFT", -12, 0)
     local undo = ns:CreateButton(O.frame, "Undo last change", 140, 24, function() O.Undo() end)
     undo:SetPoint("RIGHT", note, "LEFT", -12, 0)
+    local version = O.frame:CreateFontString(nil, "OVERLAY")
+    ns:Font(version, 12)
+    version:SetPoint("RIGHT", undo, "LEFT", -14, 0)
+    version:SetJustifyH("RIGHT")
+    ns:Paint(version, "SetTextColor", "faint")
+    version:SetText("v" .. tostring(ns.version))
+    O.frame.version = version
     undo:HookScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
         local last = watch.stack[#watch.stack]
@@ -622,7 +650,7 @@ local function Build()
     results:SetBackdrop(ns.BACKDROP)
     ns:Paint(results, "SetBackdropColor", "@bg", 1)
     ns:Paint(results, "SetBackdropBorderColor", "@accent", 1)
-    results:SetPoint("TOPLEFT", searchBox, "TOPRIGHT", 8, 0)
+    results:SetPoint("TOPLEFT", searchBox, "BOTTOMLEFT", 0, -4)
     results:SetWidth(470)
     results:Hide()
     results.rows = {}

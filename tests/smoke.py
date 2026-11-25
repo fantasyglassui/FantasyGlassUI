@@ -9324,6 +9324,106 @@ try("13.0 planner: settings", function()
     ns.db.plannerGroup, ns.db.plannerLearnFlights, ns.db.plannerWhy = saved.group, saved.flights, saved.why
     if not ok then error(err, 0) end
 end)
+try("12.3 settings look: palette, accent, contrast, lettering", function()
+    local keep = { theme = ns.db.theme, accent = ns.db.accent, lang = ns.root.language, style = ns.db.fontStyle }
+    local function hex(r, g, b) return string.format("%02x%02x%02x", math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b * 255 + 0.5)) end
+    local ok, err = pcall(function()
+        ns.db.theme, ns.db.accent, ns.root.language, ns.db.fontStyle = "MIDNIGHT", "VIOLET", "enUS", "GLASS"     -- (Smoke's own ground is #12141a)
+        ns:Retheme()
+        if hex(ns:T("window")) == "12141a" then error("the test needs a theme whose ground differs") end
+        ns:ToggleConfig("home")
+        local win = ns.configFrame
+        if rawget(win, "suiLook") ~= "settings" then error("the settings window is marked with its look") end
+        if type(ns.LOOKS) ~= "table" or type(ns.LOOKS.settings) ~= "table" or type(ns.LOOKS.settingsContrast) ~= "table" then error("the two looks") end
+        for _, look in pairs(ns.LOOKS) do
+            if look["@accent"] or look.accent then error("a look never holds the accent") end
+            for _, role in ipairs({ "window", "@bg", "bg", "field", "@border", "@rim", "@light", "@btn", "text", "dim", "faint" }) do
+                if type(look[role]) ~= "table" then error("a look holds " .. role) end
+            end
+        end
+        local parents = 0
+        local function under(parent)
+            local t = newmock()
+            rawset(t, "GetParent", function() parents = parents + 1; return parent end)
+            rawset(t, "SetVertexColor", function(self, r, g, b) rawset(self, "rgb", { r, g, b }) end)
+            rawset(t, "SetTextColor", function(self, r, g, b) rawset(self, "rgb", { r, g, b }) end)
+            rawset(t, "SetFont", function(self, path, size, flags) rawset(self, "face", path); rawset(self, "size", size); rawset(self, "flags", flags) end)
+            return t
+        end
+        local function reads(t) local c = rawget(t, "rgb"); return c and hex(c[1], c[2], c[3]) or "nothing" end
+        local row = newmock(); rawset(row, "GetParent", function() return win end)          -- (two levels down)
+        local elsewhere = newmock(); rawset(elsewhere, "GetParent", function() return env.UIParent end)
+        -- the ground: the look's own under the window, the theme's anywhere else
+        local ground = under(row); ns:Paint(ground, "SetVertexColor", "window", 0.97)
+        if reads(ground) ~= "12141a" then error("the window's ground is #12141a, got " .. reads(ground)) end
+        local outside = under(elsewhere); ns:Paint(outside, "SetVertexColor", "window", 0.97)
+        if reads(outside) ~= hex(ns:T("window")) then error("another window keeps the theme's ground, got " .. reads(outside)) end
+        local text = under(row); ns:Paint(text, "SetTextColor", "text")
+        if reads(text) ~= "e9ecf3" then error("text in the window is #e9ecf3, got " .. reads(text)) end
+        -- the look is looked up once per object, not on every paint
+        local before = parents
+        for _ = 1, 5 do ns:Paint(ground, "SetVertexColor", "window", 0.97) end
+        if parents ~= before then error("painting again walks the parents again") end
+        -- a frame marked later is found on the next repaint (and unmarked, lets go)
+        ns:SetLook(elsewhere, "settings"); ns:Repaint()
+        if reads(outside) ~= "12141a" then error("a frame marked later takes the look on the next repaint") end
+        before = parents
+        ns:Repaint()
+        if parents ~= before then error("a repaint with no new look does not walk the parents") end
+        ns:SetLook(elsewhere, nil); ns:Repaint()
+        if reads(outside) ~= hex(ns:T("window")) then error("unmarked, it wears the theme again") end
+        -- the accent is the theme's, live
+        local acc = under(row); ns:Paint(acc, "SetVertexColor", "@accent", 1)
+        local a = ns.theme.accent
+        if reads(acc) ~= hex(a[1], a[2], a[3]) then error("the accent under the window is the theme's") end
+        local was = reads(acc)
+        ns.db.accent = "CRIMSON"; ns:ApplyAccent(); ns:Repaint()
+        if reads(acc) ~= hex(ns:AccentColor("CRIMSON")) or reads(acc) == was then error("a new accent repaints at once, got " .. reads(acc)) end
+        if reads(ground) ~= "12141a" or reads(text) ~= "e9ecf3" then error("nothing else in the window changes with the accent") end
+        -- high contrast: black ground, white text, without a reload
+        if ns:IsHighContrast() then error("Smoke is not high contrast") end
+        ns.db.theme = "C_CONTRAST"; ns:Retheme()
+        if not ns:IsHighContrast() then error("C_CONTRAST is high contrast") end
+        if reads(ground) ~= "000000" or reads(text) ~= "ffffff" then error("high contrast: black ground and white text, got " .. reads(ground) .. " / " .. reads(text)) end
+        local a2 = ns.theme.accent
+        if reads(acc) ~= hex(a2[1], a2[2], a2[3]) then error("high contrast keeps the theme's accent") end
+        for _, k in ipairs({ "CONTRAST", "FCONTRAST" }) do
+            ns.db.theme = k
+            if not ns:IsHighContrast() then error(k .. " is high contrast") end
+        end
+        ns.db.theme = "MIDNIGHT"; ns:Retheme()
+        if reads(ground) ~= "12141a" then error("back to the calm look") end
+        -- lettering: Barlow in Latin-script languages; Korean, Chinese, Russian and the reading styles keep theirs
+        local fs = under(row); ns:Font(fs, 14)
+        local title = under(row); ns:Font(title, 24, true)
+        local out = under(elsewhere); ns:Font(out, 14)
+        local function face(t) return tostring(rawget(t, "face")) end
+        if not face(fs):find("Barlow%-Medium%.ttf$") then error("body text in the window is Barlow Medium, got " .. face(fs)) end
+        if not face(title):find("Barlow%-SemiBold%.ttf$") then error("titles in the window are Barlow SemiBold, got " .. face(title)) end
+        if face(out) ~= ns.FONT or face(out):find("Barlow") then error("other windows keep the chosen lettering, got " .. face(out)) end
+        if math.abs((rawget(fs, "size") or 0) - 14 * (ns.fontScale or 1)) > 0.001 then error("the text size still applies") end
+        local keepOutline = ns.db.textOutline
+        ns.db.textOutline = "thick"; ns:Retheme()
+        if rawget(fs, "flags") ~= "THICKOUTLINE" then error("the outline choice still applies to Barlow") end
+        ns.db.textOutline = keepOutline; ns:Retheme()
+        for _, code in ipairs({ "koKR", "zhCN", "ruRU" }) do
+            ns.root.language = code; ns:Retheme()
+            if face(fs):find("Barlow") or face(fs) ~= ns.FONT then error(code .. " keeps its own face, got " .. face(fs)) end
+            if face(title) ~= ns.TITLEFONT then error(code .. " titles keep their own face") end
+        end
+        ns.root.language = "enUS"; ns:Retheme()
+        if not face(fs):find("Barlow") then error("back in English, Barlow again") end
+        for _, st in ipairs({ "DYSLEXIC", "READABLE" }) do
+            ns.db.fontStyle = st; ns:Retheme()
+            if face(fs):find("Barlow") or face(fs) ~= ns.FONT then error(st .. " lettering wins over Barlow, got " .. face(fs)) end
+        end
+        ns.db.fontStyle = "GLASS"; ns:Retheme()
+        ns:ToggleConfig()
+    end)
+    ns.db.theme, ns.db.accent, ns.root.language, ns.db.fontStyle = keep.theme, keep.accent, keep.lang, keep.style
+    ns:Retheme()
+    if not ok then error(err, 0) end
+end)
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()

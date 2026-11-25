@@ -1287,6 +1287,16 @@ function ns:ApplyTheme()
     ns.FONTFLAGS = (ownBody and style.flags) or ""
     if ns.db.textOutline == "thin" then ns.FONTFLAGS = "OUTLINE"                     -- (12.1: an outline round every letter)
     elseif ns.db.textOutline == "thick" then ns.FONTFLAGS = "THICKOUTLINE" end
+    -- (12.3) The settings window's own lettering (ns:Font, inside a look): Barlow, in the languages
+    -- whose letters it has, unless a lettering made for reading (low vision, dyslexia) is chosen;
+    -- otherwise the faces picked above. The outline choice applies to it too.
+    local reading = ns.db.fontStyle == "READABLE" or ns.db.fontStyle == "DYSLEXIC"
+    if latin[locale] and not reading then
+        ns.LOOKFONT, ns.LOOKTITLEFONT = ns.MEDIA .. "Barlow-Medium.ttf", ns.MEDIA .. "Barlow-SemiBold.ttf"
+        ns.LOOKFLAGS = (ns.db.textOutline == "thin" and "OUTLINE") or (ns.db.textOutline == "thick" and "THICKOUTLINE") or ""
+    else
+        ns.LOOKFONT, ns.LOOKTITLEFONT, ns.LOOKFLAGS = nil, nil, nil
+    end
     ns.BAR = ns.db.barTexture and (ns.MEDIA .. ((ns.style == "GLASS") and "bar_glass.tga" or "bar.tga")) or ns.FLAT
     if ns.ApplySharedMedia then pcall(ns.ApplySharedMedia, ns) end        -- (a font or bar texture chosen from another add-on)
 end

@@ -135,13 +135,103 @@ function ns:TranslateBindings()
     for k, english in pairs(ns.bindingEnglish) do _G[k] = ns.L[english] end
 end
 
+-- Looks (12.3) -------------------------------------------------------------------------------------
+-- A look is a fixed palette of its own for one window, worn whatever the theme: everything under a
+-- frame marked `frame.suiLook = "<name>"` is painted from ns.LOOKS[name] instead of the theme (only
+-- the accent still comes from the theme, live), and lettered in Barlow where the language allows
+-- (ns.LOOKFONT, worked out with the theme). The settings window wears "settings"; with a
+-- high-contrast theme it wears that look's black-and-white version.
+local function RGB(hex)
+    return { tonumber(hex:sub(1, 2), 16) / 255, tonumber(hex:sub(3, 4), 16) / 255, tonumber(hex:sub(5, 6), 16) / 255 }
+end
+local function Look(t)
+    local look = {}
+    for role, hex in pairs(t) do look[role] = RGB(hex) end
+    return look
+end
+ns.LOOKS = {
+    settings = Look({
+        window = "12141a", inset = "12141a",                                       -- the ground
+        ["@bg"] = "181b22", bg = "181b22", bg2 = "181b22", bg3 = "181b22", bg4 = "181b22", card = "181b22",
+        plate = "1f232d", plate2 = "1e222b", select = "1e222b",                     -- buttons, the selection
+        field = "1a1d25",
+        ["@border"] = "22262f", border = "22262f", rule = "22262f", trough = "22262f",
+        ["@rim"] = "262b36", rim = "262b36",
+        text = "e9ecf3", ["@btn"] = "e9ecf3", ["@light"] = "e9ecf3",
+        dim = "9aa3b5", sub = "8b94a6", faint = "6f7889",
+    }),
+    settingsContrast = Look({
+        window = "000000", inset = "000000",
+        ["@bg"] = "000000", bg = "000000", bg2 = "000000", bg3 = "000000", bg4 = "000000", card = "000000",
+        plate = "000000", plate2 = "000000", select = "333333",
+        field = "0a0a0a", trough = "0a0a0a",
+        ["@border"] = "ffffff", border = "ffffff", rule = "ffffff",
+        ["@rim"] = "ffffff", rim = "ffffff",
+        text = "ffffff", ["@btn"] = "ffffff", ["@light"] = "ffffff",
+        dim = "e6e6e6", sub = "e6e6e6", faint = "cccccc",
+    }),
+}
+local CONTRAST_LOOK = { settings = "settingsContrast" }
+local HIGH_CONTRAST = { CONTRAST = true, FCONTRAST = true, C_CONTRAST = true }
+function ns:IsHighContrast()
+    return HIGH_CONTRAST[ns.db and ns.db.theme or ""] or false
+end
+-- Which look an object is under: the name, or false. Found once per object (walking up its
+-- parents) and kept, so painting again costs nothing. A frame marked after things under it were
+-- painted is marked with ns:SetLook: the next repaint then looks again for every object, once per
+-- frame for the whole repaint; otherwise a repaint uses what is kept, as it is called often.
+local lookKey = setmetatable({}, { __mode = "k" })
+local walked = {}
+local lookGen, paintedGen = 0, 0
+local function FindLook(obj, memo)
+    local f, key, n = obj, false, 0
+    for _ = 0, 30 do
+        if type(f) ~= "table" then break end
+        local mark = rawget(f, "suiLook")
+        if mark then key = mark break end
+        if memo then
+            local m = memo[f]
+            if m ~= nil then key = m break end
+            n = n + 1; walked[n] = f
+        end
+        local get = f.GetParent
+        if not get then break end
+        local ok, p = pcall(get, f)                         -- (a forbidden frame up the line: stop there)
+        if not ok or p == f then break end
+        f = p
+    end
+    for i = 1, n do memo[walked[i]] = key; walked[i] = nil end
+    return key
+end
+function ns:SetLook(frame, name)
+    if type(frame) ~= "table" then return end
+    frame.suiLook = name or nil
+    lookGen = lookGen + 1
+end
+function ns:LookOf(obj)
+    if type(obj) ~= "table" then return nil end
+    local key = lookKey[obj]
+    if key == nil then key = FindLook(obj); lookKey[obj] = key end
+    if not key then return nil end
+    if CONTRAST_LOOK[key] and ns:IsHighContrast() then key = CONTRAST_LOOK[key] end
+    return ns.LOOKS[key]
+end
+-- The face and outline for a font string: a language's own face first, then the look's, then the theme's.
+local function FaceOf(fs, title)
+    local fixed = rawget(fs, "suiFixedFont")
+    if fixed then return fixed, ns.FONTFLAGS end
+    if ns.LOOKFONT and ns:LookOf(fs) then return (title and ns.LOOKTITLEFONT or ns.LOOKFONT), ns.LOOKFLAGS or ns.FONTFLAGS end
+    return (title and ns.TITLEFONT or ns.FONT), ns.FONTFLAGS
+end
+
 local fonts = setmetatable({}, { __mode = "k" })
 function ns:Font(fs, size, title)
     if not fs or not fs.SetFont then return end
     local e = fonts[fs]
     if e then e[1], e[2] = size, title else fonts[fs] = { size, title } end
     if rawget(fs, "suiFamily") then return end              -- (a language name drawn with the game's font family)
-    fs:SetFont(rawget(fs, "suiFixedFont") or (title and ns.TITLEFONT or ns.FONT), size * (ns.fontScale or 1), ns.FONTFLAGS)
+    local face, flags = FaceOf(fs, title)
+    fs:SetFont(face, size * (ns.fontScale or 1), flags)
     if fs.SetShadowOffset then
         fs:SetShadowOffset(1, -1)
         fs:SetShadowColor(0, 0, 0, 0.9)
@@ -354,7 +444,16 @@ end
 local painted = setmetatable({}, { __mode = "k" })
 local DIRECT = { ["@accent"] = "accent", ["@border"] = "border", ["@bg"] = "bg", ["@btn"] = "btn", ["@light"] = "light", ["@rim"] = "rim" }
 
-function ns:Role(role, alpha)
+-- With `obj`, an object under a look takes the look's color for any role the look holds.
+function ns:Role(role, alpha, obj)
+    if obj ~= nil then
+        local look = ns:LookOf(obj)
+        local c = look and look[role]
+        if c then
+            if alpha ~= nil then return c[1], c[2], c[3], alpha end
+            return c[1], c[2], c[3]
+        end
+    end
     local key = DIRECT[role]
     if key then
         local c = ns.theme[key]
@@ -372,7 +471,7 @@ function ns:Paint(obj, method, role, alpha)
     if not list then list = {}; painted[obj] = list end
     local e = list[method]
     if e then e[1], e[2] = role, alpha else list[method] = { role, alpha } end
-    fn(obj, ns:Role(role, alpha))
+    fn(obj, ns:Role(role, alpha, obj))
 end
 
 -- Stop re-applying a remembered color (the object is about to take one of its own).
@@ -386,14 +485,21 @@ function ns:OnTheme(fn) themeHooks[#themeHooks + 1] = fn end
 
 -- Re-apply every remembered color and font, then let modules refresh what they draw themselves.
 function ns:Repaint()
+    local memo = (paintedGen ~= lookGen) and {} or nil      -- (a look was set since: each frame's found again, once)
+    paintedGen = lookGen
     for obj, list in pairs(painted) do
+        if memo then lookKey[obj] = FindLook(obj, memo) end
         for method, e in pairs(list) do
             local fn = obj[method]
-            if fn then pcall(fn, obj, ns:Role(e[1], e[2])) end
+            if fn then pcall(fn, obj, ns:Role(e[1], e[2], obj)) end
         end
     end
     for fs, e in pairs(fonts) do
-        if not rawget(fs, "suiFamily") then pcall(fs.SetFont, fs, rawget(fs, "suiFixedFont") or (e[2] and ns.TITLEFONT or ns.FONT), e[1] * (ns.fontScale or 1), ns.FONTFLAGS) end
+        if memo then lookKey[fs] = FindLook(fs, memo) end
+        if not rawget(fs, "suiFamily") then
+            local face, flags = FaceOf(fs, e[2])
+            pcall(fs.SetFont, fs, face, e[1] * (ns.fontScale or 1), flags)
+        end
         local fit = rawget(fs, "suiFit")
         if fit then pcall(fit) end                               -- (a button's label: fitted again at the new size)
     end
