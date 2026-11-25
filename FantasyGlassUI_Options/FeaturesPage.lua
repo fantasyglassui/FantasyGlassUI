@@ -134,14 +134,23 @@ local function BuildSections(page)
     end
 
     -- The card the rows sit in (rounded where the theme rounds, flat otherwise), one rule between rows.
-    local card = CreateFrame("Frame", nil, page, ns.template)
-    card:SetBackdrop(ns.BACKDROP)
-    ns:Paint(card, "SetBackdropColor", "card", 1)
-    ns:Paint(card, "SetBackdropBorderColor", "rule", 1)
-    card:SetFrameLevel(page:GetFrameLevel() or 1)
-    if ns:CanRound() then ns:Round(card) end
-    card:Hide()
+    local function NewCard()
+        local c = CreateFrame("Frame", nil, page, ns.template)
+        c:SetBackdrop(ns.BACKDROP)
+        ns:Paint(c, "SetBackdropColor", "card", 1)
+        ns:Paint(c, "SetBackdropBorderColor", "rule", 1)
+        c:SetFrameLevel(page:GetFrameLevel() or 1)
+        if ns:CanRound() then
+            ns:Round(c)
+        elseif ns.StarcutWindow then                          -- (where the theme cannot round: the Starcut cut, small)
+            pcall(ns.StarcutWindow, c, "tip")
+        end
+        c:Hide()
+        return c
+    end
+    local card = NewCard()
     page.card = card
+    page.blockCards = {}                                      -- a card behind each block of another page's settings
     local function RowWidth()
         local w = page.GetWidth and page:GetWidth()
         return (type(w) == "number" and w > 300) and (w - 12) or 724
@@ -154,6 +163,16 @@ local function BuildSections(page)
         local chars = #(fs.GetText and fs:GetText() or "")
         local lines = math.max(1, math.ceil(chars * 0.5 * size * scale / math.max(80, width)))
         return lines * size * scale * 1.25
+    end
+
+    -- a slider or button row: its description sits at the right of the control, wraps, and the row grows to hold it
+    local function GrowTo(row, desc, x, minH, top)
+        local w = math.max(120, RowWidth() - x - PAD)
+        desc:SetWidth(w)
+        local dh = TextHeight(desc, 13, w)
+        local h = math.max(minH, top + dh + 14)
+        row:SetHeight(h)
+        return h
     end
 
     -- Rows ---------------------------------------------------------------------------------------
@@ -289,10 +308,12 @@ local function BuildSections(page)
         row.desc = row:CreateFontString(nil, "OVERLAY")
         ns:Font(row.desc, 13)
         row.desc:SetPoint("TOPLEFT", 352, -14)
-        row.desc:SetPoint("RIGHT", row, "RIGHT", -PAD, 0)
         row.desc:SetJustifyH("LEFT")
+        row.desc:SetJustifyV("TOP")
+        if row.desc.SetWordWrap then row.desc:SetWordWrap(true) end
         ns:Paint(row.desc, "SetTextColor", "dim")
         row.desc:SetText(ns:Tr(def.desc or ""))
+        row.Layout = function() return GrowTo(row, row.desc, 352, SLIDER_H, 14) end
         if s.slider then s.slider:HookScript("OnEnter", function() Hover(row, true); Explain(row) end); s.slider:HookScript("OnLeave", function() Hover(row, false); GameTooltip:Hide() end) end
         s.row = row
         Words(row, name)
@@ -353,9 +374,10 @@ local function BuildSections(page)
         row.desc = row:CreateFontString(nil, "OVERLAY")
         ns:Font(row.desc, 13)
         row.desc:SetPoint("TOPLEFT", 332, -19)
-        row.desc:SetPoint("RIGHT", row, "RIGHT", -PAD, 0)
         row.desc:SetJustifyH("LEFT")
-        if row.desc.SetWordWrap then row.desc:SetWordWrap(false) end
+        row.desc:SetJustifyV("TOP")
+        if row.desc.SetWordWrap then row.desc:SetWordWrap(true) end
+        row.Layout = function() return GrowTo(row, row.desc, 332, BUTTON_H, 19) end
         ns:Paint(row.desc, "SetTextColor", "dim")
         local desc = def.desc or ""
         if def.kind == "media" and not (ns.SharedMedia and ns.SharedMedia()) then desc = "No add-on here brings LibSharedMedia, so there is nothing to choose from yet." end
@@ -531,7 +553,7 @@ local function BuildSections(page)
         local h = frame.GetHeight and frame:GetHeight()
         return (type(h) == "number" and h > 0) and h or 200
     end
-    local function Block(block, y, sec)
+    local function BlockRaw(block, y, sec)
         if block.host then return HostBlock(block, y, sec)
         elseif block.bars then return BarsBlock(block, y)
         elseif block.list then return ToolBlock(ns.toolsPage and ns.toolsPage.listBlocks[block.list], y)
@@ -553,6 +575,21 @@ local function BuildSections(page)
         return 0
     end
 
+    -- (12.3) what another page makes is shown on a card of its own, as the rows above
+    local function Block(block, y, sec)
+        local h = BlockRaw(block, y - 8, sec)
+        if not (h and h > 0) then return h end
+        page.blockUsed = page.blockUsed + 1
+        local c = page.blockCards[page.blockUsed]
+        if not c then c = NewCard(); page.blockCards[page.blockUsed] = c end
+        c:ClearAllPoints()
+        c:SetPoint("TOPLEFT", page, "TOPLEFT", 0, y)
+        c:SetPoint("TOPRIGHT", page, "TOPRIGHT", -12, y)
+        c:SetHeight(h + 16)
+        c:Show()
+        return h + 16
+    end
+
     -- Showing a section ----------------------------------------------------------------------------
     -- Simple settings: a section's everyday switches, and its other rows.
     function page.RowShown(name)
@@ -571,6 +608,8 @@ local function BuildSections(page)
         if page.section ~= sec then page.filter = "all"; page.DrawFilter() end
         page.section, page.category = sec, sec.category
         card:Hide()
+        for _, c in ipairs(page.blockCards) do c:Hide() end
+        page.blockUsed = 0
         crumb:SetText(ns:Tr(sec.category.title))
         heading:SetText(ns:Tr(sec.title))
         newTag:SetShown(ns:SectionIsNew(sec))

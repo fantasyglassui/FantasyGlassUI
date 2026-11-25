@@ -9587,7 +9587,14 @@ try("12.3 settings look: rows and switches", function()
         if ns.db[first] == before or row.switch.checked ~= (ns.db[first] and true or false) then error("clicking the switch flips the setting") end
         local enter = Fn(row, "OnEnter")
         if type(enter) ~= "function" then error("the row has its tooltip") end
-        enter(row)
+        local realGT, tipShown = env.GameTooltip, false
+        local gt = newmock()
+        rawset(gt, "Show", function() tipShown = true end)
+        env.GameTooltip = gt
+        local okTip, errTip = pcall(enter, row)
+        env.GameTooltip = realGT
+        if not okTip then error(errTip, 0) end
+        if not tipShown then error("hovering the row shows its tooltip") end
         Press(row.switch)
         if ns.db[first] ~= before then error("clicking again puts it back") end
         -- a dependent setting is dimmed while its parent is off
@@ -9634,6 +9641,40 @@ try("12.3 settings look: rows and switches", function()
         Layout()
         local h2 = tall[r]
         if h2 <= h1 then error("at text size 1.3 the long row is taller: " .. h1 .. " -> " .. h2) end
+        -- slider and button rows grow and wrap too (a long German description at text size 1.3)
+        ns:ToggleConfig("access:Seeing")
+        if not (O.current and O.current.id == "access:Seeing") then error("Accessibility > Seeing is open") end
+        for _, row in pairs(page.rows) do Watch(row) end
+        local sliderName, buttonName
+        for _, n in ipairs(page.section.rows) do
+            local r = page.rows[n]
+            if rawget(r, "slider") and not sliderName then sliderName = n end
+            if rawget(r, "button") and not buttonName then buttonName = n end
+        end
+        if not (sliderName and buttonName) then error("(the check needs a slider row and a button row here)") end
+        ns.root.language, ns.fontScale = "deDE", 1
+        Layout()
+        local sh1, bh1 = tall[page.rows[sliderName]], tall[page.rows[buttonName]]
+        for _, n in ipairs({ sliderName, buttonName }) do
+            rawset(page.rows[n].desc, "GetText", function() return string.rep("Eine sehr lange Beschreibung auf Deutsch. ", 12) end)
+        end
+        Layout()
+        local sh2, bh2 = tall[page.rows[sliderName]], tall[page.rows[buttonName]]
+        if sh2 <= sh1 then error("a long slider description makes its row taller: " .. sh1 .. " -> " .. sh2) end
+        if bh2 <= bh1 then error("a long button description makes its row taller: " .. bh1 .. " -> " .. bh2) end
+        ns.fontScale = 1.3
+        Layout()
+        if tall[page.rows[sliderName]] <= sh2 or tall[page.rows[buttonName]] <= bh2 then error("and taller still at text size 1.3") end
+        ns.fontScale = 1
+        -- a section from each of the other pages sits on cards of its own
+        for _, id in ipairs({ "combat:Alerts and warnings", "layout:Moving and scale", "frames:Nameplates", "tools:Tools" }) do
+            ns:ToggleConfig(id)
+            if not (O.current and O.current.id == id) then error(id .. " opens") end
+            if (page.blockUsed or 0) < 1 or not page.blockCards[1] then error(id .. " shows its settings on a card") end
+        end
+        ns:ToggleConfig("access:Hearing")
+        if page.blockUsed ~= 0 then error("a section with no block has no block card") end
+        ns:ToggleConfig("combat:Alerts and warnings")
         -- the reset button is in the footer
         if not O.resetButton or not O.resetButton:IsShown() then error("Reset <category> is in the window's footer") end
         -- the switch: 38 x 22 with a 16 knob, accent with a dark knob when on, grey when off, only in the window
@@ -9668,8 +9709,42 @@ try("12.3 settings look: rows and switches", function()
         inWin:SetChecked(false)
         if Track(inWin) ~= "2c313c" then error("off: the track is #2c313c, got " .. Track(inWin)) end
         if Knob(inWin) ~= "9aa3b5" then error("off: a grey knob, got " .. Knob(inWin)) end
+        -- a labelled switch keeps its text inside its own width: track 38, gap 12
+        local function LabelWidth(c)
+            local got
+            rawset(c.label, "SetWidth", function(_, w) got = w end)
+            local f = Fn(c, "OnSizeChanged")
+            f(c, 300)
+            return got
+        end
+        local lw = LabelWidth(inWin)
+        if not lw or 38 + 12 + lw > 300 then error("a labelled switch's text ends inside its row: " .. tostring(lw)) end
+        local lo = LabelWidth(outWin)
+        if not lo or 28 + 8 + lo > 300 then error("outside the window too: " .. tostring(lo)) end
+        -- a section label is upper-cased with the game's own strupper, accents included; without it, left as it is
+        local realUp = env.strupper
+        local function Label(text)
+            local box = env.CreateFrame("Frame", nil, O.frame)
+            local fs
+            rawset(box, "CreateFontString", function() fs = newmock(); rawset(fs, "SetText", function(x, t) rawset(x, "txt", t) end); return fs end)
+            O.Header(box, text, 0, 0)
+            return rawget(fs, "txt")
+        end
+        env.strupper = function(t) return (t:upper():gsub("\195\164", "\195\132"):gsub("\195\182", "\195\150"):gsub("\195\188", "\195\156")) end
+        local up = Label("Größe ändern")
+        env.strupper = nil
+        local plain = Label("Größe ändern")
+        env.strupper = realUp
+        if up ~= "GRÖßE ÄNDERN" then error("the umlaut is upper-cased with the label: " .. tostring(up)) end
+        if plain ~= "Größe ändern" then error("without strupper the label is left as it is: " .. tostring(plain)) end
     end)
     env.CreateFrame = realCF
+    pcall(function()
+        for _, row in pairs(ns.featuresPage.rows) do
+            for _, k in ipairs({ "SetPoint", "SetHeight", "SetAlpha" }) do rawset(row, k, nil) end
+            if row.desc then rawset(row.desc, "GetText", nil) end
+        end
+    end)
     ns.root.language, ns.fontScale, ns.db.bigControls = keep.lang, keep.scale, keep.big
     ns.db.theme, ns.db.accent = keep.theme, keep.accent
     ns:Retheme()

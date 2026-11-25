@@ -1560,7 +1560,7 @@ function ns:CreateCheckbox(parent, label, checked, onChange)
     -- "..." (and shown whole under the mouse) instead of running into whatever sits beside it.
     local function FitLabel(_, w)
         w = tonumber(w)
-        if w and not ns:IsSecret(w) and w > 60 then c.label:SetWidth(w - 36) end
+        if w and not ns:IsSecret(w) and w > 60 then c.label:SetWidth(w - (inLook and 50 or 36)) end        -- (the track, and the gap before the label)
     end
     c:HookScript("OnSizeChanged", FitLabel)
     if hooksecurefunc then                                   -- (and at once when it is given a width, before it is first drawn)
@@ -1571,7 +1571,7 @@ function ns:CreateCheckbox(parent, label, checked, onChange)
     local function Draw(self, hover)
         local on = self.checked
         if inLook then                                        -- accent with a dark knob when on, a grey track and knob when off
-            local role = on and "@accent" or "track"
+            local role = on and "@accent" or (hover and "rim" or "track")
             if self.fill then
                 ns:Paint(self.fill, "SetVertexColor", role, 1)
                 self.edge:Hide()

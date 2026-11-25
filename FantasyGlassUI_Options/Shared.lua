@@ -17,7 +17,10 @@ function O.Header(parent, text, x, y, opts)
     ns:Font(fs, 13, true)                                    -- (12.3) a section label: 13, secondary, upper-case
     fs:SetPoint("TOPLEFT", x, y)
     local shown = ns:Tr(text)
-    if type(shown) == "string" and not shown:find("[\128-\255]") then shown = string.upper(shown) end     -- (only plain letters: upper-casing the others is not safe)
+    if type(shown) == "string" and type(_G.strupper) == "function" then          -- (the game's own, which knows accents and Cyrillic; without it the text is left as it is)
+        local ok, up = pcall(_G.strupper, shown)
+        if ok and type(up) == "string" then shown = up end
+    end
     fs:SetText(shown)
     ns:Paint(fs, "SetTextColor", "dim")
     ns:IndexOption(text, fs)                                 -- (section headings can be searched for too)
