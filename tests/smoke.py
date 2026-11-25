@@ -12792,6 +12792,118 @@ try("13.4 feel D: level times, race, where you left off", function()
     rec0.levelClock = clock0
     if not ok then error(err, 0) end
 end)
+try("13.4 feel D: save as guide, read aloud, chime", function()
+    local saved = { unlocked = ns.GuideUnlocked, speak = ns.Speak, map = env.C_Map, gstate = ns.root.guideState, guides = ns.root.guides,
+                    keys = {} }
+    for i, v in ipairs(ns.WINDOW_KEYS_FRAMES) do saved.keys[i] = v end
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        -- keys first (a login runs the add-on's own login again): the six names, once each
+        local mine = { "FantasyGlassUIGuideMenu", "FantasyGlassUIListPlanPreview", "FantasyGlassUIListPlanWhy", "FantasyGlassUIListPlanTime",
+                       "FantasyGlassUIListPlanCatchUp", "FantasyGlassUIListPlanHere" }
+        fireEvent("PLAYER_LOGIN"); runTimers()
+        fireEvent("PLAYER_LOGIN"); runTimers()
+        ns.PlannerKeyFrames()
+        for _, name in ipairs(mine) do
+            local n = 0
+            for _, v in ipairs(ns.WINDOW_KEYS_FRAMES) do if v == name then n = n + 1 end end
+            if n ~= 1 then error(name .. " is in the key windows " .. n .. " times") end
+        end
+        local read0, sound0, caps0, speak0 = ns.db.readDialog, ns.db.guideSound, ns.db.captions, ns.db.plannerSpeak
+        local ok2, err2 = pcall(function()
+            ns.root.guideState, ns.root.guides = {}, {}
+            env.C_Map = setmetatable({ GetMapInfo = function(map) return { name = "Elwynn Forest", mapID = map } end }, { __index = saved.map })
+
+            -- save as guide
+            local plan = {
+                { kind = "fly", node = 41, text = "Fly to Goldshire", x = 10, y = 20, map = 12, why = { saves = 300 }, hub = 1 },
+                { kind = "learnflight", node = 41, x = 11, y = 21, map = 12, why = { saves = 60 }, hub = 1 },
+                { kind = "sail", crossing = "Menethil-Auberdine", text = "Take the boat", x = 12, y = 22, map = 12, why = { saves = 120 }, hub = 2 },
+                { kind = "bind", text = "Goldshire", x = 13, y = 23, map = 12, why = { saves = 10 }, hub = 2 },
+                { kind = "train", text = "Train your skills", x = 14, y = 24, map = 12, why = { saves = 5 }, hub = 2 },
+                { kind = "vendor", text = "Sell your grey items", x = 15, y = 25, map = 12, why = { xp = 5 }, hub = 2 },
+            }
+            ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = plan }, { zone = 12, fromLevel = 8, toLevel = 9.6, seconds = 600 })
+            local name = ns.PlannerSaveAsGuide()
+            if name ~= "Elwynn Forest 8-10" then error("the guide's name: " .. tostring(name)) end
+            local first = ns:GuideGet(name)
+            local back = ns.GuideParse(ns.GuideText(first))
+            if #first.steps ~= #plan or #back.steps ~= #plan then error("every step is saved") end
+            for i, step in ipairs(plan) do
+                local b = back.steps[i]
+                if b.kind ~= step.kind or b.node ~= step.node or b.crossing ~= step.crossing then error("step " .. i .. " reads back as the same kind, node and crossing") end
+                if first.steps[i].why or b.why or first.steps[i].hub then error("only what the text keeps: no why or hub on step " .. i) end
+            end
+            local second = ns.PlannerSaveAsGuide()
+            if second ~= "Elwynn Forest 8-10 (2)" then error("the second save: " .. tostring(second)) end
+            if ns:GuideGet(name) ~= first or #first.steps ~= #plan then error("the first is unchanged") end
+            local found = false
+            for _, e in ipairs(ns.GuidePanelEntries(plan[1])) do if e[1] == "Save as guide" then found = true end end
+            if not found then error("the panel's menu has Save as guide") end
+            ns.GuideState().summary.empty = true
+            if #ns.GuidePanelEntries(plan[1]) ~= 0 then error("an empty plan: nothing to save") end
+            ns.GuideState().summary.empty = nil
+            ns.GuideUnlocked = function() return false end
+            if ns.PlannerSaveAsGuide() ~= nil then error("locked: nothing saved") end
+            ns.GuideUnlocked = function() return true end
+
+            -- /fgui guide keys
+            ns:GuideCommand("keys")
+            local menu = ns.guideStepMenu
+            local labels = {}
+            for _, b in ipairs(menu and menu.buttons or {}) do labels[#labels + 1] = b.entryLabel end
+            local joined = "," .. table.concat(labels, ",") .. ","
+            for _, want in ipairs({ ns:Tr("Back"), ns:Tr("Next"), ns:Tr("Guides"), ns:Tr("Save as guide") }) do
+                if not joined:find("," .. want .. ",", 1, true) then error("keys: the menu lacks " .. want .. " in " .. joined) end
+            end
+
+            -- read aloud
+            local spoken = {}
+            ns.Speak = function(_, text) spoken[#spoken + 1] = text; return true end
+            local notes = { { kind = "note", text = "speak one" }, { kind = "note", text = "speak two" }, { kind = "note", text = "speak three", why = { xp = 100 } } }
+            ns.db.readDialog, ns.db.plannerSpeak = false, true
+            ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = notes }, { zone = 12, fromLevel = 8, toLevel = 9 })
+            ns:GuideSkip(false)
+            if #spoken ~= 0 then error("reading aloud off: nothing spoken") end
+            ns.db.readDialog = true
+            ns:GuideSkip(false)
+            if #spoken ~= 1 or spoken[1] ~= "speak three" then error("the next step is read, without its why: " .. tostring(spoken[1])) end
+            ns.db.plannerSpeak = false
+            ns:GuideSkip(true)
+            ns:GuideSkip(false)
+            if #spoken ~= 1 then error("plannerSpeak off: not read") end
+            ns.db.plannerSpeak = true
+            ns:GuideSave({ name = "Written route", steps = { { kind = "note", text = "write one" }, { kind = "note", text = "write two" } } })
+            ns:GuideFollow("Written route")
+            ns:GuideSkip(false)
+            local readWritten = false
+            for _, t in ipairs(spoken) do if t == "write two" then readWritten = true end end
+            if not readWritten then error("a written guide's step is read too") end
+
+            -- the chime's caption
+            ns.db.captions, ns.db.guideSound = true, true
+            local c0 = ns.captionCount or 0
+            ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "chime one" }, { kind = "note", text = "chime two" }, { kind = "note", text = "chime three" } } }, { zone = 12, fromLevel = 8, toLevel = 9 })
+            if (ns.captionCount or 0) ~= c0 then error("a new plan's first step: no caption") end
+            ns:GuideSkip(false)
+            if (ns.captionCount or 0) ~= c0 + 1 or ns.captionLast ~= "Step done" then error("a step done: one caption, got " .. tostring((ns.captionCount or 0) - c0) .. " " .. tostring(ns.captionLast)) end
+            ns:GuideSkip(true)
+            if (ns.captionCount or 0) ~= c0 + 1 then error("Back: no caption") end
+            ns.db.guideSound = false
+            ns:GuideSkip(false)
+            if (ns.captionCount or 0) ~= c0 + 1 then error("the chime off: no caption") end
+        end)
+        ns.db.readDialog, ns.db.guideSound, ns.db.captions, ns.db.plannerSpeak = read0, sound0, caps0, speak0
+        if not ok2 then error(err2, 0) end
+    end)
+    for i = #ns.WINDOW_KEYS_FRAMES, 1, -1 do ns.WINDOW_KEYS_FRAMES[i] = nil end
+    for i, v in ipairs(saved.keys) do ns.WINDOW_KEYS_FRAMES[i] = v end
+    ns.GuideUnlocked, ns.Speak, env.C_Map = saved.unlocked, saved.speak, saved.map
+    ns.root.guideState, ns.root.guides = saved.gstate, saved.guides
+    ns.PlannerStop()
+    ns.plannerQueued = false
+    if not ok then error(err, 0) end
+end)
 -- batch 4 tests D (records): end
 
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)

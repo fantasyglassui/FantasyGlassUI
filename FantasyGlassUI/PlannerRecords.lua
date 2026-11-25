@@ -201,14 +201,91 @@ ns.GuideRegisterLine("leftoff", function()
 end)
 
 ------------------------------------------------------------------------------------------
+-- Task 8: save the plan as a guide, read the route aloud, keys, and the chime's caption.
+------------------------------------------------------------------------------------------
+local function ZoneName(map)
+    if not (map and C_Map and C_Map.GetMapInfo) then return nil end
+    local ok, info = pcall(C_Map.GetMapInfo, map)
+    local name = ok and type(info) == "table" and info.name
+    if type(name) == "string" and not ns:IsSecret(name) and name ~= "" then return name end
+end
+
+-- The planned guide as a saved one: each step through the text format (so only what it keeps), named
+-- "Zone from-to" (the level rounded outwards), then " (2)", " (3)" ... when that name is taken.
+function ns.PlannerSaveAsGuide()
+    if not Unlocked() then return nil end
+    local guide = ns:GuideGet(ns.GUIDE_PLANNED)
+    local st = ns.GuideState and ns.GuideState()
+    if type(guide) ~= "table" or type(guide.steps) ~= "table" or #guide.steps < 1 then return nil end
+    local s = type(st) == "table" and type(st.summary) == "table" and st.summary or {}
+    local steps = {}
+    for _, step in ipairs(guide.steps) do
+        local parsed = ns.GuideParseLine(ns.GuideLine(step))
+        if parsed then steps[#steps + 1] = parsed end
+    end
+    if #steps < 1 then return nil end
+    local base = format("%s %d-%d", ZoneName(s.zone) or ns:Tr("Planned route"),
+        floor(tonumber(s.fromLevel) or 1), math.ceil(tonumber(s.toLevel) or tonumber(s.fromLevel) or 1))
+    local name, n = base, 1
+    while ns:GuideGet(name) and n < 99 do n = n + 1; name = format("%s (%d)", base, n) end
+    local saved = ns:GuideSave({ name = name, steps = steps })
+    if not saved then return nil end
+    ns:Print("Saved as guide \"%s\": %d steps.", name, #steps)
+    return name
+end
+-- (offered for a plan the planner made: it has a length, and is not the empty one)
+local function PlanReady()
+    if not Unlocked() then return false end
+    local st = ns.GuideState and ns.GuideState()
+    local sum = type(st) == "table" and st.name ~= nil and st.name == ns.GUIDE_PLANNED and st.summary
+    return type(sum) == "table" and (tonumber(sum.seconds) or 0) > 0 and not sum.empty
+end
+ns.GuideRegisterAction("panel", "saveAsGuide", "Save as guide", function() ns.PlannerSaveAsGuide() end, PlanReady)
+
+-- The step you are on changed: read it aloud (only with reading aloud on), and caption the chime.
+ns.GuideRegisterAdvance("records", function(_, _, step, _, moved)
+    if not Unlocked() or not ns.db then return end
+    if ns.db.readDialog and ns.db.plannerSpeak ~= false and type(step) == "table" then
+        ns:Speak(ns.GuideStepBase(step))
+    end
+    if moved and ns.db.guideSound ~= false then ns:Caption("alert", ns:Tr("Step done")) end
+end)
+
+-- Keys: the guide's menu and its pages join the windows Tab and Enter work in.
+local KEY_FRAMES = { "FantasyGlassUIGuideMenu", "FantasyGlassUIListPlanPreview", "FantasyGlassUIListPlanWhy", "FantasyGlassUIListPlanTime",
+                     "FantasyGlassUIListPlanCatchUp", "FantasyGlassUIListPlanHere" }
+function ns.PlannerKeyFrames()
+    local list = ns.WINDOW_KEYS_FRAMES
+    if type(list) ~= "table" then return end
+    for _, name in ipairs(KEY_FRAMES) do
+        local have = false
+        for _, v in ipairs(list) do if v == name then have = true; break end end
+        if not have then list[#list + 1] = name end
+    end
+end
+-- /fgui guide keys: the panel's menu with every button on it (Back, Next, Guides and the shown panel actions).
+ns.GuideRegisterCommand("keys", function()
+    local st = ns.GuideState and ns.GuideState()
+    local entries = { { "Back", function() ns:GuideSkip(true) end }, { "Next", function() ns:GuideSkip(false) end },
+                      { "Guides", function() ns:GuideList() end } }
+    if type(st) == "table" and st.name ~= nil and st.name == ns.GUIDE_PLANNED then
+        local guide = ns:GuideGet(st.name)
+        for _, e in ipairs(ns.GuidePanelEntries(guide and guide.steps[st.at or 1] or nil)) do entries[#entries + 1] = e end
+    end
+    return ns:GuideMenu(entries)
+end)
+
+------------------------------------------------------------------------------------------
 -- Events and the 10 second ticker
 ------------------------------------------------------------------------------------------
 do
     local ev = CreateFrame("Frame")
-    for _, e in ipairs({ "PLAYER_LEVEL_UP", "PLAYER_ENTERING_WORLD" }) do pcall(ev.RegisterEvent, ev, e) end
+    for _, e in ipairs({ "PLAYER_LEVEL_UP", "PLAYER_ENTERING_WORLD", "PLAYER_LOGIN" }) do pcall(ev.RegisterEvent, ev, e) end
     ev:SetScript("OnEvent", ns:Guard("Planner records", function(_, event, a)
         if not Unlocked() then return end
-        if event == "PLAYER_LEVEL_UP" then
+        if event == "PLAYER_LOGIN" then
+            ns.PlannerKeyFrames()
+        elseif event == "PLAYER_LEVEL_UP" then
             if type(a) == "number" and a > 1 then ns.PlannerRecordLevel(a - 1) end
         elseif event == "PLAYER_ENTERING_WORLD" and a == true then       -- (an initial login: not a reload, not a loading screen)
             ns.PlannerLeftOff()
