@@ -1,6 +1,6 @@
 local ADDON, ns = ...
 _G.FantasyGlassUI = ns
-ns.version = "12.2.0"
+ns.version = "12.3.0"
 ns.author = "DustyMouse"
 
 ns.modules = {}
@@ -1581,6 +1581,10 @@ end
 
 -- What's new: shown once after an update (never on a first install, where the setup opens instead).
 ns.whatsNew = {
+    { "12.3.0", { "A new look for the settings window: calm and dark whatever your theme, with only your theme's accent color showing through, and clear lettering.",
+                  "Settings sit in cards with a switch on each, and the list of categories down the left is tidier.",
+                  "Themes are shown as a grid of pictures, with a large preview beside it.",
+                  "High-contrast themes give the window a black-and-white version, and the Readable and Dyslexia-friendly lettering still apply." } },
     { "12.2.0", { "Read talk and quests aloud: what an NPC says, a quest's text and a book are read as they open. Read what I point at: a tooltip is read when the mouse rests on it.",
                   "Move through the game's windows with the keyboard: in NPC talk, quests, vendors, mail, loot and question boxes, Tab goes from button to button and Enter presses, with each choice said aloud if you like.",
                   "Keys for one hand: everything round W, A, S and D, or all on the number pad, with one button, and one to put your keys back (/fgui keys).",
