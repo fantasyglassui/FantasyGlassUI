@@ -12286,11 +12286,20 @@ try("13.4 feel: seams", function()
         local live = ns.PlannerContext()
         if not live.seen then error("a context hook adds to the context") end
         if live.windowLo ~= 1 or live.windowHi ~= 14 or live.horizon ~= ns.PLANNER_HORIZON then error("the window's bounds and the horizon: " .. tostring(live.windowLo) .. " " .. tostring(live.windowHi) .. " " .. tostring(live.horizon)) end
-        if #ns.PlannerHookList("context") ~= 1 or ns.PlannerHookList("context")[1].key ~= "seams" then error("the hook list") end
+        -- (the groups' own hooks are in the list too: count the test's key, and the list's length around it)
+        local function seamsHooks(point)
+            local n, total = 0, #ns.PlannerHookList(point)
+            for _, h in ipairs(ns.PlannerHookList(point)) do if h.key == "seams" then n = n + 1 end end
+            return n, total
+        end
+        local nSeams, nAll = seamsHooks("context")
+        if nSeams ~= 1 or ns.PlannerHookList("context")[nAll].key ~= "seams" then error("the hook list: the new key, once, last") end
         ns.PlannerHook("context", "seams", function(ctx) ctx.seen = "again" end)
-        if #ns.PlannerHookList("context") ~= 1 or ns.PlannerContext().seen ~= "again" then error("the same key replaces the hook") end
+        local n2, all2 = seamsHooks("context")
+        if n2 ~= 1 or all2 ~= nAll or ns.PlannerContext().seen ~= "again" then error("the same key replaces the hook") end
         ns.PlannerHook("context", "seams", nil)
-        if #ns.PlannerHookList("context") ~= 0 or ns.PlannerContext().seen then error("nil removes the hook") end
+        local n3, all3 = seamsHooks("context")
+        if n3 ~= 0 or all3 ~= nAll - 1 or ns.PlannerContext().seen then error("nil removes the hook") end
         add(q(31, { level = 3, starts = at(1, 30, 40), ends = at(1, 30, 40) }))
         local function has(list, id) for _, r in ipairs(list) do if r.id == id then return true end end return false end
         local wctx = ctxFor({ level = 12, windowLo = 1, windowHi = 14 })
@@ -12461,23 +12470,37 @@ try("13.4 feel: seams", function()
         if not (nmenu and nmenu.buttons[1].entryLabel == "Do the thing") then error("a note: only the action") end
         if ns:GuideStepMenu({ kind = "goto", x = 1, y = 1 }) ~= nil then error("nothing shown: no menu") end
         ns.GuideRegisterAction("step", "seams", nil)
-        -- panel actions and the "..." button
-        if moreShown ~= false then error("no panel action: the ... button is hidden") end
+        -- panel actions and the "..." button (the groups' own panel actions may be shown too: the button
+        -- shows exactly when some entry applies, and hides when none does)
+        local others = #ns.GuidePanelEntries(nil)
+        if moreShown ~= (others > 0) then error("the ... button shows only when a panel action applies: " .. tostring(moreShown) .. " " .. others) end
         local panelActed
         ns.GuideRegisterAction("panel", "seams", "Panel thing", function() panelActed = true end, function() return true end)
         ns:GuideRedraw()
         if moreShown ~= true then error("a panel action while following the plan: the ... button shows") end
         click(panel.more)
         local pm = ns.guideStepMenu
-        if not (pm and pm.buttons[1].entryLabel == "Panel thing") then error("the panel menu lists the action") end
-        click(pm.buttons[1])
+        local pmb
+        for _, b in ipairs(pm and pm.buttons or {}) do if b.entryLabel == "Panel thing" then pmb = b end end
+        if not pmb then error("the panel menu lists the action") end
+        click(pmb)
         if not panelActed then error("the panel action runs") end
         local pe = ns.GuidePanelEntries(nil)
-        if not (#pe == 1 and pe[1][1] == "Panel thing" and type(pe[1][2]) == "function") then error("ns.GuidePanelEntries lists the shown panel actions") end
+        local last = pe[#pe]
+        if not (#pe == others + 1 and last[1] == "Panel thing" and type(last[2]) == "function") then error("ns.GuidePanelEntries lists the shown panel actions") end
         ns.GuideRegisterAction("panel", "seams", "Panel thing", function() end, function() return false end)
-        if #ns.GuidePanelEntries(nil) ~= 0 then error("ns.GuidePanelEntries: a hidden action is not listed") end
+        if #ns.GuidePanelEntries(nil) ~= others then error("ns.GuidePanelEntries: a hidden action is not listed") end
         ns:GuideRedraw()
-        if moreShown ~= false then error("no entry shown: the ... button hides") end
+        if moreShown ~= (others > 0) then error("no entry shown: the ... button hides") end
+        -- (with every panel action hidden, whoever registered it: the button hides)
+        ns.GuideUnlocked = function() return false end
+        if ns.PlannerPaceSync then ns.PlannerPaceSync() end
+        ns:GuideRedraw()
+        local none, hiddenNow = #ns.GuidePanelEntries(nil), moreShown
+        ns.GuideUnlocked = function() return true end
+        if ns.PlannerPaceSync then ns.PlannerPaceSync() end
+        ns:GuideRedraw()
+        if none ~= 0 or hiddenNow ~= false then error("no panel action applies (the guide locked): the ... button hides: " .. none .. " " .. tostring(hiddenNow)) end
         ns.GuideRegisterAction("panel", "seams", nil)
         -- the step-change hook
         local calls = {}
@@ -13982,10 +14005,14 @@ try("13.4 feel D: save as guide, read aloud, chime", function()
             if second ~= "Elwynn Forest 8-10 (2)" then error("the second save: " .. tostring(second)) end
             if ns:GuideGet(name) ~= first or #first.steps ~= #plan then error("the first is unchanged") end
             local found = false
-            for _, e in ipairs(ns.GuidePanelEntries(plan[1])) do if e[1] == "Save as guide" then found = true end end
+            local function offered()
+                for _, e in ipairs(ns.GuidePanelEntries(plan[1])) do if e[1] == "Save as guide" then return true end end
+                return false
+            end
+            found = offered()
             if not found then error("the panel's menu has Save as guide") end
             ns.GuideState().summary.empty = true
-            if #ns.GuidePanelEntries(plan[1]) ~= 0 then error("an empty plan: nothing to save") end
+            if offered() then error("an empty plan: nothing to save") end
             ns.GuideState().summary.empty = nil
             ns.GuideUnlocked = function() return false end
             if ns.PlannerSaveAsGuide() ~= nil then error("locked: nothing saved") end
