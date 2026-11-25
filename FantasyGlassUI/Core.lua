@@ -192,6 +192,7 @@ ns.defaults = {
     plannerLearnFlights = true,
     plannerWhy       = true,
     plannerTrainer   = true,        -- a stop at your class trainer every 2 levels
+    plannerHold      = true,        -- a hand-in that would level you waits for the trainer's town
     groupWatch       = true,        -- (internal: watches who is in your group for the three below)
     playerNotes      = true,        -- your own note on a player, in their tooltip
     recentMates      = true,        -- the people you grouped with lately

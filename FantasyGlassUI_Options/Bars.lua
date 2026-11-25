@@ -344,7 +344,12 @@ function ns.BuildGuidePage(page)
         Replan()
     end)
     trainer:SetPoint("TOPLEFT", 0, -386)
-    T.planButton, T.groupButton, T.flightsBox, T.whyBox, T.trainerBox = plan, group, flights, why, trainer
+    local hold = ns:CreateCheckbox(live, "Save hand-ins to level in town", ns.db.plannerHold ~= false, function(v)
+        ns.db.plannerHold = v
+        Replan()
+    end)
+    hold:SetPoint("TOPLEFT", 0, -412)
+    T.planButton, T.groupButton, T.flightsBox, T.whyBox, T.trainerBox, T.holdBox = plan, group, flights, why, trainer, hold
 
     page.Refresh = function()
         local open = ns.GuideUnlocked and ns:GuideUnlocked()
@@ -355,6 +360,7 @@ function ns.BuildGuidePage(page)
         flights:SetChecked(ns.db.plannerLearnFlights ~= false)
         why:SetChecked(ns.db.plannerWhy ~= false)
         trainer:SetChecked(ns.db.plannerTrainer ~= false)
+        hold:SetChecked(ns.db.plannerHold ~= false)
         DrawGroup(group)
         recBtn.text:SetText(ns:Tr(ns.guideRecording and "Stop recording" or "Record"))
         local st = ns.GuideState and ns.GuideState()
@@ -363,7 +369,7 @@ function ns.BuildGuidePage(page)
         else status:SetText(ns:Tr("You are not following a guide.")) end
     end
     page.Refresh()
-    page.contentHeight = 446
+    page.contentHeight = 472
     if page.area then page.area:SetContentHeight(page.contentHeight) end
     return T
 end

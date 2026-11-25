@@ -251,3 +251,101 @@ ns.PlannerRegisterStop({
     text = function(place) return place.name end,
     key = function(reason) return reason.level end,
 })
+
+------------------------------------------------------------------------------------------
+-- Held hand-ins: a hand-in that would take you to the trainer's level waits for the trainer's town
+-- (so you level where you train), when that town comes up soon, is visited anyway, and the hand-in
+-- NPC is close to it: holding costs no extra trip. Runs right after ns.PlannerAddStops.
+------------------------------------------------------------------------------------------
+ns.PLANNER_HOLD_SECONDS = 300
+local HANDLE = 5                        -- seconds to talk to an NPC (as PlannerRoute.lua counts it)
+
+function ns.PlannerHoldTurnins(guide, summary, ctx)
+    if type(guide) ~= "table" or type(guide.steps) ~= "table" or type(ctx) ~= "table" then return end
+    if ns.db and ns.db.plannerHold == false then return end
+    local steps = guide.steps
+    local wanted = type(ctx.stopsWanted) == "table" and ctx.stopsWanted.classTrainer
+    local level = type(wanted) == "table" and tonumber(wanted.level)
+    if not level or level <= (tonumber(ctx.level) or 1) then return end
+    -- the train step of that level, at a hub (a trainer that is a trip of its own is not visited anyway)
+    local key, t = "classTrainer:" .. level, nil
+    for i, s in ipairs(steps) do
+        ns.PlannerYield()
+        if s.kind == "train" and s.stopKey == key then t = i; break end
+    end
+    local train = t and steps[t]
+    if not train or (type(train.why) == "table" and train.why.detour) then return end
+    local c = ReachedAt(guide, ctx, level)              -- the hand-in that gets there
+    if not c or c >= t or steps[c].kind ~= "turnin" or steps[c].hub == nil then return end
+    local th = (steps[t - 1] and steps[t - 1].hub) or (steps[t + 1] and steps[t + 1].hub)
+    if th == nil then return end
+    -- it, and the later hand-ins of its hub (they would cross too): all or none
+    local group = {}
+    for i = c, t - 1 do
+        ns.PlannerYield()
+        local s = steps[i]
+        if s.kind == "do" then return end               -- (time spent on quests in between: not worth holding for)
+        if s.kind == "turnin" and s.hub == steps[c].hub then group[#group + 1] = i end
+    end
+    local hubYards = ns.PLANNER_HUB_YARDS or 150
+    for _, i in ipairs(group) do
+        ns.PlannerYield()
+        local s = steps[i]
+        local near = s.hub == th or Yards(s, train) <= hubYards
+        if not near then
+            for _, h in ipairs(steps) do
+                if h.hub == th and Yards(s, h) <= hubYards then near = true; break end
+            end
+        end
+        if not near then return end
+    end
+    -- the plan's time from the first hand-in to the trainer
+    local tctx = {}
+    for k, v in pairs(ctx) do tctx[k] = v end
+    tctx.hearth = nil
+    local secs, prev = 0, steps[c]
+    for i = c + 1, t do
+        ns.PlannerYield()
+        local s = steps[i]
+        if s.x and s.y then
+            local d = tonumber((ns.PlannerTravel(prev, s, tctx))) or huge
+            if d == huge then return end
+            secs, prev = secs + d, s
+        end
+        if i < t and (s.kind == "accept" or s.kind == "turnin") then secs = secs + HANDLE end
+    end
+    if secs > ns.PLANNER_HOLD_SECONDS then return end
+    -- move them: just before the train step, in their order
+    local moved = {}
+    for n = #group, 1, -1 do moved[n] = table.remove(steps, group[n]) end
+    local at = t - #group
+    for n, s in ipairs(moved) do
+        s.why = { held = true }
+        s.hub = th
+        table.insert(steps, at + n - 1, s)
+    end
+end
+
+------------------------------------------------------------------------------------------
+-- Talent points waiting (Forever's modern talent API); nil when the game can't say
+------------------------------------------------------------------------------------------
+local function Num(v) if type(v) == "number" and not ns:IsSecret(v) then return v end end
+
+function ns.PlannerUnspentTalents()
+    if type(C_ClassTalents) ~= "table" or type(C_ClassTalents.GetActiveConfigID) ~= "function"
+        or type(C_Traits) ~= "table" or type(C_Traits.GetConfigInfo) ~= "function" or type(C_Traits.GetTreeCurrencyInfo) ~= "function" then return nil end
+    local okC, config = pcall(C_ClassTalents.GetActiveConfigID)
+    config = okC and Num(config) or nil
+    if not config then return nil end
+    local okI, info = pcall(C_Traits.GetConfigInfo, config)
+    local tree = okI and type(info) == "table" and type(info.treeIDs) == "table" and Num(info.treeIDs[1]) or nil
+    if not tree then return nil end
+    local okL, list = pcall(C_Traits.GetTreeCurrencyInfo, config, tree, false)
+    if not (okL and type(list) == "table") then return nil end
+    local total = 0
+    for _, cur in ipairs(list) do
+        local q = type(cur) == "table" and Num(cur.quantity) or nil
+        if q and q > 0 then total = total + floor(q) end
+    end
+    return total
+end

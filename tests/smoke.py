@@ -9697,6 +9697,147 @@ try("13.1 stops: the mechanism and the class trainer", function()
     ns.PlannerSourceReset()
     if not ok then error(err, 0) end
 end)
+try("13.1 stops: held hand-ins and talents", function()
+    local real = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), level = env.UnitLevel, here = ns.GuideHere, source = ns.PlannerSource,
+                   ct = rawget(env, "C_ClassTalents"), tr = rawget(env, "C_Traits") }
+    local saved = { key = ns.root.guideKey, guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner, hold = ns.db.plannerHold,
+                    trainer = ns.db.plannerTrainer }
+    local cm = {}
+    for k, v in pairs(real.map) do cm[k] = v end
+    cm.GetWorldPosFromMapPos = function(map, v)
+        if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end
+    end
+    env.C_Map = cm
+    env.CreateVector2D = function(x, y) return { x = x, y = y } end
+    local level = 11
+    env.UnitLevel = function() return level end
+    -- hub A at 30,40 (hand-ins at 36,40); hub B at 60,40; the trainer between them at 48,40 (120 yards from each)
+    local function rec(id, sx, sy, ex, ey, xp)
+        return { id = id, name = "Quest " .. id, level = 10, minLevel = 1, xp = xp or 300,
+            starts = { { map = 1, x = sx, y = sy } }, ends = { { map = 1, x = ex, y = ey } },
+            objectives = { { kind = "kill", count = 4, countKnown = true, mobLevel = 10, spots = { { map = 1, x = sx + 4, y = sy + 4 } } } },
+            pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+    end
+    local recs = {}
+    local function Recs(endX)
+        recs = { [601] = rec(601, 30, 40, endX, 40), [602] = rec(602, 31, 40, endX + 1, 40), [603] = rec(603, 30, 41, endX, 41),
+                 [611] = rec(611, 60, 40, 60, 40, 200), [612] = rec(612, 61, 40, 61, 40, 200) }
+    end
+    Recs(36)
+    local ids = { 601, 602, 603, 611, 612 }
+    local places = { classTrainer = { { name = "Trainer Ten", map = 1, x = 48, y = 40, id = 10 } } }
+    local source = { kind = "questie", ids = function() return ids end, quest = function(id) return recs[id] end,
+        inns = function() return {} end, places = function(kind) return places[kind] or {} end }
+    local speed = 1.5
+    local function context()
+        return { source = source, level = level, group = "solo", inGroup = false, speed = speed, faction = "Alliance",
+            done = function() return false end, onQuest = function() return false end, trainerLevel = 10, xp = 900, xpMax = 1000,
+            here = { map = 1, x = 30, y = 40 }, crossings = {}, learnFlights = false, flights = {}, pace = 1, flightTime = function() return nil end }
+    end
+    local function where(guide)
+        local at = {}
+        for i, s in ipairs(guide.steps) do
+            if s.kind == "train" then at.train = i end
+            if s.kind == "turnin" and s.quest < 610 then at.turnins = at.turnins or {}; at.turnins[#at.turnins + 1] = i end
+            if s.kind == "accept" and s.quest > 610 then at.lastB = i end
+        end
+        return at
+    end
+    local ok, err = pcall(function()
+        ns.db.plannerTrainer = true
+        if ns.defaults and ns.defaults.plannerHold ~= true then error("plannerHold is on by default") end
+        ns.db.plannerHold = true
+        local guide = ns.PlannerRoute(context())
+        local at = where(guide)
+        if not (at.train and at.turnins and #at.turnins == 3) then error("the test's plan: a train step and three hand-ins") end
+        if at.lastB > at.turnins[1] then error("held: the hand-ins come after the second hub's accepts") end
+        for _, i in ipairs(at.turnins) do
+            if i > at.train or not (guide.steps[i].why and guide.steps[i].why.held) then error("held: each hand-in before the train step, marked held") end
+        end
+        if at.turnins[3] ~= at.train - 1 then error("held: the hand-ins sit just before the train step") end
+        local back = ns.GuideParse(ns.GuideText(guide))
+        if #back.steps ~= #guide.steps then error("the held plan round-trips") end
+        -- the second hub too far on the plan (400 seconds): not held
+        speed = 0.7
+        guide = ns.PlannerRoute(context())
+        at = where(guide)
+        if not (at.train and at.turnins) or at.turnins[1] > at.lastB then error("hub B 400 seconds later: the hand-ins stay in hub A") end
+        for _, i in ipairs(at.turnins) do if guide.steps[i].why and guide.steps[i].why.held then error("far: not marked held") end end
+        speed = 1.5
+        -- a hand-in too far from the trainer's hub: an extra trip, so not held
+        Recs(30)
+        guide = ns.PlannerRoute(context())
+        at = where(guide)
+        if not (at.train and at.turnins) or at.turnins[1] > at.lastB then error("the hand-in far from the trainer's hub: stays") end
+        Recs(36)
+        -- hub B not on the route: the trainer is a detour of its own
+        ids = { 601, 602, 603 }
+        places.classTrainer = { { name = "Trainer Ten", map = 1, x = 70, y = 70, id = 10 } }
+        guide = ns.PlannerRoute(context())
+        at = where(guide)
+        if not (at.train and at.turnins) then error("no hub B: a train step after the hand-ins") end
+        for _, i in ipairs(at.turnins) do if guide.steps[i].why and guide.steps[i].why.held then error("no hub B: not held") end end
+        ids = { 601, 602, 603, 611, 612 }
+        places.classTrainer = { { name = "Trainer Ten", map = 1, x = 48, y = 40, id = 10 } }
+        -- switched off
+        ns.db.plannerHold = false
+        guide = ns.PlannerRoute(context())
+        at = where(guide)
+        if not (at.train and at.turnins) or at.turnins[1] > at.lastB then error("setting off: the hand-ins stay") end
+        ns.db.plannerHold = true
+        -- the switch on the Guide tab
+        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
+        ns.root.guideState = nil
+        ns:ToggleConfig("guide")
+        local P = ns.guidePage
+        if not (P and P.holdBox) then error("the hold switch exists") end
+        local f = P.holdBox:GetScript("OnClick")
+        if type(f) ~= "function" then for _, h in ipairs(handlers) do if h.self == P.holdBox and h.name == "OnClick" then f = h.fn end end end
+        f(P.holdBox)
+        if ns.db.plannerHold ~= false then error("the hold switch turns it off") end
+        ns:ToggleConfig()
+        ns.db.plannerHold = true
+        -- talent points
+        local unspent = 2
+        env.C_ClassTalents = { GetActiveConfigID = function() return 5 end }
+        env.C_Traits = { GetConfigInfo = function() return { treeIDs = { 77 } } end,
+            GetTreeCurrencyInfo = function() return { { quantity = unspent - 1 }, { quantity = 1 } } end }
+        if ns.PlannerUnspentTalents() ~= 2 then error("two points to spend: " .. tostring(ns.PlannerUnspentTalents())) end
+        ns.GuideHere = function() return 1, 30, 40 end
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "x" } } }, {})
+        local panel = ns:GuideShowPanel()
+        local said = {}
+        if not (panel and panel.talent and panel.talentButton) then error("the panel has a talent line and button") end
+        rawset(panel.talent, "SetText", function(_, t) said.talent = t end)
+        ns:GuideShowPanel()
+        if said.talent ~= "2 talent points to spend" then error("the talent line: " .. tostring(said.talent)) end
+        unspent = 1 + 0
+        env.C_Traits.GetTreeCurrencyInfo = function() return { { quantity = 1 }, { quantity = 0 } } end
+        ns:GuideShowPanel()
+        if said.talent ~= "1 talent point to spend" then error("one point: " .. tostring(said.talent)) end
+        env.C_Traits.GetTreeCurrencyInfo = function() return { { quantity = 0 } } end
+        said.talent = nil
+        ns:GuideShowPanel()
+        if ns.PlannerUnspentTalents() ~= 0 or (said.talent and said.talent ~= "") then error("none to spend: no line") end
+        env.C_Traits.GetTreeCurrencyInfo = function() error("the game can't say") end
+        said.talent = "stale"
+        ns:GuideShowPanel()
+        if ns.PlannerUnspentTalents() ~= nil or (said.talent and said.talent ~= "") then error("an erroring API: nil and no line") end
+        env.C_Traits = nil
+        if ns.PlannerUnspentTalents() ~= nil then error("no trait API: nil") end
+        env.C_ClassTalents = nil
+        ns:GuideShowPanel()
+        if ns.PlannerUnspentTalents() ~= nil then error("no talent API: nil") end
+    end)
+    ns:PlannerStop()
+    rawset(env, "C_ClassTalents", real.ct); rawset(env, "C_Traits", real.tr)
+    env.C_Map = real.map; rawset(env, "CreateVector2D", real.vec); env.UnitLevel = real.level
+    ns.GuideHere = real.here; ns.PlannerSource = real.source
+    ns.root.guideKey, ns.root.guides, ns.root.guideState, ns.root.planner = saved.key, saved.guides, saved.state, saved.planner
+    ns.db.plannerHold, ns.db.plannerTrainer = saved.hold, saved.trainer
+    ns.PlannerSourceReset()
+    if not ok then error(err, 0) end
+end)
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()

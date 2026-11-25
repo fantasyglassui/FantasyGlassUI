@@ -21,6 +21,11 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["Save hand-ins to level in town"] = "Abgaben für den Stufenaufstieg in der Stadt aufsparen",
+    ["(held for your trainer)"] = "(für deinen Lehrer aufgespart)",
+    ["%d talent point to spend"] = "%d Talentpunkt zu vergeben",
+    ["%d talent points to spend"] = "%d Talentpunkte zu vergeben",
+    ["Open your talent builds"] = "Deine Talentbuilds öffnen",
     ["Train"] = "Trainieren",
     ["Visit the vendor"] = "Zum Händler",
     ["Check your mail"] = "Post abholen",
@@ -3318,6 +3323,11 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["Save hand-ins to level in town"] = "Garder les remises pour monter de niveau en ville",
+    ["(held for your trainer)"] = "(gardée pour votre entraîneur)",
+    ["%d talent point to spend"] = "%d point de talent à dépenser",
+    ["%d talent points to spend"] = "%d points de talent à dépenser",
+    ["Open your talent builds"] = "Ouvrir vos builds de talents",
     ["Train"] = "Entraînement",
     ["Visit the vendor"] = "Passer chez le marchand",
     ["Check your mail"] = "Relever le courrier",
@@ -6615,6 +6625,11 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["Save hand-ins to level in town"] = "Guardar las entregas para subir de nivel en la ciudad",
+    ["(held for your trainer)"] = "(guardada para tu instructor)",
+    ["%d talent point to spend"] = "%d punto de talento por gastar",
+    ["%d talent points to spend"] = "%d puntos de talento por gastar",
+    ["Open your talent builds"] = "Abrir tus builds de talentos",
     ["Train"] = "Entrenar",
     ["Visit the vendor"] = "Visitar al vendedor",
     ["Check your mail"] = "Revisar el correo",
@@ -9915,6 +9930,11 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["Save hand-ins to level in town"] = "Придержать сдачу заданий, чтобы получить уровень в городе",
+    ["(held for your trainer)"] = "(придержано для вашего учителя)",
+    ["%d talent point to spend"] = "%d очко талантов можно потратить",
+    ["%d talent points to spend"] = "Очков талантов можно потратить: %d",
+    ["Open your talent builds"] = "Открыть ваши билды талантов",
     ["Train"] = "Обучение",
     ["Visit the vendor"] = "Зайти к торговцу",
     ["Check your mail"] = "Проверить почту",
@@ -13212,6 +13232,11 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["Save hand-ins to level in town"] = "Guardar as entregas para subir de nível na cidade",
+    ["(held for your trainer)"] = "(guardada para o seu instrutor)",
+    ["%d talent point to spend"] = "%d ponto de talento para gastar",
+    ["%d talent points to spend"] = "%d pontos de talento para gastar",
+    ["Open your talent builds"] = "Abrir as suas builds de talentos",
     ["Train"] = "Treinar",
     ["Visit the vendor"] = "Visitar o vendedor",
     ["Check your mail"] = "Verificar o correio",
@@ -16509,6 +16534,11 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["Save hand-ins to level in town"] = "Tenere le consegne per salire di livello in città",
+    ["(held for your trainer)"] = "(tenuta per il tuo maestro)",
+    ["%d talent point to spend"] = "%d punto talento da spendere",
+    ["%d talent points to spend"] = "%d punti talento da spendere",
+    ["Open your talent builds"] = "Apri le tue build di talenti",
     ["Train"] = "Addestramento",
     ["Visit the vendor"] = "Visita il mercante",
     ["Check your mail"] = "Controlla la posta",
@@ -19806,6 +19836,11 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["Save hand-ins to level in town"] = "마을에서 레벨업하도록 퀘스트 완료를 미루기",
+    ["(held for your trainer)"] = "(교관을 위해 보류)",
+    ["%d talent point to spend"] = "사용할 수 있는 특성 점수 %d점",
+    ["%d talent points to spend"] = "사용할 수 있는 특성 점수 %d점",
+    ["Open your talent builds"] = "특성 빌드 열기",
     ["Train"] = "훈련",
     ["Visit the vendor"] = "상인 방문",
     ["Check your mail"] = "우편 확인",
@@ -23106,6 +23141,11 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["Save hand-ins to level in town"] = "留着交任务,在城镇里升级",
+    ["(held for your trainer)"] = "(留给你的训练师)",
+    ["%d talent point to spend"] = "%d 点天赋可分配",
+    ["%d talent points to spend"] = "%d 点天赋可分配",
+    ["Open your talent builds"] = "打开你的天赋配置",
     ["Train"] = "训练",
     ["Visit the vendor"] = "拜访商人",
     ["Check your mail"] = "查看邮件",

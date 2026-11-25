@@ -123,6 +123,7 @@ local function WhyText(step, guide)
     local why = type(step.why) == "table" and step.why
     if not why then return "" end
     local xp, saves = tonumber(why.xp), tonumber(why.saves)
+    if why.held then return "  " .. ns:Tr("(held for your trainer)") end
     if xp and xp > 0 then
         local n = xp - xp % 1
         local good, nice = pcall(BreakUpLargeNumbers or tostring, n)
@@ -430,6 +431,12 @@ local function SkippedText(st)
     local solo = group == nil or group == "solo"
     return format(ns:Tr(solo and "Skipped: %d group quests (Solo is on)" or "Skipped: %d group quests"), n)
 end
+-- "2 talent points to spend", when the game says there are some.
+local function TalentText()
+    local n = ns.PlannerUnspentTalents and ns.PlannerUnspentTalents()
+    if type(n) ~= "number" or n <= 0 then return nil end
+    return format(ns:Tr(n == 1 and "%d talent point to spend" or "%d talent points to spend"), n)
+end
 Draw = function()
     if not panel then return end
     local st = State()
@@ -440,7 +447,15 @@ Draw = function()
     local skipped = (Planned(st) and st.planFailed) and ns:Tr("Couldn't plan the route; trying again after your next quest") or SkippedText(st)
     panel.skipped:SetText(skipped or "")
     panel.skipped:SetShown(skipped ~= nil)
-    panel:SetHeight(skipped and 131 or 118)
+    local talents = Planned(st) and TalentText() or nil          -- (talent points waiting; the planned guide only)
+    panel.talent:SetText(talents or "")
+    panel.talent:SetShown(talents ~= nil)
+    panel.talentButton:SetShown(talents ~= nil)
+    panel.talent:ClearAllPoints()
+    panel.talent:SetPoint("TOPLEFT", 12, skipped and -105 or -92)
+    panel.talentButton:ClearAllPoints()
+    panel.talentButton:SetPoint("TOPRIGHT", -8, skipped and -103 or -90)
+    panel:SetHeight(118 + (skipped and 13 or 0) + (talents and 13 or 0))
     panel.count:SetText(math.min(at, #steps) .. "/" .. #steps)
     local step = steps[at]
     if step then
@@ -504,13 +519,23 @@ function ns:GuideShowPanel()
         panel.skipped:SetWidth(258)
         if panel.skipped.SetWordWrap then panel.skipped:SetWordWrap(false) end
         ns:Paint(panel.skipped, "SetTextColor", "faint")
+        panel.talent = ns:NewText(panel, 10, "LEFT")               -- (a planned route: talent points waiting)
+        panel.talent:SetPoint("TOPLEFT", 12, -92)
+        panel.talent:SetWidth(206)
+        if panel.talent.SetWordWrap then panel.talent:SetWordWrap(false) end
+        ns:Paint(panel.talent, "SetTextColor", "faint")
+        panel.talentButton = ns:CreateButton(panel, "Build", 44, 14, function()
+            if ns.TalentCommand then ns:TalentCommand("") end         -- (your talent builds, as /fgui talents)
+        end)
+        panel.talentButton:SetPoint("TOPRIGHT", -8, -90)
+        panel.talent:Hide(); panel.talentButton:Hide()
         local back = ns:CreateButton(panel, "<", 22, 18, function() ns:GuideSkip(true) end)
         back:SetPoint("BOTTOMLEFT", 8, 6)
         local skip = ns:CreateButton(panel, ">", 22, 18, function() ns:GuideSkip(false) end)
         skip:SetPoint("LEFT", back, "RIGHT", 4, 0)
         local list = ns:CreateButton(panel, "Guides", 64, 18, function() ns:GuideList() end)
         list:SetPoint("BOTTOMRIGHT", -8, 6)
-        for _, def in ipairs({ { back, "Back one step" }, { skip, "Tick this step off and move on" }, { list, "Your guides: follow another, record, write or paste one" } }) do
+        for _, def in ipairs({ { back, "Back one step" }, { skip, "Tick this step off and move on" }, { list, "Your guides: follow another, record, write or paste one" }, { panel.talentButton, "Open your talent builds" } }) do
             def[1]:HookScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine(ns:Tr(def[2]), 1, 1, 1); GameTooltip:Show() end)
             def[1]:HookScript("OnLeave", function() GameTooltip:Hide() end)
         end

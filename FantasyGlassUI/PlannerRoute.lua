@@ -482,6 +482,7 @@ function ns.PlannerRoute(ctx)
     summary.xp, summary.seconds = floor(xp + 0.5), floor(seconds + 0.5)
     summary.toLevel = ToLevel(ctx, xp)
     if ns.PlannerAddStops then ns.PlannerAddStops(guide, summary, ctx) end   -- (stops on the way: PlannerStops.lua)
+    if ns.PlannerHoldTurnins then ns.PlannerHoldTurnins(guide, summary, ctx) end   -- (hand-ins held for the trainer's town)
     summary.empty = #guide.steps == 0
     return guide, summary
 end
