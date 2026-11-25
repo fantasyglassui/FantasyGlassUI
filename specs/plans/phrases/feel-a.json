@@ -1,0 +1,72 @@
+{
+ "The route on the map": [
+  "Die Route auf der Karte",
+  "L'itinéraire sur la carte",
+  "La ruta en el mapa",
+  "Маршрут на карте",
+  "A rota no mapa",
+  "Il percorso sulla mappa",
+  "지도에 경로 표시",
+  "地图上的路线"
+ ],
+ "Hubs on the map": [
+  "Knotenpunkte auf der Karte",
+  "Pôles sur la carte",
+  "Núcleos en el mapa",
+  "Узлы на карте",
+  "Polos no mapa",
+  "Poli sulla mappa",
+  "지도에 거점 표시",
+  "地图上的据点"
+ ],
+ "%s xp an hour": [
+  "%s EP pro Stunde",
+  "%s XP par heure",
+  "%s de EXP por hora",
+  "%s опыта в час",
+  "%s de XP por hora",
+  "%s PE all'ora",
+  "시간당 경험치 %s",
+  "每小时 %s 经验"
+ ],
+ "Click: plan from here": [
+  "Klick: von hier aus planen",
+  "Clic : planifier à partir d'ici",
+  "Clic: planificar desde aquí",
+  "Щелчок: спланировать отсюда",
+  "Clique: planejar a partir daqui",
+  "Clic: pianifica da qui",
+  "클릭: 여기서부터 계획",
+  "点击：从这里开始规划"
+ ],
+ "Plan from here?": [
+  "Von hier aus planen?",
+  "Planifier à partir d'ici ?",
+  "¿Planificar desde aquí?",
+  "Спланировать отсюда?",
+  "Planejar a partir daqui?",
+  "Pianificare da qui?",
+  "여기서부터 계획할까요?",
+  "从这里开始规划？"
+ ],
+ "Plan from here": [
+  "Von hier aus planen",
+  "Planifier à partir d'ici",
+  "Planificar desde aquí",
+  "Спланировать отсюда",
+  "Planejar a partir daqui",
+  "Pianifica da qui",
+  "여기서부터 계획",
+  "从这里开始规划"
+ ],
+ "Cancel": [
+  "Abbrechen",
+  "Annuler",
+  "Cancelar",
+  "Отмена",
+  "Cancelar",
+  "Annulla",
+  "취소",
+  "取消"
+ ]
+}

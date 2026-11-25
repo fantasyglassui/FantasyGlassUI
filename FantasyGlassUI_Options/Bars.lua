@@ -254,7 +254,22 @@ end
 ------------------------------------------------------------------------------------------
 -- Group A: the route and the hubs on the map.
 local function FeelMapSection(live, y, Replan, T)
-    return y, function() end
+    local function Redraw() if ns.PlannerMapRedraw then ns.PlannerMapRedraw() end end
+    local line = ns:CreateCheckbox(live, "The route on the map", ns.db.plannerMapLine ~= false, function(v)
+        ns.db.plannerMapLine = v
+        Redraw()
+    end)
+    line:SetPoint("TOPLEFT", 0, y)
+    local hubs = ns:CreateCheckbox(live, "Hubs on the map", ns.db.plannerMapHubs ~= false, function(v)
+        ns.db.plannerMapHubs = v
+        Redraw()
+    end)
+    hubs:SetPoint("TOPLEFT", 0, y - 26)
+    T.mapLineBox, T.mapHubsBox = line, hubs
+    return y - 52, function()
+        line:SetChecked(ns.db.plannerMapLine ~= false)
+        hubs:SetChecked(ns.db.plannerMapHubs ~= false)
+    end
 end
 
 -- Group B: time to level, "Why this?", the preview, finish the zone.
