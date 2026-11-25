@@ -12813,6 +12813,190 @@ try("13.4 feel B: time to level, why this, preview", function()
     if ns.guideStepMenu then ns.guideStepMenu:Hide() end
     if not ok then error(err, 0) end
 end)
+try("13.4 feel B: finish the zone", function()
+    local saved = { on = ns.GuideOn, here = ns.GuideHere, unlocked = ns.GuideUnlocked, map = env.C_Map, vec = rawget(env, "CreateVector2D"), context = ns.PlannerContext,
+                    world = ns.PlannerWorldPos, print = ns.Print, guideState = ns.root.guideState, guides = ns.root.guides, key = ns.root.guideKey,
+                    loaded = env.C_AddOns.IsAddOnLoaded, meta = rawget(env.C_AddOns, "GetAddOnMetadata"), q = rawget(env, "Questie"), loader = rawget(env, "QuestieLoader"),
+                    guidePage = ns.guidePage }
+    local rec0 = ns.PlannerCharRecord(false)
+    local oldGoal = rec0 and rec0.zoneGoal
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        env.C_Map = setmetatable({
+            GetWorldPosFromMapPos = function(map, v)
+                if map == 1429 then return 0, { x = v.x * 1000, y = v.y * 1000 } end
+                if map == 1436 then return 0, { x = v.x * 1000 + 5000, y = v.y * 1000 } end
+            end,
+            GetMapInfo = function(map) return { name = ({ [1429] = "Elwynn Forest", [1436] = "Westfall" })[map] or "Somewhere", mapType = 3 } end,
+        }, { __index = saved.map })
+        env.CreateVector2D = function(x, y) return { x = x, y = y } end
+        local rec = ns.PlannerCharRecord(true)
+        rec.zoneGoal = nil
+
+        -- src.mapQuests on Questie: one scan, then read from the cache
+        local reads = 0
+        local quests = { [701] = 12, [702] = 12, [703] = 14, [704] = -5, [705] = 99 }
+        local fakes = {
+            QuestieDB = { QuestPointers = { [701] = true, [702] = true, [703] = true, [704] = true, [705] = true },
+                NPCPointers = {}, npcFlags = {},
+                GetQuest = function() return nil end, IsDoable = function() return true end,
+                QueryNPCSingle = function() return nil end,
+                QueryQuestSingle = function(id, key) if key == "zoneOrSort" then reads = reads + 1; return quests[id] end end },
+            QuestXP = { GetQuestLogRewardXP = function() return 450 end },
+            ZoneDB = { GetUiMapIdByAreaId = function(_, area) return ({ [12] = 1429, [14] = 1436 })[area] end },
+        }
+        env.Questie = { API = { isReady = true, RegisterOnReady = function() end } }
+        env.QuestieLoader = { ImportModule = function(_, name) return fakes[name] end }
+        env.C_AddOns.IsAddOnLoaded = function() return true end
+        rawset(env.C_AddOns, "GetAddOnMetadata", function() return "4" end)
+        ns.PlannerSourceReset()
+        local src = ns.PlannerSource()
+        if not (src and src.kind == "questie") then error("the Questie fake loads") end
+        local a = src.mapQuests(1429)
+        table.sort(a)
+        if table.concat(a, ",") ~= "701,702" then error("the quests of map 1429: " .. table.concat(a, ",")) end
+        local b = src.mapQuests(1436)
+        if table.concat(b, ",") ~= "703" then error("the quests of map 1436: " .. table.concat(b, ",")) end
+        local before = reads
+        src.mapQuests(1429); src.mapQuests(1436); src.mapQuests(1)
+        local again = ns.PlannerSource()
+        again.mapQuests(1429)
+        if reads ~= before or reads ~= 5 then error("cached: a second call reads nothing (" .. before .. " then " .. reads .. ")") end
+        if #src.mapQuests(1) ~= 0 then error("a map with no quests: empty") end
+        ns.PlannerSourceReset()
+        env.C_AddOns.IsAddOnLoaded, env.Questie, env.QuestieLoader = saved.loaded, saved.q, saved.loader
+        rawset(env.C_AddOns, "GetAddOnMetadata", saved.meta)
+
+        -- the plan with a goal
+        local function qr(id, extra)
+            local r = { id = id, name = "Q" .. id, level = 5, minLevel = 1, xp = 100, starts = {}, ends = {}, objectives = {}, pre = {}, preAny = {}, exclusive = {},
+                        elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+            for k, v in pairs(extra or {}) do r[k] = v end
+            return r
+        end
+        local function at(map, x, y) return { { map = map, x = x, y = y } } end
+        local function kill(map, x, y, lv) return { { kind = "kill", count = 0, countKnown = true, mobLevel = lv, spots = at(map, x, y) } } end
+        local recs, order, byMap, doneSet = {}, {}, { [1429] = {}, [1436] = {} }, {}
+        local function add(r, map)
+            recs[r.id] = r; order[#order + 1] = r.id
+            byMap[map] = byMap[map] or {}
+            byMap[map][#byMap[map] + 1] = r.id
+        end
+        add(qr(501, { level = 2, starts = at(1429, 30, 40), ends = at(1429, 30, 40), objectives = kill(1429, 32, 42, 2) }), 1429)
+        add(qr(502, { level = 5, starts = at(1429, 31, 41), ends = at(1429, 31, 41), objectives = kill(1429, 33, 43, 5) }), 1429)
+        add(qr(503, { level = 11, doable = false, starts = at(1429, 30, 40), ends = at(1429, 30, 40) }), 1429)
+        add(qr(504, { level = 12, starts = at(1436, 30, 40), ends = at(1436, 30, 40), objectives = kill(1436, 32, 42, 12) }), 1436)
+        doneSet[503] = true
+        local mapReads = 0
+        local source = { kind = "test", ids = function() return order end, quest = function(id) return recs[id] end, inns = function() return {} end,
+                         mapQuests = function(map) mapReads = mapReads + 1; return byMap[map] or {} end }
+        local function ctxFor()
+            local c = { source = source, level = 12, group = "solo", inGroup = false, speed = 7, faction = "Alliance", xp = 0, xpMax = 10000,
+                done = function(id) return doneSet[id] == true end, onQuest = function() return false end, here = { map = 1429, x = 30, y = 40 },
+                crossings = {}, learnFlights = false, bind = "Elsewhere", bindSpot = { map = 9, x = 1, y = 1 }, pace = 1, flights = {},
+                flightTime = function() return nil end, timed = function() return false end, itemCount = function() return 0 end }
+            c.windowLo, c.windowHi, c.horizon = c.level - 4, c.level + 2, ns.PLANNER_HORIZON
+            for _, h in ipairs(ns.PlannerHookList("context")) do h.fn(c) end
+            return c
+        end
+        local function planned(guide) local o = {} for _, st in ipairs(guide.steps) do if st.quest then o[st.quest] = true end end return o end
+        -- goal off: the old window
+        local guide = ns.PlannerRoute(ctxFor())
+        local ps = planned(guide)
+        if ps[501] or ps[502] or not ps[504] then error("no goal: the old window (level 12 plans the level-12 quest only)") end
+        if ns.PlannerZoneGoal() ~= nil then error("no goal set") end
+        -- goal on
+        if ns.PlannerSetZoneGoal(1429) ~= true or ns.PlannerZoneGoal() ~= 1429 or ns.PlannerCharRecord(false).zoneGoal ~= 1429 then error("the goal is kept per character") end
+        local c1 = ctxFor()
+        if c1.windowLo ~= 1 or c1.windowHi ~= 14 then error("the goal widens the window to level 1: " .. c1.windowLo .. " " .. c1.windowHi) end
+        local summary
+        guide, summary = ns.PlannerRoute(c1)
+        ps = planned(guide)
+        if not (ps[501] and ps[502]) or ps[503] or ps[504] then error("the zone's quests are planned, none from the next zone") end
+        local zg = summary.zoneGoal
+        if not (zg and zg.map == 1429 and zg.done == 1 and zg.total == 3) then error("summary.zoneGoal is 1 of 3: " .. tostring(zg and (zg.done .. "/" .. zg.total))) end
+        for _, st in ipairs(guide.steps) do if st.map == 1436 then error("nothing on the other map") end end
+        -- the panel line
+        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
+        ns.GuideOn = function() return true end
+        ns.GuideHere = function() return 1429, 30, 40 end
+        local panel = ns:GuideShowPanel()
+        local extraText
+        rawset(panel.extra, "SetText", function(_, t) extraText = t end)
+        ns:GuideSetPlan(guide, summary)
+        if type(extraText) ~= "string" or not extraText:find("Zone: 1 of 3 quests", 1, true) then error("the panel line: " .. tostring(extraText)) end
+        -- a group quest: left out in Solo, but counted
+        add(qr(505, { level = 5, group = true, starts = at(1429, 30, 40), ends = at(1429, 30, 40), objectives = kill(1429, 32, 42, 5) }), 1429)
+        guide, summary = ns.PlannerRoute(ctxFor())
+        if planned(guide)[505] then error("a group quest is left out in Solo") end
+        if not (summary.zoneGoal and summary.zoneGoal.done == 1 and summary.zoneGoal.total == 4) then error("but counted: 1 of 4") end
+        ns:GuideSetPlan(guide, summary)
+        if not extraText:find("Zone: 1 of 4 quests", 1, true) then error("the panel line: " .. tostring(extraText)) end
+
+        -- every quest of the zone done: the goal clears, "Zone done" once, and the next plan levels again
+        local printed = {}
+        ns.Print = function(_, msg, ...) printed[#printed + 1] = select("#", ...) > 0 and string.format(msg, ...) or msg end
+        for _, id in ipairs({ 501, 502, 505 }) do doneSet[id] = true end
+        ns.PlannerContext = ctxFor
+        ns.PlannerWorldPos = function(map, x, y)
+            if map == 1429 then return 0, x * 1000, y * 1000 end
+            if map == 1436 then return 0, x * 1000 + 5000, y * 1000 end
+        end
+        fireEvent("PLAYER_REGEN_ENABLED")
+        local function runIt()
+            for _ = 1, 200 do
+                if not ns.plannerBusy and not ns.plannerQueued then break end
+                for i = 1, #handlers do local h = handlers[i]; if h.name == "OnUpdate" then pcall(h.fn, h.self, 0.02) end end
+            end
+        end
+        ns:PlannerStart()
+        runIt()
+        local zoneDone = {}
+        for _, line in ipairs(printed) do if line:find("Zone done", 1, true) then zoneDone[#zoneDone + 1] = line end end
+        if #zoneDone ~= 1 or zoneDone[1] ~= "Zone done: Elwynn Forest" then error("Zone done, once: " .. table.concat(printed, " | ")) end
+        if ns.PlannerZoneGoal() ~= nil or ns.PlannerCharRecord(false).zoneGoal ~= nil then error("the goal is cleared") end
+        local st = ns.GuideState()
+        local back = {}
+        for _, step in ipairs(ns:GuideGet(st.name).steps) do if step.quest then back[step.quest] = true end end
+        if not back[504] or back[501] or (st.summary and st.summary.zoneGoal) then error("the next plan levels again (the next zone)") end
+        ns:PlannerStop()
+
+        -- the Guide tab's button cycles and stores the goal per character
+        ns.GuideHere = function() return 1429, 30, 40 end
+        local page = env.CreateFrame("Frame")
+        local T = ns.BuildGuidePage(page)
+        local btn = T and T.zoneGoalButton
+        if not btn then error("the Guide tab has the goal button") end
+        local label
+        rawset(btn.text, "SetText", function(_, t) label = t end)
+        page.Refresh()
+        if label ~= "Goal: Level up" then error("leveling: " .. tostring(label)) end
+        local f = btn:GetScript("OnClick")
+        if type(f) ~= "function" then for _, h in ipairs(handlers) do if h.self == btn and h.name == "OnClick" then f = h.fn end end end
+        f(btn)
+        if ns.PlannerZoneGoal() ~= 1429 or label ~= "Goal: Finish Elwynn Forest" then error("the zone you are in: " .. tostring(ns.PlannerZoneGoal()) .. " " .. tostring(label)) end
+        f(btn)
+        if ns.PlannerZoneGoal() ~= nil or label ~= "Goal: Level up" then error("back to leveling: " .. tostring(label)) end
+        if ns.PlannerGoalZone() ~= 1429 then error("the zone-level map you are in") end
+    end)
+    ns.PlannerSourceReset()
+    env.C_AddOns.IsAddOnLoaded, env.Questie, env.QuestieLoader = saved.loaded, saved.q, saved.loader
+    rawset(env.C_AddOns, "GetAddOnMetadata", saved.meta)
+    ns:PlannerStop()
+    ns.plannerQueued = false
+    ns.Print = saved.print
+    ns.PlannerContext, ns.PlannerWorldPos = saved.context, saved.world
+    ns.GuideOn, ns.GuideHere, ns.GuideUnlocked = saved.on, saved.here, saved.unlocked
+    env.C_Map = saved.map
+    rawset(env, "CreateVector2D", saved.vec)
+    local rr = ns.PlannerCharRecord(false)
+    if rr then rr.zoneGoal = oldGoal end
+    ns.PlannerHook("context", "zoneGoal", nil)
+    ns:GuideSetPlan(nil)
+    ns.root.guideState, ns.root.guides, ns.root.guideKey = saved.guideState, saved.guides, saved.key
+    ns.guidePage = saved.guidePage
+    if not ok then error(err, 0) end
+end)
 -- batch 4 tests B (panel): end
 -- batch 4 tests C (pace): begin
 -- batch 4 tests C (pace): end

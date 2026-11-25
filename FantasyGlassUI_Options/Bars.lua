@@ -259,7 +259,29 @@ end
 
 -- Group B: time to level, "Why this?", the preview, finish the zone.
 local function FeelPanelSection(live, y, Replan, T)
-    return y, function() end
+    local function Draw(b)
+        local goal = ns.PlannerZoneGoal and ns.PlannerZoneGoal()
+        if not goal then b.text:SetText(ns:Tr("Goal: Level up")) return end
+        local name = tostring(goal)
+        local get = C_Map and C_Map.GetMapInfo
+        local okInfo, info = false, nil
+        if type(get) == "function" then okInfo, info = pcall(get, goal) end
+        if okInfo and type(info) == "table" and type(info.name) == "string" and not ns:IsSecret(info.name) and info.name ~= "" then name = info.name end
+        b.text:SetText(string.format(ns:Tr("Goal: Finish %s"), name))
+    end
+    -- Cycles between leveling and finishing the zone you are in (the planner plans again either way).
+    local goal = ns:CreateButton(live, "", 250, 24, function(b)
+        if ns.PlannerZoneGoal and ns.PlannerZoneGoal() then
+            ns.PlannerSetZoneGoal(nil)
+        elseif ns.PlannerGoalZone and ns.PlannerSetZoneGoal then
+            local zone = ns.PlannerGoalZone()
+            if zone then ns.PlannerSetZoneGoal(zone) end
+        end
+        Draw(b)
+    end)
+    goal:SetPoint("TOPLEFT", 0, y)
+    T.zoneGoalButton = goal
+    return y - 34, function() Draw(goal) end
 end
 
 -- Group C: the time you have, break reminders, catch me up, speed or story.
