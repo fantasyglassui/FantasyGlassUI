@@ -11233,8 +11233,10 @@ try("13.3 choices: skip list, deaths, soloed elites", function()
         ns.db.plannerSoloElites = false
         env.IsInGroup = function() return false end
         fireEvent("QUEST_ACCEPTED", 1, 202); fireEvent("QUEST_TURNED_IN", 202)
-        if elites.WARRIOR then error("switch off: not recorded") end
+        if elites.WARRIOR ~= 1 then error("switch off: still recorded (the switch only decides planning)") end
+        if ns.PlannerContext().soloElites ~= false then error("the live context carries the switch off") end
         ns.db.plannerSoloElites = true
+        elites.WARRIOR = nil
         if ns.PlannerContext().soloElites ~= true or ns.PlannerContext().class ~= "WARRIOR" then error("the live context carries class and switch") end
         -- deaths
         env.C_Map = setmetatable({ GetWorldPosFromMapPos = function(map, v) if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end end }, { __index = saved.map })
@@ -11243,16 +11245,19 @@ try("13.3 choices: skip list, deaths, soloed elites", function()
             return q(id, { level = 10, xp = 680, starts = { { map = 1, x = x, y = y } }, ends = { { map = 1, x = x, y = y } },
                 objectives = { { kind = "kill", count = 0, countKnown = true, mobLevel = 10, spots = { { map = 1, x = x + 2, y = y + 2 } } } } })
         end
-        local hr = { [501] = hubRec(501, 30, 40) }
-        local hsrc = { kind = "test", ids = function() return { 501 } end, quest = function(id) return hr[id] end, inns = function() return {} end }
+        local hr = { [501] = hubRec(501, 30, 40), [502] = hubRec(502, 32, 42) }
+        local only501 = true
+        local hsrc = { kind = "test", ids = function() return only501 and { 501 } or { 501, 502 } end, quest = function(id) return hr[id] end, inns = function() return {} end }
         local level = 12
+        local logged
         local function route()
             local c = { source = hsrc, level = level, group = "solo", inGroup = false, speed = 7, faction = "Alliance", xpMax = 10000,
                 done = function() return false end, onQuest = function() return false end, here = { map = 1, x = 30, y = 40 },
                 crossings = {}, learnFlights = false, bind = "Elsewhere", bindSpot = { map = 1, x = 30, y = 40 }, pace = 1, flights = {},
                 flightTime = function() return nil end }
             local live = ns.PlannerContext()
-            c.deaths = ns.db.plannerDeaths ~= false and live.deaths or nil
+            c.deaths = live.deaths                      -- (the live context decides by the switch)
+            if logged then c.onQuest = function(id) return logged[id] or false end end
             local _, summary = ns.PlannerRoute(c)
             return summary
         end
@@ -11270,10 +11275,33 @@ try("13.3 choices: skip list, deaths, soloed elites", function()
         s = route()
         if s.empty ~= false or s.moved then error("planned at 14") end
         level = 12
+        -- one quest in the log keeps only that quest of a marked hub
+        only501 = false
+        logged = { [501] = true }
+        local function stepQuests(sum)
+            local c = { source = hsrc, level = level, group = "solo", inGroup = false, speed = 7, faction = "Alliance", xpMax = 10000,
+                done = function() return false end, onQuest = function(id) return logged[id] or false end, here = { map = 1, x = 30, y = 40 },
+                crossings = {}, learnFlights = false, bind = "Elsewhere", bindSpot = { map = 1, x = 30, y = 40 }, pace = 1, flights = {},
+                flightTime = function() return nil end, deaths = ns.PlannerContext().deaths }
+            local guide, summary = ns.PlannerRoute(c)
+            local seen = {}
+            for _, st in ipairs(guide.steps) do if st.quest then seen[st.quest] = true end end
+            return seen, summary
+        end
+        local seen, sum2 = stepQuests()
+        if not seen[501] or seen[502] then error("the logged quest stays, the other quest of the hub is left out") end
+        if sum2.moved ~= 14 then error("moved is set when a quest is left out: " .. tostring(sum2.moved)) end
+        logged = nil
+        only501 = true
         ns.db.plannerDeaths = false
         if route().empty ~= false then error("switch off: planned") end
         ns.db.plannerDeaths = true
         -- a far hub is not marked; a death with no world position is not recorded
+        ns.db.plannerDeaths = false
+        local before2 = #ns.PlannerCharRecord(false).deaths
+        fireEvent("PLAYER_DEAD")
+        if #ns.PlannerCharRecord(false).deaths ~= before2 + 1 then error("switch off: deaths are still recorded") end
+        ns.db.plannerDeaths = true
         local n = #ns.PlannerCharRecord(false).deaths
         ns.PlannerWorldPos = function() return nil end
         fireEvent("PLAYER_DEAD")

@@ -192,7 +192,6 @@ end
 
 -- Where you died: remembered per character (the last 50), with the level you were.
 function ns.PlannerRecordDeath()
-    if not (ns.db and ns.db.plannerDeaths ~= false) then return end
     local level = UnitLevel and UnitLevel("player")
     if type(level) ~= "number" or ns:IsSecret(level) or not ns.GuideHere then return end
     local map, x, y = ns.GuideHere()
@@ -671,7 +670,7 @@ do
             if ns:GuideUnlocked() then ns.PlannerRecordDeath() end
             return
         end
-        if (event == "QUEST_ACCEPTED" or event == "QUEST_TURNED_IN") and ns:GuideUnlocked() and ns.db and ns.db.plannerSoloElites ~= false then
+        if (event == "QUEST_ACCEPTED" or event == "QUEST_TURNED_IN") and ns:GuideUnlocked() then
             local id = (event == "QUEST_ACCEPTED" and type(b) == "number") and b or a
             if type(id) == "number" then
                 local okG, grouped = pcall(IsInGroup)

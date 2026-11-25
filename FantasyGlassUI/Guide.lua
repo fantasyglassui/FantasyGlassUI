@@ -524,7 +524,13 @@ function ns:GuideStepMenu(step)
         stepMenu:SetScript("OnLeave", function(self) if not (self:IsMouseOver() or stepMenu.button:IsMouseOver()) then self:Hide() end end)
         stepMenu.button:HookScript("OnLeave", function() if not stepMenu:IsMouseOver() then stepMenu:Hide() end end)
         stepMenu:Hide()
+        if type(UISpecialFrames) == "table" then tinsert(UISpecialFrames, "FantasyGlassUIGuideMenu") end   -- (Escape closes it)
         ns.guideStepMenu = stepMenu
+        local away = CreateFrame("Frame")                    -- (a click anywhere else closes it)
+        pcall(away.RegisterEvent, away, "GLOBAL_MOUSE_DOWN")
+        away:SetScript("OnEvent", function()
+            if stepMenu:IsShown() and not (stepMenu:IsMouseOver() or stepMenu.button:IsMouseOver()) then stepMenu:Hide() end
+        end)
     end
     stepMenu.quest = step.quest
     stepMenu.skipped = (ns.PlannerSkipList and ns.PlannerSkipList()[step.quest]) and true or false

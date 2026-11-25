@@ -214,16 +214,22 @@ function ns.PlannerHubs(candidates, ctx)
         hub.sx, hub.sy = nil, nil
         HubLoop(hub, ctx)
     end
-    if type(ctx.deaths) == "table" and #ctx.deaths > 0 then          -- (hubs where you died twice are left out for now, unless a quest of theirs is in your log)
+    if type(ctx.deaths) == "table" and #ctx.deaths > 0 then          -- (a hub where you died twice keeps only the quests already in your log, or is left out)
         local kept = {}
+        ctx.movedByMap = ctx.movedByMap or {}
         for _, hub in ipairs(hubs) do
             local d = ns.PlannerHubTooHard(hub, ctx)
-            local logged = false
-            if d and ctx.onQuest then
-                for _, r in ipairs(hub.quests) do if ctx.onQuest(r.id) then logged = true; break end end
-            end
-            if d and not logged then
-                if not ctx.moved or d + 2 > ctx.moved then ctx.moved = d + 2 end
+            if d then
+                local logged = {}
+                for _, r in ipairs(hub.quests) do if ctx.onQuest and ctx.onQuest(r.id) then logged[#logged + 1] = r end end
+                if #logged < #hub.quests then
+                    if not ctx.movedByMap[hub.map] or d + 2 > ctx.movedByMap[hub.map] then ctx.movedByMap[hub.map] = d + 2 end
+                end
+                if #logged > 0 then
+                    hub.quests = logged
+                    HubLoop(hub, ctx)
+                    kept[#kept + 1] = hub
+                end
             else
                 kept[#kept + 1] = hub
             end
@@ -534,8 +540,11 @@ function ns.PlannerRoute(ctx)
     c.rewardCache = {}                               -- quest id -> reward bonus, read once per plan
     c.repCache = {}                                  -- faction id -> reputation still needed, read once per plan
     local zone, newly, hubs = ns.PlannerPickZone(candidates, c)
-    summary.moved = c.moved                          -- the level a hub where you died twice is planned again at
-    if not zone then return guide, summary end
+    if not zone then                                 -- (nothing left to plan: say what was left out, wherever it was)
+        for _, lv in pairs(c.movedByMap or {}) do if not summary.moved or lv > summary.moved then summary.moved = lv end end
+        return guide, summary
+    end
+    summary.moved = c.movedByMap and c.movedByMap[zone] or nil     -- the level a hub (in this zone) where you died twice is planned again at
     local left = {}
     for _, h in ipairs(hubs) do if h.map == zone then left[#left + 1] = h end end
     local flights = {}
