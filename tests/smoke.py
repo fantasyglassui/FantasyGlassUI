@@ -9988,6 +9988,33 @@ try("13.1 stops: the vendor", function()
         if not (d.supply.food and d.supply.food.hours <= 3.0001 and d.supply.food.drops == 30) then error("the samples: hours capped, drops only") end
         counts[4541] = 50
         ns.root.planner = nil
+        -- a short interval with a big drop (a sale, mail sent) does not make a huge rate; a long gap adds nothing
+        ns.root.planner = nil
+        free = 20
+        counts[4541] = 100
+        plan()
+        clock = clock + 10
+        counts[4541] = 0
+        _, steps = plan()
+        if #steps ~= 1 or steps[1].text ~= "Buy supplies at Grocer; buy 20 food" then error("a short interval keeps the default rate: " .. (steps[1] and steps[1].text or "none")) end
+        ns.root.planner = nil
+        counts[4541] = 100
+        plan()
+        clock = clock + 4000
+        counts[4541] = 50
+        plan()
+        d = ns.PlannerCharRecord(false)
+        if d.supply.food.drops ~= 0 or d.supply.food.hours ~= 0 then error("a gap over an hour adds nothing") end
+        counts[4541] = 50
+        ns.root.planner = nil
+        -- a skipped stop stays skipped when only its words change (what to buy)
+        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
+        local function mk(text) return { name = ns.GUIDE_PLANNED, steps = { { kind = "vendor", text = text, map = 1, x = 33, y = 40, stopKey = "vendor:7" } } } end
+        ns:GuideSetPlan(mk("Sell at Smith"), {})
+        ns.GuideState().ticked[1] = true
+        ns:GuideSetPlan(mk("Sell at Smith; buy 200 arrows"), {})
+        if not ns.GuideState().ticked[1] then error("a stop is known by its key, not its words") end
+        ns:PlannerStop()
         -- the settings
         free, worn = 2, 0.1
         ns.db.plannerVendor = false
@@ -10019,7 +10046,14 @@ try("13.1 stops: the vendor", function()
         d = ns.PlannerCharRecord(false)
         if not (d and d.vendorVisits == 1) then error("a visit is counted when the current vendor step's window closes") end
         guide, steps = plan()
-        if steps[1].stopKey ~= "vendor:1" then error("the next visit is a new stop: " .. tostring(steps[1].stopKey)) end
+        if #steps ~= 0 then error("just visited: the same reason does not bring you back for a while") end
+        worn = 0.1
+        guide, steps = plan()
+        if #steps ~= 1 or steps[1].text ~= "Sell and repair at Smith" then error("a new reason (worn gear) is wanted at once") end
+        worn = 0.9
+        clock = clock + 601
+        guide, steps = plan()
+        if steps[1] == nil or steps[1].stopKey ~= "vendor:1" then error("the next visit is a new stop: " .. tostring(steps[1].stopKey)) end
         ns:GuideSetPlan(guide, {})
         if ns.GuideState().ticked[at] then error("the next visit is not ticked") end
         ns:PlannerStop()

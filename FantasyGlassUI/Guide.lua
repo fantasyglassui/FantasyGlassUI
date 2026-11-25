@@ -337,7 +337,8 @@ function ns:GuideFollow(name)
 end
 -- A step as the same thing to do, wherever it sits in a plan.
 local function StepKey(step)
-    return table.concat({ tostring(step.kind), tostring(step.quest), tostring(step.node), tostring(step.crossing), tostring(step.text), tostring(step.stopKey) }, "\1")
+    -- (a planner stop is known by its stopKey: its words, such as what to buy, may change between plans)
+    return table.concat({ tostring(step.kind), tostring(step.quest), tostring(step.node), tostring(step.crossing), step.stopKey and "" or tostring(step.text), tostring(step.stopKey) }, "\1")
 end
 -- Follow a new plan (Planner.lua), from its first step; nil = an empty one until the first is ready.
 -- Steps you ticked off yourself in the old plan stay ticked where the new plan has them too (a

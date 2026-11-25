@@ -357,6 +357,7 @@ end
 ------------------------------------------------------------------------------------------
 ns.PLANNER_VENDOR_SLOTS = 3
 ns.PLANNER_VENDOR_DURABILITY = 0.30
+ns.PLANNER_VENDOR_QUIET = 600          -- seconds after a visit before the same reason brings you back
 ns.PLANNER_SUPPLIES = {
     ammo = { arrow = { { 1, 2512 }, { 10, 2515 }, { 25, 3030 }, { 40, 11285 } },
              bullet = { { 1, 2516 }, { 10, 2519 }, { 25, 3033 }, { 40, 11284 } } },
@@ -392,13 +393,11 @@ function ns.PlannerLowestDurability()
     for slot = 1, 19 do
         local ok, cur, max = pcall(GetInventoryItemDurability, slot)
         if not ok then return nil end
-        if cur ~= nil or max ~= nil then
-            cur, max = Num(cur), Num(max)
-            if not (cur and max) then return nil end
-            if max > 0 then
-                local r = cur / max
-                if not lowest or r < lowest then lowest = r end
-            end
+        if ns:IsSecret(cur) or ns:IsSecret(max) then return nil end
+        cur, max = Num(cur), Num(max)           -- (an empty slot or a worn-out-proof item has none: skipped)
+        if cur and max and max > 0 then
+            local r = cur / max
+            if not lowest or r < lowest then lowest = r end
         end
     end
     return lowest
@@ -456,25 +455,31 @@ end
 
 -- Use per hour, measured from the counts seen at each plan (only drops count, not what you bought;
 -- the time between two samples is at most an hour). The default until there are 2 samples.
+local MEASURE_HOURS = 0.25          -- hours of samples before the measured rate is used
+local RATE_CLAMP = 4                    -- at most this many times the default
 local function UseRate(key, count)
     local rec = ns.PlannerCharRecord and ns.PlannerCharRecord(true)
     local okT, now = pcall(GetTime)
     now = okT and Num(now) or nil
-    if type(rec) ~= "table" or not now then return SUPPLY_RATE[key] end
+    local default = SUPPLY_RATE[key]
+    if type(rec) ~= "table" or not now then return default end
     if type(rec.supply) ~= "table" then rec.supply = {} end
     local s = rec.supply[key]
     if type(s) ~= "table" or not (tonumber(s.n) and tonumber(s.t)) then
         s = { n = count, t = now, samples = 1, drops = 0, hours = 0 }
         rec.supply[key] = s
-        return SUPPLY_RATE[key]
+        return default
     end
-    local dt = math.min(math.max(0, now - s.t), SAMPLE_CAP)
-    if count < s.n then s.drops = (tonumber(s.drops) or 0) + (s.n - count) end
-    s.hours = (tonumber(s.hours) or 0) + dt / 3600
-    s.n, s.t, s.samples = count, now, (tonumber(s.samples) or 1) + 1
+    local dt = now - s.t
+    s.samples = (tonumber(s.samples) or 1) + 1
+    if dt >= 0 and dt <= SAMPLE_CAP then          -- (a longer gap, or a clock that went back: a new baseline, nothing added)
+        if count < s.n then s.drops = (tonumber(s.drops) or 0) + (s.n - count) end
+        s.hours = (tonumber(s.hours) or 0) + dt / 3600
+    end
+    s.n, s.t = count, now
     if s.hours > SAMPLE_KEEP then s.hours, s.drops = s.hours / 2, s.drops / 2 end
-    if s.samples >= 2 and s.hours > 0 then return s.drops / s.hours end
-    return SUPPLY_RATE[key]
+    if s.samples >= 2 and s.hours >= MEASURE_HOURS then return math.min(s.drops / s.hours, default * RATE_CLAMP) end
+    return default
 end
 
 -- What runs short for `hours` of play: { { key, item, count, buy }, ... }
@@ -548,6 +553,22 @@ ns.PlannerRegisterStop({
             reason.supplies = SupplyNeeds(tonumber(ctx.level) or 1, hours)
         end
         if not reason.sell and #reason.supplies == 0 then return nil end
+        -- a visit just ended: the same reason does not bring you back (unsellable items, no money to repair)
+        -- for a while, unless it gained something new
+        local last = { repair = reason.repair and true or false, sell = reason.sell and true or false, supplies = {} }
+        for _, need in ipairs(reason.supplies) do last.supplies[need.key] = true end
+        local q = type(rec) == "table" and rec.vendorQuiet
+        local okT, now = pcall(GetTime)
+        now = okT and Num(now) or nil
+        if type(q) == "table" and type(q.seen) == "table" and now and tonumber(q.t) and now >= q.t and now - q.t < ns.PLANNER_VENDOR_QUIET then
+            local fresh = (last.repair and not q.seen.repair) or (last.sell and not q.seen.sell)
+            for key in pairs(last.supplies) do if not q.seen.supplies[key] then fresh = true end end
+            if not fresh then return nil end
+            q.seen = { repair = last.repair or q.seen.repair, sell = last.sell or q.seen.sell, supplies = q.seen.supplies }
+            for key in pairs(last.supplies) do q.seen.supplies[key] = true end
+        end
+        local now2 = ns.PlannerCharRecord and ns.PlannerCharRecord(false)
+        if type(now2) == "table" then now2.vendorLast = last end
         return reason
     end,
     places = function(ctx, reason)
@@ -577,7 +598,9 @@ ns.PlannerRegisterStop({
         end
         if not reason.sell then return buy end
         local both = Both(sell, buy)
-        return #both > 0 and both or sell
+        if #both > 0 then return both end
+        if not reason.repair and #buy > 0 then return buy end     -- (any vendor buys: the supplies vendor serves selling too)
+        return sell
     end,
     text = function(place, reason)
         local name = place.name or ""

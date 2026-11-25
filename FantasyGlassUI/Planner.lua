@@ -396,7 +396,11 @@ do
                 -- a vendor visit is over: the next vendor stop is a new one (it is not ticked by this one)
                 if step.kind == "vendor" and type(step.stopKey) == "string" and step.stopKey:sub(1, 7) == "vendor:" then
                     local d = PaceRecord(true)
-                    if d then d.vendorVisits = (tonumber(d.vendorVisits) or 0) + 1 end
+                    if d then
+                        d.vendorVisits = (tonumber(d.vendorVisits) or 0) + 1
+                        local okT, now = pcall(GetTime)
+                        if okT and type(now) == "number" and type(d.vendorLast) == "table" then d.vendorQuiet = { t = now, seen = d.vendorLast } end
+                    end
                 end
                 ns:GuideSkip(false); ns:PlannerReplan("window closed"); return
             end
