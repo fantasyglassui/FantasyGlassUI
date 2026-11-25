@@ -11728,6 +11728,145 @@ try("13.3 choices: hand-in, quest log, inn", function()
     if not ok then error(err, 0) end
 end)
 
+try("13.3 choices: when quests run dry", function()
+    local saved = { loaded = env.C_AddOns.IsAddOnLoaded, meta = rawget(env.C_AddOns, "GetAddOnMetadata"), q = rawget(env, "Questie"), loader = rawget(env, "QuestieLoader"),
+                    unlocked = ns.GuideUnlocked, here = ns.GuideHere, world = ns.PlannerWorldPos, dungeons = ns.PLANNER_DUNGEONS, map = env.C_Map,
+                    combat = env.InCombatLockdown, dry = ns.db.plannerDry, group = ns.db.plannerGroup, level = env.UnitLevel }
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        ns.db.plannerDry = nil
+        local cm = {}
+        for k, v in pairs(saved.map) do cm[k] = v end
+        cm.GetMapInfo = function(map) return { name = ({ [1436] = "Westfall", [1437] = "Wetlands" })[map] or "Somewhere" } end
+        env.C_Map = cm
+        ns.PLANNER_DUNGEONS = { { name = "Deadmines", minLevel = 17, maxLevel = 24, map = 1436, x = 43, y = 72, zone = 1581 },
+                                { name = "Far Cave", minLevel = 40, maxLevel = 50, map = 1437, x = 1, y = 1, zone = 999 } }
+        local function dq(id, xp)
+            return { id = id, name = "DQ" .. id, level = 20, minLevel = 15, xp = xp or 3000, starts = { { map = 1436, x = 50, y = 50 } }, ends = {},
+                objectives = {}, pre = {}, preAny = {}, exclusive = {}, elite = false, group = true, dungeon = true, repeatable = false, doable = true }
+        end
+        local recs = { [901] = dq(901), [902] = dq(902), [903] = dq(903), [904] = dq(904), [905] = dq(905) }
+        recs[905].doable = false                                   -- (one nobody can take)
+        local spots = {}
+        local function source()
+            return { kind = "fake", ids = function() return {} end, quest = function(id) return recs[id] end,
+                     zoneQuests = function(zone) return zone == 1581 and { 901, 902, 903, 904, 905 } or {} end,
+                     grindSpots = function() return spots end }
+        end
+        local function ctx(group, extra)
+            local c = { source = source(), level = 18, group = group, inGroup = false, done = function() return false end, onQuest = function() return false end }
+            for k, v in pairs(extra or {}) do c[k] = v end
+            return c
+        end
+        -- Everything: a dungeon line with its quests and its start
+        local guide, summary = ns.PlannerRoute(ctx("all"))
+        if not summary.empty then error("an empty plan") end
+        local lines = ns.PlannerAdviceLines({}, 1, summary)
+        if #lines ~= 1 or lines[1] ~= "Try Deadmines: 4 quests, start at Westfall" then error("the dungeon line: " .. tostring(lines[1])) end
+        -- Solo: no dungeon line; When grouped counts only in a party
+        local _, s2 = ns.PlannerRoute(ctx("solo"))
+        if s2.dry ~= nil or #ns.PlannerAdviceLines({}, 1, s2) ~= 0 then error("Solo: no dungeon") end
+        _, s2 = ns.PlannerRoute(ctx("grouped"))
+        if s2.dry ~= nil then error("When grouped, alone: no dungeon") end
+        _, s2 = ns.PlannerRoute(ctx("grouped", { inGroup = true }))
+        if not (s2.dry and s2.dry.dungeon and s2.dry.dungeon.count == 4) then error("When grouped, in a party: the dungeon") end
+        -- out of the level range: nothing
+        _, s2 = ns.PlannerRoute(ctx("all", { level = 30 }))
+        if s2.dry ~= nil then error("level 30 is out of the dungeon's range") end
+        -- done and logged quests are not counted
+        _, s2 = ns.PlannerRoute(ctx("all", { done = function(id) return id == 901 end, onQuest = function(id) return id == 902 end }))
+        if not (s2.dry and s2.dry.dungeon.count == 2) then error("done and logged quests are left out: " .. tostring(s2.dry and s2.dry.dungeon.count)) end
+        -- a cluster to grind: a line with the name; the better of the two first
+        spots = { { map = 1436, x = 50, y = 50, count = 30, name = "Plains Boar", mobLevel = 19 } }
+        local xph = 60 * ns.PlannerKillXP(18, 19)
+        _, s2 = ns.PlannerRoute(ctx("solo"))
+        lines = ns.PlannerAdviceLines({}, 1, s2)
+        if #lines ~= 1 or lines[1] ~= "Or grind Plains Boar at Westfall (about " .. xph .. " xp an hour)" then error("the grind line: " .. tostring(lines[1])) end
+        _, s2 = ns.PlannerRoute(ctx("all"))
+        lines = ns.PlannerAdviceLines({}, 1, s2)
+        if #lines ~= 2 or not lines[1]:find("Try Deadmines", 1, true) or not lines[2]:find("Or grind Plains Boar", 1, true) then
+            error("both, the dungeon (12000 xp) beats " .. xph .. ": " .. tostring(lines[1]) .. " / " .. tostring(lines[2]))
+        end
+        for _, id in ipairs({ 901, 902, 903, 904 }) do recs[id].xp = 10 end
+        _, s2 = ns.PlannerRoute(ctx("all"))
+        lines = ns.PlannerAdviceLines({}, 1, s2)
+        if #lines ~= 2 or not lines[1]:find("Or grind", 1, true) or not lines[2]:find("Try Deadmines", 1, true) then error("the grind is better: " .. tostring(lines[1])) end
+        -- nothing found: no advice at all (the panel keeps its old line)
+        spots = {}
+        recs = {}
+        _, s2 = ns.PlannerRoute(ctx("all"))
+        if s2.dry ~= nil or #ns.PlannerAdviceLines({}, 1, s2) ~= 0 then error("nothing found: no advice") end
+        if not sources["Guide.lua"]:find("No quests left worth the trip", 1, true) then error("the old line stays") end
+        -- the switch off, locked, in a fight
+        recs = { [901] = dq(901) }
+        spots = { { map = 1436, x = 50, y = 50, count = 30, name = "Plains Boar", mobLevel = 19 } }
+        ns.db.plannerDry = false
+        _, s2 = ns.PlannerRoute(ctx("all"))
+        if s2.dry ~= nil then error("switch off") end
+        ns.db.plannerDry = nil
+        _, s2 = ns.PlannerRoute(ctx("all"))
+        if not s2.dry then error("switch on") end
+        ns.db.plannerDry = false
+        if #ns.PlannerAdviceLines({}, 1, s2) ~= 0 then error("switch off: the saved plan's lines hide") end
+        ns.db.plannerDry = nil
+        ns.GuideUnlocked = function() return false end
+        _, s2 = ns.PlannerRoute(ctx("all"))
+        if s2.dry ~= nil then error("locked") end
+        ns.GuideUnlocked = function() return true end
+        env.InCombatLockdown = function() return true end
+        _, s2 = ns.PlannerRoute(ctx("all"))
+        if s2.dry ~= nil then error("never in a fight") end
+        env.InCombatLockdown = saved.combat
+        -- the real source: grinding spots from Questie's NPCs
+        local npcs = {
+            [30] = { name = "Plains Boar", minLevel = 18, maxLevel = 19, rank = 0, spawns = { [40] = {} } },
+            [31] = { name = "Guard", minLevel = 18, maxLevel = 19, rank = 0, friendlyToFaction = "AH", spawns = { [40] = {} } },
+            [32] = { name = "Brute", minLevel = 18, maxLevel = 19, rank = 1, spawns = { [40] = {} } },
+            [33] = { name = "Old Bear", minLevel = 30, maxLevel = 31, rank = 0, spawns = { [40] = {} } },
+            [34] = { name = "Gnoll", minLevel = 20, maxLevel = 20, rank = 0, spawns = { [40] = {} } },
+            [35] = { name = "Far Gnoll", minLevel = 20, maxLevel = 20, rank = 0, spawns = { [41] = {} } },
+        }
+        for i = 1, 30 do npcs[30].spawns[40][i] = { 50 + i * 0.01, 50 } end
+        for i = 1, 40 do npcs[31].spawns[40][i] = { 20, 20 }; npcs[32].spawns[40][i] = { 20, 60 } end
+        for i = 1, 10 do npcs[33].spawns[40][i] = { 70, 70 } end
+        for i = 1, 12 do npcs[34].spawns[40][i] = { 80, 20 + i * 0.01 } end
+        for i = 1, 50 do npcs[35].spawns[41][i] = { 10, 10 } end
+        local seen = {}
+        local fakes = {
+            QuestieDB = { QuestPointers = {}, NPCPointers = { [30] = 1, [31] = 2, [32] = 3, [33] = 4, [34] = 5, [35] = 6 },
+                GetQuest = function() end, IsDoable = function() return true end,
+                QueryNPCSingle = function(id, key) seen[id] = true; return npcs[id] and npcs[id][key] end },
+            QuestXP = { GetQuestLogRewardXP = function() return 0 end },
+            ZoneDB = { GetUiMapIdByAreaId = function(_, area) return area == 40 and 1436 or area == 41 and 1437 or nil end },
+        }
+        env.Questie = { API = { isReady = true, RegisterOnReady = function() end } }
+        env.QuestieLoader = { ImportModule = function(_, name) return fakes[name] end }
+        env.C_AddOns.IsAddOnLoaded = function() return true end
+        rawset(env.C_AddOns, "GetAddOnMetadata", function() return ns.PLANNER_CONTRACT end)
+        ns.GuideHere = function() return 1436, 50, 50 end
+        ns.PlannerWorldPos = function(map, x, y) return map == 1437 and 1 or 0, x * 10, y * 10 end    -- (a 200-yard cell is 20 map units)
+        ns.PlannerSourceReset()
+        local qsrc, why = ns.PlannerSource()
+        if not qsrc then error("questie source: " .. tostring(why)) end
+        local list = qsrc.grindSpots(18)
+        if #list ~= 2 then error("two clusters on this continent: " .. #list) end
+        if list[1].count ~= 30 or list[1].name ~= "Plains Boar" or list[1].map ~= 1436 then error("the best cluster: " .. tostring(list[1].count) .. " " .. tostring(list[1].name)) end
+        if list[2].name ~= "Gnoll" or list[2].count ~= 12 then error("the next cluster") end
+        local before = {}
+        for k in pairs(seen) do before[k] = true end
+        seen = {}
+        if qsrc.grindSpots(18) ~= list or next(seen) then error("cached per level") end
+        if #qsrc.grindSpots(30) ~= 1 or qsrc.grindSpots(30)[1].name ~= "Old Bear" then error("another level, another scan") end
+        if #qsrc.grindSpots(5) ~= 0 then error("nothing near level 5") end
+    end)
+    ns.PlannerSourceReset()
+    env.C_AddOns.IsAddOnLoaded = saved.loaded; rawset(env.C_AddOns, "GetAddOnMetadata", saved.meta)
+    rawset(env, "Questie", saved.q); rawset(env, "QuestieLoader", saved.loader)
+    ns.GuideUnlocked, ns.GuideHere, ns.PlannerWorldPos, ns.PLANNER_DUNGEONS = saved.unlocked, saved.here, saved.world, saved.dungeons
+    env.C_Map, env.InCombatLockdown, ns.db.plannerDry, ns.db.plannerGroup, env.UnitLevel = saved.map, saved.combat, saved.dry, saved.group, saved.level
+    if not ok then error(err, 0) end
+end)
+
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()

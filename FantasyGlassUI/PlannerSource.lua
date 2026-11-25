@@ -180,6 +180,26 @@ ns.PLANNER_CLASS_QUESTS = {
     DRUID = { { id = 5921, level = 10, kind = "always", parts = 2 }, { id = 5061, level = 16, kind = "fit", parts = 1 } },
 }
 
+-- Classic dungeons: { name, minLevel, maxLevel, map, x, y, zone = Questie's area id }. "Try the Deadmines" advice
+-- when quests run dry (PlannerAdvice.lua). A starter set from memory: CHECK IN GAME (levels, entrances, area ids).
+ns.PLANNER_DUNGEONS = {
+    -- check in game
+    { name = "Ragefire Chasm", minLevel = 13, maxLevel = 18, map = 1411, x = 52, y = 11, zone = 2437 },
+    { name = "Wailing Caverns", minLevel = 15, maxLevel = 25, map = 1413, x = 46, y = 36, zone = 718 },
+    { name = "The Deadmines", minLevel = 17, maxLevel = 24, map = 1436, x = 43, y = 72, zone = 1581 },
+    { name = "Shadowfang Keep", minLevel = 18, maxLevel = 25, map = 1421, x = 44, y = 67, zone = 209 },
+    { name = "Blackfathom Deeps", minLevel = 20, maxLevel = 30, map = 1440, x = 14, y = 14, zone = 719 },
+    { name = "The Stockade", minLevel = 22, maxLevel = 30, map = 1453, x = 41, y = 57, zone = 717 },
+    { name = "Gnomeregan", minLevel = 24, maxLevel = 33, map = 1426, x = 24, y = 38, zone = 721 },
+    { name = "Razorfen Kraul", minLevel = 25, maxLevel = 35, map = 1413, x = 42, y = 90, zone = 491 },
+    { name = "Scarlet Monastery", minLevel = 28, maxLevel = 38, map = 1420, x = 84, y = 35, zone = 796 },
+    { name = "Razorfen Downs", minLevel = 35, maxLevel = 45, map = 1413, x = 50, y = 93, zone = 722 },
+    { name = "Uldaman", minLevel = 35, maxLevel = 45, map = 1418, x = 42, y = 12, zone = 1337 },
+    { name = "Zul'Farrak", minLevel = 42, maxLevel = 50, map = 1446, x = 39, y = 21, zone = 1176 },
+    { name = "Maraudon", minLevel = 45, maxLevel = 55, map = 1443, x = 29, y = 62, zone = 2100 },
+    { name = "The Temple of Atal'Hakkar", minLevel = 50, maxLevel = 60, map = 1435, x = 70, y = 54, zone = 1477 },
+}
+
 local function InLog(id)
     local QL = C_QuestLog
     if not (QL and QL.IsOnQuest) then return false end
@@ -220,7 +240,7 @@ local function Record(env, id)
     local elite, group, dungeon = Tags(id, quest, db, zones, state)
     local repeatable = tonumber(quest.specialFlags) and tonumber(quest.specialFlags) % 2 == 1 or false
     return {
-        id = id, name = quest.name or ("Quest " .. id),
+        id = id, name = quest.name or ("Quest " .. id), sort = tonumber(quest.zoneOrSort),
         level = tonumber(quest.level) or tonumber(quest.questLevel) or 1,
         minLevel = tonumber(quest.requiredLevel) or 1,
         xp = tonumber(xpMod:GetQuestLogRewardXP(id)) or 0,
@@ -235,6 +255,7 @@ local function Record(env, id)
 end
 
 local changed = false
+local zoneCache, grindCache = {}, {}   -- dungeon quest ids by area, grinding spots by level and continent (static data: a reset empties them)
 local recCache, cacheLevel = {}, nil   -- built records by quest id (not those in the log); emptied on a new level and by a reset
 
 -- Has `flags` the single bit `mask`? (bit.band when the client has it, else plain arithmetic.)
@@ -513,6 +534,82 @@ function ns.PlannerSource()
         changed = true
         return nil
     end
+    -- The ids of the quests Questie files under one area (a dungeon's): read once a session per area.
+    function src.zoneQuests(zone)
+        if type(zone) ~= "number" then return {} end
+        local hit = zoneCache[zone]
+        if hit then return hit end
+        hit = {}
+        if type(env.db.QueryQuestSingle) == "function" then
+            for _, id in ipairs(src.ids()) do
+                ns.PlannerYield()
+                local ok, v = Try(env.db.QueryQuestSingle, id, "zoneOrSort")
+                if ok and tonumber(v) == zone then hit[#hit + 1] = id end
+            end
+        end
+        zoneCache[zone] = hit
+        return hit
+    end
+    -- Where to grind at this level: { { map, x, y, count, name, mobLevel } }, best first (at most 3). Hostile,
+    -- non-elite monsters 0 to 2 levels above you, their spawns on a 200-yard grid on your continent. Read once per
+    -- level per session (the scan is long: it goes a slice at a time).
+    function src.grindSpots(level)
+        level = tonumber(level)
+        if not level then return {} end
+        local here = ns.GuideHere and { ns.GuideHere() } or {}
+        local hc = here[1] and ns.PlannerWorldPos(here[1], here[2], here[3])
+        if not hc then return {} end
+        local key = level .. ":" .. tostring(hc)
+        if grindCache[key] then return grindCache[key] end
+        local okF, faction = Try(UnitFactionGroup, "player")
+        local mine = okF and (faction == "Alliance" and "A" or faction == "Horde" and "H") or nil
+        local cells = {}
+        local okP, pointers = Try(function() return env.db.NPCPointers end)
+        local okI, ids = Try(PointerIds, okP and type(pointers) == "table" and pointers or {})
+        for _, id in ipairs(okI and ids or {}) do
+            ns.PlannerYield()
+            local okL, lo = Try(env.db.QueryNPCSingle, id, "minLevel")
+            local okH, hi = Try(env.db.QueryNPCSingle, id, "maxLevel")
+            lo, hi = tonumber(okL and lo), tonumber(okH and hi)
+            if lo and hi and lo <= level + 2 and hi >= level then
+                local okR, rank = Try(env.db.QueryNPCSingle, id, "rank")
+                local okFr, friendly = Try(env.db.QueryNPCSingle, id, "friendlyToFaction")
+                local okN, name = Try(env.db.QueryNPCSingle, id, "name")
+                local okS, spots = Try(Spots, env.db, env.zones, id)
+                if okR and okFr and okN and okS and (tonumber(rank) or 0) == 0 and friendly ~= "AH" and (friendly == nil or friendly ~= mine)
+                    and type(name) == "string" and name ~= "" and name:sub(1, 5) ~= "[DND]" then
+                    local mob = math.max(level, math.min(hi, level + 2))
+                    for _, sp in ipairs(spots) do
+                        local c, wx, wy = ns.PlannerWorldPos(sp.map, sp.x, sp.y)
+                        if c == hc then
+                            local ck = math.floor(wx / 200) .. ":" .. math.floor(wy / 200)
+                            local cell = cells[ck]
+                            if not cell then cell = { map = sp.map, x = sp.x, y = sp.y, count = 0, names = {}, mobs = 0 }; cells[ck] = cell end
+                            cell.count, cell.mobs = cell.count + 1, cell.mobs + mob
+                            cell.names[name] = (cell.names[name] or 0) + 1
+                        end
+                    end
+                end
+            end
+        end
+        local list = {}
+        for _, cell in pairs(cells) do
+            local best, bestN
+            for name, n in pairs(cell.names) do
+                if not bestN or n > bestN or (n == bestN and name < best) then best, bestN = name, n end
+            end
+            list[#list + 1] = { map = cell.map, x = cell.x, y = cell.y, count = cell.count, name = best, mobLevel = math.floor(cell.mobs / cell.count + 0.5) }
+        end
+        table.sort(list, function(a, b)
+            if a.count ~= b.count then return a.count > b.count end
+            if a.map ~= b.map then return a.map < b.map end
+            if a.x ~= b.x then return a.x < b.x end
+            return a.y < b.y
+        end)
+        while #list > 3 do list[#list] = nil end
+        grindCache[key] = list
+        return list
+    end
     function src.places(kind, arg) return Places("questie", env, kind, arg) end
     function src.inns() return Places("questie", env, "innkeeper") end
     return src
@@ -558,6 +655,7 @@ end
 
 function ns.PlannerSourceReset()
     changed, waiting, placeCaches, recCache, cacheLevel = false, false, { questie = {}, log = {}, questieScan = {}, logScan = {} }, {}, nil
+    zoneCache, grindCache = {}, {}
     ns.plannerExploreMaps = {}                  -- (PlannerPath.lua: the maps known to report exploration)
 end
 

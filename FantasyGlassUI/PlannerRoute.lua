@@ -753,6 +753,7 @@ function ns.PlannerRoute(ctx)
         end
         if #plus > #main then guide, summary = Build(ctx, plus, skipped) end
     end
+    if summary.empty and ns.PlannerDry then summary.dry = ns.PlannerDry(ctx) end    -- (nothing worth the trip: a dungeon or grinding, PlannerAdvice.lua)
     if next(classMap) then                           -- (a class quest you could start that the plan does not take: said on the panel)
         local planned = {}
         for _, st in ipairs(guide.steps) do if st.quest then planned[st.quest] = true end end

@@ -613,7 +613,7 @@ Draw = function()
     panel.classq:SetShown(classq ~= nil)
     panel.classq:ClearAllPoints()
     panel.classq:SetPoint("TOPLEFT", 12, -92 - (skipped and 13 or 0) - (talents and 13 or 0) - (riding and 13 or 0) - (rep and 13 or 0) - (moved and 13 or 0))
-    local advice = (Planned(st) and ns.PlannerAdviceLines) and ns.PlannerAdviceLines(steps, at) or {}
+    local advice = (Planned(st) and ns.PlannerAdviceLines) and ns.PlannerAdviceLines(steps, at, st.summary) or {}
     panel.advice:SetText(table.concat(advice, "\n"))
     panel.advice:SetShown(#advice > 0)
     panel.advice:ClearAllPoints()

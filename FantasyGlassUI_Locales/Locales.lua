@@ -21,6 +21,9 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["Suggest what to do when quests run dry"] = "Vorschlagen, was zu tun ist, wenn die Quests ausgehen",
+    ["Try %s: %d quests, start at %s"] = "Versuche %s: %d Quests, Start bei %s",
+    ["Or grind %s at %s (about %s xp an hour)"] = "Oder farme %s bei %s (etwa %s EP pro Stunde)",
     ["Worth abandoning: %s (%s)"] = "Lohnt sich abzubrechen: %s (%s)",
     ["gray"] = "grau",
     ["never planned"] = "nie eingeplant",
@@ -3374,6 +3377,9 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["Suggest what to do when quests run dry"] = "Suggérer quoi faire quand les quêtes manquent",
+    ["Try %s: %d quests, start at %s"] = "Essayez %s : %d quêtes, départ à %s",
+    ["Or grind %s at %s (about %s xp an hour)"] = "Ou farmez %s à %s (environ %s xp par heure)",
     ["Worth abandoning: %s (%s)"] = "À abandonner : %s (%s)",
     ["gray"] = "grise",
     ["never planned"] = "jamais planifiée",
@@ -6727,6 +6733,9 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["Suggest what to do when quests run dry"] = "Sugerir qué hacer cuando se acaban las misiones",
+    ["Try %s: %d quests, start at %s"] = "Prueba %s: %d misiones, empieza en %s",
+    ["Or grind %s at %s (about %s xp an hour)"] = "O farmea %s en %s (unos %s xp por hora)",
     ["Worth abandoning: %s (%s)"] = "Conviene abandonar: %s (%s)",
     ["gray"] = "gris",
     ["never planned"] = "nunca planeada",
@@ -10083,6 +10092,9 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["Suggest what to do when quests run dry"] = "Предлагать, чем заняться, когда задания закончились",
+    ["Try %s: %d quests, start at %s"] = "Попробуйте %s: заданий — %d, начало: %s",
+    ["Or grind %s at %s (about %s xp an hour)"] = "Или фармите %s в %s (около %s опыта в час)",
     ["Worth abandoning: %s (%s)"] = "Стоит отменить: %s (%s)",
     ["gray"] = "серое",
     ["never planned"] = "не планировалось",
@@ -13436,6 +13448,9 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["Suggest what to do when quests run dry"] = "Sugerir o que fazer quando as missões acabam",
+    ["Try %s: %d quests, start at %s"] = "Experimente %s: %d missões, comece em %s",
+    ["Or grind %s at %s (about %s xp an hour)"] = "Ou farme %s em %s (cerca de %s xp por hora)",
     ["Worth abandoning: %s (%s)"] = "Vale a pena abandonar: %s (%s)",
     ["gray"] = "cinza",
     ["never planned"] = "nunca planejada",
@@ -16789,6 +16804,9 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["Suggest what to do when quests run dry"] = "Suggerisci cosa fare quando le missioni finiscono",
+    ["Try %s: %d quests, start at %s"] = "Prova %s: %d missioni, inizia a %s",
+    ["Or grind %s at %s (about %s xp an hour)"] = "Oppure fai grinding su %s a %s (circa %s xp l'ora)",
     ["Worth abandoning: %s (%s)"] = "Conviene abbandonare: %s (%s)",
     ["gray"] = "grigia",
     ["never planned"] = "mai pianificata",
@@ -20142,6 +20160,9 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["Suggest what to do when quests run dry"] = "퀘스트가 바닥나면 할 일 제안",
+    ["Try %s: %d quests, start at %s"] = "%s 도전: 퀘스트 %d개, 시작 지점 %s",
+    ["Or grind %s at %s (about %s xp an hour)"] = "또는 %s에서 %s 사냥 (시간당 약 %s 경험치)",
     ["Worth abandoning: %s (%s)"] = "포기할 만한 퀘스트: %s (%s)",
     ["gray"] = "회색",
     ["never planned"] = "계획에 없음",
@@ -23498,6 +23519,9 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["Suggest what to do when quests run dry"] = "任务用完时建议该做什么",
+    ["Try %s: %d quests, start at %s"] = "试试%s：%d个任务，从%s开始",
+    ["Or grind %s at %s (about %s xp an hour)"] = "或刷%s（%s，每小时约%s经验）",
     ["Worth abandoning: %s (%s)"] = "值得放弃：%s（%s）",
     ["gray"] = "灰色",
     ["never planned"] = "从未计划",

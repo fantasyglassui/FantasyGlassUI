@@ -198,6 +198,7 @@ ns.defaults = {
     plannerPickReward = true,       -- the best reward is picked for you at a hand-in (never handed in)
     plannerLogAdvice = true,        -- the panel says which quests are worth abandoning when the log is nearly full
     plannerInn       = true,        -- an inn is suggested after a long stretch of play
+    plannerDry       = true,        -- when no quest is worth the trip, a dungeon or a place to grind is suggested
     plannerWhy       = true,
     plannerTrainer   = true,        -- a stop at your class trainer every 2 levels
     plannerHold      = true,        -- a hand-in that would level you waits for the trainer's town

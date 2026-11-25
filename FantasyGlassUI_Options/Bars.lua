@@ -272,7 +272,7 @@ function ns.BuildGuidePage(page)
 
     local live = CreateFrame("Frame", nil, page)
     live:SetPoint("TOPLEFT", 0, 0)
-    local LIVE_HEIGHT = 862                 -- (the last box ends at y = -860)
+    local LIVE_HEIGHT = 888                 -- (the last box ends at y = -886)
     live:SetSize(736, LIVE_HEIGHT)
     T.live = live
     Heading(live, "Quest guides", 0, 0, 736)
@@ -424,7 +424,12 @@ function ns.BuildGuidePage(page)
     logAdvice:SetPoint("TOPLEFT", 0, -810)
     local inn = ns:CreateCheckbox(live, "Suggest an inn when you stop", ns.db.plannerInn ~= false, function(v) ns.db.plannerInn = v end)
     inn:SetPoint("TOPLEFT", 0, -836)
-    T.pickBox, T.logAdviceBox, T.innBox = pick, logAdvice, inn
+    local dry = ns:CreateCheckbox(live, "Suggest what to do when quests run dry", ns.db.plannerDry ~= false, function(v)
+        ns.db.plannerDry = v
+        Replan()
+    end)
+    dry:SetPoint("TOPLEFT", 0, -862)
+    T.pickBox, T.logAdviceBox, T.innBox, T.dryBox = pick, logAdvice, inn, dry
     T.deathsBox, T.soloElitesBox, T.skippedButton = deaths, soloElites, skipButton
     T.restedBox, T.rewardsBox, T.reputationButton = rested, rewards, repButton
     T.planButton, T.groupButton, T.flightsBox, T.whyBox, T.trainerBox, T.holdBox = plan, group, flights, why, trainer, hold
@@ -456,6 +461,7 @@ function ns.BuildGuidePage(page)
         pick:SetChecked(ns.db.plannerPickReward ~= false)
         logAdvice:SetChecked(ns.db.plannerLogAdvice ~= false)
         inn:SetChecked(ns.db.plannerInn ~= false)
+        dry:SetChecked(ns.db.plannerDry ~= false)
         DrawGroup(group)
         recBtn.text:SetText(ns:Tr(ns.guideRecording and "Stop recording" or "Record"))
         local st = ns.GuideState and ns.GuideState()

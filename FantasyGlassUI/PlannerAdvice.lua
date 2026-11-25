@@ -165,8 +165,93 @@ function ns.PlannerLogAdvice(steps, at)
     return out
 end
 
--- The panel's lines: the quest log advice, then the inn.
-function ns.PlannerAdviceLines(steps, at)
+------------------------------------------------------------------------------------------
+-- When quests run dry
+------------------------------------------------------------------------------------------
+ns.PLANNER_GRIND_KILLS = 60             -- kills an hour when no measured rate is kept
+
+local function MapName(map)
+    if not (map and C_Map and C_Map.GetMapInfo) then return nil end
+    local ok, info = pcall(C_Map.GetMapInfo, map)
+    return ok and type(info) == "table" and Clean(info.name) or nil
+end
+
+-- A dungeon worth a group at this level: { name, count, xp, start } from the Questie quests filed under it
+-- that you could take, or nil. Runs inside the planning coroutine (yields in plain loops only).
+local function DungeonAdvice(ctx)
+    local src = ctx.source
+    if type(src) ~= "table" or type(src.zoneQuests) ~= "function" or type(src.quest) ~= "function" then return nil end
+    local grouped = ctx.group == "all" or (ctx.group == "grouped" and ctx.inGroup == true)
+    if not grouped then return nil end
+    local level = ctx.level or 1
+    local done = type(ctx.done) == "function" and ctx.done or function() return false end
+    local onQuest = type(ctx.onQuest) == "function" and ctx.onQuest or function() return false end
+    local best
+    for _, d in ipairs(type(ns.PLANNER_DUNGEONS) == "table" and ns.PLANNER_DUNGEONS or {}) do
+        if type(d) == "table" and tonumber(d.minLevel) and tonumber(d.maxLevel) and d.minLevel <= level and level <= d.maxLevel then
+            local count, xp, maps = 0, 0, {}
+            for _, id in ipairs(src.zoneQuests(d.zone)) do
+                ns.PlannerYield()
+                local rec = (not done(id) and not onQuest(id)) and src.quest(id) or nil
+                if rec and rec.doable and not rec.repeatable and (rec.minLevel or 1) <= level then
+                    count, xp = count + 1, xp + (Num(rec.xp) or 0)
+                    local sp = type(rec.starts) == "table" and rec.starts[1]
+                    if type(sp) == "table" and sp.map then maps[sp.map] = (maps[sp.map] or 0) + 1 end
+                end
+            end
+            if count > 0 and (not best or xp > best.xp) then
+                local at, atN
+                for map, n in pairs(maps) do if not atN or n > atN or (n == atN and map < at) then at, atN = map, n end end
+                best = { name = Clean(d.name) or "?", count = count, xp = xp, start = MapName(at or d.map) or Clean(d.name) or "?" }
+            end
+        end
+    end
+    return best
+end
+
+-- Grinding: the best cluster of monsters 0 to 2 levels above you.
+local function GrindAdvice(ctx)
+    local src = ctx.source
+    if type(src) ~= "table" or type(src.grindSpots) ~= "function" then return nil end
+    local level = ctx.level or 1
+    local spots = src.grindSpots(level)
+    local spot = type(spots) == "table" and spots[1]
+    if type(spot) ~= "table" or not Num(spot.count) or spot.count <= 0 then return nil end
+    local kills = ns.PLANNER_GRIND_KILLS
+    local d = ns.PlannerCharRecord and ns.PlannerCharRecord(false)
+    if type(d) == "table" and Num(d.killsPerHour) and d.killsPerHour > 0 then kills = d.killsPerHour end
+    local xph = math.floor(kills * ns.PlannerKillXP(level, Num(spot.mobLevel) or level) + 0.5)
+    if xph <= 0 then return nil end
+    return { name = Clean(spot.name) or "?", zone = MapName(spot.map) or "?", xph = xph }
+end
+
+-- What to do instead, for the summary of an empty plan: { dungeon, grind, first } or nil when there is nothing.
+function ns.PlannerDry(ctx)
+    if not On("plannerDry") or type(ctx) ~= "table" then return nil end
+    if InCombatLockdown and InCombatLockdown() then return nil end
+    local dungeon, grind = DungeonAdvice(ctx), GrindAdvice(ctx)
+    if not (dungeon or grind) then return nil end
+    return { dungeon = dungeon, grind = grind, first = (dungeon and (not grind or dungeon.xp >= grind.xph)) and "dungeon" or "grind" }
+end
+
+local function DryLines(summary)
+    local dry = type(summary) == "table" and summary.empty and type(summary.dry) == "table" and summary.dry
+    if not dry or not On("plannerDry") then return {} end
+    local out = {}
+    local function Dungeon()
+        local d = dry.dungeon
+        if type(d) == "table" then out[#out + 1] = format(ns:Tr("Try %s: %d quests, start at %s"), tostring(d.name), tonumber(d.count) or 0, tostring(d.start)) end
+    end
+    local function Grind()
+        local g = dry.grind
+        if type(g) == "table" then out[#out + 1] = format(ns:Tr("Or grind %s at %s (about %s xp an hour)"), tostring(g.name), tostring(g.zone), tostring(tonumber(g.xph) or 0)) end
+    end
+    if dry.first == "grind" then Grind(); Dungeon() else Dungeon(); Grind() end
+    return out
+end
+
+-- The panel's lines: the quest log advice, then the inn, then what to do when quests run dry.
+function ns.PlannerAdviceLines(steps, at, summary)
     local lines = {}
     for _, a in ipairs(ns.PlannerLogAdvice(steps, at)) do
         lines[#lines + 1] = format(ns:Tr("Worth abandoning: %s (%s)"), a.name, ns:Tr(a.reason))
@@ -177,6 +262,7 @@ function ns.PlannerAdviceLines(steps, at)
         now = okT and Num(now) or nil
         if now and inn.t and now >= inn.t and now - inn.t <= ns.PLANNER_INN_SHOWN then lines[#lines + 1] = inn.text else ns.plannerInnLine = nil end
     end
+    for _, l in ipairs(DryLines(summary)) do lines[#lines + 1] = l end
     return lines
 end
 
