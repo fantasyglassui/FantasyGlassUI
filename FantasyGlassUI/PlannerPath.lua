@@ -10,6 +10,7 @@ local ipairs, pairs, type, tonumber, math = ipairs, pairs, type, tonumber, math
 local floor, sqrt = math.floor, math.sqrt
 
 ns.PLANNER_MAIL_SECONDS = 20            -- a mail stop only when it adds less than this (or the route passes a mailbox)
+ns.PLANNER_MAIL_QUIET = 600             -- seconds after a visit before the same mail brings you back
 ns.PLANNER_EXPLORE_SECONDS = 15         -- an unexplored spot only when it adds at most this much
 ns.PLANNER_EXPLORE_MAX = 3              -- per plan
 ns.PLANNER_EXPLORE_YARDS = 40           -- sample spacing along a leg, and how far either side of it
@@ -37,8 +38,19 @@ ns.PlannerRegisterStop({
     want = function()
         if type(HasNewMail) ~= "function" then return nil end
         local ok, has = pcall(HasNewMail)
+        if ok and has == false then
+            local rec = ns.PlannerCharRecord and ns.PlannerCharRecord(false)
+            if type(rec) == "table" and type(rec.mailQuiet) == "table" then rec.mailQuiet.gone = true end
+        end
         if not (ok and has == true and not ns:IsSecret(has)) then return nil end
         local rec = ns.PlannerCharRecord and ns.PlannerCharRecord(false)
+        local q = type(rec) == "table" and rec.mailQuiet
+        if type(q) == "table" then              -- (a visit just ended: again only once the mail has gone and come anew, or 10 minutes on)
+            local okT, now = pcall(GetTime)
+            now = okT and Num(now) or nil
+            if now and tonumber(q.t) and now >= q.t and now - q.t < ns.PLANNER_MAIL_QUIET and not q.gone then return nil end
+            rec.mailQuiet = nil
+        end
         return { visit = type(rec) == "table" and tonumber(rec.mailVisits) or 0, after = 0 }
     end,
     places = function(ctx) return ns.PlannerPlaces(ctx, "mailbox") end,
@@ -86,16 +98,15 @@ function ns.PlannerRecordNode(map, x, y, name, skill)
     map, x, y = Num(map), Num(x), Num(y)
     name = Clean(name)
     if not (map and x and y and name and type(ns.root) == "table") then return false end
+    if skill ~= HERBALISM and skill ~= MINING then return false end
     local list = type(ns.root.plannerNodesSeen) == "table" and type(ns.root.plannerNodesSeen[map]) == "table" and ns.root.plannerNodesSeen[map] or nil
+    local c1, x1, y1 = NodeWorld(map, x, y)
+    if not c1 then return false end                 -- (no world scale on this map: nothing is recorded)
     if list then
-        local c1, x1, y1 = NodeWorld(map, x, y)
         for _, n in ipairs(list) do
-            if type(n) == "table" and n.skill == skill then
+            if type(n) == "table" and n.skill == skill and n.name == name then
                 local c2, x2, y2 = NodeWorld(map, tonumber(n.x), tonumber(n.y))
-                local d
-                if c1 and c1 == c2 then d = sqrt((x1 - x2) ^ 2 + (y1 - y2) ^ 2)
-                else d = sqrt((x - (tonumber(n.x) or 0)) ^ 2 + (y - (tonumber(n.y) or 0)) ^ 2) * 10 end   -- (no world scale: a percent is about 10 yards)
-                if d <= ns.PLANNER_NODE_YARDS then return false end
+                if c2 == c1 and sqrt((x1 - x2) ^ 2 + (y1 - y2) ^ 2) <= ns.PLANNER_NODE_YARDS then return false end
             end
         end
         if #list >= NODE_CAP then return false end
@@ -114,7 +125,7 @@ do
         if ns:IsSecret(unit) or unit ~= "player" or not ns:GuideUnlocked() or (ns.db and ns.db.plannerGather == false) then return end
         if type(target) ~= "string" or ns:IsSecret(target) or target == "" then return end
         local skill = ns.PlannerGatherSkill(spellID)
-        if not skill or not ns.GuideHere then return end
+        if not skill or skill == SKINNING or not ns.GuideHere then return end   -- (skinning only drives the "skin them" note)
         local map, x, y = ns.GuideHere()
         if map and x and y then ns.PlannerRecordNode(map, x, y, target, skill) end
     end))
@@ -241,8 +252,8 @@ local function ExploreSteps(legs, speed, add)
         if #chosen >= ns.PLANNER_EXPLORE_MAX then break end
         local apart = true
         for _, o in ipairs(chosen) do
-            if o.leg == c.leg or legs[o.leg].map == legs[c.leg].map then
-                if sqrt((o.p.wx - c.p.wx) ^ 2 + (o.p.wy - c.p.wy) ^ 2) < yards * APART then apart = false; break end
+            if legs[o.leg].map == legs[c.leg].map and sqrt((o.p.wx - c.p.wx) ^ 2 + (o.p.wy - c.p.wy) ^ 2) < yards * APART then
+                apart = false; break
             end
         end
         if apart then chosen[#chosen + 1] = c end

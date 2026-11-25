@@ -10274,7 +10274,7 @@ try("13.1 stops: professions and riding", function()
 end)
 try("13.1 stops: mail, exploring and gathering", function()
     local real = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), level = env.UnitLevel, mail = env.HasNewMail, explore = rawget(env, "C_MapExplorationInfo"),
-                   profs = env.GetProfessions, info = env.GetProfessionInfo, here = ns.GuideHere, source = ns.PlannerSource }
+                   profs = env.GetProfessions, info = env.GetProfessionInfo, here = ns.GuideHere, source = ns.PlannerSource, time = env.GetTime }
     local saved = { key = ns.root.guideKey, guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner, seen = ns.root.plannerSeen,
                     nodes = ns.root.plannerNodesSeen, mail = ns.db.plannerMail, explore = ns.db.plannerExplore, gather = ns.db.plannerGather, why = ns.db.plannerWhy }
     local cm = {}
@@ -10283,7 +10283,8 @@ try("13.1 stops: mail, exploring and gathering", function()
     env.C_Map = cm
     env.CreateVector2D = function(x, y) return { x = x, y = y } end
     env.UnitLevel = function() return 20 end
-    local mail, skills = true, {}
+    local mail, skills, clock = true, {}, 1000
+    env.GetTime = function() return clock end
     env.HasNewMail = function() return mail end
     env.GetProfessions = function() return skills[1] and 1 or nil, skills[2] and 2 or nil end
     env.GetProfessionInfo = function(i)
@@ -10358,8 +10359,24 @@ try("13.1 stops: mail, exploring and gathering", function()
         if not (d and d.mailVisits == 1) then error("a mail stop closing counts a visit") end
         ns:PlannerStop()
         ns.root.guideState = nil
-        _, step = first((ns.PlannerRoute(context())), "mail")          -- (the record of visits kept)
+        if count((ns.PlannerRoute(context())), "mail") ~= 0 then error("just visited: no mail step while the mail is still there") end
+        mail = false
+        ns.PlannerRoute(context())                                     -- (a plan sees the mail gone ...)
+        mail = true
+        _, step = first((ns.PlannerRoute(context())), "mail")          -- (... and new: a new visit; the record of visits kept)
         if not step or step.stopKey ~= "mail:1" then error("the next mail stop is a new visit: " .. tostring(step and step.stopKey)) end
+        -- or after 10 minutes
+        d.mailQuiet = { t = 1000 }
+        clock = 1100
+        if count((ns.PlannerRoute(context())), "mail") ~= 0 then error("100 s after a visit: none") end
+        clock = 1700
+        if count((ns.PlannerRoute(context())), "mail") ~= 1 then error("10 minutes after a visit: mail again") end
+        clock = 1000
+        -- a detour just under and just over 20 seconds (a percent is 10 yards, 7 yards a second)
+        places.mailbox = { { name = "Mailbox", map = 1, x = 50, y = 57.6 } }
+        if count(plan(), "mail") ~= 1 then error("a detour of 19 seconds: a step") end
+        places.mailbox = { { name = "Mailbox", map = 1, x = 50, y = 58.7 } }
+        if count(plan(), "mail") ~= 0 then error("a detour of 21 seconds: none") end
         places.mailbox = nil
         -- exploring: nothing at x 40-45 on map 1, areas elsewhere: one step on the leg across it
         local function patch(x) return x >= 40 and x <= 45 end
@@ -10402,7 +10419,17 @@ try("13.1 stops: mail, exploring and gathering", function()
         fireEvent("UNIT_SPELLCAST_SENT", "target", "Tin Vein", "cast-6", 2575)
         fireEvent("UNIT_SPELLCAST_SENT", "player", nil, "cast-7", 2575)
         local n = #ns.root.plannerNodesSeen[1]
-        if n ~= 3 then error("herbs and skinning recorded; a door, another unit and no target are not: " .. n) end
+        if n ~= 2 then error("herbs recorded; skinning, a door, another unit and no target are not: " .. n) end
+        -- another node 5 yards away is a node of its own; the same one 15 yards away too; the same within 10 is not
+        ns.GuideHere = function() return 1, 50, 43.5 end
+        fireEvent("UNIT_SPELLCAST_SENT", "player", "Tin Vein", "cast-9", 2575)
+        if #ns.root.plannerNodesSeen[1] ~= 3 then error("a different node 5 yards away: recorded") end
+        ns.GuideHere = function() return 1, 51.5, 43 end
+        fireEvent("UNIT_SPELLCAST_SENT", "player", "Copper Vein", "cast-10", 2575)
+        if #ns.root.plannerNodesSeen[1] ~= 4 then error("the same node 15 yards away: recorded") end
+        ns.GuideHere = function() return 7, 50, 43 end                 -- (a map with no world scale)
+        fireEvent("UNIT_SPELLCAST_SENT", "player", "Copper Vein", "cast-11", 2575)
+        if ns.root.plannerNodesSeen[7] ~= nil then error("no world scale: not recorded") end
         ns.root.plannerNodesSeen = { [1] = { { name = "Copper Vein", x = 50, y = 43, skill = 186 } } }
         -- a miner: a gather step on the leg that passes 30 yards from it
         skills = { { 186, "Mining", 100, 150 } }

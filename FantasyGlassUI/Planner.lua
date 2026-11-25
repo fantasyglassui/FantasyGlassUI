@@ -415,7 +415,11 @@ do
                 -- a vendor visit is over: the next vendor stop is a new one (it is not ticked by this one)
                 if step.kind == "mail" and type(step.stopKey) == "string" and step.stopKey:sub(1, 5) == "mail:" then
                     local d = PaceRecord(true)
-                    if d then d.mailVisits = (tonumber(d.mailVisits) or 0) + 1 end
+                    if d then
+                        d.mailVisits = (tonumber(d.mailVisits) or 0) + 1
+                        local okT, now = pcall(GetTime)
+                        if okT and type(now) == "number" and not ns:IsSecret(now) then d.mailQuiet = { t = now } end
+                    end
                 end
                 if step.kind == "vendor" and type(step.stopKey) == "string" and step.stopKey:sub(1, 7) == "vendor:" then
                     local d = PaceRecord(true)
