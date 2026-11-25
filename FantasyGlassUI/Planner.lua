@@ -777,6 +777,18 @@ do
         local ok, v = pcall(QL.IsQuestFlaggedCompleted, id)
         return ok and v == true
     end
+    -- A hand-in is counted for the pace once, by whichever of QUEST_TURNED_IN and QUEST_REMOVED (of a quest
+    -- flagged completed) comes first; the other one only clears the mark. questID -> when it was counted.
+    local counted = {}
+    local function CountHandIn(id, plan, now)
+        for k, t in pairs(counted) do
+            if now and (t > now or now - t > 600) then counted[k] = nil end   -- (a pair is seconds or a minute apart)
+        end
+        if counted[id] then counted[id] = nil; return false end
+        counted[id] = now or 0
+        HandedIn(id, plan)
+        return true
+    end
     local function Now()
         local okT, now = pcall(GetTime)
         if okT and type(now) == "number" and not ns:IsSecret(now) then return now end
@@ -887,6 +899,7 @@ do
         if event == "QUEST_ACCEPTED" then
             local id = (type(b) == "number") and b or a                -- (the quest id comes second or first, by client)
             local now = Now()
+            if type(id) == "number" then counted[id] = nil end          -- (taken again: a new hand-in to come)
             if type(id) == "number" and now and not open[id] then
                 Share(now)
                 open[id], openN, since[id] = 0, openN + 1, now
@@ -898,7 +911,7 @@ do
                 local now = Now()
                 local took = now and open[a] and Close(a, now)
                 if took then ns.PlannerRecordQuestTime(a, took) end
-                HandedIn(a, plan)
+                CountHandIn(a, plan, now)
             end
             ns:PlannerReplan("hand-in")
         elseif event == "HEARTHSTONE_BOUND" then
@@ -910,11 +923,14 @@ do
         elseif event == "PLAYER_LEVEL_UP" then
             ns:PlannerReplan("level")
         else
-            if type(a) == "number" and open[a] then                   -- (handed in, said by QUEST_REMOVED first: a sample; abandoned: none)
-                local now = Now()
-                local took
-                if now then took = Close(a, now) else open[a], openN, since[a] = nil, openN - 1, nil end
-                if took and Completed(a) then ns.PlannerRecordQuestTime(a, took) end
+            if event == "QUEST_REMOVED" and type(a) == "number" then
+                local now, done = Now(), Completed(a)              -- (handed in, said by QUEST_REMOVED first: a sample and the pace; abandoned: none)
+                if open[a] then
+                    local took
+                    if now then took = Close(a, now) else open[a], openN, since[a] = nil, openN - 1, nil end
+                    if took and done then ns.PlannerRecordQuestTime(a, took) end
+                end
+                if done then CountHandIn(a, plan, now) end
             end
             ns:PlannerReplan("quest removed")
         end

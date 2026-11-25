@@ -66,7 +66,8 @@ end
 ------------------------------------------------------------------------------------------
 -- Up to 3 { name, reason } worth dropping, when the log is nearly full or the plan needs more room than it has.
 -- Gray quests are seen here; the other reasons were worked out with the plan (summary.logReasons, in the
--- planner's slices): this only counts the log and looks them up. A quest still in the plan is never named.
+-- planner's slices): this only counts the log and looks them up. A quest still in the plan is never named,
+-- not even a gray one.
 function ns.PlannerLogAdvice(steps, at, summary)
     if not On("plannerLogAdvice") then return {} end
     local QL = C_QuestLog
@@ -113,8 +114,9 @@ function ns.PlannerLogAdvice(steps, at, summary)
     local list = {}
     for _, q in ipairs(quests) do
         local rank, reason
-        if q.level > 0 and q.level <= level - ns.PLANNER_GRAY_GAP then rank, reason = 1, "gray"
-        elseif not planned[q.id] then
+        if planned[q.id] then                                             -- (the planner chose to do it: never named, gray or not)
+        elseif q.level > 0 and q.level <= level - ns.PLANNER_GRAY_GAP then rank, reason = 1, "gray"
+        else
             local why = reasons[q.id]
             if why == "never planned" then rank, reason = 2, why elseif why == "off the route" then rank, reason = 3, why end
         end

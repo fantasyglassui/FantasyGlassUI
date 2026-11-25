@@ -11617,12 +11617,15 @@ try("13.3 choices: hand-in, quest log, inn", function()
                 GetMaxNumQuestsCanAccept = function() return 25 end }, { __index = saved.logQ })
         end
         local steps = { { kind = "accept", quest = 102, map = 1 } }
-        for i = 1, 23 do steps[#steps + 1] = { kind = "do", quest = 100 + i, map = 1 } end
+        for i = 1, 23 do if i ~= 7 then steps[#steps + 1] = { kind = "do", quest = 100 + i, map = 1 } end end
         log(23, 7)
         local advice = ns.PlannerLogAdvice(steps, 1)
         if #advice ~= 1 or advice[1].name ~= "Quest 7" or advice[1].reason ~= "gray" then error("a gray quest on a nearly full log") end
         local lines = ns.PlannerAdviceLines(steps, 1)
         if #lines ~= 1 or not lines[1]:find("Worth abandoning: Quest 7 (gray)", 1, true) then error("the panel line: " .. tostring(lines[1])) end
+        local withGray = { { kind = "do", quest = 107, map = 1 } }
+        for _, st in ipairs(steps) do withGray[#withGray + 1] = st end
+        if #ns.PlannerLogAdvice(withGray, 1) ~= 0 then error("a gray quest the plan still does is never named") end
         log(10, 7)
         if #ns.PlannerLogAdvice(steps, 1) ~= 0 then error("room enough: no advice") end
         log(20, 7)
@@ -12069,6 +12072,24 @@ try("13.3 choices: final review fixes", function()
         fireEvent("QUEST_ACCEPTED", 1, 203)
         fireEvent("QUEST_REMOVED", 203)
         if ns.root.plannerSoloElites or sa[203] then error("abandoned: nothing kept") end
+        -- the pace: a hand-in counts once, whichever of QUEST_TURNED_IN and QUEST_REMOVED comes first
+        local pr = ns.PlannerCharRecord(true)
+        local savedPace = pr.pace
+        pr.pace = nil
+        ns.GuideState = function() return { name = ns.GUIDE_PLANNED, at = 1, plan = { estimates = { [902] = 100, [904] = 200 }, travelShare = 0 } } end
+        local function lastSample() local p = ns.PlannerCharRecord(false).pace; return p and p.samples and p.samples[#p.samples] end
+        clock = 401000; fireEvent("QUEST_TURNED_IN", 901)                   -- (the mark)
+        clock = 401200; flagged[902] = true; fireEvent("QUEST_REMOVED", 902)
+        clock = 401210; fireEvent("QUEST_TURNED_IN", 902)
+        clock = 401300; fireEvent("QUEST_TURNED_IN", 903)                   -- (ends the run of hand-ins)
+        local s1 = lastSample()
+        if not (s1 and math.abs(s1 - 2) < 1e-6) then error("QUEST_REMOVED first: counted once (200 s against 100), got " .. tostring(s1)) end
+        clock = 401500; fireEvent("QUEST_TURNED_IN", 904)
+        clock = 401505; flagged[904] = true; fireEvent("QUEST_REMOVED", 904)
+        clock = 401600; fireEvent("QUEST_TURNED_IN", 905)
+        local s2 = lastSample()
+        if not (s2 and math.abs(s2 - 1.5) < 1e-6) then error("QUEST_TURNED_IN first: counted once (300 s against 200), got " .. tostring(s2)) end
+        pr.pace = savedPace
         env.C_QuestLog, env.UnitClassBase = saved.logQ, saved.base
         ns.GuideState = saved.state
 
