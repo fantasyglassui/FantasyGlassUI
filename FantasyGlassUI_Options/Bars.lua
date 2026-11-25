@@ -436,7 +436,17 @@ end
 
 -- Group C: the plan code for the website's plan page.
 local function TogetherCodeSection(live, y, Replan, T)
-    return y, function() end
+    local share = ns:CreateButton(live, "Share plan", 250, 24, function()
+        if ns.PlannerCodeFollowing and ns.PlannerCodeFollowing() then ns:PlannerSharePlan() end
+    end)
+    share:SetPoint("TOPLEFT", 0, y)
+    T.sharePlanButton = share
+    local function Refresh()                                -- (greyed while the planned guide is not the one you follow)
+        local can = ns.PlannerCodeFollowing and ns.PlannerCodeFollowing() and true or false
+        share:SetAlpha(can and 1 or 0.45)
+    end
+    Refresh()
+    return y - 34, Refresh
 end
 
 ------------------------------------------------------------------------------------------

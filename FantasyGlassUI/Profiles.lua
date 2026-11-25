@@ -74,6 +74,20 @@ local function Decode(s, i, depth)
     error("unexpected character")
 end
 
+-- Exported for the plan code (PlannerCode.lua): the same encoding, a string in and out.
+function ns.ShareEncode(value)
+    local out = {}
+    Encode(value, out, 0)
+    return table.concat(out)
+end
+-- value, the index after it; nil when the text is not a well-formed value (never raises).
+function ns.ShareDecode(text, start)
+    if type(text) ~= "string" then return nil end
+    local ok, value, stop = pcall(Decode, text, start or 1, 0)
+    if ok then return value, stop end
+    return nil
+end
+
 local HEADER = "SUI1!"
 ns.DeepCopy = function(v) return DeepCopy(v) end
 ns.PACK_HEADER = "FGP1!"

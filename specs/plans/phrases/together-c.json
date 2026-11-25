@@ -1,0 +1,32 @@
+{
+  "Share plan": [
+    "Plan teilen",
+    "Partager le plan",
+    "Compartir el plan",
+    "Поделиться планом",
+    "Compartilhar o plano",
+    "Condividi il piano",
+    "계획 공유",
+    "分享计划"
+  ],
+  "There is no plan to share yet.": [
+    "Es gibt noch keinen Plan zum Teilen.",
+    "Il n'y a pas encore de plan à partager.",
+    "Aún no hay ningún plan que compartir.",
+    "Пока нет плана, которым можно поделиться.",
+    "Ainda não há nenhum plano para compartilhar.",
+    "Non c'è ancora nessun piano da condividere.",
+    "아직 공유할 계획이 없습니다.",
+    "还没有可分享的计划。"
+  ],
+  "Copy this plan code and paste it on fantasyglassui.com/plan/": [
+    "Kopiere diesen Plancode und füge ihn auf fantasyglassui.com/plan/ ein",
+    "Copiez ce code de plan et collez-le sur fantasyglassui.com/plan/",
+    "Copia este código del plan y pégalo en fantasyglassui.com/plan/",
+    "Скопируйте этот код плана и вставьте его на fantasyglassui.com/plan/",
+    "Copie este código do plano e cole-o em fantasyglassui.com/plan/",
+    "Copia questo codice del piano e incollalo su fantasyglassui.com/plan/",
+    "이 계획 코드를 복사해 fantasyglassui.com/plan/ 에 붙여넣으세요",
+    "复制此计划代码，并粘贴到 fantasyglassui.com/plan/"
+  ]
+}

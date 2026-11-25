@@ -1,7 +1,118 @@
-local _, ns = ...   -- luacheck: ignore 211 (used once this group adds its code)
+local _, ns = ...
 
 ------------------------------------------------------------------------------------------
 -- Planner, batch 5 group C: the plan code for the website's plan page (#44) (Tasks 5 and 6).
 -- Built on the seams: ns.PlannerHook (Planner.lua, with "candidate" and "replan"), the panel's
 -- registries (Guide.lua) and its section of the Guide tab (Bars.lua). Everything here is behind ns:GuideUnlocked().
 ------------------------------------------------------------------------------------------
+
+local floor = math.floor
+
+local function Unlocked() return ns.GuideUnlocked ~= nil and ns:GuideUnlocked() == true end
+
+ns.PLANNER_CODE_HEADER = "SUIP1!"
+local MAX_STEPS, MAX_TEXT, MAX_ZONE = 60, 80, 40
+
+-- Text for the code: no |escapes (colors, textures, links), no control characters, at most `limit` bytes
+-- (never in the middle of a UTF-8 character).
+local function Clean(text, limit)
+    text = tostring(text or "")
+    text = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|T.-|t", ""):gsub("|H.-|h", ""):gsub("|h", ""):gsub("|", "")
+    text = text:gsub("[%z\1-\31\127]", " ")
+    text = ns.Trim(text)
+    if #text > limit then
+        local cut = limit
+        while cut > 0 do                                  -- (back off a continuation byte so a character is not split)
+            local b = text:byte(cut + 1)
+            if b and b >= 128 and b < 192 then cut = cut - 1 else break end
+        end
+        text = text:sub(1, cut)
+    end
+    return text
+end
+local function Round(n) return floor((tonumber(n) or 0) + 0.5) end
+local function Round1(n) return floor((tonumber(n) or 0) * 10 + 0.5) / 10 end
+
+local function ZoneName(map)
+    local ok, info = pcall(C_Map.GetMapInfo, map)
+    local name = ok and type(info) == "table" and info.name
+    if type(name) == "string" and not ns:IsSecret(name) and name ~= "" then return Clean(name, MAX_ZONE) end
+    return "?"
+end
+
+-- The plan as a code: "SUIP1!" and the share encoding of the plan's short form. Nil with no steps.
+function ns.PlannerPlanCode(guide, summary)
+    local steps = type(guide) == "table" and type(guide.steps) == "table" and guide.steps or nil
+    if not steps or #steps == 0 then return nil end
+    summary = type(summary) == "table" and summary or {}
+    local zones, index, st = {}, {}, {}
+    local flights, crossings = 0, 0
+    for i, step in ipairs(steps) do
+        if step.kind == "fly" then flights = flights + 1 elseif step.kind == "sail" then crossings = crossings + 1 end
+        if i <= MAX_STEPS then
+            local e = { k = step.kind, t = Clean(ns.GuideStepBase(step), MAX_TEXT) }
+            local map = tonumber(step.map)
+            if map then
+                if not index[map] then zones[#zones + 1] = { m = map, n = ZoneName(map) }; index[map] = #zones end
+                e.z = index[map]
+            end
+            if tonumber(step.x) and tonumber(step.y) then e.x, e.y = Round1(step.x), Round1(step.y) end
+            st[#st + 1] = e
+        end
+    end
+    local data = { v = 1, lv = { Round(summary.fromLevel), Round(summary.toLevel) }, xp = Round(summary.xp), s = Round(summary.seconds),
+                   fl = flights, cr = crossings, z = zones, st = st }
+    if #steps > MAX_STEPS then data.more = #steps - MAX_STEPS end
+    return ns.PLANNER_CODE_HEADER .. ns.ShareEncode(data)
+end
+
+-- A code back into the plan (what the website's page does): plan, or nil and why: empty, kind, damaged, version.
+function ns.PlannerReadPlanCode(code)
+    if type(code) ~= "string" then return nil, "empty" end
+    code = ns.Trim(code)
+    if code == "" then return nil, "empty" end
+    local head = ns.PLANNER_CODE_HEADER
+    if code:sub(1, #head) ~= head then return nil, "kind" end
+    local data, stop = ns.ShareDecode(code, #head + 1)
+    if type(data) ~= "table" or stop ~= #code + 1 then return nil, "damaged" end
+    if type(data.v) ~= "number" then return nil, "damaged" end
+    if data.v > 1 then return nil, "version" end
+    if data.v ~= 1 or type(data.st) ~= "table" or type(data.z) ~= "table" or type(data.lv) ~= "table" then return nil, "damaged" end
+    local plan = { v = 1, lv = { tonumber(data.lv[1]) or 0, tonumber(data.lv[2]) or 0 }, xp = tonumber(data.xp) or 0, s = tonumber(data.s) or 0,
+                   fl = tonumber(data.fl) or 0, cr = tonumber(data.cr) or 0, more = tonumber(data.more), z = {}, st = {} }
+    for i = 1, #data.z do
+        local z = data.z[i]
+        if type(z) ~= "table" or type(z.n) ~= "string" then return nil, "damaged" end
+        plan.z[i] = { m = tonumber(z.m), n = z.n }
+    end
+    for i = 1, #data.st do
+        local s = data.st[i]
+        if type(s) ~= "table" or type(s.k) ~= "string" or not ns.guideKinds[s.k] or type(s.t) ~= "string" then return nil, "damaged" end
+        if s.z ~= nil and not plan.z[tonumber(s.z) or 0] then return nil, "damaged" end
+        plan.st[i] = { k = s.k, t = s.t, z = tonumber(s.z), x = tonumber(s.x), y = tonumber(s.y) }
+    end
+    return plan
+end
+
+-- Are you following the planned guide (with it unlocked)?
+function ns.PlannerCodeFollowing()
+    local st = Unlocked() and ns.GuideState and ns.GuideState()
+    return type(st) == "table" and st.name ~= nil and st.name == ns.GUIDE_PLANNED
+end
+
+-- Share plan: the code in a box ready for Ctrl+C.
+function ns:PlannerSharePlan()
+    if not Unlocked() then return false end
+    local st = ns.GuideState and ns.GuideState()
+    local guide = ns.PlannerCodeFollowing() and ns:GuideGet(ns.GUIDE_PLANNED) or nil
+    local code = guide and ns.PlannerPlanCode(guide, st.summary)
+    if not code then
+        ns:Print("There is no plan to share yet.")
+        return false
+    end
+    ns:ShowCopyBox(code, ns:Tr("Copy this plan code and paste it on fantasyglassui.com/plan/"))
+    return true
+end
+
+ns.GuideRegisterAction("panel", "sharePlan", "Share plan", function() ns:PlannerSharePlan() end, ns.PlannerCodeFollowing)
+ns.GuideRegisterCommand("share", function() ns:PlannerSharePlan() end)
