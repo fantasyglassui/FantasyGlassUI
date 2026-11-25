@@ -1,0 +1,230 @@
+<style>
+@font-face { font-family: "Marcellus FG"; src: url(data:font/woff2;base64,@@FONT@@) format("woff2"); font-display: swap; }
+:root {
+  --ink: #0a0c15; --ink-2: #11152a; --ink-3: #191e38; --line: #2b3256;
+  --text: #e7e9f4; --dim: #a4abc7; --gold: #f0c66b; --frost: #8fd3ff; --danger: #e2574c;
+  --display: "Marcellus FG", Georgia, serif;
+  --body: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --ink: #eef0f7; --ink-2: #ffffff; --ink-3: #f6f7fc; --line: #cdd2e6; --text: #151a30; --dim: #4a5170;
+    --gold: #8a5a00; --frost: #1d5f94; --danger: #b3261e; color-scheme: light;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--ink); color: var(--text); font-family: var(--body); line-height: 1.5; }
+main { max-width: 860px; margin: 0 auto; padding: 24px 16px 64px; }
+header { display: flex; flex-wrap: wrap; gap: 12px; align-items: baseline; justify-content: space-between; }
+h1 { font-family: var(--display); font-weight: 400; font-size: 1.9rem; margin: 0; color: var(--gold); }
+label { color: var(--dim); font-size: .9rem; }
+select, textarea, button { font: inherit; color: var(--text); background: var(--ink-2); border: 1px solid var(--line); border-radius: 6px; }
+select { padding: 4px 8px; }
+textarea { width: 100%; min-height: 96px; padding: 10px; font-family: ui-monospace, Consolas, monospace; font-size: .85rem; resize: vertical; }
+button { padding: 8px 16px; cursor: pointer; }
+button:hover, button:focus-visible { border-color: var(--gold); }
+.box { background: var(--ink-2); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin: 16px 0; }
+.box > label { display: block; margin-bottom: 6px; }
+.hint { color: var(--dim); font-size: .85rem; margin: 6px 0 10px; }
+.err { color: var(--danger); margin: 10px 0 0; font-weight: 600; }
+.totals { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin: 0; }
+.totals div { background: var(--ink-3); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; }
+.totals dt { color: var(--dim); font-size: .8rem; }
+.totals dd { margin: 0; font-size: 1.15rem; font-weight: 600; }
+.panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.panel h2 { font-family: var(--display); font-weight: 400; font-size: 1.15rem; margin: 0 0 8px; }
+.panel svg { width: 100%; height: auto; background: var(--ink-3); border: 1px solid var(--line); border-radius: 8px; display: block; }
+.gap { text-align: center; color: var(--frost); font-weight: 700; letter-spacing: .1em; border-left: 2px dashed var(--frost); margin: 0 auto; padding: 2px 0 2px 8px; width: max-content; grid-column: 1 / -1; }
+ol.steps { list-style: none; margin: 0; padding: 0; }
+ol.steps li { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-top: 1px solid var(--line); }
+ol.steps li:first-child { border-top: 0; }
+ol.steps input { margin-top: 5px; width: 18px; height: 18px; flex: none; accent-color: var(--gold); }
+ol.steps .n { color: var(--dim); min-width: 2em; text-align: right; flex: none; }
+ol.steps .done .t { text-decoration: line-through; color: var(--dim); }
+ol.steps .z { color: var(--dim); font-size: .85rem; }
+.note { color: var(--dim); font-size: .85rem; }
+[hidden] { display: none !important; }
+</style>
+<main>
+  <header>
+    <h1 id="title"></h1>
+    <span><label for="lang" id="langlabel"></label> <select id="lang"></select></span>
+  </header>
+  <section class="box">
+    <label for="code" id="codelabel"></label>
+    <textarea id="code" spellcheck="false" autocomplete="off" autocapitalize="off"></textarea>
+    <p class="hint" id="codehint"></p>
+    <button type="button" id="show"></button>
+    <p class="err" id="err" role="alert" hidden></p>
+  </section>
+  <div id="plan" hidden>
+    <section class="box"><dl class="totals" id="totals"></dl></section>
+    <section class="box"><div class="panels" id="panels"></div></section>
+    <section class="box">
+      <h2 id="stepshead" style="font-family:var(--display);font-weight:400;margin:0 0 8px"></h2>
+      <ol class="steps" id="steps"></ol>
+      <p class="note" id="more" hidden></p>
+      <p><button type="button" id="clear"></button></p>
+      <p class="note" id="local"></p>
+    </section>
+  </div>
+  <p class="note" id="private"></p>
+</main>
+<script>
+var WORDS = /*@WORDS@*/;
+/*@READER@*/
+(function () {
+  var LANGS = [["en", "English"], ["de", "Deutsch"], ["fr", "Français"], ["es", "Español"], ["ru", "Русский"], ["pt", "Português"], ["it", "Italiano"], ["ko", "한국어"], ["zh", "中文"]];
+  var ICON = { fly: "F", sail: "S", hearth: "H" };
+  var $ = function (id) { return document.getElementById(id); };
+  var lang = "en", code = "", result = null, ticks = {};
+
+  function guessLang() {
+    var l = ((navigator.languages && navigator.languages[0]) || navigator.language || "en").toLowerCase().slice(0, 2);
+    for (var i = 0; i < LANGS.length; i++) if (LANGS[i][0] === l) return l;
+    return "en";
+  }
+  function T(phrase) { var w = WORDS[phrase]; return (w && (w[lang] || w.en)) || phrase; }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+
+  function minutes(s) {
+    var m = Math.round(s / 60), h = Math.floor(m / 60);
+    return h > 0 ? h + " h " + (m % 60) + " min" : m + " min";
+  }
+  function drawTotals(plan) {
+    var t = FGPlan.totals(plan), box = $("totals");
+    box.textContent = "";
+    [["Experience", t.xp.toLocaleString()], ["Time", minutes(t.seconds)], ["Levels", t.from + " → " + t.to],
+     ["Flights", String(t.flights)], ["Crossings", String(t.crossings)], ["Steps", String(t.steps)]].forEach(function (r) {
+      var d = el("div"); d.appendChild(el("dt", "", T(r[0]))); d.appendChild(el("dd", "", r[1])); box.appendChild(d);
+    });
+  }
+  function esc(t) { return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+  function drawPanel(p) {                                              // (the markup is built from numbers and escaped text only)
+    var wrap = el("div", "panel"), byN = {}, d = "", m = "";
+    p.stops.forEach(function (st, i) { byN[st.n] = st; d += (i ? " L" : "M") + st.x + " " + st.y; });
+    if (p.stops.length > 1) m += '<path d="' + d + '" fill="none" stroke="#f0c66b" stroke-width="0.8"/>';
+    p.legs.forEach(function (lg) {                                     // (a leg inside this zone is drawn dashed; one from another zone is marked between the panels)
+      if (lg.from === lg.to && byN[lg.a] && byN[lg.b]) {
+        m += '<line x1="' + byN[lg.a].x + '" y1="' + byN[lg.a].y + '" x2="' + byN[lg.b].x + '" y2="' + byN[lg.b].y + '" stroke="#8fd3ff" stroke-width="0.8" stroke-dasharray="2 2"/>';
+      }
+    });
+    p.stops.forEach(function (st) {
+      m += '<circle cx="' + st.x + '" cy="' + st.y + '" r="3.6" fill="#11152a" stroke="#f0c66b" stroke-width="0.8"/>';
+      m += '<text x="' + st.x + '" y="' + (st.y + 1.6) + '" text-anchor="middle" font-size="4.4" fill="#e7e9f4">' + st.n + "</text>";
+      if (ICON[st.kind]) m += '<text x="' + (st.x + 4.6) + '" y="' + (st.y - 3.2) + '" font-size="4.4" font-weight="700" fill="#8fd3ff">' + ICON[st.kind] + "</text>";
+    });
+    wrap.appendChild(el("h2", "", p.name));
+    var holder = el("div");
+    holder.innerHTML = '<svg viewBox="0 0 100 100" role="img" aria-label="' + esc(p.name) + '">' + m + "</svg>";
+    wrap.appendChild(holder);
+    return wrap;
+  }
+  function drawPanels(plan) {
+    var box = $("panels"), seen = {};
+    box.textContent = "";
+    FGPlan.panels(plan).forEach(function (p) {
+      p.legs.forEach(function (lg) {
+        if (lg.from !== lg.to && !seen[lg.a + ":" + lg.b]) { seen[lg.a + ":" + lg.b] = 1; box.appendChild(el("div", "gap", ICON[lg.kind] + " " + lg.a + " → " + lg.b)); }
+      });
+      box.appendChild(drawPanel(p));
+    });
+  }
+
+  function storeKey() { return "fgui-plan-" + FGPlan.hash(code); }
+  function loadTicks() {
+    ticks = {};
+    try { var v = JSON.parse(localStorage.getItem(storeKey()) || "[]"); if (Array.isArray(v)) v.forEach(function (i) { if (typeof i === "number") ticks[i] = true; }); } catch (e) {}
+  }
+  function saveTicks() {
+    try { localStorage.setItem(storeKey(), JSON.stringify(Object.keys(ticks).map(Number))); } catch (e) {}
+  }
+  function drawSteps(plan) {
+    var list = $("steps");
+    list.textContent = "";
+    plan.st.forEach(function (s, i) {
+      var li = el("li", ticks[i] ? "done" : ""), box = el("input"), body = el("div", "t");
+      box.type = "checkbox"; box.checked = !!ticks[i]; box.id = "s" + i;
+      box.addEventListener("change", function () {
+        if (box.checked) ticks[i] = true; else delete ticks[i];
+        li.className = box.checked ? "done" : "";
+        saveTicks();
+      });
+      var lab = el("label"); lab.htmlFor = box.id; lab.style.color = "inherit"; lab.style.fontSize = "1rem";
+      lab.textContent = s.t;
+      body.appendChild(lab);
+      if (s.z !== null) body.appendChild(el("div", "z", plan.z[s.z - 1].n));
+      li.appendChild(el("span", "n", String(i + 1)));
+      li.appendChild(box); li.appendChild(body);
+      list.appendChild(li);
+    });
+    var more = $("more");
+    more.hidden = !(plan.more > 0);
+    more.textContent = plan.more > 0 ? T("%d more steps are not shown.").replace("%d", plan.more) : "";
+  }
+
+  function words() {
+    document.documentElement.lang = lang;
+    document.title = T("Quest guide");
+    $("title").textContent = T("Quest guide");
+    $("langlabel").textContent = T("Language");
+    $("codelabel").textContent = T("Paste a plan code");
+    $("codehint").textContent = T("Copy the code in the game with Share plan, then paste it here.");
+    $("show").textContent = T("Show the plan");
+    $("stepshead").textContent = T("Steps");
+    $("clear").textContent = T("Clear the ticks");
+    $("local").textContent = T("Your ticks stay in this browser only.");
+    $("private").textContent = T("Nothing is sent anywhere: the page reads the code here, in your browser.");
+    render();
+  }
+  function render() {
+    var err = $("err"), view = $("plan");
+    if (!result || result.ok || code === "") {
+      err.hidden = true;
+    } else {
+      err.hidden = false;
+      err.textContent = T(result.why === "empty" ? "That is not a plan code." : result.why === "kind" ? (result.other ? "That is a theme or layout code, not a plan code." : "That is not a plan code.")
+                          : result.why === "version" ? "This code is from a newer version of the add-on." : "The code is damaged or cut short.");
+    }
+    if (result && result.ok) {
+      view.hidden = false;
+      drawTotals(result.plan); drawPanels(result.plan); drawSteps(result.plan);
+    } else {
+      view.hidden = true;
+    }
+  }
+  function load(text, keepHash) {
+    code = (text || "").replace(/^\s+|\s+$/g, "");
+    result = code === "" ? null : FGPlan.read(code);
+    if (result && result.ok) loadTicks(); else ticks = {};
+    if (!keepHash) {
+      try { history.replaceState(null, "", result && result.ok ? "#c=" + encodeURIComponent(code) : location.pathname + location.search); } catch (e) {}
+    }
+    render();
+  }
+  function fromHash() {
+    var m = /^#c=(.*)$/.exec(location.hash || ""), text = "";
+    if (m) { try { text = decodeURIComponent(m[1]); } catch (e) { text = ""; } }
+    return text;
+  }
+
+  var pick = $("lang");
+  LANGS.forEach(function (l) { var o = el("option", "", l[1]); o.value = l[0]; pick.appendChild(o); });
+  try { lang = localStorage.getItem("fgui-plan-lang") || guessLang(); } catch (e) { lang = guessLang(); }
+  if (!WORDS["Quest guide"] || !WORDS["Quest guide"][lang]) lang = "en";
+  pick.value = lang;
+  pick.addEventListener("change", function () {
+    lang = pick.value;
+    try { localStorage.setItem("fgui-plan-lang", lang); } catch (e) {}
+    words();
+  });
+  $("show").addEventListener("click", function () { load($("code").value); });
+  $("code").addEventListener("input", function () { load($("code").value); });
+  $("clear").addEventListener("click", function () { ticks = {}; saveTicks(); if (result && result.ok) drawSteps(result.plan); });
+  window.addEventListener("hashchange", function () { var t = fromHash(); if (t && t !== code) { $("code").value = t; load(t, true); } });
+  var first = fromHash();
+  if (first) { $("code").value = first; load(first, true); }
+  words();
+})();
+</script>
