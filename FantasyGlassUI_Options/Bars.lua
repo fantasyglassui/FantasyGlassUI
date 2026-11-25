@@ -272,7 +272,8 @@ function ns.BuildGuidePage(page)
 
     local live = CreateFrame("Frame", nil, page)
     live:SetPoint("TOPLEFT", 0, 0)
-    live:SetSize(736, 400)
+    local LIVE_HEIGHT = 636                 -- (the last switch ends at y = -620)
+    live:SetSize(736, LIVE_HEIGHT)
     T.live = live
     Heading(live, "Quest guides", 0, 0, 736)
     local status = Small(live, 12, 700)
@@ -413,7 +414,7 @@ function ns.BuildGuidePage(page)
         else status:SetText(ns:Tr("You are not following a guide.")) end
     end
     page.Refresh()
-    page.contentHeight = 636
+    page.contentHeight = LIVE_HEIGHT
     if page.area then page.area:SetContentHeight(page.contentHeight) end
     return T
 end

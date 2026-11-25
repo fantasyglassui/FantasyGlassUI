@@ -132,6 +132,8 @@ local function WhyText(step, guide)
         return "  " .. format(ns:Tr("(+%s xp)"), nice)
     end
     if saves and saves > 0 then return "  " .. format(ns:Tr("(saves ~%d min)"), math.max(1, math.floor(saves / 60 + 0.5))) end
+    local detour = tonumber(why.detour)
+    if detour and detour > 0 then return "  " .. format(ns:Tr("(+%d s detour)"), math.floor(detour + 0.5)) end
     return ""
 end
 -- What the panel says for a step. `guide`: the guide it is on, for the planned one's "why".
@@ -150,7 +152,7 @@ function ns.GuideStepBase(step)
     if k == "learnflight" then return step.text or ns:Tr("Learn the flight path") end
     if k == "sail" then return step.text or ns:Tr("Take the boat") end
     if k == "bind" then return step.text or ns:Tr("Set your hearthstone here") end
-    if ns.GUIDE_STOP_KINDS[k] then return ns:Tr(ns.guideKinds[k][3]) .. (step.text and (": " .. step.text) or "") end
+    if ns.GUIDE_STOP_KINDS[k] then return step.text or ns:Tr(ns.guideKinds[k][3]) end   -- (a stop's words say what it is)
     return step.text or ""
 end
 
@@ -311,6 +313,12 @@ function ns:GuideAdvance()
     st.ticked = type(st.ticked) == "table" and st.ticked or {}
     local before = st.at or 1
     st.at = ns.GuideNext(guide.steps, before, ns:GuideWorld(), st.ticked)
+    if st.name == ns.GUIDE_PLANNED and ns.PlannerExploreReached then      -- (an explore spot reached: not asked again)
+        for i = before, st.at - 1 do
+            local s = guide.steps[i]
+            if type(s) == "table" and s.kind == "explore" and not st.ticked[i] then ns.PlannerExploreReached(s) end
+        end
+    end
     local step = guide.steps[st.at]
     if st.at ~= before and PlaySound and SOUNDKIT and ns.db.guideSound ~= false then pcall(PlaySound, SOUNDKIT.IG_QUEST_LIST_SELECT or 875) end
     if not step and not st.finished then

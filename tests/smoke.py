@@ -9430,7 +9430,7 @@ try("13.1 stops: places", function()
         spot[2] = 60; canRepair = true
         fireEvent("MERCHANT_SHOW"); fireEvent("TRAINER_SHOW")
         env.CanMerchantRepair = nil
-        if #ns.root.plannerSeen.vendor ~= 2 or #ns.root.plannerSeen.trainer ~= 1 then error("vendor and trainer seen") end
+        if #ns.root.plannerSeen.vendor ~= 2 or ns.root.plannerSeen.trainer ~= nil then error("vendors seen; trainers are not recorded") end
         if #src.places("vendor", "Food") ~= 0 or #log.places("vendor", "Drink") ~= 0 then error("seen merchants are not food or drink vendors") end
         if #log.places("anyVendor") ~= 2 or #src.places("anyVendor") ~= 2 then error("every seen merchant is a place to sell") end
         if #log.places("repair") ~= 1 or log.places("repair")[1].x ~= 60 then error("only a merchant that could repair joins repair") end
@@ -9498,7 +9498,8 @@ try("13.1 stops: the mechanism and the class trainer", function()
         local labels = { train = "Train", vendor = "Visit the vendor", mail = "Check your mail", explore = "Explore", gather = "Gather" }
         for i, k in ipairs(kinds) do
             local t = ns.GuideStepText(g.steps[i])
-            if not (t:find(ns:Tr(labels[k]), 1, true) and t:find(g.steps[i].text, 1, true)) then error("the panel's words for " .. k .. ": " .. t) end
+            if t ~= g.steps[i].text or t:find(ns:Tr(labels[k]) .. ":", 1, true) then error("the panel's words for " .. k .. ": its own words alone, got " .. t) end
+            if ns.GuideStepText({ kind = k }) ~= ns:Tr(labels[k]) then error("a " .. k .. " step with no words: its kind's label") end
         end
         local near = false
         local w = { near = function() return near end, onQuest = function() return false end, completed = function() return false end, ready = function() return false end }
@@ -10186,12 +10187,14 @@ try("13.1 stops: professions and riding", function()
         class, money = "WARRIOR", 500 * 10000
         skills = { { 762, "Riding", 75, 75 } }
         guide = plan()
-        if find(guide, "train") or find(guide, "vendor") or ns.PlannerRiding(40) ~= nil then error("riding known: nothing") end
+        if find(guide, "train") or ns.PlannerRiding(40) ~= nil then error("riding known: no trainer, no line") end
+        if not find(guide, "vendor", "Horse Hal") then error("riding known, never seen mounted: the mount vendor still") end
         skills = {}
-        -- the spell of riding known, no skill line: no stops, no line
+        -- the spell of riding known, no skill line: no trainer, no line
         spellKnown[33388] = true
         guide = plan()
-        if find(guide, "train") or find(guide, "vendor") or ns.PlannerRiding(40) ~= nil then error("riding spell known: nothing") end
+        if find(guide, "train") or ns.PlannerRiding(40) ~= nil then error("riding spell known: no trainer") end
+        if not find(guide, "vendor", "Horse Hal") then error("riding spell known, no mount seen: the mount vendor") end
         spellKnown = {}
         guide = plan()
         if not find(guide, "train", "Rider Rae") then error("nothing known: the riding trainer again") end
@@ -10391,6 +10394,7 @@ try("13.1 stops: mail, exploring and gathering", function()
         for n, s in ipairs(guide.steps) do if ns.GuideLine(back.steps[n]) ~= ns.GuideLine(s) then error("the explore step round-trips") end end
         -- no exploration data on the map (nothing explored anywhere): none
         explored = function() return {} end
+        ns.PlannerSourceReset()                                        -- (a new session: what each map reports is learned again)
         if count(plan(), "explore") ~= 0 then error("no exploration data: no explore step") end
         -- an unreadable game call: none, no error
         env.C_MapExplorationInfo = { GetExploredAreaIDsAtPosition = function() error("boom") end }
@@ -10496,6 +10500,342 @@ try("13.1 stops: mail, exploring and gathering", function()
     ns.root.guideKey, ns.root.guides, ns.root.guideState, ns.root.planner, ns.root.plannerSeen = saved.key, saved.guides, saved.state, saved.planner, saved.seen
     ns.root.plannerNodesSeen = saved.nodes
     ns.db.plannerMail, ns.db.plannerExplore, ns.db.plannerGather, ns.db.plannerWhy = saved.mail, saved.explore, saved.gather, saved.why
+    ns.PlannerSourceReset()
+    if not ok then error(err, 0) end
+end)
+try("13.2 stops: the mount, the trainer window, supplies, seen places and the detour line", function()
+    local real = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), level = env.UnitLevel, class = env.UnitClass, money = env.GetMoney,
+                   profs = env.GetProfessions, info = env.GetProfessionInfo, trade = rawget(env, "IsTradeskillTrainer"),
+                   guid = rawget(env, "UnitGUID"), spells = env.C_SpellBook, mounted = env.IsMounted, here = ns.GuideHere, source = ns.PlannerSource,
+                   faction = rawget(env, "UnitFactionGroup"), name = rawget(env, "UnitName"), power = env.UnitPowerType, count = env.C_Item.GetItemCount,
+                   enum = env.Enum, itemID = rawget(env, "GetInventoryItemID"), instant = env.C_Item.GetItemInfoInstant,
+                   free = env.C_Container.GetContainerNumFreeSlots, dur = env.GetInventoryItemDurability }
+    local saved = { key = ns.root.guideKey, guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner, seen = ns.root.plannerSeen,
+                    why = ns.db.plannerWhy, mount = ns.db.plannerMount }
+    local KEY = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
+    local cm = {}
+    for k, v in pairs(real.map) do cm[k] = v end
+    cm.GetWorldPosFromMapPos = function(map, v) if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end end
+    env.C_Map = cm
+    env.CreateVector2D = function(x, y) return { x = x, y = y } end
+    local level, class, money, power, mounted = 40, "WARRIOR", 130 * 10000, 1, false
+    env.UnitLevel = function() return level end
+    env.UnitClass = function() return class, class end
+    env.GetMoney = function() return money end
+    env.UnitPowerType = function() return power, "X" end
+    env.C_SpellBook = { IsSpellKnown = function() return false end }
+    env.IsMounted = function() return mounted end
+    env.GetProfessions = function() return nil end
+    local free, counts, bow = 20, {}, nil
+    env.C_Container.GetContainerNumFreeSlots = function(bag) return bag == 0 and free or 0 end
+    env.GetInventoryItemDurability = function(slot) if slot == 5 then return 90, 100 end end
+    env.C_Item.GetItemCount = function(item) return counts[item] end
+    env.GetInventoryItemID = function(_, slot) if slot == 18 then return bow end end
+    env.C_Item.GetItemInfoInstant = function(id)
+        if id == 5001 then return id, "Weapon", "Bows", "INVTYPE_RANGEDRIGHT", 1, 2, 2 end
+        return 1, "Armor", "Cloth", "INVTYPE_CHEST", 134400, 4, 1
+    end
+    env.Enum = setmetatable({ ItemClass = { Weapon = 2 }, ItemWeaponSubclass = { Bows = 2, Crossbow = 18, Guns = 3 }, PowerType = { Mana = 0 } }, { __index = real.enum })
+    local function rec(id, x, y)
+        return { id = id, name = "Quest " .. id, level = level - 1, minLevel = 1, xp = 300,
+            starts = { { map = 1, x = x, y = y } }, ends = { { map = 1, x = x, y = y } },
+            objectives = { { kind = "kill", count = 4, countKnown = true, mobLevel = level - 1, spots = { { map = 1, x = x + 4, y = y + 4 } } } },
+            pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+    end
+    local at = { [601] = { 30, 40 }, [602] = { 31, 40 }, [603] = { 30, 41 } }
+    local smith = { name = "Smith", map = 1, x = 33, y = 40, id = 50 }
+    local baker = { name = "Baker", map = 1, x = 31, y = 41, id = 52 }
+    local grocer = { name = "Grocer", map = 1, x = 40, y = 40, id = 51 }
+    local places = { ["professionTrainer:762"] = { { name = "Rider Rae", map = 1, x = 34, y = 40, id = 762 } },
+                     mountVendor = { { name = "Horse Hal", map = 1, x = 35, y = 40, id = 763 } },
+                     repair = { smith }, anyVendor = { smith, baker }, ["vendor:Food"] = { grocer }, ["vendor:Drink"] = { grocer }, ["vendor:Ammo"] = { grocer } }
+    local calls = 0
+    local source = { kind = "questie", ids = function() return { 601, 602, 603 } end, quest = function(id) return at[id] and rec(id, at[id][1], at[id][2]) end,
+        inns = function() return {} end, places = function(kind, arg) calls = calls + 1; return places[arg and (kind .. ":" .. arg) or kind] or {} end }
+    local function context()
+        return { source = source, level = level, group = "solo", inGroup = false, speed = 7, faction = "Alliance",
+            done = function() return false end, onQuest = function() return false end,
+            here = { map = 1, x = 30, y = 40 }, crossings = {}, learnFlights = false, flights = {}, pace = 1, flightTime = function() return nil end }
+    end
+    local function find(guide, kind, pat)
+        for i, s in ipairs(guide.steps) do if s.kind == kind and (not pat or (s.text or ""):find(pat, 1, true)) then return i, s end end
+    end
+    local ok, err = pcall(function()
+        ns.root.planner = nil
+        ns.root.guideKey = KEY
+        ns.db.plannerMount = nil
+        -- (1) the mount is a reason of its own: closing the riding trainer keeps the mount vendor stop
+        local guide = ns.PlannerRoute(context())
+        local t, v = find(guide, "train", "Rider Rae"), find(guide, "vendor", "Horse Hal")
+        if not (t and v and v > t) then error("130g, level 40: the riding trainer, then the mount vendor") end
+        ns.PlannerSource = function() return source end
+        ns.GuideHere = function() return 1, 34, 40 end
+        env.IsTradeskillTrainer = function() return false end
+        env.UnitGUID = function(u) if u == "npc" then return "Creature-0-1-2-3-762-0000ABCD" end end
+        fireEvent("TRAINER_SHOW"); fireEvent("TRAINER_CLOSED")
+        local d = ns.PlannerCharRecord(false)
+        if not (d and d.ridingKnown) then error("the riding trainer closed: you ride") end
+        guide = ns.PlannerRoute(context())
+        if find(guide, "train", "Rider Rae") then error("riding known: no riding trainer stop") end
+        if not find(guide, "vendor", "Horse Hal") then error("riding known, no mount seen: the mount vendor stop is still there") end
+        mounted = true
+        fireEvent("PLAYER_MOUNT_DISPLAY_CHANGED")
+        mounted = false
+        if not d.mountSeen then error("seen mounted: mountSeen") end
+        guide = ns.PlannerRoute(context())
+        if find(guide, "vendor", "Horse Hal") then error("a mount seen: no mount vendor stop") end
+        d.mountSeen = nil
+        money = 15 * 10000
+        if find(ns.PlannerRoute(context()), "vendor", "Horse Hal") then error("15g: no mount stop") end
+        money = 130 * 10000
+        class = "WARLOCK"
+        if find(ns.PlannerRoute(context()), "vendor", "Horse Hal") then error("a warlock: never a mount vendor stop") end
+        class = "WARRIOR"
+        level = 39
+        if find(ns.PlannerRoute(context()), "vendor", "Horse Hal") then error("level 39: no mount stop") end
+        level = 40
+        -- (6) the trainer window with the guide locked looks nothing up
+        ns.root.planner = nil
+        ns.root.guideKey = nil
+        local srcCalls, tradeCalls = 0, 0
+        ns.PlannerSource = function() srcCalls = srcCalls + 1; return source end
+        env.IsTradeskillTrainer = function() tradeCalls = tradeCalls + 1; return false end
+        calls = 0
+        fireEvent("TRAINER_SHOW"); fireEvent("TRAINER_CLOSED")
+        if srcCalls ~= 0 or tradeCalls ~= 0 or calls ~= 0 then error("locked: no Questie lookups at the trainer (" .. srcCalls .. ", " .. tradeCalls .. ", " .. calls .. ")") end
+        if ns.root.planner ~= nil then error("locked: nothing recorded") end
+        ns.root.guideKey = KEY
+        fireEvent("TRAINER_SHOW")
+        if srcCalls == 0 then error("unlocked: the trainer is looked up") end
+        fireEvent("TRAINER_CLOSED")
+        ns.PlannerSource = function() return source end
+        -- (3) supplies: every tier at or below your level counts; a mage buys no water
+        level, class, power = 11, "HUNTER", 0
+        local function supplies()
+            ns.root.planner = nil
+            local _, s = find(ns.PlannerRoute(context()), "vendor")
+            return s and s.text or "none"
+        end
+        counts = { [4540] = 50, [4541] = 0, [159] = 50, [1179] = 0 }
+        if supplies() ~= "none" then error("lower tiers of food and water in the bags: nothing to buy, got " .. supplies()) end
+        counts = { [4540] = 0, [4541] = 0, [159] = 0, [1179] = 0 }
+        if supplies() ~= "Buy supplies at Grocer; buy 20 water; buy 20 food" then error("nothing carried: " .. supplies()) end
+        class = "MAGE"
+        if supplies() ~= "Buy supplies at Grocer; buy 20 food" then error("a mage conjures water: " .. supplies()) end
+        -- (8) an enum group without the key: the fallback number
+        class = "HUNTER"
+        env.Enum = { ItemClass = {}, ItemWeaponSubclass = {}, PowerType = {} }
+        bow = 5001
+        counts = { [4540] = 50, [159] = 50, [2512] = 0 }
+        if supplies() ~= "Buy supplies at Grocer; buy 600 arrows" then error("enum keys missing: the fallbacks find the bow: " .. supplies()) end
+        bow = nil
+        env.Enum = setmetatable({ ItemClass = { Weapon = 2 }, ItemWeaponSubclass = { Bows = 2, Crossbow = 18, Guns = 3 }, PowerType = { Mana = 0 } }, { __index = real.enum })
+        -- (14) selling only, with supplies: the supplies vendor serves both, even with a merchant at the hub
+        class, power = "WARRIOR", 1
+        free = 2
+        counts = { [4540] = 0 }
+        if supplies() ~= "Sell at Grocer; buy 20 food" then error("sell and buy: at the supplies vendor, got " .. supplies()) end
+        counts = { [4540] = 50 }
+        if supplies() ~= "Sell at Baker" then error("sell only: the nearest merchant, got " .. supplies()) end
+        free = 20
+        -- (12) the detour line
+        local line = ns.GuideStepText({ kind = "vendor", text = "Sell at Smith", why = { detour = 12 } }, { name = ns.GUIDE_PLANNED })
+        if line ~= "Sell at Smith  " .. string.format(ns:Tr("(+%d s detour)"), 12) then error("Show why: the detour, got " .. line) end
+        ns.db.plannerWhy = false
+        if ns.GuideStepText({ kind = "vendor", text = "Sell at Smith", why = { detour = 12 } }, { name = ns.GUIDE_PLANNED }) ~= "Sell at Smith" then error("Show why off: no detour") end
+        ns.db.plannerWhy = saved.why
+        -- (4, 9, 10) seen places: per faction, at most 300, no trainers
+        local faction = "Alliance"
+        env.UnitFactionGroup = function() return faction end
+        env.UnitName = function(u) if u == "npc" then return "Postmaster" end return "Someone" end
+        local spot = { 1, 50, 50 }
+        ns.GuideHere = function() return spot[1], spot[2], spot[3] end
+        ns.PlannerSourceReset()
+        local log = ns.PlannerLogSource()
+        ns.root.plannerSeen = { mailbox = { { name = "Old", map = 1, x = 10, y = 10 } } }
+        if #log.places("mailbox") ~= 0 then error("a seen place saved with no faction is not used") end
+        fireEvent("MAIL_SHOW")
+        local list = ns.root.plannerSeen.mailbox
+        if #list ~= 1 or list[1].faction ~= "Alliance" or list[1].name ~= "Postmaster" then error("a seen mailbox is saved with your faction (and the old one dropped)") end
+        if #log.places("mailbox") ~= 1 then error("your faction's mailbox is used") end
+        faction = "Horde"
+        if #log.places("mailbox") ~= 0 then error("another faction's mailbox is not used") end
+        fireEvent("MAIL_SHOW")
+        if #list ~= 2 or #log.places("mailbox") ~= 1 or log.places("mailbox")[1].name ~= "Postmaster" then error("the same spot seen by the other faction: its own entry") end
+        faction = "Alliance"
+        if #log.places("mailbox") ~= 1 then error("each faction sees its own") end
+        local many = {}
+        for n = 1, 300 do many[n] = { name = "Seen " .. n, map = 2, x = n % 100, y = 10, faction = "Alliance" } end
+        ns.root.plannerSeen.mailbox = many
+        fireEvent("MAIL_SHOW")
+        list = ns.root.plannerSeen.mailbox
+        if #list ~= 300 or list[1].name ~= "Seen 2" or list[300].name ~= "Postmaster" then error("at most 300: the oldest goes, got " .. #list .. " " .. tostring(list[1].name)) end
+        fireEvent("TRAINER_SHOW"); fireEvent("TRAINER_CLOSED")
+        if ns.root.plannerSeen.trainer ~= nil then error("trainers are not recorded") end
+    end)
+    ns:PlannerStop()
+    env.C_Map = real.map; rawset(env, "CreateVector2D", real.vec); env.UnitLevel = real.level; env.UnitClass = real.class; env.GetMoney = real.money
+    env.GetProfessions, env.GetProfessionInfo = real.profs, real.info; env.C_SpellBook, env.IsMounted = real.spells, real.mounted
+    rawset(env, "IsTradeskillTrainer", real.trade); rawset(env, "UnitGUID", real.guid); ns.GuideHere, ns.PlannerSource = real.here, real.source
+    rawset(env, "UnitFactionGroup", real.faction); rawset(env, "UnitName", real.name); env.UnitPowerType = real.power; env.C_Item.GetItemCount = real.count
+    env.Enum = real.enum; rawset(env, "GetInventoryItemID", real.itemID); env.C_Item.GetItemInfoInstant = real.instant
+    env.C_Container.GetContainerNumFreeSlots = real.free; env.GetInventoryItemDurability = real.dur
+    ns.root.guideKey, ns.root.guides, ns.root.guideState, ns.root.planner, ns.root.plannerSeen = saved.key, saved.guides, saved.state, saved.planner, saved.seen
+    ns.db.plannerWhy, ns.db.plannerMount = saved.why, saved.mount
+    ns.PlannerSourceReset()
+    if not ok then error(err, 0) end
+end)
+try("13.2 stops: exploring, and what a replan costs", function()
+    local real = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), level = env.UnitLevel, explore = rawget(env, "C_MapExplorationInfo"), here = ns.GuideHere,
+                   world = ns.GuideWorld, wp = ns.PlannerWorldPos, mail = env.HasNewMail, class = env.UnitClass, power = env.UnitPowerType,
+                   count = env.C_Item.GetItemCount, free = env.C_Container.GetContainerNumFreeSlots, dur = env.GetInventoryItemDurability }
+    local saved = { key = ns.root.guideKey, guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner, seen = ns.root.plannerSeen,
+                    nodes = ns.root.plannerNodesSeen, samples = ns.PLANNER_EXPLORE_SAMPLES, stops = {}, explore = ns.db.plannerExplore, gather = ns.db.plannerGather, mailOn = ns.db.plannerMail }
+    for i, d in ipairs(ns.plannerStops or {}) do saved.stops[i] = d end
+    local cm = {}
+    for k, v in pairs(real.map) do cm[k] = v end
+    local mapCalls = 0
+    cm.GetWorldPosFromMapPos = function(map, v)
+        mapCalls = mapCalls + 1
+        if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end
+        if map == 3 then return 1, { x = v.x * 1000, y = v.y * 1000 } end
+    end
+    env.C_Map = cm
+    env.CreateVector2D = function(x, y) return { x = x, y = y } end
+    env.UnitLevel = function() return 20 end
+    local explored = function() return nil end
+    local textures = function() return { {} } end
+    local asked = 0
+    env.C_MapExplorationInfo = {
+        GetExploredAreaIDsAtPosition = function(map, v) asked = asked + 1; return explored(map, v.x * 100, v.y * 100) end,
+        GetExploredMapTextures = function(map) return textures(map) end }
+    local function rec(id, x, y)
+        return { id = id, name = "Quest " .. id, level = 19, minLevel = 1, xp = 300,
+            starts = { { map = 1, x = x, y = y } }, ends = { { map = 1, x = x, y = y } },
+            objectives = { { kind = "kill", count = 4, countKnown = true, mobLevel = 19, spots = { { map = 1, x = x + 4, y = y + 4 } } } },
+            pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+    end
+    local at = { [601] = { 30, 40 }, [602] = { 70, 40 } }
+    local source = { kind = "questie", ids = function() return { 601, 602 } end, quest = function(id) return at[id] and rec(id, at[id][1], at[id][2]) end,
+        inns = function() return {} end, places = function() return {} end }
+    local function context()
+        return { source = source, level = 20, group = "solo", inGroup = false, speed = 7, faction = "Alliance",
+            done = function() return false end, onQuest = function() return false end,
+            here = { map = 1, x = 30, y = 40 }, crossings = {}, learnFlights = false, flights = {}, pace = 1, flightTime = function() return nil end }
+    end
+    local function explores(guide)
+        local out = {}
+        for _, s in ipairs(guide.steps) do if s.kind == "explore" then out[#out + 1] = s end end
+        return out
+    end
+    local ok, err = pcall(function()
+        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
+        ns.root.planner, ns.root.plannerNodesSeen = nil, nil
+        ns.db.plannerExplore, ns.db.plannerGather = nil, nil
+        ns.PlannerSourceReset()
+        -- (5) a zone explored somewhere else (its textures), nothing explored along the way: explore steps
+        if #explores((ns.PlannerRoute(context()))) == 0 then error("the map reports exploration (its textures): explore steps along an unexplored leg") end
+        ns.PlannerSourceReset()
+        textures = function() return {} end
+        if #explores((ns.PlannerRoute(context()))) ~= 0 then error("no explored textures: the map does not report exploration") end
+        textures = function() return { {} } end
+        -- a spot you reached is not asked again (the game may never call it explored)
+        local function patch(x) return x >= 40 and x <= 45 end
+        explored = function(map, x) if map == 1 and not patch(x) then return { 7 } end end
+        local guide = ns.PlannerRoute(context())
+        local list = explores(guide)
+        if #list ~= 1 then error("one unexplored patch: one step, got " .. #list) end
+        ns.GuideWorld = function() return { near = function() return true end, onQuest = function() return false end,
+            completed = function() return false end, ready = function() return false end, level = 20 } end
+        ns.root.guideState = {}
+        ns.root.guideState[ns:CharKey()] = { name = ns.GUIDE_PLANNED, at = 1, ticked = {},
+            plan = { name = ns.GUIDE_PLANNED, steps = { list[1], { kind = "note", text = "after" } } } }
+        ns:GuideAdvance()
+        ns.GuideWorld = real.world
+        if ns.GuideState().at ~= 2 then error("the explore step ticks by being there") end
+        local d = ns.PlannerCharRecord(false)
+        local reached = d and d.exploreReached and d.exploreReached[1]
+        if not (reached and #reached == 1 and reached[1].x == list[1].x) then error("the reached spot is remembered for the character") end
+        ns:PlannerStop()
+        if #explores((ns.PlannerRoute(context()))) ~= 0 then error("a reached spot (and those within 40 yards) is not asked again") end
+        d.exploreReached = nil
+        if #explores((ns.PlannerRoute(context()))) ~= 1 then error("without it: the step again") end
+        -- at most so many samples a plan
+        explored = function() return nil end
+        ns.PLANNER_EXPLORE_SAMPLES = 10
+        asked = 0
+        ns.PlannerRoute(context())
+        if asked > 10 then error("the sample cap: " .. asked) end
+        ns.PLANNER_EXPLORE_SAMPLES = saved.samples
+        asked = 0
+        ns.PlannerRoute(context())
+        if asked > ns.PLANNER_EXPLORE_SAMPLES then error("the default sample cap: " .. asked) end
+        -- (2) a ~100-step plan and ~400 places: the vendor and mail passes look each place up once
+        local wpCalls = 0
+        ns.PlannerWorldPos = function(...) wpCalls = wpCalls + 1; return real.wp(...) end
+        local placeLists, id = {}, 1000
+        for _, key in ipairs({ "repair", "anyVendor", "vendor:Food", "vendor:Drink", "mailbox" }) do
+            local l = {}
+            for n = 1, 80 do
+                id = id + 1
+                l[n] = { name = key .. " " .. n, map = n % 8 == 0 and 3 or 1, x = (n * 7) % 100, y = (n * 13) % 100, id = id }
+            end
+            placeLists[key] = l
+        end
+        local big = { kind = "questie", ids = function() return {} end, quest = function() return nil end, inns = function() return {} end,
+            places = function(kind, arg) return placeLists[arg and (kind .. ":" .. arg) or kind] or {} end }
+        local function steps100()
+            local out = {}
+            for n = 1, 100 do
+                local kinds = { "accept", "do", "turnin" }
+                out[n] = { kind = kinds[n % 3 + 1], quest = 700 + n, hub = math.floor(n / 6), map = 1, x = 10 + (n % 50) * 1.5, y = 20 + math.floor(n / 50) * 20 }
+            end
+            return { name = ns.GUIDE_PLANNED, steps = out }
+        end
+        env.HasNewMail = function() return true end
+        env.UnitClass = function() return "WARRIOR", "WARRIOR" end
+        env.UnitPowerType = function() return 1, "RAGE" end
+        local carried, worn = 100, 90
+        env.C_Item.GetItemCount = function() return carried end
+        env.C_Container.GetContainerNumFreeSlots = function(bag) return bag == 0 and 2 or 0 end
+        env.GetInventoryItemDurability = function(slot) if slot == 5 then return worn, 100 end end
+        ns.db.plannerMail = nil
+        local keep = {}
+        for _, def in ipairs(saved.stops) do if def.id == "vendor" or def.id == "mail" then keep[#keep + 1] = def end end
+        ns.plannerStops = keep
+        local function run()
+            ns.root.planner = nil
+            local g = steps100()
+            local c = { source = big, level = 11, speed = 7, faction = "Alliance", here = { map = 1, x = 10, y = 20 }, crossings = {}, flights = {},
+                learnFlights = false, pace = 1, flightTime = function() return nil end }
+            wpCalls, mapCalls = 0, 0
+            ns.PlannerAddStops(g, { seconds = 3600 }, c)
+            return g, wpCalls, mapCalls
+        end
+        local g, first, firstMap = run()
+        local kinds = {}
+        for _, s in ipairs(g.steps) do kinds[s.kind] = (kinds[s.kind] or 0) + 1 end
+        if not kinds.vendor then error("the big plan has its vendor stop") end
+        if first > 650 then error("the first plan: each place and step looked up once, got " .. first .. " PlannerWorldPos calls (" .. firstMap .. " C_Map calls)") end
+        local _, again = run()
+        if again > 200 then error("the next plan: the places are known, got " .. again .. " PlannerWorldPos calls") end
+        carried, worn = 0, 10                                          -- (repair and food: the places that do both)
+        local g3, third = run()
+        local vendorText
+        for _, s in ipairs(g3.steps) do if s.kind == "vendor" then vendorText = s.text end end
+        if not (vendorText and vendorText:find("^Sell and repair at ")) then error("repair and food: a repair stop, got " .. tostring(vendorText)) end
+        if third > 200 then error("repair and food: the places are known, got " .. third .. " PlannerWorldPos calls") end
+    end)
+    ns:PlannerStop()
+    ns.plannerStops = saved.stops
+    ns.PlannerWorldPos, ns.GuideWorld = real.wp, real.world
+    env.C_Map = real.map; rawset(env, "CreateVector2D", real.vec); env.UnitLevel = real.level; rawset(env, "C_MapExplorationInfo", real.explore)
+    env.HasNewMail, env.UnitClass, env.UnitPowerType, env.C_Item.GetItemCount = real.mail, real.class, real.power, real.count
+    env.C_Container.GetContainerNumFreeSlots, env.GetInventoryItemDurability = real.free, real.dur
+    ns.GuideHere = real.here
+    ns.root.guideKey, ns.root.guides, ns.root.guideState, ns.root.planner, ns.root.plannerSeen = saved.key, saved.guides, saved.state, saved.planner, saved.seen
+    ns.root.plannerNodesSeen, ns.PLANNER_EXPLORE_SAMPLES = saved.nodes, saved.samples
+    ns.db.plannerExplore, ns.db.plannerGather, ns.db.plannerMail = saved.explore, saved.gather, saved.mailOn
     ns.PlannerSourceReset()
     if not ok then error(err, 0) end
 end)

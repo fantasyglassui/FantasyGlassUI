@@ -14,14 +14,23 @@ ns.PLANNER_MAIL_QUIET = 600             -- seconds after a visit before the same
 ns.PLANNER_EXPLORE_SECONDS = 15         -- an unexplored spot only when it adds at most this much
 ns.PLANNER_EXPLORE_MAX = 3              -- per plan
 ns.PLANNER_EXPLORE_YARDS = 40           -- sample spacing along a leg, and how far either side of it
+ns.PLANNER_EXPLORE_SAMPLES = 600        -- samples asked of the game per plan, at most
+ns.PLANNER_EXPLORE_REACHED = 40         -- a spot this close to one you reached is not asked again
 ns.PLANNER_GATHER_SECONDS = 20          -- a node only when it adds at most this much
 ns.PLANNER_GATHER_MAX = 5               -- per plan
 ns.PLANNER_NODE_YARDS = 10              -- two gatherings this close are one node
 local NODE_CAP = 300                    -- nodes kept per map
 local SAMPLE_CAP = 200                  -- samples along one leg
 local APART = 2                         -- explore spots are this many sample spacings apart, at least
+local REACHED_CAP = 200                 -- reached explore spots kept per map
+local GRID = 5                          -- a map with no texture answer: GRID x GRID samples say if it reports exploration
 
 local function Num(v) if type(v) == "number" and not ns:IsSecret(v) then return v end end
+-- A world position, remembered for the plan when PlannerStops.lua is there.
+local function Pos(map, x, y)
+    if ns.PlannerMemoPos then return ns.PlannerMemoPos(map, x, y) end
+    return ns.PlannerWorldPos(map, x, y)
+end
 local function R1(v) return floor(v * 10 + 0.5) / 10 end
 
 local function Clean(s)
@@ -173,8 +182,8 @@ local function Legs(steps, cache)
             local map = tonumber(a.map)
             local g = Geo(map, cache)
             if g then
-                local _, ax, ay = ns.PlannerWorldPos(map, a.x, a.y)
-                local _, bx, by = ns.PlannerWorldPos(map, b.x, b.y)
+                local _, ax, ay = Pos(map, a.x, a.y)
+                local _, bx, by = Pos(map, b.x, b.y)
                 if ax and bx then
                     local len = sqrt((bx - ax) ^ 2 + (by - ay) ^ 2)
                     local ux, uy = 1, 0
@@ -210,38 +219,125 @@ local function Explored(map, px, py)
     return nil
 end
 
+-- Does the map report exploration? Learned once a session per map (a "no" is asked again next plan,
+-- so a new zone counts once you explore its first area): its explored textures, else a coarse grid of
+-- samples (each counted in `budget`).
+ns.plannerExploreMaps = ns.plannerExploreMaps or {}
+local function Supports(map, budget)
+    if ns.plannerExploreMaps[map] then return true end
+    local api = type(C_MapExplorationInfo) == "table" and C_MapExplorationInfo or nil
+    local answer
+    if api and type(api.GetExploredMapTextures) == "function" then
+        local ok, list = pcall(api.GetExploredMapTextures, map)
+        if ok and not ns:IsSecret(list) and type(list) == "table" then answer = #list > 0 end
+    end
+    if answer == nil then
+        answer = false
+        for gx = 1, GRID do
+            for gy = 1, GRID do
+                ns.PlannerYield()
+                if budget.left <= 0 then return false end
+                budget.left = budget.left - 1
+                if Explored(map, gx * 100 / (GRID + 1), gy * 100 / (GRID + 1)) then answer = true; break end
+            end
+            if answer then break end
+        end
+    end
+    if answer then ns.plannerExploreMaps[map] = true end
+    return answer
+end
+
+-- The explore spots you reached (per character, by map): { { x, y }, ... }
+local function ReachedList(map, create)
+    local rec = ns.PlannerCharRecord and ns.PlannerCharRecord(create)
+    if type(rec) ~= "table" then return nil end
+    if type(rec.exploreReached) ~= "table" then
+        if not create then return nil end
+        rec.exploreReached = {}
+    end
+    local list = rec.exploreReached[map]
+    if type(list) ~= "table" then
+        if not create then return nil end
+        list = {}
+        rec.exploreReached[map] = list
+    end
+    return list
+end
+
+-- An explore step was reached (Guide.lua, when it ticks by being there): that spot is not asked again
+-- (the game may never call it explored: the edge of a map, a spot outside every area).
+function ns.PlannerExploreReached(step)
+    if type(step) ~= "table" or step.kind ~= "explore" then return false end
+    local map, x, y = Num(tonumber(step.map)), Num(tonumber(step.x)), Num(tonumber(step.y))
+    if not (map and x and y) or not ns:GuideUnlocked() then return false end
+    local list = ReachedList(map, true)
+    if not list then return false end
+    list[#list + 1] = { x = R1(x), y = R1(y) }
+    while #list > REACHED_CAP do table.remove(list, 1) end
+    return true
+end
+
+-- The world positions of the reached spots on a map (once per plan per map).
+local function Reached(map, cache)
+    local hit = cache[map]
+    if hit then return hit end
+    hit = {}
+    for _, p in ipairs(ReachedList(map, false) or {}) do
+        ns.PlannerYield()
+        if type(p) == "table" and tonumber(p.x) and tonumber(p.y) then
+            local c, wx, wy = Pos(map, p.x, p.y)
+            if c then hit[#hit + 1] = { wx, wy } end
+        end
+    end
+    cache[map] = hit
+    return hit
+end
+
+local function NearReached(list, wx, wy)
+    local r = ns.PLANNER_EXPLORE_REACHED
+    for _, q in ipairs(list) do
+        local dx, dy = q[1] - wx, q[2] - wy
+        if dx * dx + dy * dy <= r * r then return true end
+    end
+    return false
+end
+
 local function ExploreSteps(legs, speed, add)
     local yards = ns.PLANNER_EXPLORE_YARDS
-    -- sample every leg
-    local supports, samples = {}, {}
+    local budget = { left = ns.PLANNER_EXPLORE_SAMPLES }
+    -- sample every leg on a map that reports exploration, away from the spots you reached
+    local supports, samples, reached = {}, {}, {}
     for li, leg in ipairs(legs) do
         local list = {}
-        local n = math.min(SAMPLE_CAP, floor(leg.len / yards) + 1)
-        for si = 0, n do
-            local s = math.min(leg.len, si * yards)
-            for _, off in ipairs({ 0, yards, -yards }) do
-                ns.PlannerYield()
-                local wx, wy = leg.ax + leg.ux * s - leg.uy * off, leg.ay + leg.uy * s + leg.ux * off
-                local px, py = ToPercent(leg.geo, wx, wy)
-                if px >= 0 and px <= 100 and py >= 0 and py <= 100 then
-                    local seen = Explored(leg.map, px, py)
-                    if seen then supports[leg.map] = true end
-                    list[#list + 1] = { wx = wx, wy = wy, px = px, py = py, seen = seen }
+        if supports[leg.map] == nil then supports[leg.map] = Supports(leg.map, budget) end
+        if supports[leg.map] then
+            local near = Reached(leg.map, reached)
+            local n = math.min(SAMPLE_CAP, floor(leg.len / yards) + 1)
+            for si = 0, n do
+                local s = math.min(leg.len, si * yards)
+                for _, off in ipairs({ 0, yards, -yards }) do
+                    ns.PlannerYield()
+                    if budget.left > 0 then
+                        local wx, wy = leg.ax + leg.ux * s - leg.uy * off, leg.ay + leg.uy * s + leg.ux * off
+                        local px, py = ToPercent(leg.geo, wx, wy)
+                        if px >= 0 and px <= 100 and py >= 0 and py <= 100 and not NearReached(near, wx, wy) then
+                            budget.left = budget.left - 1
+                            list[#list + 1] = { wx = wx, wy = wy, px = px, py = py, seen = Explored(leg.map, px, py) }
+                        end
+                    end
                 end
             end
         end
         samples[li] = list
     end
-    -- the unexplored ones on maps that report exploration, nearest to the path first
+    -- the unexplored ones, nearest to the path first
     local cands = {}
     for li, leg in ipairs(legs) do
-        if supports[leg.map] then
-            for _, p in ipairs(samples[li]) do
-                ns.PlannerYield()
-                if p.seen == false then
-                    local d = Detour(leg, p.wx, p.wy, speed)
-                    if d <= ns.PLANNER_EXPLORE_SECONDS then cands[#cands + 1] = { leg = li, p = p, d = d } end
-                end
+        for _, p in ipairs(samples[li]) do
+            ns.PlannerYield()
+            if p.seen == false then
+                local d = Detour(leg, p.wx, p.wy, speed)
+                if d <= ns.PLANNER_EXPLORE_SECONDS then cands[#cands + 1] = { leg = li, p = p, d = d } end
             end
         end
     end
@@ -275,22 +371,31 @@ local function GatherSteps(legs, speed, add)
     end
     local seen = type(ns.root) == "table" and ns.root.plannerNodesSeen
     if not (next(mine) and type(seen) == "table") then return end
+    -- each map's nodes of your skills, with their world positions: once per plan
+    local byMap = {}
+    local function Nodes(map)
+        local hit = byMap[map]
+        if hit then return hit end
+        hit = {}
+        local list = seen[map]
+        for _, n in ipairs(type(list) == "table" and list or {}) do
+            ns.PlannerYield()
+            local name = type(n) == "table" and Clean(n.name)
+            if name and mine[n.skill] and tonumber(n.x) and tonumber(n.y) then
+                local _, wx, wy = Pos(map, n.x, n.y)
+                if wx then hit[#hit + 1] = { n = n, name = name, wx = wx, wy = wy } end
+            end
+        end
+        byMap[map] = hit
+        return hit
+    end
     local cands = {}
     for li, leg in ipairs(legs) do
-        local list = seen[leg.map]
-        if type(list) == "table" then
-            for _, n in ipairs(list) do
-                ns.PlannerYield()
-                local name = type(n) == "table" and Clean(n.name)
-                if name and mine[n.skill] and tonumber(n.x) and tonumber(n.y) then
-                    local _, wx, wy = ns.PlannerWorldPos(leg.map, n.x, n.y)
-                    if wx then
-                        local d = Detour(leg, wx, wy, speed)
-                        if d <= ns.PLANNER_GATHER_SECONDS then
-                            cands[#cands + 1] = { leg = li, n = n, name = name, wx = wx, wy = wy, d = d }
-                        end
-                    end
-                end
+        for _, e in ipairs(Nodes(leg.map)) do
+            ns.PlannerYield()
+            local d = Detour(leg, e.wx, e.wy, speed)
+            if d <= ns.PLANNER_GATHER_SECONDS then
+                cands[#cands + 1] = { leg = li, n = e.n, name = e.name, wx = e.wx, wy = e.wy, d = d }
             end
         end
     end

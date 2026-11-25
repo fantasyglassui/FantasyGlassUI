@@ -397,10 +397,14 @@ do
     ev:SetScript("OnEvent", ns:Guard("Planner", function(_, event, a)
         if event == "PLAYER_REGEN_DISABLED" then fighting = true; return end
         if event == "PLAYER_REGEN_ENABLED" then fighting = false; return end
-        if event == "TRAINER_SHOW" then classTrainer = IsClassTrainer() == true; return end
+        if event == "TRAINER_SHOW" then               -- (a locked guide: nothing is looked up)
+            classTrainer, ridingTrainer = false, false
+            if ns:GuideUnlocked() then classTrainer = IsClassTrainer() == true end
+            return
+        end
         if event == "TRAINER_CLOSED" then TrainerClosed() end
-        if event == "PLAYER_MOUNT_DISPLAY_CHANGED" then          -- (seen mounted: you ride; kept for the character)
-            if ns:GuideUnlocked() and ns.PlannerRidingKnown then ns.PlannerRidingKnown(nil) end
+        if event == "PLAYER_MOUNT_DISPLAY_CHANGED" then          -- (seen mounted: you have a mount and ride; kept for the character)
+            if ns:GuideUnlocked() and ns.PlannerMountSeen then ns.PlannerMountSeen() end
             return
         end
         local on, st = Following()

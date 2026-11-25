@@ -44,9 +44,39 @@ local function Clean(s)
     return s ~= "" and s or nil
 end
 
+-- World positions. A place (from the source's session cache) keeps its own once worked out; any other
+-- spot (a step, where you stand) is remembered per map, x and y for the plan (ns.PlannerPosReset
+-- starts a plan afresh). A place is told from a step by its kind.
+local memo = {}
+local function MemoPos(map, x, y)
+    map, x, y = tonumber(map), tonumber(x), tonumber(y)
+    if not (map and x and y) then return nil end
+    local k = map .. ":" .. x .. ":" .. y
+    local v = memo[k]
+    if v == nil then
+        local c, wx, wy = ns.PlannerWorldPos(map, x, y)
+        v = c and { c, wx, wy } or false
+        memo[k] = v
+    end
+    if v then return v[1], v[2], v[3] end
+end
+ns.PlannerMemoPos = MemoPos
+function ns.PlannerPosReset() memo = {} end
+
+local function PlacePos(p)
+    local k = p._wk
+    local sig = tostring(p.map) .. ":" .. tostring(p.x) .. ":" .. tostring(p.y)
+    if k ~= sig then
+        local c, wx, wy = ns.PlannerWorldPos(p.map, p.x, p.y)
+        p._wk, p._wc, p._wx, p._wy = sig, c or false, wx, wy
+    end
+    if p._wc then return p._wc, p._wx, p._wy end
+end
+
 local function Pos(s)
     if type(s) ~= "table" then return nil end
-    return ns.PlannerWorldPos(s.map, s.x, s.y)
+    if s.kind == nil then return PlacePos(s) end
+    return MemoPos(s.map, s.x, s.y)
 end
 
 local function Yards(a, b)
@@ -59,7 +89,65 @@ end
 
 local function Spot(s) return { map = s.map, x = s.x, y = s.y } end
 
+-- The route's reach: per continent, the box around its placed steps (and where you stand).
+ns.PLANNER_PLACE_YARDS = 2000           -- places farther than this from that box are not looked at (but see Near)
+local function RouteBox(steps, here)
+    local box = {}
+    local function Add(c, wx, wy)
+        local b = box[c]
+        if not b then box[c] = { x0 = wx, x1 = wx, y0 = wy, y1 = wy }; return end
+        if wx < b.x0 then b.x0 = wx elseif wx > b.x1 then b.x1 = wx end
+        if wy < b.y0 then b.y0 = wy elseif wy > b.y1 then b.y1 = wy end
+    end
+    for _, s in ipairs(steps) do
+        ns.PlannerYield()
+        if type(s) == "table" then
+            local c, wx, wy = MemoPos(s.map, s.x, s.y)
+            if c then Add(c, wx, wy) end
+        end
+    end
+    if type(here) == "table" then
+        local c, wx, wy = MemoPos(here.map, here.x, here.y)
+        if c then Add(c, wx, wy) end
+    end
+    return box
+end
+
+-- The places near the route: those within ns.PLANNER_PLACE_YARDS of its box; with none, the few nearest
+-- to it on its continents; with none there either, any few (as the least-travel search tries them).
+local function Near(list, box)
+    local inside, others = {}, {}
+    for _, p in ipairs(list) do
+        ns.PlannerYield()
+        local c, wx, wy = PlacePos(p)
+        local b = c and box[c]
+        if b then
+            local dx = math.max(b.x0 - wx, 0, wx - b.x1)
+            local dy = math.max(b.y0 - wy, 0, wy - b.y1)
+            local d = sqrt(dx * dx + dy * dy)
+            if d <= ns.PLANNER_PLACE_YARDS then inside[#inside + 1] = p else others[#others + 1] = { p = p, d = d } end
+        end
+    end
+    if #inside > 0 then return inside end
+    local out = {}
+    if #others > 0 then
+        for _ = 1, NEAREST do
+            local bi
+            for i, o in ipairs(others) do
+                if not o.used and (not bi or o.d < others[bi].d) then bi = i end
+            end
+            if not bi then break end
+            others[bi].used = true
+            out[#out + 1] = others[bi].p
+        end
+        return out
+    end
+    for i = 1, math.min(NEAREST, #list) do out[i] = list[i] end
+    return out
+end
+
 -- The places of a kind from the planner's source (not through pcall: the source yields as it reads).
+-- While stops are put into a plan (ctx.routeBox), only those near the route.
 function ns.PlannerPlaces(ctx, kind, arg)
     local src = type(ctx) == "table" and ctx.source
     if type(src) ~= "table" or type(src.places) ~= "function" then return {} end
@@ -67,25 +155,30 @@ function ns.PlannerPlaces(ctx, kind, arg)
     for _, p in ipairs(type(list) == "table" and list or {}) do
         if type(p) == "table" and tonumber(p.map) and tonumber(p.x) and tonumber(p.y) then out[#out + 1] = p end
     end
+    if type(ctx.routeBox) == "table" and #out > 0 then return Near(out, ctx.routeBox) end
     return out
 end
 
--- Where step k's hub takes a stop: after the hub's last accept, else before its first do; a step of
+-- Where each step's hub takes a stop: after the hub's last accept, else before its first do; a step of
 -- no hub takes it right after itself (a flight or a boat: before, where you stand before leaving).
-local function HubSlot(steps, k)
-    local s = steps[k]
-    local h = s.hub
-    if h == nil then return (s.kind == "fly" or s.kind == "sail") and k or k + 1 end
-    local lastAccept, firstDo
+local function HubSlots(steps)
+    local lastAccept, firstDo = {}, {}
     for i, t in ipairs(steps) do
-        if t.hub == h then
-            if t.kind == "accept" then lastAccept = i end
-            if t.kind == "do" and not firstDo then firstDo = i end
+        ns.PlannerYield()
+        local h = t.hub
+        if h ~= nil then
+            if t.kind == "accept" then lastAccept[h] = i end
+            if t.kind == "do" and not firstDo[h] then firstDo[h] = i end
         end
     end
-    if lastAccept then return lastAccept + 1 end
-    if firstDo then return firstDo end
-    return k + 1
+    return function(k)
+        local s = steps[k]
+        local h = s.hub
+        if h == nil then return (s.kind == "fly" or s.kind == "sail") and k or k + 1 end
+        if lastAccept[h] then return lastAccept[h] + 1 end
+        if firstDo[h] then return firstDo[h] end
+        return k + 1
+    end
 end
 
 -- Slot (insert before steps[slot]), place and detour seconds (nil when it goes at a hub); nil when
@@ -93,19 +186,29 @@ end
 local function Where(steps, places, ctx, tctx, after)
     local hubYards = ns.PLANNER_HUB_YARDS or 150
     -- each place's nearest step (of those it could go at), and the nearest hub match of all
-    local slots = {}
+    local slots, at = {}, {}            -- at: the steps it could go at, with their world positions
+    local HubSlot = HubSlots(steps)
     for i, s in ipairs(steps) do
         ns.PlannerYield()
-        if s.x and s.y then slots[i] = HubSlot(steps, i) end
+        if s.x and s.y then
+            slots[i] = HubSlot(i)
+            if slots[i] > after then
+                local c, wx, wy = Pos(s)
+                if c then at[#at + 1] = { i = i, c = c, x = wx, y = wy } end
+            end
+        end
     end
     -- the nearest step to each place; and of the hubs with a place in reach, the first on the route
     local near, best = {}, nil
     for pi, place in ipairs(places) do
         local d = huge
-        for i, s in ipairs(steps) do
+        local pc, px, py = Pos(place)
+        for _, a in ipairs(pc and at or {}) do
             ns.PlannerYield()
-            if slots[i] and slots[i] > after then
-                local y = Yards(place, s)
+            if a.c == pc then
+                local i = a.i
+                local dx, dy = a.x - px, a.y - py
+                local y = sqrt(dx * dx + dy * dy)
                 if y < d then d = y end
                 if y <= hubYards and (not best or slots[i] < slots[best.k] or (slots[i] == slots[best.k] and y < best.d)) then
                     best = { d = y, k = i, place = place }
@@ -183,6 +286,8 @@ function ns.PlannerAddStops(guide, summary, ctx)
     for k, v in pairs(ctx) do tctx[k] = v end
     tctx.hearth = nil                   -- (a stop is no reason to use the hearthstone)
     local steps = guide.steps
+    ns.PlannerPosReset()
+    ctx.routeBox = RouteBox(steps, ctx.here)
     for _, def in ipairs(ns.plannerStops) do
         ns.PlannerYield()
         local on = not (def.setting and ns.db and ns.db[def.setting] == false)
@@ -410,7 +515,7 @@ local function EnumValue(group, name, fallback)
     if type(Enum) ~= "table" then return fallback end
     local g = Enum[group]
     local v = type(g) == "table" and g[name] or nil
-    return type(v) == "number" and v or nil
+    return type(v) == "number" and v or fallback
 end
 
 -- "arrow", "bullet" or nil: what the ranged slot holds takes which ammunition.
@@ -427,6 +532,12 @@ local function AmmoKind()
     return nil
 end
 
+local function ClassToken()
+    if type(UnitClass) ~= "function" then return nil end
+    local ok, _, token = pcall(UnitClass, "player")
+    return ok and type(token) == "string" and not ns:IsSecret(token) and token or nil
+end
+
 local function UsesMana()
     if type(UnitPowerType) == "function" then
         local ok, t = pcall(UnitPowerType, "player")
@@ -440,11 +551,15 @@ local function UsesMana()
     return false
 end
 
-local function SupplyItem(key, level)
+local function SupplyTiers(key)
     local t = ns.PLANNER_SUPPLIES
-    local list = (key == "arrow" or key == "bullet") and t.ammo[key] or t[key]
+    return (key == "arrow" or key == "bullet") and t.ammo[key] or t[key]
+end
+
+-- The item to buy: the best of its table for your level.
+local function SupplyItem(key, level)
     local best
-    for _, e in ipairs(list) do
+    for _, e in ipairs(SupplyTiers(key)) do
         if e[1] <= level then best = e[2] end
     end
     return best
@@ -454,6 +569,19 @@ local function ItemCount(item)
     if type(C_Item) ~= "table" or type(C_Item.GetItemCount) ~= "function" then return nil end
     local ok, n = pcall(C_Item.GetItemCount, item)
     return ok and Num(n) or nil
+end
+
+-- What you carry of a supply: every tier of its table you can use (at or below your level); nil
+-- when none of them can be read.
+local function SupplyCount(key, level)
+    local total
+    for _, e in ipairs(SupplyTiers(key)) do
+        if e[1] <= level then
+            local n = ItemCount(e[2])
+            if n then total = (total or 0) + n end
+        end
+    end
+    return total
 end
 
 -- Use per hour, measured from the counts seen at each plan (only drops count, not what you bought;
@@ -489,11 +617,11 @@ end
 local function SupplyNeeds(level, hours)
     local out = {}
     local ammo = AmmoKind()
-    local mana = UsesMana()
+    local mana = UsesMana() and ClassToken() ~= "MAGE"     -- (a mage conjures water)
     for _, key in ipairs(SUPPLY_ORDER) do
         if key == ammo or key == "food" or (key == "drink" and mana) then
             local item = SupplyItem(key, level)
-            local count = item and ItemCount(item)
+            local count = item and SupplyCount(key, level)
             if count then
                 local rate = UseRate(key, count)
                 if count < rate * hours then
@@ -507,35 +635,73 @@ local function SupplyNeeds(level, hours)
     return out
 end
 
--- The same place in two lists (by id, or standing at one spot).
-local function SamePlace(a, b)
-    if a == b then return true end
-    if a.id and b.id and a.id == b.id then return true end
-    if a.map == b.map and a.x == b.x and a.y == b.y then return true end
-    return Yards(a, b) <= 10
-end
+-- Places as a set: the same place is the same NPC (by id), the same map, x and y, or a spot within 10
+-- yards (looked up in a 10-yard grid of world positions, so each place is looked at once).
+local SAME_YARDS = 10
+local function NewSet() return { ids = {}, spots = {}, cells = {} } end
 
-local function InList(p, list)
-    for _, q in ipairs(list) do if SamePlace(p, q) then return true end end
+local function CellKey(c, gx, gy) return c .. ":" .. gx .. ":" .. gy end
+
+local function InSet(set, p)
+    if p.id ~= nil and set.ids[p.id] then return true end
+    if set.spots[tostring(p.map) .. ":" .. tostring(p.x) .. ":" .. tostring(p.y)] then return true end
+    local c, wx, wy = Pos(p)
+    if not c then return false end
+    local gx, gy = floor(wx / SAME_YARDS), floor(wy / SAME_YARDS)
+    for dx = -1, 1 do
+        for dy = -1, 1 do
+            local cell = set.cells[CellKey(c, gx + dx, gy + dy)]
+            if cell then
+                for _, q in ipairs(cell) do
+                    local ex, ey = q[1] - wx, q[2] - wy
+                    if ex * ex + ey * ey <= SAME_YARDS * SAME_YARDS then return true end
+                end
+            end
+        end
+    end
     return false
 end
 
+local function AddToSet(set, p)
+    if p.id ~= nil then set.ids[p.id] = true end
+    set.spots[tostring(p.map) .. ":" .. tostring(p.x) .. ":" .. tostring(p.y)] = true
+    local c, wx, wy = Pos(p)
+    if c then
+        local k = CellKey(c, floor(wx / SAME_YARDS), floor(wy / SAME_YARDS))
+        local cell = set.cells[k]
+        if not cell then cell = {}; set.cells[k] = cell end
+        cell[#cell + 1] = { wx, wy }
+    end
+end
+
+local function SetOf(list)
+    local set = NewSet()
+    for _, p in ipairs(list) do
+        ns.PlannerYield()
+        AddToSet(set, p)
+    end
+    return set
+end
+
 local function Merge(...)
-    local out = {}
+    local out, set = {}, NewSet()
     for n = 1, select("#", ...) do
         for _, p in ipairs((select(n, ...))) do
             ns.PlannerYield()
-            if not InList(p, out) then out[#out + 1] = p end
+            if not InSet(set, p) then
+                out[#out + 1] = p
+                AddToSet(set, p)
+            end
         end
     end
     return out
 end
 
 local function Both(a, b)
-    local out = {}
+    local out, set = {}, SetOf(b)
     for _, p in ipairs(a) do
         ns.PlannerYield()
-        if InList(p, b) then out[#out + 1] = p end
+        if InSet(set, p) then out[#out + 1] = p end
     end
     return out
 end
@@ -581,7 +747,7 @@ ns.PlannerRegisterStop({
         for _, need in ipairs(reason.supplies) do
             local list = ns.PlannerPlaces(ctx, "vendor", SUPPLY_LIST[need.key])
             if #list > 0 then
-                reason.lists[need.key] = list
+                reason.lists[need.key] = SetOf(list)
                 kept[#kept + 1] = need
                 first = first or list
                 all = all and Both(all, list) or list
@@ -589,20 +755,21 @@ ns.PlannerRegisterStop({
         end
         reason.supplies = kept
         local buy = all and (#all > 0 and all or first) or {}
-        local sell = {}
-        if reason.sell then
-            if reason.repair then
-                sell = Merge(ns.PlannerPlaces(ctx, "repair"))
-            else
-                sell = Merge(ns.PlannerPlaces(ctx, "repair"), ns.PlannerPlaces(ctx, "anyVendor"), ns.PlannerPlaces(ctx, "vendor", "Food"),
-                    ns.PlannerPlaces(ctx, "vendor", "Drink"), ns.PlannerPlaces(ctx, "vendor", "Ammo"))
-            end
-            if #sell == 0 then reason.sell, reason.repair = false, false end
-        end
         if not reason.sell then return buy end
+        if not reason.repair then
+            if #buy > 0 then return buy end                     -- (any vendor buys: the supplies vendor serves selling too)
+            local sell = Merge(ns.PlannerPlaces(ctx, "repair"), ns.PlannerPlaces(ctx, "anyVendor"), ns.PlannerPlaces(ctx, "vendor", "Food"),
+                ns.PlannerPlaces(ctx, "vendor", "Drink"), ns.PlannerPlaces(ctx, "vendor", "Ammo"))
+            if #sell == 0 then reason.sell = false end
+            return sell
+        end
+        local sell = ns.PlannerPlaces(ctx, "repair")
+        if #sell == 0 then
+            reason.sell, reason.repair = false, false
+            return buy
+        end
         local both = Both(sell, buy)
         if #both > 0 then return both end
-        if not reason.repair and #buy > 0 then return buy end     -- (any vendor buys: the supplies vendor serves selling too)
         return sell
     end,
     text = function(place, reason)
@@ -615,8 +782,8 @@ ns.PlannerRegisterStop({
         end
         local parts = { head }
         for _, need in ipairs(reason.supplies) do
-            local list = type(reason.lists) == "table" and reason.lists[need.key]
-            if list and InList(place, list) then parts[#parts + 1] = string.format(ns:Tr(SUPPLY_PHRASE[need.key]), need.buy) end
+            local set = type(reason.lists) == "table" and reason.lists[need.key]
+            if set and InSet(set, place) then parts[#parts + 1] = string.format(ns:Tr(SUPPLY_PHRASE[need.key]), need.buy) end
         end
         return table.concat(parts, "; ")
     end,
@@ -662,11 +829,6 @@ local function Copper()
     return ok and Num(m) or nil
 end
 
-local function ClassToken()
-    if type(UnitClass) ~= "function" then return nil end
-    local ok, _, token = pcall(UnitClass, "player")
-    return ok and type(token) == "string" and not ns:IsSecret(token) and token or nil
-end
 
 -- Gold as the add-on writes it (its coin formatter, else "40g").
 function ns.PlannerGoldText(copper)
@@ -680,6 +842,21 @@ end
 ns.PLANNER_RIDING_SPELLS = { 33388, 33391, 34090, 34091, 90265, 33389, 33392 }
 -- The level each profession rank needs: you can train the next rank from its cap (75 -> 150 at 10 ...)
 ns.PLANNER_PROFESSION_LEVEL = { [75] = 10, [150] = 20, [225] = 35 }
+
+-- Have you been seen mounted (you have a mount)? true / false, or nil when the game can't say. Once
+-- seen it is kept for the character (and so is riding).
+function ns.PlannerMountSeen()
+    local rec = ns.PlannerCharRecord and ns.PlannerCharRecord(false)
+    if type(rec) == "table" and rec.mountSeen then return true end
+    if type(IsMounted) ~= "function" then return nil end
+    local ok, v = pcall(IsMounted)
+    if not (ok and type(v) == "boolean" and not ns:IsSecret(v)) then return nil end
+    if v then
+        local r = ns.PlannerCharRecord and ns.PlannerCharRecord(true)
+        if type(r) == "table" then r.mountSeen, r.ridingKnown = true, true end
+    end
+    return v
+end
 
 -- Do you ride? true / false, or nil when nothing can say. Once any sign is seen it is kept for the character.
 function ns.PlannerRidingKnown(profs)
@@ -701,12 +878,10 @@ function ns.PlannerRidingKnown(profs)
             end
         end
     end
-    if type(IsMounted) == "function" then
-        local ok, v = pcall(IsMounted)
-        if ok and type(v) == "boolean" and not ns:IsSecret(v) then
-            readable = true
-            if v then known = true end
-        end
+    local mounted = ns.PlannerMountSeen()
+    if mounted ~= nil then
+        readable = true
+        if mounted then known = true end
     end
     if known then
         local r = ns.PlannerCharRecord and ns.PlannerCharRecord(true)
@@ -759,16 +934,31 @@ ns.PlannerRegisterStop({
     key = function() return "riding" end,
 })
 
+-- The mount: a reason of its own (not only right after the riding trainer). Wanted at level 40 or
+-- more when you ride (or this plan trains riding), no mount has been seen, your class buys its mount
+-- (not a Paladin or Warlock) and your gold covers it.
 ns.PlannerRegisterStop({
     id = "mount", setting = "plannerMount", kind = "vendor",
     want = function(ctx, _, guide)
-        local reason = ctx.stopsWanted and ctx.stopsWanted.riding
-        if type(reason) ~= "table" or not reason.mount then return nil end
-        for i, s in ipairs(guide.steps) do      -- (after the riding trainer's step; without one, no mount stop)
-            if s.kind == "train" and type(s.stopKey) == "string" and s.stopKey:sub(1, 7) == "riding:" then
-                return { after = i }
+        local level = tonumber(ctx.level)
+        if not level or level < ns.PLANNER_RIDING_LEVEL then return nil end
+        local class = ClassToken()
+        if not class or NO_VENDOR_MOUNT[class] then return nil end
+        if ns.PlannerMountSeen() ~= false then return nil end        -- (seen mounted, or the game can't say)
+        local riding = ctx.stopsWanted and ctx.stopsWanted.riding
+        if type(riding) == "table" then
+            for i, s in ipairs(guide.steps) do  -- (after the riding trainer's step; the gold for both was counted there)
+                if s.kind == "train" and type(s.stopKey) == "string" and s.stopKey:sub(1, 7) == "riding:" then
+                    return { after = i }
+                end
             end
+            return nil
         end
+        local rec = ns.PlannerCharRecord and ns.PlannerCharRecord(false)
+        if not (type(rec) == "table" and rec.ridingKnown) and ns.PlannerRidingKnown(Professions()) ~= true then return nil end
+        local money = Copper()
+        if not money or money < ns.PLANNER_MOUNT_COPPER then return nil end
+        return { after = 0 }
     end,
     places = function(ctx) return ns.PlannerPlaces(ctx, "mountVendor") end,
     text = function(place) return string.format(ns:Tr("Buy your mount at %s"), place.name or "") end,

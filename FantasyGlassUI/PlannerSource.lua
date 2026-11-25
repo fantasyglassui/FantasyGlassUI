@@ -310,15 +310,29 @@ local function Resolve(env, ids, object, fallbackName)
     return out
 end
 
--- Places you have used. For vendors, `repairOnly` keeps those that could repair.
+local function MyFaction()
+    local ok, faction = Try(UnitFactionGroup, "player")
+    if ok and type(faction) == "string" and not ns:IsSecret(faction) and faction ~= "" then return faction end
+end
+
+-- Places you have used, of your faction (an entry with no faction is not used). For vendors,
+-- `repairOnly` keeps those that could repair. Each saved entry keeps one copy for the session (the
+-- planner caches a place's world position on it; nothing is added to the saved entry).
+local seenCopies = setmetatable({}, { __mode = "k" })
 local function SeenPlaces(kind, repairOnly)
     local root = ns.root
     local list = type(root) == "table" and type(root.plannerSeen) == "table" and root.plannerSeen[kind]
-    local out = {}
+    local out, faction = {}, MyFaction()
+    if not faction then return out end
     for _, p in ipairs(type(list) == "table" and list or {}) do
-        if type(p) == "table" and type(p.name) == "string" and tonumber(p.map) and tonumber(p.x) and tonumber(p.y)
+        if type(p) == "table" and p.faction == faction and type(p.name) == "string" and tonumber(p.map) and tonumber(p.x) and tonumber(p.y)
             and (not repairOnly or p.repair == true) then
-            out[#out + 1] = { name = p.name, map = p.map, x = p.x, y = p.y }
+            local copy = seenCopies[p]
+            if not copy or copy.name ~= p.name or copy.map ~= p.map or copy.x ~= p.x or copy.y ~= p.y then
+                copy = { name = p.name, map = p.map, x = p.x, y = p.y }
+                seenCopies[p] = copy
+            end
+            out[#out + 1] = copy
         end
     end
     return out
@@ -481,14 +495,19 @@ function ns.PlannerLogSource()
     return src
 end
 
-function ns.PlannerSourceReset() changed, waiting, placeCaches, recCache, cacheLevel = false, false, { questie = {}, log = {}, questieScan = {}, logScan = {} }, {}, nil end
+function ns.PlannerSourceReset()
+    changed, waiting, placeCaches, recCache, cacheLevel = false, false, { questie = {}, log = {}, questieScan = {}, logScan = {} }, {}, nil
+    ns.plannerExploreMaps = {}                  -- (PlannerPath.lua: the maps known to report exploration)
+end
 
 ------------------------------------------------------------------------------------------
 -- Places you have used: where you stood at a mailbox, a vendor or a trainer, saved per account
--- (only while the guide is unlocked), unique within 30 yards.
+-- (only while the guide is unlocked) with your faction, unique within 30 yards per faction; at most
+-- ns.PLANNER_SEEN_CAP of each kind (the oldest go first).
 ------------------------------------------------------------------------------------------
 local SEEN_NEAR = 30
-local SEEN_EVENT = { MAIL_SHOW = "mailbox", MERCHANT_SHOW = "vendor", TRAINER_SHOW = "trainer" }
+ns.PLANNER_SEEN_CAP = 300
+local SEEN_EVENT = { MAIL_SHOW = "mailbox", MERCHANT_SHOW = "vendor" }
 
 local function SeenYards(a, b)
     if a.map ~= b.map then return math.huge end
@@ -503,6 +522,8 @@ function ns.PlannerSeen(kind)
     local map, x, y = ns.GuideHere()
     if not (tonumber(map) and tonumber(x) and tonumber(y)) then return end
     local here = { map = map, x = x, y = y }
+    local faction = MyFaction()
+    if not faction then return end
     local list = type(ns.root.plannerSeen) == "table" and type(ns.root.plannerSeen[kind]) == "table" and ns.root.plannerSeen[kind]
     local repair = false
     if kind == "vendor" and CanMerchantRepair then
@@ -510,7 +531,7 @@ function ns.PlannerSeen(kind)
         repair = okR and can == true
     end
     for _, p in ipairs(list or {}) do
-        if type(p) == "table" and tonumber(p.map) and tonumber(p.x) and tonumber(p.y) and SeenYards(here, p) < SEEN_NEAR then
+        if type(p) == "table" and p.faction == faction and tonumber(p.map) and tonumber(p.x) and tonumber(p.y) and SeenYards(here, p) < SEEN_NEAR then
             if repair then p.repair = true end
             return
         end
@@ -521,7 +542,12 @@ function ns.PlannerSeen(kind)
     if type(ns.root.plannerSeen) ~= "table" then ns.root.plannerSeen = {} end
     local seen = ns.root.plannerSeen
     if type(seen[kind]) ~= "table" then seen[kind] = {} end
-    seen[kind][#seen[kind] + 1] = { name = name, map = map, x = x, y = y, repair = repair or nil }
+    local out = seen[kind]
+    for i = #out, 1, -1 do                                  -- (entries saved before factions were: dropped)
+        if type(out[i]) ~= "table" or out[i].faction == nil then table.remove(out, i) end
+    end
+    out[#out + 1] = { name = name, map = map, x = x, y = y, repair = repair or nil, faction = faction }
+    while #out > ns.PLANNER_SEEN_CAP do table.remove(out, 1) end
 end
 
 do

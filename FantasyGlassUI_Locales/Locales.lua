@@ -21,6 +21,7 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["(+%d s detour)"] = "(+%d s Umweg)",
     ["Mail stops"] = "Poststopps",
     ["Explore on the way"] = "Unterwegs erkunden",
     ["Gather on the way"] = "Unterwegs sammeln",
@@ -3343,6 +3344,7 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["(+%d s detour)"] = "(+%d s de détour)",
     ["Mail stops"] = "Arrêts à la boîte aux lettres",
     ["Explore on the way"] = "Explorer en chemin",
     ["Gather on the way"] = "Récolter en chemin",
@@ -6665,6 +6667,7 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["(+%d s detour)"] = "(+%d s de desvío)",
     ["Mail stops"] = "Paradas en el buzón",
     ["Explore on the way"] = "Explorar por el camino",
     ["Gather on the way"] = "Recolectar por el camino",
@@ -9990,6 +9993,7 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["(+%d s detour)"] = "(+%d с крюка)",
     ["Mail stops"] = "Остановки у почтового ящика",
     ["Explore on the way"] = "Исследовать по пути",
     ["Gather on the way"] = "Собирать по пути",
@@ -13312,6 +13316,7 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["(+%d s detour)"] = "(+%d s de desvio)",
     ["Mail stops"] = "Paradas na caixa de correio",
     ["Explore on the way"] = "Explorar pelo caminho",
     ["Gather on the way"] = "Coletar pelo caminho",
@@ -16634,6 +16639,7 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["(+%d s detour)"] = "(+%d s di deviazione)",
     ["Mail stops"] = "Soste alla cassetta delle lettere",
     ["Explore on the way"] = "Esplora lungo la strada",
     ["Gather on the way"] = "Raccogli lungo la strada",
@@ -19956,6 +19962,7 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["(+%d s detour)"] = "(+%d초 우회)",
     ["Mail stops"] = "우편함 들르기",
     ["Explore on the way"] = "가는 길에 탐험",
     ["Gather on the way"] = "가는 길에 채집",
@@ -23281,6 +23288,7 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["(+%d s detour)"] = "(+%d 秒绕路)",
     ["Mail stops"] = "邮箱停靠点",
     ["Explore on the way"] = "沿途探索",
     ["Gather on the way"] = "沿途采集",
