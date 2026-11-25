@@ -210,6 +210,8 @@ ns.defaults = {
     plannerGather    = true,        -- herbs and ore you have gathered before, close to the route (and a note to skin kills)
     plannerMount     = true,        -- riding at level 40: the riding trainer, your mount, and what is still to find
     -- batch 4 A (map): begin
+    plannerMapLine   = true,        -- the route's dots and line on the world map
+    plannerMapHubs   = true,        -- a mark on each hub the planner worked out, brighter for a better rate
     -- batch 4 A (map): end
     -- batch 4 B (panel): begin
     -- batch 4 B (panel): end
