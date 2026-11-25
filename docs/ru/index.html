@@ -212,7 +212,7 @@ section.block > .wrap > header { display: grid; gap: 10px; margin-bottom: 28px; 
 
 /* screenshots */
 .feature { position: relative; margin: 0 0 14px; background: #05060c; }
-.feature img { display: block; width: 100%; height: auto; max-width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
+.feature img { display: block; width: 100%; height: auto; max-width: 100%; max-height: 72vh; object-fit: contain; }
 .feature figcaption { padding: 12px 16px; color: var(--dim); font-size: 0.93rem; background: var(--ink-2); }
 .mock { position: absolute; top: 12px; left: 14px; z-index: 1; font: 600 0.7rem/1 var(--body); letter-spacing: 0.12em; text-transform: uppercase; color: #1a1405; background: #f0c66b; padding: 5px 8px; }
 .thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
@@ -253,7 +253,7 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: 
 }
 
 /* ---- before and after ---- */
-.compare { position: relative; overflow: hidden; background: #06070d; aspect-ratio: 16 / 9; user-select: none; touch-action: pan-y; }
+.compare { position: relative; overflow: hidden; background: #06070d; aspect-ratio: 3440 / 1417; user-select: none; touch-action: pan-y; }
 .compare img { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; object-fit: cover; }
 .compare .before { clip-path: inset(0 calc(100% - var(--x)) 0 0); }
 .compare .handle { position: absolute; top: 0; bottom: 0; left: var(--x); width: 2px; margin-left: -1px; background: linear-gradient(180deg, transparent, var(--gold) 12%, var(--gold) 88%, transparent); box-shadow: 0 0 12px var(--gold); pointer-events: none; }
@@ -378,8 +378,7 @@ section.block::before { content: ""; position: absolute; top: -6px; left: 50%; w
 
 <main id="top">
   <div class="hero-band">
-  <img class="shot-bg" src="/shots/celestial-overview.webp" srcset="/shots/celestial-overview-800.webp 800w, /shots/celestial-overview.webp 1600w" sizes="100vw" fetchpriority="high" alt="" width="1600" height="900">
-  <span class="mock">Mock-up</span>
+  <img class="shot-bg" src="/shots/celestial-overview.webp" srcset="/shots/celestial-overview-800.webp 800w, /shots/celestial-overview.webp 2400w" sizes="100vw" fetchpriority="high" alt="" width="2400" height="955">
   <div class="wrap">
     <div class="hero load" id="hero">
       <div>
@@ -433,17 +432,15 @@ section.block::before { content: ""; position: absolute; top: -6px; left: 50%; w
         <p class="lede">Drag the line. On the left, a plain interface; on the right, the same screen with Fantasy Glass UI in a Celestial theme.</p>
       </header>
       <div class="compare cut" id="cmp" style="--x:50%">
-        <img src="/shots/celestial-overview.webp" srcset="/shots/celestial-overview-800.webp 800w, /shots/celestial-overview.webp 1600w" sizes="(max-width: 900px) 100vw, 1100px" loading="lazy" alt="The screen with Fantasy Glass UI" width="1600" height="900" draggable="false">
-        <img class="before" src="/shots/plain-overview.webp" srcset="/shots/plain-overview-800.webp 800w, /shots/plain-overview.webp 1600w" sizes="(max-width: 900px) 100vw, 1100px" loading="lazy" alt="The same screen with a plain interface" width="1600" height="900" draggable="false">
+        <img src="/shots/celestial-live.webp" srcset="/shots/celestial-live-800.webp 800w, /shots/celestial-live.webp 2400w" sizes="(max-width: 900px) 100vw, 1100px" loading="lazy" alt="The screen with Fantasy Glass UI" width="2400" height="989" draggable="false">
+        <img class="before" src="/shots/plain-overview.webp" srcset="/shots/plain-overview-800.webp 800w, /shots/plain-overview.webp 2400w" sizes="(max-width: 900px) 100vw, 1100px" loading="lazy" alt="The same screen with a plain interface" width="2400" height="989" draggable="false">
         <span class="tag l">Plain</span><span class="tag r">Fantasy Glass UI</span>
-        <span class="mock">Mock-up</span>
-        <div class="handle" aria-hidden="true"><i></i></div>
+              <div class="handle" aria-hidden="true"><i></i></div>
         <input type="range" min="0" max="100" value="50" step="0.5" aria-label="Move the line between before and after" id="cmprange">
       </div>
       <figure class="feature cut" id="shot-big" hidden>
-        <span class="mock">Mock-up</span>
-        <img id="shot-img" src="/shots/celestial-overview.webp" srcset="/shots/celestial-overview-800.webp 800w, /shots/celestial-overview.webp 1600w" sizes="(max-width: 900px) 100vw, 1100px" loading="lazy" alt="A full Celestial screen: party frames, Starcut player and target frames, bags, chat, action bars and the star-chart minimap" width="1600" height="900">
-        <figcaption id="shot-cap">A whole screen in a Celestial theme: party, player and target, bags, chat, action bars and the star-chart minimap.</figcaption>
+              <img id="shot-img" src="/shots/celestial-overview.webp" srcset="/shots/celestial-overview-800.webp 800w, /shots/celestial-overview.webp 2400w" sizes="(max-width: 900px) 100vw, 1100px" loading="lazy" alt="A whole screen in a Celestial theme: party, player and target, cast bar, action bars and the minimap." width="2400" height="955">
+        <figcaption id="shot-cap">A whole screen in a Celestial theme: party, player and target, cast bar, action bars and the minimap.</figcaption>
       </figure>
       <div class="thumbs" id="thumbs" role="group" aria-label="Pick a screenshot"></div>
       <div class="pieces">
@@ -938,13 +935,13 @@ window.FG_NEWS=[{"v": "12.2.0", "items": ["Read talk and quests aloud: what an N
     if (go) { drawChosen(); drawGallery(); setTimeout(function () { var el = $(go); if (el) el.scrollIntoView({ block: "start" }); }, 60); }
   })();
   var SHOTS = [
-    ["celestial-overview", "Before and after", "A whole screen in a Celestial theme: party, player and target, bags, chat, action bars and the star-chart minimap."],
-    ["starcut-celestial", "Starcut, Celestial", "The Starcut frames in a Celestial theme: diamond portraits with stars on their points, and bars cut to points that glow."],
-    ["starcut-fantasy", "Starcut, Fantasy", "The same frames in a Fantasy theme, warm gold rims on dark leather."],
-    ["starcut-glass", "Starcut, Glass", "The same frames in a Glass theme, bright panes over the world."],
-    ["starcut-families", "Three families", "One frame in each family side by side: Glass, Fantasy and Celestial."],
-    ["celestial-bags", "Bags", "The one-window bags, sorted into sections, with item quality on every cut slot."],
-    ["celestial-minimap", "Star-chart minimap", "The Celestial minimap as a star chart, with degree marks and the moon along the top."]
+    ["celestial-live", "Before and after", "The same spot in Stormwind Harbor, before and after, in a Celestial theme."],
+    ["celestial-overview", "Celestial", "A whole screen in a Celestial theme: party, player and target, cast bar, action bars and the minimap."],
+    ["glass-overview", "Glass", "The same screen in a Glass theme."],
+    ["fantasy-overview", "Fantasy", "The same screen in a Fantasy theme."],
+    ["celestial-frames", "Unit frames", "The player and target frames up close, with the pet, the cast bar, buffs and the target's target."],
+    ["glass-bags", "Bags", "The bags in one window, with item quality on every cut slot, and search, sort and equip best along the top."],
+    ["glass-settings", "Options window", "The options window: every theme in one place, and every feature can be switched off."]
   ];
   var shotIdx = 0;
   function drawThumbs() {
@@ -955,7 +952,7 @@ window.FG_NEWS=[{"v": "12.2.0", "items": ["Read talk and quests aloud: what an N
   $("thumbs").addEventListener("click", function (ev) {
     var b = ev.target.closest("[data-n]"); if (!b) return;
     shotIdx = +b.getAttribute("data-n"); var s = SHOTS[shotIdx];
-    $("shot-img").srcset = BASE + "shots/" + s[0] + "-800.webp 800w, " + BASE + "shots/" + s[0] + ".webp 1600w"; $("shot-img").src = BASE + "shots/" + s[0] + ".webp"; $("shot-img").alt = L(s[2]); $("shot-cap").textContent = L(s[2]);
+    $("shot-img").srcset = BASE + "shots/" + s[0] + "-800.webp 800w, " + BASE + "shots/" + s[0] + ".webp 2400w"; $("shot-img").src = BASE + "shots/" + s[0] + ".webp"; $("shot-img").alt = L(s[2]); $("shot-cap").textContent = L(s[2]);
     $("cmp").hidden = shotIdx !== 0; $("shot-big").hidden = shotIdx === 0;     // the first is the before-and-after slider
     drawThumbs();
   });
