@@ -9365,6 +9365,8 @@ try("13.1 stops: places", function()
         ns.PlannerSourceReset()
         local src = ns.PlannerSource()
         if not src or src.kind ~= "questie" then error("questie source") end
+        local log0 = ns.PlannerLogSource()
+        if #log0.places("mailbox") ~= 0 or #log0.places("classTrainer") ~= 0 then error("the log source knows no Questie places") end
         local ct = src.places("classTrainer")
         if ct[1].id ~= 31 or ct[1].map ~= 1436 or ct[1].x ~= 10 or ct[1].y ~= 20 or ct[1].name ~= "Trainer Thirtyone" then error("class trainer place") end
         if #ct ~= 4 then error("every spawn is a place; friendly ones only: " .. #ct) end
@@ -9385,6 +9387,13 @@ try("13.1 stops: places", function()
         fakes.QuestieDB.npcFlags = {}
         ns.PlannerSourceReset(); src = ns.PlannerSource()
         if #src.places("repair") ~= 0 or #src.places("classTrainer") ~= 0 or #src.places("mailbox") ~= 0 then error("nothing known: empty") end
+        -- not built yet: an empty answer is not remembered
+        env.Questie.db.char.townsfolk = { ["Mailbox"] = {} }
+        ns.PlannerSourceReset(); src = ns.PlannerSource()
+        if #src.places("repair") ~= 0 then error("repair not known yet") end
+        env.Questie.db.char.townsfolk = { ["Repair"] = { 32 } }
+        if #src.places("repair") ~= 1 then error("an empty answer was cached before the list was built") end
+        env.Questie.db.char.townsfolk = nil
         -- the npc flag scan is the fallback
         fakes.QuestieDB.npcFlags = { REPAIR = 16384 }
         fakes.QuestieDB.NPCPointers = { [32] = 1, [33] = 2 }
@@ -9392,6 +9401,12 @@ try("13.1 stops: places", function()
         ns.PlannerSourceReset(); src = ns.PlannerSource()
         local rp = src.places("repair")
         if #rp ~= 1 or rp[1].id ~= 32 then error("repair from the flag scan") end
+        fakes.QuestieDB.npcFlags = { REPAIR = 16384, TRAINER = 16 }
+        npcs[33].npcFlags = 16 + 16384; npcs[33].name = "[DND] Test"
+        ns.PlannerSourceReset(); src = ns.PlannerSource()
+        if #src.places("repair") ~= 1 then error("[DND] npcs are skipped in the scan") end
+        if #src.places("classTrainer") ~= 0 then error("no class trainer scan") end
+        npcs[33].npcFlags, npcs[33].name = nil, "Drinks"
         -- seen places
         ns.PlannerSourceReset(); src = ns.PlannerSource()
         local log = ns.PlannerLogSource()
@@ -9403,8 +9418,17 @@ try("13.1 stops: places", function()
         spot[2] = 90
         fireEvent("MAIL_SHOW")
         if #log.places("mailbox") ~= 2 then error("far away: added") end
+        local canRepair = false
+        env.CanMerchantRepair = function() return canRepair end
+        spot[2] = 20
+        fireEvent("MERCHANT_SHOW")                          -- (an armor-less merchant that cannot repair)
+        spot[2] = 60; canRepair = true
         fireEvent("MERCHANT_SHOW"); fireEvent("TRAINER_SHOW")
-        if #ns.root.plannerSeen.vendor ~= 1 or #ns.root.plannerSeen.trainer ~= 1 then error("vendor and trainer seen") end
+        env.CanMerchantRepair = nil
+        if #ns.root.plannerSeen.vendor ~= 2 or #ns.root.plannerSeen.trainer ~= 1 then error("vendor and trainer seen") end
+        if #src.places("vendor", "Food") ~= 0 or #log.places("vendor", "Drink") ~= 0 then error("seen merchants are not food or drink vendors") end
+        if #log.places("anyVendor") ~= 2 or #src.places("anyVendor") ~= 2 then error("every seen merchant is a place to sell") end
+        if #log.places("repair") ~= 1 or log.places("repair")[1].x ~= 60 then error("only a merchant that could repair joins repair") end
         ns.root.guideKey = nil; ns.root.plannerSeen = nil
         fireEvent("MAIL_SHOW")
         if ns.root.plannerSeen ~= nil then error("locked guide: nothing saved") end

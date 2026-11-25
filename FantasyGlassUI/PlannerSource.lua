@@ -224,9 +224,10 @@ ns.PLANNER_MOUNT_VENDORS = {
     ["Windshaper Skyborne"] = {},   -- TODO
 }
 
-local FLAG_NAMES = { innkeeper = "INNKEEPER", repair = "REPAIR", classTrainer = "TRAINER" }
+-- (no scan for class trainers: the flag finds every trainer of every class and profession)
+local FLAG_NAMES = { innkeeper = "INNKEEPER", repair = "REPAIR" }
 local TOWNSFOLK_KEY = { innkeeper = "Innkeeper", repair = "Repair", classTrainer = "Class Trainer", mailbox = "Mailbox" }
-local placeCache = {}
+local placeCaches = { questie = {}, log = {} }   -- one per source: the log source never sees Questie's places
 
 local function Plain(v) return type(v) == "table" and v or nil end
 
@@ -280,7 +281,10 @@ local function FlagIds(env, flagName)
     for _, id in ipairs(okI and ids or {}) do
         ns.PlannerYield()
         local ok, f = Try(db.QueryNPCSingle, id, "npcFlags")
-        if ok and HasFlag(f, mask) then out[#out + 1] = id end
+        if ok and HasFlag(f, mask) then
+            local okN, name = Try(db.QueryNPCSingle, id, "name")
+            if not (okN and type(name) == "string" and name:sub(1, 5) == "[DND]") then out[#out + 1] = id end
+        end
     end
     return out
 end
@@ -306,35 +310,48 @@ local function Resolve(env, ids, object, fallbackName)
     return out
 end
 
-local function SeenPlaces(kind)
+-- Places you have used. For vendors, `repairOnly` keeps those that could repair.
+local function SeenPlaces(kind, repairOnly)
     local root = ns.root
     local list = type(root) == "table" and type(root.plannerSeen) == "table" and root.plannerSeen[kind]
     local out = {}
     for _, p in ipairs(type(list) == "table" and list or {}) do
-        if type(p) == "table" and type(p.name) == "string" and tonumber(p.map) and tonumber(p.x) and tonumber(p.y) then
+        if type(p) == "table" and type(p.name) == "string" and tonumber(p.map) and tonumber(p.x) and tonumber(p.y)
+            and (not repairOnly or p.repair == true) then
             out[#out + 1] = { name = p.name, map = p.map, x = p.x, y = p.y }
         end
     end
     return out
 end
 
-local SEEN_KIND = { mailbox = "mailbox", vendor = "vendor" }
+-- Seen places that join a kind's list. Merchants you opened are not food, drink or ammo vendors:
+-- they join "repair" only when they could repair, and "anyVendor" (to sell to) is all of them.
+local function SeenFor(kind, arg)
+    if kind == "mailbox" then return SeenPlaces("mailbox") end
+    if kind == "repair" then return SeenPlaces("vendor", true) end
+    if kind == "anyVendor" then return SeenPlaces("vendor") end
+    return {}
+end
 
-local function Places(env, kind, arg)
+local function Places(which, env, kind, arg)
+    local cache = placeCaches[which]
     local key = tostring(kind) .. "\0" .. tostring(arg)
-    local hit = placeCache[key]
+    local hit = cache[key]
     if not hit then
         hit = {}
-        if env then
+        local cacheable = true
+        if env and kind ~= "anyVendor" then
             local ids = KnownIds(kind, arg)
+            local known = ids ~= nil
             if ids == nil and FLAG_NAMES[kind] then ids = FlagIds(env, FLAG_NAMES[kind]) end
             if ids and (kind ~= "mailbox" or type(env.db.QueryObjectSingle) == "function") then
-                hit = Resolve(env, ids, kind == "mailbox", kind == "mailbox" and "Mailbox" or nil)
+                hit = Resolve(env, ids, kind == "mailbox", kind == "mailbox" and ns:Tr("Mailbox") or nil)
             end
+            cacheable = known or #hit > 0   -- (Questie's own tables may not be built yet: ask again later)
         end
-        placeCache[key] = hit
+        if cacheable then cache[key] = hit end
     end
-    local seen = SEEN_KIND[kind] and SeenPlaces(SEEN_KIND[kind]) or {}
+    local seen = SeenFor(kind, arg)
     if #seen == 0 then return hit end
     local out = {}
     for _, p in ipairs(hit) do out[#out + 1] = p end
@@ -413,8 +430,8 @@ function ns.PlannerSource()
         changed = true
         return nil
     end
-    function src.places(kind, arg) return Places(env, kind, arg) end
-    function src.inns() return Places(env, "innkeeper") end
+    function src.places(kind, arg) return Places("questie", env, kind, arg) end
+    function src.inns() return Places("questie", env, "innkeeper") end
     return src
 end
 
@@ -451,12 +468,12 @@ function ns.PlannerLogSource()
             repeatable = false, doable = true,
         }
     end
-    function src.places(kind, arg) return Places(nil, kind, arg) end
+    function src.places(kind, arg) return Places("log", nil, kind, arg) end
     function src.inns() return {} end
     return src
 end
 
-function ns.PlannerSourceReset() changed, waiting, placeCache, recCache, cacheLevel = false, false, {}, {}, nil end
+function ns.PlannerSourceReset() changed, waiting, placeCaches, recCache, cacheLevel = false, false, { questie = {}, log = {} }, {}, nil end
 
 ------------------------------------------------------------------------------------------
 -- Places you have used: where you stood at a mailbox, a vendor or a trainer, saved per account
@@ -479,16 +496,24 @@ function ns.PlannerSeen(kind)
     if not (tonumber(map) and tonumber(x) and tonumber(y)) then return end
     local here = { map = map, x = x, y = y }
     local list = type(ns.root.plannerSeen) == "table" and type(ns.root.plannerSeen[kind]) == "table" and ns.root.plannerSeen[kind]
+    local repair = false
+    if kind == "vendor" and CanMerchantRepair then
+        local okR, can = Try(CanMerchantRepair)
+        repair = okR and can == true
+    end
     for _, p in ipairs(list or {}) do
-        if type(p) == "table" and tonumber(p.map) and tonumber(p.x) and tonumber(p.y) and SeenYards(here, p) < SEEN_NEAR then return end
+        if type(p) == "table" and tonumber(p.map) and tonumber(p.x) and tonumber(p.y) and SeenYards(here, p) < SEEN_NEAR then
+            if repair then p.repair = true end
+            return
+        end
     end
     local okN, name = Try(UnitName, "npc")
-    if not okN or type(name) ~= "string" or ns:IsSecret(name) or name == "" then name = kind == "mailbox" and "Mailbox" or nil end
+    if not okN or type(name) ~= "string" or ns:IsSecret(name) or name == "" then name = kind == "mailbox" and ns:Tr("Mailbox") or nil end
     if not name then return end
     if type(ns.root.plannerSeen) ~= "table" then ns.root.plannerSeen = {} end
     local seen = ns.root.plannerSeen
     if type(seen[kind]) ~= "table" then seen[kind] = {} end
-    seen[kind][#seen[kind] + 1] = { name = name, map = map, x = x, y = y }
+    seen[kind][#seen[kind] + 1] = { name = name, map = map, x = x, y = y, repair = repair or nil }
 end
 
 do

@@ -21,6 +21,7 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["Mailbox"] = "Briefkasten",
     ["Plan my route"] = "Route planen",
     ["Group quests"] = "Gruppenquests",
     ["Solo"] = "Allein",
@@ -3311,6 +3312,7 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["Mailbox"] = "Boîte aux lettres",
     ["Plan my route"] = "Planifier mon itinéraire",
     ["Group quests"] = "Quêtes de groupe",
     ["Solo"] = "Seul",
@@ -6601,6 +6603,7 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["Mailbox"] = "Buzón",
     ["Plan my route"] = "Planificar mi ruta",
     ["Group quests"] = "Misiones de grupo",
     ["Solo"] = "En solitario",
@@ -9894,6 +9897,7 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["Mailbox"] = "Почтовый ящик",
     ["Plan my route"] = "Спланировать маршрут",
     ["Group quests"] = "Групповые задания",
     ["Solo"] = "В одиночку",
@@ -13184,6 +13188,7 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["Mailbox"] = "Caixa de correio",
     ["Plan my route"] = "Planejar minha rota",
     ["Group quests"] = "Missões de grupo",
     ["Solo"] = "Sozinho",
@@ -16474,6 +16479,7 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["Mailbox"] = "Cassetta postale",
     ["Plan my route"] = "Pianifica il mio percorso",
     ["Group quests"] = "Missioni di gruppo",
     ["Solo"] = "Da solo",
@@ -19764,6 +19770,7 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["Mailbox"] = "우체통",
     ["Plan my route"] = "내 경로 계획",
     ["Group quests"] = "그룹 퀘스트",
     ["Solo"] = "솔로",
@@ -23057,6 +23064,7 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["Mailbox"] = "邮箱",
     ["Plan my route"] = "规划我的路线",
     ["Group quests"] = "组队任务",
     ["Solo"] = "单人",
