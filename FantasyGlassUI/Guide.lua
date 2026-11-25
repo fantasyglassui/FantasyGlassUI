@@ -522,13 +522,16 @@ local function EndText(st)
     if s.empty then return ns:Tr("No quests left worth the trip; grinding or a dungeon may be faster") end
     return ns:Tr("This guide is finished.")
 end
-local function SkippedText(st)
-    local s = Planned(st) and type(st.summary) == "table" and st.summary
-    local n = s and type(s.skipped) == "table" and tonumber(s.skipped.group) or 0
+-- (from a plan's summary: the planner's preview shows the same line)
+function ns.GuideSkippedText(s)
+    local n = type(s) == "table" and type(s.skipped) == "table" and tonumber(s.skipped.group) or 0
     if n <= 0 then return nil end
     local group = ns.db and ns.db.plannerGroup
     local solo = group == nil or group == "solo"
     return format(ns:Tr(solo and "Skipped: %d group quests (Solo is on)" or "Skipped: %d group quests"), n)
+end
+local function SkippedText(st)
+    return Planned(st) and ns.GuideSkippedText(st.summary) or nil
 end
 -- "2 talent points to spend", when the game says there are some.
 local function TalentText()
@@ -565,11 +568,13 @@ local function RepText(st)
     return format(ns:Tr("%s: %s to %s"), ns.PlannerRepName(best), nice, ns.PlannerRepStandingName(goals[best]))
 end
 -- "Moved: you died twice here (back at level 14)": a hub left out of this plan because you died twice there.
-local function MovedText(st)
-    local s = Planned(st) and type(st.summary) == "table" and st.summary
-    local lv = s and tonumber(s.moved)
+function ns.GuideMovedText(s)
+    local lv = type(s) == "table" and tonumber(s.moved)
     if not lv then return nil end
     return format(ns:Tr("Moved: you died twice here (back at level %d)"), lv)
+end
+local function MovedText(st)
+    return Planned(st) and ns.GuideMovedText(st.summary) or nil
 end
 -- "Class quest ready: Name (3 parts, about 20 min)": one you could start that the plan does not take.
 local function ClassText(st)

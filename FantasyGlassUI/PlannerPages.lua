@@ -124,13 +124,10 @@ function ns.PlannerPreviewLines(guide, summary)
     lines[#lines + 1] = { left = format(ns:Tr("Experience: %s"), Big(summary.xp)) }
     lines[#lines + 1] = { left = format(ns:Tr("Level %s → %s"), LevelText(summary.fromLevel), LevelText(summary.toLevel)) }
     lines[#lines + 1] = { left = format(ns:Tr("Flights: %d, crossings: %d"), flights, crossings) }
-    local n = type(summary.skipped) == "table" and tonumber(summary.skipped.group) or 0
-    if n > 0 then
-        local solo = ns.db == nil or ns.db.plannerGroup == nil or ns.db.plannerGroup == "solo"
-        lines[#lines + 1] = { left = format(ns:Tr(solo and "Skipped: %d group quests (Solo is on)" or "Skipped: %d group quests"), n) }
-    end
-    local moved = tonumber(summary.moved)
-    if moved then lines[#lines + 1] = { left = format(ns:Tr("Moved: you died twice here (back at level %d)"), moved) } end
+    local skipped = ns.GuideSkippedText and ns.GuideSkippedText(summary)       -- (the panel's own lines, Guide.lua)
+    if skipped then lines[#lines + 1] = { left = skipped } end
+    local moved = ns.GuideMovedText and ns.GuideMovedText(summary)
+    if moved then lines[#lines + 1] = { left = moved } end
     local function Close() if previewWindow then previewWindow:Hide() end end
     lines[#lines + 1] = { left = ns:Tr("Follow"), color = { 1, 0.82, 0.3 }, click = Close }
     lines[#lines + 1] = { left = ns:Tr("Plan again"), color = { 1, 0.82, 0.3 }, click = function()
@@ -171,7 +168,6 @@ end)
 -- "plan from here" came first), and the summary counts how far you are. When no hub is left on it, the
 -- goal clears and the planner goes back to leveling.
 ------------------------------------------------------------------------------------------
-local SyncGoalHook                        -- (below: registers the context hook while a goal is set)
 local goalHubs                           -- did the zone hook find hubs on the goal map in the plan being made (nil: not asked)
 
 function ns.PlannerZoneGoal()
@@ -187,8 +183,7 @@ function ns.PlannerSetZoneGoal(map)
     local rec = ns.PlannerCharRecord and ns.PlannerCharRecord(true)
     if type(rec) ~= "table" then return false end
     rec.zoneGoal = map
-    SyncGoalHook()
-    if ns.PlannerReplan then ns:PlannerReplan("zone goal") end
+    if ns.PlannerReplan then ns:PlannerReplan("settings") end
     return true
 end
 -- The zone-level map you stand on (a city or cave map walked up to its zone).
@@ -198,7 +193,7 @@ function ns.PlannerGoalZone()
     local chain = ns.PlannerZoneMaps and ns.PlannerZoneMaps(map) or { map }
     return chain[#chain]
 end
-local function MapName(map)
+function ns.PlannerMapName(map)
     local get = C_Map and C_Map.GetMapInfo
     if type(get) == "function" and type(map) == "number" then
         local ok, info = pcall(get, map)
@@ -229,20 +224,13 @@ local function GoalProgress(goal, ctx)
     return progress
 end
 
--- The context hook is there only while a goal is set (so a plan with none sees no extra hook): the lower end of
--- the cheap level pre-filter drops to 1. SyncGoalHook runs when the goal changes and at login.
+-- Every plan starts here (what the zone hook found and the progress are the new plan's): with a goal set, the
+-- lower end of the cheap level pre-filter drops to 1.
 local function GoalContext(ctx)
     goalHubs, progressCtx, progress = nil, nil, nil
     if ns.PlannerZoneGoal() then ctx.windowLo = 1 end
 end
-SyncGoalHook = function()
-    ns.PlannerHook("context", "zoneGoal", ns.PlannerZoneGoal() and GoalContext or nil)
-end
-do
-    local ev = CreateFrame("Frame")
-    pcall(ev.RegisterEvent, ev, "PLAYER_ENTERING_WORLD")
-    ev:SetScript("OnEvent", ns:Guard("Planner zone goal", SyncGoalHook))
-end
+ns.PlannerHook("context", "zoneGoal", GoalContext)
 ns.PlannerHook("window", "zoneGoal", function(rec, _, lo, hi)
     local goal = ns.PlannerZoneGoal()
     local first = goal and type(rec) == "table" and type(rec.starts) == "table" and rec.starts[1]
@@ -257,11 +245,12 @@ ns.PlannerHook("zone", "zoneGoal", function(maps)
 end)
 ns.PlannerHook("route", "zoneGoal", function(_, summary, ctx)
     local goal = ns.PlannerZoneGoal()
-    if not goal then return end
+    if not goal or (type(ctx.source) == "table" and ctx.source.kind == "log") then return end   -- (the quest log alone cannot count a zone)
     local p = GoalProgress(goal, ctx)
     if p then summary.zoneGoal = { map = goal, done = p.done, total = p.total } end
 end)
--- Once, on the plan that was applied: no hub left on the goal map (the route hook runs up to four times a plan).
+-- Once, on the plan that was applied: no hub left on the goal map (the route hook runs up to four times a plan),
+-- every counted quest of it done, or nothing at all to plan (the zone hook was never asked).
 ns.PlannerHook("applied", "zoneGoal", function(_, summary, ctx)
     local goal = ns.PlannerZoneGoal()
     local asked = goalHubs
@@ -272,12 +261,12 @@ ns.PlannerHook("applied", "zoneGoal", function(_, summary, ctx)
         if type(t) == "table" and t.map == goal then took = true end
     end
     local zg = summary.zoneGoal
-    local finished = type(zg) == "table" and tonumber(zg.total) ~= nil and zg.done >= zg.total
-    if took or not (asked == false or finished) then return end
+    local finished = type(zg) == "table" and (tonumber(zg.total) or 0) > 0 and (tonumber(zg.done) or 0) >= zg.total
+    local nothing = asked == nil and type(summary) == "table" and summary.empty == true
+    if took or not (asked == false or finished or nothing) then return end
     local rec = ns.PlannerCharRecord(true)
     rec.zoneGoal = nil
-    SyncGoalHook()
-    ns:Print("Zone done: %s", MapName(goal))
+    ns:Print("Zone done: %s", ns.PlannerMapName(goal))
     if ns.PlannerReplan then ns:PlannerReplan("zone done") end
 end)
 

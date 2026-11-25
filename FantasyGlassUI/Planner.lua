@@ -9,7 +9,8 @@ ns.plannerBusy, ns.plannerQueued, ns.plannerSteps = false, false, 0
 
 local running, sliceStart            -- the planning coroutine, and when its slice began
 local runReason                      -- ns.plannerReason when that coroutine was made
-local startPending = false           -- ns:PlannerStart() asked, and no plan applied since: that plan's reason is "start"
+local startPending = false           -- ns:PlannerStart() asked, and no plan applied or failed since: that plan's reason is "start"
+                                     -- (however late it lands: replans that replace the start run, or Questie still loading, keep it the start's)
 local job                            -- a small job run in slices while the planner is idle (ns.PlannerJob)
 
 local function Clock()
@@ -714,7 +715,9 @@ local function Tick()
     running, ns.plannerBusy = nil, false
     if ns.plannerQueued then return end                      -- queued meanwhile: never apply a stale result
     if not ok then
-        -- keep the last good plan; the panel says so (every time, not only the first), /fgui check lists it
+        -- keep the last good plan; the panel says so (every time, not only the first), /fgui check lists it.
+        -- The start's plan failed: a later plan is not that start's (no preview for it, its own reason).
+        startPending = false
         if #ns.errors < 60 then ns.errors[#ns.errors + 1] = "Planner: " .. tostring(guide) end
         if ns.GuidePlanFailed then ns:GuidePlanFailed() end
         return

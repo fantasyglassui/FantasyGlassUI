@@ -12427,6 +12427,30 @@ try("13.4 feel: seams", function()
         ns:PlannerReplan("level")
         runIt()
         if reason ~= "level" then error("the next run has its own reason: " .. tostring(reason)) end
+        -- (the start's run fails: the plan that comes later is not the start's)
+        local realRoute = ns.PlannerRoute
+        ns.PlannerRoute = function() error("boom") end
+        local nErr = #ns.errors
+        reason = nil
+        ns:PlannerStart()
+        runIt()
+        if reason ~= nil or #ns.errors ~= nErr + 1 then error("a failed start run applies nothing") end
+        table.remove(ns.errors)
+        ns.PlannerRoute = realRoute
+        ns:PlannerReplan("hand-in")
+        runIt()
+        if reason ~= "hand-in" then error("after a failed start, the next plan has its own reason: " .. tostring(reason)) end
+        -- (Questie still loading: the start's plan lands later, and is still the start's)
+        local realContext = ns.PlannerContext
+        ns.PlannerContext = function() return { source = source, speed = 7, pace = 1, sourceWhy = "waiting" } end
+        reason = nil
+        ns:PlannerStart()
+        runIt()
+        if reason ~= nil then error("waiting for Questie: nothing applied") end
+        ns.PlannerContext = realContext
+        ns:PlannerReplan("questie")
+        runIt()
+        if reason ~= "start" then error("the start's plan, once Questie is ready, is still the start: " .. tostring(reason)) end
         ns.PlannerHook("applied", "seams", nil)
         ns:PlannerStop()
         ns.PlannerContext, ns.PlannerRoute, ns.PlannerWorldPos = saved.context, saved.route, saved.world
@@ -13021,6 +13045,9 @@ try("13.4 feel B: time to level, why this, preview", function()
         if all:find("Moved:", 1, true) then error("no moved line without a moved hub") end
         summary.moved = 14
         if not text(ns.PlannerPreviewLines({ steps = steps }, summary)):find("Moved: you died twice here (back at level 14)", 1, true) then error("the moved line") end
+        if ns.GuideMovedText(summary) ~= "Moved: you died twice here (back at level 14)" or ns.GuideSkippedText(summary) ~= "Skipped: 3 group quests (Solo is on)" then
+            error("the panel's own skipped and moved lines are the preview's")
+        end
         summary.moved = nil
         shown = {}
         if ns:PlannerPreview() ~= true or #shown ~= 1 or shown[1].key ~= "PlanPreview" or shown[1].title ~= "Preview the next hour" then error("the Preview action opens the page") end
@@ -13107,6 +13134,7 @@ try("13.4 feel B: finish the zone", function()
                     guidePage = ns.guidePage }
     local rec0 = ns.PlannerCharRecord(false)
     local oldGoal = rec0 and rec0.zoneGoal
+    local hadPlanner = ns.root.planner ~= nil
     local panelExtraSet
     local ok, err = pcall(function()
         ns.GuideUnlocked = function() return true end
@@ -13249,6 +13277,38 @@ try("13.4 feel B: finish the zone", function()
         for _, step in ipairs(ns:GuideGet(st.name).steps) do if step.quest then back[step.quest] = true end end
         if not back[504] or back[501] or (st.summary and st.summary.zoneGoal) then error("the next plan levels again (the next zone)") end
         ns:PlannerStop()
+        if mapReads == 0 then error("the goal's progress reads the source's map quests") end
+        local readsNow = mapReads
+        local c2 = ctxFor()
+        for _, h in ipairs(ns.PlannerHookList("route")) do if h.key == "zoneGoal" then h.fn({ steps = {} }, {}, c2); h.fn({ steps = {} }, {}, c2) end end
+        if mapReads ~= readsNow then error("no goal: no read") end
+
+        -- each way the goal ends, on its own (the applied hook, after the zone hook saw the plan's maps)
+        local function hookOf(point) for _, h in ipairs(ns.PlannerHookList(point)) do if h.key == "zoneGoal" then return h.fn end end end
+        local ctxH, zoneH, routeH, appliedH = hookOf("context"), hookOf("zone"), hookOf("route"), hookOf("applied")
+        if not (ctxH and zoneH and routeH and appliedH) then error("the goal's hooks are registered for good") end
+        local function ends(hasHubs, done, total, empty, kind)
+            printed = {}
+            ns.PlannerCharRecord(true).zoneGoal = 1429
+            ctxH({ level = 12, windowLo = 8 })                   -- (a new plan: what the zone hook saw is forgotten)
+            if hasHubs ~= nil then zoneH({ [1429] = hasHubs and { {} } or {} }) end
+            appliedH({ steps = {} }, { taken = {}, empty = empty, zoneGoal = total and { map = 1429, done = done, total = total } or nil }, { source = { kind = kind or "test" } })
+            local cleared = ns.PlannerZoneGoal() == nil
+            ns.PlannerCharRecord(true).zoneGoal = nil
+            return cleared
+        end
+        if ends(true, 1, 2) then error("hubs left and quests left: the goal stays") end
+        if not ends(true, 2, 2) then error("every counted quest done (hubs of repeatable quests left): the goal ends") end
+        if not ends(false, 1, 2) then error("no hub left on the map (quests out of reach): the goal ends") end
+        if ends(true, 0, 0) then error("nothing counted (total 0) while hubs are left: the goal stays") end
+        if not ends(nil, 1, 2, true) then error("nothing at all to plan (the zone hook never asked): the goal ends") end
+        if ends(nil, 1, 2, false) then error("the zone hook not asked, but a plan made: the goal stays") end
+        if ends(false, 1, 2, false, "log") then error("the quest log as the source: the goal never ends by itself") end
+        local sumLog = {}
+        ns.PlannerCharRecord(true).zoneGoal = 1429
+        routeH({ steps = {} }, sumLog, { source = { kind = "log", mapQuests = function() mapReads = mapReads + 1; return {} end } })
+        ns.PlannerCharRecord(true).zoneGoal = nil
+        if sumLog.zoneGoal then error("the quest log as the source: no zone count") end
 
         -- the Guide tab's button cycles and stores the goal per character
         ns.GuideHere = function() return 1429, 30, 40 end
@@ -13282,7 +13342,7 @@ try("13.4 feel B: finish the zone", function()
     if rr then rr.zoneGoal = oldGoal end
     if not rec0 and ns.root.planner then ns.root.planner[ns:CharKey()] = nil end       -- (the record this test made)
     if panelExtraSet then rawset(panelExtraSet, "SetText", nil) end
-    ns.PlannerHook("context", "zoneGoal", nil)
+    if not hadPlanner then ns.root.planner = nil end                                     -- (and the table it lived in)
     ns:GuideSetPlan(nil)
     ns.root.guideState, ns.root.guides, ns.root.guideKey = saved.guideState, saved.guides, saved.key
     ns.guidePage = saved.guidePage

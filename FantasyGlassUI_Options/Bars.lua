@@ -277,11 +277,7 @@ local function FeelPanelSection(live, y, Replan, T)
     local function Draw(b)
         local goal = ns.PlannerZoneGoal and ns.PlannerZoneGoal()
         if not goal then b.text:SetText(ns:Tr("Goal: Level up")) return end
-        local name = tostring(goal)
-        local get = C_Map and C_Map.GetMapInfo
-        local okInfo, info = false, nil
-        if type(get) == "function" then okInfo, info = pcall(get, goal) end
-        if okInfo and type(info) == "table" and type(info.name) == "string" and not ns:IsSecret(info.name) and info.name ~= "" then name = info.name end
+        local name = ns.PlannerMapName and ns.PlannerMapName(goal) or tostring(goal)
         b.text:SetText(string.format(ns:Tr("Goal: Finish %s"), name))
     end
     -- Cycles between leveling and finishing the zone you are in (the planner plans again either way).
