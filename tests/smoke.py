@@ -10614,6 +10614,28 @@ try("12.3 settings look: pages follow the window's width", function()
             local cardTop = Pt(page.card, "TOPLEFT").y
             if cardTop > introTop - page.intro:GetStringHeight() then error("the card starts under the line under the title at " .. w) end
         end
+        -- and on a section with no switches (no filter) but the sample frames button, a long title
+        -- stops short of that button (still French at 130%, at the least width)
+        Size(MIN)
+        -- (every section of Frames and bars has switches now: one is given none for the check)
+        local plain = ns:SettingsSection("frames:Nameplates")
+        local rows = plain.rows
+        plain.rows = {}
+        local title = plain.title
+        plain.title = "Files d'attente et champs de bataille et cadres de raid"
+        local okT, errT = pcall(function()
+            O.Open(plain.id)
+            local page = O.sections
+            if page.filterButtons.all:IsShown() or not page.sampleButton:IsShown() then error("(the section shows the sample frames button and no filter)") end
+            local memo = {}
+            local sl = Span(page.sampleButton, page, memo)
+            local _, hr = Span(page.heading, page, memo)
+            local hst = rawget(page.heading, "geo")
+            if #hst.text * hst.size * 0.55 <= page.headWidth then error("the long title wraps") end
+            if not (sl and hr) or hr > sl - 8 then error("a long title runs under Show sample frames: " .. tostring(hr) .. " vs " .. tostring(sl)) end
+        end)
+        plain.title, plain.rows = title, rows
+        if not okT then error(errT, 0) end
         -- Home's section labels: in capitals in English only, as the section pages' labels
         ns:ToggleConfig()
         O.frame = nil

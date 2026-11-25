@@ -657,7 +657,8 @@ local function BuildSections(page)
             local w = newTag:GetWidth()
             tagW = ((type(w) == "number" and w > 0) and w or 34) + 10
         end
-        local headW = math.max(160, RowWidth() - (hasFilter and (FILTER_W + 16) or 0) - tagW)
+        local right = math.max(hasFilter and FILTER_W or 0, sampleBtn:IsShown() and (sampleBtn:GetWidth() or 170) or 0)   -- (the filter, and the sample frames button under it)
+        local headW = math.max(160, RowWidth() - ((right > 0) and (right + 16) or 0) - tagW)
         heading:SetWidth(headW)
         local textW = heading.GetStringWidth and heading:GetStringWidth()
         textW = (type(textW) == "number" and textW > 0) and math.min(textW, headW) or headW
