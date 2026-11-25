@@ -81,7 +81,9 @@ local function boom() error("attempt to use a SECRET value", 2) end
 for _, m in ipairs({ "__add", "__sub", "__mul", "__div", "__mod", "__unm", "__lt", "__le", "__concat", "__len", "__call", "__idiv", "__pow" }) do secretmt[m] = boom end
 local function SV(n) if secretMode then return setmetatable({ __secret = true }, secretmt) end return n end
 local env = {}
+local reloadCount = 0                -- the game's ReloadUI: counts, so a test can see a reload
 local known = {
+  ReloadUI = function() reloadCount = reloadCount + 1 end,
   ipairs=ipairs, pairs=pairs, pcall=pcall, select=select, type=type, tostring=tostring, tonumber=tonumber,
   table=table, math=math, string=string, setmetatable=setmetatable, getmetatable=getmetatable, rawset=rawset, rawget=rawget,
   next=next, error=error, assert=assert, coroutine=coroutine,
@@ -2404,15 +2406,16 @@ try("Choosing a language", function()
     local names = {}
     for _, def in ipairs(ns.languages) do names[def[1]] = def[2] end
     if names.deDE ~= "Deutsch" or names.frFR ~= "Français" or names.esES ~= "Español" or names.enUS ~= "English" then error("languages should be listed under their own names") end
-    -- picking one in the setup: saved, marked to come back, and the interface reloaded
+    -- picking one in the setup: saved and marked to come back (the language's button then hands the
+    -- click to the game's own reload: see "12.3 reload"); the one already in use says no, so no reload
     env.GetLocale = function() return "enUS" end
     ns.root.language = nil; ns:LoadLocale()
     local reloads = 0
     local realReload = env.ReloadUI
     env.ReloadUI = function() reloads = reloads + 1 end
     if not ns:SetupPickLanguage("esES") then error("picking Spanish in the setup should take") end
-    if reloads ~= 1 or ns.root.resumeSetup ~= true or ns.root.language ~= "esES" then error("the setup should save the language, mark itself to resume, and reload") end
-    if ns:SetupPickLanguage("esES") or reloads ~= 1 then error("picking the language already in use must not reload") end
+    if reloads ~= 0 or ns.root.resumeSetup ~= true or ns.root.language ~= "esES" then error("the setup should save the language and mark itself to resume, and leave the reload to its button") end
+    if ns:SetupPickLanguage("esES") then error("picking the language already in use must say no, so its button does not reload") end
     -- after the reload, logging in opens the setup again and clears the mark
     fireEvent("PLAYER_LOGIN"); runTimers()
     if ns.root.resumeSetup ~= nil then error("the mark should be cleared once the setup has come back") end
@@ -3298,9 +3301,7 @@ try("Nameplate size", function()
     env.C_CVar = realC
 end)
 try("Safe mode", function()
-    local reloads = 0
-    local realReload = env.ReloadUI
-    env.ReloadUI = function() reloads = reloads + 1 end
+    local base = reloadCount         -- (the game's own ReloadUI stays in place: the banner's button is built with it)
     ns.root.safeMode = nil
     if not ns:SetSafeMode(true) or ns.root.safeMode ~= true then error("safe mode should be switched on and kept") end
     if ns:SetSafeMode(true) then error("switching it on twice is not a change") end
@@ -3308,7 +3309,7 @@ try("Safe mode", function()
     -- the command goes in, and comes back out
     ns.safeMode = nil
     env.SlashCmdList.FANTASYGLASSUI("safe")
-    if ns.root.safeMode ~= true or reloads ~= 1 then error("/fgui safe should switch safe mode on and reload") end
+    if ns.root.safeMode ~= true or reloadCount - base ~= 1 then error("/fgui safe should switch safe mode on and reload") end
     -- logging in while it is on: nothing is started, and the banner is put up
     local before = {}
     for k, v in pairs(ns.loaded) do before[k] = v end
@@ -3318,10 +3319,9 @@ try("Safe mode", function()
     if next(ns.loaded) then error("in safe mode no feature may be started") end
     if not ns.safeBanner then error("safe mode should say so on screen") end
     env.SlashCmdList.FANTASYGLASSUI("safe")
-    if ns.root.safeMode ~= nil or reloads ~= 2 then error("/fgui safe again should leave safe mode and reload") end
+    if ns.root.safeMode ~= nil or reloadCount - base ~= 2 then error("/fgui safe again should leave safe mode and reload") end
     ns.safeMode = nil
     for k, v in pairs(before) do ns.loaded[k] = v end
-    env.ReloadUI = realReload
 end)
 try("Group finder", function()
     local g = known.__lfg
@@ -9526,6 +9526,141 @@ try("12.3 settings look: buttons and the window's corners", function()
     ns:Retheme()
     if ns.ApplyFrameStyle then ns:ApplyFrameStyle() end
     if not ok then error(err, 0) end
+end)
+try("12.3 reload: every reload button hands the click to the game", function()
+    -- the game refuses a reload asked for by add-on code, even inside a click: a reload button's
+    -- OnClick is the game's own ReloadUI itself, and the add-on's saving goes in PreClick
+    local function Last(b, name)
+        local fn
+        for i = 1, #handlers do local h = handlers[i]; if h.self == b and h.name == name then fn = h.fn end end
+        return fn
+    end
+    ns:ShowSetup(); ns:HideSetup()
+    if ns.safeBanner then ns.safeBanner:Hide() else ns:ShowSafeBanner():Hide() end
+    ns:ToggleConfig("profiles"); ns:ToggleConfig("profiles")
+    local list = {}
+    for b in pairs(ns.reloadButtons) do list[#list + 1] = b end
+    if #list < #ns.languages + 3 then error("too few reload buttons: " .. #list) end
+    for _, b in ipairs(list) do
+        if Last(b, "OnClick") ~= env.ReloadUI then error("a reload button's OnClick is not the game's own ReloadUI") end
+        if type(Last(b, "PreClick")) ~= "function" then error("a reload button has no PreClick") end
+        if type(Last(b, "PostClick")) ~= "function" then error("a reload button lost its click sound") end
+    end
+    -- the setup's Finish & reload: the choices are kept before the game reloads
+    local fin = ns.setupFrame and ns.setupFrame.finish
+    if not (fin and ns.reloadButtons[fin]) then error("the setup's Finish & reload is not a reload button") end
+    -- nothing may be hidden in a reload button's PreClick (the button or its window): a button hidden
+    -- before its OnClick might not get one, and the reload would fail as before
+    local hidden = {}
+    local realCall = mockmt.__call
+    local function Watch() mockmt.__call = function(fn, obj, ...) if type(obj) == "table" and rawget(obj, "Hide") == fn then hidden[#hidden + 1] = obj end return newmock() end end
+    local function Unwatch() mockmt.__call = realCall end
+    local keep = { done = ns.db.setupDone, just = ns.root.setupJustFinished, role = ns.db.role }
+    ns.db.setupDone, ns.root.setupJustFinished = nil, nil
+    local before = reloadCount
+    Watch()
+    local okF, errF = pcall(Last(fin, "PreClick"), fin, "LeftButton")
+    Unwatch()
+    if not okF then error(errF, 0) end
+    if #hidden > 0 then error("Finish & reload's PreClick hides something before the reload") end
+    if ns.db.setupDone ~= true or ns.root.setupJustFinished ~= true then error("Finish & reload should keep the setup as done before the reload") end
+    if reloadCount ~= before then error("the PreClick must not reload by itself") end
+    if Last(fin, "OnClick") ~= env.ReloadUI then error("after its PreClick, Finish's click should still be the game's ReloadUI") end
+    ns.db.setupDone, ns.root.setupJustFinished, ns.db.role = keep.done, keep.just, keep.role
+    -- the other buttons: each does its own saving in PreClick (language, profile, safe mode)
+    local spy = { lang = 0, profile = 0, safe = 0 }
+    local real = { lang = ns.SetupPickLanguage, profile = ns.UseProfile, safe = ns.SetSafeMode }
+    ns.SetupPickLanguage = function() spy.lang = spy.lang + 1; return true end
+    ns.UseProfile = function() spy.profile = spy.profile + 1; return true end
+    ns.SetSafeMode = function() spy.safe = spy.safe + 1; return true end
+    Watch()
+    local okP, errP = pcall(function() for _, b in ipairs(list) do if b ~= fin then Last(b, "PreClick")(b, "LeftButton") end end end)
+    Unwatch()
+    ns.SetupPickLanguage, ns.UseProfile, ns.SetSafeMode = real.lang, real.profile, real.safe
+    if not okP then error(errP, 0) end
+    if #hidden > 0 then error("a reload button's PreClick hides something before the reload (" .. #hidden .. ")") end
+    if spy.lang ~= #ns.languages then error("each setup language button should pick its language first: " .. spy.lang) end
+    if spy.safe < 1 then error("Leave safe mode should switch safe mode off first") end
+    if spy.profile < 1 then error("a profile's Use should switch the profile first") end
+    if reloadCount ~= before then error("no PreClick may reload by itself") end
+    -- Reset positions: the first click only asks; the confirming one keeps the change and is the
+    -- game's reload; left alone for 4 seconds it goes back to asking
+    runTimers()                                                        -- (any earlier ask has gone back)
+    local reset
+    for _, e in ipairs(ns.optionIndex) do if e.label == "Reset positions" then reset = e.frame end end
+    if not reset then error("the Reset positions button was not found") end
+    local arm = Last(reset, "OnClick")
+    if type(arm) ~= "function" or arm == env.ReloadUI or ns.reloadButtons[reset] then
+        error("Reset positions should start by asking, not reloading (" .. type(arm) .. ", " .. tostring(arm == env.ReloadUI) .. ", " .. tostring(ns.reloadButtons[reset]) .. ", armed " .. tostring(reset.armed) .. ")")
+    end
+    arm(reset)
+    if reloadCount ~= before or not reset.armed then error("the first click on Reset positions should only arm it") end
+    if not ns.reloadButtons[reset] or Last(reset, "OnClick") ~= env.ReloadUI then error("once armed, Reset positions' click should be the game's ReloadUI") end
+    local keepPos, keepScale = ns.db.pos, ns.db.scale
+    ns.db.pos, ns.db.scale = { probe = { 1, 2 } }, { probe = 2 }
+    Last(reset, "PreClick")(reset, "LeftButton")
+    if next(ns.db.pos) ~= nil or next(ns.db.scale) ~= nil then error("the confirming click should clear the positions before the reload") end
+    if reloadCount ~= before or Last(reset, "OnClick") ~= env.ReloadUI then error("the confirming click's reload should be the game's own, in OnClick") end
+    ns.db.pos, ns.db.scale = keepPos, keepScale
+    arm(reset); runTimers()                                            -- (asked, then left alone)
+    if reset.armed or ns.reloadButtons[reset] or Last(reset, "OnClick") ~= arm then error("after 4 seconds Reset positions should go back to asking") end
+    arm(reset)
+    if not (reset.armed and ns.reloadButtons[reset]) then error("after the disarm the next click should arm it again") end
+    runTimers()
+    -- /rl: the game's own /reload handler where there is one, otherwise ours
+    local shortCommands
+    for _, m in ipairs(ns.modules) do if m.key == "shortCommands" then shortCommands = m.fn end end
+    if not shortCommands then error("the short commands module is missing") end
+    local SL = env.SlashCmdList
+    local keepRL, keepReload, keepKey = SL.FANTASYGLASSUIRL, SL.RELOAD, env.SLASH_FANTASYGLASSUIRL1
+    local own = function() end
+    SL.RELOAD = own; SL.FANTASYGLASSUIRL = nil
+    shortCommands()
+    if SL.FANTASYGLASSUIRL ~= own then error("/rl should be the game's own /reload handler when it has one") end
+    SL.RELOAD = nil; SL.FANTASYGLASSUIRL = nil
+    shortCommands()
+    local rl = SL.FANTASYGLASSUIRL
+    if type(rl) ~= "function" or rl == own then error("without the game's handler /rl should still be made") end
+    rl("")
+    if reloadCount ~= before + 1 then error("without the game's handler /rl should call ReloadUI") end
+    before = reloadCount
+    SL.FANTASYGLASSUIRL, SL.RELOAD, env.SLASH_FANTASYGLASSUIRL1 = keepRL, keepReload, keepKey
+    -- a PreClick that says no: that click stops before the reload
+    local b = ns:CreateButton(env.UIParent, "Probe", 80, 24)
+    ns:ReloadButton(b, function() return false end)
+    local cleared = false
+    rawset(b, "SetScript", function(_, name, fn) if name == "OnClick" and fn == nil then cleared = true end end)
+    Last(b, "PreClick")(b)
+    if not cleared then error("a PreClick that says no should take the reload off that click") end
+    ns.reloadButtons[b] = nil
+    -- where a refused action came from: past Blocked.lua's handler and ns:Guard's wrapper
+    local guardLine = "[Interface/AddOns/FantasyGlassUI/Skin.lua]:306: in function <Interface/AddOns/FantasyGlassUI/Skin.lua:299>"
+    local probe = "[C]: in function 'pcall'\n[Interface/AddOns/FantasyGlassUI/Skin.lua]:322: in function <Interface/AddOns/FantasyGlassUI/Skin.lua:322>\n"
+               .. "[C]: in function 'pcall'\n" .. guardLine .. "\n[Interface/AddOns/FantasyGlassUI/Skin.lua]:322: in main chunk"
+    if ns.GuardFrameOf(probe) ~= "Skin.lua:299" then error("ns:Guard's wrapper was not found in a stack: " .. tostring(ns.GuardFrameOf(probe))) end
+    local stack = "[Interface/AddOns/FantasyGlassUI/Blocked.lua]:120: in function <Interface/AddOns/FantasyGlassUI/Blocked.lua:118>\n"
+               .. "[C]: in function 'pcall'\n" .. guardLine .. "\n[C]: in function 'Reload'\n"
+               .. "[Interface/AddOns/Blizzard_SharedXML/InterfaceUtil.lua]:30: in function 'ReloadUI'\n"
+               .. "[Interface/AddOns/FantasyGlassUI_Options/Setup.lua]:710: in function <Interface/AddOns/FantasyGlassUI_Options/Setup.lua:699>"
+    local keepAt = ns.guardAt
+    for _, at in ipairs({ "Skin.lua:299", false }) do                 -- (the wrapper known, and not known)
+        ns.guardAt = at or nil
+        local where = ns.BlockedWhere(stack)
+        if where ~= "options: Setup.lua:710" then error("a refused reload should be put on Setup.lua:710, not " .. tostring(where)) end
+    end
+    ns.guardAt = keepAt
+    -- a refused reload: the player is told the game's own /reload finishes it
+    local keepB, keepSaved = ns.blocked, ns.root.blockedNow
+    ns.blocked = { total = 0, list = {}, byKey = {} }
+    local n = #printed
+    ns:NoteBlocked("ADDON_ACTION_BLOCKED", "FantasyGlassUI_Options", "Reload()", stack)
+    local said = false
+    for i = n + 1, #printed do if tostring(printed[i]):find("/reload", 1, true) then said = true end end
+    if not said then error("a refused reload should say to type /reload") end
+    n = #printed
+    ns:NoteBlocked("ADDON_ACTION_BLOCKED", "FantasyGlassUI", "Frame:Show()", stack)
+    for i = n + 1, #printed do if tostring(printed[i]):find("/reload", 1, true) then error("only a refused reload should mention /reload") end end
+    ns.blocked, ns.root.blockedNow = keepB, keepSaved
 end)
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)

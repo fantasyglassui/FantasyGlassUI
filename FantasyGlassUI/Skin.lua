@@ -312,6 +312,26 @@ function ns:Guard(label, fn)
         end
     end
 end
+-- Where ns:Guard's wrapper is defined ("Skin.lua:299"), read from a call stack taken inside a
+-- guarded function: the first function of this add-on there is that function, the next different
+-- one is the wrapper. Blocked.lua steps over it to name the line that really asked.
+function ns.GuardFrameOf(stack)
+    if type(stack) ~= "string" then return nil end
+    local inner
+    for line in stack:gmatch("[^\n]+") do
+        local file, def = line:match("in function <[^>]-FantasyGlassUI[%w_]*[/\\]([%w_]+%.lua):(%d+)>")
+        if file then
+            local at = file .. ":" .. def
+            if not inner then inner = at elseif at ~= inner then return at end
+        end
+    end
+    return nil
+end
+do
+    local ok, stack
+    ns:Guard("probe", function() ok, stack = pcall(debugstack, 1, 6, 0) end)()
+    ns.guardAt = ok and ns.GuardFrameOf(stack) or nil
+end
 
 -- Make a Blizzard frame/texture invisible WITHOUT hooking or hiding it.
 -- Hooks on the game's own frame methods taint its code (blocked actions in combat),
@@ -1437,6 +1457,40 @@ function ns:CreateButton(parent, text, w, h, onClick, template, name)
     ns:IndexOption(text, b)
     return b
 end
+-- (12.3) A button that reloads the interface. This client refuses its reload when the call comes
+-- from add-on code, even inside a click; a button whose OnClick is the game's own ReloadUI runs that
+-- untainted, and it reloads. So the add-on's own work (saving a choice) goes in PreClick, and OnClick
+-- is ReloadUI itself, never a function of ours around it. If `before` fails or says false, that click
+-- stops there. `before` must not hide the button or its window: a button hidden before its OnClick
+-- might not get one, and the reload takes the window down anyway. ns:ReloadButton(b, false, onClick) makes it an ordinary button again (a click that
+-- only arms a confirmation). The click sound (PostClick) is CreateButton's.
+ns.reloadButtons = setmetatable({}, { __mode = "k" })
+function ns:ReloadButton(b, before, onClick)
+    if type(b) ~= "table" or not b.SetScript then return b end
+    if before == false then
+        ns.reloadButtons[b] = nil
+        b:SetScript("PreClick", nil)
+        b:SetScript("OnClick", onClick)
+        return b
+    end
+    ns.reloadButtons[b] = true
+    b:SetScript("PreClick", function(self, ...)
+        local go = true
+        if before then
+            local ok, r = pcall(before, self, ...)
+            if not ok then
+                go = false
+                if #ns.errors < 60 then ns.errors[#ns.errors + 1] = "reload: " .. tostring(r) end
+                ns:PrintRaw("|cffff4444reload:|r " .. tostring(r))
+            elseif r == false then
+                go = false
+            end
+        end
+        self:SetScript("OnClick", go and ReloadUI or nil)
+    end)
+    b:SetScript("OnClick", ReloadUI)
+    return b
+end
 -- The tooltip a button shows by its label, unless it was given one of its own (ns:ButtonTip).
 ns.BUTTON_TIPS = {
     ["Turn these on"] = "Switch on the features suggested for your class. Some take effect after a reload.",
@@ -1946,9 +2000,8 @@ function ns:ShowSafeBanner()
     body:SetWordWrap(true)
     body:SetText(ns:Tr("Every feature is off. Switch off whatever was causing trouble in the options, then leave safe mode."))
     ns:Paint(body, "SetTextColor", "text")
-    local leave = ns:CreateButton(f, "Leave safe mode", 130, 24, function()
-        if ns:SetSafeMode(false) then ReloadUI() end
-    end)
+    local leave = ns:CreateButton(f, "Leave safe mode", 130, 24)
+    ns:ReloadButton(leave, function() ns:SetSafeMode(false) end)      -- (already off: reloading still finishes it)
     leave:SetPoint("BOTTOMRIGHT", -12, 12)
     ns:ButtonTip(leave, "Turn your features back on and reload.")
     local options = ns:CreateButton(f, "Options", 70, 24, function() ns:ToggleConfig() end)
@@ -2632,9 +2685,11 @@ function ns:SetPanelScale(keys, value)
     return true
 end
 
+-- Every panel back where it came. It shows after a reload, which the button that asks for this does
+-- itself (ns:ReloadButton: the game refuses a reload called from here).
 function ns:ResetPositions()
     ns.db.pos, ns.db.scale = {}, {}
-    ReloadUI()
+    return true
 end
 
 -- Preview mode (/fgui test): modules register a function(on) that shows sample content -----

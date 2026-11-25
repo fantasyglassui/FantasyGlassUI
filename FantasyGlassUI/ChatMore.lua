@@ -289,7 +289,10 @@ ns:NewModule("shortCommands", function()
         SlashCmdList[key] = fn
         made[#made + 1] = slash
     end
-    Add("/rl", "FANTASYGLASSUIRL", function() if ReloadUI then ReloadUI() end end)
+    -- /rl is the game's own /reload handler itself where the game has one, so it runs the same way;
+    -- otherwise ours (and if the game refuses it, Blocked.lua says to type /reload).
+    local own = type(SlashCmdList.RELOAD) == "function" and SlashCmdList.RELOAD or nil
+    Add("/rl", "FANTASYGLASSUIRL", own or function() if ReloadUI then ReloadUI() end end)
     Add("/rc", "FANTASYGLASSUIRC", function() C_PartyInfo.DoReadyCheck() end)
     Add("/tt", "FANTASYGLASSUITT", function(text)
         if not (ns.Yes(UnitExists("target")) and ns.Yes(UnitIsPlayer("target"))) then ns:Print("Target a player first."); return end
