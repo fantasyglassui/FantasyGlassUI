@@ -432,6 +432,8 @@ local function BuildSections(page)
         inner:SetScript("OnMouseWheel", function(_, delta) area:Scroll(-(tonumber(delta) or 0) * 42) end)
         return function() inner:SetScript("OnMouseWheel", inner.suiOwnWheel or nil) end
     end
+    local BX, BY = 18, 14                                     -- (12.3) a block's padding inside its card
+    local function BW() return math.max(300, RowWidth() - 2 * BX) end
     local function Lend(frame, y, height)
         local parent = frame:GetParent()
         local points = {}
@@ -442,7 +444,7 @@ local function BuildSections(page)
         frame:SetParent(page)
         frame.lentTo = page
         frame:ClearAllPoints()
-        frame:SetPoint("TOPLEFT", page, "TOPLEFT", 0, y)
+        frame:SetPoint("TOPLEFT", page, "TOPLEFT", BX, y)
         if height and frame.SetHeight then frame:SetHeight(height) end
         frame:Show()
         lent[#lent + 1] = function()
@@ -472,7 +474,7 @@ local function BuildSections(page)
         if block.from == sec.title then HideHead(sheet, block.from) end
         local inner = host.area
         Lend(inner, y, height)
-        inner:SetWidth(736)
+        inner:SetWidth(BW())
         inner:SetBand(top, height)
         lent[#lent + 1] = Wheel(inner)
         lent[#lent + 1] = function() inner:SetBand(nil) end
@@ -508,14 +510,14 @@ local function BuildSections(page)
         if #at == 0 then return 0 end
         local h = 0
         if #at > 1 then
-            local x, row = 0, 0
+            local x, row = BX, 0
             for n, i in ipairs(at) do
                 local b = Chip(n)
                 b.text:SetText(ns:Tr(items[i].title))
                 local w = b.text.GetStringWidth and b.text:GetStringWidth()
                 if type(w) ~= "number" or w <= 0 then w = #ns:Tr(items[i].title) * 7 end
                 w = math.floor(w + 20)
-                if x + w > 736 then x = 0; row = row + 1 end
+                if x + w > BX + BW() then x = BX; row = row + 1 end
                 b:SetWidth(w)
                 b:ClearAllPoints()
                 b:SetPoint("TOPLEFT", page, "TOPLEFT", x, y - row * 26)
@@ -538,7 +540,7 @@ local function BuildSections(page)
         end
         local inner = host.area
         Lend(inner, y - h, 540)
-        inner:SetWidth(736)
+        inner:SetWidth(BW())
         inner:SetBand(0, 540)
         lent[#lent + 1] = Wheel(inner)
         page.shownHosts.bars = true
@@ -566,7 +568,7 @@ local function BuildSections(page)
                 extras[block.extra] = e
             end
             e.frame:ClearAllPoints()
-            e.frame:SetPoint("TOPLEFT", page, "TOPLEFT", 0, y)
+            e.frame:SetPoint("TOPLEFT", page, "TOPLEFT", BX, y)
             if e.frame.Refresh then e.frame.Refresh() end
             e.frame:Show()
             lent[#lent + 1] = function() e.frame:Hide() end
@@ -577,17 +579,18 @@ local function BuildSections(page)
 
     -- (12.3) what another page makes is shown on a card of its own, as the rows above
     local function Block(block, y, sec)
-        local h = BlockRaw(block, y - 8, sec)
+        local h = BlockRaw(block, y - BY, sec)
         if not (h and h > 0) then return h end
         page.blockUsed = page.blockUsed + 1
+        page.blockInner = { left = BX, top = BY, width = BW() }
         local c = page.blockCards[page.blockUsed]
         if not c then c = NewCard(); page.blockCards[page.blockUsed] = c end
         c:ClearAllPoints()
         c:SetPoint("TOPLEFT", page, "TOPLEFT", 0, y)
         c:SetPoint("TOPRIGHT", page, "TOPRIGHT", -12, y)
-        c:SetHeight(h + 16)
+        c:SetHeight(h + 2 * BY)
         c:Show()
-        return h + 16
+        return h + 2 * BY
     end
 
     -- Showing a section ----------------------------------------------------------------------------

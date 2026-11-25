@@ -9667,10 +9667,24 @@ try("12.3 settings look: rows and switches", function()
         if tall[page.rows[sliderName]] <= sh2 or tall[page.rows[buttonName]] <= bh2 then error("and taller still at text size 1.3") end
         ns.fontScale = 1
         -- a section from each of the other pages sits on cards of its own
+        ns.root.language = "enUS"
+        local hosts = { ["combat:Alerts and warnings"] = "combat", ["layout:Moving and scale"] = "layout", ["frames:Nameplates"] = "bars", ["tools:Tools"] = "tools" }
         for _, id in ipairs({ "combat:Alerts and warnings", "layout:Moving and scale", "frames:Nameplates", "tools:Tools" }) do
             ns:ToggleConfig(id)
             if not (O.current and O.current.id == id) then error(id .. " opens") end
             if (page.blockUsed or 0) < 1 or not page.blockCards[1] then error(id .. " shows its settings on a card") end
+            -- the page's content frame sits 18 inside the card at each side and 14 below its top
+            local inner = O.pages[hosts[id]].area
+            local cx, cy, ix, iy, iw
+            rawset(page.blockCards[1], "SetPoint", function(_, pt, _, _, x, y) if pt == "TOPLEFT" then cx, cy = x, y end end)
+            rawset(inner, "SetPoint", function(_, pt, _, _, x, y) if pt == "TOPLEFT" then ix, iy = x, y end end)
+            rawset(inner, "SetWidth", function(_, w) iw = w end)
+            ns:ToggleConfig(id); ns:ToggleConfig(id)
+            rawset(page.blockCards[1], "SetPoint", nil); rawset(inner, "SetPoint", nil); rawset(inner, "SetWidth", nil)
+            if not ix then error(id .. ": the content frame was placed") end
+            if ix - cx < 18 then error(id .. ": 18 inside the card at the left, got " .. (ix - cx)) end
+            if cy - iy < 14 then error(id .. ": 14 inside the card at the top, got " .. (cy - iy)) end
+            if iw and ix + iw > 724 - 18 then error(id .. ": 18 inside the card at the right: " .. (ix + iw)) end
         end
         ns:ToggleConfig("access:Hearing")
         if page.blockUsed ~= 0 then error("a section with no block has no block card") end
@@ -9721,8 +9735,7 @@ try("12.3 settings look: rows and switches", function()
         if not lw or 38 + 12 + lw > 300 then error("a labelled switch's text ends inside its row: " .. tostring(lw)) end
         local lo = LabelWidth(outWin)
         if not lo or 28 + 8 + lo > 300 then error("outside the window too: " .. tostring(lo)) end
-        -- a section label is upper-cased with the game's own strupper, accents included; without it, left as it is
-        local realUp = env.strupper
+        -- a section label is upper-case in English only; every other language keeps the label's own case
         local function Label(text)
             local box = env.CreateFrame("Frame", nil, O.frame)
             local fs
@@ -9730,13 +9743,11 @@ try("12.3 settings look: rows and switches", function()
             O.Header(box, text, 0, 0)
             return rawget(fs, "txt")
         end
-        env.strupper = function(t) return (t:upper():gsub("\195\164", "\195\132"):gsub("\195\182", "\195\150"):gsub("\195\188", "\195\156")) end
-        local up = Label("Größe ändern")
-        env.strupper = nil
-        local plain = Label("Größe ändern")
-        env.strupper = realUp
-        if up ~= "GRÖßE ÄNDERN" then error("the umlaut is upper-cased with the label: " .. tostring(up)) end
-        if plain ~= "Größe ändern" then error("without strupper the label is left as it is: " .. tostring(plain)) end
+        ns.root.language = "enUS"
+        if Label("Alerts and warnings") ~= "ALERTS AND WARNINGS" then error("English labels are upper-case") end
+        ns.root.language = "deDE"
+        if Label("Größe ändern") ~= "Größe ändern" then error("German labels keep their own case") end
+        if Label("Alerts and warnings") ~= "Alerts and warnings" then error("(and a plain German label too)") end
     end)
     env.CreateFrame = realCF
     pcall(function()
