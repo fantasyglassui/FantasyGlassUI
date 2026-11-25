@@ -379,11 +379,23 @@ function ns.PlannerSetStyle(style)
     if p then speed, story = p[1], p[2] end
     rec.style, rec.weights = style, { speed = speed, safety = safety, story = story }
     Sync()
-    Replan("style")
+    Replan("settings")
     return true
 end
 
--- One slider moved: "speed", "safety" or "story"; the style becomes custom.
+-- The style whose preset the sliders are back on (100/0/0 Speed, 40/0/100 Story), or "custom". A slider
+-- moved anywhere else is custom, safety too (the style picker's presets keep your safety; the sliders do not).
+function ns.PlannerStyleOf(speed, safety, story)
+    if safety ~= 0 then return "custom" end
+    for _, name in ipairs({ "speed", "story" }) do
+        local p = ns.PLANNER_STYLE_PRESETS[name]
+        if speed == p[1] and story == p[2] then return name end
+    end
+    return "custom"
+end
+
+-- One slider moved: "speed", "safety" or "story"; the style becomes custom, or the preset's name when the
+-- sliders are back on one.
 function ns.PlannerSetWeight(name, value)
     if name ~= "speed" and name ~= "safety" and name ~= "story" then return false end
     local rec = Rec(true)
@@ -391,9 +403,9 @@ function ns.PlannerSetWeight(name, value)
     local speed, safety, story = ns.PlannerWeights()
     local w = { speed = speed, safety = safety, story = story }
     w[name] = Clamp(value, w[name])
-    rec.style, rec.weights = "custom", w
+    rec.style, rec.weights = ns.PlannerStyleOf(w.speed, w.safety, w.story), w
     Sync()
-    Replan("style")
+    Replan("settings")
     return true
 end
 
@@ -455,8 +467,6 @@ function ns.PlannerStoryScore(hub, chains)
     return sum / #quests
 end
 
-local function IsEscort(q) return (q.escort or (ns.PLANNER_ESCORTS and ns.PLANNER_ESCORTS[q.id])) and true or false end
-
 -- 0 to 1: elite quests, kill objectives well above your level (half each), escorts (half each) and the deaths
 -- you had within a hub's reach at this level or the one before, over two.
 function ns.PlannerDanger(hub, ctx)
@@ -466,7 +476,7 @@ function ns.PlannerDanger(hub, ctx)
     for _, q in ipairs(hub.quests or {}) do
         ns.PlannerYield()
         if q.elite then sum = sum + 1 end
-        if IsEscort(q) then sum = sum + 0.5 end
+        if ns.PlannerIsEscort(q) then sum = sum + 0.5 end
         for _, o in ipairs(q.objectives or {}) do
             if o.kind == "kill" and (tonumber(o.mobLevel) or 0) >= level + ns.PLANNER_DANGER_LEVELS then sum = sum + 0.5 end
         end
@@ -492,7 +502,8 @@ local function ContextStyle(ctx)
     if not Unlocked() then return end
     local speed, safety, story = ns.PlannerWeights()
     ctx.weights = { speed = speed, safety = safety, story = story }
-    if story >= FULL then ctx.windowLo = min(tonumber(ctx.windowLo) or (ctx.level - 4), (tonumber(ctx.level) or 1) - 10) end
+    local level = tonumber(ctx.level) or 1
+    if story >= FULL then ctx.windowLo = min(tonumber(ctx.windowLo) or (level - 4), level - 10) end
 end
 
 -- "window": with story at 100, a quest of a chain may be up to 10 levels below you.
@@ -505,7 +516,8 @@ local function WindowStyle(rec, ctx, lo, hi)
     return lo, hi
 end
 
--- "rank": score = S x rate / best rate + T x story - F x danger, never below 0 (an unreachable hub stays out).
+-- "rank": score = S x rate / best rate + T x story - F x danger, never below 0 (an unreachable hub stays out);
+-- hubs at 0 keep the order of their rates (a millionth of rate / best rate).
 local chainCache = setmetatable({}, { __mode = "k" })
 local function RankStyle(ranked, c, info)
     local w = c.weights
@@ -533,7 +545,7 @@ local function RankStyle(ranked, c, info)
         ns.PlannerYield()
         if (tonumber(e.score) or -1) >= 0 and (tonumber(e.rate) or -1) >= 0 then
             local score = (best > 0 and S * e.rate / best or 0) + T * ns.PlannerStoryScore(e.hub, chains) - F * ns.PlannerDanger(e.hub, c)
-            e.score = max(0, score)
+            e.score = score > 0 and score or 1e-6 * (best > 0 and e.rate / best or 0)
         end
     end
 end

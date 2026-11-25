@@ -301,16 +301,33 @@ if ns.GuideRegisterAdvance then ns.GuideRegisterAdvance("map", function() ns.Pla
 ------------------------------------------------------------------------------------------
 -- Plan from here, through the planner's hooks: the map the hub is on, the hub taken first, once.
 ------------------------------------------------------------------------------------------
-ns.PLANNER_FROM_HERE_SECONDS = 120               -- a pick the planner has not used by then is dropped
+-- The pick is used by the next plan that applies (the "applied" hook drops it, used or not). Until then it
+-- waits: while a plan is queued or being made, or you are in combat (no plan is made then), it does not age;
+-- a pick that waited 120 s with nothing queued and out of combat is dropped.
+ns.PLANNER_FROM_HERE_SECONDS = 120
+local function Waiting()
+    if ns.plannerQueued or ns.plannerBusy then return true end
+    return InCombatLockdown and InCombatLockdown() and true or false
+end
+-- Add the time since the last look to the pick's idle time (only when nothing waits for a plan); true when too old.
+local function Aged(from)
+    local now = Now()
+    local last = tonumber(from.last) or tonumber(from.at) or now
+    if not Waiting() then from.idle = (tonumber(from.idle) or 0) + math.max(0, now - last) end
+    from.last = now
+    return (tonumber(from.idle) or 0) > ns.PLANNER_FROM_HERE_SECONDS
+end
 local function FromHere()
     local from = ns.plannerFromHere
     if type(from) ~= "table" then return nil end
-    if not (ns.GuideUnlocked and ns:GuideUnlocked()) or Now() - (tonumber(from.at) or 0) > ns.PLANNER_FROM_HERE_SECONDS then
+    if not (ns.GuideUnlocked and ns:GuideUnlocked()) or Aged(from) then
         ns.plannerFromHere = nil
         return nil
     end
     return from
 end
+test.fromHere = FromHere
+ns:Every(1, "Planner pick", function() if ns.plannerFromHere then FromHere() end end)
 ns.PlannerHook("zone", "map", function()
     local from = FromHere()
     if from then return from.map end

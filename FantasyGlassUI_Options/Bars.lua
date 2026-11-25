@@ -358,7 +358,7 @@ local function FeelPaceSection(live, y, Replan, T)
     local function DrawStyle(b)
         local now, name = ns.PlannerStyle and ns.PlannerStyle() or "speed", "Speed"
         for _, st in ipairs(styles) do if st[1] == now then name = st[2] end end
-        b.text:SetText(ns:Tr("Style") .. ":  " .. ns:Tr(name))
+        b.text:SetText(string.format(ns:Tr("Style: %s"), ns:Tr(name)))
     end
     local sliders, syncing = {}, false
     local function SyncSliders()

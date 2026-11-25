@@ -12874,6 +12874,38 @@ try("13.4 feel A: the route and hubs on the map", function()
         ns.plannerFromHere = { map = 1436, x = 60, y = 60, at = (tonumber(env.GetTime()) or 0) - 1000 }
         local _, f5 = planned((ns.PlannerRoute(ctxFor())))
         if f5 ~= 301 or ns.plannerFromHere then error("an old pick is dropped: " .. tostring(f5)) end
+        -- (a pick waiting for its plan does not age: queued, or in combat; only idle time out of combat counts)
+        local clock = 5000
+        local realTime, realCombat = env.GetTime, env.InCombatLockdown
+        local q0, b0 = ns.plannerQueued, ns.plannerBusy
+        local okA, errA = pcall(function()
+            env.GetTime = function() return clock end
+            local fighting = false
+            env.InCombatLockdown = function() return fighting end
+            ns.plannerFromHere = { map = 1436, x = 60, y = 60, at = clock }
+            ns.plannerQueued = true                                -- (the replan the click asked for, held back)
+            clock = clock + 600
+            if not ns.PlannerMapTest.fromHere() then error("a queued replan keeps the pick, however long it waits") end
+            ns.plannerQueued, fighting = false, true
+            clock = clock + 600
+            if not ns.PlannerMapTest.fromHere() then error("in combat the pick keeps") end
+            fighting = false
+            clock = clock + 100
+            if not ns.PlannerMapTest.fromHere() then error("100 s idle: still kept") end
+            clock = clock + 30
+            if ns.PlannerMapTest.fromHere() or ns.plannerFromHere then error("130 s idle out of combat: dropped") end
+            -- (the plan the pick waited for uses it, long after the click)
+            ns.plannerFromHere = { map = 1436, x = 60, y = 60, at = clock }
+            ns.plannerQueued = true
+            clock = clock + 900
+            ns.plannerQueued, ns.plannerBusy = false, true         -- (the run starts: the hooks read the pick)
+            local _, f6 = planned((ns.PlannerRoute(ctxFor())))
+            if f6 ~= 302 then error("the pick a long-queued replan waited for is used: " .. tostring(f6)) end
+        end)
+        env.GetTime, env.InCombatLockdown = realTime, realCombat
+        ns.plannerQueued, ns.plannerBusy = q0, b0
+        ns.plannerFromHere = nil
+        if not okA then error(errA, 0) end
     end)
     ns.GuideOn, ns.GuideState, ns.GuideGet, ns.GuideUnlocked, ns.PlannerWorldPos = saved.on, saved.state, saved.get, saved.unlocked, saved.world
     ns.PlannerReplan, ns.PlannerStart = saved.replan, saved.start
@@ -13757,6 +13789,7 @@ try("13.4 feel C: speed, safety, story", function()
         ns:GuideRedraw()
         if extraText ~= "Style: Custom" then error("custom: " .. tostring(extraText)) end
         ns.PlannerSetStyle("speed")
+        ns.PlannerSetWeight("safety", 0)
         ns:GuideSetPlan(nil)
 
         -- the Guide tab: the style button and the three sliders follow the style
@@ -13775,13 +13808,37 @@ try("13.4 feel C: speed, safety, story", function()
         if ns.PlannerStyle() ~= "custom" then error("... then custom") end
         click(T.styleButton)
         if ns.PlannerStyle() ~= "speed" then error("... then speed") end
-        local moved
-        for _, h in ipairs(handlers) do if h.self == T.safetySlider.slider and h.name == "OnValueChanged" then moved = h.fn end end
-        if moved then
-            moved(T.safetySlider.slider, 60)
-            local _, sa = ns.PlannerWeights()
-            if ns.PlannerStyle() ~= "custom" or sa ~= 60 then error("a slider moved: custom, safety 60: " .. ns.PlannerStyle() .. " " .. sa) end
+        local function handler(sl)
+            for _, h in ipairs(handlers) do if h.self == sl.slider and h.name == "OnValueChanged" then return h.fn end end
+            error("no slider handler")
         end
+        local shownV = {}
+        for _, sl in ipairs({ T.speedSlider, T.safetySlider, T.storySlider }) do rawset(sl.slider, "SetValue", function(_, v) shownV[sl] = v end) end
+        local function values() return tostring(shownV[T.speedSlider]) .. "/" .. tostring(shownV[T.safetySlider]) .. "/" .. tostring(shownV[T.storySlider]) end
+        local label
+        rawset(T.styleButton.text, "SetText", function(_, t) label = t end)
+        click(T.styleButton)
+        if values() ~= "40/0/100" or label ~= "Style: Story" then error("a style click moves the sliders and names the style: " .. values() .. " " .. tostring(label)) end
+        click(T.styleButton); click(T.styleButton)
+        if values() ~= "100/0/0" then error("speed again: " .. values()) end
+        handler(T.safetySlider)(T.safetySlider.slider, 60)
+        local _, sa = ns.PlannerWeights()
+        if ns.PlannerStyle() ~= "custom" or sa ~= 60 or label ~= "Style: Custom" then error("a slider moved: custom, safety 60: " .. ns.PlannerStyle() .. " " .. sa .. " " .. tostring(label)) end
+        handler(T.safetySlider)(T.safetySlider.slider, 0)
+        if ns.PlannerStyle() ~= "speed" or label ~= "Style: Speed" then error("the sliders back on 100/0/0: the style is Speed again: " .. ns.PlannerStyle() .. " " .. tostring(label)) end
+        handler(T.speedSlider)(T.speedSlider.slider, 40)
+        handler(T.storySlider)(T.storySlider.slider, 100)
+        if ns.PlannerStyle() ~= "story" or label ~= "Style: Story" then error("the sliders on 40/0/100: Story: " .. ns.PlannerStyle()) end
+        handler(T.safetySlider)(T.safetySlider.slider, 10)
+        if ns.PlannerStyle() ~= "custom" then error("40/10/100 is custom") end
+        ns.PlannerSetStyle("speed")
+        rawset(T.styleButton.text, "SetText", nil)
+        for _, sl in ipairs({ T.speedSlider, T.safetySlider, T.storySlider }) do rawset(sl.slider, "SetValue", nil) end
+        -- (hubs a high safety sinks to 0 keep the order of their rates)
+        local tie = { { rate = 2, score = 2, hub = { quests = { q(81, { elite = true }) }, map = 1, x = 1, y = 1 } },
+                      { rate = 1, score = 1, hub = { quests = { q(82, { elite = true }) }, map = 1, x = 9, y = 9 } } }
+        H.rank(tie, { weights = { speed = 0, safety = 100, story = 0 }, level = 14 }, { round = 1 })
+        if not (tie[1].score > tie[2].score and tie[2].score >= 0 and tie[1].score < 1e-5) then error("a tie at 0 keeps the rate order: " .. tie[1].score .. " " .. tie[2].score) end
     end)
     ns.PlannerHook("context", "testStyle", nil); ns.PlannerHook("window", "testStyle", nil); ns.PlannerHook("rank", "testStyle", nil)
     ns.root.planner = saved.planner
@@ -13894,6 +13951,35 @@ try("13.4 feel D: level times, race, where you left off", function()
         ns.db.plannerRace = false
         if ns.PlannerRaceLine() ~= nil then error("race off: no line") end
         ns.db.plannerRace = true
+        -- (the 10 s tick redraws the panel for the race line only while the panel is shown)
+        do
+            local redraws, realRedraw, realPanel = 0, ns.GuideRedraw, rawget(env, "FantasyGlassUIGuide")
+            local shown = false
+            local fake = { IsShown = function() return shown end }
+            local okR, errR = pcall(function()
+                ns.GuideRedraw = function() redraws = redraws + 1 end
+                rawset(env, "FantasyGlassUIGuide", fake)
+                ns.PlannerLevelGapReset()
+                now = now + 10; tick()
+                if redraws ~= 0 then error("the panel hidden: no redraw for the race") end
+                shown = true
+                now = now + 10; tick()
+                if redraws ~= 1 then error("the panel shown: the race line is redrawn: " .. redraws) end
+                ns.db.plannerRace = false
+                now = now + 10; tick()
+                if redraws ~= 1 then error("race off: no redraw") end
+                ns.db.plannerRace = true
+                ns.GuideUnlocked = function() return false end
+                now = now + 10; tick()
+                if redraws ~= 1 then error("locked: no redraw") end
+            end)
+            ns.GuideUnlocked = function() return true end
+            ns.GuideRedraw = realRedraw
+            rawset(env, "FantasyGlassUIGuide", realPanel)
+            ns.db.plannerRace = true
+            rec0.levelClock = { level = 11, seconds = 300, xpMax = 5000, partial = false }
+            if not okR then error(errR, 0) end
+        end
         rec0.levelClock.seconds = 300
         lvl = 12; rec0.levelClock.level = 12
         if ns.PlannerRaceLine() ~= nil then error("another character's level 12 is partial: no line") end

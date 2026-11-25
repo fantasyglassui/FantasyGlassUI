@@ -100,7 +100,8 @@ end
 local function IsTimed(ctx, q)
     return type(ctx.timed) == "function" and ctx.onQuest and ctx.onQuest(q.id) and ctx.timed(q.id) and true or false
 end
-local function IsEscort(q) return (q.escort or (ns.PLANNER_ESCORTS and ns.PLANNER_ESCORTS[q.id])) and true or false end
+function ns.PlannerIsEscort(q) return (type(q) == "table" and (q.escort or (ns.PLANNER_ESCORTS and ns.PLANNER_ESCORTS[q.id]))) and true or false end
+local IsEscort = ns.PlannerIsEscort
 
 -- Lower what is still needed of each wanted faction (ctx.repLeft) by what a quest gives.
 local function DrawRep(ctx, q)

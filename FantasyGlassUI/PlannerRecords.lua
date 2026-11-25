@@ -309,6 +309,9 @@ do
         local gap = last and (now - last) or 0           -- (the first tick after a login or a reload adds nothing)
         last = now
         ns.PlannerLevelTick(gap)
-        if ns.db and ns.db.plannerRace == true and ns.GuideRedraw then ns:GuideRedraw() end     -- (the race line follows the clock)
+        if ns.db and ns.db.plannerRace == true and Unlocked() and ns.GuideRedraw then     -- (the race line follows the clock, on a panel you can see)
+            local panel = _G.FantasyGlassUIGuide
+            if type(panel) == "table" and panel.IsShown and panel:IsShown() then ns:GuideRedraw() end
+        end
     end))
 end
