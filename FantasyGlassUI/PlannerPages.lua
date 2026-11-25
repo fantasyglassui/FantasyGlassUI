@@ -63,6 +63,18 @@ ns.GuideRegisterTitle("planB", function(st)
     return format(ns:Tr("level %d in ~%d min"), level + 1, minutes)
 end)
 
+-- What made the Story or Safety weight take this hub over the one it beat: "story", "safety" or nil. The rank's
+-- parts (PlannerPace's RankStyle): story = T x its story score, safety = F x its danger; the larger gain wins.
+local function ChosenBy(hub, beat)
+    local hp, bp = type(hub.parts) == "table" and hub.parts, type(beat.parts) == "table" and beat.parts
+    if not (hp and bp) then return nil end
+    local story = (tonumber(hp.story) or 0) - (tonumber(bp.story) or 0)
+    local safety = (tonumber(bp.safety) or 0) - (tonumber(hp.safety) or 0)
+    if story > 0 and story >= safety then return "story" end
+    if safety > 0 then return "safety" end
+    return nil
+end
+
 -- The numbers behind a planned step: { { left, right } }. A step of a hub: the hub's experience, travel, time
 -- and rate, and the hub it beat (or that it was taken first); a stop on the way: what it saves or costs.
 function ns.PlannerWhyLines(step, summary)
@@ -80,7 +92,11 @@ function ns.PlannerWhyLines(step, summary)
         if rate then Add(ns:Tr("Experience an hour"), Big(rate * 3600)) end
         local beat = type(hub.beat) == "table" and hub.beat or nil
         local beatRate = beat and tonumber(beat.rate)
-        if hub.lead or (rate and beatRate and beatRate >= rate) then
+        local chosen = not hub.lead and rate and beatRate and beatRate >= rate and (tonumber(hub.first) or 0) <= (tonumber(beat.first) or 0)
+            and ChosenBy(hub, beat) or nil                     -- (a slower hub the Story or Safety weight chose over the runner-up)
+        if chosen then
+            Add(ns:Tr(chosen == "story" and "Chosen for its story" or "Chosen as safer"), "")
+        elseif hub.lead or (rate and beatRate and beatRate >= rate) then
             Add(ns:Tr("Taken first"), "")                       -- (a lead-in, or put first: nothing it beat)
         elseif rate and beatRate and beatRate > 0 then
             local name = type(beat.name) == "string" and beat.name or ns:Tr("another hub")
@@ -225,10 +241,21 @@ local function GoalProgress(goal, ctx)
 end
 
 -- Every plan starts here (what the zone hook found and the progress are the new plan's): with a goal set, the
--- lower end of the cheap level pre-filter drops to 1.
+-- goal map's quests pass the cheap level pre-filter whatever their level (ctx.windowPass); the quests of other
+-- maps below the window are still left out cheaply. A source with no list of a map's quests: the pre-filter's
+-- lower end drops to 1.
 local function GoalContext(ctx)
     goalHubs, progressCtx, progress = nil, nil, nil
-    if ns.PlannerZoneGoal() then ctx.windowLo = 1 end
+    local goal = ns.PlannerZoneGoal()
+    if not goal then return end
+    local src = ctx.source
+    if type(src) == "table" and type(src.mapQuests) == "function" then
+        local pass = type(ctx.windowPass) == "table" and ctx.windowPass or {}
+        for _, id in ipairs(src.mapQuests(goal) or {}) do pass[id] = true end
+        ctx.windowPass = pass
+    else
+        ctx.windowLo = 1
+    end
 end
 ns.PlannerHook("context", "zoneGoal", GoalContext)
 ns.PlannerHook("window", "zoneGoal", function(rec, _, lo, hi)
@@ -268,7 +295,11 @@ ns.PlannerHook("applied", "zoneGoal", function(_, summary, ctx)
     rec.zoneGoal = nil
     local page = ns.guidePage                            -- (the Guide tab's goal button, when the tab was built)
     if type(page) == "table" and type(page.zoneGoalDraw) == "function" then pcall(page.zoneGoalDraw) end
-    ns:Print("Zone done: %s", ns.PlannerMapName(goal))
+    if type(zg) == "table" and (tonumber(zg.done) or 0) < (tonumber(zg.total) or 0) then   -- (doable quests are left, out of reach or above your level)
+        ns:Print("No more quests in %s at your level", ns.PlannerMapName(goal))
+    else
+        ns:Print("Zone done: %s", ns.PlannerMapName(goal))
+    end
     if ns.PlannerReplan then ns:PlannerReplan("zone done") end
 end)
 

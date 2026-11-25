@@ -248,11 +248,12 @@ local function PlanReady()
 end
 ns.GuideRegisterAction("panel", "saveAsGuide", "Save as guide", function() ns.PlannerSaveAsGuide() end, PlanReady)
 
--- The step you are on changed: read it aloud (only with reading aloud on), and caption the chime.
-ns.GuideRegisterAdvance("records", function(_, _, step, _, moved)
+-- The step you are on changed: read it aloud (only with reading aloud on; not the step a login or /reload
+-- finds you on, which is not new), and caption the chime.
+ns.GuideRegisterAdvance("records", function(_, _, step, _, moved, resumed)
     if not Unlocked() or not ns.db then return end
     ns.PlannerKeyFrames()                                  -- (unlocked in this session: the key windows join now, not at the next login)
-    if ns.db.readDialog and ns.db.plannerSpeak ~= false and type(step) == "table" then
+    if ns.db.readDialog and ns.db.plannerSpeak ~= false and type(step) == "table" and not resumed then
         ns:Speak(ns.GuideStepBase(step))
     end
     if moved and ns.db.guideSound ~= false then ns:Caption("alert", ns:Tr("Step done")) end

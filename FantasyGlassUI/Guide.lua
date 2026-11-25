@@ -288,7 +288,8 @@ local Draw
 --   ns.GuideRegisterLine(key, fn(st, steps, at) -> text|nil)    a faint line under the advice
 --   ns.GuideRegisterTitle(key, fn(st) -> text|nil)              " · text" after the title
 --   ns.GuideRegisterAction("step"|"panel", key, label, fn(step), shown(step))   a menu entry (label: English, or fn(step) -> text)
---   ns.GuideRegisterAdvance(key, fn(st, guide, step, at, moved))  the step you are on changed
+--   ns.GuideRegisterAdvance(key, fn(st, guide, step, at, moved, resumed))  the step you are on changed (resumed: the
+--                                                                first advance after a login or /reload, the step you were on: not new)
 --   ns.GuideRegisterCommand(word, fn(rest))                      /fgui guide <word> ...
 -- Each is called through pcall (a command word too); a failure goes to ns.errors as "Guide hook <key>: <error>".
 -- Menu labels stay English (or text a label fn made) until ns:GuideMenu, the one place they go through ns:Tr.
@@ -399,9 +400,10 @@ function ns:GuideAdvance()
     if Draw then Draw() end
     local key = step and StepKey(step) or "\1end"           -- (the step you are on changed: the advance hooks; nil step at the end)
     if key ~= seenKey then
+        local resumed = seenKey == nil and not freshPlan and st.at == before   -- (the first look after a load: the step you left off on)
         seenKey = key
         local moved = st.at ~= before and not freshPlan
-        for _, e in ipairs(advanceHooks) do Hook(e.key, e.fn, st, guide, step, st.at, moved) end
+        for _, e in ipairs(advanceHooks) do Hook(e.key, e.fn, st, guide, step, st.at, moved, resumed) end
     end
     freshPlan = false
     return step, st.at

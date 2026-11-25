@@ -242,7 +242,7 @@ function ns.PlannerMapDraw(mapID)
                 for _, tk in pairs(type(st.summary.taken) == "table" and st.summary.taken or {}) do
                     if type(tk) == "table" then
                         local secs = tonumber(tk.seconds) or 0
-                        Take({ map = tk.map, x = tk.x, y = tk.y, rate = secs > 0 and (tonumber(tk.xp) or 0) / secs or 0 })
+                        Take({ map = tk.map, x = tk.x, y = tk.y, rate = secs > 0 and (tonumber(tk.xp) or 0) / secs or 0, quests = tk.quests })
                     end
                 end
                 local vision = ns:ColorVision()
@@ -342,7 +342,8 @@ ns.PlannerHook("rank", "map", function(ranked, _, info)
         if e.lead then
             e.score = -1                                      -- (no detour on the way to the hub you picked)
         elseif info.round == 1 and e.hub and e.hub.map == from.map then
-            local near = e.hub.x == from.x and e.hub.y == from.y
+            local near = math.abs((tonumber(e.hub.x) or -99) - (tonumber(from.x) or 99)) <= 0.051     -- (a mark's place is the hub's to 0.1)
+                and math.abs((tonumber(e.hub.y) or -99) - (tonumber(from.y) or 99)) <= 0.051
             if not near and fc and ns.PlannerWorldPos then
                 local c, x, y = ns.PlannerWorldPos(e.hub.map, e.hub.x, e.hub.y)
                 near = c == fc and (x - fx) ^ 2 + (y - fy) ^ 2 <= r2

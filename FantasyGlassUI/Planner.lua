@@ -31,10 +31,13 @@ local ipairs, type, tonumber, math = ipairs, type, tonumber, math
 local floor, min, max, sqrt = math.floor, math.min, math.max, math.sqrt
 
 ------------------------------------------------------------------------------------------
--- Hooks: where other planner files add to the planning without changing it here. A hook is
--- called directly, never through pcall: it runs inside the planning coroutine and may call
--- ns.PlannerYield() (only in plain loops). Points and their call sites:
---   "context"  fn(ctx)                     end of ns.PlannerContext (may widen windowLo/windowHi, raise horizon)
+-- Hooks: where other planner files add to the planning without changing it here. A hook inside
+-- the planning is called directly, never through pcall: it runs inside the planning coroutine and may
+-- call ns.PlannerYield() (only in plain loops). "applied" runs outside it, each hook through pcall (a
+-- failure goes to ns.errors as "Planner hook <key>: <error>" and the next hook still runs). Each run
+-- works on a copy of the lists taken when it starts (ns.PlannerHookCopy). Points and their call sites:
+--   "context"  fn(ctx)                     end of ns.PlannerContext (may widen windowLo/windowHi, let quest ids past the
+--                                          cheap pre-filter in ctx.windowPass = { [id] = true }, raise horizon)
 --   "window"   fn(rec, ctx, lo, hi) -> lo, hi   ns.PlannerWindow (the level window of one quest)
 --   "xp"       fn(rec, ctx) -> number      added to a quest's score in ns.PlannerQuestXP
 --   "zone"     fn(maps, order, ctx) -> map|nil   ns.PlannerPickZone: the first map with hubs wins
@@ -60,12 +63,25 @@ end
 function ns.PlannerHookList(point)
     return hooks[point] or NONE
 end
+-- A copy of a point's hooks: a hook added or removed while a plan is being made (a time limit cleared
+-- by a step) changes the next plan, never the one running.
+function ns.PlannerHookCopy(point)
+    local out = {}
+    for i, h in ipairs(hooks[point] or NONE) do out[i] = h end
+    return out
+end
+-- The hooks a plan uses: the copies ns.PlannerContext took (ctx.hooks), else the lists as they are now.
+ns.PLANNER_HOOK_POINTS = { "context", "window", "xp", "zone", "rank", "route" }
+function ns.PlannerHooksFor(ctx, point)
+    local own = type(ctx) == "table" and type(ctx.hooks) == "table" and ctx.hooks[point]
+    return type(own) == "table" and own or hooks[point] or NONE
+end
 
 -- The level window of a quest: level - 4 to level + 2, then every "window" hook.
 function ns.PlannerWindow(rec, ctx)
     local level = type(ctx) == "table" and tonumber(ctx.level) or 1
     local lo, hi = level - 4, level + 2
-    for _, h in ipairs(hooks.window or NONE) do
+    for _, h in ipairs(ns.PlannerHooksFor(ctx, "window")) do
         local a, b = h.fn(rec, ctx, lo, hi)
         lo, hi = tonumber(a) or lo, tonumber(b) or hi
     end
@@ -172,7 +188,7 @@ function ns.PlannerCandidates(source, ctx)
     for _, id in ipairs(source.ids()) do
         ns.PlannerYield()
         local logged = onQuest(id)
-        local rec = (logged or not (never and never[id])) and (logged or not source.inRange or source.inRange(id, level, ctx.windowLo, ctx.windowHi)) and source.quest(id) or nil
+        local rec = (logged or not (never and never[id])) and (logged or not source.inRange or (type(ctx.windowPass) == "table" and ctx.windowPass[id]) or source.inRange(id, level, ctx.windowLo, ctx.windowHi)) and source.quest(id) or nil
         if rec then
             if logged then
                 list[#list + 1] = rec
@@ -530,7 +546,7 @@ function ns.PlannerQuestXP(rec, ctx)
     local extra = ns.PlannerRestedExtra(rec, ctx)
     local real = (rec.xp or 0) + KillPart(rec, ctx.level or 1) + extra
     local xp = real + ns.PlannerRewardBonus(rec, ctx) + ns.PlannerRepBonus(rec, ctx)
-    for _, h in ipairs(hooks.xp or NONE) do xp = xp + (tonumber(h.fn(rec, ctx)) or 0) end
+    for _, h in ipairs(ns.PlannerHooksFor(ctx, "xp")) do xp = xp + (tonumber(h.fn(rec, ctx)) or 0) end
     if rec.nextQuest and ctx.candidate then
         local nxt = ctx.candidate(rec.nextQuest)
         if nxt then xp = xp + (nxt.xp or 0) / 2 end
@@ -668,7 +684,12 @@ local function Apply(guide, summary, ctx, reason)
     if not mark then mark = { time = GetTime() } end
     if summary.newZone and summary.zone then ns.PlannerSetZone(summary.zone, ctx.level) end
     ns:GuideSetPlan(guide, summary)
-    for _, h in ipairs(hooks.applied or NONE) do h.fn(guide, summary, ctx, reason) end
+    for _, h in ipairs(ns.PlannerHookCopy("applied")) do
+        local ok, err = pcall(h.fn, guide, summary, ctx, reason)
+        if not ok and type(ns.errors) == "table" and #ns.errors < 60 then
+            ns.errors[#ns.errors + 1] = "Planner hook " .. tostring(h.key) .. ": " .. tostring(err)
+        end
+    end
 end
 
 -- Small jobs (the inn suggestion): one at a time, a slice per frame, never in a fight, only while

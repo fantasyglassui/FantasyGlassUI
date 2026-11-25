@@ -49,14 +49,17 @@ local Sync                                  -- (below: what is registered)
 -- Minutes you can play (0 clears): a deadline per character, in time() seconds.
 function ns.PlannerSetPlayTime(minutes)
     minutes = tonumber(minutes)
+    local cleared = false
     if not minutes or minutes <= 0 then
         local rec = Rec(false)
+        cleared = rec ~= nil and rec.playUntil ~= nil
         if rec then rec.playUntil = nil end
     else
         local rec = Rec(true)
         if rec then rec.playUntil = Now() + min(minutes, ns.PLANNER_PLAY_MAX) * 60 end
     end
     Sync()
+    if cleared then Replan("time") end           -- (a plan being made with the limit is stale: the next one has none)
 end
 
 -- Seconds left of the time you can play, 0 when it is up; nil with no limit (or one that ran out long ago).
@@ -240,8 +243,9 @@ function ns.PlannerBreakReset() lastBreak, breakLine = nil, nil end
 -- Catch me up
 ------------------------------------------------------------------------------------------
 local entered = false                        -- (the login's own handling is done: the clock may be saved from now on)
+local inWorld = false                        -- (a PLAYER_ENTERING_WORLD came, locked or not: an unlock after it starts the clock at once)
 -- Forget what this session knows (the tests start each case from here): the last reminder, and that the login was handled.
-function ns.PlannerPaceReset() lastBreak, breakLine, entered = nil, nil, false end
+function ns.PlannerPaceReset() lastBreak, breakLine, entered, inWorld = nil, nil, false, false end
 
 local function VersionNumber(v)
     local a, b, c = tostring(v or ""):match("^(%d+)%.?(%d*)%.?(%d*)")
@@ -326,6 +330,7 @@ do
         if event == "PLAYER_LOGOUT" then ns.PlannerSeenSave(); return end
         if event == "PLAYER_LOGIN" then Sync(); return end        -- (what is registered: the panel's entries, and the hooks of a limit or a style in use)
         if event ~= "PLAYER_ENTERING_WORLD" then return end
+        inWorld = true
         if not (type(ns.root) == "table" and Unlocked()) then return end
         if isInitial and On() then
             local rec = Rec(false)
@@ -383,10 +388,9 @@ function ns.PlannerSetStyle(style)
     return true
 end
 
--- The style whose preset the sliders are back on (100/0/0 Speed, 40/0/100 Story), or "custom". A slider
--- moved anywhere else is custom, safety too (the style picker's presets keep your safety; the sliders do not).
+-- The style a set of weights is: a preset is named by speed and story alone (100/x/0 Speed, 40/x/100 Story;
+-- safety is yours to choose, from the picker or a slider alike), anything else is "custom".
 function ns.PlannerStyleOf(speed, safety, story)
-    if safety ~= 0 then return "custom" end
     for _, name in ipairs({ "speed", "story" }) do
         local p = ns.PLANNER_STYLE_PRESETS[name]
         if speed == p[1] and story == p[2] then return name end
@@ -544,25 +548,43 @@ local function RankStyle(ranked, c, info)
     for _, e in ipairs(ranked) do
         ns.PlannerYield()
         if (tonumber(e.score) or -1) >= 0 and (tonumber(e.rate) or -1) >= 0 then
-            local score = (best > 0 and S * e.rate / best or 0) + T * ns.PlannerStoryScore(e.hub, chains) - F * ns.PlannerDanger(e.hub, c)
+            local story, safety = T * ns.PlannerStoryScore(e.hub, chains), F * ns.PlannerDanger(e.hub, c)
+            local score = (best > 0 and S * e.rate / best or 0) + story - safety
             e.score = score > 0 and score or 1e-6 * (best > 0 and e.rate / best or 0)
+            e.parts = { story = floor(story * 1000 + 0.5) / 1000, safety = floor(safety * 1000 + 0.5) / 1000 }   -- (for "Why this?")
         end
     end
 end
 
--- The panel says it when the style is not speed.
+-- The panel says which style is on whenever the weights change the route (anything but 100/0/0): "Style:
+-- Speed" too, with a safety above 0. The name is the Guide tab's (ns.PlannerStyle: the sliders name it by
+-- ns.PlannerStyleOf; the picker's own choice, Custom too, stands until a slider moves).
 local function StyleLine()
     if not On() then return nil end
+    local speed, safety, story = ns.PlannerWeights()
+    if speed == FULL and safety == 0 and story == 0 then return nil end
     local style = ns.PlannerStyle()
-    if style == "speed" then return nil end
-    return format(ns:Tr("Style: %s"), ns:Tr(style == "story" and "Story" or "Custom"))
+    return format(ns:Tr("Style: %s"), ns:Tr((style == "story" and "Story") or (style == "speed" and "Speed") or "Custom"))
 end
 
 ------------------------------------------------------------------------------------------
 -- What is registered: with the guide unlocked, the panel's entries; a planner hook only while its feature is in use.
+-- The time limit and the style share one "context" and one "rank" hook ("pace"), so the order is always the
+-- same whatever was turned on first: the time cut, then the style (which works out its best rate over the hubs
+-- the time left in).
 ------------------------------------------------------------------------------------------
+local paceTimed, paceStyled = false, false
+local function ContextPace(ctx)
+    if paceTimed then ContextTime(ctx) end
+    if paceStyled then ContextStyle(ctx) end
+end
+local function RankPace(ranked, c, info)
+    if paceTimed then RankTime(ranked, c, info) end
+    if paceStyled then RankStyle(ranked, c, info) end
+end
 ns.PlannerPaceHooks = { time = { context = ContextTime, rank = RankTime, route = RouteTime },
-                          style = { context = ContextStyle, window = WindowStyle, rank = RankStyle } }
+                          style = { context = ContextStyle, window = WindowStyle, rank = RankStyle },
+                          pace = { context = ContextPace, rank = RankPace } }
 Sync = function()
     local open = Unlocked()
     local function Reg(fn) return open and fn or nil end
@@ -575,16 +597,14 @@ Sync = function()
     local rec = open and Rec(false) or nil
     if rec and tonumber(rec.playUntil) and not ns.PlannerTimeLeft() then rec.playUntil = nil end   -- (ran out long ago: forgotten)
     local timed = rec and tonumber(rec.playUntil) and true or false
-    local h = ns.PlannerPaceHooks.time
-    ns.PlannerHook("context", "paceTime", timed and h.context or nil)
-    ns.PlannerHook("rank", "paceTime", timed and h.rank or nil)
-    ns.PlannerHook("route", "paceTime", timed and h.route or nil)
     local speed, safety, story = ns.PlannerWeights()
-    local styled = open and not (speed == FULL and safety == 0 and story == 0)
-    local v = ns.PlannerPaceHooks.style
-    ns.PlannerHook("context", "paceStyle", styled and v.context or nil)
-    ns.PlannerHook("window", "paceStyle", styled and v.window or nil)
-    ns.PlannerHook("rank", "paceStyle", styled and v.rank or nil)
+    local styled = open and not (speed == FULL and safety == 0 and story == 0) or false
+    paceTimed, paceStyled = timed, styled
+    local on = timed or styled
+    ns.PlannerHook("context", "pace", on and ContextPace or nil)
+    ns.PlannerHook("rank", "pace", on and RankPace or nil)
+    ns.PlannerHook("route", "paceTime", timed and RouteTime or nil)
+    ns.PlannerHook("window", "paceStyle", styled and WindowStyle or nil)
 end
 ns.PlannerPaceSync = function() Sync() end
 -- Unlocking or locking the guide registers or removes everything at once (not up to a minute later).
@@ -594,6 +614,10 @@ for _, name in ipairs({ "GuideUnlock", "GuideLock" }) do
         ns[name] = function(...)
             local a, b = original(...)
             Sync()
+            if name == "GuideUnlock" and a and inWorld and not entered and Unlocked() then   -- (unlocked mid-session: the login is long handled)
+                entered = true
+                ns.PlannerSeenSave()
+            end
             return a, b
         end
     end
