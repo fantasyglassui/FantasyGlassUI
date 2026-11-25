@@ -21,6 +21,8 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["The buttons that reload the interface work again: the setup's Finish & reload and its language list, Use on a profile, Reset positions, Leave safe mode and /rl. If the game refuses, type /reload to finish."] = "Die Knöpfe, die das Interface neu laden, funktionieren wieder: Fertig & neu laden und die Sprachliste der Einrichtung, Benutzen bei einem Profil, Positionen zurücksetzen, Abgesicherten Modus verlassen und /rl. Verweigert das Spiel es, tippt /reload, um es abzuschließen.",
+    ["Where things are in the window: search is in the header, Simple / All options at the top of the list, Reset in the footer, and your recent changes in the Undo button's tooltip. Click a theme to preview it; Use this theme wears it."] = "Wo die Dinge im Fenster sind: die Suche in der Kopfzeile, Einfach / Alle Optionen oben in der Liste, Zurücksetzen in der Fußzeile und eure letzten Änderungen im Tooltip des Rückgängig-Knopfs. Klickt auf ein Design, um es anzusehen; Dieses Design verwenden legt es an.",
     ["Use this theme"] = "Dieses Design verwenden",
     ["Make my own"] = "Eigenes erstellen",
     ["In use now"] = "Derzeit aktiv",
@@ -3329,6 +3331,8 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["The buttons that reload the interface work again: the setup's Finish & reload and its language list, Use on a profile, Reset positions, Leave safe mode and /rl. If the game refuses, type /reload to finish."] = "Les boutons qui rechargent l'interface fonctionnent de nouveau : Terminer et recharger et la liste des langues de la configuration, Utiliser sur un profil, Réinitialiser les positions, Quitter le mode sans échec et /rl. Si le jeu refuse, tapez /reload pour terminer.",
+    ["Where things are in the window: search is in the header, Simple / All options at the top of the list, Reset in the footer, and your recent changes in the Undo button's tooltip. Click a theme to preview it; Use this theme wears it."] = "Où sont les choses dans la fenêtre : la recherche dans l'en-tête, Simple / Toutes les options en haut de la liste, Réinitialiser dans le pied de page, et vos dernières modifications dans l'infobulle du bouton Annuler. Cliquez sur un thème pour le prévisualiser ; Utiliser ce thème l'applique.",
     ["Use this theme"] = "Utiliser ce thème",
     ["Make my own"] = "Créer le mien",
     ["In use now"] = "Utilisé actuellement",
@@ -6637,6 +6641,8 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["The buttons that reload the interface work again: the setup's Finish & reload and its language list, Use on a profile, Reset positions, Leave safe mode and /rl. If the game refuses, type /reload to finish."] = "Los botones que recargan la interfaz vuelven a funcionar: Finalizar y recargar y la lista de idiomas de la configuración inicial, Usar en un perfil, Restablecer posiciones, Salir del modo seguro y /rl. Si el juego se niega, escribe /reload para terminar.",
+    ["Where things are in the window: search is in the header, Simple / All options at the top of the list, Reset in the footer, and your recent changes in the Undo button's tooltip. Click a theme to preview it; Use this theme wears it."] = "Dónde está cada cosa en la ventana: la búsqueda en la cabecera, Sencillo / Todas las opciones arriba de la lista, Restablecer en el pie y tus últimos cambios en la descripción emergente del botón Deshacer. Haz clic en un tema para previsualizarlo; Usar este tema lo aplica.",
     ["Use this theme"] = "Usar este tema",
     ["Make my own"] = "Crear el mío",
     ["In use now"] = "En uso ahora",
@@ -9948,6 +9954,8 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["The buttons that reload the interface work again: the setup's Finish & reload and its language list, Use on a profile, Reset positions, Leave safe mode and /rl. If the game refuses, type /reload to finish."] = "Кнопки, которые перезагружают интерфейс, снова работают: «Готово и перезагрузить» и список языков в настройке, «Использовать» у профиля, «Сбросить позиции», «Выйти из безопасного режима» и /rl. Если игра отказывает, введите /reload, чтобы завершить.",
+    ["Where things are in the window: search is in the header, Simple / All options at the top of the list, Reset in the footer, and your recent changes in the Undo button's tooltip. Click a theme to preview it; Use this theme wears it."] = "Где что в окне: поиск в шапке, «Просто / Все настройки» вверху списка, «Сбросить» внизу окна, а последние изменения — в подсказке кнопки «Отменить». Нажмите на тему, чтобы посмотреть её; «Использовать эту тему» применяет её.",
     ["Use this theme"] = "Использовать эту тему",
     ["Make my own"] = "Создать свою",
     ["In use now"] = "Сейчас используется",
@@ -13256,6 +13264,8 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["The buttons that reload the interface work again: the setup's Finish & reload and its language list, Use on a profile, Reset positions, Leave safe mode and /rl. If the game refuses, type /reload to finish."] = "Os botões que recarregam a interface voltaram a funcionar: Concluir e recarregar e a lista de idiomas da configuração inicial, Usar em um perfil, Redefinir posições, Sair do modo de segurança e /rl. Se o jogo recusar, digite /reload para terminar.",
+    ["Where things are in the window: search is in the header, Simple / All options at the top of the list, Reset in the footer, and your recent changes in the Undo button's tooltip. Click a theme to preview it; Use this theme wears it."] = "Onde as coisas estão na janela: a busca no cabeçalho, Simples / Todas as opções no topo da lista, Redefinir no rodapé e suas mudanças recentes na dica do botão Desfazer. Clique em um tema para pré-visualizá-lo; Usar este tema o aplica.",
     ["Use this theme"] = "Usar este tema",
     ["Make my own"] = "Criar o meu",
     ["In use now"] = "Em uso agora",
@@ -16564,6 +16574,8 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["The buttons that reload the interface work again: the setup's Finish & reload and its language list, Use on a profile, Reset positions, Leave safe mode and /rl. If the game refuses, type /reload to finish."] = "I pulsanti che ricaricano l'interfaccia funzionano di nuovo: Fine e ricarica e l'elenco delle lingue della configurazione, Usa su un profilo, Ripristina posizioni, Esci dalla modalità provvisoria e /rl. Se il gioco rifiuta, scrivi /reload per finire.",
+    ["Where things are in the window: search is in the header, Simple / All options at the top of the list, Reset in the footer, and your recent changes in the Undo button's tooltip. Click a theme to preview it; Use this theme wears it."] = "Dove sono le cose nella finestra: la ricerca nell'intestazione, Semplice / Tutte le opzioni in cima all'elenco, Ripristina nel piè di pagina e le tue ultime modifiche nel suggerimento del pulsante Annulla. Clicca un tema per vederne l'anteprima; Usa questo tema lo applica.",
     ["Use this theme"] = "Usa questo tema",
     ["Make my own"] = "Crea il mio",
     ["In use now"] = "In uso ora",
@@ -19872,6 +19884,8 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["The buttons that reload the interface work again: the setup's Finish & reload and its language list, Use on a profile, Reset positions, Leave safe mode and /rl. If the game refuses, type /reload to finish."] = "인터페이스를 다시 불러오는 버튼이 다시 작동합니다: 설정의 완료 및 다시 불러오기와 언어 목록, 프로필의 사용, 위치 초기화, 안전 모드 종료, 그리고 /rl. 게임이 거부하면 /reload를 입력해 마치세요.",
+    ["Where things are in the window: search is in the header, Simple / All options at the top of the list, Reset in the footer, and your recent changes in the Undo button's tooltip. Click a theme to preview it; Use this theme wears it."] = "창 안의 위치: 검색은 머리글에, 간단히 / 모든 옵션은 목록 맨 위에, 초기화는 바닥글에, 최근 변경 내용은 되돌리기 버튼의 툴팁에 있습니다. 테마를 클릭하면 미리 보고, 이 테마 사용을 누르면 적용됩니다.",
     ["Use this theme"] = "이 테마 사용",
     ["Make my own"] = "직접 만들기",
     ["In use now"] = "현재 사용 중",
@@ -23183,6 +23197,8 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["The buttons that reload the interface work again: the setup's Finish & reload and its language list, Use on a profile, Reset positions, Leave safe mode and /rl. If the game refuses, type /reload to finish."] = "重新载入界面的按钮又能用了：设置向导的“完成并重新载入”和语言列表、配置上的“使用”、“重置位置”、“退出安全模式”以及 /rl。如果游戏拒绝，输入 /reload 以完成。",
+    ["Where things are in the window: search is in the header, Simple / All options at the top of the list, Reset in the footer, and your recent changes in the Undo button's tooltip. Click a theme to preview it; Use this theme wears it."] = "窗口里的位置：搜索在顶栏，“简洁 / 全部选项”在列表顶部，“重置”在底栏，最近的更改在“撤销”按钮的提示里。点击主题即可预览，“使用此主题”即可应用。",
     ["Use this theme"] = "使用此主题",
     ["Make my own"] = "自己制作",
     ["In use now"] = "当前使用中",
