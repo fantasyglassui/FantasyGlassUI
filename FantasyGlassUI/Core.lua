@@ -191,6 +191,7 @@ ns.defaults = {
     plannerGroup     = "solo",      -- which quests the route planner may pick: solo, grouped or all
     plannerLearnFlights = true,
     plannerWhy       = true,
+    plannerTrainer   = true,        -- a stop at your class trainer every 2 levels
     groupWatch       = true,        -- (internal: watches who is in your group for the three below)
     playerNotes      = true,        -- your own note on a player, in their tooltip
     recentMates      = true,        -- the people you grouped with lately

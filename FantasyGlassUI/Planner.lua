@@ -339,16 +339,42 @@ function ns:PlannerStop()
     running, ns.plannerBusy, ns.plannerQueued = nil, false, false
 end
 
+-- The level of your last class trainer visit (a profession trainer's window is no class trainer).
+local tradeTrainer = false
+local function TrainerClosed()
+    if tradeTrainer or not ns:GuideUnlocked() then return end
+    local level = UnitLevel and UnitLevel("player")
+    if type(level) ~= "number" or ns:IsSecret(level) then return end
+    local d = PaceRecord(true)
+    if d then d.trainerLevel = level end
+end
+
 do
     local ev = CreateFrame("Frame")
+    local closes = {}                                -- window-closed event -> the stop kind it ticks (Guide.lua)
+    for kind, e in pairs(ns.GUIDE_WINDOW_KINDS or {}) do closes[e] = kind end
     for _, e in ipairs({ "QUEST_TURNED_IN", "QUEST_REMOVED", "PLAYER_LEVEL_UP", "HEARTHSTONE_BOUND",
-                         "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED" }) do pcall(ev.RegisterEvent, ev, e) end
+                         "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED",
+                         "TRAINER_SHOW", "TRAINER_CLOSED", "MERCHANT_CLOSED", "MAIL_CLOSED" }) do pcall(ev.RegisterEvent, ev, e) end
     ev:SetScript("OnEvent", ns:Guard("Planner", function(_, event, a)
         if event == "PLAYER_REGEN_DISABLED" then fighting = true; return end
         if event == "PLAYER_REGEN_ENABLED" then fighting = false; return end
+        if event == "TRAINER_SHOW" then
+            local ok, v = pcall(IsTradeskillTrainer)
+            tradeTrainer = ok and v == true
+            return
+        end
+        if event == "TRAINER_CLOSED" then TrainerClosed() end
         local on, st = Following()
         if not on then return end
         local plan = type(st.plan) == "table" and st.plan or {}
+        if closes[event] then
+            -- a stop's window closed: it ticks only while it is the step you are on (visited early, it stays)
+            local step = type(plan.steps) == "table" and plan.steps[st.at or 1]
+            if type(step) == "table" and step.kind == closes[event] then ns:GuideSkip(false) end
+            ns:PlannerReplan("window closed")
+            return
+        end
         -- (an accept does not end a run of hand-ins: a chain's follow-up is offered at the hand-in)
         if event == "QUEST_TURNED_IN" then
             if type(a) == "number" then HandedIn(a, plan) end

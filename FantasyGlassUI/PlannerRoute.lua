@@ -373,8 +373,9 @@ local function HubInn(ctx, hub)
 end
 
 -- A hub's steps; xp and seconds of what could be reached. A quest whose giver or objective can't be
--- reached is left out from there on.
-local function HubSteps(state, hub, steps, inn)
+-- reached is left out from there on. Each of its own steps carries step.hub = n (in memory only: the
+-- stops pass puts a stop near a hub after the hub's last accept).
+local function HubSteps(state, hub, steps, inn, n)
     local t, xp, gone, first, kept = 0, 0, {}, true, 0
     local function Go(spot)
         local tt = Trip(state, spot, steps, first)
@@ -386,6 +387,7 @@ local function HubSteps(state, hub, steps, inn)
         if Go(a.spot) then
             local s = QuestStep("accept", a.rec, a.spot)
             s.why = { xp = floor(ns.PlannerQuestXP(a.rec, state.ctx) + 0.5) }
+            s.hub = n
             steps[#steps + 1] = s
             t = t + HANDLE
         else
@@ -396,17 +398,25 @@ local function HubSteps(state, hub, steps, inn)
         local spot = { map = inn.map, x = inn.x, y = inn.y }
         if Go(spot) then
             t = t + HANDLE
-            steps[#steps + 1] = Place({ kind = "bind", text = Clean(inn.name) }, spot)
+            steps[#steps + 1] = Place({ kind = "bind", text = Clean(inn.name), hub = n }, spot)
         end
     end
     for _, d in ipairs(hub.dos) do
         if not gone[d.rec.id] then
-            if Go(d.spot) then steps[#steps + 1] = QuestStep("do", d.rec, d.spot) else gone[d.rec.id] = true end
+            if Go(d.spot) then
+                local s = QuestStep("do", d.rec, d.spot)
+                s.hub = n
+                steps[#steps + 1] = s
+            else
+                gone[d.rec.id] = true
+            end
         end
     end
     for _, e in ipairs(hub.turnins) do
         if not gone[e.rec.id] and Go(e.spot) then
-            steps[#steps + 1] = QuestStep("turnin", e.rec, e.spot)
+            local s = QuestStep("turnin", e.rec, e.spot)
+            s.hub = n
+            steps[#steps + 1] = s
             t = t + HANDLE
         end
     end
@@ -465,12 +475,13 @@ function ns.PlannerRoute(ctx)
             inn = HubInn(ctx, hub)
             if inn and type(ctx.bindSpot) == "table" and Yards(ctx.bindSpot, inn) <= ns.PLANNER_HUB_YARDS then inn = nil end
         end
-        local t, gained = HubSteps(state, hub, guide.steps, inn)
+        local t, gained = HubSteps(state, hub, guide.steps, inn, n)
         seconds, xp = seconds + t, xp + gained
     end
     summary.zone, summary.newZone = zone, newly
     summary.xp, summary.seconds = floor(xp + 0.5), floor(seconds + 0.5)
     summary.toLevel = ToLevel(ctx, xp)
+    if ns.PlannerAddStops then ns.PlannerAddStops(guide, summary, ctx) end   -- (stops on the way: PlannerStops.lua)
     summary.empty = #guide.steps == 0
     return guide, summary
 end
@@ -552,6 +563,7 @@ function ns.PlannerContext()
         learnFlights = db.plannerLearnFlights ~= false,
         pace = ns.PlannerPace(),
         lastZone = d and tonumber(d.zone) or nil, lastZoneLevel = d and tonumber(d.zoneLevel) or nil,
+        trainerLevel = d and tonumber(d.trainerLevel) or nil,   -- the level you last closed your class trainer's window at
     }
 end
 

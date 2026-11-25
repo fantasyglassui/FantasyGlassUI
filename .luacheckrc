@@ -314,6 +314,7 @@ read_globals = {
     "IsRaidMarkerActive",
     "IsResting",
     "IsShiftKeyDown",
+    "IsTradeskillTrainer",
     "ItemLocation",
     "ItemTextGetItem",
     "ItemTextGetText",

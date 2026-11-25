@@ -527,5 +527,5 @@ end
 do
     local ev = CreateFrame("Frame")
     for e in pairs(SEEN_EVENT) do pcall(ev.RegisterEvent, ev, e) end
-    ev:SetScript("OnEvent", ns:Guard("PlannerSeen", function(_, event) ns.PlannerSeen(SEEN_EVENT[event]) end))
+    ev:SetScript("OnEvent", ns:Guard("PlannerSeen", function(_, event) if SEEN_EVENT[event] then ns.PlannerSeen(SEEN_EVENT[event]) end end))
 end

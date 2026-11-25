@@ -21,6 +21,12 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["Train"] = "Trainieren",
+    ["Visit the vendor"] = "Zum Händler",
+    ["Check your mail"] = "Post abholen",
+    ["Explore"] = "Erkunden",
+    ["Gather"] = "Sammeln",
+    ["Visit your trainer on the way"] = "Unterwegs den Lehrer besuchen",
     ["Mailbox"] = "Briefkasten",
     ["Plan my route"] = "Route planen",
     ["Group quests"] = "Gruppenquests",
@@ -3312,6 +3318,12 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["Train"] = "Entraînement",
+    ["Visit the vendor"] = "Passer chez le marchand",
+    ["Check your mail"] = "Relever le courrier",
+    ["Explore"] = "Explorer",
+    ["Gather"] = "Récolter",
+    ["Visit your trainer on the way"] = "Passer chez votre entraîneur en chemin",
     ["Mailbox"] = "Boîte aux lettres",
     ["Plan my route"] = "Planifier mon itinéraire",
     ["Group quests"] = "Quêtes de groupe",
@@ -6603,6 +6615,12 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["Train"] = "Entrenar",
+    ["Visit the vendor"] = "Visitar al vendedor",
+    ["Check your mail"] = "Revisar el correo",
+    ["Explore"] = "Explorar",
+    ["Gather"] = "Recolectar",
+    ["Visit your trainer on the way"] = "Visitar a tu instructor por el camino",
     ["Mailbox"] = "Buzón",
     ["Plan my route"] = "Planificar mi ruta",
     ["Group quests"] = "Misiones de grupo",
@@ -9897,6 +9915,12 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["Train"] = "Обучение",
+    ["Visit the vendor"] = "Зайти к торговцу",
+    ["Check your mail"] = "Проверить почту",
+    ["Explore"] = "Исследовать",
+    ["Gather"] = "Собрать",
+    ["Visit your trainer on the way"] = "Заходить к учителю по пути",
     ["Mailbox"] = "Почтовый ящик",
     ["Plan my route"] = "Спланировать маршрут",
     ["Group quests"] = "Групповые задания",
@@ -13188,6 +13212,12 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["Train"] = "Treinar",
+    ["Visit the vendor"] = "Visitar o vendedor",
+    ["Check your mail"] = "Verificar o correio",
+    ["Explore"] = "Explorar",
+    ["Gather"] = "Coletar",
+    ["Visit your trainer on the way"] = "Visitar seu instrutor pelo caminho",
     ["Mailbox"] = "Caixa de correio",
     ["Plan my route"] = "Planejar minha rota",
     ["Group quests"] = "Missões de grupo",
@@ -16479,6 +16509,12 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["Train"] = "Addestramento",
+    ["Visit the vendor"] = "Visita il mercante",
+    ["Check your mail"] = "Controlla la posta",
+    ["Explore"] = "Esplora",
+    ["Gather"] = "Raccogli",
+    ["Visit your trainer on the way"] = "Visita il tuo istruttore lungo la strada",
     ["Mailbox"] = "Cassetta postale",
     ["Plan my route"] = "Pianifica il mio percorso",
     ["Group quests"] = "Missioni di gruppo",
@@ -19770,6 +19806,12 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["Train"] = "훈련",
+    ["Visit the vendor"] = "상인 방문",
+    ["Check your mail"] = "우편 확인",
+    ["Explore"] = "탐험",
+    ["Gather"] = "채집",
+    ["Visit your trainer on the way"] = "가는 길에 직업 전문가 방문",
     ["Mailbox"] = "우체통",
     ["Plan my route"] = "내 경로 계획",
     ["Group quests"] = "그룹 퀘스트",
@@ -23064,6 +23106,12 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["Train"] = "训练",
+    ["Visit the vendor"] = "拜访商人",
+    ["Check your mail"] = "查看邮件",
+    ["Explore"] = "探索",
+    ["Gather"] = "采集",
+    ["Visit your trainer on the way"] = "顺路拜访训练师",
     ["Mailbox"] = "邮箱",
     ["Plan my route"] = "规划我的路线",
     ["Group quests"] = "组队任务",

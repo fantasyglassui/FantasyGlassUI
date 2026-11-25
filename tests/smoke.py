@@ -9445,6 +9445,200 @@ try("13.1 stops: places", function()
     env.UnitFactionGroup, env.UnitName, env.UnitRace, ns.GuideHere = realFaction, realName, realRace, realHere
     if not ok then error(err, 0) end
 end)
+try("13.1 stops: the mechanism and the class trainer", function()
+    local real = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), level = env.UnitLevel, ql = env.C_QuestLog, trade = rawget(env, "IsTradeskillTrainer") }
+    local saved = { key = ns.root.guideKey, guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner, seen = ns.root.plannerSeen,
+                    trainer = ns.db.plannerTrainer, stops = {} }
+    for i, d in ipairs(ns.plannerStops or {}) do saved.stops[i] = d end
+    local cm = {}
+    for k, v in pairs(real.map) do cm[k] = v end
+    cm.GetWorldPosFromMapPos = function(map, v)
+        if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end
+        if map == 3 then return 1, { x = v.x * 1000, y = v.y * 1000 } end
+    end
+    env.C_Map = cm
+    env.CreateVector2D = function(x, y) return { x = x, y = y } end
+    local level = 11
+    env.UnitLevel = function() return level end
+    local function rec(id, x, y, xp)
+        return { id = id, name = "Quest " .. id, level = 10, minLevel = 1, xp = xp or 300,
+            starts = { { map = 1, x = x, y = y } }, ends = { { map = 1, x = x, y = y } },
+            objectives = { { kind = "kill", count = 4, countKnown = true, mobLevel = 10, spots = { { map = 1, x = x + 4, y = y + 4 } } } },
+            pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+    end
+    local recs = { [601] = rec(601, 30, 40), [602] = rec(602, 31, 40), [603] = rec(603, 30, 41) }
+    local places = { classTrainer = {} }
+    local source = { kind = "questie", ids = function() return { 601, 602, 603 } end, quest = function(id) return recs[id] end,
+        inns = function() return {} end, places = function(kind) return places[kind] or {} end }
+    local function context()
+        return { source = source, level = level, group = "solo", inGroup = false, speed = 7, faction = "Alliance",
+            done = function() return false end, onQuest = function() return false end,
+            here = { map = 1, x = 30, y = 40 }, crossings = {}, learnFlights = false, flights = {}, pace = 1, flightTime = function() return nil end }
+    end
+    local function count(guide, kind)
+        local n, at = 0, nil
+        for i, s in ipairs(guide.steps) do if s.kind == kind then n = n + 1; at = at or i end end
+        return n, at
+    end
+    local ok, err = pcall(function()
+        -- the new kinds parse, say what they are and round-trip
+        local text = "guide: Stops\ntrain | Trainer Ten @ 1:31.0,41.0\nvendor | Smith @ 1:32.0,40.0\nmail | Mailbox @ 1:33.0,40.0\nexplore | The falls @ 1:50.0,50.0\ngather | Peacebloom @ 1:51.0,52.0\n"
+        local g = ns.GuideParse(text)
+        local kinds = { "train", "vendor", "mail", "explore", "gather" }
+        if #g.steps ~= 5 then error("the stop kinds parse: " .. #g.steps) end
+        local again = ns.GuideParse(ns.GuideText(g))
+        for i, k in ipairs(kinds) do
+            local s, b = g.steps[i], again.steps[i]
+            if s.kind ~= k or s.map ~= 1 or not s.text then error("parse " .. k) end
+            if ns.GuideLine(b) ~= ns.GuideLine(s) or b.kind ~= s.kind or b.text ~= s.text or b.map ~= s.map or b.x ~= s.x or b.y ~= s.y then error("round trip " .. k) end
+        end
+        local labels = { train = "Train", vendor = "Visit the vendor", mail = "Check your mail", explore = "Explore", gather = "Gather" }
+        for i, k in ipairs(kinds) do
+            local t = ns.GuideStepText(g.steps[i])
+            if not (t:find(ns:Tr(labels[k]), 1, true) and t:find(g.steps[i].text, 1, true)) then error("the panel's words for " .. k .. ": " .. t) end
+        end
+        local near = false
+        local w = { near = function() return near end, onQuest = function() return false end, completed = function() return false end, ready = function() return false end }
+        for i = 1, 5 do if ns.GuideStepDone(g.steps[i], w) then error("not done yet: " .. kinds[i]) end end
+        near = true
+        if ns.GuideStepDone(g.steps[1], w) or ns.GuideStepDone(g.steps[2], w) or ns.GuideStepDone(g.steps[3], w) then error("a window stop is not done by being there") end
+        if not (ns.GuideStepDone(g.steps[4], w) and ns.GuideStepDone(g.steps[5], w)) then error("explore and gather: passing is enough") end
+        -- a fake stop: near a hub it goes after the hub's last accept, for nothing
+        if type(ns.PlannerStop) ~= "function" or type(ns.PlannerAddStops) ~= "function" then error("ns.PlannerStop and ns.PlannerAddStops") end
+        local fakePlaces = {}
+        ns.PlannerStop({ id = "testStop", setting = "plannerTestStop", kind = "vendor",
+            want = function() return { test = true } end,
+            places = function() return fakePlaces end,
+            text = function(place) return place.name end })
+        local ctx = context()
+        local base, baseSummary = ns.PlannerRoute(ctx)
+        if count(base, "vendor") ~= 0 then error("no places: no step") end
+        if not (ctx.stopsWanted and ctx.stopsWanted.testStop) then error("the wanted stop is in ctx.stopsWanted") end
+        if count(base, "train") ~= 0 then error("level 11, no trainer known: no train step") end
+        fakePlaces = { { name = "Near Smith", map = 1, x = 32, y = 40, id = 1 } }             -- 20 yards from the hub's first giver
+        ctx = context()
+        local guide, summary = ns.PlannerRoute(ctx)
+        local n, at = count(guide, "vendor")
+        local lastAccept = 0
+        for i, s in ipairs(guide.steps) do if s.kind == "accept" then lastAccept = i end end
+        if n ~= 1 or at ~= lastAccept + 1 then error("near the hub: right after its last accept (" .. tostring(at) .. ", " .. lastAccept .. ")") end
+        local st = guide.steps[at]
+        if st.text ~= "Near Smith" or st.map ~= 1 or st.x ~= 32 or st.y ~= 40 then error("the stop step's text and place: " .. ns.GuideLine(st)) end
+        if summary.seconds ~= baseSummary.seconds or (st.why and st.why.detour) then error("near the hub: no detour") end
+        local back = ns.GuideParse(ns.GuideText(guide))
+        if ns.GuideLine(back.steps[at]) ~= ns.GuideLine(st) then error("the stop round-trips") end
+        -- off the route: where it costs least, and the detour is counted
+        fakePlaces = { { name = "Far Smith", map = 1, x = 90, y = 40, id = 2 } }              -- 600 yards east
+        ctx = context()
+        guide, summary = ns.PlannerRoute(ctx)
+        n, at = count(guide, "vendor")
+        st = n == 1 and guide.steps[at]
+        if not (st and st.why and (st.why.detour or 0) > 0) then error("off the route: one step with its detour") end
+        if summary.seconds ~= baseSummary.seconds + st.why.detour then error("the detour is added: " .. summary.seconds .. " vs " .. baseSummary.seconds .. " + " .. st.why.detour) end
+        -- a place with no way there: no step, no error
+        fakePlaces = { { name = "Overseas", map = 3, x = 50, y = 50, id = 3 } }
+        ctx = context()
+        guide = ns.PlannerRoute(ctx)
+        if count(guide, "vendor") ~= 0 then error("unreachable: no step") end
+        -- switched off: not wanted
+        fakePlaces = { { name = "Near Smith", map = 1, x = 32, y = 40, id = 1 } }
+        ns.db.plannerTestStop = false
+        ctx = context()
+        guide = ns.PlannerRoute(ctx)
+        ns.db.plannerTestStop = nil
+        if count(guide, "vendor") ~= 0 or ctx.stopsWanted.testStop then error("a stop switched off is not wanted") end
+        for i = #ns.plannerStops, 1, -1 do if ns.plannerStops[i].id == "testStop" then table.remove(ns.plannerStops, i) end end
+        -- the class trainer
+        places.classTrainer = { { name = "Trainer Ten", map = 1, x = 70, y = 70, id = 10 } }
+        level = 10
+        ns.root.planner = nil
+        ctx = context()
+        guide = ns.PlannerRoute(ctx)
+        n, at = count(guide, "train")
+        if n ~= 1 or guide.steps[at].text ~= "Trainer Ten" or not ctx.stopsWanted.classTrainer then error("level 10, never trained: a train step") end
+        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
+        env.IsTradeskillTrainer = function() return true end
+        fireEvent("TRAINER_SHOW"); fireEvent("TRAINER_CLOSED")
+        local d = ns.PlannerCharRecord(false)
+        if d and d.trainerLevel then error("a profession trainer is not the class trainer") end
+        env.IsTradeskillTrainer = function() return false end
+        fireEvent("TRAINER_SHOW"); fireEvent("TRAINER_CLOSED")
+        d = ns.PlannerCharRecord(false)
+        if not (d and d.trainerLevel == 10) then error("the trainer visit is remembered at level 10") end
+        if ns.PlannerContext().trainerLevel ~= 10 then error("the live context carries the trainer visit") end
+        ctx = context(); ctx.trainerLevel = 10
+        guide = ns.PlannerRoute(ctx)
+        if count(guide, "train") ~= 0 or ctx.stopsWanted.classTrainer then error("trained at 10: no train step") end
+        level = 11
+        ctx = context(); ctx.trainerLevel = 10
+        guide = ns.PlannerRoute(ctx)
+        if count(guide, "train") ~= 0 then error("level 11: no train step") end
+        -- level 11 with the plan reaching 12: the stop comes after the hand-in that gets there
+        ctx = context(); ctx.trainerLevel = 10; ctx.xp, ctx.xpMax = 900, 1000
+        guide = ns.PlannerRoute(ctx)
+        n, at = count(guide, "train")
+        local _, firstTurnin = count(guide, "turnin")
+        if n ~= 1 or not firstTurnin or at <= firstTurnin then error("the plan reaches 12: train after it (" .. tostring(at) .. ", " .. tostring(firstTurnin) .. ")") end
+        level = 10
+        ns.db.plannerTrainer = false
+        ctx = context()
+        guide = ns.PlannerRoute(ctx)
+        ns.db.plannerTrainer = saved.trainer
+        if count(guide, "train") ~= 0 then error("setting off: no train step") end
+        places.classTrainer = {}
+        ctx = context()
+        guide = ns.PlannerRoute(ctx)
+        if count(guide, "train") ~= 0 or ctx.stopsWanted.classTrainer then error("no trainer known: not wanted") end
+        level = 1
+        places.classTrainer = { { name = "Trainer Ten", map = 1, x = 70, y = 70, id = 10 } }
+        ctx = context(); ctx.xp, ctx.xpMax = 0, 100
+        guide = ns.PlannerRoute(ctx)
+        if count(guide, "train") ~= 0 then error("below level 2: not wanted") end
+        -- ticking on a window closing: only the current step
+        env.C_QuestLog = { IsOnQuest = function() return false end, IsQuestFlaggedCompleted = function() return false end,
+            IsComplete = function() return false end, ReadyForTurnIn = function() return false end }
+        ns.root.guideState = {}
+        ns.root.guideState[ns:CharKey()] = { name = ns.GUIDE_PLANNED, at = 1, ticked = {},
+            plan = { name = ns.GUIDE_PLANNED, steps = { { kind = "vendor", text = "Smith", map = 1, x = 32, y = 40 }, { kind = "note", text = "after" } } } }
+        fireEvent("MERCHANT_CLOSED")
+        st = ns.GuideState()
+        if st.at ~= 2 or not st.ticked[1] then error("the vendor step is ticked when its window closes") end
+        ns.root.guideState[ns:CharKey()] = { name = ns.GUIDE_PLANNED, at = 1, ticked = {},
+            plan = { name = ns.GUIDE_PLANNED, steps = { { kind = "accept", quest = 999, title = "Later" }, { kind = "vendor", text = "Smith", map = 1, x = 32, y = 40 } } } }
+        fireEvent("MERCHANT_CLOSED"); fireEvent("TRAINER_CLOSED"); fireEvent("MAIL_CLOSED")
+        st = ns.GuideState()
+        if st.at ~= 1 or st.ticked[1] or st.ticked[2] then error("a vendor visited early ticks nothing") end
+        for _, pair in ipairs({ { "train", "TRAINER_CLOSED" }, { "mail", "MAIL_CLOSED" } }) do
+            ns.root.guideState[ns:CharKey()] = { name = ns.GUIDE_PLANNED, at = 1, ticked = {},
+                plan = { name = ns.GUIDE_PLANNED, steps = { { kind = pair[1], text = "X", map = 1, x = 32, y = 40 }, { kind = "note", text = "after" } } } }
+            fireEvent(pair[2])
+            if ns.GuideState().at ~= 2 then error(pair[1] .. " ticks on " .. pair[2]) end
+        end
+        -- a new plan with the same stop again (the next trainer visit): it is not ticked from the last one
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "mail", text = "X", map = 1, x = 32, y = 40 }, { kind = "note", text = "after" } } }, {})
+        if ns.GuideState().ticked[1] or ns.GuideState().at ~= 1 then error("a window stop's tick is not carried into the next plan") end
+        ns:PlannerStop()
+        -- the switch on the Guide tab
+        ns.root.guideState = nil
+        ns:ToggleConfig("guide")
+        local P = ns.guidePage
+        if not (P and P.trainerBox) then error("the trainer switch exists") end
+        local f = P.trainerBox:GetScript("OnClick")
+        if type(f) ~= "function" then for _, h in ipairs(handlers) do if h.self == P.trainerBox and h.name == "OnClick" then f = h.fn end end end
+        ns.db.plannerTrainer = true
+        f(P.trainerBox)
+        if ns.db.plannerTrainer ~= false then error("the trainer switch turns it off") end
+        ns:ToggleConfig()
+        if ns.defaults and ns.defaults.plannerTrainer ~= true then error("on by default") end
+    end)
+    ns:PlannerStop()
+    ns.plannerStops = saved.stops
+    env.C_Map = real.map; rawset(env, "CreateVector2D", real.vec); env.UnitLevel = real.level; env.C_QuestLog = real.ql; rawset(env, "IsTradeskillTrainer", real.trade)
+    ns.root.guideKey, ns.root.guides, ns.root.guideState, ns.root.planner, ns.root.plannerSeen = saved.key, saved.guides, saved.state, saved.planner, saved.seen
+    ns.db.plannerTrainer, ns.db.plannerTestStop = saved.trainer, nil
+    ns.PlannerSourceReset()
+    if not ok then error(err, 0) end
+end)
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()

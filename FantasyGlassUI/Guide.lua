@@ -25,7 +25,14 @@ ns.guideKinds = {
     hearth = { "H", { 0.6, 0.85, 1 }, "Hearth" },   fly = { "F", { 0.6, 0.85, 1 }, "Fly" },
     learnflight = { "L", { 0.6, 0.85, 1 }, "Learn the flight path" },
     sail = { "S", { 0.6, 0.85, 1 }, "Sail" },       bind = { "B", { 0.6, 0.85, 1 }, "Set your hearthstone" },
+    -- stops on the way (PlannerStops.lua): a few words and a place, nothing else
+    train = { "T", { 0.85, 0.7, 1 }, "Train" },     vendor = { "V", { 0.85, 0.7, 1 }, "Visit the vendor" },
+    mail = { "M", { 0.85, 0.7, 1 }, "Check your mail" },
+    explore = { "E", { 0.5, 1, 0.7 }, "Explore" },  gather = { "G", { 0.5, 1, 0.7 }, "Gather" },
 }
+-- Stops done when their window closes while they are the step you are on (Planner.lua ticks them).
+ns.GUIDE_WINDOW_KINDS = { train = "TRAINER_CLOSED", vendor = "MERCHANT_CLOSED", mail = "MAIL_CLOSED" }
+local STOP_KIND = { train = true, vendor = true, mail = true, explore = true, gather = true }
 local QUEST_KIND = { accept = true, turnin = true, ["do"] = true }
 ns.builtinGuides = ns.builtinGuides or {}
 
@@ -46,7 +53,7 @@ function ns.GuideParseLine(line)
     if text and ns.Trim(text) ~= "" then step.text = ns.Trim(text) end
     local kind, rest = left:match("^(%S+)%s*(.*)$")
     kind = kind and kind:lower()
-    if not kind or not ns.guideKinds[kind] then return nil, "a step starts with accept, turnin, do, goto, note, level, hearth, fly, learnflight, sail or bind" end
+    if not kind or not ns.guideKinds[kind] then return nil, "a step starts with accept, turnin, do, goto, note, level, hearth, fly, learnflight, sail, bind, train, vendor, mail, explore or gather" end
     step.kind = kind
     rest = ns.Trim(rest)
     if QUEST_KIND[kind] then
@@ -141,6 +148,7 @@ function ns.GuideStepBase(step)
     if k == "learnflight" then return step.text or ns:Tr("Learn the flight path") end
     if k == "sail" then return step.text or ns:Tr("Take the boat") end
     if k == "bind" then return step.text or ns:Tr("Set your hearthstone here") end
+    if STOP_KIND[k] then return ns:Tr(ns.guideKinds[k][3]) .. (step.text and (": " .. step.text) or "") end
     return step.text or ""
 end
 
@@ -161,7 +169,8 @@ function ns.GuideStepDone(step, world, ticked)
     if k == "learnflight" then return Ask1(world.knownFlight, step.node) end
     if k == "sail" then return Ask1(world.crossed, step.crossing) end
     if k == "bind" then return world.bind ~= nil and world.bind == step.text end
-    return false
+    if k == "explore" or k == "gather" then return step.x ~= nil and Ask1(world.near, step) end   -- (passing it is enough)
+    return false                                              -- (train, vendor, mail: ticked when the window closes)
 end
 -- The first step from `from` on that is not done (one past the end when all are).
 function ns.GuideNext(steps, from, world, ticked)
@@ -330,7 +339,8 @@ local function StepKey(step)
     return table.concat({ tostring(step.kind), tostring(step.quest), tostring(step.node), tostring(step.crossing), tostring(step.text) }, "\1")
 end
 -- Follow a new plan (Planner.lua), from its first step; nil = an empty one until the first is ready.
--- Steps you ticked off yourself in the old plan stay ticked where the new plan has them too.
+-- Steps you ticked off yourself in the old plan stay ticked where the new plan has them too; a
+-- window stop (trainer, vendor, mail) does not: it is in the new plan only while it is still wanted.
 function ns:GuideSetPlan(guide, summary)
     local _, state = Store()
     local old = state[ns:CharKey()]
@@ -339,7 +349,7 @@ function ns:GuideSetPlan(guide, summary)
     if type(old) == "table" and old.name == ns.GUIDE_PLANNED and type(old.plan) == "table" and type(old.plan.steps) == "table" and type(old.ticked) == "table" then
         for i, on in pairs(old.ticked) do
             local step = on and old.plan.steps[i]
-            if type(step) == "table" then local k = StepKey(step); had[k] = (had[k] or 0) + 1 end
+            if type(step) == "table" and not ns.GUIDE_WINDOW_KINDS[step.kind] then local k = StepKey(step); had[k] = (had[k] or 0) + 1 end
         end
     end
     for i, step in ipairs(plan.steps) do
@@ -608,7 +618,7 @@ do
         if not st or st.finished then return end
         local guide = ns:GuideGet(st.name)
         local step = guide and guide.steps[st.at or 1]
-        if step and (step.kind == "goto" or step.kind == "level") then pcall(ns.GuideAdvance, ns) end
+        if step and (step.kind == "goto" or step.kind == "level" or step.kind == "explore" or step.kind == "gather") then pcall(ns.GuideAdvance, ns) end
     end)
 end
 
