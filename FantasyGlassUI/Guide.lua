@@ -621,6 +621,9 @@ Draw = function()
     panel:SetHeight(118 + (skipped and 13 or 0) + (talents and 13 or 0) + (riding and 13 or 0) + (rep and 13 or 0) + (moved and 13 or 0) + (classq and 13 or 0) + #advice * 13)
     panel.count:SetText(math.min(at, #steps) .. "/" .. #steps)
     local step = steps[at]
+    if panel.stepButton then                        -- (it takes the mouse only while a planned quest step is shown)
+        panel.stepButton:SetShown(Planned(st) and type(step) == "table" and type(step.quest) == "number")
+    end
     if step then
         local kind = ns.guideKinds[step.kind]
         panel.badge:SetText(kind[1])

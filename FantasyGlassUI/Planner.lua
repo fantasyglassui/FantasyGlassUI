@@ -8,6 +8,7 @@ ns.PLANNER_BUDGET_MS = 4
 ns.plannerBusy, ns.plannerQueued, ns.plannerSteps = false, false, 0
 
 local running, sliceStart            -- the planning coroutine, and when its slice began
+local job                            -- a small job run in slices while the planner is idle (ns.PlannerJob)
 
 local function Clock()
     local v = debugprofilestop and debugprofilestop()
@@ -17,7 +18,8 @@ end
 -- Called in the planner's loops: inside the planning coroutine it hands the frame back once this
 -- slice has used its time; anywhere else it does nothing.
 function ns.PlannerYield()
-    if running and coroutine.running() == running and Clock() - sliceStart >= (ns.PLANNER_BUDGET_MS or 4) then
+    local co = coroutine.running()
+    if co and (co == running or co == job) and Clock() - sliceStart >= (ns.PLANNER_BUDGET_MS or 4) then
         coroutine.yield()
     end
 end
@@ -75,6 +77,24 @@ end
 
 local function NeedsGroup(rec) return (rec.elite or rec.group or rec.dungeon) and true or false end
 
+-- Does the group setting let this quest through (an elite your class has soloed counts as solo)?
+local function GroupOK(rec, ctx, level)
+    if not NeedsGroup(rec) or ctx.group == "all" or (ctx.group == "grouped" and ctx.inGroup) then return true end
+    return (ctx.soloElites and rec.elite and not rec.group and not rec.dungeon and ns.PlannerSoloEliteOK(ctx.class, rec.level - level)) and true or false
+end
+
+-- Why the planner would never pick this quest by its own filters, whatever the log says: "skipped",
+-- "hard" (above the level window) or "group" (needs a group the setting leaves out); nil when it would.
+-- (Whether you can take it is not asked: a quest in your log is taken.)
+function ns.PlannerRejects(rec, ctx)
+    if type(rec) ~= "table" or type(ctx) ~= "table" then return nil end
+    local level = ctx.level or 1
+    if type(ctx.skip) == "table" and ctx.skip[rec.id] then return "skipped" end
+    if tonumber(rec.level) and rec.level > level + 2 then return "hard" end
+    if not GroupOK(rec, ctx, level) then return "group" end
+    return nil
+end
+
 -- The class quests of this character, by id: { [questID] = { id, level, kind, parts } } (ctx.classQuests is the list).
 function ns.PlannerClassMap(ctx)
     local map = {}
@@ -109,8 +129,7 @@ function ns.PlannerCandidates(source, ctx)
             elseif rec.doable and not rec.repeatable and not done(id)
                 and rec.level >= level - 4 and rec.level <= level + 2
                 and AllDone(rec.pre, done) and AnyDone(rec.preAny, done) then
-                if NeedsGroup(rec) and ctx.group ~= "all" and not (ctx.group == "grouped" and ctx.inGroup)
-                    and not (ctx.soloElites and rec.elite and not rec.group and not rec.dungeon and ns.PlannerSoloEliteOK(ctx.class, rec.level - level)) then
+                if not GroupOK(rec, ctx, level) then
                     skipped.group = skipped.group + 1
                 elseif rec.fromItem then
                     items[#items + 1] = rec
@@ -127,7 +146,8 @@ function ns.PlannerCandidates(source, ctx)
         local id = type(e) == "table" and e.id
         if type(id) == "number" and not have[id] and tonumber(e.level) and e.level <= level and not done(id) and not (never and never[id]) then
             local rec = source.quest(id)
-            if rec and not onQuest(id) and rec.doable and AllDone(rec.pre, done) and AnyDone(rec.preAny, done) then
+            if rec and not onQuest(id) and rec.doable and not rec.repeatable and GroupOK(rec, ctx, level)
+                and AllDone(rec.pre, done) and AnyDone(rec.preAny, done) then
                 have[id] = true
                 list[#list + 1] = rec
             end
@@ -452,16 +472,19 @@ function ns.PlannerRepBonus(rec, ctx)
 end
 
 -- ctx.candidate(id) -> record, when that quest is itself a candidate (its follow-up counts half).
+-- Three values: what the quest is worth for scoring (with the bonus for upgrades and wanted reputation,
+-- and half its follow-up), the rested part (the route takes it off the pool), and the real experience
+-- it gives (reward, kills, rested): forecasts, Show why and the trainer use only that.
 function ns.PlannerQuestXP(rec, ctx)
     ctx = ctx or {}
-    local xp = (rec.xp or 0) + KillPart(rec, ctx.level or 1)
     local extra = ns.PlannerRestedExtra(rec, ctx)
-    xp = xp + extra + ns.PlannerRewardBonus(rec, ctx) + ns.PlannerRepBonus(rec, ctx)
+    local real = (rec.xp or 0) + KillPart(rec, ctx.level or 1) + extra
+    local xp = real + ns.PlannerRewardBonus(rec, ctx) + ns.PlannerRepBonus(rec, ctx)
     if rec.nextQuest and ctx.candidate then
         local nxt = ctx.candidate(rec.nextQuest)
         if nxt then xp = xp + (nxt.xp or 0) / 2 end
     end
-    return xp, extra                                 -- (and the rested part of it, which the route takes off the pool)
+    return xp, extra, real
 end
 
 ------------------------------------------------------------------------------------------
@@ -596,9 +619,36 @@ local function Apply(guide, summary, ctx)
     ns:GuideSetPlan(guide, summary)
 end
 
+-- Small jobs (the inn suggestion): one at a time, a slice per frame, never in a fight, only while
+-- the planner itself has nothing to do. ns.PlannerJob(fn, key): a job with the same key waits only once.
+local jobs = {}
+function ns.PlannerJob(fn, key)
+    if type(fn) ~= "function" then return false end
+    for _, j in ipairs(jobs) do if key ~= nil and j.key == key then return false end end
+    if key ~= nil and job and ns.plannerJobKey == key then return false end
+    jobs[#jobs + 1] = { fn = fn, key = key }
+    return true
+end
+local function RunJob()
+    if fighting or InCombatLockdown() then return end
+    if not job then
+        local j = table.remove(jobs, 1)
+        if not j then return end
+        job, ns.plannerJobKey = coroutine.create(j.fn), j.key
+    end
+    sliceStart = Clock()
+    local ok, err = coroutine.resume(job)
+    if not ok then
+        if #ns.errors < 60 then ns.errors[#ns.errors + 1] = "Planner job: " .. tostring(err) end
+        job, ns.plannerJobKey = nil, nil
+    elseif coroutine.status(job) == "dead" then
+        job, ns.plannerJobKey = nil, nil
+    end
+end
+
 local function Tick()
     if batch then Flush(GetTime()) end
-    if not (ns.plannerBusy or ns.plannerQueued) then return end
+    if not (ns.plannerBusy or ns.plannerQueued) then RunJob(); return end
     if not Following() then ns:PlannerStop(); return end
     if fighting or InCombatLockdown() or not Placed() then return end
     if running and ns.plannerQueued then running = nil end   -- a replan asked for mid-run: that run's context is stale
@@ -693,8 +743,55 @@ end
 
 do
     local ev = CreateFrame("Frame")
-    local acceptedAt = {}                            -- questID -> GetTime() at accept, while following (memory only)
-    local soloAt = {}                                -- elite questID -> its quest level, accepted while not in a group (memory only)
+    -- Quest times: each quest accepted while following gathers its share of the time that passes, the
+    -- time split evenly among the quests open at once (a hub's quests are done together). Memory only.
+    -- (a quest carried longer than a sample may be, 2 hours, gives none and stops taking a share)
+    local open, openN, openAt, since = {}, 0, nil, {}  -- questID -> seconds so far; how many; the last time shared out; accepted at
+    local function Share(now)
+        for id, t0 in pairs(since) do
+            if t0 > now or now - t0 > QUEST_TIME_MAX then
+                if open[id] then open[id], openN = nil, openN - 1 end
+                since[id] = nil
+            end
+        end
+        if openN == 0 then openAt = nil end
+        if openAt and openN > 0 and now > openAt then
+            local part = (now - openAt) / openN
+            for id, t in pairs(open) do open[id] = t + part end
+        end
+        openAt = now
+    end
+    local function Close(id, now)
+        Share(now)
+        local t = open[id]
+        if t then open[id], openN = nil, openN - 1 end
+        since[id] = nil
+        if openN == 0 then openAt = nil end
+        return t
+    end
+    -- Forever can send QUEST_REMOVED before QUEST_TURNED_IN (or no QUEST_TURNED_IN at all); a quest handed in
+    -- is flagged completed by then, an abandoned one is not.
+    local function Completed(id)
+        local QL = C_QuestLog
+        if type(QL) ~= "table" or type(QL.IsQuestFlaggedCompleted) ~= "function" then return false end
+        local ok, v = pcall(QL.IsQuestFlaggedCompleted, id)
+        return ok and v == true
+    end
+    local function Now()
+        local okT, now = pcall(GetTime)
+        if okT and type(now) == "number" and not ns:IsSecret(now) then return now end
+    end
+    -- elite questID -> its quest level, accepted while not in a group: kept per character, so a /reload
+    -- or a new session in between still counts (cleared at hand-in or when the quest leaves the log)
+    local function SoloAt(create)
+        local r = ns.PlannerCharRecord(create)
+        if type(r) ~= "table" then return nil end
+        if type(r.soloAt) ~= "table" then
+            if not create then return nil end
+            r.soloAt = {}
+        end
+        return r.soloAt
+    end
     local closes = {}                                -- window-closed event -> the stop kind it ticks (Guide.lua)
     for kind, e in pairs(ns.GUIDE_WINDOW_KINDS or {}) do closes[e] = kind end
     for _, e in ipairs({ "QUEST_ACCEPTED", "QUEST_TURNED_IN", "QUEST_REMOVED", "PLAYER_LEVEL_UP", "HEARTHSTONE_BOUND",
@@ -717,20 +814,28 @@ do
             if ns:GuideUnlocked() then ns.PlannerRecordDeath() end
             return
         end
-        if (event == "QUEST_ACCEPTED" or event == "QUEST_TURNED_IN") and ns:GuideUnlocked() then
+        if (event == "QUEST_ACCEPTED" or event == "QUEST_TURNED_IN" or event == "QUEST_REMOVED") and ns:GuideUnlocked() then
             local id = (event == "QUEST_ACCEPTED" and type(b) == "number") and b or a
             if type(id) == "number" then
                 local okG, grouped = pcall(IsInGroup)
                 grouped = not okG or grouped ~= false
                 if event == "QUEST_ACCEPTED" then
-                    soloAt[id] = nil
+                    local list = SoloAt(false)
+                    if list then list[id] = nil end
                     if not grouped then
                         local okQ, q = pcall(function() return ns.PlannerLogSource().quest(id) end)
-                        if okQ and type(q) == "table" and q.elite == true and type(q.level) == "number" then soloAt[id] = q.level end
+                        if okQ and type(q) == "table" and q.elite == true and type(q.level) == "number" then
+                            list = SoloAt(true)
+                            if list then list[id] = q.level end
+                        end
                     end
-                else
-                    local questLevel = soloAt[id]
-                    soloAt[id] = nil
+                elseif event == "QUEST_REMOVED" and not Completed(id) then         -- (abandoned)
+                    local list = SoloAt(false)
+                    if list then list[id] = nil end
+                else                                                         -- (handed in: Forever may say so by QUEST_REMOVED first)
+                    local list = SoloAt(false)
+                    local questLevel = list and tonumber(list[id])
+                    if list then list[id] = nil end
                     local level = UnitLevel and UnitLevel("player")
                     local class = ns.PlannerClassToken()
                     if questLevel and not grouped and class and type(level) == "number" and not ns:IsSecret(level) then
@@ -740,7 +845,13 @@ do
             end
         end
         local on, st = Following()
-        if not on then return end
+        if not on then
+            if (event == "QUEST_TURNED_IN" or event == "QUEST_REMOVED") and type(a) == "number" and open[a] then   -- (not followed to the end: no sample)
+                local now = Now()
+                if now then Close(a, now) else open[a], openN, since[a] = nil, openN - 1, nil end
+            end
+            return
+        end
         local plan = type(st.plan) == "table" and st.plan or {}
         if closes[event] then
             -- a stop's window closed: it ticks only while it is the step you are on (visited early, it stays)
@@ -775,15 +886,18 @@ do
         -- (an accept does not end a run of hand-ins: a chain's follow-up is offered at the hand-in)
         if event == "QUEST_ACCEPTED" then
             local id = (type(b) == "number") and b or a                -- (the quest id comes second or first, by client)
-            local okT, now = pcall(GetTime)
-            if type(id) == "number" and okT and type(now) == "number" and not ns:IsSecret(now) then acceptedAt[id] = now end
+            local now = Now()
+            if type(id) == "number" and now and not open[id] then
+                Share(now)
+                open[id], openN, since[id] = 0, openN + 1, now
+            end
             return
         end
         if event == "QUEST_TURNED_IN" then
             if type(a) == "number" then
-                local since, okT, now = acceptedAt[a], pcall(GetTime)
-                acceptedAt[a] = nil
-                if since and okT and type(now) == "number" and not ns:IsSecret(now) then ns.PlannerRecordQuestTime(a, now - since) end
+                local now = Now()
+                local took = now and open[a] and Close(a, now)
+                if took then ns.PlannerRecordQuestTime(a, took) end
                 HandedIn(a, plan)
             end
             ns:PlannerReplan("hand-in")
@@ -796,6 +910,12 @@ do
         elseif event == "PLAYER_LEVEL_UP" then
             ns:PlannerReplan("level")
         else
+            if type(a) == "number" and open[a] then                   -- (handed in, said by QUEST_REMOVED first: a sample; abandoned: none)
+                local now = Now()
+                local took
+                if now then took = Close(a, now) else open[a], openN, since[a] = nil, openN - 1, nil end
+                if took and Completed(a) then ns.PlannerRecordQuestTime(a, took) end
+            end
             ns:PlannerReplan("quest removed")
         end
     end))

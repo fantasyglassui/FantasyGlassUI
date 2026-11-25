@@ -10939,19 +10939,19 @@ try("13.3 choices: rested, upgrades, alts", function()
         ns.root.plannerQuestTimes = nil
         -- events: only while following
         ns.root.plannerQuestTimes = nil
-        local clock = 1000
+        local clock = 201000
         env.GetTime = function() return clock end
-        fireEvent("QUEST_ACCEPTED", 1, 202); clock = 1300; fireEvent("QUEST_TURNED_IN", 202)
+        fireEvent("QUEST_ACCEPTED", 1, 202); clock = 201300; fireEvent("QUEST_TURNED_IN", 202)
         if ns.root.plannerQuestTimes then error("not following: nothing is recorded") end
         ns.GuideOn = function() return true end
         ns.GuideState = function() return { name = ns.GUIDE_PLANNED, at = 1, plan = {} } end
-        clock = 2000; fireEvent("QUEST_ACCEPTED", 1, 202); clock = 2300; fireEvent("QUEST_TURNED_IN", 202)
+        clock = 202000; fireEvent("QUEST_ACCEPTED", 1, 202); clock = 202300; fireEvent("QUEST_TURNED_IN", 202)
         local e = ns.root.plannerQuestTimes and ns.root.plannerQuestTimes[202]
         if not (e and e.n == 1 and e.avg == 300) then error("following: accept (id second) to hand-in is 300 s") end
-        clock = 3000; fireEvent("QUEST_ACCEPTED", 203); clock = 3050; fireEvent("QUEST_TURNED_IN", 203)
+        clock = 203000; fireEvent("QUEST_ACCEPTED", 203); clock = 203050; fireEvent("QUEST_TURNED_IN", 203)
         e = ns.root.plannerQuestTimes[203]
         if not (e and e.avg == 50) then error("the id first as well") end
-        clock = 4000; fireEvent("QUEST_TURNED_IN", 204)
+        clock = 204000; fireEvent("QUEST_TURNED_IN", 204)
         if ns.root.plannerQuestTimes[204] then error("never accepted while following: no sample") end
     end)
     ns.GuideOn, ns.GuideState, env.GetTime, env.UnitXPMax = saved.on, saved.state, saved.time, saved.max
@@ -11057,7 +11057,7 @@ try("13.3 choices: reputation goals", function()
                 return summary
             end
             local plain, wanted = route(nil), route({ [72] = 6 })
-            if wanted.xp - plain.xp ~= 600 then error("300 needed, two 250 quests: 300 x 2 = 600 in all, got " .. (wanted.xp - plain.xp)) end
+            if wanted.xp ~= plain.xp then error("the bonus scores only: the plan's experience is the same, got " .. (wanted.xp - plain.xp)) end
             if not (wanted.reputation and wanted.reputation[72] == 500) then error("the summary has what the plan gives: 500") end
         end)
         env.C_Map, env.CreateVector2D = realMap, realVec
@@ -11633,9 +11633,12 @@ try("13.3 choices: hand-in, quest log, inn", function()
         if #ns.PlannerLogAdvice(many, 1) ~= 0 then error("switch off") end
         ns.db.plannerLogAdvice = nil
         log(23, nil)
-        local adv = ns.PlannerLogAdvice({ { kind = "do", quest = 101, map = 1, x = 10, y = 10 } }, 1)
+        local why = {}
+        for i = 1, 23 do why[100 + i] = "never planned" end
+        local adv = ns.PlannerLogAdvice({ { kind = "do", quest = 101, map = 1, x = 10, y = 10 } }, 1, { logReasons = why })
         if #adv ~= 3 or adv[1].reason ~= "never planned" then error("up to three, never planned") end
         for _, a in ipairs(adv) do if a.name == "Quest 1" then error("a planned quest is never advised against") end end
+        if #ns.PlannerLogAdvice({}, 1, {}) ~= 0 then error("no reasons from the plan: only gray quests are named") end
         -- the peak along the plan, not the sum: many accepts, each handed in before the next, fit a log with room
         log(10, nil)
         local cycle = {}
@@ -11644,22 +11647,19 @@ try("13.3 choices: hand-in, quest log, inn", function()
             cycle[#cycle + 1] = { kind = "turnin", quest = 500 + i, map = 1 }
         end
         if #ns.PlannerLogAdvice(cycle, 1) ~= 0 then error("hand-ins give places back: no advice") end
-        -- off the route: all its spots beyond the hub radius of the route, against never planned
+        -- the panel only reads the reasons the plan worked out: never planned before off the route; none, none
         log(23, nil)
-        ns.PlannerSource = function()
-            return { quest = function(id)
-                if id == 102 then return { starts = { { map = 1, x = 90, y = 90 } }, ends = {}, objectives = {} } end
-                if id == 103 then return { starts = { { map = 1, x = 10, y = 10 } }, ends = {}, objectives = {} } end
-            end }
-        end
         local route = {}
-        for i = 1, 23 do if i ~= 2 and i ~= 3 then route[#route + 1] = { kind = "do", quest = 100 + i, map = 1, x = 10, y = 10 } end end
+        for i = 1, 23 do if i > 4 then route[#route + 1] = { kind = "do", quest = 100 + i, map = 1, x = 10, y = 10 } end end
         local byName = {}
-        for _, a in ipairs(ns.PlannerLogAdvice(route, 1)) do byName[a.name] = a.reason end
-        if byName["Quest 2"] ~= "off the route" then error("all its spots far from the route: " .. tostring(byName["Quest 2"])) end
-        if byName["Quest 3"] ~= "never planned" then error("a spot on the route: never planned, got " .. tostring(byName["Quest 3"])) end
+        local reads = 0
+        ns.PlannerSource = function() reads = reads + 1; return nil end
+        for _, a in ipairs(ns.PlannerLogAdvice(route, 1, { logReasons = { [102] = "off the route", [103] = "never planned" } })) do byName[a.name] = a.reason end
+        if byName["Quest 2"] ~= "off the route" or byName["Quest 3"] ~= "never planned" then error("the reasons of the plan: " .. tostring(byName["Quest 2"]) .. " " .. tostring(byName["Quest 3"])) end
+        if byName["Quest 1"] or byName["Quest 4"] then error("no reason: not named") end
+        if reads ~= 0 then error("drawing the advice reads no quest source") end
         -- the play session: a login starts it, a reload keeps it, a zone change does nothing
-        clock = 777
+        local clock = 777
         env.GetTime = function() return clock end
         fireEvent("PLAYER_ENTERING_WORLD", true, false)
         if ns.plannerSessionStart ~= 777 or ns.root.plannerSessionAt ~= 777 then error("a login starts the session") end
@@ -11671,8 +11671,16 @@ try("13.3 choices: hand-in, quest log, inn", function()
         ns.plannerSessionStart = 12345; fireEvent("PLAYER_ENTERING_WORLD", false, true)
         if ns.plannerSessionStart ~= 777 then error("a reload restores the saved start") end
         -- the inn
-        local said, clock = {}, 4000
-        ns.Print = function(_, msg, ...) said[#said + 1] = (select("#", ...) > 0) and string.format(msg, ...) or msg end
+        local said = {}
+        clock = 4000
+        local function frames()                         -- (the inn search runs as a planner job, a slice a frame)
+            fireEvent("PLAYER_REGEN_ENABLED")
+            for _ = 1, 6 do for i = 1, #handlers do local h = handlers[i]; if h.name == "OnUpdate" then pcall(h.fn, h.self, 0.02) end end end
+        end
+        ns.Print = function(_, msg, ...)                 -- (only the inn's line: the frames run other features too)
+            local m = (select("#", ...) > 0) and string.format(msg, ...) or msg
+            if type(m) == "string" and m:find("Log out at", 1, true) then said[#said + 1] = m end
+        end
         env.GetTime = function() return clock end
         ns.plannerSessionStart = 0
         env.IsResting = function() return false end
@@ -11686,35 +11694,41 @@ try("13.3 choices: hand-in, quest log, inn", function()
         for _, h in ipairs(handlers) do if h.name == "OnShow" and h.self == env.GameMenuFrame then shown = h.fn end end
         if not shown then error("the game menu is hooked") end
         shown()
+        if #said ~= 0 or travelled ~= 0 then error("opening the game menu searches nothing at once") end
+        env.InCombatLockdown = function() return true end
+        frames()
+        if #said ~= 0 or travelled ~= 0 then error("never in a fight: the search waits: " .. tostring(said[1]) .. " " .. travelled) end
+        env.InCombatLockdown = function() return false end
+        frames()
         if #said ~= 1 or not said[1]:find("Log out at Goldshire Inn for rested experience (about 1 min away)", 1, true) then error("the chat line: " .. tostring(said[1])) end
         if travelled ~= 1 then error("only the inn within a straight line is asked the travel planner: " .. travelled) end
-        shown()
+        shown(); frames()
         if #said ~= 1 then error("the chat line once while the panel line stands") end
         local w = ns.PlannerAdviceLines({}, 1)
         if not (w[#w] and w[#w]:find("Goldshire Inn", 1, true)) then error("the panel line for the inn") end
         said, ns.plannerInnLine = {}, nil
         clock = 1000
-        shown()
+        shown(); frames()
         if #said ~= 0 then error("under an hour: no inn") end
         env.InCombatLockdown = function() return true end
         clock = 4000
-        shown()
+        shown(); frames()
         if #said ~= 0 then error("in combat: nothing") end
         env.InCombatLockdown = function() return false end
         clock, travel = 4000, 300
-        shown()
+        shown(); frames()
         if #said ~= 0 then error("an inn 5 minutes away: no") end
         travel = 60
         env.GetXPExhaustion = function() return 8000 end
-        shown()
+        shown(); frames()
         if #said ~= 0 then error("fully rested: no inn") end
         env.GetXPExhaustion = function() return 300 end
         ns.db.plannerInn = false
-        shown()
+        shown(); frames()
         if #said ~= 0 then error("switch off") end
         ns.db.plannerInn = nil
-        ns:GuideCommand("stop")
-        if #said < 2 then error("/fgui guide stop suggests it too") end
+        ns:GuideCommand("stop"); frames()
+        if #said ~= 1 then error("/fgui guide stop suggests it too") end
     end)
     ns.GuideUnlocked, ns.UpgradeAmount, env.GetNumQuestChoices, env.GetQuestItemLink, env.C_Item.GetItemInfo = saved.unlocked, saved.up, saved.choices, saved.link, saved.info
     rawset(env, "GetQuestItemInfo", saved.itemInfo); rawset(env, "QuestInfo_GetRewardButton", saved.button); rawset(env, "QuestInfoItem_OnClick", saved.click)
@@ -11776,6 +11790,10 @@ try("13.3 choices: when quests run dry", function()
         -- done and logged quests are not counted
         _, s2 = ns.PlannerRoute(ctx("all", { done = function(id) return id == 901 end, onQuest = function(id) return id == 902 end }))
         if not (s2.dry and s2.dry.dungeon.count == 2) then error("done and logged quests are left out: " .. tostring(s2.dry and s2.dry.dungeon.count)) end
+        recs[903].pre = { 777 }
+        _, s2 = ns.PlannerRoute(ctx("all", { skip = { [901] = true } }))
+        if not (s2.dry and s2.dry.dungeon.count == 2) then error("skipped quests and quests not open yet are left out: " .. tostring(s2.dry and s2.dry.dungeon.count)) end
+        recs[903].pre = {}
         -- a cluster to grind: a line with the name; the better of the two first
         spots = { { map = 1436, x = 50, y = 50, count = 30, name = "Plains Boar", mobLevel = 19 } }
         local xph = 60 * ns.PlannerKillXP(18, 19)
@@ -11864,6 +11882,340 @@ try("13.3 choices: when quests run dry", function()
     rawset(env, "Questie", saved.q); rawset(env, "QuestieLoader", saved.loader)
     ns.GuideUnlocked, ns.GuideHere, ns.PlannerWorldPos, ns.PLANNER_DUNGEONS = saved.unlocked, saved.here, saved.world, saved.dungeons
     env.C_Map, env.InCombatLockdown, ns.db.plannerDry, ns.db.plannerGroup, env.UnitLevel = saved.map, saved.combat, saved.dry, saved.group, saved.level
+    if not ok then error(err, 0) end
+end)
+
+try("13.3 choices: final review fixes", function()
+    local saved = { on = ns.GuideOn, here = ns.GuideHere, state = ns.GuideState, unlocked = ns.GuideUnlocked, level = env.UnitLevel, group = env.IsInGroup,
+                    base = rawget(env, "UnitClassBase"), map = env.C_Map, vec = rawget(env, "CreateVector2D"), logQ = env.C_QuestLog, time = env.GetTime,
+                    max = env.UnitXPMax, rep = env.C_Reputation, up = ns.UpgradeAmount, link = rawget(env, "GetQuestLogItemLink"),
+                    choices = rawget(env, "GetNumQuestLogChoices"), rewards = rawget(env, "GetNumQuestLogRewards"), rewardsOn = ns.db.plannerRewards,
+                    advice = ns.db.plannerLogAdvice, explore = ns.db.plannerExplore, gather = ns.db.plannerGather, times = ns.root.plannerQuestTimes,
+                    elites = ns.root.plannerSoloElites, explo = rawget(env, "C_MapExplorationInfo"), exploreMaps = ns.plannerExploreMaps,
+                    context = ns.PlannerContext, route = ns.PlannerRoute, world = ns.PlannerWorldPos,
+                    guideState = ns.root.guideState, guides = ns.root.guides, key = ns.root.guideKey }
+    local recC = ns.PlannerCharRecord(false)
+    local before = { soloAt = recC and recC.soloAt, reached = recC and recC.exploreReached }
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        env.C_Map = setmetatable({ GetWorldPosFromMapPos = function(map, v)
+            if map == 1 or map == 5 then return 0, { x = v.x * 1000, y = v.y * 1000 } end     -- (map 5: a cave map over map 1)
+            if map == 2 then return 0, { x = v.x * 1000 + 5000, y = v.y * 1000 } end
+            if map == 3 then return 1, { x = v.x * 1000, y = v.y * 1000 } end               -- (another continent)
+        end }, { __index = saved.map })
+        env.CreateVector2D = function(x, y) return { x = x, y = y } end
+        local function q(id, extra)
+            local r = { id = id, name = "Q" .. id, level = 14, minLevel = 1, xp = 100, starts = {}, ends = {}, objectives = {}, pre = {}, preAny = {}, exclusive = {},
+                        elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+            for k, v in pairs(extra or {}) do r[k] = v end
+            return r
+        end
+        local function at(map, x, y) return { { map = map, x = x, y = y } } end
+        local function kill(map, x, y, n) return { { kind = "kill", count = n or 0, countKnown = true, mobLevel = 14, spots = at(map, x, y) } } end
+        local recs, order, innList = {}, {}, {}
+        local function add(r) recs[r.id] = r; order[#order + 1] = r.id end
+        local function reset() recs, order, innList = {}, {}, {} end
+        local source = { kind = "test", ids = function() return order end, quest = function(id) return recs[id] end, inns = function() return innList end }
+        local logged, held, timedIds = {}, {}, {}
+        local function ctxFor(extra)
+            local c = { source = source, level = 14, group = "solo", inGroup = false, speed = 7, faction = "Alliance", xp = 0, xpMax = 10000,
+                done = function() return false end, onQuest = function(id) return logged[id] or false end, here = { map = 1, x = 30, y = 40 },
+                crossings = {}, learnFlights = false, bind = "Elsewhere", bindSpot = { map = 9, x = 1, y = 1 }, pace = 1, flights = {},
+                flightTime = function() return nil end, timed = function(id) return timedIds[id] or false end,
+                itemCount = function(id) return held[id] or 0 end }
+            for k, v in pairs(extra or {}) do c[k] = v end
+            return c
+        end
+        local function route(extra) return ns.PlannerRoute(ctxFor(extra)) end
+        local function planned(guide) local o = {} for _, s in ipairs(guide.steps) do if s.quest then o[s.quest] = true end end return o end
+        local function firstQuestStep(guide) for i, s in ipairs(guide.steps) do if s.quest then return i, s end end end
+        local function seq(guide) local o = {} for _, st in ipairs(guide.steps) do o[#o + 1] = st.kind .. ":" .. tostring(st.quest) end return table.concat(o, " ") end
+
+        -- 1. the bonus for upgrades and reputation only scores: forecasts and Show why are real experience
+        env.UnitXPMax = function() return 10000 end
+        ns.db.plannerRewards = true
+        ns.UpgradeAmount = function() return 20 end
+        env.GetNumQuestLogChoices = function(id) return id == 11 and 1 or 0 end
+        env.GetNumQuestLogRewards = function() return 0 end
+        env.GetQuestLogItemLink = function(kind, i, id) if id == 11 then return "up" end end
+        env.C_Reputation = { GetFactionDataByID = function(id) if id == 72 then return { name = "Stormwind", reaction = 5, currentStanding = 0, nextReactionThreshold = 9000 } end end }
+        add(q(11, { xp = 300, starts = at(1, 30, 40), ends = at(1, 30, 40) }))
+        add(q(12, { xp = 300, starts = at(1, 31, 41), ends = at(1, 31, 41), reputation = { { 72, 1000 } } }))
+        logged[11] = true
+        local score, _, real = ns.PlannerQuestXP(recs[11], { level = 14, xpMax = 10000, onQuest = function(id) return logged[id] end })
+        if score ~= 300 + 2500 or real ~= 300 then error("scoring 2,800, real 300: " .. score .. " " .. tostring(real)) end
+        local guide, summary = route({ repGoals = { [72] = 6 } })
+        if summary.xp ~= 600 then error("the plan's experience is real: 600, got " .. tostring(summary.xp)) end
+        if summary.toLevel ~= 14.1 then error("the forecast: 14 -> 14.1, got " .. tostring(summary.toLevel)) end
+        local acc
+        for _, st in ipairs(guide.steps) do if st.kind == "accept" and st.quest == 12 then acc = st end end
+        if not (acc and acc.why and acc.why.xp == 300) then error("Show why: +300 xp, not the reputation bonus: " .. tostring(acc and acc.why and acc.why.xp)) end
+        logged[11] = nil
+        env.C_Reputation = saved.rep
+        reset()
+
+        -- 2. a hub planned first is a lead-in: it never chooses the zone, binds or is remembered
+        add(q(301, { xp = 900, starts = at(2, 30, 40), ends = at(2, 30, 40), objectives = kill(2, 32, 42, 4) }))
+        add(q(302, { xp = 800, starts = at(2, 60, 60), ends = at(2, 60, 60), objectives = kill(2, 62, 62, 4) }))
+        add(q(401, { level = 8, xp = 50, starts = at(1, 50, 50), ends = at(1, 50, 50) }))
+        innList = { { map = 1, x = 51, y = 51, name = "Class Inn" }, { map = 2, x = 31, y = 41, name = "Zone Inn" } }
+        local always = { { id = 401, level = 8, kind = "always", parts = 1 } }
+        guide, summary = route({ classQuests = always, here = { map = 1, x = 10, y = 10 } })
+        local _, s1 = firstQuestStep(guide)
+        if not (s1 and s1.quest == 401) then error("the class quest comes first: " .. seq(guide)) end
+        if summary.zone ~= 2 or summary.newZone ~= true then error("the zone is still the best one: " .. tostring(summary.zone)) end
+        local binds = {}
+        for _, st in ipairs(guide.steps) do if st.kind == "bind" then binds[#binds + 1] = st end end
+        if #binds ~= 1 or binds[1].text ~= "Zone Inn" or binds[1].map ~= 2 then error("the hearthstone is set in the zone, not at the class quest: " .. seq(guide)) end
+        if not (planned(guide)[301] and planned(guide)[302]) then error("the zone's two hubs still follow") end
+        guide, summary = route({ classQuests = always, here = { map = 1, x = 10, y = 10 }, lastZone = 2, lastZoneLevel = 14 })
+        for _, st in ipairs(guide.steps) do if st.kind == "bind" then error("an old zone: no bind step") end end
+        if summary.newZone then error("an old zone is not new") end
+        recs[401].starts, recs[401].ends = at(3, 50, 50), at(3, 50, 50)
+        guide, summary = route({ classQuests = always, here = { map = 1, x = 10, y = 10 } })
+        if planned(guide)[401] or summary.zone ~= 2 then error("a class quest on another continent waits") end
+        recs[401] = nil; order = { 301, 302 }
+        -- a held item: first where you stand, and the zone stays
+        add(q(701, { xp = 300, starts = at(1, 70, 70), ends = at(1, 12, 12), fromItem = { id = 5000, name = "Note" } }))
+        held[5000] = 1
+        for _ = 1, 2 do                                       -- (and again on the next plan: nothing else changes)
+            guide, summary = route({ here = { map = 1, x = 10, y = 10 }, lastZone = 2, lastZoneLevel = 14 })
+            if summary.zone ~= 2 or summary.newZone then error("an unused held item never moves the zone: " .. tostring(summary.zone)) end
+            if guide.steps[1].kind ~= "accept" or guide.steps[1].quest ~= 701 then error("the held item's accept first: " .. seq(guide)) end
+        end
+        held[5000] = nil
+        reset()
+
+        -- 3 and 4. the quest log advice: reasons worked out with the plan; a quest merely beyond the horizon is never named
+        add(q(301, { xp = 2000, starts = at(1, 30, 40), ends = at(1, 30, 40), objectives = kill(1, 45, 40, 0) }))
+        add(q(302, { xp = 800, starts = at(1, 60, 60), ends = at(1, 60, 60), objectives = kill(1, 62, 62, 0) }))
+        add(q(303, { xp = 700, starts = at(1, 70, 20), ends = at(1, 70, 20), objectives = kill(1, 72, 22, 0) }))
+        add(q(501, { xp = 1, ends = at(1, 52, 40) }))                                  -- (near the route, beyond the two hubs)
+        add(q(502, { xp = 1, ends = at(1, 95, 95) }))                                  -- (far from the route)
+        add(q(503, { xp = 1, level = 20, ends = at(1, 95, 5) }))                       -- (too hard)
+        add(q(504, { xp = 1, ends = at(1, 5, 95) }))                                   -- (skipped)
+        add(q(505, { xp = 1, elite = true, ends = at(1, 5, 5) }))                      -- (elite, Solo)
+        add(q(506, { xp = 1, ends = at(3, 50, 50) }))                                  -- (can't be reached)
+        add(q(507, { xp = 50, ends = at(1, 30, 41) }))                                 -- (planned)
+        for id = 501, 507 do logged[id] = true end
+        guide, summary = route({ skip = { [504] = true } })
+        local lr = summary.logReasons or {}
+        if not planned(guide)[507] or planned(guide)[501] then error("the test's plan: 507 planned, 501 not: " .. seq(guide)) end
+        if lr[501] ~= nil then error("near the route, beyond the horizon: never named, got " .. tostring(lr[501])) end
+        if lr[507] ~= nil then error("planned: never named") end
+        if lr[502] ~= "off the route" then error("far: off the route, got " .. tostring(lr[502])) end
+        for _, id in ipairs({ 503, 504, 505, 506 }) do
+            if lr[id] ~= "never planned" then error(id .. ": never planned, got " .. tostring(lr[id])) end
+        end
+        ns.db.plannerLogAdvice = false
+        _, summary = route({ skip = { [504] = true } })
+        if summary.logReasons ~= nil then error("advice off: no reasons worked out") end
+        ns.db.plannerLogAdvice = nil
+        _, summary = route({ skip = { [504] = true } })
+        env.UnitLevel = function() return 14 end
+        local entries = {}
+        for id = 501, 507 do entries[#entries + 1] = { questID = id, title = "Q" .. id, level = 14, isHeader = false } end
+        for i = 1, 16 do entries[#entries + 1] = { questID = 1000 + i, title = "F" .. i, level = 14, isHeader = false } end
+        env.C_QuestLog = setmetatable({ GetNumQuestLogEntries = function() return #entries end, GetInfo = function(i) return entries[i] end,
+            GetMaxNumQuestsCanAccept = function() return 25 end }, { __index = saved.logQ })
+        local adv = ns.PlannerLogAdvice(guide.steps, 1, summary)
+        local names = {}
+        for _, a in ipairs(adv) do names[#names + 1] = a.name .. "=" .. a.reason end
+        if table.concat(names, ",") ~= "Q503=never planned,Q504=never planned,Q505=never planned" then error("worst first: " .. table.concat(names, ",")) end
+        env.C_QuestLog = saved.logQ
+        for id = 501, 507 do logged[id] = nil end
+        reset()
+
+        -- 5. alts' quest times: the time is split among the quests open at once
+        local clock = 301000
+        env.GetTime = function() return clock end
+        ns.GuideOn = function() return true end
+        ns.GuideState = function() return { name = ns.GUIDE_PLANNED, at = 1, plan = {} } end
+        ns.root.plannerQuestTimes = nil
+        local flagged = {}
+        env.C_QuestLog = setmetatable({ IsQuestFlaggedCompleted = function(id) return flagged[id] or false end }, { __index = saved.logQ })
+        fireEvent("QUEST_ACCEPTED", 1, 601); clock = 301100
+        fireEvent("QUEST_ACCEPTED", 2, 602); clock = 301300
+        fireEvent("QUEST_TURNED_IN", 601); clock = 301400
+        fireEvent("QUEST_TURNED_IN", 602)
+        local qt = ns.root.plannerQuestTimes or {}
+        if not (qt[601] and math.abs(qt[601].avg - 200) < 1e-6 and qt[602] and math.abs(qt[602].avg - 200) < 1e-6) then
+            error("100 alone + 200 shared by two: 200 each, got " .. tostring(qt[601] and qt[601].avg) .. " " .. tostring(qt[602] and qt[602].avg))
+        end
+        clock = 302000; fireEvent("QUEST_ACCEPTED", 1, 603)
+        clock = 302100; flagged[603] = true; fireEvent("QUEST_REMOVED", 603)
+        clock = 302150; fireEvent("QUEST_TURNED_IN", 603)
+        if not (qt[603] and qt[603].n == 1 and math.abs(qt[603].avg - 100) < 1e-6) then error("handed in, said by QUEST_REMOVED first: one sample of 100") end
+        clock = 303000; fireEvent("QUEST_ACCEPTED", 1, 604)
+        clock = 303100; fireEvent("QUEST_REMOVED", 604)
+        if qt[604] then error("abandoned: no sample") end
+        -- an elite handed in alone: kept per character, and a QUEST_REMOVED first counts as the hand-in
+        env.UnitClassBase = function() return "WARRIOR" end
+        env.UnitLevel = function() return 12 end
+        env.IsInGroup = function() return false end
+        env.C_QuestLog = setmetatable({ GetLogIndexForQuestID = function(id) return id end,
+            GetInfo = function(id) return { questID = id, questLevel = 13, title = "T" } end,
+            GetQuestTagInfo = function() return { isElite = true, tagID = 0 } end,
+            GetTitleForQuestID = function() return "T" end,
+            IsQuestFlaggedCompleted = function(id) return flagged[id] or false end }, { __index = saved.logQ })
+        ns.root.plannerSoloElites = nil
+        fireEvent("QUEST_ACCEPTED", 1, 202)
+        local sa = ns.PlannerCharRecord(false).soloAt
+        if not (sa and sa[202] == 13) then error("the solo accept is kept for the character: " .. tostring(sa and sa[202])) end
+        flagged[202] = true
+        fireEvent("QUEST_REMOVED", 202)
+        if not (ns.root.plannerSoloElites and ns.root.plannerSoloElites.WARRIOR == 1) or sa[202] then error("QUEST_REMOVED of a handed-in elite records it") end
+        ns.root.plannerSoloElites = nil
+        fireEvent("QUEST_ACCEPTED", 1, 203)
+        fireEvent("QUEST_REMOVED", 203)
+        if ns.root.plannerSoloElites or sa[203] then error("abandoned: nothing kept") end
+        env.C_QuestLog, env.UnitClassBase = saved.logQ, saved.base
+        ns.GuideState = saved.state
+
+        -- 6. a run with a clock on it: its steps are marked, and nothing is put on the way to or between them
+        add(q(301, { xp = 900, starts = at(1, 30, 40), ends = at(1, 30, 40), objectives = kill(1, 32, 42, 4) }))
+        add(q(511, { xp = 100, starts = at(1, 31, 41), ends = at(1, 31, 41), objectives = kill(1, 34, 44, 4) }))
+        logged[511], timedIds[511] = true, true
+        guide = route()
+        local marks = {}
+        for _, st in ipairs(guide.steps) do if st.quest == 511 then marks[#marks + 1] = st.kind .. (st.timed and "!" or "") end end
+        if table.concat(marks, " ") ~= "do! turnin!" then error("the run's steps are marked: " .. table.concat(marks, " ")) end
+        -- (an item in your bags in the same hub: used where the run ends, after it)
+        add(q(712, { xp = 300, starts = at(1, 70, 70), ends = at(1, 31, 41), fromItem = { id = 5002, name = "Map" } }))
+        held[5002] = 1
+        guide = route()
+        local iDo, iIn, iHeld
+        for i, st in ipairs(guide.steps) do
+            if st.quest == 511 and st.kind == "do" then iDo = i end
+            if st.quest == 511 and st.kind == "turnin" then iIn = i end
+            if st.quest == 712 and st.kind == "accept" then iHeld = i end
+        end
+        if not (iDo and iIn and iHeld and iDo < iIn and iIn < iHeld) then error("the run first, then the held item: " .. seq(guide)) end
+        if guide.steps[iHeld].x ~= guide.steps[iIn].x or guide.steps[iHeld].y ~= guide.steps[iIn].y then error("the item is used where the run ends") end
+        held[5002] = nil
+        logged[511], timedIds[511] = nil, nil
+        reset()
+        ns.PlannerWorldPos = function(map, x, y) if map == 1 then return 0, x * 10, y * 10 end end
+        env.C_MapExplorationInfo = { GetExploredMapTextures = function() return { 1 } end, GetExploredAreaIDsAtPosition = function() return {} end }
+        ns.plannerExploreMaps = {}
+        local rr = ns.PlannerCharRecord(true)
+        rr.exploreReached = nil
+        ns.db.plannerExplore, ns.db.plannerGather = nil, false
+        local function legsGuide(mark, tail)
+            local g = { name = ns.GUIDE_PLANNED, steps = {
+                { kind = "goto", map = 1, x = 10, y = 10 },
+                { kind = "do", quest = 1, timed = mark or nil, map = 1, x = 50, y = 10 },
+                { kind = "turnin", quest = 1, timed = mark or nil, map = 1, x = 90, y = 10 } } }
+            if tail then g.steps[4] = { kind = "goto", map = 1, x = 90, y = 60 } end
+            return g
+        end
+        local function extrasBefore(g, kind)
+            local n = 0
+            for _, st in ipairs(g.steps) do
+                if st.kind == "explore" then n = n + 1 elseif st.quest == 1 and st.kind == kind then return n end
+            end
+            return n
+        end
+        local plain = legsGuide(false, false)
+        ns.PlannerPathExtras(plain, {}, { speed = 7 })
+        if extrasBefore(plain, "turnin") == 0 then error("the test's legs: explore steps without a clock") end
+        local timedG = legsGuide(true, true)
+        ns.PlannerPathExtras(timedG, {}, { speed = 7 })
+        if extrasBefore(timedG, "turnin") ~= 0 then error("nothing on the way to or between a run's steps: " .. seq(timedG)) end
+        local after = 0
+        for _, st in ipairs(timedG.steps) do if st.kind == "explore" then after = after + 1 end end
+        if after == 0 then error("after the run's hand-in the extras come back") end
+        ns.PlannerWorldPos = saved.world
+        env.C_MapExplorationInfo, ns.plannerExploreMaps = saved.explo, saved.exploreMaps
+
+        -- minors: the class quest pass applies the group and repeatable checks
+        add(q(301, { xp = 900, starts = at(1, 30, 40), ends = at(1, 30, 40) }))
+        add(q(421, { level = 8, elite = true, starts = at(1, 31, 41), ends = at(1, 31, 41) }))
+        add(q(422, { level = 8, repeatable = true, starts = at(1, 31, 41), ends = at(1, 31, 41) }))
+        local cl = { { id = 421, level = 8, kind = "always", parts = 1 }, { id = 422, level = 8, kind = "always", parts = 1 } }
+        local list = ns.PlannerCandidates(source, ctxFor({ classQuests = cl }))
+        for _, r in ipairs(list) do if r.id == 421 or r.id == 422 then error("an elite (Solo) or repeatable class quest is no candidate: " .. r.id) end end
+        list = ns.PlannerCandidates(source, ctxFor({ classQuests = cl, group = "all" }))
+        local seen421
+        for _, r in ipairs(list) do if r.id == 421 then seen421 = true end end
+        if not seen421 then error("Everything: the elite class quest is a candidate") end
+        reset()
+        -- a death on a cave or town map over the hub counts
+        local hard = ns.PlannerHubTooHard({ map = 1, x = 30, y = 40 }, { level = 12, deaths = { { level = 12, map = 5, x = 30, y = 40 }, { level = 12, map = 5, x = 31, y = 40 } } })
+        if hard ~= 12 then error("deaths on a sub-map in the world count: " .. tostring(hard)) end
+        -- a marked hub's place is where the quests it keeps are
+        local hubs = ns.PlannerHubs({ q(531, { starts = at(1, 30, 40), ends = at(1, 30, 40) }), q(532, { starts = at(1, 40, 40), ends = at(1, 40, 40) }) },
+            ctxFor({ level = 12, onQuest = function(id) return id == 531 end, deaths = { { level = 12, map = 1, x = 35, y = 40 }, { level = 12, map = 1, x = 35, y = 40 } } }))
+        if #hubs ~= 1 or #hubs[1].quests ~= 1 or hubs[1].x ~= 30 or hubs[1].y ~= 40 then error("the kept quest's place: " .. tostring(hubs[1] and hubs[1].x)) end
+        -- an empty plan's Moved line is for where you are
+        add(q(541, { level = 12, starts = at(2, 30, 40), ends = at(2, 30, 40) }))
+        local deaths2 = { { level = 12, map = 2, x = 30, y = 40 }, { level = 12, map = 2, x = 30, y = 40 } }
+        _, summary = route({ level = 12, deaths = deaths2 })
+        if not summary.empty or summary.moved ~= nil then error("left out elsewhere: not 'here' on an empty plan: " .. tostring(summary.moved)) end
+        _, summary = route({ level = 12, deaths = deaths2, here = { map = 2, x = 10, y = 10 } })
+        if summary.moved ~= 14 then error("left out where you are: back at 14, got " .. tostring(summary.moved)) end
+        reset()
+        -- two quests of one faction in a hub share what is still needed when the hub is scored
+        env.C_Reputation = { GetFactionDataByID = function() return { name = "Stormwind", reaction = 5, currentStanding = 8700, nextReactionThreshold = 9000 } end }
+        local pair = { q(551, { xp = 0, starts = at(1, 30, 40), ends = at(1, 30, 40), reputation = { { 72, 250 } } }),
+                       q(552, { xp = 0, starts = at(1, 31, 40), ends = at(1, 31, 40), reputation = { { 72, 250 } } }) }
+        local hc = ctxFor({ repGoals = { [72] = 6 }, repCache = {} })
+        hubs = ns.PlannerHubs(pair, hc)
+        if #hubs ~= 1 or math.abs(hubs[1].xp - 600) > 1e-6 then error("300 needed: 250 + 50 credited, 600 xp, got " .. tostring(hubs[1] and hubs[1].xp)) end
+        if hc.repLeft ~= nil then error("scoring a hub draws down nothing for the route") end
+        env.C_Reputation = saved.rep
+        -- a drop quest is checked again against the rebuilt route
+        add(q(301, { xp = 2000, starts = at(1, 30, 40), ends = at(1, 30, 40), objectives = kill(1, 32, 42, 0) }))
+        add(q(302, { xp = 1000, starts = at(1, 60, 60), ends = at(1, 60, 60), objectives = kill(1, 80, 80, 0) }))
+        add(q(721, { xp = 1500, starts = at(1, 80.5, 80.5), ends = at(1, 80.5, 80.5), objectives = kill(1, 80.5, 80.5, 0), fromItem = { id = 5003, name = "Tooth" } }))
+        guide = route()
+        if planned(guide)[721] or not planned(guide)[302] then error("the rebuilt route left the NPC: the drop quest is left out and the hub it was near comes back: " .. seq(guide)) end
+        reset()
+        -- the panel's right-click button takes the mouse only on a planned quest step
+        ns.GuideOn = function() return true end
+        ns.GuideHere = function() return 1, 30, 40 end
+        local panel = ns:GuideShowPanel()
+        local shownAs
+        if panel and panel.stepButton then rawset(panel.stepButton, "SetShown", function(_, v) shownAs = v end) end
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "x" } } }, {})
+        if shownAs ~= false then error("a note: the button is hidden") end
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "accept", quest = 201, title = "Q201" } } }, {})
+        if shownAs ~= true then error("a quest step: the button is there") end
+        ns:GuideSetPlan(nil)
+        -- the pace estimates are the formula alone, even with your alts' times
+        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
+        ns.root.plannerQuestTimes = { [561] = { n = 3, avg = 6000 } }
+        local r561 = q(561, { objectives = kill(1, 32, 42, 8) })
+        local fakeSrc = { kind = "test", quest = function(id) return id == 561 and r561 or nil end }
+        ns.PlannerContext = function() return { source = fakeSrc, speed = 7, pace = 1 } end
+        ns.PlannerRoute = function() return { name = ns.GUIDE_PLANNED, steps = { { kind = "do", quest = 561, map = 1, x = 32, y = 42 } } }, { seconds = 300, zone = 1 } end
+        ns.PlannerWorldPos = function(map, x, y) if map == 1 then return 0, x * 10, y * 10 end end
+        fireEvent("PLAYER_REGEN_ENABLED")
+        ns:PlannerStart()
+        for _ = 1, 50 do
+            if not ns.plannerBusy and not ns.plannerQueued then break end
+            for i = 1, #handlers do local h = handlers[i]; if h.name == "OnUpdate" then pcall(h.fn, h.self, 0.02) end end
+        end
+        local stp = ns.GuideState()
+        local est = stp and stp.plan and stp.plan.estimates and stp.plan.estimates[561]
+        if est ~= 200 then error("the estimate is the formula (200), not the alts' blend: " .. tostring(est)) end
+        ns:PlannerStop()
+    end)
+    ns.GuideOn, ns.GuideHere, ns.GuideState, ns.GuideUnlocked = saved.on, saved.here, saved.state, saved.unlocked
+    env.UnitLevel, env.IsInGroup, env.C_Map, env.C_QuestLog, env.GetTime = saved.level, saved.group, saved.map, saved.logQ, saved.time
+    rawset(env, "UnitClassBase", saved.base); rawset(env, "CreateVector2D", saved.vec)
+    env.UnitXPMax, env.C_Reputation, ns.UpgradeAmount = saved.max, saved.rep, saved.up
+    rawset(env, "GetQuestLogItemLink", saved.link); rawset(env, "GetNumQuestLogChoices", saved.choices); rawset(env, "GetNumQuestLogRewards", saved.rewards)
+    rawset(env, "C_MapExplorationInfo", saved.explo)
+    ns.db.plannerRewards, ns.db.plannerLogAdvice, ns.db.plannerExplore, ns.db.plannerGather = saved.rewardsOn, saved.advice, saved.explore, saved.gather
+    ns.root.plannerQuestTimes, ns.root.plannerSoloElites, ns.plannerExploreMaps = saved.times, saved.elites, saved.exploreMaps
+    ns.PlannerContext, ns.PlannerRoute, ns.PlannerWorldPos = saved.context, saved.route, saved.world
+    local rr = ns.PlannerCharRecord(false)
+    if rr then rr.soloAt, rr.exploreReached = before.soloAt, before.reached end
+    ns:GuideSetPlan(nil)
+    ns.root.guideState, ns.root.guides, ns.root.guideKey = saved.guideState, saved.guides, saved.key
+    ns:PlannerStop()
+    ns.plannerQueued = false
     if not ok then error(err, 0) end
 end)
 

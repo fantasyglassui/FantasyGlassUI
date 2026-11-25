@@ -16,7 +16,11 @@ Kept from the build ledger when its workspace was removed.
 - The inn suggestion: GameMenuFrame OnShow, the 120 s travel test, that an innkeeper on the same continent is found.
 - PLAYER_ENTERING_WORLD payload (isInitialLogin, isReloadingUi) for the session start, and that a reload keeps it.
 - Accepting and handing in an elite quest while grouped or alone is recorded as a soloed elite; deaths record only with a world position and the same map.
-- The step menu (right click on a planned quest step) closes on Escape and on a click elsewhere.
+- The step menu (right click on a planned quest step) closes on Escape and on a click elsewhere; the right-click button is there only while a planned quest step is shown, so world clicks under the panel's other lines go through.
+- QUEST_REMOVED before QUEST_TURNED_IN on Forever: a hand-in is told by IsQuestFlaggedCompleted at QUEST_REMOVED (an abandoned quest is not flagged). Alts' quest times and soloed elites rely on it.
+- Deaths on a cave or town map (GuideHere's sub-map): C_Map.GetWorldPosFromMapPos places them in the same world coordinates as the zone's hub, so they count.
+- Grouped elite grinding: grinding spots leave elites out (the advice assumes you grind alone); check whether a party wants elite spots.
+- The inn search as a planner job: it runs a few frames after Escape opens the game menu, never in a fight; check that the chat line and the panel line still come promptly.
 
 ## Rulings made during the build
 - Ruling: class quests still respect the skip list (the player chose to skip them) — costs: none.
@@ -32,10 +36,31 @@ Kept from the build ledger when its workspace was removed.
 - Ruling: grinding spots 60 kills an hour flat (a saved killsPerHour on the character record is honoured).
 - Ruling: user (25 Nov): when the planner is finished it gets its own button and settings window, not switches on the Guide tab (in the design spec).
 
+- Ruling (final review): upgrade and reputation "bonus xp" only score hubs, zones and the route. Forecasts (summary.xp, the panel's level), Show why's "(+N xp)", the class trainer stop and the held hand-ins use the real experience (reward + kills + rested), PlannerQuestXP's third value — costs: none.
+- Ruling (final review): a hub planned first (an "always" class quest, also while logged, or a quest item in your bags) goes first but never chooses the zone, binds the hearthstone or sets lastZone; on another map it is a lead-in on top of the zone's two hubs, taken only when it is on the zone's continent and can be reached — costs: a class quest on another continent waits until the zone is near.
+- Ruling (final review): "never planned" = a logged quest the planner's own filters would reject (skipped, above the level window, a group or elite quest the group setting leaves out) or whose hand-in can't be reached; a logged quest that passes and lies near the route (it may only be beyond the two hubs) is never named. The reasons are worked out in the planning coroutine (summary.logReasons); the panel only counts the log and looks them up (gray is still seen at draw time) — costs: fewer suggestions.
+- Ruling (final review): alts' samples split the elapsed time evenly among the quests open at once (accepted while following); a hand-in reported by QUEST_REMOVED first still counts, an abandoned quest gives none — costs: rougher per-quest times on unequal quests.
+- Ruling (final review): a quest with a clock on it marks all its run's steps (accept, do, hand-in: step.timed); the path extras (unexplored spots, nodes) never go on a leg that ends at such a step (on the way to the run or between its steps), only after its hand-in; a quest item in your bags in the same hub is used where the run ends — costs: none.
+- Ruling (final review): grinding advice leaves elites out (you grind alone); 60 kills an hour flat; the inn panel line stays 10 minutes; the reputation line names one faction (the spec's example) — design values, kept.
+
+## Fixed in the final review
+- Class quest pass: the group/elite setting and repeatable quests are checked as for any quest.
+- Dungeon advice leaves out quests on the skip list and quests whose prerequisites are not done.
+- A death counts by world position (same continent, within 150 yd), not by the map id, so a sub-map death near the hub counts.
+- The marked hub keeps its place where the quests it keeps are (its anchor is recomputed).
+- An empty plan's "Moved" line is for the map you are on ("here"), never another map's hub.
+- Two quests of one faction in a hub share what is still needed when the hub is scored.
+- Item-started quests are judged against quest steps only (stops, explore and gather spots are no reason), and checked again against the rebuilt route (built again without them when the route left their NPC, twice at most).
+- A quest item in your bags no longer comes before a timed run in the same hub.
+- Soloed elites: the solo accept is kept per character (a /reload or new session in between counts); QUEST_REMOVED of a handed-in quest counts as the hand-in.
+- The inn suggestion runs as a planner job (ns.PlannerJob: a slice a frame, never in a fight, while the planner is idle); opening the game menu only does the cheap tests.
+- The death filter loops yield.
+- The right-click step button is shown only on a planned quest step.
+- Tests: the Estimates call site with an alts' record; the Task 5 test's clock is local.
+
 ## Minor findings deferred
-- Task 1: no test drives the Estimates call site with an alts' record (removing noAlts there would still pass); GetQuestLogItemLink with a quest id unverified.
-- Task 2: reputation field shapes unverified; two quests of the same faction each get min(given, needed) when scored before the route; the panel shows one faction.
-- Task 3: marked-hub anchor x/y stale; an empty plan's Moved uses the maximum across maps; a quest accepted before login is never recorded as a soloed elite.
-- Task 4: HUNTER 6064 level; RouteSpots counts vendor, explore and gather spots; a kept drop quest is not re-checked after the rebuild; a held-item accept precedes a timed run in the same hub; a timed quest not yet logged cannot be known as timed; stops or explore extras may land between a timed run's steps; a fit quest costs a second route build.
-- Task 5: gray = 8 levels below is a guess; a test assigns the global clock before the local; QUEST_COMPLETE timing unverified; inn panel line stays 10 minutes.
-- Task 6: 60 kills an hour flat; elites skipped in grind spots; dungeon ids and coordinates from memory.
+Only what needs the live game (all in "Check in the game" above), plus two notes:
+- A timed quest not yet in the log can't be known as timed (the game only reports the clock once it is taken; Questie's timer data could come later).
+- A fit class quest costs a second route build, and a drop quest up to two more (sliced; planning time only).
+- Stops never land inside a timed run (a timed quest is always logged, so the stop goes after the hub's last plain accept or before the run); the path extras skip its legs (fixed above).
+- Hub scoring sees the whole rested pool for each hub (the route draws it down as it lays hubs out), as documented.

@@ -65,7 +65,9 @@ end
 -- The quest log
 ------------------------------------------------------------------------------------------
 -- Up to 3 { name, reason } worth dropping, when the log is nearly full or the plan needs more room than it has.
-function ns.PlannerLogAdvice(steps, at)
+-- Gray quests are seen here; the other reasons were worked out with the plan (summary.logReasons, in the
+-- planner's slices): this only counts the log and looks them up. A quest still in the plan is never named.
+function ns.PlannerLogAdvice(steps, at, summary)
     if not On("plannerLogAdvice") then return {} end
     local QL = C_QuestLog
     if type(QL) ~= "table" or type(QL.GetNumQuestLogEntries) ~= "function" or type(QL.GetInfo) ~= "function" then return {} end
@@ -89,7 +91,7 @@ function ns.PlannerLogAdvice(steps, at)
     local inLog = {}
     for _, q in ipairs(quests) do inLog[q.id] = true end
     -- the log along the plan: an accept takes a place, a hand-in gives one back; the peak is what must fit
-    local occ, peak, planned, route = #quests, #quests, {}, {}
+    local occ, peak, planned = #quests, #quests, {}
     for i = at, #steps do
         local st = steps[i]
         if type(st) == "table" then
@@ -102,56 +104,19 @@ function ns.PlannerLogAdvice(steps, at)
                 inLog[st.quest] = nil
                 occ = occ - 1
             end
-            if st.map and st.x and st.y then route[#route + 1] = st end
         end
     end
     if not (free <= ns.PLANNER_LOG_FREE or peak > max) then return {} end
     local okL, level = pcall(UnitLevel, "player")
     level = okL and Num(level) or 1
-    local ctx, routePos
-    local function OffRoute(id)
-        if InCombatLockdown and InCombatLockdown() then return false end
-        if ctx == nil then
-            local okC, c = pcall(ns.PlannerSource)
-            ctx = okC and type(c) == "table" and c or false
-        end
-        local src = ctx
-        if type(src) ~= "table" or type(src.quest) ~= "function" then return false end
-        local okQ, rec = pcall(src.quest, id)
-        if not (okQ and type(rec) == "table") then return false end
-        if not routePos then
-            routePos = {}
-            for _, st in ipairs(route) do
-                local c, wx, wy = ns.PlannerWorldPos(st.map, st.x, st.y)
-                if c then routePos[#routePos + 1] = { c, wx, wy } end
-            end
-        end
-        if #routePos == 0 then return false end
-        local spots = {}
-        for _, key in ipairs({ "starts", "ends" }) do for _, sp in ipairs(type(rec[key]) == "table" and rec[key] or {}) do spots[#spots + 1] = sp end end
-        for _, o in ipairs(type(rec.objectives) == "table" and rec.objectives or {}) do
-            for _, sp in ipairs(type(o) == "table" and type(o.spots) == "table" and o.spots or {}) do spots[#spots + 1] = sp end
-        end
-        local known = false
-        local yards = ns.PLANNER_HUB_YARDS or 150
-        for _, sp in ipairs(spots) do
-            local c, wx, wy = ns.PlannerWorldPos(sp.map, sp.x, sp.y)
-            if c then
-                known = true
-                for _, r in ipairs(routePos) do
-                    local dx, dy = r[2] - wx, r[3] - wy
-                    if r[1] == c and dx * dx + dy * dy <= yards * yards then return false end
-                end
-            end
-        end
-        return known
-    end
+    local reasons = type(summary) == "table" and type(summary.logReasons) == "table" and summary.logReasons or {}
     local list = {}
     for _, q in ipairs(quests) do
         local rank, reason
         if q.level > 0 and q.level <= level - ns.PLANNER_GRAY_GAP then rank, reason = 1, "gray"
         elseif not planned[q.id] then
-            if OffRoute(q.id) then rank, reason = 3, "off the route" else rank, reason = 2, "never planned" end
+            local why = reasons[q.id]
+            if why == "never planned" then rank, reason = 2, why elseif why == "off the route" then rank, reason = 3, why end
         end
         if rank then list[#list + 1] = { name = q.name, reason = reason, rank = rank, level = q.level, id = q.id } end
     end
@@ -186,14 +151,21 @@ local function DungeonAdvice(ctx)
     local level = ctx.level or 1
     local done = type(ctx.done) == "function" and ctx.done or function() return false end
     local onQuest = type(ctx.onQuest) == "function" and ctx.onQuest or function() return false end
+    local never = type(ctx.skip) == "table" and ctx.skip or {}
+    local function AllDone(list) for _, q in ipairs(type(list) == "table" and list or {}) do if not done(q) then return false end end return true end
+    local function AnyDone(list)
+        if type(list) ~= "table" or #list == 0 then return true end
+        for _, q in ipairs(list) do if done(q) then return true end end
+        return false
+    end
     local best
     for _, d in ipairs(type(ns.PLANNER_DUNGEONS) == "table" and ns.PLANNER_DUNGEONS or {}) do
         if type(d) == "table" and tonumber(d.minLevel) and tonumber(d.maxLevel) and d.minLevel <= level and level <= d.maxLevel then
             local count, xp, maps = 0, 0, {}
             for _, id in ipairs(src.zoneQuests(d.zone)) do
                 ns.PlannerYield()
-                local rec = (not done(id) and not onQuest(id)) and src.quest(id) or nil
-                if rec and rec.doable and not rec.repeatable and (rec.minLevel or 1) <= level then
+                local rec = (not done(id) and not onQuest(id) and not never[id]) and src.quest(id) or nil
+                if rec and rec.doable and not rec.repeatable and (rec.minLevel or 1) <= level and AllDone(rec.pre) and AnyDone(rec.preAny) then
                     count, xp = count + 1, xp + (Num(rec.xp) or 0)
                     local sp = type(rec.starts) == "table" and rec.starts[1]
                     if type(sp) == "table" and sp.map then maps[sp.map] = (maps[sp.map] or 0) + 1 end
@@ -253,7 +225,7 @@ end
 -- The panel's lines: the quest log advice, then the inn, then what to do when quests run dry.
 function ns.PlannerAdviceLines(steps, at, summary)
     local lines = {}
-    for _, a in ipairs(ns.PlannerLogAdvice(steps, at)) do
+    for _, a in ipairs(ns.PlannerLogAdvice(steps, at, summary)) do
         lines[#lines + 1] = format(ns:Tr("Worth abandoning: %s (%s)"), a.name, ns:Tr(a.reason))
     end
     local inn = ns.plannerInnLine
@@ -276,6 +248,7 @@ local function InnKeepers(ctx)
     if type(ns.plannerInns) ~= "table" then
         local list = {}
         for _, p in ipairs(ns.PlannerPlaces and ns.PlannerPlaces(ctx, "innkeeper") or {}) do
+            ns.PlannerYield()
             local c, wx, wy = ns.PlannerWorldPos(p.map, p.x, p.y)
             if c then list[#list + 1] = { place = p, c = c, x = wx, y = wy } end
         end
@@ -284,21 +257,29 @@ local function InnKeepers(ctx)
     end
     return ns.plannerInns
 end
-function ns.PlannerInnSuggest()
-    if not On("plannerInn") then return false end
-    if InCombatLockdown and InCombatLockdown() then return false end
+-- The cheap tests (switch, fight, time played, the line already shown, rested, resting): the time, or nil.
+local function InnWanted()
+    if not On("plannerInn") then return nil end
+    if InCombatLockdown and InCombatLockdown() then return nil end
     local okT, now = pcall(GetTime)
     now = okT and Num(now) or nil
-    if not now or now - (ns.plannerSessionStart or 0) < ns.PLANNER_INN_PLAY then return false end
+    if not now or now - (ns.plannerSessionStart or 0) < ns.PLANNER_INN_PLAY then return nil end
     local shown = ns.plannerInnLine
-    if type(shown) == "table" and shown.t and now >= shown.t and now - shown.t < ns.PLANNER_INN_SHOWN then return false end
+    if type(shown) == "table" and shown.t and now >= shown.t and now - shown.t < ns.PLANNER_INN_SHOWN then return nil end
     local okX, pool = pcall(GetXPExhaustion)
     pool = okX and Num(pool) or nil
     local okM, xpMax = pcall(UnitXPMax, "player")
     xpMax = okM and Num(xpMax) or nil
-    if pool and xpMax and pool >= 1.5 * xpMax then return false end        -- (as rested as you can be)
+    if pool and xpMax and pool >= 1.5 * xpMax then return nil end        -- (as rested as you can be)
     local okR, resting = pcall(IsResting)
-    if okR and resting == true then return false end
+    if okR and resting == true then return nil end
+    return now
+end
+
+-- The search itself: run as a planner job (a slice a frame, never in a fight), so opening the game menu costs nothing.
+local function InnSearch()
+    local now = InnWanted()
+    if not now then return false end
     local ctx = ns.PlannerContext and ns.PlannerContext()
     if type(ctx) ~= "table" or type(ctx.here) ~= "table" then return false end
     local hc, hx, hy = ns.PlannerWorldPos(ctx.here.map, ctx.here.x, ctx.here.y)
@@ -306,6 +287,7 @@ function ns.PlannerInnSuggest()
     local reach = ns.PLANNER_INN_SECONDS * (Num(ctx.speed) or 7)
     local best, bestT
     for _, inn in ipairs(InnKeepers(ctx)) do
+        ns.PlannerYield()
         local dx, dy = inn.x - hx, inn.y - hy
         if inn.c == hc and dx * dx + dy * dy <= reach * reach then
             local secs = ns.PlannerTravel(ctx.here, inn.place, ctx)
@@ -319,6 +301,13 @@ function ns.PlannerInnSuggest()
     ns:Print("Log out at %s for rested experience (about %d min away)", name, math.max(1, math.ceil(bestT / 60)))
     if ns.GuidePanelShown and ns:GuidePanelShown() and ns.GuideShowPanel then ns:GuideShowPanel() end
     return true
+end
+
+-- Suggest an inn: the cheap tests now, the search as a job (true when one was queued).
+function ns.PlannerInnSuggest()
+    if not InnWanted() then return false end
+    if not ns.PlannerJob then return InnSearch() end
+    return ns.PlannerJob(InnSearch, "inn")
 end
 
 ------------------------------------------------------------------------------------------

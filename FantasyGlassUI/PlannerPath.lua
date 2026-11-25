@@ -426,7 +426,10 @@ function ns.PlannerPathExtras(guide, summary, ctx)
     local steps = guide.steps
     local speed = Num(ctx.speed) or (ns.PLANNER_SPEED and ns.PLANNER_SPEED.run) or 7
     if speed <= 0 then return end
-    local legs = Legs(steps, {})
+    local legs = {}
+    for _, leg in ipairs(Legs(steps, {})) do                 -- (a quest with a clock on it: nothing on the way to or between its steps)
+        if not steps[leg.b].timed then legs[#legs + 1] = leg end
+    end
     if #legs == 0 then return end
     local pending, extra = {}, 0
     local function add(leg, along, step, secs)

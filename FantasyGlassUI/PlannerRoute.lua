@@ -102,16 +102,41 @@ local function IsTimed(ctx, q)
 end
 local function IsEscort(q) return (q.escort or (ns.PLANNER_ESCORTS and ns.PLANNER_ESCORTS[q.id])) and true or false end
 
+-- Lower what is still needed of each wanted faction (ctx.repLeft) by what a quest gives.
+local function DrawRep(ctx, q)
+    local goals = ctx.repGoals
+    if type(goals) ~= "table" or type(q.reputation) ~= "table" then return end
+    for _, e in ipairs(q.reputation) do
+        local value = tonumber(e[2])
+        if goals[e[1]] and value then
+            local left = ns.PlannerRepLeft(ctx, e[1], goals[e[1]])      -- (the pool of this faction: the plan never credits more than is needed)
+            if left then
+                if type(ctx.repLeft) ~= "table" then ctx.repLeft = {} end
+                ctx.repLeft[e[1]] = max(0, left - value)
+            end
+        end
+    end
+end
+
 -- A hub's loop, in order, with its time: accepts, dos and turnins as { rec, spot }. A quest with a clock
 -- on it is a run of its own (accept if not yet, do, hand in) before anything else in the hub (hub.timed).
 local function HubLoop(hub, ctx)
     local accepts, dos, turnins, timed, runs, rest = {}, {}, {}, {}, {}, {}
     local xp, t = 0, 0
+    local wanted = type(ctx.repGoals) == "table" and next(ctx.repGoals) ~= nil
+    local before = ctx.repLeft                       -- (two quests of one faction in a hub share what is still needed)
+    if wanted then
+        local copy = {}
+        for k, v in pairs(type(before) == "table" and before or {}) do copy[k] = v end
+        ctx.repLeft = copy
+    end
     for _, q in ipairs(hub.quests) do
         xp = xp + ns.PlannerQuestXP(q, ctx)
+        if wanted then DrawRep(ctx, q) end
         t = t + ns.PlannerQuestTime(q, ctx)
         if IsTimed(ctx, q) then timed[#timed + 1] = q else rest[#rest + 1] = q end
     end
+    if wanted then ctx.repLeft = before end
     local base = hub
     for _, q in ipairs(timed) do
         local run = { rec = q }
@@ -158,7 +183,7 @@ local function HubLoop(hub, ctx)
 end
 
 -- The level you died at when two deaths at that level or the one before lie within a hub's radius of
--- it (same map) and you are still below that level + 2; nil otherwise. ctx.deaths = { { level, map, x, y } }.
+-- it (in the world: a cave or town map over the hub counts too) and you are still below that level + 2; nil otherwise. ctx.deaths = { { level, map, x, y } }.
 function ns.PlannerHubTooHard(hub, ctx)
     local deaths, level = type(ctx) == "table" and ctx.deaths, type(ctx) == "table" and tonumber(ctx.level)
     if type(deaths) ~= "table" or not level or type(hub) ~= "table" then return nil end
@@ -168,6 +193,7 @@ function ns.PlannerHubTooHard(hub, ctx)
     if type(pos) ~= "table" then
         pos = {}
         for i, d in ipairs(deaths) do
+            ns.PlannerYield()
             if type(d) == "table" then
                 local dc, dx, dy = ns.PlannerWorldPos(d.map, d.x, d.y)
                 if dc then pos[i] = { c = dc, x = dx, y = dy } end
@@ -177,9 +203,10 @@ function ns.PlannerHubTooHard(hub, ctx)
     end
     local r2, near = ns.PLANNER_HUB_YARDS * ns.PLANNER_HUB_YARDS, {}
     for i, d in ipairs(deaths) do
+        ns.PlannerYield()
         local p = pos[i]
         local lv = type(d) == "table" and tonumber(d.level)
-        if p and lv and d.map == hub.map and p.c == c and (p.x - hx) ^ 2 + (p.y - hy) ^ 2 <= r2 then near[lv] = (near[lv] or 0) + 1 end
+        if p and lv and p.c == c and (p.x - hx) ^ 2 + (p.y - hy) ^ 2 <= r2 then near[lv] = (near[lv] or 0) + 1 end
     end
     local best
     for lv, n in pairs(near) do
@@ -204,7 +231,7 @@ function ns.PlannerHubs(candidates, ctx)
         if c then
             pts[#pts + 1] = { map = spot.map, c = c, x = x, y = y, spot = spot }
             parent[#pts] = #pts
-            anchorOf[#anchorOf + 1] = { rec = rec, i = #pts, take = take }
+            anchorOf[#anchorOf + 1] = { rec = rec, i = #pts, take = take, spot = spot }
             local fin = Nearest(rec.ends, spot)
             local c2, x2, y2 = Pos(fin)
             if c2 and fin.map == spot.map then
@@ -233,12 +260,13 @@ function ns.PlannerHubs(candidates, ctx)
         local root = Find(a.i)
         local hub = byRoot[root]
         if not hub then
-            hub = { map = pts[a.i].map, quests = {}, take = {}, sx = 0, sy = 0 }
+            hub = { map = pts[a.i].map, quests = {}, take = {}, anchors = {}, sx = 0, sy = 0 }
             byRoot[root] = hub
             hubs[#hubs + 1] = hub
         end
         hub.quests[#hub.quests + 1] = a.rec
         hub.take[a.rec.id] = a.take or nil
+        hub.anchors[a.rec.id] = a.spot
         hub.sx, hub.sy = hub.sx + pts[a.i].spot.x, hub.sy + pts[a.i].spot.y
     end
     for _, hub in ipairs(hubs) do
@@ -260,6 +288,12 @@ function ns.PlannerHubs(candidates, ctx)
                 end
                 if #logged > 0 then
                     hub.quests = logged
+                    local sx, sy, n = 0, 0, 0                  -- (its place: where the quests it keeps are)
+                    for _, r in ipairs(logged) do
+                        local sp = hub.anchors[r.id]
+                        if sp and sp.map == hub.map then sx, sy, n = sx + sp.x, sy + sp.y, n + 1 end
+                    end
+                    if n > 0 then hub.x, hub.y = sx / n, sy / n end
                     HubLoop(hub, ctx)
                     kept[#kept + 1] = hub
                 end
@@ -269,7 +303,7 @@ function ns.PlannerHubs(candidates, ctx)
         end
         hubs = kept
     end
-    local classMap = ns.PlannerClassMap(ctx)          -- (an "always" class quest, or a quest whose item you hold: its hub is planned first)
+    local classMap = ns.PlannerClassMap(ctx)          -- (an "always" class quest, or a quest whose item you hold: its hub is planned first, never choosing the zone)
     for _, hub in ipairs(hubs) do
         for _, q in ipairs(hub.quests) do
             local e = classMap[q.id]
@@ -314,17 +348,7 @@ function ns.PlannerPickZone(candidates, ctx)
     local c = ctx.candidate and ctx or WithCandidates(ctx, candidates or {})
     local hubs = ns.PlannerHubs(candidates, c)
     local maps, order = ByMap(hubs)
-    local last, here = ctx.lastZone, Here(ctx)
-    local forced, forcedFirst, forcedRate           -- (a map with a hub that is planned first, and can be reached)
-    for _, m in ipairs(order) do
-        for _, h in ipairs(maps[m]) do
-            if h.first and (not forced or h.first > forcedFirst or (h.first == forcedFirst and Rate(h) > forcedRate))
-                and (not here or ns.PlannerTravel(here, h, c) < huge) then
-                forced, forcedFirst, forcedRate = m, h.first, Rate(h)
-            end
-        end
-    end
-    if forced then return forced, forced ~= last, hubs end
+    local last, here = ctx.lastZone, Here(ctx)       -- (a hub planned first never chooses the zone: Build takes it as a lead-in)
     if last and maps[last] and not (ctx.lastZoneLevel and (ctx.level or 0) >= ctx.lastZoneLevel + ns.PLANNER_REPICK_LEVELS)
         and (not here or ns.PlannerTravel(here, maps[last][1], c) < huge) then
         return last, false, hubs
@@ -500,16 +524,9 @@ local function AddRep(state, q)
     if type(goals) ~= "table" or type(q.reputation) ~= "table" then return end
     for _, e in ipairs(q.reputation) do
         local value = tonumber(e[2])
-        if goals[e[1]] and value then
-            state.rep[e[1]] = (state.rep[e[1]] or 0) + value
-            local ctx = state.ctx
-            local left = ns.PlannerRepLeft(ctx, e[1], goals[e[1]])      -- (the pool of this faction: the plan never credits more than is needed)
-            if left then
-                if type(ctx.repLeft) ~= "table" then ctx.repLeft = {} end
-                ctx.repLeft[e[1]] = max(0, left - value)
-            end
-        end
+        if goals[e[1]] and value then state.rep[e[1]] = (state.rep[e[1]] or 0) + value end
     end
+    DrawRep(state.ctx, q)
 end
 
 local function HubSteps(state, hub, steps, inn, n)
@@ -522,38 +539,49 @@ local function HubSteps(state, hub, steps, inn, n)
     end
     local function Do(rec, spot)                              -- (an escort's step says so, and a kill spot you skin at)
         local s = QuestStep("do", rec, spot)
+        steps[#steps + 1] = s
         s.hub = n
         if KillSpot(rec, spot) and Skinner(state) then s.why = { skin = true } end
         if IsEscort(rec) then
             s.text = (Clean(rec.name) and (Clean(rec.name) .. " - ") or "") .. ns:Tr("Escort: start it when you are ready; it fails if the NPC dies")
             s.escort = true
         end
-        steps[#steps + 1] = s
+        return s
     end
-    local function Accept(rec, spot)
+    local function Accept(rec, spot)                          -- (Show why: the real experience, never the bonus for upgrades or reputation)
         local s = QuestStep("accept", rec, spot)
-        s.why = { xp = floor(ns.PlannerQuestXP(rec, state.ctx) + 0.5) }
+        local _, _, real = ns.PlannerQuestXP(rec, state.ctx)
+        s.why = { xp = floor(real + 0.5) }
         s.hub = n
         if type(rec.fromItem) == "table" and Clean(rec.fromItem.name) then
             s.text = format(ns:Tr(rec.haveItem and "Use the %s to start it" or "Keep the %s that drops here"), Clean(rec.fromItem.name))
         end
         steps[#steps + 1] = s
         t = t + HANDLE
+        return s
     end
     local started = {}
-    for _, a in ipairs(hub.accepts) do                        -- (an item in your bags: the very first thing, where you stand)
-        if a.rec.haveItem and Go(a.spot) then
-            Accept(a.rec, a.spot)
-            started[a.rec.id] = true
+    local runs = hub.timed or {}
+    local function Held()                                     -- (an item in your bags: the first thing, where you stand)
+        local at = #runs > 0 and state.pos or nil             -- (after a run with a clock on it: where the run ends)
+        for _, a in ipairs(hub.accepts) do
+            if a.rec.haveItem then
+                local spot = at and { map = at.map, x = at.x, y = at.y } or a.spot
+                if Go(spot) then
+                    Accept(a.rec, spot)
+                    started[a.rec.id] = true
+                end
+            end
         end
     end
-    for _, r in ipairs(hub.timed or {}) do                    -- (a quest with a clock on it: its own run, before anything else here)
-        local ok = true
+    if #runs == 0 then Held() end
+    for _, r in ipairs(runs) do                               -- (a quest with a clock on it: its own run, before anything else here)
+        local ok = true                                       -- (its steps say so: nothing is put between them)
         if r.accept then
-            if Go(r.accept) then Accept(r.rec, r.accept) else ok = false end
+            if Go(r.accept) then Accept(r.rec, r.accept).timed = true else ok = false end
         end
         if ok and r.spot then
-            if Go(r.spot) then Do(r.rec, r.spot) else ok = false end
+            if Go(r.spot) then Do(r.rec, r.spot).timed = true else ok = false end
         end
         if ok and r.turnin and Go(r.turnin) then
             local s = QuestStep("turnin", r.rec, r.turnin)
@@ -564,6 +592,7 @@ local function HubSteps(state, hub, steps, inn, n)
             gone[r.rec.id] = true
         end
     end
+    if #runs > 0 then Held() end
     for _, a in ipairs(hub.accepts) do
         if started[a.rec.id] then
             -- (done above)
@@ -601,8 +630,8 @@ local function HubSteps(state, hub, steps, inn, n)
         if not gone[q.id] then
             kept = kept + 1
             t = t + ns.PlannerQuestTime(q, state.ctx)
-            local qxp, extra = ns.PlannerQuestXP(q, state.ctx)
-            xp = xp + qxp
+            local _, extra, real = ns.PlannerQuestXP(q, state.ctx)
+            xp = xp + real                                   -- (the forecast is real experience: the bonus only scored the hubs)
             local left = tonumber(state.ctx.restedLeft)
             if left and left > 0 then state.ctx.restedLeft = max(0, left - extra) end
             AddRep(state, q)                                 -- (after its experience is counted: the pool of each faction goes down)
@@ -627,13 +656,31 @@ local function Build(ctx, candidates, skipped)
     c.rewardCache = {}                               -- quest id -> reward bonus, read once per plan
     c.repCache = {}                                  -- faction id -> reputation still needed, read once per plan
     local zone, newly, hubs = ns.PlannerPickZone(candidates, c)
-    if not zone then                                 -- (nothing left to plan: say what was left out, wherever it was)
-        for _, lv in pairs(c.movedByMap or {}) do if not summary.moved or lv > summary.moved then summary.moved = lv end end
+    local here = Here(ctx)
+    if not zone then                                 -- (nothing left to plan: what was left out where you are, "here" on the panel)
+        summary.moved = here and c.movedByMap and c.movedByMap[here.map] or nil
         return guide, summary, {}
     end
     summary.moved = c.movedByMap and c.movedByMap[zone] or nil     -- the level a hub (in this zone) where you died twice is planned again at
-    local left = {}
-    for _, h in ipairs(hubs) do if h.map == zone then left[#left + 1] = h end end
+    local left, zc = {}, nil
+    for _, h in ipairs(hubs) do
+        if h.map == zone then
+            left[#left + 1] = h
+            zc = zc or Pos(h)
+        end
+    end
+    -- A hub planned first on another map (an "always" class quest, an item in your bags) is a lead-in: taken
+    -- first, on top of the zone's hubs, when it is on the zone's continent and can be reached. It never
+    -- chooses the zone, binds the hearthstone or is remembered as the zone.
+    local lead, leadFirst, leadRate
+    for _, h in ipairs(hubs) do
+        ns.PlannerYield()
+        if h.first and h.map ~= zone and zc and Pos(h) == zc
+            and (not here or ns.PlannerTravel(here, h, c) < huge)
+            and (not lead or h.first > leadFirst or (h.first == leadFirst and Rate(h) > leadRate)) then
+            lead, leadFirst, leadRate = h, h.first, Rate(h)
+        end
+    end
     local flights = {}
     for _, f in ipairs(ctx.flights or {}) do
         local copy = {}
@@ -643,9 +690,23 @@ local function Build(ctx, candidates, skipped)
     local tctx = {}
     for k, v in pairs(c) do tctx[k] = v end
     tctx.flights = flights
-    local state = { rep = {}, pos = Here(ctx), flights = flights, tctx = tctx, ctx = c, learn = ctx.learnFlights and true or false }
+    local state = { rep = {}, pos = here, flights = flights, tctx = tctx, ctx = c, learn = ctx.learnFlights and true or false }
     local xp, seconds, taken = 0, 0, {}
-    for n = 1, ns.PLANNER_HORIZON do
+    local bound = false                              -- (the hearthstone is set at the zone's first hub, when the zone is new)
+    local function Lay(hub, n)
+        taken[#taken + 1] = hub
+        local inn
+        if newly and not bound and hub.map == zone then
+            bound = true
+            inn = HubInn(ctx, hub)
+            if inn and type(ctx.bindSpot) == "table" and Yards(ctx.bindSpot, inn) <= ns.PLANNER_HUB_YARDS then inn = nil end
+        end
+        local t, gained = HubSteps(state, hub, guide.steps, inn, n)
+        seconds, xp = seconds + t, xp + gained
+    end
+    local n0 = 0
+    if lead then n0 = 1; Lay(lead, 1) end
+    for n = n0 + 1, n0 + ns.PLANNER_HORIZON do
         if #left == 0 then break end
         local bi, bs, bfirst = nil, -1, 0
         for i, h in ipairs(left) do
@@ -656,15 +717,7 @@ local function Build(ctx, candidates, skipped)
             if first > bfirst or (first == bfirst and score > bs) then bi, bs, bfirst = i, score, first end
         end
         if not bi or bs < 0 then break end
-        local hub = table.remove(left, bi)
-        taken[#taken + 1] = hub
-        local inn
-        if n == 1 and newly then
-            inn = HubInn(ctx, hub)
-            if inn and type(ctx.bindSpot) == "table" and Yards(ctx.bindSpot, inn) <= ns.PLANNER_HUB_YARDS then inn = nil end
-        end
-        local t, gained = HubSteps(state, hub, guide.steps, inn, n)
-        seconds, xp = seconds + t, xp + gained
+        Lay(table.remove(left, bi), n)
     end
     summary.zone, summary.newZone = zone, newly
     summary.reputation = state.rep                   -- wanted reputation the plan gives: { [factionID] = amount }
@@ -698,13 +751,14 @@ local function Fits(rec, entry, taken, tctx, ctx)
     return false
 end
 
--- Does an item quest's dropping NPC stand within a hub's radius of a spot of the route (the places its steps go to)?
--- `route` is { { c, x, y } } from RouteSpots.
-local function RouteSpots(guide)
+-- Does an item quest's dropping NPC stand within a hub's radius of a spot of the route (the places its quest
+-- steps go to; stops, unexplored spots and nodes on the way are no reason to be there, and neither are the
+-- steps of the quests in `leave`)? `route` is { { c, x, y } } from RouteSpots.
+local function RouteSpots(guide, leave)
     local out = {}
     for _, st in ipairs(guide.steps) do
         ns.PlannerYield()
-        if st.x and st.y then
+        if st.quest and not (leave and leave[st.quest]) and st.x and st.y then
             local c, x, y = Pos(st)
             if c then out[#out + 1] = { c = c, x = x, y = y } end
         end
@@ -723,6 +777,61 @@ local function NearRoute(rec, route)
         end
     end
     return false
+end
+
+-- Why a logged quest the plan does not take is worth dropping: { [questID] = "never planned" | "off the route" }.
+-- "never planned": the planner's own filters would reject it (skipped, above the level window, a group or elite
+-- quest the group setting leaves out) or its hand-in can't be reached. "off the route": every known spot of it lies
+-- beyond a hub's radius of every step of the route. A quest that passes and lies near the route (it may just be
+-- beyond the plan's two hubs) is never named. Nil while the advice is off.
+local function LogReasons(ctx, candidates, guide)
+    if not (ns.db and ns.db.plannerLogAdvice ~= false) or type(ctx.onQuest) ~= "function" then return nil end
+    local planned, route = {}, {}
+    for _, st in ipairs(guide.steps) do
+        ns.PlannerYield()
+        if st.quest then planned[st.quest] = true end
+        if st.x and st.y then
+            local c, x, y = Pos(st)
+            if c then route[#route + 1] = { c = c, x = x, y = y } end
+        end
+    end
+    local here, out = Here(ctx), {}
+    local r2 = ns.PLANNER_HUB_YARDS ^ 2
+    for _, rec in ipairs(candidates) do
+        ns.PlannerYield()
+        if not planned[rec.id] and ctx.onQuest(rec.id) then
+            local never = ns.PlannerRejects(rec, ctx) ~= nil
+            if not never and here then
+                local fin = Nearest(rec.ends)
+                if fin and ns.PlannerTravel(here, fin, ctx) == huge then never = true end
+            end
+            if never then
+                out[rec.id] = "never planned"
+            elseif #route > 0 then
+                local known, near = false, false
+                local function Check(list)
+                    for _, sp in ipairs(type(list) == "table" and list or {}) do
+                        local c, x, y = Pos(sp)
+                        if c then
+                            known = true
+                            for _, a in ipairs(route) do
+                                ns.PlannerYield()
+                                if a.c == c and (a.x - x) ^ 2 + (a.y - y) ^ 2 <= r2 then near = true; return end
+                            end
+                        end
+                    end
+                end
+                Check(rec.starts)
+                if not near then Check(rec.ends) end
+                for _, o in ipairs(type(rec.objectives) == "table" and rec.objectives or {}) do
+                    if near then break end
+                    Check(type(o) == "table" and o.spots)
+                end
+                if known and not near then out[rec.id] = "off the route" end
+            end
+        end
+    end
+    return out
 end
 
 -- guide, summary. Everything the planner needs comes in ctx (see ns.PlannerContext).
@@ -745,14 +854,35 @@ function ns.PlannerRoute(ctx)
         for _, r in ipairs(fits) do
             if Fits(r, classMap[r.id], taken, tctx, ctx) then plus[#plus + 1] = r end
         end
+        local drops = {}
         if #(items or {}) > 0 then                   -- (a drop quest: only where the route already goes)
             local route = RouteSpots(guide)
             for _, r in ipairs(items) do
-                if NearRoute(r, route) then plus[#plus + 1] = r end
+                if NearRoute(r, route) then plus[#plus + 1] = r; drops[#drops + 1] = r end
             end
         end
-        if #plus > #main then guide, summary = Build(ctx, plus, skipped) end
+        if #plus > #main then
+            guide, summary = Build(ctx, plus, skipped)
+            -- the rebuilt route may go elsewhere: a drop quest stays only while the route (not its own steps) still
+            -- passes its NPC; otherwise it is built again without it (twice at most)
+            for _ = 1, 2 do
+                if #drops == 0 then break end
+                local leave = {}
+                for _, r in ipairs(drops) do leave[r.id] = true end
+                local route = RouteSpots(guide, leave)
+                local keep, gone = {}, {}
+                for _, r in ipairs(drops) do
+                    if NearRoute(r, route) then keep[#keep + 1] = r else gone[r.id] = true end
+                end
+                if not next(gone) then break end
+                local fewer = {}
+                for _, r in ipairs(plus) do if not gone[r.id] then fewer[#fewer + 1] = r end end
+                plus, drops = fewer, keep
+                guide, summary = Build(ctx, plus, skipped)
+            end
+        end
     end
+    summary.logReasons = LogReasons(ctx, candidates, guide)   -- (the quest log advice: worked out here, in slices; the panel only reads it)
     if summary.empty and ns.PlannerDry then summary.dry = ns.PlannerDry(ctx) end    -- (nothing worth the trip: a dungeon or grinding, PlannerAdvice.lua)
     if next(classMap) then                           -- (a class quest you could start that the plan does not take: said on the panel)
         local planned = {}
