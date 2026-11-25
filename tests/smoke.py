@@ -12657,6 +12657,141 @@ end)
 -- batch 4 tests C (pace): begin
 -- batch 4 tests C (pace): end
 -- batch 4 tests D (records): begin
+try("13.4 feel D: level times, race, where you left off", function()
+    local key = ns:CharKey()
+    local saved = { unlocked = ns.GuideUnlocked, level = env.UnitLevel, xp = env.UnitXP, xpMax = env.UnitXPMax, time = env.GetTime, ttl = ns.PlannerTimeToLevel,
+                    showList = ns.ShowList, levels = ns.root.plannerLevels, race = ns.db.plannerRace, left = ns.db.plannerLeftOff, gstate = ns.root.guideState,
+                    on = ns.db.questGuide }
+    local rec0 = ns.PlannerCharRecord(true)
+    local clock0 = rec0.levelClock
+    local panel
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        local lvl, xp, xpMax, now = 9, 0, 5000, 700000
+        env.UnitLevel = function() return lvl end
+        env.UnitXP = function() return xp end
+        env.UnitXPMax = function() return xpMax end
+        env.GetTime = function() return now end
+        ns.root.plannerLevels = nil
+        rec0.levelClock = nil
+
+        -- the clock: the first level after install is partial; a tick adds at most 30 s
+        ns.PlannerLevelTick(600)
+        if rec0.levelClock.seconds ~= 30 or rec0.levelClock.partial ~= true then error("a tick adds at most 30 s, and the first clock is partial: " .. tostring(rec0.levelClock.seconds)) end
+        for _ = 1, 19 do ns.PlannerLevelTick(30) end
+        xpMax = 0
+        if ns.PlannerLevelTick(30) ~= false or rec0.levelClock.seconds ~= 600 then error("an unreadable xp max counts no tick") end
+        xpMax = 5000
+        ns.PlannerRecordLevel(9)
+        local e9 = ns.root.plannerLevels[key][9]
+        if not (e9 and e9.s == 600 and e9.partial == true) then error("the partial level is kept, marked partial") end
+        if ns.PlannerLevelSummary(key).count ~= 0 then error("a partial level is left out of the summary") end
+        if not (rec0.levelClock.level == 10 and rec0.levelClock.seconds == 0 and rec0.levelClock.partial == false) then error("the clock restarts, whole, for the new level") end
+        lvl = 10
+        for _ = 1, 20 do ns.PlannerLevelTick(30) end
+        ns.PlannerRecordLevel(10)
+        local e10 = ns.root.plannerLevels[key][10]
+        if not (e10 and e10.s == 600 and e10.xph == 30000 and not e10.partial) then error("level 10: 600 s, 30000 xp an hour") end
+        -- locked: nothing recorded
+        ns.GuideUnlocked = function() return false end
+        rec0.levelClock = { level = 11, seconds = 100, xpMax = 5000, partial = false }
+        lvl = 11
+        if ns.PlannerLevelTick(30) ~= false or rec0.levelClock.seconds ~= 100 then error("locked: no tick") end
+        if ns.PlannerRecordLevel(11) ~= false or ns.root.plannerLevels[key][11] then error("locked: nothing recorded") end
+        ns.GuideUnlocked = function() return true end
+
+        -- /fgui stats and the run log
+        ns.root.plannerLevels = { [key] = { [9] = { s = 99, xph = 1, partial = true }, [10] = { s = 600, xph = 30000 }, [11] = { s = 1200, xph = 15000 }, [12] = { s = 900, xph = 20000 } } }
+        local sum = ns.PlannerLevelSummary(key)
+        if not (sum.count == 3 and sum.fastest.level == 10 and sum.slowest.level == 11 and sum.average == 900) then error("the summary") end
+        local got
+        ns.ShowList = function(_, _, _, lines) got = lines end
+        local function has(lines, text)
+            for _, l in ipairs(lines or {}) do if (l.left or ""):find(text, 1, true) then return true end end
+            return false
+        end
+        ns:ShowLifetime()
+        for _, text in ipairs({ ns:Tr("Levels"), "Fastest level: 10 (10m)", "Slowest level: 11 (20m)", "Average level: 15m" }) do
+            if not has(got, text) then error("the stats page lacks " .. text) end
+        end
+        ns.GuideUnlocked = function() return false end
+        ns:ShowLifetime()
+        if has(got, "Fastest level") or has(got, "Average level") then error("locked: no Levels part") end
+        if #ns.RunLines({ level = 0 }) ~= 0 and has(ns.RunLines({ level = 0 }), "Level 10") then error("locked: no levels in the run log") end
+        ns.GuideUnlocked = function() return true end
+        local runs = ns.RunLines({ level = 0 })
+        if not has(runs, "Level 10: 10m, 30,000 xp an hour") then error("the run log shows level 10") end
+        if has(runs, "Level 9:") or not (runs[#runs].left or ""):find("Level 10", 1, true) then error("whole levels only, newest first") end
+        if not (runs[#runs - 2].left or ""):find("Level 12", 1, true) then error("level 12 first") end
+
+        -- race your best
+        ns.root.plannerLevels = { [key] = ns.root.plannerLevels[key], ["Other - Realm"] = { [11] = { s = 1200, xph = 1 }, [12] = { s = 100, xph = 1, partial = true } } }
+        lvl, xp, xpMax = 11, 2500, 5000
+        rec0.levelClock = { level = 11, seconds = 300, xpMax = 5000, partial = false }
+        ns.db.plannerRace = true
+        if not (ns.PlannerRaceLine() or ""):find("ahead by 5 min", 1, true) then error("ahead by 5 min: " .. tostring(ns.PlannerRaceLine())) end
+        rec0.levelClock.seconds = 900
+        if not (ns.PlannerRaceLine() or ""):find("behind by 5 min", 1, true) then error("behind by 5 min: " .. tostring(ns.PlannerRaceLine())) end
+        rec0.levelClock.seconds = 620
+        if not (ns.PlannerRaceLine() or ""):find("level with your best", 1, true) then error("level with your best: " .. tostring(ns.PlannerRaceLine())) end
+        ns.db.plannerRace = false
+        if ns.PlannerRaceLine() ~= nil then error("race off: no line") end
+        ns.db.plannerRace = true
+        rec0.levelClock.seconds = 300
+        lvl = 12; rec0.levelClock.level = 12
+        if ns.PlannerRaceLine() ~= nil then error("another character's level 12 is partial: no line") end
+        lvl = 11; rec0.levelClock.level = 11
+        rec0.levelClock.partial = true
+        if ns.PlannerRaceLine() ~= nil then error("a partial clock here: no line") end
+        rec0.levelClock.partial = false
+        ns.root.plannerLevels["Other - Realm"] = nil
+        if ns.PlannerRaceLine() ~= nil then error("no other character: no line") end
+        ns.db.plannerRace = false
+
+        -- where you left off
+        lvl = 25
+        local notes = {}
+        for i = 1, 8 do notes[i] = { kind = "note", text = "Do thing " .. i } end
+        ns.root.guideState = {}
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = notes }, { zone = 1, fromLevel = 25, toLevel = 26 })
+        ns.GuideState().at = 3
+        panel = ns:GuideShowPanel()
+        local extraText
+        rawset(panel.extra, "SetText", function(_, t) extraText = t end)
+        local function said(from)
+            for i = from + 1, #printed do if printed[i]:find("Where you left off", 1, true) then return printed[i] end end
+        end
+        ns.PlannerTimeToLevel = function() return 48 end
+        local n0 = #printed
+        fireEvent("PLAYER_ENTERING_WORLD", true, false)
+        local line = said(n0)
+        if not (line and line:find("step 3 of 8", 1, true) and line:find("Do thing 3", 1, true) and line:find("level 26 in ~48 min", 1, true)) then error("an initial login says where you left off: " .. tostring(line)) end
+        ns:GuideRedraw()
+        if not (extraText or ""):find("step 3 of 8", 1, true) then error("and the panel says it too: " .. tostring(extraText)) end
+        now = now + 121
+        ns:GuideRedraw()
+        if (extraText or ""):find("step 3 of 8", 1, true) then error("the panel line goes after 120 s") end
+        ns.PlannerTimeToLevel = nil
+        n0 = #printed
+        fireEvent("PLAYER_ENTERING_WORLD", true, false)
+        line = said(n0)
+        if not (line and line:find("step 3 of 8", 1, true)) or line:find("level 26", 1, true) then error("no time to the level: no time part: " .. tostring(line)) end
+        n0 = #printed
+        fireEvent("PLAYER_ENTERING_WORLD", false, true)
+        if said(n0) then error("a reload says nothing") end
+        ns.db.plannerLeftOff = false
+        fireEvent("PLAYER_ENTERING_WORLD", true, false)
+        if said(n0) then error("switched off: nothing") end
+    end)
+    if panel then rawset(panel.extra, "SetText", nil) end
+    ns.PlannerStop()
+    ns.plannerQueued = false
+    ns.GuideUnlocked, env.UnitLevel, env.UnitXP, env.UnitXPMax, env.GetTime = saved.unlocked, saved.level, saved.xp, saved.xpMax, saved.time
+    ns.PlannerTimeToLevel, ns.ShowList = saved.ttl, saved.showList
+    ns.root.plannerLevels, ns.db.plannerRace, ns.db.plannerLeftOff, ns.root.guideState, ns.db.questGuide = saved.levels, saved.race, saved.left, saved.gstate, saved.on
+    rec0.levelClock = clock0
+    if not ok then error(err, 0) end
+end)
 -- batch 4 tests D (records): end
 
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)

@@ -269,7 +269,15 @@ end
 
 -- Group D: level times, race your best, where you left off, save as guide, read aloud.
 local function FeelRecordsSection(live, y, Replan, T)
-    return y, function() end
+    local race = ns:CreateCheckbox(live, "Race your best", ns.db.plannerRace == true, function(v) ns.db.plannerRace = v end)
+    race:SetPoint("TOPLEFT", 0, y)
+    local leftOff = ns:CreateCheckbox(live, "Where you left off, at login", ns.db.plannerLeftOff ~= false, function(v) ns.db.plannerLeftOff = v end)
+    leftOff:SetPoint("TOPLEFT", 0, y - 26)
+    T.raceBox, T.leftOffBox = race, leftOff
+    return y - 52, function()
+        race:SetChecked(ns.db.plannerRace == true)
+        leftOff:SetChecked(ns.db.plannerLeftOff ~= false)
+    end
 end
 
 ------------------------------------------------------------------------------------------
