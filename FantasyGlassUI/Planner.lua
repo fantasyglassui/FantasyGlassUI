@@ -339,10 +339,33 @@ function ns:PlannerStop()
     running, ns.plannerBusy, ns.plannerQueued = nil, false, false
 end
 
--- The level of your last class trainer visit (a profession trainer's window is no class trainer).
-local tradeTrainer = false
+-- The level of your last class trainer visit. The trainer whose window opened is yours when it is no
+-- profession trainer and, where your class trainers are known, it is one of them (by its id, or
+-- standing within 10 yards of one); with none known, any trainer but a profession one counts.
+local CLASS_TRAINER_YARDS = 10
+local classTrainer = false
+local function IsClassTrainer()
+    local ok, trade = pcall(IsTradeskillTrainer)
+    if ok and trade == true then return false end
+    local src = ns.PlannerSource and ns.PlannerSource() or nil
+    local places = (src and ns.PlannerPlaces) and ns.PlannerPlaces({ source = src }, "classTrainer") or {}
+    if #places == 0 then return true end
+    local okG, guid = pcall(UnitGUID, "npc")
+    local id = okG and type(guid) == "string" and not ns:IsSecret(guid) and tonumber(guid:match("^%a+%-%d+%-%d+%-%d+%-%d+%-(%d+)%-")) or nil
+    local c, x, y
+    if ns.GuideHere then
+        local map, px, py = ns.GuideHere()
+        c, x, y = ns.PlannerWorldPos(map, px, py)
+    end
+    for _, p in ipairs(places) do
+        if id and p.id == id then return true end
+        local pc, ppx, ppy = ns.PlannerWorldPos(p.map, p.x, p.y)
+        if c and pc == c and sqrt((ppx - x) ^ 2 + (ppy - y) ^ 2) <= CLASS_TRAINER_YARDS then return true end
+    end
+    return false
+end
 local function TrainerClosed()
-    if tradeTrainer or not ns:GuideUnlocked() then return end
+    if not classTrainer or not ns:GuideUnlocked() then return end
     local level = UnitLevel and UnitLevel("player")
     if type(level) ~= "number" or ns:IsSecret(level) then return end
     local d = PaceRecord(true)
@@ -359,20 +382,20 @@ do
     ev:SetScript("OnEvent", ns:Guard("Planner", function(_, event, a)
         if event == "PLAYER_REGEN_DISABLED" then fighting = true; return end
         if event == "PLAYER_REGEN_ENABLED" then fighting = false; return end
-        if event == "TRAINER_SHOW" then
-            local ok, v = pcall(IsTradeskillTrainer)
-            tradeTrainer = ok and v == true
-            return
-        end
+        if event == "TRAINER_SHOW" then classTrainer = IsClassTrainer() == true; return end
         if event == "TRAINER_CLOSED" then TrainerClosed() end
         local on, st = Following()
         if not on then return end
         local plan = type(st.plan) == "table" and st.plan or {}
         if closes[event] then
             -- a stop's window closed: it ticks only while it is the step you are on (visited early, it stays)
-            local step = type(plan.steps) == "table" and plan.steps[st.at or 1]
-            if type(step) == "table" and step.kind == closes[event] then ns:GuideSkip(false) end
-            ns:PlannerReplan("window closed")
+            -- (and plans again only when the plan has a stop of that window)
+            local steps = type(plan.steps) == "table" and plan.steps or {}
+            local step = steps[st.at or 1]
+            if type(step) == "table" and step.kind == closes[event] then ns:GuideSkip(false); ns:PlannerReplan("window closed"); return end
+            for _, s in ipairs(steps) do
+                if type(s) == "table" and s.kind == closes[event] then ns:PlannerReplan("window closed"); return end
+            end
             return
         end
         -- (an accept does not end a run of hand-ins: a chain's follow-up is offered at the hand-in)

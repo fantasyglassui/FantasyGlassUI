@@ -2,12 +2,15 @@ local _, ns = ...
 
 ------------------------------------------------------------------------------------------
 -- Planner stops: things worth doing on the way (your class trainer, a vendor, the mailbox...).
--- Each stop is registered with ns.PlannerStop(def):
+-- Each stop is registered with ns.PlannerRegisterStop(def):
 --     def = { id = "classTrainer", setting = "plannerTrainer", kind = "train" | "vendor" | "mail",
 --             want = function(ctx, summary, guide) -> reason or nil,
 --             places = function(ctx, reason) -> { { name, map, x, y, id }, ... },
 --             text = function(place, reason) -> the step's words,
---             why = function(reason) -> a table for step.why, or nil }
+--             why = function(reason) -> a table for step.why, or nil,
+--             key = function(reason) -> what makes this visit a new one (optional; the class trainer: its level) }
+-- A stop step carries step.stopKey = id .. ":" .. key (in memory, not in the guide's text): a tick you
+-- gave one stop is kept in the next plan, but not given to the next visit (Guide.lua's StepKey).
 -- After the route is made, ns.PlannerAddStops puts each wanted stop into it: at a hub when one of
 -- its places is that close, else where it adds the least travel (that detour is added to the
 -- plan's time). A reason may carry `after = n`: the stop goes after the route's step n.
@@ -20,16 +23,9 @@ local NEAREST = 3                       -- places tried for the least-travel spo
 
 ns.plannerStops = ns.plannerStops or {}
 
--- Register a stop (a second one with the same id replaces the first).
--- The name is shared with the runner's ns:PlannerStop() (Planner.lua: stop planning): called as a
--- method (the add-on's own table as the argument), it still does that.
-local StopRunner = ns.PlannerStop
-function ns.PlannerStop(def)
-    if def == ns then
-        if StopRunner then return StopRunner(ns) end
-        return
-    end
-    if type(def) ~= "table" or type(def.id) ~= "string" or type(def.want) ~= "function" or not ns.guideKinds[def.kind] then return false end
+-- Register a stop (a second one with the same id replaces the first). Only the stop kinds of Guide.lua.
+function ns.PlannerRegisterStop(def)
+    if type(def) ~= "table" or type(def.id) ~= "string" or type(def.want) ~= "function" or not ns.GUIDE_STOP_KINDS[def.kind] then return false end
     local list = ns.plannerStops
     for i, d in ipairs(list) do
         if d.id == def.id then list[i] = def; return true end
@@ -101,18 +97,21 @@ local function Where(steps, places, ctx, tctx, after)
         ns.PlannerYield()
         if s.x and s.y then slots[i] = HubSlot(steps, i) end
     end
+    -- the nearest step to each place; and of the hubs with a place in reach, the first on the route
     local near, best = {}, nil
     for pi, place in ipairs(places) do
-        local d, k = huge, nil
+        local d = huge
         for i, s in ipairs(steps) do
             ns.PlannerYield()
-            if slots[i] then
+            if slots[i] and slots[i] > after then
                 local y = Yards(place, s)
-                if y < d and slots[i] > after then d, k = y, i end
+                if y < d then d = y end
+                if y <= hubYards and (not best or slots[i] < slots[best.k] or (slots[i] == slots[best.k] and y < best.d)) then
+                    best = { d = y, k = i, place = place }
+                end
             end
         end
         near[pi] = d
-        if k and d <= hubYards and (not best or d < best.d) then best = { d = d, k = k, place = place } end
     end
     if best then return slots[best.k], best.place, nil end
     -- else the least travel: the few places nearest the route (or any few, when none is on its continent)
@@ -202,6 +201,7 @@ function ns.PlannerAddStops(guide, summary, ctx)
                     summary.seconds = (tonumber(summary.seconds) or 0) + detour
                 end
                 step.why = type(why) == "table" and why or nil
+                step.stopKey = def.id .. ":" .. tostring(type(def.key) == "function" and def.key(reason) or "")
                 table.insert(steps, slot, step)
             end
         end
@@ -230,7 +230,7 @@ local function ReachedAt(guide, ctx, level)
     end
 end
 
-ns.PlannerStop({
+ns.PlannerRegisterStop({
     id = "classTrainer", setting = "plannerTrainer", kind = "train",
     want = function(ctx, summary, guide)
         local level = tonumber(ctx.level) or 1
@@ -249,4 +249,5 @@ ns.PlannerStop({
     end,
     places = function(ctx) return ns.PlannerPlaces(ctx, "classTrainer") end,
     text = function(place) return place.name end,
+    key = function(reason) return reason.level end,
 })

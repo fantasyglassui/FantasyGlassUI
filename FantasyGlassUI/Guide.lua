@@ -32,7 +32,7 @@ ns.guideKinds = {
 }
 -- Stops done when their window closes while they are the step you are on (Planner.lua ticks them).
 ns.GUIDE_WINDOW_KINDS = { train = "TRAINER_CLOSED", vendor = "MERCHANT_CLOSED", mail = "MAIL_CLOSED" }
-local STOP_KIND = { train = true, vendor = true, mail = true, explore = true, gather = true }
+ns.GUIDE_STOP_KINDS = { train = true, vendor = true, mail = true, explore = true, gather = true }   -- (the kinds a planner stop may be)
 local QUEST_KIND = { accept = true, turnin = true, ["do"] = true }
 ns.builtinGuides = ns.builtinGuides or {}
 
@@ -148,7 +148,7 @@ function ns.GuideStepBase(step)
     if k == "learnflight" then return step.text or ns:Tr("Learn the flight path") end
     if k == "sail" then return step.text or ns:Tr("Take the boat") end
     if k == "bind" then return step.text or ns:Tr("Set your hearthstone here") end
-    if STOP_KIND[k] then return ns:Tr(ns.guideKinds[k][3]) .. (step.text and (": " .. step.text) or "") end
+    if ns.GUIDE_STOP_KINDS[k] then return ns:Tr(ns.guideKinds[k][3]) .. (step.text and (": " .. step.text) or "") end
     return step.text or ""
 end
 
@@ -336,11 +336,11 @@ function ns:GuideFollow(name)
 end
 -- A step as the same thing to do, wherever it sits in a plan.
 local function StepKey(step)
-    return table.concat({ tostring(step.kind), tostring(step.quest), tostring(step.node), tostring(step.crossing), tostring(step.text) }, "\1")
+    return table.concat({ tostring(step.kind), tostring(step.quest), tostring(step.node), tostring(step.crossing), tostring(step.text), tostring(step.stopKey) }, "\1")
 end
 -- Follow a new plan (Planner.lua), from its first step; nil = an empty one until the first is ready.
--- Steps you ticked off yourself in the old plan stay ticked where the new plan has them too; a
--- window stop (trainer, vendor, mail) does not: it is in the new plan only while it is still wanted.
+-- Steps you ticked off yourself in the old plan stay ticked where the new plan has them too (a
+-- planner stop by its stopKey, so the next visit to the same trainer is a new step).
 function ns:GuideSetPlan(guide, summary)
     local _, state = Store()
     local old = state[ns:CharKey()]
@@ -349,7 +349,7 @@ function ns:GuideSetPlan(guide, summary)
     if type(old) == "table" and old.name == ns.GUIDE_PLANNED and type(old.plan) == "table" and type(old.plan.steps) == "table" and type(old.ticked) == "table" then
         for i, on in pairs(old.ticked) do
             local step = on and old.plan.steps[i]
-            if type(step) == "table" and not ns.GUIDE_WINDOW_KINDS[step.kind] then local k = StepKey(step); had[k] = (had[k] or 0) + 1 end
+            if type(step) == "table" then local k = StepKey(step); had[k] = (had[k] or 0) + 1 end
         end
     end
     for i, step in ipairs(plan.steps) do
