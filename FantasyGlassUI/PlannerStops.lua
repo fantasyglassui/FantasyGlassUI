@@ -671,16 +671,53 @@ function ns.PlannerGoldText(copper)
     return floor(copper / 10000) .. "g"
 end
 
--- What riding still needs: nil when it is not asked for (below level 40, riding known, the game can't say
--- your gold); else { short = copper still to find (0: affordable), mount = a vendor mount is needed }.
+-- Apprentice to Master riding (all ranks), Forever's modern spell book
+ns.PLANNER_RIDING_SPELLS = { 33388, 33391, 34090, 34091, 90265, 33389, 33392 }
+-- The level each profession rank needs: you can train the next rank from its cap (75 -> 150 at 10 ...)
+ns.PLANNER_PROFESSION_LEVEL = { [75] = 10, [150] = 20, [225] = 35 }
+
+-- Do you ride? true / false, or nil when nothing can say. Once any sign is seen it is kept for the character.
+function ns.PlannerRidingKnown(profs)
+    local rec = ns.PlannerCharRecord and ns.PlannerCharRecord(false)
+    if type(rec) == "table" and rec.ridingKnown then return true end
+    local readable, known = false, false
+    if profs then
+        readable = true
+        for _, p in ipairs(profs) do
+            if p.line == ns.PLANNER_RIDING_LINE and p.rank > 0 then known = true end
+        end
+    end
+    if type(C_SpellBook) == "table" and type(C_SpellBook.IsSpellKnown) == "function" then
+        for _, id in ipairs(ns.PLANNER_RIDING_SPELLS) do
+            local ok, v = pcall(C_SpellBook.IsSpellKnown, id)
+            if ok and type(v) == "boolean" and not ns:IsSecret(v) then
+                readable = true
+                if v then known = true end
+            end
+        end
+    end
+    if type(IsMounted) == "function" then
+        local ok, v = pcall(IsMounted)
+        if ok and type(v) == "boolean" and not ns:IsSecret(v) then
+            readable = true
+            if v then known = true end
+        end
+    end
+    if known then
+        local r = ns.PlannerCharRecord and ns.PlannerCharRecord(true)
+        if type(r) == "table" then r.ridingKnown = true end
+        return true
+    end
+    if readable then return false end
+    return nil
+end
+
+-- What riding still needs: nil when it is not asked for (below level 40, riding known or not
+-- readable, the game can't say your gold); else { short = copper still to find (0: affordable), mount = a vendor mount is needed }.
 function ns.PlannerRiding(level)
     level = tonumber(level)
     if not level or level < ns.PLANNER_RIDING_LEVEL then return nil end
-    local profs = Professions()
-    if not profs then return nil end
-    for _, p in ipairs(profs) do
-        if p.line == ns.PLANNER_RIDING_LINE and p.rank > 0 then return nil end
-    end
+    if ns.PlannerRidingKnown(Professions()) ~= false then return nil end
     local money = Copper()
     if not money then return nil end
     local class = ClassToken()
@@ -692,9 +729,10 @@ end
 for _, line in ipairs(ns.PLANNER_PROFESSION_LINES) do
     ns.PlannerRegisterStop({
         id = "profession:" .. line, setting = "plannerProfession", kind = "train",
-        want = function()
+        want = function(ctx)
             for _, p in ipairs(Professions() or {}) do
-                if p.line == line and p.rank >= p.maxRank and p.maxRank < ns.PLANNER_PROFESSION_TOP then
+                local need = ns.PLANNER_PROFESSION_LEVEL[p.maxRank] or 1
+                if p.line == line and p.rank >= p.maxRank and p.maxRank < ns.PLANNER_PROFESSION_TOP and (tonumber(ctx.level) or 1) >= need then
                     return { line = line, name = p.name, maxRank = p.maxRank, after = 0 }
                 end
             end

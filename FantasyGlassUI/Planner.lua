@@ -344,7 +344,9 @@ end
 -- standing within 10 yards of one); with none known, any trainer but a profession one counts.
 local CLASS_TRAINER_YARDS = 10
 local classTrainer = false
+local ridingTrainer = false
 local function IsClassTrainer()
+    ridingTrainer = false
     local ok, trade = pcall(IsTradeskillTrainer)
     if ok and trade == true then return false end
     local src = ns.PlannerSource and ns.PlannerSource() or nil
@@ -358,19 +360,26 @@ local function IsClassTrainer()
         local map, px, py = ns.GuideHere()
         c, x, y = ns.PlannerWorldPos(map, px, py)
     end
-    local function At(list)
+    local function At(list, byId)
         for _, p in ipairs(list) do
             if id and p.id == id then return true end
-            local pc, ppx, ppy = ns.PlannerWorldPos(p.map, p.x, p.y)
-            if c and pc == c and sqrt((ppx - x) ^ 2 + (ppy - y) ^ 2) <= CLASS_TRAINER_YARDS then return true end
+            if not byId then
+                local pc, ppx, ppy = ns.PlannerWorldPos(p.map, p.x, p.y)
+                if c and pc == c and sqrt((ppx - x) ^ 2 + (ppy - y) ^ 2) <= CLASS_TRAINER_YARDS then return true end
+            end
         end
         return false
     end
-    if At(riding) then return false end               -- (the riding trainer is no class trainer)
+    if At(places, true) then return true end          -- (a class trainer by its id, even next to the riding trainer)
+    if At(riding) then ridingTrainer = true; return false end   -- (the riding trainer is no class trainer)
     if #places == 0 then return true end
     return At(places)
 end
 local function TrainerClosed()
+    if ridingTrainer and ns:GuideUnlocked() then           -- (you were at the riding trainer: you ride from now on)
+        local r = PaceRecord(true)
+        if r then r.ridingKnown = true end
+    end
     if not classTrainer or not ns:GuideUnlocked() then return end
     local level = UnitLevel and UnitLevel("player")
     if type(level) ~= "number" or ns:IsSecret(level) then return end
@@ -384,12 +393,16 @@ do
     for kind, e in pairs(ns.GUIDE_WINDOW_KINDS or {}) do closes[e] = kind end
     for _, e in ipairs({ "QUEST_TURNED_IN", "QUEST_REMOVED", "PLAYER_LEVEL_UP", "HEARTHSTONE_BOUND",
                          "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED",
-                         "TRAINER_SHOW", "TRAINER_CLOSED", "MERCHANT_CLOSED", "MAIL_CLOSED" }) do pcall(ev.RegisterEvent, ev, e) end
+                         "TRAINER_SHOW", "TRAINER_CLOSED", "MERCHANT_CLOSED", "MAIL_CLOSED", "PLAYER_MOUNT_DISPLAY_CHANGED" }) do pcall(ev.RegisterEvent, ev, e) end
     ev:SetScript("OnEvent", ns:Guard("Planner", function(_, event, a)
         if event == "PLAYER_REGEN_DISABLED" then fighting = true; return end
         if event == "PLAYER_REGEN_ENABLED" then fighting = false; return end
         if event == "TRAINER_SHOW" then classTrainer = IsClassTrainer() == true; return end
         if event == "TRAINER_CLOSED" then TrainerClosed() end
+        if event == "PLAYER_MOUNT_DISPLAY_CHANGED" then          -- (seen mounted: you ride; kept for the character)
+            if ns:GuideUnlocked() and ns.PlannerRidingKnown then ns.PlannerRidingKnown(nil) end
+            return
+        end
         local on, st = Following()
         if not on then return end
         local plan = type(st.plan) == "table" and st.plan or {}

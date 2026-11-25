@@ -10090,7 +10090,7 @@ end)
 try("13.1 stops: professions and riding", function()
     local real = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), level = env.UnitLevel, class = env.UnitClass, money = env.GetMoney,
                    profs = env.GetProfessions, info = env.GetProfessionInfo, trade = rawget(env, "IsTradeskillTrainer"),
-                   guid = rawget(env, "UnitGUID"), here = ns.GuideHere, source = ns.PlannerSource }
+                   guid = rawget(env, "UnitGUID"), spells = env.C_SpellBook, mounted = env.IsMounted, here = ns.GuideHere, source = ns.PlannerSource }
     local saved = { key = ns.root.guideKey, guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner, seen = ns.root.plannerSeen,
                     profession = ns.db.plannerProfession, mount = ns.db.plannerMount }
     local cm = {}
@@ -10102,6 +10102,9 @@ try("13.1 stops: professions and riding", function()
     env.UnitLevel = function() return level end
     env.UnitClass = function() return class, class end
     env.GetMoney = function() return money end
+    local spellKnown, mounted = {}, false
+    env.C_SpellBook = { IsSpellKnown = function(id) return spellKnown[id] == true end }
+    env.IsMounted = function() return mounted end
     local skills = {}                                  -- { line, name, rank, max }
     env.GetProfessions = function() return skills[1] and 1 or nil, skills[2] and 2 or nil end
     env.GetProfessionInfo = function(i)
@@ -10146,6 +10149,11 @@ try("13.1 stops: professions and riding", function()
         skills = { { 186, "Mining", 300, 300 } }
         if find(plan(), "train") then error("300/300: the game's top, none") end
         skills = { { 186, "Mining", 75, 75 } }
+        level = 5
+        if find(plan(), "train") then error("level 5: Journeyman needs level 10") end
+        level = 10
+        if not find(plan(), "train") then error("level 10: Mining 75/75 trains") end
+        level = 20
         ns.db.plannerProfession = false
         if find(plan(), "train") then error("switched off: none") end
         ns.db.plannerProfession = nil
@@ -10180,6 +10188,20 @@ try("13.1 stops: professions and riding", function()
         guide = plan()
         if find(guide, "train") or find(guide, "vendor") or ns.PlannerRiding(40) ~= nil then error("riding known: nothing") end
         skills = {}
+        -- the spell of riding known, no skill line: no stops, no line
+        spellKnown[33388] = true
+        guide = plan()
+        if find(guide, "train") or find(guide, "vendor") or ns.PlannerRiding(40) ~= nil then error("riding spell known: nothing") end
+        spellKnown = {}
+        guide = plan()
+        if not find(guide, "train", "Rider Rae") then error("nothing known: the riding trainer again") end
+        -- seen mounted once: known from then on
+        mounted = true
+        if ns.PlannerRiding(40) ~= nil then error("mounted: riding known") end
+        mounted = false
+        if ns.PlannerRiding(40) ~= nil then error("seen mounted once stays known") end
+        ns.root.planner = nil
+        if not ns.PlannerRiding(40) then error("a new record starts unknown") end
         ns.db.plannerMount = false
         if find(plan(), "train") then error("mount switched off: none") end
         ns.db.plannerMount = nil
@@ -10188,7 +10210,21 @@ try("13.1 stops: professions and riding", function()
         if find(plan(), "train") then error("gold unreadable: none") end
         env.GetMoney = function() return money end
         env.GetProfessions = nil
-        if find(plan(), "train") or ns.PlannerRiding(40) ~= nil then error("professions unreadable: none") end
+        if not ns.PlannerRiding(40) then error("the spell book and mount can still say: no riding") end
+        env.C_SpellBook, env.IsMounted = nil, nil
+        if find(plan(), "train") or ns.PlannerRiding(40) ~= nil then error("nothing readable: none") end
+        env.C_SpellBook = { IsSpellKnown = function(id) return spellKnown[id] == true end }
+        env.IsMounted = function() return mounted end
+        skills = { { 186, "Mining", 75, 75 } }
+        env.GetProfessions = function() return 1 end
+        env.GetProfessionInfo = function() error("boom") end
+        if find(plan(), "train", "Mining") then error("GetProfessionInfo raising: no profession stop") end
+        env.GetProfessionInfo = function(i)
+            local s = skills[i]
+            if not s then return end
+            return s[2], 0, s[3], s[4], 0, 0, s[1]
+        end
+        env.GetProfessions = function() return skills[1] and 1 or nil, skills[2] and 2 or nil end
         -- a riding trainer visit is not a class trainer visit
         ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
         places.classTrainer = { { name = "Trainer Ten", map = 1, x = 70, y = 70, id = 10 } }
@@ -10200,10 +10236,18 @@ try("13.1 stops: professions and riding", function()
         fireEvent("TRAINER_SHOW"); fireEvent("TRAINER_CLOSED")
         local d = ns.PlannerCharRecord(false)
         if d and d.trainerLevel then error("the riding trainer is no class trainer") end
+        if not (d and d.ridingKnown) then error("a riding trainer visit: you ride") end
         places.classTrainer = nil
         fireEvent("TRAINER_SHOW"); fireEvent("TRAINER_CLOSED")
         d = ns.PlannerCharRecord(false)
         if d and d.trainerLevel then error("the riding trainer is no class trainer, with no class trainers known") end
+        -- a class trainer (by its id) standing next to the riding trainer is still your class trainer
+        places.classTrainer = { { name = "Trainer Ten", map = 1, x = 34.2, y = 40, id = 10 } }
+        env.UnitGUID = function(u) if u == "npc" then return "Creature-0-1-2-3-10-0000ABCD" end end
+        ns.GuideHere = function() return 1, 34, 40 end
+        fireEvent("TRAINER_SHOW"); fireEvent("TRAINER_CLOSED")
+        d = ns.PlannerCharRecord(false)
+        if not (d and d.trainerLevel == 40) then error("a class trainer next to the riding trainer is recorded") end
         -- the switches
         ns.root.guideState = nil
         ns:ToggleConfig("guide")
@@ -10220,7 +10264,7 @@ try("13.1 stops: professions and riding", function()
         ns:ToggleConfig()
     end)
     ns:PlannerStop()
-    env.C_Map = real.map; rawset(env, "CreateVector2D", real.vec); env.UnitLevel = real.level; env.UnitClass = real.class; env.GetMoney = real.money
+    env.C_Map = real.map; rawset(env, "CreateVector2D", real.vec); env.UnitLevel = real.level; env.UnitClass = real.class; env.GetMoney = real.money; env.C_SpellBook, env.IsMounted = real.spells, real.mounted
     env.GetProfessions, env.GetProfessionInfo = real.profs, real.info
     rawset(env, "IsTradeskillTrainer", real.trade); rawset(env, "UnitGUID", real.guid); ns.GuideHere, ns.PlannerSource = real.here, real.source
     ns.root.guideKey, ns.root.guides, ns.root.guideState, ns.root.planner, ns.root.plannerSeen = saved.key, saved.guides, saved.state, saved.planner, saved.seen
