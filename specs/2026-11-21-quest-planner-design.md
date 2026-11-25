@@ -435,6 +435,10 @@ is settled. What is known:
 
 ### Settings (Guide tab)
 
+**Later (the player, 25 Nov):** once the planner is finished it gets its own button and its own
+settings window, and these switches move there, out of the add-on's settings window. Until then
+they stay on the Guide tab.
+
 - Group quests: Solo / When grouped / Everything.
 - Learn new flight points on the way: on (default) / off.
 - Show why each step is there: on (default) / off.
