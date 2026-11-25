@@ -44,117 +44,289 @@ local function BuildLook(page)
         return b
     end
 
-    -- Themes in three groups, each under its own heading. Glass and Fantasy are five across and take
-    -- as many rows as they have themes; your own themes get one row of seven narrower buttons (the
-    -- heading only shows once you have made one). The page scrolls, so nothing has to be left out.
-    local function GroupOf(t)
-        if t.custom then return "MINE" end
+    -- Themes (12.3): a family control, a grid of tiles for the family, and a preview column. A tile
+    -- shows the theme's real panel colour, with its rim colour for the top edge and two bars (and
+    -- three star dots for Celestial). Picking a tile previews it; "Use this theme" puts it on. The
+    -- tile and the preview carry the theme's own colours, set straight on their textures: the
+    -- window wears a look of its own, so a role would give them the look's colours instead. Only the
+    -- chrome (names, the ring, the buttons) uses roles.
+    local FAMILIES = { { "GLASS", "Glass" }, { "FANTASY", "Fantasy" }, { "CELESTIAL", "Celestial" }, { "MINE", "Your themes" } }
+    local FAMILY_LINE = {
+        GLASS = "See-through panes with soft shadows and a bright top edge.",
+        FANTASY = "Solid panels with a dark rim, a grain and corner ornaments.",
+        CELESTIAL = "A night sky: a fine starfield, constellations and star points in the accent color.",
+    }
+    local function StyleFamily(t)
         return (t.style == "GLASS") and "GLASS" or (t.style == "CELESTIAL") and "CELESTIAL" or "FANTASY"
     end
-    local builtIn = { GLASS = 0, FANTASY = 0, CELESTIAL = 0 }
-    for _, key in ipairs(ns.themeOrder) do
-        local t = ns.themes[key]
-        if t and not t.custom then builtIn[GroupOf(t)] = builtIn[GroupOf(t)] + 1 end
+    local function GroupOf(t)
+        if t.custom then return "MINE" end
+        return StyleFamily(t)
     end
-    local GROUPS = {
-        { key = "GLASS",   title = "Glass",       cols = 5, width = 142, rows = math.max(1, math.ceil(builtIn.GLASS / 5)) },
-        { key = "FANTASY", title = "Fantasy",     cols = 5, width = 142, rows = math.max(1, math.ceil(builtIn.FANTASY / 5)) },
-        { key = "CELESTIAL", title = "Celestial", cols = 5, width = 142, rows = math.max(1, math.ceil(builtIn.CELESTIAL / 5)) },
-        { key = "MINE",    title = "Your themes", cols = 7, width = 100, rows = 1 },
-    }
-    local groupY = 0
-    for _, group in ipairs(GROUPS) do                        -- each group sits under the one before it
-        group.y = groupY
-        groupY = groupY - 24 - group.rows * 28 - 4
-    end
-    -- A small picture of each theme on its button (11.9): its panel color in its edge color, a line
-    -- of its accent along the foot, and the mark of its family (glass: a lit top edge; fantasy: gold
-    -- studs at the top corners; celestial: a star point). Pointing at one shows a larger card.
-    local Swatch, ShowSwatch = O.ThemeSwatch, O.ShowThemeSwatch     -- (Shared.lua: the setup uses them too)
+    local TOP, GRID_H = 40, 420                              -- the grid starts under the family control and is this tall
+    local PV_W, GAP = 250, 16                                -- the preview column, and the space between it and the grid
+    local CELL_W, CELL_H, TILE_W = 112, 88, 104
+    local picker = { cols = 4, width = 736, tiles = {}, list = {}, family = "GLASS", cell = { CELL_W, CELL_H } }
+    page.themePicker = picker
+    local Swatch, ShowSwatch = O.ThemeSwatch, O.ShowThemeSwatch     -- (Shared.lua: the setup uses the small kind too)
     page.ShowSwatch = ShowSwatch
-    local card                                               -- the larger card, while pointing at a theme
-    local function Card(owner, key)
-        local c = ns:ThemeColors(key)
-        if not c then return end
-        if not card then
-            card = CreateFrame("Frame", nil, UIParent)
-            card:SetSize(190, 84)
-            card:SetFrameStrata("TOOLTIP")
-            if card.SetClampedToScreen then card:SetClampedToScreen(true) end      -- (the window dragged to the top of the screen)
-            local function Tex(layer, sub) local t = card:CreateTexture(nil, layer, nil, sub); t:SetTexture(ns.FLAT); return t end
-            card.edge = Tex("BACKGROUND", 0); card.edge:SetAllPoints()
-            card.fill = Tex("BACKGROUND", 1); card.fill:SetPoint("TOPLEFT", 2, -2); card.fill:SetPoint("BOTTOMRIGHT", -2, 2)
-            card.foot = card:CreateTexture(nil, "BORDER")
-            card.foot:SetTexture(ns.MEDIA .. "glow_up.tga")
-            card.foot:SetPoint("BOTTOMLEFT", 2, 2); card.foot:SetPoint("BOTTOMRIGHT", -2, 2); card.foot:SetHeight(24)
-            card.gloss = Tex("BORDER", 1); card.gloss:SetPoint("TOPLEFT", 2, -2); card.gloss:SetPoint("TOPRIGHT", -2, -2); card.gloss:SetHeight(1)
-            card.title = ns:NewText(card, 13, "LEFT", true); card.title:SetPoint("TOPLEFT", 10, -9)
-            card.line = ns:NewText(card, 11, "LEFT"); card.line:SetPoint("TOPLEFT", 10, -28)
-            card.plate = Tex("ARTWORK", 0); card.plate:SetSize(76, 20); card.plate:SetPoint("BOTTOMLEFT", 10, 10)
-            card.plateEdge = Tex("ARTWORK", -1); card.plateEdge:SetPoint("TOPLEFT", card.plate, "TOPLEFT", -1, 1); card.plateEdge:SetPoint("BOTTOMRIGHT", card.plate, "BOTTOMRIGHT", 1, -1)
-            card.btn = ns:NewText(card, 11, "CENTER"); card.btn:SetPoint("CENTER", card.plate, "CENTER")
-            card.studs = {}
-            for k, point in ipairs({ "TOPLEFT", "TOPRIGHT", "BOTTOMLEFT", "BOTTOMRIGHT" }) do
-                local d = card:CreateTexture(nil, "OVERLAY")
-                d:SetTexture(ns.MEDIA .. "dot.tga")
-                d:SetSize(6, 6)
-                d:SetPoint("CENTER", card, point, point:find("LEFT") and 7 or -7, point:find("TOP") and -7 or 7)
-                card.studs[k] = d
-            end
-        end
-        local function V(t, col, a) t:SetVertexColor(col[1], col[2], col[3], a or 1) end
-        V(card.edge, c.border); V(card.fill, c.bg); V(card.plate, c.plate); V(card.plateEdge, c.border)
-        V(card.foot, c.accent, c.style == "CELESTIAL" and 0.22 or 0)
-        card.gloss:SetVertexColor(1, 1, 1, c.style == "GLASS" and 0.5 or 0)
-        card.title:SetText(ns:ThemeName(key, "plain"))
-        card.title:SetTextColor(c.accent[1], c.accent[2], c.accent[3])
-        card.line:SetText(ns:Tr("Unit frames, bags and quests"))
-        card.line:SetTextColor(c.text[1], c.text[2], c.text[3])
-        card.btn:SetText(ns:Tr("Button"))
-        card.btn:SetTextColor(c.btn[1], c.btn[2], c.btn[3])
-        for _, d in ipairs(card.studs) do
-            if c.style == "CELESTIAL" then V(d, c.accent) elseif c.style == "FANTASY" then V(d, c.border) end
-            d:SetShown(c.style ~= "GLASS")
-        end
-        card:ClearAllPoints()
-        card:SetPoint("BOTTOM", owner, "TOP", 0, 34)
-        card:Show()
-    end
-    page.ThemeCard = Card
+    -- the section's two headings stay (the sections are cut from the page by them); the page itself
+    -- has no use for the words
+    Header(page, "Glass", 0, 0):Hide()
+    Header(page, "Your themes", 0, -(TOP + GRID_H + 4)):Hide()
 
-    local function NewThemeButton(group, i)
-        local b = Choice("", group.width, function(self)
-            local t = self.key and ns.themes[self.key]
-            if not t then return end                         -- (a theme deleted since this button was drawn)
-            ns.db.theme = self.key
-            ns.db.accent = t.accent or ns.db.accent
-            if ns.NoteHomeTheme then ns:NoteHomeTheme() end
-            Changed()
-        end)
-        b:SetPoint("TOPLEFT", ((i - 1) % group.cols) * (group.width + 5), group.y - 24 - math.floor((i - 1) / group.cols) * 28)
-        b:HookScript("OnEnter", function(self)
+    local familyButtons = {}
+    local grid, gsheet = ns:ScrollArea(page, CELL_W * 4, GRID_H)
+    grid:SetPoint("TOPLEFT", 0, -TOP)
+    picker.grid = grid
+    local Place, Preview
+
+    local function Pick(key)
+        if not (key and ns.themes[key]) then return end
+        picker.picked = key
+        Place()
+        Preview()
+    end
+    local function Apply(key)                                -- as clicking a theme did before (the reload note comes from Retheme)
+        local t = key and ns.themes[key]
+        if not t then return end                             -- (a theme deleted since this tile was drawn)
+        ns.db.theme = key
+        ns.db.accent = t.accent or ns.db.accent
+        if ns.NoteHomeTheme then ns:NoteHomeTheme() end
+        Changed()
+    end
+    picker.Pick, picker.Apply = Pick, Apply
+
+    local function NewTile(i)
+        local b = CreateFrame("Button", nil, gsheet)
+        b:SetSize(TILE_W, CELL_H - 6)
+        b.text = b:CreateFontString(nil, "OVERLAY")
+        ns:Font(b.text, 12)
+        b.text:SetPoint("TOP", b, "TOP", 0, -58)
+        b.text:SetWidth(TILE_W)
+        b.text:SetJustifyH("CENTER")
+        if b.text.SetWordWrap then b.text:SetWordWrap(false) end
+        Swatch(b, true)
+        local ring = CreateFrame("Frame", nil, b, ns.template)       -- the picked tile: 2 px in the accent
+        ring:SetPoint("TOPLEFT", b.swatch, "TOPLEFT", -4, 4)
+        ring:SetPoint("BOTTOMRIGHT", b.swatch, "BOTTOMRIGHT", 4, -4)
+        ring:SetBackdrop({ edgeFile = ns.FLAT, edgeSize = 2 })
+        ns:Paint(ring, "SetBackdropBorderColor", "@accent", 1)
+        ring:Hide()
+        b.ring = ring
+        b.suiClick = function(self) if self.key then Pick(self.key) end end
+        b:SetScript("OnClick", b.suiClick)
+        b:HookScript("OnClick", function() ns.UISound("IG_MAINMENU_OPTION") end)
+        b:SetScript("OnEnter", function(self)
             local t = self.key and ns.themes[self.key]
             if not t then return end
             GameTooltip:SetOwner(self, "ANCHOR_TOP")
             GameTooltip:AddLine(ns:ThemeName(self.key))
             if t.custom then GameTooltip:AddLine(ns:Tr("One of your own themes."), 0.6, 0.6, 0.6) end
             GameTooltip:Show()
-            Card(self, self.key)
         end)
-        b:HookScript("OnLeave", function() GameTooltip:Hide(); if card then card:Hide() end end)
-        Swatch(b)
+        b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        picker.tiles[i] = b
         return b
     end
-    for _, group in ipairs(GROUPS) do
-        group.header = Header(page, group.title, 0, group.y)
-        group.buttons = {}
-        group.more = page:CreateFontString(nil, "OVERLAY")
-        ns:Font(group.more, 11)
-        group.more:SetPoint("TOPLEFT", 150, group.y - 2)
-        ns:Paint(group.more, "SetTextColor", "faint")
+
+    -- the tiles in their cells, and the row the picked one is in
+    Place = function()
+        local cols = picker.cols
+        local at
+        for i, key in ipairs(picker.list) do
+            local b = picker.tiles[i] or NewTile(i)
+            b.key = key
+            b.px, b.py = ((i - 1) % cols) * CELL_W, -math.floor((i - 1) / cols) * CELL_H
+            b:ClearAllPoints()
+            b:SetPoint("TOPLEFT", gsheet, "TOPLEFT", b.px, b.py)
+            b.text:SetText(ns:ThemeName(key, "short"))
+            if key == (ns.db.theme or "SMOKE") then ns:Paint(b.text, "SetTextColor", "@accent") else ns:Paint(b.text, "SetTextColor", "text") end
+            ShowSwatch(b.swatch, key)
+            b.picked = (key == picker.picked)
+            b.ring:SetShown(key == picker.picked)
+            if key == picker.picked then at = i end
+            b:Show()
+        end
+        for i = #picker.list + 1, #picker.tiles do picker.tiles[i]:Hide() end
+        grid:SetContentHeight(math.max(1, math.ceil(#picker.list / cols) * CELL_H))
+        if at and picker.scrollTo ~= picker.family then      -- a family just opened: start where the picked tile is
+            picker.scrollTo = picker.family
+            grid:ScrollToShow(math.floor((at - 1) / cols) * CELL_H, CELL_H)
+        end
     end
-    page.themeGroups = GROUPS
-    local Y = groupY                                         -- under the three groups
+    -- 4 columns at the page's usual width, 3 and then 2 as it narrows; the preview keeps its 250
+    function picker.Layout(w)
+        w = (type(w) == "number" and w > 0) and w or 736
+        picker.width = w
+        picker.cols = math.max(2, math.min(4, math.floor((w - PV_W - GAP - 8) / CELL_W)))
+        picker.gridW = picker.cols * CELL_W
+        picker.previewX = w - PV_W
+        grid:SetWidth(picker.gridW)
+        picker.pv:ClearAllPoints()
+        picker.pv:SetPoint("TOPLEFT", page, "TOPLEFT", picker.previewX, -TOP)
+        Place()
+    end
+    page:HookScript("OnSizeChanged", function(_, w) if picker.pv then picker.Layout(w) end end)
+
+    -- the family control
+    local function ShowFamily(which)
+        picker.family = which
+        picker.Draw()
+    end
+    for i, def in ipairs(FAMILIES) do
+        local b = Choice(def[2], 110, function() ShowFamily(def[1]) end)
+        b:SetPoint("TOPLEFT", (i - 1) * 116, 0)
+        familyButtons[def[1]] = b
+    end
+    picker.familyButtons = familyButtons
+    for _, key in ipairs(ns.themeOrder) do                   -- (a search for a theme's name lands on its family)
+        local t = ns.themes[key]
+        if t and not t.custom then
+            local was = ns.indexingTab
+            ns.indexingTab = "look"
+            ns:IndexOption(t.name, familyButtons[GroupOf(t)])
+            ns.indexingTab = was
+        end
+    end
+
+    -- the preview column: a sample frame in the picked theme's colours, its name, its family's line, the two buttons
+    local pv = CreateFrame("Frame", nil, page)
+    pv:SetSize(PV_W, 300)
+    picker.pv = pv
+    local sf = CreateFrame("Frame", nil, pv)
+    sf:SetSize(PV_W, 104)
+    sf:SetPoint("TOPLEFT", 0, 0)
+    local function Tex(parent, layer, sub) local t = parent:CreateTexture(nil, layer, nil, sub); t:SetTexture(ns.FLAT); return t end
+    local S = {}
+    S.edge = Tex(sf, "BACKGROUND", 0); S.edge:SetAllPoints()
+    S.fill = Tex(sf, "BACKGROUND", 1); S.fill:SetPoint("TOPLEFT", 2, -2); S.fill:SetPoint("BOTTOMRIGHT", -2, 2)
+    S.gloss = Tex(sf, "BORDER", 0); S.gloss:SetPoint("TOPLEFT", 2, -2); S.gloss:SetPoint("TOPRIGHT", -2, -2); S.gloss:SetHeight(1)
+    S.portEdge = Tex(sf, "ARTWORK", 0); S.portEdge:SetSize(42, 42); S.portEdge:SetPoint("TOPLEFT", 12, -12)
+    S.port = Tex(sf, "ARTWORK", 1); S.port:SetPoint("TOPLEFT", S.portEdge, "TOPLEFT", 1, -1); S.port:SetPoint("BOTTOMRIGHT", S.portEdge, "BOTTOMRIGHT", -1, 1)
+    S.hpBack = Tex(sf, "ARTWORK", 0); S.hpBack:SetSize(164, 12); S.hpBack:SetPoint("TOPLEFT", 64, -30)
+    S.hp = Tex(sf, "ARTWORK", 1); S.hp:SetSize(118, 12); S.hp:SetPoint("TOPLEFT", S.hpBack, "TOPLEFT", 0, 0)
+    S.mpBack = Tex(sf, "ARTWORK", 0); S.mpBack:SetSize(164, 8); S.mpBack:SetPoint("TOPLEFT", 64, -46)
+    S.mp = Tex(sf, "ARTWORK", 1); S.mp:SetSize(84, 8); S.mp:SetPoint("TOPLEFT", S.mpBack, "TOPLEFT", 0, 0)
+    S.who = sf:CreateFontString(nil, "OVERLAY"); ns:Font(S.who, 12, true); S.who:SetPoint("TOPLEFT", 64, -12)
+    S.line = sf:CreateFontString(nil, "OVERLAY"); ns:Font(S.line, 11); S.line:SetPoint("TOPLEFT", 12, -66)
+    S.plateEdge = Tex(sf, "ARTWORK", 0); S.plateEdge:SetSize(78, 22); S.plateEdge:SetPoint("BOTTOMLEFT", 12, 8)
+    S.plate = Tex(sf, "ARTWORK", 1); S.plate:SetPoint("TOPLEFT", S.plateEdge, "TOPLEFT", 1, -1); S.plate:SetPoint("BOTTOMRIGHT", S.plateEdge, "BOTTOMRIGHT", -1, 1)
+    S.btn = sf:CreateFontString(nil, "OVERLAY"); ns:Font(S.btn, 11); S.btn:SetPoint("CENTER", S.plateEdge, "CENTER")
+    S.studs = {}
+    for k, point in ipairs({ "TOPLEFT", "TOPRIGHT", "BOTTOMLEFT", "BOTTOMRIGHT" }) do
+        local d = sf:CreateTexture(nil, "OVERLAY")
+        d:SetTexture(ns.MEDIA .. "dot.tga")
+        d:SetSize(6, 6)
+        d:SetPoint("CENTER", sf, point, point:find("LEFT") and 6 or -6, point:find("TOP") and -6 or 6)
+        S.studs[k] = d
+    end
+    picker.sample = S
+
+    local pvName = pv:CreateFontString(nil, "OVERLAY")
+    ns:Font(pvName, 16, true)
+    pvName:SetPoint("TOPLEFT", sf, "BOTTOMLEFT", 0, -12)
+    pvName:SetWidth(PV_W)
+    pvName:SetJustifyH("LEFT")
+    ns:Paint(pvName, "SetTextColor", "text")
+    local pvNow = pv:CreateFontString(nil, "OVERLAY")
+    ns:Font(pvNow, 12)
+    pvNow:SetPoint("TOPLEFT", pvName, "BOTTOMLEFT", 0, -4)
+    ns:Paint(pvNow, "SetTextColor", "faint")
+    local pvDesc = pv:CreateFontString(nil, "OVERLAY")
+    ns:Font(pvDesc, 12)
+    pvDesc:SetPoint("TOPLEFT", sf, "BOTTOMLEFT", 0, -56)
+    pvDesc:SetWidth(PV_W)
+    pvDesc:SetJustifyH("LEFT")
+    pvDesc:SetJustifyV("TOP")
+    pvDesc:SetHeight(50)
+    ns:Paint(pvDesc, "SetTextColor", "dim")
+    picker.name, picker.desc, picker.now = pvName, pvDesc, pvNow
+
+    local use = ns:CreateButton(pv, "Use this theme", PV_W, 30, function() Apply(picker.picked) end)
+    use:SetPoint("TOPLEFT", sf, "BOTTOMLEFT", 0, -116)
+    ns:Paint(use, "SetBackdropColor", "@accent", 1)          -- the accent fill: the one button here that is not a plain plate
+    ns:Paint(use, "SetBackdropBorderColor", "@accent", 1)
+    use:HookScript("OnEnter", function(self)
+        self.wash:Hide()
+        local c = self.suiTextColor
+        if c then self.text:SetTextColor(c[1], c[2], c[3]) end
+    end)
+    use:HookScript("OnLeave", function(self) ns:Paint(self, "SetBackdropBorderColor", "@accent", 1) end)
+    picker.use = use
+    local own = ns:CreateButton(pv, "Make my own", PV_W, 28, function()
+        if O.Open then O.Open("look:Your own theme") end
+    end)
+    own:SetPoint("TOPLEFT", use, "BOTTOMLEFT", 0, -8)
+    picker.own = own
+
+    Preview = function()
+        local key = picker.picked
+        local c = key and ns:ThemeColors(key)
+        if not c then return end
+        local t = ns.themes[key]
+        local function V(x, col, a) x:SetVertexColor(col[1], col[2], col[3], a or 1) end
+        V(S.edge, c.border); V(S.fill, c.bg); V(S.portEdge, c.border); V(S.port, c.plate)
+        V(S.hpBack, c.border, 0.55); V(S.hp, c.accent); V(S.mpBack, c.border, 0.55); V(S.mp, c.accent, 0.6)
+        V(S.plateEdge, c.border); V(S.plate, c.plate)
+        S.gloss:SetVertexColor(1, 1, 1, c.style == "GLASS" and 0.5 or 0)
+        for _, d in ipairs(S.studs) do
+            if c.style == "CELESTIAL" then V(d, c.accent) else V(d, c.border) end
+            d:SetShown(c.style ~= "GLASS")
+        end
+        S.who:SetText((UnitName and UnitName("player")) or "")
+        S.who:SetTextColor(c.accent[1], c.accent[2], c.accent[3])
+        S.line:SetText(ns:Tr("Unit frames, bags and quests"))
+        S.line:SetTextColor(c.text[1], c.text[2], c.text[3])
+        S.btn:SetText(ns:Tr("Button"))
+        S.btn:SetTextColor(c.btn[1], c.btn[2], c.btn[3])
+        local fam = StyleFamily(t)
+        local label
+        for _, def in ipairs(FAMILIES) do if def[1] == fam then label = def[2] end end
+        picker.nameText = ns:Tr(label) .. ": " .. ns:ThemeName(key, "short")
+        picker.descText = ns:Tr(FAMILY_LINE[fam])
+        pvName:SetText(picker.nameText)
+        pvDesc:SetText(picker.descText)
+        S.panel, S.rim, S.key = c.bg, c.border, key
+        pvNow:SetText(key == (ns.db.theme or "SMOKE") and ns:Tr("In use now") or "")
+        local a = ns.theme.accent                            -- text on the accent fill: dark on a light accent, white on a dark one
+        local light = (a[1] * 0.299 + a[2] * 0.587 + a[3] * 0.114) > 0.55
+        use.suiTextColor = light and { 0.07, 0.08, 0.1 } or { 1, 1, 1 }
+        use.text:SetTextColor(use.suiTextColor[1], use.suiTextColor[2], use.suiTextColor[3])
+    end
+    picker.Preview = Preview
+
+    -- everything that changes with the family, the theme in use or the colours
+    function picker.Draw()
+        local mine = {}
+        local lists = { GLASS = {}, FANTASY = {}, CELESTIAL = {}, MINE = mine }
+        for _, key in ipairs(ns.themeOrder) do
+            local t = ns.themes[key]
+            if t then table.insert(lists[GroupOf(t)], key) end
+        end
+        if picker.family == "MINE" and #mine == 0 then picker.family = "GLASS" end
+        for _, def in ipairs(FAMILIES) do
+            local b = familyButtons[def[1]]
+            Mark(b, def[1] == picker.family)
+            if def[1] == "MINE" then b:SetShown(#mine > 0) end
+        end
+        picker.list = lists[picker.family]
+        if not (picker.picked and ns.themes[picker.picked]) then picker.picked = ns.db.theme or "SMOKE" end
+        Place()
+        Preview()
+    end
+    -- the theme in use shows: its family, its tile ringed, its name in the preview
+    function picker.Sync()
+        local now = ns.db.theme or "SMOKE"
+        local t = ns.themes[now]
+        picker.picked = now
+        if t then picker.family = GroupOf(t) end
+        picker.scrollTo = nil
+        picker.Draw()
+    end
+    picker.Layout(type(page.GetWidth) == "function" and page:GetWidth() or 736)
+
+    local Y = -(TOP + GRID_H + 28)                           -- under the themes
 
     -- accent
     Header(page, "Accent", 0, Y, { nav = "Accent and style" })       -- (accent, lettering, menu and bars, your own theme and theme by place: one section)
@@ -365,34 +537,7 @@ local function BuildLook(page)
 
     Refresh = function()
         ns:RegisterCustomThemes()
-        local lists = { GLASS = {}, FANTASY = {}, CELESTIAL = {}, MINE = {} }
-        for _, key in ipairs(ns.themeOrder) do
-            local t = ns.themes[key]
-            if t then table.insert(lists[GroupOf(t)], key) end
-        end
-        for _, group in ipairs(GROUPS) do
-            local list, room = lists[group.key], group.cols * group.rows
-            for i = 1, math.min(#list, room) do
-                local b = group.buttons[i]
-                if not b then b = NewThemeButton(group, i); group.buttons[i] = b end
-                local t = ns.themes[list[i]]
-                b.key = list[i]
-                b.text:SetText(ns:ThemeName(list[i], "short"))          -- (the heading says which kind)
-                ShowSwatch(b.swatch, list[i])
-                if not b.suiIndexed and not t.custom then                 -- (noted once, under the name it now carries)
-                    b.suiIndexed = true
-                    local was = ns.indexingTab
-                    ns.indexingTab = "look"
-                    ns:IndexOption(t.name, b)
-                    ns.indexingTab = was
-                end
-                Mark(b, list[i] == (ns.db.theme or "SMOKE"))
-                b:Show()
-            end
-            for i = math.min(#list, room) + 1, #group.buttons do group.buttons[i]:Hide() end
-            group.more:SetText(#list > room and format(ns:Tr("%d more not shown: delete ones you no longer use"), #list - room) or "")
-            if group.key == "MINE" and group.header and group.header.SetShown then group.header:SetShown(#list > 0) end
-        end
+        picker.Sync()
         for key, sw in pairs(swatches) do
             if key == (ns.db.accent or "AZURE") then sw:SetBackdropBorderColor(1, 1, 1, 1) else sw:SetBackdropBorderColor(0, 0, 0, 1) end
         end
