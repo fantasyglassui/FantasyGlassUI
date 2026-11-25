@@ -42,7 +42,7 @@ Open the settings with `/fgui` and choose **Look and themes** in the list on the
   - **Glass:** see-through panes with soft shadows.
   - **Fantasy:** solid panels with gold ornaments.
   - **Celestial:** a night sky with stars and constellations.
-- **Previews:** each theme button shows a small picture. Point at one to see a larger card, and click it to wear it.
+- **Previews:** each theme shows a small picture in the grid. Click one to preview it beside the grid (a sample frame in its colors, its name and family), then **Use this theme** to wear it.
 - **Make your own:** set three colors in Look and themes › Your own theme.
 - **A theme for each kind of place** is in Look and themes › Theme by place: cities, dungeons, raids and battlegrounds.
 
@@ -54,12 +54,12 @@ Switching to another family finishes after a `/reload`.
 
 ## 5. Pick your features
 
-Every part of the add-on is a switch, in the category and section it belongs to: Frames and bars, Combat, Bags and items, Quests and map and the rest, listed down the left of `/fgui`. **Home** has a card for each. At the top, **Simple** shows the settings most players look for and **All options** shows every one.
+Every part of the add-on is a switch, in the category and section it belongs to: Frames and bars, Combat, Bags and items, Quests and map and the rest, listed down the left of `/fgui`. **Home** greets you with the theme you wear, has the quick switches as cards with the three presets, what is new and *Ask the guide*. At the top of the list on the left, **Simple** shows the settings most players look for and **All options** shows every one.
 
 - **Descriptions:** every setting says what it does under its name; point at it for the whole story.
-- **Undo:** **Undo last change** at the foot of the window takes back what you changed, one step at a time.
+- **Undo:** **Undo last change** in the window's footer takes back what you changed, one step at a time; point at it to see your last few changes. **Reset <category> to how it came**, beside it, puts the open category's switches and sliders back (click twice).
 - **Safe defaults:** helpers that act for you (auto-accept, auto-sell and so on) are off until you choose them.
-- **Search:** the box at the top of the list finds any setting and says where it lives.
+- **Search:** the box in the window's header finds any setting and says where it lives.
 
 ## 6. Action bars
 

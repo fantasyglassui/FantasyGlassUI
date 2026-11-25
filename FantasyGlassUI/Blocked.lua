@@ -17,12 +17,32 @@ local THIS_FILE = "Blocked.lua"
 
 ns.blocked = { total = 0, list = {}, byKey = {} }
 
--- The first line of this add-on in a call stack (not this file's own): "Tracker.lua:213".
+-- The first line of this add-on in a call stack that asked for the refused action: "Tracker.lua:213".
+-- The stack is taken inside this file's own event handler, so the top of it is that handler and
+-- ns:Guard's wrapper around it (Skin.lua): both are stepped over. Where the wrapper is not known
+-- (ns.guardAt), what comes before the refused game function itself (a "[C]" line other than pcall)
+-- is taken to be the handler's own.
 function ns.BlockedWhere(stack)
     if type(stack) ~= "string" then return nil end
-    for folder, file, line in stack:gmatch("(FantasyGlassUI[%w_]*)[/\\]([%w_]+%.lua)%]?:(%d+)") do
-        if file ~= THIS_FILE then
-            return (folder == ADDON and "" or "options: ") .. file .. ":" .. line
+    local lines = {}
+    for line in stack:gmatch("[^\n]+") do lines[#lines + 1] = line end
+    local from = 1
+    if not ns.guardAt then
+        for i, line in ipairs(lines) do
+            if line:find("[C]", 1, true) and not line:find("pcall", 1, true) then
+                local before = false
+                for j = 1, i - 1 do if lines[j]:find("FantasyGlassUI", 1, true) then before = true end end
+                if before then from = i + 1 end
+                break
+            end
+        end
+    end
+    for i = from, #lines do
+        local line = lines[i]
+        local folder, file, at = line:match("(FantasyGlassUI[%w_]*)[/\\]([%w_]+%.lua)%]?:(%d+)")
+        local def = line:match("in function <[^>]-FantasyGlassUI[%w_]*[/\\]([%w_]+%.lua:%d+)>")
+        if file and file ~= THIS_FILE and not (ns.guardAt and def == ns.guardAt) then
+            return (folder == ADDON and "" or "options: ") .. file .. ":" .. at
         end
     end
     return nil
@@ -34,6 +54,9 @@ function ns:NoteBlocked(event, addon, func, stack)
     b.total = b.total + 1
     local what = type(func) == "string" and func or "?"
     if event == "ADDON_ACTION_FORBIDDEN" then what = what .. " (never allowed for add-ons)" end
+    -- A reload the game refused (asked for from add-on code): the game's own /reload always works,
+    -- so the player is never left stuck halfway.
+    if what:find("Reload", 1, true) and ns.Print then pcall(ns.Print, ns, "Type /reload to finish.") end
     local key = what .. "|" .. (ns.BlockedWhere(stack) or "?")
     local entry = b.byKey[key]
     if not entry then

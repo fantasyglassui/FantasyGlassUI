@@ -101,10 +101,11 @@ function ns:NewProfile(name, source)
     return true, format(ns:Tr("Profile \"%s\" created."), name)
 end
 
+-- Switch this character to another profile. It takes over at the reload, which the Use button does
+-- itself (ns:ReloadButton: the game refuses a reload called from add-on code).
 function ns:UseProfile(name)
     if type(ns.root.profiles[name]) ~= "table" then return false, "No such profile." end
     ns.root.chars[ns:CharKey()] = name
-    ReloadUI()
     return true
 end
 

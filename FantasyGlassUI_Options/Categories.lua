@@ -290,6 +290,5 @@ function ns:SeeSection(sec)
     ns.root.seenNew[sec.id] = true
 end
 
--- Home: which places get a card, with a few words on each.
-ns.homeCards = { "look", "access", "frames", "combat", "groups", "items", "quests", "chat", "auto", "layout", "tools" }
+-- Home: the quick switches, a card each.
 ns.homeQuick = { "bagWindow", "damageMeter", "autoSell", "autoRepair", "questTracker", "plateQuest" }

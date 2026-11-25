@@ -1,23 +1,27 @@
-## 12.2.0
+## 12.3.0
 
-**New: more accessibility**
-- Read talk and quests aloud: what an NPC says (and the choices it offers), a quest's text when you
-  are offered it, its progress and its reward, and a book or letter are read with the game's voice
-  as soon as they open; the reading stops when you close them.
-- Read what I point at: when the mouse rests on something for half a second, its tooltip is read
-  aloud. (The game's own screen narrator only works before you log in.)
-- Move through the game's windows with the keyboard: with an NPC's talk, a quest, a vendor, the
-  mailbox, loot, a trainer, a flight master, the bank or a question box open, Tab or Down goes to the
-  next thing to press, Shift+Tab or Up to the one before, and Enter or Space presses it. A ring shows
-  where you are, and each choice can be said aloud with where it is in the list. Never while you
-  type, and not in a fight.
-- Keys for one hand: one button binds moving, jumping, targeting, interacting and the first action
-  buttons round W, A, S and D for the left hand, another puts them all on the number pad for the
-  right. The keys they take are noted, and "Put my keys back" returns every one (`/fgui keys left`,
-  `numpad` or `back`).
-- Celestial: High contrast, a black sky with white stars and rims, the third high-contrast theme
-  beside Glass and Fantasy. "Use the high-contrast theme" (and `/fgui contrast`) picks the one for
-  the family you use.
-- Still sky: the celestial sky keeps its stars but holds still, while everything else moves as usual.
-- Wait before a tooltip shows: up to two seconds of rest before a tooltip appears.
-- All of these travel in the one line of accessibility settings you can share.
+**New: a new look for the settings window**
+- The settings window (`/fgui`) has a look of its own: calm and dark whatever your theme, with
+  only your theme's accent color showing through, and clear lettering.
+- Settings sit in cards with room between them, and every on/off setting is a switch.
+- A tidier list of categories down the left, with the open one's sections under it.
+- Themes are shown as a grid of pictures, with a large preview beside it.
+- High-contrast themes give the window a black-and-white version, so nothing gets harder to read.
+- The Readable and Dyslexia-friendly lettering still apply in the window, and so do the text size
+  and outline choices.
+- Only the settings window changes: every other window still wears your theme, and every setting
+  is where it was.
+
+**Changed: where the window's own controls are**
+- Search every option is in the window's header.
+- Simple / All options is at the top of the list on the left.
+- "Reset <category> to how it came" is in the footer, beside Undo last change.
+- What you changed lately is in Undo last change's tooltip: point at the button.
+- Click a theme to preview it beside the grid; "Use this theme" wears it.
+- The window starts wide enough for everything in it to show whole. Drag its corner to make it
+  wider: the pages and the theme grid follow.
+
+**Fixed**
+- The buttons that reload the interface work again: the setup's Finish & reload and its language
+  list, Use on a profile, Reset positions, Leave safe mode, and `/rl`. Where the game refuses, the
+  add-on says "Type /reload to finish."

@@ -1,6 +1,6 @@
 # Features
 
-Every feature's switch in `/fgui`, with what it does and whether it is on when you first install, grouped as the setup lists them. In the game, each is in its own category and section (Frames and bars, Combat, Bags and items and so on); the search at the top of the list finds any of them. Version 12.0.0.
+Every feature's switch in `/fgui`, with what it does and whether it is on when you first install, grouped as the setup lists them. In the game, each is in its own category and section (Frames and bars, Combat, Bags and items and so on); the search in the window's header finds any of them. Version 12.0.0.
 
 The search box at the top of the options finds any of them, and pointing at a switch shows what it does.
 
