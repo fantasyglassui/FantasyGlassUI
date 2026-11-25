@@ -613,7 +613,12 @@ Draw = function()
     panel.classq:SetShown(classq ~= nil)
     panel.classq:ClearAllPoints()
     panel.classq:SetPoint("TOPLEFT", 12, -92 - (skipped and 13 or 0) - (talents and 13 or 0) - (riding and 13 or 0) - (rep and 13 or 0) - (moved and 13 or 0))
-    panel:SetHeight(118 + (skipped and 13 or 0) + (talents and 13 or 0) + (riding and 13 or 0) + (rep and 13 or 0) + (moved and 13 or 0) + (classq and 13 or 0))
+    local advice = (Planned(st) and ns.PlannerAdviceLines) and ns.PlannerAdviceLines(steps, at) or {}
+    panel.advice:SetText(table.concat(advice, "\n"))
+    panel.advice:SetShown(#advice > 0)
+    panel.advice:ClearAllPoints()
+    panel.advice:SetPoint("TOPLEFT", 12, -92 - (skipped and 13 or 0) - (talents and 13 or 0) - (riding and 13 or 0) - (rep and 13 or 0) - (moved and 13 or 0) - (classq and 13 or 0))
+    panel:SetHeight(118 + (skipped and 13 or 0) + (talents and 13 or 0) + (riding and 13 or 0) + (rep and 13 or 0) + (moved and 13 or 0) + (classq and 13 or 0) + #advice * 13)
     panel.count:SetText(math.min(at, #steps) .. "/" .. #steps)
     local step = steps[at]
     if step then
@@ -711,6 +716,12 @@ function ns:GuideShowPanel()
         if panel.classq.SetWordWrap then panel.classq:SetWordWrap(false) end
         ns:Paint(panel.classq, "SetTextColor", "faint")
         panel.classq:Hide()
+        panel.advice = ns:NewText(panel, 10, "LEFT")               -- (a planned route: quests worth abandoning, an inn to log out at)
+        panel.advice:SetPoint("TOPLEFT", 12, -92)
+        panel.advice:SetWidth(258)
+        if panel.advice.SetWordWrap then panel.advice:SetWordWrap(false) end
+        ns:Paint(panel.advice, "SetTextColor", "faint")
+        panel.advice:Hide()
         panel.stepButton = CreateFrame("Button", nil, panel)         -- (right click on a quest step: never suggest it)
         panel.stepButton:SetPoint("TOPLEFT", 34, -34)
         panel.stepButton:SetSize(236, 30)
@@ -977,6 +988,7 @@ function ns:GuideCommand(text)
     elseif word == "record" then return ns:GuideRecord(rest)
     elseif word == "stop" then
         if not ns:GuideRecordStop() then ns:GuideStop(); ns:Print("No longer following a guide.") end
+        if ns.PlannerInnSuggest then ns.PlannerInnSuggest() end
     elseif word == "edit" or word == "new" or word == "paste" then return ns:GuideEdit(rest)
     elseif word == "route" then return ns.GuideRouteEditor and ns:GuideRouteEditor(rest ~= "" and rest or nil)
     elseif word == "next" or word == "skip" then ns:GuideSkip(false)

@@ -11556,6 +11556,129 @@ try("13.3 choices: class, timed, escort and loot quests", function()
     if not ok then error(err, 0) end
 end)
 
+try("13.3 choices: hand-in, quest log, inn", function()
+    local saved = { unlocked = ns.GuideUnlocked, up = ns.UpgradeAmount, choices = env.GetNumQuestChoices, link = env.GetQuestItemLink,
+                    info = env.C_Item.GetItemInfo, itemInfo = rawget(env, "GetQuestItemInfo"), button = rawget(env, "QuestInfo_GetRewardButton"),
+                    click = rawget(env, "QuestInfoItem_OnClick"), frame = rawget(env, "QuestInfoFrame"), reward = rawget(env, "GetQuestReward"),
+                    logQ = env.C_QuestLog, level = env.UnitLevel, time = env.GetTime, resting = env.IsResting, exh = env.GetXPExhaustion,
+                    context = ns.PlannerContext, places = ns.PlannerPlaces, travel = ns.PlannerTravel, print = ns.Print, start = ns.plannerSessionStart,
+                    pick = ns.db.plannerPickReward, advice = ns.db.plannerLogAdvice, inn = ns.db.plannerInn }
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        -- the hand-in
+        local clicked, rewarded = {}, 0
+        local links, prices, ups = { "|Hitem:1|h[A]|h", "|Hitem:2|h[B]|h", "|Hitem:3|h[C]|h" }, { A = 10, B = 50, C = 20 }, {}
+        local n = 3
+        env.GetNumQuestChoices = function() return n end
+        env.GetQuestItemLink = function(kind, i) return links[i] end
+        env.GetQuestItemInfo = function() return "x", 1, 1 end
+        env.C_Item.GetItemInfo = function(link) local name = link:match("%[(%a)%]"); return name, link, 1, 1, 1, "a", "b", 1, "", 1, prices[name] end
+        ns.UpgradeAmount = function(link) return ups[link] end
+        env.QuestInfoFrame = { rewardsFrame = {} }
+        env.QuestInfo_GetRewardButton = function(_, i) return { index = i } end
+        env.QuestInfoItem_OnClick = function(b) clicked[#clicked + 1] = b.index end
+        env.GetQuestReward = function() rewarded = rewarded + 1 end
+        ns.db.plannerPickReward = nil
+        ups[links[2]] = 3
+        prices.B = 1
+        fireEvent("QUEST_COMPLETE")
+        if #clicked ~= 1 or clicked[1] ~= 2 then error("the upgrade is picked: " .. #clicked) end
+        if rewarded ~= 0 then error("the hand-in is yours") end
+        ups[links[2]] = nil
+        prices.B = 50
+        clicked = {}
+        fireEvent("QUEST_COMPLETE")
+        if #clicked ~= 1 or clicked[1] ~= 2 then error("the best price is picked") end
+        n = 1; clicked = {}
+        fireEvent("QUEST_COMPLETE")
+        if #clicked ~= 0 then error("one choice: nothing to pick") end
+        n = 3; links = {}
+        fireEvent("QUEST_COMPLETE")
+        if #clicked ~= 0 then error("nothing to judge: nothing picked") end
+        links = { "|Hitem:1|h[A]|h", "|Hitem:2|h[B]|h", "|Hitem:3|h[C]|h" }
+        ns.db.plannerPickReward = false
+        fireEvent("QUEST_COMPLETE")
+        if #clicked ~= 0 then error("switch off: nothing picked") end
+        ns.db.plannerPickReward = nil
+        ns.GuideUnlocked = function() return false end
+        fireEvent("QUEST_COMPLETE")
+        if #clicked ~= 0 then error("locked: nothing picked") end
+        ns.GuideUnlocked = function() return true end
+        -- the quest log
+        env.UnitLevel = function() return 30 end
+        local function log(count, grayAt)
+            local list = {}
+            for i = 1, count do list[i] = { title = "Quest " .. i, questID = 100 + i, isHeader = false, level = (i == grayAt) and 10 or 30 } end
+            list[#list + 1] = { title = "Zone", isHeader = true }
+            env.C_QuestLog = setmetatable({ GetNumQuestLogEntries = function() return #list end, GetInfo = function(i) return list[i] end,
+                GetMaxNumQuestsCanAccept = function() return 25 end }, { __index = saved.logQ })
+        end
+        local steps = { { kind = "accept", quest = 102, map = 1 } }
+        for i = 1, 23 do steps[#steps + 1] = { kind = "do", quest = 100 + i, map = 1 } end
+        log(23, 7)
+        local advice = ns.PlannerLogAdvice(steps, 1)
+        if #advice ~= 1 or advice[1].name ~= "Quest 7" or advice[1].reason ~= "gray" then error("a gray quest on a nearly full log") end
+        local lines = ns.PlannerAdviceLines(steps, 1)
+        if #lines ~= 1 or not lines[1]:find("Worth abandoning: Quest 7 (gray)", 1, true) then error("the panel line: " .. tostring(lines[1])) end
+        log(10, 7)
+        if #ns.PlannerLogAdvice(steps, 1) ~= 0 then error("room enough: no advice") end
+        log(20, 7)
+        local many = {}
+        for i = 1, 6 do many[#many + 1] = { kind = "accept", quest = 900 + i, map = 1 } end
+        if #ns.PlannerLogAdvice(many, 1) < 1 then error("the plan needs more room than there is") end
+        ns.db.plannerLogAdvice = false
+        if #ns.PlannerLogAdvice(many, 1) ~= 0 then error("switch off") end
+        ns.db.plannerLogAdvice = nil
+        log(23, nil)
+        local adv = ns.PlannerLogAdvice({ { kind = "do", quest = 101, map = 1 } }, 1)
+        if #adv ~= 3 or adv[1].reason ~= "never planned" then error("up to three, never planned") end
+        -- the inn
+        local said, clock = {}, 4000
+        ns.Print = function(_, msg, ...) said[#said + 1] = (select("#", ...) > 0) and string.format(msg, ...) or msg end
+        env.GetTime = function() return clock end
+        ns.plannerSessionStart = 0
+        env.IsResting = function() return false end
+        env.GetXPExhaustion = function() return 300 end
+        local travel = 60
+        ns.PlannerContext = function() return { here = { map = 1, x = 10, y = 10 } } end
+        ns.PlannerPlaces = function() return { { map = 1, x = 11, y = 11, name = "Goldshire Inn" } } end
+        ns.PlannerTravel = function() return travel, {} end
+        local shown
+        for _, h in ipairs(handlers) do if h.name == "OnShow" and h.self == env.GameMenuFrame then shown = h.fn end end
+        if not shown then error("the game menu is hooked") end
+        shown()
+        if #said ~= 1 or not said[1]:find("Log out at Goldshire Inn for rested experience (about 1 min away)", 1, true) then error("the chat line: " .. tostring(said[1])) end
+        local w = ns.PlannerAdviceLines({}, 1)
+        if not (w[#w] and w[#w]:find("Goldshire Inn", 1, true)) then error("the panel line for the inn") end
+        said, ns.plannerInnLine = {}, nil
+        clock = 1000
+        shown()
+        if #said ~= 0 then error("under an hour: no inn") end
+        clock, travel = 4000, 300
+        shown()
+        if #said ~= 0 then error("an inn 5 minutes away: no") end
+        travel = 60
+        env.GetXPExhaustion = function() return 8000 end
+        shown()
+        if #said ~= 0 then error("fully rested: no inn") end
+        env.GetXPExhaustion = function() return 300 end
+        ns.db.plannerInn = false
+        shown()
+        if #said ~= 0 then error("switch off") end
+        ns.db.plannerInn = nil
+        ns:GuideCommand("stop")
+        if #said < 2 then error("/fgui guide stop suggests it too") end
+    end)
+    ns.GuideUnlocked, ns.UpgradeAmount, env.GetNumQuestChoices, env.GetQuestItemLink, env.C_Item.GetItemInfo = saved.unlocked, saved.up, saved.choices, saved.link, saved.info
+    rawset(env, "GetQuestItemInfo", saved.itemInfo); rawset(env, "QuestInfo_GetRewardButton", saved.button); rawset(env, "QuestInfoItem_OnClick", saved.click)
+    rawset(env, "QuestInfoFrame", saved.frame); rawset(env, "GetQuestReward", saved.reward)
+    env.C_QuestLog, env.UnitLevel, env.GetTime, env.IsResting, env.GetXPExhaustion = saved.logQ, saved.level, saved.time, saved.resting, saved.exh
+    ns.PlannerContext, ns.PlannerPlaces, ns.PlannerTravel, ns.Print, ns.plannerSessionStart = saved.context, saved.places, saved.travel, saved.print, saved.start
+    ns.db.plannerPickReward, ns.db.plannerLogAdvice, ns.db.plannerInn = saved.pick, saved.advice, saved.inn
+    ns.plannerInnLine = nil
+    if not ok then error(err, 0) end
+end)
+
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()

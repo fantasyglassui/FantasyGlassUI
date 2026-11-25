@@ -415,6 +415,16 @@ function ns.BuildGuidePage(page)
     end)
     classQuests:SetPoint("TOPLEFT", 0, -758)
     T.classQuestsBox = classQuests
+    local pick = ns:CreateCheckbox(live, "Pick the best quest reward", ns.db.plannerPickReward ~= false, function(v) ns.db.plannerPickReward = v end)
+    pick:SetPoint("TOPLEFT", 0, -784)
+    local logAdvice = ns:CreateCheckbox(live, "Quest log advice", ns.db.plannerLogAdvice ~= false, function(v)
+        ns.db.plannerLogAdvice = v
+        if ns.GuideShowPanel and ns.GuidePanelShown and ns:GuidePanelShown() then ns:GuideShowPanel() end
+    end)
+    logAdvice:SetPoint("TOPLEFT", 0, -810)
+    local inn = ns:CreateCheckbox(live, "Suggest an inn when you stop", ns.db.plannerInn ~= false, function(v) ns.db.plannerInn = v end)
+    inn:SetPoint("TOPLEFT", 0, -836)
+    T.pickBox, T.logAdviceBox, T.innBox = pick, logAdvice, inn
     T.deathsBox, T.soloElitesBox, T.skippedButton = deaths, soloElites, skipButton
     T.restedBox, T.rewardsBox, T.reputationButton = rested, rewards, repButton
     T.planButton, T.groupButton, T.flightsBox, T.whyBox, T.trainerBox, T.holdBox = plan, group, flights, why, trainer, hold
@@ -443,6 +453,9 @@ function ns.BuildGuidePage(page)
         deaths:SetChecked(ns.db.plannerDeaths ~= false)
         soloElites:SetChecked(ns.db.plannerSoloElites ~= false)
         classQuests:SetChecked(ns.db.plannerClassQuests ~= false)
+        pick:SetChecked(ns.db.plannerPickReward ~= false)
+        logAdvice:SetChecked(ns.db.plannerLogAdvice ~= false)
+        inn:SetChecked(ns.db.plannerInn ~= false)
         DrawGroup(group)
         recBtn.text:SetText(ns:Tr(ns.guideRecording and "Stop recording" or "Record"))
         local st = ns.GuideState and ns.GuideState()

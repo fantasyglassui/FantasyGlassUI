@@ -21,6 +21,15 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["Worth abandoning: %s (%s)"] = "Lohnt sich abzubrechen: %s (%s)",
+    ["gray"] = "grau",
+    ["never planned"] = "nie eingeplant",
+    ["off the route"] = "abseits der Route",
+    ["an inn"] = "einem Gasthaus",
+    ["Log out at %s for rested experience (about %d min away)"] = "Melde dich bei %s ab für Ruhe-Erfahrung (etwa %d Min. entfernt)",
+    ["Pick the best quest reward"] = "Beste Questbelohnung wählen",
+    ["Quest log advice"] = "Questlog-Tipps",
+    ["Suggest an inn when you stop"] = "Gasthaus vorschlagen, wenn du aufhörst",
     ["Escort: start it when you are ready; it fails if the NPC dies"] = "Eskorte: Starte sie, wenn du bereit bist; sie scheitert, wenn der NPC stirbt",
     ["Keep the %s that drops here"] = "Behalte: %s, das hier fallen gelassen wird",
     ["Use the %s to start it"] = "Benutze: %s, um sie zu beginnen",
@@ -3365,6 +3374,15 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["Worth abandoning: %s (%s)"] = "À abandonner : %s (%s)",
+    ["gray"] = "grise",
+    ["never planned"] = "jamais planifiée",
+    ["off the route"] = "hors de l'itinéraire",
+    ["an inn"] = "une auberge",
+    ["Log out at %s for rested experience (about %d min away)"] = "Déconnectez-vous à %s pour l'expérience reposée (à environ %d min)",
+    ["Pick the best quest reward"] = "Choisir la meilleure récompense de quête",
+    ["Quest log advice"] = "Conseils pour le journal de quêtes",
+    ["Suggest an inn when you stop"] = "Suggérer une auberge à l'arrêt",
     ["Escort: start it when you are ready; it fails if the NPC dies"] = "Escorte : commencez quand vous êtes prêt ; elle échoue si le PNJ meurt",
     ["Keep the %s that drops here"] = "Gardez : %s, qui tombe ici",
     ["Use the %s to start it"] = "Utilisez : %s pour la commencer",
@@ -6709,6 +6727,15 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["Worth abandoning: %s (%s)"] = "Conviene abandonar: %s (%s)",
+    ["gray"] = "gris",
+    ["never planned"] = "nunca planeada",
+    ["off the route"] = "fuera de la ruta",
+    ["an inn"] = "una posada",
+    ["Log out at %s for rested experience (about %d min away)"] = "Sal del juego en %s para obtener experiencia de descanso (a unos %d min)",
+    ["Pick the best quest reward"] = "Elegir la mejor recompensa de misión",
+    ["Quest log advice"] = "Consejos del registro de misiones",
+    ["Suggest an inn when you stop"] = "Sugerir una posada al parar",
     ["Escort: start it when you are ready; it fails if the NPC dies"] = "Escolta: empieza cuando estés listo; fracasa si el PNJ muere",
     ["Keep the %s that drops here"] = "Conserva: %s, que cae aquí",
     ["Use the %s to start it"] = "Usa: %s para empezarla",
@@ -10056,6 +10083,15 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["Worth abandoning: %s (%s)"] = "Стоит отменить: %s (%s)",
+    ["gray"] = "серое",
+    ["never planned"] = "не планировалось",
+    ["off the route"] = "вне маршрута",
+    ["an inn"] = "трактире",
+    ["Log out at %s for rested experience (about %d min away)"] = "Выйдите из игры в %s ради бонуса отдыха (около %d мин. пути)",
+    ["Pick the best quest reward"] = "Выбирать лучшую награду за задание",
+    ["Quest log advice"] = "Советы по журналу заданий",
+    ["Suggest an inn when you stop"] = "Предлагать трактир, когда вы заканчиваете",
     ["Escort: start it when you are ready; it fails if the NPC dies"] = "Сопровождение: начинайте, когда будете готовы; задание провалится, если NPC погибнет",
     ["Keep the %s that drops here"] = "Сохраните: %s, который выпадает здесь",
     ["Use the %s to start it"] = "Используйте: %s, чтобы начать",
@@ -13400,6 +13436,15 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["Worth abandoning: %s (%s)"] = "Vale a pena abandonar: %s (%s)",
+    ["gray"] = "cinza",
+    ["never planned"] = "nunca planejada",
+    ["off the route"] = "fora da rota",
+    ["an inn"] = "uma estalagem",
+    ["Log out at %s for rested experience (about %d min away)"] = "Saia em %s para ganhar experiência de descanso (cerca de %d min)",
+    ["Pick the best quest reward"] = "Escolher a melhor recompensa de missão",
+    ["Quest log advice"] = "Dicas do diário de missões",
+    ["Suggest an inn when you stop"] = "Sugerir uma estalagem ao parar",
     ["Escort: start it when you are ready; it fails if the NPC dies"] = "Escolta: comece quando estiver pronto; ela falha se o NPC morrer",
     ["Keep the %s that drops here"] = "Guarde: %s, que cai aqui",
     ["Use the %s to start it"] = "Use: %s para começá-la",
@@ -16744,6 +16789,15 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["Worth abandoning: %s (%s)"] = "Conviene abbandonare: %s (%s)",
+    ["gray"] = "grigia",
+    ["never planned"] = "mai pianificata",
+    ["off the route"] = "fuori percorso",
+    ["an inn"] = "una locanda",
+    ["Log out at %s for rested experience (about %d min away)"] = "Esci a %s per l'esperienza da riposo (a circa %d min)",
+    ["Pick the best quest reward"] = "Scegli la migliore ricompensa di missione",
+    ["Quest log advice"] = "Consigli sul diario missioni",
+    ["Suggest an inn when you stop"] = "Suggerisci una locanda quando smetti",
     ["Escort: start it when you are ready; it fails if the NPC dies"] = "Scorta: iniziala quando sei pronto; fallisce se il PNG muore",
     ["Keep the %s that drops here"] = "Tieni: %s, che cade qui",
     ["Use the %s to start it"] = "Usa: %s per iniziarla",
@@ -20088,6 +20142,15 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["Worth abandoning: %s (%s)"] = "포기할 만한 퀘스트: %s (%s)",
+    ["gray"] = "회색",
+    ["never planned"] = "계획에 없음",
+    ["off the route"] = "경로에서 벗어남",
+    ["an inn"] = "여관",
+    ["Log out at %s for rested experience (about %d min away)"] = "휴식 경험치를 위해 %s에서 접속을 종료하세요 (약 %d분 거리)",
+    ["Pick the best quest reward"] = "최고의 퀘스트 보상 고르기",
+    ["Quest log advice"] = "퀘스트 목록 조언",
+    ["Suggest an inn when you stop"] = "그만둘 때 여관 제안",
     ["Escort: start it when you are ready; it fails if the NPC dies"] = "호위: 준비되면 시작하세요. NPC가 죽으면 실패합니다",
     ["Keep the %s that drops here"] = "여기서 나오는 %s을(를) 보관하세요",
     ["Use the %s to start it"] = "%s을(를) 사용해 시작하세요",
@@ -23435,6 +23498,15 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["Worth abandoning: %s (%s)"] = "值得放弃：%s（%s）",
+    ["gray"] = "灰色",
+    ["never planned"] = "从未计划",
+    ["off the route"] = "不在路线上",
+    ["an inn"] = "旅店",
+    ["Log out at %s for rested experience (about %d min away)"] = "在%s下线可获得休息经验（约%d分钟路程）",
+    ["Pick the best quest reward"] = "选择最佳任务奖励",
+    ["Quest log advice"] = "任务日志建议",
+    ["Suggest an inn when you stop"] = "停止时推荐旅店",
     ["Escort: start it when you are ready; it fails if the NPC dies"] = "护送：准备好了再开始；如果 NPC 死亡就会失败",
     ["Keep the %s that drops here"] = "保留在这里掉落的%s",
     ["Use the %s to start it"] = "使用%s开始任务",
