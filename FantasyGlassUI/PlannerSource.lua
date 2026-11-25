@@ -227,7 +227,7 @@ ns.PLANNER_MOUNT_VENDORS = {
 -- (no scan for class trainers: the flag finds every trainer of every class and profession)
 local FLAG_NAMES = { innkeeper = "INNKEEPER", repair = "REPAIR" }
 local TOWNSFOLK_KEY = { innkeeper = "Innkeeper", repair = "Repair", classTrainer = "Class Trainer", mailbox = "Mailbox" }
-local placeCaches = { questie = {}, log = {} }   -- one per source: the log source never sees Questie's places
+local placeCaches = { questie = {}, log = {}, questieScan = {}, logScan = {} }   -- one per source: the log source never sees Questie's places
 
 local function Plain(v) return type(v) == "table" and v or nil end
 
@@ -334,22 +334,30 @@ local function SeenFor(kind, arg)
 end
 
 local function Places(which, env, kind, arg)
-    local cache = placeCaches[which]
+    local cache, scans = placeCaches[which], placeCaches[which .. "Scan"]
     local key = tostring(kind) .. "\0" .. tostring(arg)
     local hit = cache[key]
     if not hit then
         hit = {}
-        local cacheable = true
         if env and kind ~= "anyVendor" then
             local ids = KnownIds(kind, arg)
-            local known = ids ~= nil
-            if ids == nil and FLAG_NAMES[kind] then ids = FlagIds(env, FLAG_NAMES[kind]) end
-            if ids and (kind ~= "mailbox" or type(env.db.QueryObjectSingle) == "function") then
-                hit = Resolve(env, ids, kind == "mailbox", kind == "mailbox" and ns:Tr("Mailbox") or nil)
+            if ids ~= nil then
+                if kind ~= "mailbox" or type(env.db.QueryObjectSingle) == "function" then
+                    hit = Resolve(env, ids, kind == "mailbox", kind == "mailbox" and ns:Tr("Mailbox") or nil)
+                end
+                cache[key] = hit
+            elseif FLAG_NAMES[kind] then
+                -- No saved list (Questie may not have built it yet: it is looked at again each call).
+                -- The NPC scan is costly and is done once per session per kind, even when it finds nothing.
+                hit = scans[kind]
+                if not hit then
+                    hit = Resolve(env, FlagIds(env, FLAG_NAMES[kind]), false)
+                    scans[kind] = hit
+                end
             end
-            cacheable = known or #hit > 0   -- (Questie's own tables may not be built yet: ask again later)
+        else
+            cache[key] = hit
         end
-        if cacheable then cache[key] = hit end
     end
     local seen = SeenFor(kind, arg)
     if #seen == 0 then return hit end
@@ -473,7 +481,7 @@ function ns.PlannerLogSource()
     return src
 end
 
-function ns.PlannerSourceReset() changed, waiting, placeCaches, recCache, cacheLevel = false, false, { questie = {}, log = {} }, {}, nil end
+function ns.PlannerSourceReset() changed, waiting, placeCaches, recCache, cacheLevel = false, false, { questie = {}, log = {}, questieScan = {}, logScan = {} }, {}, nil end
 
 ------------------------------------------------------------------------------------------
 -- Places you have used: where you stood at a mailbox, a vendor or a trainer, saved per account

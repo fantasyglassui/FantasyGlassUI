@@ -9399,8 +9399,13 @@ try("13.1 stops: places", function()
         fakes.QuestieDB.NPCPointers = { [32] = 1, [33] = 2 }
         npcs[32].npcFlags = 16384 + 4
         ns.PlannerSourceReset(); src = ns.PlannerSource()
+        local scans, realQ = 0, fakes.QuestieDB.QueryNPCSingle
+        fakes.QuestieDB.QueryNPCSingle = function(id, key) if key == "npcFlags" then scans = scans + 1 end return realQ(id, key) end
         local rp = src.places("repair")
+        src.places("repair"); src.places("repair")
+        fakes.QuestieDB.QueryNPCSingle = realQ
         if #rp ~= 1 or rp[1].id ~= 32 then error("repair from the flag scan") end
+        if scans ~= 2 then error("the flag scan ran again on a later call: " .. scans) end
         fakes.QuestieDB.npcFlags = { REPAIR = 16384, TRAINER = 16 }
         npcs[33].npcFlags = 16 + 16384; npcs[33].name = "[DND] Test"
         ns.PlannerSourceReset(); src = ns.PlannerSource()
