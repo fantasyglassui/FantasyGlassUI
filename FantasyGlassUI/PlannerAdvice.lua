@@ -15,7 +15,7 @@ ns.PLANNER_GRAY_GAP = 8                 -- a quest this many levels below you is
 ns.PLANNER_INN_PLAY = 3600              -- seconds of play before an inn is suggested
 ns.PLANNER_INN_SECONDS = 120            -- an inn this close (seconds of travel)
 ns.PLANNER_INN_SHOWN = 600              -- the inn line stays on the panel this long
-ns.plannerSessionStart = GetTime and GetTime() or 0     -- (a /reload keeps the login's time: see PLAYER_LOGIN below)
+ns.plannerSessionStart = GetTime and GetTime() or 0     -- (a /reload keeps the login's time: see PLAYER_ENTERING_WORLD below)
 
 local function Num(v) if type(v) == "number" and not ns:IsSecret(v) then return v end end
 local function Clean(s)
@@ -111,11 +111,11 @@ function ns.PlannerLogAdvice(steps, at)
     local ctx, routePos
     local function OffRoute(id)
         if InCombatLockdown and InCombatLockdown() then return false end
-        if not ctx then
-            local okC, c = pcall(ns.PlannerContext)
+        if ctx == nil then
+            local okC, c = pcall(ns.PlannerSource)
             ctx = okC and type(c) == "table" and c or false
         end
-        local src = ctx and ctx.source
+        local src = ctx
         if type(src) ~= "table" or type(src.quest) ~= "function" then return false end
         local okQ, rec = pcall(src.quest, id)
         if not (okQ and type(rec) == "table") then return false end
@@ -243,9 +243,10 @@ do
     pcall(ev.RegisterEvent, ev, "QUEST_COMPLETE")
     -- (one frame later: the game's own hand-in panel resets its selection while it is drawn)
     local pick = ns:Guard("Planner reward", PickReward)
-    pcall(ev.RegisterEvent, ev, "PLAYER_LOGIN")
+    pcall(ev.RegisterEvent, ev, "PLAYER_ENTERING_WORLD")
     ev:SetScript("OnEvent", ns:Guard("Planner events", function(_, event, isInitial, isReload)
-        if event == "PLAYER_LOGIN" then
+        if event == "PLAYER_ENTERING_WORLD" then
+            if not (isInitial or isReload) then return end            -- (a zone change)
             local okT, now = pcall(GetTime)
             now = okT and Num(now) or nil
             if not (now and type(ns.root) == "table" and ns:GuideUnlocked()) then return end

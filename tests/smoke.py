@@ -11561,7 +11561,7 @@ try("13.3 choices: hand-in, quest log, inn", function()
                     info = env.C_Item.GetItemInfo, itemInfo = rawget(env, "GetQuestItemInfo"), button = rawget(env, "QuestInfo_GetRewardButton"),
                     click = rawget(env, "QuestInfoItem_OnClick"), frame = rawget(env, "QuestInfoFrame"), reward = rawget(env, "GetQuestReward"),
                     logQ = env.C_QuestLog, level = env.UnitLevel, time = env.GetTime, resting = env.IsResting, exh = env.GetXPExhaustion,
-                    context = ns.PlannerContext, places = ns.PlannerPlaces, travel = ns.PlannerTravel, print = ns.Print, start = ns.plannerSessionStart,
+                    source = ns.PlannerSource, rootAt = ns.root.plannerSessionAt, context = ns.PlannerContext, places = ns.PlannerPlaces, travel = ns.PlannerTravel, print = ns.Print, start = ns.plannerSessionStart,
                     world = ns.PlannerWorldPos, inns = ns.plannerInns, pick = ns.db.plannerPickReward, advice = ns.db.plannerLogAdvice, inn = ns.db.plannerInn }
     local ok, err = pcall(function()
         ns.GuideUnlocked = function() return true end
@@ -11646,11 +11646,11 @@ try("13.3 choices: hand-in, quest log, inn", function()
         if #ns.PlannerLogAdvice(cycle, 1) ~= 0 then error("hand-ins give places back: no advice") end
         -- off the route: all its spots beyond the hub radius of the route, against never planned
         log(23, nil)
-        ns.PlannerContext = function()
-            return { source = { quest = function(id)
+        ns.PlannerSource = function()
+            return { quest = function(id)
                 if id == 102 then return { starts = { { map = 1, x = 90, y = 90 } }, ends = {}, objectives = {} } end
                 if id == 103 then return { starts = { { map = 1, x = 10, y = 10 } }, ends = {}, objectives = {} } end
-            end } }
+            end }
         end
         local route = {}
         for i = 1, 23 do if i ~= 2 and i ~= 3 then route[#route + 1] = { kind = "do", quest = 100 + i, map = 1, x = 10, y = 10 } end end
@@ -11658,6 +11658,18 @@ try("13.3 choices: hand-in, quest log, inn", function()
         for _, a in ipairs(ns.PlannerLogAdvice(route, 1)) do byName[a.name] = a.reason end
         if byName["Quest 2"] ~= "off the route" then error("all its spots far from the route: " .. tostring(byName["Quest 2"])) end
         if byName["Quest 3"] ~= "never planned" then error("a spot on the route: never planned, got " .. tostring(byName["Quest 3"])) end
+        -- the play session: a login starts it, a reload keeps it, a zone change does nothing
+        clock = 777
+        env.GetTime = function() return clock end
+        fireEvent("PLAYER_ENTERING_WORLD", true, false)
+        if ns.plannerSessionStart ~= 777 or ns.root.plannerSessionAt ~= 777 then error("a login starts the session") end
+        clock = 5000
+        fireEvent("PLAYER_ENTERING_WORLD", false, true)
+        if ns.plannerSessionStart ~= 777 then error("a reload keeps the session start") end
+        fireEvent("PLAYER_ENTERING_WORLD", false, false)
+        if ns.plannerSessionStart ~= 777 then error("a zone change keeps it too") end
+        ns.plannerSessionStart = 12345; fireEvent("PLAYER_ENTERING_WORLD", false, true)
+        if ns.plannerSessionStart ~= 777 then error("a reload restores the saved start") end
         -- the inn
         local said, clock = {}, 4000
         ns.Print = function(_, msg, ...) said[#said + 1] = (select("#", ...) > 0) and string.format(msg, ...) or msg end
@@ -11708,6 +11720,7 @@ try("13.3 choices: hand-in, quest log, inn", function()
     rawset(env, "GetQuestItemInfo", saved.itemInfo); rawset(env, "QuestInfo_GetRewardButton", saved.button); rawset(env, "QuestInfoItem_OnClick", saved.click)
     rawset(env, "QuestInfoFrame", saved.frame); rawset(env, "GetQuestReward", saved.reward)
     env.C_QuestLog, env.UnitLevel, env.GetTime, env.IsResting, env.GetXPExhaustion = saved.logQ, saved.level, saved.time, saved.resting, saved.exh
+    ns.PlannerSource, ns.root.plannerSessionAt = saved.source, saved.rootAt
     ns.PlannerContext, ns.PlannerPlaces, ns.PlannerTravel, ns.Print, ns.plannerSessionStart = saved.context, saved.places, saved.travel, saved.print, saved.start
     ns.db.plannerPickReward, ns.db.plannerLogAdvice, ns.db.plannerInn = saved.pick, saved.advice, saved.inn
     env.InCombatLockdown = saved.combat
