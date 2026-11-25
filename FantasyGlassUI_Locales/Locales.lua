@@ -21,6 +21,12 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["Train %s at %s"] = "%s trainieren bei %s",
+    ["Riding"] = "Reiten",
+    ["Buy your mount at %s"] = "Dein Reittier kaufen bei %s",
+    ["Riding: %s to go"] = "Reiten: noch %s",
+    ["Profession training stops"] = "Stopps beim Berufslehrer",
+    ["Mount reminder"] = "Reittier-Erinnerung",
     ["Sell and repair stops"] = "Verkaufs- und Reparaturstopps",
     ["Buy supplies at the vendor stop"] = "Vorräte beim Händlerstopp kaufen",
     ["Sell and repair at %s"] = "Verkaufen und reparieren bei %s",
@@ -3332,6 +3338,12 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["Train %s at %s"] = "Apprendre %s auprès de %s",
+    ["Riding"] = "Monte",
+    ["Buy your mount at %s"] = "Acheter votre monture chez %s",
+    ["Riding: %s to go"] = "Monte : encore %s",
+    ["Profession training stops"] = "Étapes chez le maître de métier",
+    ["Mount reminder"] = "Rappel de monture",
     ["Sell and repair stops"] = "Arrêts pour vendre et réparer",
     ["Buy supplies at the vendor stop"] = "Acheter des provisions à l'arrêt chez le marchand",
     ["Sell and repair at %s"] = "Vendre et réparer chez %s",
@@ -6643,6 +6655,12 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["Train %s at %s"] = "Entrenar %s con %s",
+    ["Riding"] = "Equitación",
+    ["Buy your mount at %s"] = "Comprar tu montura en %s",
+    ["Riding: %s to go"] = "Equitación: faltan %s",
+    ["Profession training stops"] = "Paradas con el instructor de profesión",
+    ["Mount reminder"] = "Recordatorio de montura",
     ["Sell and repair stops"] = "Paradas para vender y reparar",
     ["Buy supplies at the vendor stop"] = "Comprar provisiones en la parada del vendedor",
     ["Sell and repair at %s"] = "Vender y reparar en %s",
@@ -9957,6 +9975,12 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["Train %s at %s"] = "Изучить: %s у %s",
+    ["Riding"] = "Верховая езда",
+    ["Buy your mount at %s"] = "Купить скакуна: %s",
+    ["Riding: %s to go"] = "Верховая езда: осталось %s",
+    ["Profession training stops"] = "Остановки у учителей профессий",
+    ["Mount reminder"] = "Напоминание о скакуне",
     ["Sell and repair stops"] = "Остановки: продать и починить",
     ["Buy supplies at the vendor stop"] = "Покупать припасы у торговца",
     ["Sell and repair at %s"] = "Продать и починить: %s",
@@ -13268,6 +13292,12 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["Train %s at %s"] = "Treinar %s com %s",
+    ["Riding"] = "Montaria",
+    ["Buy your mount at %s"] = "Comprar sua montaria em %s",
+    ["Riding: %s to go"] = "Montaria: faltam %s",
+    ["Profession training stops"] = "Paradas no instrutor de profissão",
+    ["Mount reminder"] = "Lembrete de montaria",
     ["Sell and repair stops"] = "Paradas para vender e reparar",
     ["Buy supplies at the vendor stop"] = "Comprar suprimentos na parada do vendedor",
     ["Sell and repair at %s"] = "Vender e reparar em %s",
@@ -16579,6 +16609,12 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["Train %s at %s"] = "Allenare %s da %s",
+    ["Riding"] = "Cavalcare",
+    ["Buy your mount at %s"] = "Compra la tua cavalcatura da %s",
+    ["Riding: %s to go"] = "Cavalcare: mancano %s",
+    ["Profession training stops"] = "Soste dall'istruttore di professione",
+    ["Mount reminder"] = "Promemoria cavalcatura",
     ["Sell and repair stops"] = "Soste per vendere e riparare",
     ["Buy supplies at the vendor stop"] = "Comprare provviste alla sosta dal venditore",
     ["Sell and repair at %s"] = "Vendi e ripara da %s",
@@ -19890,6 +19926,12 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["Train %s at %s"] = "%s 배우기: %s",
+    ["Riding"] = "탈것 숙련",
+    ["Buy your mount at %s"] = "%s에서 탈것 구입",
+    ["Riding: %s to go"] = "탈것 숙련: %s 부족",
+    ["Profession training stops"] = "전문 기술 훈련 경유",
+    ["Mount reminder"] = "탈것 알림",
     ["Sell and repair stops"] = "판매 및 수리 경유",
     ["Buy supplies at the vendor stop"] = "상인 경유지에서 보급품 구매",
     ["Sell and repair at %s"] = "%s에서 판매 및 수리",
@@ -23204,6 +23246,12 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["Train %s at %s"] = "训练%s:%s",
+    ["Riding"] = "骑术",
+    ["Buy your mount at %s"] = "在%s购买坐骑",
+    ["Riding: %s to go"] = "骑术:还差%s",
+    ["Profession training stops"] = "专业训练站点",
+    ["Mount reminder"] = "坐骑提醒",
     ["Sell and repair stops"] = "卖出和修理停靠点",
     ["Buy supplies at the vendor stop"] = "在商人停靠点购买补给",
     ["Sell and repair at %s"] = "在%s卖出并修理",

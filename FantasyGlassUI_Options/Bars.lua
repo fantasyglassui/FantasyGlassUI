@@ -359,8 +359,18 @@ function ns.BuildGuidePage(page)
         Replan()
     end)
     supplies:SetPoint("TOPLEFT", 0, -464)
+    local profession = ns:CreateCheckbox(live, "Profession training stops", ns.db.plannerProfession ~= false, function(v)
+        ns.db.plannerProfession = v
+        Replan()
+    end)
+    profession:SetPoint("TOPLEFT", 0, -490)
+    local mount = ns:CreateCheckbox(live, "Mount reminder", ns.db.plannerMount ~= false, function(v)
+        ns.db.plannerMount = v
+        Replan()
+    end)
+    mount:SetPoint("TOPLEFT", 0, -516)
     T.planButton, T.groupButton, T.flightsBox, T.whyBox, T.trainerBox, T.holdBox = plan, group, flights, why, trainer, hold
-    T.vendorBox, T.suppliesBox = vendor, supplies
+    T.vendorBox, T.suppliesBox, T.professionBox, T.mountBox = vendor, supplies, profession, mount
 
     page.Refresh = function()
         local open = ns.GuideUnlocked and ns:GuideUnlocked()
@@ -374,6 +384,8 @@ function ns.BuildGuidePage(page)
         hold:SetChecked(ns.db.plannerHold ~= false)
         vendor:SetChecked(ns.db.plannerVendor ~= false)
         supplies:SetChecked(ns.db.plannerSupplies ~= false)
+        profession:SetChecked(ns.db.plannerProfession ~= false)
+        mount:SetChecked(ns.db.plannerMount ~= false)
         DrawGroup(group)
         recBtn.text:SetText(ns:Tr(ns.guideRecording and "Stop recording" or "Record"))
         local st = ns.GuideState and ns.GuideState()
@@ -382,7 +394,7 @@ function ns.BuildGuidePage(page)
         else status:SetText(ns:Tr("You are not following a guide.")) end
     end
     page.Refresh()
-    page.contentHeight = 524
+    page.contentHeight = 576
     if page.area then page.area:SetContentHeight(page.contentHeight) end
     return T
 end

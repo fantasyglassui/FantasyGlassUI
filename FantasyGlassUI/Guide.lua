@@ -438,6 +438,13 @@ local function TalentText()
     if type(n) ~= "number" or n <= 0 then return nil end
     return format(ns:Tr(n == 1 and "%d talent point to spend" or "%d talent points to spend"), n)
 end
+-- "Riding: 40g to go", at level 40 or more while you can't yet afford the trainer (and your mount).
+local function RidingText()
+    local level = UnitLevel and UnitLevel("player")
+    local r = ns.PlannerRiding and type(level) == "number" and not ns:IsSecret(level) and ns.PlannerRiding(level)
+    if not r or r.short <= 0 or not ns.PlannerGoldText then return nil end
+    return format(ns:Tr("Riding: %s to go"), ns.PlannerGoldText(r.short))
+end
 Draw = function()
     if not panel then return end
     local st = State()
@@ -456,7 +463,12 @@ Draw = function()
     panel.talent:SetPoint("TOPLEFT", 12, skipped and -105 or -92)
     panel.talentButton:ClearAllPoints()
     panel.talentButton:SetPoint("TOPRIGHT", -8, skipped and -103 or -90)
-    panel:SetHeight(118 + (skipped and 13 or 0) + (talents and 13 or 0))
+    local riding = (Planned(st) and ns.db and ns.db.plannerMount ~= false) and RidingText() or nil
+    panel.riding:SetText(riding or "")
+    panel.riding:SetShown(riding ~= nil)
+    panel.riding:ClearAllPoints()
+    panel.riding:SetPoint("TOPLEFT", 12, -92 - (skipped and 13 or 0) - (talents and 13 or 0))
+    panel:SetHeight(118 + (skipped and 13 or 0) + (talents and 13 or 0) + (riding and 13 or 0))
     panel.count:SetText(math.min(at, #steps) .. "/" .. #steps)
     local step = steps[at]
     if step then
@@ -530,6 +542,12 @@ function ns:GuideShowPanel()
         end)
         panel.talentButton:SetPoint("TOPRIGHT", -8, -90)
         panel.talent:Hide(); panel.talentButton:Hide()
+        panel.riding = ns:NewText(panel, 10, "LEFT")               -- (a planned route: gold still to find for riding)
+        panel.riding:SetPoint("TOPLEFT", 12, -92)
+        panel.riding:SetWidth(206)
+        if panel.riding.SetWordWrap then panel.riding:SetWordWrap(false) end
+        ns:Paint(panel.riding, "SetTextColor", "faint")
+        panel.riding:Hide()
         local back = ns:CreateButton(panel, "<", 22, 18, function() ns:GuideSkip(true) end)
         back:SetPoint("BOTTOMLEFT", 8, 6)
         local skip = ns:CreateButton(panel, ">", 22, 18, function() ns:GuideSkip(false) end)

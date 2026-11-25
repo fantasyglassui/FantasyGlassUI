@@ -619,3 +619,115 @@ ns.PlannerRegisterStop({
     end,
     key = function(reason) return reason.visit end,
 })
+
+------------------------------------------------------------------------------------------
+-- Profession training (a capped profession below the game's top: its next trainer), and riding at
+-- level 40 (the riding trainer, then your mount). Reads that fail, are nil or secret: not wanted.
+------------------------------------------------------------------------------------------
+ns.PLANNER_PROFESSION_TOP = 300         -- Forever's classic skills end here; a trainer may say otherwise
+ns.PLANNER_RIDING_LEVEL = 40
+ns.PLANNER_RIDING_LINE = 762
+ns.PLANNER_RIDING_COPPER = 100 * 10000  -- Apprentice Riding
+ns.PLANNER_MOUNT_COPPER = 20 * 10000    -- the mount (Paladins and Warlocks get theirs from class quests)
+ns.PLANNER_PROFESSION_LINES = { 171, 164, 333, 202, 182, 165, 186, 393, 197, 185, 129, 356, 633 }
+local NO_VENDOR_MOUNT = { PALADIN = true, WARLOCK = true }
+
+-- { { line, name, rank, maxRank }, ... } of your professions; nil when the game can't say.
+local function Professions()
+    if type(GetProfessions) ~= "function" or type(GetProfessionInfo) ~= "function" then return nil end
+    local list = { pcall(GetProfessions) }
+    if not list[1] then return nil end
+    local out = {}
+    for i = 2, 8 do
+        local index = list[i]
+        if type(index) == "number" and not ns:IsSecret(index) then
+            local ok, name, _, rank, maxRank, _, _, line = pcall(GetProfessionInfo, index)
+            if ok and not ns:IsSecret(name) then
+                rank, maxRank, line = Num(rank), Num(maxRank), Num(line)
+                if type(name) == "string" and rank and maxRank and line then out[#out + 1] = { line = line, name = name, rank = rank, maxRank = maxRank } end
+            end
+        end
+    end
+    return out
+end
+
+local function Copper()
+    if type(GetMoney) ~= "function" then return nil end
+    local ok, m = pcall(GetMoney)
+    return ok and Num(m) or nil
+end
+
+local function ClassToken()
+    if type(UnitClass) ~= "function" then return nil end
+    local ok, _, token = pcall(UnitClass, "player")
+    return ok and type(token) == "string" and not ns:IsSecret(token) and token or nil
+end
+
+-- Gold as the add-on writes it (its coin formatter, else "40g").
+function ns.PlannerGoldText(copper)
+    copper = floor(tonumber(copper) or 0)
+    local ok, s = pcall(function() return ns:Coins(copper) end)
+    if ok and type(s) == "string" and s ~= "" then return s end
+    return floor(copper / 10000) .. "g"
+end
+
+-- What riding still needs: nil when it is not asked for (below level 40, riding known, the game can't say
+-- your gold); else { short = copper still to find (0: affordable), mount = a vendor mount is needed }.
+function ns.PlannerRiding(level)
+    level = tonumber(level)
+    if not level or level < ns.PLANNER_RIDING_LEVEL then return nil end
+    local profs = Professions()
+    if not profs then return nil end
+    for _, p in ipairs(profs) do
+        if p.line == ns.PLANNER_RIDING_LINE and p.rank > 0 then return nil end
+    end
+    local money = Copper()
+    if not money then return nil end
+    local class = ClassToken()
+    local mount = not (class and NO_VENDOR_MOUNT[class])
+    local need = ns.PLANNER_RIDING_COPPER + (mount and ns.PLANNER_MOUNT_COPPER or 0)
+    return { short = math.max(0, need - money), mount = mount }
+end
+
+for _, line in ipairs(ns.PLANNER_PROFESSION_LINES) do
+    ns.PlannerRegisterStop({
+        id = "profession:" .. line, setting = "plannerProfession", kind = "train",
+        want = function()
+            for _, p in ipairs(Professions() or {}) do
+                if p.line == line and p.rank >= p.maxRank and p.maxRank < ns.PLANNER_PROFESSION_TOP then
+                    return { line = line, name = p.name, maxRank = p.maxRank, after = 0 }
+                end
+            end
+        end,
+        places = function(ctx) return ns.PlannerPlaces(ctx, "professionTrainer", line) end,
+        text = function(place, reason) return string.format(ns:Tr("Train %s at %s"), reason.name, place.name or "") end,
+        key = function(reason) return reason.maxRank end,
+    })
+end
+
+ns.PlannerRegisterStop({
+    id = "riding", setting = "plannerMount", kind = "train",
+    want = function(ctx)
+        local r = ns.PlannerRiding(ctx.level)
+        if r and r.short <= 0 then return { mount = r.mount, after = 0 } end
+    end,
+    places = function(ctx) return ns.PlannerPlaces(ctx, "professionTrainer", ns.PLANNER_RIDING_LINE) end,
+    text = function(place) return string.format(ns:Tr("Train %s at %s"), ns:Tr("Riding"), place.name or "") end,
+    key = function() return "riding" end,
+})
+
+ns.PlannerRegisterStop({
+    id = "mount", setting = "plannerMount", kind = "vendor",
+    want = function(ctx, _, guide)
+        local reason = ctx.stopsWanted and ctx.stopsWanted.riding
+        if type(reason) ~= "table" or not reason.mount then return nil end
+        for i, s in ipairs(guide.steps) do      -- (after the riding trainer's step; without one, no mount stop)
+            if s.kind == "train" and type(s.stopKey) == "string" and s.stopKey:sub(1, 7) == "riding:" then
+                return { after = i }
+            end
+        end
+    end,
+    places = function(ctx) return ns.PlannerPlaces(ctx, "mountVendor") end,
+    text = function(place) return string.format(ns:Tr("Buy your mount at %s"), place.name or "") end,
+    key = function() return "mount" end,
+})

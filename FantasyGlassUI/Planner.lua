@@ -349,7 +349,8 @@ local function IsClassTrainer()
     if ok and trade == true then return false end
     local src = ns.PlannerSource and ns.PlannerSource() or nil
     local places = (src and ns.PlannerPlaces) and ns.PlannerPlaces({ source = src }, "classTrainer") or {}
-    if #places == 0 then return true end
+    local riding = (src and ns.PlannerPlaces) and ns.PlannerPlaces({ source = src }, "professionTrainer", ns.PLANNER_RIDING_LINE or 762) or {}
+    if #places == 0 and #riding == 0 then return true end
     local okG, guid = pcall(UnitGUID, "npc")
     local id = okG and type(guid) == "string" and not ns:IsSecret(guid) and tonumber(guid:match("^%a+%-%d+%-%d+%-%d+%-%d+%-(%d+)%-")) or nil
     local c, x, y
@@ -357,12 +358,17 @@ local function IsClassTrainer()
         local map, px, py = ns.GuideHere()
         c, x, y = ns.PlannerWorldPos(map, px, py)
     end
-    for _, p in ipairs(places) do
-        if id and p.id == id then return true end
-        local pc, ppx, ppy = ns.PlannerWorldPos(p.map, p.x, p.y)
-        if c and pc == c and sqrt((ppx - x) ^ 2 + (ppy - y) ^ 2) <= CLASS_TRAINER_YARDS then return true end
+    local function At(list)
+        for _, p in ipairs(list) do
+            if id and p.id == id then return true end
+            local pc, ppx, ppy = ns.PlannerWorldPos(p.map, p.x, p.y)
+            if c and pc == c and sqrt((ppx - x) ^ 2 + (ppy - y) ^ 2) <= CLASS_TRAINER_YARDS then return true end
+        end
+        return false
     end
-    return false
+    if At(riding) then return false end               -- (the riding trainer is no class trainer)
+    if #places == 0 then return true end
+    return At(places)
 end
 local function TrainerClosed()
     if not classTrainer or not ns:GuideUnlocked() then return end

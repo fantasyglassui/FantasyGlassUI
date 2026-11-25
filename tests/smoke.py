@@ -10087,6 +10087,147 @@ try("13.1 stops: the vendor", function()
     ns.PlannerSourceReset()
     if not ok then error(err, 0) end
 end)
+try("13.1 stops: professions and riding", function()
+    local real = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), level = env.UnitLevel, class = env.UnitClass, money = env.GetMoney,
+                   profs = env.GetProfessions, info = env.GetProfessionInfo, trade = rawget(env, "IsTradeskillTrainer"),
+                   guid = rawget(env, "UnitGUID"), here = ns.GuideHere, source = ns.PlannerSource }
+    local saved = { key = ns.root.guideKey, guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner, seen = ns.root.plannerSeen,
+                    profession = ns.db.plannerProfession, mount = ns.db.plannerMount }
+    local cm = {}
+    for k, v in pairs(real.map) do cm[k] = v end
+    cm.GetWorldPosFromMapPos = function(map, v) if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end end
+    env.C_Map = cm
+    env.CreateVector2D = function(x, y) return { x = x, y = y } end
+    local level, class, money = 20, "WARRIOR", 0
+    env.UnitLevel = function() return level end
+    env.UnitClass = function() return class, class end
+    env.GetMoney = function() return money end
+    local skills = {}                                  -- { line, name, rank, max }
+    env.GetProfessions = function() return skills[1] and 1 or nil, skills[2] and 2 or nil end
+    env.GetProfessionInfo = function(i)
+        local s = skills[i]
+        if not s then return end
+        return s[2], 0, s[3], s[4], 0, 0, s[1]
+    end
+    local function rec(id, x, y)                       -- (a quest a little below you, whatever your level)
+        return { id = id, name = "Quest " .. id, level = level - 1, minLevel = 1, xp = 300,
+            starts = { { map = 1, x = x, y = y } }, ends = { { map = 1, x = x, y = y } },
+            objectives = { { kind = "kill", count = 4, countKnown = true, mobLevel = level - 1, spots = { { map = 1, x = x + 4, y = y + 4 } } } },
+            pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+    end
+    local at = { [601] = { 30, 40 }, [602] = { 31, 40 }, [603] = { 30, 41 } }
+    local places = { ["professionTrainer:186"] = { { name = "Miner Mo", map = 1, x = 33, y = 40, id = 186 } },
+                     ["professionTrainer:762"] = { { name = "Rider Rae", map = 1, x = 34, y = 40, id = 762 } },
+                     mountVendor = { { name = "Horse Hal", map = 1, x = 35, y = 40, id = 763 } } }
+    local source = { kind = "questie", ids = function() return { 601, 602, 603 } end, quest = function(id) return at[id] and rec(id, at[id][1], at[id][2]) end,
+        inns = function() return {} end, places = function(kind, arg) return places[arg and (kind .. ":" .. arg) or kind] or {} end }
+    local function context()
+        return { source = source, level = level, group = "solo", inGroup = false, speed = 7, faction = "Alliance",
+            done = function() return false end, onQuest = function() return false end,
+            here = { map = 1, x = 30, y = 40 }, crossings = {}, learnFlights = false, flights = {}, pace = 1, flightTime = function() return nil end }
+    end
+    local function plan()
+        ns.root.planner = nil
+        return (ns.PlannerRoute(context()))
+    end
+    local function find(guide, kind, pat)
+        for i, s in ipairs(guide.steps) do if s.kind == kind and (not pat or (s.text or ""):find(pat)) then return i, s end end
+    end
+    local ok, err = pcall(function()
+        -- Mining at its cap (75/75): a train step; 74/75: none; 300/300: none (the top)
+        skills = { { 186, "Mining", 75, 75 } }
+        local guide = plan()
+        local at, step = find(guide, "train")
+        if not at or step.text ~= "Train Mining at Miner Mo" or step.stopKey ~= "profession:186:75" then error("Mining 75/75: a train step, got " .. tostring(step and step.text) .. " " .. tostring(step and step.stopKey)) end
+        local back = ns.GuideParse(ns.GuideText(guide))
+        for i, s in ipairs(guide.steps) do if ns.GuideLine(back.steps[i]) ~= ns.GuideLine(s) then error("the profession step round-trips") end end
+        skills = { { 186, "Mining", 74, 75 } }
+        if find(plan(), "train") then error("Mining 74/75: none") end
+        skills = { { 186, "Mining", 300, 300 } }
+        if find(plan(), "train") then error("300/300: the game's top, none") end
+        skills = { { 186, "Mining", 75, 75 } }
+        ns.db.plannerProfession = false
+        if find(plan(), "train") then error("switched off: none") end
+        ns.db.plannerProfession = nil
+        skills = {}
+        -- riding: level 39 nothing; level 40 warrior with 130g: trainer then vendor; 80g: none and 40g to go
+        level, money = 39, 130 * 10000
+        guide = plan()
+        if find(guide, "train") or find(guide, "vendor") then error("level 39: nothing") end
+        if ns.PlannerRiding(39) ~= nil then error("level 39: no riding need") end
+        level = 40
+        guide = plan()
+        local t, v = find(guide, "train", "Rider Rae"), find(guide, "vendor", "Horse Hal")
+        if not t or not v or v <= t then error("warrior, 130g: the riding trainer, then the mount vendor: " .. tostring(t) .. " " .. tostring(v)) end
+        if guide.steps[t].text ~= "Train Riding at Rider Rae" or guide.steps[v].text ~= "Buy your mount at Horse Hal" then error("riding texts: " .. guide.steps[t].text .. " / " .. guide.steps[v].text) end
+        if guide.steps[t].stopKey ~= "riding:riding" or guide.steps[v].stopKey ~= "mount:mount" then error("riding keys") end
+        money = 80 * 10000
+        guide = plan()
+        if find(guide, "train") or find(guide, "vendor") then error("80g: no stops") end
+        local r = ns.PlannerRiding(40)
+        if not r or r.short ~= 40 * 10000 then error("40g short, got " .. tostring(r and r.short)) end
+        local text = ns:Tr("Riding: %s to go"):format(ns.PlannerGoldText(r.short))
+        if text ~= "Riding: " .. ns:Coins(40 * 10000) .. " to go" then error("the line says the gold short, as the add-on writes gold: " .. text) end
+        -- a paladin with 110g: the trainer only
+        class, money = "PALADIN", 110 * 10000
+        guide = plan()
+        if not find(guide, "train", "Rider Rae") or find(guide, "vendor") then error("paladin, 110g: trainer only") end
+        money = 90 * 10000
+        if find(plan(), "train") or ns.PlannerRiding(40).short ~= 10 * 10000 then error("paladin, 90g: nothing, 10g short") end
+        -- riding known: nothing, no line
+        class, money = "WARRIOR", 500 * 10000
+        skills = { { 762, "Riding", 75, 75 } }
+        guide = plan()
+        if find(guide, "train") or find(guide, "vendor") or ns.PlannerRiding(40) ~= nil then error("riding known: nothing") end
+        skills = {}
+        ns.db.plannerMount = false
+        if find(plan(), "train") then error("mount switched off: none") end
+        ns.db.plannerMount = nil
+        -- unreadable gold or professions: nothing, no error
+        env.GetMoney = function() return nil end
+        if find(plan(), "train") then error("gold unreadable: none") end
+        env.GetMoney = function() return money end
+        env.GetProfessions = nil
+        if find(plan(), "train") or ns.PlannerRiding(40) ~= nil then error("professions unreadable: none") end
+        -- a riding trainer visit is not a class trainer visit
+        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
+        places.classTrainer = { { name = "Trainer Ten", map = 1, x = 70, y = 70, id = 10 } }
+        ns.PlannerSource = function() return source end
+        ns.GuideHere = function() return 1, 30, 40 end
+        env.IsTradeskillTrainer = function() return false end
+        env.UnitGUID = function(u) if u == "npc" then return "Creature-0-1-2-3-762-0000ABCD" end end
+        ns.root.planner = nil
+        fireEvent("TRAINER_SHOW"); fireEvent("TRAINER_CLOSED")
+        local d = ns.PlannerCharRecord(false)
+        if d and d.trainerLevel then error("the riding trainer is no class trainer") end
+        places.classTrainer = nil
+        fireEvent("TRAINER_SHOW"); fireEvent("TRAINER_CLOSED")
+        d = ns.PlannerCharRecord(false)
+        if d and d.trainerLevel then error("the riding trainer is no class trainer, with no class trainers known") end
+        -- the switches
+        ns.root.guideState = nil
+        ns:ToggleConfig("guide")
+        local P = ns.guidePage
+        if not (P and P.professionBox and P.mountBox) then error("the profession and mount switches exist") end
+        for _, pair in ipairs({ { P.professionBox, "plannerProfession" }, { P.mountBox, "plannerMount" } }) do
+            local f = pair[1]:GetScript("OnClick")
+            if type(f) ~= "function" then for _, h in ipairs(handlers) do if h.self == pair[1] and h.name == "OnClick" then f = h.fn end end end
+            ns.db[pair[2]] = true
+            f(pair[1])
+            if ns.db[pair[2]] ~= false then error(pair[2] .. " switch turns it off") end
+            if ns.defaults[pair[2]] ~= true then error(pair[2] .. " on by default") end
+        end
+        ns:ToggleConfig()
+    end)
+    ns:PlannerStop()
+    env.C_Map = real.map; rawset(env, "CreateVector2D", real.vec); env.UnitLevel = real.level; env.UnitClass = real.class; env.GetMoney = real.money
+    env.GetProfessions, env.GetProfessionInfo = real.profs, real.info
+    rawset(env, "IsTradeskillTrainer", real.trade); rawset(env, "UnitGUID", real.guid); ns.GuideHere, ns.PlannerSource = real.here, real.source
+    ns.root.guideKey, ns.root.guides, ns.root.guideState, ns.root.planner, ns.root.plannerSeen = saved.key, saved.guides, saved.state, saved.planner, saved.seen
+    ns.db.plannerProfession, ns.db.plannerMount = saved.profession, saved.mount
+    ns.PlannerSourceReset()
+    if not ok then error(err, 0) end
+end)
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()
