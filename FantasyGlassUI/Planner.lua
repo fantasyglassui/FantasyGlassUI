@@ -137,22 +137,89 @@ function ns.PlannerQuestTime(rec, ctx)
         else t = t + 60 end
         if speed > 0 then t = t + Spread(o.spots) / speed end
     end
-    return t * (ctx.pace or 1)
+    t = t * (ctx.pace or 1)
+    -- what your other characters took for this quest (per account): the formula counts once, they up to three times
+    local times = type(ns.root) == "table" and type(ns.root.plannerQuestTimes) == "table" and ns.root.plannerQuestTimes[rec.id]
+    if type(times) == "table" and tonumber(times.n) and tonumber(times.avg) and times.n > 0 then
+        local n = min(times.n, 3)
+        t = (t + times.avg * n) / (1 + n)
+    end
+    return t
+end
+
+-- A sample of how long a quest took from accept to hand-in (while following the plan); over 2 hours is away.
+local QUEST_TIME_MAX = 7200
+function ns.PlannerRecordQuestTime(questID, seconds)
+    seconds = tonumber(seconds)
+    if type(questID) ~= "number" or not seconds or seconds <= 0 or seconds > QUEST_TIME_MAX or not ns.root then return end
+    local root = ns.root
+    if type(root.plannerQuestTimes) ~= "table" then root.plannerQuestTimes = {} end
+    local e = root.plannerQuestTimes[questID]
+    if type(e) ~= "table" or not tonumber(e.n) or not tonumber(e.avg) then e = { n = 0, avg = 0 }; root.plannerQuestTimes[questID] = e end
+    e.avg = (e.avg * e.n + seconds) / (e.n + 1)
+    e.n = e.n + 1
 end
 
 ------------------------------------------------------------------------------------------
 -- Experience
 ------------------------------------------------------------------------------------------
--- ctx.candidate(id) -> record, when that quest is itself a candidate (its follow-up counts half).
-function ns.PlannerQuestXP(rec, ctx)
-    ctx = ctx or {}
-    local xp = rec.xp or 0
-    local level = ctx.level or 1
+local function KillPart(rec, level)
+    local xp = 0
     for _, o in ipairs(rec.objectives or {}) do
         if o.kind == "kill" then
             xp = xp + Count(o) * ns.PlannerKillXP(level, o.mobLevel or rec.level, rec.elite)
         end
     end
+    return xp
+end
+
+-- Kills earn double while rested: the extra is the kill experience, up to what is left of the pool
+-- (ctx.restedLeft, which the route lowers as it lays hubs out; ctx.rested when the route is not).
+function ns.PlannerRestedExtra(rec, ctx)
+    ctx = ctx or {}
+    local left = tonumber(ctx.restedLeft)
+    if left == nil then left = tonumber(ctx.rested) end
+    if not left or left <= 0 then return 0 end
+    return min(left, KillPart(rec, ctx.level or 1))
+end
+
+-- Experience from a better item among the rewards of a quest in the log: 2% of a level per item level
+-- gained, at most a quarter of a level. Unreadable or not loaded yet: 0.
+function ns.PlannerRewardBonus(rec, ctx)
+    ctx = ctx or {}
+    if not (ns.db and ns.db.plannerRewards ~= false) or type(rec) ~= "table" or type(rec.id) ~= "number" then return 0 end
+    if ctx.onQuest and not ctx.onQuest(rec.id) then return 0 end
+    local need = tonumber(ctx.xpMax)
+    if not need then
+        local okM, v = pcall(UnitXPMax, "player")
+        need = okM and tonumber(v) or nil
+    end
+    if not need or need <= 0 or ns:IsSecret(need) then return 0 end
+    local best = 0
+    local function Scan(count, kind)
+        local okN, n = pcall(count, rec.id)
+        n = okN and tonumber(n) or 0
+        for i = 1, min(n, 10) do
+            local okL, link = pcall(GetQuestLogItemLink, kind, i, rec.id)
+            if okL and type(link) == "string" and not ns:IsSecret(link) then
+                local okU, by = pcall(ns.UpgradeAmount, link)
+                by = okU and tonumber(by) or nil
+                if by and by > best then best = by end
+            end
+        end
+    end
+    if type(GetQuestLogItemLink) == "function" then
+        if type(GetNumQuestLogChoices) == "function" then Scan(GetNumQuestLogChoices, "choice") end
+        if type(GetNumQuestLogRewards) == "function" then Scan(GetNumQuestLogRewards, "reward") end
+    end
+    return min(best * 0.02, 0.25) * need
+end
+
+-- ctx.candidate(id) -> record, when that quest is itself a candidate (its follow-up counts half).
+function ns.PlannerQuestXP(rec, ctx)
+    ctx = ctx or {}
+    local xp = (rec.xp or 0) + KillPart(rec, ctx.level or 1)
+    xp = xp + ns.PlannerRestedExtra(rec, ctx) + ns.PlannerRewardBonus(rec, ctx)
     if rec.nextQuest and ctx.candidate then
         local nxt = ctx.candidate(rec.nextQuest)
         if nxt then xp = xp + (nxt.xp or 0) / 2 end
@@ -389,12 +456,13 @@ end
 
 do
     local ev = CreateFrame("Frame")
+    local acceptedAt = {}                            -- questID -> GetTime() at accept, while following (memory only)
     local closes = {}                                -- window-closed event -> the stop kind it ticks (Guide.lua)
     for kind, e in pairs(ns.GUIDE_WINDOW_KINDS or {}) do closes[e] = kind end
-    for _, e in ipairs({ "QUEST_TURNED_IN", "QUEST_REMOVED", "PLAYER_LEVEL_UP", "HEARTHSTONE_BOUND",
+    for _, e in ipairs({ "QUEST_ACCEPTED", "QUEST_TURNED_IN", "QUEST_REMOVED", "PLAYER_LEVEL_UP", "HEARTHSTONE_BOUND",
                          "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED",
                          "TRAINER_SHOW", "TRAINER_CLOSED", "MERCHANT_CLOSED", "MAIL_CLOSED", "PLAYER_MOUNT_DISPLAY_CHANGED" }) do pcall(ev.RegisterEvent, ev, e) end
-    ev:SetScript("OnEvent", ns:Guard("Planner", function(_, event, a)
+    ev:SetScript("OnEvent", ns:Guard("Planner", function(_, event, a, b)
         if event == "PLAYER_REGEN_DISABLED" then fighting = true; return end
         if event == "PLAYER_REGEN_ENABLED" then fighting = false; return end
         if event == "TRAINER_SHOW" then               -- (a locked guide: nothing is looked up)
@@ -441,8 +509,19 @@ do
             return
         end
         -- (an accept does not end a run of hand-ins: a chain's follow-up is offered at the hand-in)
+        if event == "QUEST_ACCEPTED" then
+            local id = (type(b) == "number") and b or a                -- (the quest id comes second or first, by client)
+            local okT, now = pcall(GetTime)
+            if type(id) == "number" and okT and type(now) == "number" and not ns:IsSecret(now) then acceptedAt[id] = now end
+            return
+        end
         if event == "QUEST_TURNED_IN" then
-            if type(a) == "number" then HandedIn(a, plan) end
+            if type(a) == "number" then
+                local since, okT, now = acceptedAt[a], pcall(GetTime)
+                acceptedAt[a] = nil
+                if since and okT and type(now) == "number" and not ns:IsSecret(now) then ns.PlannerRecordQuestTime(a, now - since) end
+                HandedIn(a, plan)
+            end
             ns:PlannerReplan("hand-in")
         elseif event == "HEARTHSTONE_BOUND" then
             local step = type(plan.steps) == "table" and plan.steps[st.at or 1]

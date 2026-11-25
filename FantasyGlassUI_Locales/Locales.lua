@@ -21,6 +21,8 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["Count rested experience"] = "Erholungsbonus mitzählen",
+    ["Count upgrades in rewards"] = "Verbesserungen in Belohnungen mitzählen",
     ["(+%d s detour)"] = "(+%d s Umweg)",
     ["Mail stops"] = "Poststopps",
     ["Explore on the way"] = "Unterwegs erkunden",
@@ -3344,6 +3346,8 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["Count rested experience"] = "Compter l'expérience reposée",
+    ["Count upgrades in rewards"] = "Compter les améliorations dans les récompenses",
     ["(+%d s detour)"] = "(+%d s de détour)",
     ["Mail stops"] = "Arrêts à la boîte aux lettres",
     ["Explore on the way"] = "Explorer en chemin",
@@ -6667,6 +6671,8 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["Count rested experience"] = "Contar la experiencia de descanso",
+    ["Count upgrades in rewards"] = "Contar las mejoras en las recompensas",
     ["(+%d s detour)"] = "(+%d s de desvío)",
     ["Mail stops"] = "Paradas en el buzón",
     ["Explore on the way"] = "Explorar por el camino",
@@ -9993,6 +9999,8 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["Count rested experience"] = "Учитывать бонус отдыха",
+    ["Count upgrades in rewards"] = "Учитывать улучшения в наградах",
     ["(+%d s detour)"] = "(+%d с крюка)",
     ["Mail stops"] = "Остановки у почтового ящика",
     ["Explore on the way"] = "Исследовать по пути",
@@ -13316,6 +13324,8 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["Count rested experience"] = "Contar a experiência de descanso",
+    ["Count upgrades in rewards"] = "Contar melhorias nas recompensas",
     ["(+%d s detour)"] = "(+%d s de desvio)",
     ["Mail stops"] = "Paradas na caixa de correio",
     ["Explore on the way"] = "Explorar pelo caminho",
@@ -16639,6 +16649,8 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["Count rested experience"] = "Conta l'esperienza da riposo",
+    ["Count upgrades in rewards"] = "Conta i miglioramenti nelle ricompense",
     ["(+%d s detour)"] = "(+%d s di deviazione)",
     ["Mail stops"] = "Soste alla cassetta delle lettere",
     ["Explore on the way"] = "Esplora lungo la strada",
@@ -19962,6 +19974,8 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["Count rested experience"] = "휴식 경험치 반영",
+    ["Count upgrades in rewards"] = "보상의 장비 개선 반영",
     ["(+%d s detour)"] = "(+%d초 우회)",
     ["Mail stops"] = "우편함 들르기",
     ["Explore on the way"] = "가는 길에 탐험",
@@ -23288,6 +23302,8 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["Count rested experience"] = "计算休息经验",
+    ["Count upgrades in rewards"] = "计算奖励中的装备提升",
     ["(+%d s detour)"] = "(+%d 秒绕路)",
     ["Mail stops"] = "邮箱停靠点",
     ["Explore on the way"] = "沿途探索",

@@ -10839,6 +10839,113 @@ try("13.2 stops: exploring, and what a replan costs", function()
     ns.PlannerSourceReset()
     if not ok then error(err, 0) end
 end)
+try("13.3 choices: rested, upgrades, alts", function()
+    local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), up = ns.UpgradeAmount, link = rawget(env, "GetQuestLogItemLink"),
+                    choices = rawget(env, "GetNumQuestLogChoices"), rewards = rawget(env, "GetNumQuestLogRewards"), times = ns.root.plannerQuestTimes,
+                    rewardsOn = ns.db.plannerRewards, on = ns.GuideOn, state = ns.GuideState, time = env.GetTime, max = env.UnitXPMax }
+    local ok, err = pcall(function()
+        local function rec(id, extra)
+            local r = { id = id, name = "Q" .. id, level = 10, minLevel = 1, xp = 300, starts = {}, ends = {},
+                objectives = { { kind = "kill", count = 8, countKnown = true, mobLevel = 10, spots = {} } },
+                pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+            for k, v in pairs(extra or {}) do r[k] = v end
+            return r
+        end
+        local base = 300 + 8 * 95
+        -- rested: only the kill part doubles, up to the pool
+        if ns.PlannerQuestXP(rec(1), { level = 10, rested = 400 }) ~= base + 400 then error("rested 400: " .. ns.PlannerQuestXP(rec(1), { level = 10, rested = 400 })) end
+        if ns.PlannerQuestXP(rec(1), { level = 10, rested = 5000 }) ~= base + 760 then error("rested is the kill part at most") end
+        if ns.PlannerQuestXP(rec(1), { level = 10, rested = 0 }) ~= base or ns.PlannerQuestXP(rec(1), { level = 10 }) ~= base then error("no pool, no extra") end
+        if ns.PlannerQuestXP(rec(1), { level = 10, rested = 5000, restedLeft = 100 }) ~= base + 100 then error("restedLeft wins") end
+        -- two hubs, 500 rested: the first gets 760 of kills... (here 4 kills = 380 each), the second what is left
+        local cm = {}
+        for k, v in pairs(saved.map) do cm[k] = v end
+        cm.GetWorldPosFromMapPos = function(map, v) if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end end
+        env.C_Map = cm
+        env.CreateVector2D = function(x, y) return { x = x, y = y } end
+        local function hubRec(id, x, y)
+            return rec(id, { starts = { { map = 1, x = x, y = y } }, ends = { { map = 1, x = x, y = y } },
+                objectives = { { kind = "kill", count = 4, countKnown = true, mobLevel = 10, spots = { { map = 1, x = x + 2, y = y + 2 } } } } })
+        end
+        local recs = { [501] = hubRec(501, 30, 40), [502] = hubRec(502, 80, 80) }
+        local source = { kind = "questie", ids = function() return { 501, 502 } end, quest = function(id) return recs[id] end, inns = function() return {} end }
+        local function route(rested)
+            local ctx = { source = source, level = 10, group = "solo", inGroup = false, speed = 7, faction = "Alliance", rested = rested,
+                done = function() return false end, onQuest = function() return false end, here = { map = 1, x = 30, y = 40 },
+                crossings = {}, learnFlights = false, bind = "Elsewhere", bindSpot = { map = 1, x = 30, y = 40 }, pace = 1, flights = {},
+                flightTime = function() return nil end }
+            local guide, summary = ns.PlannerRoute(ctx)
+            local firstXP, secondXP = {}, {}
+            for _, s in ipairs(guide.steps) do if s.kind == "accept" then firstXP[s.quest] = s.why and s.why.xp end end
+            return summary, firstXP
+        end
+        local plain = route(nil)
+        local rest = route(500)
+        local per = 2 * (300 + 4 * 95)
+        if plain.xp ~= per then error("plain plan xp " .. plain.xp) end
+        if rest.xp ~= per + 500 then error("rested 500 over two hubs: " .. rest.xp .. " vs " .. per + 500) end
+        local _, accepts = route(500)
+        local a, b = accepts[501], accepts[502]
+        if not (a and b) or a <= b then error("later hubs get less: " .. tostring(a) .. " " .. tostring(b)) end
+        if a ~= 300 + 380 + 380 or b ~= 300 + 380 + 120 then error("first hub 380 extra, second 120: " .. a .. " " .. b) end
+        -- upgrades
+        env.UnitXPMax = function() return 10000 end
+        local by, links = { choice = { "a", "b" } }, { a = 1, b = 6 }
+        ns.UpgradeAmount = function(link) return links[link] end
+        env.GetNumQuestLogChoices = function(id) return id == 7 and 2 or 0 end
+        env.GetNumQuestLogRewards = function() return 0 end
+        env.GetQuestLogItemLink = function(kind, i, id) if kind == "choice" and id == 7 then return by.choice[i] end end
+        ns.db.plannerRewards = true
+        local q = rec(7, { objectives = {} })
+        local c = { level = 10, xpMax = 10000 }
+        if ns.PlannerRewardBonus(q, c) ~= 1200 or ns.PlannerQuestXP(q, c) ~= 300 + 1200 then error("6 levels better: " .. ns.PlannerRewardBonus(q, c)) end
+        links.b = 20
+        if ns.PlannerRewardBonus(q, c) ~= 2500 then error("capped at a quarter of a level") end
+        by.choice = { nil, nil }
+        if ns.PlannerRewardBonus(q, c) ~= 0 or ns.PlannerQuestXP(q, c) ~= 300 then error("no link loaded: nothing") end
+        env.GetQuestLogItemLink = function() error("boom") end
+        if ns.PlannerRewardBonus(q, c) ~= 0 then error("an erroring API: nothing") end
+        env.GetQuestLogItemLink = function(kind, i, id) if kind == "choice" and id == 7 then return ({ "a", "b" })[i] end end
+        if ns.PlannerRewardBonus(q, c) ~= 2500 then error("links back") end
+        if ns.PlannerRewardBonus(rec(8, { objectives = {} }), c) ~= 0 then error("not in the log: nothing") end
+        ns.db.plannerRewards = false
+        if ns.PlannerRewardBonus(q, c) ~= 0 then error("setting off") end
+        ns.db.plannerRewards = true
+        -- alts: the quest times of the account
+        ns.root.plannerQuestTimes = nil
+        local alt = rec(101)
+        if ns.PlannerQuestTime(alt, { pace = 1 }) ~= 200 then error("formula 200") end
+        ns.PlannerRecordQuestTime(101, 600); ns.PlannerRecordQuestTime(101, 600)
+        local est = ns.PlannerQuestTime(alt, { pace = 1 })
+        if math.abs(est - (200 + 600 * 2) / 3) > 1e-6 then error("blend " .. est) end
+        ns.PlannerRecordQuestTime(101, 3 * 3600)
+        if ns.root.plannerQuestTimes[101].n ~= 2 then error("a 3-hour sample is ignored") end
+        ns.PlannerRecordQuestTime(101, 600); ns.PlannerRecordQuestTime(101, 600)
+        if math.abs(ns.PlannerQuestTime(alt, { pace = 1 }) - (200 + 600 * 3) / 4) > 1e-6 then error("at most three samples weigh") end
+        -- events: only while following
+        ns.root.plannerQuestTimes = nil
+        local clock = 1000
+        env.GetTime = function() return clock end
+        fireEvent("QUEST_ACCEPTED", 1, 202); clock = 1300; fireEvent("QUEST_TURNED_IN", 202)
+        if ns.root.plannerQuestTimes then error("not following: nothing is recorded") end
+        ns.GuideOn = function() return true end
+        ns.GuideState = function() return { name = ns.GUIDE_PLANNED, at = 1, plan = {} } end
+        clock = 2000; fireEvent("QUEST_ACCEPTED", 1, 202); clock = 2300; fireEvent("QUEST_TURNED_IN", 202)
+        local e = ns.root.plannerQuestTimes and ns.root.plannerQuestTimes[202]
+        if not (e and e.n == 1 and e.avg == 300) then error("following: accept (id second) to hand-in is 300 s") end
+        clock = 3000; fireEvent("QUEST_ACCEPTED", 203); clock = 3050; fireEvent("QUEST_TURNED_IN", 203)
+        e = ns.root.plannerQuestTimes[203]
+        if not (e and e.avg == 50) then error("the id first as well") end
+        clock = 4000; fireEvent("QUEST_TURNED_IN", 204)
+        if ns.root.plannerQuestTimes[204] then error("never accepted while following: no sample") end
+    end)
+    ns.GuideOn, ns.GuideState, env.GetTime, env.UnitXPMax = saved.on, saved.state, saved.time, saved.max
+    env.C_Map, env.CreateVector2D, ns.UpgradeAmount = saved.map, saved.vec, saved.up
+    env.GetQuestLogItemLink, env.GetNumQuestLogChoices, env.GetNumQuestLogRewards = saved.link, saved.choices, saved.rewards
+    ns.root.plannerQuestTimes, ns.db.plannerRewards = saved.times, saved.rewardsOn
+    ns.plannerQueued = false
+    if not ok then error(err, 0) end
+end)
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()

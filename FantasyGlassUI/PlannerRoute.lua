@@ -442,6 +442,8 @@ local function HubSteps(state, hub, steps, inn, n)
             kept = kept + 1
             t = t + ns.PlannerQuestTime(q, state.ctx)
             xp = xp + ns.PlannerQuestXP(q, state.ctx)
+            local left = tonumber(state.ctx.restedLeft)
+            if left and left > 0 then state.ctx.restedLeft = max(0, left - ns.PlannerRestedExtra(q, state.ctx)) end
         end
     end
     return t, xp, kept
@@ -461,6 +463,7 @@ function ns.PlannerRoute(ctx)
     local summary = { fromLevel = ctx.level, toLevel = ctx.level, xp = 0, seconds = 0, skipped = skipped, empty = true }
     if #candidates == 0 then return guide, summary end
     local c = WithCandidates(ctx, candidates)
+    c.restedLeft = tonumber(ctx.rested)              -- the route uses this pool up as it lays hubs out
     local zone, newly, hubs = ns.PlannerPickZone(candidates, c)
     if not zone then return guide, summary end
     local left = {}
@@ -581,6 +584,7 @@ function ns.PlannerContext()
         crossings = ns.PLANNER_CROSSINGS,
         learnFlights = db.plannerLearnFlights ~= false,
         pace = ns.PlannerPace(),
+        rested = (db.plannerRested ~= false) and Num(Call(GetXPExhaustion)) or nil,
         lastZone = d and tonumber(d.zone) or nil, lastZoneLevel = d and tonumber(d.zoneLevel) or nil,
         trainerLevel = d and tonumber(d.trainerLevel) or nil,   -- the level you last closed your class trainer's window at
     }

@@ -272,7 +272,7 @@ function ns.BuildGuidePage(page)
 
     local live = CreateFrame("Frame", nil, page)
     live:SetPoint("TOPLEFT", 0, 0)
-    local LIVE_HEIGHT = 636                 -- (the last switch ends at y = -620)
+    local LIVE_HEIGHT = 688                 -- (the last switch ends at y = -672)
     live:SetSize(736, LIVE_HEIGHT)
     T.live = live
     Heading(live, "Quest guides", 0, 0, 736)
@@ -385,6 +385,17 @@ function ns.BuildGuidePage(page)
         Replan()
     end)
     gather:SetPoint("TOPLEFT", 0, -594)
+    local rested = ns:CreateCheckbox(live, "Count rested experience", ns.db.plannerRested ~= false, function(v)
+        ns.db.plannerRested = v
+        Replan()
+    end)
+    rested:SetPoint("TOPLEFT", 0, -620)
+    local rewards = ns:CreateCheckbox(live, "Count upgrades in rewards", ns.db.plannerRewards ~= false, function(v)
+        ns.db.plannerRewards = v
+        Replan()
+    end)
+    rewards:SetPoint("TOPLEFT", 0, -646)
+    T.restedBox, T.rewardsBox = rested, rewards
     T.planButton, T.groupButton, T.flightsBox, T.whyBox, T.trainerBox, T.holdBox = plan, group, flights, why, trainer, hold
     T.vendorBox, T.suppliesBox, T.professionBox, T.mountBox = vendor, supplies, profession, mount
     T.mailBox, T.exploreBox, T.gatherBox = mail, explore, gather
@@ -406,6 +417,8 @@ function ns.BuildGuidePage(page)
         mail:SetChecked(ns.db.plannerMail ~= false)
         explore:SetChecked(ns.db.plannerExplore ~= false)
         gather:SetChecked(ns.db.plannerGather ~= false)
+        rested:SetChecked(ns.db.plannerRested ~= false)
+        rewards:SetChecked(ns.db.plannerRewards ~= false)
         DrawGroup(group)
         recBtn.text:SetText(ns:Tr(ns.guideRecording and "Stop recording" or "Record"))
         local st = ns.GuideState and ns.GuideState()
