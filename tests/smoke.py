@@ -9424,6 +9424,109 @@ try("12.3 settings look: palette, accent, contrast, lettering", function()
     ns:Retheme()
     if not ok then error(err, 0) end
 end)
+try("12.3 settings look: buttons and the window's corners", function()
+    local keep = { theme = ns.db.theme, accent = ns.db.accent, lang = ns.root.language, style = ns.db.fontStyle, uf = ns.db.ufStyle }
+    local realCF = env.CreateFrame
+    local made = {}
+    local function hex(c) return string.format("%02x%02x%02x", math.floor(c[1] * 255 + 0.5), math.floor(c[2] * 255 + 0.5), math.floor(c[3] * 255 + 0.5)) end
+    -- frames that know their parent, and the textures and strings made on them
+    local function Region(owner)
+        local t = newmock()
+        rawset(t, "GetParent", function() return owner end)
+        rawset(t, "SetVertexColor", function(x, r, g, b, a) rawset(x, "rgba", { r, g, b, a or 1 }) end)
+        rawset(t, "SetTexture", function(x, path) rawset(x, "tex", path) end)
+        rawset(t, "SetGradient", function(x) rawset(x, "gradient", true) end)
+        rawset(t, "SetFont", function(x, path) rawset(x, "face", path) end)
+        rawset(t, "GetStringWidth", function() return 10 end)
+        made[#made + 1] = t
+        return t
+    end
+    local function Real(f, parent)
+        rawset(f, "GetParent", function() return parent end)
+        rawset(f, "CreateTexture", function(self) return Region(self) end)
+        rawset(f, "CreateFontString", function(self) return Region(self) end)
+        rawset(f, "SetBackdropColor", function(x, r, g, b, a) rawset(x, "bg", { r, g, b, a or 1 }) end)
+        rawset(f, "GetBackdropColor", false)                 -- (left square: the plain backdrop is what is read)
+        rawset(f, "GetWidth", function() return 120 end)
+        return f
+    end
+    local ok, err = pcall(function()
+        ns.db.theme, ns.db.accent, ns.root.language, ns.db.fontStyle = "MIDNIGHT", "VIOLET", "enUS", "GLASS"
+        ns:Retheme()
+        ns:ToggleConfig("home")
+        local win = ns.configFrame
+        env.CreateFrame = function(kind, name, parent, ...) return Real(realCF(kind, name, parent, ...), parent) end
+        local holder = env.CreateFrame("Frame", nil, win)
+        local away = env.CreateFrame("Frame", nil, env.UIParent)
+        -- a button in the window is lettered in Barlow: made, given new text, repainted
+        local b1 = ns:CreateButton(holder, "Run setup again", 132, 24)
+        local out = ns:CreateButton(away, "Run setup again", 132, 24)
+        local function face(b) return tostring(rawget(b.text, "face")) end
+        if not face(b1):find("Barlow%-Medium%.ttf$") then error("a button in the window is lettered in Barlow, got " .. face(b1)) end
+        if face(out) ~= ns.FONT then error("a button elsewhere keeps the theme's lettering, got " .. face(out)) end
+        b1.text:SetText("Something much longer than before")
+        b1.text.suiFit()                                    -- (what the SetText hook runs)
+        if not face(b1):find("Barlow") then error("after SetText, still Barlow, got " .. face(b1)) end
+        ns:Repaint()
+        if not face(b1):find("Barlow") then error("after a repaint, still Barlow, got " .. face(b1)) end
+        if face(out) ~= ns.FONT then error("after a repaint, the button elsewhere keeps the theme's lettering") end
+        -- its plate: the look's, opaque, flat; the same on a Glass and a Fantasy theme
+        local function plate(b) local c = rawget(b, "bg"); return hex(c) .. "/" .. tostring(c[4]) end
+        if plate(b1) ~= "1e222b/1" then error("a button in the window is a flat #1e222b plate, got " .. plate(b1)) end
+        if rawget(b1.plate, "gradient") then error("no lit top edge in the window") end
+        local wash = rawget(b1.wash, "rgba")
+        if hex(wash) ~= "262b36" or wash[4] ~= 1 then error("under the mouse a lighter plate, got " .. hex(wash) .. "/" .. tostring(wash[4])) end
+        if not rawget(out.plate, "gradient") then error("a button elsewhere keeps its lit edge") end
+        local glassPlate, glassWash, glassOut = plate(b1), hex(wash) .. tostring(wash[4]), plate(out)
+        ns.db.theme = "WARM"; ns:Retheme()
+        if ns.style ~= "FANTASY" then error("WARM is a Fantasy theme") end
+        local b2 = ns:CreateButton(holder, "Discord", 96, 24)
+        local w2 = rawget(b2.wash, "rgba")
+        if plate(b2) ~= glassPlate or plate(b1) ~= glassPlate then error("the plate is the same on Fantasy as on Glass, got " .. plate(b2) .. " / " .. plate(b1)) end
+        if hex(w2) .. tostring(w2[4]) ~= glassWash then error("the hover is the same on Fantasy as on Glass") end
+        if rawget(b2.plate, "gradient") then error("no lit top edge on Fantasy either") end
+        local out2 = ns:CreateButton(away, "Discord", 96, 24)
+        if plate(out2) == glassOut then error("(the check needs the themes' own plates to differ)") end
+        -- the window's corners: the cut, its lines in the rim color, no stars, on every family
+        ns.db.ufStyle = "STARCUT"
+        local was = ns.StarcutCanSlice()
+        ns.StarcutCanSlice(true)
+        local function Window(marked)
+            local f = env.CreateFrame("Frame", nil, env.UIParent)
+            if marked then ns:SetLook(f, "settings") end
+            rawset(f, "GetWidth", function() return 1000 end); rawset(f, "GetHeight", function() return 680 end)
+            rawset(f, "CreateMaskTexture", function() local m = newmock(); rawset(m, "SetTextureSliceMargins", function() end); return m end)
+            rawset(f, "GetRegions", function() end)
+            local from = #made
+            ns.StarcutWindow(f)
+            local lines, stars = {}, 0
+            for i = from + 1, #made do
+                local t = made[i]
+                if rawget(t, "scCutLine") then lines[#lines + 1] = t
+                elseif tostring(rawget(t, "tex")):find("\\star$") then stars = stars + 1 end
+            end
+            return f, lines, stars
+        end
+        local plain, _, plainStars = Window(false)
+        if plainStars == 0 then error("(the check needs a Fantasy window elsewhere to get its stars)") end
+        local look, lines, stars = Window(true)
+        if rawget(look, "scCut") ~= true then error("the settings window keeps the Starcut cut") end
+        if stars ~= 0 then error("no Starcut stars on the settings window, got " .. stars) end
+        if #lines == 0 then error("the cut has its lines") end
+        for _, l in ipairs(lines) do
+            if hex(rawget(l, "rgba")) ~= "262b36" then error("the cut lines are the window's rim, got " .. hex(rawget(l, "rgba"))) end
+        end
+        ns:SetLook(look, nil); ns:SetLook(plain, nil)
+        ns.StarcutCanSlice(true)
+        if was ~= nil then ns.StarcutWindow(realCF("Frame")) end
+        ns:ToggleConfig()
+    end)
+    env.CreateFrame = realCF
+    ns.db.theme, ns.db.accent, ns.root.language, ns.db.fontStyle, ns.db.ufStyle = keep.theme, keep.accent, keep.lang, keep.style, keep.uf
+    ns:Retheme()
+    if ns.ApplyFrameStyle then ns:ApplyFrameStyle() end
+    if not ok then error(err, 0) end
+end)
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()

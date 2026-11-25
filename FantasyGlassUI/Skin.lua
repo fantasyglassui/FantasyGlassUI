@@ -153,7 +153,7 @@ ns.LOOKS = {
     settings = Look({
         window = "12141a", inset = "12141a",                                       -- the ground
         ["@bg"] = "181b22", bg = "181b22", bg2 = "181b22", bg3 = "181b22", bg4 = "181b22", card = "181b22",
-        plate = "1f232d", plate2 = "1e222b", select = "1e222b",                     -- buttons, the selection
+        plate = "1e222b", plate2 = "1e222b", plateHover = "262b36", select = "1f232d",   -- buttons (and under the mouse), the selection
         field = "1a1d25",
         ["@border"] = "22262f", border = "22262f", rule = "22262f", trough = "22262f",
         ["@rim"] = "262b36", rim = "262b36",
@@ -163,7 +163,7 @@ ns.LOOKS = {
     settingsContrast = Look({
         window = "000000", inset = "000000",
         ["@bg"] = "000000", bg = "000000", bg2 = "000000", bg3 = "000000", bg4 = "000000", card = "000000",
-        plate = "000000", plate2 = "000000", select = "333333",
+        plate = "000000", plate2 = "000000", plateHover = "333333", select = "333333",
         field = "0a0a0a", trough = "0a0a0a",
         ["@border"] = "ffffff", border = "ffffff", rule = "ffffff",
         ["@rim"] = "ffffff", rim = "ffffff",
@@ -174,7 +174,12 @@ ns.LOOKS = {
 local CONTRAST_LOOK = { settings = "settingsContrast" }
 local HIGH_CONTRAST = { CONTRAST = true, FCONTRAST = true, C_CONTRAST = true }
 function ns:IsHighContrast()
-    return HIGH_CONTRAST[ns.db and ns.db.theme or ""] or false
+    local key = ns.db and ns.db.theme or ""
+    local list = ns.CONTRAST_THEMES                         -- (Access.lua's list, when it is there, so a new family's is not missed)
+    if type(list) == "table" then
+        for _, v in pairs(list) do if v == key then return true end end
+    end
+    return HIGH_CONTRAST[key] or false
 end
 -- Which look an object is under: the name, or false. Found once per object (walking up its
 -- parents) and kept, so painting again costs nothing. A frame marked after things under it were
@@ -1331,21 +1336,30 @@ function ns:CreateButton(parent, text, w, h, onClick, template, name)
     b:SetSize(w or 100, h or 24)
     b.suiW = w or 100
     b:SetBackdrop(ns.BACKDROP)
-    ns:Paint(b, "SetBackdropColor", "plate", (ns.style == "GLASS") and 0.55 or 1)
+    -- (12.3) Inside a look (the settings window) a button is the look's flat plate, the same on
+    -- every theme and family: opaque, no lit top edge, a lighter plate under the mouse.
+    local inLook = ns:LookOf(b) ~= nil
+    b.suiInLook = inLook or nil
+    ns:Paint(b, "SetBackdropColor", "plate", inLook and 1 or ((ns.style == "GLASS") and 0.55 or 1))
     ns:Paint(b, "SetBackdropBorderColor", "@border", 1)
     local side = ns:CanRound() and 4 or 1
     b.wash = b:CreateTexture(nil, "ARTWORK")                   -- accent wash shown under the mouse
     b.wash:SetPoint("TOPLEFT", side, -1)
     b.wash:SetPoint("BOTTOMRIGHT", -side, 1)
     b.wash:SetTexture(ns.FLAT)
-    ns:Paint(b.wash, "SetVertexColor", "@accent", (ns.style == "GLASS") and 0.26 or 0.10)
+    if inLook then ns:Paint(b.wash, "SetVertexColor", "plateHover", 1)
+    else ns:Paint(b.wash, "SetVertexColor", "@accent", (ns.style == "GLASS") and 0.26 or 0.10) end
     b.wash:Hide()
     if ns:CanRound() then ns:Round(b) end
     local plate = b:CreateTexture(nil, "BORDER")
     plate:SetPoint("TOPLEFT", side, -1)
     plate:SetPoint("BOTTOMRIGHT", -side, 1)
     plate:SetTexture(ns.FLAT)
-    if plate.SetGradient and CreateColor then
+    b.plate = plate
+    if inLook then
+        plate:SetVertexColor(0, 0, 0, 0)
+        plate:Hide()
+    elseif plate.SetGradient and CreateColor then
         local lt = th.light
         if ns.style == "GLASS" then
             plate:SetGradient("VERTICAL", CreateColor(lt[1], lt[2], lt[3], 0), CreateColor(lt[1], lt[2], lt[3], 0.12))
@@ -1374,16 +1388,17 @@ function ns:CreateButton(parent, text, w, h, onClick, template, name)
         if room > 0 then
             pcall(t.SetWidth, t, 0)
             local e = fonts[t]
-            local base, face = (e and e[1]) or 12, rawget(t, "suiFixedFont") or ((e and e[2]) and ns.TITLEFONT or ns.FONT)
+            local base = (e and e[1]) or 12
+            local face, flags = FaceOf(t, e and e[2])         -- (inside a look, the look's lettering)
             local size = base
             local function Wide()
                 local ok, sw = pcall(t.GetStringWidth, t)
                 return ok and type(sw) == "number" and sw > room
             end
-            pcall(t.SetFont, t, face, size * (ns.fontScale or 1), ns.FONTFLAGS)
+            pcall(t.SetFont, t, face, size * (ns.fontScale or 1), flags)
             while size > 9 and Wide() do
                 size = size - 1
-                pcall(t.SetFont, t, face, size * (ns.fontScale or 1), ns.FONTFLAGS)
+                pcall(t.SetFont, t, face, size * (ns.fontScale or 1), flags)
             end
             if Wide() then pcall(t.SetWidth, t, room) end
         end
@@ -3715,7 +3730,7 @@ local function WindowApply(frame, on)
             l:SetTexCoord(c[2], c[3], c[4], c[5])
             l:SetSize(spec.size, spec.size)
             l:SetPoint(c[1], frame, c[1], c[6], c[7])
-            ns:Paint(l, "SetVertexColor", "@border", 1)
+            ns:Paint(l, "SetVertexColor", ns:LookOf(frame) and "@rim" or "@border", 1)    -- (in a look: its window rim)
             w.lines[i] = l
         end
     end
@@ -3725,7 +3740,7 @@ local function WindowApply(frame, on)
         if t.SetShown then t:SetShown(not cut) end
     end
     -- stars on the two top cuts of a big window
-    local big = w.kind == "window" and ns.style ~= "GLASS" and (frame:GetWidth() or 0) >= 300 and (frame:GetHeight() or 0) >= 200
+    local big = w.kind == "window" and ns.style ~= "GLASS" and not ns:LookOf(frame) and (frame:GetWidth() or 0) >= 300 and (frame:GetHeight() or 0) >= 200
     if on and big and not w.stars then
         w.stars = {}
         for i, pt in ipairs({ "TOPLEFT", "TOPRIGHT" }) do
