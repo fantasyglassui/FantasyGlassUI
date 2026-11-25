@@ -69,55 +69,91 @@ function O.RowDesc(name)
     return def and def.desc or DESC[name] or ""
 end
 
-local ROW_H, SLIDER_H, BUTTON_H = 42, 48, 36
+local SLIDER_H, BUTTON_H, MIN_H, PAD = 66, 58, 58, 16     -- (12.3) a switch row grows with its description; the others are this tall
 local function BuildSections(page)
     page.rows = {}                                            -- every row, made once: { [name] = frame }
     page.boxes = {}                                           -- a feature's switch, by its key
     local area = page.area
 
-    -- the top: where this is, its name, a line on what is in it, and two buttons
+    -- the top (12.3): where this is (12, secondary), its name (24), a line on what is in it, the All / On /
+    -- Off filter at the title's right and the sample frames button under it. ("Reset ..." is in the
+    -- window's footer, see Config.lua.)
     local crumb = page:CreateFontString(nil, "OVERLAY")
-    ns:Font(crumb, 11)
+    ns:Font(crumb, 12)
     crumb:SetPoint("TOPLEFT", 0, 0)
-    ns:Paint(crumb, "SetTextColor", "faint")
+    ns:Paint(crumb, "SetTextColor", "dim")
     local heading = page:CreateFontString(nil, "OVERLAY")
-    ns:Font(heading, 18, true)
-    heading:SetPoint("TOPLEFT", 0, -16)
-    ns:Paint(heading, "SetTextColor", "@accent")
+    ns:Font(heading, 24, true)
+    heading:SetPoint("TOPLEFT", 0, -18)
+    ns:Paint(heading, "SetTextColor", "text")
     local newTag = ns.NewTag(page)
     newTag:SetPoint("LEFT", heading, "RIGHT", 10, 0)
     local intro = page:CreateFontString(nil, "OVERLAY")
-    ns:Font(intro, 11)
-    intro:SetPoint("TOPLEFT", 0, -42)
+    ns:Font(intro, 13)
+    intro:SetPoint("TOPLEFT", 0, -54)
     intro:SetWidth(520)
     intro:SetJustifyH("LEFT")
     ns:Paint(intro, "SetTextColor", "dim")
     page.heading, page.crumb, page.intro = heading, crumb, intro
 
-    local resetBtn = ns:CreateButton(page, "", 220, 22, ns:ConfirmClick(function() O.ResetCategory(page.category) end))
-    resetBtn:SetPoint("TOPRIGHT", page, "TOPRIGHT", -12, -14)
-    resetBtn:HookScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
-        GameTooltip:AddLine(self.text:GetText())
-        GameTooltip:AddLine(ns:Tr("Every switch and slider of this category goes back to how Fantasy Glass UI comes. Your lists, rules, designs and positions are kept."), 1, 1, 1, true)
-        GameTooltip:Show()
-    end)
-    resetBtn:HookScript("OnLeave", function() GameTooltip:Hide() end)
-    page.resetButton = resetBtn
+    page.filter = "all"
+    page.filterButtons = {}
+    function page.DrawFilter()
+        for mode, b in pairs(page.filterButtons) do
+            ns:Paint(b, "SetBackdropBorderColor", (page.filter == mode) and "@accent" or "@border", 1)
+        end
+    end
+    local function SetFilter(mode)
+        page.filter = mode
+        page.DrawFilter()
+        if page.section then page.Show(page.section) end
+    end
+    local prev
+    for i = 3, 1, -1 do
+        local mode = ({ "all", "on", "off" })[i]
+        local b = ns:CreateButton(page, ({ "All", "On", "Off" })[i], 56, 24, function() SetFilter(mode) end)
+        if prev then b:SetPoint("RIGHT", prev, "LEFT", -6, 0) else b:SetPoint("TOPRIGHT", page, "TOPRIGHT", -12, -14) end
+        page.filterButtons[mode] = b
+        prev = b
+    end
+    page.DrawFilter()
     local sampleBtn = ns:CreateButton(page, "", 170, 22, function()
         if ns.TogglePreview then ns:TogglePreview() end
         page.DrawSamples()
     end)
-    sampleBtn:SetPoint("RIGHT", resetBtn, "LEFT", -8, 0)
+    sampleBtn:SetPoint("TOPRIGHT", page, "TOPRIGHT", -12, -48)
     O.Tip(sampleBtn, "Show sample frames", "Made-up party, raid and boss frames, bars and alerts, so you can see what you change. Click again to put them away.")
     local sampleNote = page:CreateFontString(nil, "OVERLAY")
-    ns:Font(sampleNote, 10)
+    ns:Font(sampleNote, 12)
     sampleNote:SetPoint("TOPRIGHT", sampleBtn, "BOTTOMRIGHT", 0, -4)
     ns:Paint(sampleNote, "SetTextColor", "@accent")
     page.sampleButton = sampleBtn
     function page.DrawSamples()
         sampleBtn.text:SetText(ns:Tr(ns.previewing and "Hide sample frames" or "Show sample frames"))
         sampleNote:SetText(ns.previewing and ns:Tr("Showing sample frames") or "")
+    end
+
+    -- The card the rows sit in (rounded where the theme rounds, flat otherwise), one rule between rows.
+    local card = CreateFrame("Frame", nil, page, ns.template)
+    card:SetBackdrop(ns.BACKDROP)
+    ns:Paint(card, "SetBackdropColor", "card", 1)
+    ns:Paint(card, "SetBackdropBorderColor", "rule", 1)
+    card:SetFrameLevel(page:GetFrameLevel() or 1)
+    if ns:CanRound() then ns:Round(card) end
+    card:Hide()
+    page.card = card
+    local function RowWidth()
+        local w = page.GetWidth and page:GetWidth()
+        return (type(w) == "number" and w > 300) and (w - 12) or 724
+    end
+    -- the height of a text: what the game says, or an estimate where it cannot (before it is drawn)
+    local function TextHeight(fs, size, width)
+        local h = fs.GetStringHeight and fs:GetStringHeight()
+        if type(h) == "number" and h > 0 then return h end
+        local scale = ns.fontScale or 1
+        local chars = #(fs.GetText and fs:GetText() or "")
+        local lines = math.max(1, math.ceil(chars * 0.5 * size * scale / math.max(80, width)))
+        return lines * size * scale * 1.25
     end
 
     -- Rows ---------------------------------------------------------------------------------------
@@ -147,14 +183,16 @@ local function BuildSections(page)
         row.wash = row:CreateTexture(nil, "BACKGROUND")
         row.wash:SetAllPoints()
         row.wash:SetTexture(ns.FLAT)
-        ns:Paint(row.wash, "SetVertexColor", "@accent", 0.08)
+        ns:Paint(row.wash, "SetVertexColor", "select", 1)
         row.wash:Hide()
         row.line = row:CreateTexture(nil, "BORDER")
         row.line:SetTexture(ns.FLAT)
         row.line:SetHeight(1)
-        row.line:SetPoint("TOPLEFT", 0, 0)
-        row.line:SetPoint("TOPRIGHT", 0, 0)
-        ns:Paint(row.line, "SetVertexColor", "@border", 0.45)
+        row.line:SetPoint("TOPLEFT", PAD, 0)
+        row.line:SetPoint("TOPRIGHT", -PAD, 0)
+        ns:Paint(row.line, "SetVertexColor", "rule", 1)
+        row.baseH = h
+        row.Layout = function() row:SetHeight(h); return h end
         row:SetScript("OnEnter", function(self) Hover(self, true); Explain(self) end)
         row:SetScript("OnLeave", function(self) Hover(self, false); GameTooltip:Hide() end)
         row:Hide()
@@ -165,27 +203,46 @@ local function BuildSections(page)
         row.words = strlower(ns:Tr(O.RowLabel(name) or name) .. " " .. ns:Tr(O.RowDesc(name)) .. " " .. name)
     end
     local function MakeSwitchRow(name, feature)
-        local row = Base(name, ROW_H)
+        local row = Base(name, MIN_H)
         row.feature = feature
+        local def = ns.settingRows[name]
         row.title = row:CreateFontString(nil, "OVERLAY")
-        ns:Font(row.title, 12)
-        row.title:SetPoint("TOPLEFT", 10, -6)
+        ns:Font(row.title, 14)
+        row.title:SetPoint("TOPLEFT", PAD, -14)
         row.title:SetJustifyH("LEFT")
         if row.title.SetWordWrap then row.title:SetWordWrap(false) end
+        ns:Paint(row.title, "SetTextColor", "text")
         row.title:SetText(ns:Tr(O.RowLabel(name)))
-        row.tag = row:CreateFontString(nil, "OVERLAY")
-        ns:Font(row.tag, 10)
-        row.tag:SetPoint("LEFT", row.title, "RIGHT", 8, 0)
-        ns:Paint(row.tag, "SetTextColor", "faint")
-        row.tag:SetText((feature and not INSTANT[name]) and ns:Tr("after /reload") or "")
         row.desc = row:CreateFontString(nil, "OVERLAY")
-        ns:Font(row.desc, 11)
-        row.desc:SetPoint("TOPLEFT", 10, -23)
-        row.desc:SetPoint("RIGHT", row, "RIGHT", -64, 0)
+        ns:Font(row.desc, 13)
         row.desc:SetJustifyH("LEFT")
-        if row.desc.SetWordWrap then row.desc:SetWordWrap(false) end
+        row.desc:SetJustifyV("TOP")
+        if row.desc.SetWordWrap then row.desc:SetWordWrap(true) end
         ns:Paint(row.desc, "SetTextColor", "dim")
-        row.desc:SetText(ns:Tr(O.RowDesc(name)))
+        local text = ns:Tr(O.RowDesc(name))
+        if feature and not INSTANT[name] then text = (text ~= "" and (text .. "  -  ") or "") .. ns:Tr("after /reload") end
+        row.desc:SetText(text)
+        row.reserve = PAD + 38 + PAD                          -- (the switch, and a button before it for a setting that opens more)
+        if def and def.setup then
+            local setup = ns:CreateButton(row, "Set up", 76, 24, function() def.setup() end)
+            setup:SetPoint("RIGHT", row, "RIGHT", -(PAD + 38 + 12), 0)
+            setup:HookScript("OnEnter", function() Hover(row, true); Explain(row) end)
+            setup:HookScript("OnLeave", function() Hover(row, false); GameTooltip:Hide() end)
+            row.setup = setup
+            row.reserve = row.reserve + 76 + 12
+        end
+        row.Layout = function()
+            local w = RowWidth() - PAD - row.reserve
+            row.title:SetWidth(w)
+            row.desc:SetWidth(w)
+            local th = TextHeight(row.title, 14, w)
+            local dh = (text ~= "") and TextHeight(row.desc, 13, w) or 0
+            row.desc:ClearAllPoints()
+            row.desc:SetPoint("TOPLEFT", row, "TOPLEFT", PAD, -(14 + th + 4))
+            local h = math.max(MIN_H, 14 + th + ((dh > 0) and (4 + dh) or 0) + 14)
+            row:SetHeight(h)
+            return h
+        end
         local sw = ns:CreateCheckbox(row, O.RowLabel(name), ns.db[name], function(v)
             ns.db[name] = v
             if feature then
@@ -199,10 +256,10 @@ local function BuildSections(page)
             end
             O.NoteChange()
         end)
-        sw:SetWidth(36)
+        sw:SetWidth(sw.suiSwitch and 38 or 36)
         sw.label:Hide()
         sw:ClearAllPoints()
-        sw:SetPoint("RIGHT", row, "RIGHT", -14, 0)
+        sw:SetPoint("RIGHT", row, "RIGHT", -PAD, 0)
         sw.key, sw.row = name, row
         sw:HookScript("OnEnter", function() Hover(row, true); Explain(row) end)
         sw:HookScript("OnLeave", function() Hover(row, false); GameTooltip:Hide() end)
@@ -223,16 +280,16 @@ local function BuildSections(page)
             if def.apply then def.apply(v) end
             O.NoteChange()
         end, 300)
-        s:SetPoint("TOPLEFT", 10, -7)
+        s:SetPoint("TOPLEFT", PAD, -12)
         row.slider = s
         row.Sync = function()
             local v = def.get and def.get() or tonumber(ns.db[name]) or def.default or def.min
             syncing = true; pcall(s.SetValue, s, v); syncing = false
         end
         row.desc = row:CreateFontString(nil, "OVERLAY")
-        ns:Font(row.desc, 11)
-        row.desc:SetPoint("TOPLEFT", 336, -8)
-        row.desc:SetPoint("RIGHT", row, "RIGHT", -14, 0)
+        ns:Font(row.desc, 13)
+        row.desc:SetPoint("TOPLEFT", 352, -14)
+        row.desc:SetPoint("RIGHT", row, "RIGHT", -PAD, 0)
         row.desc:SetJustifyH("LEFT")
         ns:Paint(row.desc, "SetTextColor", "dim")
         row.desc:SetText(ns:Tr(def.desc or ""))
@@ -287,16 +344,16 @@ local function BuildSections(page)
             O.NoteChange()
         end)
         b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-        b:SetPoint("TOPLEFT", 10, -6)
-        ns:Font(b.text, 11)
+        b:SetPoint("TOPLEFT", PAD, -17)
+        ns:Font(b.text, 12)
         b:HookScript("OnEnter", function() Hover(row, true); Explain(row) end)
         b:HookScript("OnLeave", function() Hover(row, false); GameTooltip:Hide() end)
         b.row = row
         row.button, row.Sync = b, Draw
         row.desc = row:CreateFontString(nil, "OVERLAY")
-        ns:Font(row.desc, 11)
-        row.desc:SetPoint("TOPLEFT", 316, -11)
-        row.desc:SetPoint("RIGHT", row, "RIGHT", -14, 0)
+        ns:Font(row.desc, 13)
+        row.desc:SetPoint("TOPLEFT", 332, -19)
+        row.desc:SetPoint("RIGHT", row, "RIGHT", -PAD, 0)
         row.desc:SetJustifyH("LEFT")
         if row.desc.SetWordWrap then row.desc:SetWordWrap(false) end
         ns:Paint(row.desc, "SetTextColor", "dim")
@@ -511,39 +568,59 @@ local function BuildSections(page)
         hidden = {}
         for _, row in pairs(page.rows) do row:Hide() end
         page.shownHosts, page.chipCount = {}, 0
+        if page.section ~= sec then page.filter = "all"; page.DrawFilter() end
         page.section, page.category = sec, sec.category
+        card:Hide()
         crumb:SetText(ns:Tr(sec.category.title))
         heading:SetText(ns:Tr(sec.title))
         newTag:SetShown(ns:SectionIsNew(sec))
         ns:SeeSection(sec)
         intro:SetText(ns:Tr(sec.category.desc or ""))
-        resetBtn.text:SetText(format(ns:Tr("Reset %s to how it came"), ns:Tr(sec.category.title)))
-        resetBtn.suiArmed, resetBtn.suiLabel = false, nil
-        local w = resetBtn.text.GetStringWidth and resetBtn.text:GetStringWidth()
-        if type(w) == "number" and w > 0 then resetBtn:SetWidth(math.min(300, math.floor(w + 24))) end
-        resetBtn:SetShown(not sec.category.noReset and #(sec.category.sections or {}) > 0 and O.CategoryHasSettings(sec.category))
+        local resetBtn = O.resetButton
+        if resetBtn then
+            resetBtn.text:SetText(format(ns:Tr("Reset %s to how it came"), ns:Tr(sec.category.title)))
+            resetBtn.suiArmed, resetBtn.suiLabel = false, nil
+            local w = resetBtn.text.GetStringWidth and resetBtn.text:GetStringWidth()
+            if type(w) == "number" and w > 0 then resetBtn:SetWidth(math.min(260, math.floor(w + 24))) end
+            resetBtn:SetShown(not sec.category.noReset and #(sec.category.sections or {}) > 0 and O.CategoryHasSettings(sec.category))
+        end
         sampleBtn:SetShown(sec.category.samples and ns.TogglePreview ~= nil)
         page.DrawSamples()
-        local y = -70
-        local shown = {}
+        local top = -92
+        local y = top
+        local shown, switches = {}, 0
         for _, name in ipairs(sec.rows) do
             local row = page.rows[name]
             if row and page.RowShown(name) then
-                row:ClearAllPoints()
-                row:SetPoint("TOPLEFT", page, "TOPLEFT", 0, y)
-                row:SetPoint("RIGHT", page, "RIGHT", -12, 0)
-                if row.switch then row.switch:SetChecked(ns.db[name]) end
-                if row.Sync then row.Sync() end
-                -- (12.1) "Bigger controls": taller lines and larger switches and buttons
-                local big = ns.db.bigControls
-                row.suiBase = row.suiBase or row:GetHeight()
-                row:SetHeight(row.suiBase + (big and 12 or 0))
-                local control = row.switch or row.button or (row.slider and row.slider.slider)
-                if control and control.SetScale then control:SetScale(big and 1.35 or 1) end
-                row:Show()
-                y = y - row:GetHeight()
-                shown[#shown + 1] = name
+                local isSwitch = row.switch and row.switch.key == name or false
+                if isSwitch then switches = switches + 1 end
+                local off = isSwitch and page.filter ~= "all" and ((ns.db[name] and true or false) ~= (page.filter == "on"))
+                if not off then
+                    row:ClearAllPoints()
+                    row:SetPoint("TOPLEFT", page, "TOPLEFT", 0, y)
+                    row:SetPoint("RIGHT", page, "RIGHT", -12, 0)
+                    if row.switch then row.switch:SetChecked(ns.db[name]) end
+                    if row.Sync then row.Sync() end
+                    row.line:SetShown(#shown > 0)
+                    -- (12.1) "Bigger controls": taller lines and larger switches and buttons
+                    local big = ns.db.bigControls
+                    local h = row.Layout() + (big and 12 or 0)
+                    row:SetHeight(h)
+                    local control = row.switch or row.button or (row.slider and row.slider.slider)
+                    if control and control.SetScale then control:SetScale(big and 1.35 or 1) end
+                    row:Show()
+                    y = y - h
+                    shown[#shown + 1] = name
+                end
             end
+        end
+        for _, b in pairs(page.filterButtons) do b:SetShown(switches > 0) end
+        if #shown > 0 then
+            card:ClearAllPoints()
+            card:SetPoint("TOPLEFT", page, "TOPLEFT", 0, top)
+            card:SetPoint("TOPRIGHT", page, "TOPRIGHT", -12, top)
+            card:SetHeight(top - y)
+            card:Show()
         end
         page.shownKeys = shown
         if #shown > 0 then y = y - 18 end

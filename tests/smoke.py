@@ -9527,6 +9527,155 @@ try("12.3 settings look: buttons and the window's corners", function()
     if ns.ApplyFrameStyle then ns:ApplyFrameStyle() end
     if not ok then error(err, 0) end
 end)
+try("12.3 settings look: rows and switches", function()
+    local keep = { theme = ns.db.theme, accent = ns.db.accent, lang = ns.root.language, scale = ns.fontScale, big = ns.db.bigControls }
+    local realCF = env.CreateFrame
+    local function hex(c) return string.format("%02x%02x%02x", math.floor(c[1] * 255 + 0.5), math.floor(c[2] * 255 + 0.5), math.floor(c[3] * 255 + 0.5)) end
+    local O = ns.optUI
+    local function Fn(b, name)
+        local f = b:GetScript(name)
+        if type(f) ~= "function" then for _, h in ipairs(handlers) do if h.self == b and h.name == name then f = h.fn end end end
+        return f
+    end
+    local function Press(b) local f = Fn(b, "OnClick"); if f then f(b) end end
+    local ok, err = pcall(function()
+        ns.db.theme, ns.db.accent, ns.root.language, ns.db.bigControls = "MIDNIGHT", "VIOLET", "enUS", false
+        ns.fontScale = 1
+        ns:Retheme()
+        ns:ToggleConfig("combat:Alerts and warnings")
+        local page = ns.featuresPage
+        if not (O.current and O.current.id == "combat:Alerts and warnings") then error("Combat > Alerts and warnings is open") end
+        if #(page.shownKeys or {}) < 3 then error("the section shows its settings") end
+        -- every row is laid out one under the next: record where and how tall
+        local at, tall = {}, {}
+        local function Watch(row)
+            rawset(row, "SetPoint", function(r, point, rel, _, _, y) if point == "TOPLEFT" then at[r] = y end end)
+            rawset(row, "SetHeight", function(r, h) tall[r] = h end)
+            rawset(row, "SetAlpha", function(r, a) rawset(r, "alpha", a) end)
+        end
+        for _, row in pairs(page.rows) do Watch(row) end
+        local function Layout()
+            page.Show(page.section)
+            local list, last = {}, nil
+            for _, name in ipairs(page.shownKeys) do
+                local row = page.rows[name]
+                if last then
+                    local want = at[last] - tall[last]
+                    if math.abs(at[row] - want) > 0.01 then error(name .. " overlaps or leaves a gap after the row above: " .. at[row] .. " vs " .. want) end
+                end
+                if tall[row] < 56 then error(name .. " is at least 56 high, got " .. tall[row]) end
+                list[#list + 1] = row
+                last = row
+            end
+            return list
+        end
+        local rows = Layout()
+        -- each switch row: a title, a description, a switch showing the saved setting
+        local first
+        for _, name in ipairs(page.shownKeys) do
+            local row = page.rows[name]
+            if row.switch and row.switch.key == name then
+                first = first or name
+                if not (row.title and row.desc) then error(name .. " has a title and a description") end
+                if row.switch.checked ~= (ns.db[name] and true or false) then error(name .. ": the switch shows the saved setting") end
+            end
+        end
+        if not first then error("the section has switch rows") end
+        -- clicking flips it, the tooltip shows
+        local row, before = page.rows[first], ns.db[first]
+        Press(row.switch)
+        if ns.db[first] == before or row.switch.checked ~= (ns.db[first] and true or false) then error("clicking the switch flips the setting") end
+        local enter = Fn(row, "OnEnter")
+        if type(enter) ~= "function" then error("the row has its tooltip") end
+        enter(row)
+        Press(row.switch)
+        if ns.db[first] ~= before then error("clicking again puts it back") end
+        -- a dependent setting is dimmed while its parent is off
+        local child, parent
+        for key in pairs(page.boxes) do
+            if ns.featureNeeds[key] and page.boxes[key].row then child, parent = key, ns.featureNeeds[key]; break end
+        end
+        if not child then error("(the check needs a setting that depends on another)") end
+        local was = ns.db[parent]
+        ns.db[parent] = false; page.Dim()
+        if rawget(page.rows[child], "alpha") ~= 0.5 then error("a dependent setting is dimmed while its parent is off") end
+        ns.db[parent] = true; page.Dim()
+        if rawget(page.rows[child], "alpha") ~= 1 then error("and not when it is on") end
+        ns.db[parent] = was
+        -- the All / On / Off filter
+        local all = #page.shownKeys
+        local function Count(want)
+            local n = 0
+            for _, name in ipairs(page.shownKeys) do
+                local r = page.rows[name]
+                if r.switch and r.switch.key == name then
+                    n = n + 1
+                    if want ~= nil and (ns.db[name] and true or false) ~= want then error(name .. " is in the wrong filter") end
+                end
+            end
+            return n
+        end
+        Press(page.filterButtons.on)
+        local nOn = Count(true)
+        Press(page.filterButtons.off)
+        local nOff = Count(false)
+        Press(page.filterButtons.all)
+        if #page.shownKeys ~= all then error("All shows every row again") end
+        if nOn == 0 or nOff == 0 then error("(the check needs both on and off settings here) " .. nOn .. "/" .. nOff) end
+        -- a long description grows the row at a bigger text size and in German, and nothing overlaps
+        local name = first
+        local r = page.rows[name]
+        rawset(r.desc, "GetText", function() return string.rep("Eine lange Beschreibung auf Deutsch. ", 9) end)
+        ns.root.language = "deDE"
+        ns.fontScale = 1
+        Layout()
+        local h1 = tall[r]
+        ns.fontScale = 1.3
+        Layout()
+        local h2 = tall[r]
+        if h2 <= h1 then error("at text size 1.3 the long row is taller: " .. h1 .. " -> " .. h2) end
+        -- the reset button is in the footer
+        if not O.resetButton or not O.resetButton:IsShown() then error("Reset <category> is in the window's footer") end
+        -- the switch: 38 x 22 with a 16 knob, accent with a dark knob when on, grey when off, only in the window
+        ns.fontScale = 1
+        local sizes, colors = {}, {}
+        env.CreateFrame = function(kind, nm, parent, ...)
+            local f = realCF(kind, nm, parent, ...)
+            rawset(f, "GetParent", function() return parent end)
+            rawset(f, "SetSize", function(x, w, h) rawset(x, "sz", { w, h }) end)
+            rawset(f, "SetBackdropColor", function(x, a, b, c, d) rawset(x, "bg", { a, b, c, d or 1 }) end)
+            rawset(f, "CreateTexture", function(self)
+                local t = newmock()
+                rawset(t, "GetParent", function() return self end)
+                rawset(t, "SetSize", function(x, w, h) rawset(x, "sz", { w, h }) end)
+                rawset(t, "SetVertexColor", function(x, a, b, c, d) rawset(x, "rgba", { a, b, c, d or 1 }) end)
+                return t
+            end)
+            return f
+        end
+        local holder = env.CreateFrame("Frame", nil, O.frame)
+        local away = env.CreateFrame("Frame", nil, env.UIParent)
+        local inWin = ns:CreateCheckbox(holder, "x", true)
+        local outWin = ns:CreateCheckbox(away, "x", true)
+        if rawget(inWin.box, "sz")[1] ~= 38 or rawget(inWin.box, "sz")[2] ~= 22 then error("the switch track is 38 x 22") end
+        if rawget(inWin.tick, "sz")[1] ~= 16 then error("the knob is 16") end
+        if rawget(outWin.box, "sz")[1] ~= 28 then error("a switch outside the window keeps its size") end
+        local function Track(c) local t = c.fill and rawget(c.fill, "rgba") or rawget(c.box, "bg"); return hex(t) end
+        local function Knob(c) return hex(rawget(c.tick, "rgba")) end
+        local acc = { ns:Role("@accent") }
+        if Track(inWin) ~= hex(acc) then error("on: the track is the accent, got " .. Track(inWin)) end
+        if Knob(inWin) ~= "12141a" then error("on: a dark knob, got " .. Knob(inWin)) end
+        inWin:SetChecked(false)
+        if Track(inWin) ~= "2c313c" then error("off: the track is #2c313c, got " .. Track(inWin)) end
+        if Knob(inWin) ~= "9aa3b5" then error("off: a grey knob, got " .. Knob(inWin)) end
+    end)
+    env.CreateFrame = realCF
+    ns.root.language, ns.fontScale, ns.db.bigControls = keep.lang, keep.scale, keep.big
+    ns.db.theme, ns.db.accent = keep.theme, keep.accent
+    ns:Retheme()
+    pcall(ns.ToggleConfig, ns)
+    if not ok then error(err, 0) end
+end)
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()
