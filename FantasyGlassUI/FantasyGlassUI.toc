@@ -96,6 +96,7 @@ Session.lua
 Convenience.lua
 Profiles.lua
 Economy.lua
+Prices.lua
 ChatMore.lua
 CharMore.lua
 System.lua

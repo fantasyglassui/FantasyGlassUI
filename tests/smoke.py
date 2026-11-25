@@ -7875,6 +7875,60 @@ try("11.7: ready me, boss notes, death recap, backups, history, templates, packs
     if #worth ~= 1 or worth[1].item.id ~= 1 or worth[1].total ~= 1000 then error("worth selling") end
     ns:ShowWorthSelling()
     if ns.auctionHelperTest then ns.auctionHelperTest.Dress() end
+    -- the price store: one per auction house (realm and faction), the old prices moved in once
+    do
+        local oldRealm, oldFaction = env.GetRealmName, env.UnitFactionGroup
+        local okP, errP = pcall(function()
+            env.GetRealmName = function() return "Stormreach" end; env.UnitFactionGroup = function() return "Alliance" end
+            if ns.PriceHouseKey() ~= "Stormreach|Alliance" then error("house key") end
+            local root = { auctionSeen = { [10] = { price = 500, day = 20261120, hist = { [20261120] = 500 } }, [11] = "junk", [12] = { price = "x" } } }
+            local moved = ns.PricesMigrate(root, "Stormreach|Alliance")
+            if moved ~= 1 or root.auctionSeen ~= nil or not root.prices.migrated or root.prices.houses["Stormreach|Alliance"].items[10].price ~= 500 then error("migrated once") end
+            if ns.PricesMigrate(root, "Stormreach|Alliance") ~= 0 then error("only once") end
+            local root2 = { auctionSeen = { [10] = { price = 1, day = 1 } } }
+            if ns.PricesMigrate(root2, nil) ~= 0 or not root2.auctionSeen then error("no key: wait, keep the old prices") end
+            -- the house already has the item: the later day wins
+            local root3 = { auctionSeen = { [10] = { price = 7, day = 20261101 }, [11] = { price = 9, day = 20261124 } },
+                prices = { v = 1, houses = { K = { items = { [10] = { price = 5, day = 20261110 }, [11] = { price = 3, day = 20261110 } } } } } }
+            ns.PricesMigrate(root3, "K")
+            if root3.prices.houses.K.items[10].price ~= 5 or root3.prices.houses.K.items[11].price ~= 9 then error("the later day wins") end
+            -- a hidden realm or faction is no key
+            env.GetRealmName = function() return setmetatable({ __secret = true }, secretmt) end
+            if ns.PriceHouseKey() ~= nil then error("a hidden realm is no key") end
+            env.GetRealmName = function() return "Stormreach" end
+            -- old characters' odd entries: skipped or forgotten, every reader still works
+            local keepSeen, keepPrices = ns.root.auctionSeen, ns.root.prices
+            ns.root.auctionSeen = { [20] = { price = 300, day = ns.Today(), hist = { [ns.Today()] = 300, [1] = "odd" } }, [21] = 5, [22] = { price = "x", day = "y" },
+                [23] = { day = 1 }, x = { price = 1, day = 1 } }
+            ns.root.prices = nil
+            local okR, errR = pcall(function()
+                ns.PricesStart(ns.root, ns.PriceHouseKey(), ns.Today())
+                if ns.root.auctionSeen ~= nil or not ns.PriceEntry(20) or ns.PriceEntry(20).price ~= 300 or ns.PriceEntry(21) or ns.PriceEntry(22) or ns.PriceEntry(23) then error("odd entries") end
+                if not ns.PriceNote(20, 250) or ns.PriceEntry(20).price ~= 250 or ns.PriceEntry(20).listed ~= nil then error("browsing tops the store up, never the listed count") end
+                if ns.PriceNote(20, setmetatable({ __secret = true }, secretmt)) or ns.PriceNote(20, 0) then error("hidden or no price is ignored") end
+                local t = ns.FarmTotals({ elapsed = 60, gold = 0, items = { [20] = { n = 2, vendor = 1 } } }, 0, nil)
+                if t.value ~= 500 then error("farming totals read the store: " .. tostring(t.value)) end
+                ns:ShowWorthSelling()
+                local lines = ns:CheckNew(true)
+                for _, l in ipairs(lines) do if l:find("Auction", 1, true) and l:find("error:", 1, true) then error("/fgui check: " .. l) end end
+                if not table.concat(ns:SelfCheck(true), "\n"):find("prices kept here: 1", 1, true) then error("the self-check counts the store") end
+                env.UnitFactionGroup = function() return "Horde" end
+                if ns.PriceEntry(20) ~= nil then error("prices never cross factions") end
+            end)
+            ns.root.auctionSeen, ns.root.prices = keepSeen, keepPrices
+            if not okR then error(errR, 0) end
+            env.UnitFactionGroup = function() return "Horde" end
+            if ns.PriceEntry(10) ~= nil then error("prices never cross factions") end
+            env.UnitFactionGroup = function() return nil end
+            if ns.PriceNote(10, 100) or next(ns.PriceItems()) ~= nil then error("no key: nothing noted, nothing read") end
+        end)
+        env.GetRealmName, env.UnitFactionGroup = oldRealm, oldFaction
+        if not okP then error(errP, 0) end
+        if ns.PriceFreshText(nil, env.time()) ~= ns:Tr("Never scanned") then error("never scanned") end
+        if ns.PriceFreshText({ scanAt = env.time() }, env.time()) ~= ns:Tr("Scanned today") then error("today") end
+        if ns.PriceFreshText({ scanAt = env.time() - 86400 }, env.time()) ~= ns:Tr("Scanned yesterday") then error("yesterday") end
+        if ns.PriceFreshText({ scanAt = env.time() - 3 * 86400 }, env.time()) ~= string.format(ns:Tr("Scanned %d days ago"), 3) then error("days ago") end
+    end
     -- home key
     local ways = { { kind = "spell", id = 3561 }, { kind = "spell", id = 556 }, { kind = "item", id = 6948 }, { kind = "item", id = 64488 } }
     local best, ready = ns.BestWayHome(ways, function() return true end)
