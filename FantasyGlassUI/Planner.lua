@@ -138,6 +138,7 @@ function ns.PlannerQuestTime(rec, ctx)
         if speed > 0 then t = t + Spread(o.spots) / speed end
     end
     t = t * (ctx.pace or 1)
+    if ctx.noAlts then return t end                  -- (the formula alone: the pace is measured against it)
     -- what your other characters took for this quest (per account): the formula counts once, they up to three times
     local times = type(ns.root) == "table" and type(ns.root.plannerQuestTimes) == "table" and ns.root.plannerQuestTimes[rec.id]
     if type(times) == "table" and tonumber(times.n) and tonumber(times.avg) and times.n > 0 then
@@ -189,6 +190,8 @@ function ns.PlannerRewardBonus(rec, ctx)
     ctx = ctx or {}
     if not (ns.db and ns.db.plannerRewards ~= false) or type(rec) ~= "table" or type(rec.id) ~= "number" then return 0 end
     if ctx.onQuest and not ctx.onQuest(rec.id) then return 0 end
+    local cache = type(ctx.rewardCache) == "table" and ctx.rewardCache or nil   -- (per plan: links are read once)
+    if cache and cache[rec.id] then return cache[rec.id] end
     local need = tonumber(ctx.xpMax)
     if not need then
         local okM, v = pcall(UnitXPMax, "player")
@@ -212,19 +215,22 @@ function ns.PlannerRewardBonus(rec, ctx)
         if type(GetNumQuestLogChoices) == "function" then Scan(GetNumQuestLogChoices, "choice") end
         if type(GetNumQuestLogRewards) == "function" then Scan(GetNumQuestLogRewards, "reward") end
     end
-    return min(best * 0.02, 0.25) * need
+    local bonus = min(best * 0.02, 0.25) * need
+    if cache then cache[rec.id] = bonus end
+    return bonus
 end
 
 -- ctx.candidate(id) -> record, when that quest is itself a candidate (its follow-up counts half).
 function ns.PlannerQuestXP(rec, ctx)
     ctx = ctx or {}
     local xp = (rec.xp or 0) + KillPart(rec, ctx.level or 1)
-    xp = xp + ns.PlannerRestedExtra(rec, ctx) + ns.PlannerRewardBonus(rec, ctx)
+    local extra = ns.PlannerRestedExtra(rec, ctx)
+    xp = xp + extra + ns.PlannerRewardBonus(rec, ctx)
     if rec.nextQuest and ctx.candidate then
         local nxt = ctx.candidate(rec.nextQuest)
         if nxt then xp = xp + (nxt.xp or 0) / 2 end
     end
-    return xp
+    return xp, extra                                 -- (and the rested part of it, which the route takes off the pool)
 end
 
 ------------------------------------------------------------------------------------------
@@ -328,7 +334,7 @@ local function Estimates(guide, summary, ctx)
         local id = s.quest
         if id and out[id] == nil and type(src) == "table" then
             local rec = src.quest(id)
-            out[id] = rec and floor(ns.PlannerQuestTime(rec, { speed = ctx.speed }) + 0.5) or 0
+            out[id] = rec and floor(ns.PlannerQuestTime(rec, { speed = ctx.speed, noAlts = true }) + 0.5) or 0
             if rec then paced, total = paced + ns.PlannerQuestTime(rec, ctx), total + out[id] end
         end
     end

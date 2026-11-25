@@ -10857,7 +10857,7 @@ try("13.3 choices: rested, upgrades, alts", function()
         if ns.PlannerQuestXP(rec(1), { level = 10, rested = 5000 }) ~= base + 760 then error("rested is the kill part at most") end
         if ns.PlannerQuestXP(rec(1), { level = 10, rested = 0 }) ~= base or ns.PlannerQuestXP(rec(1), { level = 10 }) ~= base then error("no pool, no extra") end
         if ns.PlannerQuestXP(rec(1), { level = 10, rested = 5000, restedLeft = 100 }) ~= base + 100 then error("restedLeft wins") end
-        -- two hubs, 500 rested: the first gets 760 of kills... (here 4 kills = 380 each), the second what is left
+        -- two hubs (4 kills = 380 each), 500 rested: the first gets 380 extra, the second the 120 left
         local cm = {}
         for k, v in pairs(saved.map) do cm[k] = v end
         cm.GetWorldPosFromMapPos = function(map, v) if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end end
@@ -10875,7 +10875,7 @@ try("13.3 choices: rested, upgrades, alts", function()
                 crossings = {}, learnFlights = false, bind = "Elsewhere", bindSpot = { map = 1, x = 30, y = 40 }, pace = 1, flights = {},
                 flightTime = function() return nil end }
             local guide, summary = ns.PlannerRoute(ctx)
-            local firstXP, secondXP = {}, {}
+            local firstXP = {}
             for _, s in ipairs(guide.steps) do if s.kind == "accept" then firstXP[s.quest] = s.why and s.why.xp end end
             return summary, firstXP
         end
@@ -10922,6 +10922,21 @@ try("13.3 choices: rested, upgrades, alts", function()
         if ns.root.plannerQuestTimes[101].n ~= 2 then error("a 3-hour sample is ignored") end
         ns.PlannerRecordQuestTime(101, 600); ns.PlannerRecordQuestTime(101, 600)
         if math.abs(ns.PlannerQuestTime(alt, { pace = 1 }) - (200 + 600 * 3) / 4) > 1e-6 then error("at most three samples weigh") end
+        -- the pace is measured against the formula alone, not the blend
+        if ns.PlannerQuestTime(alt, { pace = 1, noAlts = true }) ~= 200 then error("formula-only time") end
+        ns.root.plannerQuestTimes = { [101] = { n = 2, avg = 600 } }
+        -- the reward links are read once per plan
+        local reads = 0
+        local readLink = env.GetQuestLogItemLink
+        env.GetQuestLogItemLink = function(...) reads = reads + 1; return readLink(...) end
+        local cc = { level = 10, xpMax = 10000, rewardCache = {} }
+        ns.PlannerRewardBonus(q, cc); local once = reads
+        ns.PlannerRewardBonus(q, cc)
+        if once == 0 or reads ~= once then error("cached per plan: " .. once .. " " .. reads) end
+        env.GetQuestLogItemLink = readLink
+        local _, ex = ns.PlannerQuestXP(rec(1), { level = 10, rested = 400 })
+        if ex ~= 400 then error("the rested extra is the second value") end
+        ns.root.plannerQuestTimes = nil
         -- events: only while following
         ns.root.plannerQuestTimes = nil
         local clock = 1000

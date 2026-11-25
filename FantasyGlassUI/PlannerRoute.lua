@@ -441,9 +441,10 @@ local function HubSteps(state, hub, steps, inn, n)
         if not gone[q.id] then
             kept = kept + 1
             t = t + ns.PlannerQuestTime(q, state.ctx)
-            xp = xp + ns.PlannerQuestXP(q, state.ctx)
+            local qxp, extra = ns.PlannerQuestXP(q, state.ctx)
+            xp = xp + qxp
             local left = tonumber(state.ctx.restedLeft)
-            if left and left > 0 then state.ctx.restedLeft = max(0, left - ns.PlannerRestedExtra(q, state.ctx)) end
+            if left and left > 0 then state.ctx.restedLeft = max(0, left - extra) end
         end
     end
     return t, xp, kept
@@ -463,7 +464,8 @@ function ns.PlannerRoute(ctx)
     local summary = { fromLevel = ctx.level, toLevel = ctx.level, xp = 0, seconds = 0, skipped = skipped, empty = true }
     if #candidates == 0 then return guide, summary end
     local c = WithCandidates(ctx, candidates)
-    c.restedLeft = tonumber(ctx.rested)              -- the route uses this pool up as it lays hubs out
+    c.restedLeft = tonumber(ctx.rested)              -- the route uses this pool up as it lays hubs out (hub scoring before that deliberately sees all of it)
+    c.rewardCache = {}                               -- quest id -> reward bonus, read once per plan
     local zone, newly, hubs = ns.PlannerPickZone(candidates, c)
     if not zone then return guide, summary end
     local left = {}
