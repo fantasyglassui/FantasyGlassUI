@@ -172,6 +172,9 @@ ns.LOOKS = {
     }),
 }
 local CONTRAST_LOOK = { settings = "settingsContrast" }
+-- (a switch's track while off)
+ns.LOOKS.settings.track = RGB("2c313c")
+ns.LOOKS.settingsContrast.track = RGB("333333")
 local HIGH_CONTRAST = { CONTRAST = true, FCONTRAST = true, C_CONTRAST = true }
 function ns:IsHighContrast()
     local key = ns.db and ns.db.theme or ""
@@ -1584,7 +1587,9 @@ function ns:CreateCheckbox(parent, label, checked, onChange)
     c:SetSize(260, 22)
     local round = ns:CanRound()
     c.box = CreateFrame("Frame", nil, c, (not round) and ns.template or nil)
-    c.box:SetSize(28, 14)
+    local inLook = ns:LookOf(c) and true or false              -- (12.3: in the settings window, a bigger switch with no outline)
+    c.suiSwitch = inLook
+    c.box:SetSize(inLook and 38 or 28, inLook and 22 or 14)
     c.box:SetPoint("LEFT", 0, 0)
     if round then
         c.fill = c.box:CreateTexture(nil, "BACKGROUND")
@@ -1597,11 +1602,11 @@ function ns:CreateCheckbox(parent, label, checked, onChange)
         c.box:SetBackdrop(ns.BACKDROP)
     end
     c.tick = c.box:CreateTexture(nil, "OVERLAY")              -- the knob
-    c.tick:SetSize(10, 10)
+    c.tick:SetSize(inLook and 16 or 10, inLook and 16 or 10)
     c.tick:SetTexture(round and (ns.MEDIA .. "dot.tga") or ns.FLAT)
     c.label = c:CreateFontString(nil, "OVERLAY")
     ns:Font(c.label, 12)
-    c.label:SetPoint("LEFT", c.box, "RIGHT", 8, 0)
+    c.label:SetPoint("LEFT", c.box, "RIGHT", inLook and 12 or 8, 0)
     c.label:SetJustifyH("LEFT")
     if c.label.SetWordWrap then c.label:SetWordWrap(false) end
     c.label:SetText(ns:Tr(label))
@@ -1609,7 +1614,7 @@ function ns:CreateCheckbox(parent, label, checked, onChange)
     -- "..." (and shown whole under the mouse) instead of running into whatever sits beside it.
     local function FitLabel(_, w)
         w = tonumber(w)
-        if w and not ns:IsSecret(w) and w > 60 then c.label:SetWidth(w - 36) end
+        if w and not ns:IsSecret(w) and w > 60 then c.label:SetWidth(w - (inLook and 50 or 36)) end        -- (the track, and the gap before the label)
     end
     c:HookScript("OnSizeChanged", FitLabel)
     if hooksecurefunc then                                   -- (and at once when it is given a width, before it is first drawn)
@@ -1619,6 +1624,21 @@ function ns:CreateCheckbox(parent, label, checked, onChange)
     FitLabel(c, 260)
     local function Draw(self, hover)
         local on = self.checked
+        if inLook then                                        -- accent with a dark knob when on, a grey track and knob when off
+            local role = on and "@accent" or (hover and "rim" or "track")
+            if self.fill then
+                ns:Paint(self.fill, "SetVertexColor", role, 1)
+                self.edge:Hide()
+            else
+                ns:Paint(self.box, "SetBackdropColor", role, 1)
+                ns:Paint(self.box, "SetBackdropBorderColor", role, 1)
+            end
+            ns:Paint(self.tick, "SetVertexColor", on and "window" or "dim", 1)
+            ns:Paint(self.label, "SetTextColor", on and "text" or "dim")
+            self.tick:ClearAllPoints()
+            if on then self.tick:SetPoint("RIGHT", self.box, "RIGHT", -3, 0) else self.tick:SetPoint("LEFT", self.box, "LEFT", 3, 0) end
+            return
+        end
         local rim = (on or hover) and "@accent" or "@border"
         if self.fill then
             ns:Paint(self.fill, "SetVertexColor", on and "@accent" or "field", on and 0.32 or 1)

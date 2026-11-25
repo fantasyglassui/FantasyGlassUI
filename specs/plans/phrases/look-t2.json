@@ -1,0 +1,6 @@
+{
+  "All": ["Alle", "Tout", "Todo", "Все", "Tudo", "Tutto", "전체", "全部"],
+  "On": ["An", "Activé", "Activado", "Вкл", "Ligado", "Attivo", "켜짐", "开"],
+  "Off": ["Aus", "Désactivé", "Desactivado", "Выкл", "Desligado", "Spento", "꺼짐", "关"],
+  "Set up": ["Einrichten", "Configurer", "Configurar", "Настроить", "Configurar", "Imposta", "설정", "设置"]
+}

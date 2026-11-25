@@ -494,6 +494,7 @@ local function Build()
         end
         if place.home then
             O.sections.GiveBack()
+            if O.resetButton then O.resetButton:Hide() end
             sArea:Hide(); hArea:Show()
             O.current = place
             O.home.Refresh()
@@ -543,6 +544,21 @@ local function Build()
     local discord = ns:CreateButton(O.frame, "Discord", 96, 24, function() ns:ShowDiscord() end)
     discord:SetPoint("LEFT", report, "RIGHT", 8, 0)
     O.Tip(discord, "Join the Discord", "Help, ideas, themes to share and other players. Click for the invite to copy: add-ons cannot open web pages themselves.")
+    -- (12.3) "Reset <category> to how it came": it was at the top of a section page, it is here now
+    local resetBtn = ns:CreateButton(O.frame, "", 220, 24, ns:ConfirmClick(function()
+        local page = O.sections
+        if page and page.category then O.ResetCategory(page.category) end
+    end))
+    resetBtn:SetPoint("LEFT", discord, "RIGHT", 8, 0)
+    resetBtn:HookScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:AddLine(self.text:GetText())
+        GameTooltip:AddLine(ns:Tr("Every switch and slider of this category goes back to how Fantasy Glass UI comes. Your lists, rules, designs and positions are kept."), 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    resetBtn:HookScript("OnLeave", function() GameTooltip:Hide() end)
+    resetBtn:Hide()
+    O.resetButton = resetBtn
     local reload = ns:CreateButton(O.frame, "Reload UI", 110, 26, ReloadUI)
     ns:ReloadButton(reload)                                       -- (OnClick stays the game's own ReloadUI)
     reload:SetPoint("BOTTOMRIGHT", -24, 13)
