@@ -11491,6 +11491,7 @@ try("13.3 choices: class, timed, escort and loot quests", function()
         for _, st in ipairs(guide.steps) do if st.kind == "accept" and st.quest == 701 then acc = st end end
         if not (acc and acc.text == "Use the Bloody Note to start it") then error("item in the bags: " .. tostring(acc and acc.text)) end
         if acc.x ~= 29 or acc.y ~= 41 then error("it starts where you are: " .. tostring(acc.x) .. "," .. tostring(acc.y)) end
+        if guide.steps[1] ~= acc then error("the held item's accept is the very first step: " .. tostring(guide.steps[1].kind) .. " " .. tostring(guide.steps[1].quest)) end
         held[5000] = nil
         recs[701].starts = at(1, 90, 90)
         guide = route()
@@ -11498,6 +11499,15 @@ try("13.3 choices: class, timed, escort and loot quests", function()
         held[5000] = 1
         guide = route()
         if not planned(guide)[701] then error("the item in the bags: planned wherever the NPC stands") end
+        held[5000] = nil
+        -- a drop NPC beside a candidate the route does not take is no route spot
+        recs[701].starts = at(1, 34, 44)
+        add(q(801, { xp = 5, starts = at(2, 50, 50), ends = at(2, 50, 50) }))
+        add(q(702, { xp = 300, starts = at(2, 50, 52), ends = at(2, 50, 52), fromItem = { id = 5001, name = "Torn Page" } }))
+        guide = route()
+        if planned(guide)[702] or planned(guide)[801] then error("a drop NPC near an unplanned candidate, not near the route: not planned") end
+        if not planned(guide)[701] then error("the near one is still planned") end
+        recs[801], recs[702], order = nil, nil, { 301, 701 }
         held[5000] = nil
         logged[701] = true
         guide = route()

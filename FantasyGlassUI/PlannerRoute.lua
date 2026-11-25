@@ -129,10 +129,15 @@ local function HubLoop(hub, ctx)
         t = t + HANDLE
         runs[#runs + 1] = run
     end
+    local held = {}                                  -- (an item in your bags starts it where you stand: that comes first)
     for _, q in ipairs(rest) do
-        if hub.take[q.id] then accepts[#accepts + 1] = { rec = q, spot = Nearest(q.starts, hub) } end
+        if hub.take[q.id] then
+            local e = { rec = q, spot = Nearest(q.starts, hub) }
+            if q.haveItem then held[#held + 1] = e else accepts[#accepts + 1] = e end
+        end
     end
     accepts = Sweep(accepts, base)
+    for i = #held, 1, -1 do table.insert(accepts, 1, held[i]) end
     local at = accepts[1] and accepts[1].spot or base
     for _, a in ipairs(accepts) do t = t + Walk(at, a.spot, ctx) + HANDLE; at = a.spot end
     for _, q in ipairs(rest) do
@@ -268,7 +273,7 @@ function ns.PlannerHubs(candidates, ctx)
     for _, hub in ipairs(hubs) do
         for _, q in ipairs(hub.quests) do
             local e = classMap[q.id]
-            if q.haveItem or (e and e.kind == "always") then hub.first = true end
+            if q.haveItem then hub.first = 2 elseif e and e.kind == "always" and not hub.first then hub.first = 1 end
         end
     end
     return hubs
@@ -310,11 +315,12 @@ function ns.PlannerPickZone(candidates, ctx)
     local hubs = ns.PlannerHubs(candidates, c)
     local maps, order = ByMap(hubs)
     local last, here = ctx.lastZone, Here(ctx)
-    local forced, forcedRate                        -- (a map with a hub that is planned first, and can be reached)
+    local forced, forcedFirst, forcedRate           -- (a map with a hub that is planned first, and can be reached)
     for _, m in ipairs(order) do
         for _, h in ipairs(maps[m]) do
-            if h.first and (not forcedRate or Rate(h) > forcedRate) and (not here or ns.PlannerTravel(here, h, c) < huge) then
-                forced, forcedRate = m, Rate(h)
+            if h.first and (not forced or h.first > forcedFirst or (h.first == forcedFirst and Rate(h) > forcedRate))
+                and (not here or ns.PlannerTravel(here, h, c) < huge) then
+                forced, forcedFirst, forcedRate = m, h.first, Rate(h)
             end
         end
     end
@@ -534,6 +540,13 @@ local function HubSteps(state, hub, steps, inn, n)
         steps[#steps + 1] = s
         t = t + HANDLE
     end
+    local started = {}
+    for _, a in ipairs(hub.accepts) do                        -- (an item in your bags: the very first thing, where you stand)
+        if a.rec.haveItem and Go(a.spot) then
+            Accept(a.rec, a.spot)
+            started[a.rec.id] = true
+        end
+    end
     for _, r in ipairs(hub.timed or {}) do                    -- (a quest with a clock on it: its own run, before anything else here)
         local ok = true
         if r.accept then
@@ -552,7 +565,9 @@ local function HubSteps(state, hub, steps, inn, n)
         end
     end
     for _, a in ipairs(hub.accepts) do
-        if Go(a.spot) then
+        if started[a.rec.id] then
+            -- (done above)
+        elseif Go(a.spot) then
             Accept(a.rec, a.spot)
         else
             gone[a.rec.id] = true
@@ -632,13 +647,13 @@ local function Build(ctx, candidates, skipped)
     local xp, seconds, taken = 0, 0, {}
     for n = 1, ns.PLANNER_HORIZON do
         if #left == 0 then break end
-        local bi, bs, bfirst = nil, -1, false
+        local bi, bs, bfirst = nil, -1, 0
         for i, h in ipairs(left) do
             ns.PlannerYield()
             local travel = state.pos and ns.PlannerTravel(state.pos, h.accepts[1] and h.accepts[1].spot or h, tctx) or 0
             local score = travel < huge and h.xp / (h.seconds + travel) or -1
-            local first = h.first and travel < huge or false
-            if (first and not bfirst) or (first == bfirst and score > bs) then bi, bs, bfirst = i, score, first end
+            local first = (h.first and travel < huge) and h.first or 0
+            if first > bfirst or (first == bfirst and score > bs) then bi, bs, bfirst = i, score, first end
         end
         if not bi or bs < 0 then break end
         local hub = table.remove(left, bi)
@@ -683,10 +698,37 @@ local function Fits(rec, entry, taken, tctx, ctx)
     return false
 end
 
+-- Does an item quest's dropping NPC stand within a hub's radius of a spot of the route (the places its steps go to)?
+-- `route` is { { c, x, y } } from RouteSpots.
+local function RouteSpots(guide)
+    local out = {}
+    for _, st in ipairs(guide.steps) do
+        ns.PlannerYield()
+        if st.x and st.y then
+            local c, x, y = Pos(st)
+            if c then out[#out + 1] = { c = c, x = x, y = y } end
+        end
+    end
+    return out
+end
+local function NearRoute(rec, route)
+    local r2 = ns.PLANNER_HUB_YARDS ^ 2
+    for _, s in ipairs(rec.starts or {}) do
+        local c, x, y = Pos(s)
+        if c then
+            for _, a in ipairs(route) do
+                ns.PlannerYield()
+                if a.c == c and (a.x - x) ^ 2 + (a.y - y) ^ 2 <= r2 then return true end
+            end
+        end
+    end
+    return false
+end
+
 -- guide, summary. Everything the planner needs comes in ctx (see ns.PlannerContext).
 function ns.PlannerRoute(ctx)
     ctx = ctx or {}
-    local candidates, skipped = ns.PlannerCandidates(ctx.source, ctx)
+    local candidates, skipped, items = ns.PlannerCandidates(ctx.source, ctx)
     local classMap = ns.PlannerClassMap(ctx)
     local main, fits = candidates, {}
     if next(classMap) then
@@ -697,11 +739,17 @@ function ns.PlannerRoute(ctx)
         end
     end
     local guide, summary, taken, tctx = Build(ctx, main, skipped)
-    if #fits > 0 and #taken > 0 then
+    if (#fits > 0 or #(items or {}) > 0) and #taken > 0 then
         local plus = {}
         for _, r in ipairs(main) do plus[#plus + 1] = r end
         for _, r in ipairs(fits) do
             if Fits(r, classMap[r.id], taken, tctx, ctx) then plus[#plus + 1] = r end
+        end
+        if #(items or {}) > 0 then                   -- (a drop quest: only where the route already goes)
+            local route = RouteSpots(guide)
+            for _, r in ipairs(items) do
+                if NearRoute(r, route) then plus[#plus + 1] = r end
+            end
         end
         if #plus > #main then guide, summary = Build(ctx, plus, skipped) end
     end

@@ -157,9 +157,28 @@ ns.PLANNER_ESCORTS = {
 
 -- Class quests: { [classFile] = { { id = questID, level = n, kind = "always"|"fit", parts = n }, ... } }.
 -- "always": its hub is planned first; "fit": only when it lies near the route. parts: quests in its chain.
--- Left empty on purpose: the ids have to be checked in the game before they are listed (a wrong id would
--- plan a stranger's quest). Add entries such as MAGE = { { id = ..., level = 10, kind = "always", parts = 1 } }.
-ns.PLANNER_CLASS_QUESTS = {}
+-- A starter set from memory (ids, levels and parts are all to be checked): the class path needs rec.doable
+-- (Questie's IsDoable knows class and race), so a wrong id is never planned for the wrong class.
+ns.PLANNER_CLASS_QUESTS = {
+    -- check in game
+    WARRIOR = { { id = 1638, level = 10, kind = "always", parts = 3 }, { id = 1718, level = 30, kind = "fit", parts = 1 } },
+    -- check in game
+    HUNTER = { { id = 6063, level = 10, kind = "always", parts = 3 }, { id = 6064, level = 20, kind = "fit", parts = 2 } },
+    -- check in game
+    MAGE = { { id = 1860, level = 10, kind = "always", parts = 2 } },
+    -- check in game
+    PRIEST = { { id = 5623, level = 10, kind = "always", parts = 2 } },
+    -- check in game
+    ROGUE = { { id = 2218, level = 10, kind = "always", parts = 2 } },
+    -- check in game
+    WARLOCK = { { id = 1685, level = 10, kind = "always", parts = 3 } },
+    -- check in game
+    PALADIN = { { id = 1642, level = 12, kind = "always", parts = 3 } },
+    -- check in game
+    SHAMAN = { { id = 1516, level = 4, kind = "always", parts = 4 } },
+    -- check in game
+    DRUID = { { id = 5921, level = 10, kind = "always", parts = 2 }, { id = 5061, level = 16, kind = "fit", parts = 1 } },
+}
 
 local function InLog(id)
     local QL = C_QuestLog

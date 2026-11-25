@@ -84,21 +84,14 @@ function ns.PlannerClassMap(ctx)
     return map
 end
 
--- Every spot a record talks about (givers, hand-ins, objectives).
-local function EachSpot(rec, f)
-    for _, s in ipairs(rec.starts or {}) do f(s) end
-    for _, s in ipairs(rec.ends or {}) do f(s) end
-    for _, o in ipairs(rec.objectives or {}) do
-        for _, s in ipairs(o.spots or {}) do f(s) end
-    end
-end
-
--- list of records worth considering, skipped = { group = n } (left out only by the group setting).
+-- list of records worth considering, skipped = { group = n } (left out only by the group setting), and
+-- the item-started quests the route has yet to judge (PlannerRoute: is the dropping NPC near a spot of the route?).
 -- ctx.skip: quests never suggested (kept while they are in the log); ctx.soloElites + ctx.class: an elite
 -- your class has soloed at this level difference is let through (and is not counted as skipped).
 -- ctx.classQuests: class quests at or below your level are candidates whatever the level window says (the skip
--- list still applies). A quest an item starts, that an NPC drops: a candidate only when that NPC stands within a
--- hub's radius of a spot of the others, or at once (starting where you are) when the item is in your bags.
+-- list still applies). A quest an item starts, that an NPC drops: a candidate at once (starting where you are) when the
+-- item is in your bags; otherwise left to the route (third result), which takes it when that NPC stands within a
+-- hub's radius of a spot of the route.
 function ns.PlannerCandidates(source, ctx)
     local list, skipped = {}, { group = 0 }
     if type(source) ~= "table" or type(ctx) ~= "table" then return list, skipped end
@@ -140,43 +133,24 @@ function ns.PlannerCandidates(source, ctx)
             end
         end
     end
-    if #items > 0 then
-        local anchors = {}
-        for _, r in ipairs(list) do
-            EachSpot(r, function(s)
-                local c, x, y = ns.PlannerWorldPos(s.map, s.x, s.y)
-                if c then anchors[#anchors + 1] = { c = c, x = x, y = y } end
-            end)
-        end
-        local r2 = (ns.PLANNER_HUB_YARDS or 150) ^ 2
-        local here = type(ctx.here) == "table" and ctx.here.map and ctx.here.x and ctx.here.y and ctx.here or nil
-        for _, rec in ipairs(items) do
-            ns.PlannerYield()
-            if not have[rec.id] then
-                local held = type(ctx.itemCount) == "function" and (tonumber(ctx.itemCount(rec.fromItem.id)) or 0) > 0
-                if held and here then
-                    local copy = {}
-                    for k, v in pairs(rec) do copy[k] = v end
-                    copy.starts, copy.haveItem = { { map = here.map, x = here.x, y = here.y } }, true
-                    have[rec.id] = true
-                    list[#list + 1] = copy
-                else
-                    local near = false
-                    for _, s in ipairs(rec.starts or {}) do
-                        local c, x, y = ns.PlannerWorldPos(s.map, s.x, s.y)
-                        if c then
-                            for _, a in ipairs(anchors) do
-                                if a.c == c and (a.x - x) ^ 2 + (a.y - y) ^ 2 <= r2 then near = true; break end
-                            end
-                        end
-                        if near then break end
-                    end
-                    if near then have[rec.id] = true; list[#list + 1] = rec end
-                end
+    local later = {}                                  -- (item quests judged against the route, once it is laid out)
+    local here = type(ctx.here) == "table" and ctx.here.map and ctx.here.x and ctx.here.y and ctx.here or nil
+    for _, rec in ipairs(items) do
+        ns.PlannerYield()
+        if not have[rec.id] then
+            local held = type(ctx.itemCount) == "function" and (tonumber(ctx.itemCount(rec.fromItem.id)) or 0) > 0
+            if held and here then
+                local copy = {}
+                for k, v in pairs(rec) do copy[k] = v end
+                copy.starts, copy.haveItem = { { map = here.map, x = here.x, y = here.y } }, true
+                have[rec.id] = true
+                list[#list + 1] = copy
+            else
+                later[#later + 1] = rec
             end
         end
     end
-    return list, skipped
+    return list, skipped, later
 end
 
 ------------------------------------------------------------------------------------------
