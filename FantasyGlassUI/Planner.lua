@@ -45,7 +45,8 @@ local floor, min, max, sqrt = math.floor, math.min, math.max, math.sqrt
 --              quest, a new quest that passed every test, before the group check, a class quest, a quest from an
 --              item before it waits for the route): exactly false drops it
 --   "replan"   fn(reason) -> false|other   ns:PlannerReplan (after the Following check) and ns:PlannerStart
---              (reason "start", after the GuideOn check): exactly false makes the call return false and change nothing
+--              (reason "start", after the GuideOn check): exactly false makes the call return false (PlannerReplan:
+--              false, "refused") and change nothing
 ------------------------------------------------------------------------------------------
 local hooks, NONE = {}, {}
 -- Add a hook (a second fn with the same key replaces the first, in its place; fn nil removes it).
@@ -753,10 +754,11 @@ local function Tick()
 end
 ns:Every(0, "Planner", Tick)
 
--- Plan again (soon, a slice at a time). `reason` is only for debugging.
+-- Plan again (soon, a slice at a time). `reason` is only for debugging. Returns false when you are not
+-- following the planned guide, and false, "refused" when a "replan" hook refused it.
 function ns:PlannerReplan(reason)
     if not Following() then return false end
-    if not ReplanOK(reason) then return false end
+    if not ReplanOK(reason) then return false, "refused" end
     ns.plannerQueued, ns.plannerReason = true, reason
     return true
 end

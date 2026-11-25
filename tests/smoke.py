@@ -14450,7 +14450,7 @@ end)
 -- batch 5: the seams (the hooks "candidate" and "replan", the Guide tab's sections, the plan codes, the new files)
 try("13.5 together: seams", function()
     local saved = { on = ns.GuideOn, state = ns.GuideState, unlocked = ns.GuideUnlocked, setPlan = ns.GuideSetPlan,
-                    queued = ns.plannerQueued, reason = ns.plannerReason, guidePage = ns.guidePage }
+                    queued = ns.plannerQueued, reason = ns.plannerReason, guidePage = ns.guidePage, show = ns.ShowList, fromHere = ns.plannerFromHere }
     local ok, err = pcall(function()
         ns.GuideUnlocked = function() return true end
         -- the "candidate" hook: asked about each record about to be kept
@@ -14515,7 +14515,18 @@ try("13.5 together: seams", function()
         ns.plannerQueued = false
         local why = {}
         ns.PlannerHook("replan", "seams", function(reason) why[#why + 1] = reason; return false end)
-        if ns:PlannerReplan("hand-in") ~= false or ns.plannerQueued ~= false or why[1] ~= "hand-in" then error("a replan hook returning false refuses the replan") end
+        local okR, refusedR = ns:PlannerReplan("hand-in")
+        if okR ~= false or refusedR ~= "refused" or ns.plannerQueued ~= false or why[1] ~= "hand-in" then error("a replan hook returning false refuses the replan: false, \"refused\"") end
+        -- (plan from here on the map: a refused replan is not turned into a start)
+        local rows
+        ns.ShowList = function(_, key, title, lines) rows = lines; return { Hide = function() end } end
+        ns.PlannerMapPick({ map = 1, x = 30, y = 40 })
+        ns.ShowList = saved.show
+        if not (rows and rows[1] and rows[1].click) then error("the plan from here window has its button") end
+        rows[1].click()
+        if why[2] ~= "from here" or #why ~= 2 or ns.plannerQueued ~= false then error("a refused plan from here starts nothing: " .. table.concat(why, ", ")) end
+        ns.plannerFromHere = saved.fromHere
+        table.remove(why)
         local cleared = 0
         ns.GuideSetPlan = function(self, ...) cleared = cleared + 1; return saved.setPlan(self, ...) end
         ns.GuideState = function() return nil end              -- (not following: the start would clear the guide first)
@@ -14577,6 +14588,7 @@ try("13.5 together: seams", function()
     ns:PlannerStop()
     ns.GuideOn, ns.GuideState, ns.GuideUnlocked, ns.GuideSetPlan = saved.on, saved.state, saved.unlocked, saved.setPlan
     ns.plannerQueued, ns.plannerReason, ns.guidePage = saved.queued, saved.reason, saved.guidePage
+    ns.ShowList, ns.plannerFromHere = saved.show, saved.fromHere
     if not ok then error(err, 0) end
 end)
 

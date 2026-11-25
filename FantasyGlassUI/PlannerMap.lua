@@ -147,7 +147,8 @@ function ns.PlannerMapPick(spot)
         { left = ns:Tr("Plan from here"), click = function()
             Close()
             ns.plannerFromHere = { map = spot.map, x = spot.x, y = spot.y, at = Now() }
-            if not ns:PlannerReplan("from here") then ns:PlannerStart() end
+            local ok, refused = ns:PlannerReplan("from here")
+            if not ok and not refused then ns:PlannerStart() end    -- (not following: start; a refused replan stays refused)
         end },
         { left = ns:Tr("Cancel"), click = Close },
     }, nil, 260, 130)
