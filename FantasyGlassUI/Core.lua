@@ -216,6 +216,8 @@ ns.defaults = {
     -- batch 4 B (panel): begin
     -- batch 4 B (panel): end
     -- batch 4 C (pace): begin
+    plannerBreaks       = false,    -- a line when you reach a stopping place after a long stretch of play
+    plannerBreakMinutes = 120,      -- ... and how long a stretch that is, in minutes
     -- batch 4 C (pace): end
     -- batch 4 D (records): begin
     -- batch 4 D (records): end

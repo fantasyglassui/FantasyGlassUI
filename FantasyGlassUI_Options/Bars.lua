@@ -301,7 +301,103 @@ end
 
 -- Group C: the time you have, break reminders, catch me up, speed or story.
 local function FeelPaceSection(live, y, Replan, T)
-    return y, function() end
+    local refreshes = {}
+    -- The time you have and break reminders
+    Heading(live, "How long you play", 0, y, 736)
+    y = y - 30
+    local times = ns.PLANNER_PLAY_TIMES or { { 0, "No limit" } }
+    local function DrawTime(b)
+        local rec = ns.PlannerCharRecord and ns.PlannerCharRecord(false)
+        local now, name = tonumber(rec and rec.playDefault) or 0, times[1][2]
+        for _, t in ipairs(times) do if t[1] == now then name = t[2] end end
+        b.text:SetText(ns:Tr("How long can you play") .. ":  " .. ns:Tr(name))
+    end
+    local timeButton = ns:CreateButton(live, "", 300, 24, function(b)
+        local rec = ns.PlannerCharRecord and ns.PlannerCharRecord(false)
+        local now, at = tonumber(rec and rec.playDefault) or 0, 1
+        for i, t in ipairs(times) do if t[1] == now then at = i end end
+        rec = ns.PlannerCharRecord and ns.PlannerCharRecord(true)
+        if rec then rec.playDefault = times[at % #times + 1][1] end
+        DrawTime(b)
+    end)
+    timeButton:SetPoint("TOPLEFT", 0, y)
+    y = y - 30
+    local how = Small(live, 11, 700)
+    how:SetPoint("TOPLEFT", 0, y)
+    ns:Paint(how, "SetTextColor", "faint")
+    how:SetText(ns:Tr("Used by /fgui guide plan with no number. The plan then takes only what fits, and ends at a place to stop."))
+    y = y - 30
+    local breaks = ns:CreateCheckbox(live, "Remind me to take a break at a stopping place", ns.db.plannerBreaks == true, function(v) ns.db.plannerBreaks = v end)
+    breaks:SetPoint("TOPLEFT", 0, y)
+    y = y - 30
+    local lengths = { { 60, "1 hour" }, { 90, "1 hour 30" }, { 120, "2 hours" }, { 180, "3 hours" } }
+    local function DrawBreak(b)
+        local now, name = tonumber(ns.db.plannerBreakMinutes) or 120, "2 hours"
+        for _, t in ipairs(lengths) do if t[1] == now then name = t[2] end end
+        b.text:SetText(ns:Tr("Break reminder after") .. ":  " .. ns:Tr(name))
+    end
+    local breakButton = ns:CreateButton(live, "", 300, 24, function(b)
+        local now, at = tonumber(ns.db.plannerBreakMinutes) or 120, 3
+        for i, t in ipairs(lengths) do if t[1] == now then at = i end end
+        ns.db.plannerBreakMinutes = lengths[at % #lengths + 1][1]
+        DrawBreak(b)
+    end)
+    breakButton:SetPoint("TOPLEFT", 0, y)
+    y = y - 34
+    T.playTimeButton, T.breaksBox, T.breakButton = timeButton, breaks, breakButton
+    refreshes[#refreshes + 1] = function()
+        DrawTime(timeButton)
+        breaks:SetChecked(ns.db.plannerBreaks == true)
+        DrawBreak(breakButton)
+    end
+
+    -- Speed or story: a style, and the three weights it sets (a slider moved makes it Custom)
+    Heading(live, "Speed or story", 0, y, 736)
+    y = y - 30
+    local styles = { { "speed", "Speed" }, { "story", "Story" }, { "custom", "Custom" } }
+    local function DrawStyle(b)
+        local now, name = ns.PlannerStyle and ns.PlannerStyle() or "speed", "Speed"
+        for _, st in ipairs(styles) do if st[1] == now then name = st[2] end end
+        b.text:SetText(ns:Tr("Style") .. ":  " .. ns:Tr(name))
+    end
+    local sliders, syncing = {}, false
+    local function SyncSliders()
+        if not ns.PlannerWeights then return end
+        local sp, sa, st = ns.PlannerWeights()
+        syncing = true
+        sliders.speed:SetValue(sp); sliders.safety:SetValue(sa); sliders.story:SetValue(st)
+        syncing = false
+    end
+    local styleButton = ns:CreateButton(live, "", 300, 24, function(b)
+        local now, at = ns.PlannerStyle and ns.PlannerStyle() or "speed", 1
+        for i, st in ipairs(styles) do if st[1] == now then at = i end end
+        if ns.PlannerSetStyle then ns.PlannerSetStyle(styles[at % #styles + 1][1]) end
+        DrawStyle(b)
+        SyncSliders()
+    end)
+    styleButton:SetPoint("TOPLEFT", 0, y)
+    y = y - 34
+    for _, def in ipairs({ { "speed", "Speed" }, { "safety", "Safety" }, { "story", "Story" } }) do
+        local slider = ns:CreateSlider(live, def[2], 0, 100, 10, def[1] == "speed" and 100 or 0, "%d", function(v)
+            if syncing then return end
+            if ns.PlannerSetWeight then ns.PlannerSetWeight(def[1], v) end
+            DrawStyle(styleButton)
+        end, 300)
+        slider:SetPoint("TOPLEFT", 0, y)
+        sliders[def[1]] = slider
+        y = y - 40
+    end
+    local what = Small(live, 11, 700)
+    what:SetPoint("TOPLEFT", 0, y)
+    ns:Paint(what, "SetTextColor", "faint")
+    what:SetText(ns:Tr("Speed picks the most experience for the time. Story prefers the zone's quest chains, and at 100 reaches back up to 10 levels for them. Safety avoids elites, escorts and places where you died."))
+    y = y - 40
+    T.styleButton, T.speedSlider, T.safetySlider, T.storySlider = styleButton, sliders.speed, sliders.safety, sliders.story
+    refreshes[#refreshes + 1] = function()
+        DrawStyle(styleButton)
+        SyncSliders()
+    end
+    return y, function() for _, r in ipairs(refreshes) do r() end end
 end
 
 -- Group D: level times, race your best, where you left off, save as guide, read aloud.
