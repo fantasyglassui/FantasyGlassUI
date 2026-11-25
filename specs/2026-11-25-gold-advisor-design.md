@@ -102,3 +102,28 @@ about how sure it is: a number it guessed says so, a number you earned replaces 
 
 The exact guess formulas and defaults (stated in the plan and tested), the size of the price history
 kept per item, the ease scores per kind of idea, the window's layout within the 12.3 look.
+
+## Answers to the builder check (Claude's calls, per the player's "do only what you suggest")
+
+1. **Farming guesses without drop rates.** No bundled drop table (the data would have to be copied from
+   sites that don't allow it). A guess for an untried monster = a per-level default value per kill
+   (vendor trash and cloth, by level band; built-in, small, marked "guess") plus the quest-item drops
+   Questie knows. Every monster you loot teaches the advisor: it records monster → items and counts
+   for all your characters, and the learned value replaces the default once a monster has been looted
+   10 times. Your farming sessions still give the "measured" gold an hour.
+2. **Gathering nodes.** Routes use only nodes your characters have gathered (the planner's
+   `plannerNodesSeen`, shared across characters). For untried zones it suggests by skill level from a
+   small built-in list of zone → herbs/ores by skill range (well known, short), marked "guess", without
+   a route until you have gathered there.
+3. **Prices.** The new price store wraps and replaces `ns.root.auctionSeen`: keyed by auction house
+   (realm + faction; a neutral auction house gets its own key where the game says which one is open),
+   with one accessor every reader uses (tooltips, Auction.lua, Farming.lua). Old prices migrate once to
+   the current realm and faction. Prices are never mixed between factions.
+4. **Go and the levelling plan.** Go pauses the levelling plan and puts the gold trip on the guide
+   panel as steps; finishing or cancelling it resumes the levelling plan where it was. Travel comes
+   from the planner: the planner's own-folder move is done before gold batch 3 (the first with Go);
+   the Gold folder loads the Planner folder when Go is used (`## OptionalDeps: FantasyGlassUI_Planner`
+   plus a load on demand). Batches 1–2 need no travel.
+5. **One-off ideas vs per-hour ideas.** The window shows one-offs (sell your bags, vendor junk, a single
+   flip) in their own top section, "Right now", by total gold and minutes; the per-hour ideas are
+   ranked below by the sliders. With a goal set, both merge into one list by time to the goal.
