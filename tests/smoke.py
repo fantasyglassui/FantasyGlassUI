@@ -9664,6 +9664,7 @@ try("12.3 reload: every reload button hands the click to the game", function()
     ns:NoteBlocked("ADDON_ACTION_BLOCKED", "FantasyGlassUI", "Frame:Show()", stack)
     for i = n + 1, #printed do if tostring(printed[i]):find("/reload", 1, true) then error("only a refused reload should mention /reload") end end
     ns.blocked, ns.root.blockedNow = keepB, keepSaved
+end)
 try("12.3 settings look: rows and switches", function()
     local keep = { theme = ns.db.theme, accent = ns.db.accent, lang = ns.root.language, scale = ns.fontScale, big = ns.db.bigControls }
     local realCF = env.CreateFrame
@@ -9897,6 +9898,8 @@ try("12.3 settings look: rows and switches", function()
     ns.db.theme, ns.db.accent = keep.theme, keep.accent
     ns:Retheme()
     pcall(ns.ToggleConfig, ns)
+    if not ok then error(err, 0) end
+end)
 try("12.3 settings look: sidebar and Home", function()
     local keep = { scale = ns.fontScale, theme = ns.db.theme, lang = ns.root.language, uf = ns.db.ufStyle, sec = ns.root.optionsSection, mode = ns.root.settingsMode }
     local keepSwitch = {}
@@ -10112,6 +10115,9 @@ try("12.3 settings look: sidebar and Home", function()
     for k, v in pairs(keepSwitch) do ns.db[k] = v end
     ns.fontScale = keep.scale
     ns:LoadLocale()
+    ns:Retheme()
+    if not ok then error(err, 0) end
+end)
 try("12.3 settings look: themes page", function()
     local keep = { theme = ns.db.theme, accent = ns.db.accent }
     local ok, err = pcall(function()
