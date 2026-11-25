@@ -298,5 +298,25 @@
     "Velocità sceglie la maggiore esperienza per il tempo. Storia preferisce le catene di missioni della zona e, a 100, risale fino a 10 livelli. Sicurezza evita élite, scorte e luoghi dove sei morto.",
     "속도는 시간 대비 경험치가 가장 많은 쪽을 고릅니다. 이야기는 지역의 연계 퀘스트를 우선하며 100이면 최대 10레벨 아래까지 포함합니다. 안전은 정예, 호위, 죽었던 장소를 피합니다.",
     "速度选择单位时间经验最多的路线。剧情优先本区域的任务链，设为 100 时会向下追溯至 10 级。安全会避开精英、护送任务和你曾死亡的地点。"
+  ],
+  "Inn": [
+    "Gasthaus",
+    "Auberge",
+    "Posada",
+    "Таверна",
+    "Estalagem",
+    "Locanda",
+    "여관",
+    "旅店"
+  ],
+  "Flight point": [
+    "Flugpunkt",
+    "Point de vol",
+    "Punto de vuelo",
+    "Пункт полёта",
+    "Ponto de voo",
+    "Punto di volo",
+    "비행 지점",
+    "飞行点"
   ]
 }

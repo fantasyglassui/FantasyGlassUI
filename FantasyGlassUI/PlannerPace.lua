@@ -32,6 +32,8 @@ local function Plain(s)
 end
 
 ns.PLANNER_PLAY_HORIZON = 6                 -- hubs a plan may take while you have a time limit (the lead-in counts)
+ns.PLANNER_PLAY_MAX = 600                  -- the most minutes a limit can be set to
+ns.PLANNER_STALE_SECONDS = 3600             -- a limit this long past is forgotten (it was never ticked off)
 ns.PLANNER_STOP_SECONDS = 300               -- the stop place is at most this far (or what time is left, if less)
 ns.PLANNER_BREAK_REPEAT = 3600              -- a break reminder at most once in this many seconds
 ns.PLANNER_BREAK_SHOWN = 600                -- and its panel line for this long
@@ -52,30 +54,27 @@ function ns.PlannerSetPlayTime(minutes)
         if rec then rec.playUntil = nil end
     else
         local rec = Rec(true)
-        if rec then rec.playUntil = Now() + min(minutes, 600) * 60 end
+        if rec then rec.playUntil = Now() + min(minutes, ns.PLANNER_PLAY_MAX) * 60 end
     end
     Sync()
 end
 
--- Seconds left of the time you can play, 0 when it is up; nil with no limit.
+-- Seconds left of the time you can play, 0 when it is up; nil with no limit (or one that ran out long ago).
 function ns.PlannerTimeLeft()
     local rec = Rec(false)
     local deadline = rec and tonumber(rec.playUntil)
-    if not deadline then return nil end
+    if not deadline or Now() - deadline > ns.PLANNER_STALE_SECONDS then return nil end
     return max(0, deadline - Now())
 end
 
 -- "context": with a deadline the plan has the time left and a horizon of 6 hubs.
 local function ContextTime(ctx)
     if not Unlocked() then return end
-    local rec = Rec(false)
-    local deadline = rec and tonumber(rec.playUntil)
-    if deadline and Now() - deadline > 3600 then     -- (a limit that ran out long ago, never ticked off: forgotten)
-        rec.playUntil = nil
-        return
-    end
     local left = ns.PlannerTimeLeft()
-    if left then ctx.timeLeft, ctx.horizon = left, ns.PLANNER_PLAY_HORIZON end
+    if left then
+        ctx.timeLeft = left
+        ctx.horizon, ctx.horizonSet = max(tonumber(ctx.horizon) or 0, ns.PLANNER_PLAY_HORIZON), true   -- (another hook may have raised it more)
+    end
 end
 
 -- "rank": a hub (the lead-in too) that does not fit in what is left is out. A cut, or the horizon, ends the plan with a stop.
@@ -109,19 +108,19 @@ local function StopPlace(c, from, limit)
     if not from or limit <= 0 or not (ns.PlannerWorldPos and ns.PlannerTravel) then return nil end
     local fc, fx, fy = ns.PlannerWorldPos(from.map, from.x, from.y)
     local list = {}
-    local function Add(p, name)
+    local function Add(p, name, kind)
         local pc, px, py = ns.PlannerWorldPos(p.map, p.x, p.y)
         if pc and (not fc or pc == fc) then
             local dx, dy = (px or 0) - (fx or 0), (py or 0) - (fy or 0)
-            list[#list + 1] = { place = p, name = name, d = dx * dx + dy * dy }
+            list[#list + 1] = { place = p, name = name or ns:Tr(kind), d = dx * dx + dy * dy }
         end
     end
     if ns.PlannerPlaces then
-        for _, p in ipairs(ns.PlannerPlaces(c, "innkeeper")) do ns.PlannerYield(); Add(p, Plain(p.name)) end
+        for _, p in ipairs(ns.PlannerPlaces(c, "innkeeper")) do ns.PlannerYield(); Add(p, Plain(p.name), "Inn") end
     end
     for _, f in ipairs(type(c.flights) == "table" and c.flights or {}) do
         ns.PlannerYield()
-        if type(f) == "table" and f.known and tonumber(f.map) and tonumber(f.x) and tonumber(f.y) then Add(f, Plain(f.name)) end
+        if type(f) == "table" and f.known and tonumber(f.map) and tonumber(f.x) and tonumber(f.y) then Add(f, Plain(f.name), "Flight point") end
     end
     table.sort(list, function(a, b) return a.d < b.d end)
     local best, bestT
@@ -159,7 +158,8 @@ local function AdvanceStop(st, guide, _, at, moved)
     end
 end
 
--- /fgui guide plan [minutes]: a number sets the time (0 clears it), none uses the default; then plan.
+-- /fgui guide plan [minutes]: a number sets the time (0 clears it); with none, the default from the Guide tab
+-- (none, 30, 60, 90 or 120) starts a fresh limit, and with no default a limit you already have is kept; then plan.
 function ns.PlannerPlanCommand(rest)
     local n = tonumber(tostring(rest or ""):match("^%s*(%d+)"))
     if n then
@@ -240,6 +240,8 @@ function ns.PlannerBreakReset() lastBreak, breakLine = nil, nil end
 -- Catch me up
 ------------------------------------------------------------------------------------------
 local entered = false                        -- (the login's own handling is done: the clock may be saved from now on)
+-- Forget what this session knows (the tests start each case from here): the last reminder, and that the login was handled.
+function ns.PlannerPaceReset() lastBreak, breakLine, entered = nil, nil, false end
 
 local function VersionNumber(v)
     local a, b, c = tostring(v or ""):match("^(%d+)%.?(%d*)%.?(%d*)")
@@ -248,7 +250,7 @@ end
 
 -- Remember when you were last here, and which version it was (every minute, and at logout).
 function ns.PlannerSeenSave()
-    if not entered or not On() then return end
+    if not entered or not Unlocked() then return end            -- (whether or not the guide is on: you are still playing)
     local rec = Rec(true)
     if rec then rec.lastSeen, rec.lastVersion = Now(), ns.version end
 end
@@ -559,6 +561,7 @@ Sync = function()
     ns.GuideRegisterLine("paceStyle", Reg(StyleLine))
     ns.GuideRegisterAction("panel", "paceTime", "How long can you play?", Reg(OpenTimeList))
     local rec = open and Rec(false) or nil
+    if rec and tonumber(rec.playUntil) and not ns.PlannerTimeLeft() then rec.playUntil = nil end   -- (ran out long ago: forgotten)
     local timed = rec and tonumber(rec.playUntil) and true or false
     local h = ns.PlannerPaceHooks.time
     ns.PlannerHook("context", "paceTime", timed and h.context or nil)
@@ -572,3 +575,14 @@ Sync = function()
     ns.PlannerHook("rank", "paceStyle", styled and v.rank or nil)
 end
 ns.PlannerPaceSync = function() Sync() end
+-- Unlocking or locking the guide registers or removes everything at once (not up to a minute later).
+for _, name in ipairs({ "GuideUnlock", "GuideLock" }) do
+    local original = ns[name]
+    if type(original) == "function" then
+        ns[name] = function(...)
+            local a, b = original(...)
+            Sync()
+            return a, b
+        end
+    end
+end

@@ -12371,6 +12371,9 @@ try("13.4 feel: seams", function()
         guide, summary = ns.PlannerRoute(ctxFor({ classQuests = always, horizon = 1 }))
         ps = plannedSet(guide)
         if not ps[401] or ps[301] or ps[302] or summary.taken[2] then error("a horizon set by a hook counts the lead-in: " .. table.concat(seen, ",")) end
+        guide, summary = ns.PlannerRoute(ctxFor({ classQuests = always, horizon = 2, horizonSet = true }))
+        ps = plannedSet(guide)
+        if not (ps[401] and ps[301]) or ps[302] or summary.taken[3] then error("a hook's horizon of 2 (ctx.horizonSet) is the lead-in and one hub, not three") end
         ns.PlannerHook("rank", "seams", function(ranked) for _, e in ipairs(ranked) do if e.lead then e.score = -1 end end end)
         guide, summary = ns.PlannerRoute(ctxFor({ classQuests = always }))
         ps = plannedSet(guide)
@@ -12746,6 +12749,23 @@ try("13.4 feel C: time you have, breaks, catch-up", function()
         local live = ns.PlannerContext()
         if not (live.timeLeft and live.timeLeft <= left + 1 and live.horizon == 6) then error("ns.PlannerContext: the time left and the horizon") end
 
+        local raised = ctxFor({ horizon = 9 })
+        withTime(raised)
+        if raised.horizon ~= 9 or not raised.horizonSet then error("a horizon another hook raised higher stays: " .. tostring(raised.horizon)) end
+        if withTime(ctxFor()).horizon ~= 6 then error("the horizon is 6 otherwise") end
+
+        -- a place with no name still gets words
+        inns[1].name = nil
+        guide = ns.PlannerRoute(withTime(ctxFor()))
+        if last(guide, 1).kind ~= "goto" or last(guide, 1).text ~= "Inn" then error("an inn with no name: 'Inn': " .. tostring(last(guide, 1).text)) end
+        inns[1].name = "Fake Inn"
+        local keepInns = inns
+        inns = {}
+        guide = ns.PlannerRoute(withTime(ctxFor({ flights = { { node = 5, map = 1, x = 44, y = 40, known = true }, { node = 6, map = 1, x = 45, y = 40, known = false, name = "Unknown" } } })))
+        if last(guide, 1).kind ~= "goto" or last(guide, 1).text ~= "Flight point" or last(guide, 1).x ~= 44 then error("a known flight point with no name: " .. tostring(last(guide, 1).text)) end
+        inns = keepInns
+        source.places = function(kind) if kind == "innkeeper" then return inns end return {} end
+
         -- the stopping place is within what is left: an inn farther than that is not taken
         inns[1].x = 300
         guide = ns.PlannerRoute(withTime(ctxFor()))
@@ -12756,6 +12776,17 @@ try("13.4 feel C: time you have, breaks, catch-up", function()
         rec.playUntil = now - 10
         guide, summary = ns.PlannerRoute(withTime(ctxFor()))
         if #guide.steps ~= 2 or guide.steps[1].kind ~= "goto" or guide.steps[2].kind ~= "note" or summary.empty then error("time up: the inn and the note, " .. #guide.steps .. " steps") end
+
+        -- a limit that ran out long ago is forgotten, and its hooks go with it
+        rec.playUntil = now - 7200
+        if ns.PlannerTimeLeft() ~= nil or withTime(ctxFor()).timeLeft ~= nil then error("a stale limit is no limit") end
+        ns.PlannerPaceSync()
+        if rec.playUntil ~= nil then error("a stale limit is dropped") end
+        for _, h in ipairs(ns.PlannerHookList("rank")) do if h.key == "paceTime" then error("a stale limit: its hooks go") end end
+        ns.PlannerSetPlayTime(99999)
+        if ns.PlannerTimeLeft() ~= ns.PLANNER_PLAY_MAX * 60 then error("a limit is capped: " .. tostring(ns.PlannerTimeLeft())) end
+        rec.playUntil = now - 10
+        ns.PlannerPaceSync()
 
         -- ticking the note clears the limit
         ns:GuideSetPlan(guide, summary)
@@ -12777,6 +12808,29 @@ try("13.4 feel C: time you have, breaks, catch-up", function()
         ns.PlannerSetPlayTime(0); rec.playDefault = 0
         ns:GuideCommand("plan")
         if ns.PlannerTimeLeft() ~= nil or starts ~= 4 then error("plan, no default: no limit") end
+        ns.PlannerSetPlayTime(45)
+        ns:GuideCommand("plan")
+        if ns.PlannerTimeLeft() ~= 2700 or starts ~= 5 then error("plan, no default: a limit you have is kept") end
+        rec.playDefault = 90
+        ns:GuideCommand("plan")
+        if ns.PlannerTimeLeft() ~= 5400 or starts ~= 6 then error("plan, a default: a fresh limit") end
+        ns.PlannerSetPlayTime(0); rec.playDefault = 0
+
+        -- the brief's own case: three hubs of 900 s, 60 s apart, /fgui guide plan 30
+        local realTime, realTravel = ns.PlannerQuestTime, ns.PlannerTravel
+        ns.PlannerQuestTime = function() return 900 end
+        ns.PlannerTravel = function() return 60, {} end
+        local literal
+        ns.PlannerStart = function() starts = starts + 1; literal = ns.PlannerRoute(withTime(ctxFor())); return true end
+        local okLit, errLit = pcall(function() ns:GuideCommand("plan 30") end)
+        ns.PlannerQuestTime, ns.PlannerTravel = realTime, realTravel
+        ns.PlannerStart = function() starts = starts + 1; return true end
+        if not okLit then error(errLit, 0) end
+        local lq = questsOf(literal)
+        if not lq[1] or lq[2] or lq[3] or last(literal).text ~= "Good place to stop" or last(literal, 1).kind ~= "goto" then
+            error("plan 30 with three hubs of 900 s: the first hub, the inn, the note")
+        end
+        ns.PlannerSetPlayTime(0)
         ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "a" } } }, { zone = 1 })
         local entry
         for _, e in ipairs(ns.GuidePanelEntries(nil)) do if e[1] == "How long can you play?" then entry = e end end
@@ -12864,6 +12918,9 @@ try("13.4 feel C: time you have, breaks, catch-up", function()
         env.C_QuestLog = setmetatable({ GetNumQuestLogEntries = function() return 12, 7 end, IsOnQuest = function(id) return id == 901 end }, { __index = saved.logQ })
         ns:HideLists()
         rec.lastSeen, rec.lastVersion = now - 15 * 86400, "12.0.0"
+        ns.PlannerPaceReset()
+        ns.PlannerSeenSave()
+        if rec.lastSeen ~= now - 15 * 86400 then error("before the login is handled the clock is not saved") end
         fireEvent("PLAYER_ENTERING_WORLD", true, false)
         if calls ~= 1 then error("15 days away at a login: the page") end
         local page = ns:ListWindow("PlanCatchUp")
@@ -12908,6 +12965,32 @@ try("13.4 feel C: time you have, breaks, catch-up", function()
         now = now + 77
         fireEvent("PLAYER_LOGOUT")
         if rec.lastSeen ~= now then error("logout saves the clock") end
+        -- the guide off while you play: the clock still runs, so turning it on again is no long absence
+        ns.GuideOn = function() return false end
+        rec.lastSeen = now
+        now = now + 20 * 86400
+        ns.PlannerSeenSave()
+        if rec.lastSeen ~= now then error("the guide off: the clock is still saved") end
+        now = now + 60
+        ns.GuideOn = function() return true end
+        fireEvent("PLAYER_ENTERING_WORLD", true, false)
+        if calls ~= 3 then error("guide off, time passes, guide on: no page") end
+        -- a login with the guide off and a long gap: no page, and no page later either
+        ns.GuideOn = function() return false end
+        rec.lastSeen = now - 30 * 86400
+        fireEvent("PLAYER_ENTERING_WORLD", true, false)
+        ns.GuideOn = function() return true end
+        fireEvent("PLAYER_ENTERING_WORLD", true, false)
+        if calls ~= 3 or rec.lastSeen ~= now then error("a login with the guide off settles the clock: no page") end
+
+        -- locking the guide takes its entries away at once
+        ns.GuideUnlocked = saved.unlocked
+        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
+        ns.PlannerPaceSync()
+        local function offered() for _, e in ipairs(ns.GuidePanelEntries(nil)) do if e[1] == "How long can you play?" then return true end end return false end
+        if not offered() then error("unlocked: the panel offers the time list") end
+        ns:GuideLock()
+        if offered() then error("locked: the time list goes at once") end
         ns.GuideUnlocked = function() return false end
         rec.lastSeen = now - 30 * 86400
         fireEvent("PLAYER_ENTERING_WORLD", true, false)
@@ -12919,7 +13002,7 @@ try("13.4 feel C: time you have, breaks, catch-up", function()
     for _, point in ipairs({ "context", "rank", "route" }) do ns.PlannerHook(point, "probe", nil) end
     ns.GuideUnlocked, ns.GuideOn, ns.GuideHere = saved.unlocked, saved.on, saved.here
     ns.PlannerPaceSync()
-    ns.PlannerBreakReset()
+    ns.PlannerPaceReset()
     env.time, env.GetTime, env.InCombatLockdown, env.UnitLevel, env.C_Map, env.C_QuestLog = saved.time, saved.getTime, saved.combat, saved.level, saved.map, saved.logQ
     rawset(env, "CreateVector2D", saved.vec)
     ns.PlannerStart, ns.plannerSessionStart, ns.root.plannerSessionAt = saved.start, saved.session, saved.sessionAt
