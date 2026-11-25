@@ -21,6 +21,15 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["Scan prices"] = "Preise scannen",
+    ["Scan in %d:%02d"] = "Scan in %d:%02d",
+    ["Reading %d%%"] = "Lese %d%%",
+    ["Reads every auction at once for the prices in tooltips. The auction house allows this about every 15 minutes."] = "Liest alle Auktionen auf einmal für die Preise in den Tooltips. Das Auktionshaus erlaubt das etwa alle 15 Minuten.",
+    ["Prices scanned: %d items."] = "Preise gescannt: %d Gegenstände.",
+    ["The auction house closed before the scan was read: scan again when it allows."] = "Das Auktionshaus wurde geschlossen, bevor der Scan gelesen war: scanne erneut, sobald es das erlaubt.",
+    ["The auction house did not send its list: try again later."] = "Das Auktionshaus hat seine Liste nicht geschickt: versuche es später noch einmal.",
+    ["Scan prices button"] = "Schaltfläche Preise scannen",
+    ["A Scan prices button on the auction house reads every auction at once (the auction house allows it about every 15 minutes) for the prices in tooltips and the sell hints."] = "Eine Schaltfläche Preise scannen im Auktionshaus liest alle Auktionen auf einmal (das Auktionshaus erlaubt das etwa alle 15 Minuten) für die Preise in den Tooltips und die Verkaufshinweise.",
     ["Never scanned"] = "Nie gescannt",
     ["Scanned today"] = "Heute gescannt",
     ["Scanned yesterday"] = "Gestern gescannt",
@@ -3335,6 +3344,15 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["Scan prices"] = "Analyser les prix",
+    ["Scan in %d:%02d"] = "Analyse dans %d:%02d",
+    ["Reading %d%%"] = "Lecture %d%%",
+    ["Reads every auction at once for the prices in tooltips. The auction house allows this about every 15 minutes."] = "Lit toutes les enchères d'un coup pour les prix des infobulles. L'hôtel des ventes le permet environ toutes les 15 minutes.",
+    ["Prices scanned: %d items."] = "Prix analysés : %d objets.",
+    ["The auction house closed before the scan was read: scan again when it allows."] = "L'hôtel des ventes a été fermé avant la lecture de l'analyse : relancez-la dès qu'il le permet.",
+    ["The auction house did not send its list: try again later."] = "L'hôtel des ventes n'a pas envoyé sa liste : réessayez plus tard.",
+    ["Scan prices button"] = "Bouton Analyser les prix",
+    ["A Scan prices button on the auction house reads every auction at once (the auction house allows it about every 15 minutes) for the prices in tooltips and the sell hints."] = "Un bouton Analyser les prix à l'hôtel des ventes lit toutes les enchères d'un coup (l'hôtel des ventes le permet environ toutes les 15 minutes) pour les prix des infobulles et les conseils de vente.",
     ["Never scanned"] = "Jamais analysé",
     ["Scanned today"] = "Analysé aujourd'hui",
     ["Scanned yesterday"] = "Analysé hier",
@@ -6649,6 +6667,15 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["Scan prices"] = "Escanear precios",
+    ["Scan in %d:%02d"] = "Escanear en %d:%02d",
+    ["Reading %d%%"] = "Leyendo %d%%",
+    ["Reads every auction at once for the prices in tooltips. The auction house allows this about every 15 minutes."] = "Lee todas las subastas a la vez para los precios de las descripciones. La casa de subastas lo permite cada 15 minutos aproximadamente.",
+    ["Prices scanned: %d items."] = "Precios escaneados: %d objetos.",
+    ["The auction house closed before the scan was read: scan again when it allows."] = "La casa de subastas se cerró antes de leer el escaneo: vuelve a escanear cuando lo permita.",
+    ["The auction house did not send its list: try again later."] = "La casa de subastas no envió su lista: inténtalo más tarde.",
+    ["Scan prices button"] = "Botón Escanear precios",
+    ["A Scan prices button on the auction house reads every auction at once (the auction house allows it about every 15 minutes) for the prices in tooltips and the sell hints."] = "Un botón Escanear precios en la casa de subastas lee todas las subastas a la vez (la casa de subastas lo permite cada 15 minutos aproximadamente) para los precios de las descripciones y las pistas de venta.",
     ["Never scanned"] = "Nunca escaneado",
     ["Scanned today"] = "Escaneado hoy",
     ["Scanned yesterday"] = "Escaneado ayer",
@@ -9966,6 +9993,15 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["Scan prices"] = "Сканировать цены",
+    ["Scan in %d:%02d"] = "Скан. через %d:%02d",
+    ["Reading %d%%"] = "Чтение %d%%",
+    ["Reads every auction at once for the prices in tooltips. The auction house allows this about every 15 minutes."] = "Читает все лоты сразу ради цен в подсказках. Аукцион разрешает это примерно раз в 15 минут.",
+    ["Prices scanned: %d items."] = "Цены просканированы: предметов %d.",
+    ["The auction house closed before the scan was read: scan again when it allows."] = "Аукцион закрылся до того, как скан был прочитан: повторите, когда он разрешит.",
+    ["The auction house did not send its list: try again later."] = "Аукцион не прислал свой список: попробуйте позже.",
+    ["Scan prices button"] = "Кнопка «Сканировать цены»",
+    ["A Scan prices button on the auction house reads every auction at once (the auction house allows it about every 15 minutes) for the prices in tooltips and the sell hints."] = "Кнопка «Сканировать цены» на аукционе читает все лоты сразу (аукцион разрешает это примерно раз в 15 минут) ради цен в подсказках и советов по продаже.",
     ["Never scanned"] = "Ни разу не сканировалось",
     ["Scanned today"] = "Сканировано сегодня",
     ["Scanned yesterday"] = "Сканировано вчера",
@@ -13280,6 +13316,15 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["Scan prices"] = "Escanear preços",
+    ["Scan in %d:%02d"] = "Escanear em %d:%02d",
+    ["Reading %d%%"] = "Lendo %d%%",
+    ["Reads every auction at once for the prices in tooltips. The auction house allows this about every 15 minutes."] = "Lê todos os leilões de uma vez para os preços nas dicas. A casa de leilões permite isso a cada 15 minutos, mais ou menos.",
+    ["Prices scanned: %d items."] = "Preços escaneados: %d itens.",
+    ["The auction house closed before the scan was read: scan again when it allows."] = "A casa de leilões fechou antes de o escaneamento ser lido: escaneie de novo quando ela permitir.",
+    ["The auction house did not send its list: try again later."] = "A casa de leilões não enviou a lista: tente mais tarde.",
+    ["Scan prices button"] = "Botão Escanear preços",
+    ["A Scan prices button on the auction house reads every auction at once (the auction house allows it about every 15 minutes) for the prices in tooltips and the sell hints."] = "Um botão Escanear preços na casa de leilões lê todos os leilões de uma vez (a casa de leilões permite isso a cada 15 minutos, mais ou menos) para os preços nas dicas e as dicas de venda.",
     ["Never scanned"] = "Nunca escaneado",
     ["Scanned today"] = "Escaneado hoje",
     ["Scanned yesterday"] = "Escaneado ontem",
@@ -16594,6 +16639,15 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["Scan prices"] = "Scansiona prezzi",
+    ["Scan in %d:%02d"] = "Scansione tra %d:%02d",
+    ["Reading %d%%"] = "Lettura %d%%",
+    ["Reads every auction at once for the prices in tooltips. The auction house allows this about every 15 minutes."] = "Legge tutte le aste in una volta per i prezzi nei suggerimenti. La casa d'aste lo consente circa ogni 15 minuti.",
+    ["Prices scanned: %d items."] = "Prezzi scansionati: %d oggetti.",
+    ["The auction house closed before the scan was read: scan again when it allows."] = "La casa d'aste è stata chiusa prima che la scansione fosse letta: riprova quando lo consente.",
+    ["The auction house did not send its list: try again later."] = "La casa d'aste non ha inviato il suo elenco: riprova più tardi.",
+    ["Scan prices button"] = "Pulsante Scansiona prezzi",
+    ["A Scan prices button on the auction house reads every auction at once (the auction house allows it about every 15 minutes) for the prices in tooltips and the sell hints."] = "Un pulsante Scansiona prezzi alla casa d'aste legge tutte le aste in una volta (la casa d'aste lo consente circa ogni 15 minuti) per i prezzi nei suggerimenti e i consigli di vendita.",
     ["Never scanned"] = "Mai scansionato",
     ["Scanned today"] = "Scansionato oggi",
     ["Scanned yesterday"] = "Scansionato ieri",
@@ -19908,6 +19962,15 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["Scan prices"] = "가격 검색",
+    ["Scan in %d:%02d"] = "%d:%02d 후 검색",
+    ["Reading %d%%"] = "읽는 중 %d%%",
+    ["Reads every auction at once for the prices in tooltips. The auction house allows this about every 15 minutes."] = "툴팁의 가격을 위해 모든 경매를 한 번에 읽습니다. 경매장은 약 15분마다 한 번 허용합니다.",
+    ["Prices scanned: %d items."] = "가격 검색 완료: 아이템 %d개.",
+    ["The auction house closed before the scan was read: scan again when it allows."] = "검색 결과를 읽기 전에 경매장이 닫혔습니다. 허용되면 다시 검색하세요.",
+    ["The auction house did not send its list: try again later."] = "경매장이 목록을 보내지 않았습니다. 나중에 다시 시도하세요.",
+    ["Scan prices button"] = "가격 검색 버튼",
+    ["A Scan prices button on the auction house reads every auction at once (the auction house allows it about every 15 minutes) for the prices in tooltips and the sell hints."] = "경매장의 가격 검색 버튼이 모든 경매를 한 번에 읽습니다(경매장은 약 15분마다 허용). 툴팁의 가격과 판매 힌트에 쓰입니다.",
     ["Never scanned"] = "검색한 적 없음",
     ["Scanned today"] = "오늘 검색함",
     ["Scanned yesterday"] = "어제 검색함",
@@ -23225,6 +23288,15 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["Scan prices"] = "扫描价格",
+    ["Scan in %d:%02d"] = "%d:%02d 后扫描",
+    ["Reading %d%%"] = "读取中 %d%%",
+    ["Reads every auction at once for the prices in tooltips. The auction house allows this about every 15 minutes."] = "一次读取所有拍卖，用于鼠标提示中的价格。拍卖行大约每 15 分钟允许一次。",
+    ["Prices scanned: %d items."] = "价格已扫描：%d 件物品。",
+    ["The auction house closed before the scan was read: scan again when it allows."] = "扫描读取完成前拍卖行已关闭：等允许时再扫描一次。",
+    ["The auction house did not send its list: try again later."] = "拍卖行没有发送列表：请稍后再试。",
+    ["Scan prices button"] = "扫描价格按钮",
+    ["A Scan prices button on the auction house reads every auction at once (the auction house allows it about every 15 minutes) for the prices in tooltips and the sell hints."] = "拍卖行上的“扫描价格”按钮一次读取所有拍卖（拍卖行大约每 15 分钟允许一次），用于鼠标提示中的价格和出售提示。",
     ["Never scanned"] = "从未扫描",
     ["Scanned today"] = "今天已扫描",
     ["Scanned yesterday"] = "昨天已扫描",

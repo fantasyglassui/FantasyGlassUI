@@ -7929,6 +7929,114 @@ try("11.7: ready me, boss notes, death recap, backups, history, templates, packs
         if ns.PriceFreshText({ scanAt = env.time() - 86400 }, env.time()) ~= ns:Tr("Scanned yesterday") then error("yesterday") end
         if ns.PriceFreshText({ scanAt = env.time() - 3 * 86400 }, env.time()) ~= string.format(ns:Tr("Scanned %d days ago"), 3) then error("days ago") end
     end
+    -- Scan prices: the rows, the write, the cooldown, and whole reads (a fight, a closed auction house, rows read again)
+    do
+        local hidden = {}
+        local rows = { [0] = { 1, 1000, 5 }, [1] = { 4, 2000, 5 }, [2] = { 2, 0, 6 }, [3] = { 1, 300, nil }, [4] = { 1, hidden, 8 }, [5] = { 0, 50, 9 } }
+        local function read(i) local r = rows[i]; return r[1], r[2], r[3] end
+        local realIsSecret = ns.IsSecret
+        ns.IsSecret = function(self, v) if rawequal(v, hidden) then return true end return realIsSecret(self, v) end
+        local acc = {}
+        local okS, retry = pcall(ns.PriceScanRows, read, 6, acc, 0, 99)
+        ns.IsSecret = realIsSecret
+        if not okS then error(retry, 0) end
+        if acc[5].low ~= 500 or acc[5].listed ~= 5 then error("rows: the lowest unit price and the count") end
+        if acc[6].low ~= nil or acc[6].listed ~= 2 then error("bid only: listed, no price") end
+        if #retry ~= 1 or retry[1] ~= 3 then error("a row with no item is read again") end
+        if acc[8] then error("a row with a hidden value is skipped") end
+        if acc[9].low ~= 50 or acc[9].listed ~= 0 then error("count 0") end
+        local house = { items = { [5] = { price = 900, day = 20261120, hist = { [20261120] = 900 } }, [7] = { price = 1234, day = 20261120, listed = 3 } } }
+        local nw = ns.PriceScanWrite(house, { [5] = acc[5], [6] = acc[6] }, 20261125, 1800000000)
+        if nw ~= 2 or house.items[5].price ~= 500 or house.items[5].listed ~= 5 or house.items[5].hist[20261125] ~= 500 or house.items[5].listedDay ~= 20261125 then error("write: a scanned item") end
+        if house.items[7].listed ~= 0 or house.items[7].price ~= 1234 or house.items[7].listedDay ~= 20261125 then error("write: an item nobody lists keeps its price") end
+        if house.scanAt ~= 1800000000 or house.scanItems ~= 2 then error("write: the scan's time") end
+        if house.items[6].listed ~= 2 or house.items[6].price ~= nil then error("write: bid only") end
+        local keepPrices = ns.root.prices
+        local oldRealm, oldFaction, oldAH, oldCombat = env.GetRealmName, env.UnitFactionGroup, env.C_AuctionHouse, env.InCombatLockdown
+        local okW, errW = pcall(function()
+            ns.root.prices = { v = 1, lastScan = 1000 - 60 }
+            local ready, left = ns.PriceScanReady(1000)
+            if ready or left ~= 840 then error("the cooldown: " .. tostring(left)) end
+            ns.root.prices = { v = 1 }
+            if not ns.PriceScanReady(1000) then error("ready") end
+            env.GetRealmName = function() return "Stormreach" end; env.UnitFactionGroup = function() return "Alliance" end
+            local calls, combat, total, missingOnce = 0, false, 3, {}
+            env.InCombatLockdown = function() return combat end
+            env.C_AuctionHouse = { ReplicateItems = function() calls = calls + 1 end, GetNumReplicateItems = function() return total end,
+                GetReplicateItemInfo = function(i)
+                    local id = 100 + (i % 3)
+                    if missingOnce[i] then missingOnce[i] = nil; id = nil end
+                    return "Name", 1, 2, 1, true, 1, nil, 0, 0, 1000 * (1 + i % 3), 0, false, nil, "Owner", nil, 0, id, true
+                end }
+            local T = ns.priceScanTest
+            local function Run() for _ = 1, 50 do if not T.state() then return end; T.Read() end end
+            if ns.auctionScanTest.Label(1000) ~= ns:Tr("Scan prices") then error("the button when ready") end
+            combat = true
+            if ns:PriceScanStart() ~= false or calls ~= 0 then error("never in a fight") end
+            combat = false
+            if ns:PriceScanStart() ~= true or calls ~= 1 or ns.root.prices.lastScan ~= env.time() then error("the scan starts") end
+            if ns:PriceScanStart() then error("one at a time") end
+            fireEvent("REPLICATE_ITEM_LIST_UPDATE")
+            Run()
+            local h = ns.PriceHouse()
+            if T.state() or not h or h.scanItems ~= 3 or ns.PriceEntry(100).price ~= 500 or ns.PriceEntry(101).price ~= 1000 or ns.PriceEntry(102).listed ~= 2 then error("a whole read is written") end
+            if ns.auctionScanTest.Label(env.time() + 60) ~= string.format(ns:Tr("Scan in %d:%02d"), 14, 0) then error("the countdown: " .. ns.auctionScanTest.Label(env.time() + 60)) end
+            if ns:PriceScanStart() then error("not again within 15 minutes") end
+            -- a fight starts after the first slice: nothing is written until it ends
+            total = 450
+            ns.root.prices = { v = 1 }
+            if not ns:PriceScanStart() then error("the second scan starts") end
+            fireEvent("REPLICATE_ITEM_LIST_UPDATE")
+            T.Read()
+            if not T.state() or ns.PriceHouse() then error("450 rows take more than one slice") end
+            combat = true
+            T.Read(); T.Read()
+            combat = false
+            T.Read()
+            if ns.PriceHouse() or T.state().i ~= 200 then error("a fight pauses the read") end
+            fireEvent("PLAYER_REGEN_ENABLED")
+            Run()
+            if T.state() or not ns.PriceHouse() or ns.PriceEntry(100).listed ~= 300 then error("the read goes on after the fight") end
+            -- the auction house closes mid-read: nothing written
+            ns.root.prices = { v = 1 }
+            local mark = #printed
+            local function Said(from, text) for i = from + 1, #printed do if tostring(printed[i]):find(text, 1, true) then return true end end return false end
+            if not ns:PriceScanStart() then error("the third scan starts") end
+            fireEvent("REPLICATE_ITEM_LIST_UPDATE")
+            T.Read()
+            fireEvent("AUCTION_HOUSE_CLOSED")
+            T.Read()
+            if T.state() or ns.PriceHouse() or not Said(mark, "closed before the scan") then error("closed mid-read: thrown away") end
+            -- no list within a minute
+            ns.root.prices = { v = 1 }
+            mark = #printed
+            ns:PriceScanStart()
+            runTimers()
+            if T.state() or not Said(mark, "did not send its list") then error("no list: given up") end
+            -- a row whose item isn't loaded yet is read again
+            total = 3
+            ns.root.prices = { v = 1 }
+            missingOnce[1] = true
+            ns:PriceScanStart()
+            fireEvent("REPLICATE_ITEM_LIST_UPDATE")
+            T.Read()
+            if not T.state() or ns.PriceHouse() then error("waits to read a row again") end
+            runTimers()
+            Run()
+            if T.state() or ns.PriceEntry(101) == nil then error("the row read again is written") end
+            -- hidden values in the list: no error, nothing stored
+            ns.root.prices = { v = 1 }
+            env.C_AuctionHouse.GetReplicateItemInfo = function() local x = setmetatable({ __secret = true }, secretmt); return "N", 1, x, 1, true, 1, nil, 0, 0, x, 0, false, nil, "O", nil, 0, x, true end
+            ns:PriceScanStart()
+            fireEvent("REPLICATE_ITEM_LIST_UPDATE")
+            Run()
+            if T.state() or next(ns.PriceItems()) ~= nil then error("hidden rows are skipped") end
+        end)
+        ns.root.prices = keepPrices
+        env.GetRealmName, env.UnitFactionGroup, env.C_AuctionHouse, env.InCombatLockdown = oldRealm, oldFaction, oldAH, oldCombat
+        if not okW then error(errW, 0) end
+        ns.auctionScanTest.Dress()
+    end
     -- home key
     local ways = { { kind = "spell", id = 3561 }, { kind = "spell", id = 556 }, { kind = "item", id = 6948 }, { kind = "item", id = 64488 } }
     local best, ready = ns.BestWayHome(ways, function() return true end)

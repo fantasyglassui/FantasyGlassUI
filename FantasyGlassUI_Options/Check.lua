@@ -228,7 +228,7 @@ function ns:SelfCheck(quiet)
         .. "; minimap pings named: " .. tostring(ns.pingCount or 0) .. "; tracking menu opened by: " .. tostring(ns.trackingOpened or "not tried"))
     local kept = 0
     for _ in pairs(ns.PriceItems()) do kept = kept + 1 end
-    add("Auction prices: " .. st("auctionMemory", ns.auctionState) .. "; prices kept here: " .. kept .. "; loot logged: " .. tostring(ns.lootLog and #ns.lootLog or 0)
+    add("Auction prices: " .. st("auctionMemory", ns.auctionState) .. "; prices kept here: " .. kept .. "; scan prices: " .. st("auctionScan", ns.priceScanState) .. "; loot logged: " .. tostring(ns.lootLog and #ns.lootLog or 0)
         .. "; rolls seen: " .. tostring(ns.rolls and #ns.rolls or 0) .. "; chat names: " .. st("chatNames", ns.chatNamesState)
         .. "; keyword hits: " .. tostring(ns.keywordHits or 0) .. "; repeated lines hidden: " .. tostring(ns.spamHidden or 0))
     add("Short commands: " .. st("shortCommands", ns.shortCommandsState) .. "; friends list colors: " .. st("friendColors", ns.friendColorsState, ", " .. tostring(ns.friendColored or 0) .. " colored")
