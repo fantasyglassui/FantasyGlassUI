@@ -341,9 +341,214 @@ do
 end
 
 ------------------------------------------------------------------------------------------
+-- Speed or story, and the three sliders (Task 6)
+------------------------------------------------------------------------------------------
+local FULL = 100
+ns.PLANNER_STYLE_PRESETS = { speed = { 100, 0 }, story = { 40, 100 } }       -- speed, story (the preset keeps your safety)
+ns.PLANNER_DANGER_LEVELS = 3                                                 -- a kill objective this many levels above you is a danger
+ns.PLANNER_DEATH_LEVELS = 1                                                  -- deaths at your level or this many before it count
+
+local function Clamp(v, d)
+    v = Num(tonumber(v))
+    if not v then return d end
+    return max(0, min(FULL, floor(v + 0.5)))
+end
+
+-- speed, safety, story (0 to 100): 100, 0, 0 until you change them.
+function ns.PlannerWeights()
+    local rec = Rec(false)
+    local w = rec and type(rec.weights) == "table" and rec.weights or nil
+    return Clamp(w and w.speed, 100), Clamp(w and w.safety, 0), Clamp(w and w.story, 0)
+end
+
+function ns.PlannerStyle()
+    local rec = Rec(false)
+    local s = rec and rec.style
+    return (s == "story" or s == "custom") and s or "speed"
+end
+
+-- The presets: speed 100/0/0, story 40/0/100 (your safety stays); custom keeps the numbers.
+function ns.PlannerSetStyle(style)
+    if style ~= "speed" and style ~= "story" and style ~= "custom" then return false end
+    local rec = Rec(true)
+    if not rec then return false end
+    local speed, safety, story = ns.PlannerWeights()
+    local p = ns.PLANNER_STYLE_PRESETS[style]
+    if p then speed, story = p[1], p[2] end
+    rec.style, rec.weights = style, { speed = speed, safety = safety, story = story }
+    Sync()
+    Replan("style")
+    return true
+end
+
+-- One slider moved: "speed", "safety" or "story"; the style becomes custom.
+function ns.PlannerSetWeight(name, value)
+    if name ~= "speed" and name ~= "safety" and name ~= "story" then return false end
+    local rec = Rec(true)
+    if not rec then return false end
+    local speed, safety, story = ns.PlannerWeights()
+    local w = { speed = speed, safety = safety, story = story }
+    w[name] = Clamp(value, w[name])
+    rec.style, rec.weights = "custom", w
+    Sync()
+    Replan("style")
+    return true
+end
+
+-- Which quests are in a chain: { main = { [id] = true }, any = { [id] = true } }. `any` holds every quest
+-- that leads on to another or follows one (nextQuest, or a pre); `main` the largest set of these quests
+-- linked to each other by nextQuest / pre (two or more).
+function ns.PlannerChains(candidates)
+    local out = { main = {}, any = {} }
+    local byId, parent = {}, {}
+    local function Find(i)
+        while parent[i] ~= i do parent[i] = parent[parent[i]]; i = parent[i] end
+        return i
+    end
+    for _, r in ipairs(candidates or {}) do
+        ns.PlannerYield()
+        if type(r) == "table" and r.id then
+            byId[r.id], parent[r.id] = r, r.id
+            if r.nextQuest or (type(r.pre) == "table" and #r.pre > 0) then out.any[r.id] = true end
+        end
+    end
+    local function Link(a, b)
+        if byId[a] and byId[b] then
+            local ra, rb = Find(a), Find(b)
+            if ra ~= rb then parent[rb] = ra end
+        end
+    end
+    for id, r in pairs(byId) do
+        ns.PlannerYield()
+        if r.nextQuest then Link(id, r.nextQuest) end
+        for _, p in ipairs(type(r.pre) == "table" and r.pre or {}) do Link(id, p) end
+        for _, p in ipairs(type(r.preAny) == "table" and r.preAny or {}) do Link(id, p) end
+    end
+    local size, best, bestSize = {}, nil, 1
+    local ids = {}
+    for id in pairs(byId) do ids[#ids + 1] = id end
+    table.sort(ids)                                   -- (the same answer each time: the smallest root wins a tie)
+    for _, id in ipairs(ids) do
+        local root = Find(id)
+        size[root] = (size[root] or 0) + 1
+        if size[root] > bestSize then best, bestSize = root, size[root] end
+    end
+    if best then
+        for _, id in ipairs(ids) do
+            if Find(id) == best then out.main[id], out.any[id] = true, true end
+        end
+    end
+    return out
+end
+
+-- 0 to 1: the mean over a hub's quests of 1 (the zone's main chain), 0.5 (another chain), 0 (none).
+function ns.PlannerStoryScore(hub, chains)
+    local quests = type(hub) == "table" and hub.quests or nil
+    if type(quests) ~= "table" or #quests == 0 or type(chains) ~= "table" then return 0 end
+    local sum = 0
+    for _, q in ipairs(quests) do
+        if chains.main and chains.main[q.id] then sum = sum + 1
+        elseif chains.any and chains.any[q.id] then sum = sum + 0.5 end
+    end
+    return sum / #quests
+end
+
+local function IsEscort(q) return (q.escort or (ns.PLANNER_ESCORTS and ns.PLANNER_ESCORTS[q.id])) and true or false end
+
+-- 0 to 1: elite quests, kill objectives well above your level (half each), escorts (half each) and the deaths
+-- you had within a hub's reach at this level or the one before, over two.
+function ns.PlannerDanger(hub, ctx)
+    if type(hub) ~= "table" or type(ctx) ~= "table" then return 0 end
+    local level = tonumber(ctx.level) or 1
+    local sum = 0
+    for _, q in ipairs(hub.quests or {}) do
+        ns.PlannerYield()
+        if q.elite then sum = sum + 1 end
+        if IsEscort(q) then sum = sum + 0.5 end
+        for _, o in ipairs(q.objectives or {}) do
+            if o.kind == "kill" and (tonumber(o.mobLevel) or 0) >= level + ns.PLANNER_DANGER_LEVELS then sum = sum + 0.5 end
+        end
+    end
+    if type(ctx.deaths) == "table" and ns.PlannerWorldPos then
+        local hc, hx, hy = ns.PlannerWorldPos(hub.map, hub.x, hub.y)
+        for _, d in ipairs(ctx.deaths) do
+            ns.PlannerYield()
+            if type(d) == "table" and (tonumber(d.level) or 0) >= level - ns.PLANNER_DEATH_LEVELS and (tonumber(d.level) or 0) <= level then
+                local dc, dx, dy = ns.PlannerWorldPos(d.map, d.x, d.y)
+                if hc and dc == hc then
+                    local ddx, ddy = dx - hx, dy - hy
+                    if ddx * ddx + ddy * ddy <= (ns.PLANNER_HUB_YARDS or 150) ^ 2 then sum = sum + 1 end
+                end
+            end
+        end
+    end
+    return min(1, sum / 2)
+end
+
+-- "context": the weights, and with story at 100 a lower end of the window for chains.
+local function ContextStyle(ctx)
+    if not Unlocked() then return end
+    local speed, safety, story = ns.PlannerWeights()
+    ctx.weights = { speed = speed, safety = safety, story = story }
+    if story >= FULL then ctx.windowLo = min(tonumber(ctx.windowLo) or (ctx.level - 4), (tonumber(ctx.level) or 1) - 10) end
+end
+
+-- "window": with story at 100, a quest of a chain may be up to 10 levels below you.
+local function WindowStyle(rec, ctx, lo, hi)
+    local w = type(ctx) == "table" and ctx.weights
+    if type(w) == "table" and (tonumber(w.story) or 0) >= FULL and type(rec) == "table"
+        and (rec.nextQuest or (type(rec.pre) == "table" and #rec.pre > 0)) then
+        return min(lo, (tonumber(ctx.level) or 1) - 10), hi
+    end
+    return lo, hi
+end
+
+-- "rank": score = S x rate / best rate + T x story - F x danger, never below 0 (an unreachable hub stays out).
+local chainCache = setmetatable({}, { __mode = "k" })
+local function RankStyle(ranked, c, info)
+    local w = c.weights
+    if type(w) ~= "table" then return end
+    local S, F, T = (tonumber(w.speed) or 100) / 100, (tonumber(w.safety) or 0) / 100, (tonumber(w.story) or 0) / 100
+    if S == 1 and F == 0 and T == 0 then return end
+    local chains = chainCache[c]
+    if not chains then
+        local seen, quests = {}, {}
+        for _, e in ipairs(ranked) do
+            if not e.lead and type(e.hub) == "table" then
+                for _, q in ipairs(e.hub.quests or {}) do
+                    if not seen[q.id] then seen[q.id] = true; quests[#quests + 1] = q end
+                end
+            end
+        end
+        chains = ns.PlannerChains(quests)
+        chainCache[c] = chains
+    end
+    local best = 0
+    for _, e in ipairs(ranked) do
+        if (tonumber(e.score) or -1) >= 0 and (tonumber(e.rate) or -1) >= 0 and e.rate > best then best = e.rate end
+    end
+    for _, e in ipairs(ranked) do
+        ns.PlannerYield()
+        if (tonumber(e.score) or -1) >= 0 and (tonumber(e.rate) or -1) >= 0 then
+            local score = (best > 0 and S * e.rate / best or 0) + T * ns.PlannerStoryScore(e.hub, chains) - F * ns.PlannerDanger(e.hub, c)
+            e.score = max(0, score)
+        end
+    end
+end
+
+-- The panel says it when the style is not speed.
+local function StyleLine()
+    if not On() then return nil end
+    local style = ns.PlannerStyle()
+    if style == "speed" then return nil end
+    return format(ns:Tr("Style: %s"), ns:Tr(style == "story" and "Story" or "Custom"))
+end
+
+------------------------------------------------------------------------------------------
 -- What is registered: with the guide unlocked, the panel's entries; a planner hook only while its feature is in use.
 ------------------------------------------------------------------------------------------
-ns.PlannerPaceHooks = { time = { context = ContextTime, rank = RankTime, route = RouteTime } }
+ns.PlannerPaceHooks = { time = { context = ContextTime, rank = RankTime, route = RouteTime },
+                          style = { context = ContextStyle, window = WindowStyle, rank = RankStyle } }
 Sync = function()
     local open = Unlocked()
     local function Reg(fn) return open and fn or nil end
@@ -351,6 +556,7 @@ Sync = function()
     ns.GuideRegisterAdvance("paceStop", Reg(AdvanceStop))
     ns.GuideRegisterAdvance("paceBreak", Reg(AdvanceBreak))
     ns.GuideRegisterLine("paceBreak", Reg(BreakLine))
+    ns.GuideRegisterLine("paceStyle", Reg(StyleLine))
     ns.GuideRegisterAction("panel", "paceTime", "How long can you play?", Reg(OpenTimeList))
     local rec = open and Rec(false) or nil
     local timed = rec and tonumber(rec.playUntil) and true or false
@@ -358,5 +564,11 @@ Sync = function()
     ns.PlannerHook("context", "paceTime", timed and h.context or nil)
     ns.PlannerHook("rank", "paceTime", timed and h.rank or nil)
     ns.PlannerHook("route", "paceTime", timed and h.route or nil)
+    local speed, safety, story = ns.PlannerWeights()
+    local styled = open and not (speed == FULL and safety == 0 and story == 0)
+    local v = ns.PlannerPaceHooks.style
+    ns.PlannerHook("context", "paceStyle", styled and v.context or nil)
+    ns.PlannerHook("window", "paceStyle", styled and v.window or nil)
+    ns.PlannerHook("rank", "paceStyle", styled and v.rank or nil)
 end
 ns.PlannerPaceSync = function() Sync() end

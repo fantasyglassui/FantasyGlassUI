@@ -313,6 +313,53 @@ local function FeelPaceSection(live, y, Replan, T)
         breaks:SetChecked(ns.db.plannerBreaks == true)
         DrawBreak(breakButton)
     end
+
+    -- Speed or story: a style, and the three weights it sets (a slider moved makes it Custom)
+    Heading(live, "Speed or story", 0, y, 736)
+    y = y - 30
+    local styles = { { "speed", "Speed" }, { "story", "Story" }, { "custom", "Custom" } }
+    local function DrawStyle(b)
+        local now, name = ns.PlannerStyle and ns.PlannerStyle() or "speed", "Speed"
+        for _, st in ipairs(styles) do if st[1] == now then name = st[2] end end
+        b.text:SetText(ns:Tr("Style") .. ":  " .. ns:Tr(name))
+    end
+    local sliders, syncing = {}, false
+    local function SyncSliders()
+        if not ns.PlannerWeights then return end
+        local sp, sa, st = ns.PlannerWeights()
+        syncing = true
+        sliders.speed:SetValue(sp); sliders.safety:SetValue(sa); sliders.story:SetValue(st)
+        syncing = false
+    end
+    local styleButton = ns:CreateButton(live, "", 300, 24, function(b)
+        local now, at = ns.PlannerStyle and ns.PlannerStyle() or "speed", 1
+        for i, st in ipairs(styles) do if st[1] == now then at = i end end
+        if ns.PlannerSetStyle then ns.PlannerSetStyle(styles[at % #styles + 1][1]) end
+        DrawStyle(b)
+        SyncSliders()
+    end)
+    styleButton:SetPoint("TOPLEFT", 0, y)
+    y = y - 34
+    for _, def in ipairs({ { "speed", "Speed" }, { "safety", "Safety" }, { "story", "Story" } }) do
+        local slider = ns:CreateSlider(live, def[2], 0, 100, 10, def[1] == "speed" and 100 or 0, "%d", function(v)
+            if syncing then return end
+            if ns.PlannerSetWeight then ns.PlannerSetWeight(def[1], v) end
+            DrawStyle(styleButton)
+        end, 300)
+        slider:SetPoint("TOPLEFT", 0, y)
+        sliders[def[1]] = slider
+        y = y - 40
+    end
+    local what = Small(live, 11, 700)
+    what:SetPoint("TOPLEFT", 0, y)
+    ns:Paint(what, "SetTextColor", "faint")
+    what:SetText(ns:Tr("Speed picks the most experience for the time. Story prefers the zone's quest chains, and at 100 reaches back up to 10 levels for them. Safety avoids elites, escorts and places where you died."))
+    y = y - 40
+    T.styleButton, T.speedSlider, T.safetySlider, T.storySlider = styleButton, sliders.speed, sliders.safety, sliders.story
+    refreshes[#refreshes + 1] = function()
+        DrawStyle(styleButton)
+        SyncSliders()
+    end
     return y, function() for _, r in ipairs(refreshes) do r() end end
 end
 

@@ -12928,6 +12928,193 @@ try("13.4 feel C: time you have, breaks, catch-up", function()
     ns:HideLists()
     if not ok then error(err, 0) end
 end)
+try("13.4 feel C: speed, safety, story", function()
+    local saved = { on = ns.GuideOn, here = ns.GuideHere, unlocked = ns.GuideUnlocked, map = env.C_Map, vec = rawget(env, "CreateVector2D"),
+                    guideState = ns.root.guideState, guides = ns.root.guides, key = ns.root.guideKey, planner = ns.root.planner, level = env.UnitLevel,
+                    start = ns.PlannerStart }
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        ns.GuideOn = function() return true end
+        ns.GuideHere = function() return 1, 30, 40 end
+        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
+        ns.root.planner = {}
+        env.UnitLevel = function() return 14 end
+        env.C_Map = setmetatable({ GetWorldPosFromMapPos = function(map, v)
+            if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end
+        end }, { __index = saved.map })
+        env.CreateVector2D = function(x, y) return { x = x, y = y } end
+        ns.PlannerPaceSync()
+        local function q(id, extra)
+            local r = { id = id, name = "Q" .. id, level = 14, minLevel = 1, xp = 100, starts = {}, ends = {}, objectives = {}, pre = {}, preAny = {}, exclusive = {},
+                        elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+            for k, v in pairs(extra or {}) do r[k] = v end
+            return r
+        end
+        local function at(map, x, y) return { { map = map, x = x, y = y } } end
+        local function kill(map, x, y, lvl) return { { kind = "kill", count = 0, countKnown = true, mobLevel = lvl or 14, spots = at(map, x, y) } } end
+        local recs, order = {}, {}
+        local function add(r) recs[r.id] = r; order[#order + 1] = r.id end
+        local function reset() recs, order = {}, {} end
+        local source = { kind = "test", ids = function() return order end, quest = function(id) return recs[id] end, inns = function() return {} end,
+                         inRange = function() return true end }
+        local function ctxFor(extra)
+            local c = { source = source, level = 14, group = "solo", inGroup = false, speed = 7, faction = "Alliance", xp = 0, xpMax = 10000,
+                done = function() return false end, onQuest = function() return false end, here = { map = 1, x = 30, y = 40 },
+                crossings = {}, learnFlights = false, bind = "Elsewhere", bindSpot = { map = 9, x = 1, y = 1 }, pace = 1, flights = {},
+                flightTime = function() return nil end, timed = function() return false end, itemCount = function() return 0 end }
+            for k, v in pairs(extra or {}) do c[k] = v end
+            return c
+        end
+        local H = ns.PlannerPaceHooks.style
+        local function withStyle(c) H.context(c); return c end
+        local function seq(g) local o = {} for _, s in ipairs(g.steps) do o[#o + 1] = s.kind .. (s.quest or "") .. "@" .. tostring(s.x) .. "," .. tostring(s.y) end return table.concat(o, " ") end
+        local function firstQuest(g) for _, s in ipairs(g.steps) do if s.quest then return s.quest end end end
+        local function hasKey(point, key) for _, h in ipairs(ns.PlannerHookList(point)) do if h.key == key then return true end end return false end
+
+        -- speed, story and the sliders
+        add(q(1, { xp = 3000, starts = at(1, 30, 40), ends = at(1, 30, 40), objectives = kill(1, 32, 42) }))
+        add(q(11, { xp = 1500, nextQuest = 12, starts = at(1, 60, 40), ends = at(1, 60, 40), objectives = kill(1, 62, 42) }))
+        add(q(12, { xp = 1500, nextQuest = 13, starts = at(1, 60, 41), ends = at(1, 60, 41), objectives = kill(1, 62, 43) }))
+        add(q(13, { xp = 1500, starts = at(1, 61, 40), ends = at(1, 61, 40), objectives = kill(1, 63, 42) }))
+        local a, b, c = ns.PlannerWeights()
+        if not (a == 100 and b == 0 and c == 0) or ns.PlannerStyle() ~= "speed" then error("the default is speed: " .. a .. "/" .. b .. "/" .. c) end
+        if hasKey("rank", "paceStyle") then error("speed: no rank hook") end
+        local guide = ns.PlannerRoute(withStyle(ctxFor()))
+        if firstQuest(guide) ~= 1 then error("speed: the best rate first: " .. tostring(firstQuest(guide))) end
+        ns.PlannerSetStyle("story")
+        a, b, c = ns.PlannerWeights()
+        if not (a == 40 and b == 0 and c == 100) or ns.PlannerStyle() ~= "story" then error("the story preset is 40/0/100: " .. a .. "/" .. b .. "/" .. c) end
+        for _, point in ipairs({ "context", "window", "rank" }) do if not hasKey(point, "paceStyle") then error("story: the " .. point .. " hook") end end
+        local ctx = withStyle(ctxFor())
+        if not (ctx.weights and ctx.weights.story == 100 and ctx.weights.speed == 40) or ctx.windowLo ~= 4 then error("the context has the weights and the lower window") end
+        guide = ns.PlannerRoute(ctx)
+        if firstQuest(guide) ~= 11 then error("story: the chain first: " .. tostring(firstQuest(guide))) end
+        ns.PlannerSetWeight("safety", 50)
+        a, b, c = ns.PlannerWeights()
+        if ns.PlannerStyle() ~= "custom" or not (a == 40 and b == 50 and c == 100) then error("a slider makes it custom and keeps the rest: " .. ns.PlannerStyle() .. " " .. a .. "/" .. b .. "/" .. c) end
+        ns.PlannerSetStyle("speed")
+        a, b, c = ns.PlannerWeights()
+        if not (a == 100 and b == 50 and c == 0) then error("the speed preset keeps your safety: " .. a .. "/" .. b .. "/" .. c) end
+        ns.PlannerSetWeight("safety", 0)
+        ns.PlannerSetWeight("speed", 250)
+        if select(1, ns.PlannerWeights()) ~= 100 then error("a weight is kept between 0 and 100") end
+
+        -- chains, the story score and danger
+        local list = { q(41, { nextQuest = 42 }), q(42, { nextQuest = 43 }), q(43, {}), q(51, { nextQuest = 52 }), q(52, { pre = { 51 } }), q(60, {}) }
+        local ch = ns.PlannerChains(list)
+        if not (ch.main[41] and ch.main[42] and ch.main[43]) or ch.main[51] or ch.main[60] then error("the main chain is the largest linked set") end
+        if not (ch.any[51] and ch.any[52] and ch.any[41]) or ch.any[60] then error("any chain: a quest that leads on or follows one") end
+        local sc = ns.PlannerStoryScore({ quests = { list[1], list[4], list[6] } }, ch)
+        if math.abs(sc - 0.5) > 1e-9 then error("story: (1 + 0.5 + 0) / 3: " .. sc) end
+        if ns.PlannerStoryScore({ quests = {} }, ch) ~= 0 then error("an empty hub has no story") end
+        local dctx = { level = 14, deaths = { { level = 14, map = 1, x = 31, y = 41 } } }
+        local hubD = { map = 1, x = 30, y = 40, quests = { q(70, { elite = true }) } }
+        if math.abs(ns.PlannerDanger(hubD, dctx) - 1) > 1e-9 then error("danger: an elite and a death: 1") end
+        hubD.quests = { q(70, { elite = true }) }
+        if math.abs(ns.PlannerDanger(hubD, { level = 14 }) - 0.5) > 1e-9 then error("danger: an elite alone: 0.5") end
+        hubD.quests = { q(71, { objectives = kill(1, 30, 40, 17) }), q(72, { escort = true }) }
+        if math.abs(ns.PlannerDanger(hubD, { level = 14 }) - 0.5) > 1e-9 then error("danger: a kill 3 levels up and an escort: 0.5") end
+        hubD.quests = { q(71, { objectives = kill(1, 30, 40, 16) }) }
+        if ns.PlannerDanger(hubD, { level = 14 }) ~= 0 then error("danger: a kill 2 levels up is none") end
+        if ns.PlannerDanger({ map = 1, x = 30, y = 40, quests = {} }, { level = 14, deaths = { { level = 11, map = 1, x = 30, y = 40 }, { level = 14, map = 1, x = 90, y = 90 } } }) ~= 0 then
+            error("danger: an old death, or one far away, is none")
+        end
+
+        -- safety: an elite hub where you died against a safer one
+        reset()
+        add(q(1, { xp = 3000, elite = true, starts = at(1, 30, 40), ends = at(1, 30, 40), objectives = kill(1, 32, 42) }))
+        add(q(2, { xp = 2000, starts = at(1, 60, 40), ends = at(1, 60, 40), objectives = kill(1, 62, 42) }))
+        local deaths = { { level = 14, map = 1, x = 31, y = 41 } }
+        ns.PlannerSetStyle("speed")
+        guide = ns.PlannerRoute(withStyle(ctxFor({ group = "all", deaths = deaths })))
+        if firstQuest(guide) ~= 1 then error("safety 0: the faster hub: " .. tostring(firstQuest(guide))) end
+        ns.PlannerSetWeight("safety", 100)
+        guide = ns.PlannerRoute(withStyle(ctxFor({ group = "all", deaths = deaths })))
+        if firstQuest(guide) ~= 2 then error("safety 100: the safe hub: " .. tostring(firstQuest(guide))) end
+        ns.PlannerSetWeight("safety", 0)
+
+        -- story at 100 is a rule for the window; below it, it is not
+        reset()
+        add(q(21, { level = 8, nextQuest = 22, starts = at(1, 30, 40), ends = at(1, 30, 40) }))
+        add(q(22, { level = 14, pre = { 21 }, starts = at(1, 30, 40), ends = at(1, 30, 40) }))
+        add(q(23, { level = 8, starts = at(1, 60, 40), ends = at(1, 60, 40) }))
+        local function ids(l) local o = {} for _, r in ipairs(l) do o[r.id] = true end return o end
+        ns.PlannerSetWeight("story", 100)
+        local got = ids(ns.PlannerCandidates(source, withStyle(ctxFor())))
+        if not got[21] or got[23] then error("story 100: a chain quest 6 levels down is a candidate, a lone one is not") end
+        ns.PlannerSetWeight("story", 90)
+        got = ids(ns.PlannerCandidates(source, withStyle(ctxFor())))
+        if got[21] or got[23] then error("story 90: neither") end
+        local lo = ns.PlannerWindow(recs[21], { level = 14 })
+        if lo ~= 10 then error("without weights the window is the usual: " .. tostring(lo)) end
+        ns.PlannerSetWeight("story", 0)
+        if hasKey("window", "paceStyle") or hasKey("rank", "paceStyle") or hasKey("context", "paceStyle") then error("speed again: the hooks go") end
+
+        -- 100/0/0 changes nothing, even with the hooks in
+        reset()
+        add(q(1, { xp = 3000, starts = at(1, 30, 40), ends = at(1, 30, 40), objectives = kill(1, 32, 42) }))
+        add(q(11, { xp = 1500, nextQuest = 12, starts = at(1, 60, 40), ends = at(1, 60, 40), objectives = kill(1, 62, 42) }))
+        add(q(12, { xp = 1500, starts = at(1, 60, 41), ends = at(1, 60, 41), objectives = kill(1, 62, 43) }))
+        local plain = seq((ns.PlannerRoute(ctxFor())))
+        ns.PlannerHook("context", "testStyle", H.context); ns.PlannerHook("window", "testStyle", H.window); ns.PlannerHook("rank", "testStyle", H.rank)
+        local hooked = seq((ns.PlannerRoute(ctxFor())))
+        ns.PlannerHook("context", "testStyle", nil); ns.PlannerHook("window", "testStyle", nil); ns.PlannerHook("rank", "testStyle", nil)
+        if plain ~= hooked or plain == "" then error("100/0/0 is the plan without the hooks:\n" .. plain .. "\n" .. hooked) end
+
+        -- the panel
+        ns.PlannerSetStyle("speed")
+        local panel = ns:GuideShowPanel()
+        local extraText, extraShown
+        rawset(panel.extra, "SetText", function(_, t) extraText = t end)
+        rawset(panel.extra, "SetShown", function(_, v) extraShown = v end)
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "a" } } }, { zone = 1 })
+        ns:GuideRedraw()
+        if extraShown ~= false then error("speed: nothing on the panel") end
+        ns.PlannerSetStyle("story")
+        ns:GuideRedraw()
+        if extraShown ~= true or extraText ~= "Style: Story" then error("the panel says the style: " .. tostring(extraText)) end
+        ns.PlannerSetWeight("safety", 20)
+        ns:GuideRedraw()
+        if extraText ~= "Style: Custom" then error("custom: " .. tostring(extraText)) end
+        ns.PlannerSetStyle("speed")
+        ns:GuideSetPlan(nil)
+
+        -- the Guide tab: the style button and the three sliders follow the style
+        local function click(frame, ...)
+            local f = frame:GetScript("OnClick")
+            if type(f) ~= "function" then for _, h in ipairs(handlers) do if h.self == frame and h.name == "OnClick" then f = h.fn end end end
+            return f(frame, ...)
+        end
+        local page = env.CreateFrame("Frame")
+        local T = ns.BuildGuidePage(page)
+        if not (T.styleButton and T.speedSlider and T.safetySlider and T.storySlider) then error("the page has the style button and three sliders") end
+        local before = ns.PlannerStyle()
+        click(T.styleButton)
+        if ns.PlannerStyle() ~= "story" then error("the style button goes on to story: " .. before .. " -> " .. ns.PlannerStyle() .. " " .. table.concat({ ns.PlannerWeights() }, "/")) end
+        click(T.styleButton)
+        if ns.PlannerStyle() ~= "custom" then error("... then custom") end
+        click(T.styleButton)
+        if ns.PlannerStyle() ~= "speed" then error("... then speed") end
+        local moved
+        for _, h in ipairs(handlers) do if h.self == T.safetySlider.slider and h.name == "OnValueChanged" then moved = h.fn end end
+        if moved then
+            moved(T.safetySlider.slider, 60)
+            local _, sa = ns.PlannerWeights()
+            if ns.PlannerStyle() ~= "custom" or sa ~= 60 then error("a slider moved: custom, safety 60: " .. ns.PlannerStyle() .. " " .. sa) end
+        end
+    end)
+    ns.PlannerHook("context", "testStyle", nil); ns.PlannerHook("window", "testStyle", nil); ns.PlannerHook("rank", "testStyle", nil)
+    ns.root.planner = saved.planner
+    ns.GuideUnlocked, ns.GuideOn, ns.GuideHere = saved.unlocked, saved.on, saved.here
+    ns.PlannerPaceSync()
+    env.UnitLevel, env.C_Map = saved.level, saved.map
+    rawset(env, "CreateVector2D", saved.vec)
+    ns.root.guideState, ns.root.guides, ns.root.guideKey = saved.guideState, saved.guides, saved.key
+    ns:GuideSetPlan(nil)
+    ns:PlannerStop()
+    ns.plannerQueued = false
+    if not ok then error(err, 0) end
+end)
 -- batch 4 tests C (pace): end
 -- batch 4 tests D (records): begin
 -- batch 4 tests D (records): end
