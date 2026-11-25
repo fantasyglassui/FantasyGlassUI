@@ -770,6 +770,7 @@ local function Build(ctx, candidates, skipped)
         return f > tf or (f == tf and s > ts)
     end
     local horizon = tonumber(c.horizon) or ns.PLANNER_HORIZON
+    if lead and horizon == ns.PLANNER_HORIZON then horizon = horizon + 1 end   -- (the default plan: the zone's hubs, and the lead-in on top; a hook's own horizon counts it)
     for n = 1, horizon do
         if #left == 0 and not lead then break end
         local ranked = {}

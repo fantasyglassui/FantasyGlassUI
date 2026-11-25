@@ -264,7 +264,56 @@ end
 
 -- Group C: the time you have, break reminders, catch me up, speed or story.
 local function FeelPaceSection(live, y, Replan, T)
-    return y, function() end
+    local refreshes = {}
+    -- The time you have and break reminders
+    Heading(live, "How long you play", 0, y, 736)
+    y = y - 30
+    local times = ns.PLANNER_PLAY_TIMES or { { 0, "No limit" } }
+    local function DrawTime(b)
+        local rec = ns.PlannerCharRecord and ns.PlannerCharRecord(false)
+        local now, name = tonumber(rec and rec.playDefault) or 0, times[1][2]
+        for _, t in ipairs(times) do if t[1] == now then name = t[2] end end
+        b.text:SetText(ns:Tr("How long can you play") .. ":  " .. ns:Tr(name))
+    end
+    local timeButton = ns:CreateButton(live, "", 300, 24, function(b)
+        local rec = ns.PlannerCharRecord and ns.PlannerCharRecord(false)
+        local now, at = tonumber(rec and rec.playDefault) or 0, 1
+        for i, t in ipairs(times) do if t[1] == now then at = i end end
+        rec = ns.PlannerCharRecord and ns.PlannerCharRecord(true)
+        if rec then rec.playDefault = times[at % #times + 1][1] end
+        DrawTime(b)
+    end)
+    timeButton:SetPoint("TOPLEFT", 0, y)
+    y = y - 30
+    local how = Small(live, 11, 700)
+    how:SetPoint("TOPLEFT", 0, y)
+    ns:Paint(how, "SetTextColor", "faint")
+    how:SetText(ns:Tr("Used by /fgui guide plan with no number. The plan then takes only what fits, and ends at a place to stop."))
+    y = y - 30
+    local breaks = ns:CreateCheckbox(live, "Remind me to take a break at a stopping place", ns.db.plannerBreaks == true, function(v) ns.db.plannerBreaks = v end)
+    breaks:SetPoint("TOPLEFT", 0, y)
+    y = y - 30
+    local lengths = { { 60, "1 hour" }, { 90, "1 hour 30" }, { 120, "2 hours" }, { 180, "3 hours" } }
+    local function DrawBreak(b)
+        local now, name = tonumber(ns.db.plannerBreakMinutes) or 120, "2 hours"
+        for _, t in ipairs(lengths) do if t[1] == now then name = t[2] end end
+        b.text:SetText(ns:Tr("Break reminder after") .. ":  " .. ns:Tr(name))
+    end
+    local breakButton = ns:CreateButton(live, "", 300, 24, function(b)
+        local now, at = tonumber(ns.db.plannerBreakMinutes) or 120, 3
+        for i, t in ipairs(lengths) do if t[1] == now then at = i end end
+        ns.db.plannerBreakMinutes = lengths[at % #lengths + 1][1]
+        DrawBreak(b)
+    end)
+    breakButton:SetPoint("TOPLEFT", 0, y)
+    y = y - 34
+    T.playTimeButton, T.breaksBox, T.breakButton = timeButton, breaks, breakButton
+    refreshes[#refreshes + 1] = function()
+        DrawTime(timeButton)
+        breaks:SetChecked(ns.db.plannerBreaks == true)
+        DrawBreak(breakButton)
+    end
+    return y, function() for _, r in ipairs(refreshes) do r() end end
 end
 
 -- Group D: level times, race your best, where you left off, save as guide, read aloud.

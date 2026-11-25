@@ -11963,7 +11963,7 @@ try("13.3 choices: final review fixes", function()
         add(q(401, { level = 8, xp = 50, starts = at(1, 50, 50), ends = at(1, 50, 50) }))
         innList = { { map = 1, x = 51, y = 51, name = "Class Inn" }, { map = 2, x = 31, y = 41, name = "Zone Inn" } }
         local always = { { id = 401, level = 8, kind = "always", parts = 1 } }
-        guide, summary = route({ classQuests = always, here = { map = 1, x = 10, y = 10 }, horizon = 3 })   -- (the lead-in counts toward the horizon)
+        guide, summary = route({ classQuests = always, here = { map = 1, x = 10, y = 10 } })
         local _, s1 = firstQuestStep(guide)
         if not (s1 and s1.quest == 401) then error("the class quest comes first: " .. seq(guide)) end
         if summary.zone ~= 2 or summary.newZone ~= true then error("the zone is still the best one: " .. tostring(summary.zone)) end
@@ -12366,8 +12366,11 @@ try("13.4 feel: seams", function()
         guide, summary = ns.PlannerRoute(ctxFor({ classQuests = always }))
         local ps = plannedSet(guide)
         if firstQuest(guide) ~= 401 or not summary.taken[1].lead or summary.zone ~= 1 then error("the lead-in is round 1: " .. tostring(firstQuest(guide))) end
-        if not ps[301] or ps[302] or summary.taken[3] then error("a horizon of 2 is the lead-in and one hub: " .. table.concat(seen, ",")) end
-        if table.concat(seen, ",") ~= "1L1,20" then error("the hooks see the lead-in in round 1: " .. table.concat(seen, ",")) end
+        if not (ps[301] and ps[302]) or summary.taken[4] then error("the default horizon is the zone's two hubs and the lead-in: " .. table.concat(seen, ",")) end
+        if table.concat(seen, ",") ~= "1L1,20,30" then error("the hooks see the lead-in in round 1: " .. table.concat(seen, ",")) end
+        guide, summary = ns.PlannerRoute(ctxFor({ classQuests = always, horizon = 1 }))
+        ps = plannedSet(guide)
+        if not ps[401] or ps[301] or ps[302] or summary.taken[2] then error("a horizon set by a hook counts the lead-in: " .. table.concat(seen, ",")) end
         ns.PlannerHook("rank", "seams", function(ranked) for _, e in ipairs(ranked) do if e.lead then e.score = -1 end end end)
         guide, summary = ns.PlannerRoute(ctxFor({ classQuests = always }))
         ps = plannedSet(guide)
@@ -12378,7 +12381,7 @@ try("13.4 feel: seams", function()
         end)
         guide, summary = ns.PlannerRoute(ctxFor({ classQuests = always }))
         ps = plannedSet(guide)
-        if firstQuest(guide) ~= 302 or summary.taken[1].lead or not (summary.taken[2] and summary.taken[2].lead) or ps[301] then
+        if firstQuest(guide) ~= 302 or summary.taken[1].lead or not (summary.taken[2] and summary.taken[2].lead) or not ps[301] then
             error("first = 3 beats the lead-in in round 1, which comes next: " .. tostring(firstQuest(guide)))
         end
         recs[401] = nil; order = { 301, 302 }
@@ -12655,6 +12658,276 @@ end)
 -- batch 4 tests B (panel): begin
 -- batch 4 tests B (panel): end
 -- batch 4 tests C (pace): begin
+try("13.4 feel C: time you have, breaks, catch-up", function()
+    local saved = { on = ns.GuideOn, here = ns.GuideHere, unlocked = ns.GuideUnlocked, map = env.C_Map, vec = rawget(env, "CreateVector2D"),
+                    time = env.time, getTime = env.GetTime, combat = env.InCombatLockdown, start = ns.PlannerStart, session = ns.plannerSessionStart,
+                    sessionAt = ns.root.plannerSessionAt, guideState = ns.root.guideState, guides = ns.root.guides, key = ns.root.guideKey,
+                    whatsNew = ns.whatsNew, catch = ns.PlannerCatchUp, logQ = env.C_QuestLog,
+                    planner = ns.root.planner, breaks = ns.db.plannerBreaks, minutes = ns.db.plannerBreakMinutes, level = env.UnitLevel }
+    local now, clock = 1800000000, 100000
+    env.time = function() return now end
+    env.GetTime = function() return clock end
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        ns.GuideOn = function() return true end
+        ns.GuideHere = function() return 1, 30, 40 end
+        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
+        ns.root.planner = {}
+        env.UnitLevel = function() return 14 end
+        env.C_Map = setmetatable({ GetWorldPosFromMapPos = function(map, v)
+            if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end
+        end, GetMapInfo = function(map) return { name = "Zone " .. tostring(map), mapType = 3, parentMapID = 0 } end }, { __index = saved.map })
+        env.CreateVector2D = function(x, y) return { x = x, y = y } end
+        local starts = 0
+        ns.PlannerStart = function() starts = starts + 1; return true end
+        ns.PlannerPaceSync()
+        local rec = ns.PlannerCharRecord(true)
+
+        -- three hubs on one map, an inn near the first
+        local function q(id, extra)
+            local r = { id = id, name = "Q" .. id, level = 14, minLevel = 1, xp = 100, starts = {}, ends = {}, objectives = {}, pre = {}, preAny = {}, exclusive = {},
+                        elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+            for k, v in pairs(extra or {}) do r[k] = v end
+            return r
+        end
+        local function at(map, x, y) return { { map = map, x = x, y = y } } end
+        local function kill(map, x, y) return { { kind = "kill", count = 0, countKnown = true, mobLevel = 14, spots = at(map, x, y) } } end
+        local recs, order = {}, {}
+        local function add(r) recs[r.id] = r; order[#order + 1] = r.id end
+        local inns = { { map = 1, x = 44, y = 40, name = "Fake Inn" } }
+        local source = { kind = "test", ids = function() return order end, quest = function(id) return recs[id] end, inns = function() return {} end,
+                         inRange = function() return true end, places = function(kind) if kind == "innkeeper" then return inns end return {} end }
+        local function ctxFor(extra)
+            local c = { source = source, level = 14, group = "solo", inGroup = false, speed = 7, faction = "Alliance", xp = 0, xpMax = 10000,
+                done = function() return false end, onQuest = function() return false end, here = { map = 1, x = 30, y = 40 },
+                crossings = {}, learnFlights = false, bind = "Elsewhere", bindSpot = { map = 9, x = 1, y = 1 }, pace = 1, flights = {},
+                flightTime = function() return nil end, timed = function() return false end, itemCount = function() return 0 end }
+            for k, v in pairs(extra or {}) do c[k] = v end
+            return c
+        end
+        local function withTime(c) ns.PlannerPaceHooks.time.context(c); return c end
+        local function questsOf(g) local o = {} for _, s in ipairs(g.steps) do if s.quest then o[s.quest] = true end end return o end
+        local function last(g, n) return g.steps[#g.steps - (n or 0)] end
+        add(q(1, { xp = 2000, starts = at(1, 30, 40), ends = at(1, 30, 40), objectives = kill(1, 32, 42) }))
+        add(q(2, { xp = 1500, starts = at(1, 50, 40), ends = at(1, 50, 40), objectives = kill(1, 52, 42) }))
+        add(q(3, { xp = 1000, starts = at(1, 70, 40), ends = at(1, 70, 40), objectives = kill(1, 72, 42) }))
+
+        -- no time: the usual two hubs and no note (and no hook of ours in the lists)
+        for _, point in ipairs({ "context", "rank", "route" }) do
+            for _, h in ipairs(ns.PlannerHookList(point)) do if h.key == "paceTime" then error("no limit: no pace hook in " .. point) end end
+        end
+        local needs = {}
+        ns.PlannerHook("rank", "probe", function(ranked, c, info)
+            local best
+            for _, e in ipairs(ranked) do if not best or e.rate > best.rate then best = e end end
+            needs[info.round] = info.seconds + best.travel + best.hub.seconds
+        end)
+        local guide, summary = ns.PlannerRoute(ctxFor())
+        ns.PlannerHook("rank", "probe", nil)
+        local ps = questsOf(guide)
+        if not (ps[1] and ps[2]) or ps[3] or last(guide).kind == "note" then error("no limit: two hubs, no note") end
+        if not (needs[1] and needs[2] and needs[2] > needs[1]) then error("the probe saw two rounds") end
+
+        -- a limit that fits one hub: it, then the inn, then the note
+        local left = needs[1] + (needs[2] - needs[1]) * 0.5
+        ns.PlannerSetPlayTime(1)
+        rec.playUntil = now + left
+        ns.PlannerPaceSync()
+        local ctx = withTime(ctxFor())
+        if math.abs(ctx.timeLeft - left) > 1 or ctx.horizon ~= 6 then error("the context has the time left and a horizon of 6: " .. tostring(ctx.timeLeft) .. " " .. tostring(ctx.horizon)) end
+        guide, summary = ns.PlannerRoute(ctx)
+        ps = questsOf(guide)
+        if not ps[1] or ps[2] or ps[3] then error("one hub fits: " .. table.concat((function() local o = {} for _, s in ipairs(guide.steps) do o[#o + 1] = s.kind .. (s.quest or "") end return o end)(), ",")) end
+        local note, stop = last(guide), last(guide, 1)
+        if not (note.kind == "note" and note.text == "Good place to stop") then error("the last step is the note") end
+        if not (stop.kind == "goto" and stop.x == 44 and stop.text == "Fake Inn") then error("a goto to the inn before the note: " .. tostring(stop.kind) .. " " .. tostring(stop.x)) end
+        if summary.empty then error("a plan with a stop is not empty") end
+        -- the real context has them too
+        local live = ns.PlannerContext()
+        if not (live.timeLeft and live.timeLeft <= left + 1 and live.horizon == 6) then error("ns.PlannerContext: the time left and the horizon") end
+
+        -- the stopping place is within what is left: an inn farther than that is not taken
+        inns[1].x = 300
+        guide = ns.PlannerRoute(withTime(ctxFor()))
+        if last(guide).kind ~= "note" or last(guide, 1).kind == "goto" then error("an inn out of reach: the note alone") end
+        inns[1].x = 44
+
+        -- no time left: the stop place and the note, nothing else
+        rec.playUntil = now - 10
+        guide, summary = ns.PlannerRoute(withTime(ctxFor()))
+        if #guide.steps ~= 2 or guide.steps[1].kind ~= "goto" or guide.steps[2].kind ~= "note" or summary.empty then error("time up: the inn and the note, " .. #guide.steps .. " steps") end
+
+        -- ticking the note clears the limit
+        ns:GuideSetPlan(guide, summary)
+        ns:GuideSkip(false)
+        if ns.PlannerTimeLeft() == nil then error("the goto ticked: the limit stays") end
+        ns:GuideSkip(false)
+        if ns.PlannerTimeLeft() ~= nil or rec.playUntil ~= nil then error("the note ticked: the limit is gone") end
+        for _, h in ipairs(ns.PlannerHookList("rank")) do if h.key == "paceTime" then error("the hooks go with the limit") end end
+        ns:GuideSetPlan(nil)
+
+        -- the command word, the default, and the panel's list
+        ns:GuideCommand("plan 30")
+        if ns.PlannerTimeLeft() ~= 1800 or starts ~= 1 then error("plan 30: 1800 seconds and a plan: " .. tostring(ns.PlannerTimeLeft()) .. " " .. starts) end
+        ns:GuideCommand("plan 0")
+        if ns.PlannerTimeLeft() ~= nil or starts ~= 2 then error("plan 0 clears it") end
+        rec.playDefault = 60
+        ns:GuideCommand("plan")
+        if ns.PlannerTimeLeft() ~= 3600 or starts ~= 3 then error("plan: the default") end
+        ns.PlannerSetPlayTime(0); rec.playDefault = 0
+        ns:GuideCommand("plan")
+        if ns.PlannerTimeLeft() ~= nil or starts ~= 4 then error("plan, no default: no limit") end
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "a" } } }, { zone = 1 })
+        local entry
+        for _, e in ipairs(ns.GuidePanelEntries(nil)) do if e[1] == "How long can you play?" then entry = e end end
+        if not entry then error("the panel offers the time list") end
+        entry[2]()
+        local win = ns:ListWindow("PlanTime")
+        local names = {}
+        for _, l in ipairs(win.lines) do names[#names + 1] = l.left end
+        if table.concat(names, "|") ~= "No limit|30 min|1 hour|1 hour 30|2 hours" then error("the list: " .. table.concat(names, "|")) end
+        win.lines[3].click()
+        if ns.PlannerTimeLeft() ~= 3600 then error("1 hour picked") end
+        win.lines[1].click()
+        if ns.PlannerTimeLeft() ~= nil then error("No limit picked") end
+        win:Hide()
+        ns:GuideSetPlan(nil)
+
+        -- a stopping place
+        local S = { { kind = "accept", hub = 1 }, { kind = "do", hub = 1 }, { kind = "turnin", hub = 1 }, { kind = "accept", hub = 2 }, { kind = "turnin", hub = 2 },
+                    { kind = "fly" }, { kind = "accept", hub = 3 } }
+        local function sp(at2) return ns.PlannerStoppingPlace(S, at2) end
+        if sp(2) or sp(3) or sp(5) then error("mid-hub is no stopping place") end
+        if not sp(4) then error("a new hub after a hand-in is one") end
+        if not sp(7) then error("right after a flight is one") end
+        if not sp(8) then error("the end is one") end
+        if sp(1) then error("the start is not") end
+        if not ns.PlannerStoppingPlace({ { kind = "hearth" }, { kind = "do", hub = 4 } }, 2) then error("after the hearthstone") end
+        if ns.PlannerStoppingPlace({ { kind = "accept", hub = 1 }, { kind = "accept", hub = 2 } }, 2) then error("a new hub, but not after a hand-in") end
+
+        -- break reminders
+        local panel = ns:GuideShowPanel()
+        local extraText
+        rawset(panel.extra, "SetText", function(_, t) extraText = t end)
+        local function reminders() local n = 0 for _, l in ipairs(printed) do if tostring(l):find("good place to stop", 1, true) then n = n + 1 end end return n end
+        local serial = 0
+        local function plan()
+            serial = serial + 100
+            local b = serial
+            ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "accept", quest = b + 1, hub = 1, title = "a" }, { kind = "turnin", quest = b + 1, hub = 1, title = "a" },
+                { kind = "accept", quest = b + 2, hub = 2, title = "b" }, { kind = "turnin", quest = b + 2, hub = 2, title = "b" } } }, { zone = 1 })
+        end
+        local function toStop() ns:GuideSkip(false); ns:GuideSkip(false) end      -- (the second lands on the new hub's first step)
+        ns.db.plannerBreaks, ns.db.plannerBreakMinutes = true, 120
+        ns.plannerSessionStart = clock - 600
+        plan(); toStop()
+        local base = reminders()
+        ns.plannerSessionStart = clock - (2 * 3600 + 600)
+        ns.PlannerBreakReset()
+        plan()
+        ns:GuideSkip(false)
+        if reminders() ~= base then error("mid-hub: no reminder") end
+        ns:GuideSkip(false)
+        if reminders() ~= base + 1 then error("at a stopping place after 2 hours: one reminder") end
+        local sawLine = tostring(extraText)
+        if not sawLine:find("2 h 10 min", 1, true) or not sawLine:find("good place to stop", 1, true) then error("the panel line: " .. sawLine) end
+        ns:GuideSkip(false)
+        clock = clock + 1800
+        ns:GuideSkip(false)
+        if reminders() ~= base + 1 then error("30 minutes later: none") end
+        clock = clock + 601
+        ns:GuideRedraw()
+        if tostring(extraText):find("good place to stop", 1, true) then error("the panel line goes after 10 minutes") end
+        clock = clock + 3600
+        plan(); toStop()
+        if reminders() ~= base + 2 then error("an hour later: again") end
+        clock = clock + 3601
+        env.InCombatLockdown = function() return true end
+        plan(); toStop()
+        env.InCombatLockdown = saved.combat
+        if reminders() ~= base + 2 then error("in combat: none") end
+        ns.db.plannerBreaks = false
+        plan(); toStop()
+        if reminders() ~= base + 2 then error("switched off: none") end
+        ns.db.plannerBreaks = true
+        clock = clock + 3601
+        ns.plannerSessionStart = clock - 600
+        plan(); toStop()
+        if reminders() ~= base + 2 then error("a short session: none") end
+        ns:GuideSetPlan(nil)
+
+        -- catch me up: a login after 15 days
+        local calls, realCatch = 0, ns.PlannerCatchUp
+        ns.PlannerCatchUp = function(...) calls = calls + 1; return realCatch(...) end
+        ns.whatsNew = { { "12.2.0", { "Newest thing. More.", "x" } }, { "12.1.0", { "Older thing" } }, { "12.0.0", { "Oldest thing" } }, { "11.0.0", { "Ancient" } }, { "10.0.0", { "Very old" } } }
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "accept", quest = 901, title = "Wolves", hub = 1 } } }, { zone = 1 })
+        env.C_QuestLog = setmetatable({ GetNumQuestLogEntries = function() return 12, 7 end, IsOnQuest = function(id) return id == 901 end }, { __index = saved.logQ })
+        ns:HideLists()
+        rec.lastSeen, rec.lastVersion = now - 15 * 86400, "12.0.0"
+        fireEvent("PLAYER_ENTERING_WORLD", true, false)
+        if calls ~= 1 then error("15 days away at a login: the page") end
+        local page = ns:ListWindow("PlanCatchUp")
+        local text = {}
+        for _, l in ipairs(page.lines) do text[#text + 1] = l.left:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") end
+        local all = table.concat(text, "\n")
+        for _, want in ipairs({ "Away for 15 days", "Zone 1", "7 quests in your log, 1 of them in the plan", "Level 14, pace 1.0", "New: Newest thing. More.", "New: Older thing", "Plan my route" }) do
+            if not all:find(want, 1, true) then error("the page says '" .. want .. "': " .. all) end
+        end
+        if all:find("Oldest", 1, true) or all:find("Ancient", 1, true) then error("only what is newer than your version") end
+        local news = 0
+        for _ in all:gmatch("New: ") do news = news + 1 end
+        if news ~= 2 then error("two new things: " .. news) end
+        if rec.lastSeen ~= now or rec.lastVersion ~= ns.version then error("the login saves the clock") end
+        local before = starts
+        page.lines[#page.lines].click()
+        if starts ~= before + 1 then error("Plan my route plans") end
+        page:Hide()
+        rec.lastSeen, rec.lastVersion = now - 15 * 86400, nil
+        fireEvent("PLAYER_ENTERING_WORLD", true, false)
+        local news3 = 0
+        for _, l in ipairs(ns:ListWindow("PlanCatchUp").lines) do if l.left:find("New: ", 1, true) then news3 = news3 + 1 end end
+        if news3 ~= 1 then error("no saved version: the latest only: " .. news3) end
+        ns:HideLists()
+        rec.lastSeen, rec.lastVersion = now - 15 * 86400, "1.0.0"
+        fireEvent("PLAYER_ENTERING_WORLD", true, false)
+        local news4 = 0
+        for _, l in ipairs(ns:ListWindow("PlanCatchUp").lines) do if l.left:find("New: ", 1, true) then news4 = news4 + 1 end end
+        if news4 ~= 3 then error("at most three new things: " .. news4) end
+        ns:HideLists()
+        rec.lastSeen, rec.lastVersion = now - 13 * 86400, "11.5.0"
+        fireEvent("PLAYER_ENTERING_WORLD", true, false)
+        if calls ~= 3 then error("13 days away: no page") end
+        rec.lastSeen = now - 20 * 86400
+        fireEvent("PLAYER_ENTERING_WORLD", false, true)
+        fireEvent("PLAYER_ENTERING_WORLD", false, false)
+        if calls ~= 3 then error("a reload or a zone change: no page") end
+        rec.lastSeen = nil
+        fireEvent("PLAYER_ENTERING_WORLD", true, false)
+        if calls ~= 3 then error("a first login: no page") end
+        if rec.lastSeen ~= now then error("a first login starts the clock") end
+        now = now + 77
+        fireEvent("PLAYER_LOGOUT")
+        if rec.lastSeen ~= now then error("logout saves the clock") end
+        ns.GuideUnlocked = function() return false end
+        rec.lastSeen = now - 30 * 86400
+        fireEvent("PLAYER_ENTERING_WORLD", true, false)
+        if calls ~= 3 or rec.lastSeen ~= now - 30 * 86400 then error("locked: nothing") end
+        ns:GuideSetPlan(nil)
+    end)
+    ns.PlannerSetPlayTime(0)
+    ns.PlannerCatchUp, ns.whatsNew = saved.catch, saved.whatsNew
+    for _, point in ipairs({ "context", "rank", "route" }) do ns.PlannerHook(point, "probe", nil) end
+    ns.GuideUnlocked, ns.GuideOn, ns.GuideHere = saved.unlocked, saved.on, saved.here
+    ns.PlannerPaceSync()
+    ns.PlannerBreakReset()
+    env.time, env.GetTime, env.InCombatLockdown, env.UnitLevel, env.C_Map, env.C_QuestLog = saved.time, saved.getTime, saved.combat, saved.level, saved.map, saved.logQ
+    rawset(env, "CreateVector2D", saved.vec)
+    ns.PlannerStart, ns.plannerSessionStart, ns.root.plannerSessionAt = saved.start, saved.session, saved.sessionAt
+    ns.root.guideState, ns.root.guides, ns.root.guideKey, ns.root.planner = saved.guideState, saved.guides, saved.key, saved.planner
+    ns.db.plannerBreaks, ns.db.plannerBreakMinutes = saved.breaks, saved.minutes
+    ns:HideLists()
+    if not ok then error(err, 0) end
+end)
 -- batch 4 tests C (pace): end
 -- batch 4 tests D (records): begin
 -- batch 4 tests D (records): end
