@@ -57,21 +57,29 @@ checked and fixed together (Task 9).
   plan has its own reason and opens no preview) — costs: no preview after a failed first plan.
 - Ruling (Task 9): the "plan from here" pick goes with the next plan that applies (used or not); until then it ages
   only while nothing is queued or being made and you are out of combat, and is dropped after 120 s of that.
-- Ruling (Task 9): the sliders name a preset again when they are back on it exactly (100/0/0 Speed, 40/0/100 Story);
-  any other value, a safety too, is Custom. The style picker's presets keep your safety, so Speed with safety 30 is
-  "Speed" from the picker and "Custom" from the sliders — costs: none.
+- Ruling (final review, replaces Task 9's): a style preset is named by speed and story only (100/x/0 Speed,
+  40/x/100 Story, anything else Custom), whichever control set it: safety is yours to choose, as spec #34 says. The
+  panel shows "Style: %s" whenever the weights are not 100/0/0, so Speed with safety 30 says "Style: Speed". The
+  picker's own Custom stands until a slider moves (the sliders name the style by `ns.PlannerStyleOf`) — costs: none.
 - Ruling (Task 9): hubs that Speed/Safety/Story sink to a score of 0 keep the order of their rates (a millionth of
   rate / best rate), not the order of the list.
 - Ruling (Task 9): the zone goal's context hook is registered for good (it checks the goal), so a goal saved before an
   unlock works at once; the goal ends when no hub is left on the goal map, when every counted quest is done (a count
   of 0 never ends it), or when there is nothing at all to plan; with the quest log as the source it neither counts
   nor ends.
+  (Final review: it says "Zone done: %s" only when every counted quest is done; when doable quests are left, out of
+  reach or above your level, it says "No more quests in %s at your level".)
 - Ruling (Task 9): changing a style, a slider or the zone goal replans with the reason "settings".
 - The spec's values as built: map line = the current hub's loop and the trip to the next (at most 30 stops); hubs on
   the map at most 80, brightness worst to best, tiers 1-3 with colour vision; time to level only with 3+ pace
   samples; time you have: horizon 6, stop within 300 s; catch-up after 14 days; break reminders off, 2 hours, once an
   hour; race your best off, "level with your best" within 60 s; read aloud on (only with reading aloud on); where you
   left off 120 s.
+
+## Task 1's batch 3 leftovers
+- Task 1 also brought in three batch 3 leftovers its brief did not ask for (flagged by its review): a QUEST_REMOVED
+  followed by QUEST_TURNED_IN within a second counts as a hand-in; `LogFits` / `summary.logFits`; and an unplanned
+  QUEST_ACCEPTED replans (Planner.lua, the quest events).
 
 ## Fixed in Task 9 (merge and checks)
 - Tests: the seams test counts its own hook key and checks the "..." button against the panel actions that apply
@@ -93,6 +101,30 @@ checked and fixed together (Task 9).
   level in the title and in where you left off, why this, map stops and marks, the race line, the level clock, save
   as guide, then Plan from here over the goal for one plan); unlocking brings the time list back at once (a stand-in
   hash, no phrase written); the options search while locked.
+
+## Fixed after the final review (every finding)
+- The "applied" hooks run each through pcall, after `ns:GuideSetPlan`: a failure goes to `ns.errors` as "Planner hook
+  <key>: ..." and the next hook still runs (a failing map drawing no longer skips the preview or the goal's end).
+- Style naming per the ruling above; the panel's line whenever the weights are not 100/0/0.
+- The time limit and the style share one "context" and one "rank" hook (key "pace"): the time cut always runs
+  first, then the style works out its best rate over the hubs left (the route hook stays "paceTime", the window hook
+  "paceStyle").
+- `ns.PlannerContext` copies every hook list into `ctx.hooks` (`ns.PlannerHooksFor`), and Build copies them when a
+  context has none: a hook added or removed while a plan is being made changes the next plan only. Clearing the time
+  limit (the "Good place to stop" note ticked, `plan 0`) replans with the reason "time".
+- The default plan's extra round is the lead-in's alone: a lead-in kept out ("plan from here") takes no third zone hub.
+- Read aloud: the advance hooks get a sixth argument, `resumed` (the first advance after a login or /reload, on the
+  step you were on); Records does not read that step aloud.
+- "Why this?": a slower hub that Story or Safety chose says "Chosen for its story" or "Chosen as safer" (the rank's
+  story and safety terms are kept in `summary.taken[n].parts` and its `beat.parts`; a hub a rule put first still says
+  "Taken first").
+- The zone goal keeps the cheap level pre-filter: the goal map's quests pass it by id (`ctx.windowPass`, from
+  `src.mapQuests`); with a source that has no map list the pre-filter's lower end drops to 1 as before.
+- Unlocking the guide mid-session starts saving the last-login time at once (no stale catch-up page next login).
+- `summary.hubs` keeps only map, x, y (to 0.1), rate (to 0.0001) and quests; `summary.taken[n]` has x, y rounded the
+  same way and its quest count, so a taken hub's mark shows "%d quests".
+- Three new phrases in all eight languages: "Chosen for its story", "Chosen as safer", "No more quests in %s at your
+  level".
 
 ## Minor findings deferred
 None that code can fix. Left as they are, by design:
