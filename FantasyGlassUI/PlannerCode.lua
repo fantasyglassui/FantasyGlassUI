@@ -17,9 +17,9 @@ local MAX_STEPS, MAX_TEXT, MAX_ZONE = 60, 80, 40
 -- (never in the middle of a UTF-8 character).
 local function Clean(text, limit)
     text = tostring(text or "")
-    text = text:gsub("|A.-|a", ""):gsub("|n", ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|T.-|t", ""):gsub("|H.-|h", ""):gsub("|h", ""):gsub("|", "")
+    text = text:gsub("|A.-|a", ""):gsub("|n", " "):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|T.-|t", ""):gsub("|H.-|h", ""):gsub("|h", ""):gsub("|", "")
     text = text:gsub("[%z\1-\31\127]", " ")
-    text = ns.Trim(text)
+    text = ns.Trim((text:gsub(" +", " ")))
     if #text > limit then
         local cut = limit
         while cut > 0 do                                  -- (back off a continuation byte so a character is not split)

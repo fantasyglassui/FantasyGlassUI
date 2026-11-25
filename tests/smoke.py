@@ -14678,7 +14678,7 @@ try("13.5 together C: the plan code", function()
         if one("|cff00ff00Kill|r 8 wolves") ~= "Kill 8 wolves" then error("escapes are cleaned: " .. tostring(one("|cff00ff00Kill|r 8 wolves"))) end
         if one("a|Tinterface\\icons\\x:0|tb|Hitem:1|h[c]|hd") ~= "ab[c]d" then error("textures and links are cleaned: " .. tostring(one("a|Tinterface\\icons\\x:0|tb|Hitem:1|h[c]|hd"))) end
         if one("tab\there\1") ~= "tab here" then error("control characters are cleaned: " .. tostring(one("tab\there\1"))) end
-        if one("a|nb|Aatlas-name:12:12|ac") ~= "abc" then error("|n and atlas escapes are cleaned: " .. tostring(one("a|nb|Aatlas-name:12:12|ac"))) end
+        if one("a|nb|Aatlas-name:12:12|ac") ~= "a bc" then error("|n and atlas escapes are cleaned: " .. tostring(one("a|nb|Aatlas-name:12:12|ac"))) end
         if #one(string.rep("a", 300)) ~= 80 then error("a long text is cut to 80 bytes") end
         local cut = one(string.rep("\195\169", 60))
         if #cut ~= 80 or cut:sub(-2) ~= "\195\169" then error("a cut never splits a character: " .. #cut) end
@@ -14712,7 +14712,6 @@ try("13.5 together C: the plan code", function()
         for _, en in ipairs(ns.GuidePanelEntries(nil)) do if en[1] == "Share plan" then error("Share plan only while following the planned guide") end end
         if ns.PlannerCodeFollowing() then error("not following") end
         -- the Guide tab's button
-        ns.GuideState = function() return { name = ns.GUIDE_PLANNED, at = 1, summary = summary } end
         ns.GuideState = function() return nil end
         local page = env.CreateFrame("Frame")
         local T = ns.BuildGuidePage(page)
