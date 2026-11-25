@@ -5,7 +5,7 @@ local _, ns = ...
 -- and an inn when you have played a long while. Advice only: nothing here hands in, abandons or
 -- travels for you. Everything is behind the guide being unlocked.
 ------------------------------------------------------------------------------------------
-local ipairs, pairs, type, pcall, select = ipairs, pairs, type, pcall, select
+local ipairs, type, pcall, select = ipairs, type, pcall, select
 local format = string.format
 
 ns.PLANNER_LOG_SIZE = 25                -- the quest log holds this many when the game cannot say
@@ -15,7 +15,7 @@ ns.PLANNER_GRAY_GAP = 8                 -- a quest this many levels below you is
 ns.PLANNER_INN_PLAY = 3600              -- seconds of play before an inn is suggested
 ns.PLANNER_INN_SECONDS = 120            -- an inn this close (seconds of travel)
 ns.PLANNER_INN_SHOWN = 600              -- the inn line stays on the panel this long
-ns.plannerSessionStart = GetTime and GetTime() or 0
+ns.plannerSessionStart = GetTime and GetTime() or 0     -- (a /reload keeps the login's time: see PLAYER_LOGIN below)
 
 local function Num(v) if type(v) == "number" and not ns:IsSecret(v) then return v end end
 local function Clean(s)
@@ -84,35 +84,74 @@ function ns.PlannerLogAdvice(steps, at)
         end
     end
     local free = max - #quests
-    local accepts, byQuest = 0, {}
     steps = type(steps) == "table" and steps or {}
-    for i, s in ipairs(steps) do
-        if type(s) == "table" then
-            if i >= (at or 1) and s.kind == "accept" then accepts = accepts + 1 end
-            if type(s.quest) == "number" and s.map then
-                byQuest[s.quest] = byQuest[s.quest] or {}
-                byQuest[s.quest][s.map] = true
+    at = at or 1
+    local inLog = {}
+    for _, q in ipairs(quests) do inLog[q.id] = true end
+    -- the log along the plan: an accept takes a place, a hand-in gives one back; the peak is what must fit
+    local occ, peak, planned, route = #quests, #quests, {}, {}
+    for i = at, #steps do
+        local st = steps[i]
+        if type(st) == "table" then
+            if type(st.quest) == "number" then planned[st.quest] = true end
+            if st.kind == "accept" and type(st.quest) == "number" and not inLog[st.quest] then
+                inLog[st.quest] = true
+                occ = occ + 1
+                if occ > peak then peak = occ end
+            elseif st.kind == "turnin" and type(st.quest) == "number" and inLog[st.quest] then
+                inLog[st.quest] = nil
+                occ = occ - 1
             end
+            if st.map and st.x and st.y then route[#route + 1] = st end
         end
     end
-    if not (free <= ns.PLANNER_LOG_FREE or accepts > free) then return {} end
+    if not (free <= ns.PLANNER_LOG_FREE or peak > max) then return {} end
     local okL, level = pcall(UnitLevel, "player")
     level = okL and Num(level) or 1
-    local list = {}
-    for _, q in ipairs(quests) do
-        local own = byQuest[q.id]
-        local rank, reason
-        if q.level > 0 and q.level <= level - ns.PLANNER_GRAY_GAP then rank, reason = 1, "gray"
-        elseif not own then rank, reason = 2, "never planned"
-        else
-            local other, anyOther = false, false
-            for id, m in pairs(byQuest) do
-                if id ~= q.id then
-                    anyOther = true
-                    for map in pairs(m) do if own[map] then other = true end end
+    local ctx, routePos
+    local function OffRoute(id)
+        if InCombatLockdown and InCombatLockdown() then return false end
+        if not ctx then
+            local okC, c = pcall(ns.PlannerContext)
+            ctx = okC and type(c) == "table" and c or false
+        end
+        local src = ctx and ctx.source
+        if type(src) ~= "table" or type(src.quest) ~= "function" then return false end
+        local okQ, rec = pcall(src.quest, id)
+        if not (okQ and type(rec) == "table") then return false end
+        if not routePos then
+            routePos = {}
+            for _, st in ipairs(route) do
+                local c, wx, wy = ns.PlannerWorldPos(st.map, st.x, st.y)
+                if c then routePos[#routePos + 1] = { c, wx, wy } end
+            end
+        end
+        if #routePos == 0 then return false end
+        local spots = {}
+        for _, key in ipairs({ "starts", "ends" }) do for _, sp in ipairs(type(rec[key]) == "table" and rec[key] or {}) do spots[#spots + 1] = sp end end
+        for _, o in ipairs(type(rec.objectives) == "table" and rec.objectives or {}) do
+            for _, sp in ipairs(type(o) == "table" and type(o.spots) == "table" and o.spots or {}) do spots[#spots + 1] = sp end
+        end
+        local known = false
+        local yards = ns.PLANNER_HUB_YARDS or 150
+        for _, sp in ipairs(spots) do
+            local c, wx, wy = ns.PlannerWorldPos(sp.map, sp.x, sp.y)
+            if c then
+                known = true
+                for _, r in ipairs(routePos) do
+                    local dx, dy = r[2] - wx, r[3] - wy
+                    if r[1] == c and dx * dx + dy * dy <= yards * yards then return false end
                 end
             end
-            if anyOther and not other then rank, reason = 3, "off the route" end
+        end
+        return known
+    end
+    local list = {}
+    for _, q in ipairs(quests) do
+        local rank, reason
+        if q.level > 0 and q.level <= level - ns.PLANNER_GRAY_GAP then rank, reason = 1, "gray"
+        elseif not planned[q.id] then
+            if OffRoute(q.id) then rank, reason = 3, "off the route" else rank, reason = 2, "never planned" end
         end
         if rank then list[#list + 1] = { name = q.name, reason = reason, rank = rank, level = q.level, id = q.id } end
     end
@@ -145,11 +184,28 @@ end
 -- The inn
 ------------------------------------------------------------------------------------------
 -- Suggest a nearby inn: after an hour of play, while rested experience is not full.
+-- The innkeepers are read once a session; only those on this continent within a straight line of the
+-- time are asked the travel planner.
+local function InnKeepers(ctx)
+    if type(ns.plannerInns) ~= "table" then
+        local list = {}
+        for _, p in ipairs(ns.PlannerPlaces and ns.PlannerPlaces(ctx, "innkeeper") or {}) do
+            local c, wx, wy = ns.PlannerWorldPos(p.map, p.x, p.y)
+            if c then list[#list + 1] = { place = p, c = c, x = wx, y = wy } end
+        end
+        if #list > 0 then ns.plannerInns = list end
+        return list
+    end
+    return ns.plannerInns
+end
 function ns.PlannerInnSuggest()
     if not On("plannerInn") then return false end
+    if InCombatLockdown and InCombatLockdown() then return false end
     local okT, now = pcall(GetTime)
     now = okT and Num(now) or nil
     if not now or now - (ns.plannerSessionStart or 0) < ns.PLANNER_INN_PLAY then return false end
+    local shown = ns.plannerInnLine
+    if type(shown) == "table" and shown.t and now >= shown.t and now - shown.t < ns.PLANNER_INN_SHOWN then return false end
     local okX, pool = pcall(GetXPExhaustion)
     pool = okX and Num(pool) or nil
     local okM, xpMax = pcall(UnitXPMax, "player")
@@ -159,10 +215,16 @@ function ns.PlannerInnSuggest()
     if okR and resting == true then return false end
     local ctx = ns.PlannerContext and ns.PlannerContext()
     if type(ctx) ~= "table" or type(ctx.here) ~= "table" then return false end
+    local hc, hx, hy = ns.PlannerWorldPos(ctx.here.map, ctx.here.x, ctx.here.y)
+    if not hc then return false end
+    local reach = ns.PLANNER_INN_SECONDS * (Num(ctx.speed) or 7)
     local best, bestT
-    for _, p in ipairs(ns.PlannerPlaces and ns.PlannerPlaces(ctx, "innkeeper") or {}) do
-        local secs = ns.PlannerTravel(ctx.here, p, ctx)
-        if type(secs) == "number" and secs <= ns.PLANNER_INN_SECONDS and (not bestT or secs < bestT) then best, bestT = p, secs end
+    for _, inn in ipairs(InnKeepers(ctx)) do
+        local dx, dy = inn.x - hx, inn.y - hy
+        if inn.c == hc and dx * dx + dy * dy <= reach * reach then
+            local secs = ns.PlannerTravel(ctx.here, inn.place, ctx)
+            if type(secs) == "number" and secs <= ns.PLANNER_INN_SECONDS and (not bestT or secs < bestT) then best, bestT = inn.place, secs end
+        end
     end
     if not best then return false end
     local name = Clean(best.name) or Clean(best.zone) or ns:Tr("an inn")
@@ -179,7 +241,25 @@ end
 do
     local ev = CreateFrame("Frame")
     pcall(ev.RegisterEvent, ev, "QUEST_COMPLETE")
-    ev:SetScript("OnEvent", ns:Guard("Planner reward", PickReward))
+    -- (one frame later: the game's own hand-in panel resets its selection while it is drawn)
+    local pick = ns:Guard("Planner reward", PickReward)
+    pcall(ev.RegisterEvent, ev, "PLAYER_LOGIN")
+    ev:SetScript("OnEvent", ns:Guard("Planner events", function(_, event, isInitial, isReload)
+        if event == "PLAYER_LOGIN" then
+            local okT, now = pcall(GetTime)
+            now = okT and Num(now) or nil
+            if not (now and type(ns.root) == "table" and ns:GuideUnlocked()) then return end
+            local was = tonumber(ns.root.plannerSessionAt)
+            if isReload and not isInitial and was and was <= now then ns.plannerSessionStart = was
+            else ns.root.plannerSessionAt = now; ns.plannerSessionStart = now end
+            return
+        end
+        if C_Timer and C_Timer.After then
+            local ok = pcall(C_Timer.After, 0, pick)
+            if ok then return end
+        end
+        pick()
+    end))
     if _G.GameMenuFrame and _G.GameMenuFrame.HookScript then
         pcall(_G.GameMenuFrame.HookScript, _G.GameMenuFrame, "OnShow", ns:Guard("Planner inn", function() ns.PlannerInnSuggest() end))
     end

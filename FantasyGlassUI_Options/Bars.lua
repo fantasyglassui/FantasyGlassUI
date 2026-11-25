@@ -272,7 +272,7 @@ function ns.BuildGuidePage(page)
 
     local live = CreateFrame("Frame", nil, page)
     live:SetPoint("TOPLEFT", 0, 0)
-    local LIVE_HEIGHT = 784                 -- (the last box ends at y = -782)
+    local LIVE_HEIGHT = 862                 -- (the last box ends at y = -860)
     live:SetSize(736, LIVE_HEIGHT)
     T.live = live
     Heading(live, "Quest guides", 0, 0, 736)

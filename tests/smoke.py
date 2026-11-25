@@ -11557,14 +11557,17 @@ try("13.3 choices: class, timed, escort and loot quests", function()
 end)
 
 try("13.3 choices: hand-in, quest log, inn", function()
-    local saved = { unlocked = ns.GuideUnlocked, up = ns.UpgradeAmount, choices = env.GetNumQuestChoices, link = env.GetQuestItemLink,
+    local saved = { combat = env.InCombatLockdown, unlocked = ns.GuideUnlocked, up = ns.UpgradeAmount, choices = env.GetNumQuestChoices, link = env.GetQuestItemLink,
                     info = env.C_Item.GetItemInfo, itemInfo = rawget(env, "GetQuestItemInfo"), button = rawget(env, "QuestInfo_GetRewardButton"),
                     click = rawget(env, "QuestInfoItem_OnClick"), frame = rawget(env, "QuestInfoFrame"), reward = rawget(env, "GetQuestReward"),
                     logQ = env.C_QuestLog, level = env.UnitLevel, time = env.GetTime, resting = env.IsResting, exh = env.GetXPExhaustion,
                     context = ns.PlannerContext, places = ns.PlannerPlaces, travel = ns.PlannerTravel, print = ns.Print, start = ns.plannerSessionStart,
-                    pick = ns.db.plannerPickReward, advice = ns.db.plannerLogAdvice, inn = ns.db.plannerInn }
+                    world = ns.PlannerWorldPos, inns = ns.plannerInns, pick = ns.db.plannerPickReward, advice = ns.db.plannerLogAdvice, inn = ns.db.plannerInn }
     local ok, err = pcall(function()
         ns.GuideUnlocked = function() return true end
+        runTimers()                                           -- (picks queued by earlier tests)
+        ns.plannerInns = nil
+        ns.PlannerWorldPos = function(map, x, y) return 0, x * 10, y * 10 end
         -- the hand-in
         local clicked, rewarded = {}, 0
         local links, prices, ups = { "|Hitem:1|h[A]|h", "|Hitem:2|h[B]|h", "|Hitem:3|h[C]|h" }, { A = 10, B = 50, C = 20 }, {}
@@ -11581,27 +11584,27 @@ try("13.3 choices: hand-in, quest log, inn", function()
         ns.db.plannerPickReward = nil
         ups[links[2]] = 3
         prices.B = 1
-        fireEvent("QUEST_COMPLETE")
+        fireEvent("QUEST_COMPLETE"); runTimers()
         if #clicked ~= 1 or clicked[1] ~= 2 then error("the upgrade is picked: " .. #clicked) end
         if rewarded ~= 0 then error("the hand-in is yours") end
         ups[links[2]] = nil
         prices.B = 50
         clicked = {}
-        fireEvent("QUEST_COMPLETE")
+        fireEvent("QUEST_COMPLETE"); runTimers()
         if #clicked ~= 1 or clicked[1] ~= 2 then error("the best price is picked") end
         n = 1; clicked = {}
-        fireEvent("QUEST_COMPLETE")
+        fireEvent("QUEST_COMPLETE"); runTimers()
         if #clicked ~= 0 then error("one choice: nothing to pick") end
         n = 3; links = {}
-        fireEvent("QUEST_COMPLETE")
+        fireEvent("QUEST_COMPLETE"); runTimers()
         if #clicked ~= 0 then error("nothing to judge: nothing picked") end
         links = { "|Hitem:1|h[A]|h", "|Hitem:2|h[B]|h", "|Hitem:3|h[C]|h" }
         ns.db.plannerPickReward = false
-        fireEvent("QUEST_COMPLETE")
+        fireEvent("QUEST_COMPLETE"); runTimers()
         if #clicked ~= 0 then error("switch off: nothing picked") end
         ns.db.plannerPickReward = nil
         ns.GuideUnlocked = function() return false end
-        fireEvent("QUEST_COMPLETE")
+        fireEvent("QUEST_COMPLETE"); runTimers()
         if #clicked ~= 0 then error("locked: nothing picked") end
         ns.GuideUnlocked = function() return true end
         -- the quest log
@@ -11630,8 +11633,31 @@ try("13.3 choices: hand-in, quest log, inn", function()
         if #ns.PlannerLogAdvice(many, 1) ~= 0 then error("switch off") end
         ns.db.plannerLogAdvice = nil
         log(23, nil)
-        local adv = ns.PlannerLogAdvice({ { kind = "do", quest = 101, map = 1 } }, 1)
+        local adv = ns.PlannerLogAdvice({ { kind = "do", quest = 101, map = 1, x = 10, y = 10 } }, 1)
         if #adv ~= 3 or adv[1].reason ~= "never planned" then error("up to three, never planned") end
+        for _, a in ipairs(adv) do if a.name == "Quest 1" then error("a planned quest is never advised against") end end
+        -- the peak along the plan, not the sum: many accepts, each handed in before the next, fit a log with room
+        log(10, nil)
+        local cycle = {}
+        for i = 1, 20 do
+            cycle[#cycle + 1] = { kind = "accept", quest = 500 + i, map = 1 }
+            cycle[#cycle + 1] = { kind = "turnin", quest = 500 + i, map = 1 }
+        end
+        if #ns.PlannerLogAdvice(cycle, 1) ~= 0 then error("hand-ins give places back: no advice") end
+        -- off the route: all its spots beyond the hub radius of the route, against never planned
+        log(23, nil)
+        ns.PlannerContext = function()
+            return { source = { quest = function(id)
+                if id == 102 then return { starts = { { map = 1, x = 90, y = 90 } }, ends = {}, objectives = {} } end
+                if id == 103 then return { starts = { { map = 1, x = 10, y = 10 } }, ends = {}, objectives = {} } end
+            end } }
+        end
+        local route = {}
+        for i = 1, 23 do if i ~= 2 and i ~= 3 then route[#route + 1] = { kind = "do", quest = 100 + i, map = 1, x = 10, y = 10 } end end
+        local byName = {}
+        for _, a in ipairs(ns.PlannerLogAdvice(route, 1)) do byName[a.name] = a.reason end
+        if byName["Quest 2"] ~= "off the route" then error("all its spots far from the route: " .. tostring(byName["Quest 2"])) end
+        if byName["Quest 3"] ~= "never planned" then error("a spot on the route: never planned, got " .. tostring(byName["Quest 3"])) end
         -- the inn
         local said, clock = {}, 4000
         ns.Print = function(_, msg, ...) said[#said + 1] = (select("#", ...) > 0) and string.format(msg, ...) or msg end
@@ -11640,20 +11666,29 @@ try("13.3 choices: hand-in, quest log, inn", function()
         env.IsResting = function() return false end
         env.GetXPExhaustion = function() return 300 end
         local travel = 60
-        ns.PlannerContext = function() return { here = { map = 1, x = 10, y = 10 } } end
-        ns.PlannerPlaces = function() return { { map = 1, x = 11, y = 11, name = "Goldshire Inn" } } end
-        ns.PlannerTravel = function() return travel, {} end
+        local travelled = 0
+        ns.PlannerContext = function() return { here = { map = 1, x = 10, y = 10 }, speed = 7 } end
+        ns.PlannerPlaces = function() return { { map = 1, x = 11, y = 11, name = "Goldshire Inn" }, { map = 1, x = 90, y = 90, name = "Far Inn" } } end
+        ns.PlannerTravel = function() travelled = travelled + 1; return travel, {} end
         local shown
         for _, h in ipairs(handlers) do if h.name == "OnShow" and h.self == env.GameMenuFrame then shown = h.fn end end
         if not shown then error("the game menu is hooked") end
         shown()
         if #said ~= 1 or not said[1]:find("Log out at Goldshire Inn for rested experience (about 1 min away)", 1, true) then error("the chat line: " .. tostring(said[1])) end
+        if travelled ~= 1 then error("only the inn within a straight line is asked the travel planner: " .. travelled) end
+        shown()
+        if #said ~= 1 then error("the chat line once while the panel line stands") end
         local w = ns.PlannerAdviceLines({}, 1)
         if not (w[#w] and w[#w]:find("Goldshire Inn", 1, true)) then error("the panel line for the inn") end
         said, ns.plannerInnLine = {}, nil
         clock = 1000
         shown()
         if #said ~= 0 then error("under an hour: no inn") end
+        env.InCombatLockdown = function() return true end
+        clock = 4000
+        shown()
+        if #said ~= 0 then error("in combat: nothing") end
+        env.InCombatLockdown = function() return false end
         clock, travel = 4000, 300
         shown()
         if #said ~= 0 then error("an inn 5 minutes away: no") end
@@ -11675,7 +11710,8 @@ try("13.3 choices: hand-in, quest log, inn", function()
     env.C_QuestLog, env.UnitLevel, env.GetTime, env.IsResting, env.GetXPExhaustion = saved.logQ, saved.level, saved.time, saved.resting, saved.exh
     ns.PlannerContext, ns.PlannerPlaces, ns.PlannerTravel, ns.Print, ns.plannerSessionStart = saved.context, saved.places, saved.travel, saved.print, saved.start
     ns.db.plannerPickReward, ns.db.plannerLogAdvice, ns.db.plannerInn = saved.pick, saved.advice, saved.inn
-    ns.plannerInnLine = nil
+    env.InCombatLockdown = saved.combat
+    ns.plannerInnLine, ns.PlannerWorldPos, ns.plannerInns = nil, saved.world, saved.inns
     if not ok then error(err, 0) end
 end)
 
