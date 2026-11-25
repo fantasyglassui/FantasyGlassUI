@@ -13774,6 +13774,283 @@ try("13.4 feel C: speed, safety, story", function()
 end)
 -- batch 4 tests C (pace): end
 -- batch 4 tests D (records): begin
+try("13.4 feel D: level times, race, where you left off", function()
+    local key = ns:CharKey()
+    local saved = { unlocked = ns.GuideUnlocked, level = env.UnitLevel, xp = env.UnitXP, xpMax = env.UnitXPMax, time = env.GetTime, ttl = ns.PlannerTimeToLevel,
+                    showList = ns.ShowList, levels = ns.root.plannerLevels, race = ns.db.plannerRace, left = ns.db.plannerLeftOff, gstate = ns.root.guideState,
+                    on = ns.db.questGuide }
+    local rec0 = ns.PlannerCharRecord(true)
+    local clock0 = rec0.levelClock
+    local panel
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        local lvl, xp, xpMax, now = 9, 0, 5000, 700000
+        env.UnitLevel = function() return lvl end
+        env.UnitXP = function() return xp end
+        env.UnitXPMax = function() return xpMax end
+        env.GetTime = function() return now end
+        ns.root.plannerLevels = nil
+        rec0.levelClock = nil
+
+        -- the clock: the first level after install is partial; a tick adds at most 30 s
+        ns.PlannerLevelTick(600)
+        if rec0.levelClock.seconds ~= 30 or rec0.levelClock.partial ~= true then error("a tick adds at most 30 s, and the first clock is partial: " .. tostring(rec0.levelClock.seconds)) end
+        for _ = 1, 19 do ns.PlannerLevelTick(30) end
+        xpMax = 0
+        if ns.PlannerLevelTick(30) ~= false or rec0.levelClock.seconds ~= 600 then error("an unreadable xp max counts no tick") end
+        xpMax = 5000
+        ns.PlannerRecordLevel(9)
+        local e9 = ns.root.plannerLevels[key][9]
+        if not (e9 and e9.s == 600 and e9.partial == true) then error("the partial level is kept, marked partial") end
+        if ns.PlannerLevelSummary(key).count ~= 0 then error("a partial level is left out of the summary") end
+        if not (rec0.levelClock.level == 10 and rec0.levelClock.seconds == 0 and rec0.levelClock.partial == false) then error("the clock restarts, whole, for the new level") end
+        lvl = 10
+        for _ = 1, 20 do ns.PlannerLevelTick(30) end
+        ns.PlannerRecordLevel(10)
+        local e10 = ns.root.plannerLevels[key][10]
+        if not (e10 and e10.s == 600 and e10.xph == 30000 and not e10.partial) then error("level 10: 600 s, 30000 xp an hour") end
+        -- locked: nothing recorded
+        ns.GuideUnlocked = function() return false end
+        rec0.levelClock = { level = 11, seconds = 100, xpMax = 5000, partial = false }
+        lvl = 11
+        if ns.PlannerLevelTick(30) ~= false or rec0.levelClock.seconds ~= 100 then error("locked: no tick") end
+        if ns.PlannerRecordLevel(11) ~= false or ns.root.plannerLevels[key][11] then error("locked: nothing recorded") end
+        ns.GuideUnlocked = function() return true end
+
+        -- /fgui stats and the run log
+        ns.root.plannerLevels = { [key] = { [9] = { s = 99, xph = 1, partial = true }, [10] = { s = 600, xph = 30000 }, [11] = { s = 1200, xph = 15000 }, [12] = { s = 900, xph = 20000 } } }
+        local sum = ns.PlannerLevelSummary(key)
+        if not (sum.count == 3 and sum.fastest.level == 10 and sum.slowest.level == 11 and sum.average == 900) then error("the summary") end
+        local got
+        ns.ShowList = function(_, _, _, lines) got = lines end
+        local function has(lines, text)
+            for _, l in ipairs(lines or {}) do if (l.left or ""):find(text, 1, true) then return true end end
+            return false
+        end
+        ns:ShowLifetime()
+        for _, text in ipairs({ ns:Tr("Levels"), "Fastest level: 10 (10m)", "Slowest level: 11 (20m)", "Average level: 15m" }) do
+            if not has(got, text) then error("the stats page lacks " .. text) end
+        end
+        ns.GuideUnlocked = function() return false end
+        ns:ShowLifetime()
+        if has(got, "Fastest level") or has(got, "Average level") then error("locked: no Levels part") end
+        if #ns.RunLines({ level = 0 }) ~= 0 and has(ns.RunLines({ level = 0 }), "Level 10") then error("locked: no levels in the run log") end
+        ns.GuideUnlocked = function() return true end
+        local runs = ns.RunLines({ level = 0 })
+        if not has(runs, "Level 10: 10m, 30,000 xp an hour") then error("the run log shows level 10") end
+        if not (runs[#runs].left or ""):find("Level 9: 1m, ", 1, true) or not (runs[#runs].left or ""):find(ns:Tr("partly timed"), 1, true) then error("a partial level is listed, marked partly timed: " .. tostring(runs[#runs].left)) end
+        if not (runs[#runs - 3].left or ""):find("Level 12", 1, true) or not (runs[#runs - 1].left or ""):find("Level 10", 1, true) or (runs[#runs - 1].left or ""):find(ns:Tr("partly timed"), 1, true) then error("newest first, whole levels unmarked") end
+        -- (the play clock off a reload: the first tick after it adds nothing; later ones add the GetTime gap, at most 30 s)
+        now = 710000
+        rec0.levelClock = { level = 11, seconds = 100, xpMax = 5000, partial = false }
+        lvl = 11
+        local frame = ns.plannerRecordsFrame
+        local function tick() for _, h in ipairs(handlers) do if h.self == frame and h.name == "OnUpdate" then h.fn(frame, 10) end end end
+        ns.PlannerLevelGapReset()
+        tick()
+        if rec0.levelClock.seconds ~= 100 then error("the first tick after a load adds nothing: " .. rec0.levelClock.seconds) end
+        now = now + 10; tick()
+        if rec0.levelClock.seconds ~= 110 then error("the next adds its gap: " .. rec0.levelClock.seconds) end
+        now = now + 600; tick()
+        if rec0.levelClock.seconds ~= 140 then error("a long gap adds at most 30 s: " .. rec0.levelClock.seconds) end
+        ns.PlannerLevelGapReset()
+        now = now + 600; tick()
+        if rec0.levelClock.seconds ~= 140 then error("after a reload (gap reset) the long gap adds nothing") end
+        now = 700000
+
+        -- race your best
+        ns.root.plannerLevels = { [key] = ns.root.plannerLevels[key], ["Other - Realm"] = { [11] = { s = 1200, xph = 1 }, [12] = { s = 100, xph = 1, partial = true } } }
+        lvl, xp, xpMax = 11, 2500, 5000
+        rec0.levelClock = { level = 11, seconds = 300, xpMax = 5000, partial = false }
+        ns.db.plannerRace = true
+        if not (ns.PlannerRaceLine() or ""):find("ahead by 5 min", 1, true) then error("ahead by 5 min: " .. tostring(ns.PlannerRaceLine())) end
+        rec0.levelClock.seconds = 900
+        if not (ns.PlannerRaceLine() or ""):find("behind by 5 min", 1, true) then error("behind by 5 min: " .. tostring(ns.PlannerRaceLine())) end
+        rec0.levelClock.seconds = 620
+        if not (ns.PlannerRaceLine() or ""):find("level with your best", 1, true) then error("level with your best: " .. tostring(ns.PlannerRaceLine())) end
+        ns.db.plannerRace = false
+        if ns.PlannerRaceLine() ~= nil then error("race off: no line") end
+        ns.db.plannerRace = true
+        rec0.levelClock.seconds = 300
+        lvl = 12; rec0.levelClock.level = 12
+        if ns.PlannerRaceLine() ~= nil then error("another character's level 12 is partial: no line") end
+        lvl = 11; rec0.levelClock.level = 11
+        rec0.levelClock.partial = true
+        if ns.PlannerRaceLine() ~= nil then error("a partial clock here: no line") end
+        rec0.levelClock.partial = false
+        ns.root.plannerLevels["Other - Realm"] = nil
+        if ns.PlannerRaceLine() ~= nil then error("no other character: no line") end
+        ns.db.plannerRace = false
+
+        -- where you left off
+        lvl = 25
+        local notes = {}
+        for i = 1, 8 do notes[i] = { kind = "note", text = "Do thing " .. i } end
+        ns.root.guideState = {}
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = notes }, { zone = 1, fromLevel = 25, toLevel = 26 })
+        ns.GuideState().at = 3
+        panel = ns:GuideShowPanel()
+        local extraText
+        rawset(panel.extra, "SetText", function(_, t) extraText = t end)
+        local function said(from)
+            for i = from + 1, #printed do if printed[i]:find("Where you left off", 1, true) then return printed[i] end end
+        end
+        ns.PlannerTimeToLevel = function() return 48 end
+        local n0 = #printed
+        fireEvent("PLAYER_ENTERING_WORLD", true, false)
+        local line = said(n0)
+        if not (line and line:find("step 3 of 8", 1, true) and line:find("Do thing 3", 1, true) and line:find("level 26 in ~48 min", 1, true)) then error("an initial login says where you left off: " .. tostring(line)) end
+        ns:GuideRedraw()
+        if not (extraText or ""):find("step 3 of 8", 1, true) then error("and the panel says it too: " .. tostring(extraText)) end
+        now = now + 121
+        ns:GuideRedraw()
+        if (extraText or ""):find("step 3 of 8", 1, true) then error("the panel line goes after 120 s") end
+        ns.PlannerTimeToLevel = nil
+        n0 = #printed
+        fireEvent("PLAYER_ENTERING_WORLD", true, false)
+        line = said(n0)
+        if not (line and line:find("step 3 of 8", 1, true)) or line:find("level 26", 1, true) then error("no time to the level: no time part: " .. tostring(line)) end
+        n0 = #printed
+        fireEvent("PLAYER_ENTERING_WORLD", false, true)
+        if said(n0) then error("a reload says nothing") end
+        ns.db.plannerLeftOff = false
+        fireEvent("PLAYER_ENTERING_WORLD", true, false)
+        if said(n0) then error("switched off: nothing") end
+    end)
+    if panel then rawset(panel.extra, "SetText", nil) end
+    ns.PlannerStop()
+    ns.plannerQueued = false
+    ns.GuideUnlocked, env.UnitLevel, env.UnitXP, env.UnitXPMax, env.GetTime = saved.unlocked, saved.level, saved.xp, saved.xpMax, saved.time
+    ns.PlannerTimeToLevel, ns.ShowList = saved.ttl, saved.showList
+    ns.root.plannerLevels, ns.db.plannerRace, ns.db.plannerLeftOff, ns.root.guideState, ns.db.questGuide = saved.levels, saved.race, saved.left, saved.gstate, saved.on
+    rec0.levelClock = clock0
+    if not ok then error(err, 0) end
+end)
+try("13.4 feel D: save as guide, read aloud, chime", function()
+    local saved = { unlocked = ns.GuideUnlocked, speak = ns.Speak, map = env.C_Map, gstate = ns.root.guideState, guides = ns.root.guides,
+                    keys = {} }
+    for i, v in ipairs(ns.WINDOW_KEYS_FRAMES) do saved.keys[i] = v end
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        -- keys first (a login runs the add-on's own login again): the six names, once each
+        local mine = { "FantasyGlassUIGuideMenu", "FantasyGlassUIListPlanPreview", "FantasyGlassUIListPlanWhy", "FantasyGlassUIListPlanTime",
+                       "FantasyGlassUIListPlanCatchUp", "FantasyGlassUIListPlanHere" }
+        fireEvent("PLAYER_LOGIN"); runTimers()
+        fireEvent("PLAYER_LOGIN"); runTimers()
+        ns.PlannerKeyFrames()
+        for _, name in ipairs(mine) do
+            local n = 0
+            for _, v in ipairs(ns.WINDOW_KEYS_FRAMES) do if v == name then n = n + 1 end end
+            if n ~= 1 then error(name .. " is in the key windows " .. n .. " times") end
+        end
+        -- (unlocked mid-session: the next step change adds the key windows)
+        for i = #ns.WINDOW_KEYS_FRAMES, 1, -1 do if ns.WINDOW_KEYS_FRAMES[i] == mine[1] then table.remove(ns.WINDOW_KEYS_FRAMES, i) end end
+        local read0, sound0, caps0, speak0 = ns.db.readDialog, ns.db.guideSound, ns.db.captions, ns.db.plannerSpeak
+        local ok2, err2 = pcall(function()
+            ns.root.guideState, ns.root.guides = {}, {}
+            env.C_Map = setmetatable({ GetMapInfo = function(map) return { name = "Elwynn Forest", mapID = map } end }, { __index = saved.map })
+
+            -- save as guide
+            local plan = {
+                { kind = "fly", node = 41, text = "Fly to Goldshire", x = 10, y = 20, map = 12, why = { saves = 300 }, hub = 1 },
+                { kind = "learnflight", node = 41, x = 11, y = 21, map = 12, why = { saves = 60 }, hub = 1 },
+                { kind = "sail", crossing = "Menethil-Auberdine", text = "Take the boat", x = 12, y = 22, map = 12, why = { saves = 120 }, hub = 2 },
+                { kind = "bind", text = "Goldshire", x = 13, y = 23, map = 12, why = { saves = 10 }, hub = 2 },
+                { kind = "train", text = "Train your skills", x = 14, y = 24, map = 12, why = { saves = 5 }, hub = 2 },
+                { kind = "vendor", text = "Sell your grey items", x = 15, y = 25, map = 12, why = { xp = 5 }, hub = 2 },
+            }
+            ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = plan }, { zone = 12, fromLevel = 8, toLevel = 9.6, seconds = 600 })
+            local name = ns.PlannerSaveAsGuide()
+            if name ~= "Elwynn Forest 8-10" then error("the guide's name: " .. tostring(name)) end
+            local first = ns:GuideGet(name)
+            local back = ns.GuideParse(ns.GuideText(first))
+            if #first.steps ~= #plan or #back.steps ~= #plan then error("every step is saved") end
+            for i, step in ipairs(plan) do
+                local b = back.steps[i]
+                if b.kind ~= step.kind or b.node ~= step.node or b.crossing ~= step.crossing then error("step " .. i .. " reads back as the same kind, node and crossing") end
+                if first.steps[i].why or b.why or first.steps[i].hub then error("only what the text keeps: no why or hub on step " .. i) end
+            end
+            -- (a name never overwrites: with every name to 99 taken, nothing is saved)
+            local before = {}
+            for i = 3, 99 do ns.root.guides[string.format("Elwynn Forest 8-10 (%d)", i)] = { name = "x" .. i, steps = {} } end
+            ns.root.guides["Elwynn Forest 8-10 (2)"] = { name = "keep", steps = { { kind = "note", text = "mine" } } }
+            local mineBefore = ns.root.guides["Elwynn Forest 8-10 (99)"]
+            if ns.PlannerSaveAsGuide() ~= nil then error("every name taken: no save") end
+            if ns.root.guides["Elwynn Forest 8-10 (99)"] ~= mineBefore or ns.root.guides["Elwynn Forest 8-10 (2)"].name ~= "keep" then error("an existing guide was overwritten") end
+            for i = 2, 99 do ns.root.guides[string.format("Elwynn Forest 8-10 (%d)", i)] = nil end
+            local second = ns.PlannerSaveAsGuide()
+            if second ~= "Elwynn Forest 8-10 (2)" then error("the second save: " .. tostring(second)) end
+            if ns:GuideGet(name) ~= first or #first.steps ~= #plan then error("the first is unchanged") end
+            local found = false
+            for _, e in ipairs(ns.GuidePanelEntries(plan[1])) do if e[1] == "Save as guide" then found = true end end
+            if not found then error("the panel's menu has Save as guide") end
+            ns.GuideState().summary.empty = true
+            if #ns.GuidePanelEntries(plan[1]) ~= 0 then error("an empty plan: nothing to save") end
+            ns.GuideState().summary.empty = nil
+            ns.GuideUnlocked = function() return false end
+            if ns.PlannerSaveAsGuide() ~= nil then error("locked: nothing saved") end
+            ns.GuideUnlocked = function() return true end
+
+            -- /fgui guide keys
+            ns:GuideCommand("keys")
+            local menu = ns.guideStepMenu
+            local labels = {}
+            for _, b in ipairs(menu and menu.buttons or {}) do labels[#labels + 1] = b.entryLabel end
+            local joined = "," .. table.concat(labels, ",") .. ","
+            for _, want in ipairs({ ns:Tr("Back"), ns:Tr("Next"), ns:Tr("Guides"), ns:Tr("Save as guide") }) do
+                if not joined:find("," .. want .. ",", 1, true) then error("keys: the menu lacks " .. want .. " in " .. joined) end
+            end
+
+            -- read aloud
+            local hasKey = false
+            local spoken = {}
+            ns.Speak = function(_, text) spoken[#spoken + 1] = text; return true end
+            local notes = { { kind = "note", text = "speak one" }, { kind = "note", text = "speak two" }, { kind = "note", text = "speak three", why = { xp = 100 } } }
+            ns.db.readDialog, ns.db.plannerSpeak = false, true
+            ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = notes }, { zone = 12, fromLevel = 8, toLevel = 9 })
+            ns:GuideSkip(false)
+            for _, v in ipairs(ns.WINDOW_KEYS_FRAMES) do if v == mine[1] then hasKey = true end end
+            if not hasKey then error("a step change adds the key windows after an unlock mid-session") end
+            if #spoken ~= 0 then error("reading aloud off: nothing spoken") end
+            ns.db.readDialog = true
+            ns:GuideSkip(false)
+            if #spoken ~= 1 or spoken[1] ~= "speak three" then error("the next step is read, without its why: " .. tostring(spoken[1])) end
+            ns.db.plannerSpeak = false
+            ns:GuideSkip(true)
+            ns:GuideSkip(false)
+            if #spoken ~= 1 then error("plannerSpeak off: not read") end
+            ns.db.plannerSpeak = true
+            ns:GuideSave({ name = "Written route", steps = { { kind = "note", text = "write one" }, { kind = "note", text = "write two" } } })
+            ns:GuideFollow("Written route")
+            ns:GuideSkip(false)
+            local readWritten = false
+            for _, t in ipairs(spoken) do if t == "write two" then readWritten = true end end
+            if not readWritten then error("a written guide's step is read too") end
+
+            -- the chime's caption
+            ns.db.captions, ns.db.guideSound = true, true
+            local c0 = ns.captionCount or 0
+            ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "chime one" }, { kind = "note", text = "chime two" }, { kind = "note", text = "chime three" } } }, { zone = 12, fromLevel = 8, toLevel = 9 })
+            if (ns.captionCount or 0) ~= c0 then error("a new plan's first step: no caption") end
+            ns:GuideSkip(false)
+            if (ns.captionCount or 0) ~= c0 + 1 or ns.captionLast ~= "Step done" then error("a step done: one caption, got " .. tostring((ns.captionCount or 0) - c0) .. " " .. tostring(ns.captionLast)) end
+            ns:GuideSkip(true)
+            if (ns.captionCount or 0) ~= c0 + 1 then error("Back: no caption") end
+            ns.db.guideSound = false
+            ns:GuideSkip(false)
+            if (ns.captionCount or 0) ~= c0 + 1 then error("the chime off: no caption") end
+        end)
+        ns.db.readDialog, ns.db.guideSound, ns.db.captions, ns.db.plannerSpeak = read0, sound0, caps0, speak0
+        if not ok2 then error(err2, 0) end
+    end)
+    for i = #ns.WINDOW_KEYS_FRAMES, 1, -1 do ns.WINDOW_KEYS_FRAMES[i] = nil end
+    for i, v in ipairs(saved.keys) do ns.WINDOW_KEYS_FRAMES[i] = v end
+    ns.GuideUnlocked, ns.Speak, env.C_Map = saved.unlocked, saved.speak, saved.map
+    ns.root.guideState, ns.root.guides = saved.gstate, saved.guides
+    ns.PlannerStop()
+    ns.plannerQueued = false
+    if not ok then error(err, 0) end
+end)
 -- batch 4 tests D (records): end
 
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)

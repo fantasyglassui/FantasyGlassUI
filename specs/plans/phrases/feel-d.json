@@ -1,0 +1,202 @@
+{
+  "Levels": [
+    "Stufen",
+    "Niveaux",
+    "Niveles",
+    "Уровни",
+    "Níveis",
+    "Livelli",
+    "레벨",
+    "等级"
+  ],
+  "Fastest level: %d (%s)": [
+    "Schnellste Stufe: %d (%s)",
+    "Niveau le plus rapide : %d (%s)",
+    "Nivel más rápido: %d (%s)",
+    "Самый быстрый уровень: %d (%s)",
+    "Nível mais rápido: %d (%s)",
+    "Livello più veloce: %d (%s)",
+    "가장 빠른 레벨: %d (%s)",
+    "最快的等级:%d(%s)"
+  ],
+  "Slowest level: %d (%s)": [
+    "Langsamste Stufe: %d (%s)",
+    "Niveau le plus lent : %d (%s)",
+    "Nivel más lento: %d (%s)",
+    "Самый медленный уровень: %d (%s)",
+    "Nível mais lento: %d (%s)",
+    "Livello più lento: %d (%s)",
+    "가장 느린 레벨: %d (%s)",
+    "最慢的等级:%d(%s)"
+  ],
+  "Average level: %s": [
+    "Durchschnitt pro Stufe: %s",
+    "Niveau moyen : %s",
+    "Nivel medio: %s",
+    "В среднем на уровень: %s",
+    "Nível médio: %s",
+    "Livello medio: %s",
+    "레벨 평균: %s",
+    "平均每级:%s"
+  ],
+  "Level %d: %s, %s xp an hour": [
+    "Stufe %d: %s, %s EP pro Stunde",
+    "Niveau %d : %s, %s xp par heure",
+    "Nivel %d: %s, %s xp por hora",
+    "Уровень %d: %s, %s оп. в час",
+    "Nível %d: %s, %s xp por hora",
+    "Livello %d: %s, %s xp all'ora",
+    "%d레벨: %s, 시간당 %s 경험치",
+    "%d级:%s,每小时 %s 经验"
+  ],
+  "Race your best: ahead by %d min": [
+    "Dein Rekord: %d Min. voraus",
+    "Battez votre record : %d min d'avance",
+    "Supera tu mejor marca: %d min de ventaja",
+    "Гонка с лучшим: впереди на %d мин.",
+    "Corra contra o seu melhor: %d min à frente",
+    "Sfida il tuo record: in anticipo di %d min",
+    "최고 기록과 경쟁: %d분 앞섬",
+    "挑战最佳:领先 %d 分钟"
+  ],
+  "Race your best: behind by %d min": [
+    "Dein Rekord: %d Min. zurück",
+    "Battez votre record : %d min de retard",
+    "Supera tu mejor marca: %d min de retraso",
+    "Гонка с лучшим: отстаёте на %d мин.",
+    "Corra contra o seu melhor: %d min atrás",
+    "Sfida il tuo record: in ritardo di %d min",
+    "최고 기록과 경쟁: %d분 뒤처짐",
+    "挑战最佳:落后 %d 分钟"
+  ],
+  "Race your best: level with your best": [
+    "Dein Rekord: gleichauf mit deiner Bestzeit",
+    "Battez votre record : à égalité avec votre meilleur",
+    "Supera tu mejor marca: igualado con tu mejor",
+    "Гонка с лучшим: вровень с лучшим",
+    "Corra contra o seu melhor: empatado com o seu melhor",
+    "Sfida il tuo record: pari con il tuo migliore",
+    "최고 기록과 경쟁: 최고 기록과 같음",
+    "挑战最佳:与你的最佳持平"
+  ],
+  "Where you left off: step %d of %d, %s": [
+    "Hier warst du: Schritt %d von %d, %s",
+    "Où vous en étiez : étape %d sur %d, %s",
+    "Por dónde ibas: paso %d de %d, %s",
+    "Где вы остановились: шаг %d из %d, %s",
+    "Onde você parou: passo %d de %d, %s",
+    "Dove eri rimasto: passo %d di %d, %s",
+    "마지막 위치: %d/%d단계, %s",
+    "上次进度:第 %d 步,共 %d 步,%s"
+  ],
+  ", level %d in ~%d min": [
+    ", Stufe %d in ca. %d Min.",
+    ", niveau %d dans ~%d min",
+    ", nivel %d en ~%d min",
+    ", уровень %d через ~%d мин.",
+    ", nível %d em ~%d min",
+    ", livello %d in ~%d min",
+    ", %d레벨까지 약 %d분",
+    ",升到 %d 级约需 %d 分钟"
+  ],
+  "Race your best": [
+    "Gegen den Rekord antreten",
+    "Battre votre record",
+    "Superar tu mejor marca",
+    "Гонка с лучшим временем",
+    "Correr contra o seu melhor",
+    "Sfida il tuo record",
+    "최고 기록과 경쟁",
+    "挑战最佳纪录"
+  ],
+  "Where you left off, at login": [
+    "Beim Anmelden zeigen, wo du warst",
+    "Où vous en étiez, à la connexion",
+    "Por dónde ibas, al entrar",
+    "Где вы остановились, при входе",
+    "Onde você parou, ao entrar",
+    "Dove eri rimasto, all'accesso",
+    "접속할 때 마지막 위치 표시",
+    "登录时显示上次进度"
+  ],
+  "Save as guide": [
+    "Als Anleitung speichern",
+    "Enregistrer comme guide",
+    "Guardar como guía",
+    "Сохранить как гайд",
+    "Salvar como guia",
+    "Salva come guida",
+    "가이드로 저장",
+    "保存为指南"
+  ],
+  "Saved as guide \"%s\": %d steps.": [
+    "Als Anleitung \"%s\" gespeichert: %d Schritte.",
+    "Enregistré comme guide « %s » : %d étapes.",
+    "Guardado como guía \"%s\": %d pasos.",
+    "Сохранено как гайд «%s»: шагов: %d.",
+    "Salvo como guia \"%s\": %d passos.",
+    "Salvato come guida \"%s\": %d passi.",
+    "가이드 \"%s\"(으)로 저장됨: %d단계.",
+    "已保存为指南“%s”:%d 步。"
+  ],
+  "Planned route": [
+    "Geplante Route",
+    "Itinéraire prévu",
+    "Ruta planificada",
+    "Запланированный маршрут",
+    "Rota planejada",
+    "Percorso pianificato",
+    "계획된 경로",
+    "计划路线"
+  ],
+  "Read the route aloud": [
+    "Die Route vorlesen",
+    "Lire l'itinéraire à voix haute",
+    "Leer la ruta en voz alta",
+    "Читать маршрут вслух",
+    "Ler a rota em voz alta",
+    "Leggi il percorso ad alta voce",
+    "경로를 소리 내어 읽기",
+    "朗读路线"
+  ],
+  "Needs reading aloud on in Accessibility": [
+    "Benötigt Vorlesen unter Barrierefreiheit",
+    "Nécessite la lecture à voix haute dans Accessibilité",
+    "Requiere la lectura en voz alta en Accesibilidad",
+    "Нужно включить чтение вслух в разделе «Доступность»",
+    "Requer a leitura em voz alta ativada em Acessibilidade",
+    "Richiede la lettura ad alta voce attiva in Accessibilità",
+    "접근성에서 소리 내어 읽기를 켜야 합니다",
+    "需要在“辅助功能”中开启朗读"
+  ],
+  "Step done": [
+    "Schritt erledigt",
+    "Étape terminée",
+    "Paso hecho",
+    "Шаг выполнен",
+    "Passo concluído",
+    "Passo completato",
+    "단계 완료",
+    "步骤完成"
+  ],
+  "partly timed": [
+    "teilweise gemessen",
+    "chronométré en partie",
+    "medido en parte",
+    "время учтено частично",
+    "cronometrado em parte",
+    "cronometrato in parte",
+    "일부만 측정됨",
+    "部分计时"
+  ],
+  "Too many guides called \"%s\": rename or delete one first.": [
+    "Zu viele Anleitungen namens \"%s\": benenne oder lösche zuerst eine.",
+    "Trop de guides nommés « %s » : renommez ou supprimez-en un d'abord.",
+    "Demasiadas guías llamadas \"%s\": cambia el nombre o borra una antes.",
+    "Слишком много гайдов с именем «%s»: сначала переименуйте или удалите один.",
+    "Guias demais chamados \"%s\": renomeie ou apague um antes.",
+    "Troppe guide chiamate \"%s\": rinomina o elimina prima una.",
+    "\"%s\" 이름의 가이드가 너무 많습니다. 먼저 하나를 이름 변경하거나 삭제하세요.",
+    "名为“%s”的指南太多:请先重命名或删除一个。"
+  ]
+}

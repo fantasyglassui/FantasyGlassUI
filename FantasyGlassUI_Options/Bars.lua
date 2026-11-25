@@ -402,7 +402,27 @@ end
 
 -- Group D: level times, race your best, where you left off, save as guide, read aloud.
 local function FeelRecordsSection(live, y, Replan, T)
-    return y, function() end
+    local race = ns:CreateCheckbox(live, "Race your best", ns.db.plannerRace == true, function(v) ns.db.plannerRace = v end)
+    race:SetPoint("TOPLEFT", 0, y)
+    local leftOff = ns:CreateCheckbox(live, "Where you left off, at login", ns.db.plannerLeftOff ~= false, function(v) ns.db.plannerLeftOff = v end)
+    leftOff:SetPoint("TOPLEFT", 0, y - 26)
+    local speak = ns:CreateCheckbox(live, "Read the route aloud", ns.db.plannerSpeak ~= false, function(v) ns.db.plannerSpeak = v end)
+    speak:SetPoint("TOPLEFT", 0, y - 52)
+    local hint = Small(live, 11, 440)                         -- (reading aloud is one switch in Accessibility; this one only narrows it)
+    hint:SetPoint("LEFT", speak, "RIGHT", 12, 0)
+    ns:Paint(hint, "SetTextColor", "dim")
+    hint:SetText(ns:Tr("Needs reading aloud on in Accessibility"))
+    T.raceBox, T.leftOffBox, T.speakBox = race, leftOff, speak
+    local function Refresh()
+        race:SetChecked(ns.db.plannerRace == true)
+        leftOff:SetChecked(ns.db.plannerLeftOff ~= false)
+        speak:SetChecked(ns.db.plannerSpeak ~= false)
+        local on = ns.db.readDialog and true or false      -- (greyed with the hint while reading aloud is off)
+        speak:SetAlpha(on and 1 or 0.45)
+        hint:SetShown(not on)
+    end
+    Refresh()                                              -- (right from the start, not only after the first page refresh)
+    return y - 78, Refresh
 end
 
 ------------------------------------------------------------------------------------------

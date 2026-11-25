@@ -220,6 +220,9 @@ ns.defaults = {
     plannerBreakMinutes = 120,      -- ... and how long a stretch that is, in minutes
     -- batch 4 C (pace): end
     -- batch 4 D (records): begin
+    plannerRace      = false,       -- race your best: ahead or behind your fastest character's time at this level
+    plannerLeftOff   = true,        -- where you left off, at login
+    plannerSpeak     = true,        -- read the route aloud (only while reading aloud is on in Accessibility)
     -- batch 4 D (records): end
     groupWatch       = true,        -- (internal: watches who is in your group for the three below)
     playerNotes      = true,        -- your own note on a player, in their tooltip
