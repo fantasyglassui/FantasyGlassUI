@@ -9528,10 +9528,10 @@ try("12.3 settings look: buttons and the window's corners", function()
     if not ok then error(err, 0) end
 end)
 try("12.3 settings look: sidebar and Home", function()
-    local keep = { theme = ns.db.theme, lang = ns.root.language, uf = ns.db.ufStyle, sec = ns.root.optionsSection, mode = ns.root.settingsMode }
+    local keep = { scale = ns.fontScale, theme = ns.db.theme, lang = ns.root.language, uf = ns.db.ufStyle, sec = ns.root.optionsSection, mode = ns.root.settingsMode }
     local keepSwitch = {}
     for _, k in ipairs(ns.homeQuick) do keepSwitch[k] = ns.db[k] end
-    local realCF, realTime, realClass, realCount = env.CreateFrame, env.GetGameTime, env.UnitClass, ns.CountFeatures
+    local realCF, realTime, realClass = env.CreateFrame, env.GetGameTime, env.UnitClass
     local made = {}
     local function Region(owner)
         local t = newmock()
@@ -9539,7 +9539,9 @@ try("12.3 settings look: sidebar and Home", function()
         rawset(t, "SetText", function(x, v) rawset(x, "text", v) end)
         rawset(t, "GetText", function(x) return rawget(x, "text") end)
         rawset(t, "GetStringWidth", function() return 10 end)
-        rawset(t, "GetStringHeight", function() return 16 end)
+        rawset(t, "GetStringHeight", function(x) return rawget(x, "fakeH") or 16 end)
+        rawset(t, "SetWordWrap", function(x, v) rawset(x, "wrap", v) end)
+        rawset(t, "SetMaxLines", function(x, v) rawset(x, "maxLines", v) end)
         rawset(t, "SetTexture", function(x, v) rawset(x, "tex", v) end)
         made[#made + 1] = t
         return t
@@ -9616,7 +9618,7 @@ try("12.3 settings look: sidebar and Home", function()
                 if not cb then error("a card for " .. key) end
                 local card
                 for _, c in ipairs(page.quickCards) do if c.key == key then card = c end end
-                if not card or rawget(card.name, "text") ~= O.RowLabel(key) then error(key .. "'s card is titled with its name") end
+                if not card or rawget(card.name, "text") ~= ns:Tr(O.RowLabel(key)) then error(key .. "'s card is titled with its name") end
                 if (rawget(card.hint, "text") or "") == "" then error(key .. "'s card has a line on what it does") end
                 local was = ns.db[key] and true or false
                 cb:GetScript("OnClick")(cb)
@@ -9627,6 +9629,59 @@ try("12.3 settings look: sidebar and Home", function()
             end
         end
         if cards ~= #page.quickCards or cards < 3 then error("a card for each quick switch, got " .. cards) end
+        -- the titles in German, a long one at fontScale 1.3: translated, wrapped, nothing cut off, no overlap
+        ns.root.language = "deDE"; ns:LoadLocale()
+        local keepScale = ns.fontScale
+        ns.fontScale = 1.3
+        for _, c in ipairs(page.quickCards) do rawset(c.name, "fakeH", 44) end      -- (two lines at that size)
+        page.Refresh()
+        local sawGerman = false
+        for _, c in ipairs(page.quickCards) do
+            local de = ns:Tr(O.RowLabel(c.key))
+            if rawget(c.name, "text") ~= de then error(c.key .. "'s title is the German text, got " .. tostring(rawget(c.name, "text"))) end
+            if de ~= O.RowLabel(c.key) then sawGerman = true end
+            if rawget(c.name, "wrap") ~= true or rawget(c.name, "maxLines") ~= 2 then error(c.key .. "'s title wraps to two lines") end
+            if c:GetHeight() < 13 + 44 + 4 + 16 + 14 then error(c.key .. "'s card grows to hold a two-line title, got " .. c:GetHeight()) end
+        end
+        if not sawGerman then error("at least one quick card has a German title") end
+        for r, row in ipairs(page.quickRows) do
+            local tallest = 0
+            for i, c in ipairs(page.quickCards) do if math.floor((i - 1) / 3) + 1 == r then tallest = math.max(tallest, c:GetHeight()) end end
+            if row.height ~= tallest then error("row " .. r .. " is as tall as its tallest card") end
+            local nextRow = page.quickRows[r + 1]
+            if nextRow and nextRow.top > row.top - row.height then error("row " .. (r + 1) .. " overlaps row " .. r) end
+        end
+        local lastRow = page.quickRows[#page.quickRows]
+        if page.contentHeight < -lastRow.top + lastRow.height then error("the page is as tall as its cards") end
+        for _, c in ipairs(page.quickCards) do rawset(c.name, "fakeH", nil) end
+        ns.fontScale = keepScale
+        ns.root.language = "enUS"; ns:LoadLocale()
+        page.Refresh()
+        -- "Changed lately" lives in the Undo button's tooltip: the last five changes, most recent first
+        local savedChanges = {}
+        for i, ch in ipairs(O.changes) do savedChanges[i] = ch end
+        for i = #O.changes, 1, -1 do O.changes[i] = nil end
+        local keys = { "bagWindow", "damageMeter", "autoSell", "autoRepair", "questTracker", "plateQuest", "bagWindow" }
+        for i, key in ipairs(keys) do O.changes[#O.changes + 1] = { key = key, old = (i % 2 == 0), new = (i % 2 == 1) } end
+        local lines = O.LatelyLines()
+        if #lines ~= 5 then error("the last five changes, got " .. #lines) end
+        for n = 1, 5 do
+            local ch = O.changes[#O.changes + 1 - n]
+            local want = ns:Tr(O.ChangeLabel(ch.key)) .. ": " .. O.ChangeValue(ch.key, ch.new)
+            if lines[n] ~= want then error("change " .. n .. " newest first: wanted '" .. want .. "' got '" .. tostring(lines[n]) .. "'") end
+        end
+        local realTip, shown = env.GameTooltip, {}
+        local tip = newmock()
+        rawset(tip, "AddLine", function(_, text) shown[#shown + 1] = tostring(text) end)
+        rawset(tip, "SetOwner", function() end)
+        env.GameTooltip = tip
+        O.frame.undoButton:GetScript("OnEnter")(O.frame.undoButton)
+        env.GameTooltip = realTip
+        local joined = "\n" .. table.concat(shown, "\n") .. "\n"
+        if not joined:find("\nChanged lately\n", 1, true) then error("the Undo tooltip has a Changed lately heading, got " .. joined) end
+        for n = 1, 5 do if not joined:find("\n" .. lines[n] .. "\n", 1, true) then error("the Undo tooltip lists change " .. n) end end
+        for i = #O.changes, 1, -1 do O.changes[i] = nil end
+        for i, ch in ipairs(savedChanges) do O.changes[i] = ch end
         -- "New in 12.x": the current what's new lines, a diamond each
         local entry = ns.whatsNew[1]
         for _, e in ipairs(ns.whatsNew) do if tostring(e[1]):match("^(%d+%.%d+)") == tostring(ns.version):match("^(%d+%.%d+)") then entry = e; break end end
@@ -9682,9 +9737,11 @@ try("12.3 settings look: sidebar and Home", function()
         if modes.simple:GetParent() ~= O.side or modes.all:GetParent() ~= O.side then error("the mode buttons are at the top of the sidebar") end
         ns:ToggleConfig()
     end)
-    env.CreateFrame, env.GetGameTime, env.UnitClass, ns.CountFeatures = realCF, realTime, realClass, realCount
+    env.CreateFrame, env.GetGameTime, env.UnitClass = realCF, realTime, realClass
     ns.db.theme, ns.root.language, ns.db.ufStyle, ns.root.optionsSection, ns.root.settingsMode = keep.theme, keep.lang, keep.uf, keep.sec, keep.mode
     for k, v in pairs(keepSwitch) do ns.db[k] = v end
+    ns.fontScale = keep.scale
+    ns:LoadLocale()
     ns:Retheme()
     if not ok then error(err, 0) end
 end)

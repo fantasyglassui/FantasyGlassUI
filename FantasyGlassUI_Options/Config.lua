@@ -6,7 +6,7 @@ if type(ns) ~= "table" then return end
 local O = ns.optUI
 
 -- The settings window (12.0): the categories down the left, with the sections of the one that is open
--- under it, and the section on the right. Home, the first entry, has a card for each category. The
+-- under it, and the section on the right. Home, the first entry, greets the player and holds the quick switches. The
 -- pages built in LookPage, LayoutPage, CombatPage, Bars and Tools.lua are not shown as they are: each
 -- section shows the slices of them it needs (see Categories.lua and FeaturesPage.lua).
 local VIEW_H = 542
@@ -31,19 +31,6 @@ local function CategoryShown(cat)
     return false
 end
 O.SectionShown, O.CategoryShown = SectionShown, CategoryShown
--- How many of a category's switches are on, of those shown.
-function O.CategoryCount(cat)
-    local on, of = 0, 0
-    for _, sec in ipairs(cat.sections or {}) do
-        for _, key in ipairs(sec.keys or {}) do
-            if not ns:FeatureHidden(key) and (not ns:SettingsSimple() or ns.simpleFeatures[key]) then
-                of = of + 1
-                if ns.db[key] then on = on + 1 end
-            end
-        end
-    end
-    return on, of
-end
 function O.CategoryHasSettings(cat)
     for _, sec in ipairs(cat.sections or {}) do if #(sec.rows or {}) > 0 then return true end end
     return false
@@ -91,6 +78,15 @@ local NAMES = { theme = "Theme", accent = "Accent color", fontStyle = "Lettering
     microMode = "Game menu & bag bar", barPanel = "Frame behind action bars", afkDelay = "AFK screen", afkFlag = "Also mark my character as away then" }
 function O.ChangeLabel(key)
     return O.RowLabel(key) or NAMES[key] or key
+end
+-- The last five changes, the most recent first, each as "name: new value" (what Home's "Changed lately" listed).
+function O.LatelyLines()
+    local lines = {}
+    for i = #O.changes, math.max(1, #O.changes - 4), -1 do
+        local ch = O.changes[i]
+        lines[#lines + 1] = ns:Tr(O.ChangeLabel(ch.key)) .. ": " .. O.ChangeValue(ch.key, ch.new)
+    end
+    return lines
 end
 function O.ChangeValue(key, v)
     if v == nil then return ns:Tr("how it came") end
@@ -407,7 +403,6 @@ local function Build()
         ns:Font(b.text, size >= 36 and 14 or 13)
         b.text:SetPoint("LEFT", x, 0)
         b.text:SetWidth(ROW_W - x - 40)
-        b.textX = x
         b.text:SetJustifyH("LEFT")
         if b.text.SetWordWrap then b.text:SetWordWrap(false) end
         b.new = ns.NewTag(b)
@@ -477,7 +472,6 @@ local function Build()
                             y = y - 34
                         end
                     end
-                    y = y + 0
                 end
             end
         end
@@ -572,6 +566,9 @@ local function Build()
         if last then
             GameTooltip:AddLine(format(ns:Tr("Undo: %s"), ns:Tr(O.ChangeLabel(last.key))))
             GameTooltip:AddLine(format(ns:Tr("Back to %s."), O.ChangeValue(last.key, last.old)), 1, 1, 1, true)
+            GameTooltip:AddLine(" ")
+            GameTooltip:AddLine(ns:Tr("Changed lately"), 1, 0.82, 0)
+            for _, line in ipairs(O.LatelyLines()) do GameTooltip:AddLine(line, 1, 1, 1, true) end
         else
             GameTooltip:AddLine(ns:Tr("Undo last change"))
             GameTooltip:AddLine(ns:Tr("Nothing changed yet. Each change you make here can be taken back, one at a time."), 1, 1, 1, true)
@@ -943,19 +940,19 @@ function O.BuildHome(page)
         local label = O.RowLabel(key)
         if label and not ns:FeatureHidden(key) then
             local c = Card(page, CW, 76)
-            c:SetPoint("TOPLEFT", (n % 3) * (CW + GAP), y - math.floor(n / 3) * 88)
             n = n + 1
             local name = c:CreateFontString(nil, "OVERLAY")
             ns:Font(name, 14, true)
             name:SetPoint("TOPLEFT", 14, -13)
             name:SetWidth(CW - 28 - 44)
             name:SetJustifyH("LEFT")
-            if name.SetWordWrap then name:SetWordWrap(false) end
-            name:SetText(label)
+            if name.SetWordWrap then name:SetWordWrap(true) end      -- (a long name wraps to two lines and the card grows, it is not cut off)
+            if name.SetMaxLines then name:SetMaxLines(2) end
+            name:SetText(ns:Tr(label))
             ns:Paint(name, "SetTextColor", "text")
             local hint = c:CreateFontString(nil, "OVERLAY")
             ns:Font(hint, 12)
-            hint:SetPoint("TOPLEFT", 14, -40)
+            hint:SetPoint("TOPLEFT", 14, -40)                        -- (moved under the title by Layout)
             hint:SetWidth(CW - 28)
             hint:SetJustifyH("LEFT")
             if hint.SetWordWrap then hint:SetWordWrap(false) end
@@ -974,15 +971,14 @@ function O.BuildHome(page)
             O.Tip(c, label, (ns.featureDesc[key] or "") .. "\n\n" .. ns:Tr(ns.featureInstant[key] and "Takes effect at once." or "Takes effect after a /reload."))
             O.Tip(cb, label, (ns.featureDesc[key] or "") .. "\n\n" .. ns:Tr(ns.featureInstant[key] and "Takes effect at once." or "Takes effect after a /reload."))
             cb.key = key
-            c.key, c.switch, c.name, c.hint = key, cb, name, hint
+            c.key, c.switch, c.name, c.hint, c.label = key, cb, name, hint, label
             page.quick[key] = cb
             page.quickCards[#page.quickCards + 1] = c
         end
     end
-    y = y - math.ceil(n / 3) * 88 - 8
+    local quickTop = y
     -- "New in 12.3": what changed lately, each a diamond in the accent and one sentence
     local newCard = Card(page, WIDTH, 60)
-    newCard:SetPoint("TOPLEFT", 0, y)
     local newTitle = newCard:CreateFontString(nil, "OVERLAY")
     ns:Font(newTitle, 14, true)
     newTitle:SetPoint("TOPLEFT", 16, -14)
@@ -1036,25 +1032,53 @@ function O.BuildHome(page)
         T.suggestFrame:Show()
     end
 
+    -- Placing the cards: a title of one or two lines, the hint under it, a row as tall as its tallest
+    -- card; then the New card, the Ask card and the page's height under them.
+    local function Lines(fs)
+        local h = fs.GetStringHeight and fs:GetStringHeight()
+        return (type(h) == "number" and h > 0) and h or 16
+    end
+    function page.Layout()
+        local top, rows = quickTop, {}
+        for i, c in ipairs(page.quickCards) do
+            local row = math.floor((i - 1) / 3) + 1
+            c.name:SetText(ns:Tr(c.label))
+            local nameH = Lines(c.name)
+            c.hint:ClearAllPoints()
+            c.hint:SetPoint("TOPLEFT", c, "TOPLEFT", 14, -(13 + nameH + 4))
+            c:SetHeight(math.max(76, 13 + nameH + 4 + Lines(c.hint) + 14))
+            rows[row] = math.max(rows[row] or 0, c:GetHeight())
+        end
+        page.quickRows = {}
+        local at = top
+        for r = 1, #rows do
+            page.quickRows[r] = { top = at, height = rows[r] }
+            at = at - rows[r] - 12
+        end
+        for i, c in ipairs(page.quickCards) do
+            c:ClearAllPoints()
+            c:SetPoint("TOPLEFT", page, "TOPLEFT", ((i - 1) % 3) * (CW + GAP), page.quickRows[math.floor((i - 1) / 3) + 1].top)
+        end
+        -- "New in" lines: the card is as tall as its lines turn out to be
+        local h = 44
+        for _, fs in ipairs(page.newLines) do h = h + Lines(fs) + 8 end
+        h = math.max(60, h + 8)
+        newCard:SetHeight(h)
+        newCard:ClearAllPoints()
+        newCard:SetPoint("TOPLEFT", page, "TOPLEFT", 0, at + 4)
+        askCard:ClearAllPoints()
+        askCard:SetPoint("TOPLEFT", newCard, "BOTTOMLEFT", 0, -12)
+        page.contentHeight = -(at + 4) + h + 12 + 290 + 16
+        page.area:SetContentHeight(page.contentHeight)
+    end
     function page.Refresh()
         title:SetText(O.Greeting())
         intro:SetText(O.HomeLine())
         for _, cb in pairs(page.quick) do cb:SetChecked(ns.db[cb.key]) end
-        local ver2, lines2 = O.NewIn()
+        local ver2 = O.NewIn()
         newTitle:SetText(format(ns:Tr("New in %s"), ver2))
-        -- (the card is as tall as its lines turn out to be)
-        local h = 44
-        for _, fs in ipairs(page.newLines) do
-            local lh = fs.GetStringHeight and fs:GetStringHeight()
-            h = h + ((type(lh) == "number" and lh > 0) and lh or 16) + 8
-        end
-        newCard:SetHeight(math.max(60, h + 8))
-        askCard:ClearAllPoints()
-        askCard:SetPoint("TOPLEFT", newCard, "BOTTOMLEFT", 0, -12)
-        page.contentHeight = -y + math.max(60, h + 8) + 12 + 290 + 16
-        page.area:SetContentHeight(page.contentHeight)
+        page.Layout()
         if T and T.DrawSuggest then pcall(T.DrawSuggest) end
-        return lines2
     end
     page.Refresh()
 end
