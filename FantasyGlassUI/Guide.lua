@@ -124,6 +124,7 @@ local function WhyText(step, guide)
     if not why then return "" end
     local xp, saves = tonumber(why.xp), tonumber(why.saves)
     if why.held then return "  " .. ns:Tr("(held for your trainer)") end
+    if why.skin then return "  " .. ns:Tr("(skin them)") end
     if xp and xp > 0 then
         local n = xp - xp % 1
         local good, nice = pcall(BreakUpLargeNumbers or tostring, n)

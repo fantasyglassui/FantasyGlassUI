@@ -8,7 +8,8 @@ local _, ns = ...
 --             places = function(ctx, reason) -> { { name, map, x, y, id }, ... },
 --             text = function(place, reason) -> the step's words,
 --             why = function(reason) -> a table for step.why, or nil,
---             key = function(reason) -> what makes this visit a new one (optional; the class trainer: its level) }
+--             key = function(reason) -> what makes this visit a new one (optional; the class trainer: its level),
+--             maxDetour = seconds (optional: where the stop would add that much or more travel, it is left out) }
 -- A stop step carries step.stopKey = id .. ":" .. key (in memory, not in the guide's text): a tick you
 -- gave one stop is kept in the next plan, but not given to the next visit (Guide.lua's StepKey).
 -- After the route is made, ns.PlannerAddStops puts each wanted stop into it: at a hub when one of
@@ -191,6 +192,8 @@ function ns.PlannerAddStops(guide, summary, ctx)
             local places = type(def.places) == "function" and def.places(ctx, reason) or nil
             local after = type(reason) == "table" and tonumber(reason.after) or 0
             local slot, place, detour = Where(steps, type(places) == "table" and places or {}, ctx, tctx, after)
+            local cap = tonumber(def.maxDetour)             -- (a stop that is only worth a short detour: none farther)
+            if slot and detour and cap and detour >= cap then slot = nil end
             if slot then
                 local text = Clean(type(def.text) == "function" and def.text(place, reason) or nil) or Clean(place.name)
                 local step = { kind = def.kind, text = text, map = place.map, x = R1(place.x), y = R1(place.y) }
@@ -650,6 +653,8 @@ local function Professions()
     end
     return out
 end
+
+ns.PlannerProfessions = Professions
 
 local function Copper()
     if type(GetMoney) ~= "function" then return nil end

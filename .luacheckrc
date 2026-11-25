@@ -90,6 +90,7 @@ read_globals = {
     "C_Item",
     "C_LossOfControl",
     "C_Map",
+    "C_MapExplorationInfo",
     "C_MerchantFrame",
     "C_MountJournal",
     "C_NamePlate",

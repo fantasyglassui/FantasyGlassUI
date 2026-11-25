@@ -369,8 +369,24 @@ function ns.BuildGuidePage(page)
         Replan()
     end)
     mount:SetPoint("TOPLEFT", 0, -516)
+    local mail = ns:CreateCheckbox(live, "Mail stops", ns.db.plannerMail ~= false, function(v)
+        ns.db.plannerMail = v
+        Replan()
+    end)
+    mail:SetPoint("TOPLEFT", 0, -542)
+    local explore = ns:CreateCheckbox(live, "Explore on the way", ns.db.plannerExplore ~= false, function(v)
+        ns.db.plannerExplore = v
+        Replan()
+    end)
+    explore:SetPoint("TOPLEFT", 0, -568)
+    local gather = ns:CreateCheckbox(live, "Gather on the way", ns.db.plannerGather ~= false, function(v)
+        ns.db.plannerGather = v
+        Replan()
+    end)
+    gather:SetPoint("TOPLEFT", 0, -594)
     T.planButton, T.groupButton, T.flightsBox, T.whyBox, T.trainerBox, T.holdBox = plan, group, flights, why, trainer, hold
     T.vendorBox, T.suppliesBox, T.professionBox, T.mountBox = vendor, supplies, profession, mount
+    T.mailBox, T.exploreBox, T.gatherBox = mail, explore, gather
 
     page.Refresh = function()
         local open = ns.GuideUnlocked and ns:GuideUnlocked()
@@ -386,6 +402,9 @@ function ns.BuildGuidePage(page)
         supplies:SetChecked(ns.db.plannerSupplies ~= false)
         profession:SetChecked(ns.db.plannerProfession ~= false)
         mount:SetChecked(ns.db.plannerMount ~= false)
+        mail:SetChecked(ns.db.plannerMail ~= false)
+        explore:SetChecked(ns.db.plannerExplore ~= false)
+        gather:SetChecked(ns.db.plannerGather ~= false)
         DrawGroup(group)
         recBtn.text:SetText(ns:Tr(ns.guideRecording and "Stop recording" or "Record"))
         local st = ns.GuideState and ns.GuideState()
@@ -394,7 +413,7 @@ function ns.BuildGuidePage(page)
         else status:SetText(ns:Tr("You are not following a guide.")) end
     end
     page.Refresh()
-    page.contentHeight = 576
+    page.contentHeight = 636
     if page.area then page.area:SetContentHeight(page.contentHeight) end
     return T
 end

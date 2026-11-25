@@ -67,6 +67,7 @@ PlannerTravel.lua
 Planner.lua
 PlannerRoute.lua
 PlannerStops.lua
+PlannerPath.lua
 Polish.lua
 Bags.lua
 BagWindow.lua

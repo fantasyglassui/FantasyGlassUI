@@ -21,6 +21,11 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["Mail stops"] = "Poststopps",
+    ["Explore on the way"] = "Unterwegs erkunden",
+    ["Gather on the way"] = "Unterwegs sammeln",
+    ["Unexplored area"] = "Unerforschtes Gebiet",
+    ["(skin them)"] = "(häute sie ab)",
     ["Train %s at %s"] = "%s trainieren bei %s",
     ["Riding"] = "Reiten",
     ["Buy your mount at %s"] = "Dein Reittier kaufen bei %s",
@@ -3338,6 +3343,11 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["Mail stops"] = "Arrêts à la boîte aux lettres",
+    ["Explore on the way"] = "Explorer en chemin",
+    ["Gather on the way"] = "Récolter en chemin",
+    ["Unexplored area"] = "Zone inexplorée",
+    ["(skin them)"] = "(dépecez-les)",
     ["Train %s at %s"] = "Apprendre %s auprès de %s",
     ["Riding"] = "Monte",
     ["Buy your mount at %s"] = "Acheter votre monture chez %s",
@@ -6655,6 +6665,11 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["Mail stops"] = "Paradas en el buzón",
+    ["Explore on the way"] = "Explorar por el camino",
+    ["Gather on the way"] = "Recolectar por el camino",
+    ["Unexplored area"] = "Zona sin explorar",
+    ["(skin them)"] = "(despelléjalos)",
     ["Train %s at %s"] = "Entrenar %s con %s",
     ["Riding"] = "Equitación",
     ["Buy your mount at %s"] = "Comprar tu montura en %s",
@@ -9975,6 +9990,11 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["Mail stops"] = "Остановки у почтового ящика",
+    ["Explore on the way"] = "Исследовать по пути",
+    ["Gather on the way"] = "Собирать по пути",
+    ["Unexplored area"] = "Неисследованная область",
+    ["(skin them)"] = "(снимите шкуры)",
     ["Train %s at %s"] = "Изучить: %s у %s",
     ["Riding"] = "Верховая езда",
     ["Buy your mount at %s"] = "Купить скакуна: %s",
@@ -13292,6 +13312,11 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["Mail stops"] = "Paradas na caixa de correio",
+    ["Explore on the way"] = "Explorar pelo caminho",
+    ["Gather on the way"] = "Coletar pelo caminho",
+    ["Unexplored area"] = "Área inexplorada",
+    ["(skin them)"] = "(esfole-os)",
     ["Train %s at %s"] = "Treinar %s com %s",
     ["Riding"] = "Montaria",
     ["Buy your mount at %s"] = "Comprar sua montaria em %s",
@@ -16609,6 +16634,11 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["Mail stops"] = "Soste alla cassetta delle lettere",
+    ["Explore on the way"] = "Esplora lungo la strada",
+    ["Gather on the way"] = "Raccogli lungo la strada",
+    ["Unexplored area"] = "Area inesplorata",
+    ["(skin them)"] = "(scuoiali)",
     ["Train %s at %s"] = "Allenare %s da %s",
     ["Riding"] = "Cavalcare",
     ["Buy your mount at %s"] = "Compra la tua cavalcatura da %s",
@@ -19926,6 +19956,11 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["Mail stops"] = "우편함 들르기",
+    ["Explore on the way"] = "가는 길에 탐험",
+    ["Gather on the way"] = "가는 길에 채집",
+    ["Unexplored area"] = "미탐험 지역",
+    ["(skin them)"] = "(가죽을 벗기세요)",
     ["Train %s at %s"] = "%s 배우기: %s",
     ["Riding"] = "탈것 숙련",
     ["Buy your mount at %s"] = "%s에서 탈것 구입",
@@ -23246,6 +23281,11 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["Mail stops"] = "邮箱停靠点",
+    ["Explore on the way"] = "沿途探索",
+    ["Gather on the way"] = "沿途采集",
+    ["Unexplored area"] = "未探索区域",
+    ["(skin them)"] = "(剥皮)",
     ["Train %s at %s"] = "训练%s:%s",
     ["Riding"] = "骑术",
     ["Buy your mount at %s"] = "在%s购买坐骑",

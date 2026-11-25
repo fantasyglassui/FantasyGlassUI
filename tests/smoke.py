@@ -10272,6 +10272,206 @@ try("13.1 stops: professions and riding", function()
     ns.PlannerSourceReset()
     if not ok then error(err, 0) end
 end)
+try("13.1 stops: mail, exploring and gathering", function()
+    local real = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), level = env.UnitLevel, mail = env.HasNewMail, explore = rawget(env, "C_MapExplorationInfo"),
+                   profs = env.GetProfessions, info = env.GetProfessionInfo, here = ns.GuideHere, source = ns.PlannerSource }
+    local saved = { key = ns.root.guideKey, guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner, seen = ns.root.plannerSeen,
+                    nodes = ns.root.plannerNodesSeen, mail = ns.db.plannerMail, explore = ns.db.plannerExplore, gather = ns.db.plannerGather, why = ns.db.plannerWhy }
+    local cm = {}
+    for k, v in pairs(real.map) do cm[k] = v end
+    cm.GetWorldPosFromMapPos = function(map, v) if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end end   -- (a percent is 10 yards)
+    env.C_Map = cm
+    env.CreateVector2D = function(x, y) return { x = x, y = y } end
+    env.UnitLevel = function() return 20 end
+    local mail, skills = true, {}
+    env.HasNewMail = function() return mail end
+    env.GetProfessions = function() return skills[1] and 1 or nil, skills[2] and 2 or nil end
+    env.GetProfessionInfo = function(i)
+        local s = skills[i]
+        if not s then return end
+        return s[2], 0, s[3], s[4], 0, 0, s[1]
+    end
+    local explored = function() return { 1 } end                       -- (what the game says is explored at x, y; map)
+    env.C_MapExplorationInfo = { GetExploredAreaIDsAtPosition = function(map, v) return explored(map, v.x * 100, v.y * 100) end }
+    local function rec(id, x, y)
+        return { id = id, name = "Quest " .. id, level = 19, minLevel = 1, xp = 300,
+            starts = { { map = 1, x = x, y = y } }, ends = { { map = 1, x = x, y = y } },
+            objectives = { { kind = "kill", count = 4, countKnown = true, mobLevel = 19, spots = { { map = 1, x = x + 4, y = y + 4 } } } },
+            pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+    end
+    local at = { [601] = { 30, 40 }, [602] = { 70, 40 } }               -- two hubs 400 yards apart: one long run between them
+    local places = {}
+    local source = { kind = "questie", ids = function() return { 601, 602 } end, quest = function(id) return at[id] and rec(id, at[id][1], at[id][2]) end,
+        inns = function() return {} end, places = function(kind, arg) return places[arg and (kind .. ":" .. arg) or kind] or {} end }
+    local function context()
+        return { source = source, level = 20, group = "solo", inGroup = false, speed = 7, faction = "Alliance",
+            done = function() return false end, onQuest = function() return false end,
+            here = { map = 1, x = 30, y = 40 }, crossings = {}, learnFlights = false, flights = {}, pace = 1, flightTime = function() return nil end }
+    end
+    local function plan()
+        ns.root.planner = nil
+        return (ns.PlannerRoute(context()))
+    end
+    local function count(guide, kind)
+        local n = 0
+        for _, s in ipairs(guide.steps) do if s.kind == kind then n = n + 1 end end
+        return n
+    end
+    local function first(guide, kind)
+        for i, s in ipairs(guide.steps) do if s.kind == kind then return i, s end end
+    end
+    local ok, err = pcall(function()
+        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
+        ns.root.plannerNodesSeen = nil
+        ns.PlannerSource = function() return source end
+        explored = function() return nil end                           -- (nothing known explored anywhere: no exploring either)
+        -- mail: a mailbox 10 yards from a hub
+        places.mailbox = { { name = "Mailbox", map = 1, x = 31, y = 40 } }
+        local guide = plan()
+        local i, step = first(guide, "mail")
+        if not i or step.text ~= "Mailbox" or step.stopKey ~= "mail:0" then error("mail waiting, a mailbox at a hub: a mail step, got " .. tostring(step and step.text) .. " " .. tostring(step and step.stopKey)) end
+        local back = ns.GuideParse(ns.GuideText(guide))
+        for n, s in ipairs(guide.steps) do if ns.GuideLine(back.steps[n]) ~= ns.GuideLine(s) then error("the mail step round-trips") end end
+        -- 300 yards off: none
+        places.mailbox = { { name = "Mailbox", map = 1, x = 50, y = 70 } }
+        if count(plan(), "mail") ~= 0 then error("a mailbox 300 yards off: no mail step") end
+        -- 50 yards off the way: a detour of a few seconds, so a step
+        places.mailbox = { { name = "Mailbox", map = 1, x = 50, y = 45 } }
+        if count(plan(), "mail") ~= 1 then error("a mailbox a few seconds off the way: a mail step") end
+        -- no mail, or the switch off: none
+        places.mailbox = { { name = "Mailbox", map = 1, x = 31, y = 40 } }
+        mail = false
+        if count(plan(), "mail") ~= 0 then error("no mail: no step") end
+        mail = true
+        ns.db.plannerMail = false
+        if count(plan(), "mail") ~= 0 then error("switched off: no step") end
+        ns.db.plannerMail = nil
+        env.HasNewMail = false
+        if count(plan(), "mail") ~= 0 then error("no HasNewMail: no step, no error") end
+        env.HasNewMail = function() return mail end
+        -- a mail visit is a new visit next time
+        ns.root.guideState = {}
+        ns.root.guideState[ns:CharKey()] = { name = ns.GUIDE_PLANNED, at = 1, ticked = {},
+            plan = { name = ns.GUIDE_PLANNED, steps = { { kind = "mail", text = "Mailbox", stopKey = "mail:0", map = 1, x = 31, y = 40 }, { kind = "note", text = "after" } } } }
+        fireEvent("MAIL_CLOSED")
+        local d = ns.PlannerCharRecord(false)
+        if not (d and d.mailVisits == 1) then error("a mail stop closing counts a visit") end
+        ns:PlannerStop()
+        ns.root.guideState = nil
+        _, step = first((ns.PlannerRoute(context())), "mail")          -- (the record of visits kept)
+        if not step or step.stopKey ~= "mail:1" then error("the next mail stop is a new visit: " .. tostring(step and step.stopKey)) end
+        places.mailbox = nil
+        -- exploring: nothing at x 40-45 on map 1, areas elsewhere: one step on the leg across it
+        local function patch(x) return x >= 40 and x <= 45 end
+        explored = function(map, x) if map == 1 and not patch(x) then return { 7 } end end
+        guide = plan()
+        if count(guide, "explore") ~= 1 then error("one unexplored patch: one explore step, got " .. count(guide, "explore")) end
+        i, step = first(guide, "explore")
+        if step.text ~= "Unexplored area" or step.map ~= 1 or not patch(step.x) or step.stopKey:sub(1, 8) ~= "explore:" then error("the explore step: " .. tostring(step.text) .. " " .. tostring(step.x)) end
+        local before, after = guide.steps[i - 1], guide.steps[i + 1]
+        if not (before and after and before.x < step.x and step.x < after.x) then error("the explore step lies on a leg, before the leg's destination") end
+        back = ns.GuideParse(ns.GuideText(guide))
+        for n, s in ipairs(guide.steps) do if ns.GuideLine(back.steps[n]) ~= ns.GuideLine(s) then error("the explore step round-trips") end end
+        -- no exploration data on the map (nothing explored anywhere): none
+        explored = function() return {} end
+        if count(plan(), "explore") ~= 0 then error("no exploration data: no explore step") end
+        -- an unreadable game call: none, no error
+        env.C_MapExplorationInfo = { GetExploredAreaIDsAtPosition = function() error("boom") end }
+        if count(plan(), "explore") ~= 0 then error("a raising call: no explore step") end
+        env.C_MapExplorationInfo = { GetExploredAreaIDsAtPosition = function(map, v) return explored(map, v.x * 100, v.y * 100) end }
+        -- many spots: at most 3
+        explored = function(map, x) if map == 1 and x >= 50 and x <= 55 then return { 7 } end end
+        guide = plan()
+        if count(guide, "explore") ~= 3 then error("many spots: 3 steps, got " .. count(guide, "explore")) end
+        ns.db.plannerExplore = false
+        if count(plan(), "explore") ~= 0 then error("explore switched off: none") end
+        ns.db.plannerExplore = nil
+        explored = function() return nil end
+        -- gathering: recorded once (twice within 10 yards is one node)
+        ns.GuideHere = function() return 1, 50, 43 end
+        fireEvent("UNIT_SPELLCAST_SENT", "player", "Copper Vein", "cast-1", 2575)
+        local list = ns.root.plannerNodesSeen and ns.root.plannerNodesSeen[1]
+        if not (list and #list == 1 and list[1].name == "Copper Vein" and list[1].skill == 186 and list[1].x == 50 and list[1].y == 43) then error("a node is recorded") end
+        ns.GuideHere = function() return 1, 50.5, 43 end
+        fireEvent("UNIT_SPELLCAST_SENT", "player", "Copper Vein", "cast-2", 2575)
+        if #ns.root.plannerNodesSeen[1] ~= 1 then error("twice within 10 yards: one node") end
+        ns.GuideHere = function() return 1, 60, 43 end
+        fireEvent("UNIT_SPELLCAST_SENT", "player", "Peacebloom", "cast-3", 2366)
+        fireEvent("UNIT_SPELLCAST_SENT", "player", "Wolf", "cast-4", 8613)
+        fireEvent("UNIT_SPELLCAST_SENT", "player", "Some Door", "cast-5", 1234)
+        fireEvent("UNIT_SPELLCAST_SENT", "target", "Tin Vein", "cast-6", 2575)
+        fireEvent("UNIT_SPELLCAST_SENT", "player", nil, "cast-7", 2575)
+        local n = #ns.root.plannerNodesSeen[1]
+        if n ~= 3 then error("herbs and skinning recorded; a door, another unit and no target are not: " .. n) end
+        ns.root.plannerNodesSeen = { [1] = { { name = "Copper Vein", x = 50, y = 43, skill = 186 } } }
+        -- a miner: a gather step on the leg that passes 30 yards from it
+        skills = { { 186, "Mining", 100, 150 } }
+        guide = plan()
+        i, step = first(guide, "gather")
+        if not i or step.text ~= "Copper Vein" or step.x ~= 50 or step.y ~= 43 or count(guide, "gather") ~= 1 then error("a miner: a gather step for the Copper Vein") end
+        back = ns.GuideParse(ns.GuideText(guide))
+        for m, s in ipairs(guide.steps) do if ns.GuideLine(back.steps[m]) ~= ns.GuideLine(s) then error("the gather step round-trips") end end
+        -- a herbalist without Mining: none
+        skills = { { 182, "Herbalism", 100, 150 } }
+        if count(plan(), "gather") ~= 0 then error("a herbalist: no ore step") end
+        -- a node 200 yards off: none
+        skills = { { 186, "Mining", 100, 150 } }
+        ns.root.plannerNodesSeen = { [1] = { { name = "Copper Vein", x = 50, y = 60, skill = 186 } } }
+        if count(plan(), "gather") ~= 0 then error("a node 200 yards off: none") end
+        ns.root.plannerNodesSeen = { [1] = { { name = "Copper Vein", x = 50, y = 43, skill = 186 } } }
+        ns.db.plannerGather = false
+        if count(plan(), "gather") ~= 0 then error("gather switched off: none") end
+        ns.db.plannerGather = nil
+        -- nothing recorded while the guide is locked
+        ns.root.plannerNodesSeen = nil
+        ns.root.guideKey = nil
+        ns.GuideHere = function() return 1, 20, 20 end
+        fireEvent("UNIT_SPELLCAST_SENT", "player", "Copper Vein", "cast-8", 2575)
+        if ns.root.plannerNodesSeen ~= nil then error("locked: nothing recorded, nothing created") end
+        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
+        -- skinning: a kill step says to skin them
+        skills = { { 393, "Skinning", 50, 75 } }
+        guide = plan()
+        i, step = first(guide, "do")
+        if not (step and type(step.why) == "table" and step.why.skin == true) then error("a skinner: kill steps carry why.skin") end
+        local shown = ns.GuideStepText(step, guide)
+        if not shown:find("%(skin them%)") then error("Show why adds (skin them): " .. shown) end
+        ns.db.plannerWhy = false
+        if ns.GuideStepText(step, guide):find("skin them") then error("Show why off: no note") end
+        ns.db.plannerWhy = nil
+        ns.db.plannerGather = false
+        i, step = first(plan(), "do")
+        if step.why then error("gather off: no skin note") end
+        ns.db.plannerGather = nil
+        skills = {}
+        i, step = first(plan(), "do")
+        if step.why then error("no Skinning: no note") end
+        -- the switches
+        ns.root.guideState = nil
+        ns:ToggleConfig("guide")
+        local P = ns.guidePage
+        if not (P and P.mailBox and P.exploreBox and P.gatherBox) then error("the mail, explore and gather switches exist") end
+        for _, pair in ipairs({ { P.mailBox, "plannerMail" }, { P.exploreBox, "plannerExplore" }, { P.gatherBox, "plannerGather" } }) do
+            local f = pair[1]:GetScript("OnClick")
+            if type(f) ~= "function" then for _, h in ipairs(handlers) do if h.self == pair[1] and h.name == "OnClick" then f = h.fn end end end
+            ns.db[pair[2]] = true
+            f(pair[1])
+            if ns.db[pair[2]] ~= false then error(pair[2] .. " switch turns it off") end
+            if ns.defaults[pair[2]] ~= true then error(pair[2] .. " on by default") end
+        end
+        ns:ToggleConfig()
+    end)
+    ns:PlannerStop()
+    env.C_Map = real.map; rawset(env, "CreateVector2D", real.vec); env.UnitLevel = real.level; env.HasNewMail = real.mail
+    rawset(env, "C_MapExplorationInfo", real.explore)
+    env.GetProfessions, env.GetProfessionInfo = real.profs, real.info
+    ns.GuideHere, ns.PlannerSource = real.here, real.source
+    ns.root.guideKey, ns.root.guides, ns.root.guideState, ns.root.planner, ns.root.plannerSeen = saved.key, saved.guides, saved.state, saved.planner, saved.seen
+    ns.root.plannerNodesSeen = saved.nodes
+    ns.db.plannerMail, ns.db.plannerExplore, ns.db.plannerGather, ns.db.plannerWhy = saved.mail, saved.explore, saved.gather, saved.why
+    ns.PlannerSourceReset()
+    if not ok then error(err, 0) end
+end)
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()

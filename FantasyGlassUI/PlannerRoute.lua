@@ -372,6 +372,22 @@ local function HubInn(ctx, hub)
     return best
 end
 
+-- Is this spot where a quest's kill objective is? And do you skin (a note "skin them" on such a step)?
+local function KillSpot(rec, spot)
+    for _, o in ipairs(rec.objectives or {}) do
+        if o.kind == "kill" then
+            for _, s in ipairs(o.spots or {}) do if s == spot then return true end end
+        end
+    end
+    return false
+end
+local function Skinner(state)
+    if state.skin == nil then
+        state.skin = (ns.db and ns.db.plannerGather ~= false and ns.PlannerHasProfession and ns.PlannerHasProfession(ns.PLANNER_SKINNING_LINE or 393)) and true or false
+    end
+    return state.skin
+end
+
 -- A hub's steps; xp and seconds of what could be reached. A quest whose giver or objective can't be
 -- reached is left out from there on. Each of its own steps carries step.hub = n (in memory only: the
 -- stops pass puts a stop near a hub after the hub's last accept).
@@ -406,6 +422,7 @@ local function HubSteps(state, hub, steps, inn, n)
             if Go(d.spot) then
                 local s = QuestStep("do", d.rec, d.spot)
                 s.hub = n
+                if KillSpot(d.rec, d.spot) and Skinner(state) then s.why = { skin = true } end
                 steps[#steps + 1] = s
             else
                 gone[d.rec.id] = true
@@ -483,6 +500,7 @@ function ns.PlannerRoute(ctx)
     summary.toLevel = ToLevel(ctx, xp)
     if ns.PlannerAddStops then ns.PlannerAddStops(guide, summary, ctx) end   -- (stops on the way: PlannerStops.lua)
     if ns.PlannerHoldTurnins then ns.PlannerHoldTurnins(guide, summary, ctx) end   -- (hand-ins held for the trainer's town)
+    if ns.PlannerPathExtras then ns.PlannerPathExtras(guide, summary, ctx) end     -- (unexplored spots and nodes on the way: PlannerPath.lua)
     summary.empty = #guide.steps == 0
     return guide, summary
 end
