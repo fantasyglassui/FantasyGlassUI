@@ -11,10 +11,10 @@ local O = ns.optUI
 -- section shows the slices of them it needs (see Categories.lua and FeaturesPage.lua).
 local VIEW_H = 542
 O.VIEW_H = VIEW_H
-local W, H = 1000, 680
+local W, H = 1012, 680
 local HEAD_H, FOOT_H = 60, 52                       -- (12.3) the header and footer, a rule under / over each
 local BODY_Y = HEAD_H + 12
-local SIDE_X, SIDE_W = 14, 204
+local SIDE_X, SIDE_W = 14, 216
 local CONTENT_X = SIDE_X + SIDE_W + 14
 
 -- Is a category or section shown? (simple settings: those with an everyday switch, and a few more)
@@ -281,7 +281,7 @@ local function Build()
             local on = (which == "simple") == simple
             b.picked = on
             ns:Paint(b, "SetBackdropBorderColor", on and "@accent" or "@border", 1)
-            ns:Paint(b.text, "SetTextColor", on and "@accent" or "dim")
+            ns:Paint(b.text, "SetTextColor", on and "text" or "dim")
         end
     end
     for _, b in pairs(O.frame.modeButtons) do b:HookScript("OnLeave", function() DrawMode() end) end
@@ -376,33 +376,42 @@ local function Build()
     searchBox:SetPoint("RIGHT", langBtn, "LEFT", -24, 0)
     O.frame.searchBox = searchBox
     local catButtons, secButtons = {}, {}
+    -- The list is its own scrolling area under the two mode buttons: with a long category open (Bags
+    -- and items has nine sections) it is taller than the window.
+    local ROW_W = SIDE_W - 8
+    local sideArea, sideSheet = ns:ScrollArea(side, ROW_W, 400)
+    sideArea:SetPoint("TOPLEFT", side, "TOPLEFT", 0, -32)
+    sideArea:SetPoint("BOTTOMRIGHT", side, "BOTTOMRIGHT", -8, 0)
+    O.sideArea, O.sideSheet = sideArea, sideSheet
+    -- A row: Home or a category (36 px, 14 px lettering) or a section of the open category (32 px, 13 px,
+    -- indented 26). The selected row is filled (rounded where the window can round); the others are
+    -- secondary text. No counts, no bar.
     local function NavButton(list, i, indent, size)
         local b = list[i]
         if b then return b end
-        b = CreateFrame("Button", nil, side)
-        b:SetSize(SIDE_W, size)
-        b.bg = b:CreateTexture(nil, "BACKGROUND")
-        b.bg:SetAllPoints()
-        b.bg:SetTexture(ns.FLAT)
-        ns:Paint(b.bg, "SetVertexColor", "@accent", 0.14)
-        b.bar = b:CreateTexture(nil, "ARTWORK")
-        b.bar:SetTexture(ns.FLAT)
-        b.bar:SetWidth(3)
-        b.bar:SetPoint("TOPLEFT", 0, 0)
-        b.bar:SetPoint("BOTTOMLEFT", 0, 0)
-        ns:Paint(b.bar, "SetVertexColor", "@accent", 1)
-        b.count = b:CreateFontString(nil, "OVERLAY")
-        ns:Font(b.count, 10)
-        b.count:SetPoint("RIGHT", -8, 0)
-        ns:Paint(b.count, "SetTextColor", "faint")
+        b = CreateFrame("Button", nil, sideSheet, ns.template)
+        b:SetSize(ROW_W, size)
+        b:SetBackdrop(ns.BACKDROP)
+        ns:Paint(b, "SetBackdropColor", "select", 0)
+        ns:Paint(b, "SetBackdropBorderColor", "select", 0)
+        if ns:CanRound() then ns:Round(b) end
+        local x = 12
+        if indent > 12 then x = indent end
+        if size >= 36 then
+            b.icon = b:CreateTexture(nil, "ARTWORK")                -- (a category's `icon`, a texture of the add-on's own, drawn in the text color)
+            b.icon:SetSize(16, 16)
+            b.icon:SetPoint("LEFT", 12, 0)
+            b.icon:Hide()
+        end
         b.text = b:CreateFontString(nil, "OVERLAY")
-        ns:Font(b.text, size > 24 and 12 or 11)
-        b.text:SetPoint("LEFT", indent, 0)
-        b.text:SetWidth(SIDE_W - indent - 44)
+        ns:Font(b.text, size >= 36 and 14 or 13)
+        b.text:SetPoint("LEFT", x, 0)
+        b.text:SetWidth(ROW_W - x - 40)
+        b.textX = x
         b.text:SetJustifyH("LEFT")
         if b.text.SetWordWrap then b.text:SetWordWrap(false) end
         b.new = ns.NewTag(b)
-        b.new:SetPoint("RIGHT", b.count, "LEFT", -4, 0)
+        b.new:SetPoint("RIGHT", b, "RIGHT", -10, 0)
         b:SetScript("OnClick", function(self) if self.open then self.open() end end)
         b:SetScript("OnEnter", function(self)
             if not self.picked then ns:Paint(self.text, "SetTextColor", "text") end
@@ -414,66 +423,68 @@ local function Build()
         end)
         b:SetScript("OnLeave", function(self) self.Mark(self.picked); if GameTooltip:IsOwned(self) then GameTooltip:Hide() end end)
         function b.Mark(on)
-            b.picked = on
-            if on then b.bar:Show(); b.bg:Show(); ns:Paint(b.text, "SetTextColor", "@accent")
-            else b.bar:Hide(); b.bg:Hide(); ns:Paint(b.text, "SetTextColor", b.dimmed and "dim" or "text") end
+            b.picked = on and true or false
+            ns:Paint(b, "SetBackdropColor", "select", on and 1 or 0)
+            ns:Paint(b, "SetBackdropBorderColor", "select", on and 1 or 0)
+            ns:Paint(b.text, "SetTextColor", on and "text" or "dim")
+            if b.icon then ns:Paint(b.icon, "SetVertexColor", on and "text" or "dim") end
         end
         list[i] = b
         return b
     end
     O.catButtons, O.secButtons = catButtons, secButtons
     function O.DrawSidebar()
-        local y, nc, ns2 = -32, 0, 0
+        local y, nc, ns2 = 0, 0, 0
+        local pickedTop
         local openCat = O.current and (O.current.home and O.current or O.current.category)
         for _, cat in ipairs(ns.settingsCategories) do
             if CategoryShown(cat) then
                 nc = nc + 1
-                local b = NavButton(catButtons, nc, 12, 26)
+                local b = NavButton(catButtons, nc, 12, 36)
                 b:ClearAllPoints()
                 b:SetPoint("TOPLEFT", 0, y)
-                b.text:SetText(ns:Tr(cat.title))
                 b.cat = cat
-                local on, of = O.CategoryCount(cat)
-                b.count:SetText(of > 0 and (on .. "/" .. of) or "")
+                b.text:SetText(ns:Tr(cat.title))
+                local iconed = type(cat.icon) == "string" and cat.icon ~= ""
+                if b.icon then
+                    if iconed then b.icon:SetTexture(ns.MEDIA .. cat.icon); b.icon:Show() else b.icon:Hide() end
+                    b.text:ClearAllPoints()
+                    b.text:SetPoint("LEFT", iconed and 36 or 12, 0)
+                end
                 local new = false
                 for _, sec in ipairs(cat.sections or {}) do if ns:SectionIsNew(sec) then new = true end end
                 b.new:SetShown(new)
                 b.open = function() O.Open(cat.id) end
-                b.dimmed = false
-                b.Mark(openCat == cat and O.current.home == true)
-                if openCat == cat and not cat.home then b.Mark(false); ns:Paint(b.text, "SetTextColor", "@accent") end
+                local on = cat.home and O.current and O.current.home == true or false
+                b.Mark(on)
+                if on then pickedTop = y end
                 b:Show()
-                y = y - 27
+                y = y - 38
                 if openCat == cat and not cat.home then
                     for _, sec in ipairs(cat.sections or {}) do
                         if SectionShown(sec) then
                             ns2 = ns2 + 1
-                            local s = NavButton(secButtons, ns2, 26, 21)
+                            local s = NavButton(secButtons, ns2, 26, 32)
                             s:ClearAllPoints()
                             s:SetPoint("TOPLEFT", 0, y)
                             s.text:SetText(ns:Tr(sec.title))
                             s.sec = sec
-                            local son, sof = 0, 0
-                            for _, key in ipairs(sec.keys or {}) do
-                                if not ns:FeatureHidden(key) and (not ns:SettingsSimple() or ns.simpleFeatures[key]) then
-                                    sof = sof + 1; if ns.db[key] then son = son + 1 end
-                                end
-                            end
-                            s.count:SetText(sof > 0 and (son .. "/" .. sof) or "")
                             s.new:SetShown(ns:SectionIsNew(sec))
                             s.open = function() O.Open(sec.id) end
-                            s.dimmed = true
                             s.Mark(O.current == sec)
+                            if O.current == sec then pickedTop = y end
                             s:Show()
-                            y = y - 22
+                            y = y - 34
                         end
                     end
-                    y = y - 4
+                    y = y + 0
                 end
             end
         end
         for i = nc + 1, #catButtons do catButtons[i]:Hide() end
         for i = ns2 + 1, #secButtons do secButtons[i]:Hide() end
+        sideArea:SetContentHeight(-y + 4)
+        if pickedTop then sideArea:ScrollToShow(-pickedTop, 36) end
         DrawMode()
     end
     O.RefreshCounts = O.DrawSidebar
@@ -821,21 +832,78 @@ function ns:SectionOfBlock(kind, key)
     end
 end
 
--- Home: a card for each category, a few switches most people look for, what changed lately, the
--- guide's question box and what suits your class.
+-- Home (12.3): a greeting with the theme and the counts, the quick switches as cards, what is new,
+-- and the guide's question box with what suits your class.
+local function Upper(text)                                    -- (section labels in capitals: only where plain letters make that safe)
+    text = tostring(text or "")
+    if text:find("[\128-\255]") then return text end
+    return text:upper()
+end
+function O.Greeting()
+    local hour
+    local ok, h = pcall(GetGameTime)
+    if ok and type(h) == "number" and not ns:IsSecret(h) then hour = h end
+    if not hour then hour = tonumber(date("%H")) or 20 end
+    local phrase = hour < 12 and "Good morning, %s" or hour < 18 and "Good afternoon, %s" or "Good evening, %s"
+    local class = UnitClass and UnitClass("player")
+    if type(class) ~= "string" or class == "" or ns:IsSecret(class) then class = ns:Tr("adventurer") end
+    return format(ns:Tr(phrase), class)
+end
+function O.HomeLine()
+    local on, total = ns:CountFeatures()
+    return format(ns:Tr("%s · %s frames · %d settings, %d switched off"), ns:ThemeName(ns.db.theme, "plain"),
+        ns:Tr(ns.StarcutOn() and "Starcut" or "Classic"), total, total - on)
+end
+-- The entry of "what is new" for this version (the newest one when this version has none yet), and its
+-- lines cut to their first sentence.
+function O.NewIn()
+    local mine = tostring(ns.version or ""):match("^(%d+%.%d+)")
+    local entry = ns.whatsNew[1]
+    for _, e in ipairs(ns.whatsNew) do
+        if mine and tostring(e[1]):match("^(%d+%.%d+)") == mine then entry = e; break end
+    end
+    local lines = {}
+    for _, line in ipairs(entry and entry[2] or {}) do
+        line = ns:Tr(line)
+        local first = line:match("^(.-[%.!?])%s") or line
+        lines[#lines + 1] = first
+    end
+    return tostring(entry and entry[1] or ""):match("^(%d+%.%d+)") or tostring(entry and entry[1] or ""), lines
+end
 function O.BuildHome(page)
+    local WIDTH, GAP = 742, 12
+    local CW = math.floor((WIDTH - 2 * GAP) / 3)
     local title = page:CreateFontString(nil, "OVERLAY")
-    ns:Font(title, 18, true)
+    ns:Font(title, 24, true)
     title:SetPoint("TOPLEFT", 0, -2)
-    ns:Paint(title, "SetTextColor", "@accent")
-    title:SetText(ns:Tr("What would you like to change?"))
+    ns:Paint(title, "SetTextColor", "text")
+    page.title = title
     local intro = page:CreateFontString(nil, "OVERLAY")
-    ns:Font(intro, 11)
-    intro:SetPoint("TOPLEFT", 0, -28)
-    intro:SetWidth(730)
+    ns:Font(intro, 13)
+    intro:SetPoint("TOPLEFT", 0, -38)
+    intro:SetWidth(WIDTH)
     intro:SetJustifyH("LEFT")
     ns:Paint(intro, "SetTextColor", "dim")
     page.intro = intro
+    local function Label(text, x, y)
+        local fs = page:CreateFontString(nil, "OVERLAY")
+        ns:Font(fs, 13, true)
+        fs:SetPoint("TOPLEFT", x, y)
+        fs:SetText(Upper(ns:Tr(text)))
+        ns:Paint(fs, "SetTextColor", "faint")
+        return fs
+    end
+    local function Card(parent, w, h)
+        local c = CreateFrame("Frame", nil, parent, ns.template)
+        c:SetSize(w, h)
+        c:SetBackdrop(ns.BACKDROP)
+        ns:Paint(c, "SetBackdropColor", "card", 1)
+        ns:Paint(c, "SetBackdropBorderColor", "@border", 1)
+        if ns:CanRound() then ns:Round(c) end
+        return c
+    end
+    local y = -78
+    Label("Quick switches", 0, y)
     -- presets: one click sets every switch (click twice, so a slip of the mouse changes nothing)
     local px = 0
     page.presetButtons = {}
@@ -847,7 +915,7 @@ function O.BuildHome(page)
             O.RefreshAll()
             ns:Print(ns:TrN(n, "%d switch changed", "%d switches changed"), n)
         end))
-        btn:SetPoint("TOPRIGHT", page, "TOPRIGHT", -12 - px, 0)
+        btn:SetPoint("TOPRIGHT", page, "TOPRIGHT", -12 - px, y + 5)
         btn:HookScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
             GameTooltip:AddLine(ns:Tr(def[2]))
@@ -863,116 +931,130 @@ function O.BuildHome(page)
         px = px + 102
     end
     local plabel = page:CreateFontString(nil, "OVERLAY")
-    ns:Font(plabel, 11)
-    plabel:SetPoint("TOPRIGHT", page, "TOPRIGHT", -12 - px - 4, -5)
+    ns:Font(plabel, 12)
+    plabel:SetPoint("TOPRIGHT", page, "TOPRIGHT", -12 - px - 4, y - 1)
     plabel:SetText(ns:Tr("Presets"))
     ns:Paint(plabel, "SetTextColor", "dim")
-    page.cards = {}
-    local CW, CH = 240, 72
-    for i, id in ipairs(ns.homeCards) do
-        local cat = ns:SettingsCategory(id)
-        local c = CreateFrame("Button", nil, page, ns.template)
-        c:SetSize(CW, CH)
-        c:SetPoint("TOPLEFT", ((i - 1) % 3) * (CW + 8), -54 - math.floor((i - 1) / 3) * (CH + 8))
-        c:SetBackdrop(ns.BACKDROP)
-        ns:Paint(c, "SetBackdropColor", "field", 0.55)
-        ns:Paint(c, "SetBackdropBorderColor", "@border", 0.8)
-        c.name = c:CreateFontString(nil, "OVERLAY")
-        ns:Font(c.name, 13, true)
-        c.name:SetPoint("TOPLEFT", 12, -9)
-        c.name:SetText(ns:Tr(cat.title))
-        ns:Paint(c.name, "SetTextColor", "text")
-        c.desc = c:CreateFontString(nil, "OVERLAY")
-        ns:Font(c.desc, 10)
-        c.desc:SetPoint("TOPLEFT", 12, -27)
-        c.desc:SetWidth(CW - 24)
-        c.desc:SetJustifyH("LEFT")
-        if c.desc.SetWordWrap then c.desc:SetWordWrap(true) end
-        c.desc:SetText(ns:Tr(cat.desc or ""))
-        ns:Paint(c.desc, "SetTextColor", "dim")
-        c.state = c:CreateFontString(nil, "OVERLAY")
-        ns:Font(c.state, 10)
-        c.state:SetPoint("BOTTOMLEFT", 12, 8)
-        ns:Paint(c.state, "SetTextColor", "@accent")
-        c:SetScript("OnClick", function() O.Open(cat.id) end)
-        c:SetScript("OnEnter", function(self) ns:Paint(self, "SetBackdropBorderColor", "@accent", 1) end)
-        c:SetScript("OnLeave", function(self) ns:Paint(self, "SetBackdropBorderColor", "@border", 0.8) end)
-        c.cat = cat
-        page.cards[i] = c
-    end
-    local y = -54 - math.ceil(#ns.homeCards / 3) * (CH + 8) - 8
-    local function Head(text, x, yy)
-        local fs = page:CreateFontString(nil, "OVERLAY")
-        ns:Font(fs, 13, true)
-        fs:SetPoint("TOPLEFT", x, yy)
-        fs:SetText(ns:Tr(text))
-        ns:Paint(fs, "SetTextColor", "@accent")
-        return fs
-    end
-    Head("Quick switches", 0, y)
-    page.quick = {}
-    for i, key in ipairs(ns.homeQuick) do
+    -- the quick switches: a card each (title, one line on what it does, the switch)
+    y = y - 28
+    page.quick, page.quickCards = {}, {}
+    local n = 0
+    for _, key in ipairs(ns.homeQuick) do
         local label = O.RowLabel(key)
         if label and not ns:FeatureHidden(key) then
-            local cb = ns:CreateCheckbox(page, label, ns.db[key], function(v)
+            local c = Card(page, CW, 76)
+            c:SetPoint("TOPLEFT", (n % 3) * (CW + GAP), y - math.floor(n / 3) * 88)
+            n = n + 1
+            local name = c:CreateFontString(nil, "OVERLAY")
+            ns:Font(name, 14, true)
+            name:SetPoint("TOPLEFT", 14, -13)
+            name:SetWidth(CW - 28 - 44)
+            name:SetJustifyH("LEFT")
+            if name.SetWordWrap then name:SetWordWrap(false) end
+            name:SetText(label)
+            ns:Paint(name, "SetTextColor", "text")
+            local hint = c:CreateFontString(nil, "OVERLAY")
+            ns:Font(hint, 12)
+            hint:SetPoint("TOPLEFT", 14, -40)
+            hint:SetWidth(CW - 28)
+            hint:SetJustifyH("LEFT")
+            if hint.SetWordWrap then hint:SetWordWrap(false) end
+            local desc = ns:Tr(ns.featureDesc[key] or "")
+            hint:SetText(desc:match("^(.-[%.!?])%s") or desc)
+            ns:Paint(hint, "SetTextColor", "dim")
+            local cb = ns:CreateCheckbox(c, "", ns.db[key], function(v)
                 ns.db[key] = v
                 if ns.featureInstant[key] then ns:ApplyInstant() else O.NeedReload(key) end
                 O.NoteChange()
                 O.DrawSidebar()
             end)
-            cb:SetWidth(232)
-            cb:SetPoint("TOPLEFT", ((i - 1) % 2) * 240, y - 24 - math.floor((i - 1) / 2) * 26)
+            cb:SetSize(40, 22)
+            cb:SetPoint("TOPRIGHT", c, "TOPRIGHT", -14, -12)
+            if cb.label then cb.label:Hide() end
+            O.Tip(c, label, (ns.featureDesc[key] or "") .. "\n\n" .. ns:Tr(ns.featureInstant[key] and "Takes effect at once." or "Takes effect after a /reload."))
             O.Tip(cb, label, (ns.featureDesc[key] or "") .. "\n\n" .. ns:Tr(ns.featureInstant[key] and "Takes effect at once." or "Takes effect after a /reload."))
             cb.key = key
+            c.key, c.switch, c.name, c.hint = key, cb, name, hint
             page.quick[key] = cb
+            page.quickCards[#page.quickCards + 1] = c
         end
     end
-    Head("Changed lately", 496, y)
-    local lately = page:CreateFontString(nil, "OVERLAY")
-    ns:Font(lately, 11)
-    lately:SetPoint("TOPLEFT", 496, y - 24)
-    lately:SetWidth(236)
-    lately:SetJustifyH("LEFT")
-    ns:Paint(lately, "SetTextColor", "dim")
-    page.lately = lately
-    y = y - 24 - math.ceil(#ns.homeQuick / 2) * 26 - 18
+    y = y - math.ceil(n / 3) * 88 - 8
+    -- "New in 12.3": what changed lately, each a diamond in the accent and one sentence
+    local newCard = Card(page, WIDTH, 60)
+    newCard:SetPoint("TOPLEFT", 0, y)
+    local newTitle = newCard:CreateFontString(nil, "OVERLAY")
+    ns:Font(newTitle, 14, true)
+    newTitle:SetPoint("TOPLEFT", 16, -14)
+    ns:Paint(newTitle, "SetTextColor", "text")
+    page.newTitle, page.newCard, page.newLines, page.newDots = newTitle, newCard, {}, {}
+    local ver, lines = O.NewIn()
+    newTitle:SetText(format(ns:Tr("New in %s"), ver))
+    local last
+    for i, text in ipairs(lines) do
+        if i > 5 then break end
+        local dot = newCard:CreateTexture(nil, "ARTWORK")
+        dot:SetTexture(ns.MEDIA .. "starcut\\diamond.tga")
+        dot:SetSize(7, 7)
+        ns:Paint(dot, "SetVertexColor", "@accent", 1)
+        local fs = newCard:CreateFontString(nil, "OVERLAY")
+        ns:Font(fs, 13)
+        fs:SetWidth(WIDTH - 32 - 20)
+        fs:SetJustifyH("LEFT")
+        fs:SetText(text)
+        ns:Paint(fs, "SetTextColor", "dim")
+        if last then fs:SetPoint("TOPLEFT", last, "BOTTOMLEFT", 0, -8) else fs:SetPoint("TOPLEFT", newCard, "TOPLEFT", 36, -44) end
+        dot:SetPoint("TOPLEFT", fs, "TOPLEFT", -20, -5)
+        last = fs
+        page.newLines[#page.newLines + 1] = fs
+        page.newDots[#page.newDots + 1] = dot
+    end
+    -- "Ask the guide": the question box, then what suits your class
+    local askCard = Card(page, WIDTH, 290)
+    page.askCard = askCard
+    local askTitle = askCard:CreateFontString(nil, "OVERLAY")
+    ns:Font(askTitle, 14, true)
+    askTitle:SetPoint("TOPLEFT", 16, -14)
+    askTitle:SetText(ns:Tr("Ask the guide"))
+    ns:Paint(askTitle, "SetTextColor", "text")
     local T = ns.toolsPage
-    Head("Ask the guide", 0, y)
     if T and T.askFrame then
-        T.askFrame:SetParent(page); T.askFrame:ClearAllPoints(); T.askFrame:SetPoint("TOPLEFT", 0, y - 24); T.askFrame:Show()
+        T.askFrame:SetParent(askCard); T.askFrame:ClearAllPoints(); T.askFrame:SetPoint("TOPLEFT", 16, -44)
+        T.askFrame:SetWidth(WIDTH - 32)
+        if T.askBox and T.askBox.SetWidth then T.askBox:SetWidth(WIDTH - 32 - 108) end
+        if T.showButton then T.showButton:ClearAllPoints(); T.showButton:SetPoint("TOPRIGHT", T.askFrame, "TOPRIGHT", 0, -32) end
+        T.askFrame:Show()
     end
-    y = y - 24 - 120 - 8
-    Head("Suggested for your class", 0, y)
+    local classTitle = askCard:CreateFontString(nil, "OVERLAY")
+    ns:Font(classTitle, 13, true)
+    classTitle:SetPoint("TOPLEFT", 16, -176)
+    classTitle:SetText(Upper(ns:Tr("Suggested for your class")))
+    ns:Paint(classTitle, "SetTextColor", "faint")
     if T and T.suggestFrame then
-        T.suggestFrame:SetParent(page); T.suggestFrame:ClearAllPoints(); T.suggestFrame:SetPoint("TOPLEFT", 0, y - 24); T.suggestFrame:Show()
+        T.suggestFrame:SetParent(askCard); T.suggestFrame:ClearAllPoints(); T.suggestFrame:SetPoint("TOPLEFT", 16, -198)
+        T.suggestFrame:SetWidth(WIDTH - 32)
+        T.suggestFrame:Show()
     end
-    y = y - 24 - 96
-    page.contentHeight = -y + 12
-    page.area:SetContentHeight(page.contentHeight)
 
     function page.Refresh()
-        local on, total = ns:CountFeatures()
-        local r = ns.roles[ns.db.role]
-        intro:SetText(format(ns:Tr("Pick a place below or in the list, or search. %s theme · %d of %d features on."), ns:ThemeName(ns.db.theme, "plain"), on, total)
-            .. (r and ("  " .. ns:Tr("Role:") .. " " .. ns:Tr(r.label)) or ""))
-        for _, c in ipairs(page.cards) do
-            local cat = c.cat
-            if cat.id == "look" then c.state:SetText(ns:ThemeName(ns.db.theme, "plain"))
-            elseif cat.id == "layout" then c.state:SetText(ns:Tr("Profile:") .. " " .. tostring(ns.profile))
-            else
-                local con, of = O.CategoryCount(cat)
-                c.state:SetText(of > 0 and format(ns:Tr("%d of %d on"), con, of) or "")
-            end
-            c:SetShown(O.CategoryShown(cat))
+        title:SetText(O.Greeting())
+        intro:SetText(O.HomeLine())
+        for _, cb in pairs(page.quick) do cb:SetChecked(ns.db[cb.key]) end
+        local ver2, lines2 = O.NewIn()
+        newTitle:SetText(format(ns:Tr("New in %s"), ver2))
+        -- (the card is as tall as its lines turn out to be)
+        local h = 44
+        for _, fs in ipairs(page.newLines) do
+            local lh = fs.GetStringHeight and fs:GetStringHeight()
+            h = h + ((type(lh) == "number" and lh > 0) and lh or 16) + 8
         end
-        for key, cb in pairs(page.quick) do cb:SetChecked(ns.db[key]) end
-        local lines = {}
-        for i = #O.changes, math.max(1, #O.changes - 4), -1 do
-            local ch = O.changes[i]
-            lines[#lines + 1] = ns:Tr(O.ChangeLabel(ch.key)) .. ": " .. O.ChangeValue(ch.key, ch.new)
-        end
-        lately:SetText(#lines > 0 and table.concat(lines, "\n") or ns:Tr("Nothing changed yet. Changes you make show here, and Undo takes them back."))
+        newCard:SetHeight(math.max(60, h + 8))
+        askCard:ClearAllPoints()
+        askCard:SetPoint("TOPLEFT", newCard, "BOTTOMLEFT", 0, -12)
+        page.contentHeight = -y + math.max(60, h + 8) + 12 + 290 + 16
+        page.area:SetContentHeight(page.contentHeight)
         if T and T.DrawSuggest then pcall(T.DrawSuggest) end
+        return lines2
     end
     page.Refresh()
 end

@@ -9527,6 +9527,167 @@ try("12.3 settings look: buttons and the window's corners", function()
     if ns.ApplyFrameStyle then ns:ApplyFrameStyle() end
     if not ok then error(err, 0) end
 end)
+try("12.3 settings look: sidebar and Home", function()
+    local keep = { theme = ns.db.theme, lang = ns.root.language, uf = ns.db.ufStyle, sec = ns.root.optionsSection, mode = ns.root.settingsMode }
+    local keepSwitch = {}
+    for _, k in ipairs(ns.homeQuick) do keepSwitch[k] = ns.db[k] end
+    local realCF, realTime, realClass, realCount = env.CreateFrame, env.GetGameTime, env.UnitClass, ns.CountFeatures
+    local made = {}
+    local function Region(owner)
+        local t = newmock()
+        rawset(t, "GetParent", function() return owner end)
+        rawset(t, "SetText", function(x, v) rawset(x, "text", v) end)
+        rawset(t, "GetText", function(x) return rawget(x, "text") end)
+        rawset(t, "GetStringWidth", function() return 10 end)
+        rawset(t, "GetStringHeight", function() return 16 end)
+        rawset(t, "SetTexture", function(x, v) rawset(x, "tex", v) end)
+        made[#made + 1] = t
+        return t
+    end
+    local function Real(f, parent)
+        rawset(f, "GetParent", function() return parent end)
+        rawset(f, "SetParent", function(_, p) parent = p end)
+        local shown = true
+        rawset(f, "Show", function() shown = true end)
+        rawset(f, "Hide", function() shown = false end)
+        rawset(f, "SetShown", function(_, v) shown = v and true or false end)
+        rawset(f, "IsShown", function() return shown end)
+        local height
+        rawset(f, "SetSize", function(_, _, h) height = h end)
+        rawset(f, "SetHeight", function(_, h) height = h end)
+        rawset(f, "GetHeight", function() return height or 0 end)
+        rawset(f, "CreateTexture", function(self) return Region(self) end)
+        rawset(f, "CreateFontString", function(self) return Region(self) end)
+        rawset(f, "SetChecked", nil)
+        local scripts = {}
+        rawset(f, "SetScript", function(_, name, fn) scripts[name] = fn end)
+        rawset(f, "HookScript", function(_, name, fn) local old = scripts[name]; scripts[name] = old and function(...) old(...); fn(...) end or fn end)
+        rawset(f, "GetScript", function(_, name) return scripts[name] end)
+        return f
+    end
+    local ok, err = pcall(function()
+        ns.db.theme, ns.root.language = "MIDNIGHT", "enUS"
+        ns.root.settingsMode = "all"
+        ns:Retheme()
+        ns:ToggleConfig()                                       -- (shut)
+        local O = ns.optUI
+        O.frame = nil
+        env.CreateFrame = function(kind, name, parent, ...) return Real(realCF(kind, name, parent, ...), parent) end
+        env.GetGameTime = function() return 9, 30 end
+        env.UnitClass = function() return "Rogue", "ROGUE" end
+        ns:ToggleConfig("home")
+        if not O.current or not O.current.home then error("the window opens on Home") end
+        local page = O.home
+        -- the greeting, by the game's clock, with the class name
+        local function title() return rawget(page.title, "text") end
+        if title() ~= "Good morning, Rogue" then error("morning greeting, got " .. tostring(title())) end
+        env.GetGameTime = function() return 11, 59 end; page.Refresh()
+        if title() ~= "Good morning, Rogue" then error("11:59 is still morning") end
+        env.GetGameTime = function() return 12, 0 end; page.Refresh()
+        if title() ~= "Good afternoon, Rogue" then error("noon is afternoon, got " .. tostring(title())) end
+        env.GetGameTime = function() return 17, 59 end; page.Refresh()
+        if title() ~= "Good afternoon, Rogue" then error("17:59 is still afternoon") end
+        env.GetGameTime = function() return 18, 0 end; page.Refresh()
+        if title() ~= "Good evening, Rogue" then error("18:00 is evening, got " .. tostring(title())) end
+        env.UnitClass = function() return "Death Knight", "DEATHKNIGHT" end; page.Refresh()
+        if title() ~= "Good evening, Death Knight" then error("the class name as the game gives it, got " .. tostring(title())) end
+        -- the line under it: theme, frames, counts
+        local on, total = ns:CountFeatures()
+        local want = ns:ThemeName(ns.db.theme, "plain") .. " · Starcut frames · " .. total .. " settings, " .. (total - on) .. " switched off"
+        ns.db.ufStyle = "STARCUT"; page.Refresh()
+        if rawget(page.intro, "text") ~= want then error("the theme line, wanted '" .. want .. "' got '" .. tostring(rawget(page.intro, "text")) .. "'") end
+        ns.db.ufStyle = "CLASSIC"; page.Refresh()
+        if not tostring(rawget(page.intro, "text")):find("· Classic frames ·", 1, true) then error("Classic frames, got " .. tostring(rawget(page.intro, "text"))) end
+        ns.db.ufStyle = "STARCUT"
+        -- a switch changed elsewhere moves the counts
+        local flip = nil
+        for key in pairs(ns.defaults) do if type(ns.defaults[key]) == "boolean" and ns.featureDesc[key] and not ns:FeatureHidden(key) and not page.quick[key] then flip = key; break end end
+        local before = ns.db[flip]
+        ns.db[flip] = not before; page.Refresh()
+        local on2, total2 = ns:CountFeatures()
+        if on2 == on or not tostring(rawget(page.intro, "text")):find(" " .. (total2 - on2) .. " switched off", 1, true) then error("the counts follow the switches") end
+        ns.db[flip] = before; page.Refresh()
+        -- one card per quick switch, and its switch flips the setting
+        local cards = 0
+        for _, key in ipairs(ns.homeQuick) do
+            if not ns:FeatureHidden(key) and O.RowLabel(key) then
+                cards = cards + 1
+                local cb = page.quick[key]
+                if not cb then error("a card for " .. key) end
+                local card
+                for _, c in ipairs(page.quickCards) do if c.key == key then card = c end end
+                if not card or rawget(card.name, "text") ~= O.RowLabel(key) then error(key .. "'s card is titled with its name") end
+                if (rawget(card.hint, "text") or "") == "" then error(key .. "'s card has a line on what it does") end
+                local was = ns.db[key] and true or false
+                cb:GetScript("OnClick")(cb)
+                if (ns.db[key] and true or false) == was then error(key .. "'s switch flips the setting") end
+                if cb.checked ~= ns.db[key] then error(key .. "'s switch shows the setting") end
+                cb:GetScript("OnClick")(cb)
+                if (ns.db[key] and true or false) ~= was then error(key .. "'s switch flips back") end
+            end
+        end
+        if cards ~= #page.quickCards or cards < 3 then error("a card for each quick switch, got " .. cards) end
+        -- "New in 12.x": the current what's new lines, a diamond each
+        local entry = ns.whatsNew[1]
+        for _, e in ipairs(ns.whatsNew) do if tostring(e[1]):match("^(%d+%.%d+)") == tostring(ns.version):match("^(%d+%.%d+)") then entry = e; break end end
+        local ver = entry[1]:match("^(%d+%.%d+)")
+        if rawget(page.newTitle, "text") ~= "New in " .. ver then error("the card is titled New in " .. ver .. ", got " .. tostring(rawget(page.newTitle, "text"))) end
+        if #page.newLines ~= math.min(#entry[2], 5) or #page.newDots ~= #page.newLines then error("a line and a diamond for each of the what's new lines") end
+        for i, fs in ipairs(page.newLines) do
+            local first = entry[2][i]:match("^(.-[%.!?])%s") or entry[2][i]
+            if rawget(fs, "text") ~= first then error("what's new line " .. i .. ": " .. tostring(rawget(fs, "text"))) end
+        end
+        if not page.askCard or ns.toolsPage.askFrame:GetParent() ~= page.askCard then error("the guide's question box sits in the Ask the guide card") end
+        if ns.toolsPage.suggestFrame:GetParent() ~= page.askCard then error("the class suggestions sit in the same card") end
+        -- the sidebar: no counts; only the picked row is selected
+        local function rows()
+            local list = {}
+            for _, b in ipairs(O.catButtons) do if b:IsShown() and rawget(b, "cat") then list[#list + 1] = b end end
+            for _, b in ipairs(O.secButtons) do if b:IsShown() and rawget(b, "sec") then list[#list + 1] = b end end
+            return list
+        end
+        local sideKids = {}
+        for _, b in ipairs(O.catButtons) do sideKids[b] = true end
+        for _, b in ipairs(O.secButtons) do sideKids[b] = true end
+        for _, t in ipairs(made) do
+            local owner = t:GetParent()
+            local text = rawget(t, "text")
+            if sideKids[owner] and type(text) == "string" and text:find("^%d+/%d+$") then error("the sidebar shows no counts, found " .. text) end
+        end
+        for _, b in ipairs(rows()) do if rawget(b, "count") or rawget(b, "bar") then error("no count and no accent bar on a sidebar row") end end
+        local function picked()
+            local list = {}
+            for _, b in ipairs(rows()) do if rawget(b, "picked") then list[#list + 1] = b end end
+            return list
+        end
+        local p = picked()
+        if #p ~= 1 or not rawget(p[1], "cat") or not p[1].cat.home then error("on Home only Home is selected, got " .. #p) end
+        O.Open("items:Vendors")
+        p = picked()
+        if #p ~= 1 or rawget(p[1], "sec") ~= O.current or p[1].sec.id ~= "items:Vendors" then error("opening a section selects only its row, got " .. #p) end
+        local items = 0
+        for _, b in ipairs(rows()) do if rawget(b, "sec") then items = items + 1 end end
+        if items ~= #ns:SettingsCategory("items").sections then error("the open category's sections are indented under it, got " .. items .. " of " .. #O.secButtons .. " buttons, " .. #ns:SettingsCategory("items").sections .. " sections") end
+        for _, b in ipairs(rows()) do
+            local h = b:GetHeight()
+            if rawget(b, "sec") and h ~= 32 then error("a section row is 32 px, got " .. tostring(h)) end
+            if rawget(b, "cat") and h ~= 36 then error("a category row is 36 px, got " .. tostring(h) .. " " .. tostring(rawget(b, "GetHeight")) .. " " .. tostring(rawget(b, "cat").id)) end
+        end
+        O.Open("home")
+        p = picked()
+        if #p ~= 1 or not rawget(p[1], "cat") or not p[1].cat.home then error("back on Home, only Home is selected, got " .. #p .. " " .. tostring(rawget(p[1], "cat") and p[1].cat.id) .. " " .. tostring(rawget(p[2], "cat") and p[2].cat.id) .. tostring(p[2] and rawget(p[2], "sec") and p[2].sec.id)) end
+        for _, b in ipairs(O.secButtons) do if b:IsShown() then error("Home has no sections under it") end end
+        -- Simple / All options stay at the top of the sidebar
+        local modes = O.frame.modeButtons
+        if modes.simple:GetParent() ~= O.side or modes.all:GetParent() ~= O.side then error("the mode buttons are at the top of the sidebar") end
+        ns:ToggleConfig()
+    end)
+    env.CreateFrame, env.GetGameTime, env.UnitClass, ns.CountFeatures = realCF, realTime, realClass, realCount
+    ns.db.theme, ns.root.language, ns.db.ufStyle, ns.root.optionsSection, ns.root.settingsMode = keep.theme, keep.lang, keep.uf, keep.sec, keep.mode
+    for k, v in pairs(keepSwitch) do ns.db[k] = v end
+    ns:Retheme()
+    if not ok then error(err, 0) end
+end)
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()
