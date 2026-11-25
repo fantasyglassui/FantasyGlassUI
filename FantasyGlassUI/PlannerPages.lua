@@ -23,7 +23,8 @@ local function Big(n)
     return tostring(n)
 end
 local function Minutes(seconds, least)
-    return max(least or 0, floor((tonumber(seconds) or 0) / 60 + 0.5))
+    seconds = tonumber(seconds) or 0
+    return max(least or (seconds > 0 and 1 or 0), floor(seconds / 60 + 0.5))   -- (a short trip is still 1 minute, not 0)
 end
 local function LevelText(v)
     v = tonumber(v)
@@ -81,8 +82,9 @@ function ns.PlannerWhyLines(step, summary)
         local beatRate = beat and tonumber(beat.rate)
         if hub.lead or (rate and beatRate and beatRate >= rate) then
             Add(ns:Tr("Taken first"), "")                       -- (a lead-in, or put first: nothing it beat)
-        elseif rate and beatRate and beatRate > 0 and type(beat.name) == "string" then
-            Add(format(ns:Tr("Beat %s at %s an hour (%d%% better)"), beat.name, Big(beatRate * 3600), floor((rate / beatRate - 1) * 100)), "")
+        elseif rate and beatRate and beatRate > 0 then
+            local name = type(beat.name) == "string" and beat.name or ns:Tr("another hub")
+            Add(format(ns:Tr("Beat %s at %s an hour (%d%% better)"), name, Big(beatRate * 3600), floor((rate / beatRate - 1) * 100 + 1e-9)), "")
         else
             Add(ns:Tr("Nothing else was worth the trip"), "")
         end
@@ -157,6 +159,7 @@ end)
 -- The first plan after "Plan my route" opens the preview over it (a replan later does not).
 ns.PlannerHook("applied", "preview", function(guide, summary, _, reason)
     if reason ~= "start" or not Unlocked() then return end
+    if type(guide) ~= "table" or type(guide.steps) ~= "table" or #guide.steps == 0 or (type(summary) == "table" and summary.empty) then return end   -- (nothing to preview)
     local ok, err = pcall(ShowPreview, guide, summary)
     if not ok and type(ns.errors) == "table" and #ns.errors < 60 then ns.errors[#ns.errors + 1] = "Planner preview: " .. tostring(err) end
 end)

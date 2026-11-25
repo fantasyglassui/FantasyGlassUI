@@ -12659,6 +12659,7 @@ try("13.4 feel B: time to level, why this, preview", function()
                     guideState = ns.root.guideState, guides = ns.root.guides, key = ns.root.guideKey, plannerGroup = ns.db.plannerGroup }
     local rec0 = ns.PlannerCharRecord(false)
     local oldPace = rec0 and rec0.pace
+    local panelTitleSet
     local function click(frame, ...)
         local f = frame:GetScript("OnClick")
         if type(f) ~= "function" then
@@ -12693,6 +12694,7 @@ try("13.4 feel B: time to level, why this, preview", function()
         local panel = ns:GuideShowPanel()
         local titleText
         rawset(panel.title, "SetText", function(_, t) titleText = t end)
+        panelTitleSet = panel.title
         local step1 = { kind = "accept", quest = 201, title = "Q201", hub = 1 }
         local hub = { xp = 1200, seconds = 480, travel = 120, rate = 2, beat = { rate = 1.5, name = "Wolves" } }
         summary = { zone = 1, fromLevel = 25, toLevel = 26, xp = 6000, seconds = 3600, taken = { hub }, skipped = { group = 3 } }
@@ -12718,6 +12720,14 @@ try("13.4 feel B: time to level, why this, preview", function()
         hub.beat = nil; hub.lead = true
         if not text(ns.PlannerWhyLines(step1, summary)):find("Taken first", 1, true) then error("a lead-in: taken first") end
         hub.lead = nil
+        hub.rate, hub.beat = 0.7, { rate = 0.5, name = "Boars" }
+        if not text(ns.PlannerWhyLines(step1, summary)):find("(40% better)", 1, true) then error("a float that is just under 40 still reads 40%") end
+        hub.beat = { rate = 0.5 }
+        if not text(ns.PlannerWhyLines(step1, summary)):find("Beat another hub at", 1, true) then error("a beat with no name is still a beat") end
+        hub.rate, hub.beat = 2, nil
+        hub.travel = 20
+        if not text(ns.PlannerWhyLines(step1, summary)):find("Travel 1 min", 1, true) then error("a 20 second trip is 1 min, not 0") end
+        hub.travel = 120
         local vendor = { kind = "vendor", text = "Sell", why = { detour = 90 } }
         local vtext = text(ns.PlannerWhyLines(vendor, summary))
         if not (vtext:find("A stop on the way", 1, true) and vtext:find("About 2 min out of the way", 1, true)) then error("a stop's detour:\n" .. vtext) end
@@ -12781,6 +12791,16 @@ try("13.4 feel B: time to level, why this, preview", function()
         n = 0
         for _, s in ipairs(shown) do if s.key == "PlanPreview" then n = n + 1 end end
         if n ~= 1 then error("a replan after a hand-in does not open it: " .. n) end
+        -- an empty plan has nothing to preview
+        local fullRoute = ns.PlannerRoute
+        ns.PlannerRoute = function() return { name = ns.GUIDE_PLANNED, steps = {} }, { seconds = 0, empty = true } end
+        shown = {}
+        ns:PlannerStart()
+        runIt()
+        for _, s in ipairs(shown) do if s.key == "PlanPreview" then error("an empty plan opens no preview") end end
+        ns.PlannerRoute = fullRoute
+        ns:PlannerReplan("again")
+        runIt()
         -- Follow hides it; Plan again hides it and opens the Guide tab
         ns.ShowList = function(self, key, title, l, ...) window = saved.show(self, key, title, l, ...); shown[#shown + 1] = { key = key, lines = l }; return window end
         ns:PlannerPreview()
@@ -12808,6 +12828,8 @@ try("13.4 feel B: time to level, why this, preview", function()
     ns.db.plannerGroup = saved.plannerGroup
     local rr = ns.PlannerCharRecord(false)
     if rr then rr.pace = oldPace end
+    if not rec0 and ns.root.planner then ns.root.planner[ns:CharKey()] = nil end       -- (the record this test made)
+    if panelTitleSet then rawset(panelTitleSet, "SetText", nil) end
     ns:GuideSetPlan(nil)
     ns.root.guideState, ns.root.guides, ns.root.guideKey = saved.guideState, saved.guides, saved.key
     if ns.guideStepMenu then ns.guideStepMenu:Hide() end
@@ -12820,6 +12842,7 @@ try("13.4 feel B: finish the zone", function()
                     guidePage = ns.guidePage }
     local rec0 = ns.PlannerCharRecord(false)
     local oldGoal = rec0 and rec0.zoneGoal
+    local panelExtraSet
     local ok, err = pcall(function()
         ns.GuideUnlocked = function() return true end
         env.C_Map = setmetatable({
@@ -12923,6 +12946,7 @@ try("13.4 feel B: finish the zone", function()
         local panel = ns:GuideShowPanel()
         local extraText
         rawset(panel.extra, "SetText", function(_, t) extraText = t end)
+        panelExtraSet = panel.extra
         ns:GuideSetPlan(guide, summary)
         if type(extraText) ~= "string" or not extraText:find("Zone: 1 of 3 quests", 1, true) then error("the panel line: " .. tostring(extraText)) end
         -- a group quest: left out in Solo, but counted
@@ -12991,6 +13015,8 @@ try("13.4 feel B: finish the zone", function()
     rawset(env, "CreateVector2D", saved.vec)
     local rr = ns.PlannerCharRecord(false)
     if rr then rr.zoneGoal = oldGoal end
+    if not rec0 and ns.root.planner then ns.root.planner[ns:CharKey()] = nil end       -- (the record this test made)
+    if panelExtraSet then rawset(panelExtraSet, "SetText", nil) end
     ns.PlannerHook("context", "zoneGoal", nil)
     ns:GuideSetPlan(nil)
     ns.root.guideState, ns.root.guides, ns.root.guideKey = saved.guideState, saved.guides, saved.key
