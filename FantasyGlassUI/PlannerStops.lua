@@ -349,3 +349,250 @@ function ns.PlannerUnspentTalents()
     end
     return total
 end
+
+------------------------------------------------------------------------------------------
+-- The vendor: sell, repair and restock. Wanted when your bags are nearly full (3 free slots or
+-- fewer), something you wear is worn (under 30%), or supplies run short for the plan. Any read
+-- that fails, is nil or is secret means that reason is simply not wanted.
+------------------------------------------------------------------------------------------
+ns.PLANNER_VENDOR_SLOTS = 3
+ns.PLANNER_VENDOR_DURABILITY = 0.30
+ns.PLANNER_SUPPLIES = {
+    ammo = { arrow = { { 1, 2512 }, { 10, 2515 }, { 25, 3030 }, { 40, 11285 } },
+             bullet = { { 1, 2516 }, { 10, 2519 }, { 25, 3033 }, { 40, 11284 } } },
+    drink = { { 1, 159 }, { 5, 1179 }, { 15, 1205 }, { 25, 1708 }, { 35, 1645 }, { 45, 8766 } },
+    food = { { 1, 4540 }, { 5, 4541 }, { 15, 4542 }, { 25, 4544 }, { 35, 4601 }, { 45, 8950 } },
+}
+local SUPPLY_ORDER = { "arrow", "bullet", "drink", "food" }
+local SUPPLY_RATE = { arrow = 600, bullet = 600, drink = 12, food = 8 }      -- per hour, until measured
+local SUPPLY_STEP = { arrow = 200, bullet = 200, drink = 20, food = 20 }     -- buy in these
+local SUPPLY_LIST = { arrow = "Ammo", bullet = "Ammo", drink = "Drink", food = "Food" }
+local SUPPLY_PHRASE = { arrow = "buy %d arrows", bullet = "buy %d bullets", drink = "buy %d water", food = "buy %d food" }
+local MANA_CLASSES = { MAGE = true, PRIEST = true, WARLOCK = true, PALADIN = true, DRUID = true, SHAMAN = true, HUNTER = true }
+local SAMPLE_CAP = 3600                 -- seconds counted per sample
+local SAMPLE_KEEP = 20                  -- hours of samples kept (older ones count half)
+
+-- Free slots in your bags 0-4; nil if any read fails or is secret.
+function ns.PlannerBagFree()
+    if type(C_Container) ~= "table" or type(C_Container.GetContainerNumFreeSlots) ~= "function" then return nil end
+    local total = 0
+    for bag = 0, 4 do
+        local ok, free = pcall(C_Container.GetContainerNumFreeSlots, bag)
+        free = ok and Num(free) or nil
+        if not free then return nil end
+        total = total + free
+    end
+    return total
+end
+
+-- The lowest cur/max of what you wear (slots 1-19 that have durability); nil when none can be read.
+function ns.PlannerLowestDurability()
+    if type(GetInventoryItemDurability) ~= "function" then return nil end
+    local lowest
+    for slot = 1, 19 do
+        local ok, cur, max = pcall(GetInventoryItemDurability, slot)
+        if not ok then return nil end
+        if cur ~= nil or max ~= nil then
+            cur, max = Num(cur), Num(max)
+            if not (cur and max) then return nil end
+            if max > 0 then
+                local r = cur / max
+                if not lowest or r < lowest then lowest = r end
+            end
+        end
+    end
+    return lowest
+end
+
+local function EnumValue(group, name, fallback)
+    if type(Enum) ~= "table" then return fallback end
+    local g = Enum[group]
+    local v = type(g) == "table" and g[name] or nil
+    return type(v) == "number" and v or nil
+end
+
+-- "arrow", "bullet" or nil: what the ranged slot holds takes which ammunition.
+local function AmmoKind()
+    if type(C_Item) ~= "table" or type(C_Item.GetItemInfoInstant) ~= "function" or type(GetInventoryItemID) ~= "function" then return nil end
+    local okI, id = pcall(GetInventoryItemID, "player", 18)
+    id = okI and Num(id) or nil
+    if not id then return nil end
+    local ok, _, _, _, _, _, class, sub = pcall(C_Item.GetItemInfoInstant, id)
+    class, sub = ok and Num(class) or nil, ok and Num(sub) or nil
+    if not (class and sub) or class ~= EnumValue("ItemClass", "Weapon", 2) then return nil end
+    if sub == EnumValue("ItemWeaponSubclass", "Bows", 2) or sub == EnumValue("ItemWeaponSubclass", "Crossbow", 18) then return "arrow" end
+    if sub == EnumValue("ItemWeaponSubclass", "Guns", 3) then return "bullet" end
+    return nil
+end
+
+local function UsesMana()
+    if type(UnitPowerType) == "function" then
+        local ok, t = pcall(UnitPowerType, "player")
+        t = ok and Num(t) or nil
+        if t and t == EnumValue("PowerType", "Mana", 0) then return true end
+    end
+    if type(UnitClass) == "function" then
+        local ok, _, token = pcall(UnitClass, "player")
+        if ok and type(token) == "string" and not ns:IsSecret(token) and MANA_CLASSES[token] then return true end
+    end
+    return false
+end
+
+local function SupplyItem(key, level)
+    local t = ns.PLANNER_SUPPLIES
+    local list = (key == "arrow" or key == "bullet") and t.ammo[key] or t[key]
+    local best
+    for _, e in ipairs(list) do
+        if e[1] <= level then best = e[2] end
+    end
+    return best
+end
+
+local function ItemCount(item)
+    if type(C_Item) ~= "table" or type(C_Item.GetItemCount) ~= "function" then return nil end
+    local ok, n = pcall(C_Item.GetItemCount, item)
+    return ok and Num(n) or nil
+end
+
+-- Use per hour, measured from the counts seen at each plan (only drops count, not what you bought;
+-- the time between two samples is at most an hour). The default until there are 2 samples.
+local function UseRate(key, count)
+    local rec = ns.PlannerCharRecord and ns.PlannerCharRecord(true)
+    local okT, now = pcall(GetTime)
+    now = okT and Num(now) or nil
+    if type(rec) ~= "table" or not now then return SUPPLY_RATE[key] end
+    if type(rec.supply) ~= "table" then rec.supply = {} end
+    local s = rec.supply[key]
+    if type(s) ~= "table" or not (tonumber(s.n) and tonumber(s.t)) then
+        s = { n = count, t = now, samples = 1, drops = 0, hours = 0 }
+        rec.supply[key] = s
+        return SUPPLY_RATE[key]
+    end
+    local dt = math.min(math.max(0, now - s.t), SAMPLE_CAP)
+    if count < s.n then s.drops = (tonumber(s.drops) or 0) + (s.n - count) end
+    s.hours = (tonumber(s.hours) or 0) + dt / 3600
+    s.n, s.t, s.samples = count, now, (tonumber(s.samples) or 1) + 1
+    if s.hours > SAMPLE_KEEP then s.hours, s.drops = s.hours / 2, s.drops / 2 end
+    if s.samples >= 2 and s.hours > 0 then return s.drops / s.hours end
+    return SUPPLY_RATE[key]
+end
+
+-- What runs short for `hours` of play: { { key, item, count, buy }, ... }
+local function SupplyNeeds(level, hours)
+    local out = {}
+    local ammo = AmmoKind()
+    local mana = UsesMana()
+    for _, key in ipairs(SUPPLY_ORDER) do
+        if key == ammo or key == "food" or (key == "drink" and mana) then
+            local item = SupplyItem(key, level)
+            local count = item and ItemCount(item)
+            if count then
+                local rate = UseRate(key, count)
+                if count < rate * hours then
+                    local step = SUPPLY_STEP[key]
+                    local buy = math.max(step, math.ceil((rate - count) / step) * step)
+                    out[#out + 1] = { key = key, item = item, count = count, buy = buy }
+                end
+            end
+        end
+    end
+    return out
+end
+
+-- The same place in two lists (by id, or standing at one spot).
+local function SamePlace(a, b)
+    if a == b then return true end
+    if a.id and b.id and a.id == b.id then return true end
+    if a.map == b.map and a.x == b.x and a.y == b.y then return true end
+    return Yards(a, b) <= 10
+end
+
+local function InList(p, list)
+    for _, q in ipairs(list) do if SamePlace(p, q) then return true end end
+    return false
+end
+
+local function Merge(...)
+    local out = {}
+    for n = 1, select("#", ...) do
+        for _, p in ipairs((select(n, ...))) do
+            ns.PlannerYield()
+            if not InList(p, out) then out[#out + 1] = p end
+        end
+    end
+    return out
+end
+
+local function Both(a, b)
+    local out = {}
+    for _, p in ipairs(a) do
+        ns.PlannerYield()
+        if InList(p, b) then out[#out + 1] = p end
+    end
+    return out
+end
+
+ns.PlannerRegisterStop({
+    id = "vendor", kind = "vendor",     -- (its two settings are read below: supplies can be a stop alone)
+    want = function(ctx, summary)
+        local reason = { visit = 0, supplies = {} }
+        local rec = ns.PlannerCharRecord and ns.PlannerCharRecord(false)
+        reason.visit = type(rec) == "table" and tonumber(rec.vendorVisits) or 0
+        if not (ns.db and ns.db.plannerVendor == false) then
+            local free, worn = ns.PlannerBagFree(), ns.PlannerLowestDurability()
+            reason.repair = worn ~= nil and worn < ns.PLANNER_VENDOR_DURABILITY
+            reason.sell = reason.repair or (free ~= nil and free <= ns.PLANNER_VENDOR_SLOTS)
+        end
+        if not (ns.db and ns.db.plannerSupplies == false) then
+            local hours = math.max(0.5, (tonumber(summary and summary.seconds) or 0) / 3600)
+            reason.supplies = SupplyNeeds(tonumber(ctx.level) or 1, hours)
+        end
+        if not reason.sell and #reason.supplies == 0 then return nil end
+        return reason
+    end,
+    places = function(ctx, reason)
+        -- what sells each supply, and the places that sell all of them (else those of the first)
+        reason.lists = {}
+        local kept, first, all = {}, nil, nil
+        for _, need in ipairs(reason.supplies) do
+            local list = ns.PlannerPlaces(ctx, "vendor", SUPPLY_LIST[need.key])
+            if #list > 0 then
+                reason.lists[need.key] = list
+                kept[#kept + 1] = need
+                first = first or list
+                all = all and Both(all, list) or list
+            end
+        end
+        reason.supplies = kept
+        local buy = all and (#all > 0 and all or first) or {}
+        local sell = {}
+        if reason.sell then
+            if reason.repair then
+                sell = Merge(ns.PlannerPlaces(ctx, "repair"))
+            else
+                sell = Merge(ns.PlannerPlaces(ctx, "repair"), ns.PlannerPlaces(ctx, "anyVendor"), ns.PlannerPlaces(ctx, "vendor", "Food"),
+                    ns.PlannerPlaces(ctx, "vendor", "Drink"), ns.PlannerPlaces(ctx, "vendor", "Ammo"))
+            end
+            if #sell == 0 then reason.sell, reason.repair = false, false end
+        end
+        if not reason.sell then return buy end
+        local both = Both(sell, buy)
+        return #both > 0 and both or sell
+    end,
+    text = function(place, reason)
+        local name = place.name or ""
+        local head
+        if reason.sell then
+            head = string.format(ns:Tr(reason.repair and "Sell and repair at %s" or "Sell at %s"), name)
+        else
+            head = string.format(ns:Tr("Buy supplies at %s"), name)
+        end
+        local parts = { head }
+        for _, need in ipairs(reason.supplies) do
+            local list = type(reason.lists) == "table" and reason.lists[need.key]
+            if list and InList(place, list) then parts[#parts + 1] = string.format(ns:Tr(SUPPLY_PHRASE[need.key]), need.buy) end
+        end
+        return table.concat(parts, "; ")
+    end,
+    key = function(reason) return reason.visit end,
+})

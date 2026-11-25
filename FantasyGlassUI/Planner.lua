@@ -392,7 +392,14 @@ do
             -- (and plans again only when the plan has a stop of that window)
             local steps = type(plan.steps) == "table" and plan.steps or {}
             local step = steps[st.at or 1]
-            if type(step) == "table" and step.kind == closes[event] then ns:GuideSkip(false); ns:PlannerReplan("window closed"); return end
+            if type(step) == "table" and step.kind == closes[event] then
+                -- a vendor visit is over: the next vendor stop is a new one (it is not ticked by this one)
+                if step.kind == "vendor" and type(step.stopKey) == "string" and step.stopKey:sub(1, 7) == "vendor:" then
+                    local d = PaceRecord(true)
+                    if d then d.vendorVisits = (tonumber(d.vendorVisits) or 0) + 1 end
+                end
+                ns:GuideSkip(false); ns:PlannerReplan("window closed"); return
+            end
             for _, s in ipairs(steps) do
                 if type(s) == "table" and s.kind == closes[event] then ns:PlannerReplan("window closed"); return end
             end

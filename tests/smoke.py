@@ -9838,6 +9838,221 @@ try("13.1 stops: held hand-ins and talents", function()
     ns.PlannerSourceReset()
     if not ok then error(err, 0) end
 end)
+try("13.1 stops: the vendor", function()
+    local real = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), enum = env.Enum, class = env.UnitClass, power = env.UnitPowerType,
+                   free = env.C_Container.GetContainerNumFreeSlots, dur = env.GetInventoryItemDurability, count = env.C_Item.GetItemCount,
+                   itemID = rawget(env, "GetInventoryItemID"), instant = env.C_Item.GetItemInfoInstant, time = env.GetTime }
+    local saved = { key = ns.root.guideKey, guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner, seen = ns.root.plannerSeen,
+                    vendor = ns.db.plannerVendor, supplies = ns.db.plannerSupplies }
+    local cm = {}
+    for k, v in pairs(real.map) do cm[k] = v end
+    cm.GetWorldPosFromMapPos = function(map, v) if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end end
+    env.C_Map = cm
+    env.CreateVector2D = function(x, y) return { x = x, y = y } end
+    local level = 11
+    local function rec(id, x, y)
+        return { id = id, name = "Quest " .. id, level = 10, minLevel = 1, xp = 300,
+            starts = { { map = 1, x = x, y = y } }, ends = { { map = 1, x = x, y = y } },
+            objectives = { { kind = "kill", count = 4, countKnown = true, mobLevel = 10, spots = { { map = 1, x = x + 4, y = y + 4 } } } },
+            pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+    end
+    local recs = { [601] = rec(601, 30, 40), [602] = rec(602, 31, 40), [603] = rec(603, 30, 41) }
+    local smith = { name = "Smith", map = 1, x = 33, y = 40, id = 50 }            -- repairs
+    local grocer = { name = "Grocer", map = 1, x = 40, y = 40, id = 51 }          -- food, drink and arrows
+    local places = { repair = { smith }, anyVendor = { smith, grocer },
+                     ["vendor:Food"] = { grocer }, ["vendor:Drink"] = { grocer }, ["vendor:Ammo"] = { grocer } }
+    local source = { kind = "questie", ids = function() return { 601, 602, 603 } end, quest = function(id) return recs[id] end,
+        inns = function() return {} end, places = function(kind, arg) return places[arg and (kind .. ":" .. arg) or kind] or {} end }
+    local function context()
+        return { source = source, level = level, group = "solo", inGroup = false, speed = 7, faction = "Alliance",
+            done = function() return false end, onQuest = function() return false end,
+            here = { map = 1, x = 30, y = 40 }, crossings = {}, learnFlights = false, flights = {}, pace = 1, flightTime = function() return nil end }
+    end
+    local free, worn, counts, bow, clock = 20, 0.9, {}, nil, 100
+    env.C_Container.GetContainerNumFreeSlots = function(bag) if free == nil then return nil end return bag == 0 and free or 0 end
+    env.GetInventoryItemDurability = function(slot) if slot == 5 then return worn * 100, 100 end end    -- (the chest: other slots have none)
+    env.C_Item.GetItemCount = function(item) return counts[item] end
+    env.GetInventoryItemID = function(_, slot) if slot == 18 then return bow end end
+    env.C_Item.GetItemInfoInstant = function(id)
+        if id == 5001 then return id, "Weapon", "Bows", "INVTYPE_RANGEDRIGHT", 1, 2, 2 end
+        if id == 5002 then return id, "Weapon", "Guns", "INVTYPE_RANGEDRIGHT", 1, 2, 3 end
+        return 1, "Armor", "Cloth", "INVTYPE_CHEST", 134400, 4, 1
+    end
+    env.GetTime = function() return clock end
+    env.Enum = setmetatable({ ItemClass = { Weapon = 2 }, ItemWeaponSubclass = { Bows = 2, Crossbow = 18, Guns = 3 }, PowerType = { Mana = 0 } }, { __index = real.enum })
+    local class, power = "ROGUE", 3
+    env.UnitClass = function() return class, class end
+    env.UnitPowerType = function() return power, "X" end
+    local function stocked() counts = { [4541] = 50, [1179] = 50, [2515] = 2000, [2519] = 2000 } end
+    stocked()
+    local function vendorSteps(guide)
+        local out = {}
+        for _, s in ipairs(guide.steps) do if s.kind == "vendor" then out[#out + 1] = s end end
+        return out
+    end
+    local function plan(c)
+        local ctx = c or context()
+        local guide, summary = ns.PlannerRoute(ctx)
+        return guide, vendorSteps(guide), summary, ctx
+    end
+    local ok, err = pcall(function()
+        ns.root.planner = nil
+        -- the reads
+        if ns.PlannerBagFree() ~= 20 then error("bag free: " .. tostring(ns.PlannerBagFree())) end
+        if math.abs(ns.PlannerLowestDurability() - 0.9) > 1e-9 then error("lowest durability") end
+        free = nil
+        if ns.PlannerBagFree() ~= nil then error("an unreadable bag: nil") end
+        free = 20
+        env.GetInventoryItemDurability = function() end
+        if ns.PlannerLowestDurability() ~= nil then error("nothing with durability: nil") end
+        env.GetInventoryItemDurability = function(slot) if slot == 5 then return worn * 100, 100 end end
+        -- 2 free slots: sell at a vendor
+        free = 2
+        local _, steps = plan()
+        if #steps ~= 1 or not steps[1].text:find("^Sell at ") then error("2 free slots: a Sell step " .. (steps[1] and steps[1].text or "none")) end
+        if steps[1].stopKey ~= "vendor:0" then error("the vendor stop's key: " .. tostring(steps[1].stopKey)) end
+        local g = plan()
+        local back = ns.GuideParse(ns.GuideText(g))
+        for i, s in ipairs(g.steps) do if ns.GuideLine(back.steps[i]) ~= ns.GuideLine(s) then error("the vendor step round-trips") end end
+        -- 20 free, a chest at 25%: sell and repair at a repair NPC
+        free, worn = 20, 0.25
+        _, steps = plan()
+        if #steps ~= 1 or steps[1].text ~= "Sell and repair at Smith" then error("worn chest: Sell and repair at Smith, got " .. (steps[1] and steps[1].text or "none")) end
+        -- 20 free, all 90%: none
+        worn = 0.9
+        _, steps = plan()
+        if #steps ~= 0 then error("nothing wanted: no step") end
+        -- unreadable bags (nil) or a secret value: none, no error
+        free = nil
+        _, steps = plan()
+        if #steps ~= 0 then error("unreadable bags: no step") end
+        free = 20
+        env.GetInventoryItemDurability = function(slot) if slot == 5 then return 10, nil end end
+        _, steps = plan()
+        if #steps ~= 0 then error("a durability without a max: no step") end
+        env.GetInventoryItemDurability = function(slot) if slot == 5 then return worn * 100, 100 end end
+        -- a hunter with a bow and 50 arrows: buy arrows (one hour: 600 less 50, rounded up to 200)
+        class, power, bow = "HUNTER", 0, 5001
+        counts[2515] = 50
+        local guide, ctx
+        guide, steps, _, ctx = plan()
+        if #steps ~= 1 or steps[1].text ~= "Buy supplies at Grocer; buy 600 arrows" then error("hunter: " .. (steps[1] and steps[1].text or "none")) end
+        if not (ctx.stopsWanted.vendor and not ctx.stopsWanted.vendor.sell) then error("supplies alone: no sell reason") end
+        -- with the bags nearly full too: one stop, at the place that serves both
+        free = 2
+        _, steps = plan()
+        if #steps ~= 1 or steps[1].text ~= "Sell at Grocer; buy 600 arrows" then error("both: " .. (steps[1] and steps[1].text or "none")) end
+        -- worn gear: the repair NPC, who sells no arrows
+        worn, free = 0.1, 20
+        _, steps = plan()
+        if #steps ~= 1 or steps[1].text ~= "Sell and repair at Smith" then error("repair wins: " .. (steps[1] and steps[1].text or "none")) end
+        worn = 0.9
+        -- a gun: bullets
+        bow = 5002
+        counts[2519] = 0
+        _, steps = plan()
+        if #steps ~= 1 or steps[1].text ~= "Buy supplies at Grocer; buy 600 bullets" then error("gun: " .. (steps[1] and steps[1].text or "none")) end
+        -- no ranged weapon: no ammo; a hunter has mana: drink
+        bow = nil
+        counts[1179] = 0
+        _, steps = plan()
+        if #steps ~= 1 or steps[1].text ~= "Buy supplies at Grocer; buy 20 water" then error("drink: " .. (steps[1] and steps[1].text or "none")) end
+        -- a warrior needs no drink
+        class, power = "WARRIOR", 1
+        _, steps = plan()
+        if #steps ~= 0 then error("a warrior: no drink (" .. (steps[1] and steps[1].text or "") .. ")") end
+        counts[4541] = 0
+        _, steps = plan()
+        if #steps ~= 1 or steps[1].text ~= "Buy supplies at Grocer; buy 20 food" then error("food: " .. (steps[1] and steps[1].text or "none")) end
+        -- no vendor known for what you need: no stop, no error
+        places["vendor:Food"] = {}
+        _, steps = plan()
+        if #steps ~= 0 then error("no food vendor known: no step") end
+        places["vendor:Food"] = { grocer }
+        -- the use rate is measured: food at 3 is short by the default (8 an hour, half an hour: 4) ...
+        ns.root.planner = nil
+        counts[4541] = 3
+        _, steps = plan()
+        if #steps ~= 1 then error("food at 3 on the default rate") end
+        -- ... but an hour later with nothing used it is not short; buying does not count as use
+        clock = clock + 3600
+        _, steps = plan()
+        if #steps ~= 0 then error("measured: nothing used, not short") end
+        local d = ns.PlannerCharRecord(false)
+        counts[4541] = 40
+        clock = clock + 7200                      -- (capped at an hour)
+        plan()
+        counts[4541] = 10
+        clock = clock + 3600
+        plan()
+        if not (d.supply.food and d.supply.food.hours <= 3.0001 and d.supply.food.drops == 30) then error("the samples: hours capped, drops only") end
+        counts[4541] = 50
+        ns.root.planner = nil
+        -- the settings
+        free, worn = 2, 0.1
+        ns.db.plannerVendor = false
+        _, steps = plan()
+        if #steps ~= 0 then error("plannerVendor off: no sell or repair") end
+        counts[4541] = 0
+        _, steps = plan()
+        if #steps ~= 1 or steps[1].text ~= "Buy supplies at Grocer; buy 20 food" then error("plannerVendor off: supplies still") end
+        ns.db.plannerVendor = true
+        ns.db.plannerSupplies = false
+        _, steps = plan()
+        if #steps ~= 1 or steps[1].text ~= "Sell and repair at Smith" then error("plannerSupplies off: no buying (" .. (steps[1] and steps[1].text or "none") .. ")") end
+        ns.db.plannerSupplies = true
+        -- replan after bags freed: the stop is gone
+        counts[4541] = 50
+        free, worn = 20, 0.9
+        _, steps = plan()
+        if #steps ~= 0 then error("bags freed: the stop is gone") end
+        -- a new visit is a new stop: the key changes when the window closes on the current vendor step
+        free = 2
+        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
+        guide = plan()
+        ns:GuideSetPlan(guide, {})
+        local at
+        for i, s in ipairs(guide.steps) do if s.kind == "vendor" then at = i end end
+        ns.GuideState().at = at
+        ns:PlannerStop()
+        fireEvent("MERCHANT_CLOSED")
+        d = ns.PlannerCharRecord(false)
+        if not (d and d.vendorVisits == 1) then error("a visit is counted when the current vendor step's window closes") end
+        guide, steps = plan()
+        if steps[1].stopKey ~= "vendor:1" then error("the next visit is a new stop: " .. tostring(steps[1].stopKey)) end
+        ns:GuideSetPlan(guide, {})
+        if ns.GuideState().ticked[at] then error("the next visit is not ticked") end
+        ns:PlannerStop()
+        -- a vendor window closing on some other step counts nothing
+        ns.root.guideState[ns:CharKey()] = { name = ns.GUIDE_PLANNED, at = 1, ticked = {},
+            plan = { name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "x" }, { kind = "vendor", text = "Smith", map = 1, x = 33, y = 40, stopKey = "vendor:1" } } } }
+        fireEvent("MERCHANT_CLOSED")
+        if ns.PlannerCharRecord(false).vendorVisits ~= 1 then error("a visit early counts nothing") end
+        ns:PlannerStop()
+        -- the switches on the Guide tab
+        ns.root.guideState = nil
+        ns:ToggleConfig("guide")
+        local P = ns.guidePage
+        if not (P and P.vendorBox and P.suppliesBox) then error("the vendor and supplies switches exist") end
+        for _, pair in ipairs({ { P.vendorBox, "plannerVendor" }, { P.suppliesBox, "plannerSupplies" } }) do
+            local f = pair[1]:GetScript("OnClick")
+            if type(f) ~= "function" then for _, h in ipairs(handlers) do if h.self == pair[1] and h.name == "OnClick" then f = h.fn end end end
+            ns.db[pair[2]] = true
+            f(pair[1])
+            if ns.db[pair[2]] ~= false then error(pair[2] .. " switch turns it off") end
+            if ns.defaults[pair[2]] ~= true then error(pair[2] .. " on by default") end
+        end
+        ns:ToggleConfig()
+    end)
+    ns:PlannerStop()
+    env.C_Map = real.map; rawset(env, "CreateVector2D", real.vec); env.Enum = real.enum; env.UnitClass = real.class; env.UnitPowerType = real.power
+    env.C_Container.GetContainerNumFreeSlots = real.free; env.GetInventoryItemDurability = real.dur; env.C_Item.GetItemCount = real.count
+    rawset(env, "GetInventoryItemID", real.itemID); env.C_Item.GetItemInfoInstant = real.instant; env.GetTime = real.time
+    ns.root.guideKey, ns.root.guides, ns.root.guideState, ns.root.planner, ns.root.plannerSeen = saved.key, saved.guides, saved.state, saved.planner, saved.seen
+    ns.db.plannerVendor, ns.db.plannerSupplies = saved.vendor, saved.supplies
+    ns.PlannerSourceReset()
+    if not ok then error(err, 0) end
+end)
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()

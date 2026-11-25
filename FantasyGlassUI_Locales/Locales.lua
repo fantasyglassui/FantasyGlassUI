@@ -21,6 +21,15 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["Sell and repair stops"] = "Verkaufs- und Reparaturstopps",
+    ["Buy supplies at the vendor stop"] = "Vorräte beim Händlerstopp kaufen",
+    ["Sell and repair at %s"] = "Verkaufen und reparieren bei %s",
+    ["Sell at %s"] = "Verkaufen bei %s",
+    ["Buy supplies at %s"] = "Vorräte kaufen bei %s",
+    ["buy %d arrows"] = "%d Pfeile kaufen",
+    ["buy %d bullets"] = "%d Kugeln kaufen",
+    ["buy %d water"] = "%d Wasser kaufen",
+    ["buy %d food"] = "%d Essen kaufen",
     ["Save hand-ins to level in town"] = "Abgaben für den Stufenaufstieg in der Stadt aufsparen",
     ["(held for your trainer)"] = "(für deinen Lehrer aufgespart)",
     ["%d talent point to spend"] = "%d Talentpunkt zu vergeben",
@@ -3323,6 +3332,15 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["Sell and repair stops"] = "Arrêts pour vendre et réparer",
+    ["Buy supplies at the vendor stop"] = "Acheter des provisions à l'arrêt chez le marchand",
+    ["Sell and repair at %s"] = "Vendre et réparer chez %s",
+    ["Sell at %s"] = "Vendre chez %s",
+    ["Buy supplies at %s"] = "Acheter des provisions chez %s",
+    ["buy %d arrows"] = "acheter %d flèches",
+    ["buy %d bullets"] = "acheter %d balles",
+    ["buy %d water"] = "acheter %d eau",
+    ["buy %d food"] = "acheter %d nourriture",
     ["Save hand-ins to level in town"] = "Garder les remises pour monter de niveau en ville",
     ["(held for your trainer)"] = "(gardée pour votre entraîneur)",
     ["%d talent point to spend"] = "%d point de talent à dépenser",
@@ -6625,6 +6643,15 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["Sell and repair stops"] = "Paradas para vender y reparar",
+    ["Buy supplies at the vendor stop"] = "Comprar provisiones en la parada del vendedor",
+    ["Sell and repair at %s"] = "Vender y reparar en %s",
+    ["Sell at %s"] = "Vender en %s",
+    ["Buy supplies at %s"] = "Comprar provisiones en %s",
+    ["buy %d arrows"] = "comprar %d flechas",
+    ["buy %d bullets"] = "comprar %d balas",
+    ["buy %d water"] = "comprar %d de agua",
+    ["buy %d food"] = "comprar %d de comida",
     ["Save hand-ins to level in town"] = "Guardar las entregas para subir de nivel en la ciudad",
     ["(held for your trainer)"] = "(guardada para tu instructor)",
     ["%d talent point to spend"] = "%d punto de talento por gastar",
@@ -9930,6 +9957,15 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["Sell and repair stops"] = "Остановки: продать и починить",
+    ["Buy supplies at the vendor stop"] = "Покупать припасы у торговца",
+    ["Sell and repair at %s"] = "Продать и починить: %s",
+    ["Sell at %s"] = "Продать: %s",
+    ["Buy supplies at %s"] = "Купить припасы: %s",
+    ["buy %d arrows"] = "купить стрел: %d",
+    ["buy %d bullets"] = "купить пуль: %d",
+    ["buy %d water"] = "купить воды: %d",
+    ["buy %d food"] = "купить еды: %d",
     ["Save hand-ins to level in town"] = "Придержать сдачу заданий, чтобы получить уровень в городе",
     ["(held for your trainer)"] = "(придержано для вашего учителя)",
     ["%d talent point to spend"] = "%d очко талантов можно потратить",
@@ -13232,6 +13268,15 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["Sell and repair stops"] = "Paradas para vender e reparar",
+    ["Buy supplies at the vendor stop"] = "Comprar suprimentos na parada do vendedor",
+    ["Sell and repair at %s"] = "Vender e reparar em %s",
+    ["Sell at %s"] = "Vender em %s",
+    ["Buy supplies at %s"] = "Comprar suprimentos em %s",
+    ["buy %d arrows"] = "comprar %d flechas",
+    ["buy %d bullets"] = "comprar %d balas",
+    ["buy %d water"] = "comprar %d de água",
+    ["buy %d food"] = "comprar %d de comida",
     ["Save hand-ins to level in town"] = "Guardar as entregas para subir de nível na cidade",
     ["(held for your trainer)"] = "(guardada para o seu instrutor)",
     ["%d talent point to spend"] = "%d ponto de talento para gastar",
@@ -16534,6 +16579,15 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["Sell and repair stops"] = "Soste per vendere e riparare",
+    ["Buy supplies at the vendor stop"] = "Comprare provviste alla sosta dal venditore",
+    ["Sell and repair at %s"] = "Vendi e ripara da %s",
+    ["Sell at %s"] = "Vendi da %s",
+    ["Buy supplies at %s"] = "Compra provviste da %s",
+    ["buy %d arrows"] = "compra %d frecce",
+    ["buy %d bullets"] = "compra %d proiettili",
+    ["buy %d water"] = "compra %d acqua",
+    ["buy %d food"] = "compra %d cibo",
     ["Save hand-ins to level in town"] = "Tenere le consegne per salire di livello in città",
     ["(held for your trainer)"] = "(tenuta per il tuo maestro)",
     ["%d talent point to spend"] = "%d punto talento da spendere",
@@ -19836,6 +19890,15 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["Sell and repair stops"] = "판매 및 수리 경유",
+    ["Buy supplies at the vendor stop"] = "상인 경유지에서 보급품 구매",
+    ["Sell and repair at %s"] = "%s에서 판매 및 수리",
+    ["Sell at %s"] = "%s에서 판매",
+    ["Buy supplies at %s"] = "%s에서 보급품 구매",
+    ["buy %d arrows"] = "화살 %d개 구매",
+    ["buy %d bullets"] = "총알 %d개 구매",
+    ["buy %d water"] = "물 %d개 구매",
+    ["buy %d food"] = "음식 %d개 구매",
     ["Save hand-ins to level in town"] = "마을에서 레벨업하도록 퀘스트 완료를 미루기",
     ["(held for your trainer)"] = "(교관을 위해 보류)",
     ["%d talent point to spend"] = "사용할 수 있는 특성 점수 %d점",
@@ -23141,6 +23204,15 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["Sell and repair stops"] = "卖出和修理停靠点",
+    ["Buy supplies at the vendor stop"] = "在商人停靠点购买补给",
+    ["Sell and repair at %s"] = "在%s卖出并修理",
+    ["Sell at %s"] = "在%s卖出",
+    ["Buy supplies at %s"] = "在%s购买补给",
+    ["buy %d arrows"] = "购买%d支箭",
+    ["buy %d bullets"] = "购买%d发子弹",
+    ["buy %d water"] = "购买%d份水",
+    ["buy %d food"] = "购买%d份食物",
     ["Save hand-ins to level in town"] = "留着交任务,在城镇里升级",
     ["(held for your trainer)"] = "(留给你的训练师)",
     ["%d talent point to spend"] = "%d 点天赋可分配",
