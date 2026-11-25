@@ -393,7 +393,10 @@ function ns.PlannerHoldTurnins(guide, summary, ctx)
         ns.PlannerYield()
         local s = steps[i]
         if s.kind == "do" then return end               -- (time spent on quests in between: not worth holding for)
-        if s.kind == "turnin" and s.hub == steps[c].hub then group[#group + 1] = i end
+        if s.kind == "turnin" and s.hub == steps[c].hub then
+            if s.timed then return end                  -- (a quest with a clock on it is handed in at once, never held)
+            group[#group + 1] = i
+        end
     end
     local hubYards = ns.PLANNER_HUB_YARDS or 150
     for _, i in ipairs(group) do

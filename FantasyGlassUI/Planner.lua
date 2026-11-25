@@ -75,14 +75,36 @@ end
 
 local function NeedsGroup(rec) return (rec.elite or rec.group or rec.dungeon) and true or false end
 
+-- The class quests of this character, by id: { [questID] = { id, level, kind, parts } } (ctx.classQuests is the list).
+function ns.PlannerClassMap(ctx)
+    local map = {}
+    for _, e in ipairs(type(ctx) == "table" and type(ctx.classQuests) == "table" and ctx.classQuests or {}) do
+        if type(e) == "table" and type(e.id) == "number" and tonumber(e.level) then map[e.id] = e end
+    end
+    return map
+end
+
+-- Every spot a record talks about (givers, hand-ins, objectives).
+local function EachSpot(rec, f)
+    for _, s in ipairs(rec.starts or {}) do f(s) end
+    for _, s in ipairs(rec.ends or {}) do f(s) end
+    for _, o in ipairs(rec.objectives or {}) do
+        for _, s in ipairs(o.spots or {}) do f(s) end
+    end
+end
+
 -- list of records worth considering, skipped = { group = n } (left out only by the group setting).
 -- ctx.skip: quests never suggested (kept while they are in the log); ctx.soloElites + ctx.class: an elite
 -- your class has soloed at this level difference is let through (and is not counted as skipped).
+-- ctx.classQuests: class quests at or below your level are candidates whatever the level window says (the skip
+-- list still applies). A quest an item starts, that an NPC drops: a candidate only when that NPC stands within a
+-- hub's radius of a spot of the others, or at once (starting where you are) when the item is in your bags.
 function ns.PlannerCandidates(source, ctx)
     local list, skipped = {}, { group = 0 }
     if type(source) ~= "table" or type(ctx) ~= "table" then return list, skipped end
     local level, done, onQuest = ctx.level or 1, ctx.done or function() return false end, ctx.onQuest or function() return false end
     local never = type(ctx.skip) == "table" and ctx.skip or nil
+    local items = {}
     if source.begin then source.begin(level) end
     for _, id in ipairs(source.ids()) do
         ns.PlannerYield()
@@ -97,8 +119,59 @@ function ns.PlannerCandidates(source, ctx)
                 if NeedsGroup(rec) and ctx.group ~= "all" and not (ctx.group == "grouped" and ctx.inGroup)
                     and not (ctx.soloElites and rec.elite and not rec.group and not rec.dungeon and ns.PlannerSoloEliteOK(ctx.class, rec.level - level)) then
                     skipped.group = skipped.group + 1
+                elseif rec.fromItem then
+                    items[#items + 1] = rec
                 else
                     list[#list + 1] = rec
+                end
+            end
+        end
+    end
+    local have = {}
+    for _, r in ipairs(list) do have[r.id] = true end
+    for _, e in ipairs(type(ctx.classQuests) == "table" and ctx.classQuests or {}) do
+        ns.PlannerYield()
+        local id = type(e) == "table" and e.id
+        if type(id) == "number" and not have[id] and tonumber(e.level) and e.level <= level and not done(id) and not (never and never[id]) then
+            local rec = source.quest(id)
+            if rec and not onQuest(id) and rec.doable and AllDone(rec.pre, done) and AnyDone(rec.preAny, done) then
+                have[id] = true
+                list[#list + 1] = rec
+            end
+        end
+    end
+    if #items > 0 then
+        local anchors = {}
+        for _, r in ipairs(list) do
+            EachSpot(r, function(s)
+                local c, x, y = ns.PlannerWorldPos(s.map, s.x, s.y)
+                if c then anchors[#anchors + 1] = { c = c, x = x, y = y } end
+            end)
+        end
+        local r2 = (ns.PLANNER_HUB_YARDS or 150) ^ 2
+        local here = type(ctx.here) == "table" and ctx.here.map and ctx.here.x and ctx.here.y and ctx.here or nil
+        for _, rec in ipairs(items) do
+            ns.PlannerYield()
+            if not have[rec.id] then
+                local held = type(ctx.itemCount) == "function" and (tonumber(ctx.itemCount(rec.fromItem.id)) or 0) > 0
+                if held and here then
+                    local copy = {}
+                    for k, v in pairs(rec) do copy[k] = v end
+                    copy.starts, copy.haveItem = { { map = here.map, x = here.x, y = here.y } }, true
+                    have[rec.id] = true
+                    list[#list + 1] = copy
+                else
+                    local near = false
+                    for _, s in ipairs(rec.starts or {}) do
+                        local c, x, y = ns.PlannerWorldPos(s.map, s.x, s.y)
+                        if c then
+                            for _, a in ipairs(anchors) do
+                                if a.c == c and (a.x - x) ^ 2 + (a.y - y) ^ 2 <= r2 then near = true; break end
+                            end
+                        end
+                        if near then break end
+                    end
+                    if near then have[rec.id] = true; list[#list + 1] = rec end
                 end
             end
         end

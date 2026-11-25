@@ -482,6 +482,17 @@ local function MovedText(st)
     if not lv then return nil end
     return format(ns:Tr("Moved: you died twice here (back at level %d)"), lv)
 end
+-- "Class quest ready: Name (3 parts, about 20 min)": one you could start that the plan does not take.
+local function ClassText(st)
+    local s = Planned(st) and ns.db and ns.db.plannerClassQuests ~= false and type(st.summary) == "table" and st.summary
+    local r = s and type(s.classReady) == "table" and s.classReady
+    if not (r and type(r.name) == "string") then return nil end
+    local text = format(ns:Tr("Class quest ready: %s"), r.name)
+    if tonumber(r.parts) and r.parts > 1 and tonumber(r.minutes) then
+        text = text .. " " .. format(ns:Tr("(%d parts, about %d min)"), r.parts, r.minutes)
+    end
+    return text
+end
 local function QuestName(id)
     local f = C_QuestLog and C_QuestLog.GetTitleForQuestID
     if type(f) == "function" then
@@ -597,7 +608,12 @@ Draw = function()
     panel.moved:SetShown(moved ~= nil)
     panel.moved:ClearAllPoints()
     panel.moved:SetPoint("TOPLEFT", 12, -92 - (skipped and 13 or 0) - (talents and 13 or 0) - (riding and 13 or 0) - (rep and 13 or 0))
-    panel:SetHeight(118 + (skipped and 13 or 0) + (talents and 13 or 0) + (riding and 13 or 0) + (rep and 13 or 0) + (moved and 13 or 0))
+    local classq = ClassText(st)
+    panel.classq:SetText(classq or "")
+    panel.classq:SetShown(classq ~= nil)
+    panel.classq:ClearAllPoints()
+    panel.classq:SetPoint("TOPLEFT", 12, -92 - (skipped and 13 or 0) - (talents and 13 or 0) - (riding and 13 or 0) - (rep and 13 or 0) - (moved and 13 or 0))
+    panel:SetHeight(118 + (skipped and 13 or 0) + (talents and 13 or 0) + (riding and 13 or 0) + (rep and 13 or 0) + (moved and 13 or 0) + (classq and 13 or 0))
     panel.count:SetText(math.min(at, #steps) .. "/" .. #steps)
     local step = steps[at]
     if step then
@@ -689,6 +705,12 @@ function ns:GuideShowPanel()
         if panel.moved.SetWordWrap then panel.moved:SetWordWrap(false) end
         ns:Paint(panel.moved, "SetTextColor", "faint")
         panel.moved:Hide()
+        panel.classq = ns:NewText(panel, 10, "LEFT")               -- (a planned route: a class quest you could start now)
+        panel.classq:SetPoint("TOPLEFT", 12, -92)
+        panel.classq:SetWidth(258)
+        if panel.classq.SetWordWrap then panel.classq:SetWordWrap(false) end
+        ns:Paint(panel.classq, "SetTextColor", "faint")
+        panel.classq:Hide()
         panel.stepButton = CreateFrame("Button", nil, panel)         -- (right click on a quest step: never suggest it)
         panel.stepButton:SetPoint("TOPLEFT", 34, -34)
         panel.stepButton:SetSize(236, 30)

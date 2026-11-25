@@ -272,7 +272,7 @@ function ns.BuildGuidePage(page)
 
     local live = CreateFrame("Frame", nil, page)
     live:SetPoint("TOPLEFT", 0, 0)
-    local LIVE_HEIGHT = 758                 -- (the last box ends at y = -756)
+    local LIVE_HEIGHT = 784                 -- (the last box ends at y = -782)
     live:SetSize(736, LIVE_HEIGHT)
     T.live = live
     Heading(live, "Quest guides", 0, 0, 736)
@@ -409,6 +409,12 @@ function ns.BuildGuidePage(page)
         Replan()
     end)
     soloElites:SetPoint("TOPLEFT", 0, -732)
+    local classQuests = ns:CreateCheckbox(live, "Plan class quests", ns.db.plannerClassQuests ~= false, function(v)
+        ns.db.plannerClassQuests = v
+        Replan()
+    end)
+    classQuests:SetPoint("TOPLEFT", 0, -758)
+    T.classQuestsBox = classQuests
     T.deathsBox, T.soloElitesBox, T.skippedButton = deaths, soloElites, skipButton
     T.restedBox, T.rewardsBox, T.reputationButton = rested, rewards, repButton
     T.planButton, T.groupButton, T.flightsBox, T.whyBox, T.trainerBox, T.holdBox = plan, group, flights, why, trainer, hold
@@ -436,6 +442,7 @@ function ns.BuildGuidePage(page)
         rewards:SetChecked(ns.db.plannerRewards ~= false)
         deaths:SetChecked(ns.db.plannerDeaths ~= false)
         soloElites:SetChecked(ns.db.plannerSoloElites ~= false)
+        classQuests:SetChecked(ns.db.plannerClassQuests ~= false)
         DrawGroup(group)
         recBtn.text:SetText(ns:Tr(ns.guideRecording and "Stop recording" or "Record"))
         local st = ns.GuideState and ns.GuideState()

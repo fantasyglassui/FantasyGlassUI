@@ -148,6 +148,19 @@ local function Tags(id, quest, db, zones, state)
     return elite and true or false, group, dungeon
 end
 
+-- Escort quests: the data does not mark them, so this is our own list { [questID] = true }.
+-- A small starter set from memory; CHECK THESE IN THE GAME and add the rest.
+ns.PLANNER_ESCORTS = {
+    [219] = true,     -- Missing In Action (Corporal Keeshan, Redridge Mountains)
+    [1222] = true,    -- Stinky's Escape (Dustwallow Marsh)
+}
+
+-- Class quests: { [classFile] = { { id = questID, level = n, kind = "always"|"fit", parts = n }, ... } }.
+-- "always": its hub is planned first; "fit": only when it lies near the route. parts: quests in its chain.
+-- Left empty on purpose: the ids have to be checked in the game before they are listed (a wrong id would
+-- plan a stranger's quest). Add entries such as MAGE = { { id = ..., level = 10, kind = "always", parts = 1 } }.
+ns.PLANNER_CLASS_QUESTS = {}
+
 local function InLog(id)
     local QL = C_QuestLog
     if not (QL and QL.IsOnQuest) then return false end
@@ -165,6 +178,22 @@ local function Record(env, id)
     local fin = type(quest.finishedBy) == "table" and quest.finishedBy or {}
     local starts, ends = {}, {}
     for _, npc in ipairs(Ids(by[1])) do Merge(starts, Spots(db, zones, npc)) end
+    -- Started by an item that an NPC drops: the start is where that NPC stands (the planner decides whether it is near the route).
+    local fromItem
+    if #starts == 0 and type(db.QueryItemSingle) == "function" then
+        for _, item in ipairs(Ids(by[3])) do
+            if type(item) == "number" and not fromItem then
+                local drops = db.QueryItemSingle(item, "npcDrops")
+                local spots = {}
+                for _, npc in ipairs(type(drops) == "table" and drops or {}) do Merge(spots, Spots(db, zones, npc)) end
+                if #spots > 0 then
+                    local name = db.QueryItemSingle(item, "name")
+                    fromItem = { id = item, name = type(name) == "string" and name or ("Item " .. item) }
+                    starts = spots
+                end
+            end
+        end
+    end
     if #starts == 0 and not InLog(id) then return nil end
     for _, npc in ipairs(Ids(fin[1])) do Merge(ends, Spots(db, zones, npc)) end
     local state = {}
@@ -181,6 +210,7 @@ local function Record(env, id)
         nextQuest = tonumber(quest.nextQuestInChain) and quest.nextQuestInChain > 0 and quest.nextQuestInChain or nil,
         elite = elite, group = group, dungeon = dungeon, repeatable = repeatable,
         reputation = Reputation(quest.reputationReward),
+        fromItem = fromItem, escort = ns.PLANNER_ESCORTS[id] == true,
         doable = db.IsDoable(id) and true or false,
     }
 end
@@ -499,7 +529,7 @@ function ns.PlannerLogSource()
             starts = {}, ends = ends, objectives = {}, pre = {}, preAny = {}, exclusive = {},
             elite = type(tag) == "table" and tag.isElite or false, group = group,
             dungeon = dungeon,
-            repeatable = false, doable = true, reputation = {},
+            repeatable = false, doable = true, reputation = {}, escort = ns.PLANNER_ESCORTS[id] == true,
         }
     end
     function src.places(kind, arg) return Places("log", nil, kind, arg) end

@@ -194,6 +194,7 @@ ns.defaults = {
     plannerRewards   = true,        -- a better item among a quest's rewards adds to its worth
     plannerDeaths    = true,        -- a hub where you died twice is left alone for two levels
     plannerSoloElites = true,       -- elites your class has soloed count as Solo quests
+    plannerClassQuests = true,      -- class quests are planned at the right time (and mentioned when they are ready)
     plannerWhy       = true,
     plannerTrainer   = true,        -- a stop at your class trainer every 2 levels
     plannerHold      = true,        -- a hand-in that would level you waits for the trainer's town

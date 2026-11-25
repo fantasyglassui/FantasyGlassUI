@@ -21,6 +21,12 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["Escort: start it when you are ready; it fails if the NPC dies"] = "Eskorte: Starte sie, wenn du bereit bist; sie scheitert, wenn der NPC stirbt",
+    ["Keep the %s that drops here"] = "Behalte: %s, das hier fallen gelassen wird",
+    ["Use the %s to start it"] = "Benutze: %s, um sie zu beginnen",
+    ["Class quest ready: %s"] = "Klassenquest bereit: %s",
+    ["(%d parts, about %d min)"] = "(%d Teile, etwa %d Min.)",
+    ["Plan class quests"] = "Klassenquests planen",
     ["Never suggest this quest"] = "Diese Quest nie vorschlagen",
     ["Quests you skipped"] = "Übersprungene Quests",
     ["Click a quest to suggest it again."] = "Klicke auf eine Quest, um sie wieder vorzuschlagen.",
@@ -3359,6 +3365,12 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["Escort: start it when you are ready; it fails if the NPC dies"] = "Escorte : commencez quand vous êtes prêt ; elle échoue si le PNJ meurt",
+    ["Keep the %s that drops here"] = "Gardez : %s, qui tombe ici",
+    ["Use the %s to start it"] = "Utilisez : %s pour la commencer",
+    ["Class quest ready: %s"] = "Quête de classe prête : %s",
+    ["(%d parts, about %d min)"] = "(%d parties, environ %d min)",
+    ["Plan class quests"] = "Planifier les quêtes de classe",
     ["Never suggest this quest"] = "Ne jamais proposer cette quête",
     ["Quests you skipped"] = "Quêtes ignorées",
     ["Click a quest to suggest it again."] = "Cliquez sur une quête pour la proposer de nouveau.",
@@ -6697,6 +6709,12 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["Escort: start it when you are ready; it fails if the NPC dies"] = "Escolta: empieza cuando estés listo; fracasa si el PNJ muere",
+    ["Keep the %s that drops here"] = "Conserva: %s, que cae aquí",
+    ["Use the %s to start it"] = "Usa: %s para empezarla",
+    ["Class quest ready: %s"] = "Misión de clase lista: %s",
+    ["(%d parts, about %d min)"] = "(%d partes, unos %d min)",
+    ["Plan class quests"] = "Planificar misiones de clase",
     ["Never suggest this quest"] = "No sugerir nunca esta misión",
     ["Quests you skipped"] = "Misiones omitidas",
     ["Click a quest to suggest it again."] = "Haz clic en una misión para volver a sugerirla.",
@@ -10038,6 +10056,12 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["Escort: start it when you are ready; it fails if the NPC dies"] = "Сопровождение: начинайте, когда будете готовы; задание провалится, если NPC погибнет",
+    ["Keep the %s that drops here"] = "Сохраните: %s, который выпадает здесь",
+    ["Use the %s to start it"] = "Используйте: %s, чтобы начать",
+    ["Class quest ready: %s"] = "Классовое задание готово: %s",
+    ["(%d parts, about %d min)"] = "(%d частей, около %d мин.)",
+    ["Plan class quests"] = "Планировать классовые задания",
     ["Never suggest this quest"] = "Никогда не предлагать это задание",
     ["Quests you skipped"] = "Пропущенные задания",
     ["Click a quest to suggest it again."] = "Нажмите на задание, чтобы снова предлагать его.",
@@ -13376,6 +13400,12 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["Escort: start it when you are ready; it fails if the NPC dies"] = "Escolta: comece quando estiver pronto; ela falha se o NPC morrer",
+    ["Keep the %s that drops here"] = "Guarde: %s, que cai aqui",
+    ["Use the %s to start it"] = "Use: %s para começá-la",
+    ["Class quest ready: %s"] = "Missão de classe pronta: %s",
+    ["(%d parts, about %d min)"] = "(%d partes, cerca de %d min)",
+    ["Plan class quests"] = "Planejar missões de classe",
     ["Never suggest this quest"] = "Nunca sugerir esta missão",
     ["Quests you skipped"] = "Missões ignoradas",
     ["Click a quest to suggest it again."] = "Clique em uma missão para voltar a sugeri-la.",
@@ -16714,6 +16744,12 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["Escort: start it when you are ready; it fails if the NPC dies"] = "Scorta: iniziala quando sei pronto; fallisce se il PNG muore",
+    ["Keep the %s that drops here"] = "Tieni: %s, che cade qui",
+    ["Use the %s to start it"] = "Usa: %s per iniziarla",
+    ["Class quest ready: %s"] = "Missione di classe pronta: %s",
+    ["(%d parts, about %d min)"] = "(%d parti, circa %d min)",
+    ["Plan class quests"] = "Pianifica le missioni di classe",
     ["Never suggest this quest"] = "Non suggerire mai questa missione",
     ["Quests you skipped"] = "Missioni saltate",
     ["Click a quest to suggest it again."] = "Fai clic su una missione per suggerirla di nuovo.",
@@ -20052,6 +20088,12 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["Escort: start it when you are ready; it fails if the NPC dies"] = "호위: 준비되면 시작하세요. NPC가 죽으면 실패합니다",
+    ["Keep the %s that drops here"] = "여기서 나오는 %s을(를) 보관하세요",
+    ["Use the %s to start it"] = "%s을(를) 사용해 시작하세요",
+    ["Class quest ready: %s"] = "직업 퀘스트 준비됨: %s",
+    ["(%d parts, about %d min)"] = "(%d부, 약 %d분)",
+    ["Plan class quests"] = "직업 퀘스트 계획",
     ["Never suggest this quest"] = "이 퀘스트를 다시는 추천하지 않기",
     ["Quests you skipped"] = "건너뛴 퀘스트",
     ["Click a quest to suggest it again."] = "퀘스트를 클릭하면 다시 추천합니다.",
@@ -23393,6 +23435,12 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["Escort: start it when you are ready; it fails if the NPC dies"] = "护送：准备好了再开始；如果 NPC 死亡就会失败",
+    ["Keep the %s that drops here"] = "保留在这里掉落的%s",
+    ["Use the %s to start it"] = "使用%s开始任务",
+    ["Class quest ready: %s"] = "职业任务已就绪：%s",
+    ["(%d parts, about %d min)"] = "(%d 个部分，约 %d 分钟)",
+    ["Plan class quests"] = "规划职业任务",
     ["Never suggest this quest"] = "不再推荐此任务",
     ["Quests you skipped"] = "已跳过的任务",
     ["Click a quest to suggest it again."] = "点击任务即可重新推荐。",

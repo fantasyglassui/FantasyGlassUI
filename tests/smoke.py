@@ -11337,6 +11337,215 @@ try("13.3 choices: skip list, deaths, soloed elites", function()
     if not ok then error(err, 0) end
 end)
 
+try("13.3 choices: class, timed, escort and loot quests", function()
+    local saved = { on = ns.GuideOn, here = ns.GuideHere, state = ns.GuideState, level = env.UnitLevel, base = rawget(env, "UnitClassBase"),
+                    map = env.C_Map, vec = rawget(env, "CreateVector2D"), unlocked = ns.GuideUnlocked, logQ = env.C_QuestLog,
+                    classTable = ns.PLANNER_CLASS_QUESTS, escorts = ns.PLANNER_ESCORTS, switch = ns.db.plannerClassQuests,
+                    loaded = env.C_AddOns.IsAddOnLoaded, meta = rawget(env.C_AddOns, "GetAddOnMetadata"), q = rawget(env, "Questie"), loader = rawget(env, "QuestieLoader"),
+                    count = env.C_Item.GetItemCount }
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        ns.GuideOn = function() return true end
+        env.C_Map = setmetatable({ GetWorldPosFromMapPos = function(map, v)
+            if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end
+            if map == 2 then return 0, { x = v.x * 1000 + 5000, y = v.y * 1000 } end
+        end }, { __index = saved.map })
+        env.CreateVector2D = function(x, y) return { x = x, y = y } end
+        local function q(id, extra)
+            local r = { id = id, name = "Q" .. id, level = 14, minLevel = 1, xp = 100, starts = {}, ends = {}, objectives = {}, pre = {}, preAny = {}, exclusive = {},
+                        elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+            for k, v in pairs(extra or {}) do r[k] = v end
+            return r
+        end
+        local function at(map, x, y) return { { map = map, x = x, y = y } } end
+        local function kill(map, x, y, n) return { { kind = "kill", count = n or 0, countKnown = true, mobLevel = 14, spots = at(map, x, y) } } end
+        local recs, order = {}, {}
+        local function add(r) recs[r.id] = r; order[#order + 1] = r.id end
+        local source = { kind = "test", ids = function() return order end, quest = function(id) return recs[id] end, inns = function() return {} end }
+        local logged, held, timedIds = {}, {}, {}
+        local function route(extra)
+            local c = { source = source, level = 14, group = "solo", inGroup = false, speed = 7, faction = "Alliance", xpMax = 10000,
+                done = function() return false end, onQuest = function(id) return logged[id] or false end, here = { map = 1, x = 30, y = 40 },
+                crossings = {}, learnFlights = false, bind = "Elsewhere", bindSpot = { map = 1, x = 30, y = 40 }, pace = 1, flights = {},
+                flightTime = function() return nil end,
+                timed = function(id) return timedIds[id] or false end,
+                itemCount = function(id) return held[id] or 0 end }
+            for k, v in pairs(extra or {}) do c[k] = v end
+            return ns.PlannerRoute(c)
+        end
+        local function planned(guide) local o = {} for _, s in ipairs(guide.steps) do if s.quest then o[s.quest] = true end end return o end
+        local function firstQuestStep(guide) for i, s in ipairs(guide.steps) do if s.quest then return i, s end end end
+        -- the ordinary quest that makes the hub
+        add(q(301, { xp = 900, starts = at(1, 30, 40), ends = at(1, 30, 40), objectives = kill(1, 32, 42, 4) }))
+        -- an "always" class quest, out of the level window, far across the map
+        add(q(401, { level = 8, xp = 50, starts = at(1, 80, 80), ends = at(1, 80, 80) }))
+        local guide = route()
+        if planned(guide)[401] or not planned(guide)[301] then error("without class quests: only the ordinary quest") end
+        local list = { { id = 401, level = 8, kind = "always", parts = 1 } }
+        guide = route({ classQuests = list })
+        local i, s = firstQuestStep(guide)
+        if not (s and s.quest == 401) then error("an always class quest is planned first: " .. tostring(s and s.quest)) end
+        if not planned(guide)[301] then error("the ordinary quest still follows") end
+        local g2 = route({ classQuests = list, done = function(id) return id == 401 end })
+        if planned(g2)[401] then error("a done class quest is not planned") end
+        local g3 = route({ classQuests = { { id = 401, level = 15, kind = "always", parts = 1 } } })
+        if planned(g3)[401] then error("a class quest above your level waits") end
+        local g4 = route({ classQuests = list, skip = { [401] = true } })
+        if planned(g4)[401] then error("a skipped class quest is never planned") end
+        logged[401] = true
+        local g5 = route({ classQuests = list, skip = { [401] = true } })
+        if not planned(g5)[401] then error("a skipped class quest in the log stays") end
+        logged[401] = nil
+        -- "fit" class quests: near the route yes, far no (and the panel says so)
+        add(q(402, { level = 14, xp = 40, starts = at(1, 33, 43), ends = at(1, 33, 43) }))
+        add(q(403, { level = 14, xp = 40, starts = at(2, 50, 50), ends = at(2, 50, 50), objectives = kill(2, 50, 50, 4) }))
+        local fits = { { id = 402, level = 14, kind = "fit", parts = 1 }, { id = 403, level = 14, kind = "fit", parts = 3 } }
+        guide = route({ classQuests = fits })
+        local p = planned(guide)
+        if not p[402] then error("a fit class quest near the route is planned") end
+        if p[403] then error("a far fit class quest is not planned") end
+        local _, summary = route({ classQuests = fits })
+        local r = summary.classReady
+        if not (r and r.name == "Q403" and r.parts == 3 and r.minutes == 5) then error("the far one is ready, 3 parts, 5 min: " .. tostring(r and (r.name .. " " .. tostring(r.parts) .. " " .. tostring(r.minutes)))) end
+        guide = route({ classQuests = { { id = 402, level = 12, kind = "fit", parts = 1 } } })
+        if planned(guide)[402] then error("a fit quest more than a level below you is not planned") end
+        local panel = ns:GuideShowPanel()
+        ns.GuideHere = function() return 1, 30, 40 end
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "x" } } }, { classReady = { name = "Far", parts = 3, minutes = 5 } })
+        panel = ns:GuideShowPanel()
+        if not (panel and panel.classq) then error("the panel has a class quest line") end
+        local said
+        rawset(panel.classq, "SetText", function(_, t) said = t end)
+        ns:GuideShowPanel()
+        if said ~= "Class quest ready: Far (3 parts, about 5 min)" then error("the line: " .. tostring(said)) end
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "x" } } }, { classReady = { name = "Solo", parts = 1 } })
+        ns:GuideShowPanel()
+        if said ~= "Class quest ready: Solo" then error("one part: no parts: " .. tostring(said)) end
+        ns.db.plannerClassQuests = false
+        ns:GuideShowPanel()
+        if said and said ~= "" then error("switch off: no line") end
+        -- the live context: the table, the class and the switch
+        env.UnitClassBase = function() return "WARRIOR" end
+        ns.PLANNER_CLASS_QUESTS = { WARRIOR = list }
+        if ns.PlannerContext().classQuests ~= nil then error("switch off: no class quests in the context") end
+        ns.db.plannerClassQuests = true
+        if ns.PlannerContext().classQuests ~= list then error("the context carries the class's list") end
+        env.UnitClassBase = function() return "MAGE" end
+        if ns.PlannerContext().classQuests ~= nil then error("another class: none") end
+        env.UnitClassBase = saved.base
+        -- timed quests: their own run first in their hub
+        recs[402], recs[403], recs[401] = nil, nil, nil
+        order = { 301 }
+        add(q(501, { xp = 100, starts = at(1, 31, 41), ends = at(1, 31, 41), objectives = kill(1, 34, 44, 4) }))
+        add(q(502, { xp = 100, starts = at(1, 31, 41), ends = at(1, 31, 41), objectives = kill(1, 32, 38, 4) }))
+        logged[501], timedIds[501] = true, true
+        guide = route()
+        local at1 = firstQuestStep(guide)
+        local a, b, c2 = guide.steps[at1], guide.steps[at1 + 1], guide.steps[at1 + 2]
+        if not (a and a.kind == "do" and a.quest == 501 and b and b.kind == "turnin" and b.quest == 501) then
+            local seq = {}
+            for _, st in ipairs(guide.steps) do seq[#seq + 1] = st.kind .. ":" .. tostring(st.quest) end
+            error("the timed quest's run (do, hand in) comes first: " .. table.concat(seq, " "))
+        end
+        if not (c2 and c2.kind == "accept") then error("then the rest of the hub") end
+        timedIds[501] = nil
+        guide = route()
+        a = guide.steps[firstQuestStep(guide)]
+        if a.quest == 501 and a.kind == "do" and guide.steps[firstQuestStep(guide) + 1].kind == "turnin" and guide.steps[firstQuestStep(guide) + 1].quest == 501 then
+            error("no clock: no run of its own")
+        end
+        -- the live context asks the game for the time allowed
+        env.C_QuestLog = setmetatable({ GetTimeAllowed = function(id) if id == 501 then return 900, 20 end return 0 end }, { __index = saved.logQ })
+        if ns.PlannerContext().timed(501) ~= true or ns.PlannerContext().timed(502) ~= false then error("the context's timed check") end
+        env.C_QuestLog = saved.logQ
+        logged[501] = nil
+        recs[501], recs[502], order = nil, nil, { 301 }
+        -- escort quests: their own step, with the note
+        ns.PLANNER_ESCORTS = { [601] = true }
+        add(q(601, { xp = 100, starts = at(1, 31, 41), ends = at(1, 31, 41), objectives = kill(1, 33, 41, 0) }))
+        add(q(602, { xp = 100, starts = at(1, 31, 41), ends = at(1, 31, 41), objectives = kill(1, 33, 39, 0) }))
+        guide = route()
+        local note = "Escort: start it when you are ready; it fails if the NPC dies"
+        local seenEscort, seenOther
+        for _, st in ipairs(guide.steps) do
+            if st.kind == "do" and st.quest == 601 then seenEscort = st end
+            if st.kind == "do" and st.quest == 602 then seenOther = st end
+        end
+        if not (seenEscort and seenEscort.text and seenEscort.text:find(note, 1, true)) then error("the escort's step carries the note: " .. tostring(seenEscort and seenEscort.text)) end
+        if not seenOther or seenOther.text then error("another quest's step has no note") end
+        if ns.GuideStepText(seenEscort, { name = ns.GUIDE_PLANNED }):find(note, 1, true) == nil then error("the panel shows the note") end
+        ns.PLANNER_ESCORTS = {}
+        guide = route()
+        for _, st in ipairs(guide.steps) do if st.kind == "do" and st.quest == 601 and st.text then error("not an escort any more: no note") end end
+        recs[601], recs[602], order = nil, nil, { 301 }
+        -- quests an item starts, which an NPC drops
+        local item = { id = 5000, name = "Bloody Note" }
+        add(q(701, { xp = 300, starts = at(1, 34, 44), ends = at(1, 31, 41), fromItem = item, objectives = kill(1, 34, 44, 4) }))
+        guide = route()
+        local acc
+        for _, st in ipairs(guide.steps) do if st.kind == "accept" and st.quest == 701 then acc = st end end
+        if not (acc and acc.text == "Keep the Bloody Note that drops here") then error("the drop quest near a planned hub: " .. tostring(acc and acc.text)) end
+        held[5000] = 1
+        guide = route({ here = { map = 1, x = 29, y = 41 } })
+        acc = nil
+        for _, st in ipairs(guide.steps) do if st.kind == "accept" and st.quest == 701 then acc = st end end
+        if not (acc and acc.text == "Use the Bloody Note to start it") then error("item in the bags: " .. tostring(acc and acc.text)) end
+        if acc.x ~= 29 or acc.y ~= 41 then error("it starts where you are: " .. tostring(acc.x) .. "," .. tostring(acc.y)) end
+        held[5000] = nil
+        recs[701].starts = at(1, 90, 90)
+        guide = route()
+        if planned(guide)[701] then error("the drop NPC far from the route: not planned") end
+        held[5000] = 1
+        guide = route()
+        if not planned(guide)[701] then error("the item in the bags: planned wherever the NPC stands") end
+        held[5000] = nil
+        logged[701] = true
+        guide = route()
+        if not planned(guide)[701] then error("a logged drop quest stays") end
+        logged[701] = nil
+        -- reading Questie: an item-started quest starts where its NPC drops it
+        local fakes = {
+            QuestieDB = { QuestPointers = { [102] = true, [103] = true },
+                NPCPointers = { [20] = 3 },
+                GetQuest = function(id)
+                    if id == 102 then return { name = "From an item", questLevel = 10, level = 10, startedBy = { nil, nil, { 5 } }, finishedBy = { { 20 } } } end
+                    if id == 103 then return { name = "Lost item", questLevel = 10, level = 10, startedBy = { nil, nil, { 6 } }, finishedBy = { { 20 } } } end
+                end,
+                IsDoable = function() return true end,
+                QueryNPCSingle = function(id, key) if id == 20 then return ({ spawns = { [40] = { { 50, 60 } } }, minLevel = 10, maxLevel = 10, rank = 0 })[key] end end,
+                QueryItemSingle = function(id, key)
+                    if id == 5 then return ({ npcDrops = { 20 }, name = "Bloody Note" })[key] end
+                    if id == 6 then return ({ npcDrops = {}, name = "Nothing" })[key] end
+                end },
+            QuestXP = { GetQuestLogRewardXP = function() return 100 end },
+            ZoneDB = { GetUiMapIdByAreaId = function(_, area) return area == 40 and 1436 or nil end },
+        }
+        env.Questie = { API = { isReady = true, RegisterOnReady = function() end } }
+        env.QuestieLoader = { ImportModule = function(_, name) return fakes[name] end }
+        env.C_AddOns.IsAddOnLoaded = function() return true end
+        rawset(env.C_AddOns, "GetAddOnMetadata", function() return ns.PLANNER_CONTRACT end)
+        ns.PLANNER_ESCORTS = { [102] = true }
+        local qsrc, why = ns.PlannerSource()
+        if not qsrc then error("questie source: " .. tostring(why)) end
+        local rec = qsrc.quest(102)
+        if not (rec and rec.fromItem and rec.fromItem.id == 5 and rec.fromItem.name == "Bloody Note") then error("fromItem from startedBy[3]") end
+        if not (rec.starts[1] and rec.starts[1].map == 1436 and rec.starts[1].x == 50) then error("the start is where the NPC drops it") end
+        if rec.escort ~= true then error("the escort flag from our own table") end
+        if qsrc.quest(103) ~= nil then error("an item nothing drops: no start, no record") end
+    end)
+    ns.PlannerSourceReset()
+    env.C_AddOns.IsAddOnLoaded = saved.loaded; rawset(env.C_AddOns, "GetAddOnMetadata", saved.meta)
+    rawset(env, "Questie", saved.q); rawset(env, "QuestieLoader", saved.loader)
+    ns.GuideOn, ns.GuideHere, ns.GuideState, ns.GuideUnlocked = saved.on, saved.here, saved.state, saved.unlocked
+    env.UnitLevel, env.C_Map, env.C_QuestLog = saved.level, saved.map, saved.logQ
+    rawset(env, "UnitClassBase", saved.base); rawset(env, "CreateVector2D", saved.vec)
+    ns.PLANNER_CLASS_QUESTS, ns.PLANNER_ESCORTS, ns.db.plannerClassQuests = saved.classTable, saved.escorts, saved.switch
+    env.C_Item.GetItemCount = saved.count
+    ns:GuideSetPlan(nil)
+    ns.plannerQueued = false
+    if not ok then error(err, 0) end
+end)
+
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()
