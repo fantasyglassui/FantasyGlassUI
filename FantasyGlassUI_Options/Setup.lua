@@ -147,7 +147,8 @@ local function BuildWelcome(page)
     for i, def in ipairs(ns.languages) do
         local code = def[1]
         local b = ns:CreateButton(list, "", 190, 22)
-        ns:ReloadButton(b, function() list:Hide(); return ns:SetupPickLanguage(code) end)
+        ns:ReloadButton(b, function() return ns:SetupPickLanguage(code) end)
+        b:HookScript("PostClick", function() list:Hide() end)      -- (after the click: a reload button is never hidden before its OnClick)
         b.text:SetText(ns:LanguageName(code))
         ns:LanguageFont(b.text, code)                         -- (Korean and Chinese in a face that has their letters)
         b:SetPoint("TOPLEFT", 5, -5 - (i - 1) * 24)
@@ -703,6 +704,8 @@ local function Build()
     -- Finishing always reloads, so everything chosen is in place at once. The tour (and the note on
     -- where everything is) comes after the reload. Its own button, in Next's place on the last step:
     -- the choices are kept in PreClick and the game's own ReloadUI is the click (ns:ReloadButton).
+    -- The window is not hidden first: the reload takes it down, and a button hidden before its
+    -- OnClick might not get one.
     frame.finish = ns:CreateButton(frame, "Finish & reload", 160, 26)
     frame.finish:SetPoint("BOTTOMRIGHT", -30, 16)
     frame.finish:Hide()
@@ -711,7 +714,6 @@ local function Build()
         ns.db.setupDone = true
         needReload = false
         ns.root.setupJustFinished = true
-        frame:Hide()
     end)
     frame:SetScript("OnHide", function()
         if not ns.db.role then ns.db.role = "NONE" end      -- closing counts as "skip": don't ask again every login

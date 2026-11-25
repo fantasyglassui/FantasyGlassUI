@@ -15,7 +15,10 @@ local function BuildLayout(page)
     preview:SetPoint("LEFT", move, "RIGHT", 8, 0)
     -- The first click only asks; while it asks, the button is a reload button (ns:ReloadButton), so the
     -- second click clears the positions and the game itself reloads.
+    -- (If the reload does not come, it goes back to asking after the same 4 seconds; each ask has its
+    -- own turn, so an older ask's timer never cuts a newer one short.)
     local reset, Arm
+    local turn = 0
     local function Disarm()
         reset.armed = false
         reset.text:SetText(ns:Tr("Reset positions"))
@@ -23,9 +26,11 @@ local function BuildLayout(page)
     end
     Arm = function(self)
         self.armed = true
+        turn = turn + 1
+        local mine = turn
         self.text:SetText(ns:SignalHex("bad") .. ns:Tr("Click to confirm") .. "|r")
-        ns:ReloadButton(self, function() self.armed = false; ns:ResetPositions() end)
-        ns:After(4, function() if reset.armed then Disarm() end end)
+        ns:ReloadButton(self, function() ns:ResetPositions() end)
+        ns:After(4, function() if reset.armed and turn == mine then Disarm() end end)
     end
     reset = ns:CreateButton(page, "Reset positions", 130, 24, Arm)
     reset:SetPoint("TOPRIGHT", page, "TOPRIGHT", 0, 0)

@@ -9549,10 +9549,20 @@ try("12.3 reload: every reload button hands the click to the game", function()
     -- the setup's Finish & reload: the choices are kept before the game reloads
     local fin = ns.setupFrame and ns.setupFrame.finish
     if not (fin and ns.reloadButtons[fin]) then error("the setup's Finish & reload is not a reload button") end
+    -- nothing may be hidden in a reload button's PreClick (the button or its window): a button hidden
+    -- before its OnClick might not get one, and the reload would fail as before
+    local hidden = {}
+    local realCall = mockmt.__call
+    local function Watch() mockmt.__call = function(fn, obj, ...) if type(obj) == "table" and rawget(obj, "Hide") == fn then hidden[#hidden + 1] = obj end return newmock() end end
+    local function Unwatch() mockmt.__call = realCall end
     local keep = { done = ns.db.setupDone, just = ns.root.setupJustFinished, role = ns.db.role }
     ns.db.setupDone, ns.root.setupJustFinished = nil, nil
     local before = reloadCount
-    Last(fin, "PreClick")(fin, "LeftButton")
+    Watch()
+    local okF, errF = pcall(Last(fin, "PreClick"), fin, "LeftButton")
+    Unwatch()
+    if not okF then error(errF, 0) end
+    if #hidden > 0 then error("Finish & reload's PreClick hides something before the reload") end
     if ns.db.setupDone ~= true or ns.root.setupJustFinished ~= true then error("Finish & reload should keep the setup as done before the reload") end
     if reloadCount ~= before then error("the PreClick must not reload by itself") end
     if Last(fin, "OnClick") ~= env.ReloadUI then error("after its PreClick, Finish's click should still be the game's ReloadUI") end
@@ -9563,12 +9573,58 @@ try("12.3 reload: every reload button hands the click to the game", function()
     ns.SetupPickLanguage = function() spy.lang = spy.lang + 1; return true end
     ns.UseProfile = function() spy.profile = spy.profile + 1; return true end
     ns.SetSafeMode = function() spy.safe = spy.safe + 1; return true end
-    for _, b in ipairs(list) do if b ~= fin then Last(b, "PreClick")(b, "LeftButton") end end
+    Watch()
+    local okP, errP = pcall(function() for _, b in ipairs(list) do if b ~= fin then Last(b, "PreClick")(b, "LeftButton") end end end)
+    Unwatch()
     ns.SetupPickLanguage, ns.UseProfile, ns.SetSafeMode = real.lang, real.profile, real.safe
+    if not okP then error(errP, 0) end
+    if #hidden > 0 then error("a reload button's PreClick hides something before the reload (" .. #hidden .. ")") end
     if spy.lang ~= #ns.languages then error("each setup language button should pick its language first: " .. spy.lang) end
     if spy.safe < 1 then error("Leave safe mode should switch safe mode off first") end
     if spy.profile < 1 then error("a profile's Use should switch the profile first") end
     if reloadCount ~= before then error("no PreClick may reload by itself") end
+    -- Reset positions: the first click only asks; the confirming one keeps the change and is the
+    -- game's reload; left alone for 4 seconds it goes back to asking
+    runTimers()                                                        -- (any earlier ask has gone back)
+    local reset
+    for _, e in ipairs(ns.optionIndex) do if e.label == "Reset positions" then reset = e.frame end end
+    if not reset then error("the Reset positions button was not found") end
+    local arm = Last(reset, "OnClick")
+    if type(arm) ~= "function" or arm == env.ReloadUI or ns.reloadButtons[reset] then
+        error("Reset positions should start by asking, not reloading (" .. type(arm) .. ", " .. tostring(arm == env.ReloadUI) .. ", " .. tostring(ns.reloadButtons[reset]) .. ", armed " .. tostring(reset.armed) .. ")")
+    end
+    arm(reset)
+    if reloadCount ~= before or not reset.armed then error("the first click on Reset positions should only arm it") end
+    if not ns.reloadButtons[reset] or Last(reset, "OnClick") ~= env.ReloadUI then error("once armed, Reset positions' click should be the game's ReloadUI") end
+    local keepPos, keepScale = ns.db.pos, ns.db.scale
+    ns.db.pos, ns.db.scale = { probe = { 1, 2 } }, { probe = 2 }
+    Last(reset, "PreClick")(reset, "LeftButton")
+    if next(ns.db.pos) ~= nil or next(ns.db.scale) ~= nil then error("the confirming click should clear the positions before the reload") end
+    if reloadCount ~= before or Last(reset, "OnClick") ~= env.ReloadUI then error("the confirming click's reload should be the game's own, in OnClick") end
+    ns.db.pos, ns.db.scale = keepPos, keepScale
+    arm(reset); runTimers()                                            -- (asked, then left alone)
+    if reset.armed or ns.reloadButtons[reset] or Last(reset, "OnClick") ~= arm then error("after 4 seconds Reset positions should go back to asking") end
+    arm(reset)
+    if not (reset.armed and ns.reloadButtons[reset]) then error("after the disarm the next click should arm it again") end
+    runTimers()
+    -- /rl: the game's own /reload handler where there is one, otherwise ours
+    local shortCommands
+    for _, m in ipairs(ns.modules) do if m.key == "shortCommands" then shortCommands = m.fn end end
+    if not shortCommands then error("the short commands module is missing") end
+    local SL = env.SlashCmdList
+    local keepRL, keepReload, keepKey = SL.FANTASYGLASSUIRL, SL.RELOAD, env.SLASH_FANTASYGLASSUIRL1
+    local own = function() end
+    SL.RELOAD = own; SL.FANTASYGLASSUIRL = nil
+    shortCommands()
+    if SL.FANTASYGLASSUIRL ~= own then error("/rl should be the game's own /reload handler when it has one") end
+    SL.RELOAD = nil; SL.FANTASYGLASSUIRL = nil
+    shortCommands()
+    local rl = SL.FANTASYGLASSUIRL
+    if type(rl) ~= "function" or rl == own then error("without the game's handler /rl should still be made") end
+    rl("")
+    if reloadCount ~= before + 1 then error("without the game's handler /rl should call ReloadUI") end
+    before = reloadCount
+    SL.FANTASYGLASSUIRL, SL.RELOAD, env.SLASH_FANTASYGLASSUIRL1 = keepRL, keepReload, keepKey
     -- a PreClick that says no: that click stops before the reload
     local b = ns:CreateButton(env.UIParent, "Probe", 80, 24)
     ns:ReloadButton(b, function() return false end)

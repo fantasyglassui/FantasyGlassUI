@@ -1461,7 +1461,8 @@ end
 -- from add-on code, even inside a click; a button whose OnClick is the game's own ReloadUI runs that
 -- untainted, and it reloads. So the add-on's own work (saving a choice) goes in PreClick, and OnClick
 -- is ReloadUI itself, never a function of ours around it. If `before` fails or says false, that click
--- stops there. ns:ReloadButton(b, false, onClick) makes it an ordinary button again (a click that
+-- stops there. `before` must not hide the button or its window: a button hidden before its OnClick
+-- might not get one, and the reload takes the window down anyway. ns:ReloadButton(b, false, onClick) makes it an ordinary button again (a click that
 -- only arms a confirmation). The click sound (PostClick) is CreateButton's.
 ns.reloadButtons = setmetatable({}, { __mode = "k" })
 function ns:ReloadButton(b, before, onClick)
