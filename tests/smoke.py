@@ -13680,6 +13680,13 @@ try("13.4 feel C: time you have, breaks, catch-up", function()
         if not offered() then error("unlocked: the panel offers the time list") end
         ns:GuideLock()
         if offered() then error("locked: the time list goes at once") end
+        -- (and unlocking brings them back at once: a stand-in hash, so no phrase is written here)
+        local realHash = ns.GuideHash
+        ns.GuideHash = function() return tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)")) end
+        local unlockedNow = ns:GuideUnlock("test")
+        ns.GuideHash = realHash
+        if not unlockedNow or not offered() then error("unlocked: the time list is back at once") end
+        ns:GuideLock()
         ns.GuideUnlocked = function() return false end
         rec.lastSeen = now - 30 * 86400
         fireEvent("PLAYER_ENTERING_WORLD", true, false)
@@ -14074,7 +14081,7 @@ try("13.4 feel D: level times, race, where you left off", function()
         now = now + 121
         ns:GuideRedraw()
         if (extraText or ""):find("step 3 of 8", 1, true) then error("the panel line goes after 120 s") end
-        ns.PlannerTimeToLevel = nil
+        ns.PlannerTimeToLevel = function() return nil end           -- (the pace not known yet; the panel's title hook calls it too)
         n0 = #printed
         fireEvent("PLAYER_ENTERING_WORLD", true, false)
         line = said(n0)
@@ -14225,6 +14232,187 @@ try("13.4 feel D: save as guide, read aloud, chime", function()
     if not ok then error(err, 0) end
 end)
 -- batch 4 tests D (records): end
+-- batch 4 tests: all four groups on one plan
+try("13.4 feel: together", function()
+    local saved = { on = ns.GuideOn, here = ns.GuideHere, unlocked = ns.GuideUnlocked, map = env.C_Map, vec = rawget(env, "CreateVector2D"),
+                    context = ns.PlannerContext, world = ns.PlannerWorldPos, show = ns.ShowList, raw = ns.PrintRaw,
+                    guideState = ns.root.guideState, guides = ns.root.guides, key = ns.root.guideKey, planner = ns.root.planner, levels = ns.root.plannerLevels,
+                    level = env.UnitLevel, xp = env.UnitXP, xpMax = env.UnitXPMax, wmap = rawget(env, "WorldMapFrame"), from = ns.plannerFromHere,
+                    race = ns.db.plannerRace, leftOff = ns.db.plannerLeftOff, line = ns.db.plannerMapLine, hubs = ns.db.plannerMapHubs, errors = #ns.errors }
+    local panelBits = {}
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        ns.GuideOn = function() return true end
+        ns.GuideHere = function() return 1429, 30, 40 end
+        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
+        ns.root.planner, ns.root.guides, ns.root.guideState = {}, {}, {}
+        ns.root.plannerLevels = { ["Other - Realm"] = { [12] = { s = 1200, xph = 1 } } }
+        ns.db.plannerRace, ns.db.plannerLeftOff, ns.db.plannerMapLine, ns.db.plannerMapHubs = true, true, true, true
+        env.UnitLevel = function() return 12 end
+        env.UnitXP = function() return 1000 end
+        env.UnitXPMax = function() return 5000 end
+        env.C_Map = setmetatable({
+            GetWorldPosFromMapPos = function(map, v)
+                if map == 1429 then return 0, { x = v.x * 100000, y = v.y * 100000 } end           -- (1% of the map is 1000 yards)
+                if map == 1436 then return 0, { x = v.x * 100000 + 5000, y = v.y * 100000 } end
+            end,
+            GetMapInfo = function(map) return { name = ({ [1429] = "Elwynn Forest", [1436] = "Westfall" })[map] or "Somewhere", mapType = 3, mapID = map } end,
+        }, { __index = saved.map })
+        env.CreateVector2D = function(x, y) return { x = x, y = y } end
+        ns.PlannerWorldPos = function(map, x, y)
+            if map == 1429 then return 0, x * 1000, y * 1000 end
+            if map == 1436 then return 0, x * 1000 + 5000, y * 1000 end
+        end
+        local shown = {}
+        ns.ShowList = function(self, key, title, lines, ...)
+            shown[#shown + 1] = key
+            return saved.show(self, key, title, lines, ...)
+        end
+        local said = {}
+        ns.PrintRaw = function(_, m) said[#said + 1] = tostring(m) end
+
+        -- the quests: the goal zone (a chain, and a far hub a 30-minute plan cannot reach) and a richer zone next door
+        local function q(id, extra)
+            local r = { id = id, name = "Q" .. id, level = 12, minLevel = 1, xp = 400, starts = {}, ends = {}, objectives = {}, pre = {}, preAny = {}, exclusive = {},
+                        elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+            for k, v in pairs(extra or {}) do r[k] = v end
+            return r
+        end
+        local function at(map, x, y) return { { map = map, x = x, y = y } } end
+        local function kill(map, x, y) return { { kind = "kill", count = 0, countKnown = true, mobLevel = 12, spots = at(map, x, y) } } end
+        local recs, order, byMap = {}, {}, {}
+        local function add(r, map)
+            recs[r.id] = r; order[#order + 1] = r.id
+            byMap[map] = byMap[map] or {}
+            byMap[map][#byMap[map] + 1] = r.id
+        end
+        add(q(501, { level = 11, nextQuest = 502, starts = at(1429, 30, 40), ends = at(1429, 30, 40), objectives = kill(1429, 30.5, 40.5) }), 1429)
+        add(q(502, { level = 11, starts = at(1429, 31, 41), ends = at(1429, 31, 41), objectives = kill(1429, 31.5, 41.5) }), 1429)
+        add(q(503, { level = 3, starts = at(1429, 30, 40), ends = at(1429, 30, 40), objectives = kill(1429, 30.2, 40.2) }), 1429)
+        add(q(509, { level = 12, starts = at(1429, 95, 95), ends = at(1429, 95, 95), objectives = kill(1429, 95.5, 95.5) }), 1429)
+        add(q(601, { xp = 3000, starts = at(1436, 30, 40), ends = at(1436, 30, 40), objectives = kill(1436, 30.5, 40.5) }), 1436)
+        add(q(602, { xp = 3000, starts = at(1436, 31, 40), ends = at(1436, 31, 40), objectives = kill(1436, 31.5, 40.5) }), 1436)
+        local source = { kind = "test", ids = function() return order end, quest = function(id) return recs[id] end, inns = function() return {} end,
+                         inRange = function() return true end, mapQuests = function(map) return byMap[map] or {} end }
+        ns.PlannerContext = function()
+            local c = { source = source, level = 12, group = "solo", inGroup = false, speed = 7, faction = "Alliance", xp = 1000, xpMax = 5000,
+                done = function() return false end, onQuest = function() return false end, here = { map = 1429, x = 30, y = 40 },
+                crossings = {}, learnFlights = false, bind = "Elsewhere", bindSpot = { map = 9, x = 1, y = 1 }, pace = 1, flights = {},
+                flightTime = function() return nil end, timed = function() return false end, itemCount = function() return 0 end }
+            c.windowLo, c.windowHi, c.horizon = c.level - 4, c.level + 2, ns.PLANNER_HORIZON
+            for _, h in ipairs(ns.PlannerHookList("context")) do h.fn(c) end
+            return c
+        end
+        local canvas = { GetWidth = function() return 1000 end, GetHeight = function() return 500 end, GetScale = function() return 1 end, GetFrameLevel = function() return 1 end }
+        local shownMap = 1429
+        rawset(env, "WorldMapFrame", { ScrollContainer = { Child = canvas }, GetMapID = function() return shownMap end, IsShown = function() return true end })
+
+        -- the choices: finish this zone (B), Story (C), 30 minutes (C), a pace that is known (for the time to level)
+        local rec = ns.PlannerCharRecord(true)
+        rec.pace = { samples = { 1, 1, 1 } }
+        rec.levelClock = { level = 12, seconds = 420, xpMax = 5000, partial = false }   -- (your best took 1200 s: 240 s for a fifth of the level)
+        ns.PlannerPaceSync()
+        ns.PlannerSetZoneGoal(ns.PlannerGoalZone())
+        ns.PlannerSetStyle("story")
+        ns.PlannerSetPlayTime(30)
+        if ns.PlannerZoneGoal() ~= 1429 or ns.PlannerStyle() ~= "story" or not ns.PlannerTimeLeft() then error("the three choices are set") end
+
+        -- the panel, watched
+        local panel = ns:GuideShowPanel()
+        rawset(panel.title, "SetText", function(_, t) panelBits.title = t end)
+        rawset(panel.extra, "SetText", function(_, t) panelBits.extra = t end)
+        panelBits.panel = panel
+
+        -- "Plan my route", through the real runner
+        fireEvent("PLAYER_REGEN_ENABLED")
+        local function runIt()
+            for _ = 1, 400 do
+                if not ns.plannerBusy and not ns.plannerQueued then break end
+                for i = 1, #handlers do local h = handlers[i]; if h.name == "OnUpdate" then pcall(h.fn, h.self, 0.02) end end
+            end
+            if ns.plannerBusy or ns.plannerQueued then error("the plan did not finish") end
+        end
+        ns:PlannerStart()
+        runIt()
+        if #ns.errors ~= saved.errors then error("no errors: " .. tostring(ns.errors[#ns.errors])) end
+        local st = ns.GuideState()
+        local guide = ns:GuideGet(st.name)
+        local summary = st.summary
+        if st.name ~= ns.GUIDE_PLANNED or type(guide) ~= "table" or #guide.steps == 0 or type(summary) ~= "table" then error("a plan was applied") end
+        local planned, first = {}, nil
+        for _, s in ipairs(guide.steps) do if s.quest then planned[s.quest] = true; first = first or s.quest end end
+        -- B: the goal zone, its low quest too, and nothing from the richer zone
+        if not (planned[501] and planned[502] and planned[503]) or planned[601] or planned[602] then error("the zone goal's quests, none from the next zone: " .. (function() local o = {} for k in pairs(planned) do o[#o + 1] = k end table.sort(o) return table.concat(o, ",") end)()) end
+        if not (summary.zoneGoal and summary.zoneGoal.map == 1429 and summary.zoneGoal.total == 4) then error("the goal's count: " .. tostring(summary.zoneGoal and summary.zoneGoal.total)) end
+        -- C: the far hub does not fit in 30 minutes, and the plan ends at a place to stop
+        local last = guide.steps[#guide.steps]
+        if planned[509] or not summary.stop or last.kind ~= "note" or last.text ~= ns:Tr("Good place to stop") then error("30 minutes: the far hub is cut, the plan ends with a stop") end
+        -- C: Story's weights were in the plan
+        if not (panelBits.extra or ""):find("Style: Story", 1, true) then error("the panel says the style: " .. tostring(panelBits.extra)) end
+        if not (panelBits.extra or ""):find("Zone: 0 of 4 quests", 1, true) then error("the panel counts the zone: " .. tostring(panelBits.extra)) end
+        -- B: the time to the next level in the title, the preview opened once (the start's plan), why this step
+        local minutes = ns.PlannerTimeToLevel(summary)
+        if not minutes or not (panelBits.title or ""):find(string.format("level 13 in ~%d min", minutes), 1, true) then error("the title has the time to level: " .. tostring(panelBits.title)) end
+        local previews = 0
+        for _, k in ipairs(shown) do if k == "PlanPreview" then previews = previews + 1 end end
+        if previews ~= 1 then error("the start's plan opens the preview once: " .. previews) end
+        local qstep
+        for _, s in ipairs(guide.steps) do if s.quest == first then qstep = qstep or s end end
+        if #ns.PlannerWhyLines(qstep, summary) == 0 then error("why this step: its numbers") end
+        -- A: the map line and the hub marks on the goal zone's map
+        local nl, nm, nd = ns.PlannerMapDraw(1429)
+        if nd < 1 or nm < 1 then error("the map draws the route's stops and the hubs: " .. nl .. " " .. nm .. " " .. nd) end
+        -- D: the race line, the level clock, where you left off (with B's time), save as guide
+        ns:GuideRedraw()
+        if not (panelBits.extra or ""):find("Race your best: behind by 3 min", 1, true) then error("the race line on the panel: " .. tostring(panelBits.extra)) end
+        ns.PlannerLevelTick(10)
+        if rec.levelClock.seconds ~= 430 then error("the level clock ticks: " .. tostring(rec.levelClock.seconds)) end
+        local left = ns.PlannerLeftOff()
+        if not (left and left:find(string.format(", level 13 in ~%d min", minutes), 1, true)) then error("where you left off, with the time to level: " .. tostring(left)) end
+        local name = ns.PlannerSaveAsGuide()
+        local copy = name and ns:GuideGet(name)
+        if not (copy and #copy.steps == #guide.steps and name:find("Elwynn Forest", 1, true)) then error("saved as a guide: " .. tostring(name)) end
+
+        -- A over B: "Plan from here" on the next zone's hub wins over the goal, for one plan
+        shownMap = 1436
+        local w = ns.PlannerMapPick({ map = 1436, x = 30, y = 40 })
+        w.lines[1].click()
+        runIt()
+        st = ns.GuideState()
+        guide = ns:GuideGet(st.name)
+        first = nil
+        for _, s in ipairs(guide.steps) do if s.quest then first = first or s.quest end end
+        if first ~= 601 or ns.plannerFromHere then error("plan from here: the picked hub first, the pick used: " .. tostring(first)) end
+        if ns.PlannerZoneGoal() ~= 1429 then error("the goal stays") end
+        nl, nm, nd = ns.PlannerMapDraw(1436)
+        if nd < 1 then error("the line on the picked hub's map") end
+        previews = 0
+        for _, k in ipairs(shown) do if k == "PlanPreview" then previews = previews + 1 end end
+        if previews ~= 1 then error("a replan opens no preview") end
+        ns:PlannerReplan("level")
+        runIt()
+        st = ns.GuideState()
+        guide = ns:GuideGet(st.name)
+        local again = {}
+        for _, s in ipairs(guide.steps) do if s.quest then again[s.quest] = true end end
+        if again[601] or not again[501] then error("the plan after that is the goal's again") end
+        if #ns.errors ~= saved.errors then error("no errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    ns:PlannerStop()
+    ns.plannerQueued = false
+    if panelBits.panel then rawset(panelBits.panel.title, "SetText", nil); rawset(panelBits.panel.extra, "SetText", nil) end
+    ns:GuideSetPlan(nil)
+    ns.GuideOn, ns.GuideHere, ns.GuideUnlocked = saved.on, saved.here, saved.unlocked
+    env.C_Map, env.UnitLevel, env.UnitXP, env.UnitXPMax = saved.map, saved.level, saved.xp, saved.xpMax
+    rawset(env, "CreateVector2D", saved.vec); rawset(env, "WorldMapFrame", saved.wmap)
+    ns.PlannerContext, ns.PlannerWorldPos, ns.ShowList, ns.PrintRaw = saved.context, saved.world, saved.show, saved.raw
+    ns.root.guideState, ns.root.guides, ns.root.guideKey, ns.root.planner, ns.root.plannerLevels = saved.guideState, saved.guides, saved.key, saved.planner, saved.levels
+    ns.db.plannerRace, ns.db.plannerLeftOff, ns.db.plannerMapLine, ns.db.plannerMapHubs = saved.race, saved.leftOff, saved.line, saved.hubs
+    ns.plannerFromHere = saved.from
+    ns.PlannerPaceSync()
+    if ns.HideLists then ns:HideLists() end
+    if not ok then error(err, 0) end
+end)
 
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
