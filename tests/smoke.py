@@ -9324,6 +9324,98 @@ try("13.0 planner: settings", function()
     ns.db.plannerGroup, ns.db.plannerLearnFlights, ns.db.plannerWhy = saved.group, saved.flights, saved.why
     if not ok then error(err, 0) end
 end)
+try("13.1 stops: places", function()
+    local realLoaded, realMeta, realQ, realLoader = env.C_AddOns.IsAddOnLoaded, rawget(env.C_AddOns, "GetAddOnMetadata"), rawget(env, "Questie"), rawget(env, "QuestieLoader")
+    local realFaction, realName, realHere, realRace = rawget(env, "UnitFactionGroup"), rawget(env, "UnitName"), ns.GuideHere, rawget(env, "UnitRace")
+    local realKey = ns.root.guideKey
+    local npcs = {
+        [31] = { name = "Trainer Thirtyone", spawns = { [40] = { { 10, 20 }, { 11, 21 } } } },
+        [32] = { name = "Smith", spawns = { [40] = { { 30, 40 } } } },
+        [33] = { name = "Drinks", spawns = { [40] = { { 50, 60 } } } },
+        [34] = { name = "Miner", spawns = { [40] = { { 55, 65 } } } },
+        [35] = { name = "Hostile", spawns = { [40] = { { 70, 80 } } }, friendlyToFaction = "H" },
+        [36] = { name = "Shared", spawns = { [40] = { { 71, 81 } } }, friendlyToFaction = "AH" },
+        [37] = { name = "Ours", spawns = { [40] = { { 72, 82 } } }, friendlyToFaction = "A" },
+    }
+    local objects = { [901] = { name = "Mailbox", spawns = { [40] = { { 15, 25 } } } } }
+    local townsfolk = { ["Class Trainer"] = { 31, 35, 36, 37 }, ["Repair"] = { 32 }, ["Mailbox"] = { 901 }, ["Innkeeper"] = { 9 } }
+    local fakes = {
+        QuestieDB = { QuestPointers = {}, NPCPointers = {}, npcFlags = { REPAIR = 16384 },
+            GetQuest = function() end, IsDoable = function() return true end,
+            QueryNPCSingle = function(id, key) return npcs[id] and npcs[id][key] end,
+            QueryObjectSingle = function(id, key) return objects[id] and objects[id][key] end },
+        QuestXP = { GetQuestLogRewardXP = function() return 0 end },
+        ZoneDB = { GetUiMapIdByAreaId = function(_, area) return area == 40 and 1436 or nil end },
+        Townsfolk = { professionTrainers = { [186] = { 34 } } },
+    }
+    npcs[9] = { name = "Innkeeper Nine", spawns = { [40] = { { 30, 40 } } } }
+    env.Questie = { API = { isReady = true, RegisterOnReady = function() end }, db = { char = { townsfolk = townsfolk, vendorList = { Drink = { 33 } } } } }
+    env.QuestieLoader = { ImportModule = function(_, name) return fakes[name] end }
+    env.C_AddOns.IsAddOnLoaded = function() return true end
+    rawset(env.C_AddOns, "GetAddOnMetadata", function() return ns.PLANNER_CONTRACT end)
+    env.UnitFactionGroup = function() return "Alliance" end
+    env.UnitRace = function() return "Human", "Human" end
+    local spot = { 1436, 40, 40 }
+    ns.GuideHere = function() return spot[1], spot[2], spot[3] end
+    env.UnitName = function(u) if u == "npc" then return "Postmaster" end return "Someone" end
+    ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
+    local savedSeen = ns.root.plannerSeen
+    ns.root.plannerSeen = nil
+    local ok, err = pcall(function()
+        ns.PlannerSourceReset()
+        local src = ns.PlannerSource()
+        if not src or src.kind ~= "questie" then error("questie source") end
+        local ct = src.places("classTrainer")
+        if ct[1].id ~= 31 or ct[1].map ~= 1436 or ct[1].x ~= 10 or ct[1].y ~= 20 or ct[1].name ~= "Trainer Thirtyone" then error("class trainer place") end
+        if #ct ~= 4 then error("every spawn is a place; friendly ones only: " .. #ct) end
+        for _, p in ipairs(ct) do if p.id == 35 then error("a hostile npc was returned") end end
+        local mb = src.places("mailbox")
+        if #mb ~= 1 or mb[1].id ~= 901 or mb[1].x ~= 15 or mb[1].map ~= 1436 then error("mailbox from object spawns") end
+        if src.places("vendor", "Drink")[1].id ~= 33 then error("drink vendor") end
+        if #src.places("vendor", "Food") ~= 0 then error("no food list") end
+        if src.places("professionTrainer", 186)[1].id ~= 34 then error("profession trainer") end
+        if src.places("repair")[1].id ~= 32 then error("repair from townsfolk") end
+        if src.inns()[1].name ~= "Innkeeper Nine" then error("inns still work") end
+        if src.places("mountVendor")[1] ~= nil then error("mount vendor 384 has no spawns here") end
+        npcs[384] = { name = "Katie", spawns = { [40] = { { 5, 6 } } } }
+        ns.PlannerSourceReset(); src = ns.PlannerSource()
+        if src.places("mountVendor")[1].id ~= 384 then error("mount vendor by race file") end
+        -- no townsfolk table and no flags: nothing
+        env.Questie.db.char.townsfolk = nil
+        fakes.QuestieDB.npcFlags = {}
+        ns.PlannerSourceReset(); src = ns.PlannerSource()
+        if #src.places("repair") ~= 0 or #src.places("classTrainer") ~= 0 or #src.places("mailbox") ~= 0 then error("nothing known: empty") end
+        -- the npc flag scan is the fallback
+        fakes.QuestieDB.npcFlags = { REPAIR = 16384 }
+        fakes.QuestieDB.NPCPointers = { [32] = 1, [33] = 2 }
+        npcs[32].npcFlags = 16384 + 4
+        ns.PlannerSourceReset(); src = ns.PlannerSource()
+        local rp = src.places("repair")
+        if #rp ~= 1 or rp[1].id ~= 32 then error("repair from the flag scan") end
+        -- seen places
+        ns.PlannerSourceReset(); src = ns.PlannerSource()
+        local log = ns.PlannerLogSource()
+        fireEvent("MAIL_SHOW")
+        if #src.places("mailbox") ~= 1 or #log.places("mailbox") ~= 1 or log.places("mailbox")[1].name ~= "Postmaster" then error("a seen mailbox on both sources") end
+        spot[2] = 40.01
+        fireEvent("MAIL_SHOW")
+        if #log.places("mailbox") ~= 1 then error("within 30 yards: not added again") end
+        spot[2] = 90
+        fireEvent("MAIL_SHOW")
+        if #log.places("mailbox") ~= 2 then error("far away: added") end
+        fireEvent("MERCHANT_SHOW"); fireEvent("TRAINER_SHOW")
+        if #ns.root.plannerSeen.vendor ~= 1 or #ns.root.plannerSeen.trainer ~= 1 then error("vendor and trainer seen") end
+        ns.root.guideKey = nil; ns.root.plannerSeen = nil
+        fireEvent("MAIL_SHOW")
+        if ns.root.plannerSeen ~= nil then error("locked guide: nothing saved") end
+    end)
+    ns.root.guideKey = realKey; ns.root.plannerSeen = savedSeen
+    ns.PlannerSourceReset()
+    env.C_AddOns.IsAddOnLoaded = realLoaded; rawset(env.C_AddOns, "GetAddOnMetadata", realMeta)
+    rawset(env, "Questie", realQ); rawset(env, "QuestieLoader", realLoader)
+    env.UnitFactionGroup, env.UnitName, env.UnitRace, ns.GuideHere = realFaction, realName, realRace, realHere
+    if not ok then error(err, 0) end
+end)
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()

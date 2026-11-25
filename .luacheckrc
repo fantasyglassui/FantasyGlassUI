@@ -446,6 +446,7 @@ read_globals = {
     "UnitPowerMax",
     "UnitPowerPercent",
     "UnitPowerType",
+    "UnitRace",
     "UnitReaction",
     "UnitThreatSituation",
     "UnitXP",

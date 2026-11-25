@@ -24,9 +24,9 @@ local function IsLoaded()
     return C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("Questie") and true or false
 end
 
-local function Spots(db, zones, npcId)
+local function Spots(db, zones, npcId, object)
     local out = {}
-    local spawns = db.QueryNPCSingle(npcId, "spawns")
+    local spawns = (object and db.QueryObjectSingle or db.QueryNPCSingle)(npcId, "spawns")
     if type(spawns) ~= "table" then return out end
     for area, list in pairs(spawns) do
         local map = zones:GetUiMapIdByAreaId(area)
@@ -207,28 +207,138 @@ local function PointerIds(t)
     return out
 end
 
--- Every innkeeper Questie knows, { name, map, x, y } per spawn; gathered once per session.
-local innCache
-local function Inns(env)
-    if innCache then return innCache end
-    local db, zones, out = env.db, env.zones, {}
+-- Where the places of one kind are. Kinds: innkeeper, repair, classTrainer, mailbox, vendor (arg
+-- Food, Drink or Ammo), professionTrainer (arg a skill line id) and mountVendor. Each is a list of
+-- { name, map, x, y, id }, one per spawn; gathered once per session per (kind, arg).
+-- Mount vendors: best-known classic NPC ids per race file; CHECK THEM IN THE GAME before trusting them.
+ns.PLANNER_MOUNT_VENDORS = {
+    Human = { 384 },       -- Katie Hunter, Elwynn Forest (horses)
+    Dwarf = { 1261 },      -- Ultham Ironhorn, Dun Morogh (rams)
+    Gnome = { 7955 },      -- Binjy Featherwhistle, Dun Morogh (mechanostriders)
+    NightElf = { 4730 },   -- Lelanai, Darnassus (nightsabers)
+    Orc = { 3362 },        -- Ogunaro Wolfrunner, Orgrimmar (wolves)
+    Troll = { 7952 },      -- Zjolnir, Durotar (raptors)
+    Tauren = { 3685 },     -- Harb Clawhoof, Mulgore (kodos)
+    Scourge = { 4731 },    -- Zachariah Post, Tirisfal Glades (skeletal horses)
+    ["High Order Skyborne"] = {},   -- TODO: Forever's new races: fill in once the vendors are known
+    ["Windshaper Skyborne"] = {},   -- TODO
+}
+
+local FLAG_NAMES = { innkeeper = "INNKEEPER", repair = "REPAIR", classTrainer = "TRAINER" }
+local TOWNSFOLK_KEY = { innkeeper = "Innkeeper", repair = "Repair", classTrainer = "Class Trainer", mailbox = "Mailbox" }
+local placeCache = {}
+
+local function Plain(v) return type(v) == "table" and v or nil end
+
+-- Read a field through pcall; nil when anything goes wrong.
+local function Dig(f)
+    local ok, v = Try(f)
+    if ok then return v end
+end
+
+-- Is this NPC one the player may deal with? friendlyToFaction: nil, "AH", or the player's letter.
+local function Friendly(f)
+    if f == nil or f == "AH" then return true end
+    local ok, faction = Try(UnitFactionGroup, "player")
+    if not ok then return false end
+    local mine = faction == "Alliance" and "A" or faction == "Horde" and "H" or nil
+    return mine ~= nil and f == mine
+end
+
+-- The ids of a kind from Questie's saved townsfolk tables and Townsfolk module, or nil if none are there.
+local function KnownIds(kind, arg)
+    local char = Dig(function() return _G.Questie.db.char end)
+    if kind == "vendor" then
+        local list = Plain(char) and Plain(char.vendorList) and Plain(char.vendorList[arg])
+        return list and PointerIds(list) or nil
+    elseif kind == "professionTrainer" then
+        local mod = Import("Townsfolk")
+        local list = mod and Plain(mod.professionTrainers) and Plain(mod.professionTrainers[arg])
+        return list and PointerIds(list) or nil
+    elseif kind == "mountVendor" then
+        local ok, _, file = Try(UnitRace, "player")
+        local list = ok and type(file) == "string" and Plain(ns.PLANNER_MOUNT_VENDORS[file])
+        return list and PointerIds(list) or nil
+    end
+    local key = TOWNSFOLK_KEY[kind]
+    local list = key and Plain(char) and Plain(char.townsfolk) and Plain(char.townsfolk[key])
+    if not list then
+        local mod = Import("Townsfolk")
+        list = key and mod and Plain(mod.townsfolk) and Plain(mod.townsfolk[key])
+    end
+    return list and PointerIds(list) or nil
+end
+
+-- Every id carrying a flag, by scanning Questie's NPC table (the fallback when no list is saved).
+local function FlagIds(env, flagName)
+    local db, out = env.db, {}
     local flagsOk, flags = Try(function() return db.npcFlags end)
-    local mask = flagsOk and type(flags) == "table" and tonumber(flags.INNKEEPER)
+    local mask = flagsOk and type(flags) == "table" and tonumber(flags[flagName])
     local okP, pointers = Try(function() return db.NPCPointers end)
-    if not (mask and okP and type(pointers) == "table") then innCache = out; return out end
+    if not (mask and okP and type(pointers) == "table") then return out end
     local okI, ids = Try(PointerIds, pointers)
     for _, id in ipairs(okI and ids or {}) do
         ns.PlannerYield()
         local ok, f = Try(db.QueryNPCSingle, id, "npcFlags")
-        if ok and HasFlag(f, mask) then
-            local okN, name = Try(db.QueryNPCSingle, id, "name")
-            local okS, spots = Try(Spots, db, zones, id)
-            if okN and type(name) == "string" and okS then
-                for _, sp in ipairs(spots) do out[#out + 1] = { name = name, map = sp.map, x = sp.x, y = sp.y } end
+        if ok and HasFlag(f, mask) then out[#out + 1] = id end
+    end
+    return out
+end
+
+local function Resolve(env, ids, object, fallbackName)
+    local db, zones, out = env.db, env.zones, {}
+    for _, id in ipairs(ids) do
+        ns.PlannerYield()
+        if type(id) == "number" then
+            local query = object and db.QueryObjectSingle or db.QueryNPCSingle
+            local okF, friendly = true, nil
+            if not object then okF, friendly = Try(query, id, "friendlyToFaction") end
+            if okF and Friendly(friendly) then
+                local okN, name = Try(query, id, "name")
+                local okS, spots = Try(Spots, db, zones, id, object)
+                if not (okN and type(name) == "string") then name = fallbackName end
+                if type(name) == "string" and okS then
+                    for _, sp in ipairs(spots) do out[#out + 1] = { name = name, map = sp.map, x = sp.x, y = sp.y, id = id } end
+                end
             end
         end
     end
-    innCache = out
+    return out
+end
+
+local function SeenPlaces(kind)
+    local root = ns.root
+    local list = type(root) == "table" and type(root.plannerSeen) == "table" and root.plannerSeen[kind]
+    local out = {}
+    for _, p in ipairs(type(list) == "table" and list or {}) do
+        if type(p) == "table" and type(p.name) == "string" and tonumber(p.map) and tonumber(p.x) and tonumber(p.y) then
+            out[#out + 1] = { name = p.name, map = p.map, x = p.x, y = p.y }
+        end
+    end
+    return out
+end
+
+local SEEN_KIND = { mailbox = "mailbox", vendor = "vendor" }
+
+local function Places(env, kind, arg)
+    local key = tostring(kind) .. "\0" .. tostring(arg)
+    local hit = placeCache[key]
+    if not hit then
+        hit = {}
+        if env then
+            local ids = KnownIds(kind, arg)
+            if ids == nil and FLAG_NAMES[kind] then ids = FlagIds(env, FLAG_NAMES[kind]) end
+            if ids and (kind ~= "mailbox" or type(env.db.QueryObjectSingle) == "function") then
+                hit = Resolve(env, ids, kind == "mailbox", kind == "mailbox" and "Mailbox" or nil)
+            end
+        end
+        placeCache[key] = hit
+    end
+    local seen = SEEN_KIND[kind] and SeenPlaces(SEEN_KIND[kind]) or {}
+    if #seen == 0 then return hit end
+    local out = {}
+    for _, p in ipairs(hit) do out[#out + 1] = p end
+    for _, p in ipairs(seen) do out[#out + 1] = p end
     return out
 end
 
@@ -303,7 +413,8 @@ function ns.PlannerSource()
         changed = true
         return nil
     end
-    function src.inns() return Inns(env) end
+    function src.places(kind, arg) return Places(env, kind, arg) end
+    function src.inns() return Places(env, "innkeeper") end
     return src
 end
 
@@ -340,8 +451,48 @@ function ns.PlannerLogSource()
             repeatable = false, doable = true,
         }
     end
+    function src.places(kind, arg) return Places(nil, kind, arg) end
     function src.inns() return {} end
     return src
 end
 
-function ns.PlannerSourceReset() changed, waiting, innCache, recCache, cacheLevel = false, false, nil, {}, nil end
+function ns.PlannerSourceReset() changed, waiting, placeCache, recCache, cacheLevel = false, false, {}, {}, nil end
+
+------------------------------------------------------------------------------------------
+-- Places you have used: where you stood at a mailbox, a vendor or a trainer, saved per account
+-- (only while the guide is unlocked), unique within 30 yards.
+------------------------------------------------------------------------------------------
+local SEEN_NEAR = 30
+local SEEN_EVENT = { MAIL_SHOW = "mailbox", MERCHANT_SHOW = "vendor", TRAINER_SHOW = "trainer" }
+
+local function SeenYards(a, b)
+    if a.map ~= b.map then return math.huge end
+    local c1, x1, y1 = ns.PlannerWorldPos(a.map, a.x, a.y)
+    local c2, x2, y2 = ns.PlannerWorldPos(b.map, b.x, b.y)
+    if c1 and c1 == c2 then return math.sqrt((x1 - x2) ^ 2 + (y1 - y2) ^ 2) end
+    return math.sqrt((a.x - b.x) ^ 2 + (a.y - b.y) ^ 2) * 10   -- (no world position: a rough guess, a map is about 1000 yards)
+end
+
+function ns.PlannerSeen(kind)
+    if not ns:GuideUnlocked() or not ns.GuideHere then return end
+    local map, x, y = ns.GuideHere()
+    if not (tonumber(map) and tonumber(x) and tonumber(y)) then return end
+    local here = { map = map, x = x, y = y }
+    local list = type(ns.root.plannerSeen) == "table" and type(ns.root.plannerSeen[kind]) == "table" and ns.root.plannerSeen[kind]
+    for _, p in ipairs(list or {}) do
+        if type(p) == "table" and tonumber(p.map) and tonumber(p.x) and tonumber(p.y) and SeenYards(here, p) < SEEN_NEAR then return end
+    end
+    local okN, name = Try(UnitName, "npc")
+    if not okN or type(name) ~= "string" or ns:IsSecret(name) or name == "" then name = kind == "mailbox" and "Mailbox" or nil end
+    if not name then return end
+    if type(ns.root.plannerSeen) ~= "table" then ns.root.plannerSeen = {} end
+    local seen = ns.root.plannerSeen
+    if type(seen[kind]) ~= "table" then seen[kind] = {} end
+    seen[kind][#seen[kind] + 1] = { name = name, map = map, x = x, y = y }
+end
+
+do
+    local ev = CreateFrame("Frame")
+    for e in pairs(SEEN_EVENT) do pcall(ev.RegisterEvent, ev, e) end
+    ev:SetScript("OnEvent", ns:Guard("PlannerSeen", function(_, event) ns.PlannerSeen(SEEN_EVENT[event]) end))
+end
