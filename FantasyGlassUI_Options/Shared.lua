@@ -78,7 +78,37 @@ end
 -- A small picture of a theme on its button (11.9): its panel color in its edge color, a line of its
 -- accent along the foot, and the mark of its family (glass: a lit top edge; fantasy: gold studs at
 -- the top corners; celestial: a star point). On the Look tab and in the setup.
-function O.ThemeSwatch(b)
+-- With `tile` it is the picture on the Themes page instead (12.3): 52 px, the panel colour with a
+-- top edge and two bars in the rim colour, and three star dots for a Celestial theme. Its colours are the
+-- theme's own, set straight on the textures (never painted with a role: the settings window wears a
+-- look of its own, and a theme's picture must not).
+function O.ThemeSwatch(b, tile)
+    if tile then
+        local t = CreateFrame("Frame", nil, b)
+        t.tile = true
+        t:SetSize(52, 52)
+        t:SetPoint("TOP", b, "TOP", 0, 0)
+        local function Part(layer, sub) local x = t:CreateTexture(nil, layer, nil, sub); x:SetTexture(ns.FLAT); return x end
+        t.fill = Part("ARTWORK", 0); t.fill:SetAllPoints()
+        t.top = Part("ARTWORK", 1); t.top:SetPoint("TOPLEFT", 0, 0); t.top:SetPoint("TOPRIGHT", 0, 0); t.top:SetHeight(3)
+        t.bars = {}
+        for i, w in ipairs({ 34, 22 }) do
+            local bar = Part("ARTWORK", 1)
+            bar:SetSize(w, 5)
+            bar:SetPoint("TOPLEFT", 9, -14 - (i - 1) * 11)
+            t.bars[i] = bar
+        end
+        t.stars = {}
+        for i, at in ipairs({ { 38, -30 }, { 30, -40 }, { 43, -43 } }) do
+            local d = t:CreateTexture(nil, "OVERLAY")
+            d:SetTexture(ns.MEDIA .. "dot.tga")
+            d:SetSize(i == 1 and 6 or 4, i == 1 and 6 or 4)
+            d:SetPoint("CENTER", t, "TOPLEFT", at[1], at[2])
+            t.stars[i] = d
+        end
+        b.swatch = t
+        return t
+    end
     local s = CreateFrame("Frame", nil, b)
     s:SetSize(26, 16)
     s:SetPoint("LEFT", 5, 0)
@@ -115,6 +145,14 @@ function O.ShowThemeSwatch(s, key)
     local c = ns:ThemeColors(key)
     if not c then s:Hide(); return end
     s:Show()
+    if s.tile then
+        s.key, s.panel, s.rim = key, c.bg, c.border          -- (what it was given: the theme's own, never a role)
+        s.fill:SetVertexColor(c.bg[1], c.bg[2], c.bg[3], 1)
+        s.top:SetVertexColor(c.border[1], c.border[2], c.border[3], 1)
+        for _, bar in ipairs(s.bars) do bar:SetVertexColor(c.border[1], c.border[2], c.border[3], 1) end
+        for _, d in ipairs(s.stars) do d:SetVertexColor(c.accent[1], c.accent[2], c.accent[3], 1); d:SetShown(c.style == "CELESTIAL") end
+        return
+    end
     s.edge:SetVertexColor(c.border[1], c.border[2], c.border[3], 1)
     s.fill:SetVertexColor(c.bg[1], c.bg[2], c.bg[3], 1)
     s.accent:SetVertexColor(c.accent[1], c.accent[2], c.accent[3], 1)

@@ -1851,21 +1851,24 @@ try("Look tab sections", function()
     ns.db.theme, ns.db.accent = "SMOKE", "AZURE"; ns:Retheme()
     ns:ToggleConfig("look")
     local page = ns.lookPage
-    if not page or not page.themeGroups then error("the Look tab did not build its theme groups") end
-    local glass, fantasy, skyG, mine = page.themeGroups[1], page.themeGroups[2], page.themeGroups[3], page.themeGroups[4]
-    local function count(group) local n = 0; for _, b in ipairs(group.buttons) do if b.key and ns.themes[b.key] then n = n + 1 end end return n end
-    if count(glass) ~= 38 or count(fantasy) ~= 39 or count(skyG) ~= 39 then error("expected 38 glass, 39 fantasy and 39 celestial buttons, got " .. count(glass) .. ", " .. count(fantasy) .. " and " .. count(skyG)) end
-    for _, b in ipairs(glass.buttons) do if ns.themes[b.key].style ~= "GLASS" then error("a fantasy theme is under Glass: " .. b.key) end end
-    for _, b in ipairs(fantasy.buttons) do if ns.themes[b.key].style == "GLASS" or ns.themes[b.key].style == "CELESTIAL" or ns.themes[b.key].custom then error("wrong theme under Fantasy: " .. b.key) end end
-    for _, b in ipairs(skyG.buttons) do if b.key and ns.themes[b.key].style ~= "CELESTIAL" then error("wrong theme under Celestial: " .. b.key) end end
+    if not page or not page.themePicker then error("the Look tab did not build its theme picker") end
+    local pk = page.themePicker
+    local function listOf(fam) pk.family = fam; pk.Draw(); local out = {}; for i, k in ipairs(pk.list) do out[i] = k end return out end
+    local glass, fantasy, skyG = listOf("GLASS"), listOf("FANTASY"), listOf("CELESTIAL")
+    if #glass ~= 38 or #fantasy ~= 39 or #skyG ~= 39 then error("expected 38 glass, 39 fantasy and 39 celestial tiles, got " .. #glass .. ", " .. #fantasy .. " and " .. #skyG) end
+    for _, k in ipairs(glass) do if ns.themes[k].style ~= "GLASS" then error("a fantasy theme is under Glass: " .. k) end end
+    for _, k in ipairs(fantasy) do if ns.themes[k].style == "GLASS" or ns.themes[k].style == "CELESTIAL" or ns.themes[k].custom then error("wrong theme under Fantasy: " .. k) end end
+    for _, k in ipairs(skyG) do if ns.themes[k].style ~= "CELESTIAL" then error("wrong theme under Celestial: " .. k) end end
     for name in pairs(ns.db.customThemes) do ns:DeleteCustomTheme(name) end       -- (earlier tests may have left some)
     ns.db.theme, ns.db.accent = "SMOKE", "AZURE"; ns:Retheme(); page.Refresh()
-    if count(mine) ~= 0 then error("no themes of your own: that group should be empty, has " .. count(mine)) end
-    -- one of your own, of either kind, goes in the third group
+    listOf("MINE")
+    if pk.family == "MINE" then error("no themes of your own: that family should not be offered") end
+    -- one of your own, of either kind, goes in the fourth family
     local key = ns:SaveCustomTheme("Mine Own", { panel = { 0.1, 0.1, 0.1 }, rim = { 0.5, 0.5, 0.5 }, accent = { 1, 1, 1 }, style = "FANTASY" })
     page.Refresh()
-    if count(mine) ~= 1 or mine.buttons[1].key ~= key then error("your own theme should be listed under Your themes") end
-    if count(fantasy) ~= 39 then error("your own fantasy theme must not be listed under Fantasy as well") end
+    local mine = listOf("MINE")
+    if #mine ~= 1 or mine[1] ~= key then error("your own theme should be listed under Your themes") end
+    if #listOf("FANTASY") ~= 39 then error("your own fantasy theme must not be listed under Fantasy as well") end
     ns:DeleteCustomTheme("Mine Own"); page.Refresh()
     -- the panel behind the action bars starts off, and the switch reaches the bars
     if ns.defaults.barPanel ~= false then error("the action bar panel should start off") end
@@ -3082,8 +3085,9 @@ try("Every theme and lettering style can be reached", function()
     ns:ToggleConfig("look")
     local page = ns.lookPage
     local shown = 0
-    for _, group in ipairs(page.themeGroups) do
-        for _, b in ipairs(group.buttons) do if b.key and ns.themes[b.key] and not ns.themes[b.key].custom then shown = shown + 1 end end
+    for _, fam in ipairs({ "GLASS", "FANTASY", "CELESTIAL" }) do
+        page.themePicker.family = fam; page.themePicker.Draw()
+        for _, k in ipairs(page.themePicker.list) do if ns.themes[k] and not ns.themes[k].custom then shown = shown + 1 end end
     end
     if shown ~= #ns.themeOrder then error("the Look tab shows " .. shown .. " of " .. #ns.themeOrder .. " themes") end
     local fonts = 0
@@ -3103,12 +3107,9 @@ do   -- (the sections show slices of the page: each starts at a heading, and the
         local ct, ch = O.Band(page, "Class colors")
         if ch < 36 + #ns.classOrder * 24 then error("Class colors should be tall enough for every class: " .. ch) end
     end
-    -- groups sit one under another without overlapping
-    local g, f, rg, m = page.themeGroups[1], page.themeGroups[2], page.themeGroups[3], page.themeGroups[4]
-    if not (g.y > f.y and f.y > rg.y and rg.y > m.y) then error("the theme groups are out of order") end
-    if g.y - f.y < 24 + g.rows * 28 then error("the Fantasy group overlaps the Glass group") end
-    if f.y - rg.y < 24 + f.rows * 28 then error("the Celestial group overlaps the Fantasy group") end
-    if rg.y - m.y < 24 + rg.rows * 28 then error("Your themes overlaps the Celestial group") end
+    -- the themes' slice runs from the top down to the heading under it
+    local _, hh = ns.optUI.Band(page, "Glass", "Your themes")
+    if hh < 420 then error("the themes' slice should hold the grid, got " .. tostring(hh)) end
     ns:ToggleConfig()
     -- the setup: both grids hold everything too
     ns:ShowSetup()
@@ -8011,10 +8012,12 @@ try("11.9: check of the new features, celestial art, theme previews", function()
     if ns:ThemeColors("NOPE") then error("no such theme") end
     if ns:ThemeColors("CCLASS").style ~= "CELESTIAL" or ns:ThemeColors("GCLASS").style ~= "GLASS" then error("family of the class themes") end
     local page = ns.lookPage
-    if not (page and page.ThemeCard and page.themeGroups) then error("the Look page") end
-    local b = page.themeGroups[3].buttons[1]
-    if not b or not b.swatch then error("each theme button has its picture") end
-    page.ThemeCard(b, "C_POLARIS")
+    if not (page and page.themePicker and page.ShowSwatch) then error("the Look page") end
+    local pk = page.themePicker
+    pk.family = "CELESTIAL"; pk.Draw()
+    local b = pk.tiles[1]
+    if not b or not b.swatch then error("each theme tile has its picture") end
+    pk.Pick("C_POLARIS")
     page.ShowSwatch(b.swatch, "CCLASS")
 end)
 try("Chat bubbles: the look sleeps until someone speaks", function()
@@ -10109,6 +10112,118 @@ try("12.3 settings look: sidebar and Home", function()
     for k, v in pairs(keepSwitch) do ns.db[k] = v end
     ns.fontScale = keep.scale
     ns:LoadLocale()
+try("12.3 settings look: themes page", function()
+    local keep = { theme = ns.db.theme, accent = ns.db.accent }
+    local ok, err = pcall(function()
+        for name in pairs(ns.db.customThemes) do ns:DeleteCustomTheme(name) end
+        ns.db.theme, ns.db.accent = "MIDNIGHT", "VIOLET"
+        ns:Retheme()
+        ns:ToggleConfig("look")
+        local page = ns.lookPage
+        local pk = page and page.themePicker
+        if not pk then error("the Themes page has no picker") end
+        page.Refresh()
+        -- the family control: three families (a fourth only once you have your own themes), the current one first selected
+        local shownFamilies = 0
+        for _, fam in ipairs({ "GLASS", "FANTASY", "CELESTIAL" }) do if pk.familyButtons[fam] then shownFamilies = shownFamilies + 1 end end
+        if shownFamilies ~= 3 then error("the family control lists three families, got " .. shownFamilies) end
+        if pk.family ~= "GLASS" then error("MIDNIGHT is Glass, so Glass is the family shown, got " .. tostring(pk.family)) end
+        -- Glass shows every Glass theme as a tile
+        local want = 0
+        for _, key in ipairs(ns.themeOrder) do if ns.themes[key].style == "GLASS" and not ns.themes[key].custom then want = want + 1 end end
+        local shown, tileOf = 0, {}
+        for i, key in ipairs(pk.list) do
+            local b = pk.tiles[i]
+            if not (b and b.key == key and b.swatch and b.swatch.tile) then error("a tile for " .. tostring(key)) end
+            shown = shown + 1
+            tileOf[key] = b
+        end
+        if shown ~= want or want < 10 then error("Glass shows " .. shown .. " of " .. want .. " Glass themes") end
+        -- the tile of the theme in use is the ringed one, and the preview names it
+        local function ringed()
+            local list = {}
+            for i, key in ipairs(pk.list) do if pk.tiles[i].picked then list[#list + 1] = key end end
+            return list
+        end
+        local r = ringed()
+        if #r ~= 1 or r[1] ~= "MIDNIGHT" then error("the theme in use is the one ringed, got " .. table.concat(r, ",")) end
+        local famName = ns:Tr("Glass") .. ": " .. ns:ThemeName("MIDNIGHT", "short")
+        if pk.nameText ~= famName then error("the preview names '" .. famName .. "', got " .. tostring(pk.nameText)) end
+        if pk.descText ~= ns:Tr("See-through panes with soft shadows and a bright top edge.") then error("the preview gives the family's line") end
+        -- clicking a tile previews: the name changes, the theme does not
+        local before = ns.db.theme
+        tileOf.SMOKE:suiClick()
+        if ns.db.theme ~= before then error("a click on a tile must not change the theme") end
+        if pk.picked ~= "SMOKE" then error("the click picks the tile") end
+        if pk.nameText ~= ns:Tr("Glass") .. ": " .. ns:ThemeName("SMOKE", "short") then error("the preview names the picked theme, got " .. tostring(pk.nameText)) end
+        r = ringed()
+        if #r ~= 1 or r[1] ~= "SMOKE" then error("the picked tile is ringed, got " .. table.concat(r, ",")) end
+        -- the preview carries the picked theme's own colours, not the window's
+        local c = ns:ThemeColors("SMOKE")
+        local function hex(t) return string.format("%02x%02x%02x", math.floor(t[1] * 255 + 0.5), math.floor(t[2] * 255 + 0.5), math.floor(t[3] * 255 + 0.5)) end
+        local sw = tileOf.SMOKE.swatch
+        if sw.key ~= "SMOKE" or hex(sw.panel) ~= hex(c.bg) or hex(sw.rim) ~= hex(c.border) then error("the tile carries the theme's own panel and rim colours") end
+        if pk.sample.key ~= "SMOKE" or hex(pk.sample.panel) ~= hex(c.bg) or hex(pk.sample.rim) ~= hex(c.border) then error("the sample frame is in the picked theme's colours") end
+        -- "Use this theme" applies it, as a click on a theme did before
+        pk.Apply(pk.picked)
+        if ns.db.theme ~= "SMOKE" then error("Use this theme puts the picked theme on, got " .. tostring(ns.db.theme)) end
+        r = ringed()
+        if #r ~= 1 or r[1] ~= "SMOKE" then error("after using it, its tile is the ringed one") end
+        -- between families the reload note still comes
+        local noted = false
+        local realRetheme = ns.Retheme
+        ns.Retheme = function(self) noted = true; return realRetheme(self) end
+        pk.family = "CELESTIAL"; pk.Draw()
+        pk.Pick(pk.list[1])
+        pk.Apply(pk.picked)
+        ns.Retheme = realRetheme
+        if not noted then error("applying a theme goes through Retheme (it says when a reload is needed)") end
+        if ns.themes[ns.db.theme].style ~= "CELESTIAL" then error("the Celestial theme is on") end
+        -- your own theme and the class-colour themes are tiles too
+        local mineKey = ns:SaveCustomTheme("Tile Test", { panel = { 0.1, 0.2, 0.3 }, rim = { 0.5, 0.5, 0.5 }, accent = { 1, 0.5, 0 }, style = "FANTASY" })
+        page.Refresh()
+        pk.family = "MINE"; pk.Draw()
+        if pk.list[1] ~= mineKey or not pk.familyButtons.MINE then error("your own theme is a tile under Your themes") end
+        ns:DeleteCustomTheme("Tile Test")
+        page.Refresh()
+        local classTile = false
+        for _, fam in ipairs({ "GLASS", "FANTASY", "CELESTIAL" }) do
+            pk.family = fam; pk.Draw()
+            for _, k in ipairs(pk.list) do if k == "CLASS" or k == "GCLASS" or k == "CCLASS" then classTile = true end end
+        end
+        if not classTile then error("the class-colour themes are tiles") end
+        for _, key in ipairs({ "CONTRAST", "FCONTRAST", "C_CONTRAST" }) do
+            local found
+            for _, fam in ipairs({ "GLASS", "FANTASY", "CELESTIAL" }) do
+                pk.family = fam; pk.Draw()
+                for _, k in ipairs(pk.list) do if k == key then found = true end end
+            end
+            if not found then error("the high-contrast theme " .. key .. " is a tile in its family") end
+        end
+        -- the grid reflows: fewer columns when narrower, and no tile under the preview column
+        pk.family = "GLASS"; pk.Draw()
+        pk.Layout(736)
+        local wide = pk.cols
+        if wide ~= 4 then error("four columns at the usual width, got " .. wide) end
+        local seen = { [wide] = true }
+        for _, w in ipairs({ 736, 650, 560, 500 }) do
+            pk.Layout(w)
+            seen[pk.cols] = true
+            if pk.cols > wide then error("never more columns than at the usual width") end
+            if pk.gridW + 8 > pk.previewX then error("at width " .. w .. " the grid reaches the preview column: " .. pk.gridW .. " vs " .. pk.previewX) end
+            for i, key in ipairs(pk.list) do
+                local b = pk.tiles[i]
+                if b.px + 104 > pk.gridW then error("a tile sticks out of the grid at width " .. w) end
+            end
+        end
+        pk.Layout(500)
+        if pk.cols >= wide then error("fewer columns when narrow, got " .. pk.cols) end
+        if not (seen[3] and seen[2]) then error("the grid goes 4, 3, 2 columns") end
+        pk.Layout(736)
+        ns:ToggleConfig()
+    end)
+    for name in pairs(ns.db.customThemes) do ns:DeleteCustomTheme(name) end
+    ns.db.theme, ns.db.accent = keep.theme, keep.accent
     ns:Retheme()
     if not ok then error(err, 0) end
 end)
