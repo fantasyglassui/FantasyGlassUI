@@ -19,7 +19,7 @@ for f in glob.glob('*.lua'):
     assert f in toc, "file not in TOC: " + f
 
 harness = r'''
-local files, sources, missing, secretMode, optionFiles = ...
+local files, sources, missing, secretMode, optionFiles, planCodes = ...
 local handlers = {}
 local mockmt = {}
 local function newmock() return setmetatable({}, mockmt) end
@@ -12560,7 +12560,7 @@ try("13.4 feel: seams", function()
                                src:find("local function FeelPaceSection", 1, true), src:find("local function FeelRecordsSection", 1, true)
         local built = src:find("function ns.BuildGuidePage", 1, true)
         if not (a1 and a2 and a3 and a4 and built and a1 < a2 and a2 < a3 and a3 < a4 and a4 < built) then error("the four sections, in order, above the page") end
-        if not src:find("{ FeelMapSection, FeelPanelSection, FeelPaceSection, FeelRecordsSection }", 1, true) then error("called in that order") end
+        if not src:find("{ FeelMapSection, FeelPanelSection, FeelPaceSection, FeelRecordsSection", 1, true) then error("called in that order") end   -- (batch 5's follow them)
     end)
     for _, point in ipairs({ "context", "window", "xp", "zone", "rank", "route", "applied" }) do ns.PlannerHook(point, "seams", nil) end
     ns.GuideRegisterLine("seams", nil); ns.GuideRegisterTitle("seams", nil); ns.GuideRegisterAdvance("seams", nil)
@@ -14447,6 +14447,146 @@ try("13.4 feel: together", function()
     if not ok then error(err, 0) end
 end)
 
+-- batch 5: the seams (the hooks "candidate" and "replan", the Guide tab's sections, the plan codes, the new files)
+try("13.5 together: seams", function()
+    local saved = { on = ns.GuideOn, state = ns.GuideState, unlocked = ns.GuideUnlocked, setPlan = ns.GuideSetPlan,
+                    queued = ns.plannerQueued, reason = ns.plannerReason, guidePage = ns.guidePage }
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        -- the "candidate" hook: asked about each record about to be kept
+        local function q(id, extra)
+            local r = { id = id, name = "Q" .. id, level = 14, minLevel = 1, xp = 100, starts = {}, ends = {}, objectives = {}, pre = {}, preAny = {}, exclusive = {},
+                        elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+            for k, v in pairs(extra or {}) do r[k] = v end
+            return r
+        end
+        local recs = { [9001] = q(9001, { group = true }), [9002] = q(9002) }
+        local source = { kind = "test", ids = function() return { 9001, 9002 } end, quest = function(id) return recs[id] end }
+        local function ctxFor(group)
+            return { source = source, level = 14, group = group, inGroup = false, done = function() return false end,
+                     onQuest = function(id) return id == 9002 end }
+        end
+        local function ids(list) local s = {} for _, r in ipairs(list) do s[r.id] = true end return s end
+        local list, skipped = ns.PlannerCandidates(source, ctxFor("solo"))
+        local s = ids(list)
+        if s[9001] or not s[9002] or skipped.group ~= 1 then error("without a hook: the group quest skipped in Solo, the logged one kept") end
+        local asked = {}
+        ns.PlannerHook("candidate", "seams", function(rec, ctx, logged)
+            asked[rec.id] = logged
+            if rec.id == 9001 then return false end
+        end)
+        list, skipped = ns.PlannerCandidates(source, ctxFor("solo"))
+        if skipped.group ~= 0 or ids(list)[9001] then error("a quest a candidate hook drops is not counted as skipped: " .. tostring(skipped.group)) end
+        if asked[9002] ~= true or asked[9001] ~= false then error("the hook is told whether the quest is logged") end
+        list = ns.PlannerCandidates(source, ctxFor("all"))
+        s = ids(list)
+        if s[9001] or not s[9002] then error("false drops a quest that passed every test") end
+        ns.PlannerHook("candidate", "seams", function(rec) if rec.id == 9002 then return false end end)
+        s = ids((ns.PlannerCandidates(source, ctxFor("all"))))
+        if s[9002] or not s[9001] then error("false drops a logged quest too") end
+        ns.PlannerHook("candidate", "seams", function() return nil end)
+        s = ids((ns.PlannerCandidates(source, ctxFor("all"))))
+        if not (s[9001] and s[9002]) then error("nil keeps both") end
+        -- (a class quest, and a quest from an item in your bags, are asked too)
+        recs[9003] = q(9003, { level = 10 })
+        recs[9004] = q(9004, { fromItem = { id = 77 } })
+        local function more()
+            local c = ctxFor("all")
+            c.classQuests = { { id = 9003, level = 10 } }
+            c.itemCount = function() return 1 end
+            c.here = { map = 1, x = 30, y = 40 }
+            source.ids = function() return { 9001, 9002, 9004 } end
+            local l, _, later = ns.PlannerCandidates(source, c)
+            source.ids = function() return { 9001, 9002 } end
+            return ids(l), #later
+        end
+        s = more()
+        if not (s[9003] and s[9004]) then error("a class quest and a held item's quest are candidates") end
+        ns.PlannerHook("candidate", "seams", function(rec) if rec.id == 9003 or rec.id == 9004 then return false end end)
+        local nLater
+        s, nLater = more()
+        if s[9003] or s[9004] or nLater ~= 0 or not (s[9001] and s[9002]) then error("a class quest and an item's quest can be dropped") end
+        ns.PlannerHook("candidate", "seams", nil)
+
+        -- the "replan" hook: may refuse a replan, and the start
+        ns.GuideOn = function() return true end
+        ns.GuideState = function() return { name = ns.GUIDE_PLANNED } end
+        ns:PlannerStop()
+        ns.plannerQueued = false
+        local why = {}
+        ns.PlannerHook("replan", "seams", function(reason) why[#why + 1] = reason; return false end)
+        if ns:PlannerReplan("hand-in") ~= false or ns.plannerQueued ~= false or why[1] ~= "hand-in" then error("a replan hook returning false refuses the replan") end
+        local cleared = 0
+        ns.GuideSetPlan = function(self, ...) cleared = cleared + 1; return saved.setPlan(self, ...) end
+        ns.GuideState = function() return nil end              -- (not following: the start would clear the guide first)
+        if ns:PlannerStart() ~= false or ns.plannerQueued ~= false or why[2] ~= "start" or cleared ~= 0 then error("the start asks the hook with \"start\" and changes nothing: " .. tostring(why[2])) end
+        ns.GuideSetPlan = saved.setPlan
+        ns.GuideState = function() return { name = ns.GUIDE_PLANNED } end
+        ns.PlannerHook("replan", "seams", function() return true end)
+        if ns:PlannerReplan("level") ~= true or ns.plannerQueued ~= true then error("anything but false lets the replan go ahead") end
+        ns.plannerQueued = false
+        ns.PlannerHook("replan", "seams", nil)
+        if ns:PlannerReplan("hand-in") ~= true or ns.plannerQueued ~= true or ns.plannerReason ~= "hand-in" then error("without the hook a replan is queued") end
+        ns:PlannerStop()
+        ns.plannerQueued = false
+        if ns:PlannerStart() ~= true or ns.plannerQueued ~= true or ns.plannerReason ~= "start" then error("without the hook the start goes ahead") end
+        ns:PlannerStop()
+        ns.plannerQueued = false
+
+        -- the plan codes (tests/plan_codes.txt, "" until group C writes it)
+        if type(planCodes) ~= "string" then error("the plan codes are handed to the harness as text: " .. type(planCodes)) end
+
+        -- the Guide tab: seven sections, batch 5's after batch 4's
+        local src = sources["options/Bars.lua"] or ""
+        local names = { "FeelMapSection", "FeelPanelSection", "FeelPaceSection", "FeelRecordsSection", "TogetherGroupSection", "TogetherDuoSection", "TogetherCodeSection" }
+        local last = 0
+        for _, n in ipairs(names) do
+            local p = src:find("local function " .. n .. "(live, y, Replan, T)", 1, true)
+            if not (p and p > last) then error("the sections, in order: " .. n) end
+            last = p
+        end
+        if not ((src:find("function ns.BuildGuidePage", 1, true) or 0) > last) then error("the sections are above the page") end
+        if not src:find("{ " .. table.concat(names, ", ") .. " }", 1, true) then error("the page calls the seven sections in that order") end
+        -- (while a group's section is still empty it adds no height: it hands back the y it was given)
+        for _, n in ipairs({ "TogetherGroupSection", "TogetherDuoSection", "TogetherCodeSection" }) do
+            local body = src:match("local function " .. n .. "%(live, y, Replan, T%)\n(.-)\nend\n")
+            if body and body:match("^%s*return y, function%(%) end%s*$") then
+                local fn = load("return function(live, y, Replan, T)\n" .. body .. "\nend")()
+                local y, refresh = fn(nil, -1000, nil, {})
+                if y ~= -1000 or type(refresh) ~= "function" then error(n .. ": an empty section adds no height") end
+            end
+        end
+        local page = env.CreateFrame("Frame")
+        ns.BuildGuidePage(page)
+        if not (tonumber(page.contentHeight) and page.contentHeight >= 896) then error("the page's height: " .. tostring(page.contentHeight)) end
+
+        -- the three new files are in the TOC, after PlannerRecords.lua, and empty until their groups fill them
+        local pos = {}
+        for i, f in ipairs(files) do pos[f] = i end
+        if not (pos["PlannerRecords.lua"] and pos["PlannerGroup.lua"] == pos["PlannerRecords.lua"] + 1 and pos["PlannerDuo.lua"] == pos["PlannerRecords.lua"] + 2
+                and pos["PlannerCode.lua"] == pos["PlannerRecords.lua"] + 3) then error("the three new files, in order, after PlannerRecords.lua") end
+        if not (sources["PlannerDuo.lua"] or ""):find("PLANNER_DUO_PREFIX", 1, true) and ns.PLANNER_DUO_PREFIX ~= nil then error("nothing in the new files yet") end
+        -- the fences: Core.lua's settings regions
+        for _, g in ipairs({ "A (group)", "B (duo)", "C (code)" }) do
+            local core = sources["Core.lua"] or ""
+            local b, e = core:find("-- batch 5 " .. g .. ": begin", 1, true), core:find("-- batch 5 " .. g .. ": end", 1, true)
+            if not (b and e and b < e) then error("Core.lua's fence for " .. g) end
+        end
+    end)
+    ns.PlannerHook("candidate", "seams", nil); ns.PlannerHook("replan", "seams", nil)
+    ns:PlannerStop()
+    ns.GuideOn, ns.GuideState, ns.GuideUnlocked, ns.GuideSetPlan = saved.on, saved.state, saved.unlocked, saved.setPlan
+    ns.plannerQueued, ns.plannerReason, ns.guidePage = saved.queued, saved.reason, saved.guidePage
+    if not ok then error(err, 0) end
+end)
+
+-- batch 5 tests A (group): begin
+-- batch 5 tests A (group): end
+-- batch 5 tests B (duo): begin
+-- batch 5 tests B (duo): end
+-- batch 5 tests C (code): begin
+-- batch 5 tests C (code): end
+
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()
@@ -14461,7 +14601,8 @@ for secret in (False, True):
     sources = lua.table_from({**{f: open(f).read() for f in toc}, **{'options/' + f: open(OPT + f).read() for f in opt_toc},
                               'locales/Locales.lua': open('../FantasyGlassUI_Locales/Locales.lua').read()})
     missing = lua.table()
-    errs, warns, nh, nm = run(harness, lua.table_from(toc), sources, missing, secret, lua.table_from(['options/' + f for f in opt_toc]))
+    plan_codes = open(ROOT + 'tests/plan_codes.txt').read() if _os.path.exists(ROOT + 'tests/plan_codes.txt') else ""
+    errs, warns, nh, nm = run(harness, lua.table_from(toc), sources, missing, secret, lua.table_from(['options/' + f for f in opt_toc]), plan_codes)
     print(f"\n=== combat values {'SECRET' if secret else 'readable'}: {nm} modules, {nh} scripts/hooks fired ===")
     # A name the add-on declares as a file-level local, read as a global: used above its declaration
     # (in the game that is nil and an error; the harness would quietly hand back a stand-in).

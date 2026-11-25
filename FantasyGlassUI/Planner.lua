@@ -41,6 +41,11 @@ local floor, min, max, sqrt = math.floor, math.min, math.max, math.sqrt
 --   "rank"     fn(ranked, c, info)         each round of the route's hubs (may change score and first)
 --   "route"    fn(guide, summary, ctx, c)  end of the route's Build
 --   "applied"  fn(guide, summary, ctx, reason)   after a plan became the guide you follow
+--   "candidate" fn(rec, ctx, logged) -> false|other   ns.PlannerCandidates, each record about to be kept (a logged
+--              quest, a new quest that passed every test, before the group check, a class quest, a quest from an
+--              item before it waits for the route): exactly false drops it
+--   "replan"   fn(reason) -> false|other   ns:PlannerReplan (after the Following check) and ns:PlannerStart
+--              (reason "start", after the GuideOn check): exactly false makes the call return false and change nothing
 ------------------------------------------------------------------------------------------
 local hooks, NONE = {}, {}
 -- Add a hook (a second fn with the same key replaces the first, in its place; fn nil removes it).
@@ -59,6 +64,22 @@ end
 -- The hooks of a point, in the order they were first added: { { key = k, fn = f } } (read only).
 function ns.PlannerHookList(point)
     return hooks[point] or NONE
+end
+
+-- Does every "candidate" hook let this record be kept? (Any hook returning exactly false drops it.)
+local function Keep(rec, ctx, logged)
+    for _, h in ipairs(hooks.candidate or NONE) do
+        if h.fn(rec, ctx, logged) == false then return false end
+    end
+    return true
+end
+
+-- May this replan (or start) go ahead? (Any "replan" hook returning exactly false refuses it.)
+local function ReplanOK(reason)
+    for _, h in ipairs(hooks.replan or NONE) do
+        if h.fn(reason) == false then return false end
+    end
+    return true
 end
 
 -- The level window of a quest: level - 4 to level + 2, then every "window" hook.
@@ -175,16 +196,18 @@ function ns.PlannerCandidates(source, ctx)
         local rec = (logged or not (never and never[id])) and (logged or not source.inRange or source.inRange(id, level, ctx.windowLo, ctx.windowHi)) and source.quest(id) or nil
         if rec then
             if logged then
-                list[#list + 1] = rec
+                if Keep(rec, ctx, true) then list[#list + 1] = rec end
             elseif rec.doable and not rec.repeatable and not done(id)
                 and InWindow(rec, ctx)
                 and AllDone(rec.pre, done) and AnyDone(rec.preAny, done) then
-                if not GroupOK(rec, ctx, level) then
-                    skipped.group = skipped.group + 1
-                elseif rec.fromItem then
-                    items[#items + 1] = rec
-                else
-                    list[#list + 1] = rec
+                if Keep(rec, ctx, false) then            -- (one a hook drops is not counted as skipped)
+                    if not GroupOK(rec, ctx, level) then
+                        skipped.group = skipped.group + 1
+                    elseif rec.fromItem then
+                        items[#items + 1] = rec
+                    else
+                        list[#list + 1] = rec
+                    end
                 end
             end
         end
@@ -197,7 +220,7 @@ function ns.PlannerCandidates(source, ctx)
         if type(id) == "number" and not have[id] and tonumber(e.level) and e.level <= level and not done(id) and not (never and never[id]) then
             local rec = source.quest(id)
             if rec and not onQuest(id) and rec.doable and not rec.repeatable and GroupOK(rec, ctx, level)
-                and AllDone(rec.pre, done) and AnyDone(rec.preAny, done) then
+                and AllDone(rec.pre, done) and AnyDone(rec.preAny, done) and Keep(rec, ctx, false) then
                 have[id] = true
                 list[#list + 1] = rec
             end
@@ -733,6 +756,7 @@ ns:Every(0, "Planner", Tick)
 -- Plan again (soon, a slice at a time). `reason` is only for debugging.
 function ns:PlannerReplan(reason)
     if not Following() then return false end
+    if not ReplanOK(reason) then return false end
     ns.plannerQueued, ns.plannerReason = true, reason
     return true
 end
@@ -740,6 +764,7 @@ end
 -- Follow the planned route, and plan it from scratch.
 function ns:PlannerStart()
     if not ns:GuideOn() then return false end
+    if not ReplanOK("start") then return false end
     if not Following() then ns:GuideSetPlan(nil) end
     ns:GuideShowPanel()
     mark, batch = nil, nil
