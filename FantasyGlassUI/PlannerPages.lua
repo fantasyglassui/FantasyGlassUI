@@ -137,13 +137,14 @@ function ns.PlannerPreviewLines(guide, summary)
         lines[#lines + 1] = { left = format("%d. %s", i, ok and type(text) == "string" and text or tostring(step.kind)) }
         if step.kind == "fly" then flights = flights + 1 elseif step.kind == "sail" then crossings = crossings + 1 end
     end
-    lines[#lines + 1] = { left = format(ns:Tr("Experience: %s"), Big(summary.xp)) }
-    lines[#lines + 1] = { left = format(ns:Tr("Level %s → %s"), LevelText(summary.fromLevel), LevelText(summary.toLevel)) }
-    lines[#lines + 1] = { left = format(ns:Tr("Flights: %d, crossings: %d"), flights, crossings) }
+    lines[#lines + 1] = { left = "" }                                           -- (the totals stand apart from the steps)
+    lines[#lines + 1] = { left = format(ns:Tr("Experience: %s"), Big(summary.xp)), tone = "dim" }
+    lines[#lines + 1] = { left = format(ns:Tr("Level %s → %s"), LevelText(summary.fromLevel), LevelText(summary.toLevel)), tone = "dim" }
+    lines[#lines + 1] = { left = format(ns:Tr("Flights: %d, crossings: %d"), flights, crossings), tone = "dim" }
     local skipped = ns.GuideSkippedText and ns.GuideSkippedText(summary)       -- (the panel's own lines, Guide.lua)
-    if skipped then lines[#lines + 1] = { left = skipped } end
+    if skipped then lines[#lines + 1] = { left = skipped, tone = "dim" } end
     local moved = ns.GuideMovedText and ns.GuideMovedText(summary)
-    if moved then lines[#lines + 1] = { left = moved } end
+    if moved then lines[#lines + 1] = { left = moved, tone = "dim" } end
     local function Close() if previewWindow then previewWindow:Hide() end end
     lines[#lines + 1] = { left = ns:Tr("Follow"), color = { 1, 0.82, 0.3 }, click = Close }
     lines[#lines + 1] = { left = ns:Tr("Plan again"), color = { 1, 0.82, 0.3 }, click = function()

@@ -86,7 +86,7 @@ function ns:GuideRouteEditor(name)
     local function Pick(i) at = math.max(1, math.min(#work.steps, i)); Draw() end
     local rowH = math.max(20, math.ceil(11 * (tonumber(ns.fontScale) or 1)) + 6)   -- (a row as tall as its lettering needs)
     Draw = function()
-        win.title:SetText(ns:Tr("Route") .. ": " .. tostring(work.name) .. "  |cff9aa4b4(" .. #work.steps .. ")|r")
+        win.title:SetText(ns:Tr("Route") .. ": " .. tostring(work.name) .. "  " .. ns:ToneHex("dim") .. "(" .. #work.steps .. ")|r")
         for i, step in ipairs(work.steps) do
             local r = win.rows[i]
             if not r then
@@ -105,7 +105,7 @@ function ns:GuideRouteEditor(name)
             r:SetSize(580, rowH)
             r:ClearAllPoints()
             r:SetPoint("TOPLEFT", 0, -(i - 1) * rowH)
-            r.text:SetText(format("|cff9aa4b4%d|r  %s", i, ns.GuideLine(step)))
+            r.text:SetText(format("%s%d|r  %s", ns:ToneHex("dim"), i, ns.GuideLine(step)))
             if i == at then ns:Paint(r.bg, "SetVertexColor", "@accent", 0.25) else r.bg:SetVertexColor(1, 1, 1, 0) end
             r:Show()
         end
@@ -209,7 +209,7 @@ do
         p:SetScript("OnEnter", function(self)
             if not self.step then return end
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:AddLine(format("%d. %s", self.index, ns.GuideStepText(self.step)), 1, 0.82, 0.2, true)
+            GameTooltip:AddLine(ns:AccentHex() .. format("%d. %s", self.index, ns.GuideStepText(self.step)) .. "|r", 1, 1, 1, true)
             GameTooltip:Show()
         end)
         p:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -236,7 +236,7 @@ do
                 local px, py = ns.MapDotOffset(item.step.x / 100, item.step.y / 100, w, h, size)
                 p:SetPoint("CENTER", canvas, "TOPLEFT", px, py)
                 p.num:SetText(item.index)
-                if k == 1 then ns:Paint(p.tex, "SetVertexColor", "@accent", 1) else p.tex:SetVertexColor(1, 0.82, 0.2, 0.85) end
+                if k == 1 then ns:Paint(p.tex, "SetVertexColor", "@accent", 1) else ns:Paint(p.tex, "SetVertexColor", "@light", 0.85) end   -- (the next one in the accent, the rest in the theme's light)
                 p:Show()
             end
         end

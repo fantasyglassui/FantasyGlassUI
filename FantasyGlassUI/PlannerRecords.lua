@@ -106,9 +106,9 @@ function ns.PlannerLevelLines()
     if sum.count < 1 then return lines end
     lines[1] = { left = " " }
     lines[2] = { left = ns:AccentHex() .. ns:Tr("Levels") .. "|r" }
-    lines[3] = { left = "    " .. format(ns:Tr("Fastest level: %d (%s)"), sum.fastest.level, Span(sum.fastest.s)) }
-    lines[4] = { left = "    " .. format(ns:Tr("Slowest level: %d (%s)"), sum.slowest.level, Span(sum.slowest.s)) }
-    lines[5] = { left = "    " .. format(ns:Tr("Average level: %s"), Span(sum.average)) }
+    lines[3] = { left = format(ns:Tr("Fastest level: %d (%s)"), sum.fastest.level, Span(sum.fastest.s)), indent = 16 }
+    lines[4] = { left = format(ns:Tr("Slowest level: %d (%s)"), sum.slowest.level, Span(sum.slowest.s)), indent = 16 }
+    lines[5] = { left = format(ns:Tr("Average level: %s"), Span(sum.average)), indent = 16 }
     return lines
 end
 
@@ -127,7 +127,7 @@ function ns.PlannerLevelRunLines()
     for i = 1, min(20, #levels) do
         local e = list[levels[i]]
         local text = format(ns:Tr("Level %d: %s, %s xp an hour"), levels[i], Span(e.s), Commas(e.xph))
-        if e.partial then text = text .. "  |cff9aa4b4(" .. ns:Tr("partly timed") .. ")|r" end     -- (not counted in fastest, slowest, average or the race)
+        if e.partial then text = text .. "  " .. ns:ToneHex("dim") .. "(" .. ns:Tr("partly timed") .. ")|r" end     -- (not counted in fastest, slowest, average or the race)
         lines[#lines + 1] = { left = text }
     end
     return lines

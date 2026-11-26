@@ -21,7 +21,7 @@ function ns.PlannerMapStops(steps, at)
     if type(first) ~= "table" then return out end
     local hub, most = first.hub, ns.PLANNER_MAP_STOPS
     local function Add(s)
-        if s.map and s.x and s.y and #out < most then out[#out + 1] = { map = s.map, x = s.x, y = s.y, n = #out + 1 } end
+        if s.map and s.x and s.y and #out < most then out[#out + 1] = { map = s.map, x = s.x, y = s.y, n = #out + 1, step = s } end
     end
     while type(steps[i]) == "table" and steps[i].hub == hub and #out < most do
         Add(steps[i])
@@ -110,11 +110,11 @@ local function Line(i)
     return l
 end
 
+-- A stop's dot: big enough for its number at every font scale, and its step under the mouse (clicks go to the map).
 local function Dot(i)
     local d = dots[i]
     if not d then
         d = CreateFrame("Frame", nil, holder)
-        d:SetSize(14, 14)
         d:SetFrameLevel(holderLevel + 3)
         d.tex = d:CreateTexture(nil, "ARTWORK")
         d.tex:SetAllPoints()
@@ -124,8 +124,23 @@ local function Dot(i)
         ns:Font(d.num, 9, true)
         d.num:SetPoint("CENTER")
         d.num:SetTextColor(0, 0, 0)
+        if d.SetMouseMotionEnabled and d.SetMouseClickEnabled then
+            pcall(d.SetMouseMotionEnabled, d, true)
+            pcall(d.SetMouseClickEnabled, d, false)
+            d:SetScript("OnEnter", function(self)
+                if type(self.step) ~= "table" then return end
+                local ok, text = pcall(ns.GuideStepBase, self.step)
+                if not (ok and type(text) == "string") then return end
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:AddLine(ns:AccentHex() .. format("%d. %s", tonumber(self.n) or 0, text) .. "|r", 1, 1, 1, true)
+                GameTooltip:Show()
+            end)
+            d:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        end
         dots[i] = d
     end
+    local size = math.max(14, math.ceil(9 * (tonumber(ns.fontScale) or 1)) + 7)
+    d:SetSize(size, size)
     return d
 end
 
@@ -161,25 +176,32 @@ local function Mark(i)
     local m = marks[i]
     if not m then
         m = CreateFrame("Button", nil, holder)
-        m:SetSize(20, 20)
+        m:SetSize(24, 24)                                    -- (a 24 click target round a 20 ring)
         m:SetFrameLevel(holderLevel + 1)
         m.tex = m:CreateTexture(nil, "ARTWORK")
-        m.tex:SetAllPoints()
-        m.tex:SetTexture(ns.MEDIA .. "dot.tga")
-        m.tex:SetVertexColor(1, 0.82, 0.2, 1)
+        m.tex:SetPoint("TOPLEFT", 2, -2)
+        m.tex:SetPoint("BOTTOMRIGHT", -2, 2)
+        m.tex:SetTexture(ns.MEDIA .. "ring.tga")            -- (a ring in the theme's light: never mistaken for a route stop's accent dot)
+        ns:Paint(m.tex, "SetVertexColor", "@light", 1)
         m.tier = m:CreateFontString(nil, "OVERLAY")
         ns:Font(m.tier, 11, true)
+        m.back = m:CreateTexture(nil, "BACKGROUND")         -- (a dark disc, so the ring and its digit read on a pale map)
+        m.back:SetPoint("TOPLEFT", 3, -3)
+        m.back:SetPoint("BOTTOMRIGHT", -3, 3)
+        m.back:SetTexture(ns.MEDIA .. "dot.tga")
+        m.back:SetVertexColor(0, 0, 0, 0.6)
         m.tier:SetPoint("CENTER")
-        m.tier:SetTextColor(0, 0, 0)
+        ns:Paint(m.tier, "SetTextColor", "@light")
         if m.RegisterForClicks then m:RegisterForClicks("LeftButtonUp") end
         if m.SetPropagateMouseClicks then pcall(m.SetPropagateMouseClicks, m, true) end     -- (the map's own right-click zoom-out still works over a mark)
         m:SetScript("OnClick", function(self) ns.PlannerMapPick({ map = self.map, x = self.x, y = self.y }) end)
         m:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             local tip = HubTip(self)
-            GameTooltip:AddLine(tip[1], 1, 0.82, 0.2)
+            GameTooltip:AddLine(ns:AccentHex() .. tip[1] .. "|r")
             if tip[2] then GameTooltip:AddLine(tip[2], 1, 1, 1) end
-            GameTooltip:AddLine(tip[3], 0.7, 0.7, 0.7)
+            local r, g, b = ns:Role("dim")
+            GameTooltip:AddLine(tip[3], r, g, b)
             GameTooltip:Show()
         end)
         m:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -218,6 +240,7 @@ function ns.PlannerMapDraw(mapID)
                             local l = Line(nLines)
                             local ax, ay = At(prev.x, prev.y)
                             local bx, by = At(s.x, s.y)
+                        d.n, d.step = s.n, s.step
                             l:SetStartPoint("TOPLEFT", holder, ax, ay)
                             l:SetEndPoint("TOPLEFT", holder, bx, by)
                             l:Show()
@@ -247,16 +270,15 @@ function ns.PlannerMapDraw(mapID)
                         Take({ map = tk.map, x = tk.x, y = tk.y, rate = secs > 0 and (tonumber(tk.xp) or 0) / secs or 0, quests = tk.quests })
                     end
                 end
-                local vision = ns:ColorVision()
                 for _, hb in ipairs(here) do
                     local r = tonumber(hb.rate) or 0
                     nMarks = nMarks + 1
                     local m = Mark(nMarks)
                     m.map, m.x, m.y, m.rate, m.quests = hb.map, hb.x, hb.y, r, tonumber(hb.quests) or false
-                    m.alpha = (best > worst) and (0.35 + 0.65 * (r - worst) / (best - worst)) or 1
+                    m.alpha = (best > worst) and (0.55 + 0.45 * (r - worst) / (best - worst)) or 1   -- (the weakest still seen on a yellow map)
                     local rank = 1                                    -- (1 = the best rate on this map)
                     for _, o in ipairs(here) do if (tonumber(o.rate) or 0) > r then rank = rank + 1 end end
-                    m.tierText = vision and tostring(math.min(3, floor((rank - 1) * 3 / #here) + 1)) or ""
+                    m.tierText = tostring(math.min(3, floor((rank - 1) * 3 / #here) + 1))    -- (1 the best third: not by brightness alone)
                     m.tier:SetText(m.tierText)
                     m:SetAlpha(m.alpha)
                     m:ClearAllPoints()

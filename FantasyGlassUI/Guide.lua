@@ -923,8 +923,8 @@ function ns:GuideReputation()
         local at = 0
         for i, s in ipairs(ns.PLANNER_REP_STANDINGS or {}) do if s == now then at = i end end
         local nextStanding = (ns.PLANNER_REP_STANDINGS or {})[at + 1]
-        lines[#lines + 1] = { left = f.name, right = now and ns.PlannerRepStandingName(now) or ("|cff9aa4b4" .. ns:Tr("off") .. "|r"),
-            color = now and { 1, 0.82, 0.3 } or nil,
+        lines[#lines + 1] = { left = f.name, right = now and ns.PlannerRepStandingName(now) or (ns:ToneHex("dim") .. ns:Tr("off") .. "|r"),
+            tone = now and "@accent" or nil,
             click = function()
                 if ns.PlannerSetRepGoal then ns.PlannerSetRepGoal(f.id, nextStanding) end
                 ns:GuideReputation()
@@ -1110,7 +1110,7 @@ Draw = function()
     for i = 1, 2 do
         local nextStep = steps[at + i]
         local text = nextStep and (KindOf(nextStep)[1] .. "  " .. ns.GuideStepText(nextStep, guide)) or ""
-        if nextStep and type(st.skipped) == "table" and st.skipped[at + i] then text = "|cff6f7682" .. text .. "  (" .. ns:Tr("skipped") .. ")|r" end   -- (dimmed)
+        if nextStep and type(st.skipped) == "table" and st.skipped[at + i] then text = ns:ToneHex("faint") .. text .. "  (" .. ns:Tr("skipped") .. ")|r" end   -- (fainter, and said)
         panel.later[i]:SetText(text)
         panel.laterShown[i] = text ~= ""
         if text ~= "" then tip[#tip + 1] = text end
@@ -1486,7 +1486,7 @@ function ns:GuideList()
     local lines = {}
     if ns:GuideUnlocked() and ns.PlannerStart then                -- (the planned route first: following it starts a plan)
         local mine = st and Planned(st)
-        lines[1] = { left = ns:Tr("Plan my route") .. (mine and ("  |cff33ff66" .. ns:Tr("following") .. "|r") or ""), color = mine and { 1, 0.82, 0.3 } or nil,
+        lines[1] = { left = ns:Tr("Plan my route") .. (mine and ("  " .. ns:SignalHex("good") .. ns:Tr("following") .. "|r") or ""), tone = mine and "@accent" or nil,
             click = function()
                 if mine then if ns.HideLists then ns:HideLists() end; return end   -- (following it already: just close the list)
                 ns:GuideFollow(ns.GUIDE_PLANNED); ns:GuideList()
@@ -1495,14 +1495,14 @@ function ns:GuideList()
     for _, name in ipairs(ns:GuideNames()) do
         local guide = ns:GuideGet(name)
         local mine = st and st.name == name
-        lines[#lines + 1] = { left = name .. (mine and ("  |cff33ff66" .. ns:Tr("following") .. "|r") or "") .. ((rec and rec.name == name) and ("  |cffff5555" .. ns:Tr("recording") .. "|r") or ""),
-            right = format(ns:Tr("%d steps"), #guide.steps), color = mine and { 1, 0.82, 0.3 } or nil,
+        lines[#lines + 1] = { left = name .. (mine and ("  " .. ns:SignalHex("good") .. ns:Tr("following") .. "|r") or "") .. ((rec and rec.name == name) and ("  " .. ns:SignalHex("bad") .. ns:Tr("recording") .. "|r") or ""),
+            right = format(ns:Tr("%d steps"), #guide.steps), tone = mine and "@accent" or nil,
             click = function(button) if button == "RightButton" then ns:GuideEdit(name) else ns:GuideFollow(name); ns:GuideList() end end }
     end
     lines[#lines + 1] = { left = "" }
-    lines[#lines + 1] = { left = "|cff9aa4b4+ " .. ns:Tr("Write or paste a guide") .. "|r", click = function() ns:GuideEdit("") end }
-    lines[#lines + 1] = { left = "|cff9aa4b4+ " .. ns:Tr("Record one as you play: /fgui guide record My route") .. "|r" }
-    if st then lines[#lines + 1] = { left = "|cff9aa4b4x " .. ns:Tr("Stop following") .. "|r", click = function() ns:GuideStop(); ns:GuideList() end } end
+    lines[#lines + 1] = { left = "+ " .. ns:Tr("Write or paste a guide"), action = true, click = function() ns:GuideEdit("") end }
+    if st then lines[#lines + 1] = { left = "x " .. ns:Tr("Stop following"), action = true, click = function() ns:GuideStop(); ns:GuideList() end } end
+    lines[#lines + 1] = { left = ns:Tr("Record one as you play: /fgui guide record My route"), tone = "dim", wrap = true }   -- (a hint, not a button)
     return ns:ShowList("Guides", "Quest guides", lines, "Click a guide to follow it. Right-click to read, change, copy or delete it.", 460, 340)
 end
 

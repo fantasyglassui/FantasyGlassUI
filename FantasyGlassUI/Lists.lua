@@ -4,11 +4,39 @@ local _, ns = ...
 -- Shared pieces for the smaller tools: a window that shows a list, a line that flashes in the
 -- middle of the screen, an alert that is hard to miss, and lists of names kept with the settings.
 ------------------------------------------------------------------------------------------
-local ROW = 18
 local windows = {}
+local shownSeq = 0                                      -- (the order list windows were opened in: the newest is the front one)
+-- A row's height: at least 22 (a click target), and room for its lettering at every font scale.
+local function RowH() return math.max(22, math.ceil(12 * (tonumber(ns.fontScale) or 1)) + 8) end
+ns.ListRowHeight = RowH
+-- A colour of the theme as a text colour code ("|cff..."), for a word inside a line: "text", "dim", "faint", "@accent".
+function ns:ToneHex(role)
+    local ok, r, g, b = pcall(ns.Role, ns, role)
+    if not (ok and type(r) == "number" and type(g) == "number" and type(b) == "number") then return "|cffffffff" end
+    return format("|cff%02x%02x%02x", math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b * 255 + 0.5))
+end
+local SIGNALS = { good = true, bad = true, warn = true }
+-- A line's own colour: its color, else an action's accent, else its tone (a theme colour, or good/bad/warn in the
+-- colour-vision palette), else the theme's text colour (so a pale theme's rows still read).
+local function LineColor(fs, line)
+    local c = line.color
+    if type(c) == "table" then
+        ns:Unpaint(fs, "SetTextColor")
+        fs:SetTextColor(c[1] or 1, c[2] or 1, c[3] or 1)
+    elseif line.action then
+        ns:Paint(fs, "SetTextColor", "@accent")
+    elseif type(line.tone) == "string" and SIGNALS[line.tone] then
+        ns:Unpaint(fs, "SetTextColor")
+        fs:SetTextColor(ns:Signal(line.tone))
+    else
+        ns:Paint(fs, "SetTextColor", type(line.tone) == "string" and line.tone or "text")
+    end
+end
 
--- A window holding a list of lines. Each line: { left, right, color = {r,g,b}, click = fn(button), tip = { ... } }.
--- Made once for each key; ask again to get the same one.
+-- A window holding a list of lines. Each line: { left, right, color = {r,g,b}, click = fn(button), tip = { ... } }, and
+-- optionally: action = true (something to do: the accent colour, a wash under the mouse), tone = a theme colour
+-- ("dim", "faint", "@accent") or "good"/"bad"/"warn", wrap = true (up to two lines), indent = pixels, link = an item.
+-- Rows that do nothing are passed over by Tab and do not light up. Made once for each key; ask again to get the same one.
 function ns:ListWindow(key, title, note, width, height)
     local w = windows[key]
     if not w then
@@ -40,21 +68,23 @@ function ns:ListWindow(key, title, note, width, height)
         close:SetPoint("TOPRIGHT", -8, -8)
         w.title:SetPoint("RIGHT", close, "LEFT", -8, 0)       -- (a long title is cut short before the X)
         w.rowWidth = width - 34
+        w.baseHeight = height
         w.area, w.sheet = ns:ScrollArea(w, width - 28, height - 40 - 30)
         w.area:SetPoint("TOPLEFT", 14, -40)
-        w.note = ns:NewText(w, 10, "LEFT")
+        w.note = ns:NewText(w, 11, "LEFT")
         w.note:SetPoint("BOTTOMLEFT", 14, 9)
         w.note:SetPoint("BOTTOMRIGHT", -14, 9)
-        w.note:SetTextColor(0.6, 0.6, 0.6)
+        if w.note.SetWordWrap then w.note:SetWordWrap(true) end
+        if w.note.SetMaxLines then w.note:SetMaxLines(2) end
+        ns:Paint(w.note, "SetTextColor", "dim")
         w.rows, w.lines = {}, {}
         function w:SetLines(lines)
             self.lines = lines or {}
+            local rh, y = RowH(), 0
             for i, line in ipairs(self.lines) do
                 local row = self.rows[i]
                 if not row then
                     row = CreateFrame("Button", nil, self.sheet)
-                    row:SetSize(self.rowWidth, ROW)
-                    row:SetPoint("TOPLEFT", 0, -(i - 1) * ROW)
                     row.right = ns:NewText(row, 12, "RIGHT")
                     row.right:SetPoint("RIGHT", -4, 0)
                     row.left = ns:NewText(row, 12, "LEFT")
@@ -70,7 +100,6 @@ function ns:ListWindow(key, title, note, width, height)
                     row.hl = row:CreateTexture(nil, "HIGHLIGHT")
                     row.hl:SetAllPoints()
                     row.hl:SetTexture(ns.FLAT)
-                    row.hl:SetVertexColor(1, 1, 1, 0.08)
                     row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
                     row:SetScript("OnClick", ns:Guard("List", function(r, button) if r.line and r.line.click then r.line.click(button) end end))
                     row:SetScript("OnEnter", function(r)
@@ -101,6 +130,21 @@ function ns:ListWindow(key, title, note, width, height)
                     self.rows[i] = row
                 end
                 row.line = line
+                local h = line.wrap and (rh + math.ceil(12 * (tonumber(ns.fontScale) or 1))) or rh
+                row:SetSize(self.rowWidth, h)
+                row:ClearAllPoints()
+                row:SetPoint("TOPLEFT", 0, -y)
+                y = y + h
+                local indent = tonumber(line.indent) or 0
+                row.left:ClearAllPoints()
+                row.left:SetPoint("LEFT", 2 + indent, 0)
+                row.left:SetPoint("RIGHT", row.right, "LEFT", -8, 0)
+                if row.left.SetWordWrap then row.left:SetWordWrap(line.wrap and true or false) end
+                if row.left.SetMaxLines then row.left:SetMaxLines(line.wrap and 2 or 1) end
+                local does = (line.click or line.link) and true or false
+                row.suiNavSkip = not does or nil                      -- (Tab passes over a row that does nothing)
+                row.hl:SetShown(line.click ~= nil)                    -- (only a row you can click lights up)
+                if line.action then ns:Paint(row.hl, "SetVertexColor", "@accent", 0.12) else ns:Unpaint(row.hl, "SetVertexColor"); row.hl:SetVertexColor(1, 1, 1, 0.08) end
                 if type(line.bar) == "number" and line.bar > 0 then
                     row.bar:SetWidth(math.max(1, self.rowWidth * math.min(1, line.bar)))
                     row.bar:Show()
@@ -116,17 +160,24 @@ function ns:ListWindow(key, title, note, width, height)
                     local okW, sw = pcall(row.right.GetStringWidth, row.right)
                     row.right:SetWidth((okW and type(sw) == "number" and not ns:IsSecret(sw) and sw > most) and most or 0)
                 end
-                local c = line.color
-                if type(c) == "table" then row.left:SetTextColor(c[1] or 1, c[2] or 1, c[3] or 1) else row.left:SetTextColor(1, 1, 1) end
+                LineColor(row.left, line)
                 row:Show()
             end
             for i = #self.lines + 1, #self.rows do self.rows[i].line = nil; self.rows[i]:Hide() end
-            if self.area.SetContentHeight then self.area:SetContentHeight(#self.lines * ROW) end
+            if self.area.SetContentHeight then self.area:SetContentHeight(y) end
         end
         windows[key] = w
     end
     w.title:SetText(ns:Tr(title or ""))
     w.note:SetText(note and ns:Tr(note) or "")
+    -- the list stops above the note, however many lines (up to two) the note takes
+    local nh = 0
+    if note then
+        local ok, v = pcall(w.note.GetStringHeight, w.note)
+        v = (ok and not ns:IsSecret(v)) and tonumber(v) or nil
+        nh = (v and v > 0) and math.ceil(v) or math.ceil(11 * (tonumber(ns.fontScale) or 1))
+    end
+    w.area:SetHeight(w.baseHeight - 40 - math.max(30, nh + 16))
     return w
 end
 -- Close every list window (the self-test opens many).
@@ -137,10 +188,13 @@ function ns:HideLists()
 end
 -- Open a list window with these lines (the usual case).
 function ns:ShowList(key, title, lines, note, width, height)
-    if type(lines) ~= "table" or #lines == 0 then lines = { { left = "|cff9aa4b4" .. ns:Tr("Nothing here yet.") .. "|r" } } end
+    if type(lines) ~= "table" or #lines == 0 then lines = { { left = ns:Tr("Nothing here yet."), tone = "dim" } } end
     local w = ns:ListWindow(key, title, note, width, height)
     w:SetLines(lines)
     w:Show()
+    if w.Raise then w:Raise() end                         -- (over the settings window, when it opened from there)
+    shownSeq = shownSeq + 1
+    w.suiShownSeq = shownSeq
     return w
 end
 

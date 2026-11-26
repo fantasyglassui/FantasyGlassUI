@@ -13198,8 +13198,8 @@ try("13.4 feel A: the route and hubs on the map", function()
         if nl ~= 2 or nd ~= 3 or nm ~= 3 then error("2 lines, 3 stop dots and 3 hub marks: " .. nl .. " " .. nd .. " " .. nm) end
         local byRate = {}
         for i = 1, nm do local m = ns.PlannerMapTest.marks[i]; byRate[m.rate] = m end
-        if math.abs(byRate[1].alpha - 0.35) > 1e-9 or math.abs(byRate[2].alpha - 0.675) > 1e-9 or math.abs(byRate[3].alpha - 1) > 1e-9 then error("a hub's brightness runs from the worst to the best") end
-        if byRate[1].tierText ~= "" then error("no tier without colour vision") end
+        if math.abs(byRate[1].alpha - 0.55) > 1e-9 or math.abs(byRate[2].alpha - 0.775) > 1e-9 or math.abs(byRate[3].alpha - 1) > 1e-9 then error("a hub's brightness runs from the worst to the best") end
+        if byRate[1].tierText ~= "3" then error("the tier digit shows without colour vision too") end
         ns.db.colorblind, ns.db.colorVision = true, "redgreen"
         ns.PlannerMapDraw(1436)
         if byRate[3].tierText ~= "1" or byRate[2].tierText ~= "2" or byRate[1].tierText ~= "3" then error("the tiers with colour vision: " .. byRate[3].tierText .. byRate[2].tierText .. byRate[1].tierText) end
@@ -20424,6 +20424,50 @@ try("polish P2: the arrow", function()
     end
     ns:ClearWaypoint(true)
     env.C_Map, ns.db.textBands = saved.map, saved.bands
+    if not ok then error(err, 0) end
+end)
+try("polish P2: list rows and colours", function()
+    local saved = { scale = ns.fontScale, errors = #ns.errors }
+    local w
+    local ok, err = pcall(function()
+        local lines = { { left = "a fact" }, { left = "do it", action = true, click = function() end }, { left = "two lines of words", wrap = true },
+            { left = "pale", tone = "dim" }, { left = "good", tone = "good", click = function() end } }
+        w = ns:ShowList("PolishP2", "Polish P2", lines, "A note long enough for two lines.", 300, 300)
+        local raised = false
+        rawset(w, "Raise", function() raised = true end)
+        local tops, heights, colors = {}, {}, {}
+        for i = 1, 5 do
+            local r = w.rows[i]
+            rawset(r, "SetPoint", function(_, p, x, y) tops[i] = y end)
+            rawset(r, "SetSize", function(_, wd, h) heights[i] = h end)
+            rawset(r.left, "SetTextColor", function(_, r1, g1, b1) colors[i] = { r1, g1, b1 } end)
+        end
+        local areaH
+        rawset(w.note, "GetStringHeight", function() return 28 end)
+        rawset(w.area, "SetHeight", function(_, h) areaH = h end)
+        ns.fontScale = 1.5
+        ns:ShowList("PolishP2", "Polish P2", lines, "A note long enough for two lines.", 300, 300)
+        if not raised then error("a list window is raised over what it opened from") end
+        if heights[1] ~= 26 then error("a row at 1.5 is 26 high: " .. tostring(heights[1])) end
+        if heights[3] ~= 26 + 18 then error("a wrapping row takes a second line: " .. tostring(heights[3])) end
+        if tops[1] ~= 0 or tops[2] ~= -26 or tops[4] ~= -(26 * 2 + 44) then error("rows are placed one under another: " .. tostring(tops[2]) .. " " .. tostring(tops[4])) end
+        if areaH ~= 300 - 40 - 44 then error("the list stops above a two-line note: " .. tostring(areaH)) end
+        local ar, ag, ab = ns:Role("@accent")
+        if not (colors[2] and colors[2][1] == ar and colors[2][2] == ag and colors[2][3] == ab) then error("an action row is in the accent") end
+        local tr, tg, tb = ns:Role("text")
+        if not (colors[1] and colors[1][1] == tr and colors[1][3] == tb) then error("a plain row is in the theme's text colour") end
+        local gr, gg = ns:Signal("good")
+        if not (colors[5] and colors[5][1] == gr and colors[5][2] == gg) then error("a good row is in the signal colour") end
+        if not w.rows[1].suiNavSkip or w.rows[2].suiNavSkip then error("Tab passes over a row that does nothing, not one that does") end
+        if not ns:ToneHex("dim"):find("^|cff%x%x%x%x%x%x$") then error("a tone as a colour code: " .. ns:ToneHex("dim")) end
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    if w then
+        rawset(w, "Raise", nil); rawset(w.note, "GetStringHeight", nil); rawset(w.area, "SetHeight", nil)
+        for i = 1, 5 do local r = w.rows[i]; if r then rawset(r, "SetPoint", nil); rawset(r, "SetSize", nil); rawset(r.left, "SetTextColor", nil) end end
+        w:Hide()
+    end
+    ns.fontScale = saved.scale
     if not ok then error(err, 0) end
 end)
 -- polish P2: end
