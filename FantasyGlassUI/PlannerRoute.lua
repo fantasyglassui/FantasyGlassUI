@@ -96,7 +96,8 @@ local function DoSpot(rec, from)
 end
 
 -- Is this quest one with a clock on it? In your log: the game gives it a time limit. Not yet taken: a time
--- is known for it (ns.PlannerTimedQuest, PlannerSource.lua, when there: seconds or nil).
+-- is known for it (ns.PlannerTimedQuest, PlannerSource.lua, when there: seconds or nil). It must neither yield
+-- nor error; an error is written to ns.errors (the first one of each plan) and the quest counts as not timed.
 local function IsTimed(ctx, q)
     if ctx.onQuest and ctx.onQuest(q.id) then
         return type(ctx.timed) == "function" and ctx.timed(q.id) and true or false
@@ -104,6 +105,10 @@ local function IsTimed(ctx, q)
     local known = ns.PlannerTimedQuest
     if type(known) ~= "function" then return false end
     local ok, seconds = pcall(known, q.id)
+    if not ok and not ctx.timedErrorLogged then
+        ctx.timedErrorLogged = true
+        if type(ns.errors) == "table" and #ns.errors < 60 then ns.errors[#ns.errors + 1] = "Planner timed quest: " .. tostring(seconds) end
+    end
     seconds = ok and tonumber(seconds) or nil
     return seconds ~= nil and seconds > 0
 end
@@ -1143,6 +1148,11 @@ function ns.PlannerSessionSkipReset() sessionSkip = {} end
 ns.PlannerHook("candidate", "sessionSkip", function(rec)
     if type(rec) == "table" and sessionSkip[rec.id] then return false end
 end)
+do                                                  -- (a new session starts with none; so does a fresh plan, ns:PlannerStart)
+    local ev = CreateFrame("Frame")
+    pcall(ev.RegisterEvent, ev, "PLAYER_LOGIN")
+    ev:SetScript("OnEvent", ns:Guard("Planner session skips", function() ns.PlannerSessionSkipReset() end))
+end
 local HEARTHSTONE = 6948
 
 local function Num(v) if type(v) == "number" and not ns:IsSecret(v) then return v end end

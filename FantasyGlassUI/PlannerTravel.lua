@@ -201,9 +201,11 @@ local function ControlGained()
 end
 
 -- Every couple of seconds (and when a loading screen ends): which docks are we standing at? A crossing is timed
--- from the last look within NEAR of one of its docks to the first look within NEAR of its other dock, when that
--- is at least a minute and at most PLANNER_CROSS_MOST seconds. A loading screen on the way is allowed, never
--- needed (Auberdine to Rut'theran has none), and a dock that several crossings share keeps all of them in mind.
+-- from the FIRST look within NEAR of one of its docks (of one stay there: a look away from every dock and back
+-- starts the stay again) to the first look within NEAR of its other dock, when that is at least a minute and at
+-- most PLANNER_CROSS_MOST seconds. So the time holds the wait at the dock, as the defaults in PLANNER_CROSSINGS
+-- do. A loading screen on the way is allowed, never needed (Auberdine to Rut'theran has none), and a dock that
+-- several crossings share keeps all of them in mind.
 ns.PLANNER_CROSS_MOST = 900
 local function DockTick()
     if not ns:GuideUnlocked() then return end
@@ -218,7 +220,16 @@ local function DockTick()
             end
         end
     end
-    if not at then return end                            -- (away from every dock: the last look at one is kept)
+    if not at then                                       -- (away from every dock: the stay at the last one is kept)
+        if dock then dock.left = true end
+        return
+    end
+    if dock and not dock.left then                       -- (still at the same docks: the stay goes on)
+        local same = true
+        for id, side in pairs(at) do if dock.ids[id] ~= side then same = false end end
+        for id, side in pairs(dock.ids) do if at[id] ~= side then same = false end end
+        if same then return end
+    end
     if dock then
         local secs = now - dock.time
         for id, side in pairs(at) do

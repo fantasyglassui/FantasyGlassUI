@@ -194,8 +194,10 @@ end
 -- Quests that exclude each other (Questie's exclusiveTo): of the records given, the ids that stay, { [id] = true }.
 -- The lists are read both ways (two quests are in one set when either names the other) and sets join through
 -- shared ids, also ids that are not among the records. From each set one stays: a quest in your log (every
--- logged one, and nothing else of its set); none when a member is done; else a class quest; else the most real
--- experience (ns.PlannerQuestXP's third value), then the lower id. Runs inside the planning coroutine.
+-- logged one, and nothing else of its set); else, of the members that can still be taken (a record whose own
+-- list names a done quest cannot), a class quest; else the most real experience (ns.PlannerQuestXP's third
+-- value), then the lower id. A member joined only through another quest's list is not dropped by a done id it
+-- never names. Runs inside the planning coroutine.
 function ns.PlannerExclusiveKeep(recs, ctx)
     local keep = {}
     if type(recs) ~= "table" then return keep end
@@ -214,15 +216,17 @@ function ns.PlannerExclusiveKeep(recs, ctx)
         return r
     end
     local function Add(id) if up[id] == nil then up[id] = id; nodes[#nodes + 1] = id end end
-    local own = {}
+    local own, blocked = {}, {}
     for _, rec in ipairs(recs) do
         ns.PlannerYield()
         if type(rec) == "table" and type(rec.id) == "number" then
             own[#own + 1] = rec
             Add(rec.id)
+            if done(rec.id) then blocked[rec.id] = true end
             for _, other in ipairs(type(rec.exclusive) == "table" and rec.exclusive or NONE) do
                 other = tonumber(other)
                 if other and other ~= rec.id then
+                    if done(other) then blocked[rec.id] = true end   -- (its own list names a done quest: it cannot be taken)
                     Add(other)
                     local a, b = Root(rec.id), Root(other)
                     if a ~= b then up[max(a, b)] = min(a, b) end
@@ -230,12 +234,12 @@ function ns.PlannerExclusiveKeep(recs, ctx)
             end
         end
     end
-    local size, logged, gone = {}, {}, {}
+    local size, logged = {}, {}
     for _, id in ipairs(nodes) do
         ns.PlannerYield()
         local r = Root(id)
         size[r] = (size[r] or 0) + 1
-        if onQuest(id) then logged[r] = true elseif done(id) then gone[r] = true end
+        if onQuest(id) then logged[r] = true end
     end
     local class = ns.PlannerClassMap(ctx)
     local best = {}
@@ -246,7 +250,7 @@ function ns.PlannerExclusiveKeep(recs, ctx)
             keep[rec.id] = true
         elseif logged[r] then
             if onQuest(rec.id) then keep[rec.id] = true end
-        elseif not gone[r] then
+        elseif not blocked[rec.id] then
             local tier = class[rec.id] and 1 or 0
             local _, _, real = ns.PlannerQuestXP(rec, ctx)
             real = tonumber(real) or 0
@@ -357,7 +361,14 @@ function ns.PlannerCandidates(source, ctx)
     local kept, waiting = {}, {}
     for _, r in ipairs(list) do if keep[r.id] then kept[#kept + 1] = r end end
     for _, r in ipairs(later) do if keep[r.id] then waiting[#waiting + 1] = r end end
-    for _ in pairs(ns.PlannerExclusiveKeep(groupOnly, ctx)) do skipped.group = skipped.group + 1 end
+    -- (the logged partners' lists are read too: a group-only quest that a logged quest names cannot be taken;
+    -- only group-only ids are counted, once per set)
+    local counted, isGroupOnly = {}, {}
+    for _, r in ipairs(groupOnly) do counted[#counted + 1] = r; isGroupOnly[r.id] = true end
+    for _, r in ipairs(list) do if onQuest(r.id) then counted[#counted + 1] = r end end
+    for id in pairs(ns.PlannerExclusiveKeep(counted, ctx)) do
+        if isGroupOnly[id] then skipped.group = skipped.group + 1 end
+    end
     return kept, skipped, waiting
 end
 
@@ -900,6 +911,7 @@ end
 function ns:PlannerStart()
     if not ns:GuideOn() then return false end
     if not ReplanOK("start") then return false end
+    if ns.PlannerSessionSkipReset then ns.PlannerSessionSkipReset() end   -- (a fresh plan: the steps skipped this session count again)
     if not Following() then ns:GuideSetPlan(nil) end
     ns:GuideShowPanel()
     mark, batch = nil, nil
