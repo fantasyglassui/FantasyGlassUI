@@ -36,6 +36,7 @@ NOT_THE_GAMES = {
     "GetMinimapShape": "a function other add-ons ask the minimap for; this add-on sets it",
     "Questie": "the optional quest add-on the planner reads, when it is loaded",
     "QuestieLoader": "Questie's module loader, read only when Questie is loaded",
+    "TomTom": "the optional waypoint add-on, used when it is loaded",
     "StylishUIDB": "the add-on's settings under its former name, read once to bring them over",
 }
 LAYERS = {"BACKGROUND", "BORDER", "ARTWORK", "OVERLAY", "HIGHLIGHT"}

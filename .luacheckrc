@@ -411,6 +411,7 @@ read_globals = {
     "ToggleGameMenu",
     "ToggleQuestLog",
     "ToggleWorldMap",
+    "TomTom",
     "TooltipDataProcessor",
     "UIErrorsFrame",
     "UIParent",

@@ -126,9 +126,10 @@ local function DrawRep(ctx, q)
     end
 end
 
--- Where a quest is handed in: the hand-in nearest `from`, else one on another continent (the trip there says
--- whether it can be reached at all; nil only when no hand-in can be placed).
-local function HandIn(q, from) return Nearest(q.ends, from) or Nearest(q.ends) end
+-- Is a quest handed in out of the hub's reach (every hand-in that can be placed lies on another continent)? Then it is
+-- not this hub's: no hand-in step, and none of its experience or time (its accept and objectives may still be on
+-- the way; a later plan takes you to where it is handed in). A quest with no hand-in that can be placed is not.
+local function HandedInAway(q, hub) return Nearest(q.ends, hub) == nil and Nearest(q.ends) ~= nil end
 
 -- A hub's loop, in order, with its time: accepts, dos and turnins as { rec, spot }. A quest with a clock
 -- on it is a run of its own (accept if not yet, do, hand in) before anything else in the hub (hub.timed).
@@ -142,10 +143,14 @@ local function HubLoop(hub, ctx)
         for k, v in pairs(type(before) == "table" and before or {}) do copy[k] = v end
         ctx.repLeft = copy
     end
+    local away = {}
     for _, q in ipairs(hub.quests) do
-        xp = xp + ns.PlannerQuestXP(q, ctx)
-        if wanted then DrawRep(ctx, q) end
-        t = t + ns.PlannerQuestTime(q, ctx)
+        if HandedInAway(q, hub) then away[q.id] = true end
+        if not away[q.id] then
+            xp = xp + ns.PlannerQuestXP(q, ctx)
+            if wanted then DrawRep(ctx, q) end
+            t = t + ns.PlannerQuestTime(q, ctx)
+        end
         if IsTimed(ctx, q) then timed[#timed + 1] = q else rest[#rest + 1] = q end
     end
     if wanted then ctx.repLeft = before end
@@ -161,7 +166,7 @@ local function HubLoop(hub, ctx)
             run.spot = DoSpot(q, base)
             if run.spot then t = t + Walk(base, run.spot, ctx); base = run.spot end
         end
-        run.turnin = HandIn(q, base)
+        run.turnin = Nearest(q.ends, base)
         if run.turnin then t = t + Walk(base, run.turnin, ctx); base = run.turnin end
         t = t + HANDLE
         runs[#runs + 1] = run
@@ -184,13 +189,15 @@ local function HubLoop(hub, ctx)
     for _, d in ipairs(dos) do
         if d.spot then t = t + Walk(at, d.spot, ctx); at = d.spot end
     end
-    for _, q in ipairs(rest) do turnins[#turnins + 1] = { rec = q, spot = HandIn(q, at) } end
+    for _, q in ipairs(rest) do
+        if not away[q.id] then turnins[#turnins + 1] = { rec = q, spot = Nearest(q.ends, at) } end
+    end
     turnins = Sweep(turnins, at)
     for _, e in ipairs(turnins) do
         if e.spot then t = t + Walk(at, e.spot, ctx); at = e.spot end
         t = t + HANDLE
     end
-    hub.accepts, hub.dos, hub.turnins, hub.timed, hub.last = accepts, dos, turnins, runs, at
+    hub.accepts, hub.dos, hub.turnins, hub.timed, hub.last, hub.away = accepts, dos, turnins, runs, at, away
     hub.xp, hub.seconds = xp, max(t, 1)
 end
 
@@ -722,7 +729,7 @@ local function HubSteps(state, hub, steps, inn, n)
         end
     end
     for _, q in ipairs(hub.quests) do
-        if not gone[q.id] then
+        if not gone[q.id] and not (hub.away and hub.away[q.id]) then
             kept = kept + 1
             t = t + ns.PlannerQuestTime(q, state.ctx)
             local _, extra, real = ns.PlannerQuestXP(q, state.ctx)
@@ -1125,6 +1132,17 @@ end
 ------------------------------------------------------------------------------------------
 -- The live game as the planner's ctx
 ------------------------------------------------------------------------------------------
+-- Quests you skipped a step of on the planned route, this session only (in memory: never the permanent
+-- "never suggest"): left out of the plans made after it, a quest in your log too ("candidate" hook).
+local sessionSkip = {}
+function ns.PlannerSessionSkip(id)
+    if type(id) == "number" then sessionSkip[id] = true end
+end
+function ns.PlannerSessionSkipped(id) return sessionSkip[id] == true end
+function ns.PlannerSessionSkipReset() sessionSkip = {} end
+ns.PlannerHook("candidate", "sessionSkip", function(rec)
+    if type(rec) == "table" and sessionSkip[rec.id] then return false end
+end)
 local HEARTHSTONE = 6948
 
 local function Num(v) if type(v) == "number" and not ns:IsSecret(v) then return v end end

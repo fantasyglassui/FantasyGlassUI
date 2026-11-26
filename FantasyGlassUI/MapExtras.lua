@@ -97,7 +97,8 @@ function ns:SetWaypoint(x, y, label, onMap, quiet)
             local near = distance <= WAY_NEAR                     -- (the theme's accent, brighter once you are close)
             if near ~= w.near then w.near = near; ns:Paint(self.tex, "SetVertexColor", "@accent", near and 1 or 0.7) end
             local now = GetTime and GetTime() or 0
-            if distance < (w.quiet and ns.GUIDE_NEAR or WAY_ARRIVED) and not w.arrived then   -- (the guide's: where it counts you there)
+            -- arrived: one pulse (the guide's waypoint where it counts you there; none at a spot you only pass through)
+            if distance < (w.quiet and ns.GUIDE_NEAR or WAY_ARRIVED) and not w.arrived and not w.passing then
                 w.arrived = true
                 local motion = ns:Motion()
                 if motion and self.pulse then self.pulse:Stop(); self.pulse:Play() end
@@ -111,6 +112,10 @@ function ns:SetWaypoint(x, y, label, onMap, quiet)
         ns.waypointArrow = arrow
         local entry = ns:RegisterMovable(arrow, "waypoint", "Waypoint")
         if type(entry) == "table" then entry.offPage = true end        -- (scaled from its own right-click menu in move mode)
+    end
+    if not arrow.tex.suiPlain then                            -- (the gold arrow made grey once, so the accent tint reads true)
+        arrow.tex.suiPlain = true
+        if arrow.tex.SetDesaturated then pcall(arrow.tex.SetDesaturated, arrow.tex, true) end
     end
     arrow.name:SetText(ns.waypoint.label)
     arrow:Show()

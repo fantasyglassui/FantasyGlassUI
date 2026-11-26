@@ -69,16 +69,6 @@
     "가이드: 단계 건너뛰기",
     "指南：跳过此步"
   ],
-  "Guide: plan again": [
-    "Guide: neu planen",
-    "Guide : replanifier",
-    "Guía: planear de nuevo",
-    "Путеводитель: спланировать заново",
-    "Guia: planear de novo",
-    "Guida: pianifica di nuovo",
-    "가이드: 다시 계획",
-    "指南：重新规划"
-  ],
   "Use TomTom's arrow when TomTom is loaded": [
     "TomToms Pfeil nutzen, wenn TomTom geladen ist",
     "Utiliser la flèche de TomTom quand TomTom est chargé",
@@ -88,5 +78,25 @@
     "Usa la freccia di TomTom quando TomTom è caricato",
     "TomTom이 로드되면 TomTom의 화살표 사용",
     "加载 TomTom 时使用 TomTom 的箭头"
+  ],
+  "Guide: refresh the route": [
+    "Guide: Route auffrischen",
+    "Guide : actualiser l'itinéraire",
+    "Guía: actualizar la ruta",
+    "Путеводитель: обновить маршрут",
+    "Guia: atualizar a rota",
+    "Guida: aggiorna il percorso",
+    "가이드: 경로 새로 고침",
+    "指南：刷新路线"
+  ],
+  "skipped": [
+    "übersprungen",
+    "passée",
+    "saltado",
+    "пропущено",
+    "pulado",
+    "saltato",
+    "건너뜀",
+    "已跳过"
   ]
 }

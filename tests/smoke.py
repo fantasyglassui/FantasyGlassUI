@@ -18310,7 +18310,7 @@ end)
 -- batch 6 tests C (route): begin
 try("13.6 leftovers C: moving zones in words", function()
     local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), unlocked = ns.GuideUnlocked, why = ns.db.plannerWhy,
-        state = ns.root.guideState, here = ns.GuideHere, errors = #ns.errors }
+        state = ns.root.guideState, errors = #ns.errors }
     -- Eastern Kingdoms (1415): Wetlands 1437 and Arathi 1417 on it, Undercity 1458; Kalimdor: Dustwallow 1445, Durotar 1411
     local regions = { [1437] = { 0, 4000, 4000 }, [1417] = { 0, 6000, 2000 }, [1458] = { 0, 1000, 1000 }, [1445] = { 1, 5000, 5000 }, [1411] = { 1, 7000, 2000 } }
     local infos = { [1415] = { mapID = 1415, name = "Eastern Kingdoms", mapType = 2, parentMapID = 947 },
@@ -18366,7 +18366,6 @@ try("13.6 leftovers C: moving zones in words", function()
         kept(fly)
         -- Show why: the panel says the step's words and what the flight saves
         ns.db.plannerWhy = true
-        ns.GuideHere = function() return 1437, 50, 50 end
         ns:GuideSetPlan(guide, {})
         local panel = ns:GuideShowPanel()
         local said
@@ -18420,7 +18419,7 @@ try("13.6 leftovers C: moving zones in words", function()
     end)
     ns:GuideStop()
     env.C_Map = saved.map; rawset(env, "CreateVector2D", saved.vec)
-    ns.GuideUnlocked, ns.db.plannerWhy, ns.root.guideState, ns.GuideHere = saved.unlocked, saved.why, saved.state, saved.here
+    ns.GuideUnlocked, ns.db.plannerWhy, ns.root.guideState = saved.unlocked, saved.why, saved.state
     if not ok then error(err, 0) end
 end)
 try("13.6 leftovers C: plan again and plan my route", function()
@@ -18469,6 +18468,11 @@ try("13.6 leftovers C: plan again and plan my route", function()
         ns.ShowList = function(_, _, _, l) lines = l end
         ns:GuideList()
         if not (lines and lines[1].left:find("Plan my route", 1, true) and lines[1].left:find("following", 1, true)) then error("the first line, following: " .. tostring(lines and lines[1].left)) end
+        local hid, realHide = 0, ns.HideLists
+        ns.HideLists = function() hid = hid + 1 end
+        lines[1].click("LeftButton")
+        ns.HideLists = realHide
+        if hid ~= 1 or starts ~= 0 then error("following the plan already: the click only closes the list: " .. hid .. ", " .. starts) end
         -- a written guide: no Plan again; the first line is not marked
         ns:GuideFollow("Written")
         ns:GuideRedraw()
@@ -18544,6 +18548,10 @@ try("13.6 leftovers C: route and travel leftovers", function()
         local guide, summary = route({ near, rec(9802, 51, 50, { { map = 3, x = 50, y = 50 } }) }, { here = { map = 1, x = 40, y = 40 } })
         if count(guide, "turnin", 9802) ~= 0 or count(guide, "turnin", 9801) ~= 1 then error("no hand-in step for the unreachable one") end
         if summary.xp ~= alone.xp then error("its experience leaves the summary: " .. summary.xp .. " / " .. alone.xp) end
+        -- the same with a boat there: still not this hub's, and no crossing in the middle of it
+        local sea = { { id = "sea6c", a = { map = 1, x = 60, y = 50 }, b = { map = 3, x = 50, y = 50 }, seconds = 100 } }
+        guide, summary = route({ near, rec(9802, 51, 50, { { map = 3, x = 50, y = 50 } }) }, { here = { map = 1, x = 40, y = 40 }, crossings = sea })
+        if count(guide, "turnin", 9802) ~= 0 or count(guide, "sail") ~= 0 or summary.xp ~= alone.xp then error("a hand-in over the sea is not this hub's") end
         -- a trip that learns a flight point and then can't reach its end: the learn step and the point are put back
         local unknown = { node = 21, map = 1, x = 49, y = 49, known = false, name = "Twenty-one" }
         local far = { node = 22, map = 1, x = 94, y = 94, known = true, name = "Twenty-two" }
@@ -18580,16 +18588,30 @@ try("13.6 leftovers C: route and travel leftovers", function()
         if not (ns.root.plannerFlightTimes and ns.root.plannerFlightTimes["31-32"] == 90) then error("a real flight is still timed") end
         -- crossings: timed only when you were at the dock at the last look, and the wait and ride took at most 15 minutes
         ns.PLANNER_CROSSINGS = { { id = "fake6c", a = { map = 1, x = 90, y = 90 }, b = { map = 3, x = 10, y = 10 }, seconds = 100 } }
-        local function cross(wait, away)
-            pos = { 1, 90, 90 }; ns.PlannerDockTick()
-            if away then pos = { 1, 10, 10 }; ns.PlannerDockTick() end
-            clock = clock + wait; pos = { 3, 10, 10 }; fireEvent("PLAYER_ENTERING_WORLD")
-            return ns.root.plannerCrossTimes and ns.root.plannerCrossTimes.fake6c
-        end
-        if cross(300, true) then error("left the dock: no crossing time") end
-        if cross(1000) then error("1000 s: no crossing time") end
-        if math.abs((cross(300) or 0) - 300) > 1 then error("300 s at the dock: recorded") end
-        if not ns.PlannerCrossed("fake6c") then error("crossed") end
+        -- crossings: from the last look at one dock to the first look at its other dock, within 15 minutes
+        local D1, D2, D3 = { map = 1, x = 90, y = 90 }, { map = 3, x = 10, y = 10 }, { map = 3, x = 90, y = 90 }
+        ns.PLANNER_CROSSINGS = { { id = "x-y", a = D1, b = D2, seconds = 100 }, { id = "x-z", a = D1, b = D3, seconds = 100 } }
+        local function tick(wait, map, x, y) clock = clock + wait; pos = { map, x, y }; ns.PlannerDockTick() end
+        local function times(id) return ns.root.plannerCrossTimes and ns.root.plannerCrossTimes[id] end
+        -- a boat: mid-sea at the loading screen, short of the far dock at first
+        tick(0, 1, 90, 90)
+        tick(60, 1, 50, 50)
+        clock = clock + 60; pos = { 3, 40, 40 }; fireEvent("PLAYER_ENTERING_WORLD")
+        tick(60, 3, 35, 35)
+        if times("x-y") then error("short of the far dock: not yet") end
+        tick(30, 3, 10, 10)
+        if math.abs((times("x-y") or 0) - 210) > 1 or not ns.PlannerCrossed("x-y") then error("the boat is timed: " .. tostring(times("x-y"))) end
+        if times("x-z") then error("the shared dock: only the crossing whose far dock you reached") end
+        -- no loading screen at all (Auberdine to Rut'theran), the other way
+        tick(200, 1, 90, 90)
+        if math.abs((times("x-y") or 0) - 205) > 1 then error("no loading screen: timed too: " .. tostring(times("x-y"))) end
+        -- the shared dock: from it to the other crossing's far dock
+        tick(250, 3, 90, 90)
+        if math.abs((times("x-z") or 0) - 250) > 1 or math.abs(times("x-y") - 205) > 1 then error("the shared dock's other crossing: " .. tostring(times("x-z"))) end
+        -- more than 15 minutes, or under a minute: not timed
+        tick(1000, 1, 90, 90)
+        tick(30, 3, 90, 90)
+        if math.abs(times("x-z") - 250) > 1 then error("1000 s or 30 s: no crossing time: " .. tostring(times("x-z"))) end
         if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
     end)
     ns.PlannerTravel, ns.PlannerTimedQuest, ns.GuideUnlocked, ns.PLANNER_CROSSINGS = saved.travel, saved.timedQ, saved.unlocked, saved.crossings
@@ -18640,6 +18662,18 @@ try("13.6 leftovers C: the arrow and the guide's keys", function()
         local w = ns.waypoint
         if not (w and w.map == 1426 and math.abs(w.x - 1) < 0.001 and math.abs(w.y - 0.25) < 0.001) then
             error("a step two maps away: the crossing on this map: " .. tostring(w and w.map) .. " " .. tostring(w and w.x) .. "," .. tostring(w and w.y)) end
+        if not w.passing then error("the map's edge is a spot you pass through") end
+        -- standing at that edge: no new waypoint and no pulse, however long you wait (the map's change moves it on)
+        local sets, edgePulses, realSet = 0, 0, ns.SetWaypoint
+        local arrow0 = ns.waypointArrow
+        local update0 = arrowUpdate(arrow0)
+        ns.SetWaypoint = function(...) sets = sets + 1; return realSet(...) end
+        rawset(arrow0.pulse, "Play", function() edgePulses = edgePulses + 1 end)
+        pos = { 1426, 99.6, 25.2 }
+        for _ = 1, 10 do ns.guideTickTest(nil, 1); update0(arrow0, 0.1) end
+        ns.SetWaypoint = realSet; rawset(arrow0.pulse, "Play", nil)
+        if sets ~= 0 or edgePulses ~= 0 then error("at the edge: no re-point and no pulse: " .. sets .. ", " .. edgePulses) end
+        pos = { 1426, 50, 50 }
         env.InCombatLockdown = function() return true end
         env.FantasyGlassUI_GuideBinding("NEXT")
         env.InCombatLockdown = saved.combat
@@ -18652,14 +18686,28 @@ try("13.6 leftovers C: the arrow and the guide's keys", function()
         w = ns.waypoint
         if not (w and w.map == 1437 and math.abs(w.x - 0.049) < 0.001 and math.abs(w.y - 0.62) < 0.001) then error("the dock: " .. tostring(w and w.x) .. "," .. tostring(w and w.y)) end
         if not tostring(w.label):find("Take the boat", 1, true) then error("the dock's words: " .. tostring(w.label)) end
-        -- skip step on a written guide: ticked off only; plan again does nothing off the plan
+        -- with TomTom pointing, on a goto step: reaching the dock moves the arrow on to the boat
+        local tAdded, tRemoved = {}, {}
+        env.TomTom = { AddWaypoint = function(_, map, x, y, opts) tAdded[#tAdded + 1] = { map = map, x = x, y = y, title = opts and opts.title }; return "t" .. #tAdded end,
+            RemoveWaypoint = function(_, uid) tRemoved[#tRemoved + 1] = uid end }
+        ns.db.plannerTomTom = true
+        ns:GuideAdvance()
+        if #tAdded ~= 1 or math.abs(tAdded[1].x - 0.049) > 0.001 then error("TomTom points at the dock: " .. #tAdded) end
+        pos = { 1437, 4.9, 62.0 }
+        ns.guideTickTest(nil, 1)
+        if #tAdded ~= 2 or tRemoved[1] ~= "t1" or not tostring(tAdded[2].title):find("Take the boat", 1, true) then error("at the dock: the boat: " .. #tAdded .. " " .. tostring(tAdded[2] and tAdded[2].title)) end
+        env.TomTom = saved.tomtom
+        ns.db.plannerTomTom = false
+        pos = { 1437, 50, 50 }
+        ns:GuideAdvance()
+        -- skip step on a written guide: passed over, not done; plan again does nothing off the plan
         ns.plannerQueued, ns.plannerReason = false, nil
         env.FantasyGlassUI_GuideBinding("SKIP")
         env.FantasyGlassUI_GuideBinding("AGAIN")
-        if st.at ~= 3 or ns.plannerQueued then error("skip on a written guide: " .. tostring(st.at)) end
+        if st.at ~= 3 or ns.plannerQueued or st.ticked[2] or not (st.skipped and st.skipped[2]) then error("skip on a written guide: " .. tostring(st.at)) end
         -- TomTom: a waypoint of its own per step, the old one removed, and our arrow hidden
         local added, removed = {}, {}
-        env.TomTom = { AddWaypoint = function(self, map, x, y, opts) added[#added + 1] = { map = map, x = x, y = y, title = opts and opts.title }; return "uid" .. #added end,
+        env.TomTom = { AddWaypoint = function(self, map, x, y, opts) added[#added + 1] = { map = map, x = x, y = y, title = opts and opts.title, crazy = opts and opts.crazy }; return "uid" .. #added end,
             RemoveWaypoint = function(self, uid) removed[#removed + 1] = uid end }
         ns.db.plannerTomTom = true
         pos = { 1426, 50, 50 }
@@ -18668,6 +18716,10 @@ try("13.6 leftovers C: the arrow and the guide's keys", function()
         if #added < 2 or added[#added].map ~= 1426 or math.abs(added[#added].x - 0.6) > 0.001 or added[#added].title ~= "Here" then error("TomTom has the step: " .. #added) end
         if removed[#removed] ~= "uid" .. (#added - 1) then error("the previous TomTom waypoint is removed: " .. tostring(removed[#removed])) end
         if ns.waypoint ~= nil then error("our own arrow is hidden while TomTom points") end
+        if added[#added].crazy ~= true then error("TomTom shows its own arrow (crazy)") end
+        env.TomTom.AddWaypoint = function() return nil end
+        ns:GuideSkip(true); ns:GuideSkip(false)
+        if not (ns.waypoint and ns.waypoint.quiet) then error("TomTom gave no waypoint: our own arrow") end
         env.TomTom.AddWaypoint = function() error("boom") end
         ns:GuideSkip(true); ns:GuideSkip(false)
         if not (ns.waypoint and ns.waypoint.quiet) then error("a failing TomTom: our own arrow") end
@@ -18676,15 +18728,40 @@ try("13.6 leftovers C: the arrow and the guide's keys", function()
         local n = #added
         ns:GuideSkip(true); ns:GuideSkip(false)
         if #added ~= n or not (ns.waypoint and ns.waypoint.x == 0.6) then error("TomTom off: our own arrow") end
-        -- the planned guide: skip plans again from there, and so does plan again
-        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "one" }, { kind = "note", text = "two" } } }, {})
+        -- the planned guide: refresh the route plans again; skipping a quest step leaves that quest out for this session
+        local planSteps = { { kind = "accept", quest = 9901, title = "Skipped one" }, { kind = "note", text = "two" }, { kind = "note", text = "three" }, { kind = "note", text = "four" } }
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = planSteps }, {})
         ns:PlannerStop()
         ns.plannerQueued, ns.plannerReason = false, nil
         env.FantasyGlassUI_GuideBinding("AGAIN")
         if not (ns.plannerQueued and ns.plannerReason == "again") then error("plan again: " .. tostring(ns.plannerReason)) end
         ns:PlannerStop()
+        local movedSeen
+        ns.GuideRegisterAdvance("test6c", function(_, _, _, _, moved) movedSeen = moved end)
         env.FantasyGlassUI_GuideBinding("SKIP")
-        if not (ns.GuideState().at == 2 and ns.plannerQueued and ns.plannerReason == "skip") then error("skip on the plan: " .. tostring(ns.plannerReason)) end
+        ns.GuideRegisterAdvance("test6c", nil)
+        st = ns.GuideState()
+        if not (st.at == 2 and st.skipped[1] and not st.ticked[1] and ns.plannerQueued and ns.plannerReason == "skip") then error("skip on the plan: " .. tostring(ns.plannerReason)) end
+        if movedSeen ~= false then error("a skipped step is not a step done: " .. tostring(movedSeen)) end
+        if not ns.PlannerSessionSkipped(9901) or ns.PlannerSkipList()[9901] then error("left out for this session only, never the permanent skip") end
+        local rec = { id = 9901, name = "Skipped one", level = 10, minLevel = 1, xp = 100, starts = {}, ends = {}, objectives = {}, pre = {}, preAny = {}, exclusive = {},
+            doable = true, repeatable = false }
+        local cands = ns.PlannerCandidates({ ids = function() return { 9901 } end, quest = function() return rec end },
+            { level = 10, group = "all", done = function() return false end, onQuest = function() return true end })
+        if #cands ~= 0 then error("the session skip leaves it out, even from your log") end
+        ns:PlannerStop()
+        -- a skipped step later on is drawn dimmed; a new plan does not carry it
+        st.skipped[3] = true
+        local panel = ns:GuideShowPanel()
+        local laterText
+        rawset(panel.later[1], "SetText", function(_, t) laterText = t end)
+        ns:GuideRedraw()
+        rawset(panel.later[1], "SetText", nil)
+        if not tostring(laterText):find("(skipped)", 1, true) then error("a skipped step is dimmed: " .. tostring(laterText)) end
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = planSteps }, {})
+        st = ns.GuideState()
+        if st.skipped or st.ticked[1] then error("a new plan does not carry a skip") end
+        ns.PlannerSessionSkipReset()
         ns:PlannerStop()
         ns:GuideStop()
         -- the arrow's look: the theme's accent, brighter near, one pulse on arrival (none with reduced motion)
@@ -18693,7 +18770,12 @@ try("13.6 leftovers C: the arrow and the guide's keys", function()
         ns:SetWaypoint(55, 50, "the cave", 1426, false)               -- (100 yards east)
         local arrow = ns.waypointArrow
         local update = arrowUpdate(arrow)
-        local tint, pulses = nil, 0
+        local tint, pulses, grey = nil, 0, nil
+        arrow.tex.suiPlain = nil
+        rawset(arrow.tex, "SetDesaturated", function(_, v) grey = v end)
+        ns:SetWaypoint(55, 50, "the cave", 1426, false)
+        rawset(arrow.tex, "SetDesaturated", nil)
+        if grey ~= true then error("the arrow is made grey, so the tint reads true") end
         rawset(arrow.tex, "SetVertexColor", function(_, r, g, b, a) tint = { r, g, b, a } end)
         rawset(arrow.pulse, "Play", function() pulses = pulses + 1 end)
         update(arrow, 0.1)
@@ -18717,6 +18799,7 @@ try("13.6 leftovers C: the arrow and the guide's keys", function()
     env.InCombatLockdown, env.GetTime = saved.combat, saved.time
     ns.GuideUnlocked, ns.root.guideState, ns.root.guides, ns.root.guideKey = saved.unlocked, saved.state, saved.guides, saved.key
     ns.db.plannerTomTom, ns.db.reduceMotion, ns.plannerQueued, ns.plannerReason = saved.tt, saved.motion, saved.queued, saved.reason
+    ns.GuideRegisterAdvance("test6c", nil); ns.PlannerSessionSkipReset()
     if not ok then error(err, 0) end
 end)
 -- batch 6 tests C (route): end

@@ -200,51 +200,37 @@ local function ControlGained()
     end
 end
 
--- Every couple of seconds: which dock are we standing at, and since when?
+-- Every couple of seconds (and when a loading screen ends): which docks are we standing at? A crossing is timed
+-- from the last look within NEAR of one of its docks to the first look within NEAR of its other dock, when that
+-- is at least a minute and at most PLANNER_CROSS_MOST seconds. A loading screen on the way is allowed, never
+-- needed (Auberdine to Rut'theran has none), and a dock that several crossings share keeps all of them in mind.
+ns.PLANNER_CROSS_MOST = 900
 local function DockTick()
     if not ns:GuideUnlocked() then return end
     local map, x, y = PlayerSpot()
     if not map then return end
-    local here = { map = map, x = x, y = y }
+    local here, at, now = { map = map, x = x, y = y }, nil, GetTime()
     for _, c in ipairs(ns.PLANNER_CROSSINGS) do
         for side = 1, 2 do
             if NearDock(here, side == 1 and c.a or c.b, NEAR) then
-                if dock and dock.id == c.id and dock.side == side then
-                    if not dock.inside then dock.since, dock.inside = GetTime(), true end
-                else
-                    dock = { id = c.id, side = side, since = GetTime(), inside = true }
-                end
-                return
+                at = at or {}
+                at[c.id] = side
             end
         end
     end
-    if dock then dock.inside = false end
+    if not at then return end                            -- (away from every dock: the last look at one is kept)
+    if dock then
+        local secs = now - dock.time
+        for id, side in pairs(at) do
+            if dock.ids[id] and dock.ids[id] ~= side and secs >= 60 and secs <= ns.PLANNER_CROSS_MOST then
+                crossed = id
+                RecordTime("plannerCrossTimes", id, secs)
+            end
+        end
+    end
+    dock = { ids = at, time = now }
 end
 ns.PlannerDockTick = DockTick
-
--- Back from a loading screen: are we at the other end of the crossing we waited for? The wait and the ride are
--- timed only when you were still at the dock at the last look before the loading screen, and took at most
--- PLANNER_CROSS_MOST seconds (longer: you did something else meanwhile).
-ns.PLANNER_CROSS_MOST = 900
-local function EnteringWorld()
-    local from = dock
-    if not from then return end
-    local map, x, y = PlayerSpot()
-    if not map then return end
-    for _, c in ipairs(ns.PLANNER_CROSSINGS) do
-        if c.id == from.id then
-            if NearDock({ map = map, x = x, y = y }, from.side == 1 and c.b or c.a, NEAR) then
-                local secs = GetTime() - from.since
-                dock = nil
-                if secs >= 60 then
-                    crossed = c.id
-                    if from.inside and secs <= ns.PLANNER_CROSS_MOST then RecordTime("plannerCrossTimes", c.id, secs) end
-                end
-            end
-            return
-        end
-    end
-end
 
 do
     local ev = CreateFrame("Frame")
@@ -254,7 +240,7 @@ do
         if event == "TAXIMAP_OPENED" then LearnFlights()
         elseif event == "PLAYER_CONTROL_LOST" then ControlLost()
         elseif event == "PLAYER_CONTROL_GAINED" then ControlGained()
-        elseif event == "PLAYER_ENTERING_WORLD" then EnteringWorld() end
+        elseif event == "PLAYER_ENTERING_WORLD" then DockTick() end
     end))
     if ns.Every then ns:Every(2, "Planner docks", DockTick) end
 end
