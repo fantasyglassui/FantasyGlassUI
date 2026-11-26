@@ -969,61 +969,8 @@ function ns.PlannerSourceReset()
     ns.plannerExploreMaps = {}                  -- (PlannerPath.lua: the maps known to report exploration)
 end
 
-------------------------------------------------------------------------------------------
--- Places you have used: where you stood at a mailbox, a vendor or a trainer, saved per account
--- (only while the guide is unlocked) with your faction, unique within 30 yards per faction; at most
--- ns.PLANNER_SEEN_CAP of each kind (the oldest go first).
-------------------------------------------------------------------------------------------
-local SEEN_NEAR = 30
-ns.PLANNER_SEEN_CAP = 300
-local SEEN_EVENT = { MAIL_SHOW = "mailbox", MERCHANT_SHOW = "vendor" }
-
-local function SeenYards(a, b)
-    if a.map ~= b.map then return math.huge end
-    local c1, x1, y1 = ns.PlannerWorldPos(a.map, a.x, a.y)
-    local c2, x2, y2 = ns.PlannerWorldPos(b.map, b.x, b.y)
-    if c1 and c1 == c2 then return math.sqrt((x1 - x2) ^ 2 + (y1 - y2) ^ 2) end
-    return math.sqrt((a.x - b.x) ^ 2 + (a.y - b.y) ^ 2) * 10   -- (no world position: a rough guess, a map is about 1000 yards)
-end
-
-function ns.PlannerSeen(kind)
-    if not ns:GuideUnlocked() or not ns.GuideHere then return end
-    local map, x, y = ns.GuideHere()
-    if not (tonumber(map) and tonumber(x) and tonumber(y)) then return end
-    local here = { map = map, x = x, y = y }
-    local faction = MyFaction()
-    if not faction then return end
-    local list = type(ns.root.plannerSeen) == "table" and type(ns.root.plannerSeen[kind]) == "table" and ns.root.plannerSeen[kind]
-    local repair = false
-    if kind == "vendor" and CanMerchantRepair then
-        local okR, can = Try(CanMerchantRepair)
-        repair = okR and ns.Is(can, true)
-    end
-    for _, p in ipairs(list or {}) do
-        if type(p) == "table" and p.faction == faction and tonumber(p.map) and tonumber(p.x) and tonumber(p.y) and SeenYards(here, p) < SEEN_NEAR then
-            if repair then p.repair = true end
-            return
-        end
-    end
-    local okN, name = Try(UnitName, "npc")
-    if not okN or type(name) ~= "string" or ns:IsSecret(name) or name == "" then name = kind == "mailbox" and ns:Tr("Mailbox") or nil end
-    if not name then return end
-    if type(ns.root.plannerSeen) ~= "table" then ns.root.plannerSeen = {} end
-    local seen = ns.root.plannerSeen
-    if type(seen[kind]) ~= "table" then seen[kind] = {} end
-    local out = seen[kind]
-    for i = #out, 1, -1 do                                  -- (entries saved before factions were: dropped)
-        if type(out[i]) ~= "table" or out[i].faction == nil then table.remove(out, i) end
-    end
-    out[#out + 1] = { name = name, map = map, x = x, y = y, repair = repair or nil, faction = faction }
-    while #out > ns.PLANNER_SEEN_CAP do table.remove(out, 1) end
-end
-
-do
-    local ev = CreateFrame("Frame")
-    for e in pairs(SEEN_EVENT) do pcall(ev.RegisterEvent, ev, e) end
-    ev:SetScript("OnEvent", ns:Guard("PlannerSeen", function(_, event) if SEEN_EVENT[event] then ns.PlannerSeen(SEEN_EVENT[event]) end end))
-end
+-- (Places you have used, ns.PlannerSeen at a mailbox or a vendor, and ns.PLANNER_SEEN_CAP: in the main add-on,
+-- PlannerRecorders.lua.)
 
 ------------------------------------------------------------------------------------------
 -- Timed quests known before you take them. Questie has no timer data, so there are two sources of
@@ -1033,7 +980,6 @@ end
 -- ns.PLANNER_TIMED_CAP, the oldest `seen` go first). The route plans such a quest as a timed run before you take it.
 ------------------------------------------------------------------------------------------
 ns.PLANNER_TIMED = {}             -- { [questID] = seconds }: fill from the in-game checks
-ns.PLANNER_TIMED_CAP = 500
 
 local function Seconds(v) if type(v) == "number" and not ns:IsSecret(v) and v > 0 then return v end end
 
@@ -1050,44 +996,5 @@ function ns.PlannerTimedQuest(id)
     return Seconds(e)
 end
 
--- The day an entry was last seen (an older plain number: never, so it goes first).
-local function SeenDay(e) return type(e) == "table" and tonumber(e.seen) or 0 end
-
-function ns.PlannerRecordTimed(id)
-    if type(id) ~= "number" or ns:IsSecret(id) or not ns:GuideUnlocked() or type(ns.root) ~= "table" then return end
-    local QL = C_QuestLog
-    if not (QL and type(QL.GetTimeAllowed) == "function") then return end
-    local ok, total = pcall(QL.GetTimeAllowed, id)
-    local secs = ok and Seconds(total) or nil
-    if not secs then return end
-    secs = math.floor(secs)
-    if secs <= 0 then return end
-    local okT, now = pcall(time)
-    local day = okT and type(now) == "number" and not ns:IsSecret(now) and math.floor(now / 86400) or 0
-    if type(ns.root.plannerTimed) ~= "table" then ns.root.plannerTimed = {} end
-    local mem = ns.root.plannerTimed
-    mem[id] = { secs = secs, seen = day }
-    local n = 0
-    for _ in pairs(mem) do n = n + 1 end
-    while n > ns.PLANNER_TIMED_CAP do                       -- (the oldest seen first; the same day: the lower id)
-        local old, oldDay
-        for k, e in pairs(mem) do
-            local d = SeenDay(e)
-            if k ~= id and (not old or d < oldDay or (d == oldDay and tonumber(k) and tonumber(old) and k < old)) then old, oldDay = k, d end
-        end
-        if old == nil then break end
-        mem[old] = nil
-        n = n - 1
-    end
-end
-
-do
-    local ev = CreateFrame("Frame")
-    pcall(ev.RegisterEvent, ev, "QUEST_ACCEPTED")
-    ev:SetScript("OnEvent", ns:Guard("PlannerTimed", function(_, event, a, b)
-        if event ~= "QUEST_ACCEPTED" then return end
-        local id = (type(b) == "number") and b or a           -- (questID; older clients send the log index first)
-        ns.PlannerRecordTimed(id)
-    end))
-end
+-- (The memory is written by ns.PlannerRecordTimed, at QUEST_ACCEPTED, in the main add-on: PlannerRecorders.lua.)
 ns.FolderFileDone("planner", "PlannerSource.lua")

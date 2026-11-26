@@ -1348,18 +1348,5 @@ function ns.PlannerSetZone(zone, level)
     if d then d.zone, d.zoneLevel = zone, level end
 end
 
--- The hearthstone was set: remember where, so the planner knows where it takes you.
-do
-    local ev = CreateFrame("Frame")
-    pcall(ev.RegisterEvent, ev, "HEARTHSTONE_BOUND")
-    ev:SetScript("OnEvent", ns:Guard("Planner bind", function()
-        if not ns:GuideUnlocked() then return end
-        local name = BindName()
-        local m, px, py
-        if ns.GuideHere then m, px, py = ns.GuideHere() end
-        if not (name and m and px and py) then return end
-        local d = PaceRecord(true)
-        if d then d.bindAt = { name = name, map = m, x = px, y = py } end
-    end))
-end
+-- (The hearthstone was set: where is remembered by the main add-on, PlannerRecorders.lua.)
 ns.FolderFileDone("planner", "PlannerRoute.lua")

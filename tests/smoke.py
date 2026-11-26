@@ -9415,6 +9415,257 @@ try("folders: nothing loads while locked", function()
     if not ok then error(err, 0) end
 end)
 -- folders tests unloaded A (planner recorders): begin
+try("folders unloaded A: the planner records while unloaded", function()
+    local envNames = { "C_Map", "CreateVector2D", "GetTime", "time", "UnitOnTaxi", "GetTaxiMapID", "C_TaxiMap", "NumTaxiNodes", "TaxiNodeGetType", "UnitLevel",
+        "UnitName", "UnitFactionGroup", "CanMerchantRepair", "GetBindLocation", "C_QuestLog", "IsInGroup", "UnitClassBase", "UnitXP", "UnitXPMax", "GetXPExhaustion",
+        "UnitExists", "UnitIsDead", "UnitCanAttack", "UnitClassification", "GetNumQuestChoices", "GetQuestItemLink", "GetQuestItemInfo", "C_Item", "InCombatLockdown",
+        "COMBATLOG_XPGAIN_FIRSTPERSON_UNNAMED", "COMBATLOG_XPGAIN_QUEST" }
+    local rootNames = { "planner", "plannerNodes", "plannerFlightTimes", "plannerTimeSamples", "plannerCrossTimes", "plannerSeen", "plannerNodesSeen", "plannerLevels",
+        "plannerSoloElites", "plannerTimed", "plannerQuestTimes", "plannerSessionAt" }
+    local keep = { env = {}, root = {}, unlocked = ns.GuideUnlocked, here = ns.GuideHere, load = rawget(env.C_AddOns, "LoadAddOn"), loadPlanner = ns.LoadPlanner,
+        duoEvent = ns.PlannerDuoEvent, upgrade = ns.UpgradeAmount, repair = ns.db.autoRepair, ask = ns.db.plannerDuoAsk, gather = ns.db.plannerGather,
+        pick = ns.db.plannerPickReward, print = ns.Print, reg = env.C_ChatInfo and env.C_ChatInfo.RegisterAddonMessagePrefix }
+    for _, n in ipairs(envNames) do keep.env[n] = rawget(env, n) end
+    local realMap, realLog, realItem = env.C_Map, env.C_QuestLog, env.C_Item
+    for _, n in ipairs(rootNames) do keep.root[n] = ns.root[n] end
+    local loads = 0
+    local ok, err = pcall(function()
+        if ns.folderReady.planner then error("the planner's folder is not loaded yet") end
+        ns.GuideUnlocked = function() return true end
+        ns.db.autoRepair = false                                       -- (no repair line at the vendor)
+        ns.Print = function() end
+        rawset(env.C_AddOns, "LoadAddOn", function(name, ...) if name == "FantasyGlassUI_Planner" then loads = loads + 1 end; return keep.load(name, ...) end)
+        for _, n in ipairs(rootNames) do ns.root[n] = nil end
+        local key = ns:CharKey()
+        local function R() return ns.root.planner and ns.root.planner[key] end
+        local pos, clock, taxi, level = { 1, 10, 10 }, 100000, false, 11
+        local cm = {}
+        for k, v in pairs(realMap or {}) do cm[k] = v end
+        cm.GetWorldPosFromMapPos = function(map, v) if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end end
+        cm.GetBestMapForUnit = function() return pos[1] end
+        cm.GetPlayerMapPosition = function() return { GetXY = function() return pos[2] / 100, pos[3] / 100 end } end
+        env.C_Map = cm
+        env.CreateVector2D = function(x, y) return { x = x, y = y } end
+        env.GetTime = function() return clock end
+        env.time = function() return 1800000000 end
+        env.UnitOnTaxi = function() return taxi end
+        env.UnitLevel = function() return level end
+        ns.GuideHere = function() return pos[1], pos[2], pos[3] end
+        -- flights: learned at the flight master, and timed
+        env.GetTaxiMapID = function() return 1 end
+        env.C_TaxiMap = { GetAllTaxiNodes = function() return {
+            { nodeID = 5, slotIndex = 1, name = "Five", position = { x = 0.10, y = 0.10 } },
+            { nodeID = 6, slotIndex = 2, name = "Six", position = { x = 0.0, y = 0.0 } } } end }
+        env.NumTaxiNodes = function() return 2 end
+        env.TaxiNodeGetType = function(i) return i == 1 and "CURRENT" or "REACHABLE" end
+        fireEvent("TAXIMAP_OPENED")
+        local fl = R() and R().flights
+        if not (type(fl) == "table" and fl[5] and fl[6]) then error("TAXIMAP_OPENED: both flight points known") end
+        pos = { 1, 10, 10 }; taxi = true; fireEvent("PLAYER_CONTROL_LOST")
+        clock = clock + 90; pos = { 1, 0, 0 }; fireEvent("PLAYER_CONTROL_GAINED"); taxi = false
+        if not (ns.root.plannerFlightTimes and ns.root.plannerFlightTimes["5-6"] == 90) then error("a flight is timed: " .. tostring(ns.root.plannerFlightTimes and ns.root.plannerFlightTimes["5-6"])) end
+        -- a death in the world
+        pos = { 1, 40, 40 }
+        fireEvent("PLAYER_DEAD")
+        if not (R().deaths and #R().deaths == 1 and R().deaths[1].level == 11) then error("PLAYER_DEAD: one death") end
+        -- a vendor
+        local realName = env.UnitName
+        env.UnitName = function(u, ...) if u == "npc" then return "Brother Danil" end return realName(u, ...) end
+        env.UnitFactionGroup = function() return "Alliance" end
+        env.CanMerchantRepair = function() return false end
+        fireEvent("MERCHANT_SHOW")
+        local v = ns.root.plannerSeen and ns.root.plannerSeen.vendor
+        if not (v and #v == 1 and v[1].name == "Brother Danil") then error("MERCHANT_SHOW: one vendor") end
+        -- the hearthstone
+        env.GetBindLocation = function() return "Goldshire" end
+        fireEvent("HEARTHSTONE_BOUND")
+        local b = R().bindAt
+        if not (b and b.name == "Goldshire" and b.map == 1 and b.x == 40) then error("HEARTHSTONE_BOUND: bindAt") end
+        -- a herb node
+        ns.db.plannerGather = true
+        fireEvent("UNIT_SPELLCAST_SENT", "player", "Peacebloom", nil, 2366)
+        local nodes = ns.root.plannerNodesSeen and ns.root.plannerNodesSeen[1]
+        if not (nodes and #nodes == 1 and nodes[1].name == "Peacebloom" and nodes[1].skill == 182) then error("UNIT_SPELLCAST_SENT: one node") end
+        -- the level clock: the first tick makes it, the second adds; a level-up keeps the level left
+        env.UnitXPMax = function() return 5000 end
+        R().levelClock = nil
+        if not ns.PlannerLevelTick(10) or not ns.PlannerLevelTick(10) then error("the clock ticks") end
+        if R().levelClock.seconds ~= 20 or R().levelClock.level ~= 11 then error("two ticks of 10: 20 s: " .. tostring(R().levelClock.seconds)) end
+        level = 12
+        fireEvent("PLAYER_LEVEL_UP", 12)
+        local lv = ns.root.plannerLevels and ns.root.plannerLevels[key]
+        if not (lv and lv[11] and lv[11].s == 20) then error("PLAYER_LEVEL_UP(12): level 11 kept") end
+        ns.PlannerLevelTick(10)
+        level = 13
+        fireEvent("PLAYER_LEVEL_UP", 13)
+        if not (lv[12] and lv[12].s == 10 and not lv[12].partial) then error("a whole level 12") end
+        if #ns.PlannerLevelLines() == 0 then error("PlannerLevelLines: not empty") end
+        -- a solo elite: accepted alone, handed in
+        level = 12
+        local timed = {}
+        env.C_QuestLog = setmetatable({
+            GetLogIndexForQuestID = function(id) return id == 9901 and 3 or nil end,
+            GetInfo = function(i) if i == 3 then return { questID = 9901, questLevel = 14 } end end,
+            GetQuestTagInfo = function(id) if id == 9901 then return { tagID = 1, isElite = true } end end,
+            GetTimeAllowed = function(id) timed[#timed + 1] = id; if id == 9902 then return 900, 600 end end,
+            IsQuestFlaggedCompleted = function() return false end,
+        }, { __index = realLog })
+        env.IsInGroup = function() return false end
+        env.UnitClassBase = function() return "WARRIOR" end
+        fireEvent("QUEST_ACCEPTED", 3, 9901)
+        if not (R().soloAt and R().soloAt[9901] == 14) then error("an elite accepted alone: soloAt") end
+        fireEvent("QUEST_TURNED_IN", 9901, 0, 0)
+        if not (ns.root.plannerSoloElites and ns.root.plannerSoloElites.WARRIOR == 2) then error("handed in alone: plannerSoloElites") end
+        -- a timed quest
+        fireEvent("QUEST_ACCEPTED", 4, 9902)
+        local t = ns.root.plannerTimed and ns.root.plannerTimed[9902]
+        if not (t and t.secs == 900) then error("QUEST_ACCEPTED with a clock: plannerTimed") end
+        -- a kill and its experience
+        level = 20
+        local xp, tgt = 5000, { exists = true, dead = true, attack = true, level = 20, class = "normal" }
+        env.UnitXP = function() return xp end
+        env.UnitXPMax = function() return 10000 end
+        env.GetXPExhaustion = function() return nil end
+        env.UnitLevel = function(u) if u == "target" then return tgt.level end return level end
+        env.UnitExists = function() return true end
+        env.UnitIsDead = function(u) if u == "target" then return tgt.dead end return false end
+        env.UnitCanAttack = function() return true end
+        env.UnitClassification = function() return "normal" end
+        local E = ns.PlannerKillsEvent
+        E("PLAYER_ENTERING_WORLD")
+        E("CHAT_MSG_COMBAT_XP_GAIN", "Boar dies, you gain 145 experience."); clock = clock + 0.5
+        xp = xp + 145; E("PLAYER_XP_UPDATE", "player")
+        local c0 = clock; clock = clock + 5; runTimers(); clock = c0
+        local k = R().killXP and R().killXP[0]
+        if not (k and k.n == 1 and math.abs(k.r - 1) < 1e-6) then error("a kill paired with +145 XP: killXP[0]") end
+        -- the reward: the better one, a frame later
+        ns.db.plannerPickReward = true
+        env.GetNumQuestChoices = function() return 2 end
+        env.GetQuestItemLink = function(_, i) return "|Hitem:" .. (700 + i) .. "|h[Reward " .. i .. "]|h" end
+        env.GetQuestItemInfo = function(_, i) return "Reward " .. i, nil, 1 end
+        env.C_Item = setmetatable({ GetItemInfo = function() return nil end }, { __index = realItem })
+        ns.UpgradeAmount = function(link) return link:find("702", 1, true) and 9 or 2 end
+        runTimers()
+        fireEvent("QUEST_COMPLETE")
+        if ns.PlannerRewardMarked() ~= nil then error("the reward: not at once, a frame later") end
+        runTimers()
+        if ns.PlannerRewardMarked() ~= 2 then error("QUEST_COMPLETE: the better choice: " .. tostring(ns.PlannerRewardMarked())) end
+        fireEvent("QUEST_FINISHED")
+        if loads ~= 0 then error("nothing loaded the planner's folder: " .. loads) end
+        if ns.folderReady.planner then error("still not loaded") end
+    end)
+    ns.GuideUnlocked, ns.GuideHere, ns.LoadPlanner, ns.PlannerDuoEvent, ns.UpgradeAmount, ns.Print = keep.unlocked, keep.here, keep.loadPlanner, keep.duoEvent, keep.upgrade, keep.print
+    ns.db.autoRepair, ns.db.plannerDuoAsk, ns.db.plannerGather, ns.db.plannerPickReward = keep.repair, keep.ask, keep.gather, keep.pick
+    for _, n in ipairs(envNames) do rawset(env, n, keep.env[n]) end
+    for _, n in ipairs(rootNames) do ns.root[n] = keep.root[n] end
+    rawset(env.C_AddOns, "LoadAddOn", keep.load)
+    if ns.PlannerKillsEvent then ns.PlannerKillsEvent("PLAYER_ENTERING_WORLD") end
+    if not ok then error(err, 0) end
+end)
+try("folders unloaded A: a friend's ask loads the planner and is handed over once", function()
+    local keep = { unlocked = ns.GuideUnlocked, load = rawget(env.C_AddOns, "LoadAddOn"), loadPlanner = ns.LoadPlanner, duoEvent = ns.PlannerDuoEvent,
+        ask = ns.db.plannerDuoAsk, combat = env.InCombatLockdown, time = env.GetTime }
+    local loads, asked, handed, clock, fight, locked = 0, 0, {}, 5000, false, false
+    local ok, err = pcall(function()
+        if ns.folderReady.planner then error("the planner's folder is not loaded yet") end
+        ns.GuideUnlocked = function() return not locked end
+        rawset(env.C_AddOns, "LoadAddOn", function(name, ...) if name == "FantasyGlassUI_Planner" then loads = loads + 1 end; return keep.load(name, ...) end)
+        ns.LoadPlanner = function(_, quiet)                   -- (a stand-in: the region stays unloaded)
+            asked = asked + 1
+            if quiet ~= true then error("the ask's load is quiet") end
+            ns.folderReady.planner = true
+            return true
+        end
+        ns.PlannerDuoEvent = function(...) handed[#handed + 1] = { ... } end
+        env.InCombatLockdown = function() return fight end
+        env.GetTime = function() return clock end
+        ns.db.plannerDuoAsk = nil
+        local function Ask(msg, channel, sender, prefix)
+            fireEvent("CHAT_MSG_ADDON", prefix or "FGUIPlan", msg or "D1:ASK:ab12cd:14", channel or "WHISPER", sender or "Mira-Realm")
+        end
+        local function Fresh() ns.folderReady.planner = nil; asked, handed = 0, {} end
+        -- out of a fight: one load, one hand-over with the same arguments
+        Ask()
+        if asked ~= 1 or #handed ~= 1 then error("an ask: one load and one hand-over: " .. asked .. " " .. #handed) end
+        local h = handed[1]
+        if h[1] ~= "CHAT_MSG_ADDON" or h[2] ~= "FGUIPlan" or h[3] ~= "D1:ASK:ab12cd:14" or h[4] ~= "WHISPER" or h[5] ~= "Mira-Realm" or #h ~= 5 then error("the same five arguments") end
+        -- the same again while loaded: the folder hears it itself
+        Ask()
+        if asked ~= 1 or #handed ~= 1 then error("loaded: no second hand-over") end
+        -- in a fight: kept until it ends, then once
+        Fresh(); fight = true
+        Ask()
+        if asked ~= 0 or #handed ~= 0 then error("in a fight: nothing yet") end
+        clock = clock + 20; fight = false
+        fireEvent("PLAYER_REGEN_ENABLED")
+        if asked ~= 1 or #handed ~= 1 then error("after the fight: handed over once: " .. asked .. " " .. #handed) end
+        fireEvent("PLAYER_REGEN_ENABLED")
+        if #handed ~= 1 then error("once only") end
+        -- a fight of 70 s: too old
+        Fresh(); fight = true
+        Ask()
+        clock = clock + 70; fight = false
+        fireEvent("PLAYER_REGEN_ENABLED")
+        if asked ~= 0 or #handed ~= 0 then error("70 s in a fight: never") end
+        -- nothing for: locked, asking off, a party message, a hidden sender, another kind
+        Fresh()
+        locked = true; Ask(); locked = false
+        ns.db.plannerDuoAsk = false; Ask(); ns.db.plannerDuoAsk = nil
+        Ask(nil, "PARTY")
+        Ask(nil, nil, setmetatable({ __secret = true }, secretmt))
+        Ask("D1:HI:ab12cd")
+        Ask("D1:ASK:zz:14")
+        Ask(nil, nil, nil, "Other")
+        if asked ~= 0 or #handed ~= 0 then error("locked, asking off, not a whisper, hidden, not an ask: nothing: " .. asked .. " " .. #handed) end
+        if loads ~= 0 then error("LoadAddOn was never asked") end
+    end)
+    ns.folderReady.planner = nil
+    ns.GuideUnlocked, ns.LoadPlanner, ns.PlannerDuoEvent, ns.db.plannerDuoAsk = keep.unlocked, keep.loadPlanner, keep.duoEvent, keep.ask
+    env.InCombatLockdown, env.GetTime = keep.combat, keep.time
+    rawset(env.C_AddOns, "LoadAddOn", keep.load)
+    if not ok then error(err, 0) end
+end)
+try("folders unloaded A: when you were last here, without the folder", function()
+    local keep = { unlocked = ns.GuideUnlocked, on = ns.GuideOn, time = env.time, planner = ns.root.planner, catch = ns.PlannerCatchUp, key = ns.root.guideKey, hash = ns.GuideHash,
+        reg = env.C_ChatInfo and env.C_ChatInfo.RegisterAddonMessagePrefix, resting = env.IsResting, afk = env.UnitIsAFK }
+    local now, calls = 1800000000, 0
+    local ok, err = pcall(function()
+        if ns.folderReady.planner then error("the planner's folder is not loaded yet") end
+        env.IsResting, env.UnitIsAFK = function() return false end, function() return false end   -- (an unlock reads them for the quest clock)
+        env.time = function() return now end
+        ns.GuideOn = function() return true end
+        ns.PlannerCatchUp = function() calls = calls + 1 end
+        if env.C_ChatInfo then env.C_ChatInfo.RegisterAddonMessagePrefix = function() return true end end
+        ns.root.planner = {}
+        local rec = ns.PlannerCharRecord(true)
+        rec.lastSeen = now - 3600
+        -- the login while locked: nothing saved; an unlock later in the session saves at once
+        ns.PlannerSeenReset()
+        ns.GuideUnlocked = function() return false end
+        fireEvent("PLAYER_ENTERING_WORLD", true, false)
+        ns.PlannerSeenSave()
+        if rec.lastSeen ~= now - 3600 then error("locked: nothing saved") end
+        ns.GuideUnlocked = keep.unlocked
+        ns.GuideHash = function() return tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)")) end
+        if not ns:GuideUnlock("test") then error("the stand-in number unlocks") end
+        ns.GuideHash = keep.hash
+        if rec.lastSeen ~= now then error("unlocked mid-session: saved at once") end
+        now = now + 60
+        ns.PlannerSeenSave()
+        if rec.lastSeen ~= now then error("the minute's save, with no folder") end
+        -- locked again: no more saves
+        ns:GuideLock()
+        now = now + 60
+        ns.PlannerSeenSave(); fireEvent("PLAYER_LOGOUT")
+        if rec.lastSeen ~= now - 60 then error("locked: the clock stops") end
+        if calls ~= 0 then error("no catch-up page") end
+    end)
+    ns.GuideUnlocked, ns.GuideOn, env.time, ns.root.planner, ns.PlannerCatchUp, ns.root.guideKey, ns.GuideHash = keep.unlocked, keep.on, keep.time, keep.planner, keep.catch, keep.key, keep.hash
+    if env.C_ChatInfo then env.C_ChatInfo.RegisterAddonMessagePrefix = keep.reg end
+    env.IsResting, env.UnitIsAFK = keep.resting, keep.afk
+    ns.PlannerSeenReset()
+    if not ok then error(err, 0) end
+end)
 -- folders tests unloaded A (planner recorders): end
 -- folders tests unloaded B (gold recorders): begin
 -- folders tests unloaded B (gold recorders): end
@@ -9504,10 +9755,11 @@ try("folders: a folder that will not load", function()
 end)
 try("folders: following the plan loads the planner at login", function()
     local keep = { unlocked = ns.GuideUnlocked, load = ns.LoadFolder, replan = ns.PlannerReplan, state = ns.root.guideState, on = ns.db.questGuide,
-        combat = env.InCombatLockdown }
+        combat = env.InCombatLockdown, resting = env.IsResting, afk = env.UnitIsAFK }
     local asked, replans = {}, {}
     local ok, err = pcall(function()
         ns.GuideUnlocked = function() return true end
+        env.IsResting, env.UnitIsAFK = function() return false end, function() return false end   -- (the login reads them for the quest clock: out in the world)
         ns.db.questGuide = true
         ns.LoadFolder = function(self, key, quiet) asked[#asked + 1] = { key, quiet }; return keep.load(self, key, quiet) end
         ns.PlannerReplan = function(_, why) replans[#replans + 1] = why; return true end
@@ -9549,6 +9801,7 @@ try("folders: following the plan loads the planner at login", function()
     end)
     env.InCombatLockdown = keep.combat
     ns.GuideUnlocked, ns.LoadFolder, ns.PlannerReplan, ns.root.guideState, ns.db.questGuide = keep.unlocked, keep.load, keep.replan, keep.state, keep.on
+    env.IsResting, env.UnitIsAFK = keep.resting, keep.afk
     if not ok then error(err, 0) end
 end)
 try("folders: the auction house in a fight", function()
@@ -24649,7 +24902,7 @@ try("folders: seams", function()
 end)
 try("folders: the Task 1 review's minors", function()
     local keep = { unlocked = ns.GuideUnlocked, here = ns.GuideHere, planner = ns.root.plannerNodesSeen, seen = ns.root.goldNodesSeen,
-        cap = ns.PLANNER_NODE_CAP, gather = ns.db.plannerGather }
+        cap = ns.PLANNER_NODE_CAP, gather = ns.db.plannerGather, world = ns.PlannerWorldPos }
     local ok, err = pcall(function()
         local function Settle() local n = 0; while ns.GoldBusy() and n < 5000 do ns.GoldRunSlice(); n = n + 1 end end
         ns.GuideUnlocked = function() return true end
@@ -24687,16 +24940,13 @@ try("folders: the Task 1 review's minors", function()
             rawset(f, "SetScript", function(_, name, fn) if name == "OnEvent" then script = fn end end)
             return f
         end
-        local proxy = setmetatable({}, { __index = ns })
-        local penv = setmetatable({ CreateFrame = fakeCF }, { __index = env })
-        penv._G = setmetatable({ FantasyGlassUI = proxy }, { __index = penv })
-        local fn = load(sources["planner/PlannerPath.lua"], "@planner/PlannerPath.lua", "t", penv)
-        fn()
+        -- (the recorder is the main add-on's now, PlannerRecorders.lua: built on a frame with no unit events)
+        ns.PlannerGatherFrame(fakeCF("Frame"))
         local sent = false
         for _, e in ipairs(reg) do if e == "UNIT_SPELLCAST_SENT" then sent = true end end
         if not sent or type(script) ~= "function" then error("no unit events: UNIT_SPELLCAST_SENT registered plainly") end
-        proxy.GuideHere = function() return 1429, 60, 60 end
-        proxy.PlannerWorldPos = function(_, x, y) return 0, x * 100, y * 100 end
+        ns.GuideHere = function() return 1429, 60, 60 end
+        ns.PlannerWorldPos = function(_, x, y) return 0, x * 100, y * 100 end
         ns.db.plannerGather = true
         ns.root.plannerNodesSeen = {}
         script(nil, "UNIT_SPELLCAST_SENT", "party1", "Peacebloom", nil, 2366)
@@ -24706,13 +24956,129 @@ try("folders: the Task 1 review's minors", function()
         if not (l and #l == 1) then error("the player's cast records its node") end
     end)
     ns.GuideUnlocked, ns.GuideHere, ns.root.plannerNodesSeen, ns.root.goldNodesSeen = keep.unlocked, keep.here, keep.planner, keep.seen
-    ns.PLANNER_NODE_CAP, ns.db.plannerGather = keep.cap, keep.gather
+    ns.PLANNER_NODE_CAP, ns.db.plannerGather, ns.PlannerWorldPos = keep.cap, keep.gather, keep.world
     local n = 0
     while ns.GoldBusy and ns.GoldBusy() and n < 2000 do ns.GoldRunSlice(); n = n + 1 end
     if not ok then error(err, 0) end
 end)
 -- folders tests seams: end
 -- folders tests A (planner recorders): begin
+try("folders A: recorders moved, not copied", function()
+    if not ns.folderReady.planner then error("the planner's folder is loaded here") end
+    local fns = { "PlannerCharRecord", "PlannerKillXP", "PlannerRecordQuestTime", "PlannerRecordSoloElite", "PlannerClassToken", "PlannerRecordDeath",
+        "PlannerMountSeen", "PlannerBestChoice", "PlannerGatherSkill", "PlannerRecordNode", "PlannerSeen", "PlannerRecordTimed", "PlannerLevelTick",
+        "PlannerRecordLevel", "PlannerLevelSummary", "PlannerLevelLines", "PlannerLevelRunLines", "PlannerSeenSave", "PlannerDuoRegister", "PlannerQuestClock",
+        "PlannerRewardMarked", "PlannerLevelGapReset" }
+    local consts = { "PLANNER_CATCHUP_DAYS", "PLANNER_SEEN_CAP", "PLANNER_QUEST_TIMES_CAP", "PLANNER_NODE_CAP", "PLANNER_NODE_YARDS", "PLANNER_NODES_TOTAL",
+        "PLANNER_TIMED_CAP", "PLANNER_DUO_PREFIX" }
+    for _, name in ipairs(fns) do
+        local fn = ns[name]
+        if type(fn) ~= "function" then error(name .. " is not there") end
+        local info = debug.getinfo(fn, "S")
+        if not (info and info.source == "@PlannerRecorders.lua") then error(name .. " is defined in " .. tostring(info and info.source)) end
+    end
+    for _, name in ipairs(consts) do if ns[name] == nil then error(name .. " is not there") end end
+    if not (sources["PlannerRecorders.lua"] or ""):find("ns.plannerSessionStart = ", 1, true) then error("the session start is the recorders'") end
+    for _, file in ipairs(folderFiles.FantasyGlassUI_Planner) do
+        local src = sources[file] or ""
+        for _, name in ipairs(fns) do
+            if src:find("function ns[.:]" .. name .. "%f[^%w_]") or src:find("ns%." .. name .. "%s*=[^=]") then error(name .. " is defined in " .. file .. " too") end
+        end
+        for _, name in ipairs(consts) do
+            if src:find("ns%." .. name .. "%s*=[^=]") then error(name .. " is set in " .. file .. " too") end
+        end
+        for _, ev in ipairs({ "UNIT_SPELLCAST_SENT", "MAIL_SHOW", "MERCHANT_SHOW", "QUEST_COMPLETE", "QUEST_FINISHED", "PLAYER_LOGOUT",
+                              "PLAYER_MOUNT_DISPLAY_CHANGED", "TRAINER_SHOW", "PLAYER_FLAGS_CHANGED", "PLAYER_UPDATE_RESTING" }) do
+            if src:find("\"" .. ev .. "\"", 1, true) then error(file .. " still listens for " .. ev) end
+        end
+    end
+end)
+try("folders A: the catch-up check, before the clock is saved", function()
+    local keep = { unlocked = ns.GuideUnlocked, on = ns.GuideOn, time = env.time, planner = ns.root.planner, catch = ns.PlannerCatchUp, load = ns.LoadPlanner }
+    local now, calls, seenAtCall, loads = 1800000000, {}, nil, 0
+    local ok, err = pcall(function()
+        env.time = function() return now end
+        ns.GuideUnlocked = function() return true end
+        ns.GuideOn = function() return true end
+        ns.root.planner = {}
+        local rec = ns.PlannerCharRecord(true)
+        ns.LoadPlanner = function(self, quiet) loads = loads + 1; if quiet ~= true then error("a quiet load") end; return keep.load(self, quiet) end
+        ns.PlannerCatchUp = function(_, away, since) calls[#calls + 1] = { away, since }; seenAtCall = rec.lastSeen end
+        ns.PlannerSeenReset()
+        rec.lastSeen, rec.lastVersion = now - 15 * 86400, "12.0.0"
+        fireEvent("PLAYER_ENTERING_WORLD", true, false)
+        if #calls ~= 1 or loads ~= 1 then error("15 days away: the planner loads and the page is asked for once: " .. #calls .. " " .. loads) end
+        if calls[1][1] ~= 15 * 86400 or calls[1][2] ~= "12.0.0" then error("with the time away and the version: " .. tostring(calls[1][1]) .. " " .. tostring(calls[1][2])) end
+        if seenAtCall ~= now - 15 * 86400 then error("asked before the clock is saved") end
+        if rec.lastSeen ~= now or rec.lastVersion ~= ns.version then error("then the clock is saved") end
+        rec.lastSeen = now - 13 * 86400
+        fireEvent("PLAYER_ENTERING_WORLD", true, false)
+        if #calls ~= 1 then error("13 days: no page") end
+        rec.lastSeen = now - 20 * 86400
+        fireEvent("PLAYER_ENTERING_WORLD", false, true)
+        if #calls ~= 1 then error("a reload: no page") end
+    end)
+    ns.GuideUnlocked, ns.GuideOn, env.time, ns.root.planner, ns.PlannerCatchUp, ns.LoadPlanner = keep.unlocked, keep.on, keep.time, keep.planner, keep.catch, keep.load
+    ns.PlannerSeenReset()
+    if not ok then error(err, 0) end
+end)
+try("folders A: the folder loaded mid-session, then a lock: the clock is right", function()
+    local keep = { unlocked = ns.GuideUnlocked, on = ns.GuideOn, time = env.time, planner = ns.root.planner, catch = ns.PlannerCatchUp }
+    local now, calls = 1800000000, 0
+    local ok, err = pcall(function()
+        env.time = function() return now end
+        ns.GuideOn = function() return true end
+        ns.PlannerCatchUp = function() calls = calls + 1 end
+        ns.root.planner = {}
+        local rec = ns.PlannerCharRecord(true)
+        rec.lastSeen = now - 600
+        -- the login, with the folder not loaded yet
+        ns.PlannerSeenReset()
+        ns.folderReady.planner = nil
+        ns.GuideUnlocked = function() return true end
+        fireEvent("PLAYER_ENTERING_WORLD", true, false)
+        if rec.lastSeen ~= now then error("the login saves the clock, folder or not") end
+        -- the folder loads later in the session: the clock goes on being saved
+        ns.folderReady.planner = true
+        now = now + 60
+        ns.PlannerSeenSave()
+        if rec.lastSeen ~= now then error("after a load mid-session: the minute's save") end
+        ns.PlannerPaceSync()                                   -- (the folder's own minute: it touches no clock)
+        now = now + 60
+        fireEvent("PLAYER_LOGOUT")
+        if rec.lastSeen ~= now then error("after a load mid-session: the logout's save") end
+        -- then a lock: nothing more is saved
+        ns.GuideUnlocked = function() return false end
+        local at = rec.lastSeen
+        now = now + 60
+        ns.PlannerSeenSave(); fireEvent("PLAYER_LOGOUT")
+        if rec.lastSeen ~= at then error("locked: the clock stops") end
+        -- and unlocked again: saved again
+        ns.GuideUnlocked = function() return true end
+        ns.PlannerSeenSave()
+        if rec.lastSeen ~= now then error("unlocked again: saved") end
+        if calls ~= 0 then error("no catch-up page") end
+    end)
+    ns.folderReady.planner = true
+    ns.GuideUnlocked, ns.GuideOn, env.time, ns.root.planner, ns.PlannerCatchUp = keep.unlocked, keep.on, keep.time, keep.planner, keep.catch
+    ns.PlannerPaceSync()
+    ns.PlannerSeenReset()
+    if not ok then error(err, 0) end
+end)
+try("folders A: a friend's ask once the planner is loaded: not handed over", function()
+    local keep = { unlocked = ns.GuideUnlocked, duoEvent = ns.PlannerDuoEvent, load = ns.LoadPlanner, ask = ns.db.plannerDuoAsk, duo = ns.plannerDuo }
+    local handed, loads = 0, 0
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        ns.db.plannerDuoAsk = false                             -- (the folder's own listener would answer: it is off, so it sends nothing)
+        ns.PlannerDuoEvent = function() handed = handed + 1 end
+        ns.LoadPlanner = function() loads = loads + 1; return true end
+        fireEvent("CHAT_MSG_ADDON", "FGUIPlan", "D1:ASK:ab12cd:14", "WHISPER", "Mira-Realm")
+        if handed ~= 0 or loads ~= 0 then error("loaded: the main add-on hands nothing over") end
+    end)
+    ns.GuideUnlocked, ns.PlannerDuoEvent, ns.LoadPlanner, ns.db.plannerDuoAsk, ns.plannerDuo = keep.unlocked, keep.duoEvent, keep.load, keep.ask, keep.duo
+    if not ok then error(err, 0) end
+end)
 -- folders tests A (planner recorders): end
 -- folders tests B (gold recorders): begin
 -- folders tests B (gold recorders): end

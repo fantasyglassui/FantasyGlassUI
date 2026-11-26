@@ -864,20 +864,7 @@ ns.PLANNER_RIDING_SPELLS = { 33388, 33391, 34090, 34091, 90265, 33389, 33392 }
 -- The level each profession rank needs: you can train the next rank from its cap (75 -> 150 at 10 ...)
 ns.PLANNER_PROFESSION_LEVEL = { [75] = 10, [150] = 20, [225] = 35 }
 
--- Have you been seen mounted (you have a mount)? true / false, or nil when the game can't say. Once
--- seen it is kept for the character (and so is riding).
-function ns.PlannerMountSeen()
-    local rec = ns.PlannerCharRecord and ns.PlannerCharRecord(false)
-    if type(rec) == "table" and rec.mountSeen then return true end
-    if type(IsMounted) ~= "function" then return nil end
-    local ok, v = pcall(IsMounted)
-    if not (ok and type(v) == "boolean" and not ns:IsSecret(v)) then return nil end
-    if v then
-        local r = ns.PlannerCharRecord and ns.PlannerCharRecord(true)
-        if type(r) == "table" then r.mountSeen, r.ridingKnown = true, true end
-    end
-    return v
-end
+-- (Have you been seen mounted? ns.PlannerMountSeen: in the main add-on, PlannerRecorders.lua.)
 
 -- Do you ride? true / false, or nil when nothing can say. Once any sign is seen it is kept for the character.
 function ns.PlannerRidingKnown(profs)

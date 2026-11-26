@@ -7,7 +7,7 @@ if type(ns) ~= "table" then return end
 -- placed steps of the plan on one map (the route keeps no run legs of its own).
 -- Runs inside the planning coroutine: ns.PlannerYield() in plain loops, never inside pcall.
 ------------------------------------------------------------------------------------------
-local ipairs, pairs, type, tonumber, math = ipairs, pairs, type, tonumber, math
+local ipairs, type, tonumber, math = ipairs, type, tonumber, math
 local floor, sqrt = math.floor, math.sqrt
 
 ns.PLANNER_MAIL_SECONDS = 20            -- a mail stop only when it adds less than this (or the route passes a mailbox)
@@ -19,9 +19,7 @@ ns.PLANNER_EXPLORE_SAMPLES = 600        -- samples asked of the game per plan, a
 ns.PLANNER_EXPLORE_REACHED = 40         -- a spot this close to one you reached is not asked again
 ns.PLANNER_GATHER_SECONDS = 20          -- a node only when it adds at most this much
 ns.PLANNER_GATHER_MAX = 5               -- per plan
-ns.PLANNER_NODE_YARDS = 10              -- two gatherings this close are one node
-local NODE_CAP = 300                    -- nodes kept per map
-ns.PLANNER_NODE_CAP = NODE_CAP         -- (the gold advisor's node fold reads it: one number)
+-- (ns.PLANNER_NODE_YARDS, ns.PLANNER_NODE_CAP and ns.PLANNER_NODES_TOTAL: with the node recorder, PlannerRecorders.lua)
 local SAMPLE_CAP = 200                  -- samples along one leg
 local APART = 2                         -- explore spots are this many sample spacings apart, at least
 local REACHED_CAP = 200                 -- reached explore spots kept per map
@@ -73,125 +71,8 @@ ns.PlannerRegisterStop({
 -- Gathering nodes you have seen: recorded per account when you cast a gathering spell on one
 ------------------------------------------------------------------------------------------
 local HERBALISM, MINING, SKINNING = 182, 186, 393
-local GATHER_SPELLS = {
-    [2366] = HERBALISM, [2368] = HERBALISM, [3570] = HERBALISM, [11993] = HERBALISM,
-    [2575] = MINING, [2576] = MINING, [3564] = MINING, [10248] = MINING,
-    [8613] = SKINNING, [8617] = SKINNING, [8618] = SKINNING, [10768] = SKINNING,
-}
-local BASE_SPELLS = { [2366] = HERBALISM, [2575] = MINING, [8613] = SKINNING }   -- (their names, in your language, say the rest)
-
-local function SpellName(id)
-    if type(C_Spell) ~= "table" or type(C_Spell.GetSpellInfo) ~= "function" then return nil end
-    local ok, info = pcall(C_Spell.GetSpellInfo, id)
-    local name = ok and type(info) == "table" and not ns:IsSecret(info) and info.name or nil
-    return type(name) == "string" and not ns:IsSecret(name) and name or nil
-end
-
--- The skill line (182, 186, 393) a spell gathers with, or nil: the one such function (the gold advisor's
--- gathering and farming read it too). The answer is kept per spell for the session
--- ("none" too), and the base spells' names once: a cast in a fight asks the game nothing new.
-local skillOf, baseNames = {}, nil
-function ns.PlannerGatherSkill(spellID)
-    spellID = Num(spellID)
-    if not spellID then return nil end
-    if GATHER_SPELLS[spellID] then return GATHER_SPELLS[spellID] end
-    local hit = skillOf[spellID]
-    if hit ~= nil then return hit or nil end
-    local name = SpellName(spellID)
-    if not name then return nil end                  -- (not readable now: asked again next time)
-    if not baseNames then
-        local names, all = {}, true
-        for id, line in pairs(BASE_SPELLS) do
-            local n = SpellName(id)
-            if n then names[n] = line else all = false end
-        end
-        if not all then
-            for n, line in pairs(names) do if n == name then return line end end
-            return nil
-        end
-        baseNames = names
-    end
-    skillOf[spellID] = baseNames[name] or false
-    return baseNames[name]
-end
-function ns.PlannerGatherSkillReset() skillOf, baseNames = {}, nil end   -- (the tests: a new language)
-
-local function NodeWorld(map, x, y)
-    local c, wx, wy = ns.PlannerWorldPos(map, x, y)
-    return c, wx, wy
-end
--- A saved node's world position, kept beside it for the session (a weak table: nothing is added to the saved node).
-local nodePos = setmetatable({}, { __mode = "k" })
-local function NodePos(map, n)
-    local e = nodePos[n]
-    local x, y = tonumber(n.x), tonumber(n.y)
-    if not e or e[1] ~= map or e[2] ~= x or e[3] ~= y then
-        local c, wx, wy = NodeWorld(map, x, y)
-        e = { map, x, y, c or false, wx, wy }
-        nodePos[n] = e
-    end
-    if e[4] then return e[4], e[5], e[6] end
-end
-ns.PLANNER_NODES_TOTAL = 4000           -- nodes kept on all maps together (past it the fullest map loses its oldest)
-
--- Record a node (once per 10 yards, per skill). Saved tables are made only here.
-function ns.PlannerRecordNode(map, x, y, name, skill)
-    map, x, y = Num(map), Num(x), Num(y)
-    name = Clean(name)
-    if not (map and x and y and name and type(ns.root) == "table") then return false end
-    if skill ~= HERBALISM and skill ~= MINING then return false end
-    local list = type(ns.root.plannerNodesSeen) == "table" and type(ns.root.plannerNodesSeen[map]) == "table" and ns.root.plannerNodesSeen[map] or nil
-    local c1, x1, y1 = NodeWorld(map, x, y)
-    if not c1 then return false end                 -- (no world scale on this map: nothing is recorded)
-    if list then
-        for _, n in ipairs(list) do
-            if type(n) == "table" and n.skill == skill and n.name == name then
-                local c2, x2, y2 = NodePos(map, n)
-                if c2 == c1 and sqrt((x1 - x2) ^ 2 + (y1 - y2) ^ 2) <= ns.PLANNER_NODE_YARDS then return false end
-            end
-        end
-    end
-    if type(ns.root.plannerNodesSeen) ~= "table" then ns.root.plannerNodesSeen = {} end
-    local all = ns.root.plannerNodesSeen
-    if type(all[map]) ~= "table" then all[map] = {} end
-    local out = all[map]
-    out[#out + 1] = { name = name, x = R1(x), y = R1(y), skill = skill }
-    while #out > NODE_CAP do table.remove(out, 1) end      -- (a full map keeps learning: its oldest node goes)
-    local total, fullest, most = 0, nil, 0
-    for m, l in pairs(all) do
-        if type(l) == "table" then
-            total = total + #l
-            if #l > most then fullest, most = m, #l end
-        end
-    end
-    while total > ns.PLANNER_NODES_TOTAL and fullest do
-        table.remove(all[fullest], 1)
-        total, most = total - 1, most - 1
-        for m, l in pairs(all) do if type(l) == "table" and #l > most then fullest, most = m, #l end end
-    end
-    return true
-end
-
--- The one UNIT_SPELLCAST_SENT recorder: a herb or ore node goes into plannerNodesSeen (unless plannerGather is
--- off), and every gathering, skinning too, is handed to the gold advisor (ns.GoldGatherSent), which records
--- what it gives. A plain handler first: while locked it returns at once, so nothing is timed by /fgui perf.
-do
-    local ev = CreateFrame("Frame")
-    local unitOk = type(ev.RegisterUnitEvent) == "function" and pcall(ev.RegisterUnitEvent, ev, "UNIT_SPELLCAST_SENT", "player")
-    if not unitOk then pcall(ev.RegisterEvent, ev, "UNIT_SPELLCAST_SENT") end   -- (no unit events: every unit's, and the handler keeps the player's)
-    local guarded = ns:Guard("Planner gather", function(_, _, unit, target, _, spellID)
-        if ns:IsSecret(unit) or unit ~= "player" then return end
-        local skill = ns.PlannerGatherSkill(spellID)
-        if not skill then return end
-        local name = (type(target) == "string" and not ns:IsSecret(target) and target ~= "") and target or nil
-        if name and skill ~= SKINNING and not (ns.db and ns.db.plannerGather == false) and ns.GuideHere then   -- (skinning only drives the "skin them" note)
-            local map, x, y = ns.GuideHere()
-            if map and x and y then ns.PlannerRecordNode(map, x, y, name, skill) end
-        end
-        if type(ns.GoldGatherSent) == "function" then ns.GoldGatherSent(name, skill, spellID) end
-    end)
-    ev:SetScript("OnEvent", function(...) if ns.GuideUnlocked and ns:GuideUnlocked() == true then guarded(...) end end)
-end
+-- (The gathering recorder: ns.PlannerGatherSkill, ns.PlannerRecordNode and the one UNIT_SPELLCAST_SENT handler are in
+-- the main add-on, PlannerRecorders.lua, so nodes are learned while this folder is not loaded.)
 
 ------------------------------------------------------------------------------------------
 -- Legs, and what lies near them

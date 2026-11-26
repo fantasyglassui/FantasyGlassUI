@@ -6,7 +6,7 @@ if type(ns) ~= "table" then return end
 -- and an inn when you have played a long while. Advice only: nothing here hands in, abandons or
 -- travels for you. Everything is behind the guide being unlocked.
 ------------------------------------------------------------------------------------------
-local ipairs, type, pcall, select = ipairs, type, pcall, select
+local ipairs, type, pcall = ipairs, type, pcall
 local format = string.format
 
 ns.PLANNER_LOG_SIZE = 25                -- the quest log holds this many when the game cannot say
@@ -16,7 +16,6 @@ ns.PLANNER_GRAY_GAP = 8                 -- a quest this many levels below you is
 ns.PLANNER_INN_PLAY = 3600              -- seconds of play before an inn is suggested
 ns.PLANNER_INN_SECONDS = 120            -- an inn this close (seconds of travel)
 ns.PLANNER_INN_SHOWN = 600              -- the inn line stays on the panel this long
-ns.plannerSessionStart = GetTime and GetTime() or 0     -- (a /reload keeps the login's time: see PLAYER_ENTERING_WORLD below)
 
 local function Num(v) if type(v) == "number" and not ns:IsSecret(v) then return v end end
 local function Clean(s)
@@ -28,81 +27,8 @@ local function On(setting)
     return ns.GuideUnlocked and ns:GuideUnlocked() and ns.db and ns.db[setting] ~= false
 end
 
-------------------------------------------------------------------------------------------
--- The best reward
-------------------------------------------------------------------------------------------
--- Which of the choices to take: the biggest upgrade, else the best sell price; nil when none can be judged.
-function ns.PlannerBestChoice()
-    local nf = _G.GetNumQuestChoices
-    local ok, n = pcall(nf)
-    n = ok and Num(n) or 0
-    if n <= 1 then return nil end
-    local bestUp, upAt, bestPrice, priceAt = 0, nil, 0, nil
-    for i = 1, n do
-        local okL, link = pcall(_G.GetQuestItemLink, "choice", i)
-        if okL and type(link) == "string" and not ns:IsSecret(link) then
-            local up = ns.UpgradeAmount and Num(ns.UpgradeAmount(link)) or nil
-            if up and up > bestUp then bestUp, upAt = up, i end
-            local okI, info = pcall(function() return select(11, C_Item.GetItemInfo(link)) end)
-            local price = okI and Num(info) or nil
-            local okC, count = pcall(function() return select(3, _G.GetQuestItemInfo("choice", i)) end)
-            count = okC and Num(count) or 1
-            if price and price * count > bestPrice then bestPrice, priceAt = price * count, i end
-        end
-    end
-    return upAt or priceAt
-end
-
--- The best reward is shown, never chosen: a frame of our own lies over the game's reward button (it is not
--- clicked, and none of the game's quest frames is written to), and a chat line names it. The click is yours.
-local mark, markedAt
-function ns.PlannerRewardMarked() return markedAt end            -- (the choice shown, or nil)
-function ns.PlannerRewardMarkFrame() return mark end              -- (read only: the tests)
-local function Unmark()
-    markedAt = nil
-    if mark then mark:Hide() end
-end
-local function Mark(button)
-    if not mark then
-        mark = CreateFrame("Frame")
-        local fill = mark:CreateTexture(nil, "OVERLAY")
-        fill:SetAllPoints()
-        mark.parts = { { fill, 0.18 } }
-        local function Edge(a1, a2, w, h)
-            local t = mark:CreateTexture(nil, "OVERLAY")
-            t:SetPoint(a1); t:SetPoint(a2)
-            if w then t:SetWidth(w) else t:SetHeight(h) end
-            mark.parts[#mark.parts + 1] = { t, 0.9 }
-        end
-        Edge("TOPLEFT", "TOPRIGHT", nil, 2); Edge("BOTTOMLEFT", "BOTTOMRIGHT", nil, 2)
-        Edge("TOPLEFT", "BOTTOMLEFT", 2); Edge("TOPRIGHT", "BOTTOMRIGHT", 2)
-        mark:EnableMouse(false)                    -- (the click goes through to the game's button)
-    end
-    local r, g, b = ns:Role("@accent")             -- (the accent as it is now: each time it is shown, after a theme change too)
-    for _, p in ipairs(mark.parts) do p[1]:SetColorTexture(r, g, b, p[2]) end
-    mark:SetParent(button)
-    mark:ClearAllPoints()
-    mark:SetAllPoints(button)
-    local okL, level = pcall(button.GetFrameLevel, button)
-    if okL and type(level) == "number" and not ns:IsSecret(level) then mark:SetFrameLevel(level + 5) end
-    mark:Show()
-end
-local function PickReward()
-    Unmark()
-    if not On("plannerPickReward") then return end
-    local i = ns.PlannerBestChoice()
-    if not i then return end
-    markedAt = i
-    local okB, button = pcall(function() return _G.QuestInfo_GetRewardButton(_G.QuestInfoFrame.rewardsFrame, i) end)
-    if okB and type(button) == "table" and type(button.GetFrameLevel) == "function" then pcall(Mark, button) end
-    local okL, link = pcall(_G.GetQuestItemLink, "choice", i)
-    local name = okL and type(link) == "string" and not ns:IsSecret(link) and link ~= "" and link or nil
-    if not name then
-        local okI, n = pcall(_G.GetQuestItemInfo, "choice", i)
-        name = okI and Clean(n) or nil
-    end
-    if name then ns:Print("Best reward for you: %s", name) end
-end
+-- (The best reward, ns.PlannerBestChoice and its mark at a hand-in, and the session start, ns.plannerSessionStart:
+-- in the main add-on, PlannerRecorders.lua.)
 
 ------------------------------------------------------------------------------------------
 -- The quest log
@@ -372,30 +298,6 @@ end
 -- Events
 ------------------------------------------------------------------------------------------
 do
-    local ev = CreateFrame("Frame")
-    pcall(ev.RegisterEvent, ev, "QUEST_COMPLETE")
-    pcall(ev.RegisterEvent, ev, "QUEST_FINISHED")               -- (the hand-in window closed: the mark goes)
-    -- (one frame later: the game's own hand-in panel resets its selection while it is drawn)
-    local pick = ns:Guard("Planner reward", PickReward)
-    pcall(ev.RegisterEvent, ev, "PLAYER_ENTERING_WORLD")
-    ev:SetScript("OnEvent", ns:Guard("Planner events", function(_, event, isInitial, isReload)
-        if event == "PLAYER_ENTERING_WORLD" then
-            if not (isInitial or isReload) then return end            -- (a zone change)
-            local okT, now = pcall(GetTime)
-            now = okT and Num(now) or nil
-            if not (now and type(ns.root) == "table" and ns:GuideUnlocked()) then return end
-            local was = tonumber(ns.root.plannerSessionAt)
-            if isReload and not isInitial and was and was <= now then ns.plannerSessionStart = was
-            else ns.root.plannerSessionAt = now; ns.plannerSessionStart = now end
-            return
-        end
-        if event == "QUEST_FINISHED" then Unmark(); return end
-        if C_Timer and C_Timer.After then
-            local ok = pcall(C_Timer.After, 0, pick)
-            if ok then return end
-        end
-        pick()
-    end))
     if _G.GameMenuFrame and _G.GameMenuFrame.HookScript then
         pcall(_G.GameMenuFrame.HookScript, _G.GameMenuFrame, "OnShow", ns:Guard("Planner inn", function() ns.PlannerInnSuggest() end))
     end
