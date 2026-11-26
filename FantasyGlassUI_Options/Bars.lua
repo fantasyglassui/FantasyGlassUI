@@ -71,12 +71,11 @@ local function AccentTextHex(obj)
 end
 
 -- The rows. G is the tab's list of them (T.rows): each row is in one of the sections below, and the
--- tab lays them out section by section in this order, whichever function made them.
+-- tab lays them out section by section in this order, whichever function made them. (The planner's
+-- settings are in the planner's own window, FantasyGlassUI_Planner/PlannerWindow.lua, built with the
+-- same rows: ns.GuideRowKit, below.)
 local GUIDE_SECTIONS = {
     { "guides", "Quest guides" }, { "record", "Record a guide as you play" }, { "plan", "Plan my route" },
-    { "include", "What the route includes" }, { "advice", "Advice along the way" }, { "map", "On the map" },
-    { "pace", "How long you play" }, { "style", "Speed or story" }, { "records", "Your records" },
-    { "together", "With other players" },
 }
 local function RowTip(row)
     if not row.tipTitle then return end
@@ -235,6 +234,73 @@ local function Small(parent, size, width)
     if fs.SetWordWrap then fs:SetWordWrap(true) end
     return fs
 end
+-- A page's rows: the frame they sit on, and for each section (in `sections`, { id, heading }) its
+-- heading and the thin rim its rows sit in.
+local function NewRows(live, sections, width)
+    local G = { live = live, list = {}, heads = {}, groups = {}, width = width, sections = sections }
+    for _, s in ipairs(sections) do
+        local group = CreateFrame("Frame", nil, live, ns.template)   -- (each section's rows sit together, in a thin rim)
+        group:SetBackdrop(ns.BACKDROP)
+        ns:Paint(group, "SetBackdropColor", "card", 0)
+        ns:Paint(group, "SetBackdropBorderColor", "rule", 1)
+        group:Hide()
+        G.groups[s[1]] = group
+        G.heads[s[1]] = GuideHeading(live, s[2], 0, 0)
+    end
+    return G
+end
+-- Laying the rows out: section by section, each row as tall as its text needs at this width and text
+-- size, a little taller with "Bigger controls" (its control larger too). G.shown is then the rows in
+-- the order shown. Returns the height they take, `least` at the least.
+local function LayRows(G, w, least)
+    w = tonumber(w)
+    if not w or w < 300 then w = G.width end
+    G.width = w
+    local live = G.live
+    local big = ns.db.bigControls and true or false
+    local at, shown = 0, {}
+    for _, s in ipairs(G.sections) do
+        local mine = {}
+        for _, row in ipairs(G.list) do if row.sec == s[1] then mine[#mine + 1] = row end end
+        table.sort(mine, function(a, b) return a.seq < b.seq end)
+        local head, box = G.heads[s[1]], G.groups[s[1]]
+        if #mine > 0 then
+            head:ClearAllPoints()
+            head:SetPoint("TOPLEFT", live, "TOPLEFT", 0, at)
+            head:Show()
+            at = at - (math.ceil(TextH(head, 13, w)) + 10)
+            local top = at
+            for i, row in ipairs(mine) do
+                row:ClearAllPoints()
+                row:SetPoint("TOPLEFT", live, "TOPLEFT", 0, at)
+                row:SetWidth(w)
+                row.line:SetShown(i > 1)
+                local h = (tonumber(row.Layout(w)) or ROW_MIN) + (big and 12 or 0)
+                row:SetHeight(h)
+                local control = row.switch or row.scaled or (row.button and row.button.SetScale and row.button)
+                if control and control.SetScale then control:SetScale(big and 1.35 or 1) end
+                row:Show()
+                shown[#shown + 1] = row
+                at = at - h
+            end
+            box:ClearAllPoints()
+            box:SetPoint("TOPLEFT", live, "TOPLEFT", 0, top)
+            box:SetSize(w, top - at)
+            box:Show()
+            at = at - 22
+        else
+            head:Hide()
+            box:Hide()
+        end
+    end
+    G.shown = shown
+    local height = math.max(tonumber(least) or 0, math.ceil(-at + 4))
+    live:SetSize(w, height)
+    return height
+end
+-- (the planner window builds its settings with these same rows: FantasyGlassUI_Planner/PlannerWindow.lua)
+ns.GuideRowKit = { Heading = GuideHeading, NewRows = NewRows, LayRows = LayRows, NewRow = NewRow, Desc = Desc, Hover = Hover,
+                   SwitchRow = SwitchRow, ButtonRow = ButtonRow, SliderRow = SliderRow, TextRow = TextRow, TextH = TextH, ROW_PAD = ROW_PAD }
 
 ------------------------------------------------------------------------------------------
 -- Bars: every action bar has its own settings. The bars are listed down the left; the chosen one's
@@ -458,237 +524,6 @@ end
 
 
 ------------------------------------------------------------------------------------------
--- Batch 4's sections of the Guide tab, one per group. Each gets the live frame, the y it was given,
--- Replan (plans again while following) and the page's table T; it adds its rows to T.rows (each in
--- one of GUIDE_SECTIONS, laid out in that order) and returns the y and a refresh function (run by
--- page.Refresh while the guide is unlocked). Each group writes only inside its own function's body.
-------------------------------------------------------------------------------------------
--- Group A: the route and the quest areas on the map.
-local function FeelMapSection(live, y, Replan, T)
-    local G = T.rows
-    local function Redraw() if ns.PlannerMapRedraw then ns.PlannerMapRedraw() end end
-    local line = SwitchRow(G, "map", "plannerMapLine", "The route on the map", "The route's stops, numbered, and the line between them on the world map.",
-        function() return ns.db.plannerMapLine ~= false end, function(v)
-        ns.db.plannerMapLine = v
-        Redraw()
-    end)
-    local hubs = SwitchRow(G, "map", "plannerMapHubs", "Quest areas on the map", "A mark on each area with quests the planner found, brighter where the experience comes faster.",
-        function() return ns.db.plannerMapHubs ~= false end, function(v)
-        ns.db.plannerMapHubs = v
-        Redraw()
-    end)
-    local tomtom = SwitchRow(G, "map", "plannerTomTom", "Use TomTom's arrow when TomTom is loaded", "The step you are on goes to TomTom's arrow instead of this add-on's.",
-        function() return ns.db.plannerTomTom ~= false end, function(v)
-        ns.db.plannerTomTom = v
-        if ns.GuideAdvance then ns:GuideAdvance() end
-    end)
-    T.mapLineBox, T.mapHubsBox, T.tomTomBox = line, hubs, tomtom
-    return y, function()
-        tomtom:SetChecked(ns.db.plannerTomTom ~= false)
-        line:SetChecked(ns.db.plannerMapLine ~= false)
-        hubs:SetChecked(ns.db.plannerMapHubs ~= false)
-    end
-end
-
--- Group B: time to level, "Why this?", the preview, finish the zone.
-local function FeelPanelSection(live, y, Replan, T)
-    local G = T.rows
-    local function Draw(b)
-        local goal = ns.PlannerZoneGoal and ns.PlannerZoneGoal()
-        if not goal then b.text:SetText(ns:Tr("Goal: Level up")) return end
-        local name = ns.PlannerMapName and ns.PlannerMapName(goal) or tostring(goal)
-        b.text:SetText(string.format(ns:Tr("Goal: Finish %s"), name))
-    end
-    -- Switches between leveling and finishing the zone you are in (the planner plans again either way).
-    local goal = ButtonRow(G, "plan", "", "Level up plans the most experience wherever it is. Finish the zone plans every quest left in the zone you are in, then goes back to levelling.", function(b)
-        if ns.PlannerZoneGoal and ns.PlannerZoneGoal() then
-            ns.PlannerSetZoneGoal(nil)
-        elseif ns.PlannerGoalZone and ns.PlannerSetZoneGoal then
-            local zone = ns.PlannerGoalZone()
-            if zone then ns.PlannerSetZoneGoal(zone) end
-        end
-        Draw(b)
-    end, true)
-    goal.row.tipTitle, goal.row.navKey = "Goal: Level up", "guide:goal"
-    if T.groupButton and T.groupButton.row then goal.row.seq = T.groupButton.row.seq + 0.5 end   -- (under Group quests)
-    T.zoneGoalButton = goal
-    T.zoneGoalDraw = function() Draw(goal) end          -- (the goal can end by itself: "Zone done" redraws the label)
-    return y, T.zoneGoalDraw
-end
-
--- Group C: the time you have, break reminders, catch me up, speed or story.
-local function FeelPaceSection(live, y, Replan, T)
-    local G = T.rows
-    local refreshes = {}
-    -- The time you have and break reminders
-    local times = ns.PLANNER_PLAY_TIMES or { { 0, "No limit" } }
-    local function DrawTime(b)
-        local rec = ns.PlannerCharRecord and ns.PlannerCharRecord(false)
-        local now, name = tonumber(rec and rec.playDefault) or 0, times[1][2]
-        for _, t in ipairs(times) do if t[1] == now then name = t[2] end end
-        b.text:SetText(ns:Tr("How long can you play?") .. "  " .. ns:Tr(name))
-    end
-    local timeButton = ButtonRow(G, "pace", "How long can you play?", "Plan my route then takes only what fits in this time, and ends at a good place to stop. /fgui guide plan with no number does the same.", function(b, button)
-        local rec = ns.PlannerCharRecord and ns.PlannerCharRecord(false)
-        local now, at = tonumber(rec and rec.playDefault) or 0, 1
-        for i, t in ipairs(times) do if t[1] == now then at = i end end
-        rec = ns.PlannerCharRecord and ns.PlannerCharRecord(true)
-        at = (button == "RightButton") and ((at - 2) % #times + 1) or (at % #times + 1)
-        if rec then rec.playDefault = times[at][1] end
-        DrawTime(b)
-    end, true)
-    local breaks = SwitchRow(G, "pace", "plannerBreaks", "Remind me to take a break at a stopping place", "After a long stretch of play, the panel says so when you reach a good place to stop.",
-        function() return ns.db.plannerBreaks == true end, function(v) ns.db.plannerBreaks = v end)
-    local lengths = { { 60, "1 hour" }, { 90, "1 hour 30" }, { 120, "2 hours" }, { 180, "3 hours" } }
-    local function DrawBreak(b)
-        local now, name = tonumber(ns.db.plannerBreakMinutes) or 120, "2 hours"
-        for _, t in ipairs(lengths) do if t[1] == now then name = t[2] end end
-        b.text:SetText(ns:Tr("Break reminder after") .. ":  " .. ns:Tr(name))
-    end
-    local breakButton = ButtonRow(G, "pace", "Break reminder after", "How long that stretch of play is.", function(b, button)
-        local now, at = tonumber(ns.db.plannerBreakMinutes) or 120, 3
-        for i, t in ipairs(lengths) do if t[1] == now then at = i end end
-        at = (button == "RightButton") and ((at - 2) % #lengths + 1) or (at % #lengths + 1)
-        ns.db.plannerBreakMinutes = lengths[at][1]
-        DrawBreak(b)
-    end, true)
-    T.playTimeButton, T.breaksBox, T.breakButton = timeButton, breaks, breakButton
-    refreshes[#refreshes + 1] = function()
-        DrawTime(timeButton)
-        breaks:SetChecked(ns.db.plannerBreaks == true)
-        DrawBreak(breakButton)
-    end
-
-    -- Speed or story: a style, and the three weights it sets (a slider moved makes it Custom)
-    local styles = { { "speed", "Speed" }, { "story", "Story" }, { "custom", "Custom" } }
-    local function DrawStyle(b)
-        local now, name = ns.PlannerStyle and ns.PlannerStyle() or "speed", "Speed"
-        for _, st in ipairs(styles) do if st[1] == now then name = st[2] end end
-        b.text:SetText(string.format(ns:Tr("Style: %s"), ns:Tr(name)))
-    end
-    local sliders, syncing = {}, false
-    local function SyncSliders()
-        if not ns.PlannerWeights then return end
-        local sp, sa, st = ns.PlannerWeights()
-        syncing = true
-        sliders.speed:SetValue(sp); sliders.safety:SetValue(sa); sliders.story:SetValue(st)
-        syncing = false
-    end
-    local styleButton = ButtonRow(G, "style", "Style: %s", "Speed and Story each set the three sliders below. Set the sliders yourself for a style of your own.", function(b, button)
-        local now, at = ns.PlannerStyle and ns.PlannerStyle() or "speed", 1
-        for i, st in ipairs(styles) do if st[1] == now then at = i end end
-        at = (button == "RightButton") and ((at - 2) % #styles + 1) or (at % #styles + 1)
-        if ns.PlannerSetStyle then ns.PlannerSetStyle(styles[at][1]) end
-        DrawStyle(b)
-        SyncSliders()
-    end, true)
-    styleButton.row.tipTitle = "Speed or story"
-    local means = { speed = "How much the route goes for the most experience in the time.",
-                    safety = "How much it keeps away from elites, escorts and places where you died.",
-                    story = "How much it goes for the zone's quest chains. At 100 it reaches back up to 10 levels for them." }
-    for _, def in ipairs({ { "speed", "Speed" }, { "safety", "Safety" }, { "story", "Story" } }) do
-        local slider = SliderRow(G, "style", def[2], means[def[1]], 0, 100, 10, def[1] == "speed" and 100 or 0, function(v)
-            if syncing then return end
-            if ns.PlannerSetWeight then ns.PlannerSetWeight(def[1], v) end
-            DrawStyle(styleButton)
-        end)
-        sliders[def[1]] = slider
-    end
-    T.styleButton, T.speedSlider, T.safetySlider, T.storySlider = styleButton, sliders.speed, sliders.safety, sliders.story
-    refreshes[#refreshes + 1] = function()
-        DrawStyle(styleButton)
-        SyncSliders()
-    end
-    return y, function() for _, r in ipairs(refreshes) do r() end end
-end
-
--- Group D: level times, race your best, where you left off, save as guide, read aloud.
-local function FeelRecordsSection(live, y, Replan, T)
-    local G = T.rows
-    local race = SwitchRow(G, "records", "plannerRace", "Race your best", "The panel says how far ahead or behind you are of your fastest character's time at this level.",
-        function() return ns.db.plannerRace == true end, function(v) ns.db.plannerRace = v end)
-    local leftOff = SwitchRow(G, "records", "plannerLeftOff", "Where you left off, at login", "When you log in, a line says where you were on the route and what comes next.",
-        function() return ns.db.plannerLeftOff ~= false end, function(v) ns.db.plannerLeftOff = v end)
-    local SPEAK = "Each new step is read aloud as you reach it."
-    local speak = SwitchRow(G, "records", "plannerSpeak", "Read the route aloud", SPEAK,
-        function() return ns.db.plannerSpeak ~= false end, function(v) ns.db.plannerSpeak = v end)
-    T.raceBox, T.leftOffBox, T.speakBox = race, leftOff, speak
-    local function Refresh()
-        race:SetChecked(ns.db.plannerRace == true)
-        leftOff:SetChecked(ns.db.plannerLeftOff ~= false)
-        speak:SetChecked(ns.db.plannerSpeak ~= false)
-        local on = ns.db.readDialog and true or false      -- (reading aloud is one switch in Accessibility; this one only narrows it)
-        speak.row:SetAlpha(on and 1 or 0.6)                -- (dimmed, as a 12.3 switch whose parent is off; it can still be set)
-        speak.row.desc:SetText(ns:Tr(SPEAK) .. (on and "" or ("  " .. ns:Tr("Needs reading aloud on in Accessibility"))))
-    end
-    Refresh()                                              -- (right from the start, not only after the first page refresh)
-    return y, Refresh
-end
-
--- Batch 5's sections of the Guide tab, one per group, called the same way as batch 4's (after them).
--- Each group writes only inside its own function's body.
--- Group A: find a group for a group quest.
-local function TogetherGroupSection(live, y, Replan, T)
-    local G = T.rows
-    local find = SwitchRow(G, "together", "plannerFindGroup", "Find a group button", "A group quest on the panel gets a button that writes a line asking for a group. It only fills your chat box: you send it.",
-        function() return ns.db.plannerFindGroup ~= false end, function(v)
-        ns.db.plannerFindGroup = v
-        if ns.GuideRedraw then ns:GuideRedraw() end
-    end)
-    local function DrawChannel(b)
-        local name = ns.db.plannerLFGChannel
-        if type(name) ~= "string" or name == "" then name = ns:Tr("Chat box") end
-        b.text:SetText(string.format(ns:Tr("Find a group in: %s"), name))
-    end
-    local channel = ButtonRow(G, "together", "Find a group in: %s", "Where that line goes: your chat box's current channel, or a channel you have joined.", function(b, button)
-        local list = { "" }
-        for _, name in ipairs(ns.PlannerLFGChannels and ns.PlannerLFGChannels() or {}) do list[#list + 1] = name end
-        local at = 1
-        for i, name in ipairs(list) do if name == (ns.db.plannerLFGChannel or "") then at = i end end
-        at = (button == "RightButton") and ((at - 2) % #list + 1) or (at % #list + 1)
-        ns.db.plannerLFGChannel = list[at]
-        DrawChannel(b)
-    end, true)
-    channel.row.tipTitle = "Find a group button"
-    T.findGroupBox, T.findGroupChannel = find, channel
-    return y, function()
-        find:SetChecked(ns.db.plannerFindGroup ~= false)
-        DrawChannel(channel)
-    end
-end
-
--- Group B: plan with a friend (the duo).
-local function TogetherDuoSection(live, y, Replan, T)
-    local G = T.rows
-    local ask = SwitchRow(G, "together", "plannerDuoAsk", "Let friends ask to plan with you", "A friend with Fantasy Glass UI can ask to plan one route for you both. You are always asked first.",
-        function() return ns.db.plannerDuoAsk ~= false end, function(v) ns.db.plannerDuoAsk = v end)
-    local start = ButtonRow(G, "together", "Plan with a friend", "One route for you and your target or the one other player in your party: the same quests, in the same order.", function()
-        if ns.PlannerDuoStart then ns:PlannerDuoStart() end         -- (your target, your one party member, or it says how)
-    end)
-    T.duoAskBox, T.duoButton = ask, start
-    local function Refresh() ask:SetChecked(ns.db.plannerDuoAsk ~= false) end
-    Refresh()
-    return y, Refresh
-end
-
--- Group C: the plan code for the website's plan page.
-local function TogetherCodeSection(live, y, Replan, T)
-    local G = T.rows
-    local share = ButtonRow(G, "together", "Share plan", "Turns the route you are following into a plan code to copy.", function()
-        if ns.PlannerCodeFollowing and ns.PlannerCodeFollowing() then ns:PlannerSharePlan() end
-    end)
-    T.sharePlanButton = share
-    local function Refresh()                                -- (greyed, and says why, while the planned guide is not the one you follow)
-        local can = ns.PlannerCodeFollowing and ns.PlannerCodeFollowing() and true or false
-        share:SetAlpha(can and 1 or 0.45)
-        if can then share:Enable() else share:Disable() end
-        ns:ButtonTip(share, not can and "Follow the planned route to share it" or nil)
-    end
-    Refresh()
-    return y, Refresh
-end
-
-------------------------------------------------------------------------------------------
 -- Guide: quest guides are not released yet. Everyone sees "coming soon"; where they have been
 -- unlocked (see Guide.lua) this tab holds their switch and controls instead.
 ------------------------------------------------------------------------------------------
@@ -716,6 +551,7 @@ local function JoinKeys(T, fp)
     end
 end
 
+
 function ns.BuildGuidePage(page)
     local T = {}
     ns.guidePage = T
@@ -740,17 +576,8 @@ function ns.BuildGuidePage(page)
     live:SetPoint("TOPLEFT", 0, 0)
     live:SetSize(736, 896)
     T.live = live
-    local G = { live = live, list = {}, heads = {}, groups = {}, width = 736 }
+    local G = NewRows(live, GUIDE_SECTIONS, 736)
     T.rows = G
-    for _, s in ipairs(GUIDE_SECTIONS) do
-        local group = CreateFrame("Frame", nil, live, ns.template)   -- (each section's rows sit together, in a thin rim)
-        group:SetBackdrop(ns.BACKDROP)
-        ns:Paint(group, "SetBackdropColor", "card", 0)
-        ns:Paint(group, "SetBackdropBorderColor", "rule", 1)
-        group:Hide()
-        G.groups[s[1]] = group
-        G.heads[s[1]] = GuideHeading(live, s[2], 0, 0)
-    end
 
     -- Quest guides: what the guide is doing, its switches, and the windows it has
     local status = TextRow(G, "guides", 13)
@@ -769,9 +596,6 @@ function ns.BuildGuidePage(page)
         if ns.GuideRouteEditor then ns:GuideRouteEditor() end
     end)
     T.routeButton = route
-    T.introButton = ButtonRow(G, "guides", "How the planner works", "The short tour from the first time: what the planner does, following a route, your pace, and planning with a friend.", function()
-        if ns.PlannerIntro then ns:PlannerIntro(1) end
-    end)
 
     -- Record a guide as you play: a name, the button, and what recording does
     local recRow = NewRow(G, "record", 90, "Record a guide as you play")
@@ -794,134 +618,25 @@ function ns.BuildGuidePage(page)
     end
     T.onBox, T.soundBox, T.recordButton, T.nameBox = on, sound, recBtn, name
 
-    -- The route planner: a button, and what it takes into account. Changing a setting plans again, if it is running.
-    local function Replan() if ns.PlannerReplan then ns:PlannerReplan("settings") end end
+    -- The route planner: a button that plans, and one to its own window (the plan you follow and every
+    -- setting for what it plans: FantasyGlassUI_Planner/PlannerWindow.lua)
     local plan = ButtonRow(G, "plan", "Plan my route", "Works out a route of quests for your level from where you are, and starts following it.", function()
         if ns.GuideOn and not ns:GuideOn() then
             ns:Print("Quest guides are switched off. Switch them on under Guide in /fgui, or in the setup.")
-        elseif ns.PlannerPlanCommand then ns.PlannerPlanCommand("")      -- (with the time you can play, as set below)
+        elseif ns.PlannerPlanCommand then ns.PlannerPlanCommand("")      -- (with the time you can play, set in the planner window)
         elseif ns.PlannerStart then ns:PlannerStart() end
         page.Refresh()
     end)
-    local groups = { { "solo", "Solo" }, { "grouped", "When grouped" }, { "all", "Everything" } }
-    local function DrawGroup(b)
-        local now, gname = ns.db.plannerGroup or "solo", nil
-        for _, g in ipairs(groups) do if g[1] == now then gname = g[2] end end
-        b.text:SetText(ns:Tr("Group quests") .. ":  " .. ns:Tr(gname or "Solo"))
-    end
-    local group = ButtonRow(G, "plan", "Group quests", "Solo plans only quests you can do alone. When grouped adds group quests while you are in a group, and Everything always does.", function(b, button)
-        local now, at = ns.db.plannerGroup or "solo", 1
-        for i, g in ipairs(groups) do if g[1] == now then at = i end end
-        at = (button == "RightButton") and ((at - 2) % #groups + 1) or (at % #groups + 1)
-        ns.db.plannerGroup = groups[at][1]
-        DrawGroup(b)
-        Replan()
-    end, true)
-    -- What the route includes: each a switch that plans again
-    local function Include(key, label, desc)
-        return SwitchRow(G, "include", key, label, desc, function() return ns.db[key] ~= false end, function(v)
-            ns.db[key] = v
-            Replan()
-        end)
-    end
-    local flights = Include("plannerLearnFlights", "Learn new flight points on the way", "A short way round to a flight master you do not know yet, when the route passes close.")
-    local trainer = Include("plannerTrainer", "Visit your trainer on the way", "A stop at your class trainer every two levels, for your new spells.")
-    local hold = Include("plannerHold", "Save hand-ins to level in town", "A hand-in that would take you up a level waits until the route reaches your trainer's town.")
-    local vendor = Include("plannerVendor", "Sell and repair stops", "A stop at a vendor when your bags are nearly full or your gear is worn.")
-    local supplies = Include("plannerSupplies", "Buy supplies at the vendor stop", "At that stop, ammunition, food and drink are bought too.")
-    local profession = Include("plannerProfession", "Profession training stops", "A stop at a profession's trainer when your skill has reached what you can learn now.")
-    local mount = Include("plannerMount", "Mount reminder", "From level 40: the riding trainer, your mount, and how much gold is still to find.")
-    local mail = Include("plannerMail", "Mail stops", "A stop at a mailbox when mail is waiting and one is close.")
-    local explore = Include("plannerExplore", "Explore on the way", "Places you have not discovered yet, when they are close to the route.")
-    local gather = Include("plannerGather", "Gather on the way", "Herbs and ore you have gathered before, close to the route, and a note to skin what you kill.")
-    local classQuests = Include("plannerClassQuests", "Plan class quests", "Your class quests go on the route at the right level, and the panel says when one is ready.")
-    T.classQuestsBox = classQuests
-    local rested = Include("plannerRested", "Count rested experience", "Kills are worth double while you are rested, and the route counts them so.")
-    local rewards = Include("plannerRewards", "Count upgrades in rewards", "A quest whose reward is better than what you wear counts for more.")
-    local deaths = Include("plannerDeaths", "Learn from my deaths", "A place where you died twice is left alone until you are two levels higher.")
-    local soloElites = Include("plannerSoloElites", "Include elites my class has soloed", "Elite quests that one of your characters of this class has done alone count as Solo quests.")
-    local repButton = ButtonRow(G, "plan", "Reputation I want", "For each faction, the standing you want to reach: quests that raise it count for more until you get there.", function()
+    local settings = ButtonRow(G, "plan", "Planner settings", "The planner's own window: the route you follow, and every setting for what it plans.", function()
         if ns.HideConfig then ns.HideConfig() end
-        if ns.GuideReputation then ns:GuideReputation() end
+        if ns.PlannerOpen then ns:PlannerOpen() end
     end)
-    local skipButton = ButtonRow(G, "plan", "Quests you skipped", "The quests you told the planner never to suggest. Click one there to have it suggested again.", function()
-        if ns.HideConfig then ns.HideConfig() end
-        if ns.GuideSkipped then ns:GuideSkipped() end
-    end)
-    -- Advice along the way: what the panel says as you go
-    local function Advice(key, label, desc, after)
-        return SwitchRow(G, "advice", key, label, desc, function() return ns.db[key] ~= false end, function(v)
-            ns.db[key] = v
-            after()
-        end)
-    end
-    local why = Advice("plannerWhy", "Show why each step is there", "Each step on the panel says what it is worth: the experience, or the time it saves.", Replan)
-    local pick = Advice("plannerPickReward", "Show the best quest reward", "At a hand-in, the reward that suits you best is marked and named in chat. You choose it yourself.", function() end)
-    local logAdvice = Advice("plannerLogAdvice", "Quest log advice", "When your quest log is nearly full, the panel says which quests are worth abandoning.", function()
-        if ns.GuideShowPanel and ns.GuidePanelShown and ns:GuidePanelShown() then ns:GuideShowPanel() end
-    end)
-    local inn = Advice("plannerInn", "Suggest an inn when you stop", "After a long stretch of play, the panel points to an inn close by, to log out in for rested experience.", function() end)
-    local dry = Advice("plannerDry", "Suggest what to do when quests run dry", "When no quest is worth the trip, a dungeon or a place to grind is suggested instead.", Replan)
-    T.pickBox, T.logAdviceBox, T.innBox, T.dryBox = pick, logAdvice, inn, dry
-    T.deathsBox, T.soloElitesBox, T.skippedButton = deaths, soloElites, skipButton
-    T.restedBox, T.rewardsBox, T.reputationButton = rested, rewards, repButton
-    T.planButton, T.groupButton, T.flightsBox, T.whyBox, T.trainerBox, T.holdBox = plan, group, flights, why, trainer, hold
-    T.vendorBox, T.suppliesBox, T.professionBox, T.mountBox = vendor, supplies, profession, mount
-    T.mailBox, T.exploreBox, T.gatherBox = mail, explore, gather
+    T.planButton, T.plannerSettingsButton = plan, settings
 
-    -- batch 4's sections, then batch 5's, in this order (each puts its rows in its own place on the tab)
-    local y, refreshes = 0, {}
-    for _, section in ipairs({ FeelMapSection, FeelPanelSection, FeelPaceSection, FeelRecordsSection, TogetherGroupSection, TogetherDuoSection, TogetherCodeSection }) do
-        local nextY, refresh = section(live, y, Replan, T)
-        y = tonumber(nextY) or y
-        if type(refresh) == "function" then refreshes[#refreshes + 1] = refresh end
-    end
-
-    -- Laying the rows out: section by section, each row as tall as its text needs at this width and text
-    -- size, a little taller with "Bigger controls". Run again on every refresh and for a new width.
+    -- Laying the rows out (Bigger controls and the text size included), and joining the settings
+    -- window's keys. Run again on every refresh and for a new width.
     local function Layout(w)
-        w = tonumber(w)
-        if not w or w < 300 then w = G.width end
-        G.width = w
-        local big = ns.db.bigControls and true or false
-        local at, shown = 0, {}
-        for _, s in ipairs(GUIDE_SECTIONS) do
-            local mine = {}
-            for _, row in ipairs(G.list) do if row.sec == s[1] then mine[#mine + 1] = row end end
-            table.sort(mine, function(a, b) return a.seq < b.seq end)
-            local head, box = G.heads[s[1]], G.groups[s[1]]
-            if #mine > 0 then
-                head:ClearAllPoints()
-                head:SetPoint("TOPLEFT", live, "TOPLEFT", 0, at)
-                head:Show()
-                at = at - (math.ceil(TextH(head, 13, w)) + 10)
-                local top = at
-                for i, row in ipairs(mine) do
-                    row:ClearAllPoints()
-                    row:SetPoint("TOPLEFT", live, "TOPLEFT", 0, at)
-                    row:SetWidth(w)
-                    row.line:SetShown(i > 1)
-                    local h = (tonumber(row.Layout(w)) or ROW_MIN) + (big and 12 or 0)
-                    row:SetHeight(h)
-                    local control = row.switch or row.scaled or (row.button and row.button.SetScale and row.button)
-                    if control and control.SetScale then control:SetScale(big and 1.35 or 1) end
-                    row:Show()
-                    shown[#shown + 1] = row
-                    at = at - h
-                end
-                box:ClearAllPoints()
-                box:SetPoint("TOPLEFT", live, "TOPLEFT", 0, top)
-                box:SetSize(w, top - at)
-                box:Show()
-                at = at - 22
-            else
-                head:Hide()
-                box:Hide()
-            end
-        end
-        G.shown = shown
-        local height = math.max(896, math.ceil(-at + 4))
-        live:SetSize(w, height)
+        local height = LayRows(G, w, 896)
         local was = rawget(page, "contentHeight")
         page.contentHeight = height
         if page.area then page.area:SetContentHeight(height) end
@@ -947,13 +662,11 @@ function ns.BuildGuidePage(page)
         T.unlocked = open and true or false
         if open then soon:Hide(); live:Show() else live:Hide(); soon:Show() return end
         for _, row in ipairs(G.list) do if row.Sync then row.Sync() end end
-        DrawGroup(group)
         recBtn.text:SetText(ns:Tr(ns.guideRecording and "Stop recording" or "Record"))
         local st = ns.GuideState and ns.GuideState()
         if ns.guideRecording then status:SetText(ns:SignalHex("bad") .. ns:Tr("Recording") .. ":|r " .. tostring(ns.guideRecording.name) .. "  (" .. #ns.guideRecording.steps .. ")")
         elseif st then status:SetText(ns:Tr("Following") .. ": " .. AccentTextHex(status) .. tostring(st.name) .. "|r  -  " .. tostring(st.at))
         else status:SetText(ns:Tr("You are not following a guide.")) end
-        for _, refresh in ipairs(refreshes) do refresh() end
         Layout(G.width)
         -- the first time the tab is opened after the guide was unlocked: the planner's short tour
         local host = GuideShowing()
