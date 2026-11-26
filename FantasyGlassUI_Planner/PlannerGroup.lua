@@ -1,4 +1,5 @@
-local _, ns = ...
+local ns = _G.FantasyGlassUI
+if type(ns) ~= "table" then return end
 
 ------------------------------------------------------------------------------------------
 -- Planner, batch 5 group A: find a group for a group quest (#31) (Task 2).
@@ -167,3 +168,4 @@ ns.GuideRegisterAction("step", "findGroup", "Find a group", function(step) ns.Pl
     local st = Current()
     return Allowed(st) and Qualifies(step)
 end)
+ns.FolderFileDone("planner", "PlannerGroup.lua")

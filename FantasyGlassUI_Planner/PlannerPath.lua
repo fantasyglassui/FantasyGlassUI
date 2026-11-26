@@ -1,4 +1,5 @@
-local _, ns = ...
+local ns = _G.FantasyGlassUI
+if type(ns) ~= "table" then return end
 
 ------------------------------------------------------------------------------------------
 -- Planner stops along the way: the mailbox when mail is waiting, unexplored spots near the path,
@@ -534,3 +535,4 @@ function ns.PlannerHasProfession(line)
     return false
 end
 ns.PLANNER_SKINNING_LINE = SKINNING
+ns.FolderFileDone("planner", "PlannerPath.lua")

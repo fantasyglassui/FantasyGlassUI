@@ -12,6 +12,8 @@ def sub(old, new, count=1):
     assert h.count(old) == count, (old[:60], h.count(old))
     h = h.replace(old, new)
 
+sub('''if not ns.featureGroups or not ns.configFrame then out[#out+1] = "the options did not come up after loading" end''', '''if not ns.featureGroups or not ns.configFrame then out[#out+1] = "the options did not come up after loading" end
+for name in pairs(folderFiles or {}) do LoadFolderFiles(name) end       -- (the audit: both folders' handlers are in from the start)''')
 sub("local function newmock() return setmetatable({}, mockmt) end", r"""local function newmock() return setmetatable({}, mockmt) end
 -- Protection, as the game works it out: a frame is protected if it was made so (a secure template, or one of the
 -- game's own frames here), or if a protected frame is parented to it or anchored to it, and so on up the chain.
@@ -231,7 +233,10 @@ OPT = '../FantasyGlassUI_Options/'
 toc = [l.strip() for l in open('FantasyGlassUI.toc') if l.strip().endswith('.lua')]
 opt_toc = [l.strip() for l in open(OPT + 'FantasyGlassUI_Options.toc') if l.strip().endswith('.lua')]
 run = lua.eval('function(code, ...) return load(code)(...) end')
+FOLDERS = [('planner/', '../FantasyGlassUI_Planner/', 'FantasyGlassUI_Planner'), ('gold/', '../FantasyGlassUI_Gold/', 'FantasyGlassUI_Gold')]
+folder_toc = {name: [l.strip() for l in open(d + name + '.toc') if l.strip().endswith('.lua')] for _, d, name in FOLDERS}
 sources = lua.table_from({**{f: open(f).read() for f in toc}, **{'options/' + f: open(OPT + f).read() for f in opt_toc},
+                          **{pre + f: open(d + f).read() for pre, d, name in FOLDERS for f in folder_toc[name]},
                           'locales/Locales.lua': open('../FantasyGlassUI_Locales/Locales.lua').read()})
 secret = len(sys.argv) > 1 and sys.argv[1] == 'secret'
 h = """local __t0, __n = os.clock(), 0
@@ -239,6 +244,7 @@ debug.sethook(function()
     if os.clock() - __t0 > (tonumber(os.getenv("STUCK")) or 1e9) then __n = __n + 1; print(debug.traceback("STUCK " .. __n, 2)); if __n >= 3 then os.exit(1) end; __t0 = os.clock() - (tonumber(os.getenv("STUCK")) or 0) + 2 end
 end, "", 5000000)
 """ + h
-report, nev, nh, _ = run(h, lua.table_from(toc), sources, lua.table(), secret, lua.table_from(['options/' + f for f in opt_toc]))
+folder_files = lua.table_from({name: lua.table_from([pre + f for f in folder_toc[name]]) for pre, d, name in FOLDERS})
+report, nev, nh, _ = run(h, lua.table_from(toc), sources, lua.table(), secret, lua.table_from(['options/' + f for f in opt_toc]), None, folder_files)
 print(f"events the add-on listens for: {nev}; handlers replayed in combat: {nh}")
 print(report if report else "(no protected calls in combat)")

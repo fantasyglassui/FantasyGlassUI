@@ -1,11 +1,13 @@
 # How the CurseForge packager builds the release zip from this repository (see .github/workflows/release.yml).
-# The zip holds the add-on's three folders side by side, as players install them.
+# The zip holds the add-on's folders side by side, as players install them.
 package-as: FantasyGlassUI
 
 move-folders:
   FantasyGlassUI/FantasyGlassUI: FantasyGlassUI
   FantasyGlassUI/FantasyGlassUI_Options: FantasyGlassUI_Options
   FantasyGlassUI/FantasyGlassUI_Locales: FantasyGlassUI_Locales
+  FantasyGlassUI/FantasyGlassUI_Planner: FantasyGlassUI_Planner
+  FantasyGlassUI/FantasyGlassUI_Gold: FantasyGlassUI_Gold
 
 ignore:
   - .github

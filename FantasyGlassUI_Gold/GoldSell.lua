@@ -1,5 +1,6 @@
+local ns = _G.FantasyGlassUI
+if type(ns) ~= "table" then return end
 -- Ways to make gold: Bags and selling, vendor flips (group A). Plugs into Gold.lua through ns.GoldRegister.
-local _, ns = ...
 local Secret = function(v) return ns:IsSecret(v) end
 
 ------------------------------------------------------------------------------------------
@@ -456,3 +457,4 @@ ns.GoldRegister("sell", function(ctx, add)
     ns.GoldSellIdeas(ctx, add, bags, ns.PriceItems(), BankItems())
 end)
 ns.GoldRegister("vflip", function(ctx, add) ns.GoldVendorFlipIdeas(ctx, add, ns.PriceItems()) end)
+ns.FolderFileDone("gold", "GoldSell.lua")

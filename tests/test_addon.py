@@ -34,6 +34,116 @@ def test_versions_agree():
     assert core == main, f"Core.lua says {core}, the TOC says {main}"
     assert toc_version("FantasyGlassUI_Options") == main
     assert toc_version("FantasyGlassUI_Locales") == main
+    assert toc_version("FantasyGlassUI_Planner") == main
+    assert toc_version("FantasyGlassUI_Gold") == main
+
+
+# The two load-on-demand folders (the folders plan, rulings 1-6): what their TOCs say, what is in them,
+# and what the main add-on may call in them.
+FOLDER_KEYS = {"planner": "FantasyGlassUI_Planner", "gold": "FantasyGlassUI_Gold"}
+
+
+def folders_lua():
+    return open(os.path.join(ROOT, "FantasyGlassUI", "Folders.lua"), encoding="utf-8").read()
+
+
+def folder_files(key):
+    """ns.FOLDERS[key].files, as Folders.lua lists them."""
+    text = folders_lua()
+    m = re.search(r"^\s*%s\s*=\s*\{\s*addon\s*=\s*\"(\w+)\",\s*files\s*=\s*\{(.*?)\}" % key, text, re.M | re.S)
+    assert m, f"ns.FOLDERS.{key} not found in Folders.lua"
+    assert m.group(1) == FOLDER_KEYS[key]
+    return re.findall(r'"([\w.]+\.lua)"', m.group(2))
+
+
+def toc_lines(folder):
+    return [l.rstrip("\r\n") for l in open(os.path.join(ROOT, folder, folder + ".toc"), encoding="utf-8")]
+
+
+def test_folder_tocs():
+    main = toc_version("FantasyGlassUI")
+    for key, folder in FOLDER_KEYS.items():
+        lines = toc_lines(folder)
+        meta = [l for l in lines if l.startswith("## ")]
+        want = ["## Interface: 16001", "## Author: DustyMouse", f"## Version: {main}", "## LoadOnDemand: 1",
+                "## RequiredDeps: FantasyGlassUI", "## Category: User Interface", "## X-License: All Rights Reserved",
+                "## X-Curse-Project-ID: 1798626", "## IconTexture: Interface\\AddOns\\FantasyGlassUI\\Media\\icon.tga",
+                "## OptionalDeps: Questie" if key == "planner" else "## OptionalDeps: Questie, FantasyGlassUI_Planner"]
+        for w in want:
+            assert w in meta, f"{folder}.toc lacks {w!r}"
+        names = sorted(l.split(":")[0] for l in meta)
+        assert names == sorted([w.split(":")[0] for w in want] + ["## Notes", "## Title"]), f"{folder}.toc: {names}"
+        files = [l.strip() for l in lines if l.strip().endswith(".lua")]
+        assert files == folder_files(key), f"{folder}.toc and ns.FOLDERS.{key}.files disagree"
+        for f in files:
+            assert os.path.isfile(os.path.join(ROOT, folder, f)), f"{folder}.toc lists a missing file {f}"
+        on_disk = sorted(f for f in os.listdir(os.path.join(ROOT, folder)) if f.endswith(".lua"))
+        assert on_disk == sorted(files), f"{folder}: files not in its TOC: {sorted(set(on_disk) - set(files))}"
+
+
+def test_folder_titles_neutral():
+    """Until 13.0 the add-on list names nothing: "extras 1" and "extras 2", with neutral notes (ruling 3)."""
+    titles = {}
+    for key, folder in FOLDER_KEYS.items():
+        for line in toc_lines(folder):
+            m = re.match(r"^## (Title|Notes):\s*(.*)$", line)
+            if m:
+                text = m.group(2).lower()
+                for word in ("plan", "gold", "guide", "advis"):
+                    assert word not in text, f"{folder}.toc's {m.group(1)} says {word!r}"
+                if m.group(1) == "Title":
+                    titles[key] = m.group(2)
+    assert titles == {"planner": "|cff33ccffFantasy Glass|r UI - extras 1", "gold": "|cff33ccffFantasy Glass|r UI - extras 2"}, titles
+
+
+def test_folder_files():
+    for key, folder in FOLDER_KEYS.items():
+        for f in folder_files(key):
+            lines = open(os.path.join(ROOT, folder, f), encoding="utf-8").read().rstrip("\n").split("\n")
+            assert lines[0] == "local ns = _G.FantasyGlassUI", f"{folder}/{f}: first line {lines[0]!r}"
+            assert lines[1] == "if type(ns) ~= \"table\" then return end", f"{folder}/{f}: second line {lines[1]!r}"
+            assert lines[-1] == f'ns.FolderFileDone("{key}", "{f}")', f"{folder}/{f}: last line {lines[-1]!r}"
+            assert '"PLAYER_LOGIN"' not in "\n".join(lines), f"{folder}/{f} registers PLAYER_LOGIN (use ns.FolderLate)"
+    main = os.listdir(os.path.join(ROOT, "FantasyGlassUI"))
+    left = sorted(f for f in main if f.endswith(".lua") and f.startswith("Planner")
+                  and f not in ("PlannerTravel.lua", "PlannerKills.lua", "PlannerRecorders.lua"))
+    assert not left, f"planner files left in the main add-on: {left}"
+    left = sorted(f for f in main if f.endswith(".lua") and f.startswith("Gold") and f != "GoldRecorders.lua")
+    assert not left, f"gold files left in the main add-on: {left}"
+
+
+def test_folder_seams_listed():
+    """Folders.lua's seam list holds exactly the planner and gold names the main add-on uses but does not
+    define, and each is defined in a folder file."""
+    defs = lambda text: {a or b for a, b in re.findall(r"^\s*(?:function ns[.:](\w+)|ns\.(\w+)\s*=(?!=))", text, re.M)}
+    main_dir, opt_dir = os.path.join(ROOT, "FantasyGlassUI"), os.path.join(ROOT, "FantasyGlassUI_Options")
+    main_texts = {f: open(os.path.join(main_dir, f), encoding="utf-8").read() for f in os.listdir(main_dir) if f.endswith(".lua")}
+    opt_texts = {f: open(os.path.join(opt_dir, f), encoding="utf-8").read() for f in os.listdir(opt_dir) if f.endswith(".lua")}
+    defined_main = set().union(*(defs(t) for t in main_texts.values()))
+    used = set()
+    for t in list(main_texts.values()) + list(opt_texts.values()):
+        used |= set(re.findall(r"ns[.:]((?:Planner|Gold)\w+)", t))
+    want = used - defined_main
+    block = re.search(r"^-- Folder seams \(what the main add-on calls in the folders\):\n(.*?)^-- end of folder seams$", folders_lua(), re.M | re.S)
+    assert block, "Folders.lua has no folder seam list"
+    listed = set(re.findall(r"^--\s+(\w+)\s*$", block.group(1), re.M))
+    assert listed == want, f"not listed: {sorted(want - listed)}; listed but not used: {sorted(listed - want)}"
+    defined_folders = set()
+    for key, folder in FOLDER_KEYS.items():
+        for f in folder_files(key):
+            defined_folders |= defs(open(os.path.join(ROOT, folder, f), encoding="utf-8").read())
+    assert not sorted(listed - defined_folders), f"listed but defined in no folder file: {sorted(listed - defined_folders)}"
+
+
+def test_packaging():
+    pkg = open(os.path.join(ROOT, ".pkgmeta"), encoding="utf-8").read()
+    for folder in FOLDER_KEYS.values():
+        assert re.search(r"^\s+FantasyGlassUI/%s: %s$" % (folder, folder), pkg, re.M), f".pkgmeta does not move {folder}"
+    rel = open(os.path.join(ROOT, ".github", "workflows", "release.yml"), encoding="utf-8").read()
+    loop = re.search(r"^\s*for f in (.*?); do$", rel, re.M)
+    assert loop, "release.yml has no version loop"
+    for folder in FOLDER_KEYS.values():
+        assert f"{folder}/{folder}.toc" in loop.group(1).split(), f"release.yml's version loop does not check {folder}"
 
 
 def test_readme_current():
@@ -98,11 +208,14 @@ def test_guide_seams_listed():
     assert block, "Guide.lua has no seam list"
     listed = set(re.findall(r"^--\s+(\w+)\s*$", block.group(1), re.M))
     used, wrappers, assigned, scanned = set(), [], [], []
-    for name in sorted(os.listdir(folder)):
+    paths = [os.path.join(d, n) for d in (folder, os.path.join(ROOT, "FantasyGlassUI_Planner"), os.path.join(ROOT, "FantasyGlassUI_Gold"))
+             if os.path.isdir(d) for n in sorted(os.listdir(d))]
+    for path in paths:
+        name = os.path.basename(path)
         if not (name.startswith(("Planner", "Gold")) and name.endswith(".lua")):
             continue
         scanned.append(name)
-        text = open(os.path.join(folder, name), encoding="utf-8").read()
+        text = open(path, encoding="utf-8").read()
         used |= set(re.findall(r"ns[.:](Guide\w+)", text)) | set(re.findall(r"ns\.(GUIDE_\w+)", text))
         wrappers += [f"{name}:{i}" for i, line in enumerate(text.splitlines(), 1) if "local original = ns[" in line]
         for i, line in enumerate(text.splitlines(), 1):

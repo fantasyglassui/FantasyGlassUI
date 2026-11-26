@@ -1,0 +1,27 @@
+## Interface: 16001
+## Title: |cff33ccffFantasy Glass|r UI - extras 1
+## Notes: Part of Fantasy Glass UI. The game loads it only when it is needed, so it uses no memory until then. Leave it enabled.
+## Author: DustyMouse
+## Version: 12.4.1
+## LoadOnDemand: 1
+## RequiredDeps: FantasyGlassUI
+## OptionalDeps: Questie
+## Category: User Interface
+## X-License: All Rights Reserved
+## X-Curse-Project-ID: 1798626
+## IconTexture: Interface\AddOns\FantasyGlassUI\Media\icon.tga
+
+PlannerSource.lua
+Planner.lua
+PlannerRoute.lua
+PlannerStops.lua
+PlannerPath.lua
+PlannerAdvice.lua
+PlannerMap.lua
+PlannerPages.lua
+PlannerPace.lua
+PlannerRecords.lua
+PlannerGroup.lua
+PlannerDuo.lua
+PlannerCode.lua
+PlannerIntro.lua

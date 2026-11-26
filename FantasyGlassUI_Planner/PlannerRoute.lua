@@ -1,4 +1,5 @@
-local _, ns = ...
+local ns = _G.FantasyGlassUI
+if type(ns) ~= "table" then return end
 
 ------------------------------------------------------------------------------------------
 -- Planner route: hubs, the zone to go to, and the route as guide steps; the live game as the
@@ -1350,3 +1351,4 @@ do
         if d then d.bindAt = { name = name, map = m, x = px, y = py } end
     end))
 end
+ns.FolderFileDone("planner", "PlannerRoute.lua")

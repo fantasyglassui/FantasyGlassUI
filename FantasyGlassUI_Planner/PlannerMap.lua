@@ -1,4 +1,5 @@
-local _, ns = ...
+local ns = _G.FantasyGlassUI
+if type(ns) ~= "table" then return end
 
 ------------------------------------------------------------------------------------------
 -- Planner, batch 4 group A: the route on the world map and the hubs on the map (Task 2).
@@ -394,3 +395,4 @@ ns.PlannerHook("applied", "map", function()
     ns.plannerFromHere = nil
     ns.PlannerMapRedraw()
 end)
+ns.FolderFileDone("planner", "PlannerMap.lua")

@@ -1,5 +1,6 @@
+local ns = _G.FantasyGlassUI
+if type(ns) ~= "table" then return end
 -- Ways to make gold: Monsters worth killing and dungeon drops (group B). Plugs into Gold.lua through ns.GoldRegister.
-local _, ns = ...
 
 ------------------------------------------------------------------------------------------
 -- Monsters: what each one you loot drops (for all your characters), how fast you kill (per
@@ -805,3 +806,4 @@ ns.GoldRegister("dungeon", function(ctx, add)
     if type(ctx) ~= "table" or ctx.where == "auction" then return end
     DungeonIdeas(ctx, add)
 end)
+ns.FolderFileDone("gold", "GoldFarm.lua")

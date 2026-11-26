@@ -6,12 +6,19 @@ lua = LuaRuntime(unpack_returned_tuples=True)
 chk = lua.eval('function(s) local f, e = load(s); return f ~= nil, e end')
 bad = False
 OPT = '../FantasyGlassUI_Options/'
-for p in sorted(glob.glob('*.lua')) + sorted(glob.glob(OPT + '*.lua')) + ['../FantasyGlassUI_Locales/Locales.lua']:
+# The two load-on-demand folders (the planner and the gold advisor): prefix in `sources`, folder, add-on name.
+FOLDERS = [('planner/', '../FantasyGlassUI_Planner/', 'FantasyGlassUI_Planner'), ('gold/', '../FantasyGlassUI_Gold/', 'FantasyGlassUI_Gold')]
+folder_lua = sum((sorted(glob.glob(d + '*.lua')) for _, d, _ in FOLDERS), [])
+for p in sorted(glob.glob('*.lua')) + sorted(glob.glob(OPT + '*.lua')) + folder_lua + ['../FantasyGlassUI_Locales/Locales.lua']:
     ok, err = chk(open(p).read())
     if not ok: print("SYNTAX FAIL", p, err); bad = True
-print("syntax:", "FAIL" if bad else "all %d files OK" % (len(glob.glob('*.lua')) + len(glob.glob(OPT + '*.lua')) + 1))
+print("syntax:", "FAIL" if bad else "all %d files OK" % (len(glob.glob('*.lua')) + len(glob.glob(OPT + '*.lua')) + len(folder_lua) + 1))
 opt_toc = [l.strip() for l in open(OPT + 'FantasyGlassUI_Options.toc') if l.strip().endswith('.lua')]
 assert sorted(opt_toc) == sorted(f[len(OPT):] for f in glob.glob(OPT + '*.lua')), "the options TOC and its folder disagree"
+folder_toc = {}
+for _, d, name in FOLDERS:
+    folder_toc[name] = [l.strip() for l in open(d + name + '.toc') if l.strip().endswith('.lua')]
+    assert sorted(folder_toc[name]) == sorted(f[len(d):] for f in glob.glob(d + '*.lua')), "the " + name + " TOC and its folder disagree"
 toc = [l.strip() for l in open('FantasyGlassUI.toc') if l.strip().endswith('.lua')]
 for f in toc:
     assert f in glob.glob('*.lua'), "TOC lists missing file " + f
@@ -19,7 +26,7 @@ for f in glob.glob('*.lua'):
     assert f in toc, "file not in TOC: " + f
 
 harness = r'''
-local files, sources, missing, secretMode, optionFiles, planCodes = ...
+local files, sources, missing, secretMode, optionFiles, planCodes, folderFiles = ...
 local handlers = {}
 local mockmt = {}
 local function newmock() return setmetatable({}, mockmt) end
@@ -696,8 +703,28 @@ local function LoadLocalesFolder()
     if not ok then out[#out+1] = "LOAD ERROR Locales.lua: " .. tostring(e) end
 end
 LoadLocalesFolder()                                        -- (the tests use every language; the on-demand load has a test of its own)
+-- The planner's and the gold advisor's folders: loaded once each, on request, in their TOC order, each file with
+-- a private table as in the game (they reach the add-on through _G.FantasyGlassUI).
+local folderLoads, folderLoaded = {}, {}
+local function LoadFolderFiles(name)
+    if folderLoaded[name] then return true end
+    folderLoaded[name] = true
+    folderLoads[name] = (folderLoads[name] or 0) + 1
+    for _, f in ipairs(folderFiles[name]) do
+        local fn, err = load(sources[f], "@" .. f, "t", env)
+        if not fn then error(err) end
+        local ok, e = pcall(fn, name, {})
+        if not ok then out[#out+1] = "LOAD ERROR " .. f .. ": " .. tostring(e) end
+    end
+    return true
+end
+do
+    local realLoaded = env.C_AddOns.IsAddOnLoaded
+    env.C_AddOns.IsAddOnLoaded = function(name, ...) if folderLoaded[name] then return true end return realLoaded(name, ...) end
+end
 rawset(env.C_AddOns, "LoadAddOn", function(name)
     if name == "FantasyGlassUI_Locales" then LoadLocalesFolder(); return true end
+    if folderFiles[name] then return LoadFolderFiles(name) end
     if name ~= "FantasyGlassUI_Options" or not optionsPresent then return false, "MISSING" end
     optionLoads = optionLoads + 1
     for _, f in ipairs(optionFiles) do
@@ -9354,6 +9381,175 @@ try("13.0 planner: step kinds", function()
     w.bind = "Booty Bay"; if ns.GuideStepDone(s[5], w) then error("bound elsewhere") end
     if ns.GuideParseLine("learnflight | x") ~= nil then error("learnflight needs a node number") end
 end)
+try("folders: nothing loads while locked", function()
+    local keep = { unlocked = ns.GuideUnlocked, load = rawget(env.C_AddOns, "LoadAddOn"), ctrl = env.IsControlKeyDown, state = ns.root.guideState,
+        print = ns.Print, raw = ns.PrintRaw }
+    local calls = {}
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return false end
+        rawset(env.C_AddOns, "LoadAddOn", function(name, ...) calls[name] = (calls[name] or 0) + 1; return keep.load(name, ...) end)
+        if ns.folderReady.planner or ns.folderReady.gold then error("nothing is loaded before the tests ask") end
+        if ns:LoadPlanner() or ns:LoadGold() then error("locked: no folder loads") end
+        if ns:PlannerStart() ~= nil or ns:GoldOpen() ~= nil then error("locked: the stand-ins do nothing") end
+        fireEvent("AUCTION_HOUSE_SHOW"); fireEvent("AUCTION_HOUSE_CLOSED")
+        env.IsControlKeyDown = function() return true end
+        if ns.LauncherClickExtra("LeftButton") then error("locked: Ctrl-click is the usual click") end
+        env.IsControlKeyDown = keep.ctrl
+        ns.root.guideState = { [ns:CharKey()] = { name = ns.GUIDE_PLANNED, at = 1 } }
+        fireEvent("PLAYER_LOGIN"); runTimers()
+        ns:GuideCommand("duo"); ns:GuideCommand("gold")
+        if (calls.FantasyGlassUI_Planner or 0) ~= 0 or (calls.FantasyGlassUI_Gold or 0) ~= 0 then
+            error("locked: LoadAddOn was asked for a folder: " .. tostring(calls.FantasyGlassUI_Planner) .. " " .. tostring(calls.FantasyGlassUI_Gold)) end
+        if ns.folderReady.planner or ns.folderReady.gold then error("locked: nothing is ready") end
+        -- the launcher's tooltip: the same lines as with no extra at all
+        local function Lines(extra)
+            local n = 0
+            local tip = { AddLine = function() n = n + 1 end, AddDoubleLine = function() n = n + 1 end }
+            if extra then extra(tip) end
+            return n
+        end
+        if Lines(ns.LauncherTipExtra) ~= Lines(nil) then error("locked: the launcher's tooltip has a line more") end
+    end)
+    ns.GuideUnlocked, ns.root.guideState, env.IsControlKeyDown, ns.Print, ns.PrintRaw = keep.unlocked, keep.state, keep.ctrl, keep.print, keep.raw
+    rawset(env.C_AddOns, "LoadAddOn", keep.load)
+    if not ok then error(err, 0) end
+end)
+try("folders: load for the tests", function()
+    -- (the fixture the tests after this rely on: both folders loaded, as an unlocked player has them once used)
+    local keep = { unlocked = ns.GuideUnlocked, load = rawget(env.C_AddOns, "LoadAddOn"), resting = env.IsResting, afk = env.UnitIsAFK }
+    local calls = {}
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        env.IsResting, env.UnitIsAFK = function() return false end, function() return false end   -- (the late login work reads them: out in the world)
+        rawset(env.C_AddOns, "LoadAddOn", function(name, ...) calls[name] = (calls[name] or 0) + 1; return keep.load(name, ...) end)
+        if not ns:LoadPlanner() or not ns:LoadGold() then error("unlocked: both folders load") end
+        if not (ns:LoadPlanner() and ns:LoadGold()) then error("a second ask: still ready") end
+        if ns.folderReady.planner ~= true or ns.folderReady.gold ~= true then error("both ready") end
+        if calls.FantasyGlassUI_Planner ~= 1 or calls.FantasyGlassUI_Gold ~= 1 then error("one load each: " .. tostring(calls.FantasyGlassUI_Planner) .. " " .. tostring(calls.FantasyGlassUI_Gold)) end
+        if next(ns.folderBroken) then error("nothing broken") end
+        if ns.PlannerStart == ns.folderStubs.PlannerStart or ns.GoldOpen == ns.folderStubs.GoldOpen then error("the real functions took over") end
+        if not env.C_AddOns.IsAddOnLoaded("FantasyGlassUI_Planner") then error("the game says it is loaded") end
+    end)
+    rawset(env.C_AddOns, "LoadAddOn", keep.load)
+    ns.GuideUnlocked, env.IsResting, env.UnitIsAFK = keep.unlocked, keep.resting, keep.afk
+    if ns.GuideLock then ns:GuideLock() end            -- (back to a locked player's registrations, as before the folders)
+    if not ok then error(err, 0) end
+end)
+try("folders: a folder that will not load", function()
+    local keep = { unlocked = ns.GuideUnlocked, load = rawget(env.C_AddOns, "LoadAddOn"), enable = rawget(env.C_AddOns, "EnableAddOn"),
+        combat = env.InCombatLockdown, logged = rawget(env, "IsLoggedIn"), time = env.GetTime, raw = ns.PrintRaw, errors = ns.errors }
+    local said, answer, loads, enabled, clock = {}, nil, 0, 0, 1000
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        env.GetTime = function() return clock end
+        ns.PrintRaw = function(_, t) said[#said + 1] = tostring(t) end
+        ns.errors = {}
+        local function Fresh(files)
+            ns.FOLDERS.test = { addon = "FantasyGlassUI_Test", files = files or { "A.lua", "B.lua" }, broken = "Test could not start.",
+                missing = "Test could not be opened (%s): FantasyGlassUI_Test." }
+            ns.folderReady.test, ns.folderBroken.test = nil, nil
+            said = {}
+            clock = clock + 60
+        end
+        rawset(env.C_AddOns, "LoadAddOn", function(name)
+            if name ~= "FantasyGlassUI_Test" then return keep.load(name) end
+            loads = loads + 1
+            return answer(loads)
+        end)
+        rawset(env.C_AddOns, "EnableAddOn", function(name) if name == "FantasyGlassUI_Test" then enabled = enabled + 1 end end)
+        -- missing
+        Fresh(); loads = 0
+        answer = function() return false, "MISSING" end
+        if ns:LoadFolder("test") then error("missing: not loaded") end
+        if #said ~= 1 or not said[1]:find("FantasyGlassUI_Test", 1, true) or not said[1]:find("MISSING", 1, true) then error("missing: one message naming the folder: " .. tostring(said[1])) end
+        clock = clock + 5
+        ns:LoadFolder("test")
+        if #said ~= 1 then error("a second try within 10 s is silent") end
+        -- disabled: switched on, then loaded
+        Fresh(); loads, enabled = 0, 0
+        answer = function(n) if n == 1 then return false, "DISABLED" end ns.FolderFileDone("test", "A.lua"); ns.FolderFileDone("test", "B.lua"); return true end
+        if not ns:LoadFolder("test") or enabled ~= 1 or loads ~= 2 or ns.folderReady.test ~= true then error("disabled: switched on and loaded") end
+        -- one file stopped part way
+        Fresh({ "A.lua", "C.lua" }); loads = 0
+        answer = function() ns.FolderFileDone("test", "A.lua"); return true end
+        if ns:LoadFolder("test") or ns.folderReady.test then error("a file that stopped: not ready") end
+        local b = ns.folderBroken.test
+        if type(b) ~= "table" or #b ~= 1 or b[1] ~= "C.lua" then error("folderBroken names the file") end
+        if #ns.errors ~= 1 or ns.errors[1] ~= "Folder test: C.lua did not load" then error("one line for /fgui check: " .. tostring(ns.errors[1])) end
+        if #said ~= 1 or not said[1]:find("Test could not start.", 1, true) then error("the stand-in's message: " .. tostring(said[1])) end
+        loads = 0
+        if ns:LoadFolder("test") or loads ~= 0 then error("broken: not loaded again") end
+        -- in a fight
+        Fresh(); loads = 0
+        answer = function() return true end
+        env.InCombatLockdown = function() return true end
+        if ns:LoadFolder("test") or loads ~= 0 then error("in a fight: nothing loads") end
+        if #said ~= 1 or said[1] ~= ns:Tr("Not during a fight.") then error("in a fight: says so: " .. tostring(said[1])) end
+        said = {}
+        ns:LoadFolder("test", true)
+        if #said ~= 0 then error("an automatic load says nothing") end
+        env.InCombatLockdown = keep.combat
+        -- before the login
+        rawset(env, "IsLoggedIn", function() return false end)
+        if ns:LoadFolder("test") or loads ~= 0 then error("before the login: nothing loads") end
+    end)
+    ns.FOLDERS.test, ns.folderReady.test, ns.folderBroken.test = nil, nil, nil
+    ns.GuideUnlocked, env.InCombatLockdown, env.GetTime, ns.PrintRaw, ns.errors = keep.unlocked, keep.combat, keep.time, keep.raw, keep.errors
+    rawset(env.C_AddOns, "LoadAddOn", keep.load); rawset(env.C_AddOns, "EnableAddOn", keep.enable); rawset(env, "IsLoggedIn", keep.logged)
+    if not ok then error(err, 0) end
+end)
+try("folders: following the plan loads the planner at login", function()
+    local keep = { unlocked = ns.GuideUnlocked, load = ns.LoadFolder, replan = ns.PlannerReplan, state = ns.root.guideState, on = ns.db.questGuide }
+    local asked, replans = {}, {}
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        ns.db.questGuide = true
+        ns.LoadFolder = function(self, key, quiet) asked[#asked + 1] = { key, quiet }; return keep.load(self, key, quiet) end
+        ns.PlannerReplan = function(_, why) replans[#replans + 1] = why; return true end
+        ns.root.guideState = { [ns:CharKey()] = { name = ns.GUIDE_PLANNED, at = 1 } }
+        fireEvent("PLAYER_LOGIN")
+        local n = 0
+        for _, a in ipairs(asked) do if a[1] == "planner" then n = n + 1; if a[2] ~= true then error("the login load is quiet") end end end
+        if n ~= 1 then error("following the plan: the planner loads once at login: " .. n) end
+        local found = false
+        for _, w in ipairs(replans) do if w == "loading screen" then found = true end end
+        if not found then error("and replans for the loading screen") end
+        asked = {}
+        ns.root.guideState = { [ns:CharKey()] = { name = "My route", at = 1 } }
+        fireEvent("PLAYER_LOGIN")
+        for _, a in ipairs(asked) do if a[1] == "planner" then error("a written guide: the planner is not asked for") end end
+    end)
+    ns.GuideUnlocked, ns.LoadFolder, ns.PlannerReplan, ns.root.guideState, ns.db.questGuide = keep.unlocked, keep.load, keep.replan, keep.state, keep.on
+    if not ok then error(err, 0) end
+end)
+try("folders: late login work", function()
+    local keep = { unlocked = ns.GuideUnlocked, load = rawget(env.C_AddOns, "LoadAddOn"), errors = ns.errors }
+    local ran = {}
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        ns.errors = {}
+        ns.FOLDERS.test = { addon = "FantasyGlassUI_Test", files = { "A.lua" } }
+        ns.folderReady.test, ns.folderBroken.test = nil, nil
+        rawset(env.C_AddOns, "LoadAddOn", function(name)
+            if name ~= "FantasyGlassUI_Test" then return keep.load(name) end
+            ns.FolderLate("test", "first", function() ran[#ran + 1] = "first" end)
+            ns.FolderLate("test", "bad", function() error("broken late work") end)
+            ns.FolderLate("test", "third", function() ran[#ran + 1] = "third" end)
+            ns.FolderFileDone("test", "A.lua")
+            if #ran ~= 0 then error("not before the load is done") end
+            return true
+        end)
+        if not ns:LoadFolder("test") then error("loaded") end
+        if table.concat(ran, ",") ~= "first,third" then error("each late function once, after the load: " .. table.concat(ran, ",")) end
+        if #ns.errors ~= 1 or not ns.errors[1]:find("broken late work", 1, true) then error("one that errors is noted: " .. tostring(ns.errors[1])) end
+        ns:LoadFolder("test")
+        if #ran ~= 2 then error("once only") end
+    end)
+    ns.FOLDERS.test, ns.folderReady.test, ns.folderBroken.test = nil, nil, nil
+    ns.GuideUnlocked, ns.errors = keep.unlocked, keep.errors
+    rawset(env.C_AddOns, "LoadAddOn", keep.load)
+    if not ok then error(err, 0) end
+end)
 try("13.0 planner: reading Questie", function()
     local realLoaded, realMeta, realQ, realLoader = env.C_AddOns.IsAddOnLoaded, rawget(env.C_AddOns, "GetAddOnMetadata"), rawget(env, "Questie"), rawget(env, "QuestieLoader")
     local loaded, meta, ready = true, "4", nil
@@ -15450,10 +15646,10 @@ try("13.5 together: seams", function()
 
         -- the three new files are in the TOC, after PlannerRecords.lua, and empty until their groups fill them
         local pos = {}
-        for i, f in ipairs(files) do pos[f] = i end
+        for i, f in ipairs(folderFiles.FantasyGlassUI_Planner) do pos[f:gsub("^planner/", "")] = i end   -- (in the planner's folder now)
         if not (pos["PlannerRecords.lua"] and pos["PlannerGroup.lua"] == pos["PlannerRecords.lua"] + 1 and pos["PlannerDuo.lua"] == pos["PlannerRecords.lua"] + 2
                 and pos["PlannerCode.lua"] == pos["PlannerRecords.lua"] + 3) then error("the three new files, in order, after PlannerRecords.lua") end
-        if not (sources["PlannerDuo.lua"] or ""):find("PLANNER_DUO_PREFIX", 1, true) and ns.PLANNER_DUO_PREFIX ~= nil then error("nothing in the new files yet") end
+        if not (sources["planner/PlannerDuo.lua"] or ""):find("PLANNER_DUO_PREFIX", 1, true) and ns.PLANNER_DUO_PREFIX ~= nil then error("nothing in the new files yet") end
         -- the fences: Core.lua's settings regions
         for _, g in ipairs({ "A (group)", "B (duo)", "C (code)" }) do
             local core = sources["Core.lua"] or ""
@@ -18968,7 +19164,7 @@ try("13.6 leftovers A: quest times without away and town", function()
         if avg(9655) then error("over 2 hours since accepting: no sample") end
         -- logged in at an inn: away from the start; out of town at 200, handed in at 500: 300 s
         base = 750000; at(0)
-        resting = true; fireEvent("PLAYER_LOGIN")
+        resting = true; fireEvent("PLAYER_UPDATE_RESTING")      -- (the login's read is the folder's late work now: the same ReadAway)
         if not ns.PlannerQuestClock().away then error("logged in at an inn: in town") end
         fireEvent("QUEST_ACCEPTED", 1, 9656)
         at(200); setRest(false)
@@ -24185,16 +24381,18 @@ return (#uniq == 0 and "no errors" or table.concat(uniq, "\n")), (#puniq == 0 an
 run = lua.eval('function(code, ...) return load(code)(...) end')
 for secret in (False, True):
     sources = lua.table_from({**{f: open(f).read() for f in toc}, **{'options/' + f: open(OPT + f).read() for f in opt_toc},
+                              **{pre + f: open(d + f).read() for pre, d, name in FOLDERS for f in folder_toc[name]},
                               'locales/Locales.lua': open('../FantasyGlassUI_Locales/Locales.lua').read()})
     missing = lua.table()
     plan_codes = open(ROOT + 'tests/plan_codes.txt').read() if _os.path.exists(ROOT + 'tests/plan_codes.txt') else ""
-    errs, warns, nh, nm = run(harness, lua.table_from(toc), sources, missing, secret, lua.table_from(['options/' + f for f in opt_toc]), plan_codes)
+    folder_files = lua.table_from({name: lua.table_from([pre + f for f in folder_toc[name]]) for pre, d, name in FOLDERS})
+    errs, warns, nh, nm = run(harness, lua.table_from(toc), sources, missing, secret, lua.table_from(['options/' + f for f in opt_toc]), plan_codes, folder_files)
     print(f"\n=== combat values {'SECRET' if secret else 'readable'}: {nm} modules, {nh} scripts/hooks fired ===")
     # A name the add-on declares as a file-level local, read as a global: used above its declaration
     # (in the game that is nil and an error; the harness would quietly hand back a stand-in).
     import re as _re
     declared = set()
-    for f in toc + ['../FantasyGlassUI_Options/' + o for o in opt_toc]:
+    for f in toc + ['../FantasyGlassUI_Options/' + o for o in opt_toc] + [d + f for _, d, name in FOLDERS for f in folder_toc[name]]:
         for m in _re.finditer(r'^local\s+(?:function\s+)?([A-Za-z_][A-Za-z0-9_]*(?:\s*,\s*[A-Za-z_][A-Za-z0-9_]*)*)', open(f).read(), _re.M):
             for n in m.group(1).split(','): declared.add(n.strip())
     early = sorted(k for k in missing.keys() if isinstance(k, str) and k in declared and k[0].islower())

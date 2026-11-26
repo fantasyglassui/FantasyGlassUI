@@ -1,4 +1,5 @@
-local _, ns = ...
+local ns = _G.FantasyGlassUI
+if type(ns) ~= "table" then return end
 
 ------------------------------------------------------------------------------------------
 -- The planner's first-time tour: four short pages on what the route planner does, shown once for the
@@ -158,3 +159,4 @@ function ns:PlannerIntroWindow() return win end
 if ns.GuideRegisterLock then
     ns.GuideRegisterLock("intro", function(unlocked) if not unlocked and win then win:Hide() end end)
 end
+ns.FolderFileDone("planner", "PlannerIntro.lua")

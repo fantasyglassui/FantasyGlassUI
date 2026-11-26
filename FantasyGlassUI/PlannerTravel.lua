@@ -384,7 +384,7 @@ function ns.PlannerTravel(from, to, ctx)
     local best, legs = Local(from, to, ctx, ctx.hearth)
     local cross = Account("plannerCrossTimes")
     for _, c in ipairs(ctx.crossings or {}) do
-        ns.PlannerYield()                                -- (nothing on the main thread: the arrow asks here too)
+        if ns.PlannerYield then ns.PlannerYield() end    -- (nothing on the main thread: the arrow asks here too; the planner's folder may not be loaded)
         if c.faction == nil or c.faction == ctx.faction then
             local secs = cross and tonumber(cross[c.id]) or c.seconds or 270
             for dir = 1, 2 do

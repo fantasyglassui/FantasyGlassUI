@@ -1,4 +1,5 @@
-local _, ns = ...
+local ns = _G.FantasyGlassUI
+if type(ns) ~= "table" then return end
 local Secret = function(v) return ns:IsSecret(v) end
 
 ------------------------------------------------------------------------------------------
@@ -1134,54 +1135,4 @@ function ns.GoldWindowLines()
     return { now = d.now, ranked = d.ranked, preset = d.preset, goal = d.goal, bar = d.bar, goalName = d.goalName, more = d.more, auction = panel.drawn }
 end
 
-------------------------------------------------------------------------------------------
--- entry points (stay in the main add-on when the folder moves)
--- Each does nothing while the guide is locked: the launcher's tooltip line and Ctrl-click, the guide
--- panel's "..." entry, /fgui guide gold, and the auction house panel.
-------------------------------------------------------------------------------------------
-do
-    local prevTip, prevClick = ns.LauncherTipExtra, ns.LauncherClickExtra
-    function ns.LauncherTipExtra(tooltip)
-        if prevTip then prevTip(tooltip) end
-        if Unlocked() and type(tooltip) == "table" and tooltip.AddLine then tooltip:AddLine(ns:Tr("Ctrl-click: ways to make gold"), 1, 1, 1) end
-    end
-    function ns.LauncherClickExtra(button)
-        if prevClick and prevClick(button) then return true end
-        if not Unlocked() then return false end
-        if not (IsControlKeyDown and ns.Yes(IsControlKeyDown())) then return false end
-        ns:GoldOpen()
-        return true
-    end
-
-    -- the guide's registries (Guide.lua's seams; no wrapper): a "..." panel entry, /fgui guide gold, and the lock
-    if ns.GuideRegisterAction then
-        ns.GuideRegisterAction("panel", "gold", "Ways to make gold", function() ns:GoldOpen() end, function() return Unlocked() end)
-    end
-    if ns.GuideRegisterCommand then ns.GuideRegisterCommand("gold", function() ns:GoldOpen(); return true end) end
-    if ns.GuideRegisterLock then
-        ns.GuideRegisterLock("gold", function(unlocked)            -- (locked again: the window and the auction-house panel hide at once)
-            if not unlocked and type(ns.GoldLockedNow) == "function" then ns.GoldLockedNow() end
-        end)
-    end
-
-    local ev = CreateFrame("Frame")
-    pcall(ev.RegisterEvent, ev, "AUCTION_HOUSE_SHOW")
-    pcall(ev.RegisterEvent, ev, "AUCTION_HOUSE_CLOSED")
-    -- (a plain handler: while locked it returns at once, so nothing named Gold is timed by /fgui perf)
-    local guarded
-    ev:SetScript("OnEvent", function(_, event)
-        if event ~= "AUCTION_HOUSE_SHOW" and event ~= "AUCTION_HOUSE_CLOSED" then return end
-        -- (only ns.goldPanel and plain frame calls here: this block stays in the main add-on when the folder moves)
-        local p = ns.goldPanel
-        if not Unlocked() then
-            if type(p) == "table" and event == "AUCTION_HOUSE_CLOSED" then p.suiGoldOn = false; p:Hide() end
-            return
-        end
-        guarded = guarded or ns:Guard("Gold", function(e)
-            local panelNow = ns.goldPanel
-            if e == "AUCTION_HOUSE_SHOW" then ns:GoldAuctionShow()
-            elseif type(panelNow) == "table" then panelNow.suiGoldOn = false; panelNow:Hide() end
-        end)
-        guarded(event)
-    end)
-end
+ns.FolderFileDone("gold", "Gold.lua")

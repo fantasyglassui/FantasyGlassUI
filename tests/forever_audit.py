@@ -43,7 +43,7 @@ NOT_THE_GAMES = {
 }
 LAYERS = {"BACKGROUND", "BORDER", "ARTWORK", "OVERLAY", "HIGHLIGHT"}
 
-FOLDERS = ["FantasyGlassUI", "FantasyGlassUI_Options", "FantasyGlassUI_Locales"]
+FOLDERS = ["FantasyGlassUI", "FantasyGlassUI_Options", "FantasyGlassUI_Locales", "FantasyGlassUI_Planner", "FantasyGlassUI_Gold"]
 files = sorted(f for d in FOLDERS for f in glob.glob(ROOT + d + "/**/*.lua", recursive=True))
 src = {f: open(f, encoding="utf-8").read() for f in files}
 
@@ -169,7 +169,7 @@ for f in files:
     own_methods |= set(re.findall(r"(?:^|[\s{,])(\w+)\s*=\s*[\w.]+\s*[,}\n]", code[f], re.M))
 LIBRARY_METHODS = {"NewDataObject", "DataObjectIterator"}       # LibDataBroker's, when that add-on is there (anywhere in the add-on)
 FILE_METHODS = {                                                # other add-ons' methods, allowed only in the file that reads that add-on
-    "FantasyGlassUI/PlannerSource.lua": {"GetQuestLogRewardXP", "GetUiMapIdByAreaId"},   # Questie's modules (QuestXP, ZoneDB)
+    "FantasyGlassUI_Planner/PlannerSource.lua": {"GetQuestLogRewardXP", "GetUiMapIdByAreaId"},   # Questie's modules (QuestXP, ZoneDB)
 }
 LUA_STRING = set("byte char find format gmatch gsub len lower match rep reverse sub upper".split())   # ("text":lower() and the like)
 for f in files:

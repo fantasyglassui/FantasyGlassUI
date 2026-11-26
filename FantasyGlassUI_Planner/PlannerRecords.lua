@@ -1,4 +1,5 @@
-local _, ns = ...
+local ns = _G.FantasyGlassUI
+if type(ns) ~= "table" then return end
 
 ------------------------------------------------------------------------------------------
 -- Planner, batch 4 group D: level times, race your best, where you left off, save as guide, read aloud (Tasks 7 and 8).
@@ -297,12 +298,11 @@ end)
 ------------------------------------------------------------------------------------------
 do
     local ev = CreateFrame("Frame")
-    for _, e in ipairs({ "PLAYER_LEVEL_UP", "PLAYER_ENTERING_WORLD", "PLAYER_LOGIN" }) do pcall(ev.RegisterEvent, ev, e) end
+    for _, e in ipairs({ "PLAYER_LEVEL_UP", "PLAYER_ENTERING_WORLD" }) do pcall(ev.RegisterEvent, ev, e) end
+    ns.FolderLate("planner", "keyFrames", function() if Unlocked() then ns.PlannerKeyFrames() end end)   -- (what the login did: the folder loads later)
     ev:SetScript("OnEvent", ns:Guard("Planner records", function(_, event, a)
         if not Unlocked() then return end
-        if event == "PLAYER_LOGIN" then
-            ns.PlannerKeyFrames()
-        elseif event == "PLAYER_LEVEL_UP" then
+        if event == "PLAYER_LEVEL_UP" then
             if type(a) == "number" and a > 1 then ns.PlannerRecordLevel(a - 1) end
         elseif event == "PLAYER_ENTERING_WORLD" and a == true then       -- (an initial login: not a reload, not a loading screen)
             -- said from the first plan made after the login (the saved one is replaced a moment later), or from the
@@ -328,3 +328,4 @@ do
         end
     end))
 end
+ns.FolderFileDone("planner", "PlannerRecords.lua")

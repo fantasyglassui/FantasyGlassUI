@@ -1,4 +1,5 @@
-local _, ns = ...
+local ns = _G.FantasyGlassUI
+if type(ns) ~= "table" then return end
 
 ------------------------------------------------------------------------------------------
 -- Planner, batch 4 group B: time to level, "Why this?", the preview page and finish the zone (Tasks 3 and 4).
@@ -321,3 +322,4 @@ ns.GuideRegisterLine("zoneGoal", function(st)
     if type(zg) ~= "table" or not (tonumber(zg.done) and tonumber(zg.total)) then return nil end
     return format(ns:Tr("Zone: %d of %d quests"), zg.done, zg.total)
 end)
+ns.FolderFileDone("planner", "PlannerPages.lua")

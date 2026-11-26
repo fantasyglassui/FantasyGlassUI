@@ -1,4 +1,5 @@
-local _, ns = ...
+local ns = _G.FantasyGlassUI
+if type(ns) ~= "table" then return end
 
 ------------------------------------------------------------------------------------------
 -- Advice around the plan: the best reward at a hand-in, quests worth dropping from a full log,
@@ -399,3 +400,4 @@ do
         pcall(_G.GameMenuFrame.HookScript, _G.GameMenuFrame, "OnShow", ns:Guard("Planner inn", function() ns.PlannerInnSuggest() end))
     end
 end
+ns.FolderFileDone("planner", "PlannerAdvice.lua")

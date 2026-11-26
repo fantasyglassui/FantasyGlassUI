@@ -1,4 +1,5 @@
-local _, ns = ...
+local ns = _G.FantasyGlassUI
+if type(ns) ~= "table" then return end
 
 ------------------------------------------------------------------------------------------
 -- Planner: what a quest is worth (experience with kills, time, learned pace), and which quests
@@ -1269,9 +1270,10 @@ do
     for _, e in ipairs({ "QUEST_ACCEPTED", "QUEST_TURNED_IN", "QUEST_REMOVED", "PLAYER_LEVEL_UP", "HEARTHSTONE_BOUND",
                          "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED",
                          "TRAINER_SHOW", "TRAINER_CLOSED", "MERCHANT_CLOSED", "MAIL_CLOSED", "PLAYER_MOUNT_DISPLAY_CHANGED", "PLAYER_DEAD",
-                         "PLAYER_FLAGS_CHANGED", "PLAYER_UPDATE_RESTING", "PLAYER_LOGIN" }) do pcall(ev.RegisterEvent, ev, e) end
+                         "PLAYER_FLAGS_CHANGED", "PLAYER_UPDATE_RESTING" }) do pcall(ev.RegisterEvent, ev, e) end
+    ns.FolderLate("planner", "questclock", function() if ns:GuideUnlocked() then ReadAway() end end)   -- (what the login did: the folder loads later)
     ev:SetScript("OnEvent", ns:Guard("Planner", function(_, event, a, b)
-        if event == "PLAYER_FLAGS_CHANGED" or event == "PLAYER_UPDATE_RESTING" or event == "PLAYER_LOGIN" then   -- (away or in town: the quest clock stops)
+        if event == "PLAYER_FLAGS_CHANGED" or event == "PLAYER_UPDATE_RESTING" then   -- (away or in town: the quest clock stops)
             if (event == "PLAYER_FLAGS_CHANGED" and a ~= "player") or not ns:GuideUnlocked() then return end
             ReadAway()
             return
@@ -1430,3 +1432,4 @@ do
         end
     end))
 end
+ns.FolderFileDone("planner", "Planner.lua")

@@ -1,5 +1,6 @@
+local ns = _G.FantasyGlassUI
+if type(ns) ~= "table" then return end
 -- Ways to make gold: Gathering (group C). Plugs into Gold.lua through ns.GoldRegister.
-local _, ns = ...
 
 ------------------------------------------------------------------------------------------
 -- Gathering: the herb and ore nodes you have gathered (one memory with the planner's shape), what
@@ -539,3 +540,4 @@ local function Skills()
 end
 
 ns.GoldRegister("gather", function(ctx, add) ns.GoldGatherIdeas(ctx, add, Skills()) end)
+ns.FolderFileDone("gold", "GoldGather.lua")

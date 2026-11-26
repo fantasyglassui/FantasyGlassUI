@@ -1,4 +1,5 @@
-local _, ns = ...
+local ns = _G.FantasyGlassUI
+if type(ns) ~= "table" then return end
 
 ------------------------------------------------------------------------------------------
 -- Planner, batch 4 group C: the time you have, break reminders, catch me up, speed or story (Tasks 5 and 6).
@@ -344,12 +345,11 @@ end
 -- Events: a login (never a reload) after 14 days or more away; the clock kept every minute and at logout.
 do
     local ev = CreateFrame("Frame")
-    pcall(ev.RegisterEvent, ev, "PLAYER_LOGIN")
+    ns.FolderLate("planner", "paceSync", function() Sync() end)   -- (what the login did: the folder loads later)
     pcall(ev.RegisterEvent, ev, "PLAYER_ENTERING_WORLD")
     pcall(ev.RegisterEvent, ev, "PLAYER_LOGOUT")
     ev:SetScript("OnEvent", ns:Guard("Planner pace", function(_, event, isInitial)
         if event == "PLAYER_LOGOUT" then ns.PlannerSeenSave(); return end
-        if event == "PLAYER_LOGIN" then Sync(); return end        -- (what is registered: the panel's entries, and the hooks of a limit or a style in use)
         if event ~= "PLAYER_ENTERING_WORLD" then return end
         inWorld = true
         if not (type(ns.root) == "table" and Unlocked()) then return end
@@ -642,3 +642,4 @@ ns.GuideRegisterLock("pace", function(unlocked)
         ns.PlannerSeenSave()
     end
 end)
+ns.FolderFileDone("planner", "PlannerPace.lua")

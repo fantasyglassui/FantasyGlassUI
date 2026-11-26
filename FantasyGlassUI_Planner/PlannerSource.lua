@@ -1,4 +1,5 @@
-local _, ns = ...
+local ns = _G.FantasyGlassUI
+if type(ns) ~= "table" then return end
 
 ------------------------------------------------------------------------------------------
 -- Planner source: where the route planner learns which quests exist. Questie (when it is loaded,
@@ -1089,3 +1090,4 @@ do
         ns.PlannerRecordTimed(id)
     end))
 end
+ns.FolderFileDone("planner", "PlannerSource.lua")

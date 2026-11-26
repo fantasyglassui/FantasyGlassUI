@@ -315,6 +315,7 @@ read_globals = {
     "IsInGuild",
     "IsInInstance",
     "IsInRaid",
+    "IsLoggedIn",
     "IsModifiedClick",
     "IsMounted",
     "IsMouselooking",

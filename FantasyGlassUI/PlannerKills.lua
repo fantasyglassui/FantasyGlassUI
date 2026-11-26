@@ -45,7 +45,7 @@ function ns.PlannerRecordKill(sample)
         if gap and gap > 0 and gap <= ns.PLANNER_KILL_GAP then
             -- (kills at the same moment, a pull that died together, add no gap: no median of 0, and the
             -- rate stays on the low side for those who kill many at once)
-            local rec = ns.PlannerCharRecord(true)
+            local rec = ns.PlannerCharRecord and ns.PlannerCharRecord(true)   -- (the planner's folder: not loaded, nothing kept)
             if rec then
                 if type(rec.killGaps) ~= "table" then rec.killGaps = {} end
                 local gaps = rec.killGaps
@@ -58,11 +58,11 @@ function ns.PlannerRecordKill(sample)
     end
     local xp, level, mob = tonumber(sample.xp), tonumber(sample.level), tonumber(sample.mobLevel)
     if not (xp and level and mob) then return end
-    local f = ns.PlannerKillXP(level, mob, sample.elite)
+    local f = ns.PlannerKillXP and ns.PlannerKillXP(level, mob, sample.elite)   -- (the planner's folder: not loaded, nothing kept)
     if not f or f <= 0 then return end                  -- (a gray monster gives nothing to compare)
     local s = xp / f
     if s < RATIO_LOW or s > RATIO_HIGH then return end  -- (not this kill's experience)
-    local rec = ns.PlannerCharRecord(true)
+    local rec = ns.PlannerCharRecord and ns.PlannerCharRecord(true)
     if not rec then return end
     if type(rec.killXP) ~= "table" then rec.killXP = {} end
     local d = Diff(mob - level)

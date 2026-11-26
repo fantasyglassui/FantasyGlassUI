@@ -1,4 +1,5 @@
-local _, ns = ...
+local ns = _G.FantasyGlassUI
+if type(ns) ~= "table" then return end
 
 ------------------------------------------------------------------------------------------
 -- Planner, batch 5 group B: plan with a friend, the duo (#35) (Tasks 3 and 4).
@@ -876,7 +877,8 @@ end
 
 do
     local ev = CreateFrame("Frame")
-    for _, e in ipairs({ "PLAYER_LOGIN", "PLAYER_REGEN_ENABLED" }) do pcall(ev.RegisterEvent, ev, e) end
+    pcall(ev.RegisterEvent, ev, "PLAYER_REGEN_ENABLED")
+    ns.FolderLate("planner", "duoPrefix", function() ns.PlannerDuoRegister() end)   -- (what the login did: the folder loads later)
     local listening = false
     Listen = function(on)                                -- (a locked player does not even hear add-on messages)
         on = on and true or false
@@ -886,7 +888,6 @@ do
     end
     ns.PlannerDuoListening = function() return listening end
     local OnEvent = ns:Guard("Planner duo", function(_, event, prefix, msg, channel, sender)
-        if event == "PLAYER_LOGIN" then ns.PlannerDuoRegister(); return end
         if event == "PLAYER_REGEN_ENABLED" then                      -- (a plan that came in a fight: followed now)
             if ns:GuideUnlocked() and ns.PlannerDuoAfterFight then ns.PlannerDuoAfterFight() end
             return
@@ -930,3 +931,4 @@ ns.GuideRegisterCommand("duo", function(rest)
     end
     return ns:PlannerDuoStart(rest ~= "" and rest or nil)
 end)
+ns.FolderFileDone("planner", "PlannerDuo.lua")

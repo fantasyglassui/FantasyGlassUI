@@ -1,5 +1,6 @@
+local ns = _G.FantasyGlassUI
+if type(ns) ~= "table" then return end
 -- Ways to make gold: Crafting for profit and auction flipping (group D). Plugs into Gold.lua through ns.GoldRegister.
-local _, ns = ...
 local Secret = function(v) return ns:IsSecret(v) end
 local floor, max, min, huge = math.floor, math.max, math.min, math.huge
 
@@ -455,3 +456,4 @@ ns.GoldRegister("auction", function(ctx, add)
     if type(ctx) ~= "table" or ctx.where ~= "auction" then return end    -- (only at the auction house: nowhere else shows flips)
     ns.GoldFlipIdeas(ctx, add, ns.PriceItems(), type(ctx) == "table" and ctx.today or nil)
 end)
+ns.FolderFileDone("gold", "GoldCraft.lua")

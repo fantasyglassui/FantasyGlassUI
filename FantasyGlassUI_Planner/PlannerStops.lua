@@ -1,4 +1,5 @@
-local _, ns = ...
+local ns = _G.FantasyGlassUI
+if type(ns) ~= "table" then return end
 
 ------------------------------------------------------------------------------------------
 -- Planner stops: things worth doing on the way (your class trainer, a vendor, the mailbox...).
@@ -984,3 +985,4 @@ ns.PlannerRegisterStop({
     text = function(place) return string.format(ns:Tr("Buy your mount at %s"), place.name or "") end,
     key = function() return "mount" end,
 })
+ns.FolderFileDone("planner", "PlannerStops.lua")

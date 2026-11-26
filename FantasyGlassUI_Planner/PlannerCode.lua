@@ -1,4 +1,5 @@
-local _, ns = ...
+local ns = _G.FantasyGlassUI
+if type(ns) ~= "table" then return end
 
 ------------------------------------------------------------------------------------------
 -- Planner, batch 5 group C: the plan code for the website's plan page (#44) (Tasks 5 and 6).
@@ -150,3 +151,4 @@ end
 
 ns.GuideRegisterAction("panel", "sharePlan", "Share plan", function() ns:PlannerSharePlan() end, ns.PlannerCodeFollowing)
 ns.GuideRegisterCommand("share", function() ns:PlannerSharePlan() end)
+ns.FolderFileDone("planner", "PlannerCode.lua")
