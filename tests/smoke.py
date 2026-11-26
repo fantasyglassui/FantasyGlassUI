@@ -14545,7 +14545,7 @@ try("13.4 feel B: time to level, why this, preview", function()
         ns.PlannerRoute = fullRoute
         ns:PlannerReplan("again")
         runIt()
-        -- Close hides it; Plan again hides it and plans again; Change what it plans hides it and opens the Guide tab
+        -- Close hides it; Plan again hides it and plans again; Change what it plans hides it and opens the planner window
         ns.ShowList = function(self, key, title, l, ...) window = saved.show(self, key, title, l, ...); shown[#shown + 1] = { key = key, lines = l }; return window end
         ns:PlannerPreview()
         local pl = shown[#shown].lines
@@ -14556,15 +14556,16 @@ try("13.4 feel B: time to level, why this, preview", function()
         follow.click()
         if hid ~= 1 then error("Close hides the page") end
         local opened
-        local realToggle, realAgain = ns.ToggleConfig, ns.GuidePlanAgain
+        local realToggle, realAgain, realOpen = ns.ToggleConfig, ns.GuidePlanAgain, ns.PlannerOpen
         local planned = false
         ns.ToggleConfig = function(_, tab) opened = tab end
+        ns.PlannerOpen = function() opened = "planner" end
         ns.GuidePlanAgain = function() planned = true end
         again.click()
         if hid ~= 2 or not planned or opened then error("Plan again hides it and plans again") end
         change.click()
-        ns.ToggleConfig, ns.GuidePlanAgain = realToggle, realAgain
-        if hid ~= 3 or opened ~= "guide" then error("Change what it plans hides it and opens the Guide tab: " .. tostring(opened)) end
+        ns.ToggleConfig, ns.GuidePlanAgain, ns.PlannerOpen = realToggle, realAgain, realOpen
+        if hid ~= 3 or opened ~= "planner" then error("Change what it plans hides it and opens the planner window: " .. tostring(opened)) end
         rawset(window, "Hide", nil)
     end)
     ns.ShowList = saved.show
