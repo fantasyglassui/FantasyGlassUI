@@ -51,9 +51,10 @@ end
 -- and whether the item is new to the store.
 function ns.GoldVendorNote(id, info, today)
     if Num(id) == nil or type(info) ~= "table" then return false end
-    local price, stack, avail, ext = info.price, info.stackCount, info.numAvailable, info.extendedCost
-    if Secret(price) or Secret(stack) or Secret(avail) or Secret(ext) then return false end
-    if ext then return false end                                  -- (tokens or honour: no copper price)
+    local price, stack, avail = info.price, info.stackCount, info.numAvailable
+    local ext, hasExt = info.extendedCost, info.hasExtendedCost   -- (either spelling: the dump does not name the fields)
+    if Secret(price) or Secret(stack) or Secret(avail) or Secret(ext) or Secret(hasExt) then return false end
+    if ext or hasExt then return false end                        -- (tokens or honour: no copper price)
     price, stack, avail = Num(price), Num(stack), Num(avail)
     if not price or price <= 0 then return false end
     stack = max(1, floor(stack or 1))
@@ -100,6 +101,22 @@ local function Trim()
     end
 end
 
+-- Does this slot cost anything besides copper (tokens, honour, items)?
+local function CostsMore(i)
+    if type(GetMerchantItemCostInfo) ~= "function" then return false end
+    local ok, n = pcall(GetMerchantItemCostInfo, i)
+    if not ok then return false end
+    n = Num(n)
+    return n ~= nil and n > 0
+end
+
+local function InFight()
+    local ok, v = pcall(InCombatLockdown)
+    return ok and ns.Yes(v)
+end
+
+-- One merchant's list, as a job (a slot a step; jobs never run in a fight).
+local again = false
 local function Record()
     ns.goldVendorPasses = (ns.goldVendorPasses or 0) + 1
     local M = C_MerchantFrame
@@ -110,17 +127,27 @@ local function Record()
     for i = 1, min(n, 500) do
         local okId, id = pcall(GetMerchantItemID, i)
         local okInfo, info = pcall(M.GetItemInfo, i)
-        if okId and okInfo then
+        if okId and okInfo and not CostsMore(i) then
             local kept, fresh = ns.GoldVendorNote(id, info, today)
             if kept and fresh then added = true end
         end
+        ns.GoldYield()
     end
     if added then ns.GoldJob(Trim, "goldVendorTrim") end
 end
 
+local Queue
+local function RecordJob()
+    Record()
+    if again then again = false; ns:After(0, Queue) end            -- (the merchant changed while this one ran)
+end
+function Queue()
+    if not Unlocked() or InFight() then return end
+    if not ns.GoldJob(RecordJob, "goldVendorRecord") then again = true end
+end
+
 do
     local gen = 0
-    local Recorded = ns:Guard("Gold", Record)
     local ev = CreateFrame("Frame")
     pcall(ev.RegisterEvent, ev, "MERCHANT_SHOW")
     pcall(ev.RegisterEvent, ev, "MERCHANT_UPDATE")
@@ -128,7 +155,7 @@ do
         if (event ~= "MERCHANT_SHOW" and event ~= "MERCHANT_UPDATE") or not Unlocked() then return end
         gen = gen + 1
         local mine = gen
-        ns:After(0.5, function() if mine == gen and Unlocked() then Recorded() end end)
+        ns:After(0.5, function() if mine == gen then Queue() end end)
     end))
 end
 
@@ -148,7 +175,7 @@ local function Merge(list)
     for _, it in ipairs(type(list) == "table" and list or {}) do
         local id = type(it) == "table" and Num(it.id)
         if id then
-            local bound = ns.Yes(it.bound)
+            local bound = ns.Yes(it.bound) or BOUND[select(4, Info(id))] == true   -- (as SellHintFor: these never sell there)
             local key = id .. (bound and ":b" or "")
             local o = at[key]
             if not o then
@@ -163,9 +190,16 @@ local function Merge(list)
     return out
 end
 
-local function Mark(text, inBank)
-    if not inBank then return text end
-    return text .. "  |cff9aa4b4(" .. ns:Tr("in your bank") .. ")|r"
+-- `bank`: false for the bags, else the bank's mark ("in your bank, seen 3 days ago").
+local function Mark(text, bank)
+    if not bank then return text end
+    return text .. "  |cff9aa4b4(" .. bank .. ")|r"
+end
+local function BankMark(bank)
+    local day = Num(bank.seen)
+    local ago = day and ns.AuctionSeenText({ price = 0, day = day }, ns.Today())
+    if ago then return format(ns:Tr("in your bank, seen %s"), ago) end
+    return ns:Tr("in your bank")
 end
 
 -- Sell at the auction house. Returns the ids it sells, so the junk leaves them alone.
@@ -191,13 +225,13 @@ local function SellIdea(ctx, add, list, items, inBank)
     local minutes = min(15, 3 + 0.5 * #worth)
     if inBank then
         table.insert(steps, 1, { text = ns:Tr("Take the marked items out of your bank") })
-        minutes = minutes + BANK_MINUTES
+        minutes = min(10, minutes + BANK_MINUTES)
     end
     add({
         id = inBank and "sell:bank" or "sell:bags", kind = "sell", oneOff = true, total = total, minutes = minutes,
         title = ns:Tr(inBank and "Sell what is in your bank at the auction house" or "Sell your bags at the auction house"),
         ease = ns.GOLD_EASE.sell, safety = ns.GOLD_SAFETY.sell.prices, basis = "prices", priceDay = oldest, where = "both",
-        steps = steps, detail = detail,
+        steps = steps, detail = detail, tip = inBank and { inBank } or nil,
     })
     return sold
 end
@@ -228,17 +262,23 @@ local function JunkIdea(ctx, add, list, sold, inBank)
         id = inBank and "sell:bankjunk" or "sell:junk", kind = "junk", oneOff = true, total = total, minutes = minutes,
         title = ns:Tr(inBank and "Vendor the junk in your bank" or "Vendor your junk"),
         ease = ns.GOLD_EASE.junk, safety = ns.GOLD_SAFETY.junk.prices, basis = "prices", priceDay = nil, where = "window",
-        steps = steps, detail = detail,
+        steps = steps, detail = detail, tip = inBank and { inBank } or nil,
     })
 end
 
 -- The ideas from the bags (and the bank, when given): bags and bank = { { id, count, vendor, bound } },
 -- items = this auction house's prices. Pure apart from the item info and the sell hints.
+-- bank.seen = the day the bank was last seen (yyyymmdd), shown with its items.
+local function Today(ctx)
+    local c = {}
+    for k, v in pairs(type(ctx) == "table" and ctx or {}) do c[k] = v end
+    c.today = c.today or ns.Today()
+    return c
+end
 function ns.GoldSellIdeas(ctx, add, bags, items, bank)
-    ctx = type(ctx) == "table" and ctx or {}
-    ctx.today = ctx.today or ns.Today()
+    ctx = Today(ctx)
     items = type(items) == "table" and items or {}
-    for _, where in ipairs({ { bags, false }, { bank, true } }) do
+    for _, where in ipairs({ { bags, false }, { bank, type(bank) == "table" and BankMark(bank) } }) do
         if type(where[1]) == "table" then
             local list = Merge(where[1])
             local sold = SellIdea(ctx, add, list, items, where[2])
@@ -247,22 +287,53 @@ function ns.GoldSellIdeas(ctx, add, bags, items, bank)
     end
 end
 
+-- How many are in the bank right now, by the game's own counts; nil when it cannot say.
+local function LiveBankCount(id)
+    local C = C_Item
+    if type(C) ~= "table" or type(C.GetItemCount) ~= "function" then return nil end
+    local okAll, all = pcall(C.GetItemCount, id, true)
+    local okBags, bags = pcall(C.GetItemCount, id)
+    if not (okAll and okBags) then return nil end
+    all, bags = Num(all), Num(bags)
+    if not (all and bags) then return nil end
+    return max(0, all - bags)
+end
+
 -- This character's bank as the storage window last saw it; nil when it has never been seen.
 local function BankItems()
     local inv = type(ns.root) == "table" and ns.root.inventory
     local me = type(inv) == "table" and type(inv.chars) == "table" and inv.chars[ns:CharKey()]
     if type(me) ~= "table" or type(me.bankTime) ~= "number" or type(me.bank) ~= "table" then return nil end
-    local out = {}
+    local out, at = {}, {}
     for _, it in ipairs(me.bank) do
         local link = type(it) == "table" and it[1]
         local id = type(link) == "string" and tonumber(link:match("item:(%d+)")) or nil
         if id then
             local _, _, vendor, bindType = Info(id)
-            out[#out + 1] = { id = id, count = tonumber(it[2]) or 1, vendor = vendor, bound = BOUND[bindType] == true, link = link }
+            -- (bind on equip or use: the list cannot say whether this one is bound yet, so it is never suggested)
+            if bindType ~= 2 and bindType ~= 3 then
+                local o = at[id]
+                if not o then
+                    o = { id = id, count = 0, vendor = vendor, bound = BOUND[bindType] == true, link = link }
+                    at[id] = o
+                    out[#out + 1] = o
+                end
+                o.count = o.count + max(1, Num(tonumber(it[2])) or 1)
+            end
         end
         ns.GoldYield()
     end
-    return out
+    -- no more than the game says is in the bank now (taken out since the list was made: in the bags)
+    local kept = {}
+    for _, o in ipairs(out) do
+        local live = LiveBankCount(o.id)
+        if live then o.count = min(o.count, live) end
+        if o.count > 0 then kept[#kept + 1] = o end
+        ns.GoldYield()
+    end
+    local ok, d = pcall(date, "%Y%m%d", me.bankTime)
+    kept.seen = ok and tonumber(d) or nil
+    return kept
 end
 
 ------------------------------------------------------------------------------------------
@@ -311,16 +382,22 @@ local function VendorToAuction(ctx, items, flips)
 end
 
 local function AuctionToVendor(ctx, items, flips)
-    local keys = {}
-    for id, e in pairs(items) do
-        if type(e) == "table" and e.day == ctx.today then keys[#keys + 1] = id end
+    -- today's entries, a step at a time (the prices may change between slices: an entry taken away
+    -- ends the walk, since next() cannot go on from it; one added may come twice, so each is kept once)
+    local keys, seen = {}, {}
+    local id, e = next(items)
+    while id ~= nil do
+        if type(e) == "table" and e.day == ctx.today and not seen[id] then seen[id] = true; keys[#keys + 1] = id end
+        ns.GoldYield()
+        if items[id] == nil then break end
+        id, e = next(items, id)
     end
     for _, id in ipairs(keys) do
         local e = items[id]
         local p = type(e) == "table" and Num(e.price) or nil
         if p and p > 0 then
             local name, _, v = Info(id)
-            if v > 0 and p <= 0.9 * v and v - p >= 50 then
+            if v > 0 and p <= 0.9 * v and v - p >= 100 then
                 flips[#flips + 1] = {
                     id = "aflip:" .. id, kind = "aflip", oneOff = true, total = v - p, minutes = 3,
                     title = format(ns:Tr("Buy %s at the auction house, a vendor pays more"), name),
@@ -340,8 +417,7 @@ end
 
 -- The flips, at most 10, the biggest first. Auction flips only at the auction house (ctx.where).
 function ns.GoldFlipIdeas(ctx, add, items)
-    ctx = type(ctx) == "table" and ctx or {}
-    ctx.today = ctx.today or ns.Today()
+    ctx = Today(ctx)
     items = type(items) == "table" and items or {}
     local flips = {}
     VendorToAuction(ctx, items, flips)

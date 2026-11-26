@@ -219,6 +219,7 @@ read_globals = {
     "GetLootSlotLink",
     "GetMaxBattlefieldID",
     "GetMaxPlayerLevel",
+    "GetMerchantItemCostInfo",
     "GetMerchantItemID",
     "GetMerchantItemMaxStack",
     "GetMerchantNumItems",
