@@ -19,7 +19,7 @@ for f in glob.glob('*.lua'):
     assert f in toc, "file not in TOC: " + f
 
 harness = r'''
-local files, sources, missing, secretMode, optionFiles = ...
+local files, sources, missing, secretMode, optionFiles, planCodes = ...
 local handlers = {}
 local mockmt = {}
 local function newmock() return setmetatable({}, mockmt) end
@@ -12570,7 +12570,7 @@ try("13.4 feel: seams", function()
                                src:find("local function FeelPaceSection", 1, true), src:find("local function FeelRecordsSection", 1, true)
         local built = src:find("function ns.BuildGuidePage", 1, true)
         if not (a1 and a2 and a3 and a4 and built and a1 < a2 and a2 < a3 and a3 < a4 and a4 < built) then error("the four sections, in order, above the page") end
-        if not src:find("{ FeelMapSection, FeelPanelSection, FeelPaceSection, FeelRecordsSection }", 1, true) then error("called in that order") end
+        if not src:find("{ FeelMapSection, FeelPanelSection, FeelPaceSection, FeelRecordsSection", 1, true) then error("called in that order") end   -- (batch 5's follow them)
     end)
     for _, point in ipairs({ "context", "window", "xp", "zone", "rank", "route", "applied" }) do ns.PlannerHook(point, "seams", nil) end
     ns.GuideRegisterLine("seams", nil); ns.GuideRegisterTitle("seams", nil); ns.GuideRegisterAdvance("seams", nil)
@@ -14574,6 +14574,348 @@ try("13.4 feel: together", function()
     if not ok then error(err, 0) end
 end)
 
+-- batch 5: the seams (the hooks "candidate" and "replan", the Guide tab's sections, the plan codes, the new files)
+try("13.5 together: seams", function()
+    local saved = { on = ns.GuideOn, state = ns.GuideState, unlocked = ns.GuideUnlocked, setPlan = ns.GuideSetPlan,
+                    queued = ns.plannerQueued, reason = ns.plannerReason, guidePage = ns.guidePage, show = ns.ShowList, fromHere = ns.plannerFromHere }
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        -- the "candidate" hook: asked about each record about to be kept
+        local function q(id, extra)
+            local r = { id = id, name = "Q" .. id, level = 14, minLevel = 1, xp = 100, starts = {}, ends = {}, objectives = {}, pre = {}, preAny = {}, exclusive = {},
+                        elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+            for k, v in pairs(extra or {}) do r[k] = v end
+            return r
+        end
+        local recs = { [9001] = q(9001, { group = true }), [9002] = q(9002) }
+        local source = { kind = "test", ids = function() return { 9001, 9002 } end, quest = function(id) return recs[id] end }
+        local function ctxFor(group)
+            return { source = source, level = 14, group = group, inGroup = false, done = function() return false end,
+                     onQuest = function(id) return id == 9002 end }
+        end
+        local function ids(list) local s = {} for _, r in ipairs(list) do s[r.id] = true end return s end
+        local list, skipped = ns.PlannerCandidates(source, ctxFor("solo"))
+        local s = ids(list)
+        if s[9001] or not s[9002] or skipped.group ~= 1 then error("without a hook: the group quest skipped in Solo, the logged one kept") end
+        local asked = {}
+        ns.PlannerHook("candidate", "seams", function(rec, ctx, logged)
+            asked[rec.id] = logged
+            if rec.id == 9001 then return false end
+        end)
+        list, skipped = ns.PlannerCandidates(source, ctxFor("solo"))
+        if skipped.group ~= 0 or ids(list)[9001] then error("a quest a candidate hook drops is not counted as skipped: " .. tostring(skipped.group)) end
+        if asked[9002] ~= true or asked[9001] ~= false then error("the hook is told whether the quest is logged") end
+        list = ns.PlannerCandidates(source, ctxFor("all"))
+        s = ids(list)
+        if s[9001] or not s[9002] then error("false drops a quest that passed every test") end
+        ns.PlannerHook("candidate", "seams", function(rec) if rec.id == 9002 then return false end end)
+        s = ids((ns.PlannerCandidates(source, ctxFor("all"))))
+        if s[9002] or not s[9001] then error("false drops a logged quest too") end
+        ns.PlannerHook("candidate", "seams", function() return nil end)
+        s = ids((ns.PlannerCandidates(source, ctxFor("all"))))
+        if not (s[9001] and s[9002]) then error("nil keeps both") end
+        -- (a class quest, and a quest from an item in your bags, are asked too)
+        recs[9003] = q(9003, { level = 10 })
+        recs[9004] = q(9004, { fromItem = { id = 77 } })
+        local function more()
+            local c = ctxFor("all")
+            c.classQuests = { { id = 9003, level = 10 } }
+            c.itemCount = function() return 1 end
+            c.here = { map = 1, x = 30, y = 40 }
+            source.ids = function() return { 9001, 9002, 9004 } end
+            local l, _, later = ns.PlannerCandidates(source, c)
+            source.ids = function() return { 9001, 9002 } end
+            return ids(l), #later
+        end
+        s = more()
+        if not (s[9003] and s[9004]) then error("a class quest and a held item's quest are candidates") end
+        ns.PlannerHook("candidate", "seams", function(rec) if rec.id == 9003 or rec.id == 9004 then return false end end)
+        local nLater
+        s, nLater = more()
+        if s[9003] or s[9004] or nLater ~= 0 or not (s[9001] and s[9002]) then error("a class quest and an item's quest can be dropped") end
+        ns.PlannerHook("candidate", "seams", nil)
+
+        -- the "replan" hook: may refuse a replan, and the start
+        ns.GuideOn = function() return true end
+        ns.GuideState = function() return { name = ns.GUIDE_PLANNED } end
+        ns:PlannerStop()
+        ns.plannerQueued = false
+        local why = {}
+        ns.PlannerHook("replan", "seams", function(reason) why[#why + 1] = reason; return false end)
+        local okR, refusedR = ns:PlannerReplan("hand-in")
+        if okR ~= false or refusedR ~= "refused" or ns.plannerQueued ~= false or why[1] ~= "hand-in" then error("a replan hook returning false refuses the replan: false, \"refused\"") end
+        -- (plan from here on the map: a refused replan is not turned into a start)
+        local rows
+        ns.ShowList = function(_, key, title, lines) rows = lines; return { Hide = function() end } end
+        ns.PlannerMapPick({ map = 1, x = 30, y = 40 })
+        ns.ShowList = saved.show
+        if not (rows and rows[1] and rows[1].click) then error("the plan from here window has its button") end
+        rows[1].click()
+        if why[2] ~= "from here" or #why ~= 2 or ns.plannerQueued ~= false then error("a refused plan from here starts nothing: " .. table.concat(why, ", ")) end
+        ns.plannerFromHere = saved.fromHere
+        table.remove(why)
+        local cleared = 0
+        ns.GuideSetPlan = function(self, ...) cleared = cleared + 1; return saved.setPlan(self, ...) end
+        ns.GuideState = function() return nil end              -- (not following: the start would clear the guide first)
+        if ns:PlannerStart() ~= false or ns.plannerQueued ~= false or why[2] ~= "start" or cleared ~= 0 then error("the start asks the hook with \"start\" and changes nothing: " .. tostring(why[2])) end
+        ns.GuideSetPlan = saved.setPlan
+        ns.GuideState = function() return { name = ns.GUIDE_PLANNED } end
+        ns.PlannerHook("replan", "seams", function() return true end)
+        if ns:PlannerReplan("level") ~= true or ns.plannerQueued ~= true then error("anything but false lets the replan go ahead") end
+        ns.plannerQueued = false
+        ns.PlannerHook("replan", "seams", nil)
+        if ns:PlannerReplan("hand-in") ~= true or ns.plannerQueued ~= true or ns.plannerReason ~= "hand-in" then error("without the hook a replan is queued") end
+        ns:PlannerStop()
+        ns.plannerQueued = false
+        if ns:PlannerStart() ~= true or ns.plannerQueued ~= true or ns.plannerReason ~= "start" then error("without the hook the start goes ahead") end
+        ns:PlannerStop()
+        ns.plannerQueued = false
+
+        -- the plan codes (tests/plan_codes.txt, "" until group C writes it)
+        if type(planCodes) ~= "string" then error("the plan codes are handed to the harness as text: " .. type(planCodes)) end
+
+        -- the Guide tab: seven sections, batch 5's after batch 4's
+        local src = sources["options/Bars.lua"] or ""
+        local names = { "FeelMapSection", "FeelPanelSection", "FeelPaceSection", "FeelRecordsSection", "TogetherGroupSection", "TogetherDuoSection", "TogetherCodeSection" }
+        local last = 0
+        for _, n in ipairs(names) do
+            local p = src:find("local function " .. n .. "(live, y, Replan, T)", 1, true)
+            if not (p and p > last) then error("the sections, in order: " .. n) end
+            last = p
+        end
+        if not ((src:find("function ns.BuildGuidePage", 1, true) or 0) > last) then error("the sections are above the page") end
+        if not src:find("{ " .. table.concat(names, ", ") .. " }", 1, true) then error("the page calls the seven sections in that order") end
+        -- (while a group's section is still empty it adds no height: it hands back the y it was given)
+        for _, n in ipairs({ "TogetherGroupSection", "TogetherDuoSection", "TogetherCodeSection" }) do
+            local body = src:match("local function " .. n .. "%(live, y, Replan, T%)\n(.-)\nend\n")
+            if body and body:match("^%s*return y, function%(%) end%s*$") then
+                local fn = load("return function(live, y, Replan, T)\n" .. body .. "\nend")()
+                local y, refresh = fn(nil, -1000, nil, {})
+                if y ~= -1000 or type(refresh) ~= "function" then error(n .. ": an empty section adds no height") end
+            end
+        end
+        local page = env.CreateFrame("Frame")
+        ns.BuildGuidePage(page)
+        if not (tonumber(page.contentHeight) and page.contentHeight >= 896) then error("the page's height: " .. tostring(page.contentHeight)) end
+
+        -- the three new files are in the TOC, after PlannerRecords.lua, and empty until their groups fill them
+        local pos = {}
+        for i, f in ipairs(files) do pos[f] = i end
+        if not (pos["PlannerRecords.lua"] and pos["PlannerGroup.lua"] == pos["PlannerRecords.lua"] + 1 and pos["PlannerDuo.lua"] == pos["PlannerRecords.lua"] + 2
+                and pos["PlannerCode.lua"] == pos["PlannerRecords.lua"] + 3) then error("the three new files, in order, after PlannerRecords.lua") end
+        if not (sources["PlannerDuo.lua"] or ""):find("PLANNER_DUO_PREFIX", 1, true) and ns.PLANNER_DUO_PREFIX ~= nil then error("nothing in the new files yet") end
+        -- the fences: Core.lua's settings regions
+        for _, g in ipairs({ "A (group)", "B (duo)", "C (code)" }) do
+            local core = sources["Core.lua"] or ""
+            local b, e = core:find("-- batch 5 " .. g .. ": begin", 1, true), core:find("-- batch 5 " .. g .. ": end", 1, true)
+            if not (b and e and b < e) then error("Core.lua's fence for " .. g) end
+        end
+    end)
+    ns.PlannerHook("candidate", "seams", nil); ns.PlannerHook("replan", "seams", nil)
+    ns:PlannerStop()
+    ns.GuideOn, ns.GuideState, ns.GuideUnlocked, ns.GuideSetPlan = saved.on, saved.state, saved.unlocked, saved.setPlan
+    ns.plannerQueued, ns.plannerReason, ns.guidePage = saved.queued, saved.reason, saved.guidePage
+    ns.ShowList, ns.plannerFromHere = saved.show, saved.fromHere
+    if not ok then error(err, 0) end
+end)
+
+-- batch 5 tests A (group): begin
+try("13.5 together A: find a group", function()
+    local saved = { on = ns.GuideOn, unlocked = ns.GuideUnlocked, source = ns.PlannerSource, duo = ns.PlannerDuoRole, raw = ns.PrintRaw,
+                    guideState = ns.root.guideState, guides = ns.root.guides, key = ns.root.guideKey, map = env.C_Map, chat = rawget(env, "ChatFrameUtil"),
+                    sendChat = rawget(env, "SendChatMessage"), cinfo = rawget(env, "C_ChatInfo"), members = rawget(env, "GetNumGroupMembers"),
+                    channelName = rawget(env, "GetChannelName"), channelList = rawget(env, "GetChannelList"), group = ns.db.plannerGroup,
+                    find = ns.db.plannerFindGroup, lfg = ns.db.plannerLFGChannel, raid = env.IsInRaid, combat = env.InCombatLockdown, errors = #ns.errors, page = ns.guidePage }
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        ns.GuideOn = function() return true end
+        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
+        ns.root.guides = { Mine = { name = "Mine", steps = { { kind = "accept", quest = 7001, title = "Hogger", map = 1429, x = 24.5, y = 79.6 } } } }
+        local plannedSteps = { ns.GuideParseLine("accept 7001 Hogger @ 1429:24.5,79.6"), ns.GuideParseLine("accept 7002 Plain @ 1429:30,30") }
+        if not (plannedSteps[1] and plannedSteps[2]) then error("the fake steps parse") end
+        local function follow(name, at)
+            ns.root.guideState = { [ns:CharKey()] = { name = name, at = at or 1, ticked = {},
+                plan = name == ns.GUIDE_PLANNED and { name = ns.GUIDE_PLANNED, steps = plannedSteps } or nil } }
+        end
+        follow(ns.GUIDE_PLANNED, 1)
+        local recs = { [7001] = { id = 7001, name = "Hogger", elite = true }, [7002] = { id = 7002, name = "Plain" },
+                       [7003] = { id = 7003, name = "Both", elite = true, group = true, dungeon = true }, [7004] = { id = 7004, name = "Pair", elite = true, group = true } }
+        local source = { kind = "test", quest = function(id) return recs[id] end }
+        ns.PlannerSource = function() return source end
+        ns.PlannerNeedsGroupReset()
+        env.C_Map = setmetatable({ GetMapInfo = function(map) if map == 1429 then return { name = "Elwynn Forest", mapID = map } end end }, { __index = saved.map })
+        ns.db.plannerGroup, ns.db.plannerFindGroup, ns.db.plannerLFGChannel = "grouped", true, ""
+        local members, joined = 0, 0
+        env.GetNumGroupMembers = function() return members end
+        env.GetChannelName = function() return joined end
+        local said, sends, opened = {}, 0, {}
+        ns.PrintRaw = function(_, m) said[#said + 1] = tostring(m) end
+        env.SendChatMessage = function() sends = sends + 1 end
+        env.C_ChatInfo = setmetatable({ SendChatMessage = function() sends = sends + 1 end, SendAddonMessage = function() sends = sends + 1 end }, { __index = saved.cinfo })
+        env.ChatFrameUtil = { OpenChat = function(text) opened[#opened + 1] = text end }
+
+        if ns.PlannerNeedsGroup(7001) ~= "elite" or ns.PlannerNeedsGroup(7002) ~= nil then error("needs a group") end
+        if ns.PlannerNeedsGroup(7003) ~= "dungeon" or ns.PlannerNeedsGroup(7004) ~= "group" or ns.PlannerNeedsGroup(7999) ~= nil then error("dungeon before group before elite; no record: nil") end
+        local st = ns.GuideState()
+        local steps = plannedSteps
+        local line = ns.PlannerGroupLine(st, steps, 1)
+        if line ~= "Group quest: Hogger" then error("the panel line: " .. tostring(line)) end
+        if ns.PlannerGroupLine(st, steps, 2) ~= nil then error("no line on a plain quest") end
+        local function labels(step)
+            local out = {}
+            for _, e in ipairs(ns.GuidePanelEntries(step)) do out[#out + 1] = e[1] end
+            return table.concat(out, "|")
+        end
+        local function stepLabels(step)
+            local out = {}
+            for _, e in ipairs(ns.GuideStepEntries(step)) do out[#out + 1] = e[1] end
+            return table.concat(out, "|")
+        end
+        if not labels(steps[1]):find("Find a group", 1, true) or not stepLabels(steps[1]):find("Find a group", 1, true) then error("the entries list Find a group: " .. labels(steps[1])) end
+        if ns.PlannerLFGText(steps[1]) ~= "LFG Hogger, Elwynn Forest" then error("the line: " .. ns.PlannerLFGText(steps[1])) end
+
+        -- the click: your chat box, nothing sent
+        local function panelClick()
+            for _, e in ipairs(ns.GuidePanelEntries(steps[1])) do if e[1] == "Find a group" then return e[2]() end end
+            error("no Find a group entry")
+        end
+        panelClick()
+        if #opened ~= 1 or opened[1] ~= "LFG Hogger, Elwynn Forest" then error("the chat box got: " .. table.concat(opened, ";")) end
+        ns.db.plannerLFGChannel, joined = "LookingForGroup", 4
+        panelClick()
+        if opened[2] ~= "/4 LFG Hogger, Elwynn Forest" then error("the channel: " .. tostring(opened[2])) end
+        joined = 0
+        said = {}
+        panelClick()
+        if opened[3] ~= "LFG Hogger, Elwynn Forest" then error("not joined: no prefix: " .. tostring(opened[3])) end
+        local told = false
+        for _, m in ipairs(said) do if m:find("You are not in LookingForGroup", 1, true) then told = true end end
+        if not told then error("the not-joined line is printed: " .. table.concat(said, ";")) end
+        ns.db.plannerLFGChannel = ""
+        if sends ~= 0 then error("nothing is ever sent: " .. sends) end
+
+        -- cleaning and the size
+        local dirty = { kind = "accept", quest = 7001, title = "|cffff0000Hogger|r", map = 1429 }
+        if ns.PlannerLFGText(dirty) ~= "LFG Hogger, Elwynn Forest" then error("escapes cleaned: " .. ns.PlannerLFGText(dirty)) end
+        local long = ns.PlannerLFGText({ kind = "accept", quest = 7001, title = string.rep("x", 300), map = 1429 })
+        if #long > 200 or not long:find("^LFG x+, Elwynn Forest$") then error("a long title is cut: " .. #long) end
+        local function validUtf8(t)                      -- (every lead byte followed by its continuation bytes, nothing cut)
+            local i = 1
+            while i <= #t do
+                local c = t:byte(i)
+                local n = c < 128 and 0 or (c >= 240 and 3) or (c >= 224 and 2) or (c >= 192 and 1) or -1
+                if n < 0 then return false end
+                for k = 1, n do local d = t:byte(i + k); if not d or d < 128 or d >= 192 then return false end end
+                i = i + n + 1
+            end
+            return true
+        end
+        local wide = ns.PlannerLFGText({ kind = "accept", quest = 7001, title = string.rep("\xc3\xa9", 150), map = 1429 })
+        if #wide > 200 or #wide < 190 or not validUtf8(wide) then error("a multibyte title is cut on a whole character: " .. #wide) end
+        local wide3 = ns.PlannerLFGText({ kind = "accept", quest = 7001, title = string.rep("\xe4\xb8\xad", 100), map = 1429 })
+        if #wide3 > 200 or not validUtf8(wide3) then error("a three-byte title is cut on a whole character: " .. #wide3) end
+        -- a long zone name is cut, and the line still fits
+        local zoneName = string.rep("\xe4\xb8\xad", 83)               -- (249 bytes)
+        env.C_Map = setmetatable({ GetMapInfo = function() return { name = zoneName } end }, { __index = saved.map })
+        local bigZone = ns.PlannerLFGText({ kind = "accept", quest = 7001, title = string.rep("x", 300), map = 1429 })
+        if #bigZone > 200 or not validUtf8(bigZone) or not bigZone:find("^LFG x+, ") then error("a long zone name: " .. #bigZone) end
+        if #ns.PlannerLFGText({ kind = "accept", quest = 7001, title = "Hogger", map = 1429 }) > 200 then error("a long zone name, short title") end
+        env.C_Map = setmetatable({ GetMapInfo = function(map) if map == 1429 then return { name = "Elwynn Forest", mapID = map } end end }, { __index = saved.map })
+        -- the channel prefix counts inside the 200 bytes
+        env.ChatFrameUtil = { OpenChat = function(text) opened[#opened + 1] = text end }
+        ns.db.plannerLFGChannel, joined = "LookingForGroup", 12
+        opened = {}
+        ns.PlannerFindGroup({ kind = "accept", quest = 7001, title = string.rep("x", 300), map = 1429 })
+        if not opened[1] or #opened[1] > 200 or opened[1]:sub(1, 4) ~= "/12 " then error("the prefix counts: " .. tostring(opened[1] and #opened[1])) end
+        ns.db.plannerLFGChannel, joined = "", 0
+        -- combat: the chat box still opens
+        env.InCombatLockdown = function() return true end
+        opened = {}
+        local fought = ns.PlannerFindGroup(steps[1])
+        env.InCombatLockdown = function() return false end
+        if fought ~= true or opened[1] ~= "LFG Hogger, Elwynn Forest" then error("in combat the line still goes in the chat box") end
+        if ns.PlannerLFGText({ kind = "accept", quest = 7001, title = "Hogger" }) ~= "LFG Hogger" then error("no map: no zone") end
+        if ns.PlannerLFGText({ kind = "accept", quest = 7001, map = 1429 }) ~= "LFG Hogger, Elwynn Forest" then error("the title from the record") end
+
+        -- not shown
+        local function shown() return ns.PlannerFindGroupStep(ns.GuideState(), steps, ns.GuideState().at) ~= nil and labels(steps[ns.GuideState().at]):find("Find a group", 1, true) ~= nil end
+        if not shown() then error("shown to start with") end
+        ns.db.plannerGroup = "solo"
+        if shown() or stepLabels(steps[1]):find("Find a group", 1, true) then error("not in Solo") end
+        ns.PlannerDuoRole = function() return "friend" end
+        if not shown() then error("the duo friend sees it in Solo") end
+        ns.PlannerDuoRole = nil
+        ns.db.plannerGroup = "all"
+        if not shown() then error("Everything shows it") end
+        ns.db.plannerFindGroup = false
+        if shown() then error("not with the switch off") end
+        ns.db.plannerFindGroup = true
+        follow(ns.GUIDE_PLANNED, 2)
+        if shown() then error("not on a plain step") end
+        follow(ns.GUIDE_PLANNED, 1)
+        members = 5
+        if shown() then error("not in a full party") end
+        members = 3
+        if not shown() then error("a party of 3 is fine") end
+        local realRaid = env.IsInRaid
+        env.IsInRaid = function() return true end
+        local raidHid = not shown()
+        env.IsInRaid = realRaid
+        if not raidHid then error("not in a raid") end
+        follow("Mine", 1)
+        if ns.PlannerFindGroupStep(ns.GuideState(), ns.root.guides.Mine.steps, 1) then error("not for a written guide") end
+        follow(ns.GUIDE_PLANNED, 1)
+        ns.GuideUnlocked = function() return false end
+        if shown() or ns.PlannerFindGroup(steps[1]) ~= false then error("locked: nothing") end
+        ns.GuideUnlocked = function() return true end
+
+        -- the chat box can't be opened: the line is printed
+        said, opened = {}, {}
+        rawset(env, "ChatFrameUtil", false)               -- (no chat box: the harness's fallback table would still have one)
+        if ns.PlannerFindGroup(steps[1]) ~= false then error("no chat box: false") end
+        local printed = false
+        for _, m in ipairs(said) do if m:find("LFG Hogger, Elwynn Forest", 1, true) then printed = true end end
+        if not printed then error("the line is printed: " .. table.concat(said, ";")) end
+        if sends ~= 0 then error("still nothing sent: " .. sends) end
+
+        -- the cycle button
+        local list = { 1, "General", false, 2, "Trade", false, 4, "LookingForGroup", false }
+        env.GetChannelList = function() return (unpack or table.unpack)(list, 1, 9) end
+        local page = env.CreateFrame("Frame")
+        local T = ns.BuildGuidePage(page)
+        if not (T.findGroupChannel and T.findGroupBox) then error("the page has the two controls") end
+        local label
+        rawset(T.findGroupChannel.text, "SetText", function(_, t) label = t end)
+        local function click(frame)
+            local f = frame:GetScript("OnClick")
+            if type(f) ~= "function" then for _, h in ipairs(handlers) do if h.self == frame and h.name == "OnClick" then f = h.fn end end end
+            return f(frame)
+        end
+        local seen = {}
+        for _ = 1, 4 do click(T.findGroupChannel); seen[#seen + 1] = label end
+        if table.concat(seen, ";") ~= "Find a group in: General;Find a group in: Trade;Find a group in: LookingForGroup;Find a group in: Chat box" then
+            error("the cycle: " .. table.concat(seen, ";"))
+        end
+        if ns.db.plannerLFGChannel ~= "" then error("back to the chat box") end
+        if sends ~= 0 then error("the settings send nothing") end
+    end)
+    ns.GuideOn, ns.GuideUnlocked, ns.PlannerSource, ns.PlannerDuoRole, ns.PrintRaw = saved.on, saved.unlocked, saved.source, saved.duo, saved.raw
+    ns.root.guideState, ns.root.guides, ns.root.guideKey, env.C_Map, ns.guidePage = saved.guideState, saved.guides, saved.key, saved.map, saved.page
+    rawset(env, "ChatFrameUtil", saved.chat); rawset(env, "SendChatMessage", saved.sendChat); rawset(env, "C_ChatInfo", saved.cinfo)
+    rawset(env, "GetNumGroupMembers", saved.members); rawset(env, "GetChannelName", saved.channelName); rawset(env, "GetChannelList", saved.channelList)
+    env.IsInRaid = saved.raid
+    env.InCombatLockdown = saved.combat
+    ns.db.plannerGroup, ns.db.plannerFindGroup, ns.db.plannerLFGChannel = saved.group, saved.find, saved.lfg
+    if ns.PlannerNeedsGroupReset then ns.PlannerNeedsGroupReset() end
+    while #ns.errors > saved.errors do table.remove(ns.errors) end
+    if not ok then error(err) end
+end)
+-- batch 5 tests A (group): end
+-- batch 5 tests B (duo): begin
+-- batch 5 tests B (duo): end
+-- batch 5 tests C (code): begin
+-- batch 5 tests C (code): end
+
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()
@@ -14588,7 +14930,8 @@ for secret in (False, True):
     sources = lua.table_from({**{f: open(f).read() for f in toc}, **{'options/' + f: open(OPT + f).read() for f in opt_toc},
                               'locales/Locales.lua': open('../FantasyGlassUI_Locales/Locales.lua').read()})
     missing = lua.table()
-    errs, warns, nh, nm = run(harness, lua.table_from(toc), sources, missing, secret, lua.table_from(['options/' + f for f in opt_toc]))
+    plan_codes = open(ROOT + 'tests/plan_codes.txt').read() if _os.path.exists(ROOT + 'tests/plan_codes.txt') else ""
+    errs, warns, nh, nm = run(harness, lua.table_from(toc), sources, missing, secret, lua.table_from(['options/' + f for f in opt_toc]), plan_codes)
     print(f"\n=== combat values {'SECRET' if secret else 'readable'}: {nm} modules, {nh} scripts/hooks fired ===")
     # A name the add-on declares as a file-level local, read as a global: used above its declaration
     # (in the game that is nil and an error; the harness would quietly hand back a stand-in).

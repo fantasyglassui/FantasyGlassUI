@@ -73,6 +73,9 @@ PlannerMap.lua
 PlannerPages.lua
 PlannerPace.lua
 PlannerRecords.lua
+PlannerGroup.lua
+PlannerDuo.lua
+PlannerCode.lua
 Polish.lua
 Bags.lua
 BagWindow.lua

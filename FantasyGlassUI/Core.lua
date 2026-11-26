@@ -224,6 +224,14 @@ ns.defaults = {
     plannerLeftOff   = true,        -- where you left off, at login
     plannerSpeak     = true,        -- read the route aloud (only while reading aloud is on in Accessibility)
     -- batch 4 D (records): end
+    -- batch 5 A (group): begin
+    plannerFindGroup = true,        -- the "Find a group" button on a group quest (it only fills your chat box)
+    plannerLFGChannel = "",         -- the channel it uses: "" is your chat box's current one, else a channel you have joined
+    -- batch 5 A (group): end
+    -- batch 5 B (duo): begin
+    -- batch 5 B (duo): end
+    -- batch 5 C (code): begin
+    -- batch 5 C (code): end
     groupWatch       = true,        -- (internal: watches who is in your group for the three below)
     playerNotes      = true,        -- your own note on a player, in their tooltip
     recentMates      = true,        -- the people you grouped with lately

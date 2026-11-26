@@ -422,6 +422,46 @@ local function FeelRecordsSection(live, y, Replan, T)
     return y - 78, Refresh
 end
 
+-- Batch 5's sections of the Guide tab, one per group, called the same way as batch 4's (after them).
+-- Each group writes only inside its own function's body.
+-- Group A: find a group for a group quest.
+local function TogetherGroupSection(live, y, Replan, T)
+    local find = ns:CreateCheckbox(live, "Find a group button", ns.db.plannerFindGroup ~= false, function(v)
+        ns.db.plannerFindGroup = v
+        if ns.GuideRedraw then ns:GuideRedraw() end
+    end)
+    find:SetPoint("TOPLEFT", 0, y)
+    local function DrawChannel(b)
+        local name = ns.db.plannerLFGChannel
+        if type(name) ~= "string" or name == "" then name = ns:Tr("Chat box") end
+        b.text:SetText(string.format(ns:Tr("Find a group in: %s"), name))
+    end
+    local channel = ns:CreateButton(live, "", 300, 24, function(b)
+        local list = { "" }
+        for _, name in ipairs(ns.PlannerLFGChannels and ns.PlannerLFGChannels() or {}) do list[#list + 1] = name end
+        local at = 1
+        for i, name in ipairs(list) do if name == (ns.db.plannerLFGChannel or "") then at = i end end
+        ns.db.plannerLFGChannel = list[at % #list + 1]
+        DrawChannel(b)
+    end)
+    channel:SetPoint("TOPLEFT", 0, y - 28)
+    T.findGroupBox, T.findGroupChannel = find, channel
+    return y - 58, function()
+        find:SetChecked(ns.db.plannerFindGroup ~= false)
+        DrawChannel(channel)
+    end
+end
+
+-- Group B: plan with a friend (the duo).
+local function TogetherDuoSection(live, y, Replan, T)
+    return y, function() end
+end
+
+-- Group C: the plan code for the website's plan page.
+local function TogetherCodeSection(live, y, Replan, T)
+    return y, function() end
+end
+
 ------------------------------------------------------------------------------------------
 -- Guide: quest guides are not released yet. Everyone sees "coming soon"; where they have been
 -- unlocked (see Guide.lua) this tab holds their switch and controls instead.
@@ -612,9 +652,9 @@ function ns.BuildGuidePage(page)
     T.vendorBox, T.suppliesBox, T.professionBox, T.mountBox = vendor, supplies, profession, mount
     T.mailBox, T.exploreBox, T.gatherBox = mail, explore, gather
 
-    -- batch 4's sections, in this order, from below the last box
+    -- batch 4's sections, then batch 5's, in this order, from below the last box
     local y, refreshes = -892, {}
-    for _, section in ipairs({ FeelMapSection, FeelPanelSection, FeelPaceSection, FeelRecordsSection }) do
+    for _, section in ipairs({ FeelMapSection, FeelPanelSection, FeelPaceSection, FeelRecordsSection, TogetherGroupSection, TogetherDuoSection, TogetherCodeSection }) do
         local nextY, refresh = section(live, y, Replan, T)
         y = tonumber(nextY) or y
         if type(refresh) == "function" then refreshes[#refreshes + 1] = refresh end
