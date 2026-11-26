@@ -116,8 +116,10 @@ end
 mockmt.__call""", """    local m = newmock(); rawset(t, k, m)
     if rawget(t, "__game") and type(k) == "string" then
         if k == "GetChildren" and (rawget(t, "__depth") or 0) < 2 then rawset(m, "__kids", tostring(rawget(t, "__label")) .. ":" .. k .. "()"); rawset(m, "__depth", (rawget(t, "__depth") or 0) + 1)
-        elseif k:match("^[A-Z]") and not k:match("^Get") and not k:match("^Create") and not k:match("^Is") and not k:match("^Set") then
-            rawset(m, "__game", true); explicit(m, tostring(rawget(t, "__label")) .. "." .. k)
+        elseif k:match("^[A-Z]") and not k:match("^Get") and not k:match("^Create") and not k:match("^Is") and not k:match("^Set")
+            and (rawget(t, "__depth") or 0) < 6 then         -- (a game frame's own parts, a few levels down: a walk that goes on
+            rawset(m, "__game", true); rawset(m, "__depth", (rawget(t, "__depth") or 0) + 1)   -- through .ScrollTarget for ever stops)
+            explicit(m, tostring(rawget(t, "__label")) .. "." .. k)
         end
     end
     return m

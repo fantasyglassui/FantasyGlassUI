@@ -16659,7 +16659,8 @@ try("13.5 together: final review", function()
         ns.GuideUnlocked = function() return false end
         ns.root.profiles = setmetatable({}, { __index = saved.profiles })
         local okI = ns:ImportProfile("Final review", openCode)
-        if not (okI and type(ns.root.profiles["Final review"]) == "table" and ns.root.profiles["Final review"].plannerGroup ~= nil) then error("importing still takes the guide's settings") end
+        -- (polish review I-C: while locked, an import stores no guide settings; they read their defaults)
+        if not (okI and type(ns.root.profiles["Final review"]) == "table" and rawget(ns.root.profiles["Final review"], "plannerGroup") == nil) then error("locked: an import stores no guide settings") end
         ns.GuideUnlocked = function() return true end
         if #ns.errors ~= saved.errors then error("no errors: " .. tostring(ns.errors[#ns.errors])) end
     end)
@@ -20397,6 +20398,8 @@ try("polish P1: planning and speed", function()
         if not (ns.PlannerSessionSkipped(9901) and ns.PlannerSkipList()[9901]) then error("never suggest: skipped now and for good") end
         if not (said[#said] or ""):find("stays in your quest log", 1, true) then error("and says so: " .. tostring(said[#said])) end
         ns.PlannerSkip(9901, false)
+        if ns.PlannerSessionSkipped(9901) then error("suggested again: this session's plans take it again (polish review I-A)") end
+        ns.PlannerSessionSkip(9901)
 
         -- F24: a /reload keeps this session's skips
         fireEvent("PLAYER_ENTERING_WORLD", false, true)
@@ -20951,10 +20954,10 @@ try("polish P2: speed and safety", function()
         local a2 = ns.GuideRecordStep(r, { kind = "accept", quest = 2 })
         ns.PrintRaw = saved.raw
         if a1 or a2 or #r.steps ~= ns.GUIDE_RECORD_MAX or #said ~= 1 then error("a full recording: no more steps, said once: " .. #said) end
-        -- the minimap's tracking menu: only a button with the newer menu is opened from here
+        -- the minimap's tracking menu: the newer menu when the button has it, else the old click (polish review ruling)
         local opened, clicked = 0, 0
         env.MinimapCluster = { Tracking = { Button = { Click = function() clicked = clicked + 1 end } } }
-        if ns:OpenTrackingMenu() ~= false or clicked ~= 0 then error("an old drop-down button is not clicked from add-on code") end
+        if ns:OpenTrackingMenu() ~= "click" or clicked ~= 1 then error("a client without the newer menu: its button is clicked, as before") end
         env.MinimapCluster = { Tracking = { Button = { OpenMenu = function() opened = opened + 1 end } } }
         if ns:OpenTrackingMenu() ~= "menu" or opened ~= 1 then error("the newer menu opens") end
         -- a locked player's first quest event makes neither saved table
@@ -21235,6 +21238,17 @@ try("polish P3: the Guide tab's rows, the hidden saved data and the planner's to
         if ns.db.plannerGroup ~= "all" then error("Left steps a choice back: " .. tostring(ns.db.plannerGroup)) end
         fp.Use(1)
         if ns.db.plannerGroup ~= "solo" then error("Right steps it on") end
+        -- (polish review M4) an action row: Left and Right press nothing, Space presses it
+        local planCalls, realPlan, realOn = 0, ns.PlannerPlanCommand, ns.GuideOn
+        ns.PlannerPlanCommand = function() planCalls = planCalls + 1 end
+        ns.GuideOn = function() return true end
+        fp.Focus(at["guide:Plan my route"])
+        fp.Use(1); fp.Use(-1)
+        local arrows = planCalls
+        fp.Use()
+        ns.PlannerPlanCommand, ns.GuideOn = realPlan, realOn
+        if arrows ~= 0 then error("Left and Right do nothing on an action row: " .. arrows) end
+        if planCalls ~= 1 then error("Space presses an action row: " .. planCalls) end
         ns:ToggleConfig()
         calls = 0
         ns:ToggleConfig("guide")
@@ -21598,6 +21612,231 @@ try("polish: together", function()
     if not ok then error(err, 0) end
 end)
 -- polish merge: end
+-- polish review: begin
+try("polish review: the final review's fixes", function()
+    local saved = { unlocked = ns.GuideUnlocked, on = ns.GuideOn, state = ns.root.guideState, guides = ns.root.guides, planner = ns.root.planner,
+        ql = env.C_QuestLog, raw = ns.PrintRaw, time = env.GetTime, map = env.C_Map, replan = ns.PlannerReplan, again = ns.GuidePlanAgain,
+        profiles = {}, mapLine = rawget(ns.db, "plannerMapLine"), speak = ns.Speak, read = ns.db.readDialog, show = ns.ShowList,
+        role = ns.Role, winKeys = ns.db.windowKeys, front = ns.FrontList, wfront = ns.WindowKeysFront, errors = #ns.errors,
+        cluster = rawget(env, "MinimapCluster"), qframe = rawget(env, "QuestInfoFrame"), button = rawget(env, "QuestInfo_GetRewardButton"),
+        choices = rawget(env, "GetNumQuestChoices"), link = rawget(env, "GetQuestItemLink"), up = ns.UpgradeAmount, under = ns.GuidePanelUnderMouse }
+    for k, v in pairs(ns.root.profiles) do saved.profiles[k] = v end
+    local ok, err = pcall(function()
+        ns.PrintRaw = function() end
+        ns.GuideUnlocked = function() return true end
+        ns.GuideOn = function() return true end
+        ns.root.planner = {}
+        local candidateHooks = ns.PlannerHookCopy("candidate")
+        local function Kept(id)
+            for _, h in ipairs(candidateHooks) do if h.fn({ id = id }, {}, false) == false then return false end end
+            return true
+        end
+
+        -- I-A: "Suggest again" takes effect in this session's plans too
+        env.C_QuestLog = setmetatable({ IsOnQuest = function() return false end, IsQuestFlaggedCompleted = function() return false end,
+            GetTitleForQuestID = function() return nil end, IsFailed = function() return false end }, { __index = saved.ql })
+        ns.PlannerSkip(9961, true)
+        if not ns.PlannerSessionSkipped(9961) or Kept(9961) then error("skipped: out of this session's plans") end
+        ns.PlannerSkip(9961, false)
+        if ns.PlannerSessionSkipped(9961) or not Kept(9961) then error("suggested again: the next plan holds it") end
+        ns:PlannerStop()
+
+        -- I-B: abandoned, then taken again: planned again; a skip you asked for stays
+        ns.root.guides, ns.root.guideState = {}, {}
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "accept", quest = 9962, title = "Again" } } }, { logFits = false })
+        ns:PlannerStop()
+        fireEvent("QUEST_REMOVED", 9962)
+        if not ns.PlannerSessionSkipped(9962) then error("abandoned: left out this session") end
+        fireEvent("QUEST_ACCEPTED", 1, 9962)
+        if ns.PlannerSessionSkipped(9962) or not Kept(9962) then error("taken again: planned again") end
+        ns.PlannerSessionSkip(9963)
+        fireEvent("QUEST_ACCEPTED", 1, 9963)
+        if not ns.PlannerSessionSkipped(9963) then error("a skip you asked for stays when you take the quest") end
+        ns:PlannerStop()
+        ns.PlannerSessionSkipReset()
+
+        -- M2: a quest that fails again plans again, and abandoning it is never a skip
+        local agains = 0
+        ns.GuidePlanAgain = function(self, why) if why == "failed" then agains = agains + 1 end return true end
+        env.C_QuestLog = setmetatable({ IsOnQuest = function() return true end, IsFailed = function(id) return id == 9964 end,
+            IsQuestFlaggedCompleted = function() return false end, IsComplete = function() return false end, ReadyForTurnIn = function() return false end },
+            { __index = saved.ql })
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "do", quest = 9964, title = "Escort" } } }, { logFits = false })
+        ns:PlannerStop()
+        ns.PlannerFailedReset(9964)
+        fireEvent("QUEST_LOG_UPDATE"); fireEvent("QUEST_LOG_UPDATE")
+        if agains ~= 1 or not ns.PlannerWasFailed(9964) then error("failed: planned again once: " .. agains) end
+        ns.PlannerFailedReset(9964)
+        fireEvent("QUEST_LOG_UPDATE")
+        if not ns.PlannerWasFailed(9964) then error("seen failed on every look") end
+        fireEvent("QUEST_ACCEPTED", 1, 9964)
+        fireEvent("QUEST_LOG_UPDATE")
+        if agains ~= 2 then error("taken again and failed again: planned again: " .. agains) end
+        ns.GuidePlanAgain = saved.again
+        ns:PlannerStop(); ns:GuideStop()
+        ns.PlannerFailedReset(9964)
+        ns.PlannerSessionSkipReset()
+
+        -- M1: a second look on the same step lays nothing out
+        local clock = 50000
+        env.GetTime = function() return clock end
+        env.C_QuestLog = setmetatable({ IsOnQuest = function() return false end, IsQuestFlaggedCompleted = function() return false end }, { __index = saved.ql })
+        ns.root.guides, ns.root.guideState = {}, {}
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "goto", map = 1429, x = 90, y = 90, text = "far away" }, { kind = "note", text = "then" } } }, { zone = 1429 })
+        ns:PlannerStop()
+        local panel = ns:GuideShowPanel()
+        local layouts = 0
+        rawset(panel.title, "SetWidth", function() layouts = layouts + 1 end)
+        ns.guideTickTest(nil, 1.01)
+        local first = layouts
+        clock = clock + 1
+        ns.guideTickTest(nil, 1.01)
+        if layouts ~= first then error("a second tick on the same step: no layout (" .. first .. " then " .. layouts .. ")") end
+        ns:GuideAdvance()
+        if layouts ~= first then error("drawn again with nothing changed: no layout") end
+        ns.GuideMarkDirty(); ns.GuideAdvance(ns, true)
+        local _, at = ns:GuideAdvance()
+        if at ~= 1 then error("still on the first step") end
+        rawset(panel.title, "SetWidth", nil)
+
+        -- M3: "Planning what's next..." only while a plan is being made
+        local said
+        rawset(panel.now, "SetText", function(_, t) said = t end)
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "last" } } }, { zone = 1429 })
+        clock = clock + 120
+        ns:GuideSkip(false)
+        if not ns.plannerQueued or said ~= ns:Tr("Planning what's next...") then error("planning: says so: " .. tostring(said)) end
+        ns:PlannerStop(); ns.plannerQueued = false
+        ns:GuideRedraw()
+        if said ~= ns:Tr("End of the route. Press Plan again for what's next.") then error("nothing planning: says to plan again: " .. tostring(said)) end
+        rawset(panel.now, "SetText", nil)
+        ns:PlannerStop(); ns:GuideStop()
+        env.GetTime = saved.time
+
+        -- I-C: while locked, a role template, a profile code and a pack store no guide settings
+        rawset(ns.db, "plannerMapLine", false)
+        local code, pack = ns:ExportProfile(), ns:ExportPack()
+        ns.GuideUnlocked = function() return false end
+        local function NoGated(name, where)
+            local p = ns.root.profiles[name]
+            if type(p) ~= "table" then error(where .. ": no profile stored") end
+            for k in pairs(p) do if ns.GuideGatedKey(k) then error(where .. ": a locked player's profile holds " .. k) end end
+        end
+        local okT, _, tname = ns:NewTemplateProfile("TANK")
+        if not okT then error("the template") end
+        NoGated(tname, "role template")
+        if not ns:ImportProfile("Review import", code) then error("the import") end
+        NoGated("Review import", "profile import")
+        if not ns:ImportPack("Review pack", pack, false) then error("the pack") end
+        NoGated("Review pack", "pack import")
+        ns.GuideUnlocked = function() return true end
+        local okT2, _, tname2 = ns:NewTemplateProfile("TANK")
+        if not (okT2 and ns.root.profiles[tname2].plannerMapLine ~= nil) then error("unlocked: a template has the guide settings") end
+
+        -- M5: the catch-up page's action row in the theme's style, read aloud as it opens
+        local lines, spoken
+        ns.ShowList = function(_, _, _, l) lines = l; return env.CreateFrame("Frame") end
+        ns.Speak = function(_, t) spoken = t; return true end
+        ns.db.readDialog = true
+        ns:PlannerCatchUp(3 * 86400, nil)
+        local last = lines and lines[#lines]
+        if not (last and last.action == true and last.left == ns:Tr("Plan my route")) then error("the catch-up action row: " .. tostring(last and last.left)) end
+        if not (spoken and spoken:find(ns:Tr("Catch me up"), 1, true)) then error("the catch-up page is read aloud: " .. tostring(spoken)) end
+        ns.ShowList, ns.Speak, ns.db.readDialog = saved.show, saved.speak, saved.read
+
+        -- M6: the arrow's band is as wide as its longer top line
+        ns:SetWaypoint(50, 50, "Spot", 1429, true)
+        local arrow = ns.waypointArrow
+        local bandW
+        rawset(arrow.band, "SetSize", function(_, w) bandW = w end)
+        rawset(arrow.text, "GetStringWidth", function() return 300 end)
+        ns.waypoint.map = 99999
+        local cm = {}
+        for k, v in pairs(saved.map) do cm[k] = v end
+        cm.GetPlayerMapPosition = function() return nil end          -- (not on that map)
+        env.C_Map = cm
+        for _, h in ipairs(handlers) do if h.self == arrow and h.name == "OnUpdate" then h.fn(arrow, 1) end end
+        if not (bandW and bandW >= 316) then error("off the map: the band fits the longer line: " .. tostring(bandW)) end
+        env.C_Map = saved.map
+        rawset(arrow.band, "SetSize", nil); rawset(arrow.text, "GetStringWidth", nil)
+        ns:ClearWaypoint(true)
+
+        -- M7: the reward mark takes the accent each time it is shown
+        local colours = {}
+        local function Shown(r)
+            ns.Role = function() return r, 0, 0 end
+            local qf = { rewardsFrame = {} }
+            env.QuestInfoFrame = qf
+            env.QuestInfo_GetRewardButton = function()
+                local rb = env.CreateFrame("Button")
+                rawset(rb, "GetFrameLevel", function() return 3 end)    -- (a real level: the mark is laid over it)
+                return rb
+            end
+            env.GetNumQuestChoices = function() return 2 end
+            env.GetQuestItemLink = function(_, i) return ({ "|Hitem:1|h[Axe]|h", "|Hitem:2|h[Bow]|h" })[i] end
+            local up = ns.UpgradeAmount
+            ns.UpgradeAmount = function(link) return link:find("Bow", 1, true) and 5 or nil end
+            local m = ns.PlannerRewardMarkFrame and ns.PlannerRewardMarkFrame()
+            if m then for _, p in ipairs(m.parts) do rawset(p[1], "SetColorTexture", function(_, cr) colours[#colours + 1] = cr end) end end
+            fireEvent("QUEST_COMPLETE"); runTimers()
+            ns.UpgradeAmount = up
+            m = ns.PlannerRewardMarkFrame()
+            if m then for _, p in ipairs(m.parts) do rawset(p[1], "SetColorTexture", function(_, cr) colours[#colours + 1] = cr end) end end
+            fireEvent("QUEST_FINISHED")
+        end
+        Shown(0.25)
+        colours = {}
+        Shown(0.75)
+        fireEvent("QUEST_COMPLETE"); runTimers()
+        local fresh = #colours > 0
+        for _, c in ipairs(colours) do if c ~= 0.75 then fresh = false end end
+        if not fresh then error("the mark is painted with the accent of now") end
+        fireEvent("QUEST_FINISHED")
+        ns.Role = saved.role
+
+        -- the minimap: the newer menu when there, else the old button's click
+        local how = {}
+        env.MinimapCluster = { Tracking = { Button = { OpenMenu = function() how[#how + 1] = "menu" end, Click = function() how[#how + 1] = "click" end } } }
+        if ns:OpenTrackingMenu() ~= "menu" or how[1] ~= "menu" then error("the newer menu first") end
+        env.MinimapCluster = { Tracking = { Button = { Click = function() how[#how + 1] = "click" end } } }
+        if ns:OpenTrackingMenu() ~= "click" or how[2] ~= "click" then error("no newer menu: the button is clicked") end
+        rawset(env, "MinimapCluster", saved.cluster)
+
+        -- the read key: a whisper not yet read first; the front list when none waits, or when it has the keyboard
+        local list = { titleText = "Skipped", lines = { { left = "One" } } }
+        ns.FrontList = function() return list end
+        ns.Speak = function() return true end
+        ns.GuidePanelUnderMouse = function() return false end    -- (pointing at the panel reads it, as pointing at a tooltip does)
+        ns.ReadSetLastWhisper("Bob: ready?")
+        local _, kind = ns:ReadText()
+        if kind ~= "whisper" then error("a whisper waiting is read first: " .. tostring(kind)) end
+        ns:ReadAloud()
+        _, kind = ns:ReadText()
+        if kind ~= "list" then error("once read: the list in front: " .. tostring(kind)) end
+        ns.ReadSetLastWhisper("Bob: again?")
+        ns.db.windowKeys = true
+        ns.WindowKeysFront = function() return list end
+        _, kind = ns:ReadText()
+        if kind ~= "list" then error("the list with the keyboard is read: " .. tostring(kind)) end
+        ns.ReadSetLastWhisper(nil)
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    ns:PlannerStop(); ns:GuideStop()
+    ns.PlannerSessionSkipReset()
+    for k in pairs(ns.root.profiles) do if saved.profiles[k] == nil then ns.root.profiles[k] = nil end end
+    rawset(ns.db, "plannerMapLine", saved.mapLine)
+    env.C_QuestLog, env.GetTime, env.C_Map = saved.ql, saved.time, saved.map
+    rawset(env, "MinimapCluster", saved.cluster); rawset(env, "QuestInfoFrame", saved.qframe); rawset(env, "QuestInfo_GetRewardButton", saved.button)
+    rawset(env, "GetNumQuestChoices", saved.choices); rawset(env, "GetQuestItemLink", saved.link); ns.UpgradeAmount = saved.up
+    ns.GuideUnlocked, ns.GuideOn, ns.PrintRaw, ns.PlannerReplan, ns.GuidePlanAgain = saved.unlocked, saved.on, saved.raw, saved.replan, saved.again
+    ns.Speak, ns.db.readDialog, ns.ShowList, ns.Role = saved.speak, saved.read, saved.show, saved.role
+    ns.db.windowKeys, ns.FrontList, ns.WindowKeysFront = saved.winKeys, saved.front, saved.wfront
+    ns.ReadSetLastWhisper(nil)
+    ns.GuidePanelUnderMouse = saved.under
+    ns.root.guideState, ns.root.guides, ns.root.planner = saved.state, saved.guides, saved.planner
+    if not ok then error(err, 0) end
+end)
+-- polish review: end
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()

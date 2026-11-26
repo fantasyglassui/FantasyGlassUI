@@ -514,6 +514,7 @@ local function SkipName(questID, name)
 end
 function ns.PlannerSkip(questID, on, name)
     if type(questID) ~= "number" then return end
+    if not on and ns.PlannerSessionUnskip then ns.PlannerSessionUnskip(questID) end   -- (suggested again: this session's plans too)
     local rec = ns.PlannerCharRecord(on and true or false)
     if not rec then return end
     if on then
@@ -524,8 +525,8 @@ function ns.PlannerSkip(questID, on, name)
         local QL = C_QuestLog
         local okQ, logged = pcall(function() return QL and QL.IsOnQuest and QL.IsOnQuest(questID) end)
         if okQ and ns.Is(logged, true) then ns:Print("Left out of your plans; it stays in your quest log until you abandon it.") end
-    elseif type(rec.skip) == "table" then
-        rec.skip[questID] = nil
+    else
+        if type(rec.skip) == "table" then rec.skip[questID] = nil end
     end
     if ns.PlannerReplan then ns:PlannerReplan("settings") end
 end
@@ -1309,6 +1310,7 @@ do
                 local okG, grouped = pcall(IsInGroup)
                 grouped = not okG or not ns.Is(grouped, false)      -- (hidden or unreadable: counted as grouped)
                 if event == "QUEST_ACCEPTED" then
+                    if ns.PlannerSessionRetaken then ns.PlannerSessionRetaken(id) end   -- (abandoned, then taken again: planned again)
                     local list = SoloAt(false)
                     if list then list[id] = nil end
                     if not grouped then
@@ -1422,7 +1424,7 @@ do
                 if done then CountHandIn(a, plan, now)
                 elseif ns.PlannerWasFailed and ns.PlannerWasFailed(a) then  -- (a failed quest abandoned: to be taken again, F9)
                     if ns.PlannerFailedReset then ns.PlannerFailedReset(a) end
-                elseif ns.PlannerSessionSkip then ns.PlannerSessionSkip(a) end   -- (abandoned: not planned again this session)
+                elseif ns.PlannerSessionSkip then ns.PlannerSessionSkip(a, true) end   -- (abandoned: not planned again this session, unless taken again)
             end
             ns:PlannerReplan("quest removed")
         end

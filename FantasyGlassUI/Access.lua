@@ -15,17 +15,23 @@ local function Plain(text)
     text = text:gsub("%s+", " "):gsub("^ ", ""):gsub(" $", "")
     return text ~= "" and text or nil
 end
-local lastWhisper
+local lastWhisper, whisperNew                -- (whisperNew: a whisper not yet read aloud)
 local Join                                  -- (parts joined into sentences: below)
 do
     local ev = CreateFrame("Frame")
     for _, e in ipairs({ "CHAT_MSG_WHISPER", "CHAT_MSG_BN_WHISPER" }) do pcall(ev.RegisterEvent, ev, e) end
     ev:SetScript("OnEvent", function(_, _, msg, sender)
         local text, who = Plain(msg), (type(sender) == "string" and not Secret(sender)) and sender:gsub("%-.*$", "") or nil
-        if text then lastWhisper = (who and (who .. ": ") or "") .. text end
+        if text then lastWhisper, whisperNew = (who and (who .. ": ") or "") .. text, true end
     end)
 end
-function ns.ReadSetLastWhisper(text) lastWhisper = text end      -- (for the tests)
+function ns.ReadSetLastWhisper(text) lastWhisper, whisperNew = text, text ~= nil end      -- (for the tests)
+-- Has the list window in front the keyboard (the game-window keys are on and it is the window they work)?
+local function ListFocused(w)
+    if not (w and ns.db and ns.db.windowKeys and ns.WindowKeysFront) then return false end
+    local ok, f = pcall(ns.WindowKeysFront)
+    return ok and f == w
+end
 -- What would be read: the text and which kind it was.
 function ns:ReadText(what)
     what = (type(what) == "string" and what ~= "") and what:lower() or nil
@@ -60,6 +66,8 @@ function ns:ReadText(what)
     end
     if not what or what == "list" then
         local w = ns.FrontList and ns:FrontList()
+        -- (the key reads a whisper not yet read first, as it always did: the list only when none is waiting, or when it has the keyboard)
+        if not what and w and lastWhisper and whisperNew and not ListFocused(w) then return lastWhisper, "whisper" end
         if w then
             local parts = {}
             parts[1] = Plain(w.titleText)
@@ -87,6 +95,7 @@ function ns:ReadAloud(what)
         return false
     end
     ns.readLast = kind
+    if kind == "whisper" then whisperNew = false end          -- (read: the list in front is read next time)
     return kind
 end
 

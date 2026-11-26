@@ -135,9 +135,13 @@ function ns:DeleteProfile(name)
 end
 
 -- The settings only an unlocked quest guide uses: while it is locked, a shared code leaves them out, so a code
--- never shows their names (importing still takes them).
+-- never shows their names, and a template or an import does not store them either.
 function ns.GuideGatedKey(k)
     return type(k) == "string" and (k:find("^planner") ~= nil or k == "questGuide" or k == "guideSound")
+end
+-- Is this a gated key while the guide is locked (to be left out of a profile that is stored)?
+function ns.GuideGatedHidden(k)
+    return ns.GuideGatedKey(k) and not (ns.GuideUnlocked and ns:GuideUnlocked())
 end
 local function Shareable(db)
     if type(db) ~= "table" or (ns.GuideUnlocked and ns:GuideUnlocked()) then return db end
@@ -174,7 +178,7 @@ function ns:ImportProfile(name, text)
     -- keep only settings this version knows, with the type it expects
     local clean = {}
     for k, default in pairs(ns.defaults) do
-        if type(data[k]) == type(default) then clean[k] = data[k] end
+        if type(data[k]) == type(default) and not ns.GuideGatedHidden(k) then clean[k] = data[k] end   -- (locked: no guide settings)
     end
     if type(data.role) == "string" then clean.role = data.role end
     clean.pos, clean.scale = {}, {}
@@ -458,10 +462,10 @@ function ns.CleanPackProfile(p)
     local clean = {}
     if type(p) ~= "table" then return clean end
     for k, default in pairs(ns.defaults) do
-        if type(p[k]) == type(default) then clean[k] = DeepCopy(p[k]) end
+        if type(p[k]) == type(default) and not ns.GuideGatedHidden(k) then clean[k] = DeepCopy(p[k]) end   -- (locked: no guide settings)
     end
     for k, v in pairs(p) do
-        if type(k) == "string" and clean[k] == nil and ns.defaults[k] == nil and (type(v) == "table" or type(v) == "string" or type(v) == "number" or type(v) == "boolean") then
+        if type(k) == "string" and clean[k] == nil and ns.defaults[k] == nil and not ns.GuideGatedHidden(k) and (type(v) == "table" or type(v) == "string" or type(v) == "number" or type(v) == "boolean") then
             clean[k] = DeepCopy(v)
         end
     end

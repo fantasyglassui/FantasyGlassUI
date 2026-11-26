@@ -21,6 +21,7 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["End of the route. Press Plan again for what's next."] = "Ende der Route. Drück „Neu planen“ für das, was als Nächstes kommt.",
     ["What the route includes"] = "Was die Route enthält",
     ["Advice along the way"] = "Tipps unterwegs",
     ["On the map"] = "Auf der Karte",
@@ -3686,6 +3687,7 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["End of the route. Press Plan again for what's next."] = "Fin de l'itinéraire. Appuyez sur « Replanifier » pour la suite.",
     ["What the route includes"] = "Ce que comprend l'itinéraire",
     ["Advice along the way"] = "Conseils en chemin",
     ["On the map"] = "Sur la carte",
@@ -3794,7 +3796,7 @@ ns.locales.frFR = {
     ["%s will plan with you: waiting for their quests..."] = "%s planifiera avec vous : en attente de ses quêtes...",
     ["You are not in %s: the line is in your chat box. Press Enter to send it in the current channel."] = "Vous n'êtes pas dans %s : la ligne est dans votre zone de discussion. Appuyez sur Entrée pour l'envoyer dans le canal actuel.",
     ["Guide: plan again"] = "Guide : replanifier",
-    ["Fantasy Glass UI: extra %d"] = "Fantasy Glass UI : supplément %d",
+    ["Fantasy Glass UI: extra %d"] = "Fantasy Glass UI : raccourci %d",
     ["(timed: go straight on)"] = "(chronométré : continuez sans détour)",
     ["(failed: abandon it and take it again)"] = "(échouée : abandonnez-la et reprenez-la)",
     ["planning..."] = "planification...",
@@ -7351,6 +7353,7 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["End of the route. Press Plan again for what's next."] = "Fin de la ruta. Pulsa «Planear de nuevo» para lo siguiente.",
     ["What the route includes"] = "Qué incluye la ruta",
     ["Advice along the way"] = "Consejos por el camino",
     ["On the map"] = "En el mapa",
@@ -11019,6 +11022,7 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["End of the route. Press Plan again for what's next."] = "Конец маршрута. Нажмите «Спланировать заново», чтобы спланировать дальше.",
     ["What the route includes"] = "Что входит в маршрут",
     ["Advice along the way"] = "Советы в пути",
     ["On the map"] = "На карте",
@@ -14684,6 +14688,7 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["End of the route. Press Plan again for what's next."] = "Fim da rota. Pressione «Planear de novo» para o que vem a seguir.",
     ["What the route includes"] = "O que a rota inclui",
     ["Advice along the way"] = "Dicas pelo caminho",
     ["On the map"] = "No mapa",
@@ -18349,6 +18354,7 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["End of the route. Press Plan again for what's next."] = "Fine del percorso. Premi «Pianifica di nuovo» per il seguito.",
     ["What the route includes"] = "Cosa include il percorso",
     ["Advice along the way"] = "Consigli lungo la strada",
     ["On the map"] = "Sulla mappa",
@@ -22014,6 +22020,7 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["End of the route. Press Plan again for what's next."] = "경로가 끝났습니다. 다음 경로는 '다시 계획'을 누르세요.",
     ["What the route includes"] = "경로에 포함할 것",
     ["Advice along the way"] = "가는 길의 조언",
     ["On the map"] = "지도에",
@@ -25682,6 +25689,7 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["End of the route. Press Plan again for what's next."] = "路线已结束。按“重新规划”规划接下来的路线。",
     ["What the route includes"] = "路线包含的内容",
     ["Advice along the way"] = "沿途建议",
     ["On the map"] = "地图上",

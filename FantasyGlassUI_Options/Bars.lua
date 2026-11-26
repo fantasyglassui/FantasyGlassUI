@@ -173,6 +173,7 @@ local function ButtonRow(G, sec, label, desc, onClick, cycle)
     if cycle then b:RegisterForClicks("LeftButtonUp", "RightButtonUp") end      -- (a right-click steps back)
     b.row = row
     row.button, row.navKey = b, "guide:" .. label
+    row.suiNoStep = not cycle or nil                         -- (an action row: Left and Right do nothing, only Space and Enter press it)
     Hover(row, b)
     local fs = Desc(row, desc)
     fs:SetPoint("TOPLEFT", 332, -19)

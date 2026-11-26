@@ -99,9 +99,11 @@ function ns:SetWaypoint(x, y, label, onMap, quiet)
                     self.tex:Hide()
                     local name = ns.MapName and ns.MapName(w.map)
                     self.text:SetText(name and format(ns:Tr("On another map: %s"), name) or ns:Tr("another map"))
+                    pcall(ns.WaypointFit)                         -- (the longer line: the band made wide enough for it)
                 end
                 return
             end
+            local back = w.offMap                                 -- (back on the map: the band fitted to the yards again)
             w.offMap = nil
             if not w.width then w.width, w.height = MapSize(w.map) end   -- (asked once per waypoint)
             local facing = GetPlayerFacing and GetPlayerFacing()
@@ -125,6 +127,7 @@ function ns:SetWaypoint(x, y, label, onMap, quiet)
                 w.shownYards = yards
                 self.text:SetText(format("%d %s", yards, ns:Tr("yd")))
             end
+            if back then pcall(ns.WaypointFit) end
         end))
         ns.waypointArrow = arrow
         local entry = ns:RegisterMovable(arrow, "waypoint", "Waypoint")
@@ -156,8 +159,9 @@ function ns.WaypointFit()
     local nw = Measure(arrow.name, "GetStringWidth", 0)
     if nw > 240 then arrow.name:SetWidth(240); nw = 240 end
     local th, nh = Measure(arrow.text, "GetStringHeight", math.ceil(12 * scale)), Measure(arrow.name, "GetStringHeight", math.ceil(10 * scale))
+    local tw = Measure(arrow.text, "GetStringWidth", 0)     -- (the top line: the yards, or "On another map: …", which is longer)
     if nw == 0 then nh = 0 end
-    arrow.band:SetSize(math.max(nw, math.ceil(70 * scale)) + 16, th + 1 + nh + 6)
+    arrow.band:SetSize(math.max(nw, tw, math.ceil(70 * scale)) + 16, th + 1 + nh + 6)
     arrow.band:SetVertexColor(0, 0, 0, (ns.db and ns.db.textBands) and 0.72 or 0.55)   -- (stronger with "Dark band behind messages")
     arrow:SetHeight(36 + 2 + th + 1 + nh + 4)
 end
@@ -395,14 +399,13 @@ end)
 ------------------------------------------------------------------------------------------
 -- Minimap: right-click for the tracking menu, and the name of whoever pinged it.
 ------------------------------------------------------------------------------------------
--- Only the game's newer menus (a tracking button with OpenMenu, as WoW Forever's has: MiniMapTrackingButtonMixin with its
--- menu descriptions) are opened from here: those are safe to open from an add-on. A client whose tracking menu is the
--- old drop-down kind is left alone, since opening that from add-on code taints the shared drop-down state (later
--- "action blocked" on unit menus); its own button still works.
+-- The game's newer menu (a tracking button with OpenMenu, as WoW Forever's has: MiniMapTrackingButtonMixin with its
+-- menu descriptions) is opened when it is there. A client without it keeps what this did before: its button is clicked.
 function ns:OpenTrackingMenu()
     local cluster = _G.MinimapCluster
     local button = cluster and ((cluster.Tracking and cluster.Tracking.Button) or (cluster.TrackingFrame and cluster.TrackingFrame.Button))
     if type(button) == "table" and type(button.OpenMenu) == "function" then return pcall(button.OpenMenu, button) and "menu" or false end
+    if type(button) == "table" and type(button.Click) == "function" then return pcall(button.Click, button) and "click" or false end
     return false
 end
 ns:NewModule("mapTracking", function()

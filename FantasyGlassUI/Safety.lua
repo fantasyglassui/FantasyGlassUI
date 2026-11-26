@@ -290,7 +290,9 @@ function ns.TemplateProfile(role, current)
     local t = ns.ROLE_TEMPLATES[role]
     if not t then return nil end
     local db = {}
-    for k, v in pairs(ns.defaults) do db[k] = Copy(v) end
+    for k, v in pairs(ns.defaults) do
+        if not (ns.GuideGatedHidden and ns.GuideGatedHidden(k)) then db[k] = Copy(v) end   -- (locked: no guide settings; they read their defaults)
+    end
     for _, k in ipairs(LOOK) do if current and current[k] ~= nil then db[k] = Copy(current[k]) end end
     db.role = role
     db.design = 4

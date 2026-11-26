@@ -330,11 +330,14 @@ function ns:PlannerCatchUp(away, since)
         end
     end
     local w
-    lines[#lines + 1] = { left = ns:AccentHex() .. ns:Tr("Plan my route") .. "|r", click = function()
+    lines[#lines + 1] = { left = ns:Tr("Plan my route"), action = true, click = function()   -- (the theme's action style, as every list's)
         if w and w.Hide then w:Hide() end
         if ns.PlannerStart then ns:PlannerStart() end
     end }
     w = ns:ShowList("PlanCatchUp", "Catch me up", lines, nil, 460, 240)
+    if ns.db and ns.db.readDialog and ns.db.plannerSpeak ~= false and lines[1] then   -- (read aloud as it opens: the page and its first line)
+        ns:Speak(ns:Tr("Catch me up") .. ". " .. tostring(lines[1].left))
+    end
     return w
 end
 

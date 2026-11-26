@@ -762,7 +762,7 @@ local function BuildSections(page)
                 local v = tonumber(s:GetValue()) or def.min
                 s:SetValue(math.max(def.min, math.min(def.max, v + step * def.step)))
                 return true
-            elseif row.button then
+            elseif row.button and not row.suiNoStep then      -- (an action row, row.suiNoStep: the arrows never press it)
                 local click = row.button:GetScript("OnClick")
                 if click then click(row.button, step < 0 and "RightButton" or "LeftButton") end
                 return true

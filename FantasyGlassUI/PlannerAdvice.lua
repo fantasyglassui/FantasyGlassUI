@@ -56,6 +56,7 @@ end
 -- clicked, and none of the game's quest frames is written to), and a chat line names it. The click is yours.
 local mark, markedAt
 function ns.PlannerRewardMarked() return markedAt end            -- (the choice shown, or nil)
+function ns.PlannerRewardMarkFrame() return mark end              -- (read only: the tests)
 local function Unmark()
     markedAt = nil
     if mark then mark:Hide() end
@@ -63,20 +64,21 @@ end
 local function Mark(button)
     if not mark then
         mark = CreateFrame("Frame")
-        local r, g, b = ns:Role("@accent")
         local fill = mark:CreateTexture(nil, "OVERLAY")
         fill:SetAllPoints()
-        fill:SetColorTexture(r, g, b, 0.18)
+        mark.parts = { { fill, 0.18 } }
         local function Edge(a1, a2, w, h)
             local t = mark:CreateTexture(nil, "OVERLAY")
-            t:SetColorTexture(r, g, b, 0.9)
             t:SetPoint(a1); t:SetPoint(a2)
             if w then t:SetWidth(w) else t:SetHeight(h) end
+            mark.parts[#mark.parts + 1] = { t, 0.9 }
         end
         Edge("TOPLEFT", "TOPRIGHT", nil, 2); Edge("BOTTOMLEFT", "BOTTOMRIGHT", nil, 2)
         Edge("TOPLEFT", "BOTTOMLEFT", 2); Edge("TOPRIGHT", "BOTTOMRIGHT", 2)
         mark:EnableMouse(false)                    -- (the click goes through to the game's button)
     end
+    local r, g, b = ns:Role("@accent")             -- (the accent as it is now: each time it is shown, after a theme change too)
+    for _, p in ipairs(mark.parts) do p[1]:SetColorTexture(r, g, b, p[2]) end
     mark:SetParent(button)
     mark:ClearAllPoints()
     mark:SetAllPoints(button)

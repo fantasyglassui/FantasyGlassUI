@@ -473,6 +473,11 @@ local function PanelEntries(step)
     end
     return out
 end
+-- Is any entry of `list` shown for this step? (No tables made: the panel asks on every draw.)
+local function HasEntries(list, step)
+    for _, e in ipairs(list) do if ActionShown(e, step) then return true end end
+    return false
+end
 -- The entries shown for a step: { { label, fn } } (labels as registered: ns:GuideMenu translates them).
 ns.GuideStepEntries = StepEntries          -- the registered step actions only (not the built-in skip entry)
 ns.GuidePanelEntries = PanelEntries        -- the registered panel actions shown now (what the "..." button lists)
@@ -642,7 +647,11 @@ local function EndReplan()
     ns:GuidePlanAgain("end")
 end
 -- Move on to the first step that is not done. Returns the step and its number (nil at the end).
-function ns:GuideAdvance()
+-- `quiet` (the 1 s look): the panel is drawn again only when the step changed, something marked it dirty
+-- (ns.GuideMarkDirty), or its last drawing is 10 s old (lines that count time down); every other call draws it.
+local drawDirty, drawnAt, drawnAtStep, drawnGuide = true, nil, nil, nil
+function ns.GuideMarkDirty() drawDirty = true end
+function ns:GuideAdvance(quiet)
     local st = State()
     if not st or not ns:GuideOn() then return nil end
     local guide = ns:GuideGet(st.name)
@@ -676,7 +685,14 @@ function ns:GuideAdvance()
         end
     end
     Point(step, st.at)
-    if Draw then Draw() end
+    if Draw then
+        local now = GetTime and GetTime() or 0
+        if not quiet or drawDirty or st.at ~= before or drawnAtStep ~= st.at or drawnGuide ~= guide
+            or not drawnAt or now < drawnAt or now - drawnAt >= 10 then
+            drawDirty, drawnAt, drawnAtStep, drawnGuide = false, now, st.at, guide
+            Draw()
+        end
+    end
     local key = step and StepKey(step) or "\1end"           -- (the step you are on changed: the advance hooks; nil step at the end)
     if key ~= seenKey then
         local resumed = seenKey == nil and not freshPlan and st.at == before   -- (the first look after a load: the step you left off on)
@@ -835,7 +851,8 @@ local function EndText(st)
     if not s then return ns:Tr("Planning your route...") end
     if s.empty and s.source == "log" then return ns:Tr("Install Questie to plan new quests; your quest log has none to plan") end   -- (not the world's fault)
     if s.empty then return ns:Tr("No quests left worth the trip; grinding or a dungeon may be faster") end
-    return ns:Tr("Planning what's next...")
+    if ns.plannerQueued or ns.plannerBusy then return ns:Tr("Planning what's next...") end   -- (only while a plan is really being made)
+    return ns:Tr("End of the route. Press Plan again for what's next.")   -- (held back, refused, or the new plan is done already)
 end
 -- (from a plan's summary: the planner's preview shows the same line)
 function ns.GuideSkippedText(s)
@@ -1244,12 +1261,10 @@ Draw = function()
     panel.count:SetText(math.min(at, #steps) .. "/" .. #steps)
     local step = steps[at]
     if panel.stepButton then                        -- (it takes the mouse only while a planned step with a menu is shown)
-        panel.stepButton:SetShown(planned and type(step) == "table" and (type(step.quest) == "number" or #StepEntries(step) > 0))
+        panel.stepButton:SetShown(planned and type(step) == "table" and (type(step.quest) == "number" or HasEntries(stepActions, step)))
     end
-    panel.moreShown = planned and #PanelEntries(step) > 0   -- (the panel's menu: only while following the plan and some entry is there)
+    panel.moreShown = planned and HasEntries(panelActions, step)   -- (the panel's menu: only while following the plan and some entry is there)
     panel.more:SetShown(panel.moreShown)
-    Footer()
-    panel.again:SetShown(planned and ns.PlannerReplan ~= nil and panel.againFits ~= false)   -- (Plan again: only while following the plan)
     local nowText
     if step then
         local kind = KindOf(step)
@@ -1276,7 +1291,17 @@ Draw = function()
     panel.bar:SetMinMaxValues(0, math.max(1, #steps))
     panel.bar:SetValue(math.min(at - 1, #steps))
     panel.bar:SetShown(not planned)                 -- (a plan starts again at 1 with each replan: its bar would never move on)
-    Layout()
+    -- (placed again only when something that moves a line changed: the width, the lettering, a text, a line shown)
+    local sig = { PanelWidth(), FontScale(), Big(), tostring(panel.moreShown), tostring(panel.againW), tostring(panel.listW), tostring(panel.againSetW) }
+    for _, t in ipairs(tip) do sig[#sig + 1] = t end
+    for _, key in ipairs(LINE_KEYS) do sig[#sig + 1] = texts[key] and key or "-" end
+    sig = table.concat(sig, "\1")
+    if sig ~= panel.layoutSig or panel.drawnWidth == nil or panel.drawnHeight == nil then   -- (a size forgotten: placed again)
+        Footer()
+        panel.layoutSig = sig
+        Layout()
+    end
+    panel.again:SetShown(planned and ns.PlannerReplan ~= nil and panel.againFits ~= false)   -- (Plan again: only while following the plan)
 end
 -- (the lettering or the theme changed: the buttons measured again, the fill's strength, every line placed again)
 local function Restyle()
@@ -1285,7 +1310,7 @@ local function Restyle()
     panel.againW = FitButton(panel.again, 72)
     panel.listW = FitButton(panel.list, 64)
     FitButton(panel.talentButton, 56)
-    panel.drawnHeight, panel.drawnWidth, panel.againSetW = nil, nil, nil
+    panel.drawnHeight, panel.drawnWidth, panel.againSetW, panel.layoutSig = nil, nil, nil, nil
     if panel:IsShown() then Draw() end
 end
 ns:OnTheme(function() pcall(Restyle) end)
@@ -1430,7 +1455,7 @@ function ns:GuideShowPanel()
         end
         pcall(PinTop)
     end
-    panel.drawnHeight = nil                         -- (shown afresh: its height is set once more; a redraw sets it only when it changes)
+    panel.drawnHeight, panel.layoutSig = nil, nil                       -- (shown afresh: its height is set once more; a redraw sets it only when it changes)
     cached = {}
     panel:Show()
     Draw()
@@ -1587,11 +1612,14 @@ FailedCheck = function(st)
     local guide = ns:GuideGet(st.name)
     local step = guide and guide.steps[st.at or 1]
     local q = type(step) == "table" and step.quest
-    if type(q) ~= "number" or failedSeen[q] or not Failed(q) then return end
+    if type(q) ~= "number" or not Failed(q) then return end
+    if ns.PlannerNoteFailed then ns.PlannerNoteFailed(q) end     -- (abandoning it now is to take it again, not a skip: every time it is seen)
+    if failedSeen[q] then return end
     failedSeen[q] = true
-    if ns.PlannerNoteFailed then ns.PlannerNoteFailed(q) end     -- (abandoning it now is to take it again, not a skip)
     ns:GuidePlanAgain("failed")
 end
+-- The quest left your log or was taken again: a later failure plans again too.
+function ns.GuideFailedForget(q) if type(q) == "number" then failedSeen[q] = nil end end
 -- Standing at an accept step's place for a minute without the quest: its giver may not be there (old quest data).
 local notHereAt
 NotHere = function(st, step)
@@ -1605,7 +1633,7 @@ NotHere = function(st, step)
 end
 do
     local ev = CreateFrame("Frame")
-    for _, e in ipairs({ "QUEST_ACCEPTED", "QUEST_TURNED_IN", "QUEST_LOG_UPDATE", "PLAYER_LEVEL_UP", "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA" }) do pcall(ev.RegisterEvent, ev, e) end
+    for _, e in ipairs({ "QUEST_ACCEPTED", "QUEST_TURNED_IN", "QUEST_REMOVED", "QUEST_LOG_UPDATE", "PLAYER_LEVEL_UP", "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA" }) do pcall(ev.RegisterEvent, ev, e) end
     -- every event in a burst (QUEST_LOG_UPDATE comes several times a kill) asks for one advance, 0.3 s on
     local advancePending = false
     local function AdvanceSoon()
@@ -1616,6 +1644,8 @@ do
     local function Id(v) return (type(v) == "number" and not Secret(v)) and v or nil end
     ev:SetScript("OnEvent", ns:Guard("Guide events", function(_, event, a, b)
         if not ns:GuideOn() then return end
+        if event == "QUEST_ACCEPTED" then ns.GuideFailedForget(Id(b) or Id(a))
+        elseif event == "QUEST_REMOVED" or event == "QUEST_TURNED_IN" then ns.GuideFailedForget(Id(a)) end
         if event ~= "QUEST_LOG_UPDATE" and event ~= "ZONE_CHANGED_NEW_AREA" then cached = {} end   -- (a level, a quest: the talent and riding lines again)
         if rec then
             if event == "QUEST_ACCEPTED" then ns:GuideRecordEvent("accept", Id(b) or Id(a))
@@ -1647,7 +1677,7 @@ do
         local step = guide and guide.steps[st.at or 1]
         local reached = LegReached()                          -- (a leg reached: the arrow's next one, on any kind of step)
         if pointPending and not InCombatLockdown() then reached = true end   -- (a leg left for after the fight)
-        if step and (reached or step.kind == "goto" or step.kind == "level" or step.kind == "explore" or step.kind == "gather" or step.kind == "hearth" or step.kind == "fly") then pcall(ns.GuideAdvance, ns) end
+        if step and (reached or step.kind == "goto" or step.kind == "level" or step.kind == "explore" or step.kind == "gather" or step.kind == "hearth" or step.kind == "fly") then pcall(ns.GuideAdvance, ns, true) end
         NotHere(st, step)
     end
     ev:SetScript("OnUpdate", ns:Guard("Guide tick", Tick))    -- (a bad saved step says so once, never once a second)

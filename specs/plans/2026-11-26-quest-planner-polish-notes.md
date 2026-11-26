@@ -105,6 +105,30 @@ list every finding ID with its outcome. This file covers the merge.
     - The cause is in the audit's own frame model. It added an anchor to a frame's list on every `SetPoint`, with no limit. The rebuilt Guide tab and the measured panel lay their frames out again on every refresh, so the lists grew without end (4.5 GB of Lua before the combat pass).
     - The audit now keeps each anchor frame once. That is the same set of frames, so protection is unchanged; the result lists the same frames as at 1023912, with no protected call in combat (a few secure keys and raid marks are counted 3 times instead of 4 because the tests build them once less). Lua memory before the combat pass is now 3.0 GB, and the run completes.
     - The integration test opens the Guide tab without throwing the settings window away (no `O.frame = nil`), which saves about 7,000 handlers.
+    - **After the final review's fixes it was killed again** (and pytest's `test_combat_locks` failed with "the combat audit printed nothing"). This time the cause was the audit's stand-in game frames: a capitalized part of a game frame (`.ScrollTarget`) became a new game frame with no depth. The Skin's walk on every tick went one level deeper each time, creating 495,000 frames with ever longer labels.
+    - Game-frame parts are now made at most 6 levels down. The report is the same line for line, the peak is 580 MB instead of about 6 GB, and the run takes 189 s.
+
+## The final review's fixes
+
+From `.superpowers/sdd/polish-final-review.md` (0 Critical, 3 Important, 10 Minor), all fixed in one wave. Each has a smoke test in the `polish review` region, unless the list below says otherwise.
+
+- **I-A:** `ns.PlannerSessionUnskip(id)`. `PlannerSkip(id, false)` ("Suggest again") calls it, so this session's plans take the quest again.
+- **I-B:** a skip that comes from an abandon is kept in its own set (`ns.PlannerSessionSkip(id, true)`). `QUEST_ACCEPTED` for that quest clears it (`ns.PlannerSessionRetaken`). A skip you asked for (">", "Skip this quest for now") stays.
+- **I-C:** while the guide is locked, `ns.GuideGatedHidden(k)` leaves the gated keys out of the role templates (Safety.lua `TemplateProfile`), the profile import and the pack import (Profiles.lua, both loops).
+- **M1:** the 1 s look (`GuideAdvance(true)`) draws the panel again only when the step changed, something called `ns.GuideMarkDirty()`, or the last drawing is 10 s old. The 10 s is for lines that count time down.
+  - Every other caller draws as before. `Draw` skips `Footer` and `Layout` when nothing that moves a line has changed: a signature of the width, the lettering, Bigger controls, the menu button, every text and the lines shown.
+  - The entry checks no longer make tables (`HasEntries`).
+- **M2:** `failedSeen` is cleared when the quest is accepted, handed in or removed (the guide now listens to `QUEST_REMOVED`). `ns.PlannerNoteFailed` is called on every look that sees the quest failed, so abandoning it is never a skip.
+- **M3:** "Planning what's next..." shows only while `ns.plannerQueued` or `ns.plannerBusy` is set. When the replan is held, refused or already finished, the panel says "End of the route. Press Plan again for what's next." This is a new key, in all 8 languages.
+- **M4:** on the Guide tab, an action row (a button that is not a cycle) is marked `suiNoStep`, and FeaturesPage's Left and Right do nothing on it. Space and Enter still press it. The test is in the P3 block.
+- **M5:** the catch-up page's "Plan my route" row is `action = true`, the theme's action style. The page is read aloud as it opens when reading aloud and "Read the route aloud" are on.
+- **M6:** `ns.WaypointFit` measures the top line too, and runs when the arrow goes off the map and when it comes back.
+- **M7:** the reward mark is painted with the current accent each time it is shown.
+- **M8 (ruling):** French « Fantasy Glass UI : raccourci %d ».
+- **M9:** "…" is added to the in-game glyph check, below.
+- **M10 (decision):** the planner data is **kept after a relock**: `plannerIntroSeen`, the account stores and the filled gated keys of the active profile. Deleting it would lose the progress of a tester who unlocks again. The "no planner data" promise is for a player who has never unlocked.
+- **Public regression (ruling):** the minimap right-click opens the newer menu when the tracking button has `OpenMenu`. Otherwise it clicks the button, as before this round. P2's older test now expects the click.
+- **Public behaviour change (ruling):** the read key reads a whisper that has not been read yet first, as before this round. It reads the front list window only when no whisper is waiting, or when that window has the keyboard (game-window keys on and it is their front window). Asking for the list by name still reads it. Pointing at a tooltip, a quest text or the guide panel still reads that first, as before.
 
 ## Findings left, with reasons
 
@@ -140,6 +164,7 @@ Keys and bindings:
 
 Fonts and look:
 - [ ] The "→" glyph in "Level %s → %s" and in "Planned: %s, level %s → %s" draws in the game's fonts (default, every lettering choice, koKR and zhCN). If it shows as a box, change the key in all 8 languages (P2's M12).
+- [ ] The "…" glyph in the panel title's " · planning…" (F21) draws in the game's fonts too, the same check as "→". If it shows as a box, use "..." as the rest of the add-on does.
 - [ ] **The Guide tab's row heights:** the measured heights after the first draw, at text sizes 70, 100 and 150 and with Bigger controls. Rows must not overlap or leave gaps. The layout runs again when the width changes.
 - [ ] Guide tab contrast: the descriptions are `dim` at 13 (6.79:1 on the card). The followed guide's name is a lightened accent at 4.5:1 or better, and the keyboard focus ring is visible on every row.
 - [ ] **The explainer's look:**
@@ -164,4 +189,4 @@ Flows:
 - [ ] Questie loading slowly: the "still loading" line, then the quest-log plan after 30 s.
 - [ ] Landing from a taxi or reviving runs the queued replan.
 - [ ] The end of a route plans again (at most once a minute), and an empty plan does not loop.
-- [ ] Stored data while locked: a fresh locked character's SavedVariables hold no `guides`, `guideState`, `planner` or gated `planner*` keys after a logout.
+- [ ] Stored data while locked: a fresh locked character's SavedVariables hold no `guides`, `guideState`, `planner` or gated `planner*` keys after a logout. This includes a role template made while locked, and a profile code or a pack imported while locked. (A tester who unlocks and then locks again keeps their data: see the final review's decisions.)

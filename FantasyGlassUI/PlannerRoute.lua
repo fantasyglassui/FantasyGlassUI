@@ -1182,11 +1182,25 @@ local failedLogged = {}
 function ns.PlannerNoteFailed(id) if type(id) == "number" then failedLogged[id] = true end end
 function ns.PlannerWasFailed(id) return type(id) == "number" and failedLogged[id] == true end
 function ns.PlannerFailedReset(id) if type(id) == "number" then failedLogged[id] = nil end end
-function ns.PlannerSessionSkip(id)
-    if type(id) == "number" then sessionSkip[id] = true end
+-- Skips that come from an abandon (F8), apart from the ones you asked for: taking the quest again clears one.
+local fromAbandon = {}
+-- `abandoned`: the skip comes from abandoning the quest, not from ">" or "Skip this quest for now".
+function ns.PlannerSessionSkip(id, abandoned)
+    if type(id) ~= "number" then return end
+    sessionSkip[id] = true
+    if abandoned then fromAbandon[id] = true else fromAbandon[id] = nil end
 end
 function ns.PlannerSessionSkipped(id) return sessionSkip[id] == true end
-function ns.PlannerSessionSkipReset() sessionSkip = {} end
+-- "Suggest again" (ns.PlannerSkip(id, false)): this session's plans take it again too.
+function ns.PlannerSessionUnskip(id)
+    if type(id) == "number" then sessionSkip[id], fromAbandon[id] = nil, nil end
+end
+-- You took the quest again: a skip that came from abandoning it ends (a skip you asked for stays).
+function ns.PlannerSessionRetaken(id)
+    if type(id) == "number" and fromAbandon[id] then sessionSkip[id], fromAbandon[id] = nil, nil; return true end
+    return false
+end
+function ns.PlannerSessionSkipReset() sessionSkip, fromAbandon = {}, {} end
 ns.PlannerHook("candidate", "sessionSkip", function(rec)
     if type(rec) == "table" and sessionSkip[rec.id] then return false end
 end)
