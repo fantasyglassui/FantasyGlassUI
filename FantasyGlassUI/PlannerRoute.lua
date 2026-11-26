@@ -473,6 +473,7 @@ local function SailText(leg)
     if not (a and b) then return nil end
     return Clean(format(ns:Tr(leg.ship == "zeppelin" and "Take the zeppelin from %s to %s" or "Take the boat from %s to %s"), a, b))
 end
+ns.PlannerSailText = SailText                    -- (the guide's arrow says it at the dock)
 
 -- Seconds saved against running the same way, when running is possible at all.
 local function Saves(from, to, seconds, ctx)

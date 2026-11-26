@@ -48,5 +48,45 @@
     "Pianifica di nuovo il percorso da dove sei ora",
     "지금 있는 곳에서 경로를 다시 계획",
     "从你现在的位置重新规划路线"
+  ],
+  "Guide: next step": [
+    "Guide: nächster Schritt",
+    "Guide : étape suivante",
+    "Guía: siguiente paso",
+    "Путеводитель: следующий шаг",
+    "Guia: próximo passo",
+    "Guida: passo successivo",
+    "가이드: 다음 단계",
+    "指南：下一步"
+  ],
+  "Guide: skip step": [
+    "Guide: Schritt überspringen",
+    "Guide : passer l'étape",
+    "Guía: saltar paso",
+    "Путеводитель: пропустить шаг",
+    "Guia: pular passo",
+    "Guida: salta il passo",
+    "가이드: 단계 건너뛰기",
+    "指南：跳过此步"
+  ],
+  "Guide: plan again": [
+    "Guide: neu planen",
+    "Guide : replanifier",
+    "Guía: planear de nuevo",
+    "Путеводитель: спланировать заново",
+    "Guia: planear de novo",
+    "Guida: pianifica di nuovo",
+    "가이드: 다시 계획",
+    "指南：重新规划"
+  ],
+  "Use TomTom's arrow when TomTom is loaded": [
+    "TomToms Pfeil nutzen, wenn TomTom geladen ist",
+    "Utiliser la flèche de TomTom quand TomTom est chargé",
+    "Usar la flecha de TomTom cuando TomTom está cargado",
+    "Использовать стрелку TomTom, когда TomTom загружен",
+    "Usar a seta do TomTom quando o TomTom estiver carregado",
+    "Usa la freccia di TomTom quando TomTom è caricato",
+    "TomTom이 로드되면 TomTom의 화살표 사용",
+    "加载 TomTom 时使用 TomTom 的箭头"
   ]
 }

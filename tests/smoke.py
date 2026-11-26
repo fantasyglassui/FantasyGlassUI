@@ -18597,6 +18597,128 @@ try("13.6 leftovers C: route and travel leftovers", function()
     ns.root.planner, ns.root.plannerNodes, ns.root.plannerFlightTimes, ns.root.plannerCrossTimes, ns.root.plannerTimeSamples = saved.planner, saved.nodes, saved.ft, saved.ct, saved.smp
     if not ok then error(err, 0) end
 end)
+try("13.6 leftovers C: the arrow and the guide's keys", function()
+    local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), unlocked = ns.GuideUnlocked, state = ns.root.guideState, guides = ns.root.guides,
+        key = ns.root.guideKey, tomtom = rawget(env, "TomTom"), tt = ns.db.plannerTomTom, motion = ns.db.reduceMotion, combat = env.InCombatLockdown,
+        faction = rawget(env, "UnitFactionGroup"), time = env.GetTime, queued = ns.plannerQueued, reason = ns.plannerReason, errors = #ns.errors }
+    -- Dun Morogh 1426, Wetlands 1437 and Arathi 1417 side by side on one continent; Dustwallow 1445 over the sea
+    local regions = { [1426] = { 0, 2000, 4000 }, [1437] = { 0, 4000, 4000 }, [1417] = { 0, 6000, 2000 }, [1445] = { 1, 5000, 5000 } }
+    local pos, clock = { 1426, 50, 50 }, 100
+    local cm = {}
+    for k, v in pairs(saved.map) do cm[k] = v end
+    cm.GetWorldPosFromMapPos = function(map, v)
+        local r = regions[map]
+        if r then return r[1], { x = r[2] + v.x * 2000, y = r[3] + v.y * 2000 } end
+    end
+    cm.GetBestMapForUnit = function() return pos[1] end
+    cm.GetPlayerMapPosition = function(map) if map == pos[1] then return { GetXY = function() return pos[2] / 100, pos[3] / 100 end } end end
+    cm.GetMapWorldSize = function() return 2000, 2000 end                 -- (a percent is 20 yards)
+    env.C_Map = cm
+    env.CreateVector2D = function(x, y) return { x = x, y = y } end
+    env.UnitFactionGroup = function() return "Alliance", "Alliance" end
+    env.GetTime = function() return clock end
+    ns.GuideUnlocked = function() return true end
+    ns.root.guides = { Far = { name = "Far", steps = { { kind = "goto", text = "Arathi", map = 1417, x = 50, y = 50 }, { kind = "goto", text = "Marsh", map = 1445, x = 70, y = 55 },
+        { kind = "goto", text = "Here", map = 1426, x = 60, y = 50 }, { kind = "note", text = "end" } } } }
+    local function arrowUpdate(arrow)
+        for i = #handlers, 1, -1 do local h = handlers[i]; if h.self == arrow and h.name == "OnUpdate" then return h.fn end end
+    end
+    local ok, err = pcall(function()
+        -- the guide's keys: names in the key bindings window, and nothing while locked or in combat
+        for _, k in ipairs({ "GUIDENEXT", "GUIDESKIP", "GUIDEAGAIN" }) do
+            local name = env["BINDING_NAME_FANTASYGLASSUI_" .. k]
+            if type(name) ~= "string" or not name:find("^Guide") then error("the " .. k .. " key's name: " .. tostring(name)) end
+        end
+        ns.db.plannerTomTom = false
+        ns:GuideFollow("Far")
+        local st = ns.GuideState()
+        ns.GuideUnlocked = function() return false end
+        env.FantasyGlassUI_GuideBinding("NEXT"); env.FantasyGlassUI_GuideBinding("AGAIN")
+        ns.GuideUnlocked = function() return true end
+        if st.at ~= 1 then error("locked: the keys do nothing") end
+        -- another map: the arrow points where your way leaves this one (two maps away, toward Arathi)
+        local w = ns.waypoint
+        if not (w and w.map == 1426 and math.abs(w.x - 1) < 0.001 and math.abs(w.y - 0.25) < 0.001) then
+            error("a step two maps away: the crossing on this map: " .. tostring(w and w.map) .. " " .. tostring(w and w.x) .. "," .. tostring(w and w.y)) end
+        env.InCombatLockdown = function() return true end
+        env.FantasyGlassUI_GuideBinding("NEXT")
+        env.InCombatLockdown = saved.combat
+        if st.at ~= 1 then error("in combat: the keys do nothing") end
+        env.FantasyGlassUI_GuideBinding("NEXT")
+        if st.at ~= 2 then error("next step: " .. tostring(st.at)) end
+        -- over the sea: the dock on this map (you walk to Wetlands first)
+        pos = { 1437, 50, 50 }
+        ns:GuideAdvance()
+        w = ns.waypoint
+        if not (w and w.map == 1437 and math.abs(w.x - 0.049) < 0.001 and math.abs(w.y - 0.62) < 0.001) then error("the dock: " .. tostring(w and w.x) .. "," .. tostring(w and w.y)) end
+        if not tostring(w.label):find("Take the boat", 1, true) then error("the dock's words: " .. tostring(w.label)) end
+        -- skip step on a written guide: ticked off only; plan again does nothing off the plan
+        ns.plannerQueued, ns.plannerReason = false, nil
+        env.FantasyGlassUI_GuideBinding("SKIP")
+        env.FantasyGlassUI_GuideBinding("AGAIN")
+        if st.at ~= 3 or ns.plannerQueued then error("skip on a written guide: " .. tostring(st.at)) end
+        -- TomTom: a waypoint of its own per step, the old one removed, and our arrow hidden
+        local added, removed = {}, {}
+        env.TomTom = { AddWaypoint = function(self, map, x, y, opts) added[#added + 1] = { map = map, x = x, y = y, title = opts and opts.title }; return "uid" .. #added end,
+            RemoveWaypoint = function(self, uid) removed[#removed + 1] = uid end }
+        ns.db.plannerTomTom = true
+        pos = { 1426, 50, 50 }
+        ns:GuideSkip(true)
+        ns:GuideSkip(false)
+        if #added < 2 or added[#added].map ~= 1426 or math.abs(added[#added].x - 0.6) > 0.001 or added[#added].title ~= "Here" then error("TomTom has the step: " .. #added) end
+        if removed[#removed] ~= "uid" .. (#added - 1) then error("the previous TomTom waypoint is removed: " .. tostring(removed[#removed])) end
+        if ns.waypoint ~= nil then error("our own arrow is hidden while TomTom points") end
+        env.TomTom.AddWaypoint = function() error("boom") end
+        ns:GuideSkip(true); ns:GuideSkip(false)
+        if not (ns.waypoint and ns.waypoint.quiet) then error("a failing TomTom: our own arrow") end
+        env.TomTom = saved.tomtom
+        ns.db.plannerTomTom = false
+        local n = #added
+        ns:GuideSkip(true); ns:GuideSkip(false)
+        if #added ~= n or not (ns.waypoint and ns.waypoint.x == 0.6) then error("TomTom off: our own arrow") end
+        -- the planned guide: skip plans again from there, and so does plan again
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "one" }, { kind = "note", text = "two" } } }, {})
+        ns:PlannerStop()
+        ns.plannerQueued, ns.plannerReason = false, nil
+        env.FantasyGlassUI_GuideBinding("AGAIN")
+        if not (ns.plannerQueued and ns.plannerReason == "again") then error("plan again: " .. tostring(ns.plannerReason)) end
+        ns:PlannerStop()
+        env.FantasyGlassUI_GuideBinding("SKIP")
+        if not (ns.GuideState().at == 2 and ns.plannerQueued and ns.plannerReason == "skip") then error("skip on the plan: " .. tostring(ns.plannerReason)) end
+        ns:PlannerStop()
+        ns:GuideStop()
+        -- the arrow's look: the theme's accent, brighter near, one pulse on arrival (none with reduced motion)
+        ns.db.reduceMotion = false
+        pos = { 1426, 50, 50 }
+        ns:SetWaypoint(55, 50, "the cave", 1426, false)               -- (100 yards east)
+        local arrow = ns.waypointArrow
+        local update = arrowUpdate(arrow)
+        local tint, pulses = nil, 0
+        rawset(arrow.tex, "SetVertexColor", function(_, r, g, b, a) tint = { r, g, b, a } end)
+        rawset(arrow.pulse, "Play", function() pulses = pulses + 1 end)
+        update(arrow, 0.1)
+        local ar, ag, ab = ns:Role("@accent")
+        if not (tint and tint[1] == ar and tint[2] == ag and tint[3] == ab and tint[4] < 1) then error("far: the accent, dimmer") end
+        pos = { 1426, 54, 50 }; update(arrow, 0.1)                    -- (20 yards)
+        if not (tint and tint[4] == 1) then error("within 30 yards: brighter") end
+        pos = { 1426, 54.8, 50 }; update(arrow, 0.1)                  -- (4 yards: there)
+        update(arrow, 0.1)
+        if pulses ~= 1 then error("one pulse on arrival: " .. pulses) end
+        clock = clock + 1; update(arrow, 0.1)
+        if ns.waypoint ~= nil then error("after the pulse, the waypoint goes") end
+        ns.db.reduceMotion = true
+        ns:SetWaypoint(55, 50, "the cave", 1426, false)
+        update(arrow, 0.1)
+        if pulses ~= 1 or ns.waypoint ~= nil then error("reduced motion: no pulse, gone at once") end
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    ns:PlannerStop(); ns:GuideStop(); ns:ClearWaypoint(true)
+    env.C_Map = saved.map; rawset(env, "CreateVector2D", saved.vec); rawset(env, "TomTom", saved.tomtom); rawset(env, "UnitFactionGroup", saved.faction)
+    env.InCombatLockdown, env.GetTime = saved.combat, saved.time
+    ns.GuideUnlocked, ns.root.guideState, ns.root.guides, ns.root.guideKey = saved.unlocked, saved.state, saved.guides, saved.key
+    ns.db.plannerTomTom, ns.db.reduceMotion, ns.plannerQueued, ns.plannerReason = saved.tt, saved.motion, saved.queued, saved.reason
+    if not ok then error(err, 0) end
+end)
 -- batch 6 tests C (route): end
 -- batch 6 tests D (leftovers): begin
 -- batch 6 tests D (leftovers): end

@@ -405,18 +405,112 @@ local function PlaceOf(step)
         if ok and type(map) == "number" and type(x) == "number" and type(y) == "number" and not Secret(x) then return map, x * 100, y * 100 end
     end
 end
-local pointed
+-- A step on a map you are not on: the arrow points at the next leg of the way there, from the planner's travel
+-- (only while the guide is unlocked): the flight master, the dock, or where your way leaves the map you are on.
+-- (A planned route's own travel steps, a flight, a boat, the hearthstone, come before such a step and are pointed
+-- at as they are; this is the walk between maps a plan leaves out, and a written guide's steps.)
+-- Fractions of `map` for a world spot on continent c (off the map: below 0 or above 1), or nil.
+local function MapFraction(map, c, wx, wy)
+    local c0, ax, ay = ns.PlannerWorldPos(map, 0, 0)
+    local c1, bx, by = ns.PlannerWorldPos(map, 100, 0)
+    local c2, dx, dy = ns.PlannerWorldPos(map, 0, 100)
+    if not (c0 ~= nil and c0 == c and c1 == c and c2 == c) then return nil end
+    local e1x, e1y, e2x, e2y, px, py = bx - ax, by - ay, dx - ax, dy - ay, wx - ax, wy - ay
+    local det = e1x * e2y - e1y * e2x
+    if det == 0 then return nil end
+    return (px * e2y - py * e2x) / det, (e1x * py - e1y * px) / det
+end
+-- Where the straight way from (fx, fy) to (u, v) leaves the map (fractions); the spot itself when it is on it.
+local function MapEdge(fx, fy, u, v)
+    local t = 1
+    for _, a in ipairs({ { fx, u }, { fy, v } }) do
+        local from, to = a[1], a[2]
+        if to > 1 and to ~= from then t = math.min(t, (1 - from) / (to - from)) end
+        if to < 0 and to ~= from then t = math.min(t, (0 - from) / (to - from)) end
+    end
+    t = math.max(0, t)
+    return fx + (u - fx) * t, fy + (v - fy) * t
+end
+local function LegPlace(map, x, y)
+    if not (ns:GuideUnlocked() and type(map) == "number" and ns.PlannerTravel and ns.PlannerWorldPos and ns.MapPosition) then return nil end
+    if ns.MapPosition(map, "player") then return nil end            -- (on its map, or on one it holds: the arrow points there itself)
+    local hereMap, hx, hy = Here()
+    if not (hereMap and hx and hereMap ~= map) then return nil end
+    local okF, faction = pcall(UnitFactionGroup, "player")
+    local ctx = { speed = ns.PLANNER_SPEED and ns.PLANNER_SPEED.run or 7, crossings = ns.PLANNER_CROSSINGS or {},
+        flights = ns.PlannerFlightPoints and ns.PlannerFlightPoints() or {}, faction = (okF and type(faction) == "string" and not Secret(faction)) and faction or nil }
+    local ok, _, legs = pcall(ns.PlannerTravel, { map = hereMap, x = hx, y = hy }, { map = map, x = x, y = y }, ctx)
+    local leg, after = ok and type(legs) == "table" and legs[1], ok and type(legs) == "table" and legs[2]
+    if type(leg) ~= "table" or type(leg.to) ~= "table" then return nil end   -- (no way there known: the arrow says "another map")
+    local to, label = leg.to, nil
+    if leg.kind ~= "run" then to, after = { map = hereMap, x = hx, y = hy }, leg end   -- (at the flight master or the dock already)
+    if type(after) == "table" and after.kind == "fly" then label = ns:Tr("Take the flight")
+    elseif type(after) == "table" and after.kind == "sail" then label = (ns.PlannerSailText and ns.PlannerSailText(after)) or ns:Tr("Take the boat")
+    elseif type(after) == "table" and after.kind == "hearth" then label = ns:Tr("Use your hearthstone") end
+    local walk = leg.kind == "run"
+    if ns.MapPosition(to.map, "player") then return to.map, to.x, to.y, label, walk end
+    local c, wx, wy = ns.PlannerWorldPos(to.map, to.x, to.y)
+    local u, v
+    if c then u, v = MapFraction(hereMap, c, wx, wy) end
+    if not u then return nil end
+    u, v = MapEdge(hx / 100, hy / 100, u, v)
+    return hereMap, u * 100, v * 100, label, walk
+end
+-- TomTom (another add-on, when it is loaded and its switch is on): the guide's waypoint goes there, and our own
+-- arrow stays hidden. (It is not the game's: forever_audit.py should list "TomTom" with the other add-ons.)
+local tomUid
+local function TomTomAddon()
+    if not (ns:GuideUnlocked() and ns.db and ns.db.plannerTomTom ~= false) then return nil end
+    local tt = rawget(_G, "TomTom")
+    if type(tt) == "table" and type(tt.AddWaypoint) == "function" then return tt end
+end
+local function TomTomClear()
+    if tomUid == nil then return end
+    local tt = rawget(_G, "TomTom")
+    if type(tt) == "table" and type(tt.RemoveWaypoint) == "function" then pcall(tt.RemoveWaypoint, tt, tomUid) end
+    tomUid = nil
+end
+local pointed, legMap, legWalk, pointedTomTom
 local function Point(step, index)
     if not step then
         if pointed and ns.waypoint and ns.waypoint.quiet then ns:ClearWaypoint(true) end
-        pointed = nil
+        TomTomClear()
+        pointed, legMap = nil, nil
         return
     end
-    if pointed == index then return end
-    pointed = index
+    local tt = TomTomAddon()                                  -- (pointed again: a new step, a leg on another map, TomTom on or off)
+    if pointed == index and not (legMap and Here() ~= legMap) and (tt ~= nil) == pointedTomTom then return end
+    pointed, legMap, pointedTomTom = index, nil, tt ~= nil
     local map, x, y = PlaceOf(step)
-    if x and ns.SetWaypoint then ns:SetWaypoint(x, y, ns.GuideStepText(step), map, true)
+    local label = ns.GuideStepText(step)
+    if x then
+        local lm, lx, ly, words, walk = LegPlace(map, x, y)
+        if lm then map, x, y, label, legMap, legWalk = lm, lx, ly, words or label, Here(), walk end
+    end
+    TomTomClear()
+    if tt and x then
+        local ok, uid = pcall(tt.AddWaypoint, tt, map or Here(), x / 100, y / 100, { title = label, persistent = false, from = "Fantasy Glass UI" })
+        if ok then
+            tomUid = uid
+            if ns.waypoint and ns.waypoint.quiet then ns:ClearWaypoint(true) end
+            return
+        end
+    end
+    if x and ns.SetWaypoint then ns:SetWaypoint(x, y, label, map, true)
     elseif ns.waypoint and ns.waypoint.quiet then ns:ClearWaypoint(true) end
+end
+-- A leg was pointed at and you reached it (the flight master, the dock, the map's edge): the next one.
+local function LegReached()
+    local w = ns.waypoint
+    if not (legMap and legWalk and pointed and w and w.quiet and ns.MapPosition) then return false end
+    local px, py = ns.MapPosition(w.map, "player")
+    if not px then return false end
+    local width, height = 1000, 667
+    if ns.MapWorldSize then width, height = ns.MapWorldSize(w.map) end
+    local _, distance = ns.WayArrow(px, py, w.x, w.y, width, height, 0)
+    if distance >= ns.GUIDE_NEAR then return false end
+    legMap = -1                                               -- (not a map: the next Point works the leg out again)
+    return true
 end
 
 local StepKey
@@ -971,11 +1065,28 @@ end
 function ns:GuidePanelShown() return (panel and ns.Yes(panel:IsShown())) or false end
 -- Plan the route again from where you are (the panel's button, the key binding): no preview, your pace mark
 -- kept. A "replan" hook may refuse it (a duo friend's sends its state, so the leader plans again).
-function ns:GuidePlanAgain()
+function ns:GuidePlanAgain(reason)
     local st = State()
     if not (st and Planned(st) and ns:GuideOn() and ns.PlannerReplan) then return false end
-    return Hook("again", ns.PlannerReplan, ns, "again") == true
+    return Hook("again", ns.PlannerReplan, ns, reason or "again") == true
 end
+
+-- Key bindings (Bindings.xml): next step (tick it off, as the panel's ">"), skip step (the same; on the planned
+-- route it also plans again from there, since what comes after a skipped step may change), plan again. Each does
+-- nothing while the guide is locked or off, and nothing in combat. The names stay plain ("Guide: ...").
+BINDING_NAME_FANTASYGLASSUI_GUIDENEXT = "Guide: next step"
+BINDING_NAME_FANTASYGLASSUI_GUIDESKIP = "Guide: skip step"
+BINDING_NAME_FANTASYGLASSUI_GUIDEAGAIN = "Guide: plan again"
+FantasyGlassUI_GuideBinding = ns:Guard("Guide keys", function(which)
+    if not (ns.db and ns:GuideOn()) or InCombatLockdown() then return end
+    local st = State()
+    if not st then return end
+    if which == "NEXT" then ns:GuideSkip(false)
+    elseif which == "SKIP" then
+        ns:GuideSkip(false)
+        if Planned(st) then ns:GuidePlanAgain("skip") end
+    elseif which == "AGAIN" then ns:GuidePlanAgain("again") end
+end)
 
 -- Recording: play as usual and every quest you take, finish and hand in becomes a step -----------
 local rec
@@ -1072,7 +1183,7 @@ do
         if not st or st.finished then return end
         local guide = ns:GuideGet(st.name)
         local step = guide and guide.steps[st.at or 1]
-        if step and (step.kind == "goto" or step.kind == "level" or step.kind == "explore" or step.kind == "gather") then pcall(ns.GuideAdvance, ns) end
+        if step and (step.kind == "goto" or step.kind == "level" or step.kind == "explore" or step.kind == "gather" or LegReached()) then pcall(ns.GuideAdvance, ns) end
     end)
 end
 
