@@ -6,7 +6,7 @@ A complete interface replacement for **WoW Forever** (interface 16001): unit fra
 bars, action bars, bags and bank, quest tracker and quest log, minimap, buffs, nameplates, chat and
 the game's own windows, in one look that you choose from 116 glass, fantasy and celestial themes.
 
-Version 12.3.0
+Version 12.4.0
 
 ## Install
 
@@ -381,7 +381,8 @@ Options, below). The list here is grouped a little differently. Point at a switc
   on a right-click of the minimap, and who pinged it.
 - Bags and gold: a restock list, gold history, a shopping list for the selected recipe, a "Set" mark
   on gear set items (never sold), an open-all button, a trade log, a Deposit button in the bank,
-  auction prices in tooltips, a loot log.
+  auction prices in tooltips (kept for each realm and faction), a Scan prices button on the auction
+  house, Sell now / Hold / Vendor it hints in tooltips and on the bag window, a loot log.
 - Chat: keyword alerts, repeated lines hidden, Alt-click a name to invite, a whisper window, a Loot
   and a Whispers tab made for you, /rl /rc /tt, guild and friend notices, the friends list in class
   colors.
@@ -399,6 +400,12 @@ Options, below). The list here is grouped a little differently. Point at a switc
   the game lays the bar out. This needs a layout of your own: the game's two presets cannot be
   changed (Esc, Edit Mode, Layout, New Layout makes one).
 - A bar that is not showing is see-through; its buttons can still be pressed where they were.
+
+**Added in 12.4**
+- **Scan prices** on the auction house: the whole auction house in one click, about every 15
+  minutes, read in small pieces and paused in a fight. Prices are kept for each realm and faction.
+- **Sell now / Hold / Vendor it** in item tooltips, and as a coloured square on the bag window.
+  Vendor it is for common and uncommon items only; bound items get no hint.
 
 **Added in 12.1**
 - Accessibility as a category of its own: color vision for each kind, captions for sounds, read

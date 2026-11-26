@@ -1056,7 +1056,17 @@
     {
      "key": "auctionMemory",
      "label": "Auction prices in tooltips",
-     "desc": "Remembers the lowest price you last saw for each item at the auction house and shows it in the item's tooltip."
+     "desc": "Remembers the lowest price you last saw or scanned for each item at the auction house and shows it in the item's tooltip."
+    },
+    {
+     "key": "auctionScan",
+     "label": "Scan prices button",
+     "desc": "A Scan prices button on the auction house reads every auction at once (the auction house allows it about every 15 minutes) for the prices in tooltips and the Sell now, Hold and Vendor it hints."
+    },
+    {
+     "key": "sellHints",
+     "label": "Sell now, Hold and Vendor it hints",
+     "desc": "In item tooltips: Sell now when an item is well above its usual price, Hold when it is cheap today, Vendor it when a vendor pays about as much or nobody lists it (nobody lists it: common and uncommon items only). On the bag window, a small square says the same: green for Sell now, amber for Hold, grey for Vendor it. From the prices you have seen and scanned."
     },
     {
      "key": "auctionHelper",

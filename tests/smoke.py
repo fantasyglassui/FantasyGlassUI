@@ -895,6 +895,15 @@ try("Item counts", function()
         if not joined:find(want, 1, true) then error("missing '" .. want .. "' in: " .. joined) end
     end
     if ns:AddItemCounts(tip, "|Hitem:999999|h[Nothing]|h") then error("counts for an item nobody has") end
+    -- (12.4) a number item id, as /fgui shop passes it, finds what an alt holds
+    local owners, me = ns:ItemOwners(101)
+    local alt = type(owners) == "table" and owners["Alt - Realm"]
+    if not (alt and alt.bags == 5 and alt.bank == 7) then error("a number item id does not find the alt's count") end
+    if me == "Alt - Realm" then error("the alt is not the character being played") end
+    local others = 0
+    for owner, o in pairs(owners) do if owner ~= me then others = others + (o.bags or 0) + (o.bank or 0) end end
+    if others ~= 15 then error("a number item id counts " .. others .. " held by other characters, not 15") end
+    if ns:ItemOwners(999999) ~= nil then error("a number item id nobody has finds owners") end
 end)
 try("Click cast", function()
     ns.db.clickCast = { { mod = "shift", button = 1, spell = "Renew" }, { mod = "", button = 3, spell = "Heal" }, { mod = "bogus", button = 9, spell = "x" } }
