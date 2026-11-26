@@ -382,7 +382,7 @@ local function Spread(o)
             end
         end
     end
-    o.spread = far
+    if #pts > 0 or #(o.spots or {}) == 0 then o.spread = far end   -- (spots that can't be placed yet are tried again)
     return far
 end
 
@@ -966,8 +966,9 @@ do
     -- time split evenly among the quests open at once (a hub's quests are done together). Memory only.
     -- (a quest carried longer than a sample may be, 2 hours, gives none and stops taking a share)
     -- Time passes for them only while you are present and out of town: not AFK and not resting (each
-    -- readable; a hidden flag counts as present). PLAYER_FLAGS_CHANGED and PLAYER_UPDATE_RESTING share
-    -- out the time so far, then set the new state.
+    -- readable; a hidden flag counts as present). The state is read at login and at an unlock (you may
+    -- log in at an inn), then PLAYER_FLAGS_CHANGED and PLAYER_UPDATE_RESTING share out the time so far
+    -- and set the new state.
     local open, openN, openAt, since = {}, 0, nil, {}  -- questID -> seconds so far; how many; the last time shared out; accepted at
     local away = false
     local function Flag(fn, ...)
@@ -1023,6 +1024,12 @@ do
         if okT and type(now) == "number" and not ns:IsSecret(now) then return now end
     end
     ns.PlannerQuestClock = function() return { open = openN, away = away } end    -- (read only: the tests)
+    local function ReadAway()
+        local now = Now()
+        if now then Share(now) end
+        away = Away()
+    end
+    ns.GuideRegisterLock("questclock", function(unlocked) if unlocked then ReadAway() end end)
     -- A QUEST_REMOVED of a quest not (yet) flagged completed: abandoned, unless QUEST_TURNED_IN for it follows
     -- within a second (then it was a hand-in, counted once). questID -> { t, level = a soloed elite's, took = its time }.
     local removed = {}
@@ -1056,13 +1063,11 @@ do
     for _, e in ipairs({ "QUEST_ACCEPTED", "QUEST_TURNED_IN", "QUEST_REMOVED", "PLAYER_LEVEL_UP", "HEARTHSTONE_BOUND",
                          "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED",
                          "TRAINER_SHOW", "TRAINER_CLOSED", "MERCHANT_CLOSED", "MAIL_CLOSED", "PLAYER_MOUNT_DISPLAY_CHANGED", "PLAYER_DEAD",
-                         "PLAYER_FLAGS_CHANGED", "PLAYER_UPDATE_RESTING" }) do pcall(ev.RegisterEvent, ev, e) end
+                         "PLAYER_FLAGS_CHANGED", "PLAYER_UPDATE_RESTING", "PLAYER_LOGIN" }) do pcall(ev.RegisterEvent, ev, e) end
     ev:SetScript("OnEvent", ns:Guard("Planner", function(_, event, a, b)
-        if event == "PLAYER_FLAGS_CHANGED" or event == "PLAYER_UPDATE_RESTING" then   -- (away or in town: the quest clock stops)
+        if event == "PLAYER_FLAGS_CHANGED" or event == "PLAYER_UPDATE_RESTING" or event == "PLAYER_LOGIN" then   -- (away or in town: the quest clock stops)
             if (event == "PLAYER_FLAGS_CHANGED" and a ~= "player") or not ns:GuideUnlocked() then return end
-            local now = Now()
-            if now then Share(now) end
-            away = Away()
+            ReadAway()
             return
         end
         if event == "PLAYER_REGEN_DISABLED" then fighting = true; return end

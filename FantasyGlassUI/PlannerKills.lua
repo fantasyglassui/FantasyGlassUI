@@ -3,8 +3,8 @@ local _, ns = ...
 ------------------------------------------------------------------------------------------
 -- Planner, batch 6 group A: what each kill gives and how fast you kill (the recorder).
 -- A kill is the game's kill line (CHAT_MSG_COMBAT_XP_GAIN: one per kill, never a hand-in or exploring).
--- Its experience is the XP change paired with it (the first within ns.PLANNER_KILL_PAIR seconds before
--- or after), with a level rolled over added and the rested part taken off: the base the formula predicts.
+-- Its experience is the XP change paired with it (within ns.PLANNER_KILL_PAIR seconds before or after,
+-- and only when no other line or XP change is that close), with a level rolled over added and the rested part taken off: the base the formula predicts.
 -- Per character: killXP[diff] = { n, r } (r: what you get against ns.PlannerKillXP, the last 20),
 -- killGaps (the last 50 gaps between solo kills of 180 s or less) and killsPerHour (from their median).
 -- Nothing while grouped (split experience), while locked, or when a value is hidden. It only reads:
@@ -43,14 +43,17 @@ function ns.PlannerRecordKill(sample)
         local gap = lastKill and t - lastKill
         lastKill = t
         if gap and gap > 0 and gap <= ns.PLANNER_KILL_GAP then
+            -- (kills at the same moment, a pull that died together, add no gap: no median of 0, and the
+            -- rate stays on the low side for those who kill many at once)
             local rec = ns.PlannerCharRecord(true)
-            if not rec then return end
-            if type(rec.killGaps) ~= "table" then rec.killGaps = {} end
-            local gaps = rec.killGaps
-            for i = #gaps, 1, -1 do if type(gaps[i]) ~= "number" or gaps[i] <= 0 then table.remove(gaps, i) end end
-            gaps[#gaps + 1] = gap
-            while #gaps > ns.PLANNER_KILL_GAPS do table.remove(gaps, 1) end
-            if #gaps >= ns.PLANNER_KILL_MIN_GAPS then rec.killsPerHour = floor(3600 / Median(gaps) + 0.5) end
+            if rec then
+                if type(rec.killGaps) ~= "table" then rec.killGaps = {} end
+                local gaps = rec.killGaps
+                for i = #gaps, 1, -1 do if type(gaps[i]) ~= "number" or gaps[i] <= 0 then table.remove(gaps, i) end end
+                gaps[#gaps + 1] = gap
+                while #gaps > ns.PLANNER_KILL_GAPS do table.remove(gaps, 1) end
+                if #gaps >= ns.PLANNER_KILL_MIN_GAPS then rec.killsPerHour = floor(3600 / Median(gaps) + 0.5) end
+            end
         end
     end
     local xp, level, mob = tonumber(sample.xp), tonumber(sample.level), tonumber(sample.mobLevel)
@@ -111,6 +114,7 @@ do
     end
     -- The monster just killed: { mobLevel, elite } when the target exists, is dead, can be attacked and
     -- has a level above 0; nil otherwise, or when any of it is hidden (the kill then counts for the rate only).
+    -- (A known limit: after a kill you did not target, a dead target from before gives its level.)
     local function Victim()
         local exists, h1 = Read(UnitExists, "target")
         if h1 or not exists then return nil end
@@ -122,57 +126,93 @@ do
         return { mobLevel = mob, elite = type(class) == "string" and ELITE[class] == true }
     end
 
+    -- A kill line that is not a kill's: a quest's or the unnamed "You gain %d experience." (patterns from
+    -- the game's own strings). A hidden line is taken as a kill: the ruling's one line per kill.
+    local function Pattern(fmt)
+        if type(fmt) ~= "string" or ns:IsSecret(fmt) or fmt == "" then return nil end
+        local p = fmt:gsub("([%(%)%.%+%-%*%?%[%]%^%$%%])", "%%%1")
+        p = p:gsub("%%%%d", "%%d+"):gsub("%%%%s", ".+")
+        return "^" .. p .. "$"
+    end
+    local function NotAKill(msg)
+        if ns:IsSecret(msg) then return false end
+        if type(msg) ~= "string" then return true end
+        for _, fmt in ipairs({ _G.COMBATLOG_XPGAIN_FIRSTPERSON_UNNAMED, _G.COMBATLOG_XPGAIN_QUEST }) do
+            local p = Pattern(fmt)
+            if p and msg:find(p) then return true end
+        end
+        return false
+    end
+
+    -- Kill lines and XP changes each within ns.PLANNER_KILL_PAIR of the one before make a burst. Only a
+    -- burst of one line and one XP change is a sample: two kills on one XP change (a pull that died
+    -- together), or two XP changes on one line, can't be told apart fairly, so they give none (each
+    -- line still counts for the rate). A burst is settled once it has been quiet that long.
     local last                       -- your experience before the next change
-    local line                       -- a kill line waiting for its XP change: { t, mobLevel, elite }
-    local gain                       -- an XP change waiting for its kill line: { t, xp, level }
-    local function Forget() last, line, gain, lastKill = nil, nil, nil, nil end
-    local function Pair(g, l)
+    local burst                      -- { lines = { { t, mobLevel, elite } }, gains = { { t, xp, level } }, t = the last event }
+    local function Forget() last, burst, lastKill = nil, nil, nil end
+    local function Settle()
+        local b = burst
+        burst = nil
+        if not b or #b.lines ~= 1 or #b.gains ~= 1 then return end
+        local l, g = b.lines[1], b.gains[1]
         if l.mobLevel then ns.PlannerRecordKill({ xp = g.xp, level = g.level, mobLevel = l.mobLevel, elite = l.elite }) end
     end
-    local function Fresh(e, t) return e and t >= e.t and t - e.t <= ns.PLANNER_KILL_PAIR end
-
-    local function OnLine()
+    local Check
+    Check = function()
+        if not burst then return end
         local t = Now()
-        if not t or not Snapshot() or not Solo() then line, gain, lastKill = nil, nil, nil; return end   -- (grouped or hidden: nothing at all)
+        if not t then burst = nil; return end
+        if t < burst.t or t - burst.t > ns.PLANNER_KILL_PAIR then
+            if ns:GuideUnlocked() then Settle() else burst = nil end
+        elseif C_Timer and C_Timer.After then
+            pcall(C_Timer.After, ns.PLANNER_KILL_PAIR, Check)
+        end
+    end
+    local function Add(kind, e)
+        if burst and (e.t < burst.t or e.t - burst.t > ns.PLANNER_KILL_PAIR) then Settle() end
+        if not burst then
+            burst = { lines = {}, gains = {}, t = e.t }
+            if C_Timer and C_Timer.After then pcall(C_Timer.After, ns.PLANNER_KILL_PAIR + 0.1, Check) end
+        end
+        local list = burst[kind]
+        list[#list + 1] = e
+        burst.t = e.t
+    end
+
+    local function OnLine(msg)
+        if NotAKill(msg) then return end
+        local t = Now()
+        if not t or not Snapshot() or not Solo() then burst, lastKill = nil, nil; return end   -- (grouped or hidden: nothing at all)
         ns.PlannerRecordKill({ t = t })
         local v = Victim()
-        local l = { t = t, mobLevel = v and v.mobLevel, elite = v and v.elite }
-        if Fresh(gain, t) then
-            local g = gain
-            line, gain = nil, nil
-            Pair(g, l)
-        else
-            line, gain = l, nil
-        end
+        Add("lines", { t = t, mobLevel = v and v.mobLevel, elite = v and v.elite })
     end
 
     local function OnXP()
         local now, t = Snapshot(), Now()
-        if not (now and t) then last, line, gain = nil, nil, nil; return end
+        if not (now and t) then last, burst = nil, nil; return end
         local before = last
         last = now
         if not before then return end
+        local rolled = now.xp < before.xp or now.level > before.level
         local d = now.xp - before.xp
-        if now.xp < before.xp then d = d + before.max end          -- (a level rolled over)
-        if d <= 0 then return end
-        local g = { t = t, xp = d - max(0, before.rest - now.rest), level = before.level }   -- (the rested part off: the base)
-        if Fresh(line, t) then
-            local l = line
-            line, gain = nil, nil
-            Pair(g, l)
-        else
-            line, gain = nil, g
+        if rolled then
+            d = d + before.max                                         -- (a level rolled over)
+            if now.level <= before.level then now.level = before.level + 1 end   -- (the level read may lag a moment)
         end
+        if d <= 0 then return end
+        Add("gains", { t = t, xp = d - max(0, before.rest - now.rest), level = before.level })   -- (the rested part off: the base)
     end
 
     local function OnEvent(_, event, unit)
         if not ns:GuideUnlocked() then Forget(); return end
         if event == "PLAYER_ENTERING_WORLD" then
-            last, line, gain = Snapshot(), nil, nil
+            last, burst = Snapshot(), nil
         elseif event == "PLAYER_XP_UPDATE" then
             if unit == "player" then OnXP() end
         elseif event == "CHAT_MSG_COMBAT_XP_GAIN" then
-            OnLine()
+            OnLine(unit)                                               -- (the first argument is the line)
         elseif event == "UPDATE_EXHAUSTION" then
             -- rest gained (at an inn, logged out) is not a kill's: kept at once; rest used is a kill's,
             -- left for the XP change to take off (this can come first)

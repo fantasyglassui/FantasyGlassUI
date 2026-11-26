@@ -18304,7 +18304,8 @@ try("13.6 leftovers: seams", function()
 end)
 -- batch 6 tests A (learning): begin
 try("13.6 leftovers A: recording kills", function()
-    local names = { "GetTime", "UnitXP", "UnitXPMax", "GetXPExhaustion", "UnitLevel", "UnitExists", "UnitIsDead", "UnitCanAttack", "UnitClassification", "IsInGroup" }
+    local names = { "GetTime", "UnitXP", "UnitXPMax", "GetXPExhaustion", "UnitLevel", "UnitExists", "UnitIsDead", "UnitCanAttack", "UnitClassification", "IsInGroup",
+                    "COMBATLOG_XPGAIN_FIRSTPERSON_UNNAMED", "COMBATLOG_XPGAIN_QUEST" }
     local saved = { unlocked = ns.GuideUnlocked, planner = ns.root.planner, errors = #ns.errors, env = {} }
     for _, n in ipairs(names) do saved.env[n] = rawget(env, n) end
     local ok, err = pcall(function()
@@ -18347,7 +18348,10 @@ try("13.6 leftovers A: recording kills", function()
                 xp = xp + gain; if restAfter then rest = restAfter end; E("PLAYER_XP_UPDATE", "player")
             end
         end
+        -- a burst is settled once it has been quiet a second (the timer it set)
+        local function settle() local c = clock; clock = clock + 5; runTimers(); clock = c end
         local function sample(diff)
+            settle()
             local r = R()
             return r and type(r.killXP) == "table" and r.killXP[diff or 0]
         end
@@ -18389,6 +18393,32 @@ try("13.6 leftovers A: recording kills", function()
         E("CHAT_MSG_COMBAT_XP_GAIN", LINE); xp, xpMax = 45, 11000; E("PLAYER_XP_UPDATE", "player")
         s = sample()
         if not (s and near(s.r, 1)) then error("rollover: 145, got " .. tostring(s and s.r)) end
+        -- the level read lags after a level-up: the next kill is scored at the new level
+        clock = clock + 30; target({ level = 21 }); kill(ns.PlannerKillXP(21, 21), 0.2)
+        if not (sample(0).n == 2 and near(sample(0).r, 1)) or sample(1) then error("after the level-up, scored at 21: diff 0") end
+        -- two kill lines on one XP change (a pull that died together): no sample, both counted for the rate
+        reset()
+        E("CHAT_MSG_COMBAT_XP_GAIN", LINE); clock = clock + 0.1; E("CHAT_MSG_COMBAT_XP_GAIN", LINE)
+        xp = xp + 348; E("PLAYER_XP_UPDATE", "player")
+        if sample() then error("two lines, one XP change: no sample") end
+        if not (R().killGaps and #R().killGaps == 1 and near(R().killGaps[1], 0.1)) then error("both lines counted") end
+        reset()
+        xp = xp + 348; E("PLAYER_XP_UPDATE", "player"); E("CHAT_MSG_COMBAT_XP_GAIN", LINE); clock = clock + 0.3; E("CHAT_MSG_COMBAT_XP_GAIN", LINE)
+        if sample() then error("one XP change, then two lines: no sample") end
+        reset()
+        E("CHAT_MSG_COMBAT_XP_GAIN", LINE); xp = xp + 174; E("PLAYER_XP_UPDATE", "player"); clock = clock + 0.5; xp = xp + 400; E("PLAYER_XP_UPDATE", "player")
+        if sample() then error("one line, two XP changes: no sample") end
+        clock = clock + 30; kill(174, 0.2)
+        if not (sample() and sample().n == 1) then error("a lone kill after it pairs again") end
+        -- a line that is not a kill's: not counted at all
+        reset()
+        env.COMBATLOG_XPGAIN_FIRSTPERSON_UNNAMED, env.COMBATLOG_XPGAIN_QUEST = "You gain %d experience.", "You gain %d experience for completing %s."
+        E("CHAT_MSG_COMBAT_XP_GAIN", "You gain 300 experience."); xp = xp + 300; E("PLAYER_XP_UPDATE", "player")
+        clock = clock + 30; E("CHAT_MSG_COMBAT_XP_GAIN", "You gain 900 experience for completing (The Hunt)."); xp = xp + 900; E("PLAYER_XP_UPDATE", "player")
+        clock = clock + 30; E("CHAT_MSG_COMBAT_XP_GAIN", nil)
+        if sample() or R() then error("unnamed and quest lines are no kills") end
+        clock = clock + 30; kill(174, 0.2)
+        if not (sample() and sample().n == 1) then error("a kill's line still counts") end
         -- grouped: nothing at all
         reset(); grouped = true
         kill(174, 0.2); clock = clock + 30; kill(174, 0.2)
@@ -18400,12 +18430,14 @@ try("13.6 leftovers A: recording kills", function()
         clock = clock + 30; target({ level = -1 }); kill(174, 0.2)
         clock = clock + 30; target({ exists = false }); kill(174, 0.2)
         clock = clock + 30; target({ class = hidden }); kill(174, 0.2)
+        settle()
         if R().killXP then error("no such target: no sample") end
         if #(R().killGaps or {}) ~= 4 then error("but every gap counted: " .. #(R().killGaps or {})) end
         -- a gray mob, a ratio of 5: dropped
         reset(); target({ level = 13 }); kill(50, 0.2)
         clock = clock + 30; target(); kill(725, 0.2)
         clock = clock + 30; kill(30, 0.2)
+        settle()
         if R().killXP and next(R().killXP) then error("gray, 5 and 0.2: dropped") end
         -- an elite: 290 against the elite formula
         reset(); target({ class = "elite" }); kill(290, 0.2)
@@ -18559,7 +18591,8 @@ try("13.6 leftovers A: kills in the plan", function()
 end)
 try("13.6 leftovers A: quest times without away and town", function()
     local saved = { on = ns.GuideOn, state = ns.GuideState, unlocked = ns.GuideUnlocked, time = rawget(env, "GetTime"), afk = rawget(env, "UnitIsAFK"),
-                    resting = rawget(env, "IsResting"), times = ns.root.plannerQuestTimes, errors = #ns.errors }
+                    resting = rawget(env, "IsResting"), times = ns.root.plannerQuestTimes, errors = #ns.errors, queued = ns.plannerQueued,
+                    hash = ns.GuideHash, key = ns.root.guideKey, duo = ns.plannerDuo, planner = ns.root.planner, reg = env.C_ChatInfo.RegisterAddonMessagePrefix }
     local afk, resting = false, false
     local function setAFK(v, unit) afk = v; fireEvent("PLAYER_FLAGS_CHANGED", unit or "player") end
     local function setRest(v) resting = v; fireEvent("PLAYER_UPDATE_RESTING") end
@@ -18620,6 +18653,23 @@ try("13.6 leftovers A: quest times without away and town", function()
         at(100); setAFK(true); at(7100); setAFK(false)
         at(7300); fireEvent("QUEST_TURNED_IN", 9655)
         if avg(9655) then error("over 2 hours since accepting: no sample") end
+        -- logged in at an inn: away from the start; out of town at 200, handed in at 500: 300 s
+        base = 750000; at(0)
+        resting = true; fireEvent("PLAYER_LOGIN")
+        if not ns.PlannerQuestClock().away then error("logged in at an inn: in town") end
+        fireEvent("QUEST_ACCEPTED", 1, 9656)
+        at(200); setRest(false)
+        at(500); fireEvent("QUEST_TURNED_IN", 9656)
+        if avg(9656) ~= 300 then error("logged in at an inn: 300, got " .. tostring(avg(9656))) end
+        -- an unlock reads the state again (it may have changed while locked)
+        local key = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
+        ns.GuideUnlocked = saved.unlocked
+        ns.root.guideKey = nil
+        ns.GuideHash = function() return key end
+        afk = true
+        if not ns:GuideUnlock("x") or not ns.PlannerQuestClock().away then error("an unlock reads the state") end
+        ns.GuideUnlocked = function() return true end
+        setAFK(false)
         -- locked: the state is not read
         ns.GuideUnlocked = function() return false end
         setAFK(true)
@@ -18635,7 +18685,9 @@ try("13.6 leftovers A: quest times without away and town", function()
     pcall(setAFK, false); pcall(setRest, false)
     ns.GuideOn, ns.GuideState, ns.GuideUnlocked, env.GetTime = saved.on, saved.state, saved.unlocked, saved.time
     env.UnitIsAFK, env.IsResting, ns.root.plannerQuestTimes = saved.afk, saved.resting, saved.times
-    ns.plannerQueued = false
+    ns.plannerQueued, ns.GuideHash, ns.root.guideKey, ns.plannerDuo = saved.queued, saved.hash, saved.key, saved.duo
+    ns.root.planner, env.C_ChatInfo.RegisterAddonMessagePrefix = saved.planner, saved.reg
+    if ns.PlannerPaceSync then ns.PlannerPaceSync() end
     if not ok then error(err, 0) end
 end)
 -- batch 6 tests A (learning): end
