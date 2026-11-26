@@ -37,6 +37,8 @@ NOT_THE_GAMES = {
     "Questie": "the optional quest add-on the planner reads, when it is loaded",
     "QuestieLoader": "Questie's module loader, read only when Questie is loaded",
     "StylishUIDB": "the add-on's settings under its former name, read once to bring them over",
+    "Auctionator": "the auction add-on whose prices are read when this house has none, only when it is loaded",
+    "TSM_API": "TradeSkillMaster's public functions, its prices read the same way, only when it is loaded",
 }
 LAYERS = {"BACKGROUND", "BORDER", "ARTWORK", "OVERLAY", "HIGHLIGHT"}
 

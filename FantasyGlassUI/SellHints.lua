@@ -7,6 +7,7 @@ local Secret = function(v) return ns:IsSecret(v) end
 --   Sell now   well above its usual price today
 --   Hold       cheap today, and usually worth more than a vendor pays
 --   Vendor it  a vendor pays about as much, or nobody lists it here (common and uncommon items only)
+-- With no price here, Auctionator's or TSM's (Prices.lua) can give Vendor it, never Sell now or Hold.
 -- The tooltip line says it in words, so the colour is never the only sign.
 ------------------------------------------------------------------------------------------
 ns.SELL_HINT_COLOR = { sell = { 0.30, 0.85, 0.40 }, hold = { 1, 0.70, 0.20 }, vendor = { 0.60, 0.60, 0.60 } }
@@ -64,7 +65,18 @@ function ns.SellHintFor(id, bound, entry, house)
     bound = ns.Yes(bound) or bindType == 1 or bindType == 4 or bindType == 7 or bindType == 8
     house = house or ns.PriceHouse()
     if entry == nil then entry = ns.PriceEntry(id) end
-    return ns.SellHint(entry, vendor, quality, bound, ns.Today(), ListedDay(house))
+    local today = ns.Today()
+    if not (type(entry) == "table" and type(entry.price) == "number") then
+        -- (12.4.1) no price here: another add-on's (Auctionator, TSM), as safe as a price with no history:
+        -- never Sell now or Hold, only Vendor it when a vendor pays about as much. The fourth value is its source.
+        -- When it doesn't give that, the hint from this house's own store follows, as before ("nobody lists it").
+        local other, source = ns.OtherAddonPrice(id)
+        if other then
+            local kind, _, why = ns.SellHint({ price = other, day = today }, vendor, quality, bound, today, nil)
+            if kind == "vendor" and why == "pays" then return kind, nil, why, source end
+        end
+    end
+    return ns.SellHint(entry, vendor, quality, bound, today, ListedDay(house))
 end
 
 -- The tooltip line for an item: text, and the right side (how fresh the prices are). Nil for no hint.
@@ -72,13 +84,14 @@ function ns.SellHintLine(id, bound)
     if Secret(id) or type(id) ~= "number" then return nil end
     local house = ns.PriceHouse()
     local entry = ns.PriceEntry(id)
-    local kind, pct, why = ns.SellHintFor(id, bound, entry or false, house)
+    local kind, pct, why, source = ns.SellHintFor(id, bound, entry or false, house)
     if not kind then return nil end
     local text
     if kind == "sell" then text = format(ns:Tr("Sell now: %d%% above its usual price"), pct)
     elseif kind == "hold" then text = format(ns:Tr("Hold: %d%% under its usual price"), pct)
     elseif why == "unlisted" then text = ns:Tr("Vendor it: nobody lists it here")
     else text = ns:Tr("Vendor it: a vendor pays about as much") end
+    if source then return text, ns:Tr("Auction house") .. " (" .. source .. ")", kind end   -- (another add-on's price: its name, in place of how fresh)
     local fresh
     if entry and type(entry.listedDay) ~= "number" then fresh = ns.AuctionSeenText(entry, ns.Today()) end   -- (only browsed: when it was seen)
     local now = time and time() or 0
