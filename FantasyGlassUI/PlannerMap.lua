@@ -147,7 +147,7 @@ end
 -- What a hub's tooltip says.
 local function HubTip(m)
     return { format(ns:Tr("%s xp an hour"), Num((tonumber(m.rate) or 0) * 3600)),
-             m.quests and format(ns:Tr("%d quests"), tonumber(m.quests) or 0) or false,
+             m.quests and format(ns:TrN(tonumber(m.quests) or 0, "%d quest", "%d quests"), tonumber(m.quests) or 0) or false,
              ns:Tr("Click: plan from here") }
 end
 test.tip = HubTip

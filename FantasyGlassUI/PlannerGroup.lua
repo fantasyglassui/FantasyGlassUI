@@ -131,7 +131,7 @@ function ns.PlannerFindGroup(step)
             n = ok and floor(tonumber(id) or 0) or 0
         end
         if n > 0 then prefix = "/" .. n .. " "
-        else ns:Print("You are not in %s: the line is in your chat box for its current channel.", channel) end
+        else ns:Print("You are not in %s: the line is in your chat box. Press Enter to send it in the current channel.", channel) end
     end
     local text = ns.PlannerLFGText(step, #prefix)
     if text == "" then return false end

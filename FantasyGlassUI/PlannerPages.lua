@@ -99,7 +99,7 @@ function ns.PlannerWhyLines(step, summary)
         elseif hub.lead or (rate and beatRate and beatRate >= rate) then
             Add(ns:Tr("Taken first"), "")                       -- (a lead-in, or put first: nothing it beat)
         elseif rate and beatRate and beatRate > 0 then
-            local name = type(beat.name) == "string" and beat.name or ns:Tr("another hub")
+            local name = type(beat.name) == "string" and beat.name or ns:Tr("another place")
             Add(format(ns:Tr("Beat %s at %s an hour (%d%% better)"), name, Big(beatRate * 3600), floor((rate / beatRate - 1) * 100 + 1e-9)), "")
         else
             Add(ns:Tr("Nothing else was worth the trip"), "")
@@ -307,7 +307,7 @@ ns.PlannerHook("applied", "zoneGoal", function(_, summary, ctx)
     local page = ns.guidePage                            -- (the Guide tab's goal button, when the tab was built)
     if type(page) == "table" and type(page.zoneGoalDraw) == "function" then pcall(page.zoneGoalDraw) end
     if type(zg) == "table" and (tonumber(zg.done) or 0) < (tonumber(zg.total) or 0) then   -- (doable quests are left, out of reach or above your level)
-        ns:Print("No more quests in %s at your level", ns.PlannerMapName(goal))
+        ns:Print("No more quests in %s at your level.", ns.PlannerMapName(goal))
     else
         ns:Print("Zone done: %s", ns.PlannerMapName(goal))
     end

@@ -226,7 +226,7 @@ function ns:PlannerDuoStart(name)
     if d then ns:Print("You are already planning with %s. /fgui guide duo off stops it.", d.partner); return false end
     if ns:SayMessagingLocked() then return false end
     local partner, to = PickPartner(name)
-    if not partner then ns:Print("Target your friend or group with them, or type /fgui guide duo <name>."); return false end
+    if not partner then ns:Print("Target your friend or join a group with them, or type /fgui guide duo <name>."); return false end
     local me = ns.GroupShortName(Call(UnitName, "player"))
     if me and Same(me, partner) then ns:Print("That is you."); return false end
     local level = MyLevel()
@@ -797,7 +797,7 @@ local function Receive(from, msg, sender)
         if kind == "YES" and d.role == "lead" and not d.accepted then
             d.accepted, d.yesAt = true, Now() or 0
             d.partner = from                                  -- (their name as the game spells it, from now on)
-            ns:Print("%s will plan with you: waiting for what they can do...", d.partner)
+            ns:Print("%s will plan with you: waiting for their quests...", d.partner)
         elseif kind == "NO" and d.role == "lead" and not d.accepted then
             ns:PlannerDuoEnd("declined", false, true)
         elseif kind == "AT" then AtIn(d, more)

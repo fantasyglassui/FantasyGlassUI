@@ -23,10 +23,10 @@ ns.guideKinds = {
     ["do"] = { "*", { 0.92, 0.92, 0.92 }, "Do" },   ["goto"] = { ">", { 0.5, 0.8, 1 }, "Go to" },
     note = { "-", { 0.8, 0.8, 0.8 }, "Note" },      level = { "^", { 0.5, 1, 0.5 }, "Reach level" },
     hearth = { "H", { 0.6, 0.85, 1 }, "Hearth" },   fly = { "F", { 0.6, 0.85, 1 }, "Fly" },
-    learnflight = { "L", { 0.6, 0.85, 1 }, "Learn the flight path" },
+    learnflight = { "L", { 0.6, 0.85, 1 }, "Learn the flight point" },
     sail = { "S", { 0.6, 0.85, 1 }, "Sail" },       bind = { "B", { 0.6, 0.85, 1 }, "Set your hearthstone" },
     -- stops on the way (PlannerStops.lua): a few words and a place, nothing else
-    train = { "T", { 0.85, 0.7, 1 }, "Train" },     vendor = { "V", { 0.85, 0.7, 1 }, "Visit the vendor" },
+    train = { "T", { 0.85, 0.7, 1 }, "Learn from your trainer" },     vendor = { "V", { 0.85, 0.7, 1 }, "Visit the vendor" },
     mail = { "M", { 0.85, 0.7, 1 }, "Check your mail" },
     explore = { "E", { 0.5, 1, 0.7 }, "Explore" },  gather = { "G", { 0.5, 1, 0.7 }, "Gather" },
 }
@@ -37,7 +37,14 @@ ns.GUIDE_PLANNED = "\1planned"          -- the planned route's name: one no save
 local QUEST_KIND = { accept = true, turnin = true, ["do"] = true }
 ns.builtinGuides = ns.builtinGuides or {}
 
--- One line of a guide -> a step. Nil for an empty line or a comment; nil and why for a line that is wrong.
+-- One line of a guide -> a step. Nil for an empty line or a comment; nil, why and what to put in it for a line
+-- that is wrong (why: an English sentence, its %s filled with the third value: ns.GuideParseWhy says it in your language).
+function ns.GuideParseWhy(why, arg)
+    if type(why) ~= "string" then return "" end
+    local text = ns:Tr(why)
+    if arg ~= nil then local ok, t = pcall(format, text, tostring(arg)); if ok then text = t end end
+    return text
+end
 function ns.GuideParseLine(line)
     line = ns.Trim(line)
     if line == "" or line:sub(1, 1) == "#" then return nil end
@@ -47,42 +54,42 @@ function ns.GuideParseLine(line)
     if body then
         line = ns.Trim(body)
         step.map, step.x, step.y = tonumber(map), tonumber(x), tonumber(y)
-        if not step.x or not step.y or step.x > 100 or step.y > 100 then return nil, "the place after @ is not two numbers up to 100" end
+        if not step.x or not step.y or step.x > 100 or step.y > 100 then return nil, "The place after @ must be two numbers up to 100." end
     end
     local left, text = line:match("^(.-)%s*|%s*(.*)$")
     left = ns.Trim(left or line)
     if text and ns.Trim(text) ~= "" then step.text = ns.Trim(text) end
     local kind, rest = left:match("^(%S+)%s*(.*)$")
     kind = kind and kind:lower()
-    if not kind or not ns.guideKinds[kind] then return nil, "a step starts with accept, turnin, do, goto, note, level, hearth, fly, learnflight, sail, bind, train, vendor, mail, explore or gather" end
+    if not kind or not ns.guideKinds[kind] then return nil, "A step starts with accept, turnin, do, goto, note, level, hearth, fly, learnflight, sail, bind, train, vendor, mail, explore or gather." end
     step.kind = kind
     rest = ns.Trim(rest)
     if QUEST_KIND[kind] then
         local id, title = rest:match("^(%d+)%s*(.*)$")
-        if not id then return nil, kind .. " needs the quest's number" end
+        if not id then return nil, "%s needs the quest's number.", kind end
         step.quest = tonumber(id)
         if title ~= "" then step.title = title end
     elseif kind == "level" then
         step.level = tonumber(rest:match("^(%d+)"))
-        if not step.level then return nil, "level needs a number" end
+        if not step.level then return nil, "Level needs a number." end
     elseif kind == "fly" or kind == "learnflight" then
         local node, more = rest:match("^(%d+)%s*(.*)$")
         if node then
             step.node = tonumber(node)
             rest = more
         elseif kind == "learnflight" then
-            return nil, "learnflight needs the flight point's number"
+            return nil, "Learnflight needs the flight point's number."
         end
         if rest ~= "" and not step.text then step.text = rest end
     elseif kind == "sail" then
         local crossing, more = rest:match("^(%S+)%s*(.*)$")
-        if not crossing then return nil, "sail needs the crossing's name" end
+        if not crossing then return nil, "Sail needs the crossing's name." end
         step.crossing = crossing
         if more ~= "" and not step.text then step.text = more end
     elseif rest ~= "" and not step.text then
         step.text = rest
     end
-    if kind == "goto" and not step.x then return nil, "goto needs a place: @ x,y" end
+    if kind == "goto" and not step.x then return nil, "Goto needs a place: @ x,y." end
     return step
 end
 -- A whole guide from text. Returns the guide and a list of the lines that were not understood.
@@ -94,9 +101,9 @@ function ns.GuideParse(text, name)
         if named and named ~= "" then
             guide.name = named
         else
-            local step, why = ns.GuideParseLine(line)
+            local step, why, arg = ns.GuideParseLine(line)
             if step then guide.steps[#guide.steps + 1] = step
-            elseif why then problems[#problems + 1] = format("line %d: %s", n, why) end
+            elseif why then problems[#problems + 1] = format(ns:Tr("Line %d: %s"), n, ns.GuideParseWhy(why, arg)) end
         end
     end
     return guide, problems
@@ -162,7 +169,7 @@ function ns.GuideStepBase(step)
     if k == "level" then return ns:Tr("Reach level") .. " " .. step.level end
     if k == "hearth" then return step.text or ns:Tr("Use your hearthstone") end
     if k == "fly" then return step.text or ns:Tr("Take the flight") end
-    if k == "learnflight" then return step.text or ns:Tr("Learn the flight path") end
+    if k == "learnflight" then return step.text or ns:Tr("Learn the flight point") end
     if k == "sail" then return step.text or ns:Tr("Take the boat") end
     if k == "bind" then return step.text or ns:Tr("Set your hearthstone here") end
     if ns.GUIDE_STOP_KINDS[k] then return step.text or ns:Tr(ns.guideKinds[k][3]) end   -- (a stop's words say what it is)
@@ -675,7 +682,7 @@ function ns:GuideFollow(name)
     pointed, freshPlan = nil, true
     ns:GuideShowPanel()
     ns:GuideAdvance()
-    ns:Print("Following \"%s\": %d steps.", name, #guide.steps)
+    ns:Print(#guide.steps == 1 and "Following \"%s\": %d step." or "Following \"%s\": %d steps.", name, #guide.steps)
     return true
 end
 -- A step as the same thing to do, wherever it sits in a plan.
@@ -816,6 +823,7 @@ function ns.GuideSkippedText(s)
     if n <= 0 then return nil end
     local group = ns.db and ns.db.plannerGroup
     local solo = group == nil or group == "solo"
+    if n == 1 then return format(ns:Tr(solo and "Skipped: %d group quest (Solo is on)" or "Skipped: %d group quest"), n) end
     return format(ns:Tr(solo and "Skipped: %d group quests (Solo is on)" or "Skipped: %d group quests"), n)
 end
 local function SkippedText(st)
@@ -834,7 +842,7 @@ function ns.GuideForget() cached = {} end
 local function TalentText()
     local n = ns.PlannerUnspentTalents and ns.PlannerUnspentTalents()
     if type(n) ~= "number" or n <= 0 then return nil end
-    return format(ns:Tr(n == 1 and "%d talent point to spend" or "%d talent points to spend"), n)
+    return format(ns:TrN(n, "%d talent point to spend", "%d talent points to spend"), n)
 end
 -- "Riding: 40g to go", at level 40 or more while you can't yet afford the trainer (and your mount).
 local function RidingText()
@@ -862,7 +870,7 @@ local function RepText(st)
     local need = ns.PlannerRepNeeded(best, goals[best])
     local good, nice = pcall(BreakUpLargeNumbers or tostring, math.floor(need))
     if not (good and type(nice) == "string") then nice = tostring(math.floor(need)) end
-    return format(ns:Tr("%s: %s to %s"), ns.PlannerRepName(best), nice, ns.PlannerRepStandingName(goals[best]))
+    return format(ns:Tr("%s: %s reputation to %s"), ns.PlannerRepName(best), nice, ns.PlannerRepStandingName(goals[best]))
 end
 -- "Moved: you died twice here (back at level 14)": a hub left out of this plan because you died twice there.
 function ns.GuideMovedText(s)
@@ -1079,9 +1087,16 @@ local function Footer()
     for _, b in ipairs({ panel.back, panel.skip, panel.more }) do b:SetSize(sq, bh); b.suiW = sq end
     panel.again:SetHeight(bh)
     panel.list:SetHeight(bh)
-    local left = 8 + sq + 4 + sq + 4 + (panel.againW or 72)
     local right = 8 + (panel.listW or 64) + (panel.moreShown and (4 + sq) or 0)
-    panel.againFits = left + 6 + right <= W
+    local room = W - (8 + sq + 4 + sq + 4) - 6 - right       -- (what is left for Plan again between the two sides)
+    local want = panel.againW or 72
+    panel.againFits = room >= math.min(want, 56)
+    local target = math.max(0, math.min(want, room))        -- (a long word in another language: drawn smaller, or cut with its tooltip)
+    if panel.againFits and target ~= panel.againSetW then
+        panel.againSetW = target
+        panel.again:SetWidth(target)
+        if panel.again.text and panel.again.text.suiFit then panel.again.text.suiFit() end
+    end
     panel.hover:ClearAllPoints()
     panel.hover:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, 0)
     panel.hover:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", 0, bh + 10)
@@ -1228,7 +1243,7 @@ local function Restyle()
     panel.againW = FitButton(panel.again, 72)
     panel.listW = FitButton(panel.list, 64)
     FitButton(panel.talentButton, 56)
-    panel.drawnHeight, panel.drawnWidth = nil, nil
+    panel.drawnHeight, panel.drawnWidth, panel.againSetW = nil, nil, nil
     if panel:IsShown() then Draw() end
 end
 ns:OnTheme(function() pcall(Restyle) end)
@@ -1306,7 +1321,7 @@ function ns:GuideShowPanel()
         panel.laterShown, panel.lineShown = {}, {}
         panel.skipped = Line()              -- (a planned route: quests left out by the group setting)
         panel.talent = Line()               -- (a planned route: talent points waiting)
-        panel.talentButton = ns:CreateButton(panel, "Build", 56, 20, function()
+        panel.talentButton = ns:CreateButton(panel, "Talents", 56, 20, function()
             if ns.TalentCommand then ns:TalentCommand("") end         -- (your talent builds, as /fgui talents)
         end)
         panel.talentButton:SetPoint("TOPRIGHT", -8, -90)
@@ -1521,7 +1536,7 @@ function ns:GuideRecordStop()
     local done = rec
     rec, ns.guideRecording = nil, nil
     ns:GuideSave(done)
-    ns:Print("Recording stopped: \"%s\" has %d steps. /fgui guide edit %s shows them.", done.name, #done.steps, done.name)
+    ns:Print(#done.steps == 1 and "Recording stopped: \"%s\" has %d step. /fgui guide edit %s shows it." or "Recording stopped: \"%s\" has %d steps. /fgui guide edit %s shows them.", done.name, #done.steps, done.name)
     return done
 end
 
@@ -1657,8 +1672,9 @@ function ns:GuideEdit(name)
             local ok, why = ns:GuideSave(guide)
             if not ok then w.status:SetText(ns:SignalHex("bad") .. ns:Tr(why) .. "|r"); return false end
             w.name = guide.name
-            w.status:SetText((#problems > 0) and (ns:SignalHex("warn") .. problems[1] .. ((#problems > 1) and format(" (+%d)", #problems - 1) or "") .. "|r")
-                or format(ns:Tr("Saved: %d steps."), #guide.steps))
+            local more = #problems - 1
+            w.status:SetText((#problems > 0) and (ns:SignalHex("warn") .. problems[1] .. ((more > 0) and (" " .. format(ns:TrN(more, "(and %d more line)", "(and %d more lines)"), more)) or "") .. "|r")
+                or format(ns:TrN(#guide.steps, "Saved: %d step.", "Saved: %d steps."), #guide.steps))
             if follow then ns:GuideFollow(guide.name) end
             return true
         end
@@ -1677,7 +1693,7 @@ function ns:GuideEdit(name)
     end
     local guide = name and ns:GuideGet(name)
     editor.name = guide and guide.name or nil
-    editor.box:SetText(guide and ns.GuideText(guide) or ("guide: " .. ((name and name ~= "") and name or "My route") .. "\n"))
+    editor.box:SetText(guide and ns.GuideText(guide) or ("guide: " .. ((name and name ~= "") and name or ns:Tr("My route")) .. "\n"))
     editor.status:SetText("")
     editor:Place()
     editor:Show()
@@ -1698,7 +1714,7 @@ function ns:GuideList()
         local guide = ns:GuideGet(name)
         local mine = st and st.name == name
         lines[#lines + 1] = { left = name .. (mine and ("  " .. ns:SignalHex("good") .. ns:Tr("following") .. "|r") or "") .. ((rec and rec.name == name) and ("  " .. ns:SignalHex("bad") .. ns:Tr("recording") .. "|r") or ""),
-            right = format(ns:Tr("%d steps"), #guide.steps), tone = mine and "@accent" or nil,
+            right = format(ns:TrN(#guide.steps, "%d step", "%d steps"), #guide.steps), tone = mine and "@accent" or nil,
             click = function(button) if button == "RightButton" then ns:GuideEdit(name) else ns:GuideFollow(name); ns:GuideList() end end }
     end
     lines[#lines + 1] = { left = "" }

@@ -116,16 +116,16 @@ function ns:GuideRouteEditor(name)
     end
     local function Parse()
         local text = win.line:GetText()
-        if type(text) ~= "string" then return nil, "nothing written" end
+        if type(text) ~= "string" then return nil, "Nothing written." end
         return ns.GuideParseLine(text)
     end
-    local function Say(t, good) win.msg:SetText((good and ns:SignalHex("good") or ns:SignalHex("bad")) .. ns:Tr(t) .. "|r") end
+    local function Say(t, good, arg) win.msg:SetText((good and ns:SignalHex("good") or ns:SignalHex("bad")) .. ns.GuideParseWhy(t, arg) .. "|r") end
     -- the buttons are made once; each time the editor opens, Rebind points them at this guide's list
     if not win.buttons then
         win.buttons = {}
         local y1, y2 = -386, -416
-        win.buttons.up = win.B("Up", 70, 14, y1)
-        win.buttons.down = win.B("Down", 70, 90, y1)
+        win.buttons.up = win.B("Move up", 70, 14, y1)
+        win.buttons.down = win.B("Move down", 70, 90, y1)
         win.buttons.del = win.B("Delete", 80, 166, y1)
         win.buttons.change = win.B("Change this step", 140, 252, y1)
         win.buttons.add = win.B("Add after it", 120, 398, y1)
@@ -154,18 +154,18 @@ function ns:GuideRouteEditor(name)
         win.buttons.down:SetScript("OnClick", function() work.steps, at = ns.RouteMove(work.steps, at, 1); Draw() end)
         win.buttons.del:SetScript("OnClick", function() work.steps, at = ns.RouteDelete(work.steps, at); Draw() end)
         win.buttons.change:SetScript("OnClick", function()
-            local step, why = Parse()
-            if not step then Say(why or "not a step"); return end
+            local step, why, arg = Parse()
+            if not step then Say(why or "Not a step.", false, arg); return end
             work.steps[at] = step; Say("Changed.", true); Draw()
         end)
         win.buttons.add:SetScript("OnClick", function()
-            local step, why = Parse()
-            if not step then Say(why or "not a step"); return end
+            local step, why, arg = Parse()
+            if not step then Say(why or "Not a step.", false, arg); return end
             work.steps, at = ns.RouteInsert(work.steps, at, step); Say("Added.", true); Draw()
         end)
         win.buttons.save:SetScript("OnClick", function()
             local ok, why = ns:GuideSave(work)
-            if ok then Say(format(ns:Tr("Saved: %d steps."), #work.steps), true) else Say(why or "not saved") end
+            if ok then Say(format(ns:TrN(#work.steps, "Saved: %d step.", "Saved: %d steps."), #work.steps), true) else Say(why or "Not saved.") end
         end)
         win.buttons.follow:SetScript("OnClick", function() if ns:GuideSave(work) then win:Hide(); ns:GuideFollow(work.name) end end)
         win.buttons.text:SetScript("OnClick", function() ns:GuideEdit(work.name) end)

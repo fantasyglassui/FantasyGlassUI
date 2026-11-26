@@ -87,9 +87,9 @@ end
 local function Span(secs)
     secs = floor(tonumber(secs) or 0)
     local d, h, m = floor(secs / 86400), floor(secs % 86400 / 3600), floor(secs % 3600 / 60)
-    if d > 0 then return format(ns:Tr("%dd %dh"), d, h) end
-    if h > 0 then return format(ns:Tr("%dh %dm"), h, m) end
-    return format(ns:Tr("%dm"), m)
+    if d > 0 then return format(ns:Tr("%d d %d h"), d, h) end           -- (the same way as the rest of the add-on writes a time)
+    if h > 0 then return format(ns:Tr("%d h %d min"), h, m) end
+    return format(ns:Tr("%d min"), m)
 end
 local function Commas(n)
     local s = tostring(floor((tonumber(n) or 0) + 0.5))
@@ -108,7 +108,7 @@ function ns.PlannerLevelLines()
     lines[2] = { left = ns:AccentHex() .. ns:Tr("Levels") .. "|r" }
     lines[3] = { left = format(ns:Tr("Fastest level: %d (%s)"), sum.fastest.level, Span(sum.fastest.s)), indent = 16 }
     lines[4] = { left = format(ns:Tr("Slowest level: %d (%s)"), sum.slowest.level, Span(sum.slowest.s)), indent = 16 }
-    lines[5] = { left = format(ns:Tr("Average level: %s"), Span(sum.average)), indent = 16 }
+    lines[5] = { left = format(ns:Tr("Average per level: %s"), Span(sum.average)), indent = 16 }
     return lines
 end
 
@@ -158,7 +158,7 @@ local function RaceLine()
     local best = BestOther(level)
     if not best then return nil end
     local ahead = best * min(1, max(0, xp / xpMax)) - c.seconds
-    if abs(ahead) <= 60 then return ns:Tr("Race your best: level with your best") end
+    if abs(ahead) <= 60 then return ns:Tr("Race your best: even with your best") end
     local minutes = max(1, floor(abs(ahead) / 60 + 0.5))
     return format(ns:Tr(ahead > 0 and "Race your best: ahead by %d min" or "Race your best: behind by %d min"), minutes)
 end
@@ -244,7 +244,7 @@ function ns.PlannerSaveAsGuide()
     end
     local saved = ns:GuideSave({ name = name, steps = steps })
     if not saved then return nil end
-    ns:Print("Saved as guide \"%s\": %d steps.", name, #steps)
+    ns:Print(#steps == 1 and "Saved as guide \"%s\": %d step." or "Saved as guide \"%s\": %d steps.", name, #steps)
     return name
 end
 -- (offered for a plan the planner made: it has a length, and is not the empty one)
