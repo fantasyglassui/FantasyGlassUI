@@ -855,7 +855,7 @@ function ns.BuildGuidePage(page)
         end)
     end
     local why = Advice("plannerWhy", "Show why each step is there", "Each step on the panel says what it is worth: the experience, or the time it saves.", Replan)
-    local pick = Advice("plannerPickReward", "Pick the best quest reward", "At a hand-in, the reward that suits you best is marked for you to take.", function() end)
+    local pick = Advice("plannerPickReward", "Show the best quest reward", "At a hand-in, the reward that suits you best is marked and named in chat. You choose it yourself.", function() end)
     local logAdvice = Advice("plannerLogAdvice", "Quest log advice", "When your quest log is nearly full, the panel says which quests are worth abandoning.", function()
         if ns.GuideShowPanel and ns.GuidePanelShown and ns:GuidePanelShown() then ns:GuideShowPanel() end
     end)

@@ -359,15 +359,25 @@
   "패널의 각 단계에 얻는 것, 곧 경험치나 아끼는 시간을 표시합니다.",
   "面板上的每个步骤都会说明它的价值：经验，或节省的时间。"
  ],
- "At a hand-in, the reward that suits you best is marked for you to take.": [
-  "Bei einer Abgabe wird die Belohnung markiert, die am besten zu dir passt, damit du sie nimmst.",
-  "Lors d'une remise de quête, la récompense qui vous convient le mieux est signalée pour que vous la preniez.",
-  "Al entregar una misión, se marca la recompensa que mejor te va para que la elijas.",
-  "При сдаче задания отмечается награда, которая подходит вам лучше всего, — выберите её.",
-  "Na entrega de uma missão, a recompensa que mais combina com você é marcada para você pegar.",
-  "Alla consegna, la ricompensa più adatta a te viene evidenziata perché tu la prenda.",
-  "퀘스트를 완료할 때 가장 잘 맞는 보상을 표시해 두니 직접 고르세요.",
-  "交任务时，最适合你的奖励会被标出，由你来领取。"
+ "Show the best quest reward": [
+  "Die beste Questbelohnung zeigen",
+  "Montrer la meilleure récompense de quête",
+  "Mostrar la mejor recompensa de misión",
+  "Показывать лучшую награду за задание",
+  "Mostrar a melhor recompensa de missão",
+  "Mostra la ricompensa migliore",
+  "가장 좋은 퀘스트 보상 표시",
+  "显示最佳任务奖励"
+ ],
+ "At a hand-in, the reward that suits you best is marked and named in chat. You choose it yourself.": [
+  "Bei einer Abgabe wird die Belohnung, die am besten zu dir passt, markiert und im Chat genannt. Wählen tust du sie selbst.",
+  "Lors d'une remise de quête, la récompense qui vous convient le mieux est signalée et nommée dans la discussion. C'est vous qui la choisissez.",
+  "Al entregar una misión, la recompensa que mejor te va se marca y se nombra en el chat. La eliges tú.",
+  "При сдаче задания лучшая для вас награда отмечается и называется в чате. Выбираете её вы сами.",
+  "Na entrega de uma missão, a recompensa que mais combina com você é marcada e citada no chat. Quem escolhe é você.",
+  "Alla consegna, la ricompensa più adatta a te viene evidenziata e nominata in chat. La scegli tu.",
+  "퀘스트를 완료할 때 가장 잘 맞는 보상을 표시하고 채팅에 알려 줍니다. 고르는 것은 직접 하세요.",
+  "交任务时，最适合你的奖励会被标出并在聊天中说明，由你自己选择。"
  ],
  "When your quest log is nearly full, the panel says which quests are worth abandoning.": [
   "Wenn dein Questlog fast voll ist, sagt das Fenster, welche Quests sich abzubrechen lohnen.",
