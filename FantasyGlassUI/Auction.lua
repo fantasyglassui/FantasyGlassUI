@@ -55,6 +55,7 @@ local function BagItems()
     end
     return out
 end
+ns.AuctionBagItems = BagItems
 local function PutOnSellPage(it)
     if InCombatLockdown() then return false end
     local ahf = _G.AuctionHouseFrame

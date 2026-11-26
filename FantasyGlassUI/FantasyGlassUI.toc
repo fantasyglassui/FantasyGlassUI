@@ -111,6 +111,11 @@ Economy.lua
 Prices.lua
 PriceScan.lua
 SellHints.lua
+Gold.lua
+GoldSell.lua
+GoldFarm.lua
+GoldGather.lua
+GoldCraft.lua
 ChatMore.lua
 CharMore.lua
 System.lua
