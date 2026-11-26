@@ -11531,6 +11531,41 @@ try("gold seams: the window, the panel, hidden while locked", function()
         onTick(tickFrame, 0.01)
         Settle()
         if ns.GoldBusy("t:locked") then error("unlocked: the tick runs the job") end
+        -- a collect queued before a lock runs once the window is opened again after the unlock
+        local tickShown
+        rawset(tickFrame, "Show", function() tickShown = true end)
+        rawset(tickFrame, "Hide", function() tickShown = false end)
+        ns:GoldOpen()
+        if not ns.GoldBusy("collect:window") then error("opening queues a collect") end
+        ns.GuideUnlocked = function() return false end
+        onTick(tickFrame, 0.01)
+        if tickShown ~= false or not ns.GoldBusy("collect:window") then error("locked: the tick stops, the collect waits") end
+        ns.GuideUnlocked = function() return true end
+        ns:GoldOpen()
+        if not tickShown then error("opened again: the tick runs again for the waiting collect") end
+        local ticks = 0
+        while ns.GoldBusy() and ticks < 400 do onTick(tickFrame, 0.01); ticks = ticks + 1 end
+        runTimers(); Settle()
+        rawset(tickFrame, "Show", nil); rawset(tickFrame, "Hide", nil)
+        local afterUnlock = ns.GoldWindowLines().ranked[1]
+        if ns.GoldBusy("collect:window") or afterUnlock == "Looking for ways to make gold..." then error("after the unlock the window fills: " .. tostring(afterUnlock)) end
+        -- callbacks scheduled before a lock do nothing after it: no perf row, no collect, no stamp
+        local me = ns:CharKey()
+        ns.root.goldChars = { [me] = {} }
+        fireEvent("BAG_UPDATE_DELAYED")                           -- (a collect 2 s later)
+        ns:After(0, function() end)
+        ns.GuideUnlocked = function() return false end
+        ns.perfOn, ns.perfData = true, {}
+        runTimers()
+        local panelTick = Handler(p, "OnUpdate")
+        panelTick(p, 6)
+        local lateRow = ns.perfData.Gold
+        ns.perfOn, ns.perfData = keep.perfOn, keep.perfData
+        ns.GuideUnlocked = function() return true end
+        if lateRow ~= nil then error("a callback from before the lock is not timed") end
+        if ns.GoldBusy("collect:window") or ns.GoldBusy("collect:auction") then error("a callback from before the lock queues nothing") end
+        if ns.root.goldChars[me].seen ~= nil then error("a callback from before the lock stamps nothing") end
+        ns.root.goldChars = nil
         -- a list's title or note shown as it is
         ns:ShowList("GoldRawTest", "Made 7 x Thing", {}, "Note 9 x", nil, nil, { rawTitle = true, rawNote = true })
         if ns.seenStrings["Made 7 x Thing"] ~= nil or ns.seenStrings["Note 9 x"] ~= nil then error("rawTitle and rawNote are not translated") end

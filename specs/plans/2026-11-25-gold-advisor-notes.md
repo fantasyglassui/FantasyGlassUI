@@ -144,6 +144,7 @@ After the fold:
 - **M5.** A monster at its level default reads "guess · default values". A measured gathering map says "Last gathered %s".
 - **M6.** For ordering only, under any preset, a guess counts at 80% and an idea whose prices are more than 7 days old at 90% (`ns.GoldOrderFactor`): the gold part is measured against the best such adjusted amount, and the ease and safety parts are scaled the same way. The amounts shown stay true. One-offs in Right now keep their order by total.
 - **M7.** A Questie dropper whose spawns are on a dungeon map (`C_Map.GetMapInfo(map).mapType == Enum.UIMapType.Dungeon`) is no farm idea.
+- **Re-review N1–N3.** `GoldJob` shows the tick before its duplicate-key check, so a job left from before a lock runs once it is asked for again. The tick's lock hook is `ns.GoldLockedNow`. `CollectWindow`, `CollectPanel`, the panel's `OnUpdate` and the scheduled draw and collect callbacks return at once while locked, through plain wrappers, so a callback from before a lock is never timed, queues nothing and stamps nothing.
 - **M8.** The node fold above is sliced, runs only with `ns.PlannerWorldPos`, and clears only what it has moved.
 - **M9.** `ns.GoldContext` stamps this character's `goldChars` record with `seen`; forgetting drops records not seen for 180 days. A record from before the stamp is stamped, not dropped, and the one being played is always kept.
 - **M10.** The craft source leaves `ctx.craftUses = { [itemID] = title }` for the sources after it (they run in key order, so craft comes before sell). A sell or junk line for such an item gets "Also used in: %s" and stays in the list.
@@ -155,6 +156,7 @@ What must stay in the main add-on when the advisor moves into `FantasyGlassUI_Go
 - Gold.lua: the job runner (`ns.GoldJob`, `ns.GoldYield`, `ns.GoldBusy`, `ns.GoldRunSlice`, the tick frame and the fight flag), `VendorPrice` and `ns.GoldItemValue`. These are marked "stays in the main add-on".
 - Gold.lua: the entry points at the end (the launcher hooks, the guide panel's button, `/fgui guide gold`, and the auction-house frame, which now reads only `ns.goldPanel`).
 - The recorder blocks of GoldSell.lua (merchant prices, with `ns.GoldVendorNote`), GoldFarm.lua (loot, with `ns.GoldMobNote`), GoldGather.lua (gathering, with `ns.GoldGatherSkill`, `ns.GOLD_GATHER_SPELLS` and `ns.GoldRecordNode`) and GoldCraft.lua (recipes, with `ns.GoldRecipesRead`).
+- `ns.GoldLockedNow` crosses the split: the tick (which stays) calls it to hide the window and the panel when the guide is locked again, and the window part (which moves) defines it. If the folder is not loaded, there is nothing to hide and the tick only stops.
 - The node fold, if the planner has moved by then.
 
 ## In-game checklist

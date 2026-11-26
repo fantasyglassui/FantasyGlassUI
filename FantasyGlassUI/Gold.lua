@@ -161,10 +161,9 @@ local function UnlockedNow() return ns.GuideUnlocked ~= nil and ns:GuideUnlocked
 -- so nothing named Gold is timed by /fgui perf for a locked player.
 local GuardedSlice = ns:Guard("Gold", function() ns.GoldRunSlice() end)
 local tick                             -- a plain frame: shown while there is work or something to keep hidden
-local LockedNow                        -- (set by the window: hide the window and the panel)
 local function Tick(self)
     if not UnlockedNow() then                                   -- (locked again: hide everything and stop)
-        if LockedNow then LockedNow() end
+        if type(ns.GoldLockedNow) == "function" then ns.GoldLockedNow() end   -- (an ns hook: it still reaches the window after the folder split)
         self:Hide()
         return
     end
@@ -197,9 +196,9 @@ end
 function ns.GoldJob(fn, key)
     if type(fn) ~= "function" then return false end
     key = (key ~= nil) and tostring(key) or tostring(fn)
+    Start()                                                     -- (first: a job left from before a lock runs again once asked for)
     for i = 1, #queue do if queue[i].key == key then return false end end
     queue[#queue + 1] = { co = coroutine.create(fn), key = key }
-    Start()
     return true
 end
 -- Is a job queued or running (this one, with a key)?
@@ -802,11 +801,14 @@ local function Draw()
 end
 
 -- (drawn on the next frame, guarded: an error is noted, never handed to the game)
-local DrawLater = ns:Guard("Gold", function() Draw() end)
+-- (plain wrappers first: a call scheduled before a lock does nothing after it, and is never timed)
+local GuardedDraw = ns:Guard("Gold", function() Draw() end)
+local function DrawLater() if Unlocked() then GuardedDraw() end end
 local CollectWindow
-local CollectLater = ns:Guard("Gold", function() CollectWindow() end)
+local GuardedCollect = ns:Guard("Gold", function() CollectWindow() end)
+local function CollectLater() if Unlocked() then GuardedCollect() end end
 function CollectWindow()
-    if not W then return end
+    if not W or not Unlocked() then return end
     win.waiting = InFight()
     local queued = ns.GoldCollect(ns.GoldContext("window"), function(ideas)
         win.ideas, win.waiting = ideas, false                 -- (drawn on the next frame, outside the job's slice)
@@ -1032,10 +1034,13 @@ local function DrawPanel()
     P.footer:SetText(ns.PriceFreshText(ns.PriceHouse(), Ask(time)))
     panel.drawn = drawn
 end
-local DrawPanelLater = ns:Guard("Gold", function() DrawPanel() end)
+local GuardedDrawPanel = ns:Guard("Gold", function() DrawPanel() end)
+local function DrawPanelLater() if Unlocked() then GuardedDrawPanel() end end
 local CollectPanel
-local CollectPanelLater = ns:Guard("Gold", function() CollectPanel() end)
+local GuardedCollectPanel = ns:Guard("Gold", function() CollectPanel() end)
+local function CollectPanelLater() if Unlocked() then GuardedCollectPanel() end end
 function CollectPanel()
+    if not Unlocked() then return end
     local queued = ns.GoldCollect(ns.GoldContext("auction"), function(ideas)
         panel.ideas = ideas                                    -- (drawn on the next frame, outside the job's slice)
         ns:After(0, DrawPanelLater)
@@ -1081,15 +1086,18 @@ local function BuildPanel()
     f.footer = Painted(ns:NewText(f, 10, "LEFT"), "faint")
     f.footer:SetPoint("BOTTOMLEFT", 14, 12)
     -- a new scan: collect again (looked at every 5 s while it is open)
-    f:SetScript("OnUpdate", ns:Guard("Gold", function(self, elapsed)
+    local guardedTick = ns:Guard("Gold", function(self, elapsed)
         if self ~= P then return end                           -- (a panel let go of)
-        if not Unlocked() then Shown(self, false); return end   -- (locked again since it opened)
         panel.acc = panel.acc + (tonumber(elapsed) or 0)
         if panel.acc < 5 then return end
         panel.acc = 0
         local at = ScanAt()
         if at ~= panel.scanAt then panel.scanAt = at; CollectPanel() end
-    end))
+    end)
+    f:SetScript("OnUpdate", function(self, elapsed)            -- (plain first: locked again, it hides untimed)
+        if not Unlocked() then Shown(self, false); return end
+        guardedTick(self, elapsed)
+    end)
     Start()
     return f
 end
@@ -1104,7 +1112,7 @@ function ns:GoldAuctionShow()
 end
 
 -- Locked again: the window and the panel hide (the tick calls this, and then stops).
-LockedNow = function()
+function ns.GoldLockedNow()
     if W and W.suiGoldOn then Shown(W, false) end
     if P and P.suiGoldOn then Shown(P, false) end
 end
