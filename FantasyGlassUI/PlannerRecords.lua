@@ -87,9 +87,9 @@ end
 local function Span(secs)
     secs = floor(tonumber(secs) or 0)
     local d, h, m = floor(secs / 86400), floor(secs % 86400 / 3600), floor(secs % 3600 / 60)
-    if d > 0 then return format(ns:Tr("%dd %dh"), d, h) end
-    if h > 0 then return format(ns:Tr("%dh %dm"), h, m) end
-    return format(ns:Tr("%dm"), m)
+    if d > 0 then return format(ns:Tr("%d d %d h"), d, h) end           -- (the same way as the rest of the add-on writes a time)
+    if h > 0 then return format(ns:Tr("%d h %d min"), h, m) end
+    return format(ns:Tr("%d min"), m)
 end
 local function Commas(n)
     local s = tostring(floor((tonumber(n) or 0) + 0.5))
@@ -106,9 +106,9 @@ function ns.PlannerLevelLines()
     if sum.count < 1 then return lines end
     lines[1] = { left = " " }
     lines[2] = { left = ns:AccentHex() .. ns:Tr("Levels") .. "|r" }
-    lines[3] = { left = "    " .. format(ns:Tr("Fastest level: %d (%s)"), sum.fastest.level, Span(sum.fastest.s)) }
-    lines[4] = { left = "    " .. format(ns:Tr("Slowest level: %d (%s)"), sum.slowest.level, Span(sum.slowest.s)) }
-    lines[5] = { left = "    " .. format(ns:Tr("Average level: %s"), Span(sum.average)) }
+    lines[3] = { left = format(ns:Tr("Fastest level: %d (%s)"), sum.fastest.level, Span(sum.fastest.s)), indent = 16 }
+    lines[4] = { left = format(ns:Tr("Slowest level: %d (%s)"), sum.slowest.level, Span(sum.slowest.s)), indent = 16 }
+    lines[5] = { left = format(ns:Tr("Average per level: %s"), Span(sum.average)), indent = 16 }
     return lines
 end
 
@@ -127,7 +127,7 @@ function ns.PlannerLevelRunLines()
     for i = 1, min(20, #levels) do
         local e = list[levels[i]]
         local text = format(ns:Tr("Level %d: %s, %s xp an hour"), levels[i], Span(e.s), Commas(e.xph))
-        if e.partial then text = text .. "  |cff9aa4b4(" .. ns:Tr("partly timed") .. ")|r" end     -- (not counted in fastest, slowest, average or the race)
+        if e.partial then text = text .. "  " .. ns:ToneHex("dim") .. "(" .. ns:Tr("partly timed") .. ")|r" end     -- (not counted in fastest, slowest, average or the race)
         lines[#lines + 1] = { left = text }
     end
     return lines
@@ -158,7 +158,7 @@ local function RaceLine()
     local best = BestOther(level)
     if not best then return nil end
     local ahead = best * min(1, max(0, xp / xpMax)) - c.seconds
-    if abs(ahead) <= 60 then return ns:Tr("Race your best: level with your best") end
+    if abs(ahead) <= 60 then return ns:Tr("Race your best: even with your best") end
     local minutes = max(1, floor(abs(ahead) / 60 + 0.5))
     return format(ns:Tr(ahead > 0 and "Race your best: ahead by %d min" or "Race your best: behind by %d min"), minutes)
 end
@@ -170,6 +170,7 @@ ns.GuideRegisterLine("race", RaceLine)
 ------------------------------------------------------------------------------------------
 local LEFT_OFF_SECONDS = 120
 local leftOff                                    -- { text, till }
+local leftOffWanted = false                      -- (an initial login: the line waits for the first plan)
 
 function ns.PlannerLeftOff()
     leftOff = nil
@@ -192,10 +193,17 @@ function ns.PlannerLeftOff()
     leftOff = { text = text, till = GetTime() + LEFT_OFF_SECONDS }
     ns:PrintRaw(text)
     if ns.GuideRedraw then ns:GuideRedraw() end
-    ns:After(LEFT_OFF_SECONDS + 1, function() leftOff = nil; if ns.GuideRedraw then ns:GuideRedraw() end end)
+    ns:After(LEFT_OFF_SECONDS + 1, ns:Guard("Planner records", function() leftOff = nil; if ns.GuideRedraw then ns:GuideRedraw() end end))
     return text
 end
 
+-- The login's line, once: from the first plan applied after it, or after 20 s from the saved one.
+function ns.PlannerLeftOffDue()
+    if not leftOffWanted then return nil end
+    leftOffWanted = false
+    return ns.PlannerLeftOff()
+end
+if ns.PlannerHook then ns.PlannerHook("applied", "leftoff", function() ns.PlannerLeftOffDue() end) end
 ns.GuideRegisterLine("leftoff", function()
     if not leftOff then return nil end
     if GetTime() >= leftOff.till or not Unlocked() or not (ns.db and ns.db.plannerLeftOff ~= false) then leftOff = nil; return nil end
@@ -236,7 +244,7 @@ function ns.PlannerSaveAsGuide()
     end
     local saved = ns:GuideSave({ name = name, steps = steps })
     if not saved then return nil end
-    ns:Print("Saved as guide \"%s\": %d steps.", name, #steps)
+    ns:Print(#steps == 1 and "Saved as guide \"%s\": %d step." or "Saved as guide \"%s\": %d steps.", name, #steps)
     return name
 end
 -- (offered for a plan the planner made: it has a length, and is not the empty one)
@@ -261,7 +269,8 @@ end)
 
 -- Keys: the guide's menu and its pages join the windows Tab and Enter work in.
 local KEY_FRAMES = { "FantasyGlassUIGuideMenu", "FantasyGlassUIListPlanPreview", "FantasyGlassUIListPlanWhy", "FantasyGlassUIListPlanTime",
-                     "FantasyGlassUIListPlanCatchUp", "FantasyGlassUIListPlanHere" }
+                     "FantasyGlassUIListPlanCatchUp", "FantasyGlassUIListPlanHere", "FantasyGlassUIListPlanDuoAsk", "FantasyGlassUIListGuides",
+                     "FantasyGlassUIListReputation", "FantasyGlassUIListSkipped", "FantasyGlassUIGuideEditor", "FantasyGlassUIRouteEditor" }
 function ns.PlannerKeyFrames()
     local list = ns.WINDOW_KEYS_FRAMES
     if type(list) ~= "table" then return end
@@ -296,7 +305,10 @@ do
         elseif event == "PLAYER_LEVEL_UP" then
             if type(a) == "number" and a > 1 then ns.PlannerRecordLevel(a - 1) end
         elseif event == "PLAYER_ENTERING_WORLD" and a == true then       -- (an initial login: not a reload, not a loading screen)
-            ns.PlannerLeftOff()
+            -- said from the first plan made after the login (the saved one is replaced a moment later), or from the
+            -- saved one when no plan comes within 20 s
+            leftOffWanted = true
+            ns:After(20, ns:Guard("Planner records", function() ns.PlannerLeftOffDue() end))
         end
     end))
     local acc, last = 0, nil
@@ -310,7 +322,7 @@ do
         local gap = last and (now - last) or 0           -- (the first tick after a login or a reload adds nothing)
         last = now
         ns.PlannerLevelTick(gap)
-        if ns.db and ns.db.plannerRace == true and Unlocked() and ns.GuideRedraw then     -- (the race line follows the clock, on a panel you can see)
+        if ns.db and ns.db.plannerRace == true and Unlocked() and ns.GuideRedraw and not InCombatLockdown() then     -- (the race line follows the clock, on a panel you can see; not in a fight)
             local panel = _G.FantasyGlassUIGuide
             if type(panel) == "table" and panel.IsShown and panel:IsShown() then ns:GuideRedraw() end
         end

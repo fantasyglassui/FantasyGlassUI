@@ -99,7 +99,7 @@ function ns.PlannerWhyLines(step, summary)
         elseif hub.lead or (rate and beatRate and beatRate >= rate) then
             Add(ns:Tr("Taken first"), "")                       -- (a lead-in, or put first: nothing it beat)
         elseif rate and beatRate and beatRate > 0 then
-            local name = type(beat.name) == "string" and beat.name or ns:Tr("another hub")
+            local name = type(beat.name) == "string" and beat.name or ns:Tr("another place")
             Add(format(ns:Tr("Beat %s at %s an hour (%d%% better)"), name, Big(beatRate * 3600), floor((rate / beatRate - 1) * 100 + 1e-9)), "")
         else
             Add(ns:Tr("Nothing else was worth the trip"), "")
@@ -137,16 +137,22 @@ function ns.PlannerPreviewLines(guide, summary)
         lines[#lines + 1] = { left = format("%d. %s", i, ok and type(text) == "string" and text or tostring(step.kind)) }
         if step.kind == "fly" then flights = flights + 1 elseif step.kind == "sail" then crossings = crossings + 1 end
     end
-    lines[#lines + 1] = { left = format(ns:Tr("Experience: %s"), Big(summary.xp)) }
-    lines[#lines + 1] = { left = format(ns:Tr("Level %s → %s"), LevelText(summary.fromLevel), LevelText(summary.toLevel)) }
-    lines[#lines + 1] = { left = format(ns:Tr("Flights: %d, crossings: %d"), flights, crossings) }
+    lines[#lines + 1] = { left = "" }                                           -- (the totals stand apart from the steps)
+    lines[#lines + 1] = { left = format(ns:Tr("Experience: %s"), Big(summary.xp)), tone = "dim" }
+    lines[#lines + 1] = { left = format(ns:Tr("Level %s → %s"), LevelText(summary.fromLevel), LevelText(summary.toLevel)), tone = "dim" }
+    lines[#lines + 1] = { left = format(ns:Tr("Flights: %d, crossings: %d"), flights, crossings), tone = "dim" }
     local skipped = ns.GuideSkippedText and ns.GuideSkippedText(summary)       -- (the panel's own lines, Guide.lua)
-    if skipped then lines[#lines + 1] = { left = skipped } end
+    if skipped then lines[#lines + 1] = { left = skipped, tone = "dim" } end
     local moved = ns.GuideMovedText and ns.GuideMovedText(summary)
-    if moved then lines[#lines + 1] = { left = moved } end
+    if moved then lines[#lines + 1] = { left = moved, tone = "dim" } end
     local function Close() if previewWindow then previewWindow:Hide() end end
-    lines[#lines + 1] = { left = ns:Tr("Follow"), color = { 1, 0.82, 0.3 }, click = Close }
-    lines[#lines + 1] = { left = ns:Tr("Plan again"), color = { 1, 0.82, 0.3 }, click = function()
+    -- (the route is followed already: Close; Plan again plans again, as the panel's button; the settings are their own entry)
+    lines[#lines + 1] = { left = ns:Tr("Close"), action = true, click = Close }
+    lines[#lines + 1] = { left = ns:Tr("Plan again"), action = true, click = function()
+        Close()
+        ns:GuidePlanAgain()
+    end }
+    lines[#lines + 1] = { left = ns:Tr("Change what it plans"), action = true, click = function()
         Close()
         if ns.ToggleConfig then ns:ToggleConfig("guide") end
     end }
@@ -154,7 +160,11 @@ function ns.PlannerPreviewLines(guide, summary)
 end
 
 local function ShowPreview(guide, summary)
-    previewWindow = ns:ShowList("PlanPreview", "Preview the next hour", ns.PlannerPreviewLines(guide, summary), nil, 440, 420)
+    local lines = ns.PlannerPreviewLines(guide, summary)
+    previewWindow = ns:ShowList("PlanPreview", "Preview the next hour", lines, nil, 440, 420)
+    if ns.db and ns.db.readDialog and ns.db.plannerSpeak ~= false and lines[1] then   -- (read aloud: the page and its first step)
+        ns:Speak(ns:Tr("Preview the next hour") .. ". " .. tostring(lines[1].left))
+    end
     return true
 end
 function ns:PlannerPreview()
@@ -297,7 +307,7 @@ ns.PlannerHook("applied", "zoneGoal", function(_, summary, ctx)
     local page = ns.guidePage                            -- (the Guide tab's goal button, when the tab was built)
     if type(page) == "table" and type(page.zoneGoalDraw) == "function" then pcall(page.zoneGoalDraw) end
     if type(zg) == "table" and (tonumber(zg.done) or 0) < (tonumber(zg.total) or 0) then   -- (doable quests are left, out of reach or above your level)
-        ns:Print("No more quests in %s at your level", ns.PlannerMapName(goal))
+        ns:Print("No more quests in %s at your level.", ns.PlannerMapName(goal))
     else
         ns:Print("Zone done: %s", ns.PlannerMapName(goal))
     end
@@ -306,6 +316,7 @@ end)
 
 ns.GuideRegisterLine("zoneGoal", function(st)
     if not (Unlocked() and type(st) == "table" and st.name ~= nil and st.name == ns.GUIDE_PLANNED) then return nil end
+    if ns.PlannerZoneGoal() and type(st.summary) == "table" and st.summary.source == "log" then return ns:Tr("Zone goal needs Questie") end   -- (the quest log alone cannot count a zone)
     local zg = type(st.summary) == "table" and st.summary.zoneGoal
     if type(zg) ~= "table" or not (tonumber(zg.done) and tonumber(zg.total)) then return nil end
     return format(ns:Tr("Zone: %d of %d quests"), zg.done, zg.total)

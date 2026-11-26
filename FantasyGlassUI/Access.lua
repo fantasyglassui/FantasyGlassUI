@@ -16,6 +16,7 @@ local function Plain(text)
     return text ~= "" and text or nil
 end
 local lastWhisper
+local Join                                  -- (parts joined into sentences: below)
 do
     local ev = CreateFrame("Frame")
     for _, e in ipairs({ "CHAT_MSG_WHISPER", "CHAT_MSG_BN_WHISPER" }) do pcall(ev.RegisterEvent, ev, e) end
@@ -51,6 +52,26 @@ function ns:ReadText(what)
             end
         end
         if #parts > 0 then return table.concat(parts, ". "), "quest" end
+    end
+    -- the quest guide's panel (while the mouse is on it, or asked for by name), then the list window in front
+    if (what == "guide" or (not what and ns.GuidePanelUnderMouse and ns.GuidePanelUnderMouse())) and ns.GuideReadText then
+        local t = Plain(ns.GuideReadText())
+        if t then return t, "guide" end
+    end
+    if not what or what == "list" then
+        local w = ns.FrontList and ns:FrontList()
+        if w then
+            local parts = {}
+            parts[1] = Plain(w.titleText)
+            for _, line in ipairs(type(w.lines) == "table" and w.lines or {}) do
+                if type(line) == "table" then
+                    local l, r = Plain(line.left or line[1]), (not line.hasSecret) and Plain(line.right or line[2]) or nil
+                    if l and r then parts[#parts + 1] = l .. ": " .. r elseif l or r then parts[#parts + 1] = l or r end
+                end
+                if #parts >= 40 then break end
+            end
+            if #parts > 0 then return Join(parts), "list" end
+        end
     end
     if (not what or what == "whisper") and lastWhisper then return lastWhisper, "whisper" end
     return nil
@@ -234,7 +255,7 @@ end
 -- "Read talk and quests aloud": what an NPC says, a quest's text and a book or letter are read as their
 -- window opens, and the reading stops when it closes. "Read what I point at": a tooltip is read once the
 -- mouse rests on something. (The game's own screen narrator works only before you log in.)
-local function Join(parts)
+Join = function(parts)
     local out = ""
     for _, t in ipairs(parts) do
         t = Plain(t)

@@ -6538,7 +6538,7 @@ try("10.3: quest guides", function()
     if bad or not why then error("an unknown step must be refused with a reason") end
     if P("accept A Fine Start") or P("goto | the bridge") or P("level up") or P("goto @ 150,20") then error("a quest step needs its number, goto a place, level a number, and a place stays on the map") end
     local guide, problems = ns.GuideParse("guide: Test route\n# first\naccept 1 One | Bob @ 5:10,20\ndo 1 One | Slay @ 5:11,21\nnonsense here\nturnin 1 One @ 5:10,20\n\nlevel 3\n")
-    if guide.name ~= "Test route" or #guide.steps ~= 4 or #problems ~= 1 or not problems[1]:find("line 5", 1, true) then error("a guide from text, with the bad line named: " .. #guide.steps .. " steps, " .. #problems .. " problems") end
+    if guide.name ~= "Test route" or #guide.steps ~= 4 or #problems ~= 1 or not problems[1]:find("Line 5", 1, true) then error("a guide from text, with the bad line named: " .. #guide.steps .. " steps, " .. #problems .. " problems") end
     local again = ns.GuideParse(ns.GuideText(guide))
     if again.name ~= "Test route" or #again.steps ~= 4 or again.steps[2].text ~= "Slay" or again.steps[1].x ~= 10 or again.steps[4].level ~= 3 then error("a guide written out and read back is the same guide") end
     if not ns.GuideStepText(guide.steps[1]):find("One", 1, true) or ns.GuideStepText(guide.steps[2]) ~= "Slay" then error("what the panel says") end
@@ -9555,7 +9555,7 @@ try("13.0 planner: running it", function()
         end
         ns:GuideAdvance()
         if not tostring(said.title):find(string.format(ns:Tr("Planned: %s, level %s → %s"), "Testshire", "10", ""), 1, true) then error("the panel's title: " .. tostring(said.title)) end
-        if said.skipped ~= string.format(ns:Tr("Skipped: %d group quests (Solo is on)"), 1) then error("the skipped line: " .. tostring(said.skipped)) end
+        if said.skipped ~= string.format(ns:Tr("Skipped: %d group quest (Solo is on)"), 1) then error("the skipped line: " .. tostring(said.skipped)) end
         if not (planned().estimates and (planned().estimates[101] or 0) > 0) then error("each quest's estimate is kept with the plan") end
         local text = ns.GuideText(planned())
         -- the same plan, a little at a time
@@ -9592,8 +9592,11 @@ try("13.0 planner: running it", function()
         -- a step ticked off by hand stays ticked in the next plan
         ns:GuideSkip(false)
         if not ns.GuideState().ticked[1] then error("ticked") end
+        local tickedKind = planned().steps[1].kind
         ns:PlannerReplan("test"); settle()
-        if not ns.GuideState().ticked[1] or ns.GuideState().at ~= 2 then error("a replan keeps the steps you ticked off") end
+        if tickedKind == "accept" or tickedKind == "do" or tickedKind == "turnin" then      -- (polish P2: a quest step's tick is not carried: the game says)
+            if ns.GuideState().ticked[1] then error("a replan does not carry a quest step's tick") end
+        elseif not ns.GuideState().ticked[1] or ns.GuideState().at ~= 2 then error("a replan keeps the steps you ticked off") end
         -- a plan that fails keeps the last good one, and the panel says so
         local realRoute, nerr = ns.PlannerRoute, #ns.errors
         ns.PlannerRoute = function() error("boom") end
@@ -9601,7 +9604,7 @@ try("13.0 planner: running it", function()
         ns.PlannerRoute = realRoute
         if ns.GuideText(planned()) ~= text then error("a failed plan keeps the last good one") end
         ns:GuideAdvance()
-        local note = ns:Tr("Couldn't plan the route; trying again after your next quest")
+        local note = ns:Tr("Could not plan the route; trying again after your next quest")
         if said.skipped ~= note then error("the failed plan's note: " .. tostring(said.skipped)) end
         if #ns.errors ~= nerr + 1 then error("a failed plan is listed for /fgui check") end
         for i = #ns.errors, nerr + 1, -1 do table.remove(ns.errors, i) end
@@ -9946,7 +9949,7 @@ try("13.1 stops: the mechanism and the class trainer", function()
             if s.kind ~= k or s.map ~= 1 or not s.text then error("parse " .. k) end
             if ns.GuideLine(b) ~= ns.GuideLine(s) or b.kind ~= s.kind or b.text ~= s.text or b.map ~= s.map or b.x ~= s.x or b.y ~= s.y then error("round trip " .. k) end
         end
-        local labels = { train = "Train", vendor = "Visit the vendor", mail = "Check your mail", explore = "Explore", gather = "Gather" }
+        local labels = { train = "Learn from your trainer", vendor = "Visit the vendor", mail = "Check your mail", explore = "Explore", gather = "Gather" }
         for i, k in ipairs(kinds) do
             local t = ns.GuideStepText(g.steps[i])
             if t ~= g.steps[i].text or t:find(ns:Tr(labels[k]) .. ":", 1, true) then error("the panel's words for " .. k .. ": its own words alone, got " .. t) end
@@ -11537,13 +11540,13 @@ try("13.3 choices: reputation goals", function()
         rawset(panel.rep, "SetText", function(_, t) said.rep = t end)
         ns.PlannerRepGoals = function() return { [72] = 6 } end
         ns:GuideShowPanel()
-        if said.rep ~= "Stormwind: 2,300 to Honored" then error("the line: " .. tostring(said.rep)) end
+        if said.rep ~= "Stormwind: 2,300 reputation to Honored" then error("the line: " .. tostring(said.rep)) end
         ns.GuideState = saved.state
         ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "x" } } }, { reputation = { [72] = 250, [69] = 900 } })
         env.C_Reputation = { GetFactionDataByID = function(id) return { name = id == 72 and "Stormwind" or "Darnassus", reaction = 5, currentStanding = id == 72 and 6700 or 8000, nextReactionThreshold = 9000 } end }
         ns.PlannerRepGoals = function() return { [72] = 6, [69] = 6 } end
         ns:GuideShowPanel()
-        if said.rep ~= "Darnassus: 1,000 to Honored" then error("the faction with the most in the plan: " .. tostring(said.rep)) end
+        if said.rep ~= "Darnassus: 1,000 reputation to Honored" then error("the faction with the most in the plan: " .. tostring(said.rep)) end
         ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "x" } } }, { reputation = { [72] = 250 } })
         ns.PlannerRepGoals = function() return {} end
         ns:GuideShowPanel()
@@ -13208,8 +13211,8 @@ try("13.4 feel A: the route and hubs on the map", function()
         if nl ~= 2 or nd ~= 3 or nm ~= 3 then error("2 lines, 3 stop dots and 3 hub marks: " .. nl .. " " .. nd .. " " .. nm) end
         local byRate = {}
         for i = 1, nm do local m = ns.PlannerMapTest.marks[i]; byRate[m.rate] = m end
-        if math.abs(byRate[1].alpha - 0.35) > 1e-9 or math.abs(byRate[2].alpha - 0.675) > 1e-9 or math.abs(byRate[3].alpha - 1) > 1e-9 then error("a hub's brightness runs from the worst to the best") end
-        if byRate[1].tierText ~= "" then error("no tier without colour vision") end
+        if math.abs(byRate[1].alpha - 0.55) > 1e-9 or math.abs(byRate[2].alpha - 0.775) > 1e-9 or math.abs(byRate[3].alpha - 1) > 1e-9 then error("a hub's brightness runs from the worst to the best") end
+        if byRate[1].tierText ~= "3" then error("the tier digit shows without colour vision too") end
         ns.db.colorblind, ns.db.colorVision = true, "redgreen"
         ns.PlannerMapDraw(1436)
         if byRate[3].tierText ~= "1" or byRate[2].tierText ~= "2" or byRate[1].tierText ~= "3" then error("the tiers with colour vision: " .. byRate[3].tierText .. byRate[2].tierText .. byRate[1].tierText) end
@@ -13488,7 +13491,7 @@ try("13.4 feel B: time to level, why this, preview", function()
         hub.rate, hub.beat = 0.7, { rate = 0.5, name = "Boars" }
         if not text(ns.PlannerWhyLines(step1, summary)):find("(40% better)", 1, true) then error("a float that is just under 40 still reads 40%") end
         hub.beat = { rate = 0.5 }
-        if not text(ns.PlannerWhyLines(step1, summary)):find("Beat another hub at", 1, true) then error("a beat with no name is still a beat") end
+        if not text(ns.PlannerWhyLines(step1, summary)):find("Beat another place at", 1, true) then error("a beat with no name is still a beat") end
         hub.rate, hub.beat = 2, nil
         hub.travel = 20
         if not text(ns.PlannerWhyLines(step1, summary)):find("Travel 1 min", 1, true) then error("a 20 second trip is 1 min, not 0") end
@@ -13520,8 +13523,8 @@ try("13.4 feel B: time to level, why this, preview", function()
         end
         if all:find("Moved:", 1, true) then error("no moved line without a moved hub") end
         summary.moved = 14
-        if not text(ns.PlannerPreviewLines({ steps = steps }, summary)):find("Moved: you died twice here (back at level 14)", 1, true) then error("the moved line") end
-        if ns.GuideMovedText(summary) ~= "Moved: you died twice here (back at level 14)" or ns.GuideSkippedText(summary) ~= "Skipped: 3 group quests (Solo is on)" then
+        if not text(ns.PlannerPreviewLines({ steps = steps }, summary)):find("Moved: you died twice here; only the quests you have are kept (back at level 14)", 1, true) then error("the moved line") end
+        if ns.GuideMovedText(summary) ~= "Moved: you died twice here; only the quests you have are kept (back at level 14)" or ns.GuideSkippedText(summary) ~= "Skipped: 3 group quests (Solo is on)" then
             error("the panel's own skipped and moved lines are the preview's")
         end
         summary.moved = nil
@@ -13569,22 +13572,26 @@ try("13.4 feel B: time to level, why this, preview", function()
         ns.PlannerRoute = fullRoute
         ns:PlannerReplan("again")
         runIt()
-        -- Follow hides it; Plan again hides it and opens the Guide tab
+        -- Close hides it; Plan again hides it and plans again; Change what it plans hides it and opens the Guide tab
         ns.ShowList = function(self, key, title, l, ...) window = saved.show(self, key, title, l, ...); shown[#shown + 1] = { key = key, lines = l }; return window end
         ns:PlannerPreview()
         local pl = shown[#shown].lines
-        local follow, again = pl[#pl - 1], pl[#pl]
-        if follow.left ~= "Follow" or again.left ~= "Plan again" then error("Follow and Plan again close the lines") end
+        local follow, again, change = pl[#pl - 2], pl[#pl - 1], pl[#pl]
+        if follow.left ~= "Close" or again.left ~= "Plan again" or change.left ~= "Change what it plans" then error("Close, Plan again and Change what it plans close the lines") end
         local hid = 0
         rawset(window, "Hide", function() hid = hid + 1 end)
         follow.click()
-        if hid ~= 1 then error("Follow hides the page") end
+        if hid ~= 1 then error("Close hides the page") end
         local opened
-        local realToggle = ns.ToggleConfig
+        local realToggle, realAgain = ns.ToggleConfig, ns.GuidePlanAgain
+        local planned = false
         ns.ToggleConfig = function(_, tab) opened = tab end
+        ns.GuidePlanAgain = function() planned = true end
         again.click()
-        ns.ToggleConfig = realToggle
-        if hid ~= 2 or opened ~= "guide" then error("Plan again hides it and opens the Guide tab: " .. tostring(opened)) end
+        if hid ~= 2 or not planned or opened then error("Plan again hides it and plans again") end
+        change.click()
+        ns.ToggleConfig, ns.GuidePlanAgain = realToggle, realAgain
+        if hid ~= 3 or opened ~= "guide" then error("Change what it plans hides it and opens the Guide tab: " .. tostring(opened)) end
         rawset(window, "Hide", nil)
     end)
     ns.ShowList = saved.show
@@ -13801,7 +13808,7 @@ try("13.4 feel B: finish the zone", function()
         if not ends(true, 2, 2) then error("every counted quest done (hubs of repeatable quests left): the goal ends") end
         if printed[1] ~= "Zone done: Elwynn Forest" then error("every quest done: Zone done: " .. tostring(printed[1])) end
         if not ends(false, 1, 2) then error("no hub left on the map (quests out of reach): the goal ends") end
-        if printed[1] ~= "No more quests in Elwynn Forest at your level" then error("quests left that cannot be planned now: not Zone done: " .. tostring(printed[1])) end
+        if printed[1] ~= "No more quests in Elwynn Forest at your level." then error("quests left that cannot be planned now: not Zone done: " .. tostring(printed[1])) end
         if ends(true, 0, 0) then error("nothing counted (total 0) while hubs are left: the goal stays") end
         if not ends(nil, 1, 2, true) then error("nothing at all to plan (the zone hook never asked): the goal ends") end
         if ends(nil, 1, 2, false) then error("the zone hook not asked, but a plan made: the goal stays") end
@@ -14552,17 +14559,17 @@ try("13.4 feel D: level times, race, where you left off", function()
             return false
         end
         ns:ShowLifetime()
-        for _, text in ipairs({ ns:Tr("Levels"), "Fastest level: 10 (10m)", "Slowest level: 11 (20m)", "Average level: 15m" }) do
+        for _, text in ipairs({ ns:Tr("Levels"), "Fastest level: 10 (10 min)", "Slowest level: 11 (20 min)", "Average per level: 15 min" }) do
             if not has(got, text) then error("the stats page lacks " .. text) end
         end
         ns.GuideUnlocked = function() return false end
         ns:ShowLifetime()
-        if has(got, "Fastest level") or has(got, "Average level") then error("locked: no Levels part") end
+        if has(got, "Fastest level") or has(got, "Average per level") then error("locked: no Levels part") end
         if #ns.RunLines({ level = 0 }) ~= 0 and has(ns.RunLines({ level = 0 }), "Level 10") then error("locked: no levels in the run log") end
         ns.GuideUnlocked = function() return true end
         local runs = ns.RunLines({ level = 0 })
-        if not has(runs, "Level 10: 10m, 30,000 xp an hour") then error("the run log shows level 10") end
-        if not (runs[#runs].left or ""):find("Level 9: 1m, ", 1, true) or not (runs[#runs].left or ""):find(ns:Tr("partly timed"), 1, true) then error("a partial level is listed, marked partly timed: " .. tostring(runs[#runs].left)) end
+        if not has(runs, "Level 10: 10 min, 30,000 xp an hour") then error("the run log shows level 10") end
+        if not (runs[#runs].left or ""):find("Level 9: 1 min, ", 1, true) or not (runs[#runs].left or ""):find(ns:Tr("partly timed"), 1, true) then error("a partial level is listed, marked partly timed: " .. tostring(runs[#runs].left)) end
         if not (runs[#runs - 3].left or ""):find("Level 12", 1, true) or not (runs[#runs - 1].left or ""):find("Level 10", 1, true) or (runs[#runs - 1].left or ""):find(ns:Tr("partly timed"), 1, true) then error("newest first, whole levels unmarked") end
         -- (the play clock off a reload: the first tick after it adds nothing; later ones add the GetTime gap, at most 30 s)
         now = 710000
@@ -14591,7 +14598,7 @@ try("13.4 feel D: level times, race, where you left off", function()
         rec0.levelClock.seconds = 900
         if not (ns.PlannerRaceLine() or ""):find("behind by 5 min", 1, true) then error("behind by 5 min: " .. tostring(ns.PlannerRaceLine())) end
         rec0.levelClock.seconds = 620
-        if not (ns.PlannerRaceLine() or ""):find("level with your best", 1, true) then error("level with your best: " .. tostring(ns.PlannerRaceLine())) end
+        if not (ns.PlannerRaceLine() or ""):find("even with your best", 1, true) then error("even with your best: " .. tostring(ns.PlannerRaceLine())) end
         ns.db.plannerRace = false
         if ns.PlannerRaceLine() ~= nil then error("race off: no line") end
         ns.db.plannerRace = true
@@ -14651,6 +14658,8 @@ try("13.4 feel D: level times, race, where you left off", function()
         ns.PlannerTimeToLevel = function() return 48 end
         local n0 = #printed
         fireEvent("PLAYER_ENTERING_WORLD", true, false)
+        if said(n0) then error("the line waits for the first plan after the login (polish P2)") end
+        ns.PlannerLeftOffDue()
         local line = said(n0)
         if not (line and line:find("step 3 of 8", 1, true) and line:find("Do thing 3", 1, true) and line:find("level 26 in ~48 min", 1, true)) then error("an initial login says where you left off: " .. tostring(line)) end
         ns:GuideRedraw()
@@ -14661,13 +14670,16 @@ try("13.4 feel D: level times, race, where you left off", function()
         ns.PlannerTimeToLevel = function() return nil end           -- (the pace not known yet; the panel's title hook calls it too)
         n0 = #printed
         fireEvent("PLAYER_ENTERING_WORLD", true, false)
+        ns.PlannerLeftOffDue()
         line = said(n0)
         if not (line and line:find("step 3 of 8", 1, true)) or line:find("level 26", 1, true) then error("no time to the level: no time part: " .. tostring(line)) end
         n0 = #printed
         fireEvent("PLAYER_ENTERING_WORLD", false, true)
+        ns.PlannerLeftOffDue()
         if said(n0) then error("a reload says nothing") end
         ns.db.plannerLeftOff = false
         fireEvent("PLAYER_ENTERING_WORLD", true, false)
+        ns.PlannerLeftOffDue()
         if said(n0) then error("switched off: nothing") end
     end)
     if panel then rawset(panel.extra, "SetText", nil) end
@@ -15622,7 +15634,9 @@ try("13.5 together B: asking, the state and a plan for both", function()
         ns.db.plannerDuoAsk = false
         addon("D1:ASK:cd34:20", "Leo-Realm")
         ns.PlannerDuoTick(); flush()
-        if lists.PlanDuoAsk or #sends ~= before or ns.plannerDuo then error("asking switched off: nothing") end
+        if lists.PlanDuoAsk or ns.plannerDuo then error("asking switched off: nothing shown") end
+        if #sends ~= before + 1 or sends[#sends].text ~= "D1:NO:cd34" then error("asking switched off: a plain no (polish P2)") end
+        before = #sends
         ns.db.plannerDuoAsk = true
         addon("D1:ASK:cd35:20", "Leo-Realm")
         for _, r in ipairs(lists.PlanDuoAsk or {}) do if r.click and r.left:find("No thanks", 1, true) then r.click() end end
@@ -15751,7 +15765,7 @@ try("13.5 together B: following together", function()
         if line(5, 3) ~= "Mira: done" then error("ahead: done") end
         if line(3, 3) ~= "Mira: on this step" then error("the same step") end
         if line(1, 3) ~= "Mira: 2 steps behind" then error("behind: " .. tostring(ns.PlannerDuoLine(st, steps, 3))) end
-        if line(2, 4) ~= "Wait for Mira here" then error("the flight waits for her") end
+        if line(2, 4) ~= "Mira is behind: wait for them here before you go on" then error("the flight waits for her") end
         if line(5, 3, planId - 1) ~= nil then error("an older plan's step: no line") end
         line(3, 3)
         -- inside an instance: nothing sent, the pause line, no lost touch; out again, five minutes of silence is
@@ -16201,7 +16215,7 @@ try("13.5 together C: the plan code", function()
         ns.GuideState = function() return { name = ns.GUIDE_PLANNED, at = 1, ticked = {}, summary = summary } end
         ns.GuideGet = function(_, name) if name == ns.GUIDE_PLANNED then return current end return saved.get(ns, name) end
         ns:GuideCommand("share")
-        if not (shown and shown[1] == code and shown[2] == ns:Tr("Copy this plan code and paste it on fantasyglassui.com/plan/")) then error("/fgui guide share: the copy box with the code and caption") end
+        if not (shown and shown[1] == code and shown[2] == ns:Tr("Copy this plan code. The plan page goes online with the next big update.")) then error("/fgui guide share: the copy box with the code and caption") end
         shown = nil
         current = { name = ns.GUIDE_PLANNED, steps = {} }
         ns:GuideCommand("share")
@@ -19388,15 +19402,22 @@ try("13.6 leftovers C: the arrow and the guide's keys", function()
     end
     local ok, err = pcall(function()
         -- the guide's keys: names in the key bindings window, and nothing while locked or in combat
-        for _, k in ipairs({ "GUIDENEXT", "GUIDESKIP", "GUIDEAGAIN" }) do
-            local name = env["BINDING_NAME_FANTASYGLASSUI_" .. k]
-            if type(name) ~= "string" or not name:find("^Guide") then error("the " .. k .. " key's name: " .. tostring(name)) end
+        -- (polish P2: neutral names while locked, "Guide: ..." once unlocked)
+        ns.GuideBindingNames(false)
+        for i = 1, 3 do
+            local name = env["BINDING_NAME_FANTASYGLASSUI_EXTRA" .. i]
+            if name ~= "Fantasy Glass UI: extra " .. i then error("locked: the extra " .. i .. " key's neutral name: " .. tostring(name)) end
+        end
+        ns.GuideBindingNames(true)
+        for i = 1, 3 do
+            local name = env["BINDING_NAME_FANTASYGLASSUI_EXTRA" .. i]
+            if type(name) ~= "string" or not name:find("^Guide") then error("the extra " .. i .. " key's name: " .. tostring(name)) end
         end
         ns.db.plannerTomTom = false
         ns:GuideFollow("Far")
         local st = ns.GuideState()
         ns.GuideUnlocked = function() return false end
-        env.FantasyGlassUI_GuideBinding("NEXT"); env.FantasyGlassUI_GuideBinding("AGAIN")
+        env.FantasyGlassUI_ExtraBinding(1); env.FantasyGlassUI_ExtraBinding(3)
         ns.GuideUnlocked = function() return true end
         if st.at ~= 1 then error("locked: the keys do nothing") end
         -- another map: the arrow points where your way leaves this one (two maps away, toward Arathi)
@@ -19416,10 +19437,10 @@ try("13.6 leftovers C: the arrow and the guide's keys", function()
         if sets ~= 0 or edgePulses ~= 0 then error("at the edge: no re-point and no pulse: " .. sets .. ", " .. edgePulses) end
         pos = { 1426, 50, 50 }
         env.InCombatLockdown = function() return true end
-        env.FantasyGlassUI_GuideBinding("NEXT")
+        env.FantasyGlassUI_ExtraBinding(1)
         env.InCombatLockdown = saved.combat
         if st.at ~= 1 then error("in combat: the keys do nothing") end
-        env.FantasyGlassUI_GuideBinding("NEXT")
+        env.FantasyGlassUI_ExtraBinding(1)
         if st.at ~= 2 then error("next step: " .. tostring(st.at)) end
         -- over the sea: the dock on this map (you walk to Wetlands first)
         pos = { 1437, 50, 50 }
@@ -19443,8 +19464,8 @@ try("13.6 leftovers C: the arrow and the guide's keys", function()
         ns:GuideAdvance()
         -- skip step on a written guide: passed over, not done; plan again does nothing off the plan
         ns.plannerQueued, ns.plannerReason = false, nil
-        env.FantasyGlassUI_GuideBinding("SKIP")
-        env.FantasyGlassUI_GuideBinding("AGAIN")
+        env.FantasyGlassUI_ExtraBinding(2)
+        env.FantasyGlassUI_ExtraBinding(3)
         if st.at ~= 3 or ns.plannerQueued or st.ticked[2] or not (st.skipped and st.skipped[2]) then error("skip on a written guide: " .. tostring(st.at)) end
         -- TomTom: a waypoint of its own per step, the old one removed, and our arrow hidden
         local added, removed = {}, {}
@@ -19474,12 +19495,12 @@ try("13.6 leftovers C: the arrow and the guide's keys", function()
         ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = planSteps }, {})
         ns:PlannerStop()
         ns.plannerQueued, ns.plannerReason = false, nil
-        env.FantasyGlassUI_GuideBinding("AGAIN")
+        env.FantasyGlassUI_ExtraBinding(3)
         if not (ns.plannerQueued and ns.plannerReason == "again") then error("plan again: " .. tostring(ns.plannerReason)) end
         ns:PlannerStop()
         local movedSeen
         ns.GuideRegisterAdvance("test6c", function(_, _, _, _, moved) movedSeen = moved end)
-        env.FantasyGlassUI_GuideBinding("SKIP")
+        env.FantasyGlassUI_ExtraBinding(2)
         ns.GuideRegisterAdvance("test6c", nil)
         st = ns.GuideState()
         if not (st.at == 2 and st.skipped[1] and not st.ticked[1] and ns.plannerQueued and ns.plannerReason == "skip") then error("skip on the plan: " .. tostring(ns.plannerReason)) end
@@ -20533,6 +20554,470 @@ try("polish P1: planning and speed", function()
     if not ok then error(err, 0) end
 end)
 -- polish P1: end
+-- polish P2: begin
+try("polish P2: the panel fits its lettering", function()
+    local saved = { unlocked = ns.GuideUnlocked, state = ns.root.guideState, scale = ns.fontScale, big = ns.db.bigControls, errors = #ns.errors }
+    local panel
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        ns.root.guideState = {}
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "one" }, { kind = "note", text = "two" }, { kind = "note", text = "three" } } }, {})
+        panel = ns:GuideShowPanel()
+        if not panel then error("the panel") end
+        -- at 1.5: every line is placed under the one before by its measured height, and the panel is as tall as they need
+        ns.fontScale = 1.5
+        local at, tall = {}, {}
+        local function watch(key, fs, h)
+            tall[key] = h
+            rawset(fs, "GetStringHeight", function() return h end)
+            rawset(fs, "SetPoint", function(_, p, x, y) if type(x) == "number" then at[key] = y end end)
+        end
+        watch("now", panel.now, 36); watch("later1", panel.later[1], 15); watch("later2", panel.later[2], 15); watch("extra", panel.extra, 30)
+        local height
+        rawset(panel, "SetHeight", function(_, h) height = h end)
+        ns.GuideRegisterLine("polishP2", function() return "a line from another file" end)
+        panel.drawnHeight = nil
+        ns:GuideRedraw()
+        ns.GuideRegisterLine("polishP2", nil)
+        if not (at.now and at.later1 and at.later2 and at.extra) then error("each line is placed: " .. tostring(at.now) .. " " .. tostring(at.later1) .. " " .. tostring(at.extra)) end
+        if at.later1 > at.now - tall.now then error("the next step starts under the step's two lines: " .. at.later1 .. " " .. at.now) end
+        if at.later2 > at.later1 - tall.later1 then error("the step after it starts under it") end
+        if at.extra > at.later2 - tall.later2 then error("the added line starts under the later steps") end
+        if not height or height < -at.extra + tall.extra + 30 then error("the panel holds its lines above the footer: " .. tostring(height) .. " " .. at.extra) end
+        -- the width grows with the lettering, to 1.25 times
+        local width
+        rawset(panel, "SetWidth", function(_, w) width = w end)
+        panel.drawnWidth = nil
+        ns:GuideRedraw()
+        if width ~= 350 then error("at 1.5 the panel is 350 wide: " .. tostring(width)) end
+        -- a footer too narrow for Plan again leaves it out; with room it is there
+        local shown
+        rawset(panel.again, "SetShown", function(_, v) shown = v end)
+        panel.againW, panel.listW = 400, 300
+        ns:GuideRedraw()
+        if shown ~= false then error("no room: Plan again is left out") end
+        local againWidth
+        rawset(panel.again, "SetWidth", function(_, v) againWidth = v end)
+        panel.listW, panel.againSetW = 64, nil
+        ns:GuideRedraw()
+        if shown ~= true or not againWidth or againWidth >= 400 or againWidth < 56 then error("a long label: Plan again takes the room there is: " .. tostring(againWidth)) end
+        panel.againW, panel.againSetW = 72, nil
+        ns:GuideRedraw()
+        rawset(panel.again, "SetWidth", nil)
+        if shown ~= true or againWidth ~= 72 then error("room: Plan again shows at its width: " .. tostring(againWidth)) end
+        -- the whole of what the panel says, for the tooltip
+        if not (type(panel.tipLines) == "table" and panel.tipLines[2] == "one" and panel.tipLines[#panel.tipLines]) then error("the tooltip's lines") end
+        -- a step kind this version does not know: drawn, not an error
+        local st = ns.GuideState()
+        st.plan.steps[1] = { kind = "newerkind", text = "from a newer version" }
+        ns:GuideRedraw()
+        -- the menu: as wide as its longest label, each button at least 24 high, on the screen
+        ns.db.bigControls = false
+        local menu = ns:GuideMenu({ { "Short", function() end }, { "Another", function() end } })
+        local mh
+        rawset(menu.buttons[1], "SetSize", function(_, w, h) mh = h end)
+        ns:GuideMenu({ { "Short", function() end } })
+        if (mh or 0) < 24 then error("menu buttons at least 24 high: " .. tostring(mh)) end
+        ns.db.bigControls = true
+        ns:GuideMenu({ { "Short", function() end } })
+        if (mh or 0) < 30 then error("Bigger controls: bigger menu buttons: " .. tostring(mh)) end
+        rawset(menu.buttons[1], "SetSize", nil)
+        menu:Hide()
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    if panel then
+        for _, fs in ipairs({ panel.now, panel.later[1], panel.later[2], panel.extra }) do rawset(fs, "GetStringHeight", nil); rawset(fs, "SetPoint", nil) end
+        rawset(panel, "SetHeight", nil); rawset(panel, "SetWidth", nil); rawset(panel.again, "SetShown", nil)
+        panel.againW, panel.listW, panel.againSetW, panel.drawnWidth, panel.drawnHeight = 72, 64, nil, nil, nil
+    end
+    ns.fontScale, ns.db.bigControls = saved.scale, saved.big
+    ns:GuideStop()
+    ns.GuideUnlocked, ns.root.guideState = saved.unlocked, saved.state
+    if not ok then error(err, 0) end
+end)
+try("polish P2: the arrow", function()
+    local saved = { map = env.C_Map, errors = #ns.errors, bands = ns.db.textBands }
+    local arrow
+    local ok, err = pcall(function()
+        local pos = { 1426, 50, 50 }
+        local sizes = 0
+        local cm = {}
+        for k, v in pairs(saved.map) do cm[k] = v end
+        cm.GetBestMapForUnit = function() return pos[1] end
+        cm.GetPlayerMapPosition = function(map) if map == pos[1] then return { GetXY = function() return pos[2] / 100, pos[3] / 100 end } end end
+        cm.GetMapWorldSize = function() sizes = sizes + 1; return 1000, 1000 end
+        cm.GetMapInfo = function(map) return { name = map == 1426 and "Dun Morogh" or "Elwynn Forest" } end
+        env.C_Map = cm
+        ns:SetWaypoint(55, 50, "x", 1426, true)
+        arrow = ns.waypointArrow
+        local update
+        for i = #handlers, 1, -1 do local h = handlers[i]; if h.self == arrow and h.name == "OnUpdate" then update = h.fn; break end end
+        -- a long label is cut at 240; the band and the frame follow the measured lines
+        local nameWidth, bandAlpha, height
+        rawset(arrow.name, "GetStringWidth", function() return 500 end)
+        rawset(arrow.name, "SetWidth", function(_, w) if w > 0 then nameWidth = w end end)
+        rawset(arrow.band, "SetVertexColor", function(_, r, g, b, a) bandAlpha = a end)
+        rawset(arrow, "SetHeight", function(_, h) height = h end)
+        ns.db.textBands = true
+        ns:SetWaypoint(55, 50, "Hand in The Defias Brotherhood at Sentinel Hill, a long way off", 1426, true)
+        if nameWidth ~= 240 then error("the label is at most 240 wide: " .. tostring(nameWidth)) end
+        if bandAlpha ~= 0.72 then error("a stronger band with Dark band behind messages: " .. tostring(bandAlpha)) end
+        if not (height and height > 36 + 12 + 10) then error("the frame holds the arrow and both lines: " .. tostring(height)) end
+        ns.db.textBands = false
+        ns:SetWaypoint(55, 50, "x", 1426, true)
+        if bandAlpha ~= 0.55 then error("the band otherwise: " .. tostring(bandAlpha)) end
+        -- the distance is set only when its number changes, and the map's size is asked once per waypoint
+        local texts = {}
+        rawset(arrow.text, "SetText", function(_, t) texts[#texts + 1] = t end)
+        sizes = 0
+        for _ = 1, 5 do update(arrow, 0.1) end
+        if #texts ~= 1 or texts[1] ~= "50 yd" then error("the distance once: " .. #texts .. " " .. tostring(texts[1])) end
+        if sizes ~= 1 then error("the map's size once: " .. sizes) end
+        -- on another map: once, with its name
+        pos = { 1429, 50, 50 }
+        texts = {}
+        for _ = 1, 3 do update(arrow, 0.1) end
+        if #texts ~= 1 or texts[1] ~= "On another map: Dun Morogh" then error("another map, named, once: " .. #texts .. " " .. tostring(texts[1])) end
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    if arrow then
+        rawset(arrow.name, "GetStringWidth", nil); rawset(arrow.name, "SetWidth", nil); rawset(arrow.band, "SetVertexColor", nil)
+        rawset(arrow, "SetHeight", nil); rawset(arrow.text, "SetText", nil)
+    end
+    ns:ClearWaypoint(true)
+    env.C_Map, ns.db.textBands = saved.map, saved.bands
+    if not ok then error(err, 0) end
+end)
+try("polish P2: list rows and colours", function()
+    local saved = { scale = ns.fontScale, errors = #ns.errors }
+    local w
+    local ok, err = pcall(function()
+        local lines = { { left = "a fact" }, { left = "do it", action = true, click = function() end }, { left = "two lines of words", wrap = true },
+            { left = "pale", tone = "dim" }, { left = "good", tone = "good", click = function() end } }
+        w = ns:ShowList("PolishP2", "Polish P2", lines, "A note long enough for two lines.", 300, 300)
+        local raised = false
+        rawset(w, "Raise", function() raised = true end)
+        local tops, heights, colors = {}, {}, {}
+        for i = 1, 5 do
+            local r = w.rows[i]
+            rawset(r, "SetPoint", function(_, p, x, y) tops[i] = y end)
+            rawset(r, "SetSize", function(_, wd, h) heights[i] = h end)
+            rawset(r.left, "SetTextColor", function(_, r1, g1, b1) colors[i] = { r1, g1, b1 } end)
+        end
+        local areaH
+        rawset(w.note, "GetStringHeight", function() return 28 end)
+        rawset(w.area, "SetHeight", function(_, h) areaH = h end)
+        ns.fontScale = 1.5
+        ns:ShowList("PolishP2", "Polish P2", lines, "A note long enough for two lines.", 300, 300)
+        if not raised then error("a list window is raised over what it opened from") end
+        if heights[1] ~= 26 then error("a row at 1.5 is 26 high: " .. tostring(heights[1])) end
+        if heights[3] ~= 26 + 18 then error("a wrapping row takes a second line: " .. tostring(heights[3])) end
+        if tops[1] ~= 0 or tops[2] ~= -26 or tops[4] ~= -(26 * 2 + 44) then error("rows are placed one under another: " .. tostring(tops[2]) .. " " .. tostring(tops[4])) end
+        if areaH ~= 300 - 40 - 44 then error("the list stops above a two-line note: " .. tostring(areaH)) end
+        local ar, ag, ab = ns:Role("@accent")
+        if not (colors[2] and colors[2][1] == ar and colors[2][2] == ag and colors[2][3] == ab) then error("an action row is in the accent") end
+        local tr, tg, tb = ns:Role("text")
+        if not (colors[1] and colors[1][1] == tr and colors[1][3] == tb) then error("a plain row is in the theme's text colour") end
+        local gr, gg = ns:Signal("good")
+        if not (colors[5] and colors[5][1] == gr and colors[5][2] == gg) then error("a good row is in the signal colour") end
+        if not w.rows[1].suiNavSkip or w.rows[2].suiNavSkip then error("Tab passes over a row that does nothing, not one that does") end
+        if not ns:ToneHex("dim"):find("^|cff%x%x%x%x%x%x$") then error("a tone as a colour code: " .. ns:ToneHex("dim")) end
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    if w then
+        rawset(w, "Raise", nil); rawset(w.note, "GetStringHeight", nil); rawset(w.area, "SetHeight", nil)
+        for i = 1, 5 do local r = w.rows[i]; if r then rawset(r, "SetPoint", nil); rawset(r, "SetSize", nil); rawset(r.left, "SetTextColor", nil) end end
+        w:Hide()
+    end
+    ns.fontScale = saved.scale
+    if not ok then error(err, 0) end
+end)
+try("polish P2: the duo ask and reading aloud", function()
+    local saved = { unlocked = ns.GuideUnlocked, state = ns.root.guideState, time = env.GetTime, combat = env.InCombatLockdown, ask = ns.db.plannerDuoAsk,
+        captions = ns.db.captions, read = ns.db.readDialog, send = ns.PlannerDuoSend, speak = ns.Speak, list = ns.ShowList, errors = #ns.errors, keys = ns.WINDOW_KEYS_FRAMES }
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        local clock = 7000
+        env.GetTime = function() return clock end
+        local sends, spoken, lists = {}, {}, {}
+        ns.PlannerDuoSend = function(text, to) sends[#sends + 1] = { text = text, to = to }; return true end
+        ns.Speak = function(_, t) spoken[#spoken + 1] = t; return true end
+        ns.ShowList = function(self, key, title, lines, note, ...) lists[key] = { lines = lines, note = note }; return saved.list(self, key, title, lines, note, ...) end
+        ns.db.captions, ns.db.readDialog, ns.db.plannerDuoAsk = true, true, true
+        ns.WINDOW_KEYS_FRAMES = {}
+        local function addon(text, from) ns.PlannerDuoEvent("CHAT_MSG_ADDON", "FGUIPlan", text, "WHISPER", from or "Leo-Realm") end
+        -- asked: the page, a caption, the question read aloud, a countdown, and Tab reaches it
+        ns.captionLast = nil
+        addon("D1:ASK:ab21:20")
+        local page = lists.PlanDuoAsk
+        if not (page and page.lines[1].wrap and page.note == "Answer within 30 s") then error("the ask page, wrapping, with the time to answer: " .. tostring(page and page.note)) end
+        if ns.captionLast ~= "Leo asks to plan your route together." then error("a caption: " .. tostring(ns.captionLast)) end
+        if spoken[#spoken] ~= "Leo asks to plan your route together." then error("read aloud: " .. tostring(spoken[#spoken])) end
+        local inKeys = false
+        for _, n in ipairs(ns.WINDOW_KEYS_FRAMES) do if n == "FantasyGlassUIListPlanDuoAsk" then inKeys = true end end
+        if not inKeys then error("the ask page is in the keyboard list") end
+        -- the same friend again: not shown twice
+        lists.PlanDuoAsk = nil
+        addon("D1:ASK:ab21:20")
+        if lists.PlanDuoAsk then error("a repeat ask is not shown again") end
+        -- the countdown, then closed at 0
+        clock = clock + 10.5
+        ns.PlannerDuoAskTick(clock)
+        clock = clock + 20
+        ns.PlannerDuoAskTick(clock)
+        lists.PlanDuoAsk = nil
+        -- in a fight: held, shown once it is over
+        env.InCombatLockdown = function() return true end
+        addon("D1:ASK:ab22:20", "Ana-Realm")
+        if lists.PlanDuoAsk then error("not shown in a fight") end
+        env.InCombatLockdown = function() return false end
+        ns.PlannerDuoAskTick(clock)
+        if not lists.PlanDuoAsk then error("shown after the fight") end
+        clock = clock + 31
+        ns.PlannerDuoAskTick(clock)
+        -- asking switched off: a plain no, once
+        ns.db.plannerDuoAsk = false
+        sends = {}
+        addon("D1:ASK:ab23:20", "Ana-Realm"); addon("D1:ASK:ab23:20", "Ana-Realm")
+        if #sends ~= 1 or sends[1].text ~= "D1:NO:ab23" or sends[1].to ~= "Ana-Realm" then error("asking off: a no, once: " .. #sends .. " " .. tostring(sends[1] and sends[1].text)) end
+        ns.db.plannerDuoAsk = true
+        -- a message of a session you do not have (you reloaded): an end, once
+        sends = {}
+        addon("D1:AT:beef:1:2:3", "Mira-Realm"); addon("D1:HI:beef", "Mira-Realm"); addon("SS:beefz3:1:2:plan:# duo", "Mira-Realm")
+        if #sends ~= 1 or sends[1].text ~= "D1:END:beef" then error("an unknown session is told it ended, once: " .. #sends .. " " .. tostring(sends[1] and sends[1].text)) end
+        addon("D1:END:cafe", "Mira-Realm")
+        if #sends ~= 1 then error("an end is never answered") end
+        -- reading aloud: the panel, and the list window in front
+        ns.root.guideState = {}
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "Sell your grey items" }, { kind = "note", text = "then this" } } }, {})
+        local text, kind = ns:ReadText("guide")
+        if kind ~= "guide" or not tostring(text):find("Sell your grey items", 1, true) or not text:find("then this", 1, true) then error("the panel read: " .. tostring(text)) end
+        ns:ShowList("PolishP2Read", "Polish read", { { left = "Experience", right = "1,200" }, { left = "Plan together", action = true, click = function() end } })
+        text, kind = ns:ReadText("list")
+        if kind ~= "list" or text ~= "Polish read. Experience: 1,200. Plan together" then error("the front list read: " .. tostring(text)) end
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    if ns.HideLists then ns:HideLists() end
+    ns:GuideStop()
+    env.GetTime, env.InCombatLockdown = saved.time, saved.combat
+    ns.GuideUnlocked, ns.root.guideState = saved.unlocked, saved.state
+    ns.db.plannerDuoAsk, ns.db.captions, ns.db.readDialog = saved.ask, saved.captions, saved.read
+    ns.PlannerDuoSend, ns.Speak, ns.ShowList, ns.WINDOW_KEYS_FRAMES = saved.send, saved.speak, saved.list, saved.keys
+    if not ok then error(err, 0) end
+end)
+try("polish P2: no stuck states", function()
+    local saved = { unlocked = ns.GuideUnlocked, state = ns.root.guideState, guides = ns.root.guides, map = env.C_Map, ql = env.C_QuestLog, time = env.GetTime,
+        dead = rawget(env, "UnitIsDeadOrGhost"), bind = rawget(env, "GetBindLocation"), zone = rawget(env, "GetMinimapZoneText"), sub = rawget(env, "GetSubZoneText"),
+        ztext = rawget(env, "GetZoneText"), errors = #ns.errors, raw = ns.PrintRaw }
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        ns.root.guideState = {}
+        local clock = 3000
+        env.GetTime = function() return clock end
+        local pos = { 1429, 50, 50 }
+        local cm = {}
+        for k, v in pairs(saved.map) do cm[k] = v end
+        cm.GetBestMapForUnit = function() return pos[1] end
+        cm.GetPlayerMapPosition = function(map) if map == pos[1] then return { GetXY = function() return pos[2] / 100, pos[3] / 100 end } end end
+        cm.GetMapWorldSize = function() return 1000, 1000 end
+        env.C_Map = cm
+        local failed = {}
+        env.C_QuestLog = setmetatable({ IsFailed = function(id) return failed[id] == true end, IsOnQuest = function() return false end,
+            IsQuestFlaggedCompleted = function() return false end, IsComplete = function() return false end, ReadyForTurnIn = function() return false end }, { __index = saved.ql })
+        local function replanned() local r = ns.plannerQueued and ns.plannerReason; ns:PlannerStop(); ns.plannerQueued, ns.plannerReason = false, nil; return r end
+        -- F6: ">" on a planned quest step skips it for the session; on another step it ticks it off; a quest tick is never carried
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "accept", quest = 9711, title = "Not here", map = 1429, x = 90, y = 90 }, { kind = "note", text = "a note" }, { kind = "note", text = "end" } } }, { zone = 1429 })
+        replanned()
+        if not ns.GuideNextSkips() then error("on a quest step, > skips") end
+        ns:GuideNextButton()
+        local st = ns.GuideState()
+        if not (st.skipped and st.skipped[1] and not st.ticked[1] and ns.PlannerSessionSkipped(9711)) then error("> on a quest step: skipped for the session, not ticked") end
+        if replanned() ~= "skip" then error("and planned again") end
+        if ns.GuideNextSkips() then error("on a note, > ticks") end
+        ns:GuideNextButton()
+        if not ns.GuideState().ticked[2] then error("the note is ticked") end
+        ns.PlannerSessionSkipReset()
+        ns.GuideState().ticked[1] = true
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "accept", quest = 9711, title = "Not here" }, { kind = "note", text = "a note" } } }, { zone = 1429 })
+        if ns.GuideState().ticked[1] then error("a quest step's tick is not carried into the next plan") end
+        if not ns.GuideState().ticked[2] then error("a note's tick still is") end
+        local menu = ns:GuideStepMenu(ns:GuideGet(ns.GUIDE_PLANNED).steps[1])
+        local labels = {}
+        for _, b in ipairs(menu.buttons) do if b.entryLabel then labels[#labels + 1] = b.entryLabel end end
+        if not table.concat(labels, "|"):find("Skip this quest for now", 1, true) then error("the step menu offers Skip this quest for now: " .. table.concat(labels, "|")) end
+        menu:Hide()
+        replanned()
+        -- F9: a failed quest says so, and plans again once
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "do", quest = 9712, title = "Escort" }, { kind = "note", text = "end" } } }, { zone = 1429 })
+        replanned()
+        failed[9712] = true
+        if not ns.GuideStepBase({ kind = "do", quest = 9712, title = "Escort" }):find("(failed: abandon it and take it again)", 1, true) then error("a failed quest says to retake it") end
+        local asked, realAgain = {}, ns.GuidePlanAgain
+        ns.GuidePlanAgain = function(self, why) asked[#asked + 1] = why; return realAgain(self, why) end
+        fireEvent("QUEST_LOG_UPDATE"); fireEvent("QUEST_LOG_UPDATE")
+        ns.GuidePlanAgain = realAgain
+        replanned()
+        if #asked ~= 1 or asked[1] ~= "failed" then error("a failed quest plans again, once: " .. table.concat(asked, ",")) end
+        failed[9712] = nil
+        -- F10 / F36: the hearth and a flight tick where they take you; a hearth with no place, by the bind's name
+        local world = ns:GuideWorld()
+        if ns.GuideStepDone({ kind = "hearth", to = { map = 1429, x = 57, y = 50 } }, world) then error("70 yards off: not there") end
+        if not ns.GuideStepDone({ kind = "hearth", to = { map = 1429, x = 53, y = 50 } }, world) then error("the hearth's place reached: done") end
+        if not ns.GuideStepDone({ kind = "fly", node = 77, to = { map = 1429, x = 51, y = 50 } }, world) then error("landed by the flight's place: done") end
+        env.GetBindLocation = function() return "Goldshire" end
+        local zone = "Elwynn Forest"
+        env.GetMinimapZoneText = function() return zone end
+        env.GetSubZoneText = function() return zone end
+        env.GetZoneText = function() return "Elwynn Forest" end
+        local hs = { kind = "hearth" }
+        if ns.GuideStepDone(hs, ns:GuideWorld()) then error("not yet hearthed") end
+        zone = "Goldshire"
+        if not ns.GuideStepDone(hs, ns:GuideWorld()) then error("at the bind's place after being away: hearthed") end
+        local fresh = { kind = "hearth" }
+        if ns.GuideStepDone(fresh, ns:GuideWorld()) then error("standing there from the start is not a hearth") end
+        -- F28: a ghost reaches nothing
+        env.UnitIsDeadOrGhost = function() return true end
+        if ns:GuideWorld().near({ map = 1429, x = 50, y = 50 }) then error("a ghost passes places, never reaches them") end
+        env.UnitIsDeadOrGhost = function() return false end
+        -- F12: a plan that runs out plans what is next (at most once a minute), and says so
+        local said
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "last" } } }, { zone = 1429 })
+        replanned()
+        local panel = ns:GuideShowPanel()
+        rawset(panel.now, "SetText", function(_, t) said = t end)
+        ns:GuideSkip(false)
+        if replanned() ~= "end" then error("the end of a plan plans again") end
+        if said ~= "Planning what's next..." then error("and says so: " .. tostring(said)) end
+        rawset(panel.now, "SetText", nil)
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "last" } } }, { zone = 1429 })
+        replanned()
+        ns:GuideSkip(false)
+        if replanned() then error("not twice in a minute") end
+        clock = clock + 61
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "last" } } }, { zone = 1429, empty = true })
+        replanned()
+        ns:GuideSkip(false)
+        if replanned() then error("an empty plan does not plan again") end
+        -- F40: back from the plan to a written guide: where you were in it
+        ns.root.guides = { Mine = { name = "Mine", steps = { { kind = "note", text = "a" }, { kind = "note", text = "b" }, { kind = "note", text = "c" } } } }
+        ns:GuideFollow("Mine")
+        ns:GuideSkip(false)
+        if ns.GuideState().at ~= 2 then error("on step 2 of the written guide") end
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "planned" } } }, { zone = 1429 })
+        replanned()
+        ns:GuideFollow("Mine")
+        if ns.GuideState().name ~= "Mine" or ns.GuideState().at ~= 2 then error("back to the written guide, on step 2: " .. tostring(ns.GuideState().at)) end
+        replanned()
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    ns:GuideStop(); ns:ClearWaypoint(true)
+    ns.PlannerSessionSkipReset()
+    ns.plannerQueued, ns.plannerReason = false, nil
+    env.C_Map, env.C_QuestLog, env.GetTime = saved.map, saved.ql, saved.time
+    rawset(env, "UnitIsDeadOrGhost", saved.dead); rawset(env, "GetBindLocation", saved.bind); rawset(env, "GetMinimapZoneText", saved.zone)
+    rawset(env, "GetSubZoneText", saved.sub); rawset(env, "GetZoneText", saved.ztext)
+    ns.GuideUnlocked, ns.root.guideState, ns.root.guides, ns.PrintRaw = saved.unlocked, saved.state, saved.guides, saved.raw
+    if not ok then error(err, 0) end
+end)
+try("polish P2: speed and safety", function()
+    local saved = { unlocked = ns.GuideUnlocked, state = ns.root.guideState, guides = ns.root.guides, advance = ns.GuideAdvance, raw = ns.PrintRaw,
+        cluster = rawget(env, "MinimapCluster"), errors = #ns.errors, levels = ns.root.plannerLevels, alts = ns.root.alts }
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        -- reading the guide's state saves nothing: a character that never followed a guide keeps nothing of it
+        ns.root.guideState, ns.root.guides = nil, nil
+        ns:GuideAdvance(); ns:GuideGet("x"); ns:GuideNames(); ns.GuideState(); ns:GuideStop()
+        fireEvent("QUEST_ACCEPTED", 1, 2); runTimers()
+        if ns.root.guideState ~= nil or ns.root.guides ~= nil then error("reads made saved tables") end
+        ns:GuideSave({ name = "Kept", steps = {} })
+        if type(ns.root.guides) ~= "table" or not ns.root.guides.Kept then error("a write makes them") end
+        -- a burst of quest events: one advance
+        ns.root.guideState = {}
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "x" } } }, {})
+        ns:PlannerStop(); ns.plannerQueued = false
+        runTimers()
+        local n = 0
+        ns.GuideAdvance = function(...) n = n + 1; return saved.advance(...) end
+        for _ = 1, 6 do fireEvent("QUEST_LOG_UPDATE") end
+        runTimers()
+        ns.GuideAdvance = saved.advance
+        if n ~= 1 then error("six quest log updates, one advance: " .. n) end
+        -- a recording stops growing at its cap, and says so once
+        local said = {}
+        ns.PrintRaw = function(_, m) said[#said + 1] = tostring(m) end
+        local r = { name = "Long", steps = {} }
+        for i = 1, ns.GUIDE_RECORD_MAX do r.steps[i] = { kind = "accept", quest = 100000 + i } end
+        local a1 = ns.GuideRecordStep(r, { kind = "accept", quest = 1 })
+        local a2 = ns.GuideRecordStep(r, { kind = "accept", quest = 2 })
+        ns.PrintRaw = saved.raw
+        if a1 or a2 or #r.steps ~= ns.GUIDE_RECORD_MAX or #said ~= 1 then error("a full recording: no more steps, said once: " .. #said) end
+        -- the minimap's tracking menu: only a button with the newer menu is opened from here
+        local opened, clicked = 0, 0
+        env.MinimapCluster = { Tracking = { Button = { Click = function() clicked = clicked + 1 end } } }
+        if ns:OpenTrackingMenu() ~= false or clicked ~= 0 then error("an old drop-down button is not clicked from add-on code") end
+        env.MinimapCluster = { Tracking = { Button = { OpenMenu = function() opened = opened + 1 end } } }
+        if ns:OpenTrackingMenu() ~= "menu" or opened ~= 1 then error("the newer menu opens") end
+        -- a locked player's first quest event makes neither saved table
+        ns.GuideUnlocked = function() return false end
+        ns.root.guideState, ns.root.guides = nil, nil
+        fireEvent("QUEST_ACCEPTED", 1, 2); fireEvent("QUEST_LOG_UPDATE"); fireEvent("QUEST_TURNED_IN", 2, 0, 0); runTimers()
+        if ns.root.guideState ~= nil or ns.root.guides ~= nil then error("locked: a quest event made the guide's saved tables") end
+        ns.GuideUnlocked = function() return true end
+        -- the far dock of a crossing ticks a sail step; a dark accent is lightened to read on the panel
+        local dock = ns.GuideFarDock({ kind = "sail", crossing = "auberdine-rutheran", map = 1439, x = 33, y = 40 })
+        if not (dock and dock.map == 1438) then error("the far dock: Rut'theran") end
+        local r, g, b = ns.GuideAccentText()
+        if type(r) ~= "number" then error("the accent as text") end
+        -- a forgotten character's planner records go too
+        ns.root.plannerLevels = ns.root.plannerLevels or {}
+        ns.root.alts = ns.root.alts or {}
+        ns.root.alts["Gone - Realm"] = { name = "Gone" }
+        ns.root.plannerLevels["Gone - Realm"] = { [10] = { s = 60 } }
+        ns.root.guideState = { ["Gone - Realm"] = { name = "x" } }
+        ns:ForgetCharacter("Gone - Realm")
+        if ns.root.plannerLevels["Gone - Realm"] or ns.root.guideState["Gone - Realm"] then error("a forgotten character's guide and level records go") end
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    ns.GuideAdvance, ns.PrintRaw = saved.advance, saved.raw
+    rawset(env, "MinimapCluster", saved.cluster)
+    ns:GuideStop()
+    if type(ns.root.alts) == "table" then ns.root.alts["Gone - Realm"] = nil end
+    ns.root.plannerLevels, ns.root.alts = saved.levels, saved.alts
+    ns.GuideUnlocked, ns.root.guideState, ns.root.guides = saved.unlocked, saved.state, saved.guides
+    if not ok then error(err, 0) end
+end)
+try("polish P2: English words and plural forms", function()
+    local saved = { raw = ns.PrintRaw, guides = ns.root.guides, state = ns.root.guideState, unlocked = ns.GuideUnlocked, errors = #ns.errors }
+    local ok, err = pcall(function()
+        -- the parser's messages are whole sentences, in your language, and a kind's own word goes into its sentence
+        local step, why, arg = ns.GuideParseLine("accept Hogger")
+        if step or why ~= "%s needs the quest's number." or arg ~= "accept" then error("a quest step's number: " .. tostring(why)) end
+        if ns.GuideParseWhy(why, arg) ~= "accept needs the quest's number." then error("the sentence filled: " .. ns.GuideParseWhy(why, arg)) end
+        local _, problems = ns.GuideParse("guide: X\nlevel high\n")
+        if problems[1] ~= "Line 2: Level needs a number." then error("a problem names its line: " .. tostring(problems[1])) end
+        -- one step, one quest: the singular
+        local said = {}
+        ns.PrintRaw = function(_, m) said[#said + 1] = tostring(m) end
+        ns.GuideUnlocked = function() return true end
+        ns.root.guides = { One = { name = "One", steps = { { kind = "note", text = "only" } } } }
+        ns.root.guideState = {}
+        ns:GuideFollow("One")
+        if not said[#said]:find('Following "One": 1 step.', 1, true) then error("one step: " .. tostring(said[#said])) end
+        if ns.GuideSkippedText({ skipped = { group = 1 } }) ~= "Skipped: 1 group quest (Solo is on)" then error("one group quest: " .. tostring(ns.GuideSkippedText({ skipped = { group = 1 } }))) end
+        if ns.PlannerMapTest.tip({ rate = 1, quests = 1 })[2] ~= "1 quest" then error("one quest on the map") end
+        -- the step kinds say what to do
+        if ns.GuideStepText({ kind = "train" }) ~= "Learn from your trainer" or ns.GuideStepText({ kind = "learnflight", node = 3 }) ~= "Learn the flight point" then error("the kinds' words") end
+        -- the keys' names
+        ns.GuideBindingNames(true)
+        if env.BINDING_NAME_FANTASYGLASSUI_EXTRA3 ~= "Guide: plan again" then error("plan again's key: " .. tostring(env.BINDING_NAME_FANTASYGLASSUI_EXTRA3)) end
+        ns.GuideBindingNames(false)
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    ns:GuideStop()
+    ns.PrintRaw, ns.root.guides, ns.root.guideState, ns.GuideUnlocked = saved.raw, saved.guides, saved.state, saved.unlocked
+    if not ok then error(err, 0) end
+end)
+-- polish P2: end
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()

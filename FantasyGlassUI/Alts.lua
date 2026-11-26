@@ -68,7 +68,8 @@ function ns:ForgetCharacter(key)
         -- and whatever else was kept for that character alone (the capped histories, runs and weekly
         -- recaps, keep their lines: they are about the past, and they trim themselves)
         local root = ns.root
-        for _, store in ipairs({ "lifetime", "farming", "goldDays", "profCD", "timers", "runNow", "lastSession", "specSets", "chars" }) do
+        for _, store in ipairs({ "lifetime", "farming", "goldDays", "profCD", "timers", "runNow", "lastSession", "specSets", "chars",
+                                 "planner", "guideState", "plannerLevels" }) do
             if type(root[store]) == "table" then root[store][key] = nil end
         end
         if type(root.checklist) == "table" and type(root.checklist.done) == "table" then root.checklist.done[key] = nil end

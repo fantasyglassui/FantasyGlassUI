@@ -84,14 +84,13 @@ function ns:GuideRouteEditor(name)
     end
     local Draw
     local function Pick(i) at = math.max(1, math.min(#work.steps, i)); Draw() end
+    local rowH = math.max(20, math.ceil(11 * (tonumber(ns.fontScale) or 1)) + 6)   -- (a row as tall as its lettering needs)
     Draw = function()
-        win.title:SetText(ns:Tr("Route") .. ": " .. tostring(work.name) .. "  |cff9aa4b4(" .. #work.steps .. ")|r")
+        win.title:SetText(ns:Tr("Route") .. ": " .. tostring(work.name) .. "  " .. ns:ToneHex("dim") .. "(" .. #work.steps .. ")|r")
         for i, step in ipairs(work.steps) do
             local r = win.rows[i]
             if not r then
                 r = CreateFrame("Button", nil, win.sheet)
-                r:SetSize(580, 18)
-                r:SetPoint("TOPLEFT", 0, -(i - 1) * 18)
                 r.bg = r:CreateTexture(nil, "BACKGROUND")
                 r.bg:SetAllPoints()
                 r.bg:SetTexture(ns.FLAT)
@@ -103,27 +102,30 @@ function ns:GuideRouteEditor(name)
                 win.rows[i] = r
             end
             r.index = i
-            r.text:SetText(format("|cff9aa4b4%d|r  %s", i, ns.GuideLine(step)))
+            r:SetSize(580, rowH)
+            r:ClearAllPoints()
+            r:SetPoint("TOPLEFT", 0, -(i - 1) * rowH)
+            r.text:SetText(format("%s%d|r  %s", ns:ToneHex("dim"), i, ns.GuideLine(step)))
             if i == at then ns:Paint(r.bg, "SetVertexColor", "@accent", 0.25) else r.bg:SetVertexColor(1, 1, 1, 0) end
             r:Show()
         end
         for i = #work.steps + 1, #win.rows do win.rows[i]:Hide() end
-        if win.area.SetContentHeight then win.area:SetContentHeight(#work.steps * 18) end
+        if win.area.SetContentHeight then win.area:SetContentHeight(#work.steps * rowH) end
         local step = work.steps[at]
         win.line:SetText(step and ns.GuideLine(step) or "")
     end
     local function Parse()
         local text = win.line:GetText()
-        if type(text) ~= "string" then return nil, "nothing written" end
+        if type(text) ~= "string" then return nil, "Nothing written." end
         return ns.GuideParseLine(text)
     end
-    local function Say(t, good) win.msg:SetText((good and ns:SignalHex("good") or ns:SignalHex("bad")) .. ns:Tr(t) .. "|r") end
+    local function Say(t, good, arg) win.msg:SetText((good and ns:SignalHex("good") or ns:SignalHex("bad")) .. ns.GuideParseWhy(t, arg) .. "|r") end
     -- the buttons are made once; each time the editor opens, Rebind points them at this guide's list
     if not win.buttons then
         win.buttons = {}
         local y1, y2 = -386, -416
-        win.buttons.up = win.B("Up", 70, 14, y1)
-        win.buttons.down = win.B("Down", 70, 90, y1)
+        win.buttons.up = win.B("Move up", 70, 14, y1)
+        win.buttons.down = win.B("Move down", 70, 90, y1)
         win.buttons.del = win.B("Delete", 80, 166, y1)
         win.buttons.change = win.B("Change this step", 140, 252, y1)
         win.buttons.add = win.B("Add after it", 120, 398, y1)
@@ -136,24 +138,34 @@ function ns:GuideRouteEditor(name)
         win.buttons.save = win.B("Save", 100, 14, y2)
         win.buttons.follow = win.B("Save and follow", 140, 120, y2)
         win.buttons.text = win.B("As text", 100, 266, y2)
+        -- each as wide as its label (a long word in another language), one after another along its row
+        for _, row in ipairs({ { "up", "down", "del", "change", "add", "here" }, { "save", "follow", "text" } }) do
+            local prev
+            for _, key in ipairs(row) do
+                local b = win.buttons[key]
+                if ns.GuideFitButton then ns.GuideFitButton(b, b.suiW or 70) end
+                if prev then b:ClearAllPoints(); b:SetPoint("LEFT", prev, "RIGHT", 6, 0) end
+                prev = b
+            end
+        end
     end
     local function Rebind()                                  -- point the shared buttons at this guide's list
         win.buttons.up:SetScript("OnClick", function() work.steps, at = ns.RouteMove(work.steps, at, -1); Draw() end)
         win.buttons.down:SetScript("OnClick", function() work.steps, at = ns.RouteMove(work.steps, at, 1); Draw() end)
         win.buttons.del:SetScript("OnClick", function() work.steps, at = ns.RouteDelete(work.steps, at); Draw() end)
         win.buttons.change:SetScript("OnClick", function()
-            local step, why = Parse()
-            if not step then Say(why or "not a step"); return end
+            local step, why, arg = Parse()
+            if not step then Say(why or "Not a step.", false, arg); return end
             work.steps[at] = step; Say("Changed.", true); Draw()
         end)
         win.buttons.add:SetScript("OnClick", function()
-            local step, why = Parse()
-            if not step then Say(why or "not a step"); return end
+            local step, why, arg = Parse()
+            if not step then Say(why or "Not a step.", false, arg); return end
             work.steps, at = ns.RouteInsert(work.steps, at, step); Say("Added.", true); Draw()
         end)
         win.buttons.save:SetScript("OnClick", function()
             local ok, why = ns:GuideSave(work)
-            if ok then Say(format(ns:Tr("Saved: %d steps."), #work.steps), true) else Say(why or "not saved") end
+            if ok then Say(format(ns:TrN(#work.steps, "Saved: %d step.", "Saved: %d steps."), #work.steps), true) else Say(why or "Not saved.") end
         end)
         win.buttons.follow:SetScript("OnClick", function() if ns:GuideSave(work) then win:Hide(); ns:GuideFollow(work.name) end end)
         win.buttons.text:SetScript("OnClick", function() ns:GuideEdit(work.name) end)
@@ -197,7 +209,7 @@ do
         p:SetScript("OnEnter", function(self)
             if not self.step then return end
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:AddLine(format("%d. %s", self.index, ns.GuideStepText(self.step)), 1, 0.82, 0.2, true)
+            GameTooltip:AddLine(ns:AccentHex() .. format("%d. %s", self.index, ns.GuideStepText(self.step)) .. "|r", 1, 1, 1, true)
             GameTooltip:Show()
         end)
         p:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -224,7 +236,7 @@ do
                 local px, py = ns.MapDotOffset(item.step.x / 100, item.step.y / 100, w, h, size)
                 p:SetPoint("CENTER", canvas, "TOPLEFT", px, py)
                 p.num:SetText(item.index)
-                if k == 1 then ns:Paint(p.tex, "SetVertexColor", "@accent", 1) else p.tex:SetVertexColor(1, 0.82, 0.2, 0.85) end
+                if k == 1 then ns:Paint(p.tex, "SetVertexColor", "@accent", 1) else ns:Paint(p.tex, "SetVertexColor", "@light", 0.85) end   -- (the next one in the accent, the rest in the theme's light)
                 p:Show()
             end
         end
