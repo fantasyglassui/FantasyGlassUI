@@ -87,7 +87,11 @@ local function Objectives(db, zones, quest, state)
         for area, list in pairs(type(trig[2]) == "table" and trig[2] or {}) do
             local map = zones:GetUiMapIdByAreaId(area)
             if map and type(list) == "table" then
-                for _, p in ipairs(list) do o.spots[#o.spots + 1] = { map = map, x = p[1], y = p[2] } end
+                for _, p in ipairs(list) do
+                    if type(p) == "table" and tonumber(p[1]) and tonumber(p[2]) and not (p[1] == -1 and p[2] == -1) then
+                        o.spots[#o.spots + 1] = { map = map, x = p[1], y = p[2] }
+                    end
+                end
             end
         end
         out[#out + 1] = o
@@ -256,6 +260,8 @@ end
 
 local changed = false
 local mapCache = nil              -- quest ids by zone map (one scan of every quest a session; a reset empties it)
+ns.PLANNER_GATHER_MAPS = 6       -- maps whose Questie gathering nodes are kept at once (the least recently asked go first)
+local gatherCache, gatherOrder, gatherAreas = {}, {}, {}   -- nodes by map, the maps kept (oldest first), area -> map (a reset empties them)
 local zoneCache, grindCache = {}, {}   -- dungeon quest ids by area, grinding spots by level and continent (static data: a reset empties them)
 local recCache, cacheLevel = {}, nil   -- built records by quest id (not those in the log); emptied on a new level and by a reset
 
@@ -288,6 +294,140 @@ local function PointerIds(t)
     end
     for k in pairs(t) do if type(k) == "number" then out[#out + 1] = k end end
     return out
+end
+
+-- Questie's two big id tables (QuestPointers, NPCPointers), read once per table a slice at a time: one
+-- pass collects the keys and values (yielding every 64 steps, outside the pcall), and a plain sequence of
+-- numbers gives its values, as PointerIds reads them. Kept for the session against that table (Questie
+-- replaces the table when it rebinds, and a new one is read again). nil means "not ready yet": the table
+-- is missing, a step failed or saw a key twice (it changed under the walk), or it was replaced meanwhile.
+-- How sure that is: a replaced table is always caught; a table grown in place is caught almost always
+-- (a rehash reorders the walk, so keys come back twice), not always: no guarantee rests on it.
+-- The list returned is shared (kept for the session): do not modify it; src.ids() hands out a copy.
+local ID_SLICE = 64
+local idLists = {}                -- by name: { t = the table read, ids = its ids }
+local function IdTable(name)
+    local db = Import("QuestieDB")
+    if not db then return nil end
+    local ok, t = Try(function() return db[name] end)
+    if ok and type(t) == "table" then return t end
+end
+local function IdList(name)
+    local t = IdTable(name)
+    if not t then return nil end
+    local hit = idLists[name]
+    if hit and hit.t == t then return hit.ids end
+    local seen, keys, count, numbers, size = {}, {}, 0, true, #t
+    local k
+    while true do
+        local ok, nk, nv = pcall(next, t, k)
+        if not ok then return nil end
+        if nk == nil then break end
+        if seen[nk] ~= nil then return nil end
+        seen[nk] = nv
+        count = count + 1
+        if type(nk) == "number" then keys[#keys + 1] = nk end
+        if type(nv) ~= "number" then numbers = false end
+        k = nk
+        if count % ID_SLICE == 0 then ns.PlannerYield() end
+    end
+    if #t ~= size or IdTable(name) ~= t then return nil end
+    local ids = keys
+    if numbers and count > 0 and #keys == count then
+        local list = {}
+        for i = 1, count do
+            if i % ID_SLICE == 0 then ns.PlannerYield() end
+            local id = seen[i]
+            if id == nil then list = nil; break end
+            list[i] = id
+        end
+        if list then ids = list end
+    end
+    idLists[name] = { t = t, ids = ids }
+    return ids
+end
+
+-- Gathering nodes in Questie's object data. Questie has no "herb" or "ore" flag, so the objects are named
+-- here: { [objectID] = { skill = 182 (Herbalism) or 186 (Mining), min = the skill rank needed } }.
+-- From memory: CHECK THEM IN THE GAME (the ids, and the rank each needs) before trusting them.
+ns.PLANNER_GATHER_OBJECTS = {
+    [1617] = { skill = 182, min = 1 },      -- Silverleaf
+    [1618] = { skill = 182, min = 1 },      -- Peacebloom
+    [1619] = { skill = 182, min = 15 },     -- Earthroot
+    [1620] = { skill = 182, min = 50 },     -- Mageroyal
+    [1621] = { skill = 182, min = 70 },     -- Briarthorn
+    [2045] = { skill = 182, min = 85 },     -- Stranglekelp
+    [1622] = { skill = 182, min = 100 },    -- Bruiseweed
+    [1623] = { skill = 182, min = 115 },    -- Wild Steelbloom
+    [1628] = { skill = 182, min = 120 },    -- Grave Moss
+    [1624] = { skill = 182, min = 125 },    -- Kingsblood
+    [2041] = { skill = 182, min = 150 },    -- Liferoot
+    [2042] = { skill = 182, min = 160 },    -- Fadeleaf
+    [2046] = { skill = 182, min = 170 },    -- Goldthorn
+    [2043] = { skill = 182, min = 185 },    -- Khadgar's Whisker
+    [2044] = { skill = 182, min = 195 },    -- Wintersbite
+    [2866] = { skill = 182, min = 205 },    -- Firebloom
+    [142140] = { skill = 182, min = 210 },  -- Purple Lotus
+    [142141] = { skill = 182, min = 220 },  -- Arthas' Tears
+    [142142] = { skill = 182, min = 230 },  -- Sungrass
+    [142143] = { skill = 182, min = 235 },  -- Blindweed
+    [142144] = { skill = 182, min = 245 },  -- Ghost Mushroom
+    [142145] = { skill = 182, min = 250 },  -- Gromsblood
+    [176583] = { skill = 182, min = 260 },  -- Golden Sansam
+    [176584] = { skill = 182, min = 270 },  -- Dreamfoil
+    [176586] = { skill = 182, min = 280 },  -- Mountain Silversage
+    [176587] = { skill = 182, min = 285 },  -- Plaguebloom
+    [176588] = { skill = 182, min = 290 },  -- Icecap
+    [176589] = { skill = 182, min = 300 },  -- Black Lotus
+    [1731] = { skill = 186, min = 1 },      -- Copper Vein
+    [1610] = { skill = 186, min = 65 },     -- Incendicite Mineral Vein
+    [1732] = { skill = 186, min = 65 },     -- Tin Vein
+    [2653] = { skill = 186, min = 75 },     -- Lesser Bloodstone Deposit
+    [1733] = { skill = 186, min = 75 },     -- Silver Vein
+    [1735] = { skill = 186, min = 125 },    -- Iron Deposit
+    [1734] = { skill = 186, min = 155 },    -- Gold Vein
+    [2040] = { skill = 186, min = 175 },    -- Mithril Deposit
+    [165658] = { skill = 186, min = 230 },  -- Dark Iron Deposit
+    [2047] = { skill = 186, min = 230 },    -- Truesilver Deposit
+    [324] = { skill = 186, min = 245 },     -- Small Thorium Vein
+    [175404] = { skill = 186, min = 275 },  -- Rich Thorium Vein
+    -- other object ids of the same nodes in some zones (from memory, CHECK THEM IN THE GAME or in Questie's objectDB)
+    [3763] = { skill = 186, min = 1 },      -- Copper Vein
+    [103713] = { skill = 186, min = 1 },    -- Copper Vein
+    [2055] = { skill = 186, min = 1 },      -- Copper Vein
+    [103711] = { skill = 186, min = 65 },   -- Tin Vein
+    [105569] = { skill = 186, min = 75 },   -- Silver Vein
+    [150080] = { skill = 186, min = 155 },  -- Gold Vein
+    [150079] = { skill = 186, min = 175 },  -- Mithril Deposit
+    [176645] = { skill = 186, min = 175 },  -- Mithril Deposit
+    [150081] = { skill = 186, min = 230 },  -- Truesilver Deposit
+    [150082] = { skill = 186, min = 245 },  -- Small Thorium Vein
+    [176643] = { skill = 186, min = 245 },  -- Small Thorium Vein
+    [73940] = { skill = 186, min = 75 },    -- Ooze Covered Silver Vein
+    [73941] = { skill = 186, min = 155 },   -- Ooze Covered Gold Vein
+    [123308] = { skill = 186, min = 230 },  -- Ooze Covered Truesilver Deposit
+    [123309] = { skill = 186, min = 175 },  -- Ooze Covered Mithril Deposit
+    [123310] = { skill = 186, min = 175 },  -- Ooze Covered Mithril Deposit (which ooze vein each of 123308-123310 is: check)
+    [123848] = { skill = 186, min = 245 },  -- Ooze Covered Thorium Vein
+    [177388] = { skill = 186, min = 275 },  -- Ooze Covered Rich Thorium Vein
+}
+
+-- One gathering object's spawns as a flat list { area, x, y } and its name (read through Try by the caller).
+local function ObjectSpawns(db, id)
+    if db.ObjectPointers[id] == nil then return nil end
+    local spawns, name = db.QueryObjectSingle(id, "spawns"), db.QueryObjectSingle(id, "name")
+    if type(spawns) ~= "table" or type(name) ~= "string" or name == "" then return nil end
+    local out = {}
+    for area, list in pairs(spawns) do
+        if type(list) == "table" then
+            for _, p in ipairs(list) do
+                if type(p) == "table" and tonumber(p[1]) and tonumber(p[2]) and not (p[1] == -1 and p[2] == -1) then
+                    out[#out + 1] = { area, tonumber(p[1]), tonumber(p[2]) }
+                end
+            end
+        end
+    end
+    return out, name
 end
 
 -- Where the places of one kind are. Kinds: innkeeper, repair, classTrainer, mailbox, vendor (arg
@@ -353,15 +493,16 @@ local function KnownIds(kind, arg)
     return list and PointerIds(list) or nil
 end
 
--- Every id carrying a flag, by scanning Questie's NPC table (the fallback when no list is saved).
+-- Every id carrying a flag, by scanning Questie's NPC table (the fallback when no list is saved);
+-- nil while Questie has no flags or no NPC table yet (not ready: the scan is not kept).
 local function FlagIds(env, flagName)
     local db, out = env.db, {}
     local flagsOk, flags = Try(function() return db.npcFlags end)
     local mask = flagsOk and type(flags) == "table" and tonumber(flags[flagName])
-    local okP, pointers = Try(function() return db.NPCPointers end)
-    if not (mask and okP and type(pointers) == "table") then return out end
-    local okI, ids = Try(PointerIds, pointers)
-    for _, id in ipairs(okI and ids or {}) do
+    if not mask then return nil end
+    local ids = IdList("NPCPointers")
+    if not ids then return nil end
+    for _, id in ipairs(ids) do
         ns.PlannerYield()
         local ok, f = Try(db.QueryNPCSingle, id, "npcFlags")
         if ok and HasFlag(f, mask) then
@@ -448,8 +589,9 @@ local function Places(which, env, kind, arg)
                 -- The NPC scan is costly and is done once per session per kind, even when it finds nothing.
                 hit = scans[kind]
                 if not hit then
-                    hit = Resolve(env, FlagIds(env, FLAG_NAMES[kind]), false)
-                    scans[kind] = hit
+                    local ids = FlagIds(env, FLAG_NAMES[kind])
+                    hit = ids and Resolve(env, ids, false) or {}
+                    if ids then scans[kind] = hit end          -- (not ready: asked again next time)
                 end
             end
         else
@@ -492,11 +634,14 @@ function ns.PlannerSource()
         return nil, "changed"
     end
     local src = { kind = "questie" }
+    -- A copy of the shared list, so a caller may sort or change it (not ready yet: none this time).
     function src.ids()
-        local ok, out = Try(PointerIds, env.db.QuestPointers)
-        if ok then return out end
-        changed = true
-        return {}
+        local ids, out = IdList("QuestPointers"), {}
+        for i, id in ipairs(ids or {}) do
+            if i % ID_SLICE == 0 then ns.PlannerYield() end
+            out[i] = id
+        end
+        return out
     end
     -- A new level empties the record cache (the level window moved).
     function src.begin(level)
@@ -543,7 +688,9 @@ function ns.PlannerSource()
         if hit then return hit end
         hit = {}
         if type(env.db.QueryQuestSingle) == "function" then
-            for _, id in ipairs(src.ids()) do
+            local ids = IdList("QuestPointers")
+            if not ids then return {} end                   -- (not ready yet: not kept)
+            for _, id in ipairs(ids) do
                 ns.PlannerYield()
                 local ok, v = Try(env.db.QueryQuestSingle, id, "zoneOrSort")
                 if ok and tonumber(v) == zone then hit[#hit + 1] = id end
@@ -594,9 +741,9 @@ function ns.PlannerSource()
         local okF, faction = Try(UnitFactionGroup, "player")
         local mine = okF and (faction == "Alliance" and "A" or faction == "Horde" and "H") or nil
         local cells = {}
-        local okP, pointers = Try(function() return env.db.NPCPointers end)
-        local okI, ids = Try(PointerIds, okP and type(pointers) == "table" and pointers or {})
-        for _, id in ipairs(okI and ids or {}) do
+        local ids = IdList("NPCPointers")
+        if not ids then return {} end                       -- (not ready yet: not kept)
+        for _, id in ipairs(ids) do
             ns.PlannerYield()
             local okL, lo = Try(env.db.QueryNPCSingle, id, "minLevel")
             local okH, hi = Try(env.db.QueryNPCSingle, id, "maxLevel")
@@ -639,6 +786,40 @@ function ns.PlannerSource()
         while #list > 3 do list[#list] = nil end
         grindCache[key] = list
         return list
+    end
+    -- Questie's gathering nodes on a map: { { name, map, x, y, skill, min } }. Every object in
+    -- ns.PLANNER_GATHER_OBJECTS is read for a map the first time it is asked (a failed read: that object
+    -- has none there); the nodes of ns.PLANNER_GATHER_MAPS maps are kept, the least recently asked go first.
+    function src.gatherNodes(map)
+        if type(map) ~= "number" then return {} end
+        local hit = gatherCache[map]
+        if not hit then
+            local db = env.db
+            local okP, pointers = Try(function() return db.ObjectPointers end)
+            if not (okP and type(pointers) == "table" and type(db.QueryObjectSingle) == "function") then return {} end
+            hit = {}
+            for id, def in pairs(ns.PLANNER_GATHER_OBJECTS) do
+                ns.PlannerYield()
+                local ok, spawns, name = Try(ObjectSpawns, db, id)
+                if ok and spawns then
+                    for _, p in ipairs(spawns) do
+                        ns.PlannerYield()
+                        local m = gatherAreas[p[1]]
+                        if m == nil then
+                            local okM, value = Try(env.zones.GetUiMapIdByAreaId, env.zones, p[1])
+                            m = okM and tonumber(value) or false
+                            gatherAreas[p[1]] = m
+                        end
+                        if m == map then hit[#hit + 1] = { name = name, map = m, x = p[2], y = p[3], skill = def.skill, min = def.min } end
+                    end
+                end
+            end
+            gatherCache[map] = hit
+        end
+        for i = #gatherOrder, 1, -1 do if gatherOrder[i] == map then table.remove(gatherOrder, i) end end
+        gatherOrder[#gatherOrder + 1] = map
+        while #gatherOrder > ns.PLANNER_GATHER_MAPS do gatherCache[table.remove(gatherOrder, 1)] = nil end
+        return hit
     end
     function src.places(kind, arg) return Places("questie", env, kind, arg) end
     function src.inns() return Places("questie", env, "innkeeper") end
@@ -691,12 +872,14 @@ function ns.PlannerLogSource()
     end
     function src.places(kind, arg) return Places("log", nil, kind, arg) end
     function src.inns() return {} end
+    function src.gatherNodes() return {} end
     return src
 end
 
 function ns.PlannerSourceReset()
     changed, waiting, placeCaches, recCache, cacheLevel = false, false, { questie = {}, log = {}, questieScan = {}, logScan = {} }, {}, nil
-    zoneCache, grindCache, mapCache = {}, {}, nil
+    zoneCache, grindCache, mapCache, idLists = {}, {}, nil, {}
+    gatherCache, gatherOrder, gatherAreas = {}, {}, {}
     ns.plannerExploreMaps = {}                  -- (PlannerPath.lua: the maps known to report exploration)
 end
 
@@ -754,4 +937,70 @@ do
     local ev = CreateFrame("Frame")
     for e in pairs(SEEN_EVENT) do pcall(ev.RegisterEvent, ev, e) end
     ev:SetScript("OnEvent", ns:Guard("PlannerSeen", function(_, event) if SEEN_EVENT[event] then ns.PlannerSeen(SEEN_EVENT[event]) end end))
+end
+
+------------------------------------------------------------------------------------------
+-- Timed quests known before you take them. Questie has no timer data, so there are two sources of
+-- our own: ns.PLANNER_TIMED (written by hand) and a per-account memory of every quest any of your
+-- characters accepted with a clock on it (ns.root.plannerTimed[questID] = { secs = seconds, seen = day },
+-- written only while the guide is unlocked; an older plain number reads as { secs = n }; at most
+-- ns.PLANNER_TIMED_CAP, the oldest `seen` go first). The route plans such a quest as a timed run before you take it.
+------------------------------------------------------------------------------------------
+ns.PLANNER_TIMED = {}             -- { [questID] = seconds }: fill from the in-game checks
+ns.PLANNER_TIMED_CAP = 500
+
+local function Seconds(v) if type(v) == "number" and not ns:IsSecret(v) and v > 0 then return v end end
+
+-- How long a quest gives you, in seconds, when it is known to be timed; else nil.
+function ns.PlannerTimedQuest(id)
+    id = tonumber(id)
+    if not id then return nil end
+    local s = Seconds(ns.PLANNER_TIMED[id])
+    if s then return s end
+    local root = ns.root
+    local mem = type(root) == "table" and type(root.plannerTimed) == "table" and root.plannerTimed or nil
+    local e = mem and mem[id]
+    if type(e) == "table" then e = e.secs end
+    return Seconds(e)
+end
+
+-- The day an entry was last seen (an older plain number: never, so it goes first).
+local function SeenDay(e) return type(e) == "table" and tonumber(e.seen) or 0 end
+
+function ns.PlannerRecordTimed(id)
+    if type(id) ~= "number" or ns:IsSecret(id) or not ns:GuideUnlocked() or type(ns.root) ~= "table" then return end
+    local QL = C_QuestLog
+    if not (QL and type(QL.GetTimeAllowed) == "function") then return end
+    local ok, total = pcall(QL.GetTimeAllowed, id)
+    local secs = ok and Seconds(total) or nil
+    if not secs then return end
+    secs = math.floor(secs)
+    if secs <= 0 then return end
+    local okT, now = pcall(time)
+    local day = okT and type(now) == "number" and not ns:IsSecret(now) and math.floor(now / 86400) or 0
+    if type(ns.root.plannerTimed) ~= "table" then ns.root.plannerTimed = {} end
+    local mem = ns.root.plannerTimed
+    mem[id] = { secs = secs, seen = day }
+    local n = 0
+    for _ in pairs(mem) do n = n + 1 end
+    while n > ns.PLANNER_TIMED_CAP do                       -- (the oldest seen first; the same day: the lower id)
+        local old, oldDay
+        for k, e in pairs(mem) do
+            local d = SeenDay(e)
+            if k ~= id and (not old or d < oldDay or (d == oldDay and tonumber(k) and tonumber(old) and k < old)) then old, oldDay = k, d end
+        end
+        if old == nil then break end
+        mem[old] = nil
+        n = n - 1
+    end
+end
+
+do
+    local ev = CreateFrame("Frame")
+    pcall(ev.RegisterEvent, ev, "QUEST_ACCEPTED")
+    ev:SetScript("OnEvent", ns:Guard("PlannerTimed", function(_, event, a, b)
+        if event ~= "QUEST_ACCEPTED" then return end
+        local id = (type(b) == "number") and b or a           -- (questID; older clients send the log index first)
+        ns.PlannerRecordTimed(id)
+    end))
 end

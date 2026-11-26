@@ -364,14 +364,17 @@ local function ExploreSteps(legs, speed, add)
     end
 end
 
-local function GatherSteps(legs, speed, add)
-    local mine = {}
+local function GatherSteps(legs, speed, add, ctx)
+    local mine = {}                                         -- your rank by skill line
     for _, p in ipairs(ns.PlannerProfessions and ns.PlannerProfessions() or {}) do
-        if p.line == HERBALISM or p.line == MINING then mine[p.line] = true end
+        if p.line == HERBALISM or p.line == MINING then mine[p.line] = tonumber(p.rank) or 0 end
     end
-    local seen = type(ns.root) == "table" and ns.root.plannerNodesSeen
-    if not (next(mine) and type(seen) == "table") then return end
-    -- each map's nodes of your skills, with their world positions: once per plan
+    if not next(mine) then return end
+    local seen = type(ns.root) == "table" and type(ns.root.plannerNodesSeen) == "table" and ns.root.plannerNodesSeen or {}
+    local src = type(ctx) == "table" and type(ctx.source) == "table" and ctx.source or nil
+    local questie = src and type(src.gatherNodes) == "function" and src.gatherNodes or nil
+    -- each map's nodes of your skills, with their world positions: once per plan. Yours first; then
+    -- Questie's that your rank allows, unless one of yours of the same skill is within PLANNER_NODE_YARDS.
     local byMap = {}
     local function Nodes(map)
         local hit = byMap[map]
@@ -383,7 +386,24 @@ local function GatherSteps(legs, speed, add)
             local name = type(n) == "table" and Clean(n.name)
             if name and mine[n.skill] and tonumber(n.x) and tonumber(n.y) then
                 local _, wx, wy = Pos(map, n.x, n.y)
-                if wx then hit[#hit + 1] = { n = n, name = name, wx = wx, wy = wy } end
+                if wx then hit[#hit + 1] = { n = n, name = name, wx = wx, wy = wy, skill = n.skill } end
+            end
+        end
+        local recorded = #hit
+        local nodes = questie and questie(map) or {}
+        for _, n in ipairs(type(nodes) == "table" and nodes or {}) do
+            ns.PlannerYield()
+            local name = type(n) == "table" and Clean(n.name)
+            local rank = name and mine[n.skill]
+            if rank and tonumber(n.min) and rank >= n.min and tonumber(n.x) and tonumber(n.y) then
+                local _, wx, wy = Pos(map, n.x, n.y)
+                local same = not wx
+                for i = 1, recorded do
+                    if same then break end
+                    local e = hit[i]
+                    if e.skill == n.skill and sqrt((e.wx - wx) ^ 2 + (e.wy - wy) ^ 2) <= ns.PLANNER_NODE_YARDS then same = true end
+                end
+                if not same then hit[#hit + 1] = { n = n, name = name, wx = wx, wy = wy, skill = n.skill } end
             end
         end
         byMap[map] = hit
@@ -439,7 +459,7 @@ function ns.PlannerPathExtras(guide, summary, ctx)
         extra = extra + secs
     end
     if explore then ExploreSteps(legs, speed, add) end
-    if gather then GatherSteps(legs, speed, add) end
+    if gather then GatherSteps(legs, speed, add, ctx) end
     if not next(pending) then return end
     local out = {}
     for i, s in ipairs(steps) do

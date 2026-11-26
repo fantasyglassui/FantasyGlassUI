@@ -18692,6 +18692,348 @@ try("13.6 leftovers A: quest times without away and town", function()
 end)
 -- batch 6 tests A (learning): end
 -- batch 6 tests B (questie): begin
+try("13.6 leftovers B: Questie's ids a slice at a time", function()
+    local saved = { on = ns.GuideOn, here = ns.GuideHere, unlocked = ns.GuideUnlocked, map = env.C_Map, vec = rawget(env, "CreateVector2D"),
+                    context = ns.PlannerContext, world = ns.PlannerWorldPos, guideState = ns.root.guideState, guides = ns.root.guides, planner = ns.root.planner,
+                    combat = env.InCombatLockdown, dp = rawget(env, "debugprofilestop"), loaded = env.C_AddOns.IsAddOnLoaded,
+                    meta = rawget(env.C_AddOns, "GetAddOnMetadata"), Q = rawget(env, "Questie"), loader = rawget(env, "QuestieLoader"),
+                    faction = rawget(env, "UnitFactionGroup"), ql = env.C_QuestLog, errors = #ns.errors }
+    local clock, firstGet = 0, nil
+    local npcs = { [9] = { spawns = { [40] = { { 30, 40 } } }, npcFlags = 65536 + 2, name = "Innkeeper Nine", minLevel = 30, maxLevel = 30 } }
+    local quests = {
+        [77] = { name = "Somewhere", questLevel = 10, level = 10, startedBy = { { 9 } }, finishedBy = { { 9 } },
+                 triggerEnd = { "Go there", { [40] = { { -1, -1 }, { "x", 5 }, { 50, 55 } } } } },
+    }
+    local db = { QuestPointers = { [77] = 1 }, NPCPointers = { [9] = 777 },
+        GetQuest = function(id) if not firstGet then firstGet = ns.plannerSteps end return quests[id] end,
+        IsDoable = function() return true end,
+        QueryNPCSingle = function(id, key) return npcs[id] and npcs[id][key] end }
+    local fakes = { QuestieDB = db, QuestXP = { GetQuestLogRewardXP = function() return 100 end },
+                    ZoneDB = { GetUiMapIdByAreaId = function(_, area) return area == 40 and 1429 or nil end } }
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        ns.GuideOn = function() return true end
+        ns.GuideHere = function() return 1429, 30, 40 end
+        ns.root.planner, ns.root.guides, ns.root.guideState = {}, {}, {}
+        env.InCombatLockdown = function() return false end
+        rawset(env, "UnitFactionGroup", function() return "Alliance" end)
+        env.C_QuestLog = setmetatable({ IsOnQuest = function() return false end, GetLogIndexForQuestID = function() return nil end }, { __index = saved.ql })
+        env.C_Map = setmetatable({ GetWorldPosFromMapPos = function(map, v) if map == 1429 then return 0, { x = v.x * 100000, y = v.y * 100000 } end end,
+                                   GetMapInfo = function(map) return { name = "Elwynn Forest", mapType = 3, mapID = map } end }, { __index = saved.map })
+        env.CreateVector2D = function(x, y) return { x = x, y = y } end
+        ns.PlannerWorldPos = function(map, x, y) if map == 1429 then return 0, x * 1000, y * 1000 end end
+        env.Questie = { API = { isReady = true, RegisterOnReady = function() end } }
+        env.QuestieLoader = { ImportModule = function(_, name) return fakes[name] end }
+        env.C_AddOns.IsAddOnLoaded = function() return true end
+        rawset(env.C_AddOns, "GetAddOnMetadata", function() return "4" end)
+        ns.PlannerSourceReset()
+        local src = ns.PlannerSource()
+        if not src then error("questie source") end
+        ns.PlannerContext = function()
+            local c = { source = src, level = 10, group = "solo", inGroup = false, speed = 7, faction = "Alliance", xp = 0, xpMax = 5000,
+                done = function() return false end, onQuest = function() return false end, here = { map = 1429, x = 30, y = 40 },
+                crossings = {}, learnFlights = false, bind = "Inn", bindSpot = { map = 1429, x = 30, y = 40 }, pace = 1, flights = {},
+                flightTime = function() return nil end, timed = function() return false end, itemCount = function() return 0 end }
+            c.windowLo, c.windowHi, c.horizon = c.level - 4, c.level + 2, ns.PLANNER_HORIZON
+            return c
+        end
+        rawset(env, "debugprofilestop", function() clock = clock + 1; return clock end)   -- (1 ms a call: every few yields hand the frame back)
+        local function frames(k) for _ = 1, k or 1 do for i = 1, #handlers do local h = handlers[i]; if h.name == "OnUpdate" then pcall(h.fn, h.self, 0) end end end end
+        ns:GuideSetPlan(nil)
+        ns:PlannerStop(); ns.plannerQueued = false
+        local function resumes(pointers)
+            db.QuestPointers, firstGet = pointers, nil
+            local s0 = ns.plannerSteps
+            ns:PlannerReplan("test")
+            for _ = 1, 3000 do if firstGet then break end frames(1) end
+            ns:PlannerStop(); ns.plannerQueued = false
+            if not firstGet then error("the plan never asked Questie for a quest") end
+            return firstGet - s0
+        end
+        local function sorted(list) local o = {}; for i, v in ipairs(list) do o[i] = v end; table.sort(o); return table.concat(o, ",") end
+        local base = resumes({ [77] = 1 })
+        local big, want = {}, {}
+        for i = 1, 6000 do big[1000 + i * 3] = i * 11; want[i] = 1000 + i * 3 end
+        local n = resumes(big)
+        if n - base < 3 then error("6000 ids read in one go: " .. n .. " resumes, " .. base .. " for one id") end
+        local ids = src.ids()
+        if sorted(ids) ~= sorted(want) then error("the ids are the pointer map's keys") end
+        local again0 = src.ids()
+        if rawequal(again0, ids) or sorted(again0) ~= sorted(want) then error("a second call: a copy of the same ids") end
+        table.sort(ids, function(a, b) return a > b end); ids[#ids + 1] = 5
+        if sorted(src.ids()) ~= sorted(want) or src.ids()[1] == ids[1] and ids[1] ~= want[1] then error("changing a copy leaves the kept list alone") end
+        big[999999] = 1                                     -- (the same table: read once, so the kept list stays)
+        if #src.ids() ~= 6000 then error("the same table is not read again") end
+        ids = again0
+        -- a plain sequence of numbers: the values are the ids
+        db.QuestPointers = { 501, 502, 77 }
+        local seq = src.ids()
+        if sorted(seq) ~= "77,501,502" then error("a sequence's values are the ids: " .. sorted(seq)) end
+        -- a replaced table: a new list
+        local other = {}
+        for i = 1, 300 do other[90000 + i] = true end
+        db.QuestPointers = other
+        local again = src.ids()
+        if rawequal(again, ids) or #again ~= 300 then error("a replaced table: a new list") end
+        -- a table that grows under the walk: nothing that time, the whole new table the next time
+        local grow, all = {}, {}
+        for i = 1, 6000 do grow[50000 + i * 7] = true; all[#all + 1] = 50000 + i * 7 end
+        db.QuestPointers = grow
+        local got
+        ns.PlannerJob(function() got = src.ids() end, "test6grow")
+        frames(8)
+        if got ~= nil then error("the walk should still be under way") end
+        for i = 1, 4000 do grow[400000 + i * 7] = true; all[#all + 1] = 400000 + i * 7 end
+        for _ = 1, 3000 do if got then break end frames(1) end
+        if type(got) ~= "table" or #got ~= 0 then error("a table that changed under the walk: nothing yet, got " .. tostring(got and #got)) end
+        local full = src.ids()
+        if sorted(full) ~= sorted(all) then error("the next call: the whole new table (" .. #full .. ")") end
+        rawset(env, "debugprofilestop", saved.dp)
+        -- a flag scan before Questie had its flags is not kept
+        local realFlags = db.npcFlags
+        db.npcFlags = nil
+        if #src.inns() ~= 0 then error("no flags yet: no inns") end
+        db.npcFlags = { INNKEEPER = 65536 }
+        local inns = src.inns()
+        if #inns ~= 1 or inns[1].name ~= "Innkeeper Nine" then error("the second scan finds the innkeeper") end
+        db.npcFlags = realFlags
+        -- triggerEnd spots: only real places
+        local q = src.quest(77)
+        local place
+        for _, o in ipairs(q and q.objectives or {}) do if o.kind == "place" then place = o end end
+        if not place or #place.spots ~= 1 or place.spots[1].x ~= 50 or place.spots[1].y ~= 55 then error("only the real triggerEnd spot is a place") end
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    rawset(env, "debugprofilestop", saved.dp)
+    ns:PlannerStop(); ns.plannerQueued = false
+    ns:GuideSetPlan(nil)
+    ns.PlannerSourceReset()
+    ns.GuideOn, ns.GuideHere, ns.GuideUnlocked, ns.PlannerContext, ns.PlannerWorldPos = saved.on, saved.here, saved.unlocked, saved.context, saved.world
+    env.C_Map, env.InCombatLockdown, env.C_QuestLog = saved.map, saved.combat, saved.ql
+    rawset(env, "CreateVector2D", saved.vec); rawset(env, "UnitFactionGroup", saved.faction)
+    env.C_AddOns.IsAddOnLoaded = saved.loaded; rawset(env.C_AddOns, "GetAddOnMetadata", saved.meta)
+    rawset(env, "Questie", saved.Q); rawset(env, "QuestieLoader", saved.loader)
+    ns.root.guideState, ns.root.guides, ns.root.planner = saved.guideState, saved.guides, saved.planner
+    if not ok then error(err, 0) end
+end)
+try("13.6 leftovers B: gathering from Questie", function()
+    local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), level = env.UnitLevel, profs = env.GetProfessions, info = env.GetProfessionInfo,
+                    here = ns.GuideHere, mail = env.HasNewMail, loaded = env.C_AddOns.IsAddOnLoaded, meta = rawget(env.C_AddOns, "GetAddOnMetadata"),
+                    Q = rawget(env, "Questie"), loader = rawget(env, "QuestieLoader"), planner = ns.root.planner, nodes = ns.root.plannerNodesSeen,
+                    gather = ns.db.plannerGather, explore = ns.db.plannerExplore, unlocked = ns.GuideUnlocked, errors = #ns.errors }
+    local skills = {}
+    local objects = {
+        [1618] = { name = "Peacebloom", spawns = { [12] = { { 50, 41.5 }, { 50, 80 } } } },   -- (15 yards off the run, and 400)
+        [1735] = { name = "Iron Deposit", spawns = { [12] = { { 52, 41 } } } },              -- (10 yards off it)
+    }
+    local raising = false
+    local db = { QuestPointers = {}, GetQuest = function() end, IsDoable = function() return true end, QueryNPCSingle = function() end,
+                 ObjectPointers = { [1618] = 11, [1735] = 12 },
+                 QueryObjectSingle = function(id, key) if raising then error("boom") end return objects[id] and objects[id][key] end }
+    local fakes = { QuestieDB = db, QuestXP = { GetQuestLogRewardXP = function() return 100 end },
+                    ZoneDB = { GetUiMapIdByAreaId = function(_, area) return area == 12 and 1429 or nil end } }
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        env.C_Map = setmetatable({ GetWorldPosFromMapPos = function(map, v) if map == 1429 then return 0, { x = v.x * 1000, y = v.y * 1000 } end end },
+                                 { __index = saved.map })                                    -- (a percent is 10 yards)
+        env.CreateVector2D = function(x, y) return { x = x, y = y } end
+        env.UnitLevel = function() return 20 end
+        env.HasNewMail = function() return false end
+        env.GetProfessions = function() return skills[1] and 1 or nil, skills[2] and 2 or nil end
+        env.GetProfessionInfo = function(i) local s = skills[i]; if not s then return end; return s[2], 0, s[3], s[4], 0, 0, s[1] end
+        env.Questie = { API = { isReady = true, RegisterOnReady = function() end } }
+        env.QuestieLoader = { ImportModule = function(_, name) return fakes[name] end }
+        env.C_AddOns.IsAddOnLoaded = function() return true end
+        rawset(env.C_AddOns, "GetAddOnMetadata", function() return "4" end)
+        ns.db.plannerExplore = false
+        ns.root.plannerNodesSeen = nil
+        ns.PlannerSourceReset()
+        local qsrc = ns.PlannerSource()
+        if not (qsrc and type(qsrc.gatherNodes) == "function") then error("the Questie source reads gathering nodes") end
+        local function rec(id, x, y)
+            return { id = id, name = "Quest " .. id, level = 19, minLevel = 1, xp = 300, starts = { { map = 1429, x = x, y = y } }, ends = { { map = 1429, x = x, y = y } },
+                objectives = { { kind = "kill", count = 4, countKnown = true, mobLevel = 19, spots = { { map = 1429, x = x + 4, y = y + 4 } } } },
+                pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+        end
+        local at = { [6601] = { 30, 40 }, [6602] = { 70, 40 } }        -- two hubs 400 yards apart: one long run between them
+        local source = { kind = "questie", ids = function() return { 6601, 6602 } end, quest = function(id) return at[id] and rec(id, at[id][1], at[id][2]) end,
+            inns = function() return {} end, places = function() return {} end, gatherNodes = function(map) return qsrc.gatherNodes(map) end }
+        local function plan()
+            ns.root.planner = nil
+            return (ns.PlannerRoute({ source = source, level = 20, group = "solo", inGroup = false, speed = 7, faction = "Alliance",
+                done = function() return false end, onQuest = function() return false end, here = { map = 1429, x = 30, y = 40 },
+                crossings = {}, learnFlights = false, flights = {}, pace = 1, flightTime = function() return nil end }))
+        end
+        local function gathers(guide)
+            local o = {}
+            for i, s in ipairs(guide.steps) do if s.kind == "gather" then o[#o + 1] = { i = i, s = s } end end
+            return o
+        end
+        skills = { { 182, "Herbalism", 50, 75 }, { 186, "Mining", 100, 125 } }
+        local guide = plan()
+        local g = gathers(guide)
+        if #g ~= 1 or g[1].s.text ~= "Peacebloom" or g[1].s.x ~= 50 or g[1].s.y ~= 41.5 then error("one Peacebloom on the way, none 400 yards off, no Iron at 100: " .. #g) end
+        if g[1].s.stopKey ~= "gather:Peacebloom:1429:" .. g[1].s.x .. "," .. g[1].s.y then error("the stop key: " .. tostring(g[1].s.stopKey)) end
+        local nextStep = guide.steps[g[1].i + 1]
+        if not (nextStep and nextStep.map == 1429 and tonumber(nextStep.x) and nextStep.x > 50) then error("before that leg's destination") end
+        local nodes = qsrc.gatherNodes(1429)
+        if #nodes ~= 3 or nodes[1].skill == nil or nodes[1].min == nil then error("every spawn on the map, with its skill and the rank it needs") end
+        if #qsrc.gatherNodes(1436) ~= 0 then error("another map: none") end
+        -- kept per map: asked again, not read again; the least recently asked map goes once more than PLANNER_GATHER_MAPS are kept
+        local reads, realQ = 0, db.QueryObjectSingle
+        db.QueryObjectSingle = function(...) reads = reads + 1; return realQ(...) end
+        qsrc.gatherNodes(1429)
+        if reads ~= 0 then error("a map kept: not read again") end
+        for m = 2001, 2000 + ns.PLANNER_GATHER_MAPS do qsrc.gatherNodes(m) end
+        reads = 0
+        if #qsrc.gatherNodes(1429) ~= 3 or reads == 0 then error("more maps than kept: the oldest is read again, the same nodes") end
+        db.QueryObjectSingle = realQ
+        -- Mining 130: the Iron too
+        skills = { { 182, "Herbalism", 50, 75 }, { 186, "Mining", 130, 150 } }
+        g = gathers(plan())
+        local names = {}
+        for _, e in ipairs(g) do names[#names + 1] = e.s.text end
+        table.sort(names)
+        if table.concat(names, ",") ~= "Iron Deposit,Peacebloom" then error("Mining 130: Iron too: " .. table.concat(names, ",")) end
+        -- one you recorded 5 yards from Questie's: one step, yours
+        skills = { { 182, "Herbalism", 50, 75 } }
+        ns.root.plannerNodesSeen = { [1429] = { { name = "Peacebloom", x = 50.5, y = 41.5, skill = 182 } } }
+        g = gathers(plan())
+        if #g ~= 1 or g[1].s.x ~= 50.5 then error("a recorded node 5 yards from Questie's: one step, the recorded one: " .. #g) end
+        ns.root.plannerNodesSeen = nil
+        -- switched off: none
+        ns.db.plannerGather = false
+        if #gathers(plan()) ~= 0 then error("gather off: none") end
+        ns.db.plannerGather = saved.gather
+        -- Questie has no such object: none
+        db.ObjectPointers[1618] = nil
+        ns.PlannerSourceReset()
+        if #gathers(plan()) ~= 0 then error("no ObjectPointers entry: none") end
+        db.ObjectPointers[1618] = 11
+        -- Questie raising: none, and still a plan
+        raising = true
+        ns.PlannerSourceReset()
+        guide = plan()
+        if #gathers(guide) ~= 0 or #guide.steps == 0 then error("QueryObjectSingle raising: no gather step, still a plan") end
+        raising = false
+        if #ns.PlannerLogSource().gatherNodes(1429) ~= 0 then error("the log source: none") end
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    ns.PlannerSourceReset()
+    env.C_Map, env.UnitLevel, env.HasNewMail, env.GetProfessions, env.GetProfessionInfo = saved.map, saved.level, saved.mail, saved.profs, saved.info
+    rawset(env, "CreateVector2D", saved.vec)
+    env.C_AddOns.IsAddOnLoaded = saved.loaded; rawset(env.C_AddOns, "GetAddOnMetadata", saved.meta)
+    rawset(env, "Questie", saved.Q); rawset(env, "QuestieLoader", saved.loader)
+    ns.root.planner, ns.root.plannerNodesSeen, ns.db.plannerGather, ns.db.plannerExplore, ns.GuideUnlocked = saved.planner, saved.nodes, saved.gather, saved.explore, saved.unlocked
+    ns.GuideHere = saved.here
+    if not ok then error(err, 0) end
+end)
+try("13.6 leftovers B: timed quests before you take them", function()
+    local saved = { unlocked = ns.GuideUnlocked, timed = ns.root.plannerTimed, ql = env.C_QuestLog, map = env.C_Map, mex = rawget(env, "C_MapExplorationInfo"), exMaps = ns.plannerExploreMaps, time = rawget(env, "time"),
+                    vec = rawget(env, "CreateVector2D"), planner = ns.root.planner, nodes = ns.root.plannerNodesSeen, profs = env.GetProfessions,
+                    info = env.GetProfessionInfo, explore = ns.db.plannerExplore, known = ns.PLANNER_TIMED, errors = #ns.errors }
+    local allowed = 900
+    local ok, err = pcall(function()
+        if type(ns.PLANNER_TIMED) ~= "table" or next(ns.PLANNER_TIMED) ~= nil then error("ns.PLANNER_TIMED starts empty") end
+        if type(ns.PlannerTimedQuest) ~= "function" then error("ns.PlannerTimedQuest") end
+        ns.root.plannerTimed = nil
+        rawset(env, "time", function() return 86400 * 20000 + 5 end)        -- (day 20000)
+        env.C_QuestLog = setmetatable({ GetTimeAllowed = function() return allowed, 0 end }, { __index = saved.ql })
+        -- locked: nothing written, nothing made
+        ns.GuideUnlocked = function() return false end
+        fireEvent("QUEST_ACCEPTED", 9680)
+        if ns.root.plannerTimed ~= nil then error("locked: nothing written") end
+        ns.GuideUnlocked = function() return true end
+        -- hidden, or no clock: nothing
+        allowed = setmetatable({ __secret = true }, secretmt)
+        fireEvent("QUEST_ACCEPTED", 9680)
+        allowed = 0
+        fireEvent("QUEST_ACCEPTED", 9680)
+        if ns.root.plannerTimed ~= nil then error("a hidden time, or none: nothing written") end
+        -- a clock on it: remembered for every character
+        allowed = 900.6
+        fireEvent("QUEST_ACCEPTED", 9680)
+        local e = type(ns.root.plannerTimed) == "table" and ns.root.plannerTimed[9680]
+        if not (type(e) == "table" and e.secs == 900 and e.seen == 20000) then error("9680 remembered as 900 seconds, with the day") end
+        if ns.PlannerTimedQuest(9680) ~= 900 or ns.PlannerTimedQuest(9683) ~= nil then error("PlannerTimedQuest reads the memory") end
+        -- the event's other form (log index, quest id)
+        allowed = 450
+        fireEvent("QUEST_ACCEPTED", 3, 9684)
+        if ns.PlannerTimedQuest(9684) ~= 450 or ns.root.plannerTimed[3] ~= nil then error("QUEST_ACCEPTED (index, id): the id") end
+        ns.root.plannerTimed[9684] = nil
+        -- an older plain number still reads
+        ns.root.plannerTimed[9685] = 120
+        if ns.PlannerTimedQuest(9685) ~= 120 then error("an older plain number reads as its seconds") end
+        ns.root.plannerTimed[9685] = nil
+        -- at most 500: the oldest seen go first (a plain number: oldest of all)
+        local keep = ns.root.plannerTimed
+        ns.root.plannerTimed = {}
+        for id = 1, 499 do ns.root.plannerTimed[id] = { secs = 60, seen = 1000 + id } end
+        ns.root.plannerTimed[700] = 60
+        allowed = 300
+        fireEvent("QUEST_ACCEPTED", 9999)
+        local n = 0
+        for _ in pairs(ns.root.plannerTimed) do n = n + 1 end
+        if n ~= 500 or ns.root.plannerTimed[700] ~= nil or ns.PlannerTimedQuest(9999) ~= 300 then error("at most 500, a plain number first: " .. n) end
+        fireEvent("QUEST_ACCEPTED", 9998)
+        n = 0
+        for _ in pairs(ns.root.plannerTimed) do n = n + 1 end
+        if n ~= 500 or ns.root.plannerTimed[1] ~= nil or ns.PlannerTimedQuest(2) ~= 60 or ns.PlannerTimedQuest(9998) ~= 300 then error("at most 500, the oldest seen next: " .. n) end
+        ns.root.plannerTimed = keep
+        -- the plan: 9680 is not in the log, but known timed: a run of its own, first in its hub, nothing gathered on the way
+        env.C_Map = setmetatable({ GetWorldPosFromMapPos = function(map, v) if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end end }, { __index = saved.map })
+        env.CreateVector2D = function(x, y) return { x = x, y = y } end
+        env.GetProfessions = function() return 1 end
+        env.GetProfessionInfo = function() return "Herbalism", 0, 100, 150, 0, 0, 182 end
+        ns.db.plannerExplore = nil
+        ns.plannerExploreMaps = {}
+        env.C_MapExplorationInfo = { GetExploredMapTextures = function() return { 1 } end,   -- (map 1 reports exploring; around the hub nothing is explored yet)
+            GetExploredAreaIDsAtPosition = function(map, v) local x, y = v.x * 100, v.y * 100; if map == 1 and x >= 28 and x <= 35 and y >= 38 and y <= 45 then return nil end return { 7 } end }
+        ns.root.plannerNodesSeen = { [1] = { { name = "Peacebloom", x = 31, y = 41, skill = 182 } } }   -- (beside the run from 9680's giver to its monsters)
+        local function at(x, y) return { { map = 1, x = x, y = y } } end
+        local function q(id, x, y, xp)
+            return { id = id, name = "Q" .. id, level = 14, minLevel = 1, xp = xp, starts = at(x, y), ends = at(x, y),
+                     objectives = { { kind = "kill", count = 4, countKnown = true, mobLevel = 14, spots = at(x + 3, y + 3) } },
+                     pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+        end
+        local function route(first)
+            local recs = { [9681] = q(9681, 30, 40, 900), [first] = q(first, 29.5, 39.5, 100) }
+            local source = { kind = "test", ids = function() return { 9681, first } end, quest = function(id) return recs[id] end, inns = function() return {} end }
+            ns.root.planner = nil
+            return ns.PlannerRoute({ source = source, level = 14, group = "solo", inGroup = false, speed = 7, faction = "Alliance", xp = 0, xpMax = 10000,
+                done = function() return false end, onQuest = function() return false end, here = { map = 1, x = 30, y = 40 },
+                crossings = {}, learnFlights = false, bind = "Elsewhere", bindSpot = { map = 9, x = 1, y = 1 }, pace = 1, flights = {},
+                flightTime = function() return nil end, timed = function() return false end, itemCount = function() return 0 end })
+        end
+        local function seq(guide)
+            local o = {}
+            for _, st in ipairs(guide.steps) do
+                if st.quest then o[#o + 1] = st.kind .. ":" .. st.quest .. (st.timed and "!" or "")
+                elseif st.kind == "gather" or st.kind == "explore" then o[#o + 1] = st.kind end
+            end
+            return table.concat(o, " ")
+        end
+        local s = seq(route(9680))
+        if not s:find("^accept:9680! do:9680! turnin:9680! .-accept:9681") then error("a timed run first, nothing gathered inside it: " .. s) end
+        -- one written into the table: the same
+        ns.PLANNER_TIMED[9682] = 600
+        s = seq(route(9682))
+        if not s:find("^accept:9682! do:9682! turnin:9682! .-accept:9681") then error("ns.PLANNER_TIMED: a timed run first: " .. s) end
+        ns.PLANNER_TIMED[9682] = nil
+        if ns.PlannerTimedQuest(9682) ~= nil then error("removed from the table: not timed") end
+        -- one nobody knows: the hub's normal order
+        s = seq(route(9683))
+        if s:find("!", 1, true) or not s:find("^accept:9681") then error("unknown: the normal order: " .. s) end
+        if not (s:find("explore", 1, true) and s:find("gather", 1, true)) then error("not timed: the same legs get the explore and gather steps: " .. s) end
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    ns.PLANNER_TIMED[9682] = nil
+    ns.GuideUnlocked, ns.root.plannerTimed, env.C_QuestLog, env.C_Map = saved.unlocked, saved.timed, saved.ql, saved.map
+    rawset(env, "C_MapExplorationInfo", saved.mex); ns.plannerExploreMaps = saved.exMaps; rawset(env, "time", saved.time)
+    rawset(env, "CreateVector2D", saved.vec)
+    ns.root.planner, ns.root.plannerNodesSeen, env.GetProfessions, env.GetProfessionInfo, ns.db.plannerExplore = saved.planner, saved.nodes, saved.profs, saved.info, saved.explore
+    if not ok then error(err, 0) end
+end)
 -- batch 6 tests B (questie): end
 -- batch 6 tests C (route): begin
 -- batch 6 tests C (route): end
