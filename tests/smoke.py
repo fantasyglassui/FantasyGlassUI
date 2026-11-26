@@ -18527,6 +18527,91 @@ try("13.6 leftovers B: gathering from Questie", function()
     ns.GuideHere = saved.here
     if not ok then error(err, 0) end
 end)
+try("13.6 leftovers B: timed quests before you take them", function()
+    local saved = { unlocked = ns.GuideUnlocked, timed = ns.root.plannerTimed, order = ns.root.plannerTimedOrder, ql = env.C_QuestLog, map = env.C_Map,
+                    vec = rawget(env, "CreateVector2D"), planner = ns.root.planner, nodes = ns.root.plannerNodesSeen, profs = env.GetProfessions,
+                    info = env.GetProfessionInfo, explore = ns.db.plannerExplore, known = ns.PLANNER_TIMED, errors = #ns.errors }
+    local allowed = 900
+    local ok, err = pcall(function()
+        if type(ns.PLANNER_TIMED) ~= "table" or next(ns.PLANNER_TIMED) ~= nil then error("ns.PLANNER_TIMED starts empty") end
+        if type(ns.PlannerTimedQuest) ~= "function" then error("ns.PlannerTimedQuest") end
+        ns.root.plannerTimed, ns.root.plannerTimedOrder = nil, nil
+        env.C_QuestLog = setmetatable({ GetTimeAllowed = function() return allowed, 0 end }, { __index = saved.ql })
+        -- locked: nothing written, nothing made
+        ns.GuideUnlocked = function() return false end
+        fireEvent("QUEST_ACCEPTED", 9680)
+        if ns.root.plannerTimed ~= nil then error("locked: nothing written") end
+        ns.GuideUnlocked = function() return true end
+        -- hidden, or no clock: nothing
+        allowed = setmetatable({ __secret = true }, secretmt)
+        fireEvent("QUEST_ACCEPTED", 9680)
+        allowed = 0
+        fireEvent("QUEST_ACCEPTED", 9680)
+        if ns.root.plannerTimed ~= nil then error("a hidden time, or none: nothing written") end
+        -- a clock on it: remembered for every character
+        allowed = 900.6
+        fireEvent("QUEST_ACCEPTED", 9680)
+        if not (type(ns.root.plannerTimed) == "table" and ns.root.plannerTimed[9680] == 900) then error("9680 remembered as 900 seconds") end
+        if ns.PlannerTimedQuest(9680) ~= 900 or ns.PlannerTimedQuest(9683) ~= nil then error("PlannerTimedQuest reads the memory") end
+        -- at most 500: the oldest go first
+        local keep = ns.root.plannerTimed
+        ns.root.plannerTimed, ns.root.plannerTimedOrder = {}, {}
+        for id = 1, 500 do ns.root.plannerTimed[id] = 60; ns.root.plannerTimedOrder[id] = id end
+        allowed = 300
+        fireEvent("QUEST_ACCEPTED", 9999)
+        local n = 0
+        for _ in pairs(ns.root.plannerTimed) do n = n + 1 end
+        if n ~= 500 or ns.root.plannerTimed[1] ~= nil or ns.root.plannerTimed[2] ~= 60 or ns.root.plannerTimed[9999] ~= 300 then error("at most 500, the oldest first: " .. n) end
+        ns.root.plannerTimed, ns.root.plannerTimedOrder = keep, nil
+        -- the plan: 9680 is not in the log, but known timed: a run of its own, first in its hub, nothing gathered on the way
+        env.C_Map = setmetatable({ GetWorldPosFromMapPos = function(map, v) if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end end }, { __index = saved.map })
+        env.CreateVector2D = function(x, y) return { x = x, y = y } end
+        env.GetProfessions = function() return 1 end
+        env.GetProfessionInfo = function() return "Herbalism", 0, 100, 150, 0, 0, 182 end
+        ns.db.plannerExplore = false
+        ns.root.plannerNodesSeen = { [1] = { { name = "Peacebloom", x = 31, y = 41, skill = 182 } } }   -- (beside the run from 9680's giver to its monsters)
+        local function at(x, y) return { { map = 1, x = x, y = y } } end
+        local function q(id, x, y, xp)
+            return { id = id, name = "Q" .. id, level = 14, minLevel = 1, xp = xp, starts = at(x, y), ends = at(x, y),
+                     objectives = { { kind = "kill", count = 4, countKnown = true, mobLevel = 14, spots = at(x + 3, y + 3) } },
+                     pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+        end
+        local function route(first)
+            local recs = { [9681] = q(9681, 30, 40, 900), [first] = q(first, 29.5, 39.5, 100) }
+            local source = { kind = "test", ids = function() return { 9681, first } end, quest = function(id) return recs[id] end, inns = function() return {} end }
+            ns.root.planner = nil
+            return ns.PlannerRoute({ source = source, level = 14, group = "solo", inGroup = false, speed = 7, faction = "Alliance", xp = 0, xpMax = 10000,
+                done = function() return false end, onQuest = function() return false end, here = { map = 1, x = 30, y = 40 },
+                crossings = {}, learnFlights = false, bind = "Elsewhere", bindSpot = { map = 9, x = 1, y = 1 }, pace = 1, flights = {},
+                flightTime = function() return nil end, timed = function() return false end, itemCount = function() return 0 end })
+        end
+        local function seq(guide)
+            local o = {}
+            for _, st in ipairs(guide.steps) do
+                if st.quest then o[#o + 1] = st.kind .. ":" .. st.quest .. (st.timed and "!" or "")
+                elseif st.kind == "gather" or st.kind == "explore" then o[#o + 1] = st.kind end
+            end
+            return table.concat(o, " ")
+        end
+        local s = seq(route(9680))
+        if not s:find("^accept:9680! do:9680! turnin:9680! .-accept:9681") then error("a timed run first, nothing gathered inside it: " .. s) end
+        -- one written into the table: the same
+        ns.PLANNER_TIMED[9682] = 600
+        s = seq(route(9682))
+        if not s:find("^accept:9682! do:9682! turnin:9682! .-accept:9681") then error("ns.PLANNER_TIMED: a timed run first: " .. s) end
+        ns.PLANNER_TIMED[9682] = nil
+        if ns.PlannerTimedQuest(9682) ~= nil then error("removed from the table: not timed") end
+        -- one nobody knows: the hub's normal order
+        s = seq(route(9683))
+        if s:find("!", 1, true) or not s:find("^accept:9681") then error("unknown: the normal order: " .. s) end
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    ns.PLANNER_TIMED[9682] = nil
+    ns.GuideUnlocked, ns.root.plannerTimed, ns.root.plannerTimedOrder, env.C_QuestLog, env.C_Map = saved.unlocked, saved.timed, saved.order, saved.ql, saved.map
+    rawset(env, "CreateVector2D", saved.vec)
+    ns.root.planner, ns.root.plannerNodesSeen, env.GetProfessions, env.GetProfessionInfo, ns.db.plannerExplore = saved.planner, saved.nodes, saved.profs, saved.info, saved.explore
+    if not ok then error(err, 0) end
+end)
 -- batch 6 tests B (questie): end
 -- batch 6 tests C (route): begin
 -- batch 6 tests C (route): end

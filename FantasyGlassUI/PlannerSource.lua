@@ -904,3 +904,59 @@ do
     for e in pairs(SEEN_EVENT) do pcall(ev.RegisterEvent, ev, e) end
     ev:SetScript("OnEvent", ns:Guard("PlannerSeen", function(_, event) if SEEN_EVENT[event] then ns.PlannerSeen(SEEN_EVENT[event]) end end))
 end
+
+------------------------------------------------------------------------------------------
+-- Timed quests known before you take them. Questie has no timer data, so there are two sources of
+-- our own: ns.PLANNER_TIMED (written by hand) and a per-account memory of every quest any of your
+-- characters accepted with a clock on it (ns.root.plannerTimed[questID] = seconds, written only while
+-- the guide is unlocked; at most ns.PLANNER_TIMED_CAP, the oldest go first: their order is kept in
+-- ns.root.plannerTimedOrder). The route plans such a quest as a timed run before you take it.
+------------------------------------------------------------------------------------------
+ns.PLANNER_TIMED = {}             -- { [questID] = seconds }: fill from the in-game checks
+ns.PLANNER_TIMED_CAP = 500
+
+local function Seconds(v) if type(v) == "number" and not ns:IsSecret(v) and v > 0 then return v end end
+
+-- How long a quest gives you, in seconds, when it is known to be timed; else nil.
+function ns.PlannerTimedQuest(id)
+    id = tonumber(id)
+    if not id then return nil end
+    local s = Seconds(ns.PLANNER_TIMED[id])
+    if s then return s end
+    local root = ns.root
+    local mem = type(root) == "table" and type(root.plannerTimed) == "table" and root.plannerTimed or nil
+    return mem and Seconds(mem[id]) or nil
+end
+
+function ns.PlannerRecordTimed(id)
+    if type(id) ~= "number" or ns:IsSecret(id) or not ns:GuideUnlocked() or type(ns.root) ~= "table" then return end
+    local QL = C_QuestLog
+    if not (QL and type(QL.GetTimeAllowed) == "function") then return end
+    local ok, total = pcall(QL.GetTimeAllowed, id)
+    local secs = ok and Seconds(total) or nil
+    if not secs then return end
+    secs = math.floor(secs)
+    if secs <= 0 then return end
+    if type(ns.root.plannerTimed) ~= "table" then ns.root.plannerTimed = {} end
+    if type(ns.root.plannerTimedOrder) ~= "table" then ns.root.plannerTimedOrder = {} end
+    local mem, order = ns.root.plannerTimed, ns.root.plannerTimedOrder
+    for i = #order, 1, -1 do if order[i] == id then table.remove(order, i) end end
+    mem[id] = secs
+    order[#order + 1] = id
+    local n = 0
+    for _ in pairs(mem) do n = n + 1 end
+    while n > ns.PLANNER_TIMED_CAP and #order > 0 do       -- (the oldest first)
+        local old = table.remove(order, 1)
+        if mem[old] ~= nil then mem[old] = nil; n = n - 1 end
+    end
+end
+
+do
+    local ev = CreateFrame("Frame")
+    pcall(ev.RegisterEvent, ev, "QUEST_ACCEPTED")
+    ev:SetScript("OnEvent", ns:Guard("PlannerTimed", function(_, event, a, b)
+        if event ~= "QUEST_ACCEPTED" then return end
+        local id = (type(b) == "number") and b or a           -- (questID; older clients send the log index first)
+        ns.PlannerRecordTimed(id)
+    end))
+end
