@@ -714,7 +714,7 @@ function ns.PlannerDuoLine(st, steps, at)
     if not (p and d.planId and p.planId == d.planId) then return nil end
     at = tonumber(at) or 1
     local step = type(steps) == "table" and steps[at] or nil
-    if type(step) == "table" and WAIT_KINDS[step.kind] and p.at < at then return format(ns:Tr("Wait for %s here"), d.partner) end
+    if type(step) == "table" and WAIT_KINDS[step.kind] and p.at < at then return format(ns:Tr("%s is behind: wait for them here before you go on"), d.partner) end
     if p.at > at then return format(ns:Tr("%s: done"), d.partner) end
     if p.at == at then return format(ns:Tr("%s: on this step"), d.partner) end
     if at - p.at == 1 then return format(ns:Tr("%s: 1 step behind"), d.partner) end

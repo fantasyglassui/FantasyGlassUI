@@ -170,6 +170,7 @@ ns.GuideRegisterLine("race", RaceLine)
 ------------------------------------------------------------------------------------------
 local LEFT_OFF_SECONDS = 120
 local leftOff                                    -- { text, till }
+local leftOffWanted = false                      -- (an initial login: the line waits for the first plan)
 
 function ns.PlannerLeftOff()
     leftOff = nil
@@ -192,10 +193,17 @@ function ns.PlannerLeftOff()
     leftOff = { text = text, till = GetTime() + LEFT_OFF_SECONDS }
     ns:PrintRaw(text)
     if ns.GuideRedraw then ns:GuideRedraw() end
-    ns:After(LEFT_OFF_SECONDS + 1, function() leftOff = nil; if ns.GuideRedraw then ns:GuideRedraw() end end)
+    ns:After(LEFT_OFF_SECONDS + 1, ns:Guard("Planner records", function() leftOff = nil; if ns.GuideRedraw then ns:GuideRedraw() end end))
     return text
 end
 
+-- The login's line, once: from the first plan applied after it, or after 20 s from the saved one.
+function ns.PlannerLeftOffDue()
+    if not leftOffWanted then return nil end
+    leftOffWanted = false
+    return ns.PlannerLeftOff()
+end
+if ns.PlannerHook then ns.PlannerHook("applied", "leftoff", function() ns.PlannerLeftOffDue() end) end
 ns.GuideRegisterLine("leftoff", function()
     if not leftOff then return nil end
     if GetTime() >= leftOff.till or not Unlocked() or not (ns.db and ns.db.plannerLeftOff ~= false) then leftOff = nil; return nil end
@@ -297,7 +305,10 @@ do
         elseif event == "PLAYER_LEVEL_UP" then
             if type(a) == "number" and a > 1 then ns.PlannerRecordLevel(a - 1) end
         elseif event == "PLAYER_ENTERING_WORLD" and a == true then       -- (an initial login: not a reload, not a loading screen)
-            ns.PlannerLeftOff()
+            -- said from the first plan made after the login (the saved one is replaced a moment later), or from the
+            -- saved one when no plan comes within 20 s
+            leftOffWanted = true
+            ns:After(20, ns:Guard("Planner records", function() ns.PlannerLeftOffDue() end))
         end
     end))
     local acc, last = 0, nil

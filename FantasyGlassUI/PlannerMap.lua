@@ -158,16 +158,22 @@ function ns.PlannerMapPick(spot)
     if not (ns.GuideUnlocked and ns:GuideUnlocked()) or type(spot) ~= "table" then return nil end
     local w
     local function Close() if w and w.Hide then w:Hide() end end
-    w = ns:ShowList("PlanHere", "Plan from here?", {
-        { left = ns:Tr("Plan from here"), click = function()
+    local lines = {
+        { left = ns:Tr("Plan from here"), action = true, click = function()
             Close()
             ns.plannerFromHere = { map = spot.map, x = spot.x, y = spot.y, at = Now() }
             local ok, refused = ns:PlannerReplan("from here")
             if not ok and not refused then ns:PlannerStart() end    -- (not following: start; a refused replan stays refused)
-            if refused then ns.plannerFromHere = nil end            -- (and its pick goes: a later plan of your own does not start from it)
+            if refused then
+                ns.plannerFromHere = nil                            -- (and its pick goes: a later plan of your own does not start from it)
+                if ns.GuideSaySent then ns.GuideSaySent() end       -- (planning together: your partner plans)
+            end
         end },
-        { left = ns:Tr("Cancel"), click = Close },
-    }, nil, 260, 130)
+        { left = ns:Tr("Cancel"), action = true, click = Close },
+    }
+    local goal = ns.PlannerZoneGoal and ns.PlannerZoneGoal()
+    if goal and goal ~= spot.map then lines[#lines + 1] = { left = ns:Tr("Your zone goal resumes after this hub."), tone = "dim", wrap = true } end
+    w = ns:ShowList("PlanHere", "Plan from here?", lines, nil, 280, goal and 170 or 140)
     test.window = w
     return w
 end
@@ -178,6 +184,11 @@ local function Mark(i)
         m = CreateFrame("Button", nil, holder)
         m:SetSize(24, 24)                                    -- (a 24 click target round a 20 ring)
         m:SetFrameLevel(holderLevel + 1)
+        m.back = m:CreateTexture(nil, "BACKGROUND")         -- (a dark disc, so the ring and its digit read on a pale map)
+        m.back:SetPoint("TOPLEFT", 3, -3)
+        m.back:SetPoint("BOTTOMRIGHT", -3, 3)
+        m.back:SetTexture(ns.MEDIA .. "dot.tga")
+        m.back:SetVertexColor(0, 0, 0, 0.6)
         m.tex = m:CreateTexture(nil, "ARTWORK")
         m.tex:SetPoint("TOPLEFT", 2, -2)
         m.tex:SetPoint("BOTTOMRIGHT", -2, 2)
@@ -185,11 +196,6 @@ local function Mark(i)
         ns:Paint(m.tex, "SetVertexColor", "@light", 1)
         m.tier = m:CreateFontString(nil, "OVERLAY")
         ns:Font(m.tier, 11, true)
-        m.back = m:CreateTexture(nil, "BACKGROUND")         -- (a dark disc, so the ring and its digit read on a pale map)
-        m.back:SetPoint("TOPLEFT", 3, -3)
-        m.back:SetPoint("BOTTOMRIGHT", -3, 3)
-        m.back:SetTexture(ns.MEDIA .. "dot.tga")
-        m.back:SetVertexColor(0, 0, 0, 0.6)
         m.tier:SetPoint("CENTER")
         ns:Paint(m.tier, "SetTextColor", "@light")
         if m.RegisterForClicks then m:RegisterForClicks("LeftButtonUp") end
@@ -234,13 +240,13 @@ function ns.PlannerMapDraw(mapID)
                         d:ClearAllPoints()
                         d:SetPoint("CENTER", holder, "TOPLEFT", At(s.x, s.y))
                         d.num:SetText(s.n)
+                        d.n, d.step = s.n, s.step
                         d:Show()
                         if prev then
                             nLines = nLines + 1
                             local l = Line(nLines)
                             local ax, ay = At(prev.x, prev.y)
                             local bx, by = At(s.x, s.y)
-                        d.n, d.step = s.n, s.step
                             l:SetStartPoint("TOPLEFT", holder, ax, ay)
                             l:SetEndPoint("TOPLEFT", holder, bx, by)
                             l:Show()

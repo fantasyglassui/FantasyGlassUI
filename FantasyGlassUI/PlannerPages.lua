@@ -146,8 +146,13 @@ function ns.PlannerPreviewLines(guide, summary)
     local moved = ns.GuideMovedText and ns.GuideMovedText(summary)
     if moved then lines[#lines + 1] = { left = moved, tone = "dim" } end
     local function Close() if previewWindow then previewWindow:Hide() end end
-    lines[#lines + 1] = { left = ns:Tr("Follow"), color = { 1, 0.82, 0.3 }, click = Close }
-    lines[#lines + 1] = { left = ns:Tr("Plan again"), color = { 1, 0.82, 0.3 }, click = function()
+    -- (the route is followed already: Close; Plan again plans again, as the panel's button; the settings are their own entry)
+    lines[#lines + 1] = { left = ns:Tr("Close"), action = true, click = Close }
+    lines[#lines + 1] = { left = ns:Tr("Plan again"), action = true, click = function()
+        Close()
+        ns:GuidePlanAgain()
+    end }
+    lines[#lines + 1] = { left = ns:Tr("Change what it plans"), action = true, click = function()
         Close()
         if ns.ToggleConfig then ns:ToggleConfig("guide") end
     end }
@@ -311,6 +316,7 @@ end)
 
 ns.GuideRegisterLine("zoneGoal", function(st)
     if not (Unlocked() and type(st) == "table" and st.name ~= nil and st.name == ns.GUIDE_PLANNED) then return nil end
+    if ns.PlannerZoneGoal() and type(st.summary) == "table" and st.summary.source == "log" then return ns:Tr("Zone goal needs Questie") end   -- (the quest log alone cannot count a zone)
     local zg = type(st.summary) == "table" and st.summary.zoneGoal
     if type(zg) ~= "table" or not (tonumber(zg.done) and tonumber(zg.total)) then return nil end
     return format(ns:Tr("Zone: %d of %d quests"), zg.done, zg.total)

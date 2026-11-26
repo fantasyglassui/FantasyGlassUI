@@ -121,6 +121,7 @@ end
 -- Why a planned step is there: what an accept is worth, or the time a trip saves. Only on the planned guide, only if switched on.
 local function WhyText(step, guide)
     if not (type(guide) == "table" and guide.name ~= nil and guide.name == ns.GUIDE_PLANNED and ns.db and ns.db.plannerWhy ~= false) then return "" end
+    if step.timed then return "  " .. ns:Tr("(timed: go straight on)") end
     local why = type(step.why) == "table" and step.why
     if not why then return "" end
     local xp, saves = tonumber(why.xp), tonumber(why.saves)
@@ -141,8 +142,19 @@ end
 function ns.GuideStepText(step, guide)
     return ns.GuideStepBase(step) .. WhyText(step, guide)
 end
+-- Has the game marked this quest failed (a timed or escort quest)?
+local function Failed(q)
+    local f = type(q) == "number" and C_QuestLog and C_QuestLog.IsFailed
+    if type(f) ~= "function" then return false end
+    local ok, v = pcall(f, q)
+    return ok and ns.Is(v, true)
+end
+ns.GuideQuestFailed = Failed
 function ns.GuideStepBase(step)
     local k = step.kind
+    if k == "do" and Failed(step.quest) then
+        return (step.text or (step.title or ("#" .. step.quest))) .. "  " .. ns:Tr("(failed: abandon it and take it again)")
+    end
     if k == "accept" then return ns:Tr("Accept") .. ": " .. (step.title or ("#" .. step.quest)) .. (step.text and ("  (" .. step.text .. ")") or "") end
     if k == "turnin" then return ns:Tr("Turn in") .. ": " .. (step.title or ("#" .. step.quest)) .. (step.text and ("  (" .. step.text .. ")") or "") end
     if k == "do" then return step.text or (step.title or ("#" .. step.quest)) end
@@ -167,10 +179,15 @@ function ns.GuideStepDone(step, world, ticked)
     if k == "goto" then return world.near(step) end
     if k == "level" then return (world.level or 0) >= step.level end
     local function Ask1(fn, arg) return type(fn) == "function" and fn(arg) == true end
-    if k == "fly" then
-        if step.node then return Ask1(world.landedAt, step.node) end
-        return step.x ~= nil and Ask1(world.near, step)
+    local function Landed(to)                                 -- (where a flight or the hearthstone takes you: within 60 yards)
+        return type(to) == "table" and type(world.near) == "function" and world.near(to, 60) == true
     end
+    if k == "fly" then
+        if step.node and Ask1(world.landedAt, step.node) then return true end
+        if Landed(step.to) then return true end
+        return not step.node and step.x ~= nil and Ask1(world.near, step)
+    end
+    if k == "hearth" then return Landed(step.to) or Ask1(world.hearthed, step) end
     if k == "learnflight" then return Ask1(world.knownFlight, step.node) end
     if k == "sail" then return Ask1(world.crossed, step.crossing) end
     if k == "bind" then return world.bind ~= nil and world.bind == step.text end
@@ -223,8 +240,10 @@ function ns:GuideWorld()
         completed = function(id) return Ask(Q.IsQuestFlaggedCompleted, id) end,
         ready = function(id) return Ask(Q.IsComplete, id) or Ask(Q.ReadyForTurnIn, id) end,
         level = (type(level) == "number" and not Secret(level)) and level or 0,
-        near = function(step)
+        hearthed = function(step) return ns.GuideHearthed(step, bind) end,
+        near = function(step, radius)
             if not (step.x and step.y and ns.MapPosition and ns.WayArrow) then return false end
+            if ns.Yes(UnitIsDeadOrGhost and UnitIsDeadOrGhost("player")) then return false end   -- (a ghost running to its body passes places, never reaches them)
             local map = step.map or Here()
             if not map then return false end
             local px, py = ns.MapPosition(map, "player")
@@ -232,9 +251,30 @@ function ns:GuideWorld()
             local w, h = 1000, 667
             if ns.MapWorldSize then w, h = ns.MapWorldSize(map) end
             local _, distance = ns.WayArrow(px, py, step.x / 100, step.y / 100, w, h, 0)
-            return distance < ns.GUIDE_NEAR
+            return distance < (tonumber(radius) or ns.GUIDE_NEAR)
         end,
     }
+end
+-- The hearth step without a place: done once you stand where your hearthstone is set (by the place's name, as the
+-- game gives it) after being somewhere else while the step was up. `hearthFrom`: that step, and whether you were away.
+local hearthFrom
+local function ZoneTexts()
+    local out = {}
+    for _, f in ipairs({ GetMinimapZoneText, GetSubZoneText, GetZoneText }) do
+        if type(f) == "function" then
+            local ok, t = pcall(f)
+            if ok and type(t) == "string" and not Secret(t) and t ~= "" then out[#out + 1] = t end
+        end
+    end
+    return out
+end
+function ns.GuideHearthed(step, bind)
+    if type(bind) ~= "string" then return false end
+    local here = false
+    for _, t in ipairs(ZoneTexts()) do if t == bind then here = true end end
+    if not (hearthFrom and hearthFrom.step == step) then hearthFrom = { step = step, away = not here } end
+    if not here then hearthFrom.away = true; return false end
+    return hearthFrom.away == true
 end
 
 -- Guides kept with the settings (for every character), and the one this character is following ----
@@ -284,6 +324,7 @@ ns.GuideState = State
 
 local panel
 local Draw
+local FailedCheck, NotHere                          -- (the guide's events and its 1 s look, below)
 
 -- Seams (what the planner uses of the guide):
 --   GUIDE_PLANNED
@@ -554,6 +595,15 @@ end
 
 local StepKey
 local seenKey, freshPlan = nil, false               -- (the last step the advance hooks saw; a new plan's first advance)
+-- A planned route that ran out (its last step was not a hand-in, or one handed in far away): plan what is next, at
+-- most once a minute (a plan that is all done already does not plan again and again).
+local endReplanAt
+local function EndReplan()
+    local now = GetTime and GetTime() or 0
+    if endReplanAt and now >= endReplanAt and now - endReplanAt < 60 then return end
+    endReplanAt = now
+    ns:GuidePlanAgain("end")
+end
 -- Move on to the first step that is not done. Returns the step and its number (nil at the end).
 function ns:GuideAdvance()
     local st = State()
@@ -576,9 +626,17 @@ function ns:GuideAdvance()
     end
     local step = guide.steps[st.at]
     if st.at ~= before and PlaySound and SOUNDKIT and ns.db.guideSound ~= false then pcall(PlaySound, SOUNDKIT.IG_QUEST_LIST_SELECT or 875) end
+    local planned = st.name == ns.GUIDE_PLANNED
     if not step and not st.finished then
         st.finished = true
-        if st.name ~= ns.GUIDE_PLANNED then ns:Print("Guide finished: %s", tostring(guide.name)) end
+        if not planned then ns:Print("Guide finished: %s", tostring(guide.name))
+        elseif #guide.steps > 0 and not (type(st.summary) == "table" and st.summary.empty) then EndReplan() end   -- (the plan ran out: the next one)
+    end
+    if planned and step then                                  -- (past the hearthstone: plan from where it took you)
+        for i = before, st.at - 1 do
+            local s = guide.steps[i]
+            if type(s) == "table" and s.kind == "hearth" and not (skipped and skipped[i]) and not st.ticked[i] then ns:GuidePlanAgain("hearth"); break end
+        end
     end
     Point(step, st.at)
     if Draw then Draw() end
@@ -598,7 +656,9 @@ function ns:GuideFollow(name)
     if not guide then ns:Print("There is no guide called \"%s\". /fgui guide lists them.", tostring(name)); return false end
     local _, state = Store()
     local old = state[ns:CharKey()]
-    state[ns:CharKey()] = (old and old.name == name) and old or { name = name, at = 1, ticked = {} }
+    local kept = type(old) == "table" and type(old.written) == "table" and old.written[name]   -- (where you were in it before a plan took over)
+    state[ns:CharKey()] = (old and old.name == name) and old
+        or { name = name, at = (type(kept) == "table" and tonumber(kept.at)) or 1, ticked = (type(kept) == "table" and type(kept.ticked) == "table") and kept.ticked or {} }
     state[ns:CharKey()].finished = nil
     if ns.PlannerStop then ns:PlannerStop() end
     pointed, freshPlan = nil, true
@@ -628,9 +688,15 @@ function ns:GuideSetPlan(guide, summary)
     end
     for i, step in ipairs(plan.steps) do
         local k = StepKey(step)
-        if (had[k] or 0) > 0 then had[k] = had[k] - 1; ticked[i] = true end
+        -- (a quest step is never carried: the game says whether you have it, finished it or handed it in, and a
+        -- tick left from a quest you could not take would hold its steps for good)
+        if (had[k] or 0) > 0 and not QUEST_KIND[step.kind] then had[k] = had[k] - 1; ticked[i] = true end
     end
-    state[ns:CharKey()] = { name = ns.GUIDE_PLANNED, at = 1, ticked = ticked, summary = summary, plan = plan }
+    local written = type(old) == "table" and type(old.written) == "table" and old.written or nil
+    if type(old) == "table" and old.name ~= nil and old.name ~= ns.GUIDE_PLANNED and ns:GuideGet(old.name) then   -- (a written guide: its place kept)
+        written = { [old.name] = { at = old.at, ticked = old.ticked } }
+    end
+    state[ns:CharKey()] = { name = ns.GUIDE_PLANNED, at = 1, ticked = ticked, summary = summary, plan = plan, written = written }
     pointed, freshPlan = nil, true
     ns:GuideShowPanel()
     ns:GuideAdvance()
@@ -711,6 +777,7 @@ local function Planned(st) return st.name ~= nil and st.name == ns.GUIDE_PLANNED
 local TitleBase
 local function Title(st, guide)
     local text = TitleBase(st, guide)
+    if Planned(st) and (ns.plannerQueued or ns.plannerBusy) then text = text .. " · " .. ns:Tr("planning...") end   -- (Plan again was heard)
     for _, e in ipairs(titleParts) do
         local t = Hook(e.key, e.fn, st)
         if type(t) == "string" and t ~= "" then text = text .. " · " .. t end
@@ -730,7 +797,7 @@ local function EndText(st)
     local s = type(st.summary) == "table" and st.summary
     if not s then return ns:Tr("Planning your route...") end
     if s.empty then return ns:Tr("No quests left worth the trip; grinding or a dungeon may be faster") end
-    return ns:Tr("This guide is finished.")
+    return ns:Tr("Planning what's next...")
 end
 -- (from a plan's summary: the planner's preview shows the same line)
 function ns.GuideSkippedText(s)
@@ -810,8 +877,12 @@ function ns:GuideSkipped()
     local lines, ids = {}, {}
     for id in pairs(ns.PlannerSkipList and ns.PlannerSkipList() or {}) do if type(id) == "number" then ids[#ids + 1] = id end end
     table.sort(ids)
+    local list = ns.PlannerSkipList and ns.PlannerSkipList() or {}
     for _, id in ipairs(ids) do
-        lines[#lines + 1] = { left = QuestName(id), right = ns:Tr("Suggest again"),
+        local kept = list[id]                                 -- (the name kept with the skip, for a quest no longer in your log)
+        local name = QuestName(id)
+        if name:sub(1, 1) == "#" and type(kept) == "string" and kept ~= "" then name = kept end
+        lines[#lines + 1] = { left = name, right = ns:Tr("Suggest again"),
             click = function()
                 if ns.PlannerSkip then ns.PlannerSkip(id, false) end
                 ns:GuideSkipped()
@@ -904,6 +975,11 @@ function ns:GuideStepMenu(step)
         entries[1] = { skipped and "Suggest again" or "Never suggest this quest", function()
             if ns.PlannerSkip then ns.PlannerSkip(quest, not skipped) end
         end }
+        local st = State()
+        local guide = st and Planned(st) and ns:GuideGet(st.name)
+        if guide and guide.steps[st.at or 1] == step then           -- (the step you are on: this session's plans leave it out)
+            entries[#entries + 1] = { "Skip this quest for now", function() ns:GuideSkipStep() end }
+        end
     end
     for _, e in ipairs(StepEntries(step)) do entries[#entries + 1] = e end
     local menu = ns:GuideMenu(entries)
@@ -1075,6 +1151,7 @@ Draw = function()
         local t = Hook(e.key, e.fn, st, steps, at)
         if type(t) == "string" and t ~= "" then extra[#extra + 1] = t end
     end
+    if planned and st.notHere then table.insert(extra, 1, ns:Tr("Not here? Right-click: skip this quest for now")) end
     texts.extra = #extra > 0 and table.concat(extra, "\n") or nil
     if panel.advice.SetMaxLines then panel.advice:SetMaxLines(math.max(2, #advice * 2)) end   -- (each advice line may take two)
     if panel.extra.SetMaxLines then panel.extra:SetMaxLines(math.max(2, #extra * 2)) end
@@ -1119,6 +1196,7 @@ Draw = function()
     panel.tipLines = tip
     panel.bar:SetMinMaxValues(0, math.max(1, #steps))
     panel.bar:SetValue(math.min(at - 1, #steps))
+    panel.bar:SetShown(not planned)                 -- (a plan starts again at 1 with each replan: its bar would never move on)
     Layout()
 end
 -- (the lettering or the theme changed: the buttons measured again, the fill's strength, every line placed again)
@@ -1233,7 +1311,7 @@ function ns:GuideShowPanel()
         panel.stepButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
         local back = ns:CreateButton(panel, "<", 24, FOOTER_H, function() ns:GuideSkip(true) end)
         back:SetPoint("BOTTOMLEFT", 8, 6)
-        local skip = ns:CreateButton(panel, ">", 24, FOOTER_H, function() ns:GuideSkip(false) end)
+        local skip = ns:CreateButton(panel, ">", 24, FOOTER_H, function() ns:GuideNextButton() end)
         skip:SetPoint("LEFT", back, "RIGHT", 4, 0)
         panel.back, panel.skip = back, skip
         panel.again = ns:CreateButton(panel, "Plan again", 72, FOOTER_H, function() ns:GuidePlanAgain() end)
@@ -1252,8 +1330,13 @@ function ns:GuideShowPanel()
         panel.againW = FitButton(panel.again, 72)
         panel.listW = FitButton(list, 64)
         FitButton(panel.talentButton, 56)
-        for _, def in ipairs({ { back, "Back one step" }, { skip, "Tick this step off and move on" }, { list, "Your guides: follow another, record, write or paste one" }, { panel.talentButton, "Open your talent builds" }, { panel.again, "Plan the route again from where you are now" } }) do
-            def[1]:HookScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine(ns:Tr(def[2]), 1, 1, 1); GameTooltip:Show() end)
+        local function NextTip() return ns.GuideNextSkips() and "Skip this step" or "Tick this step off and move on" end
+        for _, def in ipairs({ { back, "Back one step" }, { skip, NextTip }, { list, "Your guides: follow another, record, write or paste one" }, { panel.talentButton, "Open your talent builds" }, { panel.again, "Plan the route again from where you are now" } }) do
+            def[1]:HookScript("OnEnter", function(self)
+                GameTooltip:SetOwner(self, "ANCHOR_TOP")
+                GameTooltip:AddLine(ns:Tr(type(def[2]) == "function" and def[2]() or def[2]), 1, 1, 1)
+                GameTooltip:Show()
+            end)
             def[1]:HookScript("OnLeave", function() GameTooltip:Hide() end)
         end
         local entry = ns:RegisterMovable(panel, "questGuide", "Quest guide")
@@ -1269,12 +1352,49 @@ function ns:GuideShowPanel()
     return panel
 end
 function ns:GuidePanelShown() return (panel and ns.Yes(panel:IsShown())) or false end
+-- What the panel says, as one text to read aloud (the read key, /fgui read guide): the title, the step, the next
+-- steps and every line shown. Nil while the guide is off or the panel hidden.
+function ns.GuideReadText()
+    if not (ns:GuideOn() and ns:GuidePanelShown() and type(panel.tipLines) == "table" and #panel.tipLines > 0) then return nil end
+    local parts = {}
+    for _, t in ipairs(panel.tipLines) do parts[#parts + 1] = (tostring(t):gsub("\n", ". ")) end
+    return table.concat(parts, ". ")
+end
+function ns.GuidePanelUnderMouse()
+    return ns:GuidePanelShown() and panel.IsMouseOver ~= nil and ns.Yes(panel:IsMouseOver()) or false
+end
 -- Plan the route again from where you are (the panel's button, the key binding): no preview, your pace mark
 -- kept. A "replan" hook may refuse it (a duo friend's sends its state, so the leader plans again).
+local toldFriend
 function ns:GuidePlanAgain(reason)
     local st = State()
     if not (st and Planned(st) and ns:GuideOn() and ns.PlannerReplan) then return false end
-    return Hook("again", ns.PlannerReplan, ns, reason or "again") == true
+    local ok = Hook("again", ns.PlannerReplan, ns, reason or "again") == true
+    if not ok and (reason == nil or reason == "again") then ns.GuideSaySent() end
+    if Draw then Draw() end                                  -- (the title says it is planning)
+    return ok
+end
+-- Planning together, as the friend: what you asked for went to your partner, who plans (said at most once a minute).
+function ns.GuideSaySent()
+    if not (ns.PlannerDuoRole and ns.PlannerDuoRole() == "friend") then return false end
+    local now = GetTime and GetTime() or 0
+    if toldFriend and now - toldFriend < 60 then return false end
+    toldFriend = now
+    ns:Print("Sent to %s, who plans the route.", tostring(ns.PlannerDuoPartner and ns.PlannerDuoPartner() or "?"))
+    return true
+end
+-- The panel's ">": on a planned quest step, skip it for this session (a tick would hold that quest's steps); on any
+-- other step, tick it off.
+function ns.GuideNextSkips()
+    local st = State()
+    if not (st and Planned(st)) then return false end
+    local guide = ns:GuideGet(st.name)
+    local step = guide and guide.steps[st.at or 1]
+    return type(step) == "table" and type(step.quest) == "number"
+end
+function ns:GuideNextButton()
+    if ns.GuideNextSkips() then return ns:GuideSkipStep() end
+    return ns:GuideSkip(false)
 end
 
 -- Key bindings (Bindings.xml): next step (tick it off, as the panel's ">"), skip step (ns:GuideSkipStep: passed over,
@@ -1352,21 +1472,31 @@ function ns:GuideRecordStop()
     local done = rec
     rec, ns.guideRecording = nil, nil
     ns:GuideSave(done)
--- What the panel says, as one text to read aloud (the read key, /fgui read guide): the title, the step, the next
--- steps and every line shown. Nil while the guide is off or the panel hidden.
-function ns.GuideReadText()
-    if not (ns:GuideOn() and ns:GuidePanelShown() and type(panel.tipLines) == "table" and #panel.tipLines > 0) then return nil end
-    local parts = {}
-    for _, t in ipairs(panel.tipLines) do parts[#parts + 1] = (tostring(t):gsub("\n", ". ")) end
-    return table.concat(parts, ". ")
-end
-function ns.GuidePanelUnderMouse()
-    return ns:GuidePanelShown() and panel.IsMouseOver ~= nil and ns.Yes(panel:IsMouseOver()) or false
-end
     ns:Print("Recording stopped: \"%s\" has %d steps. /fgui guide edit %s shows them.", done.name, #done.steps, done.name)
     return done
 end
 
+-- The step you are on is a quest the game now marks failed: plan again once (the panel says to abandon and retake it).
+local failedSeen = {}
+FailedCheck = function(st)
+    local guide = ns:GuideGet(st.name)
+    local step = guide and guide.steps[st.at or 1]
+    local q = type(step) == "table" and step.quest
+    if type(q) ~= "number" or failedSeen[q] or not Failed(q) then return end
+    failedSeen[q] = true
+    ns:GuidePlanAgain("failed")
+end
+-- Standing at an accept step's place for a minute without the quest: its giver may not be there (old quest data).
+local notHereAt
+NotHere = function(st, step)
+    if not (Planned(st) and type(step) == "table" and step.kind == "accept" and step.x and ns:GuideWorld().near(step)) then
+        if notHereAt then notHereAt = nil; if st.notHere then st.notHere = nil; if Draw then Draw() end end end
+        return
+    end
+    local now = GetTime and GetTime() or 0
+    if not (notHereAt and notHereAt.step == step) then notHereAt = { step = step, at = now }; return end
+    if now - notHereAt.at >= 60 and not st.notHere then st.notHere = true; if Draw then Draw() end end
+end
 do
     local ev = CreateFrame("Frame")
     for _, e in ipairs({ "QUEST_ACCEPTED", "QUEST_TURNED_IN", "QUEST_LOG_UPDATE", "PLAYER_LEVEL_UP", "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA" }) do pcall(ev.RegisterEvent, ev, e) end
@@ -1382,9 +1512,11 @@ do
                 end
             end
         end
-        if State() then
+        local st = State()
+        if st then
             if event == "PLAYER_ENTERING_WORLD" then ns:GuideShowPanel() end
             ns:After(0.3, function() pcall(ns.GuideAdvance, ns) end)      -- (once the game has caught up)
+            if event == "QUEST_LOG_UPDATE" and Planned(st) then FailedCheck(st) end
         end
     end))
     -- a place is reached without any event: look once a second while following
@@ -1400,7 +1532,8 @@ do
         local step = guide and guide.steps[st.at or 1]
         local reached = LegReached()                          -- (a leg reached: the arrow's next one, on any kind of step)
         if pointPending and not InCombatLockdown() then reached = true end   -- (a leg left for after the fight)
-        if step and (reached or step.kind == "goto" or step.kind == "level" or step.kind == "explore" or step.kind == "gather") then pcall(ns.GuideAdvance, ns) end
+        if step and (reached or step.kind == "goto" or step.kind == "level" or step.kind == "explore" or step.kind == "gather" or step.kind == "hearth" or step.kind == "fly") then pcall(ns.GuideAdvance, ns) end
+        NotHere(st, step)
     end
     ev:SetScript("OnUpdate", Tick)
     ns.guideTickTest = Tick

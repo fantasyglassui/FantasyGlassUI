@@ -9587,8 +9587,11 @@ try("13.0 planner: running it", function()
         -- a step ticked off by hand stays ticked in the next plan
         ns:GuideSkip(false)
         if not ns.GuideState().ticked[1] then error("ticked") end
+        local tickedKind = planned().steps[1].kind
         ns:PlannerReplan("test"); settle()
-        if not ns.GuideState().ticked[1] or ns.GuideState().at ~= 2 then error("a replan keeps the steps you ticked off") end
+        if tickedKind == "accept" or tickedKind == "do" or tickedKind == "turnin" then      -- (polish P2: a quest step's tick is not carried: the game says)
+            if ns.GuideState().ticked[1] then error("a replan does not carry a quest step's tick") end
+        elseif not ns.GuideState().ticked[1] or ns.GuideState().at ~= 2 then error("a replan keeps the steps you ticked off") end
         -- a plan that fails keeps the last good one, and the panel says so
         local realRoute, nerr = ns.PlannerRoute, #ns.errors
         ns.PlannerRoute = function() error("boom") end
@@ -13559,22 +13562,26 @@ try("13.4 feel B: time to level, why this, preview", function()
         ns.PlannerRoute = fullRoute
         ns:PlannerReplan("again")
         runIt()
-        -- Follow hides it; Plan again hides it and opens the Guide tab
+        -- Close hides it; Plan again hides it and plans again; Change what it plans hides it and opens the Guide tab
         ns.ShowList = function(self, key, title, l, ...) window = saved.show(self, key, title, l, ...); shown[#shown + 1] = { key = key, lines = l }; return window end
         ns:PlannerPreview()
         local pl = shown[#shown].lines
-        local follow, again = pl[#pl - 1], pl[#pl]
-        if follow.left ~= "Follow" or again.left ~= "Plan again" then error("Follow and Plan again close the lines") end
+        local follow, again, change = pl[#pl - 2], pl[#pl - 1], pl[#pl]
+        if follow.left ~= "Close" or again.left ~= "Plan again" or change.left ~= "Change what it plans" then error("Close, Plan again and Change what it plans close the lines") end
         local hid = 0
         rawset(window, "Hide", function() hid = hid + 1 end)
         follow.click()
-        if hid ~= 1 then error("Follow hides the page") end
+        if hid ~= 1 then error("Close hides the page") end
         local opened
-        local realToggle = ns.ToggleConfig
+        local realToggle, realAgain = ns.ToggleConfig, ns.GuidePlanAgain
+        local planned = false
         ns.ToggleConfig = function(_, tab) opened = tab end
+        ns.GuidePlanAgain = function() planned = true end
         again.click()
-        ns.ToggleConfig = realToggle
-        if hid ~= 2 or opened ~= "guide" then error("Plan again hides it and opens the Guide tab: " .. tostring(opened)) end
+        if hid ~= 2 or not planned or opened then error("Plan again hides it and plans again") end
+        change.click()
+        ns.ToggleConfig, ns.GuidePlanAgain = realToggle, realAgain
+        if hid ~= 3 or opened ~= "guide" then error("Change what it plans hides it and opens the Guide tab: " .. tostring(opened)) end
         rawset(window, "Hide", nil)
     end)
     ns.ShowList = saved.show
@@ -14641,6 +14648,8 @@ try("13.4 feel D: level times, race, where you left off", function()
         ns.PlannerTimeToLevel = function() return 48 end
         local n0 = #printed
         fireEvent("PLAYER_ENTERING_WORLD", true, false)
+        if said(n0) then error("the line waits for the first plan after the login (polish P2)") end
+        ns.PlannerLeftOffDue()
         local line = said(n0)
         if not (line and line:find("step 3 of 8", 1, true) and line:find("Do thing 3", 1, true) and line:find("level 26 in ~48 min", 1, true)) then error("an initial login says where you left off: " .. tostring(line)) end
         ns:GuideRedraw()
@@ -14651,13 +14660,16 @@ try("13.4 feel D: level times, race, where you left off", function()
         ns.PlannerTimeToLevel = function() return nil end           -- (the pace not known yet; the panel's title hook calls it too)
         n0 = #printed
         fireEvent("PLAYER_ENTERING_WORLD", true, false)
+        ns.PlannerLeftOffDue()
         line = said(n0)
         if not (line and line:find("step 3 of 8", 1, true)) or line:find("level 26", 1, true) then error("no time to the level: no time part: " .. tostring(line)) end
         n0 = #printed
         fireEvent("PLAYER_ENTERING_WORLD", false, true)
+        ns.PlannerLeftOffDue()
         if said(n0) then error("a reload says nothing") end
         ns.db.plannerLeftOff = false
         fireEvent("PLAYER_ENTERING_WORLD", true, false)
+        ns.PlannerLeftOffDue()
         if said(n0) then error("switched off: nothing") end
     end)
     if panel then rawset(panel.extra, "SetText", nil) end
@@ -15743,7 +15755,7 @@ try("13.5 together B: following together", function()
         if line(5, 3) ~= "Mira: done" then error("ahead: done") end
         if line(3, 3) ~= "Mira: on this step" then error("the same step") end
         if line(1, 3) ~= "Mira: 2 steps behind" then error("behind: " .. tostring(ns.PlannerDuoLine(st, steps, 3))) end
-        if line(2, 4) ~= "Wait for Mira here" then error("the flight waits for her") end
+        if line(2, 4) ~= "Mira is behind: wait for them here before you go on" then error("the flight waits for her") end
         if line(5, 3, planId - 1) ~= nil then error("an older plan's step: no line") end
         line(3, 3)
         -- inside an instance: nothing sent, the pause line, no lost touch; out again, five minutes of silence is
@@ -16193,7 +16205,7 @@ try("13.5 together C: the plan code", function()
         ns.GuideState = function() return { name = ns.GUIDE_PLANNED, at = 1, ticked = {}, summary = summary } end
         ns.GuideGet = function(_, name) if name == ns.GUIDE_PLANNED then return current end return saved.get(ns, name) end
         ns:GuideCommand("share")
-        if not (shown and shown[1] == code and shown[2] == ns:Tr("Copy this plan code and paste it on fantasyglassui.com/plan/")) then error("/fgui guide share: the copy box with the code and caption") end
+        if not (shown and shown[1] == code and shown[2] == ns:Tr("Copy this plan code. The plan page goes online with the next big update.")) then error("/fgui guide share: the copy box with the code and caption") end
         shown = nil
         current = { name = ns.GUIDE_PLANNED, steps = {} }
         ns:GuideCommand("share")
@@ -20543,6 +20555,120 @@ try("polish P2: the duo ask and reading aloud", function()
     ns.GuideUnlocked, ns.root.guideState = saved.unlocked, saved.state
     ns.db.plannerDuoAsk, ns.db.captions, ns.db.readDialog = saved.ask, saved.captions, saved.read
     ns.PlannerDuoSend, ns.Speak, ns.ShowList, ns.WINDOW_KEYS_FRAMES = saved.send, saved.speak, saved.list, saved.keys
+    if not ok then error(err, 0) end
+end)
+try("polish P2: no stuck states", function()
+    local saved = { unlocked = ns.GuideUnlocked, state = ns.root.guideState, guides = ns.root.guides, map = env.C_Map, ql = env.C_QuestLog, time = env.GetTime,
+        dead = rawget(env, "UnitIsDeadOrGhost"), bind = rawget(env, "GetBindLocation"), zone = rawget(env, "GetMinimapZoneText"), sub = rawget(env, "GetSubZoneText"),
+        ztext = rawget(env, "GetZoneText"), errors = #ns.errors, raw = ns.PrintRaw }
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        ns.root.guideState = {}
+        local clock = 3000
+        env.GetTime = function() return clock end
+        local pos = { 1429, 50, 50 }
+        local cm = {}
+        for k, v in pairs(saved.map) do cm[k] = v end
+        cm.GetBestMapForUnit = function() return pos[1] end
+        cm.GetPlayerMapPosition = function(map) if map == pos[1] then return { GetXY = function() return pos[2] / 100, pos[3] / 100 end } end end
+        cm.GetMapWorldSize = function() return 1000, 1000 end
+        env.C_Map = cm
+        local failed = {}
+        env.C_QuestLog = setmetatable({ IsFailed = function(id) return failed[id] == true end, IsOnQuest = function() return false end,
+            IsQuestFlaggedCompleted = function() return false end, IsComplete = function() return false end, ReadyForTurnIn = function() return false end }, { __index = saved.ql })
+        local function replanned() local r = ns.plannerQueued and ns.plannerReason; ns:PlannerStop(); ns.plannerQueued, ns.plannerReason = false, nil; return r end
+        -- F6: ">" on a planned quest step skips it for the session; on another step it ticks it off; a quest tick is never carried
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "accept", quest = 9711, title = "Not here", map = 1429, x = 90, y = 90 }, { kind = "note", text = "a note" }, { kind = "note", text = "end" } } }, { zone = 1429 })
+        replanned()
+        if not ns.GuideNextSkips() then error("on a quest step, > skips") end
+        ns:GuideNextButton()
+        local st = ns.GuideState()
+        if not (st.skipped and st.skipped[1] and not st.ticked[1] and ns.PlannerSessionSkipped(9711)) then error("> on a quest step: skipped for the session, not ticked") end
+        if replanned() ~= "skip" then error("and planned again") end
+        if ns.GuideNextSkips() then error("on a note, > ticks") end
+        ns:GuideNextButton()
+        if not ns.GuideState().ticked[2] then error("the note is ticked") end
+        ns.PlannerSessionSkipReset()
+        ns.GuideState().ticked[1] = true
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "accept", quest = 9711, title = "Not here" }, { kind = "note", text = "a note" } } }, { zone = 1429 })
+        if ns.GuideState().ticked[1] then error("a quest step's tick is not carried into the next plan") end
+        if not ns.GuideState().ticked[2] then error("a note's tick still is") end
+        local menu = ns:GuideStepMenu(ns:GuideGet(ns.GUIDE_PLANNED).steps[1])
+        local labels = {}
+        for _, b in ipairs(menu.buttons) do if b.entryLabel then labels[#labels + 1] = b.entryLabel end end
+        if not table.concat(labels, "|"):find("Skip this quest for now", 1, true) then error("the step menu offers Skip this quest for now: " .. table.concat(labels, "|")) end
+        menu:Hide()
+        replanned()
+        -- F9: a failed quest says so, and plans again once
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "do", quest = 9712, title = "Escort" }, { kind = "note", text = "end" } } }, { zone = 1429 })
+        replanned()
+        failed[9712] = true
+        if not ns.GuideStepBase({ kind = "do", quest = 9712, title = "Escort" }):find("(failed: abandon it and take it again)", 1, true) then error("a failed quest says to retake it") end
+        local asked, realAgain = {}, ns.GuidePlanAgain
+        ns.GuidePlanAgain = function(self, why) asked[#asked + 1] = why; return realAgain(self, why) end
+        fireEvent("QUEST_LOG_UPDATE"); fireEvent("QUEST_LOG_UPDATE")
+        ns.GuidePlanAgain = realAgain
+        replanned()
+        if #asked ~= 1 or asked[1] ~= "failed" then error("a failed quest plans again, once: " .. table.concat(asked, ",")) end
+        failed[9712] = nil
+        -- F10 / F36: the hearth and a flight tick where they take you; a hearth with no place, by the bind's name
+        local world = ns:GuideWorld()
+        if ns.GuideStepDone({ kind = "hearth", to = { map = 1429, x = 57, y = 50 } }, world) then error("70 yards off: not there") end
+        if not ns.GuideStepDone({ kind = "hearth", to = { map = 1429, x = 53, y = 50 } }, world) then error("the hearth's place reached: done") end
+        if not ns.GuideStepDone({ kind = "fly", node = 77, to = { map = 1429, x = 51, y = 50 } }, world) then error("landed by the flight's place: done") end
+        env.GetBindLocation = function() return "Goldshire" end
+        local zone = "Elwynn Forest"
+        env.GetMinimapZoneText = function() return zone end
+        env.GetSubZoneText = function() return zone end
+        env.GetZoneText = function() return "Elwynn Forest" end
+        local hs = { kind = "hearth" }
+        if ns.GuideStepDone(hs, ns:GuideWorld()) then error("not yet hearthed") end
+        zone = "Goldshire"
+        if not ns.GuideStepDone(hs, ns:GuideWorld()) then error("at the bind's place after being away: hearthed") end
+        local fresh = { kind = "hearth" }
+        if ns.GuideStepDone(fresh, ns:GuideWorld()) then error("standing there from the start is not a hearth") end
+        -- F28: a ghost reaches nothing
+        env.UnitIsDeadOrGhost = function() return true end
+        if ns:GuideWorld().near({ map = 1429, x = 50, y = 50 }) then error("a ghost passes places, never reaches them") end
+        env.UnitIsDeadOrGhost = function() return false end
+        -- F12: a plan that runs out plans what is next (at most once a minute), and says so
+        local said
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "last" } } }, { zone = 1429 })
+        replanned()
+        local panel = ns:GuideShowPanel()
+        rawset(panel.now, "SetText", function(_, t) said = t end)
+        ns:GuideSkip(false)
+        if replanned() ~= "end" then error("the end of a plan plans again") end
+        if said ~= "Planning what's next..." then error("and says so: " .. tostring(said)) end
+        rawset(panel.now, "SetText", nil)
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "last" } } }, { zone = 1429 })
+        replanned()
+        ns:GuideSkip(false)
+        if replanned() then error("not twice in a minute") end
+        clock = clock + 61
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "last" } } }, { zone = 1429, empty = true })
+        replanned()
+        ns:GuideSkip(false)
+        if replanned() then error("an empty plan does not plan again") end
+        -- F40: back from the plan to a written guide: where you were in it
+        ns.root.guides = { Mine = { name = "Mine", steps = { { kind = "note", text = "a" }, { kind = "note", text = "b" }, { kind = "note", text = "c" } } } }
+        ns:GuideFollow("Mine")
+        ns:GuideSkip(false)
+        if ns.GuideState().at ~= 2 then error("on step 2 of the written guide") end
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "planned" } } }, { zone = 1429 })
+        replanned()
+        ns:GuideFollow("Mine")
+        if ns.GuideState().name ~= "Mine" or ns.GuideState().at ~= 2 then error("back to the written guide, on step 2: " .. tostring(ns.GuideState().at)) end
+        replanned()
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    ns:GuideStop(); ns:ClearWaypoint(true)
+    ns.PlannerSessionSkipReset()
+    ns.plannerQueued, ns.plannerReason = false, nil
+    env.C_Map, env.C_QuestLog, env.GetTime = saved.map, saved.ql, saved.time
+    rawset(env, "UnitIsDeadOrGhost", saved.dead); rawset(env, "GetBindLocation", saved.bind); rawset(env, "GetMinimapZoneText", saved.zone)
+    rawset(env, "GetSubZoneText", saved.sub); rawset(env, "GetZoneText", saved.ztext)
+    ns.GuideUnlocked, ns.root.guideState, ns.root.guides, ns.PrintRaw = saved.unlocked, saved.state, saved.guides, saved.raw
     if not ok then error(err, 0) end
 end)
 -- polish P2: end
