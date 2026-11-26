@@ -24783,6 +24783,181 @@ try("folders D: a trip pauses the plan and resumes it", function()
     if ns.PlannerStop then ns:PlannerStop() end
     if not ok then error(err, 0) end
 end)
+try("folders D: Go", function()
+    local keep = { unlocked = ns.GuideUnlocked, state = ns.root.guideState, guides = ns.root.guides, on = ns.db.questGuide, print = ns.Print,
+        world = ns.GuideWorld, replan = ns.PlannerReplan, sound = ns.db.guideSound, ctx = ns.PlannerContext, map = env.C_Map,
+        vec = rawget(env, "CreateVector2D"), duo = ns.plannerDuo, duoEnd = ns.PlannerDuoEnd, left = ns.PlannerTimeLeft, list = ns.GoldStepsList,
+        combat = env.InCombatLockdown, here = ns.GuideHere, inn = ns.PlannerInnSuggest }
+    local ok, err = pcall(function()
+        if type(ns.GoldTravel) ~= "function" then error("ns.GoldTravel is missing") end
+        local key = ns:CharKey()
+        local said, replans, lists, ends = {}, {}, {}, {}
+        ns.Print = function(_, msg, ...) said[#said + 1] = (select("#", ...) > 0) and string.format(ns:Tr(msg), ...) or ns:Tr(msg) end
+        local function Said(text) for _, t in ipairs(said) do if t == text then return true end end return false end
+        ns.PlannerReplan = function(_, why) replans[#replans + 1] = tostring(why); return true end
+        ns.GoldStepsList = function(idea) lists[#lists + 1] = idea; return true end
+        ns.PlannerInnSuggest = nil
+        ns.GuideUnlocked = function() return true end
+        ns.db.questGuide, ns.db.guideSound = true, false
+        ns.GuideWorld = function() return { level = 1, near = function() return false end, onQuest = function() return false end,
+            completed = function() return false end, ready = function() return false end } end
+        -- the fake world: Elwynn and Stormwind beside Wetlands (continent 0), Darkshore and Ashenvale (continent 1), 1000 yards a map
+        local maps = { [1429] = { 0, 0, 0 }, [1453] = { 0, 0, -1000 }, [1437] = { 0, 0, -5000 }, [1436] = { 0, 4200, 0 },
+            [1439] = { 1, 0, 0 }, [1440] = { 1, 0, 1000 } }
+        local cm = {}
+        for k, v in pairs(keep.map) do cm[k] = v end
+        cm.GetWorldPosFromMapPos = function(map, v)
+            local m = maps[map]
+            if not m then return nil end
+            return m[1], { x = m[2] + v.x * 1000, y = m[3] + v.y * 1000 }
+        end
+        env.C_Map = cm
+        env.CreateVector2D = function(x, y) return { x = x, y = y } end
+        local function Ctx(extra)
+            local c = { speed = 7, faction = "Alliance", crossings = ns.PLANNER_CROSSINGS, here = { map = 1429, x = 10, y = 10 }, learnFlights = false,
+                flights = { { node = 2, map = 1453, x = 66, y = 62, known = true, name = "Stormwind" }, { node = 6, map = 1437, x = 9, y = 60, known = true, name = "Menethil Harbor" } },
+                flightTime = function() return 60 end }
+            for k, v in pairs(extra or {}) do c[k] = v end
+            return c
+        end
+        local ctxNow = Ctx()
+        ns.PlannerContext = function() return ctxNow end
+        ns.PlannerTimeLeft = function() return nil end
+        local function frames(k)
+            fireEvent("PLAYER_REGEN_ENABLED")
+            for _ = 1, k or 1 do for i = 1, #handlers do local h = handlers[i]; if h.name == "OnUpdate" then pcall(h.fn, h.self, 0) end end end
+        end
+        local function Plan()
+            local steps = {}
+            for i = 1, 5 do steps[i] = { kind = "note", text = "plan" .. i } end
+            return { name = ns.GUIDE_PLANNED, steps = steps }
+        end
+        local plan
+        local function Following()
+            plan = Plan()
+            ns.root.guideState = { [key] = { name = ns.GUIDE_PLANNED, at = 3, ticked = { true, true }, plan = plan, summary = { logFits = false } } }
+        end
+        local function St() return ns.root.guideState[key] end
+        local function Kinds(steps) local k = {}; for _, s in ipairs(steps) do k[#k + 1] = s.kind end return table.concat(k, ",") end
+        local function Go(idea)
+            local r = ns.GoldTravel(idea)
+            frames(40)
+            return r
+        end
+        ns:PlannerStop()
+        -- an idea on another continent: the planner's trip to node 1, then nodes 2 and 3
+        local idea = { id = "gather:1440:182", title = "Herbs in Ashenvale", oneOff = false, steps = {
+            { text = "Silverleaf", map = 1440, x = 20, y = 30 }, { text = "Mageroyal", map = 1440, x = 25, y = 30 }, { text = "Briarthorn", map = 1440, x = 30, y = 35 } } }
+        Following()
+        local want = {}
+        local wantSecs = ns.PlannerTrip(ns.PlannerTripState(Ctx()), { map = 1440, x = 20, y = 30 }, want, false)
+        if not wantSecs then error("the fake world reaches Ashenvale") end
+        if Go(idea) ~= true then error("Go queues the trip's job") end
+        local st = St()
+        if not (st and st.name == ns.GUIDE_TRIP) then error("the guide follows the trip: " .. tostring(st and st.name) .. " " .. table.concat(said, " | ")) end
+        local steps = st.trip.steps
+        local n = #want
+        if not (Kinds(want):find("fly", 1, true) and Kinds(want):find("sail", 1, true)) then error("the trip flies and sails: " .. Kinds(want)) end
+        for i = 1, n do if steps[i].kind ~= want[i].kind then error("the planner's trip first: " .. Kinds(steps) .. " / " .. Kinds(want)) end end
+        if #steps ~= n + 3 then error("then the three nodes: " .. Kinds(steps)) end
+        for i, name in ipairs({ "Silverleaf", "Mageroyal", "Briarthorn" }) do
+            local s = steps[n + i]
+            if s.kind ~= "goto" or s.text ~= name or s.map ~= 1440 or s.x ~= idea.steps[i].x then error("node " .. i .. ": " .. tostring(s.kind) .. " " .. tostring(s.text)) end
+        end
+        if not (st.resume and st.resume.name == ns.GUIDE_PLANNED and st.resume.plan == plan and st.resume.at == 3) then error("the levelling plan waits in resume") end
+        if st.trip.title ~= "Herbs in Ashenvale" or st.trip.id ~= idea.id then error("the trip's title and id") end
+        if steps[1].kind == "note" then error("no time limit: no note") end
+        -- the end: the plan back, planned again
+        replans = {}
+        ns:GuideEndTrip("stop")
+        if not (St().name == ns.GUIDE_PLANNED and St().plan == plan and replans[1] == "trip over") then error("the end: the plan back and planned again") end
+        -- unreachable: the list, the state unchanged
+        Following()
+        local before = St()
+        said, lists = {}, {}
+        Go({ id = "x", title = "Nowhere", steps = { { text = "Here", map = 1429, x = 20, y = 20 }, { text = "There", map = 9, x = 1, y = 1 } } })
+        if St() ~= before or St().name ~= ns.GUIDE_PLANNED then error("unreachable: the state unchanged") end
+        if not Said("No way there was found: here are the steps.") or #lists ~= 1 or lists[1].title ~= "Nowhere" then error("unreachable: said, and the list: " .. table.concat(said, " | ")) end
+        -- an idea on two maps: a trip again before the first step on the second map; placeless steps are notes
+        Following()
+        Go({ id = "two", title = "Two maps", steps = { { text = "Ask around" }, { text = "E1", map = 1429, x = 40, y = 40 }, { text = "E2", map = 1429, x = 45, y = 40 },
+            { text = "A1", map = 1440, x = 20, y = 30 } } })
+        steps = St().trip.steps
+        if steps[1].kind ~= "note" or steps[1].text ~= "Ask around" then error("a placeless step is a note: " .. Kinds(steps)) end
+        local at = {}
+        for i, s in ipairs(steps) do if s.text then at[s.text] = i end end
+        if not (at.E1 and at.E2 == at.E1 + 1 and at.A1 and at.A1 > at.E2 + 1) then error("a trip before the second map's first step: " .. Kinds(steps)) end
+        local sailed = false
+        for i = at.E2 + 1, at.A1 - 1 do if steps[i].kind == "sail" then sailed = true end end
+        if not sailed then error("the trip between the maps sails: " .. Kinds(steps)) end
+        ns:GuideEndTrip("other")
+        -- a duo: it ends before the trip starts
+        Following()
+        ns.plannerDuo = { role = "lead", partner = "Pal" }
+        local tripAtEnd
+        ns.PlannerDuoEnd = function(_, why, noReplan) ends[#ends + 1] = { why, noReplan }; tripAtEnd = ns.GuideOnTrip(); ns.plannerDuo = nil; return true end
+        Go(idea)
+        if not (ends[1] and ends[1][1] == "guide" and ends[1][2] == true and tripAtEnd == false and ns.GuideOnTrip()) then error("Go during a duo ends it first") end
+        ns.PlannerDuoEnd, ns.plannerDuo = keep.duoEnd, keep.duo
+        ns:GuideEndTrip("other")
+        -- a time limit: 600 s of travel and a one-off's 10 min, 30 min left
+        Following()
+        ctxNow = Ctx({ flights = {}, crossings = {} })
+        ns.PlannerTimeLeft = function() return 1800 end
+        local secs = ns.PlannerTravel({ map = 1429, x = 10, y = 10 }, { map = 1436, x = 10, y = 10 }, ctxNow)
+        if math.abs(secs - 600) > 1 then error("the test's walk takes 600 s: " .. tostring(secs)) end
+        Go({ id = "one", title = "Sell", oneOff = true, total = 100, minutes = 10, steps = { { text = "The vendor", map = 1436, x = 10, y = 10 } } })
+        steps = St().trip.steps
+        if not (steps[1].kind == "note" and steps[1].text == "This trip takes about 20 min; you have 30 min left.") then error("the time note: " .. tostring(steps[1].text)) end
+        ns:GuideEndTrip("other")
+        ns.PlannerTimeLeft = function() return nil end
+        Following()
+        Go({ id = "one", title = "Sell", oneOff = true, total = 100, minutes = 10, steps = { { text = "The vendor", map = 1436, x = 10, y = 10 } } })
+        if St().trip.steps[1].kind == "note" then error("no time limit: no note") end
+        ns:GuideEndTrip("other")
+        ctxNow = Ctx()
+        -- a timed run under way: Go says why it can't start
+        Following()
+        plan.steps[3] = { kind = "do", quest = 77, text = "Hurry", timed = true }
+        said = {}
+        if ns.GoldTravel(idea) ~= false or St().name ~= ns.GUIDE_PLANNED or not Said("Not now: a timed quest is under way. Go again once it is handed in.") then error("a timed run: Go waits for its end") end
+        -- combat: Go refuses as before
+        env.InCombatLockdown = function() return true end
+        said = {}
+        Following()
+        if ns.GoldGo(idea) ~= false or ns.GoldTravel(idea) ~= false or not Said("Not during a fight.") then error("in a fight: no Go") end
+        env.InCombatLockdown = keep.combat
+        -- a running replan: Go waits its turn; the replan's plan lands in resume, never over the trip
+        Following()
+        ns.GuideHere = function() return nil end                  -- (the replan can't start here: it stays queued)
+        ns.plannerQueued = true
+        if ns.GoldTravel(idea) ~= true then error("queued behind the replan") end
+        frames(10)
+        if ns.GuideOnTrip() then error("the trip waits for the replan") end
+        local newPlan = Plan()
+        ns:GuideSetPlan(newPlan, { logFits = false })              -- (the replan lands)
+        ns:PlannerStop()
+        ns.GuideHere = keep.here
+        frames(40)
+        st = St()
+        if not (ns.GuideOnTrip() and st.resume and st.resume.plan == newPlan) then error("the trip after the replan, its plan waiting") end
+        local newer = Plan()
+        ns:GuideSetPlan(newer, { logFits = false })
+        if not (ns.GuideOnTrip() and St().resume.plan == newer) then error("a plan during the trip goes into resume") end
+        replans = {}
+        ns:GuideEndTrip("stop")
+        if not (St().name == ns.GUIDE_PLANNED and St().plan == newer and replans[1] == "trip over") then error("the end: the latest plan, planned again") end
+    end)
+    ns.GuideUnlocked, ns.root.guides, ns.db.questGuide, ns.Print = keep.unlocked, keep.guides, keep.on, keep.print
+    ns.GuideWorld, ns.PlannerReplan, ns.db.guideSound, ns.PlannerContext = keep.world, keep.replan, keep.sound, keep.ctx
+    env.C_Map = keep.map; rawset(env, "CreateVector2D", keep.vec)
+    ns.plannerDuo, ns.PlannerDuoEnd, ns.PlannerTimeLeft, ns.GoldStepsList = keep.duo, keep.duoEnd, keep.left, keep.list
+    env.InCombatLockdown, ns.GuideHere, ns.PlannerInnSuggest = keep.combat, keep.here, keep.inn
+    if ns.PlannerStop then ns:PlannerStop() end
+    ns:GuideStop()
+    ns.root.guideState = keep.state
+    if not ok then error(err, 0) end
+end)
 -- folders tests D (go): end
 -- folders tests together: begin
 -- folders tests together: end
