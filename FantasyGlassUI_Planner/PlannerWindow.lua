@@ -77,7 +77,7 @@ function ns.PlannerWindowSummary()
         -- (the trip, group D's: its guide is the state's plan or ns:GuideGet's; its title is the trip's)
         local trip = type(st.trip) == "table" and st.trip or {}
         local guide = ns:GuideGet(ns.GUIDE_TRIP)
-        if type(guide) ~= "table" then guide = type(st.plan) == "table" and st.plan or trip.guide end
+        if type(guide) ~= "table" then guide = type(st.plan) == "table" and st.plan or trip end
         local at, total = StepCount(st, guide)
         local title = trip.title
         if type(title) ~= "string" or title == "" then title = type(guide) == "table" and type(guide.title) == "string" and guide.title or ns:Tr("Ways to make gold") end
@@ -528,7 +528,8 @@ local function Build()
     end)
     f.planButton:SetPoint("TOPLEFT", 18, BUTTONS_Y)
     f.stopButton = ns:CreateButton(f, "Stop", 80, 24, function()
-        if ns.GuideStop then ns:GuideStop() end
+        if ns.GuideOnTrip and ns.GuideOnTrip() and ns.GuideEndTrip then ns:GuideEndTrip("stop")   -- (a trip: Stop ends it and the
+        elseif ns.GuideStop then ns:GuideStop() end                                              -- plan that waited comes back, as the panel's Stop this trip)
         Refresh()
     end)
     f.stopButton:SetPoint("LEFT", f.planButton, "RIGHT", 8, 0)

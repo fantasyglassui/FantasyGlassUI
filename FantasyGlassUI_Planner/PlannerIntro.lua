@@ -3,8 +3,8 @@ if type(ns) ~= "table" then return end
 
 ------------------------------------------------------------------------------------------
 -- The planner's first-time tour: four short pages on what the route planner does, shown once for the
--- account the first time the Guide tab is opened after the guide was unlocked, and again whenever
--- "How the planner works" is pressed on that tab. It wears the settings window's look. It can be
+-- account the first time the Guide tab or the planner window is opened after the guide was unlocked, and
+-- again whenever "How the planner works" is pressed in the planner window. It wears the settings window's look. It can be
 -- skipped at once, read aloud (with "Read talk and quests aloud" on), and used from the keyboard:
 -- Left and Right go between pages, Enter or Space goes on, Esc closes. Behind ns:GuideUnlocked():
 -- while the guide is locked nothing here makes a frame or writes anything.
@@ -12,7 +12,7 @@ if type(ns) ~= "table" then return end
 local PAGES = {
     { "What the planner does", "The planner works out a route of quests for your level: which to take, in what order, and when to fly, train or hand in. As you play it plans again, so the route keeps up with you. It finds quests through Questie; without Questie it plans the quests in your log." },
     { "Following a route", "The panel shows the step you are on, and the arrow points the way. Steps tick off by themselves as you do them. Press > to move past a step, Plan again to plan from where you are now, and right-click a step for more." },
-    { "Your pace", "Under Guide in /fgui, the Speed, Safety and Story sliders set what the route goes for. Say how long you can play, and the route takes only what fits and ends at a good place to stop." },
+    { "Your pace", "In Planner settings, the Speed, Safety and Story sliders set what the route goes for. Say how long you can play, and the route takes only what fits and ends at a good place to stop." },
     { "With a friend", "Plan with a friend, and one route suits you both: the same quests, in the same order. Share plan turns your route into a plan code to copy." },
 }
 ns.PLANNER_INTRO_PAGES = PAGES
@@ -109,7 +109,7 @@ local function Build()
     f.back:SetPoint("RIGHT", f.next, "LEFT", -8, 0)
     f.skip = ns:CreateButton(f, "Skip", 110, 28, function() f:Hide() end)
     f.skip:SetPoint("BOTTOMLEFT", PAD, 18)
-    ns:ButtonTip(f.skip, "Close the tour. \"How the planner works\" on the Guide tab opens it again.")
+    ns:ButtonTip(f.skip, "Close the tour. \"How the planner works\" in the planner window opens it again.")
     for _, b in ipairs({ f.next, f.back, f.skip }) do ns:SizeToLabel(b, 110) end
     -- The keys: Left and Right between pages, Enter or Space on, Esc closes. (With the keyboard in the
     -- game's windows on, Tab, Enter and Space are that feature's: the window is one of its windows.)
