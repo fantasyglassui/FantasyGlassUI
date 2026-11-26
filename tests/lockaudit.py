@@ -64,8 +64,12 @@ local function relation(self, name, a, b, c)
         if name ~= "ClearAllPoints" then
             list = list or {}
             local got = false
-            for _, v in ipairs({ a, b, c }) do if type(v) == "table" and getmetatable(v) == mockmt then list[#list + 1] = v; got = true end end
-            if not got then local p = rawget(self, "__parent"); if p then list[#list + 1] = p end end     -- (no frame named: its parent)
+            local function keep(v)                         -- (each frame once: a frame laid out again and again, as the Guide tab
+                for _, x in ipairs(list) do if x == v then return end end      -- and the panel are, keeps a short list)
+                list[#list + 1] = v
+            end
+            for _, v in ipairs({ a, b, c }) do if type(v) == "table" and getmetatable(v) == mockmt then keep(v); got = true end end
+            if not got then local p = rawget(self, "__parent"); if p then keep(p) end end     -- (no frame named: its parent)
             if mine then for _, g in ipairs(list) do add(g, self, "anchor") end end
         end
         rawset(self, "__anchors", list)

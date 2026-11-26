@@ -101,6 +101,10 @@ list every finding ID with its outcome. This file covers the merge.
    - "You are not in %s: the line is in your chat box for its current channel."
    - "another hub"
 10. **Placeholders.** All 8 tables have 3,661 keys each. The script compares the order and kind of every `%` conversion in the key and its translation, and finds 0 mismatches. The English key "Resource % on frames & nameplates" holds "% o", which is not a conversion; it is never formatted.
+11. **lockaudit ran out of memory after the merge (killed, exit 137).** The merge of the four groups alone, with none of the merge's own work, does the same: 1023912 peaks at 2.7 GB, while 13f1764 was killed at about 6 GB.
+    - The cause is in the audit's own frame model. It added an anchor to a frame's list on every `SetPoint`, with no limit. The rebuilt Guide tab and the measured panel lay their frames out again on every refresh, so the lists grew without end (4.5 GB of Lua before the combat pass).
+    - The audit now keeps each anchor frame once. That is the same set of frames, so protection is unchanged; the result lists the same frames as at 1023912, with no protected call in combat (a few secure keys and raid marks are counted 3 times instead of 4 because the tests build them once less). Lua memory before the combat pass is now 3.0 GB, and the run completes.
+    - The integration test opens the Guide tab without throwing the settings window away (no `O.frame = nil`), which saves about 7,000 handlers.
 
 ## Findings left, with reasons
 

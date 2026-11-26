@@ -21517,7 +21517,6 @@ try("polish: together", function()
         local O = ns.optUI
         if O then
             if ns.configFrame and ns.configFrame:IsShown() then ns:ToggleConfig() end
-            O.frame = nil
             ns:ToggleConfig("guide")
             runTimers()
             O.Open("guide:Guide")
