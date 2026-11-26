@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="ko" data-lang="ko" data-page="get-started">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>시작하기 · Fantasy Glass UI</title>
+<meta name="description" content="Fantasy Glass UI를 설치하고 몇 분 만에 설정하세요. 자주 묻는 질문의 답과 모든 명령어도 있습니다.">
+<link rel="canonical" href="https://fantasyglassui.com/ko/get-started/">
+<link rel="alternate" hreflang="en" href="https://fantasyglassui.com/get-started/">
+<link rel="alternate" hreflang="de" href="https://fantasyglassui.com/de/get-started/">
+<link rel="alternate" hreflang="fr" href="https://fantasyglassui.com/fr/get-started/">
+<link rel="alternate" hreflang="es" href="https://fantasyglassui.com/es/get-started/">
+<link rel="alternate" hreflang="ru" href="https://fantasyglassui.com/ru/get-started/">
+<link rel="alternate" hreflang="pt" href="https://fantasyglassui.com/pt/get-started/">
+<link rel="alternate" hreflang="it" href="https://fantasyglassui.com/it/get-started/">
+<link rel="alternate" hreflang="ko" href="https://fantasyglassui.com/ko/get-started/">
+<link rel="alternate" hreflang="zh-Hans" href="https://fantasyglassui.com/zh/get-started/">
+<link rel="alternate" hreflang="x-default" href="https://fantasyglassui.com/get-started/">
+<link rel="icon" type="image/png" href="/icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Fantasy Glass UI">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:locale:alternate" content="en_US">
+<meta property="og:locale:alternate" content="de_DE">
+<meta property="og:locale:alternate" content="fr_FR">
+<meta property="og:locale:alternate" content="es_ES">
+<meta property="og:locale:alternate" content="ru_RU">
+<meta property="og:locale:alternate" content="pt_BR">
+<meta property="og:locale:alternate" content="it_IT">
+<meta property="og:locale:alternate" content="zh_CN">
+<meta property="og:title" content="시작하기 · Fantasy Glass UI">
+<meta property="og:description" content="Fantasy Glass UI를 설치하고 몇 분 만에 설정하세요. 자주 묻는 질문의 답과 모든 명령어도 있습니다.">
+<meta property="og:url" content="https://fantasyglassui.com/ko/get-started/">
+<meta property="og:image" content="https://fantasyglassui.com/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Fantasy Glass UI">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="시작하기 · Fantasy Glass UI">
+<meta name="twitter:description" content="Fantasy Glass UI를 설치하고 몇 분 만에 설정하세요. 자주 묻는 질문의 답과 모든 명령어도 있습니다.">
+<meta name="twitter:image" content="https://fantasyglassui.com/og.jpg">
+<meta name="theme-color" content="#12141a" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4f5f8" media="(prefers-color-scheme: light)">
+<script>(function(){var d=document.documentElement;d.classList.add("js");try{var t=localStorage.getItem("fg-theme");if(t==="light"||t==="dark")d.setAttribute("data-theme",t)}catch(e){}var here="ko",page="get-started/",to=here,q=location.search,h=location.hash;var m=/[?&]lang=([a-z]{2})\b/.exec(q);if(m){to=m[1];q=q.replace(/([?&])lang=[a-z]{2}&?/,"$1").replace(/[?&]$/,"")}else if(here==="en"){var c=null;try{c=localStorage.getItem("fg-lang")}catch(e){}if(!c)c=String(navigator.language||"en").slice(0,2).toLowerCase();to=c}if(["en", "de", "fr", "es", "ru", "pt", "it", "ko", "zh"].indexOf(to)<0)to=here;var u=(to==="en"?"/":"/"+to+"/")+page;if(u!==location.pathname||q!==location.search)location.replace(u+q+h)})();</script>
+<link rel="preload" href="/assets/marcellus.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap">
+<link rel="stylesheet" href="/assets/site.css?v=0338b00d2b">
+<style>
+/* Get started: the three steps, the questions and the commands (moved from the old long page). */
+#start .status { margin: 0 0 8px; }
+.steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; counter-reset: s; }
+.step { padding: 22px; counter-increment: s; min-width: 0; }
+.step::before { content: counter(s); display: grid; place-items: center; width: 40px; height: 40px; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); background: var(--gold); color: var(--on-gold); font: 700 1rem/1 var(--body); margin: 0 0 14px; }
+.step h3 { font-size: 1.15rem; margin-bottom: 6px; }
+.step p { margin: 0; color: var(--dim); }
+.help { margin-top: 22px; padding: 24px; display: grid; gap: 18px; }
+.help p { max-width: 75ch; }
+.help p { margin: 6px 0 0; color: var(--dim); }
+.help .cta { margin: 0; }
+
+/* questions: one outlined list, a line between each */
+.faq { display: block; max-width: 920px; padding: 0; }
+.q + .q { border-top: 1px solid var(--rule); }
+.q summary { cursor: pointer; list-style: none; padding: 16px 48px 16px 22px; position: relative; font: 600 1.05rem/1.35 var(--body); min-height: 44px; }
+.q summary::-webkit-details-marker { display: none; }
+.q summary::after { content: ""; position: absolute; right: 22px; top: 50%; width: 9px; height: 9px; margin-top: -6px; border: solid var(--gold); border-width: 0 2px 2px 0; transform: rotate(45deg); transition: transform .2s ease; }
+.q[open] summary::after { transform: rotate(-135deg); margin-top: -2px; }
+.q summary:hover { color: var(--gold); }
+.q summary:focus-visible { outline-offset: -3px; }
+.q p { margin: 0; padding: 0 22px 18px; color: var(--dim); }
+
+/* commands */
+.ctable { width: 100%; border-collapse: collapse; }
+.ctable td, .ctable th { padding: 10px 10px; text-align: left; font-weight: 400; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.ctable th { white-space: nowrap; }
+.ctable code { font: 600 0.9rem/1.4 var(--mono); color: var(--gold); }
+.ctable td:nth-child(2) { color: var(--dim); }
+.copy { min-height: 36px; padding: 6px 12px; font-size: 0.85rem; --cut: 8px; }
+.tablewrap { overflow-x: auto; }
+#copyall { justify-self: start; }
+
+@media (max-width: 900px) { .steps { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 620px) { .ctable th { white-space: normal; } }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="/ko/"><img src="/logo-64.webp" alt="" width="32" height="32">Fantasy Glass UI</a>
+    <nav class="site-nav" id="site-nav" aria-label="페이지">
+      <ul><li><a href="/ko/">홈</a></li><li><a href="/ko/features/">기능</a></li><li><a href="/ko/themes/">테마</a></li><li><a href="/ko/guide-and-gold/">안내서와 골드</a></li><li><a href="/ko/get-started/" aria-current="page">시작하기</a></li><li><a href="/ko/changelog/">변경 내역</a></li><li><a href="/ko/roadmap/">로드맵</a></li></ul>
+      <div class="head-tools">
+        <label class="lang"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span class="sr-only">언어</span><select id="lang"><option value="/get-started/" data-code="en" lang="en">English</option><option value="/de/get-started/" data-code="de" lang="de">Deutsch</option><option value="/fr/get-started/" data-code="fr" lang="fr">Français</option><option value="/es/get-started/" data-code="es" lang="es">Español</option><option value="/ru/get-started/" data-code="ru" lang="ru">Русский</option><option value="/pt/get-started/" data-code="pt" lang="pt">Português</option><option value="/it/get-started/" data-code="it" lang="it">Italiano</option><option value="/ko/get-started/" data-code="ko" lang="ko" selected>한국어</option><option value="/zh/get-started/" data-code="zh" lang="zh-Hans">中文</option></select></label>
+        <button class="icon-btn mode" id="mode" type="button" aria-pressed="true" title="어두운 모드"><span class="sr-only">어두운 모드</span><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M5.3 18.7 7 17M17 7l1.7-1.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      </div>
+    </nav>
+    <a class="btn small head-dl" href="https://www.curseforge.com/wow/addons/fantasy-glass-ui">다운로드</a>
+    <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav"><span class="sr-only">메뉴</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    <button class="chip wearing" id="unwear" type="button" hidden><b id="wearname"></b> 적용 중: 사이트 색으로 돌아가기</button>
+  </div>
+</header>
+<main id="main" tabindex="-1">
+<!-- Get started (W2). The three steps, the questions and the commands; see site-src/PAGES.md. -->
+  <section class="block" id="start">
+    <div class="wrap">
+      <header>
+        <div class="eyebrow">시작하기</div>
+        <h1>세 단계</h1>
+        <p class="status"><span>버전 <b>12.4.1</b></span><span class="sep" aria-hidden="true">·</span><span><time datetime="2026-11-25">2026-11-25</time> 업데이트</span><span class="sep" aria-hidden="true">·</span><span>WoW: Forever <b>1.60.1 (70938)</b> 기준으로 확인</span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">소스 코드</a></span></p>
+      </header>
+      <div class="steps">
+        <div class="step card"><h3>설치하기</h3><p>CurseForge 앱을 쓰거나, zip 안의 폴더 세 개를 <code>Interface/AddOns</code>에 나란히 넣으세요.</p></div>
+        <div class="step card"><h3>외형 고르기</h3><p>처음 접속하면 안내 설정이 열립니다. 테마와 배치, 역할을 고르세요.</p></div>
+        <div class="step card"><h3>내 것으로 만들기</h3><p><code>/fgui</code>는 설정을 열고, <code>/fgui move</code>는 창을 배치하며, <code>/fgui help</code>는 모든 명령어를 보여 줍니다.</p></div>
+      </div>
+      <div class="help card">
+        <div><h3>버그를 찾았거나 아이디어가 있나요?</h3><p>Discord에서 이야기하거나 GitHub에 알려 주세요. 버그라면 애드온 자체 보고서가 가장 도움이 됩니다: 게임에서 <code>/fgui</code>를 열고 <b>Report a Problem</b>을 누른 뒤 내용을 붙여 넣으세요. 그 밖의 문의: <a href=&quot;mailto:email-forwarding@fantasyglassui.com&quot;>email-forwarding@fantasyglassui.com</a>.</p></div>
+        <div class="cta">
+          <a class="btn" href="https://discord.gg/qeSMwQWyPR" target="_blank" rel="noopener">Discord 참여하기</a>
+          <a class="btn line" href="https://github.com/fantasyglassui/FantasyGlassUI/issues/new?template=bug_report.yml" target="_blank" rel="noopener">버그 신고</a>
+          <a class="btn line" href="https://github.com/fantasyglassui/FantasyGlassUI/issues/new?template=idea.yml" target="_blank" rel="noopener">아이디어 제안</a>
+          <a class="btn line" href="https://github.com/fantasyglassui/FantasyGlassUI/wiki" target="_blank" rel="noopener">위키 읽기</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="faq">
+    <div class="wrap">
+      <header>
+        <div class="eyebrow">질문</div>
+        <h2>자주 묻는 질문</h2>
+      </header>
+      <div class="faq card"><details class="q"><summary>어떤 게임용인가요?</summary><p><b>WoW Forever</b>(인터페이스 16001)용입니다. <code>World of Warcraft/_forever_/Interface/AddOns</code>에 폴더 세 개를 나란히 넣으면 됩니다.</p></details><details class="q"><summary>다른 애드온과 같이 쓸 수 있나요?</summary><p>네. 이름표용 Plater, 가방용 Bagnon이나 Baganator, 공격대 프레임용 Grid2, VuhDo, Cell처럼 같은 일을 하는 애드온을 이미 쓰고 있다면, Fantasy Glass UI는 그 부분을 양보하고 나머지는 그대로 둡니다. <code>/fgui conflicts off</code>로 자체 기능을 쓰게 할 수도 있습니다.</p></details><details class="q"><summary>일부만 쓸 수 있나요?</summary><p>네. <code>/fgui</code>에서 부분마다 스위치가 있어, 예를 들어 가방과 이름표만 쓰고 나머지는 게임 기본으로 둘 수 있습니다.</p></details><details class="q"><summary>네모난 프레임이 좋아요. 클래식 모양으로 바꿀 수 있나요?</summary><p>네. <code>/fgui</code>의 프레임 및 바에서 Starcut 대신 Classic을 고르면 어떤 테마에서든 모든 프레임, 바, 버튼이 상자 모양으로 돌아갑니다.</p></details><details class="q"><summary>색각 이상, 저시력, 청각에 도움이 되나요?</summary><p>네, 하나의 분류 전체입니다. <code>/fgui access</code>에는 색각 유형별 색상, 고대비 테마, 저시력과 난독증을 위한 글꼴, 소리 자막, 대화·퀘스트·툴팁 소리 내어 읽기, 키보드로 게임 창 이동, 한 손용 키, 안전한 깜빡임, 멈춘 하늘, 차분한 모드가 있습니다. 필요별로 정리한 전체 기능은 <a href=&quot;/accessibility/&quot;>접근성 페이지</a>에 있습니다.</p></details><details class="q"><summary>게임이 느려지나요?</summary><p>끈 부분은 전혀 실행되지 않습니다. 직접 확인하려면 <code>/fgui perf</code>로 부분별 소요 시간을, <code>/fgui perf fight</code>로 다음 전투를, <code>/fgui memory</code>로 메모리를 볼 수 있습니다.</p></details><details class="q"><summary>뭔가 이상해요. 어떻게 되돌리나요?</summary><p><code>/fgui undo</code>는 마지막 이동이나 크기 조절을 되돌리고, <code>/fgui history</code>는 바꾼 내역을 보여 주어 무엇이든 되돌릴 수 있습니다. <code>/fgui reset</code>(두 번 입력)은 프로필을 처음 상태로 되돌리며, 그 전에 백업을 남깁니다: <code>/fgui backup</code>으로 확인하세요. <code>/fgui safe</code>는 모든 기능을 끈 채 다시 불러와 문제가 애드온 때문인지 알려 줍니다.</p></details><details class="q"><summary>친구와 설정을 공유할 수 있나요?</summary><p>네. <code>/fgui pack</code>은 프로필, 배치, 테마, 단축바, 우편 규칙까지 인터페이스 전체를 붙여 넣을 문자열 하나로 만들고, <code>/fgui send &lt;name&gt; layout</code>은 애드온이 있는 다른 플레이어에게 바로 보냅니다.</p></details><details class="q"><summary>도움을 받거나 내 화면을 자랑하려면 어디로 가나요?</summary><p><a href=&quot;https://discord.gg/qeSMwQWyPR&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;>Discord</a>에서 <b>#fgui-help</b>에 질문하고, <b>#show-your-ui</b>에 스크린샷을 올리고, <b>#themes</b>에 테마 코드를 공유하세요. 버그와 아이디어를 위한 채널도 따로 있습니다.</p></details><details class="q"><summary>어떤 언어를 지원하나요?</summary><p>영어, 독일어, 프랑스어, 스페인어, 러시아어, 포르투갈어, 이탈리아어, 한국어, 중국어. 게임 언어를 따라갑니다.</p></details><details class="q"><summary>무료인가요?</summary><p>네, 무료이며 광고도 결제도 없습니다.</p></details></div>
+    </div>
+  </section>
+
+  <section class="block" id="commands">
+    <div class="wrap">
+      <header>
+        <div class="eyebrow">명령어</div>
+        <h2>대화창에 /fgui로 시작해 입력</h2>
+        <p class="lede">게임에서 <code>/fgui help</code>를 입력하면 검색할 수 있는 창에 모두 나옵니다.</p>
+        <div><button class="btn line" id="copyall" type="button">전체 목록 복사</button></div>
+      </header>
+      <div class="tools">
+        <input class="search" id="csearch" type="search" placeholder="명령어 검색" autocomplete="off" aria-label="명령어 검색">
+        <span class="count" id="ccount"></span>
+      </div>
+      <div class="tablewrap"><table class="ctable"><tbody id="clist"></tbody></table></div>
+      <button class="btn line more" type="button" id="cmore">Show all 129 commands</button>
+    </div>
+  </section>
+</main>
+<footer class="site-foot">
+  <div class="wrap">
+    <div class="foot-row">
+      <span>DustyMouse의 Fantasy Glass UI. WoW Forever용 무료 애드온.</span>
+      <ul>
+        <li><a href="https://www.curseforge.com/wow/addons/fantasy-glass-ui">CurseForge</a></li>
+        <li><a href="https://discord.gg/qeSMwQWyPR">Discord</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI">GitHub</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/wiki">Wiki</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/issues/new/choose">버그 신고</a></li>
+        <li><a href="/ko/accessibility/">접근성</a></li>
+      </ul>
+    </div>
+    <div class="foot-row">
+      <span>연락처: <a href="mailto:email-forwarding@fantasyglassui.com">email-forwarding@fantasyglassui.com</a></span>
+      <p class="status"><span>버전 <b>12.4.1</b></span><span class="sep" aria-hidden="true">·</span><span><time datetime="2026-11-25">2026-11-25</time> 업데이트</span><span class="sep" aria-hidden="true">·</span><span>WoW: Forever <b>1.60.1 (70938)</b> 기준으로 확인</span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">소스 코드</a></span></p>
+    </div>
+    <nav class="foot-row foot-langs" aria-label="언어"><ul><li><a href="/get-started/" hreflang="en" lang="en" data-code="en">English</a></li><li><a href="/de/get-started/" hreflang="de" lang="de" data-code="de">Deutsch</a></li><li><a href="/fr/get-started/" hreflang="fr" lang="fr" data-code="fr">Français</a></li><li><a href="/es/get-started/" hreflang="es" lang="es" data-code="es">Español</a></li><li><a href="/ru/get-started/" hreflang="ru" lang="ru" data-code="ru">Русский</a></li><li><a href="/pt/get-started/" hreflang="pt" lang="pt" data-code="pt">Português</a></li><li><a href="/it/get-started/" hreflang="it" lang="it" data-code="it">Italiano</a></li><li><a href="/ko/get-started/" hreflang="ko" lang="ko" data-code="ko" aria-current="true">한국어</a></li><li><a href="/zh/get-started/" hreflang="zh-Hans" lang="zh-Hans" data-code="zh">中文</a></li></ul></nav>
+    <p class="trnote">이 페이지는 원어민 검토 없이 번역되었습니다. 수정 제안을 환영합니다.</p>
+  </div>
+</footer>
+<script src="/assets/site.js?v=2dd8abee61" defer></script>
+<script src="/assets/get-started.js?v=6d1c054d84" defer></script>
+</body>
+</html>
