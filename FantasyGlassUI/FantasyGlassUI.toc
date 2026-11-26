@@ -77,6 +77,7 @@ PlannerGroup.lua
 PlannerDuo.lua
 PlannerCode.lua
 PlannerKills.lua
+PlannerIntro.lua
 Polish.lua
 Bags.lua
 BagWindow.lua
