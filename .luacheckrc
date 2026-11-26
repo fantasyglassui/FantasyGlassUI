@@ -216,6 +216,7 @@ read_globals = {
     "GetLootRollItemInfo",
     "GetLootRollItemLink",
     "GetLootRollTimeLeft",
+    "GetLootSlotInfo",
     "GetLootSlotLink",
     "GetMaxBattlefieldID",
     "GetMaxPlayerLevel",
