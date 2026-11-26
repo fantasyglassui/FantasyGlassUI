@@ -18424,6 +18424,109 @@ try("13.6 leftovers B: Questie's ids a slice at a time", function()
     ns.root.guideState, ns.root.guides, ns.root.planner = saved.guideState, saved.guides, saved.planner
     if not ok then error(err, 0) end
 end)
+try("13.6 leftovers B: gathering from Questie", function()
+    local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), level = env.UnitLevel, profs = env.GetProfessions, info = env.GetProfessionInfo,
+                    here = ns.GuideHere, mail = env.HasNewMail, loaded = env.C_AddOns.IsAddOnLoaded, meta = rawget(env.C_AddOns, "GetAddOnMetadata"),
+                    Q = rawget(env, "Questie"), loader = rawget(env, "QuestieLoader"), planner = ns.root.planner, nodes = ns.root.plannerNodesSeen,
+                    gather = ns.db.plannerGather, explore = ns.db.plannerExplore, unlocked = ns.GuideUnlocked, errors = #ns.errors }
+    local skills = {}
+    local objects = {
+        [1618] = { name = "Peacebloom", spawns = { [12] = { { 50, 41.5 }, { 50, 80 } } } },   -- (15 yards off the run, and 400)
+        [1735] = { name = "Iron Deposit", spawns = { [12] = { { 52, 41 } } } },              -- (10 yards off it)
+    }
+    local raising = false
+    local db = { QuestPointers = {}, GetQuest = function() end, IsDoable = function() return true end, QueryNPCSingle = function() end,
+                 ObjectPointers = { [1618] = 11, [1735] = 12 },
+                 QueryObjectSingle = function(id, key) if raising then error("boom") end return objects[id] and objects[id][key] end }
+    local fakes = { QuestieDB = db, QuestXP = { GetQuestLogRewardXP = function() return 100 end },
+                    ZoneDB = { GetUiMapIdByAreaId = function(_, area) return area == 12 and 1429 or nil end } }
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        env.C_Map = setmetatable({ GetWorldPosFromMapPos = function(map, v) if map == 1429 then return 0, { x = v.x * 1000, y = v.y * 1000 } end end },
+                                 { __index = saved.map })                                    -- (a percent is 10 yards)
+        env.CreateVector2D = function(x, y) return { x = x, y = y } end
+        env.UnitLevel = function() return 20 end
+        env.HasNewMail = function() return false end
+        env.GetProfessions = function() return skills[1] and 1 or nil, skills[2] and 2 or nil end
+        env.GetProfessionInfo = function(i) local s = skills[i]; if not s then return end; return s[2], 0, s[3], s[4], 0, 0, s[1] end
+        env.Questie = { API = { isReady = true, RegisterOnReady = function() end } }
+        env.QuestieLoader = { ImportModule = function(_, name) return fakes[name] end }
+        env.C_AddOns.IsAddOnLoaded = function() return true end
+        rawset(env.C_AddOns, "GetAddOnMetadata", function() return "4" end)
+        ns.db.plannerExplore = false
+        ns.root.plannerNodesSeen = nil
+        ns.PlannerSourceReset()
+        local qsrc = ns.PlannerSource()
+        if not (qsrc and type(qsrc.gatherNodes) == "function") then error("the Questie source reads gathering nodes") end
+        local function rec(id, x, y)
+            return { id = id, name = "Quest " .. id, level = 19, minLevel = 1, xp = 300, starts = { { map = 1429, x = x, y = y } }, ends = { { map = 1429, x = x, y = y } },
+                objectives = { { kind = "kill", count = 4, countKnown = true, mobLevel = 19, spots = { { map = 1429, x = x + 4, y = y + 4 } } } },
+                pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+        end
+        local at = { [6601] = { 30, 40 }, [6602] = { 70, 40 } }        -- two hubs 400 yards apart: one long run between them
+        local source = { kind = "questie", ids = function() return { 6601, 6602 } end, quest = function(id) return at[id] and rec(id, at[id][1], at[id][2]) end,
+            inns = function() return {} end, places = function() return {} end, gatherNodes = function(map) return qsrc.gatherNodes(map) end }
+        local function plan()
+            ns.root.planner = nil
+            return (ns.PlannerRoute({ source = source, level = 20, group = "solo", inGroup = false, speed = 7, faction = "Alliance",
+                done = function() return false end, onQuest = function() return false end, here = { map = 1429, x = 30, y = 40 },
+                crossings = {}, learnFlights = false, flights = {}, pace = 1, flightTime = function() return nil end }))
+        end
+        local function gathers(guide)
+            local o = {}
+            for i, s in ipairs(guide.steps) do if s.kind == "gather" then o[#o + 1] = { i = i, s = s } end end
+            return o
+        end
+        skills = { { 182, "Herbalism", 50, 75 }, { 186, "Mining", 100, 125 } }
+        local guide = plan()
+        local g = gathers(guide)
+        if #g ~= 1 or g[1].s.text ~= "Peacebloom" or g[1].s.x ~= 50 or g[1].s.y ~= 41.5 then error("one Peacebloom on the way, none 400 yards off, no Iron at 100: " .. #g) end
+        if g[1].s.stopKey ~= "gather:Peacebloom:1429:" .. g[1].s.x .. "," .. g[1].s.y then error("the stop key: " .. tostring(g[1].s.stopKey)) end
+        local nextStep = guide.steps[g[1].i + 1]
+        if not (nextStep and nextStep.map == 1429 and tonumber(nextStep.x) and nextStep.x > 50) then error("before that leg's destination") end
+        local nodes = qsrc.gatherNodes(1429)
+        if #nodes ~= 3 or nodes[1].skill == nil or nodes[1].min == nil then error("every spawn on the map, with its skill and the rank it needs") end
+        if #qsrc.gatherNodes(1436) ~= 0 then error("another map: none") end
+        -- Mining 130: the Iron too
+        skills = { { 182, "Herbalism", 50, 75 }, { 186, "Mining", 130, 150 } }
+        g = gathers(plan())
+        local names = {}
+        for _, e in ipairs(g) do names[#names + 1] = e.s.text end
+        table.sort(names)
+        if table.concat(names, ",") ~= "Iron Deposit,Peacebloom" then error("Mining 130: Iron too: " .. table.concat(names, ",")) end
+        -- one you recorded 5 yards from Questie's: one step, yours
+        skills = { { 182, "Herbalism", 50, 75 } }
+        ns.root.plannerNodesSeen = { [1429] = { { name = "Peacebloom", x = 50.5, y = 41.5, skill = 182 } } }
+        g = gathers(plan())
+        if #g ~= 1 or g[1].s.x ~= 50.5 then error("a recorded node 5 yards from Questie's: one step, the recorded one: " .. #g) end
+        ns.root.plannerNodesSeen = nil
+        -- switched off: none
+        ns.db.plannerGather = false
+        if #gathers(plan()) ~= 0 then error("gather off: none") end
+        ns.db.plannerGather = saved.gather
+        -- Questie has no such object: none
+        db.ObjectPointers[1618] = nil
+        ns.PlannerSourceReset()
+        if #gathers(plan()) ~= 0 then error("no ObjectPointers entry: none") end
+        db.ObjectPointers[1618] = 11
+        -- Questie raising: none, and still a plan
+        raising = true
+        ns.PlannerSourceReset()
+        guide = plan()
+        if #gathers(guide) ~= 0 or #guide.steps == 0 then error("QueryObjectSingle raising: no gather step, still a plan") end
+        raising = false
+        if #ns.PlannerLogSource().gatherNodes(1429) ~= 0 then error("the log source: none") end
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    ns.PlannerSourceReset()
+    env.C_Map, env.UnitLevel, env.HasNewMail, env.GetProfessions, env.GetProfessionInfo = saved.map, saved.level, saved.mail, saved.profs, saved.info
+    rawset(env, "CreateVector2D", saved.vec)
+    env.C_AddOns.IsAddOnLoaded = saved.loaded; rawset(env.C_AddOns, "GetAddOnMetadata", saved.meta)
+    rawset(env, "Questie", saved.Q); rawset(env, "QuestieLoader", saved.loader)
+    ns.root.planner, ns.root.plannerNodesSeen, ns.db.plannerGather, ns.db.plannerExplore, ns.GuideUnlocked = saved.planner, saved.nodes, saved.gather, saved.explore, saved.unlocked
+    ns.GuideHere = saved.here
+    if not ok then error(err, 0) end
+end)
 -- batch 6 tests B (questie): end
 -- batch 6 tests C (route): begin
 -- batch 6 tests C (route): end

@@ -260,6 +260,7 @@ end
 
 local changed = false
 local mapCache = nil              -- quest ids by zone map (one scan of every quest a session; a reset empties it)
+local gatherCache = nil          -- Questie's gathering nodes by map (every object in the table read once a session; a reset empties it)
 local zoneCache, grindCache = {}, {}   -- dungeon quest ids by area, grinding spots by level and continent (static data: a reset empties them)
 local recCache, cacheLevel = {}, nil   -- built records by quest id (not those in the log); emptied on a new level and by a reset
 
@@ -340,6 +341,70 @@ local function IdList(name)
     end
     idLists[name] = { t = t, ids = ids }
     return ids
+end
+
+-- Gathering nodes in Questie's object data. Questie has no "herb" or "ore" flag, so the objects are named
+-- here: { [objectID] = { skill = 182 (Herbalism) or 186 (Mining), min = the skill rank needed } }.
+-- From memory: CHECK THEM IN THE GAME (the ids, and the rank each needs) before trusting them.
+ns.PLANNER_GATHER_OBJECTS = {
+    [1617] = { skill = 182, min = 1 },      -- Silverleaf
+    [1618] = { skill = 182, min = 1 },      -- Peacebloom
+    [1619] = { skill = 182, min = 15 },     -- Earthroot
+    [1620] = { skill = 182, min = 50 },     -- Mageroyal
+    [1621] = { skill = 182, min = 70 },     -- Briarthorn
+    [2045] = { skill = 182, min = 85 },     -- Stranglekelp
+    [1622] = { skill = 182, min = 100 },    -- Bruiseweed
+    [1623] = { skill = 182, min = 115 },    -- Wild Steelbloom
+    [1628] = { skill = 182, min = 120 },    -- Grave Moss
+    [1624] = { skill = 182, min = 125 },    -- Kingsblood
+    [2041] = { skill = 182, min = 150 },    -- Liferoot
+    [2042] = { skill = 182, min = 160 },    -- Fadeleaf
+    [2046] = { skill = 182, min = 170 },    -- Goldthorn
+    [2043] = { skill = 182, min = 185 },    -- Khadgar's Whisker
+    [2044] = { skill = 182, min = 195 },    -- Wintersbite
+    [2866] = { skill = 182, min = 205 },    -- Firebloom
+    [142140] = { skill = 182, min = 210 },  -- Purple Lotus
+    [142141] = { skill = 182, min = 220 },  -- Arthas' Tears
+    [142142] = { skill = 182, min = 230 },  -- Sungrass
+    [142143] = { skill = 182, min = 235 },  -- Blindweed
+    [142144] = { skill = 182, min = 245 },  -- Ghost Mushroom
+    [142145] = { skill = 182, min = 250 },  -- Gromsblood
+    [176583] = { skill = 182, min = 260 },  -- Golden Sansam
+    [176584] = { skill = 182, min = 270 },  -- Dreamfoil
+    [176586] = { skill = 182, min = 280 },  -- Mountain Silversage
+    [176587] = { skill = 182, min = 285 },  -- Plaguebloom
+    [176588] = { skill = 182, min = 290 },  -- Icecap
+    [176589] = { skill = 182, min = 300 },  -- Black Lotus
+    [1731] = { skill = 186, min = 1 },      -- Copper Vein
+    [1610] = { skill = 186, min = 65 },     -- Incendicite Mineral Vein
+    [1732] = { skill = 186, min = 65 },     -- Tin Vein
+    [2653] = { skill = 186, min = 75 },     -- Lesser Bloodstone Deposit
+    [1733] = { skill = 186, min = 75 },     -- Silver Vein
+    [1735] = { skill = 186, min = 125 },    -- Iron Deposit
+    [1734] = { skill = 186, min = 155 },    -- Gold Vein
+    [2040] = { skill = 186, min = 175 },    -- Mithril Deposit
+    [165658] = { skill = 186, min = 230 },  -- Dark Iron Deposit
+    [2047] = { skill = 186, min = 230 },    -- Truesilver Deposit
+    [324] = { skill = 186, min = 245 },     -- Small Thorium Vein
+    [175404] = { skill = 186, min = 275 },  -- Rich Thorium Vein
+}
+
+-- One gathering object's spawns as a flat list { area, x, y } and its name (read through Try by the caller).
+local function ObjectSpawns(db, id)
+    if db.ObjectPointers[id] == nil then return nil end
+    local spawns, name = db.QueryObjectSingle(id, "spawns"), db.QueryObjectSingle(id, "name")
+    if type(spawns) ~= "table" or type(name) ~= "string" or name == "" then return nil end
+    local out = {}
+    for area, list in pairs(spawns) do
+        if type(list) == "table" then
+            for _, p in ipairs(list) do
+                if type(p) == "table" and tonumber(p[1]) and tonumber(p[2]) and not (p[1] == -1 and p[2] == -1) then
+                    out[#out + 1] = { area, tonumber(p[1]), tonumber(p[2]) }
+                end
+            end
+        end
+    end
+    return out, name
 end
 
 -- Where the places of one kind are. Kinds: innkeeper, repair, classTrainer, mailbox, vendor (arg
@@ -691,6 +756,38 @@ function ns.PlannerSource()
         grindCache[key] = list
         return list
     end
+    -- Questie's gathering nodes on a map: { { name, map, x, y, skill, min } }. Every object in
+    -- ns.PLANNER_GATHER_OBJECTS is read once a session (a failed read: that object has none), kept by map.
+    function src.gatherNodes(map)
+        if type(map) ~= "number" then return {} end
+        if not gatherCache then
+            local db = env.db
+            local okP, pointers = Try(function() return db.ObjectPointers end)
+            if not (okP and type(pointers) == "table" and type(db.QueryObjectSingle) == "function") then return {} end
+            local scan, areas = {}, {}
+            for id, def in pairs(ns.PLANNER_GATHER_OBJECTS) do
+                ns.PlannerYield()
+                local ok, spawns, name = Try(ObjectSpawns, db, id)
+                if ok and spawns then
+                    for _, p in ipairs(spawns) do
+                        ns.PlannerYield()
+                        local m = areas[p[1]]
+                        if m == nil then
+                            local okM, value = Try(env.zones.GetUiMapIdByAreaId, env.zones, p[1])
+                            m = okM and tonumber(value) or false
+                            areas[p[1]] = m
+                        end
+                        if m then
+                            scan[m] = scan[m] or {}
+                            scan[m][#scan[m] + 1] = { name = name, map = m, x = p[2], y = p[3], skill = def.skill, min = def.min }
+                        end
+                    end
+                end
+            end
+            gatherCache = scan
+        end
+        return gatherCache[map] or {}
+    end
     function src.places(kind, arg) return Places("questie", env, kind, arg) end
     function src.inns() return Places("questie", env, "innkeeper") end
     return src
@@ -742,12 +839,13 @@ function ns.PlannerLogSource()
     end
     function src.places(kind, arg) return Places("log", nil, kind, arg) end
     function src.inns() return {} end
+    function src.gatherNodes() return {} end
     return src
 end
 
 function ns.PlannerSourceReset()
     changed, waiting, placeCaches, recCache, cacheLevel = false, false, { questie = {}, log = {}, questieScan = {}, logScan = {} }, {}, nil
-    zoneCache, grindCache, mapCache, idLists = {}, {}, nil, {}
+    zoneCache, grindCache, mapCache, idLists, gatherCache = {}, {}, nil, {}, nil
     ns.plannerExploreMaps = {}                  -- (PlannerPath.lua: the maps known to report exploration)
 end
 
