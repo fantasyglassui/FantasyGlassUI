@@ -965,7 +965,17 @@ do
     -- Quest times: each quest accepted while following gathers its share of the time that passes, the
     -- time split evenly among the quests open at once (a hub's quests are done together). Memory only.
     -- (a quest carried longer than a sample may be, 2 hours, gives none and stops taking a share)
+    -- Time passes for them only while you are present and out of town: not AFK and not resting (each
+    -- readable; a hidden flag counts as present). PLAYER_FLAGS_CHANGED and PLAYER_UPDATE_RESTING share
+    -- out the time so far, then set the new state.
     local open, openN, openAt, since = {}, 0, nil, {}  -- questID -> seconds so far; how many; the last time shared out; accepted at
+    local away = false
+    local function Flag(fn, ...)
+        if type(fn) ~= "function" then return false end
+        local ok, v = pcall(fn, ...)
+        return ok and not ns:IsSecret(v) and v == true
+    end
+    local function Away() return Flag(UnitIsAFK, "player") or Flag(IsResting) end
     local function Share(now)
         for id, t0 in pairs(since) do
             if t0 > now or now - t0 > QUEST_TIME_MAX then
@@ -974,7 +984,7 @@ do
             end
         end
         if openN == 0 then openAt = nil end
-        if openAt and openN > 0 and now > openAt then
+        if openAt and openN > 0 and now > openAt and not away then
             local part = (now - openAt) / openN
             for id, t in pairs(open) do open[id] = t + part end
         end
@@ -1012,6 +1022,7 @@ do
         local okT, now = pcall(GetTime)
         if okT and type(now) == "number" and not ns:IsSecret(now) then return now end
     end
+    ns.PlannerQuestClock = function() return { open = openN, away = away } end    -- (read only: the tests)
     -- A QUEST_REMOVED of a quest not (yet) flagged completed: abandoned, unless QUEST_TURNED_IN for it follows
     -- within a second (then it was a hand-in, counted once). questID -> { t, level = a soloed elite's, took = its time }.
     local removed = {}
@@ -1044,8 +1055,16 @@ do
     for kind, e in pairs(ns.GUIDE_WINDOW_KINDS or {}) do closes[e] = kind end
     for _, e in ipairs({ "QUEST_ACCEPTED", "QUEST_TURNED_IN", "QUEST_REMOVED", "PLAYER_LEVEL_UP", "HEARTHSTONE_BOUND",
                          "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED",
-                         "TRAINER_SHOW", "TRAINER_CLOSED", "MERCHANT_CLOSED", "MAIL_CLOSED", "PLAYER_MOUNT_DISPLAY_CHANGED", "PLAYER_DEAD" }) do pcall(ev.RegisterEvent, ev, e) end
+                         "TRAINER_SHOW", "TRAINER_CLOSED", "MERCHANT_CLOSED", "MAIL_CLOSED", "PLAYER_MOUNT_DISPLAY_CHANGED", "PLAYER_DEAD",
+                         "PLAYER_FLAGS_CHANGED", "PLAYER_UPDATE_RESTING" }) do pcall(ev.RegisterEvent, ev, e) end
     ev:SetScript("OnEvent", ns:Guard("Planner", function(_, event, a, b)
+        if event == "PLAYER_FLAGS_CHANGED" or event == "PLAYER_UPDATE_RESTING" then   -- (away or in town: the quest clock stops)
+            if (event == "PLAYER_FLAGS_CHANGED" and a ~= "player") or not ns:GuideUnlocked() then return end
+            local now = Now()
+            if now then Share(now) end
+            away = Away()
+            return
+        end
         if event == "PLAYER_REGEN_DISABLED" then fighting = true; return end
         if event == "PLAYER_REGEN_ENABLED" then fighting = false; return end
         if event == "TRAINER_SHOW" then               -- (a locked guide: nothing is looked up)

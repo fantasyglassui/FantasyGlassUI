@@ -18557,6 +18557,87 @@ try("13.6 leftovers A: kills in the plan", function()
     ns.PlannerKillRatio, ns.db.plannerDry, ns.GuideUnlocked, env.InCombatLockdown = saved.ratio, saved.dry, saved.unlocked, saved.combat
     if not ok then error(err, 0) end
 end)
+try("13.6 leftovers A: quest times without away and town", function()
+    local saved = { on = ns.GuideOn, state = ns.GuideState, unlocked = ns.GuideUnlocked, time = rawget(env, "GetTime"), afk = rawget(env, "UnitIsAFK"),
+                    resting = rawget(env, "IsResting"), times = ns.root.plannerQuestTimes, errors = #ns.errors }
+    local afk, resting = false, false
+    local function setAFK(v, unit) afk = v; fireEvent("PLAYER_FLAGS_CHANGED", unit or "player") end
+    local function setRest(v) resting = v; fireEvent("PLAYER_UPDATE_RESTING") end
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        ns.GuideOn = function() return true end
+        ns.GuideState = function() return { name = ns.GUIDE_PLANNED, at = 1, plan = {} } end
+        local base, clock = 0, 0
+        local hidden = setmetatable({ __secret = true }, secretmt)
+        env.GetTime = function() return clock end
+        env.UnitIsAFK = function() return afk end
+        env.IsResting = function() return resting end
+        local function at(t) clock = base + t end
+        local function avg(id) local e = ns.root.plannerQuestTimes and ns.root.plannerQuestTimes[id]; return e and e.avg end
+        base = 700000; at(0)
+        setAFK(false); setRest(false)
+        if type(ns.PlannerQuestClock) ~= "function" then error("ns.PlannerQuestClock") end
+        -- accepted at 0, away 100 to 400, in town 500 to 600, handed in at 700: 300 s
+        ns.root.plannerQuestTimes = nil
+        fireEvent("QUEST_ACCEPTED", 1, 9650)
+        at(100); setAFK(true)
+        local c = ns.PlannerQuestClock()
+        if not (c.away == true and c.open == 1) then error("away, one quest open") end
+        at(200); setAFK(false, "party1")
+        if not ns.PlannerQuestClock().away then error("another unit's flags change nothing") end
+        at(400); setAFK(false)
+        if ns.PlannerQuestClock().away then error("back") end
+        at(500); setRest(true)
+        if not ns.PlannerQuestClock().away then error("in town") end
+        at(600); setRest(false)
+        at(700); fireEvent("QUEST_TURNED_IN", 9650)
+        if avg(9650) ~= 300 then error("without the time away and in town: 300, got " .. tostring(avg(9650))) end
+        if ns.PlannerQuestClock().open ~= 0 then error("nothing open") end
+        -- two quests open from 0, away 50 to 150, both handed in at 250: 75 each
+        base = 710000; at(0)
+        fireEvent("QUEST_ACCEPTED", 1, 9651); fireEvent("QUEST_ACCEPTED", 2, 9652)
+        at(50); setAFK(true); at(150); setAFK(false)
+        at(250); fireEvent("QUEST_TURNED_IN", 9651); fireEvent("QUEST_TURNED_IN", 9652)
+        if avg(9651) ~= 75 or avg(9652) ~= 75 then error("150 s shared by two: 75 each, got " .. tostring(avg(9651)) .. " " .. tostring(avg(9652))) end
+        -- accepted in town, never left: 0 s, no sample
+        base = 720000; at(0)
+        setRest(true); fireEvent("QUEST_ACCEPTED", 1, 9653)
+        at(300); fireEvent("QUEST_TURNED_IN", 9653)
+        if avg(9653) then error("never out of town: no sample") end
+        setRest(false)
+        -- a hidden AFK flag: present, no error
+        base = 730000; at(0)
+        env.UnitIsAFK = function() return hidden end
+        fireEvent("QUEST_ACCEPTED", 1, 9654)
+        at(100); fireEvent("PLAYER_FLAGS_CHANGED", "player")
+        if ns.PlannerQuestClock().away then error("hidden: counted as present") end
+        at(200); fireEvent("QUEST_TURNED_IN", 9654)
+        if avg(9654) ~= 200 then error("hidden: no pause, got " .. tostring(avg(9654))) end
+        env.UnitIsAFK = function() return afk end
+        -- away 7000 s: over 2 hours since accepting, no sample
+        base = 740000; at(0)
+        fireEvent("QUEST_ACCEPTED", 1, 9655)
+        at(100); setAFK(true); at(7100); setAFK(false)
+        at(7300); fireEvent("QUEST_TURNED_IN", 9655)
+        if avg(9655) then error("over 2 hours since accepting: no sample") end
+        -- locked: the state is not read
+        ns.GuideUnlocked = function() return false end
+        setAFK(true)
+        if ns.PlannerQuestClock().away then error("locked: nothing read") end
+        ns.GuideUnlocked = function() return true end
+        afk = false
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    -- (leave the clock present, then put everything back)
+    ns.GuideUnlocked = function() return true end
+    env.UnitIsAFK, env.IsResting = function() return false end, function() return false end
+    afk, resting = false, false
+    pcall(setAFK, false); pcall(setRest, false)
+    ns.GuideOn, ns.GuideState, ns.GuideUnlocked, env.GetTime = saved.on, saved.state, saved.unlocked, saved.time
+    env.UnitIsAFK, env.IsResting, ns.root.plannerQuestTimes = saved.afk, saved.resting, saved.times
+    ns.plannerQueued = false
+    if not ok then error(err, 0) end
+end)
 -- batch 6 tests A (learning): end
 -- batch 6 tests B (questie): begin
 -- batch 6 tests B (questie): end
