@@ -1,0 +1,10 @@
+{
+  "item %d": ["Gegenstand %d", "objet %d", "objeto %d", "предмет %d", "item %d", "oggetto %d", "아이템 %d", "物品 %d"],
+  "auction": ["Auktion", "enchères", "subasta", "аукцион", "leilão", "asta", "경매", "拍卖"],
+  "%d to buy, %s each": ["%d zu kaufen, je %s", "%d à acheter, %s l'unité", "%d por comprar, %s cada uno", "купить %d, по %s", "%d para comprar, %s cada", "%d da comprare, %s l'uno", "%d개 구매, 개당 %s", "需购买 %d 个，每个 %s"],
+  "Buy %d × %s": ["%d × %s kaufen", "Acheter %d × %s", "Comprar %d × %s", "Купить %d × %s", "Comprar %d × %s", "Compra %d × %s", "%d × %s 구매", "购买 %d × %s"],
+  "Get %d × %s from your other characters": ["%d × %s von deinen anderen Charakteren holen", "Récupérer %d × %s sur vos autres personnages", "Recoge %d × %s de tus otros personajes", "Взять %d × %s у других персонажей", "Pegue %d × %s dos seus outros personagens", "Prendi %d × %s dagli altri personaggi", "다른 캐릭터에게서 %d × %s 가져오기", "从其他角色取来 %d × %s"],
+  "Make %d × %s": ["%d × %s herstellen", "Fabriquer %d × %s", "Fabrica %d × %s", "Изготовить %d × %s", "Fabrique %d × %s", "Crea %d × %s", "%d × %s 제작", "制作 %d × %s"],
+  "Sell them at the auction house": ["Im Auktionshaus verkaufen", "Les vendre à l'hôtel des ventes", "Véndelos en la casa de subastas", "Продать на аукционе", "Venda-os na casa de leilões", "Vendili alla casa d'aste", "경매장에서 판매", "在拍卖行出售"],
+  "Make %d × %s and sell them": ["%d × %s herstellen und verkaufen", "Fabriquer %d × %s et les vendre", "Fabrica %d × %s y véndelos", "Изготовить %d × %s и продать", "Fabrique %d × %s e venda", "Crea %d × %s e vendili", "%d × %s 제작 후 판매", "制作 %d × %s 并出售"]
+}

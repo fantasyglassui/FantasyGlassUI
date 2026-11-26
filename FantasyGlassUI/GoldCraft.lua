@@ -1,2 +1,292 @@
 -- Ways to make gold: Crafting for profit and auction flipping (group D). Plugs into Gold.lua through ns.GoldRegister.
-local _, ns = ... -- luacheck: ignore 211 (used once the group's code is in)
+local _, ns = ...
+local Secret = function(v) return ns:IsSecret(v) end
+local floor, max, min, huge = math.floor, math.max, math.min, math.huge
+
+------------------------------------------------------------------------------------------
+-- What the advisor knows about crafting comes from the recipes you know, read when a profession
+-- opens; the ideas price them with the auction house's prices and the vendors you have seen.
+--   ns.root.goldChars[charKey].recipes = { [recipeID] = { name, out, nMin, nMax,
+--     reagents = { { id, need } }, prof, day } }    (at most 600; one profession's are replaced at its open)
+-- Nothing here buys, posts or crafts: every purchase is the player's own click.
+------------------------------------------------------------------------------------------
+local RECIPE_CAP = 600
+local CRAFT_MAX = 8
+
+-- A plain finite number from the game or the store, else nil.
+local function Num(v)
+    if Secret(v) or type(v) ~= "number" or v ~= v or v == huge or v == -huge then return nil end
+    return v
+end
+local function Str(v)
+    if Secret(v) or type(v) ~= "string" or v == "" then return nil end
+    return v
+end
+-- The first answer of a game function, or nil when it is missing, errors or hides its answer.
+local function Call(fn, ...)
+    if type(fn) ~= "function" then return nil end
+    local ok, v = pcall(fn, ...)
+    if not ok or Secret(v) then return nil end
+    return v
+end
+local function Unlocked() return ns.GuideUnlocked ~= nil and ns:GuideUnlocked() == true end
+local function InFight()
+    local ok, v = pcall(InCombatLockdown)
+    return ok and ns.Yes(v)
+end
+
+-- This character's record in ns.root.goldChars; the tables are made only when `create` is set.
+local function CharRecord(create, key)
+    if type(ns.root) ~= "table" then return nil end
+    local all = ns.root.goldChars
+    if type(all) ~= "table" then
+        if not create then return nil end
+        all = {}
+        ns.root.goldChars = all
+    end
+    key = key or ns:CharKey()
+    local rec = all[key]
+    if type(rec) ~= "table" then
+        if not create then return nil end
+        rec = {}
+        all[key] = rec
+    end
+    return rec
+end
+
+------------------------------------------------------------------------------------------
+-- recorders (light; may stay in the main add-on when the folder moves)
+-- When a profession opens, one job walks its recipes (a second of quiet first, as the list fills).
+------------------------------------------------------------------------------------------
+-- Is your own profession window open and filled? Someone else's list (a link, a guild's or an NPC's
+-- crafting) is not what you can make.
+local function Ready()
+    local T = C_TradeSkillUI
+    if type(T) ~= "table" or not ns.Yes(Call(T.IsTradeSkillReady)) then return false end
+    if ns.Yes(Call(T.IsTradeSkillLinked)) or ns.Yes(Call(T.IsTradeSkillGuild)) or ns.Yes(Call(T.IsNPCCrafting)) then return false end
+    return true
+end
+
+-- The basic reagents of a schematic, as Economy's shopping list reads them: { { id, need } }.
+local function SchematicReagents(s)
+    local out = {}
+    for _, slot in ipairs(type(s.reagentSlotSchematics) == "table" and s.reagentSlotSchematics or {}) do
+        if type(slot) == "table" then
+            local first = type(slot.reagents) == "table" and slot.reagents[1]
+            local rt = slot.reagentType
+            local basic = not Secret(rt) and (rt == nil or rt == 1 or ns.Is(slot.required, true))
+            local id = type(first) == "table" and Num(first.itemID)
+            local need = Num(slot.quantityRequired)
+            if basic and id and need and need > 0 then out[#out + 1] = { id = id, need = need } end
+        end
+    end
+    return out
+end
+
+local function ReadRecipes()
+    if not Unlocked() or not Ready() then return end
+    local T = C_TradeSkillUI
+    local base = Call(T.GetBaseProfessionInfo)
+    local prof = type(base) == "table" and Str(base.professionName) or nil
+    local ids = Call(T.GetAllRecipeIDs)
+    if not prof or type(ids) ~= "table" then return end           -- (whose recipes these are must be known to replace them)
+    local today = ns.Today()
+    local found, order = {}, {}
+    for _, id in ipairs(ids) do
+        id = Num(id)
+        local info = id and Call(T.GetRecipeInfo, id)
+        if type(info) == "table" and ns.Is(info.learned, true) then
+            local s = Call(T.GetRecipeSchematic, id, false)
+            local out = type(s) == "table" and Num(s.outputItemID)
+            if out and out > 0 then
+                local nMin = Num(s.quantityMin) or 1
+                local nMax = Num(s.quantityMax) or nMin
+                if nMin < 1 then nMin = 1 end
+                if nMax < nMin then nMax = nMin end
+                found[id] = { name = Str(info.name) or Str(s.name), out = out, nMin = nMin, nMax = nMax, reagents = SchematicReagents(s), prof = prof, day = today }
+                order[#order + 1] = id
+            end
+        end
+        ns.GoldYield()
+    end
+    -- this profession's old recipes go; the others stay; at most RECIPE_CAP in all
+    local rec = CharRecord(#order > 0)
+    if not rec then return end
+    local kept, n = {}, 0
+    for id, r in pairs(type(rec.recipes) == "table" and rec.recipes or {}) do
+        if type(r) == "table" and r.prof ~= prof then kept[id] = r; n = n + 1 end
+    end
+    table.sort(order)
+    for _, id in ipairs(order) do
+        if n >= RECIPE_CAP then break end
+        kept[id] = found[id]
+        n = n + 1
+    end
+    rec.recipes = kept
+end
+
+-- Read the open profession's recipes, as a job. False when locked, in a fight, not ready, or already queued.
+function ns.GoldRecipesRead()
+    if not Unlocked() or InFight() or not Ready() then return false end
+    return ns.GoldJob(ReadRecipes, "recipes")
+end
+
+do
+    local ev, gen = CreateFrame("Frame"), 0
+    pcall(ev.RegisterEvent, ev, "TRADE_SKILL_SHOW")
+    pcall(ev.RegisterEvent, ev, "TRADE_SKILL_LIST_UPDATE")
+    ev:SetScript("OnEvent", ns:Guard("Gold recipes", function(_, event)
+        if (event ~= "TRADE_SKILL_SHOW" and event ~= "TRADE_SKILL_LIST_UPDATE") or not Unlocked() then return end
+        gen = gen + 1
+        local mine = gen
+        ns:After(1, function() if mine == gen then ns.GoldRecipesRead() end end)
+    end))
+end
+
+------------------------------------------------------------------------------------------
+-- Prices for buying and selling
+------------------------------------------------------------------------------------------
+local function ItemName(id)
+    if not Num(id) then return nil end
+    local ok, name = pcall(ns.GetItemInfo, ns, id)
+    return ok and Str(name) or nil
+end
+local function NameOf(id, fallback)
+    return ItemName(id) or Str(fallback) or format(ns:Tr("item %d"), tonumber(id) or 0)
+end
+
+-- An auction price for one: today's lowest, else the usual, else the last seen; and that entry's day.
+local function AuctionPrice(id, today)
+    if not Num(id) then return nil end
+    local e = ns.PriceEntry(id)
+    if type(e) ~= "table" then return nil end
+    local p = e.price
+    if e.day ~= today then p = ns.AuctionUsual(e) or e.price end
+    p = Num(p)
+    if not p or p <= 0 then return nil end
+    return p, Num(e.day), e
+end
+-- What a vendor asks for one (GoldSell.lua writes the store; the reader may not be there).
+local function VendorBuy(id)
+    if type(ns.GoldVendorBuy) ~= "function" then return nil end
+    local ok, buy = pcall(ns.GoldVendorBuy, id)
+    buy = ok and Num(buy) or nil
+    if buy and buy > 0 then return buy end
+    return nil
+end
+-- The cheaper way to buy one reagent: copper, "auction"|"vendor", and the auction price's day.
+-- A tie goes to the vendor: its price does not move.
+local function ReagentPrice(id, today)
+    local ah, day = AuctionPrice(id, today)
+    local vendor = VendorBuy(id)
+    if vendor and (not ah or vendor <= ah) then return vendor, "vendor", nil end
+    if ah then return ah, "auction", day end
+    return nil
+end
+
+-- What a recipe makes after the house's cut, what its reagents cost, and the oldest auction price used.
+-- nil and why ("unpriced": a reagent with no price; "no price": the product has no auction price).
+function ns.GoldCraftMargin(rec, today)
+    if type(rec) ~= "table" then return nil, "no recipe" end
+    today = today or ns.Today()
+    local cost, oldest = 0, nil
+    for _, r in ipairs(type(rec.reagents) == "table" and rec.reagents or {}) do
+        local need = type(r) == "table" and Num(r.need)
+        if not need or need <= 0 then return nil, "unpriced" end
+        local unit, from, day = ReagentPrice(r.id, today)
+        if not unit then return nil, "unpriced" end
+        if from == "auction" and day and (not oldest or day < oldest) then oldest = day end
+        cost = cost + unit * need
+    end
+    local p, day = AuctionPrice(rec.out, today)
+    if not p then return nil, "no price" end
+    if day and (not oldest or day < oldest) then oldest = day end
+    local nMin = Num(rec.nMin) or 1
+    local nMax = Num(rec.nMax) or nMin
+    if nMax < nMin then nMax = nMin end
+    local sale = floor(p * 95 * (nMin + nMax) / 200)            -- (95% of the price, times the average made, in whole numbers)
+    return sale - cost, cost, sale, oldest
+end
+
+-- On this character (bags and bank), and on your other characters (bags and bank).
+local function Have(id)
+    local mine = Num(Call(C_Item and C_Item.GetItemCount, id, true)) or 0
+    local others = 0
+    if type(ns.ItemOwners) == "function" then
+        local ok, owners, me = pcall(ns.ItemOwners, ns, "item:" .. tostring(id))
+        if ok and type(owners) == "table" then
+            for owner, o in pairs(owners) do
+                if owner ~= me and type(o) == "table" then others = others + (Num(o.bags) or 0) + (Num(o.bank) or 0) end
+            end
+        end
+    end
+    return mine, others
+end
+
+local function CraftIdea(f, today, have)
+    local rec, count = f.rec, f.count
+    local product = NameOf(rec.out, rec.name)
+    local detail, buys, gets = {}, {}, {}
+    for _, r in ipairs(ns.ShoppingLines(rec.reagents, count, have)) do
+        local unit, from = ReagentPrice(r.id, today)
+        local name = NameOf(r.id)
+        local right
+        if r.buy > 0 then
+            right = format(ns:Tr("%d to buy, %s each"), r.buy, ns:Coins(unit or 0)) .. "  |cff9aa4b4(" .. ns:Tr(from or "auction") .. ")|r"
+            buys[#buys + 1] = { text = format(ns:Tr("Buy %d × %s"), r.buy, name) }
+        else
+            right = ns:Tr("enough")
+        end
+        if r.fromAlts > 0 then
+            right = right .. "  |cff9aa4b4" .. format(ns:Tr("%d on other characters"), r.others) .. "|r"
+            gets[#gets + 1] = { text = format(ns:Tr("Get %d × %s from your other characters"), r.fromAlts, name) }
+        end
+        detail[#detail + 1] = { left = format("%d × %s  |cff9aa4b4(%d)|r", r.need, name, r.mine), right = right }
+    end
+    local steps = buys
+    for _, s in ipairs(gets) do steps[#steps + 1] = s end
+    steps[#steps + 1] = { text = format(ns:Tr("Make %d × %s"), count, product) }
+    steps[#steps + 1] = { text = ns:Tr("Sell them at the auction house") }
+    return {
+        id = "craft:" .. tostring(f.id), kind = "craft", oneOff = true,
+        title = format(ns:Tr("Make %d × %s and sell them"), count, product),
+        total = f.total, minutes = 5 + count,
+        ease = ns.GOLD_EASE.craft, safety = ns.GOLD_SAFETY.craft.prices, basis = "prices", priceDay = f.day,
+        where = "both", detail = detail, steps = steps,
+    }
+end
+
+local function ByTotal(a, b)
+    if a.total ~= b.total then return a.total > b.total end
+    return a.id < b.id
+end
+-- The craft ideas from these recipes: the best CRAFT_MAX by total. `have(id) -> mine, others` (the
+-- bags, the bank and your other characters by default).
+function ns.GoldCraftIdeas(ctx, add, recipes, have)
+    if type(recipes) ~= "table" or type(add) ~= "function" then return end
+    local today = (type(ctx) == "table" and Num(ctx.today)) or ns.Today()
+    have = have or Have
+    local ids = {}
+    for id in pairs(recipes) do if Num(id) then ids[#ids + 1] = id end end   -- (the keys first: the table may change between slices)
+    local found = {}
+    for _, id in ipairs(ids) do
+        local rec = recipes[id]
+        if type(rec) == "table" then
+            local margin, cost, _, day = ns.GoldCraftMargin(rec, today)
+            if margin and margin >= max(50, 0.1 * cost) then
+                local e = ns.PriceEntry(rec.out)
+                local listed = type(e) == "table" and Num(e.listed) or nil
+                local count = listed and min(5, max(1, floor(listed / 4))) or 1
+                found[#found + 1] = { id = id, rec = rec, count = count, total = margin * count, day = day }
+            end
+        end
+        ns.GoldYield()
+    end
+    table.sort(found, ByTotal)
+    for i = 1, min(CRAFT_MAX, #found) do add(CraftIdea(found[i], today, have)) end
+end
+
+ns.GoldRegister("craft", function(ctx, add)
+    local rec = CharRecord(false, type(ctx) == "table" and ctx.charKey or nil)
+    ns.GoldCraftIdeas(ctx, add, rec and rec.recipes)
+end)

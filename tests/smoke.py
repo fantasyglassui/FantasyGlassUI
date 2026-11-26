@@ -11441,6 +11441,119 @@ end)
 -- gold tests C (gather): begin
 -- gold tests C (gather): end
 -- gold tests D (craft): begin
+try("gold D: crafting for profit", function()
+    local keep = { unlocked = ns.GuideUnlocked, combat = env.InCombatLockdown, T = env.C_TradeSkillUI, count = env.C_Item.GetItemCount,
+        owners = ns.ItemOwners, entry = ns.PriceEntry, info = ns.GetItemInfo, today = ns.Today, vbuy = ns.GoldVendorBuy, chars = ns.root.goldChars }
+    local ok, err = pcall(function()
+        if type(ns.GoldCraftMargin) ~= "function" or type(ns.GoldCraftIdeas) ~= "function" or type(ns.GoldRecipesRead) ~= "function" then error("ns.GoldCraftMargin is nil") end
+        keep.sources = ns.GoldSources()
+        if type(keep.sources.craft) ~= "function" then error("the craft source is registered") end
+        for key in pairs(keep.sources) do if key ~= "craft" then ns.GoldRegister(key, nil) end end
+        local function Settle() local n = 0; while ns.GoldBusy() and n < 400 do ns.GoldRunSlice(); n = n + 1 end end
+        fireEvent("PLAYER_REGEN_ENABLED")
+        Settle()
+        local today = 20261125
+        ns.Today = function() return today end
+        local me = ns:CharKey()
+        -- reading recipes: the learned one is kept, the other is not; locked or in a fight, nothing
+        ns.root.goldChars = nil
+        local schem = {
+            [1] = { outputItemID = 2581, quantityMin = 1, quantityMax = 1, reagentSlotSchematics = { { reagents = { { itemID = 2589 } }, quantityRequired = 2, reagentType = 1, required = true } } },
+            [2] = { outputItemID = 9999, quantityMin = 1, quantityMax = 1, reagentSlotSchematics = {} },
+        }
+        env.C_TradeSkillUI = { IsTradeSkillReady = function() return true end, GetAllRecipeIDs = function() return { 1, 2 } end,
+            GetRecipeInfo = function(id) return { recipeID = id, name = (id == 1) and "Heavy Linen Bandage" or "Other", learned = (id == 1) } end,
+            GetRecipeSchematic = function(id) return schem[id] end,
+            GetBaseProfessionInfo = function() return { professionName = "First Aid" } end }
+        ns.GuideUnlocked = function() return false end
+        fireEvent("TRADE_SKILL_SHOW"); runTimers(); Settle()
+        if ns.root.goldChars ~= nil then error("locked: no recipes read") end
+        ns.GuideUnlocked = function() return true end
+        env.InCombatLockdown = function() return true end
+        fireEvent("TRADE_SKILL_SHOW"); runTimers(); Settle()
+        if ns.root.goldChars ~= nil then error("in a fight nothing runs") end
+        env.InCombatLockdown = keep.combat
+        fireEvent("TRADE_SKILL_SHOW"); fireEvent("TRADE_SKILL_LIST_UPDATE"); runTimers(); Settle()
+        local char = ns.root.goldChars and ns.root.goldChars[me]
+        local recs = char and char.recipes
+        if type(recs) ~= "table" or type(recs[1]) ~= "table" or recs[2] ~= nil then error("only the learned recipe is kept") end
+        local r1 = recs[1]
+        if r1.name ~= "Heavy Linen Bandage" or r1.out ~= 2581 or r1.nMin ~= 1 or r1.nMax ~= 1 or r1.prof ~= "First Aid" or r1.day ~= today
+            or #r1.reagents ~= 1 or r1.reagents[1].id ~= 2589 or r1.reagents[1].need ~= 2 then error("the recipe as kept") end
+        -- the profession's old entries are replaced, another profession's kept
+        recs[77] = { name = "Old", out = 1, nMin = 1, nMax = 1, reagents = {}, prof = "First Aid", day = 20261101 }
+        recs[78] = { name = "Smith", out = 2, nMin = 1, nMax = 1, reagents = {}, prof = "Blacksmithing", day = 20261101 }
+        if not ns.GoldRecipesRead() then error("reading recipes is queued") end
+        Settle()
+        recs = ns.root.goldChars[me].recipes
+        if recs[77] ~= nil or recs[78] == nil or recs[1] == nil then error("the profession's old entries are replaced") end
+        recs[78] = nil
+        -- the margin: the cheaper of the auction and a vendor for reagents, the house's cut off the sale
+        local names = { [2581] = "Heavy Linen Bandage", [2589] = "Linen Cloth" }
+        ns.GetItemInfo = function(self, id) return names[id], nil, 1, nil, nil, nil, nil, nil, nil, nil, 1 end
+        local entries = { [2581] = { price = 300, day = today, listed = 12, listedDay = today }, [2589] = { price = 60, day = 20261124 } }
+        ns.PriceEntry = function(id) return entries[id] end
+        ns.GoldVendorBuy = function(id) if id == 2589 then return 50, today end end
+        local m, c, s, d = ns.GoldCraftMargin(r1, today)
+        if m ~= 185 or c ~= 100 or s ~= 285 or d ~= today then error("margin: " .. tostring(m) .. " " .. tostring(c) .. " " .. tostring(s) .. " " .. tostring(d)) end
+        -- the idea, with its shopping list
+        ns.ItemOwners = function(self, link)
+            if tostring(link):find("2589", 1, true) then return { [me] = { bags = 1, bank = 0, guild = 0 }, ["Alt - Realm"] = { bags = 2, bank = 0, guild = 0 } }, me end
+            return nil, me
+        end
+        env.C_Item.GetItemCount = function(id) if id == 2589 then return 1 end return 0 end
+        local ctx = ns.GoldContext("window")
+        local got = {}
+        ns.GoldCraftIdeas(ctx, function(i) got[#got + 1] = i end, recs)
+        local idea = got[1]
+        if #got ~= 1 or not ns.GoldIdeaValid(idea) then error("one idea: " .. #got .. " " .. tostring(idea and select(2, ns.GoldIdeaValid(idea)))) end
+        if idea.kind ~= "craft" or idea.oneOff ~= true or idea.where ~= "both" or idea.basis ~= "prices" or idea.total ~= 555 or idea.minutes ~= 8 or idea.priceDay ~= today then
+            error("the idea: " .. tostring(idea.total) .. " " .. tostring(idea.minutes) .. " " .. tostring(idea.priceDay)) end
+        if idea.title ~= "Make 3 × Heavy Linen Bandage and sell them" then error("title: " .. idea.title) end
+        local line = idea.detail and idea.detail[1]
+        if not line or not tostring(line.left):find("6", 1, true) or not tostring(line.right):find("3 to buy", 1, true) or not tostring(line.right):find("vendor", 1, true) then
+            error("the shopping list: " .. tostring(line and line.left) .. " | " .. tostring(line and line.right)) end
+        local st = idea.steps or {}
+        if not st[1] or st[1].text ~= "Buy 3 × Linen Cloth" or st[#st].text ~= "Sell them at the auction house" or st[#st - 1].text ~= "Make 3 × Heavy Linen Bandage" then
+            error("the steps: " .. tostring(st[1] and st[1].text)) end
+        -- through the source
+        local ideas = ns.GoldCollectNow(ctx)
+        if #ideas ~= 1 or ideas[1].id ~= idea.id then error("the craft source adds it: " .. #ideas) end
+        -- a reagent with no price, a product with none
+        ns.GoldVendorBuy = function() return nil end
+        entries[2589] = nil
+        local mm, why = ns.GoldCraftMargin(r1, today)
+        if mm ~= nil or why ~= "unpriced" then error("unpriced: " .. tostring(why)) end
+        entries[2589] = { price = 60, day = today }
+        entries[2581] = nil
+        mm, why = ns.GoldCraftMargin(r1, today)
+        if mm ~= nil or why ~= "no price" then error("no price: " .. tostring(why)) end
+        -- too small: a margin of 40 is no idea
+        ns.GoldVendorBuy = function(id) if id == 2589 then return 50, today end end
+        entries[2581] = { price = 148, day = today, listed = 12, listedDay = today }
+        if ns.GoldCraftMargin(r1, today) ~= 40 then error("a margin of 40: " .. tostring(ns.GoldCraftMargin(r1, today))) end
+        got = {}
+        ns.GoldCraftIdeas(ctx, function(i) got[#got + 1] = i end, recs)
+        if #got ~= 0 then error("too small a margin: no idea") end
+        -- no vendor writer: the auction cost, and no error
+        ns.GoldVendorBuy = nil
+        entries[2581] = { price = 300, day = today, listed = 12, listedDay = today }
+        m, c = ns.GoldCraftMargin(r1, today)
+        if m ~= 165 or c ~= 120 then error("without the vendor prices: " .. tostring(m) .. " " .. tostring(c)) end
+        got = {}
+        ns.GoldCraftIdeas(ctx, function(i) got[#got + 1] = i end, recs)
+        if #got ~= 1 or not tostring(got[1].detail[1].right):find("auction", 1, true) then error("bought at the auction house") end
+        -- no recipes: nothing
+        got = {}
+        ns.GoldCraftIdeas(ctx, function(i) got[#got + 1] = i end, nil)
+        ns.root.goldChars = nil
+        if #got ~= 0 or #ns.GoldCollectNow(ctx) ~= 0 then error("no recipes: no ideas") end
+    end)
+    ns.GuideUnlocked, env.InCombatLockdown, env.C_TradeSkillUI, env.C_Item.GetItemCount = keep.unlocked, keep.combat, keep.T, keep.count
+    ns.ItemOwners, ns.PriceEntry, ns.GetItemInfo, ns.Today, ns.GoldVendorBuy, ns.root.goldChars = keep.owners, keep.entry, keep.info, keep.today, keep.vbuy, keep.chars
+    for key, fn in pairs(keep.sources or {}) do ns.GoldRegister(key, fn) end
+    if not ok then error(err, 0) end
+end)
 -- gold tests D (craft): end
 -- gold tests together: begin
 -- gold tests together: end
