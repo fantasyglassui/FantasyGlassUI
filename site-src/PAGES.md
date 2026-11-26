@@ -28,12 +28,36 @@ the footer instead).
 
 What each body holds now: the old long page's parts were moved where they belong, so a team fills and polishes
 rather than starts from nothing.
-- Home: the hero (with the drawn Starcut frames), the feature ribbon, the before-and-after with the screenshots and
-  the four pieces (`#look`), and the two newest versions (`#new`).
-- Features: every switch from `site/features.json`, with sections and a search.
-- Themes: the gallery with wearing a theme on the site (`#themes`), and the theme maker (`#maker`).
-- Get started: the three steps with the status line, the help box, the questions (`#faq`) and the commands
-  (`#commands`).
+- Home (W2, `pages/home/body.py` around `body.html`): the hero with the trailer slot (below), Try a theme (`#try`,
+  nine themes from `FG_THEMES` painted live, and wearing one on the site), what sets it apart (`#why`), the
+  before-and-after with the screenshots (`#look`), the Guide and Gold teaser (`#guide-gold`), the three families
+  (`#families`) and the newest version (`#new`).
+- Features (W2): every switch from `site/features.json`, a section at a time from the list on the left
+  (`/features/#s-bags-and-bag-rules` opens one) or one search across all, and the fair comparison with ElvUI and the
+  game's own interface (`#compare`). Each line in the comparison is checkable: Fantasy Glass UI's from its code
+  (`CONFLICTS` and `ns.OTHER_UIS` in the add-on) and wiki; ElvUI's and the game's only where anyone can see it.
+- Themes (W2): the gallery with wearing a theme on the site (`#themes`), and the theme maker (`#maker`).
+- Get started (W2): the guided tour (install, the setup `#setup` with "Coming from another UI?", a theme, three
+  things to try), the help box, one search across the questions (`#faq`) and the commands (`#commands`), and the
+  common problems (`#problems`).
+
+### The trailer (Home)
+
+The hero's right side takes the 13.0 trailer from `site-src/site/video/`; `pages/home/body.py` looks there at build
+time and the files are served at `/video/`:
+
+    video/trailer.webm     the loop, sound-free (VP9; offered first)
+    video/trailer.mp4      the same loop for browsers without WebM (H.264)
+    video/poster.jpg       its first frame: shown until the loop plays, and whenever it doesn't (sets the size)
+    video/captions-<lang>.vtt   optional: captions per language (en, de, ...), shown by default
+
+- With a video: a muted, looping `<video>` that downloads nothing but the poster until it scrolls into view, plays by
+  itself only when the reader has not asked for reduced motion, pauses when scrolled away, and has a visible
+  play/pause button (its label says which). Under reduced motion it waits for the button.
+- With only `poster.jpg`: the poster as a still. With nothing there (now): the drawn Starcut frames, as before.
+- Keep the files small (a few MB); add them with `git add site-src/site/video/` and rebuild. No other change is
+  needed.
+
 - Changelog: built from the repository's `CHANGELOG.md` by `pages/changelog/body.py` (anchors `#v12-4-1` as before).
 - Accessibility: `pages/accessibility/body.py`, the text of the old page (anchors `#seeing-color` and so on as before).
 - Guide and Gold, Roadmap: a placeholder (the title, the description and "More here soon.").
@@ -89,7 +113,7 @@ Write these in a body (or in `body.py`'s output); the build fills them in:
 | `{{version}}`, `{{version_short}}` | the add-on's version, from `FantasyGlassUI.toc` (12.4.1, 12.4) |
 | `{{updated}}` | the day `CHANGELOG.md` last changed (from git) |
 | `{{forever}}` | the WoW: Forever client it is checked against (from `tests/forever_api.json.gz`) |
-| `{{themes}}`, `{{switches}}`, `{{commands}}` | how many, from `site/data.js` and `site/features.json` |
+| `{{themes}}`, `{{switches}}`, `{{commands}}` | how many, from `site/data.js` and `site/features.json`; never type a count: they work inside translated words too (`[[{{themes}} themes]]`, with `{{themes}}` in each translation), and `{{themes}}` in Home's `META` in `lang_meta.py` |
 | `{{url:<slug>}}` | a page's address in this language: `href="{{url:themes}}"` |
 | `{{lang}}` | the language's code |
 | `{{curseforge}}`, `{{discord}}`, `{{github}}`, `{{contact}}` | the addresses (the contact is email-forwarding@fantasyglassui.com) |
@@ -134,8 +158,10 @@ Tokens (dark / light):
 | `--focus` | #ffffff | #15171e | the focus ring |
 | `--hp`, `--mana`, `--danger` | | | game colours for drawn bars |
 
-Also `--display` (Marcellus, the add-on's lettering, served from `/assets/marcellus.woff2`), `--body` (Source Sans 3),
-`--mono` (JetBrains Mono), `--cut` (12px, the corner cut), `--wrap` (1160px), `--gutter` (24px, 16px on a phone).
+Also `--display` (Marcellus, the add-on's lettering), `--body` (Source Sans 3), `--mono` (JetBrains Mono): all three
+served from this site (`site/fonts/` -> `/fonts/`, woff2 from @fontsource in Latin, Latin Extended and Cyrillic, with
+their SIL Open Font License files beside them; Korean and Chinese use the system's font). No font comes from another
+site. `--cut` (12px, the corner cut), `--wrap` (1160px), `--gutter` (24px, 16px on a phone).
 Older names still work for the moved parts: `--ink` = `--ground`, `--ink-2` = `--card`, `--ink-3` = `--raised`.
 
 Classes:

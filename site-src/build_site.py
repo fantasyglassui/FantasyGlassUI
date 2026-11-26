@@ -301,10 +301,15 @@ def boot(slug, code):
     return '<script>' + js + '</script>'
 
 
+# the two fonts every page shows at once (headings and text), fetched early; Russian's text is Cyrillic
+PRELOAD_FONTS = {c: ['marcellus-latin-400-normal.woff2', 'source-sans-3-latin-400-normal.woff2'] for c in CODES}
+PRELOAD_FONTS['ru'] = ['source-sans-3-cyrillic-400-normal.woff2']
+
+
 def head(slug, code, opts, css_url, page_css):
     p = next(x for x in PAGES if x['slug'] == slug)
     if slug == 'home':
-        title, desc, ogt, ogd = META[code]
+        title, desc, ogt, ogd = (x.replace('{{themes}}', VALUES['themes']) for x in META[code])   # (the count from the theme data)
     else:
         title = T(p['nav'], code) + ' · Fantasy Glass UI'
         desc = T(p['desc'], code)
@@ -335,9 +340,7 @@ def head(slug, code, opts, css_url, page_css):
             f'<meta name="theme-color" content="#12141a" media="(prefers-color-scheme: dark)">\n'
             f'<meta name="theme-color" content="#f4f5f8" media="(prefers-color-scheme: light)">\n'
             f'{boot(slug, code)}\n'
-            f'<link rel="preload" href="/assets/marcellus.woff2" as="font" type="font/woff2" crossorigin>\n'
-            f'<link rel="preconnect" href="https://fonts.googleapis.com">\n<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n'
-            f'<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap">\n'
+            + ('' if code in ('ko', 'zh') else ''.join(f'<link rel="preload" href="/fonts/{f}" as="font" type="font/woff2" crossorigin>\n' for f in PRELOAD_FONTS[code])) +
             f'<link rel="stylesheet" href="{css_url}">\n'
             + (f'<style>\n{page_css}</style>\n' if page_css else '') + ld)
 
@@ -356,7 +359,9 @@ def asset(name, data):
 css_url = asset('site.css', read(D + '/base.css'))
 site_js = asset('site.js', read(D + '/site.js'))
 data_js = asset('data.js', DATA_JS)
-asset('marcellus.woff2', open(D + '/marcellus.woff2', 'rb').read())
+# the fonts (site/fonts/, self-hosted with their licences): /fonts/<file>
+os.makedirs(R + '/fonts', exist_ok=True)
+for f in glob.glob(D + '/fonts/*'): shutil.copy(f, R + '/fonts/')
 
 written = []
 for p in PAGES:

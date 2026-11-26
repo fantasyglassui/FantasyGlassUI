@@ -1,8 +1,9 @@
-// Home: the hero's frames, the before-and-after, the screenshots and the newest versions (moved from the old long page).
+// Home (W2): the trailer, Try a theme, the hero's drawn frames (until there is a trailer), the before-and-after, the
+// screenshots and the newest version.
 (function () {
   "use strict";
   var FG = window.FG, $ = FG.$, esc = FG.esc, L = FG.L, reduce = FG.reduce;
-  var NEWS = window.FG_NEWS || [];
+  var NEWS = window.FG_NEWS || [], THEMES = window.FG_THEMES || [];
 
   // the hero bars fill in once the page is up
   requestAnimationFrame(function () { setTimeout(function () { var h = $("hero"); if (h) h.classList.remove("load"); }, 120); });
@@ -19,7 +20,7 @@
   // sections rise into view
   (function reveal() {
     if (reduce || !("IntersectionObserver" in window)) return;
-    var els = document.querySelectorAll("section.block .wrap > header, .pieces, .feature, .thumbs, .news, .compare");
+    var els = document.querySelectorAll("#why .grid, .gg, .fams, .latest, .compare, .thumbs");
     var io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }); }, { rootMargin: "0px 0px -8% 0px" });
     els.forEach(function (el) { if (el.getBoundingClientRect().top > window.innerHeight) { el.classList.add("reveal"); io.observe(el); } });
   })();
@@ -97,12 +98,76 @@
     var again = $("thumbs").querySelector('[data-n="' + shotIdx + '"]'); if (again) again.focus();
   });
 
-  // what's new: the two newest versions
+  // the newest version: its number and what it brought
   function drawNews() {
-    $("news").innerHTML = NEWS.slice(0, 2).map(function (v) {
-      return '<div class="ver card"><h3>' + esc(v.v) + "</h3><ul>" + v.items.map(function (x) { return "<li>" + esc(L(x)) + "</li>"; }).join("") + "</ul></div>";
-    }).join("");
+    var v = NEWS[0]; if (!v) return;
+    $("newv").textContent = v.v;
+    $("news").innerHTML = v.items.slice(0, 4).map(function (x) { return "<li>" + esc(L(x)) + "</li>"; }).join("");
   }
   drawThumbs(); drawNews();
   FG.ready(function () { drawThumbs(); drawNews(); });
+
+  // ---- the trailer: fetched only when it comes into view, playing by itself unless less motion is asked for
+  (function trailer() {
+    var v = $("tv"), b = $("tvbtn"); if (!v || !b) return;
+    var loaded = false, wanted = !reduce, seen = false;   // wanted: the loop should play while it is in view
+    function label() {
+      var on = !v.paused;
+      b.classList.toggle("playing", on);
+      $("tvword").textContent = L(on ? b.getAttribute("data-pause") : b.getAttribute("data-play"));
+    }
+    function load() {
+      if (loaded) return; loaded = true;
+      ["webm", "mp4"].forEach(function (k) {
+        var u = v.getAttribute("data-" + k); if (!u) return;
+        var s = document.createElement("source"); s.src = u; s.type = "video/" + k; v.appendChild(s);
+      });
+      v.preload = "auto"; v.load();
+    }
+    function play() { load(); var p = v.play(); if (p && p.catch) p.catch(function () { wanted = false; label(); }); }
+    v.addEventListener("play", label); v.addEventListener("pause", label);
+    b.addEventListener("click", function () { if (v.paused) { wanted = true; play(); } else { wanted = false; v.pause(); } });
+    label();
+    if (!("IntersectionObserver" in window)) { if (wanted) play(); return; }
+    new IntersectionObserver(function (es) {
+      es.forEach(function (e) {
+        seen = e.isIntersecting;
+        if (seen && wanted) play();
+        else if (!seen && !v.paused) v.pause();
+      });
+    }, { threshold: 0.25 }).observe(v);
+    FG.ready(label);
+  })();
+
+  // ---- try a theme: nine of them, three from each family, painted from their colors
+  (function tryTheme() {
+    var pick = $("trypick"), stage = $("trystage"); if (!pick || !stage) return;
+    var NINE = { Glass: ["Smoke", "Frost", "Midnight"], Fantasy: ["Warm", "Dark", "Cold"], Celestial: ["Polaris", "Eclipse", "Blue Hour"] };
+    var byName = {}, painted = [];
+    THEMES.forEach(function (t) { if (t.bg) { byName[t.f + "|" + t.n] = t; painted.push(t); } });
+    var cur = byName["Celestial|Polaris"] || painted[0]; if (!cur) return;
+    function draw() {
+      pick.innerHTML = Object.keys(NINE).map(function (f) {
+        return '<fieldset><legend>' + esc(L(f)) + '</legend><div class="filters">' + NINE[f].map(function (n) {
+          var t = byName[f + "|" + n]; if (!t) return "";
+          return '<button class="chip" type="button" data-t="' + esc(f + "|" + n) + '" aria-pressed="' + (t === cur) + '"><i aria-hidden="true" style="background:' + t.bg + ';box-shadow:inset 0 0 0 3px ' + t.ac + ';border:1px solid ' + t.bd + '"></i>' + esc(L(t.n)) + "</button>";
+        }).join("") + "</div></fieldset>";
+      }).join("");
+    }
+    function paint() {
+      var st = stage.style;
+      st.setProperty("--bg", cur.bg); st.setProperty("--bd", cur.bd); st.setProperty("--ac", cur.ac); st.setProperty("--tx", cur.tx); st.setProperty("--pl", cur.pl || cur.bd);
+      stage.classList.toggle("sky", cur.f === "Celestial"); stage.classList.toggle("pane", cur.f === "Glass"); stage.classList.toggle("gilt", cur.f === "Fantasy");
+      $("trytitle").textContent = L(cur.n); $("tryname").textContent = L(cur.n); $("tryfam").textContent = L(cur.f);
+      pick.querySelectorAll("[data-t]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-t") === cur.f + "|" + cur.n)); });
+    }
+    pick.addEventListener("click", function (ev) { var b = ev.target.closest("[data-t]"); if (!b) return; cur = byName[b.getAttribute("data-t")] || cur; paint(); });
+    $("tryany").addEventListener("click", function () {
+      var next = cur; while (painted.length > 1 && next === cur) next = painted[Math.floor(Math.random() * painted.length)];
+      cur = next; paint();
+    });
+    $("trywear").addEventListener("click", function () { FG.wear(cur); });
+    draw(); paint();
+    FG.ready(function () { draw(); paint(); });
+  })();
 })();
