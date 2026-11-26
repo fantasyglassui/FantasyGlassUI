@@ -33,6 +33,7 @@ ns.guideKinds = {
 -- Stops done when their window closes while they are the step you are on (Planner.lua ticks them).
 ns.GUIDE_WINDOW_KINDS = { train = "TRAINER_CLOSED", vendor = "MERCHANT_CLOSED", mail = "MAIL_CLOSED" }
 ns.GUIDE_STOP_KINDS = { train = true, vendor = true, mail = true, explore = true, gather = true }   -- (the kinds a planner stop may be)
+ns.GUIDE_PLANNED = "\1planned"          -- the planned route's name: one no saved guide can have (guide names come from a line of text)
 local QUEST_KIND = { accept = true, turnin = true, ["do"] = true }
 ns.builtinGuides = ns.builtinGuides or {}
 
@@ -283,6 +284,43 @@ ns.GuideState = State
 local panel
 local Draw
 
+-- Seams (what the planner uses of the guide):
+--   GUIDE_PLANNED
+--   GUIDE_STOP_KINDS
+--   GUIDE_WINDOW_KINDS
+--   GuideFollow
+--   GuideGet
+--   GuideHere
+--   GuideLine
+--   GuideList
+--   GuideMenu
+--   GuideMovedText
+--   GuideOn
+--   GuidePanelEntries
+--   GuidePanelShown
+--   GuideParse
+--   GuideParseLine
+--   GuidePlanFailed
+--   GuideRedraw
+--   GuideRegisterAction
+--   GuideRegisterAdvance
+--   GuideRegisterCommand
+--   GuideRegisterLine
+--   GuideRegisterLock
+--   GuideRegisterTitle
+--   GuideSave
+--   GuideSetPlan
+--   GuideShowPanel
+--   GuideSkip
+--   GuideSkippedText
+--   GuideState
+--   GuideStepBase
+--   GuideText
+--   GuideUnlocked
+-- end of seams
+-- (Every ns.Guide* and ns.GUIDE_* a Planner*.lua file uses is listed here and defined in this file: the small API the
+-- planner may lean on; tests/test_addon.py::test_guide_seams_listed keeps it true. No file wraps a ns.Guide* function.)
+--
 -- What other files add to the panel (each list in the order first added; the same key again replaces
 -- in place, fn nil removes):
 --   ns.GuideRegisterLine(key, fn(st, steps, at) -> text|nil)    a faint line under the advice
@@ -291,9 +329,11 @@ local Draw
 --   ns.GuideRegisterAdvance(key, fn(st, guide, step, at, moved, resumed))  the step you are on changed (resumed: the
 --                                                                first advance after a login or /reload, the step you were on: not new)
 --   ns.GuideRegisterCommand(word, fn(rest))                      /fgui guide <word> ...
+--   ns.GuideRegisterLock(key, fn(unlocked))                      after ns:GuideUnlock worked (true), and after ns:GuideLock
+--                                                                cleared the key (false), before the switch is applied
 -- Each is called through pcall (a command word too); a failure goes to ns.errors as "Guide hook <key>: <error>".
 -- Menu labels stay English (or text a label fn made) until ns:GuideMenu, the one place they go through ns:Tr.
-local extraLines, titleParts, stepActions, panelActions, advanceHooks, commands = {}, {}, {}, {}, {}, {}
+local extraLines, titleParts, stepActions, panelActions, advanceHooks, commands, lockHooks = {}, {}, {}, {}, {}, {}, {}
 local function Register(list, key, entry)
     if key == nil then return end
     for i, e in ipairs(list) do
@@ -318,6 +358,12 @@ function ns.GuideRegisterAction(where, key, label, fn, shown)
     if list then Register(list, key, Fn(fn, { label = label, fn = fn, shown = shown })) end
 end
 function ns.GuideRegisterAdvance(key, fn) Register(advanceHooks, key, Fn(fn, { fn = fn })) end
+function ns.GuideRegisterLock(key, fn) Register(lockHooks, key, Fn(fn, { fn = fn })) end
+local function LockChanged(unlocked)                       -- (on a copy: a hook may register or remove one)
+    local copy = {}
+    for i, e in ipairs(lockHooks) do copy[i] = e end
+    for _, e in ipairs(copy) do Hook(e.key, e.fn, unlocked) end
+end
 function ns.GuideRegisterCommand(word, fn)
     if type(word) ~= "string" or word == "" then return end
     commands[word:lower()] = type(fn) == "function" and fn or nil
@@ -1121,12 +1167,14 @@ function ns:GuideUnlocked() return type(ns.root) == "table" and ns.root.guideKey
 function ns:GuideUnlock(phrase)
     if type(ns.root) ~= "table" or ns.GuideHash(ns.Trim(phrase):lower()) ~= GUIDE_KEY then return false end
     ns.root.guideKey = GUIDE_KEY
+    LockChanged(true)
     return true
 end
 -- The switch (on the Guide tab, and in the setup) was changed: put that into effect.
 function ns:GuideOn() return ns:GuideUnlocked() and not (ns.db and ns.db.questGuide == false) end
 function ns:GuideLock()
     if type(ns.root) == "table" then ns.root.guideKey = nil end
+    LockChanged(false)
     return ns:GuideApplySwitch()
 end
 function ns:GuideApplySwitch()

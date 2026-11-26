@@ -18211,6 +18211,106 @@ try("13.6 leftovers: exclusive quests", function()
     ns.PLANNER_DUNGEONS, ns.db.plannerDry = saved.dungeons, saved.dry
     if not ok then error(err, 0) end
 end)
+try("13.6 leftovers: seams", function()
+    local CI = env.C_ChatInfo
+    local saved = { hash = ns.GuideHash, key = ns.root.guideKey, unlocked = ns.GuideUnlocked, duo = ns.plannerDuo, reg = CI.RegisterAddonMessagePrefix,
+                    planner = ns.root.planner, timedQ = ns.PlannerTimedQuest, map = env.C_Map, vec = rawget(env, "CreateVector2D"), errors = #ns.errors }
+    local key = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
+    local ok, err = pcall(function()
+        -- the lock registry: after a working unlock (true), after a lock has cleared the key (false)
+        ns.root.planner = {}
+        ns.root.guideKey = key
+        local calls, keyAt, after = {}, "unset", 0
+        ns.GuideRegisterLock("test6a", function(u) calls[#calls + 1] = u; if u == false then keyAt = ns.root.guideKey end end)
+        ns.PlannerSetStyle("story")
+        local function paceRank() for _, h in ipairs(ns.PlannerHookList("rank")) do if h.key == "pace" then return true end end return false end
+        if not paceRank() then error("Story, unlocked: the pace hook is there") end
+        ns.plannerDuo = { role = "leader", partner = "Mira", to = "Mira", session = "ab41", heard = 1, asked = 1, accepted = true }
+        ns:GuideLock()
+        if #calls ~= 1 or calls[1] ~= false then error("a lock: called once with false") end
+        if keyAt ~= nil then error("the key is already cleared when the lock hook runs") end
+        if ns.plannerDuo ~= nil then error("a lock ends the duo") end
+        if paceRank() then error("a lock removes the pace hooks") end
+        local prefixes = {}
+        CI.RegisterAddonMessagePrefix = function(p) prefixes[#prefixes + 1] = p; return true end
+        ns.GuideHash = function() return 1 end
+        if ns:GuideUnlock("x") or #calls ~= 1 then error("a wrong number: no unlock, no call") end
+        ns.GuideHash = function() return key end
+        if not ns:GuideUnlock("x") then error("the stubbed number unlocks") end
+        if #calls ~= 2 or calls[2] ~= true then error("an unlock: called once with true") end
+        if prefixes[1] ~= "FGUIPlan" then error("an unlock registers the duo's prefix: " .. tostring(prefixes[1])) end
+        if not paceRank() then error("an unlock puts the pace hooks back") end
+        -- a failing hook is written down, and the next one still runs
+        ns.GuideRegisterLock("test6b", function() error("boom") end)
+        ns.GuideRegisterLock("test6c", function() after = after + 1 end)
+        local n = #ns.errors
+        ns:GuideLock()
+        local found = false
+        for i = n + 1, #ns.errors do if tostring(ns.errors[i]):find("Guide hook test6b: ", 1, true) then found = true end end
+        if not found or after ~= 1 then error("a failing lock hook: in ns.errors, and the next still runs") end
+        for i = #ns.errors, n + 1, -1 do table.remove(ns.errors, i) end
+        -- the same key replaces, nil removes
+        ns.GuideRegisterLock("test6c", function() after = after + 10 end)
+        ns.GuideRegisterLock("test6b", nil)
+        ns.root.guideKey = nil
+        ns:GuideUnlock("x")
+        if after ~= 11 or #ns.errors ~= n then error("the same key replaces, nil removes") end
+        for _, k in ipairs({ "test6a", "test6b", "test6c" }) do ns.GuideRegisterLock(k, nil) end
+        ns.PlannerSetStyle("speed")
+
+        -- a quest known to be timed before you take it: a run of its own, first in its hub
+        ns.GuideUnlocked = function() return true end
+        env.C_Map = setmetatable({ GetWorldPosFromMapPos = function(map, v) if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end end }, { __index = saved.map })
+        env.CreateVector2D = function(x, y) return { x = x, y = y } end
+        local function at(x, y) return { { map = 1, x = x, y = y } } end
+        local function q(id, extra)
+            local r = { id = id, name = "Q" .. id, level = 14, minLevel = 1, xp = 300, starts = {}, ends = {}, objectives = {}, pre = {}, preAny = {}, exclusive = {},
+                        elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+            for k, v in pairs(extra or {}) do r[k] = v end
+            return r
+        end
+        local recs = {
+            [9621] = q(9621, { xp = 900, starts = at(30, 40), ends = at(30, 40), objectives = { { kind = "kill", count = 4, countKnown = true, mobLevel = 14, spots = at(32, 42) } } }),
+            [9620] = q(9620, { xp = 100, starts = at(31, 41), ends = at(31, 41), objectives = { { kind = "kill", count = 4, countKnown = true, mobLevel = 14, spots = at(34, 44) } } }),
+        }
+        local source = { kind = "test", ids = function() return { 9621, 9620 } end, quest = function(id) return recs[id] end, inns = function() return {} end }
+        local function route()
+            return ns.PlannerRoute({ source = source, level = 14, group = "solo", inGroup = false, speed = 7, faction = "Alliance", xp = 0, xpMax = 10000,
+                done = function() return false end, onQuest = function() return false end, here = { map = 1, x = 30, y = 40 },
+                crossings = {}, learnFlights = false, bind = "Elsewhere", bindSpot = { map = 9, x = 1, y = 1 }, pace = 1, flights = {},
+                flightTime = function() return nil end, timed = function() return false end, itemCount = function() return 0 end })
+        end
+        local function seq(guide)
+            local o = {}
+            for _, st in ipairs(guide.steps) do if st.quest then o[#o + 1] = st.kind .. ":" .. st.quest .. (st.timed and "!" or "") end end
+            return table.concat(o, " ")
+        end
+        ns.PlannerTimedQuest = function(id) return id == 9620 and 600 or nil end
+        local s = seq(route())
+        if not s:find("^accept:9620! do:9620! turnin:9620! accept:9621") then error("a timed run first: " .. s) end
+        ns.PlannerTimedQuest = function() error("boom") end
+        s = seq(route())
+        if s:find("!", 1, true) then error("a failing PlannerTimedQuest: no run: " .. s) end
+        ns.PlannerTimedQuest = nil
+        s = seq(route())
+        if s:find("!", 1, true) or not s:find("^accept:9621") then error("no PlannerTimedQuest: the normal order: " .. s) end
+        if ns.PlannerRecordKill ~= nil then error("PlannerKills.lua is empty: no recorder yet") end
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    for _, k in ipairs({ "test6a", "test6b", "test6c" }) do ns.GuideRegisterLock(k, nil) end
+    ns.GuideHash, ns.root.guideKey, ns.GuideUnlocked, ns.plannerDuo, CI.RegisterAddonMessagePrefix = saved.hash, saved.key, saved.unlocked, saved.duo, saved.reg
+    ns.root.planner, ns.PlannerTimedQuest, env.C_Map, env.CreateVector2D = saved.planner, saved.timedQ, saved.map, saved.vec
+    ns.PlannerPaceSync()
+    if not ok then error(err, 0) end
+end)
+-- batch 6 tests A (learning): begin
+-- batch 6 tests A (learning): end
+-- batch 6 tests B (questie): begin
+-- batch 6 tests B (questie): end
+-- batch 6 tests C (route): begin
+-- batch 6 tests C (route): end
+-- batch 6 tests D (leftovers): begin
+-- batch 6 tests D (leftovers): end
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()

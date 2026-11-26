@@ -820,17 +820,11 @@ do
     ns.PlannerDuoEvent = function(...) return OnEvent(ev, ...) end    -- (the same, called directly: the tests)
 end
 
--- Unlocking registers the prefix; locking ends the duo at once, sending nothing.
-for _, name in ipairs({ "GuideUnlock", "GuideLock" }) do
-    local original = ns[name]
-    if type(original) == "function" then
-        ns[name] = function(...)
-            local a, b = original(...)
-            if ns:GuideUnlocked() then ns.PlannerDuoRegister() else Reset() end
-            return a, b
-        end
-    end
-end
+-- Unlocking registers the prefix; locking ends the duo at once, sending nothing (and the next unlock registers
+-- the prefix again: the game takes a second registration of the same prefix without harm).
+ns.GuideRegisterLock("duo", function(unlocked)
+    if unlocked and ns:GuideUnlocked() then ns.PlannerDuoRegister() else registered = false; Reset() end
+end)
 
 ns.GuideRegisterAction("panel", "duo", function() return ns.plannerDuo and "Stop planning together" or "Plan with a friend" end, function()
     if ns.plannerDuo then ns:PlannerDuoEnd("off") else ns:PlannerDuoStart() end

@@ -14,7 +14,6 @@ local format = string.format
 -- in a sweep (nearest next), hand in. Inside a hub the walking is counted at run speed in a straight
 -- line; the full travel (flights, the hearthstone, boats) is only worked out between hubs.
 ------------------------------------------------------------------------------------------
-ns.GUIDE_PLANNED = "\1planned"          -- a name no saved guide can have (guide names come from a line of text)
 ns.PLANNER_HUB_YARDS = 150
 ns.PLANNER_HORIZON = 2
 ns.PLANNER_LEARN_SECONDS = 120
@@ -96,9 +95,17 @@ local function DoSpot(rec, from)
     return Nearest(spots, from)
 end
 
--- Is this quest one with a clock on it (a logged quest the game gives a time limit)?
+-- Is this quest one with a clock on it? In your log: the game gives it a time limit. Not yet taken: a time
+-- is known for it (ns.PlannerTimedQuest, PlannerSource.lua, when there: seconds or nil).
 local function IsTimed(ctx, q)
-    return type(ctx.timed) == "function" and ctx.onQuest and ctx.onQuest(q.id) and ctx.timed(q.id) and true or false
+    if ctx.onQuest and ctx.onQuest(q.id) then
+        return type(ctx.timed) == "function" and ctx.timed(q.id) and true or false
+    end
+    local known = ns.PlannerTimedQuest
+    if type(known) ~= "function" then return false end
+    local ok, seconds = pcall(known, q.id)
+    seconds = ok and tonumber(seconds) or nil
+    return seconds ~= nil and seconds > 0
 end
 function ns.PlannerIsEscort(q) return (type(q) == "table" and (q.escort or (ns.PLANNER_ESCORTS and ns.PLANNER_ESCORTS[q.id]))) and true or false end
 local IsEscort = ns.PlannerIsEscort

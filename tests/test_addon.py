@@ -86,3 +86,25 @@ def test_plan_reader():
     """The website's plan reader reads every code in tests/plan_codes.txt as the add-on's reader does."""
     p = subprocess.run(["node", os.path.join(TESTS, "plan_reader_check.js")], cwd=ROOT, capture_output=True, text=True, timeout=120)
     assert p.returncode == 0, p.stdout + p.stderr
+
+
+def test_guide_seams_listed():
+    """Every ns.Guide* and ns.GUIDE_* a Planner*.lua file uses is in Guide.lua's seam list, every name there is
+    defined in Guide.lua, and no planner file wraps a ns.Guide* function any more."""
+    folder = os.path.join(ROOT, "FantasyGlassUI")
+    guide = open(os.path.join(folder, "Guide.lua"), encoding="utf-8").read()
+    block = re.search(r"^-- Seams \(what the planner uses of the guide\):\n(.*?)^-- end of seams$", guide, re.M | re.S)
+    assert block, "Guide.lua has no seam list"
+    listed = set(re.findall(r"^--\s+(\w+)\s*$", block.group(1), re.M))
+    used, wrappers = set(), []
+    for name in sorted(os.listdir(folder)):
+        if not (name.startswith("Planner") and name.endswith(".lua")):
+            continue
+        text = open(os.path.join(folder, name), encoding="utf-8").read()
+        used |= set(re.findall(r"ns[.:](Guide\w+)", text)) | set(re.findall(r"ns\.(GUIDE_\w+)", text))
+        wrappers += [f"{name}:{i}" for i, line in enumerate(text.splitlines(), 1) if "local original = ns[" in line]
+    missing = sorted(used - listed)
+    assert not missing, f"used by the planner but not in the seam list: {missing}"
+    undefined = sorted(n for n in listed if not re.search(r"^(?:function ns[.:]%s\b|ns\.%s\s*=)" % (n, n), guide, re.M))
+    assert not undefined, f"in the seam list but not defined in Guide.lua: {undefined}"
+    assert not wrappers, f"a planner file wraps a guide function: {wrappers}"

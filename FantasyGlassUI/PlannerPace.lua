@@ -613,17 +613,10 @@ Sync = function()
 end
 ns.PlannerPaceSync = function() Sync() end
 -- Unlocking or locking the guide registers or removes everything at once (not up to a minute later).
-for _, name in ipairs({ "GuideUnlock", "GuideLock" }) do
-    local original = ns[name]
-    if type(original) == "function" then
-        ns[name] = function(...)
-            local a, b = original(...)
-            Sync()
-            if name == "GuideUnlock" and a and inWorld and not entered and Unlocked() then   -- (unlocked mid-session: the login is long handled)
-                entered = true
-                ns.PlannerSeenSave()
-            end
-            return a, b
-        end
+ns.GuideRegisterLock("pace", function(unlocked)
+    Sync()
+    if unlocked and inWorld and not entered and Unlocked() then   -- (unlocked mid-session: the login is long handled)
+        entered = true
+        ns.PlannerSeenSave()
     end
-end
+end)
