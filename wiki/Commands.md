@@ -30,6 +30,19 @@ Mistype one and the add-on suggests the nearest command instead.
 | `/fgui language` | choose the add-on's language |
 | `/fgui new` | what changed in this version |
 
+## Quest guides and gold
+
+| Command | What it does |
+|---|---|
+| `/fgui guide` | your quest guides: follow one, write or paste one, or record one as you play (record <name>, stop, next, back, off) |
+| `/fgui guide plan [minutes]` | plan a route of quests for your level and follow it; with a number, a route that fits the time you can play |
+| `/fgui plan` | the planner window: the route you follow, Keep my route, and every setting for what the planner plans |
+| `/fgui guide route` | change, move or take out the steps of the guide you are following |
+| `/fgui guide duo [name]` | plan one route with a friend who has the add-on (/fgui guide duo off to stop) |
+| `/fgui guide share` | your route as a plan code to copy, to read on the website's plan page |
+| `/fgui guide keys` | the guide panel's menu, to use with the keyboard |
+| `/fgui guide gold` | ways to make gold: ideas for this character, each with Go, which plans the trip (or Ctrl-click the minimap button) |
+
 ## Groups and raids
 
 | Command | What it does |
@@ -167,7 +180,7 @@ Mistype one and the add-on suggests the nearest command instead.
 | `/fgui check` | a report on what is running and what the game allows |
 | `/fgui check new` | try each feature added since 11.6 and report what works, to copy and send |
 | `/fgui selftest` | work through the add-on and list what passed and what did not |
-| `/fgui report` | everything needed to report a problem, ready to copy |
+| `/fgui report` | everything needed to report a problem, ready to copy (the Report a problem button in /fgui does the same) |
 | `/fgui blocked` | anything the game refused to let the add-on do, and where |
 | `/fgui memory` | how much memory the add-on is using |
 | `/fgui addons` | every add-on by the memory it uses |

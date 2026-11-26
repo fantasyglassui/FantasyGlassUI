@@ -77,9 +77,9 @@ A whole category of its own, and a [page on the website](https://fantasyglassui.
 
 ## Getting started
 
-1. **Install** with the CurseForge app, or put the zip's **three folders** side by side in `Interface/AddOns`.
+1. **Install** with the CurseForge app, or put the zip's **five folders** side by side in `Interface/AddOns`.
 2. **Log in:** the setup opens by itself. Choose your role, your look and your layout.
-3. **Make it yours:** `/fgui` opens the settings, `/fgui move` arranges your panels, and `/fgui help` lists all 129 commands.
+3. **Make it yours:** `/fgui` opens the settings, `/fgui move` arranges your panels, and `/fgui help` lists all 137 commands.
 
 Coming from ElvUI, Tukui, RealUI or GW2 UI? One click in the setup puts your frames where you're used to them.
 

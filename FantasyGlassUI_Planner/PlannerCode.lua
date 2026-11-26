@@ -142,8 +142,7 @@ function ns:PlannerSharePlan()
         ns:Print("There is no plan to share yet.")
         return false
     end
-    -- (the plan page goes online with 13.0, whose release list puts the address back in this caption)
-    ns:ShowCopyBox(code, ns:Tr("Copy this plan code. The plan page goes online with the next big update."))
+    ns:ShowCopyBox(code, ns:Tr("Copy this plan code and paste it on fantasyglassui.com/plan/"))
     return true
 end
 

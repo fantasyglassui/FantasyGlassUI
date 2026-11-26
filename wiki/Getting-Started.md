@@ -4,10 +4,10 @@ Five minutes from install to a screen that feels like yours.
 
 ## 1. Install
 
-The download holds **three folders**: `FantasyGlassUI`, `FantasyGlassUI_Options` and `FantasyGlassUI_Locales`. All three go side by side in `World of Warcraft/_forever_/Interface/AddOns/`. The CurseForge app does this for you.
+The download holds **five folders**: `FantasyGlassUI`, `FantasyGlassUI_Options`, `FantasyGlassUI_Locales`, `FantasyGlassUI_Planner` and `FantasyGlassUI_Gold`. All five go side by side in `World of Warcraft/_forever_/Interface/AddOns/`. The CurseForge app does this for you.
 
 - **Installing by hand:** each folder's `.toc` file must sit directly inside that folder, not one level deeper.
-- **In the game's add-on list** you'll see three entries: the add-on itself, "options" and "translations". Leave all three enabled. The options and translations load only when they are needed.
+- **In the game's add-on list** you'll see five entries: the add-on itself, "options", "translations", "planner" and "gold". Leave all five enabled. The other four load only when they are needed.
 
 ## 2. The setup (first login)
 
@@ -137,7 +137,15 @@ The **Tools** button on the menu bar (or `/fgui tools`) opens a button for every
 - **Reset:** `/fgui reset` starts a profile over. Type it twice; a backup is kept first. See [Backups and Undo](Backups-and-Undo).
 - **Layout and profiles › Profiles:** a profile per character, Tank, Healer and Damage templates, and **Copy my whole UI**. That button gives one string with your profile, layout, theme, bars and rules, for a friend or your guild to paste in.
 
-## 10. If something goes wrong
+## 10. Quest guides, the planner and gold
+
+- **Quest guides:** the Guide tab in `/fgui` has the switch and your guides. A panel shows the step you are on, and an arrow points the way. `/fgui guide` lists your guides, and `/fgui guide record My route` records one as you play.
+- **Plan my route:** on the Guide tab, or `/fgui guide plan`. The planner works out a route of quests for your level and plans again as you play. It finds quests through Questie when Questie is loaded.
+- **The planner window:** `/fgui plan`, or **Planner** on the guide panel. It has every setting for what the planner plans, and **How the planner works**, a short tour. **Keep my route** there leaves your route as it is until you press Plan my route or Plan again.
+- **With a friend:** **Plan with a friend**, in the panel's "..." menu, plans one route for you both. **Share plan** gives a plan code to read on the website's plan page.
+- **Ways to make gold:** Ctrl-click the minimap button, or `/fgui guide gold`. Pick an idea and press **Go**: the trip goes on the guide panel, and your levelling route comes back after it.
+
+## 11. If something goes wrong
 
 - **Safe mode:** `/fgui safe` reloads with every feature off, so you can always get back to the options.
 - **Self-check:** `/fgui check` writes a report on what is running.

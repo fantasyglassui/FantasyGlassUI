@@ -6663,7 +6663,11 @@ try("10.3: quest guides", function()
     for _, group in ipairs(ns.featureGroups) do for _, opt in ipairs(group[2]) do
         if opt[1] == "questGuide" then error("the quest guide's switch lives on the Guide tab, not among the Features") end
     end end
-    for _, line in ipairs(ns.helpLines) do if type(line[1]) == "string" and line[1]:find("/fgui guide", 1, true) then error("/fgui help must not list the guide while it is unreleased") end end
+    local listedGuide, listedPlan = false, false
+    for _, line in ipairs(ns.helpLines) do
+        if line[1] == "/fgui guide" then listedGuide = true elseif line[1] == "/fgui plan" then listedPlan = true end
+    end
+    if not (listedGuide and listedPlan) then error("/fgui help lists the guide and the planner window") end
     ns.db.questGuide = keepSwitch
     ns:GuideStop()
     if ns.GuideState() ~= nil then error("stopping forgets where you were") end
@@ -17368,7 +17372,7 @@ try("13.5 together C: the plan code", function()
         ns.GuideState = function() return { name = ns.GUIDE_PLANNED, at = 1, ticked = {}, summary = summary } end
         ns.GuideGet = function(_, name) if name == ns.GUIDE_PLANNED then return current end return saved.get(ns, name) end
         ns:GuideCommand("share")
-        if not (shown and shown[1] == code and shown[2] == ns:Tr("Copy this plan code. The plan page goes online with the next big update.")) then error("/fgui guide share: the copy box with the code and caption") end
+        if not (shown and shown[1] == code and shown[2] == ns:Tr("Copy this plan code and paste it on fantasyglassui.com/plan/")) then error("/fgui guide share: the copy box with the code and caption") end
         shown = nil
         current = { name = ns.GUIDE_PLANNED, steps = {} }
         ns:GuideCommand("share")

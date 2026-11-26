@@ -6,7 +6,7 @@ These are the same checks run before each build:
   * the hidden-value audit: no value the game hides in combat is ever compared;
   * the combat audit: nothing the game locks in a fight is shown, hidden, moved or resized then;
   * the WoW: Forever audit: every function, event, frame and setting the add-on uses is one Forever has;
-  * the version numbers of the three folders agree, and the README is up to date.
+  * the version numbers of the five folders agree, and the README is up to date.
 """
 import os
 import re
@@ -81,19 +81,17 @@ def test_folder_tocs():
         assert on_disk == sorted(files), f"{folder}: files not in its TOC: {sorted(set(on_disk) - set(files))}"
 
 
-def test_folder_titles_neutral():
-    """Until 13.0 the add-on list names nothing: "extras 1" and "extras 2", with neutral notes (ruling 3)."""
+def test_folder_titles():
+    """From 13.0 the add-on list names each folder ("planner", "gold"), and its notes say to leave it enabled."""
     titles = {}
     for key, folder in FOLDER_KEYS.items():
         for line in toc_lines(folder):
             m = re.match(r"^## (Title|Notes):\s*(.*)$", line)
-            if m:
-                text = m.group(2).lower()
-                for word in ("plan", "gold", "guide", "advis"):
-                    assert word not in text, f"{folder}.toc's {m.group(1)} says {word!r}"
-                if m.group(1) == "Title":
-                    titles[key] = m.group(2)
-    assert titles == {"planner": "|cff33ccffFantasy Glass|r UI - extras 1", "gold": "|cff33ccffFantasy Glass|r UI - extras 2"}, titles
+            if m and m.group(1) == "Title":
+                titles[key] = m.group(2)
+            if m and m.group(1) == "Notes":
+                assert "Leave it enabled." in m.group(2), f"{folder}.toc's Notes"
+    assert titles == {"planner": "|cff33ccffFantasy Glass|r UI - planner", "gold": "|cff33ccffFantasy Glass|r UI - gold"}, titles
 
 
 def test_folder_files():
@@ -229,8 +227,8 @@ def test_forever_api():
     assert p.returncode == 0, p.stdout + p.stderr
 
 
-def test_plan_page_hidden():
-    """The plan page is built only with --plan, and a plain build knows nothing of it (tests/sitecheck.py)."""
+def test_plan_page_published():
+    """From 13.0 the website's plan page is published with the rest of the site; tests/sitecheck.py checks the build."""
     p = subprocess.run([sys.executable, os.path.join(TESTS, "sitecheck.py")], cwd=ROOT, capture_output=True, text=True, timeout=600)
     assert p.returncode == 0, p.stdout + p.stderr
 

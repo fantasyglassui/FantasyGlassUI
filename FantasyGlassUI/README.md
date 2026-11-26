@@ -6,19 +6,20 @@ A complete interface replacement for **WoW Forever** (interface 16001): unit fra
 bars, action bars, bags and bank, quest tracker and quest log, minimap, buffs, nameplates, chat and
 the game's own windows, in one look that you choose from 116 glass, fantasy and celestial themes.
 
-Version 12.4.1
+Version 13.0.0
 
 ## Install
 
-1. The zip holds **three folders**: `FantasyGlassUI`, `FantasyGlassUI_Options` and
-   `FantasyGlassUI_Locales`. Put all three in `World of Warcraft/_forever_/Interface/AddOns/`,
-   side by side (each folder's `.toc` file must be directly inside it, not one level deeper). The
-   CurseForge app does this for you.
+1. The zip holds **five folders**: `FantasyGlassUI`, `FantasyGlassUI_Options`,
+   `FantasyGlassUI_Locales`, `FantasyGlassUI_Planner` and `FantasyGlassUI_Gold`. Put all five in
+   `World of Warcraft/_forever_/Interface/AddOns/`, side by side (each folder's `.toc` file must be
+   directly inside it, not one level deeper). The CurseForge app does this for you.
    The second folder is the options window, the setup and the self-check. The game loads it only
    the first time you open one of them, so it costs no memory until then. The third holds the
-   translations, and loads only when the add-on is shown in a language other than English. In the
-   game's add-on list they appear as "Fantasy Glass UI - options" and "Fantasy Glass UI -
-   translations": leave both enabled.
+   translations, and loads only when the add-on is shown in a language other than English. The
+   fourth is the route planner and the fifth the ways to make gold: each loads the first time you
+   use it. In the game's add-on list they appear as "Fantasy Glass UI - options", "- translations",
+   "- planner" and "- gold": leave them all enabled.
 2. Start the game, or type `/reload` if you are already logged in.
 3. On first login a setup opens, in four steps: how much of the interface to take over (the whole
    interface, only restyle the game's own frames, or everything), how you play (your role and what
@@ -96,6 +97,14 @@ get two of everything.
 | `/fgui execute 20`, `/fgui spec`, `/fgui volume 60`, `/fgui currency <id>` | Execute line, talent set, master volume, the info bar's currency |
 | `/fgui media`, `/fgui font <name>`, `/fgui bartexture <name>`, `/fgui mute <number>`, `/fgui addons` | Fonts and textures from other add-ons, mute a sound file, add-on memory |
 | `/fgui new` | Show the "what's new" note again |
+| `/fgui guide` | Your quest guides: follow one, write or paste one, or record one as you play (`/fgui guide record <name>`, `stop`, `next`, `back`, `off`) |
+| `/fgui guide plan [minutes]` | Plan a route of quests for your level and follow it; with a number, a route that fits the time you can play |
+| `/fgui plan` | The planner window: the route you follow, Keep my route, and every setting for what the planner plans |
+| `/fgui guide route` | Change, move or take out the steps of the guide you are following |
+| `/fgui guide duo [name]` | Plan one route with a friend who has the add-on (`/fgui guide duo off` to stop) |
+| `/fgui guide share` | Your route as a plan code to copy, to read on the website's plan page |
+| `/fgui guide keys` | The guide panel's menu, to use with the keyboard |
+| `/fgui guide gold` | Ways to make gold: ideas for this character, each with Go, which plans the trip (or Ctrl-click the minimap button) |
 | `/fgui strings` | Every label shown so far, laid out for translating (see Translating) |
 | `/fgui tree` | How the window under your mouse is built, as copyable text (`/fgui tree FrameName` by name, `/fgui tree target` for your target's nameplate) |
 | `/fgui profiles` | Open Layout and profiles › Profiles |
@@ -401,6 +410,27 @@ Options, below). The list here is grouped a little differently. Point at a switc
   changed (Esc, Edit Mode, Layout, New Layout makes one).
 - A bar that is not showing is see-through; its buttons can still be pressed where they were.
 
+**Added in 13.0**
+- **Quest guides**: follow a route one step at a time, with a panel for the step you are on and an
+  arrow that points the way. Write or paste a guide, or record one as you play. The Guide tab in
+  `/fgui` holds the switch and the buttons; three keys in the game's Key Bindings go to the next
+  step, skip a step and plan again.
+- **The route planner**: Plan my route works out which quests to take for your level, in what
+  order, and when to fly, train or hand in, and plans again as you play. It finds quests through
+  Questie when Questie is loaded; without it, it plans the quests in your log. Stops on the way
+  (trainers, vendors, mail, riding, herbs and ore), the best reward at a hand-in, a tidy quest log,
+  the route on the world map, the time you can play, and Speed, Safety and Story sliders.
+- **The planner window** (`/fgui plan`, or Planner on the guide panel): every setting for what it
+  plans, a short tour of how it works, and **Keep my route**, which leaves your route as it is until
+  you ask for a new one.
+- **Plan with a friend** for one route that suits you both, and **Share plan** for a plan code to
+  read on the website's plan page.
+- **Ways to make gold** (Ctrl-click the minimap button, or `/fgui guide gold`): ideas for this
+  character from selling, farming, gathering, crafting and the auction house, ranked by the Gold,
+  Ease and Safety sliders, with a goal to save for. **Go** plans the trip and puts it on the guide
+  panel.
+- Fixed: quests that WoW: Forever numbers differently from Questie are matched to your quest log.
+
 **Added in 12.4**
 - **Scan prices** on the auction house: the whole auction house in one click, about every 15
   minutes, read in small pieces and paused in a fight. Prices are kept for each realm and faction.
@@ -675,8 +705,7 @@ Options, below). The list here is grouped a little differently. Point at a switc
   to that feature's switch.
 - **Languages**: Italian, Portuguese, Russian and Korean, besides German, French and Spanish.
 
-**Quest guide**
-- Coming soon. The Guide tab of `/fgui` says so.
+**Quest guides, the route planner and ways to make gold** (13.0): see "Added in 13.0" above.
 
 ## Options
 
@@ -824,7 +853,8 @@ everything regardless.
 ## Key bindings
 
 The game's Key Bindings window has a Fantasy Glass UI section: open options, move panels, keybind mode, and
-clean screen.
+clean screen, among others. Three of them are for the quest guide: Guide: next step, Guide: skip step and Guide:
+plan again.
 
 ## Coming from StylishUI
 
