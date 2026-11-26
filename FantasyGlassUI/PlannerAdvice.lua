@@ -202,7 +202,9 @@ local function GrindAdvice(ctx)
     local kills = ns.PLANNER_GRIND_KILLS
     local d = ns.PlannerCharRecord and ns.PlannerCharRecord(false)
     if type(d) == "table" and Num(d.killsPerHour) and d.killsPerHour > 0 then kills = d.killsPerHour end
-    local xph = math.floor(kills * ns.PlannerKillXP(level, Num(spot.mobLevel) or level) + 0.5)
+    local mob = Num(spot.mobLevel) or level
+    local ratio = ns.PlannerKillRatio and ns.PlannerKillRatio(mob - level) or 1      -- (what your kills there really give)
+    local xph = math.floor(kills * ns.PlannerKillXP(level, mob) * ratio + 0.5)
     if xph <= 0 then return nil end
     return { name = Clean(spot.name) or "?", zone = MapName(spot.map) or "?", xph = xph }
 end

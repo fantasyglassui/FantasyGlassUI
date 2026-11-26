@@ -364,10 +364,12 @@ end
 ------------------------------------------------------------------------------------------
 -- Time
 ------------------------------------------------------------------------------------------
--- The farthest two spots of an objective, in yards (0 when they can't be placed).
-local function Spread(spots)
+-- The farthest two spots of an objective, in yards (0 when they can't be placed). Kept on the objective
+-- (o.spread) the first time: the time and the monsters on the way both read it, and the spots don't move.
+local function Spread(o)
+    if type(o.spread) == "number" then return o.spread end
     local pts = {}
-    for _, s in ipairs(spots or {}) do
+    for _, s in ipairs(o.spots or {}) do
         local c, x, y = ns.PlannerWorldPos(s.map, s.x, s.y)
         if c then pts[#pts + 1] = { c = c, x = x, y = y } end
     end
@@ -380,6 +382,7 @@ local function Spread(spots)
             end
         end
     end
+    if #pts > 0 or #(o.spots or {}) == 0 then o.spread = far end   -- (spots that can't be placed yet are tried again)
     return far
 end
 
@@ -394,7 +397,7 @@ function ns.PlannerQuestTime(rec, ctx)
         elseif o.kind == "item" then t = t + Count(o) * 25 / 0.5
         elseif o.kind == "place" then t = t + 0
         else t = t + 60 end
-        if speed > 0 then t = t + Spread(o.spots) / speed end
+        if speed > 0 then t = t + Spread(o) / speed end
     end
     t = t * (ctx.pace or 1)
     if ctx.noAlts then return t end                  -- (the formula alone: the pace is measured against it)
@@ -484,11 +487,22 @@ end
 ------------------------------------------------------------------------------------------
 -- Experience
 ------------------------------------------------------------------------------------------
-local function KillPart(rec, level)
+-- The monsters met while walking between a kill objective's spots (the walk PlannerQuestTime times), a minute.
+ns.PLANNER_WAY_KILLS = 0.5
+
+-- What a quest's kills give: each kill objective's count, and the monsters on the way, at the formula
+-- times what your kills at that level difference really give (PlannerKills.lua).
+local function KillPart(rec, ctx)
+    local level, speed = ctx.level or 1, tonumber(ctx.speed) or 0
     local xp = 0
     for _, o in ipairs(rec.objectives or {}) do
         if o.kind == "kill" then
-            xp = xp + Count(o) * ns.PlannerKillXP(level, o.mobLevel or rec.level, rec.elite)
+            local mob = o.mobLevel or rec.level
+            local each = ns.PlannerKillXP(level, mob, rec.elite)
+            if each > 0 and ns.PlannerKillRatio and tonumber(mob) then each = each * ns.PlannerKillRatio(mob - level, rec.elite) end
+            local kills = Count(o)
+            if speed > 0 then kills = kills + Spread(o) / speed / 60 * ns.PLANNER_WAY_KILLS end
+            xp = xp + kills * each
         end
     end
     return xp
@@ -501,7 +515,7 @@ function ns.PlannerRestedExtra(rec, ctx)
     local left = tonumber(ctx.restedLeft)
     if left == nil then left = tonumber(ctx.rested) end
     if not left or left <= 0 then return 0 end
-    return min(left, KillPart(rec, ctx.level or 1))
+    return min(left, KillPart(rec, ctx))
 end
 
 -- Experience from a better item among the rewards of a quest in the log: 2% of a level per item level
@@ -666,7 +680,7 @@ end
 function ns.PlannerQuestXP(rec, ctx)
     ctx = ctx or {}
     local extra = ns.PlannerRestedExtra(rec, ctx)
-    local real = (rec.xp or 0) + KillPart(rec, ctx.level or 1) + extra
+    local real = (rec.xp or 0) + KillPart(rec, ctx) + extra
     local xp = real + ns.PlannerRewardBonus(rec, ctx) + ns.PlannerRepBonus(rec, ctx)
     for _, h in ipairs(ns.PlannerHooksFor(ctx, "xp")) do xp = xp + (tonumber(h.fn(rec, ctx)) or 0) end
     if rec.nextQuest and ctx.candidate then
@@ -951,7 +965,18 @@ do
     -- Quest times: each quest accepted while following gathers its share of the time that passes, the
     -- time split evenly among the quests open at once (a hub's quests are done together). Memory only.
     -- (a quest carried longer than a sample may be, 2 hours, gives none and stops taking a share)
+    -- Time passes for them only while you are present and out of town: not AFK and not resting (each
+    -- readable; a hidden flag counts as present). The state is read at login and at an unlock (you may
+    -- log in at an inn), then PLAYER_FLAGS_CHANGED and PLAYER_UPDATE_RESTING share out the time so far
+    -- and set the new state.
     local open, openN, openAt, since = {}, 0, nil, {}  -- questID -> seconds so far; how many; the last time shared out; accepted at
+    local away = false
+    local function Flag(fn, ...)
+        if type(fn) ~= "function" then return false end
+        local ok, v = pcall(fn, ...)
+        return ok and not ns:IsSecret(v) and v == true
+    end
+    local function Away() return Flag(UnitIsAFK, "player") or Flag(IsResting) end
     local function Share(now)
         for id, t0 in pairs(since) do
             if t0 > now or now - t0 > QUEST_TIME_MAX then
@@ -960,7 +985,7 @@ do
             end
         end
         if openN == 0 then openAt = nil end
-        if openAt and openN > 0 and now > openAt then
+        if openAt and openN > 0 and now > openAt and not away then
             local part = (now - openAt) / openN
             for id, t in pairs(open) do open[id] = t + part end
         end
@@ -998,6 +1023,13 @@ do
         local okT, now = pcall(GetTime)
         if okT and type(now) == "number" and not ns:IsSecret(now) then return now end
     end
+    ns.PlannerQuestClock = function() return { open = openN, away = away } end    -- (read only: the tests)
+    local function ReadAway()
+        local now = Now()
+        if now then Share(now) end
+        away = Away()
+    end
+    ns.GuideRegisterLock("questclock", function(unlocked) if unlocked then ReadAway() end end)
     -- A QUEST_REMOVED of a quest not (yet) flagged completed: abandoned, unless QUEST_TURNED_IN for it follows
     -- within a second (then it was a hand-in, counted once). questID -> { t, level = a soloed elite's, took = its time }.
     local removed = {}
@@ -1030,8 +1062,14 @@ do
     for kind, e in pairs(ns.GUIDE_WINDOW_KINDS or {}) do closes[e] = kind end
     for _, e in ipairs({ "QUEST_ACCEPTED", "QUEST_TURNED_IN", "QUEST_REMOVED", "PLAYER_LEVEL_UP", "HEARTHSTONE_BOUND",
                          "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED",
-                         "TRAINER_SHOW", "TRAINER_CLOSED", "MERCHANT_CLOSED", "MAIL_CLOSED", "PLAYER_MOUNT_DISPLAY_CHANGED", "PLAYER_DEAD" }) do pcall(ev.RegisterEvent, ev, e) end
+                         "TRAINER_SHOW", "TRAINER_CLOSED", "MERCHANT_CLOSED", "MAIL_CLOSED", "PLAYER_MOUNT_DISPLAY_CHANGED", "PLAYER_DEAD",
+                         "PLAYER_FLAGS_CHANGED", "PLAYER_UPDATE_RESTING", "PLAYER_LOGIN" }) do pcall(ev.RegisterEvent, ev, e) end
     ev:SetScript("OnEvent", ns:Guard("Planner", function(_, event, a, b)
+        if event == "PLAYER_FLAGS_CHANGED" or event == "PLAYER_UPDATE_RESTING" or event == "PLAYER_LOGIN" then   -- (away or in town: the quest clock stops)
+            if (event == "PLAYER_FLAGS_CHANGED" and a ~= "player") or not ns:GuideUnlocked() then return end
+            ReadAway()
+            return
+        end
         if event == "PLAYER_REGEN_DISABLED" then fighting = true; return end
         if event == "PLAYER_REGEN_ENABLED" then fighting = false; return end
         if event == "TRAINER_SHOW" then               -- (a locked guide: nothing is looked up)

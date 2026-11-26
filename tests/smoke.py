@@ -18294,7 +18294,6 @@ try("13.6 leftovers: seams", function()
         ns.PlannerTimedQuest = nil
         s = seq(route())
         if s:find("!", 1, true) or not s:find("^accept:9621") then error("no PlannerTimedQuest: the normal order: " .. s) end
-        if ns.PlannerRecordKill ~= nil then error("PlannerKills.lua is empty: no recorder yet") end
         if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
     end)
     for _, k in ipairs({ "test6a", "test6b", "test6c" }) do ns.GuideRegisterLock(k, nil) end
@@ -18304,6 +18303,393 @@ try("13.6 leftovers: seams", function()
     if not ok then error(err, 0) end
 end)
 -- batch 6 tests A (learning): begin
+try("13.6 leftovers A: recording kills", function()
+    local names = { "GetTime", "UnitXP", "UnitXPMax", "GetXPExhaustion", "UnitLevel", "UnitExists", "UnitIsDead", "UnitCanAttack", "UnitClassification", "IsInGroup",
+                    "COMBATLOG_XPGAIN_FIRSTPERSON_UNNAMED", "COMBATLOG_XPGAIN_QUEST" }
+    local saved = { unlocked = ns.GuideUnlocked, planner = ns.root.planner, errors = #ns.errors, env = {} }
+    for _, n in ipairs(names) do saved.env[n] = rawget(env, n) end
+    local ok, err = pcall(function()
+        if ns.PLANNER_KILL_PAIR ~= 1 or ns.PLANNER_KILL_GAP ~= 180 or ns.PLANNER_KILL_GAPS ~= 50 or ns.PLANNER_KILL_MIN_GAPS ~= 10 then error("the kill constants") end
+        ns.GuideUnlocked = function() return true end
+        local clock, xp, xpMax, rest, level, grouped = 50000, 5000, 10000, nil, 20, false
+        local tgt
+        local hidden = setmetatable({ __secret = true }, secretmt)
+        env.GetTime = function() return clock end
+        env.UnitXP = function() return xp end
+        env.UnitXPMax = function() return xpMax end
+        env.GetXPExhaustion = function() return rest end
+        env.UnitLevel = function(u) if u == "target" then return tgt.level end return level end
+        env.UnitExists = function(u) if u == "target" then return tgt.exists end return true end
+        env.UnitIsDead = function(u) if u == "target" then return tgt.dead end return false end
+        env.UnitCanAttack = function() return tgt.attack end
+        env.UnitClassification = function() return tgt.class end
+        env.IsInGroup = function() return grouped end
+        local E = ns.PlannerKillsEvent
+        local function R() return ns.root.planner and ns.root.planner[ns:CharKey()] end
+        local function target(t)
+            tgt = { exists = true, dead = true, attack = true, level = 20, class = "normal" }
+            for k, v in pairs(t or {}) do tgt[k] = v end
+        end
+        local function reset()
+            ns.root.planner = {}
+            clock = clock + 1000
+            xp, xpMax, rest, level, grouped = 5000, 10000, nil, 20, false
+            target()
+            E("PLAYER_ENTERING_WORLD")
+        end
+        local LINE = "Boar dies, you gain 174 experience."
+        -- a kill: the line and the XP change, `after` seconds apart, the line first unless xpFirst
+        local function kill(gain, after, xpFirst, restAfter)
+            if xpFirst then
+                xp = xp + gain; if restAfter then rest = restAfter end; E("PLAYER_XP_UPDATE", "player")
+                clock = clock + (after or 0); E("CHAT_MSG_COMBAT_XP_GAIN", LINE)
+            else
+                E("CHAT_MSG_COMBAT_XP_GAIN", LINE); clock = clock + (after or 0)
+                xp = xp + gain; if restAfter then rest = restAfter end; E("PLAYER_XP_UPDATE", "player")
+            end
+        end
+        -- a burst is settled once it has been quiet a second (the timer it set)
+        local function settle() local c = clock; clock = clock + 5; runTimers(); clock = c end
+        local function sample(diff)
+            settle()
+            local r = R()
+            return r and type(r.killXP) == "table" and r.killXP[diff or 0]
+        end
+        local function near(a, b) return type(a) == "number" and math.abs(a - b) < 1e-6 end
+        -- the line, then the XP within half a second: 174 against the formula's 145
+        reset()
+        if ns.PlannerKillXP(20, 20) ~= 145 then error("the formula at level 20") end
+        kill(174, 0.5)
+        local s = sample()
+        if not (s and s.n == 1 and near(s.r, 1.2)) then error("line then XP: { n = 1, r = 1.2 }, got " .. tostring(s and s.n) .. " " .. tostring(s and s.r)) end
+        -- the XP first, the line 0.8 s later
+        reset(); kill(174, 0.8, true)
+        s = sample()
+        if not (s and s.n == 1 and near(s.r, 1.2)) then error("XP then line: the same") end
+        -- 1.5 s apart: no sample, but the kill counts (a second kill 30 s on makes one gap)
+        reset(); kill(174, 1.5)
+        if sample() then error("1.5 s apart: no sample") end
+        clock = clock + 30; kill(145, 0)
+        s = sample()
+        if not (s and s.n == 1 and near(s.r, 1)) or #(R().killGaps or {}) ~= 1 or not near(R().killGaps[1], 31.5) then error("one kill was counted before: one gap of 31.5") end
+        -- an XP change with no line (a hand-in): nothing; a line 5 s later does not pair with it
+        reset(); xp = xp + 800; E("PLAYER_XP_UPDATE", "player")
+        if R() then error("a hand-in: nothing written") end
+        clock = clock + 5; E("CHAT_MSG_COMBAT_XP_GAIN", LINE)
+        if sample() then error("a line long after a hand-in: no sample") end
+        -- rested: 1000 -> 855, +290 is a base of 145 (the pool's change said first, too)
+        reset(); rest = 1000; E("PLAYER_ENTERING_WORLD")
+        kill(290, 0.2, false, 855)
+        s = sample()
+        if not (s and near(s.r, 1)) then error("rested: base 145, r 1.0, got " .. tostring(s and s.r)) end
+        reset(); rest = 1000; E("PLAYER_ENTERING_WORLD")
+        E("CHAT_MSG_COMBAT_XP_GAIN", LINE); rest = 855; E("UPDATE_EXHAUSTION"); xp = xp + 290; E("PLAYER_XP_UPDATE", "player")
+        s = sample()
+        if not (s and near(s.r, 1)) then error("rested, the pool's change first: r 1.0, got " .. tostring(s and s.r)) end
+        rest = 2000; E("UPDATE_EXHAUSTION"); clock = clock + 30; kill(145, 0)
+        if not near(sample().r, 1) or sample().n ~= 2 then error("rest gained at an inn is not taken off a kill") end
+        -- rollover: 9900 of 10000 to 45 is 145
+        reset(); xp = 9900; E("PLAYER_ENTERING_WORLD")
+        E("CHAT_MSG_COMBAT_XP_GAIN", LINE); xp, xpMax = 45, 11000; E("PLAYER_XP_UPDATE", "player")
+        s = sample()
+        if not (s and near(s.r, 1)) then error("rollover: 145, got " .. tostring(s and s.r)) end
+        -- the level read lags after a level-up: the next kill is scored at the new level
+        clock = clock + 30; target({ level = 21 }); kill(ns.PlannerKillXP(21, 21), 0.2)
+        if not (sample(0).n == 2 and near(sample(0).r, 1)) or sample(1) then error("after the level-up, scored at 21: diff 0") end
+        -- two kill lines on one XP change (a pull that died together): no sample, both counted for the rate
+        reset()
+        E("CHAT_MSG_COMBAT_XP_GAIN", LINE); clock = clock + 0.1; E("CHAT_MSG_COMBAT_XP_GAIN", LINE)
+        xp = xp + 348; E("PLAYER_XP_UPDATE", "player")
+        if sample() then error("two lines, one XP change: no sample") end
+        if not (R().killGaps and #R().killGaps == 1 and near(R().killGaps[1], 0.1)) then error("both lines counted") end
+        reset()
+        xp = xp + 348; E("PLAYER_XP_UPDATE", "player"); E("CHAT_MSG_COMBAT_XP_GAIN", LINE); clock = clock + 0.3; E("CHAT_MSG_COMBAT_XP_GAIN", LINE)
+        if sample() then error("one XP change, then two lines: no sample") end
+        reset()
+        E("CHAT_MSG_COMBAT_XP_GAIN", LINE); xp = xp + 174; E("PLAYER_XP_UPDATE", "player"); clock = clock + 0.5; xp = xp + 400; E("PLAYER_XP_UPDATE", "player")
+        if sample() then error("one line, two XP changes: no sample") end
+        clock = clock + 30; kill(174, 0.2)
+        if not (sample() and sample().n == 1) then error("a lone kill after it pairs again") end
+        -- a line that is not a kill's: not counted at all
+        reset()
+        env.COMBATLOG_XPGAIN_FIRSTPERSON_UNNAMED, env.COMBATLOG_XPGAIN_QUEST = "You gain %d experience.", "You gain %d experience for completing %s."
+        E("CHAT_MSG_COMBAT_XP_GAIN", "You gain 300 experience."); xp = xp + 300; E("PLAYER_XP_UPDATE", "player")
+        clock = clock + 30; E("CHAT_MSG_COMBAT_XP_GAIN", "You gain 900 experience for completing (The Hunt)."); xp = xp + 900; E("PLAYER_XP_UPDATE", "player")
+        clock = clock + 30; E("CHAT_MSG_COMBAT_XP_GAIN", nil)
+        if sample() or R() then error("unnamed and quest lines are no kills") end
+        clock = clock + 30; kill(174, 0.2)
+        if not (sample() and sample().n == 1) then error("a kill's line still counts") end
+        -- grouped: nothing at all
+        reset(); grouped = true
+        kill(174, 0.2); clock = clock + 30; kill(174, 0.2)
+        if R() then error("grouped: nothing at all") end
+        -- no dead, attackable target with a level: no sample, the gaps still counted
+        reset()
+        target({ dead = false }); kill(174, 0.2)
+        clock = clock + 30; target({ attack = false }); kill(174, 0.2)
+        clock = clock + 30; target({ level = -1 }); kill(174, 0.2)
+        clock = clock + 30; target({ exists = false }); kill(174, 0.2)
+        clock = clock + 30; target({ class = hidden }); kill(174, 0.2)
+        settle()
+        if R().killXP then error("no such target: no sample") end
+        if #(R().killGaps or {}) ~= 4 then error("but every gap counted: " .. #(R().killGaps or {})) end
+        -- a gray mob, a ratio of 5: dropped
+        reset(); target({ level = 13 }); kill(50, 0.2)
+        clock = clock + 30; target(); kill(725, 0.2)
+        clock = clock + 30; kill(30, 0.2)
+        settle()
+        if R().killXP and next(R().killXP) then error("gray, 5 and 0.2: dropped") end
+        -- an elite: 290 against the elite formula
+        reset(); target({ class = "elite" }); kill(290, 0.2)
+        s = sample()
+        if not (s and near(s.r, 1)) then error("elite: r 1.0, got " .. tostring(s and s.r)) end
+        reset(); target({ class = "rareelite", level = 22 }); kill(ns.PlannerKillXP(20, 22, true), 0.2)
+        if not (sample(2) and near(sample(2).r, 1)) then error("a rare elite two levels up: diff 2") end
+        -- the level difference is clamped to -10 .. 5
+        reset(); target({ level = 30 }); kill(ns.PlannerKillXP(20, 30), 0.2)
+        if not (sample(5) and near(sample(5).r, 1)) then error("ten levels up is kept at 5") end
+        -- the kill rate: 11 kills 30 s apart; nine gaps are not enough; a 400 s gap is not added
+        reset()
+        for i = 1, 10 do if i > 1 then clock = clock + 30 end; kill(145, 0) end
+        if R().killsPerHour ~= nil or #R().killGaps ~= 9 then error("nine gaps: no rate yet") end
+        clock = clock + 30; kill(145, 0)
+        if R().killsPerHour ~= 120 then error("ten gaps of 30 s: 120 an hour, got " .. tostring(R().killsPerHour)) end
+        clock = clock + 400; kill(145, 0)
+        if #R().killGaps ~= 10 then error("a 400 s gap is not added") end
+        for _ = 1, 60 do clock = clock + 60; kill(145, 0) end
+        if #R().killGaps ~= 50 or R().killsPerHour ~= 60 then error("the last 50: 60 an hour, got " .. tostring(R().killsPerHour)) end
+        -- the running mean over the last 20
+        reset()
+        for _ = 1, 25 do clock = clock + 30; kill(290, 0) end
+        s = sample()
+        if not (s.n == 25 and near(s.r, 2)) then error("25 kills at 2: n 25, r 2") end
+        -- the ratio
+        ns.root.planner = { [ns:CharKey()] = { killXP = { [0] = { n = 1, r = 1.2 } } } }
+        if not near(ns.PlannerKillRatio(0), 1.1) then error("one sample of 1.2: 1.1, got " .. ns.PlannerKillRatio(0)) end
+        ns.root.planner[ns:CharKey()].killXP[0] = { n = 30, r = 1.2 }
+        if not near(ns.PlannerKillRatio(0, true), (1 + 1.2 * 5) / 6) then error("30 samples: weight 5") end
+        ns.root.planner[ns:CharKey()].killXP[-10] = { n = 2, r = 0.7 }
+        if not near(ns.PlannerKillRatio(-14), (1 + 0.7 * 2) / 3) then error("-14 reads -10") end
+        if ns.PlannerKillRatio(3) ~= 1 or ns.PlannerKillRatio(nil) ~= 1 then error("no samples: 1") end
+        ns.root.planner = {}
+        if ns.PlannerKillRatio(0) ~= 1 or next(ns.root.planner) then error("no record: 1, and nothing made") end
+        -- the recorder called directly
+        ns.PlannerRecordKill({ xp = 174, level = 20, mobLevel = 20, elite = false })
+        if not (sample() and near(sample().r, 1.2)) or R().killGaps then error("a direct sample with no time: killXP only") end
+        -- locked: nothing written
+        reset()
+        ns.GuideUnlocked = function() return false end
+        kill(174, 0.2); clock = clock + 30; kill(174, 0.2)
+        ns.PlannerRecordKill({ xp = 174, level = 20, mobLevel = 20, elite = false, t = clock })
+        if next(ns.root.planner) then error("locked: nothing written") end
+        ns.GuideUnlocked = function() return true end
+        -- hidden XP: nothing written, no error
+        reset()
+        env.UnitXP = function() return hidden end
+        E("PLAYER_ENTERING_WORLD")
+        kill(0, 0.2); clock = clock + 30; kill(0, 0.2)
+        if next(ns.root.planner) then error("hidden XP: nothing written") end
+        env.UnitXP = function() return xp end
+        env.GetTime = function() return hidden end
+        reset(); kill(174, 0.2); kill(174, 0.2)
+        if next(ns.root.planner) then error("a hidden clock: nothing written") end
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    for _, n in ipairs(names) do env[n] = saved.env[n] end
+    ns.GuideUnlocked, ns.root.planner = saved.unlocked, saved.planner
+    if ns.PlannerKillsEvent then ns.PlannerKillsEvent("PLAYER_ENTERING_WORLD") end
+    if not ok then error(err, 0) end
+end)
+try("13.6 leftovers A: kills in the plan", function()
+    local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), planner = ns.root.planner, times = ns.root.plannerQuestTimes, ratio = ns.PlannerKillRatio,
+                    dry = ns.db.plannerDry, unlocked = ns.GuideUnlocked, combat = env.InCombatLockdown, errors = #ns.errors }
+    local ok, err = pcall(function()
+        if ns.PLANNER_WAY_KILLS ~= 0.5 then error("half a monster a minute on the way") end
+        ns.GuideUnlocked = function() return true end
+        local cm = {}
+        for k, v in pairs(saved.map) do cm[k] = v end
+        cm.GetWorldPosFromMapPos = function(map, v)
+            if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end
+            if map == 2 then return 0, { x = v.x * 1000 + 5000, y = v.y * 1000 } end
+        end
+        cm.GetMapInfo = function(map) return { name = "Zone" .. tostring(map) } end
+        env.C_Map = cm
+        env.CreateVector2D = function(x, y) return { x = x, y = y } end
+        ns.root.planner, ns.root.plannerQuestTimes = {}, nil
+        local key = ns:CharKey()
+        local function near(a, b) return type(a) == "number" and math.abs(a - b) < 1e-6 end
+        local function rec(id, extra)
+            local r = { id = id, name = "Q" .. id, level = 20, minLevel = 1, xp = 500, starts = {}, ends = {},
+                objectives = { { kind = "kill", count = 8, countKnown = true, mobLevel = 20, spots = { { map = 1, x = 10, y = 10 }, { map = 1, x = 10, y = 52 } } } },
+                pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+            for k, v in pairs(extra or {}) do r[k] = v end
+            return r
+        end
+        local ctx = { level = 20, speed = 7 }
+        local way = 420 / 7 / 60 * 0.5                  -- a minute's walk between the spots: half a monster
+        -- no ratio: the kills and the monsters on the way at the formula
+        local q = rec(1)
+        local _, _, real = ns.PlannerQuestXP(q, ctx)
+        if not near(real, 500 + 8 * 145 + way * 145) then error("8 kills and the way at 145: " .. tostring(real)) end
+        if not near(q.objectives[1].spread, 420) then error("the spread is kept on the objective: " .. tostring(q.objectives[1].spread)) end
+        if not near(ns.PlannerQuestTime(q, { speed = 7 }), 8 * 25 + 60) then error("the time is as before: " .. ns.PlannerQuestTime(q, { speed = 7 })) end
+        q.objectives[1].spots = {}                       -- (kept: not worked out again)
+        if not near(ns.PlannerQuestTime(q, { speed = 7 }), 8 * 25 + 60) then error("the time reads the kept spread") end
+        -- with what you really get: 5 samples of 1.5 at level difference 0
+        ns.root.planner[key] = { killXP = { [0] = { n = 5, r = 1.5 } } }
+        local k = (1 + 7.5) / 6
+        _, _, real = ns.PlannerQuestXP(rec(2), ctx)
+        if not near(real, 500 + (8 + way) * 145 * k) then error("both kill parts at the ratio: " .. tostring(real)) end
+        -- speed 0 (or none): no monsters on the way
+        _, _, real = ns.PlannerQuestXP(rec(3), { level = 20, speed = 0 })
+        if not near(real, 500 + 8 * 145 * k) then error("speed 0: no way kills: " .. tostring(real)) end
+        _, _, real = ns.PlannerQuestXP(rec(3), { level = 20 })
+        if not near(real, 500 + 8 * 145 * k) then error("no speed: no way kills") end
+        -- the rested extra is the same kill part
+        local c = { level = 20, speed = 7, rested = 100000 }
+        local _, extra, all = ns.PlannerQuestXP(rec(4), c)
+        if not near(extra, (8 + way) * 145 * k) or not near(ns.PlannerRestedExtra(rec(4), c), extra) then error("the rested extra: " .. tostring(extra)) end
+        if not near(all, 500 + 2 * extra) then error("and the real experience has it twice") end
+        -- a monster level other than the quest's: the ratio at its own difference
+        ns.root.planner[key].killXP[2] = { n = 1, r = 2 }
+        local q5 = rec(5, { objectives = { { kind = "kill", count = 4, countKnown = true, mobLevel = 22, spots = {} } } })
+        _, _, real = ns.PlannerQuestXP(q5, ctx)
+        if not near(real, 500 + 4 * ns.PlannerKillXP(20, 22) * 1.5) then error("diff 2 reads its own ratio: " .. tostring(real)) end
+        -- two zones: the kill quest loses at the formula, and wins once the kills give 1.5
+        ns.root.planner[key] = {}
+        local function one(id, map, xp, objective)
+            return rec(id, { xp = xp, starts = { { map = map, x = 50, y = 50 } }, ends = { { map = map, x = 50, y = 50 } }, objectives = { objective } })
+        end
+        local killer = one(11, 1, 300, { kind = "kill", count = 8, countKnown = true, mobLevel = 20, spots = { { map = 1, x = 52, y = 52 } } })
+        local giver = one(12, 2, 1700, { kind = "item", count = 4, countKnown = true, spots = { { map = 2, x = 52, y = 52 } } })
+        local recs = { [11] = killer, [12] = giver }
+        local source = { kind = "fake", ids = function() return { 11, 12 } end, quest = function(id) return recs[id] end, inns = function() return {} end }
+        local zc = { source = source, level = 20, group = "solo", inGroup = false, speed = 7, faction = "Alliance", done = function() return false end,
+                     onQuest = function() return false end, crossings = {}, learnFlights = false, pace = 1, flights = {}, flightTime = function() return nil end }
+        if ns.PlannerPickZone({ killer, giver }, zc) ~= 2 then error("at the formula the reward quest's zone wins") end
+        ns.root.planner[key] = { killXP = { [0] = { n = 5, r = 1.5 } } }
+        if ns.PlannerPickZone({ killer, giver }, zc) ~= 1 then error("at 1.5 the kill quest's zone wins") end
+        -- grinding at your own rate: 90 kills an hour at a level-20 spot
+        ns.db.plannerDry = nil
+        env.InCombatLockdown = function() return false end
+        ns.root.planner[key] = { killsPerHour = 90 }
+        local spots = { { map = 1, x = 50, y = 50, count = 30, name = "Boar", mobLevel = 20 } }
+        local gctx = { source = { kind = "fake", grindSpots = function() return spots end }, level = 20, group = "solo", inGroup = false }
+        local function line()
+            local dry = ns.PlannerDry(gctx)
+            local lines = ns.PlannerAdviceLines({}, 1, { empty = true, dry = dry })
+            return table.concat(lines, " / ")
+        end
+        if not line():find("about 13050 xp an hour", 1, true) then error("90 an hour at 145: " .. line()) end
+        ns.PlannerKillRatio = function() return 1.5 end
+        if not line():find("about 19575 xp an hour", 1, true) then error("and at 1.5: " .. line()) end
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    env.C_Map, env.CreateVector2D, ns.root.planner, ns.root.plannerQuestTimes = saved.map, saved.vec, saved.planner, saved.times
+    ns.PlannerKillRatio, ns.db.plannerDry, ns.GuideUnlocked, env.InCombatLockdown = saved.ratio, saved.dry, saved.unlocked, saved.combat
+    if not ok then error(err, 0) end
+end)
+try("13.6 leftovers A: quest times without away and town", function()
+    local saved = { on = ns.GuideOn, state = ns.GuideState, unlocked = ns.GuideUnlocked, time = rawget(env, "GetTime"), afk = rawget(env, "UnitIsAFK"),
+                    resting = rawget(env, "IsResting"), times = ns.root.plannerQuestTimes, errors = #ns.errors, queued = ns.plannerQueued,
+                    hash = ns.GuideHash, key = ns.root.guideKey, duo = ns.plannerDuo, planner = ns.root.planner, reg = env.C_ChatInfo.RegisterAddonMessagePrefix }
+    local afk, resting = false, false
+    local function setAFK(v, unit) afk = v; fireEvent("PLAYER_FLAGS_CHANGED", unit or "player") end
+    local function setRest(v) resting = v; fireEvent("PLAYER_UPDATE_RESTING") end
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        ns.GuideOn = function() return true end
+        ns.GuideState = function() return { name = ns.GUIDE_PLANNED, at = 1, plan = {} } end
+        local base, clock = 0, 0
+        local hidden = setmetatable({ __secret = true }, secretmt)
+        env.GetTime = function() return clock end
+        env.UnitIsAFK = function() return afk end
+        env.IsResting = function() return resting end
+        local function at(t) clock = base + t end
+        local function avg(id) local e = ns.root.plannerQuestTimes and ns.root.plannerQuestTimes[id]; return e and e.avg end
+        base = 700000; at(0)
+        setAFK(false); setRest(false)
+        if type(ns.PlannerQuestClock) ~= "function" then error("ns.PlannerQuestClock") end
+        -- accepted at 0, away 100 to 400, in town 500 to 600, handed in at 700: 300 s
+        ns.root.plannerQuestTimes = nil
+        fireEvent("QUEST_ACCEPTED", 1, 9650)
+        at(100); setAFK(true)
+        local c = ns.PlannerQuestClock()
+        if not (c.away == true and c.open == 1) then error("away, one quest open") end
+        at(200); setAFK(false, "party1")
+        if not ns.PlannerQuestClock().away then error("another unit's flags change nothing") end
+        at(400); setAFK(false)
+        if ns.PlannerQuestClock().away then error("back") end
+        at(500); setRest(true)
+        if not ns.PlannerQuestClock().away then error("in town") end
+        at(600); setRest(false)
+        at(700); fireEvent("QUEST_TURNED_IN", 9650)
+        if avg(9650) ~= 300 then error("without the time away and in town: 300, got " .. tostring(avg(9650))) end
+        if ns.PlannerQuestClock().open ~= 0 then error("nothing open") end
+        -- two quests open from 0, away 50 to 150, both handed in at 250: 75 each
+        base = 710000; at(0)
+        fireEvent("QUEST_ACCEPTED", 1, 9651); fireEvent("QUEST_ACCEPTED", 2, 9652)
+        at(50); setAFK(true); at(150); setAFK(false)
+        at(250); fireEvent("QUEST_TURNED_IN", 9651); fireEvent("QUEST_TURNED_IN", 9652)
+        if avg(9651) ~= 75 or avg(9652) ~= 75 then error("150 s shared by two: 75 each, got " .. tostring(avg(9651)) .. " " .. tostring(avg(9652))) end
+        -- accepted in town, never left: 0 s, no sample
+        base = 720000; at(0)
+        setRest(true); fireEvent("QUEST_ACCEPTED", 1, 9653)
+        at(300); fireEvent("QUEST_TURNED_IN", 9653)
+        if avg(9653) then error("never out of town: no sample") end
+        setRest(false)
+        -- a hidden AFK flag: present, no error
+        base = 730000; at(0)
+        env.UnitIsAFK = function() return hidden end
+        fireEvent("QUEST_ACCEPTED", 1, 9654)
+        at(100); fireEvent("PLAYER_FLAGS_CHANGED", "player")
+        if ns.PlannerQuestClock().away then error("hidden: counted as present") end
+        at(200); fireEvent("QUEST_TURNED_IN", 9654)
+        if avg(9654) ~= 200 then error("hidden: no pause, got " .. tostring(avg(9654))) end
+        env.UnitIsAFK = function() return afk end
+        -- away 7000 s: over 2 hours since accepting, no sample
+        base = 740000; at(0)
+        fireEvent("QUEST_ACCEPTED", 1, 9655)
+        at(100); setAFK(true); at(7100); setAFK(false)
+        at(7300); fireEvent("QUEST_TURNED_IN", 9655)
+        if avg(9655) then error("over 2 hours since accepting: no sample") end
+        -- logged in at an inn: away from the start; out of town at 200, handed in at 500: 300 s
+        base = 750000; at(0)
+        resting = true; fireEvent("PLAYER_LOGIN")
+        if not ns.PlannerQuestClock().away then error("logged in at an inn: in town") end
+        fireEvent("QUEST_ACCEPTED", 1, 9656)
+        at(200); setRest(false)
+        at(500); fireEvent("QUEST_TURNED_IN", 9656)
+        if avg(9656) ~= 300 then error("logged in at an inn: 300, got " .. tostring(avg(9656))) end
+        -- an unlock reads the state again (it may have changed while locked)
+        local key = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
+        ns.GuideUnlocked = saved.unlocked
+        ns.root.guideKey = nil
+        ns.GuideHash = function() return key end
+        afk = true
+        if not ns:GuideUnlock("x") or not ns.PlannerQuestClock().away then error("an unlock reads the state") end
+        ns.GuideUnlocked = function() return true end
+        setAFK(false)
+        -- locked: the state is not read
+        ns.GuideUnlocked = function() return false end
+        setAFK(true)
+        if ns.PlannerQuestClock().away then error("locked: nothing read") end
+        ns.GuideUnlocked = function() return true end
+        afk = false
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    -- (leave the clock present, then put everything back)
+    ns.GuideUnlocked = function() return true end
+    env.UnitIsAFK, env.IsResting = function() return false end, function() return false end
+    afk, resting = false, false
+    pcall(setAFK, false); pcall(setRest, false)
+    ns.GuideOn, ns.GuideState, ns.GuideUnlocked, env.GetTime = saved.on, saved.state, saved.unlocked, saved.time
+    env.UnitIsAFK, env.IsResting, ns.root.plannerQuestTimes = saved.afk, saved.resting, saved.times
+    ns.plannerQueued, ns.GuideHash, ns.root.guideKey, ns.plannerDuo = saved.queued, saved.hash, saved.key, saved.duo
+    ns.root.planner, env.C_ChatInfo.RegisterAddonMessagePrefix = saved.planner, saved.reg
+    if ns.PlannerPaceSync then ns.PlannerPaceSync() end
+    if not ok then error(err, 0) end
+end)
 -- batch 6 tests A (learning): end
 -- batch 6 tests B (questie): begin
 -- batch 6 tests B (questie): end
