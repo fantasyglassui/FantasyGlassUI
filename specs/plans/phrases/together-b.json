@@ -59,16 +59,6 @@
     "친구를 대상으로 지정하거나 파티를 맺거나, /fgui guide duo <이름>을 입력하세요.",
     "选中你的好友或与其组队，或输入 /fgui guide duo <名字>。"
   ],
-  "No answer from %s: planning for you alone.": [
-    "Keine Antwort von %s: es wird nur für dich geplant.",
-    "Pas de réponse de %s : planification pour vous seul.",
-    "Sin respuesta de %s: se planifica solo para ti.",
-    "%s не отвечает: маршрут только для вас.",
-    "Sem resposta de %s: planejando só para você.",
-    "Nessuna risposta da %s: pianificazione solo per te.",
-    "%s 님의 응답이 없습니다: 혼자 계획합니다.",
-    "%s 没有回应：仅为你规划。"
-  ],
   "%s is offline: planning for you alone.": [
     "%s ist offline: es wird nur für dich geplant.",
     "%s est hors ligne : planification pour vous seul.",
@@ -308,5 +298,35 @@
     "Permetti agli amici di chiederti di pianificare insieme",
     "친구가 함께 계획하자고 요청할 수 있게 하기",
     "允许好友邀请你一起规划"
+  ],
+  "No answer from %s (offline, or no Fantasy Glass UI): planning for you alone.": [
+    "Keine Antwort von %s (offline oder ohne Fantasy Glass UI): es wird nur für dich geplant.",
+    "Pas de réponse de %s (hors ligne, ou sans Fantasy Glass UI) : planification pour vous seul.",
+    "Sin respuesta de %s (desconectado, o sin Fantasy Glass UI): se planifica solo para ti.",
+    "%s не отвечает (не в сети или без Fantasy Glass UI): маршрут только для вас.",
+    "Sem resposta de %s (offline, ou sem o Fantasy Glass UI): planejando só para você.",
+    "Nessuna risposta da %s (non in linea, o senza Fantasy Glass UI): pianificazione solo per te.",
+    "%s 님의 응답이 없습니다(오프라인이거나 Fantasy Glass UI 없음): 혼자 계획합니다.",
+    "%s 没有回应（离线，或没有 Fantasy Glass UI）：仅为你规划。"
+  ],
+  "Planning together ended.": [
+    "Gemeinsames Planen beendet.",
+    "La planification commune est terminée.",
+    "La planificación conjunta ha terminado.",
+    "Совместное планирование завершено.",
+    "O planejamento em conjunto terminou.",
+    "La pianificazione insieme è terminata.",
+    "함께 계획이 끝났습니다.",
+    "一起规划已结束。"
+  ],
+  "This plan is too long to share: following it together needs a shorter plan.": [
+    "Dieser Plan ist zu lang zum Teilen: gemeinsam folgen geht nur mit einem kürzeren Plan.",
+    "Ce plan est trop long pour être partagé : le suivre ensemble demande un plan plus court.",
+    "Este plan es demasiado largo para compartirlo: seguirlo juntos necesita un plan más corto.",
+    "Этот план слишком длинный, чтобы им поделиться: для совместного прохождения нужен план короче.",
+    "Este plano é longo demais para compartilhar: segui-lo juntos exige um plano mais curto.",
+    "Questo piano è troppo lungo da condividere: per seguirlo insieme serve un piano più breve.",
+    "이 계획은 공유하기에 너무 깁니다: 함께 따라가려면 더 짧은 계획이 필요합니다.",
+    "此计划太长，无法共享：一起跟随需要更短的计划。"
   ]
 }

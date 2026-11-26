@@ -19,8 +19,8 @@ local PREFIX, WHISPER = ns.PLANNER_DUO_PREFIX, "WHISPER"
 local MAX_BYTES = 255                -- one message
 local RETRY_AFTER, TRIES = 2, 3      -- a throttled message: again after 2 s, 3 tries in all
 local ASK_WAIT = 30                  -- seconds the leader waits for YES (once the question has gone)
-local STATE_WAIT = 60                -- ... and then for the friend's state
-local ANSWER_WAIT = 60               -- the friend's ask page: no choice in this long is no answer
+local STATE_WAIT = 30                -- ... and then 30 s for the friend's state
+local ANSWER_WAIT = 30               -- the friend's ask page: no choice in this long is no answer (the leader's wait)
 local LEVEL_RETRY, LEVEL_TRIES = 5, 6    -- the friend's level could not be read: again every 5 s, 6 times
 local LEVELS_APART = 6
 local CAP = { log = 25, can = 300, flights = 200 }
@@ -42,6 +42,7 @@ local function MyLevel() return Num(Call(UnitLevel, "player")) end
 local function Session(s) s = Str(s); return (s and #s >= 4 and #s <= 8 and s:match("^%x+$")) and s or nil end
 
 local Sync                           -- (the planner hooks, registered while they are in use)
+local syncLater = false              -- (the hooks change on the next tick: a hook that ends the duo is still being run)
 local queue = {}                     -- { text, to, tries, after }
 local pendingAsk                     -- the friend's side: { from, to, session, at } while the ask page waits
 local askWindow
@@ -140,35 +141,40 @@ end
 
 local LINES = {
     off = "You stopped planning together: planning for you alone.",
-    noanswer = "No answer from %s: planning for you alone.",
+    noanswer = "No answer from %s (offline, or no Fantasy Glass UI): planning for you alone.",
     offline = "%s is offline: planning for you alone.",
     throttle = "Could not reach %s: planning for you alone.",
     declined = "%s would rather not plan together: planning for you alone.",
     level = "Could not read your level: try again out of combat.",
     lost = "Lost touch with %s: planning for you alone.",
     guide = "You follow another guide now: no longer planning with %s.",
+    guideoff = "Planning together ended.",
+    toolong = "This plan is too long to share: following it together needs a shorter plan.",
     start = "Planning for you alone now: no longer planning with %s.",
 }
 
 -- End the duo: END to the partner (unless noSend), the line for `why`, and a plan of your own (unless
--- noReplan, or why is "guide": the guide you chose stays): the leader plans again, the friend plans from scratch.
-function ns:PlannerDuoEnd(why, noReplan, noSend)
+-- noReplan, or why is "guide"/"guideoff": the guide you chose stays): the leader plans again, the friend
+-- plans from scratch. From inside a planner hook (`later`), the hooks are taken away on the next tick.
+function ns:PlannerDuoEnd(why, noReplan, noSend, later)
     local d = ns.plannerDuo
     if not d then return false end
     queue = {}
     if not noSend then ns.PlannerDuoSend("D1:END:" .. d.session, d.to or d.partner) end
     ns.plannerDuo = nil
-    Sync()
+    if later then syncLater = true else Sync() end
     local line = why and LINES[why]
     if line then ns:Print(line, d.partner) end
     if ns.GuideRedraw then ns:GuideRedraw() end
-    if noReplan or why == "guide" then return true end
+    if noReplan or why == "guide" or why == "guideoff" then return true end
     if d.role == "lead" then ns:PlannerReplan("duo end") else ns:PlannerStart() end
     return true
 end
 
--- Your target when it is a friendly player, else your only party member, else the name given.
+-- The name given, else your target when it is a friendly player, else your only party member.
 local function PickPartner(name)
+    name = Str(name) and ns.Trim(name) or nil
+    if name and name ~= "" and not name:find("[%s:|]") then return ns.GroupShortName(name) or name, name end
     local function From(unit)
         local n, realm = Call(UnitName, unit)
         n, realm = Str(n), Str(realm)
@@ -183,8 +189,6 @@ local function PickPartner(name)
         local short, full = From("party1")
         if short then return short, full end
     end
-    name = Str(name) and ns.Trim(name) or nil
-    if name and name ~= "" and not name:find("[%s:|]") then return ns.GroupShortName(name) or name, name end
 end
 
 -- Ask a friend to plan together (you lead): ASK, then 30 s for YES and the friend's state.
@@ -394,17 +398,6 @@ local function DuoCandidate(rec, ctx, logged)
     return (s.log[id] or s.can[id]) and true or false
 end
 
-ns.PlannerDuoHooks = { context = DuoContext, window = DuoWindow, candidate = DuoCandidate }
-Sync = function()
-    local lead = ns:GuideUnlocked() and Lead() ~= nil
-    local h = ns.PlannerDuoHooks
-    ns.PlannerHook("context", "duo", lead and h.context or nil)
-    ns.PlannerHook("window", "duo", lead and h.window or nil)
-    ns.PlannerHook("candidate", "duo", lead and h.candidate or nil)
-    ns.PlannerHook("applied", "duo", lead and h.applied or nil)
-    ns.PlannerHook("replan", "duo", (ns:GuideUnlocked() and Friend() ~= nil) and h.replan or nil)
-end
-
 ------------------------------------------------------------------------------------------
 -- Messages in
 ------------------------------------------------------------------------------------------
@@ -413,13 +406,16 @@ local function HideAsk()
 end
 
 local LevelLater
--- Work out your state (a job, sliced) and send it.
+-- Work out your state (a job, sliced) and send it. Asked for while it is being worked out: once more, after it.
 local function QueueState()
+    local d = Friend()
+    if d and ns.plannerJobKey == "duoState" then d.stateAgain = true; return end
     ns.PlannerJob(function()
         if not Friend() then return end
         local st = ns.PlannerDuoMyState()
-        local d = Friend()                                -- (it may have ended meanwhile)
+        d = Friend()                                      -- (it may have ended meanwhile)
         if not d then return end
+        if d.stateAgain then d.stateAgain, d.stateAt = nil, Now() or 0 end   -- (the next tick, once this job is over)
         if not st then LevelLater(d); return end
         d.levelTries = 0
         ns.PlannerDuoSendChunks("state", ns.PlannerDuoStateText(st))
@@ -441,6 +437,7 @@ local function Accept()
     pendingAsk = nil
     HideAsk()
     if not a or ns.plannerDuo or not ns:GuideUnlocked() or ns.db.plannerDuoAsk == false then return end
+    if (Now() or 0) - a.at > ANSWER_WAIT then return end   -- (too late: the leader has given up)
     local now = Now() or 0
     ns.plannerDuo = { role = "friend", partner = a.from, to = a.to, session = a.session, heard = now, asked = now }
     ns.PlannerDuoSend("D1:YES:" .. a.session)
@@ -486,45 +483,6 @@ local function StateIn(text)
     Sync()
     local ok = ns:PlannerReplan("duo")
     if not ok and first then ns:PlannerStart() end
-end
-
-local handlers = {}                   -- D1 kinds the duo's later parts add: kind -> fn(d, rest, from)
-ns.PlannerDuoHandlers = handlers
-local ticks = {}                      -- what the duo's later parts check each tick: fn(d, now)
-ns.PlannerDuoTicks = ticks
-
-local function Receive(from, msg, sender)
-    local d = ns.plannerDuo
-    local kind, rest = msg:match("^D1:(%u+):(.*)$")
-    if kind then
-        local session, more = rest:match("^(%x+)(.*)$")
-        session = Session(session)
-        if not session then return end
-        if kind == "ASK" then
-            if d or ns.db.plannerDuoAsk == false or not more:match("^:%d+$") then return end
-            Ask(from, Str(sender) or from, session)
-            return
-        end
-        if not (d and from == d.partner and session == d.session) then return end
-        d.heard, d.silent = Now() or d.heard, 0
-        if kind == "YES" and d.role == "lead" and not d.accepted then
-            d.accepted, d.yesAt = true, Now() or 0
-            ns:Print("%s will plan with you: waiting for what they can do...", d.partner)
-        elseif kind == "NO" and d.role == "lead" and not d.accepted then
-            ns:PlannerDuoEnd("declined", false, true)
-        elseif handlers[kind] then
-            handlers[kind](d, more, from)
-        end
-        return
-    end
-    local id, i, n, pkind, piece = ns.ParseSharePiece(msg)
-    if not (id and d and from == d.partner and PIECES[pkind]) then return end
-    if id:match("^(%x+)z%d+$") ~= d.session or not (i and n) or n < 1 or n > PIECES[pkind] or i < 1 or i > n then return end
-    d.heard, d.silent = Now() or d.heard, 0
-    local text = ns.ShareReceive(from, id, i, n, pkind, piece, Now() or 0)
-    if not text then return end
-    if pkind == "state" and d.role == "lead" then StateIn(text)
-    elseif pkind == "plan" and d.role == "friend" and handlers.plan then handlers.plan(d, text, from) end
 end
 
 ------------------------------------------------------------------------------------------
@@ -588,7 +546,8 @@ local function SendAt(d)
     local on, st = Planned()
     if not (on and d.planId) then return end
     local plan = type(st.plan) == "table" and type(st.plan.steps) == "table" and st.plan or nil
-    local at, n = floor(Num(st.at) or 1), plan and #plan.steps or 0
+    local n = min(plan and #plan.steps or 0, PLAN_STEPS)             -- (the steps both have: at most the 80 sent)
+    local at = min(floor(Num(st.at) or 1), n + 1)
     local key = d.planId .. ":" .. at
     if key == d.atKey then return end
     d.atKey = key
@@ -601,10 +560,13 @@ local function DuoApplied(guide, summary)
     if not d then return end
     planCount = planCount + 1
     local text = ns.PlannerDuoPlanText(guide, summary, planCount)
-    if text and ns.PlannerDuoSendChunks("plan", text) then
-        d.planId, d.atKey = planCount, nil
-        SendAt(d)
+    if not text then return end
+    if not ns.PlannerDuoSendChunks("plan", text) then             -- (over 60 pieces: it cannot be shared)
+        ns:PlannerDuoEnd("toolong", true, false, true)
+        return
     end
+    d.planId, d.atKey = planCount, nil
+    SendAt(d)
 end
 
 -- The friend: follow the leader's plan (after the fight when one is on), and say where you are at once.
@@ -613,12 +575,14 @@ local function ApplyPlan(d, guide, header)
     local level = MyLevel()
     d.planId, d.atKey = header.planId, nil
     ns:PlannerStop()
-    ns:GuideSetPlan(guide, { zone = header.zone ~= 0 and header.zone or nil, fromLevel = level, toLevel = level, duo = d.partner })
+    ns:GuideSetPlan(guide, { zone = header.zone ~= 0 and header.zone or nil, fromLevel = level, toLevel = level, duo = true })
     SendAt(d)
 end
-handlers.plan = function(d, text)
+local function PlanIn(d, text)
     local guide, header = ns.PlannerDuoReadPlan(text)
     if not guide then return end
+    local newest = max(d.planId or 0, d.waiting and d.waiting.header.planId or 0)
+    if header.planId < newest then return end                     -- (an older plan than the one you have)
     if InCombatLockdown() then d.waiting = { guide = guide, header = header }; return end
     ApplyPlan(d, guide, header)
 end
@@ -632,21 +596,18 @@ end
 local function DuoReplan(reason)
     local d = Friend()
     if not d then return nil end
-    if reason == "start" then ns:PlannerDuoEnd("start", true); return nil end
+    if reason == "start" then ns:PlannerDuoEnd("start", true, false, true); return nil end   -- (the hooks go on the next tick)
     if not d.stateAt then d.stateAt = (Now() or 0) + STATE_AFTER end
     return false
 end
-ns.PlannerDuoHooks.applied, ns.PlannerDuoHooks.replan = DuoApplied, DuoReplan
-
-handlers.AT = function(d, more)
+local function AtIn(d, more)
     local planId, at, n = more:match("^:(%d+):(%d+):(%d+)$")
     planId, at, n = tonumber(planId or ""), tonumber(at or ""), tonumber(n or "")
     if not (planId and at and n) or n > 1000 or at < 1 or at > n + 1 then return end
     d.partnerAt = { planId = planId, at = at, n = n }
     if ns.GuideRedraw then ns:GuideRedraw() end
 end
-handlers.HI = function() end                                -- (heard: that is all it says)
-handlers.END = function(d)
+local function EndIn(d)
     ns:Print("%s stopped planning together.", d.partner)
     ns:PlannerDuoEnd(nil, false, true)
 end
@@ -669,7 +630,7 @@ end
 
 -- Staying in touch, each tick: the friend's state when due, a word every minute, lost touch after five
 -- minutes of silence (counted only while messaging is allowed), and the end once you follow another guide.
-ticks[#ticks + 1] = function(d, now)
+local function StayInTouch(d, now)
     if d.stateAt and now >= d.stateAt then d.stateAt = nil; QueueState() end
     local last = d.lastTick or now
     d.lastTick = now
@@ -684,8 +645,61 @@ ticks[#ticks + 1] = function(d, now)
     end
     if d.planId and now >= (d.guideAt or 0) then           -- (once a second: still following the plan?)
         d.guideAt = now + 1
-        if not (ns:GuideOn() and Planned()) then ns:PlannerDuoEnd("guide") end
+        if not ns:GuideOn() then ns:PlannerDuoEnd("guideoff")
+        elseif not Planned() then ns:PlannerDuoEnd("guide") end
     end
+end
+
+local duoHooks = { context = DuoContext, window = DuoWindow, candidate = DuoCandidate, applied = DuoApplied, replan = DuoReplan }
+Sync = function()
+    syncLater = false
+    local lead = ns:GuideUnlocked() and Lead() ~= nil
+    local h = duoHooks
+    ns.PlannerHook("context", "duo", lead and h.context or nil)
+    ns.PlannerHook("window", "duo", lead and h.window or nil)
+    ns.PlannerHook("candidate", "duo", lead and h.candidate or nil)
+    ns.PlannerHook("applied", "duo", lead and h.applied or nil)
+    ns.PlannerHook("replan", "duo", (ns:GuideUnlocked() and Friend() ~= nil) and h.replan or nil)
+end
+
+local function Receive(from, msg, sender)
+    local d = ns.plannerDuo
+    local kind, rest = msg:match("^D1:(%u+):(.*)$")
+    if kind then
+        local session, more = rest:match("^(%x+)(.*)$")
+        session = Session(session)
+        if not session then return end
+        if kind == "ASK" then
+            if d or ns.db.plannerDuoAsk == false or not more:match("^:%d+$") then return end
+            if pendingAsk and pendingAsk.from ~= from then return end   -- (one question at a time: the other one times out)
+            Ask(from, Str(sender) or from, session)
+            return
+        end
+        if kind == "END" and pendingAsk and from == pendingAsk.from and session == pendingAsk.session then
+            pendingAsk = nil                                  -- (the leader gave up: the question is gone)
+            HideAsk()
+            return
+        end
+        if not (d and from == d.partner and session == d.session) then return end
+        d.heard, d.silent = Now() or d.heard, 0
+        if kind == "YES" and d.role == "lead" and not d.accepted then
+            d.accepted, d.yesAt = true, Now() or 0
+            ns:Print("%s will plan with you: waiting for what they can do...", d.partner)
+        elseif kind == "NO" and d.role == "lead" and not d.accepted then
+            ns:PlannerDuoEnd("declined", false, true)
+        elseif kind == "AT" then AtIn(d, more)
+        elseif kind == "END" then EndIn(d)
+        end                                                   -- (HI: heard, and that is all it says)
+        return
+    end
+    local id, i, n, pkind, piece = ns.ParseSharePiece(msg)
+    if not (id and d and from == d.partner and PIECES[pkind]) then return end
+    if id:match("^(%x+)z%d+$") ~= d.session or not (i and n) or n < 1 or n > PIECES[pkind] or i < 1 or i > n then return end
+    d.heard, d.silent = Now() or d.heard, 0
+    local text = ns.ShareReceive(from, id, i, n, pkind, piece, Now() or 0)
+    if not text then return end
+    if pkind == "state" and d.role == "lead" then StateIn(text)
+    elseif pkind == "plan" and d.role == "friend" then PlanIn(d, text) end
 end
 
 ------------------------------------------------------------------------------------------
@@ -703,6 +717,7 @@ local function Tick()
         if ns.plannerDuo or #queue > 0 or pendingAsk then Reset() end
         return
     end
+    if syncLater then Sync() end
     ns.PlannerDuoFlush()
     local now = Now()
     if not now then return end
@@ -719,10 +734,7 @@ local function Tick()
         return
     end
     if d.role == "friend" and d.retryAt and now >= d.retryAt then d.retryAt = nil; QueueState() end
-    for _, fn in ipairs(ticks) do
-        if ns.plannerDuo ~= d then return end
-        fn(d, now)
-    end
+    StayInTouch(d, now)
 end
 ns.PlannerDuoTick = Tick
 ns:Every(0.25, "Planner duo", Tick)
