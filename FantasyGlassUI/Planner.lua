@@ -99,7 +99,22 @@ local function ReplanOK(reason)
     return true
 end
 
--- The level window of a quest: level - 4 to level + 2, then every "window" hook.
+-- A shift of the level window that a "context" hook asked for (ctx.windowShift = { lo, hi }, the duo's: up by lo,
+-- down by hi). It is applied after every hook, so it narrows whatever the hooks made, in whatever order they run.
+local function Shift(ctx)
+    local s = type(ctx) == "table" and type(ctx.windowShift) == "table" and ctx.windowShift or nil
+    return s and tonumber(s.lo) or 0, s and tonumber(s.hi) or 0
+end
+-- The cheap pre-filter's bounds, shifted once (ns.PlannerContext calls it after the "context" hooks).
+function ns.PlannerShiftWindow(ctx)
+    if type(ctx) ~= "table" or ctx.windowShifted then return end
+    local dlo, dhi = Shift(ctx)
+    local level = tonumber(ctx.level) or 1
+    ctx.windowLo, ctx.windowHi = (tonumber(ctx.windowLo) or (level - 4)) + dlo, (tonumber(ctx.windowHi) or (level + 2)) + dhi
+    ctx.windowShifted = true
+end
+
+-- The level window of a quest: level - 4 to level + 2, then every "window" hook, then the context's shift.
 function ns.PlannerWindow(rec, ctx)
     local level = type(ctx) == "table" and tonumber(ctx.level) or 1
     local lo, hi = level - 4, level + 2
@@ -107,7 +122,8 @@ function ns.PlannerWindow(rec, ctx)
         local a, b = h.fn(rec, ctx, lo, hi)
         lo, hi = tonumber(a) or lo, tonumber(b) or hi
     end
-    return lo, hi
+    local dlo, dhi = Shift(ctx)
+    return lo + dlo, hi + dhi
 end
 
 local UNKNOWN_COUNT = 8 -- Questie gives no kill counts; the quest log does, once a quest is taken

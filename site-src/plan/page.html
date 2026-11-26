@@ -89,10 +89,12 @@ var WORDS = /*@WORDS@*/;
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
 
   function minutes(s) {
+    if (s === null || s === undefined) return "\u2014";                // (not in the code: a dash, never a made-up 0)
     var m = Math.round(s / 60), h = Math.floor(m / 60);
     return h > 0 ? T("%d h %d min").replace("%d", h).replace("%d", m % 60) : T("%d min").replace("%d", m);
   }
   function number(n) {                                                 // (in the language picked on the page, not the browser's)
+    if (n === null || n === undefined) return "\u2014";
     try { return new Intl.NumberFormat(lang).format(n); } catch (e) { return String(n); }
   }
   function drawTotals(plan) {

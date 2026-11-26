@@ -82,7 +82,7 @@ var FGPlan = (function () {
     var lv = list(data.s.lv), z = list(data.s.z), st = list(data.s.st);
     if (!lv || lv.length !== 2 || !z || !st) return BAD;
     if (!isFinite(lv[0]) || !isFinite(lv[1]) || typeof lv[0] !== "number" || typeof lv[1] !== "number") return BAD;
-    var plan = { v: 1, lv: [lv[0], lv[1]], xp: opt(data.s.xp, 0), s: opt(data.s.s, 0), fl: opt(data.s.fl, 0), cr: opt(data.s.cr, 0),
+    var plan = { v: 1, lv: [lv[0], lv[1]], xp: opt(data.s.xp, null), s: opt(data.s.s, null), fl: opt(data.s.fl, 0), cr: opt(data.s.cr, 0),
                  more: opt(data.s.more, 0), z: [], st: [] };
     if (plan.xp === undefined || plan.s === undefined || plan.fl === undefined || plan.cr === undefined || plan.more === undefined) return BAD;
     for (var a = 0; a < z.length; a++) {

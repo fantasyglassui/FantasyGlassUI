@@ -426,7 +426,13 @@ end
 function ns.PerfRows(data, seconds)
     local out = {}
     seconds = math.max(0.001, seconds or 1)
-    for label, p in pairs(data) do out[#out + 1] = { label = label, perSec = p.ms / seconds, calls = p.calls, worst = p.worst } end
+    local hidden = not (ns.GuideUnlocked and ns:GuideUnlocked())    -- (locked: no row names the guide's hidden parts)
+    for label, p in pairs(data) do
+        local name = tostring(label)
+        if not (hidden and (name:find("^Planner") or name:find("^Guide"))) then
+            out[#out + 1] = { label = label, perSec = p.ms / seconds, calls = p.calls, worst = p.worst }
+        end
+    end
     table.sort(out, function(a, b) return a.perSec > b.perSec end)
     return out
 end

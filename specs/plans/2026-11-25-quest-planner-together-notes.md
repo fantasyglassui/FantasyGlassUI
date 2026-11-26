@@ -26,9 +26,16 @@ with `--no-ff` (A, B, C) with no git conflict, then checked and fixed together (
   check the real shape) for the Guide tab's "Find a group in: %s" cycle; `GetChannelName(name)` for a joined and a not-joined
   channel.
 - The copy box (`ns:ShowCopyBox`) with a long plan code (60 steps): it holds the whole code and Ctrl+C copies it all.
+- Newlines and cut characters (two accounts): the state and plan texts hold `\n`, and a 200-character piece may end
+  in the middle of a UTF-8 character; check that `SendAddonMessage` WHISPER delivers both unchanged on Forever.
+- The sender's name shape: what `Ambiguate(sender, "none")` gives for a friend on your realm, on a connected realm
+  and on another realm, against the name the duo whispers (`UnitName` with its realm, through `ns.GroupShortName`).
 - The plan page on a phone with a real code: build with `python3 site-src/build_site.py --out <scratch folder> --plan`
   into a scratch folder, never `docs`, open `<scratch>/plan/index.html#c=<code>`; the zone panels, the dashed legs,
   the checklist's ticks kept across a reload, "Clear the ticks", the language picker.
+
+## Release list
+- 13.0: publish fantasyglassui.com/plan/ (the page is built with --plan) before the caption goes public.
 
 ## Rulings made during the build
 - Ruling (plan): seams first; Task 1 added the `"candidate"` and `"replan"` hooks, the three files, the three Guide
@@ -96,3 +103,27 @@ with `--no-ff` (A, B, C) with no git conflict, then checked and fixed together (
 - B (Task 4): a partner's step past yours reads "%s: done" even when they are not at the end (per the ruling).
 - B (Task 3): the hidden-text case of the duo test calls `ns.PlannerDuoEvent` directly (the harness's `fireEvent`
   hands every event to every frame, and Extras.lua's vignette handler would compare the hidden text).
+
+## Fixed after the final review (every finding)
+- I1: the partner's name comes from the full name (`ns.GroupShortName` of "name-realm" for a target or party member),
+  names are compared without regard to case, and the YES sets the partner to the sender's own spelling. Tested: a
+  lower-case typed name, a target from another realm.
+- I2: the duo no longer sets the window: its context hook asks for a shift (`ctx.windowShift`), applied after every hook
+  (`ns.PlannerShiftWindow` at the end of `ns.PlannerContext`, and at the end of `ns.PlannerWindow`), so it narrows what
+  the other hooks made in either order; the duo's window hook is gone. The zone goal is never cleared by a plan with
+  `ctx.duo`. Tested both registration orders with the story style and a zone goal; the saved goal survives.
+- I3: a new plan or state drops the unsent pieces of the older one; `D1:` messages go ahead of waiting pieces; at most
+  200 messages wait, the oldest plan pieces dropped first. Tested each.
+- I4: the `# duo` header carries the leader's xp and seconds (`# duo <session> <planId> <zone> <from> <to> <xp> <secs>`),
+  the friend's summary keeps them, and the friend's plan code adds them up; a header without them still reads. A plan
+  code made from a summary without them leaves `xp` and `s` out, both readers give none (no longer 0), and the page
+  shows "—". The fixture's two codes without xp say "-".
+- I5: CHAT_MSG_ADDON is registered only while the guide is unlocked and unregistered on lock; while locked,
+  `ns.PerfRows` leaves out every row whose label starts with "Planner" or "Guide". Tested.
+- M1: while the friend's quest source is still loading, the state is tried again every 5 s, up to 6 times, before it is
+  sent with `questie 0`. Tested.
+- M2: a lockdown result waits `RETRY_AFTER` (2 s) before the message goes again.
+- M3: a refused replan from "Plan from here" clears `ns.plannerFromHere`. Tested.
+- M4 (ruling): while the guide is locked, exported profile and pack codes leave out every planner setting and
+  `questGuide`/`guideSound` (`ns.GuideGatedKey`); importing still takes them. Tested.
+- M5: the release list above. M6: the two in-game checks above.

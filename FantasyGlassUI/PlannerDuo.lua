@@ -12,6 +12,7 @@ local _, ns = ...
 -- Messages ("D1:" lines, fields split by ":"; <s> is the session, 4 to 8 hex digits):
 --   ASK:<s>:<level>   YES:<s>   NO:<s>   AT:<s>:<planId>:<at>:<n>   HI:<s>   END:<s>
 -- and the friend's state and the leader's plan as pieces, "SS:<s>z<count>:<i>:<n>:<state|plan>:<piece>".
+-- The "D1:" messages go ahead of waiting pieces; a new state or plan drops the unsent pieces of the one before.
 -- The duo lives in memory only: a /reload or logout ends it.
 ------------------------------------------------------------------------------------------
 ns.PLANNER_DUO_PREFIX = "FGUIPlan"
@@ -40,10 +41,16 @@ end
 local function Now() return Num(Call(GetTime)) end
 local function MyLevel() return Num(Call(UnitLevel, "player")) end
 local function Session(s) s = Str(s); return (s and #s >= 4 and #s <= 8 and s:match("^%x+$")) and s or nil end
+-- The same player? Names as the game gives them ("Mira", "Mira-OtherRealm"), whatever their case.
+local function Same(a, b)
+    a, b = Str(a), Str(b)
+    return a ~= nil and b ~= nil and a:lower() == b:lower()
+end
 
 local Sync                           -- (the planner hooks, registered while they are in use)
 local syncLater = false              -- (the hooks change on the next tick: a hook that ends the duo is still being run)
-local queue = {}                     -- { text, to, tries, after }
+local queue = {}                     -- { text, to, tries, after, pkind (a piece: "state"|"plan") }
+local QUEUE_MAX = 200                -- the most messages that wait (the oldest plan pieces go first)
 local pendingAsk                     -- the friend's side: { from, to, session, at } while the ask page waits
 local askWindow
 local pieceCount = 0                 -- (each state or plan sent gets its own piece id)
@@ -58,7 +65,21 @@ function ns.PlannerDuoSend(text, to)
     local d = ns.plannerDuo
     to = Str(to) or (d and (d.to or d.partner))
     if type(to) ~= "string" or to == "" then return false end
-    queue[#queue + 1] = { text = text, to = to, tries = 0 }
+    local _, _, _, pkind = ns.ParseSharePiece(text)
+    local m = { text = text, to = to, tries = 0, pkind = pkind }
+    if #queue >= QUEUE_MAX then                        -- (full: the oldest plan piece goes, else the oldest piece, else the oldest message)
+        local drop
+        for i, q in ipairs(queue) do if q.pkind == "plan" then drop = i; break end end
+        if not drop then for i, q in ipairs(queue) do if q.pkind then drop = i; break end end end
+        table.remove(queue, drop or 1)
+    end
+    if pkind then
+        queue[#queue + 1] = m
+    else                                               -- (a "D1:" message: ahead of the waiting pieces, after the other messages)
+        local at = #queue + 1
+        for i, q in ipairs(queue) do if q.pkind then at = i; break end end
+        table.insert(queue, at, m)
+    end
     return true
 end
 -- How many messages wait.
@@ -75,7 +96,7 @@ end
 -- A partner the game will not reach: the duo ends (without an END: it would not reach them either).
 local function Gone(to, why)
     local d = ns.plannerDuo
-    if d and (d.to == to or d.partner == to) then
+    if d and (Same(d.to, to) or Same(d.partner, to)) then
         ns:PlannerDuoEnd(why, false, true)
     else
         for i = #queue, 1, -1 do if queue[i].to == to then table.remove(queue, i) end end
@@ -107,7 +128,8 @@ function ns.PlannerDuoFlush()
     elseif result == Result("TargetOffline") then
         Gone(m.to, "offline")
     elseif result == Result("AddOnMessageLockdown") then
-        table.insert(queue, 1, m)                      -- (locked after all: it goes once messaging is allowed again)
+        m.after = now + RETRY_AFTER                    -- (locked after all: again in a moment, not on every tick)
+        table.insert(queue, 1, m)
     end
     return false
 end
@@ -118,6 +140,7 @@ function ns.PlannerDuoSendChunks(kind, text)
     if not (d and PIECES[kind]) or ns:IsSecret(text) or type(text) ~= "string" or text == "" then return false end
     local parts = ns.ShareChunks(text)
     if #parts > PIECES[kind] then return false end
+    for i = #queue, 1, -1 do if queue[i].pkind == kind then table.remove(queue, i) end end   -- (the older one's unsent pieces: this one replaces it)
     pieceCount = pieceCount + 1
     local id = d.session .. "z" .. pieceCount
     for i, piece in ipairs(parts) do ns.PlannerDuoSend(format("SS:%s:%d:%d:%s:%s", id, i, #parts, kind, piece)) end
@@ -179,7 +202,8 @@ local function PickPartner(name)
         local n, realm = Call(UnitName, unit)
         n, realm = Str(n), Str(realm)
         if not n or n == "" then return nil end
-        return ns.GroupShortName(n) or n, (realm and realm ~= "") and (n .. "-" .. realm) or n
+        local full = (realm and realm ~= "") and (n .. "-" .. realm) or n
+        return ns.GroupShortName(full) or n, full          -- (the name the game will give their messages: with a realm when it is another)
     end
     if ns.Yes(Call(UnitIsPlayer, "target")) and ns.Yes(Call(UnitIsFriend, "player", "target")) and not ns.Yes(Call(UnitIsUnit, "target", "player")) then
         local short, full = From("target")
@@ -200,7 +224,7 @@ function ns:PlannerDuoStart(name)
     local partner, to = PickPartner(name)
     if not partner then ns:Print("Target your friend or group with them, or type /fgui guide duo <name>."); return false end
     local me = ns.GroupShortName(Call(UnitName, "player"))
-    if me and ns.Is(me, partner) then ns:Print("That is you."); return false end
+    if me and Same(me, partner) then ns:Print("That is you."); return false end
     local level = MyLevel()
     if not level then ns:Print("Could not read your level: try again out of combat."); return false end
     ns.PlannerDuoRegister()
@@ -223,12 +247,14 @@ local function Sorted(t)
 end
 local function Int(v) v = Num(v); return v and floor(v) or nil end
 
--- Your state for the leader (in a job: it yields), or nil when your level can't be read.
-function ns.PlannerDuoMyState()
+-- Your state for the leader (in a job: it yields), or nil when your level can't be read, or nil, "waiting"
+-- while the quest source is still loading (unless `anyway`: then the state says what there is).
+function ns.PlannerDuoMyState(anyway)
     local level = MyLevel()
     if not level then return nil end
     local ctx = ns.PlannerContext()
     if type(ctx) ~= "table" then return nil end
+    if ctx.sourceWhy == "waiting" and not anyway then return nil, "waiting" end
     local st = { level = floor(level), log = {}, can = {}, flights = {} }
     st.faction = Word(Call(UnitFactionGroup, "player"))
     st.class = Word(ns.PlannerClassToken and ns.PlannerClassToken())
@@ -359,19 +385,14 @@ local function Yards(a, b)
     return sqrt((xa - xb) ^ 2 + (ya - yb) ^ 2)
 end
 
-local function DuoWindow(rec, ctx, lo, hi)
-    local s = type(ctx) == "table" and ctx.duo
-    if type(s) ~= "table" or not tonumber(s.level) then return lo, hi end
-    local mine = tonumber(ctx.level) or 1
-    return max(mine, s.level) - 4, min(mine, s.level) + 2
-end
-
 local function DuoContext(ctx)
     local d = Lead()
     local s = d and d.state
     if not (s and tonumber(s.level)) then return end
     local mine = tonumber(ctx.level) or 1
-    ctx.windowLo, ctx.windowHi = max(mine, s.level) - 4, min(mine, s.level) + 2
+    -- the window of both is a shift of whatever the other hooks make (applied after all of them, in any order:
+    -- ns.PlannerShiftWindow): with no other hook, [max(level, friend) - 4, min(level, friend) + 2]
+    ctx.windowShift = { lo = max(0, s.level - mine), hi = min(0, s.level - mine) }
     local both = {}
     for _, f in ipairs(type(ctx.flights) == "table" and ctx.flights or {}) do
         ns.PlannerYield()
@@ -414,10 +435,15 @@ local function QueueState()
         local mine = Friend()
         if not mine then return end
         mine.stateAgain = nil                             -- (a "once more" left by a state job that died or stopped is stale: this one is it)
-        local st = ns.PlannerDuoMyState()
+        local st, why = ns.PlannerDuoMyState((mine.sourceTries or 0) >= LEVEL_TRIES)
         d = Friend()                                      -- (it may have ended meanwhile)
         if not d then return end
         if d.stateAgain then d.stateAgain, d.stateAt = nil, Now() or 0 end   -- (the next tick, once this job is over)
+        if why == "waiting" then                          -- (Questie still loading: again in 5 s, 6 times, then what there is)
+            d.sourceTries = (d.sourceTries or 0) + 1
+            d.retryAt = (Now() or 0) + LEVEL_RETRY
+            return
+        end
         if not st then LevelLater(d); return end
         d.levelTries = 0
         ns.PlannerDuoSendChunks("state", ns.PlannerDuoStateText(st))
@@ -503,7 +529,8 @@ local function LevelWord(v)
     return (v == floor(v)) and tostring(floor(v)) or format("%.1f", v)
 end
 
--- The plan as text: "# duo <session> <planId> <zone> <fromLevel> <toLevel>", then the guide's own lines.
+-- The plan as text: "# duo <session> <planId> <zone> <fromLevel> <toLevel> <xp> <seconds>" (the last two only when
+-- the summary has them), then the guide's own lines.
 function ns.PlannerDuoPlanText(guide, summary, planId)
     local d = ns.plannerDuo
     if not (d and type(guide) == "table" and type(guide.steps) == "table") then return nil end
@@ -511,6 +538,8 @@ function ns.PlannerDuoPlanText(guide, summary, planId)
     local steps = {}
     for i = 1, min(#guide.steps, PLAN_STEPS) do steps[i] = guide.steps[i] end
     local head = format("# duo %s %d %d %s %s", d.session, floor(Num(tonumber(planId)) or 0), floor(Num(tonumber(s.zone)) or 0), LevelWord(s.fromLevel), LevelWord(s.toLevel))
+    local xp, secs = Num(tonumber(s.xp)), Num(tonumber(s.seconds))
+    if xp and secs and xp >= 0 and secs >= 0 then head = head .. format(" %d %d", floor(xp + 0.5), floor(secs + 0.5)) end
     return head .. "\n" .. ns.GuideText({ name = "duo", steps = steps })
 end
 
@@ -520,9 +549,12 @@ function ns.PlannerDuoReadPlan(text)
     local d = ns.plannerDuo
     if not d or ns:IsSecret(text) or type(text) ~= "string" then return nil end
     local first, rest = text:match("^([^\n]*)\n?(.*)$")
-    local session, planId, zone, from, to = (first or ""):match("^# duo (%x+) (%d+) (%d+) (%d+%.?%d*) (%d+%.?%d*)$")
+    first = first or ""
+    local session, planId, zone, from, to, xp, secs = first:match("^# duo (%x+) (%d+) (%d+) (%d+%.?%d*) (%d+%.?%d*) (%d+) (%d+)$")
+    if not session then session, planId, zone, from, to = first:match("^# duo (%x+) (%d+) (%d+) (%d+%.?%d*) (%d+%.?%d*)$") end   -- (no totals)
     if not session or session ~= d.session then return nil end
-    local header = { session = session, planId = tonumber(planId), zone = tonumber(zone), fromLevel = tonumber(from), toLevel = tonumber(to) }
+    local header = { session = session, planId = tonumber(planId), zone = tonumber(zone), fromLevel = tonumber(from), toLevel = tonumber(to),
+                     xp = tonumber(xp or ""), seconds = tonumber(secs or "") }
     if not (header.planId and header.zone and header.fromLevel and header.toLevel) then return nil end
     local steps = {}
     for line in (rest .. "\n"):gmatch("(.-)\r?\n") do
@@ -577,7 +609,8 @@ local function ApplyPlan(d, guide, header)
     local level = MyLevel()
     d.planId, d.atKey = header.planId, nil
     ns:PlannerStop()
-    ns:GuideSetPlan(guide, { zone = header.zone ~= 0 and header.zone or nil, fromLevel = level, toLevel = level, duo = true })
+    ns:GuideSetPlan(guide, { zone = header.zone ~= 0 and header.zone or nil, fromLevel = level, toLevel = level, duo = true,
+                             xp = header.xp, seconds = header.seconds })     -- (the leader's totals: a code shared from here adds them up)
     SendAt(d)
 end
 local function PlanIn(d, text)
@@ -652,17 +685,18 @@ local function StayInTouch(d, now)
     end
 end
 
-local duoHooks = { context = DuoContext, window = DuoWindow, candidate = DuoCandidate, applied = DuoApplied, replan = DuoReplan }
+local duoHooks = { context = DuoContext, candidate = DuoCandidate, applied = DuoApplied, replan = DuoReplan }
 Sync = function()
     syncLater = false
     local lead = ns:GuideUnlocked() and Lead() ~= nil
     local h = duoHooks
     ns.PlannerHook("context", "duo", lead and h.context or nil)
-    ns.PlannerHook("window", "duo", lead and h.window or nil)
+    ns.PlannerHook("window", "duo", nil)                -- (the window of both: ctx.windowShift, see DuoContext)
     ns.PlannerHook("candidate", "duo", lead and h.candidate or nil)
     ns.PlannerHook("applied", "duo", lead and h.applied or nil)
     ns.PlannerHook("replan", "duo", (ns:GuideUnlocked() and Friend() ~= nil) and h.replan or nil)
 end
+ns.PlannerDuoSync = function() Sync() end             -- (the tests: a duo set up by hand)
 
 local function Receive(from, msg, sender)
     local d = ns.plannerDuo
@@ -673,19 +707,20 @@ local function Receive(from, msg, sender)
         if not session then return end
         if kind == "ASK" then
             if d or ns.db.plannerDuoAsk == false or not more:match("^:%d+$") then return end
-            if pendingAsk and pendingAsk.from ~= from then return end   -- (one question at a time: the other one times out)
+            if pendingAsk and not Same(pendingAsk.from, from) then return end   -- (one question at a time: the other one times out)
             Ask(from, Str(sender) or from, session)
             return
         end
-        if kind == "END" and pendingAsk and from == pendingAsk.from and session == pendingAsk.session then
+        if kind == "END" and pendingAsk and Same(from, pendingAsk.from) and session == pendingAsk.session then
             pendingAsk = nil                                  -- (the leader gave up: the question is gone)
             HideAsk()
             return
         end
-        if not (d and from == d.partner and session == d.session) then return end
+        if not (d and Same(from, d.partner) and session == d.session) then return end
         d.heard, d.silent = Now() or d.heard, 0
         if kind == "YES" and d.role == "lead" and not d.accepted then
             d.accepted, d.yesAt = true, Now() or 0
+            d.partner = from                                  -- (their name as the game spells it, from now on)
             ns:Print("%s will plan with you: waiting for what they can do...", d.partner)
         elseif kind == "NO" and d.role == "lead" and not d.accepted then
             ns:PlannerDuoEnd("declined", false, true)
@@ -695,7 +730,7 @@ local function Receive(from, msg, sender)
         return
     end
     local id, i, n, pkind, piece = ns.ParseSharePiece(msg)
-    if not (id and d and from == d.partner and PIECES[pkind]) then return end
+    if not (id and d and Same(from, d.partner) and PIECES[pkind]) then return end
     if id:match("^(%x+)z%d+$") ~= d.session or not (i and n) or n < 1 or n > PIECES[pkind] or i < 1 or i > n then return end
     d.heard, d.silent = Now() or d.heard, 0
     local text = ns.ShareReceive(from, id, i, n, pkind, piece, Now() or 0)
@@ -707,7 +742,9 @@ end
 ------------------------------------------------------------------------------------------
 -- The ticker, the prefix, the panel's entry and the command
 ------------------------------------------------------------------------------------------
+local Listen                         -- (CHAT_MSG_ADDON, only while the guide is unlocked)
 local function Reset()
+    if Listen and not ns:GuideUnlocked() then Listen(false) end
     queue, pendingAsk = {}, nil
     HideAsk()
     if ns.plannerDuo then ns.plannerDuo = nil end
@@ -717,8 +754,10 @@ end
 local function Tick()
     if not ns:GuideUnlocked() then
         if ns.plannerDuo or #queue > 0 or pendingAsk then Reset() end
+        if Listen then Listen(false) end
         return
     end
+    if Listen then Listen(true) end
     if syncLater then Sync() end
     ns.PlannerDuoFlush()
     local now = Now()
@@ -741,17 +780,27 @@ end
 ns.PlannerDuoTick = Tick
 ns:Every(0.25, "Planner duo", Tick)
 
--- The prefix, registered once, when the guide is unlocked.
+-- The prefix, registered once, when the guide is unlocked; the add-on messages listened to from then on.
 local registered = false
 function ns.PlannerDuoRegister()
-    if registered or not ns:GuideUnlocked() then return end
+    if not ns:GuideUnlocked() then return end
+    if Listen then Listen(true) end
+    if registered then return end
     local chat = C_ChatInfo
     if type(chat) == "table" and chat.RegisterAddonMessagePrefix then registered = pcall(chat.RegisterAddonMessagePrefix, PREFIX) end
 end
 
 do
     local ev = CreateFrame("Frame")
-    for _, e in ipairs({ "CHAT_MSG_ADDON", "PLAYER_LOGIN", "PLAYER_REGEN_ENABLED" }) do pcall(ev.RegisterEvent, ev, e) end
+    for _, e in ipairs({ "PLAYER_LOGIN", "PLAYER_REGEN_ENABLED" }) do pcall(ev.RegisterEvent, ev, e) end
+    local listening = false
+    Listen = function(on)                                -- (a locked player does not even hear add-on messages)
+        on = on and true or false
+        if on == listening then return end
+        listening = on
+        if on then pcall(ev.RegisterEvent, ev, "CHAT_MSG_ADDON") else pcall(ev.UnregisterEvent, ev, "CHAT_MSG_ADDON") end
+    end
+    ns.PlannerDuoListening = function() return listening end
     local OnEvent = ns:Guard("Planner duo", function(_, event, prefix, msg, channel, sender)
         if event == "PLAYER_LOGIN" then ns.PlannerDuoRegister(); return end
         if event == "PLAYER_REGEN_ENABLED" then                      -- (a plan that came in a fight: followed now)

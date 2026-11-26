@@ -149,6 +149,7 @@ function ns.PlannerMapPick(spot)
             ns.plannerFromHere = { map = spot.map, x = spot.x, y = spot.y, at = Now() }
             local ok, refused = ns:PlannerReplan("from here")
             if not ok and not refused then ns:PlannerStart() end    -- (not following: start; a refused replan stays refused)
+            if refused then ns.plannerFromHere = nil end            -- (and its pick goes: a later plan of your own does not start from it)
         end },
         { left = ns:Tr("Cancel"), click = Close },
     }, nil, 260, 130)

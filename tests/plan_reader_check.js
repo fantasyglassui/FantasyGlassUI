@@ -15,7 +15,7 @@ lines.forEach(function (line) {
     if (!r.ok) fail("an ok line reads: " + f[5] + " (" + r.why + ")");
     eq(r.plan.st.length, Number(f[1]), "steps");
     eq(r.plan.z.length, Number(f[2]), "zones");
-    eq(r.plan.xp, Number(f[3]), "xp");
+    eq(r.plan.xp, f[3] === "-" ? null : Number(f[3]), "xp");
     eq(r.plan.st.map(function (s) { return s.k; }).join(","), f[4], "kinds");
     oks.push(r.plan);
   } else if (f[0] === "bad") {
@@ -27,6 +27,10 @@ lines.forEach(function (line) {
 ["empty", "kind", "damaged", "version"].forEach(function (w) { if (!seenWhy[w]) fail("no bad line for " + w); });
 if (oks.length < 2) fail("two ok lines");
 
+var bare = lines.map(function (l) { return l.split("\t"); }).filter(function (f) { return f[0] === "ok" && f[3] === "-"; });
+if (bare.length < 1) fail("an ok line without experience");
+var tb = FGPlan.totals(FGPlan.read(bare[0][5]).plan);
+eq([tb.xp, tb.seconds], [null, null], "no experience or time in the code: none, not 0");
 var plan = oks[0], t = FGPlan.totals(plan);
 eq([t.xp, t.seconds, t.from, t.to, t.flights, t.crossings, t.steps], [4100, 1800, 8, 10, 1, 0, 5], "totals");
 var ps = FGPlan.panels(plan);

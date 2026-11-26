@@ -283,6 +283,7 @@ ns.PlannerHook("applied", "zoneGoal", function(_, summary, ctx)
     local asked = goalHubs
     goalHubs = nil
     if not goal or (type(ctx) == "table" and type(ctx.source) == "table" and ctx.source.kind == "log") then return end
+    if type(ctx) == "table" and ctx.duo ~= nil then return end      -- (a plan for two is not yours alone: your goal stays)
     local took = false
     for _, t in pairs(type(summary.taken) == "table" and summary.taken or {}) do
         if type(t) == "table" and t.map == goal then took = true end

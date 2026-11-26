@@ -60,8 +60,9 @@ function ns.PlannerPlanCode(guide, summary)
             st[#st + 1] = e
         end
     end
-    local data = { v = 1, lv = { Round(summary.fromLevel), Round(summary.toLevel) }, xp = Round(summary.xp), s = Round(summary.seconds),
-                   fl = flights, cr = crossings, z = zones, st = st }
+    local data = { v = 1, lv = { Round(summary.fromLevel), Round(summary.toLevel) },
+                   xp = tonumber(summary.xp) and Round(summary.xp) or nil, s = tonumber(summary.seconds) and Round(summary.seconds) or nil,
+                   fl = flights, cr = crossings, z = zones, st = st }     -- (no experience or time known: left out, and the page shows "—")
     if #steps > MAX_STEPS then data.more = #steps - MAX_STEPS end
     return ns.PLANNER_CODE_HEADER .. ns.ShareEncode(data)
 end
@@ -104,7 +105,7 @@ function ns.PlannerReadPlanCode(code)
     if data.v ~= 1 then return nil, "damaged" end
     local nlv, nz, nst = ListSize(data.lv), ListSize(data.z), ListSize(data.st)
     if nlv ~= 2 or not nz or not nst then return nil, "damaged" end
-    local plan = { v = 1, lv = { data.lv[1], data.lv[2] }, xp = Opt(data.xp, 0), s = Opt(data.s, 0), fl = Opt(data.fl, 0),
+    local plan = { v = 1, lv = { data.lv[1], data.lv[2] }, xp = Opt(data.xp, nil), s = Opt(data.s, nil), fl = Opt(data.fl, 0),
                    cr = Opt(data.cr, 0), more = Opt(data.more, 0), z = {}, st = {} }
     if not Finite(plan.lv[1]) or not Finite(plan.lv[2]) then return nil, "damaged" end
     if plan.xp == false or plan.s == false or plan.fl == false or plan.cr == false or plan.more == false then return nil, "damaged" end

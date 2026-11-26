@@ -133,9 +133,21 @@ function ns:DeleteProfile(name)
     return true, format(ns:Tr("Profile \"%s\" deleted."), name)
 end
 
+-- The settings only an unlocked quest guide uses: while it is locked, a shared code leaves them out, so a code
+-- never shows their names (importing still takes them).
+function ns.GuideGatedKey(k)
+    return type(k) == "string" and (k:find("^planner") ~= nil or k == "questGuide" or k == "guideSound")
+end
+local function Shareable(db)
+    if type(db) ~= "table" or (ns.GuideUnlocked and ns:GuideUnlocked()) then return db end
+    local out = {}
+    for k, v in pairs(db) do if not ns.GuideGatedKey(k) then out[k] = v end end
+    return out
+end
+
 function ns:ExportProfile()
     local out = {}
-    Encode(ns.db, out, 0)
+    Encode(Shareable(ns.db), out, 0)
     return HEADER .. table.concat(out)
 end
 
@@ -423,7 +435,7 @@ local function EditModeString()
     return nil
 end
 function ns:ExportPack()
-    local data = { v = 1, profile = ns.db, from = UnitName("player") }
+    local data = { v = 1, profile = Shareable(ns.db), from = UnitName("player") }
     if type(ns.root.mailRules) == "table" then data.mailRules = ns.root.mailRules end
     if type(ns.root.mailTo) == "table" then data.mailTo = ns.root.mailTo end
     data.editMode = EditModeString()

@@ -1142,6 +1142,7 @@ function ns.PlannerContext()
     ctx.hooks = {}                                               -- (the hooks this plan uses, copied now: ns.PlannerHooksFor)
     for _, point in ipairs(ns.PLANNER_HOOK_POINTS) do ctx.hooks[point] = ns.PlannerHookCopy(point) end
     for _, h in ipairs(ctx.hooks.context) do h.fn(ctx) end
+    ns.PlannerShiftWindow(ctx)                                   -- (a shift asked for by a hook: after all of them)
     return ctx
 end
 

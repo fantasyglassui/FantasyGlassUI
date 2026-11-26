@@ -14991,6 +14991,7 @@ try("13.5 together B: asking, the state and a plan for both", function()
                 flightTime = function() return nil end, timed = function() return false end, itemCount = function() return 0 end }
             c.windowLo, c.windowHi, c.horizon = c.level - 4, c.level + 2, ns.PLANNER_HORIZON
             for _, h in ipairs(ns.PlannerHookList("context")) do h.fn(c) end
+            ns.PlannerShiftWindow(c)                    -- (as ns.PlannerContext does: the duo's shift after every hook)
             return c
         end
         ns:GuideSetPlan(nil)                                 -- (following the planned guide)
@@ -15236,6 +15237,7 @@ try("13.5 together B: following together", function()
         ns.PlannerContext = function()                         -- (the friend's state, when one is asked for: a small one)
             local c = { source = { kind = "log", ids = function() return {} end, quest = function() return nil end }, level = 20, flights = {} }
             for _, h in ipairs(ns.PlannerHookList("context")) do h.fn(c) end
+            ns.PlannerShiftWindow(c)                    -- (as ns.PlannerContext does: the duo's shift after every hook)
             return c
         end
         local said = {}
@@ -15455,6 +15457,7 @@ try("13.5 together B: review fixes", function()
                         onQuest = function(id) return logged[id] == true end, flights = {} }
             c.windowLo, c.windowHi = 16, 22
             for _, h in ipairs(ns.PlannerHookList("context")) do h.fn(c) end
+            ns.PlannerShiftWindow(c)                    -- (as ns.PlannerContext does: the duo's shift after every hook)
             return c
         end
         local said = {}
@@ -15497,6 +15500,8 @@ try("13.5 together B: review fixes", function()
         flush(1)
         if ns.PlannerDuoPending() ~= 1 then error("a locked result is queued again") end
         flush(1)
+        if #sends ~= before + 1 then error("a locked result waits before it goes again (final review M2)") end
+        clock = clock + 2.1; flush(1); clock = clock - 2.1          -- (2 s on, then the clock back: the state wait below counts from the yes)
         if #sends ~= before + 2 or sends[before + 2].text ~= sends[before + 1].text then error("and sent again") end
         -- the state: 30 s after the yes, and the Review Focus line
         clock = clock + 29; ns.PlannerDuoTick()
@@ -15870,7 +15875,7 @@ try("13.5 together: together", function()
         local steps = { ns.GuideParseLine("accept 7001 Hogger @ 1429:24.5,79.6"), ns.GuideParseLine("accept 7002 Plain @ 1429:30,30"),
                         ns.GuideParseLine("turnin 7001 @ 1429:24.5,79.6") }
         if not (steps[1] and steps[2] and steps[3]) then error("the leader's steps parse") end
-        local text = ns.PlannerDuoPlanText({ name = ns.GUIDE_PLANNED, steps = steps }, { zone = 1429, fromLevel = 20, toLevel = 21 }, 1)
+        local text = ns.PlannerDuoPlanText({ name = ns.GUIDE_PLANNED, steps = steps }, { zone = 1429, fromLevel = 20, toLevel = 21, xp = 3000, seconds = 1200 }, 1)
         local parts = ns.ShareChunks(text)
         for i, p in ipairs(parts) do addon(string.format("SS:ab31z1:%d:%d:plan:%s", i, #parts, p)) end
         flush()
@@ -15892,6 +15897,7 @@ try("13.5 together: together", function()
         local code = ns.PlannerPlanCode(guide, st.summary)
         local back, why = ns.PlannerReadPlanCode(code)
         if not (back and type(back.st) == "table" and #back.st == #guide.steps) then error("the code reads back with every step: " .. tostring(why)) end
+        if not (back.xp == 3000 and back.s == 1200) then error("the friend's code adds up the leader's totals: " .. tostring(back.xp) .. " " .. tostring(back.s)) end
 
         -- nothing in public chat; every add-on message a FGUIPlan whisper to Leo
         if chatSends ~= 0 then error("SendChatMessage called " .. chatSends .. " times") end
@@ -15994,6 +16000,217 @@ try("13.5 together: batch 4 leftovers", function()
     ns.PlannerHook("candidate", "leftovers", nil)
     ns.GuideUnlocked, ns.root.planner, env.time, ns.PlannerWorldPos, ns.plannerFromHere = saved.unlocked, saved.planner, saved.time, saved.worldPos, saved.fromHere
     ns.PlannerPaceSync()
+    if not ok then error(err, 0) end
+end)
+-- batch 5's final review: names, the window of both, the queue, the totals, a locked player, a loading source, codes
+try("13.5 together: final review", function()
+    local CI = env.C_ChatInfo
+    local saved = { on = ns.GuideOn, here = ns.GuideHere, unlocked = ns.GuideUnlocked, raw = ns.PrintRaw, show = ns.ShowList, state = ns.GuideState,
+                    guideState = ns.root.guideState, guides = ns.root.guides, planner = ns.root.planner, context = ns.PlannerContext,
+                    level = env.UnitLevel, name = env.UnitName, isPlayer = env.UnitIsPlayer, isFriend = rawget(env, "UnitIsFriend"), isUnit = env.UnitIsUnit,
+                    ambiguate = rawget(env, "Ambiguate"), time = env.GetTime, combat = env.InCombatLockdown, send = CI.SendAddonMessage,
+                    lock = CI.InChatMessagingLockdown, ask = ns.db.plannerDuoAsk, duo = ns.plannerDuo, fromHere = ns.plannerFromHere,
+                    profiles = ns.root.profiles, errors = #ns.errors }
+    local sends, clock = {}, 30000
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        ns.GuideOn = function() return true end
+        ns.GuideHere = function() return 1429, 30, 40 end
+        ns.root.planner, ns.root.guides, ns.root.guideState = {}, {}, {}
+        ns.db.plannerDuoAsk = true
+        env.GetTime = function() return clock end
+        env.UnitLevel = function() return 20 end
+        local targetRealm
+        env.UnitName = function(u) if u == "target" then return "Mira", targetRealm end if u == "player" then return "Leo" end return "Someone" end
+        env.UnitIsPlayer = function() return true end
+        rawset(env, "UnitIsFriend", function() return true end)
+        env.UnitIsUnit = function() return false end
+        env.InCombatLockdown = function() return false end
+        local locked = false
+        CI.InChatMessagingLockdown = function() return locked end
+        CI.SendAddonMessage = function(prefix, text, channel, target)
+            if prefix == "FGUIPlan" then sends[#sends + 1] = { text = text, target = target } end
+            return 0
+        end
+        ns.PrintRaw = function() end
+        local function flush(k) for _ = 1, k or 250 do ns.PlannerDuoFlush() end end
+        local function addon(text, from) fireEvent("CHAT_MSG_ADDON", "FGUIPlan", text, "WHISPER", from or "Mira-Realm") end
+        local function frames(k) for _ = 1, k or 30 do for i = 1, #handlers do local h = handlers[i]; if h.name == "OnUpdate" then pcall(h.fn, h.self, 0) end end end end
+        local function reset() if ns.plannerDuo then ns:PlannerDuoEnd(nil, true, true) end; flush(); ns.PlannerDuoTick(); ns:PlannerStop(); ns.plannerQueued = false; sends = {} end
+        local function lastAsk() for i = #sends, 1, -1 do local s = sends[i].text:match("^D1:ASK:(%x+):") if s then return s end end end
+        ns:GuideSetPlan(nil); ns:PlannerStop(); ns.plannerQueued = false
+
+        -- I1: a name typed in lower case, and a friend from another realm picked by target
+        ns:PlannerDuoStart("mira"); flush()
+        addon("D1:YES:" .. lastAsk(), "Mira-Realm")
+        if not (ns.plannerDuo and ns.plannerDuo.accepted and ns.plannerDuo.partner == "Mira") then error("a typed lower-case name: Mira's yes is hers, and her name is as the game spells it") end
+        reset()
+        rawset(env, "Ambiguate", function(n) return n end)     -- (another realm: the game keeps the realm in her name)
+        targetRealm = "OtherRealm"
+        ns:PlannerDuoStart(); flush()
+        if not (sends[#sends] and sends[#sends].target == "Mira-OtherRealm" and ns.PlannerDuoPartner() == "Mira-OtherRealm") then error("a target from another realm: " .. tostring(ns.PlannerDuoPartner())) end
+        addon("D1:YES:" .. lastAsk(), "Mira-OtherRealm")
+        if not (ns.plannerDuo and ns.plannerDuo.accepted) then error("a cross-realm friend's yes reaches the leader") end
+        reset()
+        rawset(env, "Ambiguate", saved.ambiguate); targetRealm = nil
+
+        -- I3: a newer plan or state drops the older one's unsent pieces; D1: messages go first; at most 200 wait
+        local function hand(role) ns.plannerDuo = { role = role, partner = "Mira", to = "Mira", session = "ab41", heard = clock, asked = clock, accepted = true,
+                                                     state = role == "lead" and { level = 20, log = {}, can = {}, flights = {}, questie = true } or nil } end
+        local function ids(kind) local seen, order = {}, {} for _, s in ipairs(sends) do local id, _, _, k = ns.ParseSharePiece(s.text); if id and k == kind and not seen[id] then seen[id] = true; order[#order + 1] = id end end return order end
+        for _, kind in ipairs({ "plan", "state" }) do
+            hand(kind == "plan" and "lead" or "friend")
+            locked = true
+            ns.PlannerDuoSendChunks(kind, string.rep("a", 450))
+            ns.PlannerDuoSendChunks(kind, string.rep("b", 450))
+            ns.PlannerDuoSend("D1:AT:ab41:2:1:3")
+            if ns.PlannerDuoPending() ~= 4 then error(kind .. ": the older one's pieces are dropped: " .. ns.PlannerDuoPending()) end
+            locked = false
+            flush()
+            local got = ids(kind)
+            if sends[1].text ~= "D1:AT:ab41:2:1:3" then error(kind .. ": the AT goes ahead of the pieces") end
+            if #got ~= 1 or #sends ~= 4 or not sends[2].text:find("bbbb", 1, true) then error(kind .. ": only the newer one's pieces go") end
+            ns.plannerDuo = nil; sends = {}
+        end
+        hand("lead")
+        locked = true
+        ns.PlannerDuoSendChunks("plan", string.rep("c", 1990))        -- (10 pieces)
+        for _ = 1, 195 do ns.PlannerDuoSend("D1:HI:ab41") end
+        if ns.PlannerDuoPending() ~= 200 then error("at most 200 wait: " .. ns.PlannerDuoPending()) end
+        locked = false
+        flush()
+        local pieces, his = 0, 0
+        for _, s in ipairs(sends) do if s.text:find("^SS:") then pieces = pieces + 1 elseif s.text == "D1:HI:ab41" then his = his + 1 end end
+        if pieces ~= 5 or his ~= 195 then error("the oldest plan pieces go first: " .. pieces .. " pieces, " .. his .. " words") end
+        ns.plannerDuo = nil; sends = {}
+
+        -- I4: the leader's totals in the header; a header without them still reads, and the code leaves them out
+        hand("lead")
+        local guide = { name = ns.GUIDE_PLANNED, steps = { ns.GuideParseLine("accept 7001 Hogger @ 1429:24.5,79.6") } }
+        local text = ns.PlannerDuoPlanText(guide, { zone = 1429, fromLevel = 20, toLevel = 21, xp = 3000, seconds = 1200 }, 3)
+        if not text:find("^# duo ab41 3 1429 20 21 3000 1200\n") then error("the header carries xp and seconds: " .. text:match("^[^\n]*")) end
+        hand("friend")
+        local g, h = ns.PlannerDuoReadPlan(text)
+        if not (g and h.xp == 3000 and h.seconds == 1200) then error("the friend reads the totals") end
+        local old = "# duo ab41 3 1429 20 21\n" .. text:match("\n(.*)$")
+        g, h = ns.PlannerDuoReadPlan(old)
+        if not (g and #g.steps == 1 and h.xp == nil and h.seconds == nil) then error("a header without totals still reads") end
+        local plan = ns.PlannerReadPlanCode(ns.PlannerPlanCode(g, { zone = 1429, fromLevel = 20, toLevel = 20, duo = true }))
+        if not (plan and plan.xp == nil and plan.s == nil) then error("no totals known: the code leaves them out (the page shows a dash)") end
+        ns.plannerDuo = nil
+
+        -- I2: the window of both narrows whatever the other hooks make, in either order; a zone goal stays
+        local rec = ns.PlannerCharRecord(true)
+        rec.zoneGoal = 1429
+        local function duoOn(on)
+            ns.plannerDuo = on and { role = "lead", partner = "Mira", to = "Mira", session = "ab43", heard = clock, asked = clock, accepted = true,
+                                     state = { level = 22, log = {}, can = {}, flights = {}, questie = true } } or nil
+            ns.PlannerDuoSync()
+        end
+        local function storyOn(on) rec.weights = on and { speed = 0, safety = 0, story = 100 } or nil; ns.PlannerPaceSync() end
+        local function where(key) for i, hk in ipairs(ns.PlannerHookList("context")) do if hk.key == key then return i end end end
+        local chain = { id = 1, nextQuest = 2, starts = { { map = 1, x = 1, y = 1 } } }
+        local goalQuest = { id = 3, starts = { { map = 1429, x = 1, y = 1 } } }
+        local plain = { id = 4, starts = { { map = 1, x = 1, y = 1 } } }
+        local function windows()
+            local c = { level = 20, source = { kind = "test" }, flights = {} }
+            for _, hk in ipairs(ns.PlannerHookList("context")) do hk.fn(c) end
+            ns.PlannerShiftWindow(c)
+            local a, b = ns.PlannerWindow(chain, c)
+            local x, y = ns.PlannerWindow(goalQuest, c)
+            return table.concat({ c.windowLo, c.windowHi, a, b, x, y }, " "), c
+        end
+        duoOn(false); storyOn(false)
+        storyOn(true); duoOn(true)
+        local first, firstOrder = windows(), where("pace") < where("duo")
+        duoOn(false); storyOn(false)
+        duoOn(true); storyOn(true)
+        local second, secondOrder = windows(), where("pace") < where("duo")
+        if firstOrder == secondOrder then error("the two orders are really two") end
+        if first ~= second or first ~= "3 22 12 22 3 22" then error("the same window in either order: " .. first .. " / " .. second) end
+        storyOn(false)
+        rec.zoneGoal = nil
+        local _, c3 = windows()
+        local lo, hi = ns.PlannerWindow(plain, c3)
+        if not (c3.windowLo == 18 and c3.windowHi == 22 and lo == 18 and hi == 22) then error("with no other hook: [max - 4, min + 2]: " .. lo .. " " .. hi) end
+        rec.zoneGoal = 1429
+        local zoneHook, appliedHook
+        for _, hk in ipairs(ns.PlannerHookList("zone")) do if hk.key == "zoneGoal" then zoneHook = hk.fn end end
+        for _, hk in ipairs(ns.PlannerHookList("applied")) do if hk.key == "zoneGoal" then appliedHook = hk.fn end end
+        zoneHook({})                                            -- (no hub on the goal map: the friend can do none of its quests)
+        appliedHook(nil, { taken = {} }, { duo = {}, source = { kind = "test" } })
+        if rec.zoneGoal ~= 1429 then error("a plan for two keeps your zone goal") end
+        duoOn(false)
+        rec.zoneGoal = nil
+
+        -- M1: the friend's source still loading: again every 5 s, 6 times, then what there is
+        hand("friend")
+        ns.PlannerContext = function() return { sourceWhy = "waiting", source = { kind = "log" }, level = 20, flights = {} } end
+        local function states() local n = 0 for _, s in ipairs(sends) do local _, _, _, k, piece = ns.ParseSharePiece(s.text); if k == "state" then n = n + 1; if not piece:find("questie 0", 1, true) then error("then the state says no Questie") end end end return n end
+        ns.PlannerDuoQueueState(); frames(); flush()
+        for try = 1, 6 do
+            if states() ~= 0 then error("loading: no state yet (" .. try .. ")") end
+            if not ns.plannerDuo.retryAt then error("loading: tried again later") end
+            clock = clock + 5.1; ns.PlannerDuoTick(); frames(); flush()
+        end
+        if states() ~= 1 then error("after six tries: what there is: " .. states()) end
+        ns.plannerDuo = nil; sends = {}; ns.PlannerContext = saved.context
+
+        -- M3: a refused plan from here forgets the pick
+        ns:GuideSetPlan(nil)
+        ns.PlannerHook("replan", "finalReview", function() return false end)
+        local rows
+        ns.ShowList = function(_, _, _, lines) rows = lines; return { Hide = function() end } end
+        ns.PlannerMapPick({ map = 1429, x = 30, y = 40 })
+        ns.ShowList = saved.show
+        rows[1].click()
+        ns.PlannerHook("replan", "finalReview", nil)
+        if ns.plannerFromHere ~= nil then error("a refused plan from here leaves no pick behind") end
+        ns:PlannerStop(); ns.plannerQueued = false
+
+        -- I5: locked, no planner or guide row in /fgui perf, and no add-on messages listened to
+        local data = { ["Planner duo"] = { ms = 5, calls = 9, worst = 1 }, ["Guide on the map"] = { ms = 1, calls = 1, worst = 1 }, ["Bags"] = { ms = 1, calls = 1, worst = 1 } }
+        if #ns.PerfRows(data, 1) ~= 3 then error("unlocked: every row") end
+        ns.PlannerDuoTick()
+        if not ns.PlannerDuoListening() then error("unlocked: the duo listens") end
+        ns.GuideUnlocked = function() return false end
+        local rowsL = ns.PerfRows(data, 1)
+        if #rowsL ~= 1 or rowsL[1].label ~= "Bags" then error("locked: no Planner or Guide row") end
+        ns.PlannerDuoTick()
+        if ns.PlannerDuoListening() then error("locked: CHAT_MSG_ADDON is not registered") end
+
+        -- M4: locked, a shared profile or pack code names no guide setting; importing still takes them
+        local lockedCode, lockedPack = ns:ExportProfile(), ns:ExportPack()
+        ns.GuideUnlocked = function() return true end
+        local openCode = ns:ExportProfile()
+        if not openCode:find("plannerGroup", 1, true) then error("unlocked: the profile code has the planner's settings") end
+        for _, code in ipairs({ lockedCode, lockedPack }) do
+            if code:find("planner", 1, true) or code:find("questGuide", 1, true) or code:find("guideSound", 1, true) then error("locked: a code names a guide setting") end
+        end
+        ns.GuideUnlocked = function() return false end
+        ns.root.profiles = setmetatable({}, { __index = saved.profiles })
+        local okI = ns:ImportProfile("Final review", openCode)
+        if not (okI and type(ns.root.profiles["Final review"]) == "table" and ns.root.profiles["Final review"].plannerGroup ~= nil) then error("importing still takes the guide's settings") end
+        ns.GuideUnlocked = function() return true end
+        if #ns.errors ~= saved.errors then error("no errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    ns.GuideUnlocked = function() return true end
+    if ns.plannerDuo then ns:PlannerDuoEnd(nil, true, true) end
+    ns.PlannerHook("replan", "finalReview", nil)
+    CI.InChatMessagingLockdown, env.InCombatLockdown = saved.lock, saved.combat
+    for _ = 1, 250 do ns.PlannerDuoFlush() end
+    ns.PlannerDuoTick()
+    ns:PlannerStop(); ns.plannerQueued = false
+    ns:GuideSetPlan(nil)
+    ns.GuideOn, ns.GuideHere, ns.GuideUnlocked, ns.PrintRaw, ns.ShowList, ns.PlannerContext, ns.GuideState = saved.on, saved.here, saved.unlocked, saved.raw, saved.show, saved.context, saved.state
+    env.UnitLevel, env.UnitName, env.UnitIsPlayer, env.UnitIsUnit, env.GetTime = saved.level, saved.name, saved.isPlayer, saved.isUnit, saved.time
+    rawset(env, "UnitIsFriend", saved.isFriend); rawset(env, "Ambiguate", saved.ambiguate)
+    CI.SendAddonMessage = saved.send
+    ns.root.guideState, ns.root.guides, ns.root.planner, ns.root.profiles = saved.guideState, saved.guides, saved.planner, saved.profiles
+    ns.db.plannerDuoAsk, ns.plannerDuo, ns.plannerFromHere = saved.ask, saved.duo, saved.fromHere
+    ns.PlannerDuoSync(); ns.PlannerPaceSync()
+    if ns.HideLists then ns:HideLists() end
+    while #ns.errors > saved.errors do table.remove(ns.errors) end
     if not ok then error(err, 0) end
 end)
 
