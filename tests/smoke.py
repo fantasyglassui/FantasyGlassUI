@@ -14962,7 +14962,7 @@ try("13.5 together B: asking, the state and a plan for both", function()
         local function heard(text) for _, l in ipairs(said) do if l:find(text, 1, true) then return true end end return false end
         local function flush(k) for _ = 1, k or 40 do ns.PlannerDuoFlush() end end
         local function addon(text, from) fireEvent("CHAT_MSG_ADDON", "FGUIPlan", text, "WHISPER", from or "Mira-Realm") end
-        local function frames(k) for _ = 1, k or 400 do for i = 1, #handlers do local h = handlers[i]; if h.name == "OnUpdate" then pcall(h.fn, h.self, 0.02) end end end end
+        local function frames(k) for _ = 1, k or 30 do for i = 1, #handlers do local h = handlers[i]; if h.name == "OnUpdate" then pcall(h.fn, h.self, 0) end end end end   -- (slices only: no time passes, so the list restyler and the like stay still; merge: lockaudit memory)
         local function runIt()
             for _ = 1, 400 do
                 if not ns.plannerBusy and not ns.plannerQueued then break end
@@ -15245,7 +15245,7 @@ try("13.5 together B: following together", function()
         ns.ShowList = function(self, key, title, lines, ...) lists[key] = lines; return saved.show(self, key, title, lines, ...) end
         local function flush(k) for _ = 1, k or 120 do ns.PlannerDuoFlush() end end
         local function addon(text, from) fireEvent("CHAT_MSG_ADDON", "FGUIPlan", text, "WHISPER", from or "Mira-Realm") end
-        local function frames(k) for _ = 1, k or 300 do for i = 1, #handlers do local h = handlers[i]; if h.name == "OnUpdate" then pcall(h.fn, h.self, 0.02) end end end end
+        local function frames(k) for _ = 1, k or 30 do for i = 1, #handlers do local h = handlers[i]; if h.name == "OnUpdate" then pcall(h.fn, h.self, 0) end end end end   -- (slices only: no time passes, so the list restyler and the like stay still; merge: lockaudit memory)
         local function joined(from, kind)
             local whole
             for i = from, #sends do
@@ -15464,7 +15464,7 @@ try("13.5 together B: review fixes", function()
         ns.ShowList = function(self, key, title, lines, ...) lists[key] = lines; return saved.show(self, key, title, lines, ...) end
         local function flush(k) for _ = 1, k or 120 do ns.PlannerDuoFlush() end end
         local function addon(text, from) fireEvent("CHAT_MSG_ADDON", "FGUIPlan", text, "WHISPER", from or "Mira-Realm") end
-        local function frames(k) for _ = 1, k or 300 do for i = 1, #handlers do local h = handlers[i]; if h.name == "OnUpdate" then pcall(h.fn, h.self, 0.02) end end end end
+        local function frames(k) for _ = 1, k or 30 do for i = 1, #handlers do local h = handlers[i]; if h.name == "OnUpdate" then pcall(h.fn, h.self, 0) end end end end   -- (slices only: no time passes, so the list restyler and the like stay still; merge: lockaudit memory)
         local function reset() if ns.plannerDuo then ns:PlannerDuoEnd(nil, true, true) end; flush(); ns.PlannerDuoTick(); ns:PlannerStop(); ns.plannerQueued = false end
         local function lead(questie)
             ns:PlannerDuoStart(); flush()
@@ -15858,7 +15858,7 @@ try("13.5 together: together", function()
         ns.PrintRaw = function() end
         local function addon(text) fireEvent("CHAT_MSG_ADDON", "FGUIPlan", text, "WHISPER", "Leo-Realm") end
         local function flush() for _ = 1, 120 do ns.PlannerDuoFlush() end end
-        local function frames() for _ = 1, 300 do for i = 1, #handlers do local h = handlers[i]; if h.name == "OnUpdate" then pcall(h.fn, h.self, 0.02) end end end end
+        local function frames(k) for _ = 1, k or 30 do for i = 1, #handlers do local h = handlers[i]; if h.name == "OnUpdate" then pcall(h.fn, h.self, 0) end end end end   -- (slices only: no time passes, so the list restyler and the like stay still; merge: lockaudit memory)
         ns:GuideSetPlan(nil); ns:PlannerStop(); ns.plannerQueued = false
 
         -- Mira is asked by Leo and plans together (B)
