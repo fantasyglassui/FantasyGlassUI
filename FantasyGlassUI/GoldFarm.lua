@@ -582,3 +582,103 @@ ns.GoldRegister("farm", function(ctx, add)
     if type(ns.FarmZoneRanking) == "function" and type(root.farmZones) == "table" then zones = ns.FarmZoneRanking(root.farmZones) end
     ns.GoldFarmIdeas(ctx, add, root.goldMobs, zones, ns.GoldFarmQuestie(), Here())
 end)
+
+------------------------------------------------------------------------------------------
+-- Dungeons: which runs pay best, and what their drops are worth (the run log and the loot book)
+------------------------------------------------------------------------------------------
+local DUNGEON_DAYS, DUNGEON_MIN_SECS, DUNGEON_IDEAS = 90, 300, 5
+
+-- What one drop is worth: an item bound when picked up (bind type 1) only to a vendor.
+local function DropWorth(link, today)
+    local id = ItemOf(link)
+    if not id then return 0, nil, nil end
+    local ok, _, _, _, _, _, _, _, _, _, _, vendor, _, _, bind = pcall(ns.GetItemInfo, ns, link)
+    if ok and Num(bind) == 1 then return max(0, Num(vendor) or 0), nil, id end
+    local value, _, day = ns.GoldItemValue(id, today)
+    return value, day, id
+end
+
+-- A run's drops: copper, and the day of the oldest auction price in it (nil: none).
+function ns.GoldRunValue(run, today)
+    if type(run) ~= "table" then return 0, nil end
+    local sum, oldest = 0, nil
+    for _, link in ipairs(type(run.loot) == "table" and run.loot or {}) do
+        local value, day = DropWorth(link, today)
+        sum = sum + value
+        if day and (not oldest or day < oldest) then oldest = day end
+    end
+    return sum, oldest
+end
+
+local function DungeonIdeas(ctx, add)
+    local log = type(ns.RunLogged) == "function" and ns.RunLogged() or {}
+    local today, now = ctx.today or ns.Today(), Num(ctx.now) or Num(Ask(time)) or 0
+    local by, order = {}, {}
+    for _, r in ipairs(type(log) == "table" and log or {}) do
+        local inst = type(r) == "table" and Str(r.instance)
+        local start = inst and Num(r.start)
+        local secs = start and ns.RunLength(r) or 0
+        if start and now - start <= DUNGEON_DAYS * 86400 and secs >= DUNGEON_MIN_SECS then
+            local p = by[inst]
+            if not p then p = { instance = inst, runs = 0, value = 0, secs = 0, items = {}, list = {} }; by[inst] = p; order[#order + 1] = p end
+            p.runs, p.secs = p.runs + 1, p.secs + secs
+            for _, link in ipairs(type(r.loot) == "table" and r.loot or {}) do
+                local value, day, id = DropWorth(link, today)
+                p.value = p.value + value
+                if day and (not p.day or day < p.day) then p.day = day end
+                if id then
+                    local e = p.items[id]
+                    if not e then e = { link = link, n = 0, value = value }; p.items[id] = e; p.list[#p.list + 1] = e end
+                    e.n = e.n + 1
+                end
+            end
+        end
+        ns.GoldYield()
+    end
+    local book = type(ns.root) == "table" and type(ns.root.lootBook) == "table" and ns.root.lootBook or {}
+    local ideas = {}
+    for _, p in ipairs(order) do
+        local perHour = floor(p.value / p.secs * 3600)
+        local basis = (p.runs >= 2) and "measured" or "guess"
+        local detail = {}
+        local bosses = type(book[p.instance]) == "table" and book[p.instance] or {}
+        local names = {}
+        for boss, b in pairs(bosses) do if Str(boss) and type(b) == "table" and (Num(b.kills) or 0) > 0 then names[#names + 1] = boss end end
+        table.sort(names)
+        if #names > 0 then detail[#detail + 1] = { left = ns:Tr("One kill of each boss is worth") } end
+        for _, boss in ipairs(names) do
+            local b = bosses[boss]
+            local worth = 0
+            for id, e in pairs(type(b.items) == "table" and b.items or {}) do
+                local n = type(e) == "table" and Num(e.n)
+                if n and n > 0 then
+                    local value = DropWorth(Str(e.link) or ("item:" .. tostring(id)), today)
+                    worth = worth + n / b.kills * value
+                end
+            end
+            worth = floor(worth)
+            detail[#detail + 1] = { left = "  " .. boss, right = ns:Coins(worth), copper = worth }
+            ns.GoldYield()
+        end
+        if #p.list > 0 then
+            detail[#detail + 1] = { left = ns:Tr("Your drops from these runs") }
+            table.sort(p.list, function(a, b) if a.value ~= b.value then return a.value > b.value end return a.link < b.link end)
+            for _, e in ipairs(p.list) do
+                detail[#detail + 1] = { left = e.link, right = ns:Coins(e.value) .. ((e.n > 1) and format(" x%d", e.n) or ""), copper = e.value }
+            end
+        end
+        ideas[#ideas + 1] = {
+            id = "dungeon:" .. p.instance, kind = "dungeon", oneOff = false, title = format(ns:Tr("Run %s (rare drops)"), p.instance),
+            perHour = perHour, ease = ns.GOLD_EASE.dungeon or 20, safety = ns.GOLD_SAFETY.dungeon[basis], basis = basis, priceDay = p.day,
+            where = "window", steps = { { text = format(ns:Tr("Go to %s"), p.instance) } }, detail = detail,
+            tip = { ns:Tr("Counts rare and better drops only; coin and trash are not in it.") }, runs = p.runs,
+        }
+    end
+    table.sort(ideas, ByHour)
+    for i = 1, min(DUNGEON_IDEAS, #ideas) do add(ideas[i]) end
+end
+
+ns.GoldRegister("dungeon", function(ctx, add)
+    if type(ctx) ~= "table" or ctx.where == "auction" then return end
+    DungeonIdeas(ctx, add)
+end)

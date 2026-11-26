@@ -11651,6 +11651,84 @@ try("gold B: monsters worth killing", function()
     end
     if not ok then error(err, 0) end
 end)
+try("gold B: dungeon drops", function()
+    local keepTime = rawget(env, "time")
+    local keep = { unlocked = ns.GuideUnlocked, runs = ns.root.runs, book = ns.root.lootBook, info = ns.GetItemInfo, entry = ns.PriceEntry,
+        today = ns.Today, sources = nil }
+    local ok, err = pcall(function()
+        if type(ns.GoldRunValue) ~= "function" then error("ns.GoldRunValue is nil") end
+        keep.sources = ns.GoldSources()
+        for key in pairs(keep.sources) do ns.GoldRegister(key, nil) end
+        ns.GoldRegister("dungeon", keep.sources.dungeon)
+        ns.GuideUnlocked = function() return true end
+        local today, now = 20261125, 1800000000
+        ns.Today = function() return today end
+        env.time = function() return now end
+        local function L(id) return string.format("|cff0070dd|Hitem:%d::::::::60:::::|h[Drop %d]|h|r", id, id) end
+        -- item: vendor, bind type (1 = when picked up); auction prices by id
+        local items = { [1] = { 5000, 2 }, [2] = { 3000, 2 }, [3] = { 500, 1 }, [4] = { 1000, 2 } }
+        local prices = { [3] = { price = 90000, day = today } }
+        ns.PriceEntry = function(id) return prices[id] end
+        ns.GetItemInfo = function(_, what)
+            local id = type(what) == "number" and what or tonumber(tostring(what):match("item:(%d+)"))
+            local it = items[id] or { 0, 0 }
+            return "Drop " .. tostring(id), L(id or 0), 3, 60, 0, "Armor", "Cloth", 1, "INVTYPE_CHEST", 134400, it[1], 4, 1, it[2]
+        end
+        local function Run(instance, ago, secs, loot)
+            local start = now - ago
+            return { instance = instance, start = start, lastKill = start + secs, kills = { Boss = secs }, loot = loot, wipes = {}, deaths = 0, fights = {} }
+        end
+        local ctx = ns.GoldContext("window")
+        local function Ideas()
+            local by, list = {}, ns.GoldCollectNow(ctx)
+            for _, i in ipairs(list) do by[i.id] = i end
+            return by, list
+        end
+        -- an empty run log: nothing, and no error
+        ns.root.runs, ns.root.lootBook = {}, nil
+        local by, list = Ideas()
+        if #list ~= 0 then error("no runs, no ideas") end
+        -- a bound drop counts its vendor price only
+        local bop = Run("Shadowfang Keep", 3600, 1800, { L(3) })
+        local v = ns.GoldRunValue(bop, today)
+        if v ~= 500 then error("bound when picked up: vendor only: " .. tostring(v)) end
+        if ns.GoldRunValue(Run("Deadmines", 100, 1800, { L(1) }), today) ~= 5000 then error("a drop's worth") end
+        -- two runs of 1800 s: measured; one run: a guess; a short or old run is not counted
+        ns.root.runs = { Run("Deadmines", 86400, 1800, { L(1) }), Run("Deadmines", 7200, 1800, { L(2) }), Run("Deadmines", 3600, 200, { L(1), L(1) }),
+                         Run("Deadmines", 100 * 86400, 1800, { L(1), L(1), L(1) }), bop }
+        ns.root.lootBook = { Deadmines = { ["Edwin VanCleef"] = { kills = 4, items = { [4] = { n = 2, link = L(4) } } }, Nobody = { kills = 0, items = {} } } }
+        by, list = Ideas()
+        local dm, sfk = by["dungeon:Deadmines"], by["dungeon:Shadowfang Keep"]
+        if not dm or dm.perHour ~= 8000 or dm.basis ~= "measured" or dm.kind ~= "dungeon" then error("Deadmines: " .. tostring(dm and dm.perHour) .. " " .. tostring(dm and dm.basis)) end
+        if dm.title ~= "Run Deadmines (rare drops)" or dm.ease ~= 20 or dm.where ~= "window" or dm.safety ~= 60 then error("the idea: " .. tostring(dm.title)) end
+        if type(dm.tip) ~= "table" or dm.tip[1] ~= "Counts rare and better drops only; coin and trash are not in it." then error("the tip") end
+        if type(dm.steps) ~= "table" or #dm.steps ~= 1 or dm.steps[1].text ~= "Go to Deadmines" then error("the steps") end
+        if not sfk or sfk.basis ~= "guess" or sfk.perHour ~= 1000 or sfk.safety ~= 35 then error("one run is a guess: " .. tostring(sfk and sfk.perHour)) end
+        local boss, item = nil, nil
+        for _, line in ipairs(dm.detail or {}) do
+            if tostring(line.left):find("Edwin VanCleef", 1, true) then boss = line end
+            if line.left == L(1) then item = line end
+        end
+        if not boss or boss.copper ~= 500 or boss.right ~= ns:Coins(500) then error("a boss's kill is worth 2 / 4 x 1000: " .. tostring(boss and boss.copper)) end
+        if not item or item.copper ~= 5000 then error("your runs' drops with their worth") end
+        for _, line in ipairs(dm.detail) do if tostring(line.left):find("Nobody", 1, true) then error("a boss never killed has no line") end end
+        -- at most 5, by gold an hour
+        local many = {}
+        for i = 1, 7 do many[#many + 1] = Run("Place " .. i, 3600, 1800, { L(1) }); many[#many + 1] = Run("Place " .. i, 3600, 1800 + i * 100, { L(2) }) end
+        ns.root.runs, ns.root.lootBook = many, nil
+        by, list = Ideas()
+        if #list ~= 5 or not by["dungeon:Place 1"] or by["dungeon:Place 7"] then error("at most 5, the best: " .. #list) end
+        if #ns.GoldCollectNow(ns.GoldContext("auction")) ~= 0 then error("nothing for the auction house panel") end
+    end)
+    rawset(env, "time", keepTime)
+    ns.GuideUnlocked, ns.GetItemInfo, ns.PriceEntry, ns.Today = keep.unlocked, keep.info, keep.entry, keep.today
+    ns.root.runs, ns.root.lootBook = keep.runs, keep.book
+    if keep.sources then
+        for key in pairs(ns.GoldSources()) do ns.GoldRegister(key, nil) end
+        for key, fn in pairs(keep.sources) do ns.GoldRegister(key, fn) end
+    end
+    if not ok then error(err, 0) end
+end)
 -- gold tests B (farm): end
 -- gold tests C (gather): begin
 -- gold tests C (gather): end
