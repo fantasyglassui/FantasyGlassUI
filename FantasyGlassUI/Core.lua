@@ -1594,7 +1594,7 @@ end
 
 -- What's new: shown once after an update (never on a first install, where the setup opens instead).
 ns.whatsNew = {
-    { "12.4.1", { "Another add-on's full scan of the auction house, Auctionator's or TSM's, is read for your prices too, the same way as Scan prices, and the button counts down from it.",
+    { "12.4.1", { "Another add-on's full scan of the auction house, such as Auctionator's, is read for your prices too, the same way as Scan prices, and the button counts down from it.",
                   "Where this add-on has no price for an item, the tooltip shows Auctionator's or TSM's, with its name. Those prices are never kept, and give only Vendor it, never Sell now or Hold.",
                   "The Sell now, Hold and Vendor it description now says that every Vendor it hint is for common and uncommon items only." } },
     { "12.4.0", { "Scan prices, on the auction house: the whole auction house in one click, about every 15 minutes. It is read in small pieces and pauses in a fight.",

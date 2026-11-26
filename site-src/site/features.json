@@ -1061,7 +1061,7 @@
     {
      "key": "auctionScan",
      "label": "Scan prices button",
-     "desc": "A Scan prices button on the auction house reads every auction at once (the auction house allows it about every 15 minutes) for the prices in tooltips and the Sell now, Hold and Vendor it hints."
+     "desc": "A Scan prices button on the auction house reads every auction at once (the auction house allows it about every 15 minutes) for the prices in tooltips and the Sell now, Hold and Vendor it hints. It also reads full scans made by other add-ons."
     },
     {
      "key": "sellHints",
@@ -1071,7 +1071,7 @@
     {
      "key": "otherAddonPrices",
      "label": "Prices from Auctionator and TSM",
-     "desc": "When this add-on has no price for an item, the tooltip shows Auctionator's price, or else TSM's, with its name beside it, if that add-on is loaded. Such a price is never kept, and gives only Vendor it (when a vendor pays about as much), never Sell now or Hold."
+     "desc": "When this add-on has no price for an item, the tooltip shows Auctionator's price, or else TSM's, with its name beside it, if that add-on is loaded. Such a price is never kept, and gives only Vendor it (when a vendor pays about as much), never Sell now or Hold. Shown in tooltips while Auction prices in tooltips is on."
     },
     {
      "key": "auctionHelper",

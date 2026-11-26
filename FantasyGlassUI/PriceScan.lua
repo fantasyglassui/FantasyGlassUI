@@ -9,15 +9,14 @@ local Secret = function(v) return ns:IsSecret(v) end
 -- ever sees half a scan. It never posts, buys or
 -- bids: those stay your own clicks.
 -- (12.4.1) The list is the same for every add-on, and so is the server's limit: when another add-on
--- (Auctionator, TSM) asks for it, the list that arrives is read too, the same way, and the countdown
+-- (such as Auctionator) asks for it, the list that arrives is read too, the same way, and the countdown
 -- starts from it.
 ------------------------------------------------------------------------------------------
 local COOLDOWN = 15 * 60                     -- (seconds between scans, as the server allows)
 local WAIT = 60                              -- (seconds to wait for the list before giving up)
 local RETRIES, RETRY_GAP = 3, 0.5            -- (rows whose item isn't loaded yet are read again)
 local BUDGET_MS, ROWS_NO_CLOCK, CHUNK = 4, 200, 25
-local SAME_LIST = 5 * 60                     -- (a list taken this recently is the same one: the event again, not a new scan)
-local SAID_FOR = 5                           -- (seconds the button says another add-on's list is being read)
+local SAME_LIST = 14 * 60                    -- (a list taken this recently, with about as many rows, is the same one announced again)
 
 -- Ready to scan? Returns ready, and the seconds left when not.
 function ns.PriceScanReady(now)
@@ -128,13 +127,12 @@ end
 --   tries, paused, staged, stageKey, count, foreign (another add-on asked for the list) }
 local scan
 local button
-local listAt                                 -- (when the last list was taken, ours or another add-on's)
-local refusedAt                              -- (when the button was pressed while another add-on's list was read)
+local listAt, listN                          -- (when the last list was taken, ours or another add-on's, and its rows)
+local ownCall                                -- (our own last call for the list, { at }, until its list arrives)
 local function Now() return (time and time()) or 0 end
 
 local function Label(now)
     if scan then
-        if scan.foreign and refusedAt and (now or Now()) - refusedAt < SAID_FOR then return ns:Tr("Another add-on scanned just now: its prices are being read.") end
         if scan.paused then return ns:Tr("Paused for combat") end
         if scan.phase == "waiting" then return ns:Tr("Waiting for the list…") end
         local done = (scan.n > 0) and math.floor(100 * math.min(scan.i, scan.n) / scan.n) or 100
@@ -176,7 +174,10 @@ local function Finish()
     if not house then Stop(); return 0 end
     Commit(house, s.staged, ns.Today(), Now(), s.count, s.full, s.bases)
     ns.priceScanState = format("last scan: %d items, %d of %d rows unread%s", s.count, s.unread, s.n, s.full and "" or " (too many to say what nobody lists)")
-    if s.foreign then ns:Print("Prices read from another add-on's scan: %d items.", s.count)
+    if s.foreign then
+        -- (another add-on's list, read and accepted: the server's limit runs from when it arrived)
+        if type(ns.root) == "table" and type(ns.root.prices) == "table" then ns.root.prices.lastScan = s.at end
+        ns:Print("Prices read from another add-on's scan: %d items.", s.count)
     else ns:Print("Prices scanned: %d items.", s.count) end
     if ns.RefreshBagWindow then pcall(ns.RefreshBagWindow, ns) end
     Show()
@@ -244,26 +245,46 @@ local function Arrived()
     local ok, n = pcall(C_AuctionHouse.GetNumReplicateItems)
     if not ok or Secret(n) or type(n) ~= "number" then Stop("The auction house did not send its list: try again later."); return end
     s.n, s.i, s.phase = math.max(0, n), 0, "reading"
-    listAt = Now()
+    s.at = Now()
+    listAt, listN = s.at, s.n
+    if s.own and s.own == ownCall then ownCall = nil end      -- (our call's list has come)
     Show()
 end
+local function NewScan() return { phase = "waiting", n = 0, i = 0, acc = {}, retry = {}, skipped = 0, tries = 0 } end
 
 -- (12.4.1) A list arrived that we did not ask for: another add-on's full scan. It is read exactly as our
--- own (the same slices, retries, checks and write, never in a fight), and the server's limit now runs
--- from it, so the button counts down from it. The same list announced again is not read twice.
+-- own (the same slices, retries, checks and write, never in a fight). Once it is read and accepted, the
+-- server's limit runs from it, so the button counts down from it. The same list announced again (within
+-- 14 minutes, with a row count within 1%) is not read twice.
 local function Foreign()
     if scan then return false end
     local A = C_AuctionHouse
     if type(A) ~= "table" or type(A.GetNumReplicateItems) ~= "function" or type(A.GetReplicateItemInfo) ~= "function" then return false end
     if not ns.PriceHouseKey() or type(ns.root) ~= "table" then return false end
+    local ok, n = pcall(A.GetNumReplicateItems)
+    if not ok or Secret(n) or type(n) ~= "number" then return false end
     local now = Now()
-    if listAt and now >= listAt and now - listAt < SAME_LIST then return false end
-    if type(ns.root.prices) ~= "table" then ns.root.prices = { v = 1 } end
-    ns.root.prices.lastScan = now                             -- (the server counts the other add-on's call too)
-    scan = { phase = "waiting", foreign = true, n = 0, i = 0, acc = {}, retry = {}, skipped = 0, tries = 0 }
+    if listAt and now >= listAt and now - listAt < SAME_LIST and listN and math.abs(n - listN) <= listN * 0.01 then return false end
+    scan = NewScan()
+    scan.foreign = true
     ns.priceScanState = "reading another add-on's scan"
     Arrived()
     return true
+end
+
+-- A list has arrived: for the read waiting for it; else for our own call, however late (within the
+-- server's limit, after which a list can't be told from another add-on's); else another add-on's.
+local function ListArrived()
+    if scan then Arrived(); return end
+    local now = Now()
+    if ownCall and now >= ownCall.at and now - ownCall.at < COOLDOWN and ns.PriceHouseKey() and type(ns.root) == "table" then
+        scan = NewScan()
+        scan.own = ownCall
+        ns.priceScanState = "reading our own late list"
+        Arrived()
+        return
+    end
+    Foreign()
 end
 
 -- Returns true when the scan starts; false, and "another" while another add-on's list is being read.
@@ -277,7 +298,9 @@ function ns:PriceScanStart()
     if not pcall(A.ReplicateItems) then return false end
     if type(ns.root.prices) ~= "table" then ns.root.prices = { v = 1 } end
     ns.root.prices.lastScan = now                             -- (the server counts the call, read or not)
-    local s = { phase = "waiting", n = 0, i = 0, acc = {}, retry = {}, skipped = 0, tries = 0 }
+    local s = NewScan()
+    ownCall = { at = now }                                    -- (the token by which our list is known, however late)
+    s.own = ownCall
     scan = s
     ns.priceScanState = "waiting for the list"
     ns:After(WAIT, function()
@@ -287,13 +310,13 @@ function ns:PriceScanStart()
     return true
 end
 
--- The button: a scan, or why not. While another add-on's list is being read the button says so for a few
--- seconds (and the chat, as the button is narrow); otherwise a refusal shows the countdown.
+-- The button: a scan, or why not. While another add-on's list is being read the button shows its
+-- progress and the chat says why, once per read; otherwise a refusal shows the countdown.
 local function Pressed()
     if InCombatLockdown() then return end
     local ok, why = ns:PriceScanStart()
-    if not ok and why == "another" then
-        refusedAt = Now()
+    if not ok and why == "another" and scan and not scan.told then
+        scan.told = true
         ns:Print("Another add-on scanned just now: its prices are being read.")
     end
     Show()
@@ -309,8 +332,13 @@ ns:NewModule("auctionScan", function()
         done = true
         button = ns:CreateButton(ahf, "Scan prices", 150, 22, Pressed)
         button:SetPoint("TOPRIGHT", ahf, "TOPRIGHT", -186, -30)        -- (left of Worth selling)
+        if button.text then                                             -- (a long translation is cut, never spills over)
+            pcall(button.text.SetWidth, button.text, 150 - 8)
+            pcall(button.text.SetWordWrap, button.text, false)
+        end
         ns:ButtonTip(button, function()
             return ns:Tr("Reads every auction at once for the prices in tooltips. The auction house allows this about every 15 minutes.")
+                .. "\n" .. ns:Tr("The limit is shared with other add-ons that scan.")
                 .. "\n" .. ns.PriceFreshText(ns.PriceHouse(), Now())
         end)
         local tick = 0
@@ -324,7 +352,7 @@ ns:NewModule("auctionScan", function()
     local driver = CreateFrame("Frame")
     driver:SetScript("OnUpdate", ns:Guard("Scan prices", function() if scan then Read() end end))
     ns.auctionScanTest = { Dress = Dress, Label = Label, Press = Pressed }
-    ns.priceScanTest = { Read = Read, state = function() return scan end, forget = function() listAt, refusedAt = nil, nil end }
+    ns.priceScanTest = { Read = Read, state = function() return scan end, forget = function() listAt, listN, ownCall = nil, nil, nil end }
     local ev = CreateFrame("Frame")
     for _, e in ipairs({ "ADDON_LOADED", "AUCTION_HOUSE_SHOW", "AUCTION_HOUSE_CLOSED", "REPLICATE_ITEM_LIST_UPDATE", "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED" }) do
         pcall(ev.RegisterEvent, ev, e)
@@ -338,7 +366,7 @@ ns:NewModule("auctionScan", function()
         elseif event == "AUCTION_HOUSE_CLOSED" then
             if scan then Stop("The auction house closed before the scan was read: scan again when it allows.") end
         elseif event == "REPLICATE_ITEM_LIST_UPDATE" then
-            if scan then Arrived() else Foreign() end
+            ListArrived()
         elseif event == "PLAYER_REGEN_DISABLED" then
             if scan then scan.paused = true; Show() end
         elseif event == "PLAYER_REGEN_ENABLED" then

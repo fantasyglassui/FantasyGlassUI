@@ -8193,24 +8193,24 @@ try("11.7: ready me, boss notes, death recap, backups, history, templates, packs
                 end }
             local function Run(limit) for _ = 1, limit or 60 do if not T.state() then return end; T.Read() end end
             local function Said(from, text) for i = from + 1, #printed do if tostring(printed[i]):find(text, 1, true) then return true end end return false end
-            local another = ns:Tr("Another add-on scanned just now: its prices are being read.")
+            local function Count(from, text) local c = 0; for i = from + 1, #printed do if tostring(printed[i]):find(text, 1, true) then c = c + 1 end end return c end
             local function Countdown(m, s) return string.format(ns:Tr("Scan in %d:%02d"), m, s) end
             ns.root.prices = { v = 1, houses = { ["Stormreach|Alliance"] = { items = { [7] = { price = 1234, day = 20261120, listed = 3 } } } } }
             local mark = #printed
             fireEvent("REPLICATE_ITEM_LIST_UPDATE")                   -- (another add-on asked for the list, not us)
             if calls ~= 0 then error("another add-on's list: we never ask for one ourselves") end
             if not T.state() or not T.state().foreign or T.state().phase ~= "reading" then error("another add-on's list is read") end
-            if ns.root.prices.lastScan ~= now then error("another add-on's scan sets lastScan") end
-            -- the button pressed now: the server would refuse, and the button says why
+            if ns.root.prices.lastScan ~= nil then error("lastScan waits until another add-on's list is read and accepted") end
+            -- the button pressed now: the server would refuse; the button shows the progress, the chat says why, once
             local ok, why = ns:PriceScanStart()
             if ok ~= false or why ~= "another" or calls ~= 0 then error("refused while another add-on's list is read") end
-            ns.auctionScanTest.Press()
-            if calls ~= 0 or ns.auctionScanTest.Label() ~= another then error("the button says another add-on scanned: " .. tostring(ns.auctionScanTest.Label())) end
-            if not Said(mark, "Another add-on scanned just now") then error("the chat says it too") end
-            if ns.auctionScanTest.Label(now + 10) == another then error("the button says it for a few seconds only") end
+            ns.auctionScanTest.Press(); ns.auctionScanTest.Press()
+            if calls ~= 0 or ns.auctionScanTest.Label() ~= string.format(ns:Tr("Reading %d%%"), 0) then error("the button shows the read's progress: " .. tostring(ns.auctionScanTest.Label())) end
+            if Count(mark, "Another add-on scanned just now") ~= 1 then error("the chat says why, once per read") end
             Run()
             local h = ns.PriceHouse()
             if T.state() or not h or h.scanItems ~= 3 or ns.PriceEntry(100).price ~= 500 or ns.PriceEntry(101).price ~= 1000 or ns.PriceEntry(102).listed ~= 2 then error("another add-on's list is written as our own") end
+            if ns.root.prices.lastScan ~= now then error("another add-on's list, read and accepted, sets lastScan to when it arrived") end
             if not h.listedAt or ns.PriceEntry(7).listed ~= 0 or ns.PriceEntry(7).price ~= 1234 then error("another add-on's whole list is a full scan, as ours") end
             if not Said(mark, "another add-on's scan: 3 items") then error("the chat says the prices were read") end
             if ns.auctionScanTest.Label(now + 60) ~= Countdown(14, 0) then error("the countdown from another add-on's scan: " .. ns.auctionScanTest.Label(now + 60)) end
@@ -8220,6 +8220,15 @@ try("11.7: ready me, boss notes, death recap, backups, history, templates, packs
             now = now + 30
             fireEvent("REPLICATE_ITEM_LIST_UPDATE")
             if T.state() or ns.root.prices.lastScan ~= now - 30 then error("the same list announced again is not read twice") end
+            now = now + 13 * 60
+            fireEvent("REPLICATE_ITEM_LIST_UPDATE")
+            if T.state() then error("the same row count within 14 minutes: the same list") end
+            total = 4                                                 -- (a third more rows: a new list)
+            fireEvent("REPLICATE_ITEM_LIST_UPDATE")
+            if not T.state() or not T.state().foreign then error("a row count more than 1% off is a new list") end
+            Run()
+            if T.state() or ns.root.prices.lastScan ~= now then error("the new list is read") end
+            total = 3
             -- a new list later, in a fight: taken, read only after the fight
             now = now + 20 * 60
             combat = true
@@ -8241,14 +8250,14 @@ try("11.7: ready me, boss notes, death recap, backups, history, templates, packs
             T.Read()
             if not T.state() or ns.PriceHouse() then error("450 rows take more than one slice") end
             fireEvent("AUCTION_HOUSE_CLOSED")
-            if T.state() or ns.PriceHouse() or Said(mark, "closed before") or ns.root.prices.lastScan ~= now then error("closed mid-read: thrown away quietly, the countdown kept") end
+            if T.state() or ns.PriceHouse() or Said(mark, "closed before") or ns.root.prices.lastScan ~= nil then error("closed mid-read: thrown away quietly, and no countdown from it") end
             -- hidden values in the list: skipped, nothing stored, nothing said
             now, total, hideAll = now + 20 * 60, 3, true
             ns.root.prices = { v = 1 }
             mark = #printed
             fireEvent("REPLICATE_ITEM_LIST_UPDATE")
             Run()
-            if T.state() or next(ns.PriceItems()) ~= nil or Said(mark, "came back empty") then error("hidden rows in another add-on's list are skipped") end
+            if T.state() or next(ns.PriceItems()) ~= nil or Said(mark, "came back empty") or ns.root.prices.lastScan ~= nil then error("hidden rows in another add-on's list are skipped, no countdown") end
             hideAll = false
             -- no auction house (a neutral character): not read
             now = now + 20 * 60
@@ -8271,6 +8280,22 @@ try("11.7: ready me, boss notes, death recap, backups, history, templates, packs
             Run()
             fireEvent("REPLICATE_ITEM_LIST_UPDATE")
             if T.state() then error("our own list announced again is not another add-on's") end
+            -- our own list, arriving after we gave up waiting: still ours
+            now = now + 20 * 60
+            ns.root.prices = { v = 1 }
+            mark = #printed
+            if not ns:PriceScanStart() or calls ~= 2 then error("our own scan starts again") end
+            runTimers()
+            if T.state() or not Said(mark, "did not send its list") then error("(no list within a minute)") end
+            now = now + 120
+            fireEvent("REPLICATE_ITEM_LIST_UPDATE")
+            if not T.state() or T.state().foreign then error("our own late list is credited to us") end
+            Run()
+            if T.state() or not Said(mark, "Prices scanned: 3 items") or Said(mark, "another add-on's scan") or ns.root.prices.lastScan ~= now - 120 then error("our late list is read as ours, the countdown from our press") end
+            now = now + 20 * 60
+            fireEvent("REPLICATE_ITEM_LIST_UPDATE")
+            if not T.state() or not T.state().foreign then error("after it, a list is another add-on's again") end
+            Run()
         end)
         ns.root.prices, ns.root.auctionSeen = keepPricesF, keepSeenF
         env.GetRealmName, env.UnitFactionGroup, env.C_AuctionHouse, env.InCombatLockdown, env.time = oldRealm, oldFaction, oldAH, oldCombat, oldTime
@@ -8549,7 +8574,15 @@ try("11.7: ready me, boss notes, death recap, backups, history, templates, packs
             -- a full scan today did not find it: from our scan, nobody lists it; with another add-on's price, rule 2 alone
             ns.root.prices.houses["Stormreach|Alliance"].listedAt = env.time()
             aPrice = 5000
-            if ns.SellHintFor(4251) ~= nil then error("another add-on's price: only rule 2, not nobody lists it") end
+            local kind1, _, why1, src1 = ns.SellHintFor(4251)
+            if kind1 ~= "vendor" or why1 ~= "unlisted" or src1 ~= nil then error("another add-on's price not near a vendor's: our own hint follows, nobody lists it") end
+            lines = {}
+            ns.sellHintsTest.Tip(tip, { id = 4251 })
+            if #lines ~= 2 or lines[1][1] ~= fromA or lines[2][1] ~= ns:Tr("Vendor it: nobody lists it here") or lines[2][2] ~= ns:Tr("Scanned today") then
+                error("Auctionator's price, then nobody lists it as fresh as our full scan: " .. tostring(lines[2] and lines[2][1]) .. " | " .. tostring(lines[2] and lines[2][2])) end
+            ns.root.prices.houses["Stormreach|Alliance"].listedAt = env.time() - 10 * 86400
+            if ns.SellHintFor(4251) ~= nil then error("an old full scan: no nobody lists it, and no Vendor it from a high outside price") end
+            ns.root.prices.houses["Stormreach|Alliance"].listedAt = env.time()
             loaded.Auctionator, loaded.TradeSkillMaster = false, false
             local kind2, _, why2 = ns.SellHintFor(4251)
             if kind2 ~= "vendor" or why2 ~= "unlisted" then error("with no other add-on, nobody lists it as before") end

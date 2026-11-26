@@ -406,7 +406,7 @@ Options, below). The list here is grouped a little differently. Point at a switc
   minutes, read in small pieces and paused in a fight. Prices are kept for each realm and faction.
 - **Sell now / Hold / Vendor it** in item tooltips, and as a coloured square on the bag window.
   Vendor it is for common and uncommon items only; bound items get no hint.
-- (12.4.1) Another add-on's full scan (Auctionator's or TSM's) is read for your prices too, and the
+- (12.4.1) Another add-on's full scan (such as Auctionator's) is read for your prices too, and the
   Scan prices button counts down from it. Where there is no price of your own, the tooltip shows
   Auctionator's or TSM's, with its name; those are never kept and give only Vendor it.
 

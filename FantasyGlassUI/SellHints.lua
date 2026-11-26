@@ -69,11 +69,11 @@ function ns.SellHintFor(id, bound, entry, house)
     if not (type(entry) == "table" and type(entry.price) == "number") then
         -- (12.4.1) no price here: another add-on's (Auctionator, TSM), as safe as a price with no history:
         -- never Sell now or Hold, only Vendor it when a vendor pays about as much. The fourth value is its source.
+        -- When it doesn't give that, the hint from this house's own store follows, as before ("nobody lists it").
         local other, source = ns.OtherAddonPrice(id)
         if other then
             local kind, _, why = ns.SellHint({ price = other, day = today }, vendor, quality, bound, today, nil)
             if kind == "vendor" and why == "pays" then return kind, nil, why, source end
-            return nil
         end
     end
     return ns.SellHint(entry, vendor, quality, bound, today, ListedDay(house))
