@@ -614,9 +614,16 @@ local function DuoApplied(guide, summary)
 end
 
 -- The friend: follow the leader's plan (after the fight when one is on), and say where you are at once.
+-- Your level unreadable: the plan is held and tried again every 5 s, 6 times (as the state), then dropped quietly.
 local function ApplyPlan(d, guide, header)
+    local held = d.waiting
     d.waiting = nil
     local level = MyLevel()
+    if not level then
+        local tries = ((held and held.at and held.header.planId == header.planId) and held.tries or 0) + 1
+        if tries <= LEVEL_TRIES then d.waiting = { guide = guide, header = header, tries = tries, at = (Now() or 0) + LEVEL_RETRY } end
+        return
+    end
     d.planId, d.atKey = header.planId, nil
     ns:PlannerStop()
     local toLevel = level + max(0, header.toLevel - header.fromLevel)    -- (the leader's gain, from your own level)
@@ -634,7 +641,7 @@ local function PlanIn(d, text)
 end
 function ns.PlannerDuoAfterFight()
     local d = Friend()
-    if d and d.waiting and not InCombatLockdown() then ApplyPlan(d, d.waiting.guide, d.waiting.header) end
+    if d and d.waiting and not d.waiting.at and not InCombatLockdown() then ApplyPlan(d, d.waiting.guide, d.waiting.header) end   -- (a plan held for your level: the ticker)
 end
 
 -- The friend's replans: refused, and its state sent instead (once, 2 s after the first); its own
@@ -786,6 +793,8 @@ local function Tick()
         return
     end
     if d.role == "friend" then StaleState(d) end
+    local w = d.role == "friend" and d.waiting
+    if w and w.at and now >= w.at and not InCombatLockdown() then ApplyPlan(d, w.guide, w.header) end
     if d.role == "friend" and d.retryAt and now >= d.retryAt then d.retryAt = nil; QueueState() end
     StayInTouch(d, now)
 end

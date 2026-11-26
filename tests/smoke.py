@@ -18313,6 +18313,7 @@ end)
 try("13.6 leftovers D: leftovers", function()
     local CI = env.C_ChatInfo
     local saved = { source = ns.PlannerSource, map = env.C_Map, unlocked = ns.GuideUnlocked, duo = ns.plannerDuo, myState = ns.PlannerDuoMyState,
+                    level = env.UnitLevel, raw = ns.PrintRaw, guideState = ns.root.guideState, guides = ns.root.guides,
                     time = env.GetTime, combat = env.InCombatLockdown, send = CI.SendAddonMessage, lock = CI.InChatMessagingLockdown,
                     vec = rawget(env, "CreateVector2D"), enum = env.Enum, class = env.UnitClass, power = env.UnitPowerType,
                     free = env.C_Container.GetContainerNumFreeSlots, dur = env.GetInventoryItemDurability, count = env.C_Item.GetItemCount,
@@ -18336,7 +18337,9 @@ try("13.6 leftovers D: leftovers", function()
         cut = ns.PlannerLFGText(wide, 200 - fixed - 1)
         if cut:find("LFG , ", 1, true) then error("no record, cut to nothing: never 'LFG , ': " .. cut) end
         cut = ns.PlannerLFGText(wide, 200 - fixed)                                                     -- (no room at all: never empty)
-        if cut:find("LFG , ", 1, true) then error("no room: never 'LFG , ': " .. cut) end
+        if cut ~= "LFG #7001, Elwynn Forest" then error("no room: the whole id: " .. cut) end
+        if ns.PlannerLFGText({ kind = "accept", title = "Hogger", map = 1429 }) ~= "" or ns.PlannerLFGText({ kind = "accept", map = 1429 }) ~= "" then error("no quest: no line at all") end
+        if ns.PlannerFindGroup({ kind = "accept", title = "Hogger", map = 1429 }) ~= false then error("no quest: nothing goes in the chat box") end
 
         -- the duo: a "once more" left by a state job that died is dropped once no state job is queued or running
         local clock, sends = 5000, {}
@@ -18372,6 +18375,41 @@ try("13.6 leftovers D: leftovers", function()
         frames(); flush(); ns.PlannerDuoTick(); frames(); flush(); clock = clock + 3; ns.PlannerDuoTick(); frames(); flush()
         if states(before) ~= 1 or d.stateAgain or d.stateAt then error("the next state job sends one state, not two: " .. states(before)) end
 
+        -- the friend's level unreadable: the leader's plan is held, tried every 5 s, 6 times, then dropped quietly
+        ns:PlannerDuoEnd(nil, true, true); flush()
+        local level, said = nil, {}
+        env.UnitLevel = function() return level end
+        ns.PrintRaw = function(_, m) said[#said + 1] = tostring(m) end
+        ns.root.guideState, ns.root.guides = {}, {}
+        local function sendPlan(planId)
+            local body = string.format("# duo ab63 %d 0 20 22\n", planId) .. ns.GuideText({ name = "duo", steps = { { kind = "note", text = "One" }, { kind = "note", text = "Two" } } })
+            local parts = ns.ShareChunks(body)
+            for i, piece in ipairs(parts) do ns.PlannerDuoEvent("CHAT_MSG_ADDON", "FGUIPlan", string.format("SS:ab63z%d:%d:%d:plan:%s", planId, i, #parts, piece), "WHISPER", "Leo") end
+        end
+        ns.plannerDuo = { role = "friend", partner = "Leo", to = "Leo", session = "ab63", heard = clock, asked = clock, hiAt = clock, lastTick = clock }
+        d = ns.plannerDuo
+        sendPlan(5)
+        if d.planId ~= nil or not (d.waiting and d.waiting.tries == 1) then error("no level: the plan is held, not followed") end
+        clock = clock + 4; ns.PlannerDuoTick()
+        if d.waiting.tries ~= 1 then error("held: not again before 5 s") end
+        clock = clock + 1; ns.PlannerDuoTick()
+        if d.waiting.tries ~= 2 or d.planId ~= nil then error("5 s: tried again") end
+        level = 20
+        clock = clock + 5; ns.PlannerDuoTick()
+        local st = ns.GuideState()
+        if d.planId ~= 5 or d.waiting ~= nil or not (st and st.plan and #st.plan.steps == 2) then error("the level readable: the held plan is followed") end
+        level = nil
+        sendPlan(6)
+        for _ = 1, 5 do clock = clock + 5; ns.PlannerDuoTick() end
+        if not (d.waiting and d.waiting.tries == 6) then error("held through the fifth retry: " .. tostring(d.waiting and d.waiting.tries)) end
+        clock = clock + 5; ns.PlannerDuoTick()
+        if d.waiting ~= nil or d.planId ~= 5 then error("the sixth retry fails: dropped, the plan you had stays") end
+        clock = clock + 5; ns.PlannerDuoTick()
+        if #said ~= 0 then error("dropped quietly: " .. table.concat(said, ";")) end
+        ns:PlannerDuoEnd(nil, true, true); flush()
+        ns:GuideSetPlan(nil)
+        env.UnitLevel, ns.PrintRaw = saved.level, saved.raw
+
         -- the queue's cap never drops the plan just queued (final re-review N3): a waiting AT is replaced by the newer one
         ns:PlannerDuoEnd(nil, true, true); flush()
         ns.plannerDuo = { role = "lead", partner = "Mira", to = "Mira", session = "ab62", heard = clock, asked = clock, accepted = true, state = {} }
@@ -18392,6 +18430,9 @@ try("13.6 leftovers D: leftovers", function()
             local id, k, n, kd, piece = ns.ParseSharePiece(t)
             if id then got[#got + 1] = ns.ShareReceive("Leo", id, k, n, kd, piece, clock) end
         end
+        local order = {}
+        for i = before + 1, #sends do order[#order + 1] = sends[i].text:match("^D1:(%u+):") or (sends[i].text:find("^SS:") and "SS") or "?" end
+        if table.concat(order, " ", 1, 5) ~= "AT HI HI HI SS" or #order ~= 64 then error("the AT, then the words, then the pieces: " .. table.concat(order, " ", 1, 6)) end
         if #ats ~= 1 or ats[1] ~= "D1:AT:ab62:1:61:80" or his ~= 3 then error("the newest AT, every word: " .. table.concat(ats, ";") .. " " .. his) end
         if got[#got] ~= text then error("the whole plan arrives") end
         ns:PlannerDuoEnd(nil, true, true); flush()
@@ -18459,6 +18500,8 @@ try("13.6 leftovers D: leftovers", function()
     env.C_Container.GetContainerNumFreeSlots, env.GetInventoryItemDurability, env.C_Item.GetItemCount = saved.free, saved.dur, saved.count
     env.GetInventoryItemID, env.C_Item.GetItemInfoInstant = saved.itemID, saved.instant
     ns.root.planner, ns.db.plannerVendor, ns.db.plannerSupplies = saved.planner, saved.vendor, saved.supplies
+    ns:GuideSetPlan(nil)
+    env.UnitLevel, ns.PrintRaw, ns.root.guideState, ns.root.guides = saved.level, saved.raw, saved.guideState, saved.guides
     if ns.PlannerNeedsGroupReset then ns.PlannerNeedsGroupReset() end
     if not ok then error(err, 0) end
 end)
