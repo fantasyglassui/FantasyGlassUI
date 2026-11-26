@@ -87,7 +87,11 @@ local function Objectives(db, zones, quest, state)
         for area, list in pairs(type(trig[2]) == "table" and trig[2] or {}) do
             local map = zones:GetUiMapIdByAreaId(area)
             if map and type(list) == "table" then
-                for _, p in ipairs(list) do o.spots[#o.spots + 1] = { map = map, x = p[1], y = p[2] } end
+                for _, p in ipairs(list) do
+                    if type(p) == "table" and tonumber(p[1]) and tonumber(p[2]) and not (p[1] == -1 and p[2] == -1) then
+                        o.spots[#o.spots + 1] = { map = map, x = p[1], y = p[2] }
+                    end
+                end
             end
         end
         out[#out + 1] = o
@@ -290,6 +294,54 @@ local function PointerIds(t)
     return out
 end
 
+-- Questie's two big id tables (QuestPointers, NPCPointers), read once per table a slice at a time: one
+-- pass collects the keys and values (yielding every 64 steps, outside the pcall), and a plain sequence of
+-- numbers gives its values, as PointerIds reads them. Kept for the session against that table (Questie
+-- replaces the table when it rebinds, and a new one is read again). nil means "not ready yet": the table
+-- is missing, a step failed or saw a key twice (it changed under the walk), or it was replaced meanwhile.
+local ID_SLICE = 64
+local idLists = {}                -- by name: { t = the table read, ids = its ids }
+local function IdTable(name)
+    local db = Import("QuestieDB")
+    if not db then return nil end
+    local ok, t = Try(function() return db[name] end)
+    if ok and type(t) == "table" then return t end
+end
+local function IdList(name)
+    local t = IdTable(name)
+    if not t then return nil end
+    local hit = idLists[name]
+    if hit and hit.t == t then return hit.ids end
+    local seen, keys, count, numbers, size = {}, {}, 0, true, #t
+    local k
+    while true do
+        local ok, nk, nv = pcall(next, t, k)
+        if not ok then return nil end
+        if nk == nil then break end
+        if seen[nk] ~= nil then return nil end
+        seen[nk] = nv
+        count = count + 1
+        if type(nk) == "number" then keys[#keys + 1] = nk end
+        if type(nv) ~= "number" then numbers = false end
+        k = nk
+        if count % ID_SLICE == 0 then ns.PlannerYield() end
+    end
+    if #t ~= size or IdTable(name) ~= t then return nil end
+    local ids = keys
+    if numbers and count > 0 and #keys == count then
+        local list = {}
+        for i = 1, count do
+            if i % ID_SLICE == 0 then ns.PlannerYield() end
+            local id = seen[i]
+            if id == nil then list = nil; break end
+            list[i] = id
+        end
+        if list then ids = list end
+    end
+    idLists[name] = { t = t, ids = ids }
+    return ids
+end
+
 -- Where the places of one kind are. Kinds: innkeeper, repair, classTrainer, mailbox, vendor (arg
 -- Food, Drink or Ammo), professionTrainer (arg a skill line id) and mountVendor. Each is a list of
 -- { name, map, x, y, id }, one per spawn; gathered once per session per (kind, arg).
@@ -353,15 +405,16 @@ local function KnownIds(kind, arg)
     return list and PointerIds(list) or nil
 end
 
--- Every id carrying a flag, by scanning Questie's NPC table (the fallback when no list is saved).
+-- Every id carrying a flag, by scanning Questie's NPC table (the fallback when no list is saved);
+-- nil while Questie has no flags or no NPC table yet (not ready: the scan is not kept).
 local function FlagIds(env, flagName)
     local db, out = env.db, {}
     local flagsOk, flags = Try(function() return db.npcFlags end)
     local mask = flagsOk and type(flags) == "table" and tonumber(flags[flagName])
-    local okP, pointers = Try(function() return db.NPCPointers end)
-    if not (mask and okP and type(pointers) == "table") then return out end
-    local okI, ids = Try(PointerIds, pointers)
-    for _, id in ipairs(okI and ids or {}) do
+    if not mask then return nil end
+    local ids = IdList("NPCPointers")
+    if not ids then return nil end
+    for _, id in ipairs(ids) do
         ns.PlannerYield()
         local ok, f = Try(db.QueryNPCSingle, id, "npcFlags")
         if ok and HasFlag(f, mask) then
@@ -448,8 +501,9 @@ local function Places(which, env, kind, arg)
                 -- The NPC scan is costly and is done once per session per kind, even when it finds nothing.
                 hit = scans[kind]
                 if not hit then
-                    hit = Resolve(env, FlagIds(env, FLAG_NAMES[kind]), false)
-                    scans[kind] = hit
+                    local ids = FlagIds(env, FLAG_NAMES[kind])
+                    hit = ids and Resolve(env, ids, false) or {}
+                    if ids then scans[kind] = hit end          -- (not ready: asked again next time)
                 end
             end
         else
@@ -492,12 +546,7 @@ function ns.PlannerSource()
         return nil, "changed"
     end
     local src = { kind = "questie" }
-    function src.ids()
-        local ok, out = Try(PointerIds, env.db.QuestPointers)
-        if ok then return out end
-        changed = true
-        return {}
-    end
+    function src.ids() return IdList("QuestPointers") or {} end      -- (not ready yet: none this time)
     -- A new level empties the record cache (the level window moved).
     function src.begin(level)
         if level ~= cacheLevel then recCache, cacheLevel = {}, level end
@@ -543,7 +592,9 @@ function ns.PlannerSource()
         if hit then return hit end
         hit = {}
         if type(env.db.QueryQuestSingle) == "function" then
-            for _, id in ipairs(src.ids()) do
+            local ids = IdList("QuestPointers")
+            if not ids then return {} end                   -- (not ready yet: not kept)
+            for _, id in ipairs(ids) do
                 ns.PlannerYield()
                 local ok, v = Try(env.db.QueryQuestSingle, id, "zoneOrSort")
                 if ok and tonumber(v) == zone then hit[#hit + 1] = id end
@@ -594,9 +645,9 @@ function ns.PlannerSource()
         local okF, faction = Try(UnitFactionGroup, "player")
         local mine = okF and (faction == "Alliance" and "A" or faction == "Horde" and "H") or nil
         local cells = {}
-        local okP, pointers = Try(function() return env.db.NPCPointers end)
-        local okI, ids = Try(PointerIds, okP and type(pointers) == "table" and pointers or {})
-        for _, id in ipairs(okI and ids or {}) do
+        local ids = IdList("NPCPointers")
+        if not ids then return {} end                       -- (not ready yet: not kept)
+        for _, id in ipairs(ids) do
             ns.PlannerYield()
             local okL, lo = Try(env.db.QueryNPCSingle, id, "minLevel")
             local okH, hi = Try(env.db.QueryNPCSingle, id, "maxLevel")
@@ -696,7 +747,7 @@ end
 
 function ns.PlannerSourceReset()
     changed, waiting, placeCaches, recCache, cacheLevel = false, false, { questie = {}, log = {}, questieScan = {}, logScan = {} }, {}, nil
-    zoneCache, grindCache, mapCache = {}, {}, nil
+    zoneCache, grindCache, mapCache, idLists = {}, {}, nil, {}
     ns.plannerExploreMaps = {}                  -- (PlannerPath.lua: the maps known to report exploration)
 end
 
