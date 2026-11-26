@@ -895,6 +895,15 @@ try("Item counts", function()
         if not joined:find(want, 1, true) then error("missing '" .. want .. "' in: " .. joined) end
     end
     if ns:AddItemCounts(tip, "|Hitem:999999|h[Nothing]|h") then error("counts for an item nobody has") end
+    -- (12.4) a number item id, as /fgui shop passes it, finds what an alt holds
+    local owners, me = ns:ItemOwners(101)
+    local alt = type(owners) == "table" and owners["Alt - Realm"]
+    if not (alt and alt.bags == 5 and alt.bank == 7) then error("a number item id does not find the alt's count") end
+    if me == "Alt - Realm" then error("the alt is not the character being played") end
+    local others = 0
+    for owner, o in pairs(owners) do if owner ~= me then others = others + (o.bags or 0) + (o.bank or 0) end end
+    if others ~= 15 then error("a number item id counts " .. others .. " held by other characters, not 15") end
+    if ns:ItemOwners(999999) ~= nil then error("a number item id nobody has finds owners") end
 end)
 try("Click cast", function()
     ns.db.clickCast = { { mod = "shift", button = 1, spell = "Renew" }, { mod = "", button = 3, spell = "Heal" }, { mod = "bogus", button = 9, spell = "x" } }
@@ -7875,6 +7884,439 @@ try("11.7: ready me, boss notes, death recap, backups, history, templates, packs
     if #worth ~= 1 or worth[1].item.id ~= 1 or worth[1].total ~= 1000 then error("worth selling") end
     ns:ShowWorthSelling()
     if ns.auctionHelperTest then ns.auctionHelperTest.Dress() end
+    -- the price store: one per auction house (realm and faction), the old prices moved in once
+    local function HouseAs(realm, faction)                     -- (the key is kept for the session: let it go after a change)
+        env.GetRealmName = function() return realm end
+        env.UnitFactionGroup = function() return faction end
+        ns.PriceHouseKeyReset()
+    end
+    do
+        local oldRealm, oldFaction = env.GetRealmName, env.UnitFactionGroup
+        local okP, errP = pcall(function()
+            HouseAs("Stormreach", "Alliance")
+            if ns.PriceHouseKey() ~= "Stormreach|Alliance" then error("house key") end
+            env.UnitFactionGroup = function() return "Horde" end
+            if ns.PriceHouseKey() ~= "Stormreach|Alliance" then error("the key is kept for the session") end
+            fireEvent("UNIT_FACTION", "player")
+            if ns.PriceHouseKey() ~= "Stormreach|Horde" then error("a faction change lets the key go") end
+            HouseAs("Stormreach", "Neutral")
+            if ns.PriceHouseKey() ~= nil then error("a neutral character has no auction house") end
+            local root = { auctionSeen = { [10] = { price = 500, day = 20261120, hist = { [20261120] = 500 } }, [11] = "junk", [12] = { price = "x" } } }
+            local moved = ns.PricesMigrate(root, "Stormreach|Alliance")
+            if moved ~= 1 or root.auctionSeen ~= nil or not root.prices.migrated or root.prices.houses["Stormreach|Alliance"].items[10].price ~= 500 then error("migrated once") end
+            if ns.PricesMigrate(root, "Stormreach|Alliance") ~= 0 then error("only once") end
+            local root2 = { auctionSeen = { [10] = { price = 1, day = 1 } } }
+            if ns.PricesMigrate(root2, nil) ~= 0 or not root2.auctionSeen then error("no key: wait, keep the old prices") end
+            -- the house already has the item: the later day gives the price, the histories are merged (the lower each day)
+            local root3 = { auctionSeen = { [10] = { price = 7, day = 20261101, hist = { [20261101] = 7, [20261110] = 4 } }, [11] = { price = 9, day = 20261124 } },
+                prices = { v = 1, houses = { K = { items = { [10] = { price = 5, day = 20261110, hist = { [20261110] = 5 } }, [11] = { price = 3, day = 20261110 } } } } } }
+            ns.PricesMigrate(root3, "K")
+            local m10 = root3.prices.houses.K.items[10]
+            if m10.price ~= 5 or root3.prices.houses.K.items[11].price ~= 9 then error("the later day wins") end
+            if m10.hist[20261101] ~= 7 or m10.hist[20261110] ~= 4 then error("both histories are kept, the lower price each day") end
+            local long = { price = 1, day = 20261130, hist = {} }
+            for d = 1, 10 do long.hist[20261100 + d] = d end
+            local root4 = { auctionSeen = { [10] = long }, prices = { v = 1, houses = { K = { items = { [10] = { price = 2, day = 20261120, hist = { [20261120] = 2, [20261121] = 2, [20261122] = 2, [20261123] = 2, [20261124] = 2, [20261125] = 2, [20261126] = 2 } } } } } } }
+            ns.PricesMigrate(root4, "K")
+            local nh = 0
+            for _ in pairs(root4.prices.houses.K.items[10].hist) do nh = nh + 1 end
+            if nh ~= 14 or root4.prices.houses.K.items[10].price ~= 1 then error("merged histories keep 14 days: " .. nh) end
+            -- a hidden realm is no key
+            env.GetRealmName = function() return setmetatable({ __secret = true }, secretmt) end
+            ns.PriceHouseKeyReset()
+            if ns.PriceHouseKey() ~= nil then error("a hidden realm is no key") end
+            -- the move happens where you first open the auction house, never for a neutral character
+            local keepSeen, keepPrices = ns.root.auctionSeen, ns.root.prices
+            local okM, errM = pcall(function()
+                -- before the first auction house visit, the old prices are still read (never written)
+                ns.root.auctionSeen = { [30] = { price = 70, day = ns.Today(), hist = { [1] = 70, [2] = 70 } }, [31] = "odd" }
+                ns.root.prices = nil
+                HouseAs("Stormreach", "Alliance")
+                if not ns.PriceEntry(30) or ns.PriceEntry(30).price ~= 70 or ns.PriceEntry(31) then error("before the move: the old prices are read") end
+                local ft = ns.FarmTotals({ elapsed = 60, gold = 0, items = { [30] = { n = 2, vendor = 1 } } }, 0, nil)
+                if ft.value ~= 140 then error("before the move: farming totals count the old price: " .. tostring(ft.value)) end
+                local zones = {}
+                ns.FarmZonesSave({ zones = { Elwynn = { secs = 120, gold = 0, items = { [30] = { n = 3, vendor = 1 } } } } }, zones, 100)
+                if not zones.Elwynn or zones.Elwynn[1].value ~= 210 then error("before the move: saved zone values keep auction prices") end
+                local keepMem, keepTipG = ns.db.auctionMemory, env.GameTooltip
+                local got = {}
+                local t0 = setmetatable({ AddDoubleLine = function(_, l) got[#got + 1] = l end }, { __index = function() return function() end end })
+                env.GameTooltip = t0
+                ns.db.auctionMemory = true
+                ns.PriceTooltip(t0, { id = 30 })
+                env.GameTooltip, ns.db.auctionMemory = keepTipG, keepMem
+                if not got[1] or not tostring(got[1]):find(ns:Tr("Auction house"), 1, true) then error("before the move: the tooltip shows the old price") end
+                if not ns.PriceNote(30, 50) or ns.root.auctionSeen[30].price ~= 70 then error("the old prices are never written") end
+                ns.root.prices = nil
+                HouseAs("Stormreach", "Neutral")
+                if ns.PriceEntry(30) then error("a neutral character reads nothing") end
+                fireEvent("AUCTION_HOUSE_SHOW")
+                if not ns.root.auctionSeen or (ns.root.prices and ns.root.prices.migrated) then error("a neutral character moves nothing") end
+                HouseAs("Stormreach", "Alliance")
+                fireEvent("AUCTION_HOUSE_SHOW")
+                if ns.root.auctionSeen or not ns.PriceEntry(30) or ns.PriceEntry(30).price ~= 70 then error("moved when the auction house opens") end
+            end)
+            ns.root.auctionSeen, ns.root.prices = keepSeen, keepPrices
+            if not okM then error(errM, 0) end
+            HouseAs("Stormreach", "Alliance")
+            -- old characters' odd entries: skipped or forgotten, every reader still works
+            ns.root.auctionSeen = { [20] = { price = 300, day = ns.Today(), hist = { [ns.Today()] = 300, [1] = "odd" } }, [21] = 5, [22] = { price = "x", day = "y" },
+                [23] = { day = 1 }, x = { price = 1, day = 1 } }
+            ns.root.prices = nil
+            local okR, errR = pcall(function()
+                ns.PricesStart(ns.root, ns.PriceHouseKey(), ns.Today())
+                if ns.root.auctionSeen ~= nil or not ns.PriceEntry(20) or ns.PriceEntry(20).price ~= 300 or ns.PriceEntry(21) or ns.PriceEntry(22) or ns.PriceEntry(23) then error("odd entries") end
+                if not ns.PriceNote(20, 250) or ns.PriceEntry(20).price ~= 250 or ns.PriceEntry(20).listed ~= nil or ns.PriceEntry(20).seenDay ~= ns.Today() then error("browsing tops the store up, never the listed count") end
+                if ns.PriceNote(20, setmetatable({ __secret = true }, secretmt)) or ns.PriceNote(20, 0) then error("hidden or no price is ignored") end
+                local t = ns.FarmTotals({ elapsed = 60, gold = 0, items = { [20] = { n = 2, vendor = 1 } } }, 0, nil)
+                if t.value ~= 500 then error("farming totals read the store: " .. tostring(t.value)) end
+                ns:ShowWorthSelling()
+                local lines = ns:CheckNew(true)
+                for _, l in ipairs(lines) do if l:find("Auction", 1, true) and l:find("error:", 1, true) then error("/fgui check: " .. l) end end
+                if not table.concat(ns:SelfCheck(true), "\n"):find("prices kept here: 1", 1, true) then error("the self-check counts the store") end
+                HouseAs("Stormreach", "Horde")
+                if ns.PriceEntry(20) ~= nil then error("prices never cross factions") end
+                -- at login the current house is cleaned a slice at a time (200 entries a frame with no clock)
+                local items = {}
+                for i = 1, 500 do items[i] = { price = 1, day = (i % 2 == 0) and 20261125 or 20260101 } end
+                ns.PricesForget(items, 20261125)
+                local calls = 1
+                while ns.PricesForgetStep() do calls = calls + 1 end
+                local left = 0
+                for _ in pairs(items) do left = left + 1 end
+                if calls < 3 or left ~= 250 then error("the cleaning is sliced: " .. calls .. " calls, " .. left .. " left") end
+            end)
+            ns.root.auctionSeen, ns.root.prices = keepSeen, keepPrices
+            if not okR then error(errR, 0) end
+            HouseAs("Stormreach", "Horde")
+            if ns.PriceEntry(10) ~= nil then error("prices never cross factions") end
+            HouseAs("Stormreach", nil)
+            if ns.PriceNote(10, 100) or next(ns.PriceItems()) ~= nil then error("no key: nothing noted, nothing read") end
+        end)
+        env.GetRealmName, env.UnitFactionGroup = oldRealm, oldFaction
+        ns.PriceHouseKeyReset()
+        if not okP then error(errP, 0) end
+        if ns.PriceFreshText(nil, env.time()) ~= ns:Tr("Never scanned") then error("never scanned") end
+        if ns.PriceFreshText({ scanAt = env.time() }, env.time()) ~= ns:Tr("Scanned today") then error("today") end
+        if ns.PriceFreshText({ scanAt = env.time() - 86400 }, env.time()) ~= ns:Tr("Scanned yesterday") then error("yesterday") end
+        if ns.PriceFreshText({ scanAt = env.time() - 3 * 86400 }, env.time()) ~= string.format(ns:Tr("Scanned %d days ago"), 3) then error("days ago") end
+    end
+    -- Scan prices: the rows, the write, the cooldown, and whole reads (a fight, a closed auction house, rows read again)
+    do
+        local hidden = {}
+        local rows = { [0] = { 1, 1000, 5 }, [1] = { 4, 2000, 5 }, [2] = { 2, 0, 6 }, [3] = { 1, 300, nil }, [4] = { 1, hidden, 8 }, [5] = { 0, 50, 9 } }
+        local function read(i) local r = rows[i]; return r[1], r[2], r[3] end
+        local realIsSecret = ns.IsSecret
+        ns.IsSecret = function(self, v) if rawequal(v, hidden) then return true end return realIsSecret(self, v) end
+        local acc = {}
+        local okS, retry, skipped = pcall(ns.PriceScanRows, read, 6, acc, 0, 99)
+        ns.IsSecret = realIsSecret
+        if not okS then error(retry, 0) end
+        if acc[5].low ~= 500 or acc[5].listed ~= 5 then error("rows: the lowest unit price and the count") end
+        if acc[6].low ~= nil or acc[6].listed ~= 2 then error("bid only: listed, no price") end
+        if #retry ~= 1 or retry[1] ~= 3 then error("a row with no item is read again") end
+        if acc[8] or skipped ~= 1 then error("a row with a hidden value is skipped, and counted") end
+        if acc[9].low ~= 50 or acc[9].listed ~= 0 then error("count 0") end
+        local house = { items = { [5] = { price = 900, day = 20261120, hist = { [20261120] = 900 } }, [7] = { price = 1234, day = 20261120, listed = 3 } } }
+        local nw = ns.PriceScanWrite(house, { [5] = acc[5], [6] = acc[6] }, 20261125, 1800000000)
+        if nw ~= 2 or house.items[5].price ~= 500 or house.items[5].listed ~= 5 or house.items[5].hist[20261125] ~= 500 or house.items[5].listedDay ~= 20261125 then error("write: a scanned item") end
+        if house.items[7].listed ~= 0 or house.items[7].price ~= 1234 or house.items[7].listedDay ~= 20261125 then error("write: an item nobody lists keeps its price") end
+        if house.scanAt ~= 1800000000 or house.scanItems ~= 2 or house.listedAt ~= 1800000000 then error("write: the scan's time") end
+        if house.items[6].listed ~= 2 or house.items[6].price ~= nil then error("write: bid only") end
+        local house2 = { items = { [7] = { price = 1234, day = 20261120, listed = 3 } } }
+        ns.PriceScanWrite(house2, { [5] = acc[5] }, 20261125, 1800000000, false)
+        if house2.items[7].listed ~= 3 or house2.listedAt ~= nil or house2.items[5].price ~= 500 then error("an incomplete scan leaves listed alone") end
+        local keepPrices, keepSeenW = ns.root.prices, ns.root.auctionSeen
+        ns.root.auctionSeen = nil
+        local oldRealm, oldFaction, oldAH, oldCombat = env.GetRealmName, env.UnitFactionGroup, env.C_AuctionHouse, env.InCombatLockdown
+        local okW, errW = pcall(function()
+            ns.root.prices = { v = 1, lastScan = 1000 - 60 }
+            local ready, left = ns.PriceScanReady(1000)
+            if ready or left ~= 840 then error("the cooldown: " .. tostring(left)) end
+            ns.root.prices = { v = 1 }
+            if not ns.PriceScanReady(1000) then error("ready") end
+            HouseAs("Stormreach", "Alliance")
+            local calls, combat, total, missingOnce, readAt, distinct, hideHalf = 0, false, 3, {}, {}, false, false
+            env.InCombatLockdown = function() return combat end
+            env.C_AuctionHouse = { ReplicateItems = function() calls = calls + 1 end, GetNumReplicateItems = function() return total end,
+                GetReplicateItemInfo = function(i)
+                    readAt[i] = true
+                    if type(i) ~= "number" or i < 0 or i >= total then error("row " .. tostring(i) .. " is outside the list") end
+                    local id = distinct and (1000 + i) or (100 + (i % 3))
+                    if missingOnce[i] then missingOnce[i] = nil; id = nil end
+                    local count = 2
+                    if hideHalf and i % 2 == 0 then count = setmetatable({ __secret = true }, secretmt) end
+                    return "Name", 1, count, 1, true, 1, nil, 0, 0, 1000 * (1 + i % 3), 0, false, nil, "Owner", nil, 0, id, true
+                end }
+            local T = ns.priceScanTest
+            local function Run(limit) for _ = 1, limit or 60 do if not T.state() then return end; T.Read() end end
+            local function Fresh() ns.root.prices = { v = 1 } end
+            local function Said(from, text) for i = from + 1, #printed do if tostring(printed[i]):find(text, 1, true) then return true end end return false end
+            if ns.auctionScanTest.Label(1000) ~= ns:Tr("Scan prices") then error("the button when ready") end
+            combat = true
+            if ns:PriceScanStart() ~= false or calls ~= 0 then error("never in a fight") end
+            combat = false
+            if ns:PriceScanStart() ~= true or calls ~= 1 or ns.root.prices.lastScan ~= env.time() then error("the scan starts") end
+            if ns:PriceScanStart() then error("one at a time") end
+            if ns.auctionScanTest.Label() ~= ns:Tr("Waiting for the list…") then error("waiting: " .. ns.auctionScanTest.Label()) end
+            fireEvent("REPLICATE_ITEM_LIST_UPDATE")
+            Run()
+            local h = ns.PriceHouse()
+            if T.state() or not h or h.scanItems ~= 3 or ns.PriceEntry(100).price ~= 500 or ns.PriceEntry(101).price ~= 1000 or ns.PriceEntry(102).listed ~= 2 then error("a whole read is written") end
+            if not readAt[0] or readAt[total] then error("the rows are counted from 0 to n - 1") end
+            if h.listedAt == nil then error("a whole list is a full scan") end
+            if ns.auctionScanTest.Label(env.time() + 60) ~= string.format(ns:Tr("Scan in %d:%02d"), 14, 0) then error("the countdown: " .. ns.auctionScanTest.Label(env.time() + 60)) end
+            if ns:PriceScanStart() then error("not again within 15 minutes") end
+            -- a complete scan marks what the house knew and nobody lists now
+            ns.root.prices = { v = 1, houses = { ["Stormreach|Alliance"] = { items = { [7] = { price = 1234, day = 20261120, listed = 3 } } } } }
+            ns:PriceScanStart(); fireEvent("REPLICATE_ITEM_LIST_UPDATE"); Run()
+            if ns.PriceEntry(7).listed ~= 0 or ns.PriceEntry(7).price ~= 1234 then error("a full scan: listed 0 for the item it did not find") end
+            -- a fight starts after the first slice: nothing is written until it ends
+            total = 450
+            Fresh()
+            if not ns:PriceScanStart() then error("the second scan starts") end
+            fireEvent("REPLICATE_ITEM_LIST_UPDATE")
+            T.Read()
+            if not T.state() or ns.PriceHouse() then error("450 rows take more than one slice") end
+            combat = true
+            T.Read(); T.Read()
+            if ns.auctionScanTest.Label() ~= ns:Tr("Paused for combat") then error("paused: " .. ns.auctionScanTest.Label()) end
+            combat = false
+            T.Read()
+            if ns.PriceHouse() or T.state().i ~= 200 then error("a fight pauses the read") end
+            fireEvent("PLAYER_REGEN_ENABLED")
+            Run()
+            if T.state() or not ns.PriceHouse() or ns.PriceEntry(100).listed ~= 300 then error("the read goes on after the fight") end
+            -- the auction house closes mid-read: nothing written
+            Fresh()
+            local mark = #printed
+            if not ns:PriceScanStart() then error("the third scan starts") end
+            fireEvent("REPLICATE_ITEM_LIST_UPDATE")
+            T.Read()
+            fireEvent("AUCTION_HOUSE_CLOSED")
+            T.Read()
+            if T.state() or ns.PriceHouse() or not Said(mark, "closed before the scan") then error("closed mid-read: thrown away") end
+            -- no list within a minute
+            Fresh()
+            mark = #printed
+            ns:PriceScanStart()
+            runTimers()
+            if T.state() or not Said(mark, "did not send its list") then error("no list: given up") end
+            -- a row whose item isn't loaded yet is read again
+            total = 3
+            Fresh()
+            missingOnce[1] = true
+            ns:PriceScanStart()
+            fireEvent("REPLICATE_ITEM_LIST_UPDATE")
+            T.Read()
+            if not T.state() or ns.PriceHouse() then error("waits to read a row again") end
+            runTimers()
+            Run()
+            if T.state() or ns.PriceEntry(101) == nil then error("the row read again is written") end
+            -- a big list: the entries are built in slices too, and the house is untouched until the last one
+            total, distinct = 5000, true
+            Fresh()
+            ns:PriceScanStart(); fireEvent("REPLICATE_ITEM_LIST_UPDATE")
+            for _ = 1, 100 do if not T.state() or T.state().phase == "writing" then break end; T.Read() end
+            if not T.state() or T.state().phase ~= "writing" or ns.PriceHouse() then error("the read is done, nothing written yet") end
+            local writes = 0
+            while T.state() and writes < 100 do
+                if ns.PriceHouse() then error("the house changed before the write was done") end
+                T.Read(); writes = writes + 1
+            end
+            if writes < 2 or ns.PriceHouse().scanItems ~= 5000 or ns.PriceEntry(1000).price ~= 500 then error("the write is sliced: " .. writes .. " calls") end
+            -- a price browsed while the entries are being built: its day low is kept, and its price when it is lower
+            total, distinct = 450, true
+            ns.root.prices = { v = 1, houses = { ["Stormreach|Alliance"] = { items = { [1000] = { price = 900, day = 20261120, hist = { [20261120] = 900 } } } } } }
+            ns:PriceScanStart(); fireEvent("REPLICATE_ITEM_LIST_UPDATE")
+            for _ = 1, 20 do if T.state().phase == "writing" then break end; T.Read() end
+            T.Read()
+            local stagedFirst = T.state() and T.state().staged[1000] ~= nil
+            if not T.state() or not ns.PriceNote(1000, 1) then error("(the browse during the write)") end
+            Run()
+            local e1000 = ns.PriceEntry(1000)
+            if T.state() or e1000.hist[ns.Today()] ~= 1 or e1000.seenDay ~= ns.Today() then error("the browse's day low is kept") end
+            if (stagedFirst and e1000.price ~= 1) or (not stagedFirst and e1000.price ~= 500) then error("the browse's price: " .. tostring(e1000.price)) end
+            -- an empty reply where the house knew more than 50 items: a failed scan, nothing written
+            distinct = false
+            local many = {}
+            for i = 1, 60 do many[i] = { price = 10, day = 20261120, listed = 1 } end
+            ns.root.prices = { v = 1, houses = { ["Stormreach|Alliance"] = { items = many } } }
+            total = 0
+            mark = #printed
+            ns:PriceScanStart(); fireEvent("REPLICATE_ITEM_LIST_UPDATE"); Run()
+            if T.state() or ns.PriceHouse().scanAt or many[1].listed ~= 1 or not Said(mark, "came back empty") then error("an empty scan is a failed scan") end
+            Fresh()
+            mark = #printed
+            ns:PriceScanStart(); fireEvent("REPLICATE_ITEM_LIST_UPDATE"); Run()
+            if T.state() or ns.PriceHouse() or not ns.root.prices.lastScan or not Said(mark, "came back empty") then error("an empty reply is never a scan, even into an empty house; the cooldown runs") end
+            -- half the rows hidden: prices are written, but nothing is said about what nobody lists
+            total, hideHalf = 40, true
+            ns.root.prices = { v = 1, houses = { ["Stormreach|Alliance"] = { items = { [7] = { price = 1234, day = 20261120, listed = 3 } } } } }
+            ns:PriceScanStart(); fireEvent("REPLICATE_ITEM_LIST_UPDATE"); Run()
+            local hh = ns.PriceHouse()
+            if T.state() or not hh.scanAt or hh.listedAt or ns.PriceEntry(7).listed ~= 3 or not ns.PriceEntry(101) then error("too many rows unread: prices only") end
+            if not tostring(ns.priceScanState):find("20 of 40 rows unread", 1, true) then error("the unread rows are counted: " .. tostring(ns.priceScanState)) end
+            hideHalf, total = false, 3
+            -- hidden values in the list: no error, nothing stored
+            Fresh()
+            env.C_AuctionHouse.GetReplicateItemInfo = function() local x = setmetatable({ __secret = true }, secretmt); return "N", 1, x, 1, true, 1, nil, 0, 0, x, 0, false, nil, "O", nil, 0, x, true end
+            ns:PriceScanStart()
+            fireEvent("REPLICATE_ITEM_LIST_UPDATE")
+            Run()
+            if T.state() or next(ns.PriceItems()) ~= nil then error("hidden rows are skipped") end
+        end)
+        ns.root.prices, ns.root.auctionSeen = keepPrices, keepSeenW
+        env.GetRealmName, env.UnitFactionGroup, env.C_AuctionHouse, env.InCombatLockdown = oldRealm, oldFaction, oldAH, oldCombat
+        ns.PriceHouseKeyReset()
+        if not okW then error(errW, 0) end
+        ns.auctionScanTest.Dress()
+    end
+    -- Sell now, Hold, Vendor it
+    do
+        local today = 20261125
+        local hist = { [20261120] = 1000, [20261121] = 1000, [20261122] = 1000, [20261123] = 950, [20261124] = 1050 }
+        local function E(price, day, extra) local e = { price = price, day = day or today, hist = hist }; for k, v in pairs(extra or {}) do e[k] = v end; return e end
+        local H = ns.SellHint
+        local k, pct = H(E(1200), 0, 2, false, today, nil)
+        if k ~= "sell" or pct ~= 20 then error("sell now: " .. tostring(k) .. " " .. tostring(pct)) end
+        k, pct = H(E(700), 0, 2, false, today, nil)
+        if k ~= "hold" or pct ~= 30 then error("hold: " .. tostring(k) .. " " .. tostring(pct)) end
+        if H(E(700), 650, 2, false, today, nil) ~= "vendor" then error("a vendor pays about as much (700 <= 747.5)") end
+        if H(E(700), 650, 3, false, today, nil) ~= "hold" then error("a rare cheap today: hold, never vendor it") end
+        if H(E(700, today - 8), 900, 3, false, today, nil) ~= nil or H(E(700, today - 8), 900, 4, false, today, nil) ~= nil then error("a rare or epic near a vendor's price gets no hint, never vendor it") end
+        if H(E(700, today - 8), 900, 2, false, today, nil) ~= "vendor" then error("(the same, uncommon: vendor it)") end
+        if H(E(700, today - 8), 900, nil, false, today, nil) ~= nil then error("quality not known yet: no vendor it") end
+        if H(E(700), 900, 3, false, today, nil) ~= nil then error("hold needs a usual price above what a vendor pays") end
+        if H(E(1200, today - 8), 0, 2, false, today, nil) ~= nil then error("an old price gives no sell or hold") end
+        if H(nil, 50, 1, false, today, today - 1) ~= "vendor" then error("nobody lists it: uncommon or lower") end
+        if H(nil, 50, 3, false, today, today - 1) ~= nil then error("a rare nobody lists is never vendor it") end
+        if H(nil, 50, 1, false, today, today - 5) ~= nil then error("an old scan says nothing about who lists it") end
+        if H(nil, 50, 1, false, today, nil) ~= nil then error("never scanned: nothing about who lists it") end
+        if H(E(1200, nil, { listed = 0 }), 50, 2, false, today, today) ~= "vendor" then error("listed 0, uncommon: vendor it") end
+        if H(E(1200, nil, { listed = 0, seenDay = today }), 50, 2, false, today, today) ~= "sell" then error("seen listed since the scan: not nobody lists it") end
+        if H(E(1200), 50, 2, true, today, today) ~= nil then error("bound: no hint") end
+        if H(nil, 0, 1, false, today, today) ~= nil then error("no vendor price, never seen: no hint") end
+        if H({ price = 1200, day = today, hist = { [1] = 1000, [2] = 1000 } }, 0, 2, false, today, nil) ~= nil then error("two days of history are not enough") end
+        if H({ day = today, listed = 2 }, 50, 1, false, today, today) ~= nil then error("bid only, listed: no hint") end
+        -- the tooltip lines (prices first, then the hint), bound items, and the bag window
+        local oldRealm, oldFaction, keepPrices, realGII, keepTip = env.GetRealmName, env.UnitFactionGroup, ns.root.prices, ns.GetItemInfo, env.GameTooltip
+        local realFor, keepOn, keepMem, keepShould = ns.SellHintFor, ns.db.sellHints, ns.db.auctionMemory, ns.ShouldSell
+        local I = env.C_Item
+        local keepLoc, keepBound, keepSoul = rawget(I, "GetItemLocation"), rawget(I, "IsBound"), rawget(env, "ITEM_SOULBOUND")
+        local C = env.C_Container
+        local keepSlots, keepInfo = C.GetContainerNumSlots, C.GetContainerItemInfo
+        local keepSeenT = ns.root.auctionSeen
+        ns.root.auctionSeen = nil
+        local keepDate, keepTime = env.date, env.time
+        local okT, errT = pcall(function()
+            HouseAs("Stormreach", "Alliance")
+            -- "nobody lists it" is as fresh as the last full scan, not the last scan
+            env.date, env.time = function(f, t) return os.date(f, t) end, function() return os.time() end
+            ns.root.prices = { v = 1, houses = { ["Stormreach|Alliance"] = { items = {}, scanAt = os.time(), listedAt = os.time() - 2 * 86400 } } }
+            local realGII0 = ns.GetItemInfo
+            ns.GetItemInfo = function(self, id) if id == 4244 then return "Cloth", "|Hitem:4244|h[Cloth]|h", 1, 10, 1, "Trade Goods", "", 20, "", 1, 50, 7, 0, 0 end return realGII0(self, id) end
+            local text, fresh = ns.SellHintLine(4244)
+            ns.GetItemInfo = realGII0
+            env.date, env.time = keepDate, keepTime
+            if text ~= ns:Tr("Vendor it: nobody lists it here") or fresh ~= string.format(ns:Tr("Scanned %d days ago"), 2) then error("nobody lists it, and how fresh: " .. tostring(text) .. " | " .. tostring(fresh)) end
+            ns.root.prices = { v = 1, houses = { ["Stormreach|Alliance"] = { items = { [4242] = { price = 1200, day = ns.Today(), hist = hist, listed = 3, listedDay = ns.Today() },
+                [4243] = { price = 1200, day = ns.Today(), hist = hist } }, scanAt = env.time() } } }
+            ns.GetItemInfo = function(self, id)
+                if id == 4242 then return "Thing", "|Hitem:4242|h[Thing]|h", 2, 10, 1, "Trade Goods", "", 20, "", 1, 50, 7, 0, 0 end
+                if id == 4243 then return "Heirloom", "|Hitem:4243|h[Heirloom]|h", 2, 10, 1, "Armor", "", 1, "", 1, 50, 4, 0, 7 end
+                return realGII(self, id)
+            end
+            local lines = {}
+            local tip = setmetatable({ AddDoubleLine = function(_, l, r) lines[#lines + 1] = { l, r } end }, { __index = function() return function() end end })
+            env.GameTooltip = tip
+            local sell = string.format(ns:Tr("Sell now: %d%% above its usual price"), 20)
+            ns.db.auctionMemory, ns.db.sellHints = true, true
+            ns.sellHintsTest.Tip(tip, { id = 4242 })
+            if #lines ~= 3 or not tostring(lines[1][1]):find(ns:Tr("Auction house"), 1, true) or not tostring(lines[2][1]):find(string.format(ns:Tr("Usual price (%d days)"), 5), 1, true)
+                or lines[3][1] ~= sell or lines[3][2] ~= ns:Tr("Scanned today") then error("the tooltip: the prices, then the hint: " .. tostring(lines[3] and lines[3][1])) end
+            lines = {}
+            ns.db.auctionMemory = false
+            ns.sellHintsTest.Tip(tip, { id = 4242 })
+            if #lines ~= 1 or lines[1][1] ~= sell then error("prices off: the hint alone") end
+            lines = {}
+            ns.db.auctionMemory, ns.db.sellHints = true, false
+            ns.sellHintsTest.Tip(tip, { id = 4242 })
+            if #lines ~= 2 then error("hints off: the prices alone") end
+            ns.db.sellHints = true
+            -- a bound item: from its place in the bags, or from the game's Soulbound line
+            rawset(I, "GetItemLocation", function(guid) if guid == "G1" then return { guid = guid } end end)
+            rawset(I, "IsBound", function(loc) return loc.guid == "G1" end)
+            lines = {}
+            ns.db.auctionMemory = false
+            ns.sellHintsTest.Tip(tip, { id = 4242, guid = "G1" })
+            if #lines ~= 0 then error("a soulbound item (from its bag place) gets no hint") end
+            rawset(I, "GetItemLocation", nil)
+            rawset(env, "ITEM_SOULBOUND", "Soulbound")
+            ns.sellHintsTest.Tip(tip, { id = 4242, lines = { { leftText = "Thing" }, { leftText = "Soulbound" } } })
+            if #lines ~= 0 then error("a soulbound item (from its tooltip line) gets no hint") end
+            ns.sellHintsTest.Tip(tip, { id = 4242, lines = { { leftText = setmetatable({ __secret = true }, secretmt) } } })
+            if #lines ~= 1 then error("an unbound item still gets its hint") end
+            if ns.SellHintFor(4243) ~= nil then error("bound to the account (bind type 7): no hint") end
+            ns.root.prices.houses["Stormreach|Alliance"].items[4242].listedDay = nil
+            lines = {}
+            ns.sellHintsTest.Tip(tip, { id = 4242 })
+            if not lines[1] or lines[1][2] ~= ns:Tr("today") then error("browsed only: when it was seen") end
+            ns.sellHintsTest.Tip(tip, { id = setmetatable({ __secret = true }, secretmt) })
+            HouseAs("Stormreach", nil)
+            lines = {}
+            ns.sellHintsTest.Tip(tip, { id = 4242 })
+            if #lines ~= 0 then error("no house: no hint") end
+            -- the bag window draws the square: green for Sell now; hidden when off, and under the junk coin
+            local bag = ns.bagTest and ns.bagTest.FantasyGlassUIBags
+            if not bag then error("no bag window to test") end
+            local first
+            C.GetContainerNumSlots = function(id) if first == nil then first = id end; return id == first and 2 or 0 end
+            C.GetContainerItemInfo = function(_, slot) return { iconFileID = 1, stackCount = 1, quality = 1, itemID = 100 + slot, hyperlink = "item:" .. slot } end
+            ns.SellHintFor = function(id) if id == 101 then return "sell", 20 end end
+            ns.ShouldSell = function() return false end
+            local function each(fn) for _, list in pairs(bag.slots()) do for _, b in pairs(list) do fn(b) end end end
+            local okL, eL = pcall(bag.Layout)
+            if not okL then error("the bag window could not be arranged: " .. tostring(eL)) end
+            local marks = {}
+            each(function(b)
+                local sq = rawget(b, "sellHint")
+                if sq then
+                    local m = { shown = false }
+                    marks[b] = m
+                    rawset(sq, "SetColorTexture", function(_, r, g, bl) m.color = { r, g, bl } end)
+                    rawset(sq, "Show", function() m.shown = true end)
+                    rawset(sq, "Hide", function() m.shown = false end)
+                end
+            end)
+            local function Seen()
+                local shown, color = 0, nil
+                for _, m in pairs(marks) do if m.shown then shown = shown + 1; color = m.color end end
+                return shown, color
+            end
+            bag.Layout()
+            local shown, color = Seen()
+            if shown ~= 1 or not color or color[1] ~= 0.30 or color[2] ~= 0.85 or color[3] ~= 0.40 then error("the bag square: one green square, got " .. shown) end
+            ns.db.sellHints = false
+            bag.Layout()
+            if Seen() ~= 0 then error("the bag square with the hints off") end
+            ns.db.sellHints = true
+            local keepJunk = ns.db.bagJunkIcon
+            ns.db.bagJunkIcon = true
+            ns.ShouldSell = function() return true end
+            bag.Layout()
+            ns.db.bagJunkIcon = keepJunk
+            if Seen() ~= 0 then error("the bag square under the junk coin") end
+        end)
+        env.GetRealmName, env.UnitFactionGroup, ns.root.prices, ns.GetItemInfo, env.GameTooltip = oldRealm, oldFaction, keepPrices, realGII, keepTip
+        ns.root.auctionSeen, env.date, env.time = keepSeenT, keepDate, keepTime
+        ns.SellHintFor, ns.db.sellHints, ns.db.auctionMemory, ns.ShouldSell = realFor, keepOn, keepMem, keepShould
+        rawset(I, "GetItemLocation", keepLoc); rawset(I, "IsBound", keepBound); rawset(env, "ITEM_SOULBOUND", keepSoul)
+        C.GetContainerNumSlots, C.GetContainerItemInfo = keepSlots, keepInfo
+        ns.PriceHouseKeyReset()
+        if not okT then error(errT, 0) end
+        ns:RefreshBagWindow()
+    end
     -- home key
     local ways = { { kind = "spell", id = 3561 }, { kind = "spell", id = 556 }, { kind = "item", id = 6948 }, { kind = "item", id = 64488 } }
     local best, ready = ns.BestWayHome(ways, function() return true end)

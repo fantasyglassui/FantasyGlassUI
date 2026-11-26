@@ -1,6 +1,6 @@
 local ADDON, ns = ...
 _G.FantasyGlassUI = ns
-ns.version = "12.3.0"
+ns.version = "12.4.0"
 ns.author = "DustyMouse"
 
 ns.modules = {}
@@ -208,6 +208,8 @@ ns.defaults = {
     bagSetMark       = true,        -- gear set items say "Set" in the bags and are never sold
     tradeLog         = true,        -- what changed hands, with whom
     auctionMemory    = true,        -- the last auction price you saw, in tooltips
+    auctionScan      = true,        -- a Scan prices button on the auction house
+    sellHints        = true,        -- Sell now / Hold / Vendor it in tooltips and on the bag window
     lootLog          = true,        -- /fgui loot
     chatKeywords     = true,        -- words you chose are picked out (nothing until you choose one)
     chatSpam         = false,       -- the same line repeated within seconds is hidden
@@ -1591,6 +1593,10 @@ end
 
 -- What's new: shown once after an update (never on a first install, where the setup opens instead).
 ns.whatsNew = {
+    { "12.4.0", { "Scan prices, on the auction house: the whole auction house in one click, about every 15 minutes. It is read in small pieces and pauses in a fight.",
+                  "Prices are kept for each realm and faction. Your old prices move in once, into the first auction house you open.",
+                  "Sell now, Hold and Vendor it in item tooltips, and as a coloured square on the bag window. Vendor it is for common and uncommon items only, and bound items get no hint.",
+                  "A neutral auction house shares its faction's prices, and connected realms keep separate prices." } },
     { "12.3.0", { "A new look for the settings window: calm and dark whatever your theme, with only your theme's accent color showing through, and clear lettering.",
                   "Settings sit in cards with a switch on each, and the list of categories down the left is tidier.",
                   "Themes are shown as a grid of pictures, with a large preview beside it.",

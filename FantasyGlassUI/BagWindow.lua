@@ -406,6 +406,10 @@ local function NewWindow(cfg)
         b.junk:SetTexture("Interface\\Icons\\INV_Misc_Coin_01")
         b.junk:SetTexCoord(0.08, 0.92, 0.08, 0.92)
         b.junk:Hide()
+        b.sellHint = layer:CreateTexture(nil, "OVERLAY")     -- Sell now / Hold / Vendor it (SellHints.lua), as a small square
+        b.sellHint:SetSize(10, 10)
+        b.sellHint:SetPoint("BOTTOMLEFT", 2, 2)
+        b.sellHint:Hide()
         b.bind:SetTextColor(0.45, 0.95, 0.55)
         if b.bind.SetShadowOffset then b.bind:SetShadowOffset(1, -1); b.bind:SetShadowColor(0, 0, 0, 1) end
         b.upgrade = ns:NewText(layer, 13, "LEFT")                            -- a green arrow on gear better than what you wear
@@ -667,6 +671,12 @@ local function NewWindow(cfg)
         b.suiBorder:SetBackdropBorderColor(r, g, bl, 1)
         if b.scFacetRim then b.scFacetRim:SetVertexColor(r, g, bl, 1) end    -- (Starcut: the cut rim takes the quality color)
         if upgrade then b.upgrade:Show() else b.upgrade:Hide() end
+        local hint                                           -- (the tooltip says it in words; never over the coin or the arrow)
+        if info and ns.db.sellHints and not junk and not upgrade and ns.SellHintFor and type(info.itemID) == "number" then
+            local okH, kind = pcall(ns.SellHintFor, info.itemID, info.isBound)
+            hint = okH and ns.SELL_HINT_COLOR[kind or ""]
+        end
+        if hint then b.sellHint:SetColorTexture(hint[1], hint[2], hint[3], 1); b.sellHint:Show() else b.sellHint:Hide() end
         b:SetAlpha(Matches(b) and 1 or 0.2)
         local isNew = false
         if info and C_NewItems and C_NewItems.IsNewItem then

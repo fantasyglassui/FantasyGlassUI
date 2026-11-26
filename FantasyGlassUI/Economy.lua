@@ -381,6 +381,7 @@ end
 
 ------------------------------------------------------------------------------------------
 -- Auction price memory: the lowest price you last saw for an item at the auction house, in its tooltip.
+-- (The prices are kept per auction house by Prices.lua.)
 ------------------------------------------------------------------------------------------
 -- The lowest price seen each day, for the last two weeks of days you looked.
 function ns.AuctionHistoryAdd(e, day, price)
@@ -431,19 +432,11 @@ function ns.DaysBetween(a, b)
 end
 ns:NewModule("auctionMemory", function()
     if type(ns.root) ~= "table" then return end
-    if type(ns.root.auctionSeen) ~= "table" then ns.root.auctionSeen = {} end
-    local seen = ns.root.auctionSeen
-    ns.AuctionForget(seen, ns.Today(), 60)                        -- (prices older than two months are let go)
-    local function Note(id, price)
-        if type(id) ~= "number" or type(price) ~= "number" or Secret(price) or price <= 0 then return end
-        local today = ns.Today()
-        local e = seen[id]
-        if not e then e = {}; seen[id] = e end
-        if e.day ~= today or not e.price or price < e.price then e.price, e.day = price, today end
-        ns.AuctionHistoryAdd(e, today, price)                     -- (the lowest each day, for the usual price)
-        ns.auctionNoted = (ns.auctionNoted or 0) + 1
+    ns.PricesBegin()                                              -- (this house's prices not seen for two months let go, in slices)
+    local function Note(id, price)                                -- (the store itself is in Prices.lua)
+        if ns.PriceNote(id, price) then ns.auctionNoted = (ns.auctionNoted or 0) + 1 end
     end
-    ns.auctionTest = { Note = Note, seen = seen }
+    ns.auctionTest = { Note = Note }
     ns.auctionState = "on; waiting for the auction house"
     local ev = CreateFrame("Frame")
     for _, e in ipairs({ "AUCTION_HOUSE_BROWSE_RESULTS_UPDATED", "COMMODITY_SEARCH_RESULTS_UPDATED", "ITEM_SEARCH_RESULTS_UPDATED" }) do pcall(ev.RegisterEvent, ev, e) end
@@ -462,23 +455,7 @@ ns:NewModule("auctionMemory", function()
         end
         ns.auctionState = "on; prices noted this session: " .. tostring(ns.auctionNoted or 0)
     end))
-    local function Tip(tooltip, data)
-        if tooltip ~= GameTooltip and tooltip ~= _G.ItemRefTooltip then return end
-        local id = type(data) == "table" and data.id
-        if type(id) ~= "number" and tooltip.GetItem then local ok, _, link = pcall(tooltip.GetItem, tooltip); if ok then id = ns:ItemIDOf(link) end end
-        if type(id) ~= "number" or Secret(id) then return end
-        local e = seen[id]
-        local when = ns.AuctionSeenText(e, ns.Today())
-        if when then tooltip:AddDoubleLine(ns:Tr("Auction house") .. " (" .. ns:Tr(when) .. ")", ns:Coins(e.price), 0.6, 0.8, 1, 1, 1, 1) end
-        local usual, days = ns.AuctionUsual(e)
-        if usual and days >= 2 then tooltip:AddDoubleLine(format(ns:Tr("Usual price (%d days)"), days), ns:Coins(usual), 0.6, 0.8, 1, 1, 1, 1) end
-    end
-    local safe = ns:Guard("Auction prices", Tip)
-    if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType and Enum.TooltipDataType.Item then
-        pcall(TooltipDataProcessor.AddTooltipPostCall, Enum.TooltipDataType.Item, safe)
-    elseif GameTooltip and GameTooltip.HookScript then
-        pcall(GameTooltip.HookScript, GameTooltip, "OnTooltipSetItem", safe)
-    end
+    ns.PriceTooltipHook()                                         -- (the lines themselves: ns.PriceTooltip in Prices.lua)
 end)
 
 ------------------------------------------------------------------------------------------

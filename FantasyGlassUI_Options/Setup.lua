@@ -223,7 +223,7 @@ ns.playStyles = {
     QUESTING = { "questTracker", "questRewards", "questLog", "quests", "plateQuest", "xpBar", "mapCoords", "upgradeArrows", "upgradePrompt" },
     GROUPS   = { "lootBook", "lootBossTip", "bossGuide", "bossTimer", "runLog", "groupLoot", "gearCheck", "lootRoll", "rollAdvice", "readyAlert", "threatMeter" },
     PVP      = { "bgHelper", "enemyCDs", "ufArena", "queueAlert", "locAlert" },
-    COLLECT  = { "storage", "itemCounts", "skillUps", "profCooldowns", "craftBar", "auctionMemory", "auctionHelper", "mailTools", "rareAlert", "rareMemory", "farming" },
+    COLLECT  = { "storage", "itemCounts", "skillUps", "profCooldowns", "craftBar", "auctionMemory", "auctionScan", "sellHints", "auctionHelper", "mailTools", "rareAlert", "rareMemory", "farming" },
     SOCIAL   = { "chatSkin", "chatExtras", "chatClassColors", "chatHighlight", "whisperWindow", "playerNotes", "recentMates", "guildNotices", "friendColors", "groupNotices" },
 }
 local INTERESTS = {
