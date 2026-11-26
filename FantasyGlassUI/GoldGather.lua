@@ -70,11 +70,14 @@ local function Root() return type(ns.root) == "table" and ns.root or nil end
 ------------------------------------------------------------------------------------------
 -- recorders (light; may stay in the main add-on when the folder moves)
 ------------------------------------------------------------------------------------------
+-- The gathering spells, by skill line. The one table: GoldFarm.lua reads it through ns.GoldGatherSkill
+-- (a loot window after one of these is not a kill), and it is shared as ns.GOLD_GATHER_SPELLS.
 local GATHER_SPELLS = {
     [2366] = HERBALISM, [2368] = HERBALISM, [3570] = HERBALISM, [11993] = HERBALISM,
     [2575] = MINING, [2576] = MINING, [3564] = MINING, [10248] = MINING,
     [8613] = SKINNING, [8617] = SKINNING, [8618] = SKINNING, [10768] = SKINNING,
 }
+ns.GOLD_GATHER_SPELLS = GATHER_SPELLS
 local BASE_SPELLS = { [2366] = HERBALISM, [2575] = MINING, [8613] = SKINNING }   -- (their names, in your language, say the rest)
 
 local function SpellName(id)
@@ -204,7 +207,8 @@ do
         if not ok then pcall(ev.RegisterEvent, ev, e) end
     end
     pcall(ev.RegisterEvent, ev, "LOOT_OPENED")
-    ev:SetScript("OnEvent", ns:Guard("Gold gather", function(_, event, a1, a2, a3, a4)
+    -- (a plain handler first: while locked it returns at once, so nothing named Gold is timed by /fgui perf)
+    local guarded = ns:Guard("Gold gather", function(_, event, a1, a2, a3, a4)
         if event ~= "UNIT_SPELLCAST_SENT" and event ~= "UNIT_SPELLCAST_SUCCEEDED" and event ~= "LOOT_OPENED" then return end
         if not Unlocked() then return end
         if event == "LOOT_OPENED" then
@@ -237,7 +241,8 @@ do
             if map then lastAt[map] = now end
             gathered = { name = p and p.name or nil, skill = skill, map = map, at = now, gap = gap }
         end
-    end))
+    end)
+    ev:SetScript("OnEvent", function(...) if Unlocked() then guarded(...) end end)
 end
 
 ------------------------------------------------------------------------------------------

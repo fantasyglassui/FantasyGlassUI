@@ -151,12 +151,14 @@ do
     local ev = CreateFrame("Frame")
     pcall(ev.RegisterEvent, ev, "MERCHANT_SHOW")
     pcall(ev.RegisterEvent, ev, "MERCHANT_UPDATE")
-    ev:SetScript("OnEvent", ns:Guard("Gold", function(_, event)
+    -- (a plain handler first: while locked it returns at once, so nothing named Gold is timed by /fgui perf)
+    local guarded = ns:Guard("Gold", function(_, event)
         if (event ~= "MERCHANT_SHOW" and event ~= "MERCHANT_UPDATE") or not Unlocked() then return end
         gen = gen + 1
         local mine = gen
         ns:After(0.5, function() if mine == gen then Queue() end end)
-    end))
+    end)
+    ev:SetScript("OnEvent", function(...) if Unlocked() then guarded(...) end end)
 end
 
 ------------------------------------------------------------------------------------------
@@ -416,7 +418,7 @@ local function AuctionToVendor(ctx, items, flips)
 end
 
 -- The flips, at most 10, the biggest first. Auction flips only at the auction house (ctx.where).
-function ns.GoldFlipIdeas(ctx, add, items)
+function ns.GoldVendorFlipIdeas(ctx, add, items)
     ctx = Today(ctx)
     items = type(items) == "table" and items or {}
     local flips = {}
@@ -430,4 +432,4 @@ ns.GoldRegister("sell", function(ctx, add)
     local bags = ns.AuctionBagItems and ns.AuctionBagItems() or {}
     ns.GoldSellIdeas(ctx, add, bags, ns.PriceItems(), BankItems())
 end)
-ns.GoldRegister("vflip", function(ctx, add) ns.GoldFlipIdeas(ctx, add, ns.PriceItems()) end)
+ns.GoldRegister("vflip", function(ctx, add) ns.GoldVendorFlipIdeas(ctx, add, ns.PriceItems()) end)

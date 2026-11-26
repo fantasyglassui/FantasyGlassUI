@@ -162,12 +162,14 @@ do
     local ev, gen = CreateFrame("Frame"), 0
     pcall(ev.RegisterEvent, ev, "TRADE_SKILL_SHOW")
     pcall(ev.RegisterEvent, ev, "TRADE_SKILL_LIST_UPDATE")
-    ev:SetScript("OnEvent", ns:Guard("Gold recipes", function(_, event)
+    -- (a plain handler first: while locked it returns at once, so nothing named Gold is timed by /fgui perf)
+    local guarded = ns:Guard("Gold recipes", function(_, event)
         if (event ~= "TRADE_SKILL_SHOW" and event ~= "TRADE_SKILL_LIST_UPDATE") or not Unlocked() then return end
         gen = gen + 1
         local mine = gen
         ns:After(1, function() if mine == gen then ns.GoldRecipesRead() end end)
-    end))
+    end)
+    ev:SetScript("OnEvent", function(...) if Unlocked() then guarded(...) end end)
 end
 
 ------------------------------------------------------------------------------------------

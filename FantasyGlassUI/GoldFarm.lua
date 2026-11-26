@@ -87,11 +87,9 @@ end
 -- at LOOT_CLOSED less your purse at LOOT_OPENED. Solo only (in a group, rolls and split coin are not
 -- yours), never a window that follows Pick Pocket or a gathering cast, and never a living target.
 ------------------------------------------------------------------------------------------
--- Casts whose loot window is not a kill: Pick Pocket, and skinning, herbs and ore (the ids group C uses).
-local NOT_A_KILL = { [921] = true,
-    [2366] = true, [2368] = true, [3570] = true, [11993] = true,
-    [2575] = true, [2576] = true, [3564] = true, [10248] = true,
-    [8613] = true, [8617] = true, [8618] = true, [10768] = true }
+-- Casts whose loot window is not a kill: Pick Pocket here, and every gathering spell (skinning, herbs,
+-- ore), which GoldGather.lua owns and names through ns.GoldGatherSkill (read when the cast comes).
+local NOT_A_KILL = { [921] = true }
 local CAST_WINDOW = 2                      -- seconds after such a cast in which a loot window is its
 local castAt                               -- GetTime() of the last such cast
 
@@ -278,11 +276,13 @@ do
     pcall(ev.RegisterEvent, ev, "LOOT_CLOSED")
     local ok = type(ev.RegisterUnitEvent) == "function" and pcall(ev.RegisterUnitEvent, ev, "UNIT_SPELLCAST_SUCCEEDED", "player")
     if not ok then pcall(ev.RegisterEvent, ev, "UNIT_SPELLCAST_SUCCEEDED") end
-    ev:SetScript("OnEvent", ns:Guard("Gold loot", function(_, event, a1, _, a3)
+    -- (a plain handler first: while locked it returns at once, so nothing named Gold is timed by /fgui perf)
+    local guarded = ns:Guard("Gold loot", function(_, event, a1, _, a3)
         if event == "LOOT_OPENED" then LootOpened()
         elseif event == "LOOT_CLOSED" then LootClosed()
         elseif event == "UNIT_SPELLCAST_SUCCEEDED" then CastDone(a1, a3) end
-    end))
+    end)
+    ev:SetScript("OnEvent", function(...) if Unlocked() then guarded(...) end end)
 end
 
 ------------------------------------------------------------------------------------------
