@@ -11,7 +11,6 @@ local floor, max, min, huge = math.floor, math.max, math.min, math.huge
 --     reagents = { { id, need } }, prof, day } }    (at most 600; one profession's are replaced at its open)
 -- Nothing here buys, posts or crafts: every purchase is the player's own click.
 ------------------------------------------------------------------------------------------
-local RECIPE_CAP = 600
 local CRAFT_MAX = 8
 
 -- A plain finite number from the game or the store, else nil.
@@ -29,11 +28,6 @@ local function Call(fn, ...)
     local ok, v = pcall(fn, ...)
     if not ok or Secret(v) then return nil end
     return v
-end
-local function Unlocked() return ns.GuideUnlocked ~= nil and ns:GuideUnlocked() == true end
-local function InFight()
-    local ok, v = pcall(InCombatLockdown)
-    return ok and ns.Yes(v)
 end
 
 -- This character's record in ns.root.goldChars; the tables are made only when `create` is set.
@@ -53,124 +47,6 @@ local function CharRecord(create, key)
         all[key] = rec
     end
     return rec
-end
-
-------------------------------------------------------------------------------------------
--- recorders (light; may stay in the main add-on when the folder moves)
--- When a profession opens, one job walks its recipes (a second of quiet first, as the list fills).
-------------------------------------------------------------------------------------------
--- Is your own profession window open and filled? Someone else's list (a link, a guild's or an NPC's
--- crafting) is not what you can make.
-local function Ready()
-    local T = C_TradeSkillUI
-    if type(T) ~= "table" or not ns.Yes(Call(T.IsTradeSkillReady)) then return false end
-    if ns.Yes(Call(T.IsTradeSkillLinked)) or ns.Yes(Call(T.IsTradeSkillGuild)) or ns.Yes(Call(T.IsNPCCrafting)) then return false end
-    return true
-end
-
--- The basic reagents of a schematic, as Economy's shopping list reads them: { { id, need } }, and
--- true when a slot that counts could not be read (its item, its count or its kind): such a recipe is
--- never priced, since the cost would be too low.
-local function SchematicReagents(s)
-    local out, incomplete = {}, false
-    for _, slot in ipairs(type(s.reagentSlotSchematics) == "table" and s.reagentSlotSchematics or {}) do
-        if type(slot) == "table" then
-            local rt = slot.reagentType
-            if Secret(rt) or Secret(slot.required) then
-                incomplete = true
-            elseif rt == nil or rt == 1 or ns.Is(slot.required, true) then
-                local first = type(slot.reagents) == "table" and slot.reagents[1]
-                local id = type(first) == "table" and Num(first.itemID)
-                local need = Num(slot.quantityRequired)
-                if not id or not need then incomplete = true
-                elseif need > 0 then out[#out + 1] = { id = id, need = need } end
-            end
-        end
-    end
-    return out, incomplete
-end
-
--- The open profession's name, or nil.
-local function ProfessionName()
-    local T = C_TradeSkillUI
-    local base = type(T) == "table" and Call(T.GetBaseProfessionInfo)
-    return type(base) == "table" and Str(base.professionName) or nil
-end
-
-local again = false                    -- another profession opened while one was being read: read again after
-local function ReadRecipes()
-    if not Unlocked() or not Ready() then return end
-    local T = C_TradeSkillUI
-    local prof = ProfessionName()
-    local ids = Call(T.GetAllRecipeIDs)
-    if not prof or type(ids) ~= "table" then return end           -- (whose recipes these are must be known to replace them)
-    local today = ns.Today()
-    local found, order = {}, {}
-    for _, id in ipairs(ids) do
-        id = Num(id)
-        local info = id and Call(T.GetRecipeInfo, id)
-        if type(info) == "table" and ns.Is(info.learned, true) then
-            local s = Call(T.GetRecipeSchematic, id, false)
-            local out = type(s) == "table" and Num(s.outputItemID)
-            if out and out > 0 then
-                local nMin = Num(s.quantityMin) or 1
-                local nMax = Num(s.quantityMax) or nMin
-                if nMin < 1 then nMin = 1 end
-                if nMax < nMin then nMax = nMin end
-                local reagents, incomplete = SchematicReagents(s)
-                found[id] = { name = Str(info.name) or Str(s.name), out = out, nMin = nMin, nMax = nMax, reagents = reagents,
-                              incomplete = incomplete or nil, prof = prof, day = today }
-                order[#order + 1] = id
-            end
-        end
-        ns.GoldYield()
-    end
-    -- the window closed or went to another profession between slices: this read is not kept
-    if not Ready() then return end
-    if ProfessionName() ~= prof then again = true; return end
-    -- this profession's old recipes go; the others stay; at most RECIPE_CAP in all
-    local rec = CharRecord(#order > 0)
-    if not rec then return end
-    local kept, n = {}, 0
-    for id, r in pairs(type(rec.recipes) == "table" and rec.recipes or {}) do
-        if type(r) == "table" and r.prof ~= prof then kept[id] = r; n = n + 1 end
-    end
-    table.sort(order)
-    for _, id in ipairs(order) do
-        if n >= RECIPE_CAP then break end
-        kept[id] = found[id]
-        n = n + 1
-    end
-    rec.recipes = kept
-end
-local function RecipesJob()
-    ReadRecipes()
-    if again then
-        again = false
-        ns:After(0, function() ns.GoldRecipesRead() end)          -- (next frame: this job is gone by then)
-    end
-end
-
--- Read the open profession's recipes, as a job. False when locked, in a fight or not ready. While a read
--- is already queued, the open profession is read again right after it (true).
-function ns.GoldRecipesRead()
-    if not Unlocked() or InFight() or not Ready() then return false end
-    if ns.GoldBusy("recipes") then again = true; return true end
-    return ns.GoldJob(RecipesJob, "recipes")
-end
-
-do
-    local ev, gen = CreateFrame("Frame"), 0
-    pcall(ev.RegisterEvent, ev, "TRADE_SKILL_SHOW")
-    pcall(ev.RegisterEvent, ev, "TRADE_SKILL_LIST_UPDATE")
-    -- (a plain handler first: while locked it returns at once, so nothing named Gold is timed by /fgui perf)
-    local guarded = ns:Guard("Gold recipes", function(_, event)
-        if (event ~= "TRADE_SKILL_SHOW" and event ~= "TRADE_SKILL_LIST_UPDATE") or not Unlocked() then return end
-        gen = gen + 1
-        local mine = gen
-        ns:After(1, function() if mine == gen then ns.GoldRecipesRead() end end)
-    end)
-    ev:SetScript("OnEvent", function(...) if Unlocked() then guarded(...) end end)
 end
 
 ------------------------------------------------------------------------------------------

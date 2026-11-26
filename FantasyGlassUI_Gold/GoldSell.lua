@@ -10,12 +10,10 @@ local Secret = function(v) return ns:IsSecret(v) end
 ------------------------------------------------------------------------------------------
 local floor, max, min, huge = math.floor, math.max, math.min, math.huge
 
-local VENDOR_CAP = 3000                -- vendor prices kept; the oldest go first
 local FLIP_CAP = 10                    -- flip ideas, the biggest first
 local BANK_MINUTES = 2                 -- the walk to the bank first
 local BOUND = { [1] = true, [4] = true, [7] = true, [8] = true }   -- (bind types no auction house takes, as SellHints.lua)
 
-local function Unlocked() return ns.GuideUnlocked ~= nil and ns:GuideUnlocked() == true end
 -- A plain finite number, or nil.
 local function Num(v)
     if Secret(v) or type(v) ~= "number" or v ~= v or v == huge or v == -huge then return nil end
@@ -30,136 +28,6 @@ local function Info(id)
     end
     vendor = Num(vendor)
     return name, Num(quality), (vendor and vendor > 0) and vendor or 0, Num(bindType)
-end
-
-------------------------------------------------------------------------------------------
--- recorders (light; may stay in the main add-on when the folder moves)
--- What a merchant asks, read half a second after the merchant window opens or changes.
-------------------------------------------------------------------------------------------
-local function Store(create)
-    local root = ns.root
-    if type(root) ~= "table" then return nil end
-    local s = root.goldVendor
-    if type(s) ~= "table" or type(s.items) ~= "table" then
-        if not create then return nil end
-        s = { v = 1, items = {} }
-        root.goldVendor = s
-    end
-    return s.items
-end
-
--- Keep what a merchant asks for item `id` (info from C_MerchantFrame.GetItemInfo). True when kept,
--- and whether the item is new to the store.
-function ns.GoldVendorNote(id, info, today)
-    if Num(id) == nil or type(info) ~= "table" then return false end
-    local price, stack, avail = info.price, info.stackCount, info.numAvailable
-    local ext, hasExt = info.extendedCost, info.hasExtendedCost   -- (either spelling: the dump does not name the fields)
-    if Secret(price) or Secret(stack) or Secret(avail) or Secret(ext) or Secret(hasExt) then return false end
-    if ext or hasExt then return false end                        -- (tokens or honour: no copper price)
-    price, stack, avail = Num(price), Num(stack), Num(avail)
-    if not price or price <= 0 then return false end
-    stack = max(1, floor(stack or 1))
-    local buy = floor(price / stack)
-    if buy <= 0 then return false end
-    local items = Store(true)
-    if not items then return false end
-    local fresh = items[id] == nil
-    items[id] = { buy = buy, stack = stack, limited = (avail and avail >= 0) and floor(avail) or nil, day = Num(today) or ns.Today() }
-    return true, fresh
-end
-
--- Over the cap: the oldest days go first (a job: it walks the whole store).
-local function Trim()
-    local items = Store(false)
-    if not items then return end
-    local keys = {}
-    for k in pairs(items) do keys[#keys + 1] = k end              -- (the keys first: the store may change between slices)
-    local over = #keys - VENDOR_CAP
-    if over <= 0 then return end
-    local function Day(e) return type(e) == "table" and Num(e.day) or 0 end
-    local perDay = {}
-    for _, k in ipairs(keys) do
-        local d = Day(items[k])
-        perDay[d] = (perDay[d] or 0) + 1
-        ns.GoldYield()
-    end
-    local days = {}
-    for d in pairs(perDay) do days[#days + 1] = d end
-    table.sort(days)
-    local cut, extra = 0, 0                                       -- every day before `cut` goes, and `extra` from that day
-    for _, d in ipairs(days) do
-        if perDay[d] >= over then cut, extra = d, over; break end
-        over = over - perDay[d]
-    end
-    for _, k in ipairs(keys) do
-        local e = items[k]
-        if e ~= nil then
-            local d = Day(e)
-            if d < cut then items[k] = nil
-            elseif d == cut and extra > 0 then items[k] = nil; extra = extra - 1 end
-        end
-        ns.GoldYield()
-    end
-end
-
--- Does this slot cost anything besides copper (tokens, honour, items)?
-local function CostsMore(i)
-    if type(GetMerchantItemCostInfo) ~= "function" then return false end
-    local ok, n = pcall(GetMerchantItemCostInfo, i)
-    if not ok then return false end
-    n = Num(n)
-    return n ~= nil and n > 0
-end
-
-local function InFight()
-    local ok, v = pcall(InCombatLockdown)
-    return ok and ns.Yes(v)
-end
-
--- One merchant's list, as a job (a slot a step; jobs never run in a fight).
-local again = false
-local function Record()
-    ns.goldVendorPasses = (ns.goldVendorPasses or 0) + 1
-    local M = C_MerchantFrame
-    if type(M) ~= "table" or type(M.GetItemInfo) ~= "function" or type(GetMerchantNumItems) ~= "function" or type(GetMerchantItemID) ~= "function" then return end
-    local ok, n = pcall(GetMerchantNumItems)
-    n = ok and Num(n) or 0
-    local today, added = ns.Today(), false
-    for i = 1, min(n, 500) do
-        local okId, id = pcall(GetMerchantItemID, i)
-        local okInfo, info = pcall(M.GetItemInfo, i)
-        if okId and okInfo and not CostsMore(i) then
-            local kept, fresh = ns.GoldVendorNote(id, info, today)
-            if kept and fresh then added = true end
-        end
-        ns.GoldYield()
-    end
-    if added then ns.GoldJob(Trim, "goldVendorTrim") end
-end
-
-local Queue
-local function RecordJob()
-    Record()
-    if again then again = false; ns:After(0, Queue) end            -- (the merchant changed while this one ran)
-end
-function Queue()
-    if not Unlocked() or InFight() then return end
-    if not ns.GoldJob(RecordJob, "goldVendorRecord") then again = true end
-end
-
-do
-    local gen = 0
-    local ev = CreateFrame("Frame")
-    pcall(ev.RegisterEvent, ev, "MERCHANT_SHOW")
-    pcall(ev.RegisterEvent, ev, "MERCHANT_UPDATE")
-    -- (a plain handler first: while locked it returns at once, so nothing named Gold is timed by /fgui perf)
-    local guarded = ns:Guard("Gold", function(_, event)
-        if (event ~= "MERCHANT_SHOW" and event ~= "MERCHANT_UPDATE") or not Unlocked() then return end
-        gen = gen + 1
-        local mine = gen
-        ns:After(0.5, function() if mine == gen then Queue() end end)
-    end)
-    ev:SetScript("OnEvent", function(...) if Unlocked() then guarded(...) end end)
 end
 
 ------------------------------------------------------------------------------------------
@@ -372,13 +240,19 @@ end
 ------------------------------------------------------------------------------------------
 -- Vendor flips: buy from a vendor and list it, or buy the lowest listing and vendor it
 ------------------------------------------------------------------------------------------
+-- The vendor prices (ns.root.goldVendor.items), which the merchant recorder in the main add-on's
+-- GoldRecorders.lua fills; nil while there are none.
+local function Store()
+    local s = type(ns.root) == "table" and ns.root.goldVendor or nil
+    return type(s) == "table" and type(s.items) == "table" and s.items or nil
+end
 local function FlipOrder(a, b)
     if a.total ~= b.total then return a.total > b.total end
     return a.id < b.id
 end
 
 local function VendorToAuction(ctx, items, flips)
-    local store = Store(false)
+    local store = Store()
     if not store then return end
     local keys = {}
     for k in pairs(store) do keys[#keys + 1] = k end              -- (the keys first: the store may change between slices)
