@@ -18372,7 +18372,13 @@ try("13.6 leftovers B: Questie's ids a slice at a time", function()
         if n - base < 3 then error("6000 ids read in one go: " .. n .. " resumes, " .. base .. " for one id") end
         local ids = src.ids()
         if sorted(ids) ~= sorted(want) then error("the ids are the pointer map's keys") end
-        if not rawequal(src.ids(), ids) then error("a second call: the same list") end
+        local again0 = src.ids()
+        if rawequal(again0, ids) or sorted(again0) ~= sorted(want) then error("a second call: a copy of the same ids") end
+        table.sort(ids, function(a, b) return a > b end); ids[#ids + 1] = 5
+        if sorted(src.ids()) ~= sorted(want) or src.ids()[1] == ids[1] and ids[1] ~= want[1] then error("changing a copy leaves the kept list alone") end
+        big[999999] = 1                                     -- (the same table: read once, so the kept list stays)
+        if #src.ids() ~= 6000 then error("the same table is not read again") end
+        ids = again0
         -- a plain sequence of numbers: the values are the ids
         db.QuestPointers = { 501, 502, 77 }
         local seq = src.ids()
@@ -18487,6 +18493,15 @@ try("13.6 leftovers B: gathering from Questie", function()
         local nodes = qsrc.gatherNodes(1429)
         if #nodes ~= 3 or nodes[1].skill == nil or nodes[1].min == nil then error("every spawn on the map, with its skill and the rank it needs") end
         if #qsrc.gatherNodes(1436) ~= 0 then error("another map: none") end
+        -- kept per map: asked again, not read again; the least recently asked map goes once more than PLANNER_GATHER_MAPS are kept
+        local reads, realQ = 0, db.QueryObjectSingle
+        db.QueryObjectSingle = function(...) reads = reads + 1; return realQ(...) end
+        qsrc.gatherNodes(1429)
+        if reads ~= 0 then error("a map kept: not read again") end
+        for m = 2001, 2000 + ns.PLANNER_GATHER_MAPS do qsrc.gatherNodes(m) end
+        reads = 0
+        if #qsrc.gatherNodes(1429) ~= 3 or reads == 0 then error("more maps than kept: the oldest is read again, the same nodes") end
+        db.QueryObjectSingle = realQ
         -- Mining 130: the Iron too
         skills = { { 182, "Herbalism", 50, 75 }, { 186, "Mining", 130, 150 } }
         g = gathers(plan())
@@ -18528,14 +18543,15 @@ try("13.6 leftovers B: gathering from Questie", function()
     if not ok then error(err, 0) end
 end)
 try("13.6 leftovers B: timed quests before you take them", function()
-    local saved = { unlocked = ns.GuideUnlocked, timed = ns.root.plannerTimed, order = ns.root.plannerTimedOrder, ql = env.C_QuestLog, map = env.C_Map,
+    local saved = { unlocked = ns.GuideUnlocked, timed = ns.root.plannerTimed, ql = env.C_QuestLog, map = env.C_Map, mex = rawget(env, "C_MapExplorationInfo"), exMaps = ns.plannerExploreMaps, time = rawget(env, "time"),
                     vec = rawget(env, "CreateVector2D"), planner = ns.root.planner, nodes = ns.root.plannerNodesSeen, profs = env.GetProfessions,
                     info = env.GetProfessionInfo, explore = ns.db.plannerExplore, known = ns.PLANNER_TIMED, errors = #ns.errors }
     local allowed = 900
     local ok, err = pcall(function()
         if type(ns.PLANNER_TIMED) ~= "table" or next(ns.PLANNER_TIMED) ~= nil then error("ns.PLANNER_TIMED starts empty") end
         if type(ns.PlannerTimedQuest) ~= "function" then error("ns.PlannerTimedQuest") end
-        ns.root.plannerTimed, ns.root.plannerTimedOrder = nil, nil
+        ns.root.plannerTimed = nil
+        rawset(env, "time", function() return 86400 * 20000 + 5 end)        -- (day 20000)
         env.C_QuestLog = setmetatable({ GetTimeAllowed = function() return allowed, 0 end }, { __index = saved.ql })
         -- locked: nothing written, nothing made
         ns.GuideUnlocked = function() return false end
@@ -18551,24 +18567,42 @@ try("13.6 leftovers B: timed quests before you take them", function()
         -- a clock on it: remembered for every character
         allowed = 900.6
         fireEvent("QUEST_ACCEPTED", 9680)
-        if not (type(ns.root.plannerTimed) == "table" and ns.root.plannerTimed[9680] == 900) then error("9680 remembered as 900 seconds") end
+        local e = type(ns.root.plannerTimed) == "table" and ns.root.plannerTimed[9680]
+        if not (type(e) == "table" and e.secs == 900 and e.seen == 20000) then error("9680 remembered as 900 seconds, with the day") end
         if ns.PlannerTimedQuest(9680) ~= 900 or ns.PlannerTimedQuest(9683) ~= nil then error("PlannerTimedQuest reads the memory") end
-        -- at most 500: the oldest go first
+        -- the event's other form (log index, quest id)
+        allowed = 450
+        fireEvent("QUEST_ACCEPTED", 3, 9684)
+        if ns.PlannerTimedQuest(9684) ~= 450 or ns.root.plannerTimed[3] ~= nil then error("QUEST_ACCEPTED (index, id): the id") end
+        ns.root.plannerTimed[9684] = nil
+        -- an older plain number still reads
+        ns.root.plannerTimed[9685] = 120
+        if ns.PlannerTimedQuest(9685) ~= 120 then error("an older plain number reads as its seconds") end
+        ns.root.plannerTimed[9685] = nil
+        -- at most 500: the oldest seen go first (a plain number: oldest of all)
         local keep = ns.root.plannerTimed
-        ns.root.plannerTimed, ns.root.plannerTimedOrder = {}, {}
-        for id = 1, 500 do ns.root.plannerTimed[id] = 60; ns.root.plannerTimedOrder[id] = id end
+        ns.root.plannerTimed = {}
+        for id = 1, 499 do ns.root.plannerTimed[id] = { secs = 60, seen = 1000 + id } end
+        ns.root.plannerTimed[700] = 60
         allowed = 300
         fireEvent("QUEST_ACCEPTED", 9999)
         local n = 0
         for _ in pairs(ns.root.plannerTimed) do n = n + 1 end
-        if n ~= 500 or ns.root.plannerTimed[1] ~= nil or ns.root.plannerTimed[2] ~= 60 or ns.root.plannerTimed[9999] ~= 300 then error("at most 500, the oldest first: " .. n) end
-        ns.root.plannerTimed, ns.root.plannerTimedOrder = keep, nil
+        if n ~= 500 or ns.root.plannerTimed[700] ~= nil or ns.PlannerTimedQuest(9999) ~= 300 then error("at most 500, a plain number first: " .. n) end
+        fireEvent("QUEST_ACCEPTED", 9998)
+        n = 0
+        for _ in pairs(ns.root.plannerTimed) do n = n + 1 end
+        if n ~= 500 or ns.root.plannerTimed[1] ~= nil or ns.PlannerTimedQuest(2) ~= 60 or ns.PlannerTimedQuest(9998) ~= 300 then error("at most 500, the oldest seen next: " .. n) end
+        ns.root.plannerTimed = keep
         -- the plan: 9680 is not in the log, but known timed: a run of its own, first in its hub, nothing gathered on the way
         env.C_Map = setmetatable({ GetWorldPosFromMapPos = function(map, v) if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end end }, { __index = saved.map })
         env.CreateVector2D = function(x, y) return { x = x, y = y } end
         env.GetProfessions = function() return 1 end
         env.GetProfessionInfo = function() return "Herbalism", 0, 100, 150, 0, 0, 182 end
-        ns.db.plannerExplore = false
+        ns.db.plannerExplore = nil
+        ns.plannerExploreMaps = {}
+        env.C_MapExplorationInfo = { GetExploredMapTextures = function() return { 1 } end,   -- (map 1 reports exploring; around the hub nothing is explored yet)
+            GetExploredAreaIDsAtPosition = function(map, v) local x, y = v.x * 100, v.y * 100; if map == 1 and x >= 28 and x <= 35 and y >= 38 and y <= 45 then return nil end return { 7 } end }
         ns.root.plannerNodesSeen = { [1] = { { name = "Peacebloom", x = 31, y = 41, skill = 182 } } }   -- (beside the run from 9680's giver to its monsters)
         local function at(x, y) return { { map = 1, x = x, y = y } } end
         local function q(id, x, y, xp)
@@ -18604,10 +18638,12 @@ try("13.6 leftovers B: timed quests before you take them", function()
         -- one nobody knows: the hub's normal order
         s = seq(route(9683))
         if s:find("!", 1, true) or not s:find("^accept:9681") then error("unknown: the normal order: " .. s) end
+        if not (s:find("explore", 1, true) and s:find("gather", 1, true)) then error("not timed: the same legs get the explore and gather steps: " .. s) end
         if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
     end)
     ns.PLANNER_TIMED[9682] = nil
-    ns.GuideUnlocked, ns.root.plannerTimed, ns.root.plannerTimedOrder, env.C_QuestLog, env.C_Map = saved.unlocked, saved.timed, saved.order, saved.ql, saved.map
+    ns.GuideUnlocked, ns.root.plannerTimed, env.C_QuestLog, env.C_Map = saved.unlocked, saved.timed, saved.ql, saved.map
+    rawset(env, "C_MapExplorationInfo", saved.mex); ns.plannerExploreMaps = saved.exMaps; rawset(env, "time", saved.time)
     rawset(env, "CreateVector2D", saved.vec)
     ns.root.planner, ns.root.plannerNodesSeen, env.GetProfessions, env.GetProfessionInfo, ns.db.plannerExplore = saved.planner, saved.nodes, saved.profs, saved.info, saved.explore
     if not ok then error(err, 0) end

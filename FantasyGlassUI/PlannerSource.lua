@@ -260,7 +260,8 @@ end
 
 local changed = false
 local mapCache = nil              -- quest ids by zone map (one scan of every quest a session; a reset empties it)
-local gatherCache = nil          -- Questie's gathering nodes by map (every object in the table read once a session; a reset empties it)
+ns.PLANNER_GATHER_MAPS = 6       -- maps whose Questie gathering nodes are kept at once (the least recently asked go first)
+local gatherCache, gatherOrder, gatherAreas = {}, {}, {}   -- nodes by map, the maps kept (oldest first), area -> map (a reset empties them)
 local zoneCache, grindCache = {}, {}   -- dungeon quest ids by area, grinding spots by level and continent (static data: a reset empties them)
 local recCache, cacheLevel = {}, nil   -- built records by quest id (not those in the log); emptied on a new level and by a reset
 
@@ -300,6 +301,9 @@ end
 -- numbers gives its values, as PointerIds reads them. Kept for the session against that table (Questie
 -- replaces the table when it rebinds, and a new one is read again). nil means "not ready yet": the table
 -- is missing, a step failed or saw a key twice (it changed under the walk), or it was replaced meanwhile.
+-- How sure that is: a replaced table is always caught; a table grown in place is caught almost always
+-- (a rehash reorders the walk, so keys come back twice), not always: no guarantee rests on it.
+-- The list returned is shared (kept for the session): do not modify it; src.ids() hands out a copy.
 local ID_SLICE = 64
 local idLists = {}                -- by name: { t = the table read, ids = its ids }
 local function IdTable(name)
@@ -387,6 +391,25 @@ ns.PLANNER_GATHER_OBJECTS = {
     [2047] = { skill = 186, min = 230 },    -- Truesilver Deposit
     [324] = { skill = 186, min = 245 },     -- Small Thorium Vein
     [175404] = { skill = 186, min = 275 },  -- Rich Thorium Vein
+    -- other object ids of the same nodes in some zones (from memory, CHECK THEM IN THE GAME or in Questie's objectDB)
+    [3763] = { skill = 186, min = 1 },      -- Copper Vein
+    [103713] = { skill = 186, min = 1 },    -- Copper Vein
+    [2055] = { skill = 186, min = 1 },      -- Copper Vein
+    [103711] = { skill = 186, min = 65 },   -- Tin Vein
+    [105569] = { skill = 186, min = 75 },   -- Silver Vein
+    [150080] = { skill = 186, min = 155 },  -- Gold Vein
+    [150079] = { skill = 186, min = 175 },  -- Mithril Deposit
+    [176645] = { skill = 186, min = 175 },  -- Mithril Deposit
+    [150081] = { skill = 186, min = 230 },  -- Truesilver Deposit
+    [150082] = { skill = 186, min = 245 },  -- Small Thorium Vein
+    [176643] = { skill = 186, min = 245 },  -- Small Thorium Vein
+    [73940] = { skill = 186, min = 75 },    -- Ooze Covered Silver Vein
+    [73941] = { skill = 186, min = 155 },   -- Ooze Covered Gold Vein
+    [123308] = { skill = 186, min = 230 },  -- Ooze Covered Truesilver Deposit
+    [123309] = { skill = 186, min = 175 },  -- Ooze Covered Mithril Deposit
+    [123310] = { skill = 186, min = 175 },  -- Ooze Covered Mithril Deposit (which ooze vein each of 123308-123310 is: check)
+    [123848] = { skill = 186, min = 245 },  -- Ooze Covered Thorium Vein
+    [177388] = { skill = 186, min = 275 },  -- Ooze Covered Rich Thorium Vein
 }
 
 -- One gathering object's spawns as a flat list { area, x, y } and its name (read through Try by the caller).
@@ -611,7 +634,15 @@ function ns.PlannerSource()
         return nil, "changed"
     end
     local src = { kind = "questie" }
-    function src.ids() return IdList("QuestPointers") or {} end      -- (not ready yet: none this time)
+    -- A copy of the shared list, so a caller may sort or change it (not ready yet: none this time).
+    function src.ids()
+        local ids, out = IdList("QuestPointers"), {}
+        for i, id in ipairs(ids or {}) do
+            if i % ID_SLICE == 0 then ns.PlannerYield() end
+            out[i] = id
+        end
+        return out
+    end
     -- A new level empties the record cache (the level window moved).
     function src.begin(level)
         if level ~= cacheLevel then recCache, cacheLevel = {}, level end
@@ -757,36 +788,38 @@ function ns.PlannerSource()
         return list
     end
     -- Questie's gathering nodes on a map: { { name, map, x, y, skill, min } }. Every object in
-    -- ns.PLANNER_GATHER_OBJECTS is read once a session (a failed read: that object has none), kept by map.
+    -- ns.PLANNER_GATHER_OBJECTS is read for a map the first time it is asked (a failed read: that object
+    -- has none there); the nodes of ns.PLANNER_GATHER_MAPS maps are kept, the least recently asked go first.
     function src.gatherNodes(map)
         if type(map) ~= "number" then return {} end
-        if not gatherCache then
+        local hit = gatherCache[map]
+        if not hit then
             local db = env.db
             local okP, pointers = Try(function() return db.ObjectPointers end)
             if not (okP and type(pointers) == "table" and type(db.QueryObjectSingle) == "function") then return {} end
-            local scan, areas = {}, {}
+            hit = {}
             for id, def in pairs(ns.PLANNER_GATHER_OBJECTS) do
                 ns.PlannerYield()
                 local ok, spawns, name = Try(ObjectSpawns, db, id)
                 if ok and spawns then
                     for _, p in ipairs(spawns) do
                         ns.PlannerYield()
-                        local m = areas[p[1]]
+                        local m = gatherAreas[p[1]]
                         if m == nil then
                             local okM, value = Try(env.zones.GetUiMapIdByAreaId, env.zones, p[1])
                             m = okM and tonumber(value) or false
-                            areas[p[1]] = m
+                            gatherAreas[p[1]] = m
                         end
-                        if m then
-                            scan[m] = scan[m] or {}
-                            scan[m][#scan[m] + 1] = { name = name, map = m, x = p[2], y = p[3], skill = def.skill, min = def.min }
-                        end
+                        if m == map then hit[#hit + 1] = { name = name, map = m, x = p[2], y = p[3], skill = def.skill, min = def.min } end
                     end
                 end
             end
-            gatherCache = scan
+            gatherCache[map] = hit
         end
-        return gatherCache[map] or {}
+        for i = #gatherOrder, 1, -1 do if gatherOrder[i] == map then table.remove(gatherOrder, i) end end
+        gatherOrder[#gatherOrder + 1] = map
+        while #gatherOrder > ns.PLANNER_GATHER_MAPS do gatherCache[table.remove(gatherOrder, 1)] = nil end
+        return hit
     end
     function src.places(kind, arg) return Places("questie", env, kind, arg) end
     function src.inns() return Places("questie", env, "innkeeper") end
@@ -845,7 +878,8 @@ end
 
 function ns.PlannerSourceReset()
     changed, waiting, placeCaches, recCache, cacheLevel = false, false, { questie = {}, log = {}, questieScan = {}, logScan = {} }, {}, nil
-    zoneCache, grindCache, mapCache, idLists, gatherCache = {}, {}, nil, {}, nil
+    zoneCache, grindCache, mapCache, idLists = {}, {}, nil, {}
+    gatherCache, gatherOrder, gatherAreas = {}, {}, {}
     ns.plannerExploreMaps = {}                  -- (PlannerPath.lua: the maps known to report exploration)
 end
 
@@ -908,9 +942,9 @@ end
 ------------------------------------------------------------------------------------------
 -- Timed quests known before you take them. Questie has no timer data, so there are two sources of
 -- our own: ns.PLANNER_TIMED (written by hand) and a per-account memory of every quest any of your
--- characters accepted with a clock on it (ns.root.plannerTimed[questID] = seconds, written only while
--- the guide is unlocked; at most ns.PLANNER_TIMED_CAP, the oldest go first: their order is kept in
--- ns.root.plannerTimedOrder). The route plans such a quest as a timed run before you take it.
+-- characters accepted with a clock on it (ns.root.plannerTimed[questID] = { secs = seconds, seen = day },
+-- written only while the guide is unlocked; an older plain number reads as { secs = n }; at most
+-- ns.PLANNER_TIMED_CAP, the oldest `seen` go first). The route plans such a quest as a timed run before you take it.
 ------------------------------------------------------------------------------------------
 ns.PLANNER_TIMED = {}             -- { [questID] = seconds }: fill from the in-game checks
 ns.PLANNER_TIMED_CAP = 500
@@ -925,8 +959,13 @@ function ns.PlannerTimedQuest(id)
     if s then return s end
     local root = ns.root
     local mem = type(root) == "table" and type(root.plannerTimed) == "table" and root.plannerTimed or nil
-    return mem and Seconds(mem[id]) or nil
+    local e = mem and mem[id]
+    if type(e) == "table" then e = e.secs end
+    return Seconds(e)
 end
+
+-- The day an entry was last seen (an older plain number: never, so it goes first).
+local function SeenDay(e) return type(e) == "table" and tonumber(e.seen) or 0 end
 
 function ns.PlannerRecordTimed(id)
     if type(id) ~= "number" or ns:IsSecret(id) or not ns:GuideUnlocked() or type(ns.root) ~= "table" then return end
@@ -937,17 +976,22 @@ function ns.PlannerRecordTimed(id)
     if not secs then return end
     secs = math.floor(secs)
     if secs <= 0 then return end
+    local okT, now = pcall(time)
+    local day = okT and type(now) == "number" and not ns:IsSecret(now) and math.floor(now / 86400) or 0
     if type(ns.root.plannerTimed) ~= "table" then ns.root.plannerTimed = {} end
-    if type(ns.root.plannerTimedOrder) ~= "table" then ns.root.plannerTimedOrder = {} end
-    local mem, order = ns.root.plannerTimed, ns.root.plannerTimedOrder
-    for i = #order, 1, -1 do if order[i] == id then table.remove(order, i) end end
-    mem[id] = secs
-    order[#order + 1] = id
+    local mem = ns.root.plannerTimed
+    mem[id] = { secs = secs, seen = day }
     local n = 0
     for _ in pairs(mem) do n = n + 1 end
-    while n > ns.PLANNER_TIMED_CAP and #order > 0 do       -- (the oldest first)
-        local old = table.remove(order, 1)
-        if mem[old] ~= nil then mem[old] = nil; n = n - 1 end
+    while n > ns.PLANNER_TIMED_CAP do                       -- (the oldest seen first; the same day: the lower id)
+        local old, oldDay
+        for k, e in pairs(mem) do
+            local d = SeenDay(e)
+            if k ~= id and (not old or d < oldDay or (d == oldDay and tonumber(k) and tonumber(old) and k < old)) then old, oldDay = k, d end
+        end
+        if old == nil then break end
+        mem[old] = nil
+        n = n - 1
     end
 end
 
