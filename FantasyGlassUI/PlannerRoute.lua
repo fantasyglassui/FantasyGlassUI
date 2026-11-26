@@ -688,13 +688,20 @@ local function HubSteps(state, hub, steps, inn, n)
     if #runs == 0 then Held() end
     for _, r in ipairs(runs) do                               -- (a quest with a clock on it: its own run, before anything else here)
         local ok = true                                       -- (its steps say so: nothing is put between them)
+        local inside = false                                  -- (after its accept, or its do: the travel the run makes is in it too)
+        local function RunGo(spot)
+            local from = #steps
+            local went = Go(spot)
+            if inside then for i = from + 1, #steps do steps[i].timed = true end end
+            return went
+        end
         if r.accept then
-            if Go(r.accept) then Accept(r.rec, r.accept).timed = true else ok = false end
+            if RunGo(r.accept) then Accept(r.rec, r.accept).timed = true; inside = true else ok = false end
         end
         if ok and r.spot then
-            if Go(r.spot) then Do(r.rec, r.spot).timed = true else ok = false end
+            if RunGo(r.spot) then Do(r.rec, r.spot).timed = true; inside = true else ok = false end
         end
-        if ok and r.turnin and Go(r.turnin) then
+        if ok and r.turnin and RunGo(r.turnin) then
             local s = QuestStep("turnin", r.rec, r.turnin)
             s.hub, s.timed = n, true
             steps[#steps + 1] = s

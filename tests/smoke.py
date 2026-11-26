@@ -20234,6 +20234,70 @@ try("13.6 leftovers: final review fixes", function()
     if ns.PlannerPosReset then ns.PlannerPosReset() end
     if not ok then error(err, 0) end
 end)
+-- batch 6: a timed run's travel stays in the run; the arrow still points on your own map in a fight
+try("13.6 leftovers: a timed run's travel", function()
+    local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), unlocked = ns.GuideUnlocked, state = ns.root.guideState, guides = ns.root.guides,
+        tt = ns.db.plannerTomTom, combat = env.InCombatLockdown, stops = ns.plannerStops, timedQ = ns.PlannerTimedQuest, planner = ns.root.planner, errors = #ns.errors }
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        env.CreateVector2D = function(x, y) return { x = x, y = y } end
+        local pos = { 1, 30, 40 }
+        local cm = {}
+        for k, v in pairs(saved.map) do cm[k] = v end
+        cm.GetWorldPosFromMapPos = function(map, v) if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end end   -- (a percent is 10 yards)
+        cm.GetBestMapForUnit = function() return pos[1] end
+        cm.GetPlayerMapPosition = function(map) if map == pos[1] then return { GetXY = function() return pos[2] / 100, pos[3] / 100 end } end end
+        cm.GetMapWorldSize = function() return 1000, 1000 end
+        env.C_Map = cm
+        ns.PlannerPosReset()
+        ns.root.planner = nil
+        -- a timed quest handed in far away, reached by a flight: the flight is in the run, and no stop goes inside it
+        local function rec(id, x, y, ex, ey)
+            return { id = id, name = "Q" .. id, level = 10, minLevel = 1, xp = 900, starts = { { map = 1, x = x, y = y } }, ends = { { map = 1, x = ex or x, y = ey or y } },
+                objectives = { { kind = "kill", count = 4, countKnown = true, mobLevel = 10, spots = { { map = 1, x = x + 1, y = y + 1 } } } },
+                pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+        end
+        local recs = { [9801] = rec(9801, 30, 40, 92, 92), [9802] = rec(9802, 30.5, 40.5) }
+        ns.PlannerTimedQuest = function(id) return id == 9801 and 900 or nil end
+        local ctx = { source = { kind = "test", ids = function() return { 9801, 9802 } end, quest = function(id) return recs[id] end },
+            level = 10, group = "solo", inGroup = false, speed = 7, faction = "Alliance", done = function() return false end, onQuest = function() return false end,
+            here = { map = 1, x = 30, y = 40 }, crossings = {}, learnFlights = false, pace = 1, flightTime = function() return nil end,
+            flights = { { node = 1, map = 1, x = 32, y = 42, known = true, name = "Here Point" }, { node = 2, map = 1, x = 91, y = 91, known = true, name = "Far Point" } } }
+        local guide = ns.PlannerRoute(ctx)
+        local function seq() local o = {}; for _, st in ipairs(guide.steps) do o[#o + 1] = st.kind .. (st.quest and (":" .. st.quest) or "") .. (st.timed and "!" or "") end return table.concat(o, " ") end
+        if not seq():find("do:9801! fly! turnin:9801!", 1, true) then error("the flight to a timed hand-in is in the run: " .. seq()) end
+        local fly
+        for _, st in ipairs(guide.steps) do if st.kind == "fly" then fly = fly or st end end
+        ns.plannerStops = { { id = "t13run", kind = "vendor", want = function() return true end,
+            places = function() return { { name = "Vendor", map = 1, x = fly.x + 0.5, y = fly.y + 0.5 } } end, text = function() return "Vendor" end } }
+        ns.PlannerAddStops(guide, {}, ctx)
+        local s = seq()
+        if s:find("fly! vendor", 1, true) or s:find("vendor fly!", 1, true) or s:find("do:9801! vendor", 1, true) or not s:find("vendor", 1, true) then
+            error("no stop before or after the run's flight: " .. s) end
+        ns.plannerStops = saved.stops
+        ns.PlannerTimedQuest = saved.timedQ
+
+        -- in a fight, a new step on the map you are on is still pointed at
+        ns.db.plannerTomTom = false
+        ns.root.guides = { Near = { name = "Near", steps = { { kind = "goto", text = "One", map = 1, x = 40, y = 40 }, { kind = "goto", text = "Two", map = 1, x = 60, y = 60 } } } }
+        ns:GuideFollow("Near")
+        local st = ns.GuideState()
+        env.InCombatLockdown = function() return true end
+        st.at = 2
+        ns:GuideAdvance()
+        env.InCombatLockdown = saved.combat
+        local w = ns.waypoint
+        if not (w and math.abs(w.x - 0.6) < 0.001 and w.label == "Two") then error("in a fight, on your own map: the new step: " .. tostring(w and w.label)) end
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    ns:GuideStop(); ns:ClearWaypoint(true)
+    env.C_Map = saved.map; rawset(env, "CreateVector2D", saved.vec)
+    env.InCombatLockdown = saved.combat
+    ns.GuideUnlocked, ns.root.guideState, ns.root.guides, ns.root.planner = saved.unlocked, saved.state, saved.guides, saved.planner
+    ns.db.plannerTomTom, ns.plannerStops, ns.PlannerTimedQuest = saved.tt, saved.stops, saved.timedQ
+    if ns.PlannerPosReset then ns.PlannerPosReset() end
+    if not ok then error(err, 0) end
+end)
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()

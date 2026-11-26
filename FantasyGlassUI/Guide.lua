@@ -491,6 +491,7 @@ local function LegFor(step, index, map, x, y)
     local here = Here()
     local c = legCache
     if c and c.step == step and c.index == index and c.here == here then return unpack(c.result, 1, 6) end
+    if (ns.MapPosition and ns.MapPosition(map, "player")) or here == map then return nil end   -- (on its map: the arrow points there itself)
     if InCombatLockdown() then return false end              -- (no travel worked out in a fight: the arrow keeps what it shows)
     local result = { LegPlace(map, x, y) }
     legCache = { step = step, index = index, here = here, result = result }
