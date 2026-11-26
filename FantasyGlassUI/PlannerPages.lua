@@ -155,7 +155,11 @@ function ns.PlannerPreviewLines(guide, summary)
 end
 
 local function ShowPreview(guide, summary)
-    previewWindow = ns:ShowList("PlanPreview", "Preview the next hour", ns.PlannerPreviewLines(guide, summary), nil, 440, 420)
+    local lines = ns.PlannerPreviewLines(guide, summary)
+    previewWindow = ns:ShowList("PlanPreview", "Preview the next hour", lines, nil, 440, 420)
+    if ns.db and ns.db.readDialog and ns.db.plannerSpeak ~= false and lines[1] then   -- (read aloud: the page and its first step)
+        ns:Speak(ns:Tr("Preview the next hour") .. ". " .. tostring(lines[1].left))
+    end
     return true
 end
 function ns:PlannerPreview()

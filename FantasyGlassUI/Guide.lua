@@ -1352,6 +1352,17 @@ function ns:GuideRecordStop()
     local done = rec
     rec, ns.guideRecording = nil, nil
     ns:GuideSave(done)
+-- What the panel says, as one text to read aloud (the read key, /fgui read guide): the title, the step, the next
+-- steps and every line shown. Nil while the guide is off or the panel hidden.
+function ns.GuideReadText()
+    if not (ns:GuideOn() and ns:GuidePanelShown() and type(panel.tipLines) == "table" and #panel.tipLines > 0) then return nil end
+    local parts = {}
+    for _, t in ipairs(panel.tipLines) do parts[#parts + 1] = (tostring(t):gsub("\n", ". ")) end
+    return table.concat(parts, ". ")
+end
+function ns.GuidePanelUnderMouse()
+    return ns:GuidePanelShown() and panel.IsMouseOver ~= nil and ns.Yes(panel:IsMouseOver()) or false
+end
     ns:Print("Recording stopped: \"%s\" has %d steps. /fgui guide edit %s shows them.", done.name, #done.steps, done.name)
     return done
 end

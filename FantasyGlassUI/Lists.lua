@@ -168,7 +168,8 @@ function ns:ListWindow(key, title, note, width, height)
         end
         windows[key] = w
     end
-    w.title:SetText(ns:Tr(title or ""))
+    w.titleText = ns:Tr(title or "")
+    w.title:SetText(w.titleText)
     w.note:SetText(note and ns:Tr(note) or "")
     -- the list stops above the note, however many lines (up to two) the note takes
     local nh = 0
@@ -179,6 +180,14 @@ function ns:ListWindow(key, title, note, width, height)
     end
     w.area:SetHeight(w.baseHeight - 40 - math.max(30, nh + 16))
     return w
+end
+-- The list window in front (the one opened last that is still shown), or nil.
+function ns:FrontList()
+    local best, at = nil, -1
+    for key, w in pairs(windows) do
+        if key ~= "SelfTest" and ns.Yes(w:IsShown()) and (w.suiShownSeq or 0) > at then best, at = w, w.suiShownSeq or 0 end
+    end
+    return best
 end
 -- Close every list window (the self-test opens many).
 function ns:HideLists()

@@ -15612,7 +15612,9 @@ try("13.5 together B: asking, the state and a plan for both", function()
         ns.db.plannerDuoAsk = false
         addon("D1:ASK:cd34:20", "Leo-Realm")
         ns.PlannerDuoTick(); flush()
-        if lists.PlanDuoAsk or #sends ~= before or ns.plannerDuo then error("asking switched off: nothing") end
+        if lists.PlanDuoAsk or ns.plannerDuo then error("asking switched off: nothing shown") end
+        if #sends ~= before + 1 or sends[#sends].text ~= "D1:NO:cd34" then error("asking switched off: a plain no (polish P2)") end
+        before = #sends
         ns.db.plannerDuoAsk = true
         addon("D1:ASK:cd35:20", "Leo-Realm")
         for _, r in ipairs(lists.PlanDuoAsk or {}) do if r.click and r.left:find("No thanks", 1, true) then r.click() end end
@@ -20468,6 +20470,79 @@ try("polish P2: list rows and colours", function()
         w:Hide()
     end
     ns.fontScale = saved.scale
+    if not ok then error(err, 0) end
+end)
+try("polish P2: the duo ask and reading aloud", function()
+    local saved = { unlocked = ns.GuideUnlocked, state = ns.root.guideState, time = env.GetTime, combat = env.InCombatLockdown, ask = ns.db.plannerDuoAsk,
+        captions = ns.db.captions, read = ns.db.readDialog, send = ns.PlannerDuoSend, speak = ns.Speak, list = ns.ShowList, errors = #ns.errors, keys = ns.WINDOW_KEYS_FRAMES }
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        local clock = 7000
+        env.GetTime = function() return clock end
+        local sends, spoken, lists = {}, {}, {}
+        ns.PlannerDuoSend = function(text, to) sends[#sends + 1] = { text = text, to = to }; return true end
+        ns.Speak = function(_, t) spoken[#spoken + 1] = t; return true end
+        ns.ShowList = function(self, key, title, lines, note, ...) lists[key] = { lines = lines, note = note }; return saved.list(self, key, title, lines, note, ...) end
+        ns.db.captions, ns.db.readDialog, ns.db.plannerDuoAsk = true, true, true
+        ns.WINDOW_KEYS_FRAMES = {}
+        local function addon(text, from) ns.PlannerDuoEvent("CHAT_MSG_ADDON", "FGUIPlan", text, "WHISPER", from or "Leo-Realm") end
+        -- asked: the page, a caption, the question read aloud, a countdown, and Tab reaches it
+        ns.captionLast = nil
+        addon("D1:ASK:ab21:20")
+        local page = lists.PlanDuoAsk
+        if not (page and page.lines[1].wrap and page.note == "Answer within 30 s") then error("the ask page, wrapping, with the time to answer: " .. tostring(page and page.note)) end
+        if ns.captionLast ~= "Leo asks to plan your route together." then error("a caption: " .. tostring(ns.captionLast)) end
+        if spoken[#spoken] ~= "Leo asks to plan your route together." then error("read aloud: " .. tostring(spoken[#spoken])) end
+        local inKeys = false
+        for _, n in ipairs(ns.WINDOW_KEYS_FRAMES) do if n == "FantasyGlassUIListPlanDuoAsk" then inKeys = true end end
+        if not inKeys then error("the ask page is in the keyboard list") end
+        -- the same friend again: not shown twice
+        lists.PlanDuoAsk = nil
+        addon("D1:ASK:ab21:20")
+        if lists.PlanDuoAsk then error("a repeat ask is not shown again") end
+        -- the countdown, then closed at 0
+        clock = clock + 10.5
+        ns.PlannerDuoAskTick(clock)
+        clock = clock + 20
+        ns.PlannerDuoAskTick(clock)
+        lists.PlanDuoAsk = nil
+        -- in a fight: held, shown once it is over
+        env.InCombatLockdown = function() return true end
+        addon("D1:ASK:ab22:20", "Ana-Realm")
+        if lists.PlanDuoAsk then error("not shown in a fight") end
+        env.InCombatLockdown = function() return false end
+        ns.PlannerDuoAskTick(clock)
+        if not lists.PlanDuoAsk then error("shown after the fight") end
+        clock = clock + 31
+        ns.PlannerDuoAskTick(clock)
+        -- asking switched off: a plain no, once
+        ns.db.plannerDuoAsk = false
+        sends = {}
+        addon("D1:ASK:ab23:20", "Ana-Realm"); addon("D1:ASK:ab23:20", "Ana-Realm")
+        if #sends ~= 1 or sends[1].text ~= "D1:NO:ab23" or sends[1].to ~= "Ana-Realm" then error("asking off: a no, once: " .. #sends .. " " .. tostring(sends[1] and sends[1].text)) end
+        ns.db.plannerDuoAsk = true
+        -- a message of a session you do not have (you reloaded): an end, once
+        sends = {}
+        addon("D1:AT:beef:1:2:3", "Mira-Realm"); addon("D1:HI:beef", "Mira-Realm"); addon("SS:beefz3:1:2:plan:# duo", "Mira-Realm")
+        if #sends ~= 1 or sends[1].text ~= "D1:END:beef" then error("an unknown session is told it ended, once: " .. #sends .. " " .. tostring(sends[1] and sends[1].text)) end
+        addon("D1:END:cafe", "Mira-Realm")
+        if #sends ~= 1 then error("an end is never answered") end
+        -- reading aloud: the panel, and the list window in front
+        ns.root.guideState = {}
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "Sell your grey items" }, { kind = "note", text = "then this" } } }, {})
+        local text, kind = ns:ReadText("guide")
+        if kind ~= "guide" or not tostring(text):find("Sell your grey items", 1, true) or not text:find("then this", 1, true) then error("the panel read: " .. tostring(text)) end
+        ns:ShowList("PolishP2Read", "Polish read", { { left = "Experience", right = "1,200" }, { left = "Plan together", action = true, click = function() end } })
+        text, kind = ns:ReadText("list")
+        if kind ~= "list" or text ~= "Polish read. Experience: 1,200. Plan together" then error("the front list read: " .. tostring(text)) end
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    if ns.HideLists then ns:HideLists() end
+    ns:GuideStop()
+    env.GetTime, env.InCombatLockdown = saved.time, saved.combat
+    ns.GuideUnlocked, ns.root.guideState = saved.unlocked, saved.state
+    ns.db.plannerDuoAsk, ns.db.captions, ns.db.readDialog = saved.ask, saved.captions, saved.read
+    ns.PlannerDuoSend, ns.Speak, ns.ShowList, ns.WINDOW_KEYS_FRAMES = saved.send, saved.speak, saved.list, saved.keys
     if not ok then error(err, 0) end
 end)
 -- polish P2: end

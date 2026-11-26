@@ -476,7 +476,7 @@ local function Accept()
     pendingAsk = nil
     HideAsk()
     if not a or ns.plannerDuo or not ns:GuideUnlocked() or ns.db.plannerDuoAsk == false then return end
-    if (Now() or 0) - a.at > ANSWER_WAIT then return end   -- (too late: the leader has given up)
+    if a.held or (Now() or 0) - a.at > ANSWER_WAIT then return end   -- (too late: the leader has given up)
     local now = Now() or 0
     ns.plannerDuo = { role = "friend", partner = a.from, to = a.to, session = a.session, heard = now, asked = now }
     ns.PlannerDuoSend("D1:YES:" .. a.session)
@@ -491,16 +491,53 @@ local function Decline()
     if a and ns:GuideUnlocked() then ns.PlannerDuoSend("D1:NO:" .. a.session, a.to) end
 end
 
-local function Ask(from, to, session)
-    pendingAsk = { from = from, to = to, session = session, at = Now() or 0 }
-    local lines = {
-        { left = format(ns:Tr("%s asks to plan your route together."), from) },
+-- The ask page: the question (on two lines when it is long), the two answers, and how long is left to answer.
+local function AskLines(a)
+    return {
+        { left = format(ns:Tr("%s asks to plan your route together."), a.from), wrap = true },
         { left = "" },
-        { left = "|cff33ff66" .. ns:Tr("Plan together") .. "|r", click = Accept },
-        { left = "|cff9aa4b4" .. ns:Tr("No thanks") .. "|r", click = Decline },
+        { left = ns:Tr("Plan together"), action = true, click = Accept },
+        { left = ns:Tr("No thanks"), action = true, click = Decline },
     }
-    askWindow = ns:ShowList("PlanDuoAsk", "Plan with a friend", lines, nil, 380, 170)
 end
+local function AskNote(left) return format(ns:Tr("Answer within %d s"), max(0, math.ceil(left))) end
+-- Show the page and say so: a caption, the game's invite sound, and the question read aloud with reading aloud on.
+local function PresentAsk(a)
+    a.held, a.at = nil, Now() or 0                      -- (the time to answer counts from when you see it)
+    a.left = ANSWER_WAIT
+    askWindow = ns:ShowList("PlanDuoAsk", "Plan with a friend", AskLines(a), AskNote(ANSWER_WAIT), 380, 190)
+    if ns.PlannerKeyFrames then ns.PlannerKeyFrames() end   -- (Tab and Enter answer it)
+    local text = format(ns:Tr("%s asks to plan your route together."), a.from)
+    ns:Caption("alert", text)
+    ns.UISound("IG_PLAYER_INVITE")
+    if ns.db and ns.db.readDialog then ns:Speak(text) end
+end
+local function Ask(from, to, session)
+    if pendingAsk and Same(pendingAsk.from, from) then       -- (the same friend again: the page already up is kept, not shown twice)
+        pendingAsk.to, pendingAsk.session = to, session
+        return
+    end
+    pendingAsk = { from = from, to = to, session = session, at = Now() or 0 }
+    if InCombatLockdown() then pendingAsk.held = true; return end   -- (not in the middle of a fight: shown once it is over)
+    PresentAsk(pendingAsk)
+end
+-- Each tick while the page waits: a held page shown after the fight, the seconds left counted down, closed at 0.
+local function AskTick(now)
+    local a = pendingAsk
+    if not a then return end
+    if a.held then
+        if not InCombatLockdown() then PresentAsk(a) end
+        return
+    end
+    local left = ANSWER_WAIT - (now - a.at)
+    if left <= 0 then pendingAsk = nil; HideAsk(); return end   -- (no choice: no answer)
+    local whole = math.ceil(left)
+    if whole ~= a.left then
+        a.left = whole
+        if askWindow and askWindow.note and askWindow.IsShown and ns.Yes(askWindow:IsShown()) then askWindow.note:SetText(AskNote(whole)) end
+    end
+end
+ns.PlannerDuoAskTick = AskTick
 
 -- The friend's state arrived (the leader's side).
 local function StateIn(text)
@@ -658,7 +695,9 @@ local function AtIn(d, more)
     local planId, at, n = more:match("^:(%d+):(%d+):(%d+)$")
     planId, at, n = tonumber(planId or ""), tonumber(at or ""), tonumber(n or "")
     if not (planId and at and n) or n > 1000 or at < 1 or at > n + 1 then return end
+    local was = d.partnerAt
     d.partnerAt = { planId = planId, at = at, n = n }
+    if was and was.planId == planId and was.at == at and was.n == n then return end   -- (nothing new: no redraw)
     if ns.GuideRedraw then ns:GuideRedraw() end
 end
 local function EndIn(d)
@@ -717,6 +756,12 @@ Sync = function()
 end
 ns.PlannerDuoSync = function() Sync() end             -- (the tests: a duo set up by hand)
 
+-- The sessions already told "no" or "ended" (once each; a handful at most, forgotten when there are many).
+local told, toldCount = {}, 0
+local function Tell(session)
+    if toldCount >= 50 then told, toldCount = {}, 0 end
+    told[session], toldCount = true, toldCount + 1
+end
 local function Receive(from, msg, sender)
     local d = ns.plannerDuo
     local kind, rest = msg:match("^D1:(%u+):(.*)$")
@@ -725,7 +770,11 @@ local function Receive(from, msg, sender)
         session = Session(session)
         if not session then return end
         if kind == "ASK" then
-            if d or ns.db.plannerDuoAsk == false or not more:match("^:%d+$") then return end
+            if d or not more:match("^:%d+$") then return end
+            if ns.db.plannerDuoAsk == false or not ns:GuideOn() then     -- (asking switched off, or the guide: a plain no, said once)
+                if not told[session] then Tell(session); ns.PlannerDuoSend("D1:NO:" .. session, Str(sender) or from) end
+                return
+            end
             if pendingAsk and not Same(pendingAsk.from, from) then return end   -- (one question at a time: the other one times out)
             Ask(from, Str(sender) or from, session)
             return
@@ -735,7 +784,15 @@ local function Receive(from, msg, sender)
             HideAsk()
             return
         end
-        if not (d and Same(from, d.partner) and session == d.session) then return end
+        if not (d and Same(from, d.partner) and session == d.session) then
+            -- a session you do not have (you reloaded, or it ended here): tell them once, so they stop at once
+            -- instead of waiting five minutes for silence
+            if kind ~= "END" and kind ~= "NO" and not (d and session == d.session) and not told[session] then   -- (your own session from a stranger: ignored)
+                Tell(session)
+                ns.PlannerDuoSend("D1:END:" .. session, Str(sender) or from)
+            end
+            return
+        end
         d.heard, d.silent = Now() or d.heard, 0
         if kind == "YES" and d.role == "lead" and not d.accepted then
             d.accepted, d.yesAt = true, Now() or 0
@@ -749,8 +806,13 @@ local function Receive(from, msg, sender)
         return
     end
     local id, i, n, pkind, piece = ns.ParseSharePiece(msg)
-    if not (id and d and Same(from, d.partner) and PIECES[pkind]) then return end
-    if id:match("^(%x+)z%d+$") ~= d.session or not (i and n) or n < 1 or n > PIECES[pkind] or i < 1 or i > n then return end
+    if not (id and PIECES[pkind]) then return end
+    local theirs = Session(id:match("^(%x+)z%d+$"))
+    if not (d and Same(from, d.partner) and theirs == d.session) then           -- (a piece of a session you do not have: as above)
+        if theirs and not (d and theirs == d.session) and not told[theirs] then Tell(theirs); ns.PlannerDuoSend("D1:END:" .. theirs, Str(sender) or from) end
+        return
+    end
+    if not (i and n) or n < 1 or n > PIECES[pkind] or i < 1 or i > n then return end
     d.heard, d.silent = Now() or d.heard, 0
     local text = ns.ShareReceive(from, id, i, n, pkind, piece, Now() or 0)
     if not text then return end
@@ -781,7 +843,7 @@ local function Tick()
     ns.PlannerDuoFlush()
     local now = Now()
     if not now then return end
-    if pendingAsk and now - pendingAsk.at > ANSWER_WAIT then pendingAsk = nil; HideAsk() end   -- (no choice: no answer)
+    AskTick(now)
     local d = ns.plannerDuo
     if not d then return end
     if d.role == "lead" and not d.accepted then

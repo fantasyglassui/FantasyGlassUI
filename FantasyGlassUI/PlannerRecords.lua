@@ -261,7 +261,8 @@ end)
 
 -- Keys: the guide's menu and its pages join the windows Tab and Enter work in.
 local KEY_FRAMES = { "FantasyGlassUIGuideMenu", "FantasyGlassUIListPlanPreview", "FantasyGlassUIListPlanWhy", "FantasyGlassUIListPlanTime",
-                     "FantasyGlassUIListPlanCatchUp", "FantasyGlassUIListPlanHere" }
+                     "FantasyGlassUIListPlanCatchUp", "FantasyGlassUIListPlanHere", "FantasyGlassUIListPlanDuoAsk", "FantasyGlassUIListGuides",
+                     "FantasyGlassUIListReputation", "FantasyGlassUIListSkipped", "FantasyGlassUIGuideEditor", "FantasyGlassUIRouteEditor" }
 function ns.PlannerKeyFrames()
     local list = ns.WINDOW_KEYS_FRAMES
     if type(list) ~= "table" then return end
