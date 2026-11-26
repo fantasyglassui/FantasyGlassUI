@@ -155,7 +155,7 @@ function ns.PlannerPreviewLines(guide, summary)
     end }
     lines[#lines + 1] = { left = ns:Tr("Change what it plans"), action = true, click = function()
         Close()
-        if ns.ToggleConfig then ns:ToggleConfig("guide") end
+        if ns.PlannerOpen then ns:PlannerOpen() end                -- (the planner's settings are in its own window)
     end }
     return lines
 end
@@ -307,6 +307,8 @@ ns.PlannerHook("applied", "zoneGoal", function(_, summary, ctx)
     rec.zoneGoal = nil
     local page = ns.guidePage                            -- (the Guide tab's goal button, when the tab was built)
     if type(page) == "table" and type(page.zoneGoalDraw) == "function" then pcall(page.zoneGoalDraw) end
+    local win = ns.plannerWindow                         -- (and the planner window's, when it was built)
+    if type(win) == "table" and type(win.T) == "table" and type(win.T.zoneGoalDraw) == "function" then pcall(win.T.zoneGoalDraw) end
     if type(zg) == "table" and (tonumber(zg.done) or 0) < (tonumber(zg.total) or 0) then   -- (doable quests are left, out of reach or above your level)
         ns:Print("No more quests in %s at your level.", ns.PlannerMapName(goal))
     else

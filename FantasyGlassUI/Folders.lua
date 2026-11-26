@@ -23,26 +23,19 @@ local type, pairs, ipairs, tostring, pcall = type, pairs, ipairs, tostring, pcal
 --   GoldLockedNow
 --   GoldOpen
 --   PlannerAdviceLines
---   PlannerCharRecord
---   PlannerCodeFollowing
+--   PlannerCatchUp
+--   PlannerDuoEvent
 --   PlannerDuoPartner
 --   PlannerDuoRole
---   PlannerDuoStart
 --   PlannerExploreReached
---   PlannerGoalZone
 --   PlannerGoldText
 --   PlannerInnSuggest
 --   PlannerIntro
 --   PlannerIntroDue
---   PlannerKillXP
 --   PlannerKnownFactions
---   PlannerLFGChannels
---   PlannerLevelLines
---   PlannerLevelRunLines
---   PlannerMapName
---   PlannerMapRedraw
 --   PlannerNoteFailed
 --   PlannerOpen
+--   PlannerPlaces
 --   PlannerPlanCommand
 --   PlannerRepGoals
 --   PlannerRepName
@@ -53,19 +46,13 @@ local type, pairs, ipairs, tostring, pcall = type, pairs, ipairs, tostring, pcal
 --   PlannerSailText
 --   PlannerSessionSkip
 --   PlannerSetRepGoal
---   PlannerSetStyle
---   PlannerSetWeight
---   PlannerSetZoneGoal
---   PlannerSharePlan
 --   PlannerSkip
 --   PlannerSkipList
+--   PlannerSource
 --   PlannerStart
 --   PlannerStop
---   PlannerStyle
 --   PlannerUnspentTalents
---   PlannerWeights
 --   PlannerYield
---   PlannerZoneGoal
 -- end of folder seams
 -- (Every ns.Planner* and ns.Gold* that a file of FantasyGlassUI/ or FantasyGlassUI_Options/ uses and that is not
 -- defined in FantasyGlassUI/ by name: each is defined in a folder file. A call site checks it is there first, or it

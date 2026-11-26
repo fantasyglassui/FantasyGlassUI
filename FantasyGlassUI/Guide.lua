@@ -367,6 +367,7 @@ local FailedCheck, NotHere                          -- (the guide's events and i
 --   GUIDE_STOP_KINDS
 --   GUIDE_TRIP
 --   GUIDE_WINDOW_KINDS
+--   GuideAdvance
 --   GuideFollow
 --   GuideGet
 --   GuideHere
@@ -388,14 +389,17 @@ local FailedCheck, NotHere                          -- (the guide's events and i
 --   GuideRegisterLine
 --   GuideRegisterLock
 --   GuideRegisterTitle
+--   GuideReputation
 --   GuideSave
 --   GuideSaySent
 --   GuideSetPlan
 --   GuideShowPanel
 --   GuideSkip
+--   GuideSkipped
 --   GuideSkippedText
 --   GuideState
 --   GuideStepBase
+--   GuideStop
 --   GuideText
 --   GuideUnlocked
 -- end of seams

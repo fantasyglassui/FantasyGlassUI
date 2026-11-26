@@ -263,6 +263,9 @@ def test_guide_seams_listed():
             if re.search(r"\bfunction ns[.:]Guide\w+", line) or re.search(r"\bns\.Guide\w+\s*=(?!=)", line):
                 assigned.append(f"{name}:{i}: {line.strip()}")
     assert "Gold.lua" in scanned and "PlannerPath.lua" in scanned, scanned
+    # The options folder's row kit (FantasyGlassUI_Options/Bars.lua) is loaded by the planner window itself (ruling C-1).
+    bars = open(os.path.join(ROOT, "FantasyGlassUI_Options", "Bars.lua"), encoding="utf-8").read()
+    used -= {n for n in used if re.search(r"^(?:function ns[.:]%s\b|ns\.%s\s*=)" % (n, n), bars, re.M)}
     missing = sorted(used - listed)
     assert not missing, f"used by the planner but not in the seam list: {missing}"
     undefined = sorted(n for n in listed if not re.search(r"^(?:function ns[.:]%s\b|ns\.%s\s*=)" % (n, n), guide, re.M))
