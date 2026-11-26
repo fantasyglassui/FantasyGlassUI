@@ -18109,6 +18109,108 @@ try("12.3 settings look: pages follow the window's width", function()
     if ns.optUI.frame and ns.optUI.frame:IsShown() then ns:ToggleConfig() end
     if not ok then error(err, 0) end
 end)
+try("13.6 leftovers: exclusive quests", function()
+    local saved = { unlocked = ns.GuideUnlocked, here = ns.GuideHere, places = ns.PlannerPlaces, psrc = ns.PlannerSource, planner = ns.root.planner,
+                    key = ns.root.guideKey, guid = env.UnitGUID, trade = env.IsTradeskillTrainer, level = env.UnitLevel, map = env.C_Map,
+                    dungeons = ns.PLANNER_DUNGEONS, combat = env.InCombatLockdown, dry = ns.db.plannerDry, errors = #ns.errors }
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        local function rec(id, t)
+            local r = { id = id, name = "X" .. id, level = 20, minLevel = 1, xp = 500, starts = { { map = 1429, x = 40, y = 40 } }, ends = {}, objectives = {},
+                pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+            for k, v in pairs(t or {}) do r[k] = v end
+            return r
+        end
+        local recs = {
+            [9601] = rec(9601, { xp = 900, exclusive = { 9602 } }), [9602] = rec(9602, { xp = 1200 }),
+            [9603] = rec(9603, { exclusive = { 9604 } }), [9604] = rec(9604, { xp = 700 }), [9605] = rec(9605, { xp = 600, exclusive = { 9604 } }),
+            [9606] = rec(9606, { xp = 100, exclusive = { 9607 } }), [9607] = rec(9607, { xp = 5000 }),
+            [9608] = rec(9608, { xp = 300, exclusive = { 9609 }, fromItem = { id = 55, npc = 66 } }), [9609] = rec(9609, { xp = 2000 }),
+            [9610] = rec(9610), [9611] = rec(9611, { pre = { -9610 } }), [9612] = rec(9612),
+        }
+        recs[9612].level = nil
+        local ids = { 9601, 9602, 9603, 9604, 9605, 9606, 9607, 9608, 9609, 9611, 9612 }
+        local source = { kind = "fake", ids = function() return ids end, quest = function(id) return recs[id] end }
+        local function ctx(extra)
+            local c = { level = 20, group = "all", inGroup = false, done = function(id) return id == 9610 end, onQuest = function() return false end,
+                        classQuests = { { id = 9606, level = 18, kind = "class" } } }
+            for k, v in pairs(extra or {}) do c[k] = v end
+            return c
+        end
+        local function set(list) local s = {}; for _, r in ipairs(list or {}) do s[r.id] = true end return s end
+        local list, skipped, later = ns.PlannerCandidates(source, ctx())
+        local have, wait = set(list), set(later)
+        if not have[9602] or have[9601] then error("the one with more experience is kept: 9602, not 9601") end
+        if not have[9604] or have[9603] or have[9605] then error("a chain of exclusive quests keeps only 9604") end
+        if not have[9606] or have[9607] then error("the class quest is kept over more experience") end
+        if wait[9608] or have[9608] or not have[9609] then error("the item quest loses to its partner with more experience") end
+        if not have[9611] then error("pre = { -9610 } with 9610 done: a candidate") end
+        if have[9612] then error("a record with no level is left out") end
+        if skipped.group ~= 0 then error("everything allowed: nothing skipped") end
+        -- in the log: kept, its partner dropped
+        list = ns.PlannerCandidates(source, ctx({ onQuest = function(id) return id == 9601 end }))
+        have = set(list)
+        if not have[9601] or have[9602] then error("the logged 9601 is kept, 9602 dropped") end
+        -- with nothing ever done, the -id pre still waits
+        list = ns.PlannerCandidates(source, ctx({ done = function() return false end }))
+        if set(list)[9611] then error("pre = { -9610 } with 9610 not done: no candidate") end
+        -- Solo: a group quest is skipped once, never also as an exclusive loser
+        recs[9602].group = true
+        list, skipped = ns.PlannerCandidates(source, ctx({ group = "solo" }))
+        have = set(list)
+        if not have[9601] or have[9602] or skipped.group ~= 1 then error("Solo, 9602 a group quest: 9601 kept, skipped 1: " .. tostring(skipped.group)) end
+        recs[9601].group = true
+        list, skipped = ns.PlannerCandidates(source, ctx({ group = "solo" }))
+        if set(list)[9601] or skipped.group ~= 1 then error("Solo, both group quests of one exclusive pair: skipped 1, not 2: " .. tostring(skipped.group)) end
+        recs[9601].group, recs[9602].group = false, false
+        -- the seam itself
+        local keep = ns.PlannerExclusiveKeep({ recs[9603], recs[9604], recs[9605], recs[9610] }, ctx())
+        if not (keep[9604] and keep[9610]) or keep[9603] or keep[9605] then error("PlannerExclusiveKeep: 9604 and the lone 9610") end
+        keep = ns.PlannerExclusiveKeep({ rec(9613, { xp = 800, exclusive = { 9614 } }), rec(9614, { xp = 800 }) }, ctx())
+        if not keep[9613] or keep[9614] then error("equal experience: the lower id") end
+
+        -- the dungeon advice counts one of two exclusive dungeon quests
+        ns.db.plannerDry = nil
+        env.InCombatLockdown = function() return false end
+        ns.PLANNER_DUNGEONS = { { name = "Deadmines", minLevel = 17, maxLevel = 24, map = 1436, x = 43, y = 72, zone = 1581 } }
+        local function dq(id, t) return rec(id, (function() local x = { group = true, dungeon = true, xp = 3000 }; for k, v in pairs(t or {}) do x[k] = v end return x end)()) end
+        local drecs = { [9615] = dq(9615, { exclusive = { 9616 } }), [9616] = dq(9616, { xp = 3500 }), [9617] = dq(9617) }
+        local dsrc = { kind = "fake", ids = function() return {} end, quest = function(id) return drecs[id] end,
+                       zoneQuests = function(zone) return zone == 1581 and { 9615, 9616, 9617 } or {} end, grindSpots = function() return {} end }
+        local dry = ns.PlannerDry(ctx({ source = dsrc, level = 18, classQuests = {} }))
+        if not (dry and dry.dungeon and dry.dungeon.count == 2 and dry.dungeon.xp == 6500) then error("dungeon advice: two exclusive quests count once: " .. tostring(dry and dry.dungeon and dry.dungeon.count)) end
+
+        -- a riding trainer visit, then the window closes twice and a class trainer opens: ridingKnown is set once only
+        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
+        ns.root.planner = nil
+        ns.PlannerSource = function() return source end
+        ns.PlannerPlaces = function(_, kind)
+            if kind == "classTrainer" then return { { name = "Trainer Ten", map = 1, x = 70, y = 70, id = 10 } } end
+            if kind == "professionTrainer" then return { { name = "Rider", map = 1, x = 30, y = 40, id = 762 } } end
+            return {}
+        end
+        ns.GuideHere = function() return 1, 30, 40 end
+        env.IsTradeskillTrainer = function() return false end
+        env.UnitLevel = function() return 40 end
+        local npc = 762
+        env.UnitGUID = function(u) if u == "npc" then return "Creature-0-1-2-3-" .. npc .. "-0000ABCD" end end
+        fireEvent("TRAINER_SHOW"); fireEvent("TRAINER_CLOSED")
+        local d = ns.PlannerCharRecord(false)
+        if not (d and d.ridingKnown) or d.trainerLevel then error("the riding trainer: you ride") end
+        d.ridingKnown = nil
+        fireEvent("TRAINER_CLOSED")
+        if ns.PlannerCharRecord(false).ridingKnown then error("a second close of the riding trainer sets nothing again") end
+        npc = 10
+        fireEvent("TRAINER_SHOW"); fireEvent("TRAINER_CLOSED")
+        d = ns.PlannerCharRecord(false)
+        if d.ridingKnown or d.trainerLevel ~= 40 then error("the class trainer after the riding one: no ridingKnown again, the trainer level kept") end
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    ns.GuideUnlocked, ns.GuideHere, ns.PlannerPlaces, ns.PlannerSource, ns.root.planner, ns.root.guideKey = saved.unlocked, saved.here, saved.places, saved.psrc, saved.planner, saved.key
+    env.UnitGUID, env.IsTradeskillTrainer, env.UnitLevel, env.C_Map, env.InCombatLockdown = saved.guid, saved.trade, saved.level, saved.map, saved.combat
+    ns.PLANNER_DUNGEONS, ns.db.plannerDry = saved.dungeons, saved.dry
+    if not ok then error(err, 0) end
+end)
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()

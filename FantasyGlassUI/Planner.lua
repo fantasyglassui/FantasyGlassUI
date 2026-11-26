@@ -163,18 +163,22 @@ end
 ------------------------------------------------------------------------------------------
 -- Candidates
 ------------------------------------------------------------------------------------------
+-- (Questie writes "this quest done" as -id in a pre list)
+local function PreId(id) return type(id) == "number" and math.abs(id) or id end
+
 local function AllDone(list, done)
-    for _, id in ipairs(list or {}) do if not done(id) then return false end end
+    for _, id in ipairs(list or {}) do if not done(PreId(id)) then return false end end
     return true
 end
 
 local function AnyDone(list, done)
     if not list or #list == 0 then return true end
-    for _, id in ipairs(list) do if done(id) then return true end end
+    for _, id in ipairs(list) do if done(PreId(id)) then return true end end
     return false
 end
 
 local function InWindow(rec, ctx)
+    if not tonumber(rec.level) then return false end   -- (a record with no level: left out)
     local lo, hi = ns.PlannerWindow(rec, ctx)
     return rec.level >= lo and rec.level <= hi
 end
@@ -184,7 +188,76 @@ local function NeedsGroup(rec) return (rec.elite or rec.group or rec.dungeon) an
 -- Does the group setting let this quest through (an elite your class has soloed counts as solo)?
 local function GroupOK(rec, ctx, level)
     if not NeedsGroup(rec) or ctx.group == "all" or (ctx.group == "grouped" and ctx.inGroup) then return true end
-    return (ctx.soloElites and rec.elite and not rec.group and not rec.dungeon and ns.PlannerSoloEliteOK(ctx.class, rec.level - level)) and true or false
+    return (ctx.soloElites and rec.elite and not rec.group and not rec.dungeon and tonumber(rec.level) and ns.PlannerSoloEliteOK(ctx.class, rec.level - level)) and true or false
+end
+
+-- Quests that exclude each other (Questie's exclusiveTo): of the records given, the ids that stay, { [id] = true }.
+-- The lists are read both ways (two quests are in one set when either names the other) and sets join through
+-- shared ids, also ids that are not among the records. From each set one stays: a quest in your log (every
+-- logged one, and nothing else of its set); none when a member is done; else a class quest; else the most real
+-- experience (ns.PlannerQuestXP's third value), then the lower id. Runs inside the planning coroutine.
+function ns.PlannerExclusiveKeep(recs, ctx)
+    local keep = {}
+    if type(recs) ~= "table" then return keep end
+    ctx = type(ctx) == "table" and ctx or {}
+    local done = type(ctx.done) == "function" and ctx.done or function() return false end
+    local onQuest = type(ctx.onQuest) == "function" and ctx.onQuest or function() return false end
+    local up, nodes = {}, {}
+    local function Root(a)
+        local r = a
+        while up[r] ~= r do r = up[r] end
+        while a ~= r do
+            local nxt = up[a]
+            up[a] = r
+            a = nxt
+        end
+        return r
+    end
+    local function Add(id) if up[id] == nil then up[id] = id; nodes[#nodes + 1] = id end end
+    local own = {}
+    for _, rec in ipairs(recs) do
+        ns.PlannerYield()
+        if type(rec) == "table" and type(rec.id) == "number" then
+            own[#own + 1] = rec
+            Add(rec.id)
+            for _, other in ipairs(type(rec.exclusive) == "table" and rec.exclusive or NONE) do
+                other = tonumber(other)
+                if other and other ~= rec.id then
+                    Add(other)
+                    local a, b = Root(rec.id), Root(other)
+                    if a ~= b then up[max(a, b)] = min(a, b) end
+                end
+            end
+        end
+    end
+    local size, logged, gone = {}, {}, {}
+    for _, id in ipairs(nodes) do
+        ns.PlannerYield()
+        local r = Root(id)
+        size[r] = (size[r] or 0) + 1
+        if onQuest(id) then logged[r] = true elseif done(id) then gone[r] = true end
+    end
+    local class = ns.PlannerClassMap(ctx)
+    local best = {}
+    for _, rec in ipairs(own) do
+        ns.PlannerYield()
+        local r = Root(rec.id)
+        if size[r] == 1 then
+            keep[rec.id] = true
+        elseif logged[r] then
+            if onQuest(rec.id) then keep[rec.id] = true end
+        elseif not gone[r] then
+            local tier = class[rec.id] and 1 or 0
+            local _, _, real = ns.PlannerQuestXP(rec, ctx)
+            real = tonumber(real) or 0
+            local b = best[r]
+            if not b or tier > b.tier or (tier == b.tier and (real > b.xp or (real == b.xp and rec.id < b.id))) then
+                best[r] = { id = rec.id, tier = tier, xp = real }
+            end
+        end
+    end
+    for _, b in pairs(best) do keep[b.id] = true end
+    return keep
 end
 
 -- Why the planner would never pick this quest by its own filters, whatever the log says: "skipped",
@@ -221,7 +294,7 @@ function ns.PlannerCandidates(source, ctx)
     if type(source) ~= "table" or type(ctx) ~= "table" then return list, skipped end
     local level, done, onQuest = ctx.level or 1, ctx.done or function() return false end, ctx.onQuest or function() return false end
     local never = type(ctx.skip) == "table" and ctx.skip or nil
-    local items = {}
+    local items, groupOnly = {}, {}
     if source.begin then source.begin(level) end
     for _, id in ipairs(source.ids()) do
         ns.PlannerYield()
@@ -235,7 +308,7 @@ function ns.PlannerCandidates(source, ctx)
                 and AllDone(rec.pre, done) and AnyDone(rec.preAny, done) then
                 if Keep(rec, ctx, false) then            -- (one a hook drops is not counted as skipped)
                     if not GroupOK(rec, ctx, level) then
-                        skipped.group = skipped.group + 1
+                        groupOnly[#groupOnly + 1] = rec   -- (counted below, once per set of exclusive quests)
                     elseif rec.fromItem then
                         items[#items + 1] = rec
                     else
@@ -276,7 +349,16 @@ function ns.PlannerCandidates(source, ctx)
             end
         end
     end
-    return list, skipped, later
+    -- quests that exclude each other: one of each set, across the three lists (and the skipped count)
+    local all = {}
+    for _, r in ipairs(list) do all[#all + 1] = r end
+    for _, r in ipairs(later) do all[#all + 1] = r end
+    local keep = ns.PlannerExclusiveKeep(all, ctx)
+    local kept, waiting = {}, {}
+    for _, r in ipairs(list) do if keep[r.id] then kept[#kept + 1] = r end end
+    for _, r in ipairs(later) do if keep[r.id] then waiting[#waiting + 1] = r end end
+    for _ in pairs(ns.PlannerExclusiveKeep(groupOnly, ctx)) do skipped.group = skipped.group + 1 end
+    return kept, skipped, waiting
 end
 
 ------------------------------------------------------------------------------------------
@@ -856,6 +938,7 @@ local function TrainerClosed()
         local r = PaceRecord(true)
         if r then r.ridingKnown = true end
     end
+    ridingTrainer = false                                  -- (once per visit: a second close sets nothing again)
     if not classTrainer or not ns:GuideUnlocked() then return end
     local level = UnitLevel and UnitLevel("player")
     if type(level) ~= "number" or ns:IsSecret(level) then return end

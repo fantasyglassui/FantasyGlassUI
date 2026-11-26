@@ -154,20 +154,28 @@ local function DungeonAdvice(ctx)
     local done = type(ctx.done) == "function" and ctx.done or function() return false end
     local onQuest = type(ctx.onQuest) == "function" and ctx.onQuest or function() return false end
     local never = type(ctx.skip) == "table" and ctx.skip or {}
-    local function AllDone(list) for _, q in ipairs(type(list) == "table" and list or {}) do if not done(q) then return false end end return true end
+    local function Done(q) return done(type(q) == "number" and math.abs(q) or q) end   -- (Questie's -id: that quest done)
+    local function AllDone(list) for _, q in ipairs(type(list) == "table" and list or {}) do if not Done(q) then return false end end return true end
     local function AnyDone(list)
         if type(list) ~= "table" or #list == 0 then return true end
-        for _, q in ipairs(list) do if done(q) then return true end end
+        for _, q in ipairs(list) do if Done(q) then return true end end
         return false
     end
     local best
     for _, d in ipairs(type(ns.PLANNER_DUNGEONS) == "table" and ns.PLANNER_DUNGEONS or {}) do
         if type(d) == "table" and tonumber(d.minLevel) and tonumber(d.maxLevel) and d.minLevel <= level and level <= d.maxLevel then
-            local count, xp, maps = 0, 0, {}
+            local count, xp, maps, open = 0, 0, {}, {}
             for _, id in ipairs(src.zoneQuests(d.zone)) do
                 ns.PlannerYield()
                 local rec = (not done(id) and not onQuest(id) and not never[id]) and src.quest(id) or nil
                 if rec and rec.doable and not rec.repeatable and (rec.minLevel or 1) <= level and AllDone(rec.pre) and AnyDone(rec.preAny) then
+                    open[#open + 1] = rec
+                end
+            end
+            local keep = ns.PlannerExclusiveKeep and ns.PlannerExclusiveKeep(open, ctx) or nil   -- (one of quests that exclude each other)
+            for _, rec in ipairs(open) do
+                ns.PlannerYield()
+                if not keep or keep[rec.id] then
                     count, xp = count + 1, xp + (Num(rec.xp) or 0)
                     local sp = type(rec.starts) == "table" and rec.starts[1]
                     if type(sp) == "table" and sp.map then maps[sp.map] = (maps[sp.map] or 0) + 1 end
