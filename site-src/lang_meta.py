@@ -11,3 +11,30 @@ META = {
  "zh": ("Fantasy Glass UI", "适用于 WoW Forever 的魔兽世界插件：单位框体、动作条、团队框体、姓名板、背包和每一个窗口统一为 Starcut 外观，共 115 款主题。", "Fantasy Glass UI：整个界面，如宝石般切琢", "框体、动作条、姓名板、背包和每个窗口统一外观，115 款主题任选。免费，适用于 WoW Forever。"),
 }
 OG_LOCALE = {"en": "en_US", "de": "de_DE", "fr": "fr_FR", "es": "es_ES", "ru": "ru_RU", "pt": "pt_BR", "it": "it_IT", "ko": "ko_KR", "zh": "zh_CN"}
+
+# The site's pages, in the order of the top row. Each page's folder is site-src/pages/<slug>/ and its address is
+# /<slug>/ in English and /<code>/<slug>/ in the other languages (Home is / and /<code>/). "nav" is the page's name
+# (in the top row, the tab title and the link preview); "desc" is its description (search results and the
+# preview). Both are English here and translated in site_tr.py (the build stops if one is missing).
+# Home's title and description are META above. Optional: "og_title" and "og_desc" for a preview that differs,
+# "image" for a preview image of its own (a file in docs/, 1200 x 630), "top": False to leave it out of the top row,
+# "foot": True to list it in the footer. W2 adds its new pages after "get-started", W3 at the end (see PAGES.md).
+PAGES = [
+    {"slug": "home", "nav": "Home"},
+    {"slug": "features", "nav": "Features", "desc": "Every switch in Fantasy Glass UI and what it does, with one search across all of them."},
+    {"slug": "themes", "nav": "Themes", "desc": "Themes in three families, Glass, Fantasy and Celestial, to try on this site, and a maker for your own."},
+    {"slug": "guide-and-gold", "nav": "Guide and Gold", "desc": "What the quest guide and the gold advisor do, and how to use them."},
+    {"slug": "get-started", "nav": "Get started", "desc": "Install Fantasy Glass UI and set it up in a few minutes, with answers to common questions and every command."},
+    {"slug": "changelog", "nav": "Changelog", "desc": "Every release of Fantasy Glass UI, the WoW Forever add-on: what is new, what was fixed and what changed."},
+    {"slug": "roadmap", "nav": "Roadmap", "desc": "What is coming to Fantasy Glass UI after 13.0, and what is being thought about."},
+    {"slug": "accessibility", "nav": "Accessibility", "top": False, "foot": True, "desc": "What Fantasy Glass UI, the WoW Forever add-on, does for color blindness, low vision, blind players, deaf players, photosensitivity, one-handed play and more."},
+]
+LANG_NAMES = {"en": "English", "de": "Deutsch", "fr": "Français", "es": "Español", "ru": "Русский", "pt": "Português", "it": "Italiano", "ko": "한국어", "zh": "中文"}
+# the structured data on Home (search engines read it); the theme count is filled in by the build
+LD = {"@context": "https://schema.org", "@type": "SoftwareApplication", "name": "Fantasy Glass UI", "applicationCategory": "GameApplication",
+      "applicationSubCategory": "World of Warcraft add-on", "operatingSystem": "Windows, macOS",
+      "description": "A complete interface for WoW Forever: unit frames, action bars, raid frames, nameplates, bags and every window in one Starcut look, with %d themes.",
+      "url": "https://fantasyglassui.com/", "image": "https://fantasyglassui.com/og.jpg", "downloadUrl": "https://www.curseforge.com/wow/addons/fantasy-glass-ui",
+      "author": {"@type": "Person", "name": "DustyMouse"}, "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"},
+      "sameAs": ["https://discord.gg/qeSMwQWyPR", "https://www.curseforge.com/wow/addons/fantasy-glass-ui", "https://github.com/fantasyglassui/FantasyGlassUI"],
+      "inLanguage": ["en", "de", "fr", "es", "ru", "pt", "it", "ko", "zh"]}

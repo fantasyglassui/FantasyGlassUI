@@ -1,0 +1,9 @@
+/* Features: every switch (moved from the old long page). */
+.fsec { margin-bottom: 26px; }
+.fsec h3 { font-size: 1.05rem; margin-bottom: 10px; display: flex; gap: 10px; align-items: baseline; }
+.fsec h3 small { font: 600 0.8rem/1 var(--body); color: var(--faint); }
+.flist { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.fitem { padding: 12px 14px; min-width: 0; border-bottom: 1px solid var(--rule); }
+.fitem b { display: block; font-weight: 600; }
+.fitem span { display: block; color: var(--dim); font-size: 0.92rem; line-height: 1.45; margin-top: 3px; }
+@media (max-width: 620px) { .flist { grid-template-columns: minmax(0, 1fr); } }

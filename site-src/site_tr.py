@@ -575,3 +575,143 @@ SITE.update({
  _A + "Discord</a>에서 <b>#fgui-help</b>에 질문하고, <b>#show-your-ui</b>에 스크린샷을 올리고, <b>#themes</b>에 테마 코드를 공유하세요. 버그와 아이디어를 위한 채널도 따로 있습니다.",
  "在" + _A + "我们的 Discord</a>：到 <b>#fgui-help</b> 提问，在 <b>#show-your-ui</b> 发截图，在 <b>#themes</b> 分享主题代码。那里也有专门报告问题和提建议的频道。"),
 })
+
+# The 13.0 site base: the page system's shared header, footer, status line and page cards (W1)
+SITE.update({
+"Home": ("Start", "Accueil", "Inicio", "Главная", "Início", "Home", "홈", "首页"),
+"Guide and Gold": ("Anleitung und Gold", "Guide et or", "Guía y oro", "Гайд и золото", "Guia e ouro", "Guida e oro", "안내서와 골드", "指南与金币"),
+"Roadmap": ("Roadmap", "Feuille de route", "Hoja de ruta", "Планы", "Roteiro", "Roadmap", "로드맵", "路线图"),
+"Download": ("Download", "Télécharger", "Descargar", "Скачать", "Baixar", "Scarica", "다운로드", "下载"),
+"Skip to the content": ("Zum Inhalt springen", "Aller au contenu", "Saltar al contenido", "Перейти к содержимому", "Pular para o conteúdo", "Vai al contenuto", "본문으로 건너뛰기", "跳到正文"),
+"Menu": ("Menü", "Menu", "Menú", "Меню", "Menu", "Menu", "메뉴", "菜单"),
+"Pages": ("Seiten", "Pages", "Páginas", "Страницы", "Páginas", "Pagine", "페이지", "页面"),
+"Language": ("Sprache", "Langue", "Idioma", "Язык", "Idioma", "Lingua", "언어", "语言"),
+"Dark mode": ("Dunkler Modus", "Mode sombre", "Modo oscuro", "Тёмная тема", "Modo escuro", "Modalità scura", "어두운 모드", "深色模式"),
+"Version %s": ("Version %s", "Version %s", "Versión %s", "Версия %s", "Versão %s", "Versione %s", "버전 %s", "版本 %s"),
+"Updated %s": ("Aktualisiert am %s", "Mis à jour le %s", "Actualizado el %s", "Обновлено %s", "Atualizado em %s", "Aggiornato il %s", "%s 업데이트", "更新于 %s"),
+"Checked against WoW: Forever %s": ("Geprüft mit WoW: Forever %s", "Vérifié avec WoW: Forever %s", "Comprobado con WoW: Forever %s", "Проверено на WoW: Forever %s", "Verificado com WoW: Forever %s", "Verificato con WoW: Forever %s", "WoW: Forever %s 기준으로 확인", "已对照 WoW: Forever %s 检查"),
+"Source code": ("Quellcode", "Code source", "Código fuente", "Исходный код", "Código-fonte", "Codice sorgente", "소스 코드", "源代码"),
+"Contact": ("Kontakt", "Contact", "Contacto", "Связь", "Contato", "Contatti", "연락처", "联系"),
+"More here soon.": ("Bald steht hier mehr.", "Plus de contenu ici bientôt.", "Pronto habrá más aquí.", "Скоро здесь будет больше.", "Em breve, mais aqui.", "Presto qui ci sarà di più.", "곧 더 많은 내용이 올라옵니다.", "更多内容即将推出。"),
+"This page is in English for now.": ("Diese Seite gibt es vorerst nur auf Englisch.", "Cette page n'existe qu'en anglais pour l'instant.", "Por ahora, esta página solo está en inglés.", "Пока эта страница только на английском.", "Por enquanto, esta página está só em inglês.", "Per ora questa pagina è solo in inglese.", "이 페이지는 아직 영어로만 제공됩니다.", "本页目前只有英文版。"),
+"Every switch in Fantasy Glass UI and what it does, with one search across all of them.": (
+ "Jeder Schalter von Fantasy Glass UI und was er tut, mit einer Suche über alle.",
+ "Chaque option de Fantasy Glass UI et ce qu'elle fait, avec une seule recherche pour toutes.",
+ "Cada interruptor de Fantasy Glass UI y lo que hace, con una sola búsqueda para todos.",
+ "Все переключатели Fantasy Glass UI и что они делают, с поиском по всем сразу.",
+ "Cada opção do Fantasy Glass UI e o que ela faz, com uma busca em todas.",
+ "Ogni interruttore di Fantasy Glass UI e cosa fa, con un'unica ricerca su tutti.",
+ "Fantasy Glass UI의 모든 스위치와 그 기능을 한 번에 검색하세요.",
+ "Fantasy Glass UI 的每个开关及其作用，一次搜索全部。"),
+"Themes in three families, Glass, Fantasy and Celestial, to try on this site, and a maker for your own.": (
+ "Themen in drei Familien, Glas, Fantasy und Himmel, zum Ausprobieren auf dieser Seite, und ein Baukasten für dein eigenes.",
+ "Des thèmes en trois familles, Verre, Fantasy et Céleste, à essayer sur ce site, et un atelier pour créer le vôtre.",
+ "Temas en tres familias, Cristal, Fantasía y Celeste, para probar en este sitio, y un creador para el tuyo.",
+ "Темы трёх семейств, «Стекло», «Фэнтези» и «Небо», которые можно примерить на этом сайте, и конструктор для своей.",
+ "Temas em três famílias, Vidro, Fantasia e Celestial, para experimentar neste site, e um criador para o seu.",
+ "Temi in tre famiglie, Vetro, Fantasy e Celeste, da provare su questo sito, e un editor per il tuo.",
+ "유리, 판타지, 천상 세 계열의 테마를 이 사이트에서 입어 보고, 나만의 테마도 만들어 보세요.",
+ "玻璃、奇幻、星空三大系列主题，可在本站试穿，还能自己制作。"),
+"What the quest guide and the gold advisor do, and how to use them.": (
+ "Was die Questanleitung und der Goldberater tun und wie du sie nutzt.",
+ "Ce que font le guide de quêtes et le conseiller en or, et comment les utiliser.",
+ "Qué hacen la guía de misiones y el asesor de oro, y cómo usarlos.",
+ "Что делают гайд по заданиям и советник по золоту и как ими пользоваться.",
+ "O que o guia de missões e o conselheiro de ouro fazem, e como usá-los.",
+ "Cosa fanno la guida delle missioni e il consulente dell'oro, e come usarli.",
+ "퀘스트 안내서와 골드 도우미가 하는 일과 사용법.",
+ "任务指南和金币顾问能做什么，以及怎么用。"),
+"Install Fantasy Glass UI and set it up in a few minutes, with answers to common questions and every command.": (
+ "Installiere Fantasy Glass UI und richte es in wenigen Minuten ein, mit Antworten auf häufige Fragen und allen Befehlen.",
+ "Installez Fantasy Glass UI et configurez-le en quelques minutes, avec les réponses aux questions fréquentes et toutes les commandes.",
+ "Instala Fantasy Glass UI y configúralo en unos minutos, con respuestas a las preguntas frecuentes y todos los comandos.",
+ "Установите Fantasy Glass UI и настройте его за несколько минут; здесь же ответы на частые вопросы и все команды.",
+ "Instale o Fantasy Glass UI e configure-o em poucos minutos, com respostas às perguntas frequentes e todos os comandos.",
+ "Installa Fantasy Glass UI e configuralo in pochi minuti, con le risposte alle domande frequenti e tutti i comandi.",
+ "Fantasy Glass UI를 설치하고 몇 분 만에 설정하세요. 자주 묻는 질문의 답과 모든 명령어도 있습니다.",
+ "安装 Fantasy Glass UI，几分钟完成设置，并附常见问题解答和全部命令。"),
+"Every release of Fantasy Glass UI, the WoW Forever add-on: what is new, what was fixed and what changed.": (
+ "Jede Version von Fantasy Glass UI, dem Add-on für WoW Forever: was neu ist, was behoben wurde und was sich geändert hat.",
+ "Chaque version de Fantasy Glass UI, l'add-on pour WoW Forever : les nouveautés, les corrections et les changements.",
+ "Cada versión de Fantasy Glass UI, el accesorio para WoW Forever: qué hay de nuevo, qué se ha corregido y qué ha cambiado.",
+ "Все версии Fantasy Glass UI, аддона для WoW Forever: что нового, что исправлено и что изменилось.",
+ "Cada versão do Fantasy Glass UI, o addon para WoW Forever: o que há de novo, o que foi corrigido e o que mudou.",
+ "Ogni versione di Fantasy Glass UI, l'add-on per WoW Forever: le novità, le correzioni e i cambiamenti.",
+ "WoW Forever용 애드온 Fantasy Glass UI의 모든 버전: 새 기능, 수정 사항, 바뀐 점.",
+ "WoW Forever 插件 Fantasy Glass UI 的每个版本：新内容、修复和改动。"),
+"What is coming to Fantasy Glass UI after 13.0, and what is being thought about.": (
+ "Was nach 13.0 zu Fantasy Glass UI kommt und worüber nachgedacht wird.",
+ "Ce qui arrive dans Fantasy Glass UI après la 13.0, et ce qui est à l'étude.",
+ "Lo que llegará a Fantasy Glass UI después de la 13.0 y lo que se está pensando.",
+ "Что появится в Fantasy Glass UI после 13.0 и над чем идут размышления.",
+ "O que vem para o Fantasy Glass UI depois da 13.0, e o que está sendo pensado.",
+ "Cosa arriverà in Fantasy Glass UI dopo la 13.0, e a cosa si sta pensando.",
+ "13.0 이후 Fantasy Glass UI에 들어올 것들과 검토 중인 아이디어.",
+ "13.0 之后 Fantasy Glass UI 将推出的内容，以及正在考虑的想法。"),
+"What Fantasy Glass UI, the WoW Forever add-on, does for color blindness, low vision, blind players, deaf players, photosensitivity, one-handed play and more.": (
+ "Was Fantasy Glass UI, das Add-on für WoW Forever, bei Farbenblindheit, Sehschwäche, für blinde und gehörlose Spieler, bei Lichtempfindlichkeit, beim Spielen mit einer Hand und mehr tut.",
+ "Ce que fait Fantasy Glass UI, l'add-on pour WoW Forever, pour le daltonisme, la basse vision, les joueurs aveugles et sourds, la photosensibilité, le jeu à une main et plus encore.",
+ "Lo que hace Fantasy Glass UI, el accesorio para WoW Forever, para el daltonismo, la baja visión, jugadores ciegos y sordos, la fotosensibilidad, jugar con una mano y más.",
+ "Что Fantasy Glass UI, аддон для WoW Forever, делает при дальтонизме, слабом зрении, для незрячих и глухих игроков, при светочувствительности, для игры одной рукой и не только.",
+ "O que o Fantasy Glass UI, o addon para WoW Forever, faz para daltonismo, baixa visão, jogadores cegos e surdos, fotossensibilidade, jogar com uma mão e mais.",
+ "Cosa fa Fantasy Glass UI, l'add-on per WoW Forever, per il daltonismo, l'ipovisione, i giocatori ciechi e sordi, la fotosensibilità, il gioco con una mano e altro.",
+ "WoW Forever용 애드온 Fantasy Glass UI가 색각 이상, 저시력, 시각·청각 장애 플레이어, 광과민성, 한 손 플레이 등을 위해 하는 일.",
+ "WoW Forever 插件 Fantasy Glass UI 为色觉障碍、低视力、视障和听障玩家、光敏感、单手游玩等提供的帮助。"),
+"The Starcut unit frames, drawn": ("Die Starcut-Einheitenfenster, gezeichnet", "Les cadres d'unité Starcut, dessinés", "Los marcos de unidad Starcut, dibujados", "Рамки юнитов Starcut, нарисованные", "Os quadros de unidade Starcut, desenhados", "I riquadri delle unità Starcut, disegnati", "그림으로 그린 Starcut 유닛 프레임", "绘制的 Starcut 单位框体"),
+"The screen with Fantasy Glass UI": ("Der Bildschirm mit Fantasy Glass UI", "L'écran avec Fantasy Glass UI", "La pantalla con Fantasy Glass UI", "Экран с Fantasy Glass UI", "A tela com o Fantasy Glass UI", "Lo schermo con Fantasy Glass UI", "Fantasy Glass UI를 적용한 화면", "使用 Fantasy Glass UI 的画面"),
+"The same screen with a plain interface": ("Derselbe Bildschirm mit einfachem Interface", "Le même écran avec une interface simple", "La misma pantalla con una interfaz sencilla", "Тот же экран с обычным интерфейсом", "A mesma tela com uma interface simples", "Lo stesso schermo con un'interfaccia semplice", "기본 인터페이스의 같은 화면", "同一画面的普通界面"),
+"Move the line between before and after": ("Verschiebe die Linie zwischen vorher und nachher", "Déplacez la ligne entre avant et après", "Mueve la línea entre antes y después", "Передвиньте линию между «до» и «после»", "Mova a linha entre antes e depois", "Sposta la linea tra prima e dopo", "전과 후 사이의 선을 움직이세요", "移动前后对比的分界线"),
+"Pick a screenshot": ("Wähle einen Screenshot", "Choisissez une capture", "Elige una captura", "Выберите скриншот", "Escolha uma captura", "Scegli uno screenshot", "스크린샷 선택", "选择截图"),
+"Theme family": ("Themenfamilie", "Famille de thèmes", "Familia de temas", "Семейство тем", "Família de temas", "Famiglia di temi", "테마 계열", "主题系列"),
+"A theme code": ("Ein Themen-Code", "Un code de thème", "Un código de tema", "Код темы", "Um código de tema", "Un codice tema", "테마 코드", "主题代码"),
+"Section": ("Bereich", "Section", "Sección", "Раздел", "Seção", "Sezione", "섹션", "分区"),
+"Search the changes": ("Änderungen durchsuchen", "Rechercher dans les changements", "Buscar en los cambios", "Поиск по изменениям", "Pesquisar nas mudanças", "Cerca nelle modifiche", "변경 사항 검색", "搜索更新内容"),
+"Nothing in the changelog matches that.": ("Nichts in den Änderungen passt dazu.", "Rien dans le journal des changements ne correspond.", "Nada en el registro de cambios coincide.", "В списке изменений ничего не найдено.", "Nada no registro de mudanças corresponde a isso.", "Nessuna modifica corrisponde.", "일치하는 변경 사항이 없습니다.", "更新记录中没有匹配的内容。"),
+"Back to the top": ("Nach oben", "Retour en haut", "Volver arriba", "Наверх", "Voltar ao topo", "Torna su", "맨 위로", "回到顶部"),
+"Current": ("Aktuell", "Actuelle", "Actual", "Текущая", "Atual", "Attuale", "현재", "当前"),
+"First release": ("Erste Version", "Première version", "Primera versión", "Первый выпуск", "Primeira versão", "Prima versione", "첫 출시", "首个版本"),
+"Versions": ("Versionen", "Versions", "Versiones", "Версии", "Versões", "Versioni", "버전", "版本"),
+})
+
+# ---- The words of each page from 13.0 on. Each page has its own block, so two people adding words to two pages
+# ---- never touch the same lines. Add a page's new words inside its block only (see PAGES.md).
+
+# -- Home (W2)
+SITE.update({
+})
+
+# -- Features (W2)
+SITE.update({
+})
+
+# -- Themes (W2)
+SITE.update({
+})
+
+# -- Get started (W2)
+SITE.update({
+})
+
+# -- New W2 pages, such as the comparison (W2)
+SITE.update({
+})
+
+# -- Guide and Gold (W3)
+SITE.update({
+})
+
+# -- Roadmap (W3)
+SITE.update({
+})
+
+# -- Changelog and the release feed (W3)
+SITE.update({
+})
+
+# -- Accessibility (W3)
+SITE.update({
+})
+
+# -- New W3 pages, such as the press kit (W3)
+SITE.update({
+})

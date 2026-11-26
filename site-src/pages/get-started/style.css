@@ -1,0 +1,35 @@
+/* Get started: the three steps, the questions and the commands (moved from the old long page). */
+#start .status { margin: 0 0 8px; }
+.steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; counter-reset: s; }
+.step { padding: 22px; counter-increment: s; min-width: 0; }
+.step::before { content: counter(s); display: grid; place-items: center; width: 40px; height: 40px; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); background: var(--gold); color: var(--on-gold); font: 700 1rem/1 var(--body); margin: 0 0 14px; }
+.step h3 { font-size: 1.15rem; margin-bottom: 6px; }
+.step p { margin: 0; color: var(--dim); }
+.help { margin-top: 22px; padding: 24px; display: grid; gap: 18px; }
+.help p { max-width: 75ch; }
+.help p { margin: 6px 0 0; color: var(--dim); }
+.help .cta { margin: 0; }
+
+/* questions: one outlined list, a line between each */
+.faq { display: block; max-width: 920px; padding: 0; }
+.q + .q { border-top: 1px solid var(--rule); }
+.q summary { cursor: pointer; list-style: none; padding: 16px 48px 16px 22px; position: relative; font: 600 1.05rem/1.35 var(--body); min-height: 44px; }
+.q summary::-webkit-details-marker { display: none; }
+.q summary::after { content: ""; position: absolute; right: 22px; top: 50%; width: 9px; height: 9px; margin-top: -6px; border: solid var(--gold); border-width: 0 2px 2px 0; transform: rotate(45deg); transition: transform .2s ease; }
+.q[open] summary::after { transform: rotate(-135deg); margin-top: -2px; }
+.q summary:hover { color: var(--gold); }
+.q summary:focus-visible { outline-offset: -3px; }
+.q p { margin: 0; padding: 0 22px 18px; color: var(--dim); }
+
+/* commands */
+.ctable { width: 100%; border-collapse: collapse; }
+.ctable td, .ctable th { padding: 10px 10px; text-align: left; font-weight: 400; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.ctable th { white-space: nowrap; }
+.ctable code { font: 600 0.9rem/1.4 var(--mono); color: var(--gold); }
+.ctable td:nth-child(2) { color: var(--dim); }
+.copy { min-height: 36px; padding: 6px 12px; font-size: 0.85rem; --cut: 8px; }
+.tablewrap { overflow-x: auto; }
+#copyall { justify-self: start; }
+
+@media (max-width: 900px) { .steps { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 620px) { .ctable th { white-space: normal; } }
