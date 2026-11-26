@@ -151,6 +151,21 @@ def test_packaging():
         assert f"{folder}/{folder}.toc" in loop.group(1).split(), f"release.yml's version loop does not check {folder}"
 
 
+SEAMS = "36be49a"     # the folders plan's seams commit: the Guide tab before group C moved its planner switches
+
+
+def test_planner_switches_moved():
+    """The planner's switches left the Guide tab for the planner window (the folders plan, ruling 10): no
+    ns.db.planner key is read on the Guide tab, and every planner key the tab had at SEAMS is in the window."""
+    bars = open(os.path.join(ROOT, "FantasyGlassUI_Options", "Bars.lua"), encoding="utf-8").read()
+    assert bars.count("ns.db.planner") == 0, "the Guide tab still reads a planner setting"
+    old = subprocess.run(["git", "show", SEAMS + ":FantasyGlassUI_Options/Bars.lua"], cwd=ROOT, capture_output=True, text=True).stdout
+    keys = set(re.findall(r"ns\.db\.(planner\w+)", old)) | set(re.findall(r'"(planner[A-Z]\w*)"', old))
+    assert len(keys) >= 30, f"the Guide tab at {SEAMS} read only {sorted(keys)}"
+    window = open(os.path.join(ROOT, "FantasyGlassUI_Planner", "PlannerWindow.lua"), encoding="utf-8").read()
+    missing = sorted(k for k in keys if not re.search(r"\b%s\b" % k, window))
+    assert not missing, f"not in PlannerWindow.lua: {missing}"
+
 def test_readme_current():
     """The README that ships in the add-on folder: this version, and every command /fgui help lists."""
     readme = open(os.path.join(ROOT, "FantasyGlassUI", "README.md"), encoding="utf-8").read()

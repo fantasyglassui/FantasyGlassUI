@@ -10208,15 +10208,16 @@ try("13.0 planner: settings", function()
         ns.root.guides, ns.root.guideState = nil, nil
         ns.db.plannerGroup, ns.db.plannerLearnFlights, ns.db.plannerWhy = "solo", true, true
         ns:ToggleConfig("guide")
-        local P = ns.guidePage
-        if not P or P.unlocked ~= true then error("unlocked: the Guide tab shows the controls") end
+        if not ns.guidePage or ns.guidePage.unlocked ~= true then error("unlocked: the Guide tab shows the controls") end
+        local P = ns:PlannerOpen() and ns.plannerWindow.T          -- (the planner's settings: in its own window)
+        if not P then error("unlocked: the planner window opens") end
         if not (P.planButton and P.groupButton and P.flightsBox and P.whyBox) then error("the planner controls exist") end
         local function click(b)
             local f = b:GetScript("OnClick")
             if type(f) ~= "function" then for _, h in ipairs(handlers) do if h.self == b and h.name == "OnClick" then f = h.fn end end end
             f(b)
         end
-        if not P.planButton.text:GetText():find(ns:Tr("Plan my route"), 1, true) then error("the button's words: " .. tostring(P.planButton.text:GetText())) end
+        if ns.plannerWindow.drawn.plan ~= ns:Tr("Plan my route") then error("the button's words: " .. tostring(ns.plannerWindow.drawn.plan)) end
         click(P.planButton)
         if ns.GuideState().name ~= ns.GUIDE_PLANNED then error("the button plans") end
         ns.plannerQueued = false
@@ -10257,6 +10258,7 @@ try("13.0 planner: settings", function()
     end)
     ns:PlannerStop()
     ns:ToggleConfig()
+    if ns.plannerWindow then ns.plannerWindow:Hide() end
     ns.root.guideKey, ns.root.guides, ns.root.guideState, ns.root.planner = saved.key, saved.guides, saved.state, saved.planner
     ns.db.plannerGroup, ns.db.plannerLearnFlights, ns.db.plannerWhy = saved.group, saved.flights, saved.why
     if not ok then error(err, 0) end
@@ -10613,17 +10615,16 @@ try("13.1 stops: the mechanism and the class trainer", function()
         if guide.steps[trainAt(guide)].stopKey ~= "classTrainer:12" or ns.GuideState().ticked[trainAt(guide)] then error("the trainer at 12 is a new stop, not ticked") end
         ns:PlannerStop()
         ns:PlannerStop()
-        -- the switch on the Guide tab
+        -- the switch in the planner window
         ns.root.guideState = nil
-        ns:ToggleConfig("guide")
-        local P = ns.guidePage
+        local P = ns:PlannerOpen() and ns.plannerWindow.T
         if not (P and P.trainerBox) then error("the trainer switch exists") end
         local f = P.trainerBox:GetScript("OnClick")
         if type(f) ~= "function" then for _, h in ipairs(handlers) do if h.self == P.trainerBox and h.name == "OnClick" then f = h.fn end end end
         ns.db.plannerTrainer = true
         f(P.trainerBox)
         if ns.db.plannerTrainer ~= false then error("the trainer switch turns it off") end
-        ns:ToggleConfig()
+        ns.plannerWindow:Hide()
         if ns.defaults and ns.defaults.plannerTrainer ~= true then error("on by default") end
     end)
     ns:PlannerStop()
@@ -10723,17 +10724,16 @@ try("13.1 stops: held hand-ins and talents", function()
         at = where(guide)
         if not (at.train and at.turnins) or at.turnins[1] > at.lastB then error("setting off: the hand-ins stay") end
         ns.db.plannerHold = true
-        -- the switch on the Guide tab
+        -- the switch in the planner window
         ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
         ns.root.guideState = nil
-        ns:ToggleConfig("guide")
-        local P = ns.guidePage
+        local P = ns:PlannerOpen() and ns.plannerWindow.T
         if not (P and P.holdBox) then error("the hold switch exists") end
         local f = P.holdBox:GetScript("OnClick")
         if type(f) ~= "function" then for _, h in ipairs(handlers) do if h.self == P.holdBox and h.name == "OnClick" then f = h.fn end end end
         f(P.holdBox)
         if ns.db.plannerHold ~= false then error("the hold switch turns it off") end
-        ns:ToggleConfig()
+        ns.plannerWindow:Hide()
         ns.db.plannerHold = true
         -- talent points
         local unspent = 2
@@ -11002,8 +11002,7 @@ try("13.1 stops: the vendor", function()
         ns:PlannerStop()
         -- the switches on the Guide tab
         ns.root.guideState = nil
-        ns:ToggleConfig("guide")
-        local P = ns.guidePage
+        local P = ns:PlannerOpen() and ns.plannerWindow.T
         if not (P and P.vendorBox and P.suppliesBox) then error("the vendor and supplies switches exist") end
         for _, pair in ipairs({ { P.vendorBox, "plannerVendor" }, { P.suppliesBox, "plannerSupplies" } }) do
             local f = pair[1]:GetScript("OnClick")
@@ -11013,7 +11012,7 @@ try("13.1 stops: the vendor", function()
             if ns.db[pair[2]] ~= false then error(pair[2] .. " switch turns it off") end
             if ns.defaults[pair[2]] ~= true then error(pair[2] .. " on by default") end
         end
-        ns:ToggleConfig()
+        ns.plannerWindow:Hide()
     end)
     ns:PlannerStop()
     env.C_Map = real.map; rawset(env, "CreateVector2D", real.vec); env.Enum = real.enum; env.UnitClass = real.class; env.UnitPowerType = real.power
@@ -11189,8 +11188,7 @@ try("13.1 stops: professions and riding", function()
         if not (d and d.trainerLevel == 40) then error("a class trainer next to the riding trainer is recorded") end
         -- the switches
         ns.root.guideState = nil
-        ns:ToggleConfig("guide")
-        local P = ns.guidePage
+        local P = ns:PlannerOpen() and ns.plannerWindow.T
         if not (P and P.professionBox and P.mountBox) then error("the profession and mount switches exist") end
         for _, pair in ipairs({ { P.professionBox, "plannerProfession" }, { P.mountBox, "plannerMount" } }) do
             local f = pair[1]:GetScript("OnClick")
@@ -11200,7 +11198,7 @@ try("13.1 stops: professions and riding", function()
             if ns.db[pair[2]] ~= false then error(pair[2] .. " switch turns it off") end
             if ns.defaults[pair[2]] ~= true then error(pair[2] .. " on by default") end
         end
-        ns:ToggleConfig()
+        ns.plannerWindow:Hide()
     end)
     ns:PlannerStop()
     env.C_Map = real.map; rawset(env, "CreateVector2D", real.vec); env.UnitLevel = real.level; env.UnitClass = real.class; env.GetMoney = real.money; env.C_SpellBook, env.IsMounted = real.spells, real.mounted
@@ -11415,8 +11413,7 @@ try("13.1 stops: mail, exploring and gathering", function()
         if step.why then error("no Skinning: no note") end
         -- the switches
         ns.root.guideState = nil
-        ns:ToggleConfig("guide")
-        local P = ns.guidePage
+        local P = ns:PlannerOpen() and ns.plannerWindow.T
         if not (P and P.mailBox and P.exploreBox and P.gatherBox) then error("the mail, explore and gather switches exist") end
         for _, pair in ipairs({ { P.mailBox, "plannerMail" }, { P.exploreBox, "plannerExplore" }, { P.gatherBox, "plannerGather" } }) do
             local f = pair[1]:GetScript("OnClick")
@@ -11426,7 +11423,7 @@ try("13.1 stops: mail, exploring and gathering", function()
             if ns.db[pair[2]] ~= false then error(pair[2] .. " switch turns it off") end
             if ns.defaults[pair[2]] ~= true then error(pair[2] .. " on by default") end
         end
-        ns:ToggleConfig()
+        ns.plannerWindow:Hide()
     end)
     ns:PlannerStop()
     env.C_Map = real.map; rawset(env, "CreateVector2D", real.vec); env.UnitLevel = real.level; env.HasNewMail = real.mail
@@ -13502,16 +13499,17 @@ try("13.4 feel: seams", function()
         ns.GuideRegisterCommand("plan", nil)
         ns:GuideSetPlan(nil)
 
-        -- the Guide tab: four sections below the last box
+        -- batch 4's sections: in the planner window now (the folders plan, group C), above its builder
         local page = env.CreateFrame("Frame")
         ns.BuildGuidePage(page)
         if not (tonumber(page.contentHeight) and page.contentHeight >= 896) then error("the page's height: " .. tostring(page.contentHeight)) end
-        local src = sources["options/Bars.lua"] or ""
-        local a1, a2, a3, a4 = src:find("local function FeelMapSection", 1, true), src:find("local function FeelPanelSection", 1, true),
-                               src:find("local function FeelPaceSection", 1, true), src:find("local function FeelRecordsSection", 1, true)
-        local built = src:find("function ns.BuildGuidePage", 1, true)
-        if not (a1 and a2 and a3 and a4 and built and a1 < a2 and a2 < a3 and a3 < a4 and a4 < built) then error("the four sections, in order, above the page") end
-        if not src:find("{ FeelMapSection, FeelPanelSection, FeelPaceSection, FeelRecordsSection", 1, true) then error("called in that order") end   -- (batch 5's follow them)
+        local src = sources["planner/PlannerWindow.lua"] or ""
+        local a1, a2, a3 = src:find("local function PaceSection", 1, true), src:find("local function MapSection", 1, true), src:find("local function RecordsSection", 1, true)
+        local built = src:find("function ns.BuildPlannerSwitches", 1, true)
+        if not (a1 and a2 and a3 and built and a1 < a2 and a2 < a3 and a3 < built) then error("batch 4's sections, in order, above the window's settings") end
+        local sheet = env.CreateFrame("Frame")
+        local WT = ns.BuildPlannerSwitches(sheet)
+        if not (WT and WT.zoneGoalButton and WT.speedSlider and WT.mapLineBox and WT.raceBox and tonumber(sheet.contentHeight) and sheet.contentHeight > 0) then error("the window's settings hold batch 4's") end
     end)
     for _, point in ipairs({ "context", "window", "xp", "zone", "rank", "route", "applied" }) do ns.PlannerHook(point, "seams", nil) end
     ns.GuideRegisterLine("seams", nil); ns.GuideRegisterTitle("seams", nil); ns.GuideRegisterAdvance("seams", nil)
@@ -14305,9 +14303,9 @@ try("13.4 feel B: finish the zone", function()
         -- the Guide tab's button cycles and stores the goal per character
         ns.GuideHere = function() return 1429, 30, 40 end
         local page = env.CreateFrame("Frame")
-        local T = ns.BuildGuidePage(page)
+        local T = ns.BuildPlannerSwitches(page)          -- (the planner window's settings)
         local btn = T and T.zoneGoalButton
-        if not btn then error("the Guide tab has the goal button") end
+        if not btn then error("the planner window has the goal button") end
         local label
         rawset(btn.text, "SetText", function(_, t) label = t end)
         page.Refresh()
@@ -14323,7 +14321,9 @@ try("13.4 feel B: finish the zone", function()
         for _, h in ipairs(ns.PlannerHookList("context")) do if h.key == "zoneGoal" then h.fn({ level = 12, windowLo = 8 }) end end
         for _, h in ipairs(ns.PlannerHookList("zone")) do if h.key == "zoneGoal" then h.fn({ [1429] = {} }) end end
         for _, h in ipairs(ns.PlannerHookList("applied")) do if h.key == "zoneGoal" then h.fn({ steps = {} }, { taken = {} }, { source = { kind = "test" } }) end end
-        if ns.PlannerZoneGoal() ~= nil or label ~= "Goal: Level up" then error("Zone done while the Guide tab is open: the button says Level up: " .. tostring(label)) end
+        if ns.PlannerZoneGoal() ~= nil then error("Zone done: the goal ends") end
+        page.Refresh()                                       -- (the planner window draws its rows again as it shows, and the goal each second)
+        if label ~= "Goal: Level up" then error("Zone done while the planner window is open: the button says Level up: " .. tostring(label)) end
         if ns.PlannerGoalZone() ~= 1429 then error("the zone-level map you are in") end
     end)
     ns.PlannerSourceReset()
@@ -14906,7 +14906,7 @@ try("13.4 feel C: speed, safety, story", function()
             return f(frame, ...)
         end
         local page = env.CreateFrame("Frame")
-        local T = ns.BuildGuidePage(page)
+        local T = ns.BuildPlannerSwitches(page)          -- (the planner window's settings)
         if not (T.styleButton and T.speedSlider and T.safetySlider and T.storySlider) then error("the page has the style button and three sliders") end
         local before = ns.PlannerStyle()
         click(T.styleButton)
@@ -15334,7 +15334,7 @@ try("13.4 feel: locked, the options search shows no planner control", function()
         end
         ns.GuideUnlocked = function() return true end
         local unlockedHit = false
-        for _, h in ipairs(ns:SearchOptions("Speed or story", 20)) do if h.tab == "guide" then unlockedHit = true end end
+        for _, h in ipairs(ns:SearchOptions("Plan my route", 20)) do if h.tab == "guide" then unlockedHit = true end end   -- (the planner's own settings are in its window)
         if not unlockedHit then error("unlocked: the search finds the guide's controls") end
         frame.SearchOptions("")
     end)
@@ -15624,26 +15624,17 @@ try("13.5 together: seams", function()
         -- the plan codes (tests/plan_codes.txt, "" until group C writes it)
         if type(planCodes) ~= "string" then error("the plan codes are handed to the harness as text: " .. type(planCodes)) end
 
-        -- the Guide tab: seven sections, batch 5's after batch 4's
-        local src = sources["options/Bars.lua"] or ""
-        local names = { "FeelMapSection", "FeelPanelSection", "FeelPaceSection", "FeelRecordsSection", "TogetherGroupSection", "TogetherDuoSection", "TogetherCodeSection" }
+        -- the planner's settings: in its own window (the folders plan, group C), batch 5's last
+        local src = sources["planner/PlannerWindow.lua"] or ""
+        local names = { "GroupSection", "SwitchesSection", "PaceSection", "MapSection", "RecordsSection", "TogetherSection" }
         local last = 0
         for _, n in ipairs(names) do
-            local p = src:find("local function " .. n .. "(live, y, Replan, T)", 1, true)
+            local p = src:find("local function " .. n .. "(K, G, Replan, T)", 1, true)
             if not (p and p > last) then error("the sections, in order: " .. n) end
             last = p
         end
-        if not ((src:find("function ns.BuildGuidePage", 1, true) or 0) > last) then error("the sections are above the page") end
-        if not src:find("{ " .. table.concat(names, ", ") .. " }", 1, true) then error("the page calls the seven sections in that order") end
-        -- (while a group's section is still empty it adds no height: it hands back the y it was given)
-        for _, n in ipairs({ "TogetherGroupSection", "TogetherDuoSection", "TogetherCodeSection" }) do
-            local body = src:match("local function " .. n .. "%(live, y, Replan, T%)\n(.-)\nend\n")
-            if body and body:match("^%s*return y, function%(%) end%s*$") then
-                local fn = load("return function(live, y, Replan, T)\n" .. body .. "\nend")()
-                local y, refresh = fn(nil, -1000, nil, {})
-                if y ~= -1000 or type(refresh) ~= "function" then error(n .. ": an empty section adds no height") end
-            end
-        end
+        if not ((src:find("function ns.BuildPlannerSwitches", 1, true) or 0) > last) then error("the sections are above the window's settings") end
+        if not src:find("{ " .. table.concat(names, ", ") .. " }", 1, true) then error("the window calls the sections in that order") end
         local page = env.CreateFrame("Frame")
         ns.BuildGuidePage(page)
         if not (tonumber(page.contentHeight) and page.contentHeight >= 896) then error("the page's height: " .. tostring(page.contentHeight)) end
@@ -15832,7 +15823,7 @@ try("13.5 together A: find a group", function()
         local list = { 1, "General", false, 2, "Trade", false, 4, "LookingForGroup", false }
         env.GetChannelList = function() return (unpack or table.unpack)(list, 1, 9) end
         local page = env.CreateFrame("Frame")
-        local T = ns.BuildGuidePage(page)
+        local T = ns.BuildPlannerSwitches(page)          -- (the planner window's settings)
         if not (T.findGroupChannel and T.findGroupBox) then error("the page has the two controls") end
         local label
         rawset(T.findGroupChannel.text, "SetText", function(_, t) label = t end)
@@ -16345,9 +16336,8 @@ try("13.5 together B: following together", function()
 
         -- the Guide tab: the switch and the button
         local page = env.CreateFrame("Frame")
-        ns.BuildGuidePage(page)
-        local T = ns.guidePage
-        if not (T and T.duoAskBox and T.duoButton) then error("the Guide tab's switch and button") end
+        local T = ns.BuildPlannerSwitches(page)          -- (the planner window's settings)
+        if not (T and T.duoAskBox and T.duoButton) then error("the planner window's switch and button") end
         if #ns.errors ~= saved.errors then error("no errors: " .. tostring(ns.errors[#ns.errors])) end
     end)
     if ns.plannerDuo then ns:PlannerDuoEnd(nil, true, true) end
@@ -16717,9 +16707,9 @@ try("13.5 together C: the plan code", function()
         -- the Guide tab's button
         ns.GuideState = function() return nil end
         local page = env.CreateFrame("Frame")
-        local T = ns.BuildGuidePage(page)
+        local T = ns.BuildPlannerSwitches(page)          -- (the planner window's settings)
         local share = T and T.sharePlanButton
-        if not share then error("the Guide tab has the Share plan button") end
+        if not share then error("the planner window has the Share plan button") end
         local alpha
         rawset(share, "SetAlpha", function(_, a) alpha = a end)
         page.Refresh()
@@ -17254,14 +17244,17 @@ try("13.5 together: batch 5's last two fixes", function()
         if ns.configFrame and ns.configFrame:IsShown() then ns:ToggleConfig() end
         O.frame = nil
         ns:ToggleConfig("guide")
+        local holder = env.CreateFrame("Frame")                  -- (the planner window's settings, on a frame in the settings look as the window is)
+        ns:SetLook(holder, "settings")
+        local WT = ns.BuildPlannerSwitches(env.CreateFrame("Frame", nil, holder))
         env.CreateFrame = saved.realCF
         local T = ns.guidePage
         if not (T and T.unlocked == true) then error("unlocked: the Guide tab shows the controls") end
-        for _, label in ipairs({ "QUEST GUIDES", "PLAN MY ROUTE", "HOW LONG YOU PLAY", "SPEED OR STORY" }) do
-            if not texts[label] then error("the Guide tab's heading is a section label: " .. label) end
+        for _, label in ipairs({ "QUEST GUIDES", "PLAN MY ROUTE", "TIME, STYLE AND SLIDERS", "STOPS ON THE WAY", "WITH OTHERS" }) do
+            if not texts[label] then error("the Guide tab's and the planner window's headings are section labels: " .. label) end
         end
-        for _, box in ipairs({ T.onBox, T.flightsBox, T.dryBox, T.mapLineBox, T.breaksBox, T.raceBox, T.speakBox, T.findGroupBox, T.duoAskBox }) do
-            if rawget(box, "suiSwitch") ~= true then error("a Guide tab switch wears the settings window's look") end
+        for _, box in ipairs({ T.onBox, WT.flightsBox, WT.dryBox, WT.mapLineBox, WT.breaksBox, WT.raceBox, WT.speakBox, WT.findGroupBox, WT.duoAskBox }) do
+            if rawget(box, "suiSwitch") ~= true then error("a Guide tab or planner window switch wears the settings window's look") end
         end
         ns:ToggleConfig()
         if #ns.errors ~= saved.errors then error("no errors: " .. tostring(ns.errors[#ns.errors])) end
@@ -21572,23 +21565,27 @@ try("polish P3: the Guide tab's rows, the hidden saved data and the planner's to
             end)
             return f
         end
-        local page = env.CreateFrame("Frame")
+        local page, wpage = env.CreateFrame("Frame"), env.CreateFrame("Frame")
         local T = ns.BuildGuidePage(page)
+        local WT = ns.BuildPlannerSwitches(wpage)               -- (the planner's settings: its own window's rows, built the same way)
         ns.Paint, env.CreateFrame = saved.paint, saved.cf
-        local G = T.rows
-        if not (G and G.shown and #G.shown >= 45) then error("the tab's rows: " .. tostring(G and G.shown and #G.shown)) end
+        local G, WG = T.rows, WT and WT.rows
+        if not (G and G.shown and #G.shown >= 9) then error("the tab's rows: " .. tostring(G and G.shown and #G.shown)) end
+        if not (WG and WG.shown and #WG.shown >= 40) then error("the planner window's rows: " .. tostring(WG and WG.shown and #WG.shown)) end
         local secs = {}
-        for _, row in ipairs(G.shown) do
-            secs[row.sec] = true
-            if row.desc then
-                if painted[row.desc] ~= "dim" then error("what a row does is in the secondary colour: " .. tostring(row.tipTitle)) end
-                local text = row.desc:GetText()
-                if type(text) ~= "string" or text == "" then error("a row says what it does: " .. tostring(row.tipTitle)) end
-            elseif not row.text then error("a row with no description: " .. tostring(row.tipTitle)) end
-            if row.switch and not row.title then error("a switch row has its name") end
+        for _, list in ipairs({ G.shown, WG.shown }) do
+            for _, row in ipairs(list) do
+                secs[row.sec] = true
+                if row.desc then
+                    if painted[row.desc] ~= "dim" then error("what a row does is in the secondary colour: " .. tostring(row.tipTitle)) end
+                    local text = row.desc:GetText()
+                    if type(text) ~= "string" or text == "" then error("a row says what it does: " .. tostring(row.tipTitle)) end
+                elseif not row.text then error("a row with no description: " .. tostring(row.tipTitle)) end
+                if row.switch and not row.title then error("a switch row has its name") end
+            end
         end
-        for _, s in ipairs({ "guides", "record", "plan", "include", "advice", "map", "pace", "style", "records", "together" }) do
-            if not secs[s] then error("the section is on the tab: " .. s) end
+        for _, s in ipairs({ "guides", "record", "plan", "group", "stops", "explore", "rewards", "time", "map", "records", "speak", "together" }) do
+            if not secs[s] then error("the section is on the tab or in the window: " .. s) end
         end
         local look = ns.LOOKS.settings
         local function L(c) local function f(v) return v <= 0.03928 and v / 12.92 or ((v + 0.055) / 1.055) ^ 2.4 end return 0.2126 * f(c[1]) + 0.7152 * f(c[2]) + 0.0722 * f(c[3]) end
@@ -21603,8 +21600,9 @@ try("polish P3: the Guide tab's rows, the hidden saved data and the planner's to
                         mapLineBox = "plannerMapLine", mapHubsBox = "plannerMapHubs", tomTomBox = "plannerTomTom", breaksBox = "plannerBreaks",
                         raceBox = "plannerRace", leftOffBox = "plannerLeftOff", speakBox = "plannerSpeak", findGroupBox = "plannerFindGroup", duoAskBox = "plannerDuoAsk" }
         for field, key in pairs(boxes) do
-            local box = T[field]
+            local box = T[field] or WT[field]
             if not box then error("the switch is there: " .. field) end
+            if (T[field] ~= nil) == (key:find("^planner") ~= nil) then error("the planner's switches are in its window, the guide's on the tab: " .. field) end
             if box.key ~= key or box.row.navKey ~= key then error("the switch is for " .. key .. ": " .. tostring(box.key)) end
             local before = ns.db[key] and true or false
             click(box)
@@ -21614,70 +21612,74 @@ try("polish P3: the Guide tab's rows, the hidden saved data and the planner's to
         end
         -- a choice steps back on a right-click
         ns.db.plannerGroup = "solo"
-        click(T.groupButton, "RightButton")
+        click(WT.groupButton, "RightButton")
         if ns.db.plannerGroup ~= "all" then error("right-click: the choice before: " .. tostring(ns.db.plannerGroup)) end
-        click(T.groupButton)
+        click(WT.groupButton)
         if ns.db.plannerGroup ~= "solo" then error("left-click: the next one") end
         ns.db.plannerBreakMinutes = 120
-        click(T.breakButton, "RightButton")
+        click(WT.breakButton, "RightButton")
         if ns.db.plannerBreakMinutes ~= 90 then error("the break length steps back: " .. tostring(ns.db.plannerBreakMinutes)) end
-        click(T.breakButton)
+        click(WT.breakButton)
         if ns.db.plannerBreakMinutes ~= 120 then error("and on again") end
         -- rows sit one under the other, as tall as their text needs, and grow with the text size and Bigger controls
-        local function Measure()
-            local at = {}
-            for _, row in ipairs(G.shown) do
-                rawset(row, "SetPoint", function(_, _, _, _, _, y) at[row] = { y = y } end)
-                rawset(row, "SetHeight", function(_, h) at[row].h = h end)
+        for _, pair in ipairs({ { G, T, 736 }, { WG, WT, 556 } }) do
+            local R, P, width = pair[1], pair[2], pair[3]
+            local function Measure()
+                local at = {}
+                for _, row in ipairs(R.shown) do
+                    rawset(row, "SetPoint", function(_, _, _, _, _, y) at[row] = { y = y } end)
+                    rawset(row, "SetHeight", function(_, h) at[row].h = h end)
+                end
+                P.Layout(width)
+                local total, prev = 0, nil
+                for _, row in ipairs(R.shown) do
+                    local a = at[row]
+                    if not (a and type(a.y) == "number" and type(a.h) == "number") then error("each row is placed and sized") end
+                    if prev and prev.sec == row.sec and math.abs(at[prev].y - at[prev].h - a.y) > 0.01 then error("a row starts where the one above it ends: " .. tostring(row.tipTitle)) end
+                    if prev and prev.sec ~= row.sec and a.y > at[prev].y - at[prev].h - 20 then error("a section starts under the one above, with its label between") end
+                    total = total + a.h
+                    prev = row
+                end
+                for _, row in ipairs(R.shown) do rawset(row, "SetPoint", nil); rawset(row, "SetHeight", nil) end
+                return total
             end
-            T.Layout(736)
-            local total, prev = 0, nil
-            for _, row in ipairs(G.shown) do
-                local a = at[row]
-                if not (a and type(a.y) == "number" and type(a.h) == "number") then error("each row is placed and sized") end
-                if prev and prev.sec == row.sec and math.abs(at[prev].y - at[prev].h - a.y) > 0.01 then error("a row starts where the one above it ends: " .. tostring(row.tipTitle)) end
-                if prev and prev.sec ~= row.sec and a.y > at[prev].y - at[prev].h - 20 then error("a section starts under the one above, with its label between") end
-                total = total + a.h
-                prev = row
-            end
-            for _, row in ipairs(G.shown) do rawset(row, "SetPoint", nil); rawset(row, "SetHeight", nil) end
-            return total
+            ns.db.bigControls = false
+            ns.fontScale = 1
+            local base = Measure()
+            ns.fontScale = 1.5
+            local larger = Measure()
+            if not (larger > base) then error("larger text: taller rows: " .. base .. " " .. larger) end
+            ns.fontScale = 1
+            ns.db.bigControls = true
+            local scaled = {}
+            for _, row in ipairs(R.shown) do if row.switch then rawset(row.switch, "SetScale", function(_, sc) scaled[row] = sc end) end end
+            local bigger = Measure()
+            if math.abs(bigger - base - 12 * #R.shown) > 0.01 then error("Bigger controls: each row 12 taller: " .. base .. " " .. bigger) end
+            for _, row in ipairs(R.shown) do if row.switch and scaled[row] ~= 1.35 then error("Bigger controls: the switches are larger") end end
+            ns.db.bigControls, ns.fontScale = saved.big, saved.scale
+            for _, row in ipairs(R.shown) do if row.switch then rawset(row.switch, "SetScale", nil) end end
+            P.Layout(width)
         end
-        ns.db.bigControls = false
-        ns.fontScale = 1
-        local base = Measure()
-        ns.fontScale = 1.5
-        local larger = Measure()
-        if not (larger > base) then error("larger text: taller rows: " .. base .. " " .. larger) end
-        ns.fontScale = 1
-        ns.db.bigControls = true
-        local scaled = {}
-        for _, row in ipairs(G.shown) do if row.switch then rawset(row.switch, "SetScale", function(_, s) scaled[row] = s end) end end
-        local bigger = Measure()
-        if math.abs(bigger - base - 12 * #G.shown) > 0.01 then error("Bigger controls: each row 12 taller: " .. base .. " " .. bigger) end
-        for _, row in ipairs(G.shown) do if row.switch and scaled[row] ~= 1.35 then error("Bigger controls: the switches are larger") end end
-        ns.db.bigControls, ns.fontScale = saved.big, saved.scale
-        for _, row in ipairs(G.shown) do if row.switch then rawset(row.switch, "SetScale", nil) end end
-        T.Layout(736)
-        if not (tonumber(page.contentHeight) and page.contentHeight > 1500) then error("the page is as tall as its rows: " .. tostring(page.contentHeight)) end
+        if not (tonumber(page.contentHeight) and page.contentHeight >= 896) then error("the tab is as tall as before: " .. tostring(page.contentHeight)) end
+        if not (tonumber(wpage.contentHeight) and wpage.contentHeight > 1500) then error("the window's settings are as tall as their rows: " .. tostring(wpage.contentHeight)) end
         -- Share plan, greyed, says why and takes no click
         local disabled, tip
-        rawset(T.sharePlanButton, "Disable", function() disabled = true end)
-        rawset(T.sharePlanButton, "Enable", function() disabled = false end)
+        rawset(WT.sharePlanButton, "Disable", function() disabled = true end)
+        rawset(WT.sharePlanButton, "Enable", function() disabled = false end)
         ns.PlannerCodeFollowing = function() return false end
-        page.Refresh()
-        tip = rawget(T.sharePlanButton, "suiTip")
+        wpage.Refresh()
+        tip = rawget(WT.sharePlanButton, "suiTip")
         if disabled ~= true or type(tip) ~= "string" or tip == "" then error("Share plan, greyed: disabled, with a reason") end
         ns.PlannerCodeFollowing = function() return true end
-        page.Refresh()
-        if disabled ~= false or rawget(T.sharePlanButton, "suiTip") ~= nil then error("following a plan: it is enabled again") end
+        wpage.Refresh()
+        if disabled ~= false or rawget(WT.sharePlanButton, "suiTip") ~= nil then error("following a plan: it is enabled again") end
         ns.PlannerCodeFollowing = saved.code
         -- the words: hubs are quest areas, and the guide switch is not named twice
-        if T.mapHubsBox.row.title:GetText() ~= ns:Tr("Quest areas on the map") then error("the map switch says quest areas") end
+        if WT.mapHubsBox.row.title:GetText() ~= ns:Tr("Quest areas on the map") then error("the map switch says quest areas") end
         if T.onBox.row.title:GetText() ~= ns:Tr("Use quest guides") then error("the guide switch is not called Quest guides under the Quest guides label") end
         ns.After = saved.after
 
-        -- 4. In the settings window: the tour on the first open, the keys and Bigger controls
+        -- 4. In the settings window: the tour on the first open, and the keys
         local calls = 0
         ns.PlannerIntro = function(self, ...) calls = calls + 1; return saved.intro(self, ...) end
         ns.root.plannerIntroSeen = nil
@@ -21694,7 +21696,7 @@ try("polish P3: the Guide tab's rows, the hidden saved data and the planner's to
         local list = fp.shownKeys or {}
         local at = {}
         for i, k in ipairs(list) do at[k] = i end
-        for _, k in ipairs({ "questGuide", "plannerTrainer", "plannerMapHubs", "plannerDuoAsk", "guide:Plan my route", "guide:Speed", "guide:record" }) do
+        for _, k in ipairs({ "questGuide", "guide:Plan my route", "guide:Planner settings", "guide:record" }) do
             if not at[k] then
                 local host = O.pages.guide
                 error("the keys reach the row: " .. k .. " keys=" .. table.concat(list, ",") .. " lent=" .. tostring(host and host.area and rawget(host.area, "lentTo")) .. " fp=" .. tostring(fp) .. " sec=" .. tostring(fp.section and fp.section.id) .. " sheet=" .. tostring(host and host.sheet == ns.guidePage.live:GetParent()))
@@ -21709,18 +21711,12 @@ try("polish P3: the Guide tab's rows, the hidden saved data and the planner's to
                 end)
             end
         end
-        if fp.Focus(at.plannerTrainer) ~= "plannerTrainer" then error("Tab lands on the trainer row") end
-        local before = ns.db.plannerTrainer
+        if fp.Focus(at.questGuide) ~= "questGuide" then error("Tab lands on the guide's switch") end
+        local before = ns.db.questGuide
         fp.Use()
-        if ns.db.plannerTrainer == before then error("Space switches it") end
+        if ns.db.questGuide == before then error("Space switches it") end
         fp.Use()
-        if ns.db.plannerTrainer ~= before then error("and back") end
-        ns.db.plannerGroup = "solo"
-        fp.Focus(at["guide:Group quests"])
-        fp.Use(-1)
-        if ns.db.plannerGroup ~= "all" then error("Left steps a choice back: " .. tostring(ns.db.plannerGroup)) end
-        fp.Use(1)
-        if ns.db.plannerGroup ~= "solo" then error("Right steps it on") end
+        if ns.db.questGuide ~= before then error("and back") end
         -- (polish review M4) an action row: Left and Right press nothing, Space presses it
         local planCalls, realPlan, realOn = 0, ns.PlannerPlanCommand, ns.GuideOn
         ns.PlannerPlanCommand = function() planCalls = planCalls + 1 end
@@ -21738,9 +21734,12 @@ try("polish P3: the Guide tab's rows, the hidden saved data and the planner's to
         runTimers()
         O.Open("guide:Guide")
         if calls ~= 0 then error("once seen, the tour does not open again by itself") end
-        click(ns.guidePage.introButton)
-        if calls ~= 1 then error("How the planner works opens it again") end
         ns:ToggleConfig()
+        ns:PlannerOpen()
+        if calls ~= 0 then error("nor at the planner window's open") end
+        click(ns.plannerWindow.introButton)
+        if calls ~= 1 then error("How the planner works opens it again") end
+        ns.plannerWindow:Hide()
 
         -- 5. The tour: four pages, Back and Next, the keys, reading aloud, skipped at once
         local said = {}
@@ -24599,6 +24598,305 @@ end)
 -- folders tests B (gold recorders): begin
 -- folders tests B (gold recorders): end
 -- folders tests C (window): begin
+try("folders C: the planner window", function()
+    local keep = { unlocked = ns.GuideUnlocked, state = ns.root.guideState, guides = ns.root.guides, on = ns.db.questGuide,
+        level = env.UnitLevel, money = env.GetMoney, class = env.UnitClass, known = ns.PlannerRidingKnown, gold = ns.GoldOpen,
+        chars = ns.root.goldChars, intro = ns.PlannerIntro, seen = ns.root.plannerIntroSeen, open = ns.PlannerOpen,
+        hide = ns.HideConfig, cf = env.CreateFrame, keyNav = ns.db.keyNav, big = ns.db.bigControls, errors = #ns.errors, guideKey = ns.root.guideKey, db = {} }
+    for k, v in pairs(ns.db) do if type(k) == "string" and k:find("^planner") then keep.db[k] = v end end
+    local ok, err = pcall(function()
+        local function Handlers(obj, name) local l = {}; for i = 1, #handlers do local h = handlers[i]; if h.self == obj and h.name == name then l[#l + 1] = h.fn end end; return l end
+        local function Click(b, button, what)
+            local l = Handlers(b, "OnClick")
+            if #l == 0 then error("nothing to click: " .. tostring(what)) end
+            for _, fn in ipairs(l) do fn(b, button or "LeftButton") end
+        end
+        local function Same(a, b) return table.concat(a, "\n") == table.concat(b, "\n") end
+        ns.db.questGuide = true
+        ns.root.guides = {}
+        ns.root.guideState = {}
+        env.UnitLevel = function() return 12 end
+        ns.root.plannerIntroSeen = true
+        if ns.plannerWindow then ns.plannerWindow:Hide() end
+        -- locked: nothing, and no frame made
+        ns.GuideUnlocked = function() return false end
+        local made = 0
+        env.CreateFrame = function(...) made = made + 1; return keep.cf(...) end
+        local r = ns:PlannerOpen()
+        env.CreateFrame = keep.cf
+        if r ~= nil or made ~= 0 then error("locked: PlannerOpen hands back nil and makes no frame: " .. tostring(r) .. " " .. made) end
+        if ns.PlannerWindowSummary() ~= nil then error("locked: no summary") end
+        ns.GuideUnlocked = function() return true end
+        -- the look
+        local f = ns:PlannerOpen()
+        if not (f and f == ns.plannerWindow) then error("unlocked: the window") end
+        if not (sources["planner/PlannerWindow.lua"] or ""):find('local NAME, WIDTH, HEIGHT = "FantasyGlassUIPlanner", 600, 640', 1, true) then error("named FantasyGlassUIPlanner, 600 by 640") end
+        if rawget(f, "suiLook") ~= "settings" then error("in the settings look: " .. tostring(rawget(f, "suiLook"))) end
+        local listed = false
+        for _, n in ipairs(env.UISpecialFrames) do if n == "FantasyGlassUIPlanner" then listed = true end end
+        if not listed then error("Esc closes it: in UISpecialFrames") end
+        if ns:PlannerOpen() ~= f then error("one window, opened again") end
+        local T = f.T
+        if not (T and T.rows and T.Layout) then error("the window's switches, f.T") end
+        -- not following
+        if not Same(ns.PlannerWindowSummary(), { ns:Tr("You are not following a plan.") }) then error("not following: " .. table.concat(ns.PlannerWindowSummary(), "|")) end
+        if not Same(f.drawn.summary, ns.PlannerWindowSummary()) then error("the window shows the summary") end
+        if f.drawn.plan ~= ns:Tr("Plan my route") or f.drawn.stop ~= false or f.drawn.riding ~= false then error("not following: Plan my route, no Stop, no riding") end
+        local starts = 0
+        local realStart = ns.PlannerStart
+        ns.PlannerStart = function() starts = starts + 1; return true end
+        Click(f.planButton, nil, "plan")
+        ns.PlannerStart = realStart
+        if starts ~= 1 then error("Plan my route starts the planner") end
+        if T.planButton ~= f.planButton then error("T.planButton is the window's plan button") end
+        -- following the plan
+        local steps = { { kind = "accept", quest = 11, title = "Wolves" }, { kind = "goto", map = 1429, x = 40, y = 50, text = "Go to the farm" },
+                        { kind = "fly", text = "Fly to Sentinel Hill" }, { kind = "turnin", quest = 11, title = "Wolves" }, { kind = "note", text = "Rest" } }
+        local summary = { xp = 6000, fromLevel = 25, toLevel = 26 }
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = steps }, summary)
+        ns:PlannerStop(); ns.plannerQueued = false
+        local preview = ns.PlannerPreviewLines(ns:GuideGet(ns.GUIDE_PLANNED), summary)
+        local want = { preview[1].left, preview[2].left, preview[3].left, preview[4].left, string.format(ns:Tr("Step %d of %d: %s"), 1, 5, ns.GuideStepBase(steps[1])) }
+        if not Same(ns.PlannerWindowSummary(), want) then error("following: the preview's first four lines and the step:\n" .. table.concat(ns.PlannerWindowSummary(), "\n")) end
+        f.Refresh()
+        if f.drawn.plan ~= ns:Tr("Plan again") or f.drawn.stop ~= true then error("following: Plan again and Stop") end
+        Click(f.planButton, nil, "plan again")
+        if ns.plannerReason ~= "again" then error("Plan again replans: " .. tostring(ns.plannerReason)) end
+        ns:PlannerStop(); ns.plannerQueued = false
+        ns.GuideState().at = 3
+        if ns.PlannerWindowSummary()[5] ~= string.format(ns:Tr("Step %d of %d: %s"), 3, 5, ns.GuideStepBase(steps[3])) then error("the step you are on") end
+        -- the switches: each of the Guide tab's planner settings, under the same key, and a replan while following
+        local switches = { flightsBox = "plannerLearnFlights", trainerBox = "plannerTrainer", holdBox = "plannerHold", vendorBox = "plannerVendor",
+            suppliesBox = "plannerSupplies", professionBox = "plannerProfession", mountBox = "plannerMount", mailBox = "plannerMail", exploreBox = "plannerExplore",
+            gatherBox = "plannerGather", classQuestsBox = "plannerClassQuests", restedBox = "plannerRested", rewardsBox = "plannerRewards", deathsBox = "plannerDeaths",
+            soloElitesBox = "plannerSoloElites", whyBox = "plannerWhy", pickBox = "plannerPickReward", logAdviceBox = "plannerLogAdvice", innBox = "plannerInn",
+            dryBox = "plannerDry", mapLineBox = "plannerMapLine", mapHubsBox = "plannerMapHubs", tomTomBox = "plannerTomTom", breaksBox = "plannerBreaks",
+            raceBox = "plannerRace", leftOffBox = "plannerLeftOff", speakBox = "plannerSpeak", findGroupBox = "plannerFindGroup", duoAskBox = "plannerDuoAsk" }
+        local replans = { plannerLearnFlights = true, plannerTrainer = true, plannerHold = true, plannerVendor = true, plannerSupplies = true, plannerProfession = true,
+            plannerMount = true, plannerMail = true, plannerExplore = true, plannerGather = true, plannerClassQuests = true, plannerRested = true, plannerRewards = true,
+            plannerDeaths = true, plannerSoloElites = true, plannerWhy = true, plannerDry = true }
+        -- (every planner key the Guide tab read at SEAMS: these 29, and the three choices below; pytest checks the list against git)
+        for field, key in pairs(switches) do
+            local box = T[field]
+            if not (box and box.key == key and box.row and box.row.navKey == key) then error("the window has the switch for " .. key .. " as T." .. field) end
+            ns.plannerQueued, ns.plannerReason = false, nil
+            local before = ns.db[key] and true or false
+            Click(box, nil, field)
+            if (ns.db[key] and true or false) == before then error("the switch writes " .. key) end
+            if replans[key] and not (ns.plannerQueued and ns.plannerReason == "settings") then error(key .. ": plans again while following") end
+            if not replans[key] and ns.plannerReason == "settings" then error(key .. ": no replan, as on the Guide tab") end
+            Click(box, nil, field)
+            if (ns.db[key] and true or false) ~= before then error("and back: " .. key) end
+        end
+        ns.db.plannerGroup = "solo"; ns.plannerQueued = false
+        Click(T.groupButton, nil, "group")
+        if ns.db.plannerGroup ~= "grouped" or not ns.plannerQueued then error("plannerGroup: the cycle writes it and replans") end
+        Click(T.groupButton, "RightButton", "group")
+        if ns.db.plannerGroup ~= "solo" then error("plannerGroup: right-click steps back") end
+        ns.db.plannerBreakMinutes = 120
+        Click(T.breakButton, nil, "break")
+        if ns.db.plannerBreakMinutes ~= 180 then error("plannerBreakMinutes: the cycle writes it") end
+        ns.db.plannerLFGChannel = ""
+        local realChannels = ns.PlannerLFGChannels
+        ns.PlannerLFGChannels = function() return { "General" } end
+        Click(T.findGroupChannel, nil, "channel")
+        ns.PlannerLFGChannels = realChannels
+        if ns.db.plannerLFGChannel ~= "General" then error("plannerLFGChannel: the cycle writes it") end
+        ns:PlannerStop(); ns.plannerQueued = false
+        for _, field in ipairs({ "playTimeButton", "styleButton", "speedSlider", "safetySlider", "storySlider", "zoneGoalButton", "reputationButton",
+                                 "skippedButton", "duoButton", "sharePlanButton", "introButton", "stopButton", "goldButton", "ridingButton" }) do
+            if not T[field] then error("the window has T." .. field) end
+        end
+        -- the nine groups, in order, every row under one of them
+        local heads = {}
+        for i, g in ipairs(ns.PLANNER_WINDOW_GROUPS) do heads[i] = g[2] end
+        if table.concat(heads, "|") ~= "Group quests|Stops on the way|Exploring and gathering|Rewards, the log and the inn|Time, style and sliders|Map|Records|Reading aloud|With others" then
+            error("the nine headings: " .. table.concat(heads, "|")) end
+        local order = {}
+        for i, g in ipairs(ns.PLANNER_WINDOW_GROUPS) do order[g[1]] = i end
+        T.Layout(556)
+        local last, seen = 0, {}
+        for _, row in ipairs(T.rows.shown) do
+            local at = order[row.sec]
+            if not at or at < last then error("the rows go group by group: " .. tostring(row.sec)) end
+            last, seen[row.sec] = at, true
+        end
+        for _, g in ipairs(ns.PLANNER_WINDOW_GROUPS) do if not seen[g[1]] then error("a group with no rows: " .. g[2]) end end
+        local function In(field, sec) if T[field].row.sec ~= sec then error(field .. " is under " .. sec .. ": " .. tostring(T[field].row.sec)) end end
+        In("groupButton", "group"); In("soloElitesBox", "group"); In("classQuestsBox", "group"); In("mailBox", "stops"); In("gatherBox", "explore")
+        In("skippedButton", "rewards"); In("zoneGoalButton", "time"); In("deathsBox", "time"); In("tomTomBox", "map"); In("whyBox", "records")
+        In("speakBox", "speak"); In("sharePlanButton", "together")
+        -- on a trip
+        local tripSteps = {}
+        for i = 1, 5 do tripSteps[i] = { kind = "note", text = "Node " .. i } end
+        ns.root.guideState[ns:CharKey()] = { name = ns.GUIDE_TRIP, at = 2, ticked = {}, plan = { name = ns.GUIDE_TRIP, steps = tripSteps },
+            trip = { title = "Gather Peacebloom in Elwynn Forest" }, resume = { name = ns.GUIDE_PLANNED, at = 3 } }
+        if not Same(ns.PlannerWindowSummary(), { string.format(ns:Tr("On a trip: %s, step %d of %d"), "Gather Peacebloom in Elwynn Forest", 2, 5), ns:Tr("Your levelling plan waits.") }) then
+            error("on a trip: " .. table.concat(ns.PlannerWindowSummary(), "|")) end
+        if ns.PlannerWindowSummary()[1] ~= "On a trip: Gather Peacebloom in Elwynn Forest, step 2 of 5" then error("in English") end
+        f.Refresh()
+        if f.drawn.stop ~= true or f.drawn.plan ~= ns:Tr("Plan my route") then error("on a trip: Stop, and Plan my route") end
+        local stops, realStop = 0, ns.GuideStop
+        ns.GuideStop = function() stops = stops + 1 end
+        Click(f.stopButton, nil, "stop")
+        ns.GuideStop = realStop
+        if stops ~= 1 then error("Stop: GuideStop") end
+        ns.root.guideState = {}
+        -- the riding line: a Warrior at level 40 with 30g
+        env.UnitLevel = function() return 40 end
+        env.GetMoney = function() return 30 * 10000 end
+        env.UnitClass = function() return "Warrior", "WARRIOR" end
+        ns.PlannerRidingKnown = function() return false end
+        local sum = ns.PlannerWindowSummary()
+        if sum[#sum] ~= string.format(ns:Tr("Riding: %s to go"), ns.PlannerGoldText(900000)) then error("the summary ends with the riding line: " .. tostring(sum[#sum])) end
+        if string.format("Riding: %s to go", "90g") ~= "Riding: 90g to go" then error("(the line)") end
+        f.Refresh()
+        if f.drawn.riding ~= true then error("Save for riding shows with the riding line") end
+        local golds = {}
+        ns.GoldOpen = function(_, opts) golds[#golds + 1] = opts or false; return true end
+        Click(f.ridingButton, nil, "riding")
+        if not (#golds == 1 and type(golds[1]) == "table" and golds[1].goalName == "mount") then error("Save for riding: GoldOpen({ goalName = \"mount\" })") end
+        golds = {}
+        Click(f.goldButton, nil, "gold")
+        if not (#golds == 1 and golds[1] == false) then error("Ways to make gold: GoldOpen() once") end
+        ns.GoldOpen = keep.gold
+        ns.root.goldChars = {}
+        Click(f.ridingButton, nil, "riding, the real gold window")
+        local goal = ns.GoldGoal()
+        if not (goal and goal - 30 * 10000 == 900000) then error("the gold window's remaining amount is the riding line's: " .. tostring(goal)) end
+        if ns.goldWindow then ns.goldWindow.suiGoldOn = false; ns.goldWindow:Hide() end
+        local G = ns.GOLD_GOALS.mount
+        if G.copper ~= ns.PLANNER_RIDING_COPPER + ns.PLANNER_MOUNT_COPPER or G.byClass.PALADIN ~= ns.PLANNER_RIDING_COPPER or G.byClass.WARLOCK ~= ns.PLANNER_RIDING_COPPER then
+            error("the gold goal and the riding line agree") end
+        env.UnitLevel = function() return 12 end
+        -- how the planner works: from the window, and by itself at its first open
+        local tours = 0
+        ns.PlannerIntro = function() tours = tours + 1; return true end
+        Click(f.introButton, nil, "intro")
+        if tours ~= 1 then error("How the planner works opens the tour") end
+        ns.root.plannerIntroSeen = nil
+        f:Hide()
+        ns:PlannerOpen()
+        if tours ~= 2 then error("the first open, while the tour is due, shows it") end
+        ns.root.plannerIntroSeen = true
+        ns:PlannerOpen()
+        if tours ~= 2 then error("once seen, not again by itself") end
+        ns.PlannerIntro = keep.intro
+        -- the keys (with "Move through the settings with the keyboard" on) and Bigger controls
+        for _, row in ipairs(T.rows.shown) do
+            if row.switch then rawset(row.switch, "Click", function(self) Click(self) end) end
+            if row.button and row.button.SetScale then
+                rawset(row.button, "GetScript", function(self, name) return function(_, b) for _, fn in ipairs(Handlers(self, name)) do fn(self, b) end end end)
+            end
+        end
+        local key = Handlers(f, "OnKeyDown")[1]
+        if not key then error("the window takes keys") end
+        ns.db.keyNav = true
+        local at
+        for _ = 1, 80 do key(f, "TAB"); if f.focusedKey == "plannerTrainer" then at = true; break end end
+        if not at then error("Tab reaches the trainer row") end
+        local before = ns.db.plannerTrainer
+        key(f, "SPACE")
+        if ns.db.plannerTrainer == before then error("Space switches it") end
+        key(f, "ENTER")
+        if ns.db.plannerTrainer ~= before then error("Enter switches it back") end
+        at = nil
+        for _ = 1, 80 do key(f, "UP"); if f.focusedKey == "guide:Group quests" then at = true; break end end
+        if not at then error("Up reaches the group choice") end
+        ns.db.plannerGroup = "solo"
+        key(f, "LEFT")
+        if ns.db.plannerGroup ~= "all" then error("Left steps the choice back: " .. tostring(ns.db.plannerGroup)) end
+        key(f, "RIGHT")
+        if ns.db.plannerGroup ~= "solo" then error("Right steps it on") end
+        ns.db.keyNav = false
+        key(f, "TAB")
+        if rawget(f, "focusedKey") ~= nil then error("with the keyboard switch off, the keys go to the game") end
+        local scaled = {}
+        for _, row in ipairs(T.rows.shown) do if row.switch then rawset(row.switch, "SetScale", function(_, s) scaled[row] = s end) end end
+        ns.db.bigControls = true
+        T.Layout(556)
+        for _, row in ipairs(T.rows.shown) do if row.switch and scaled[row] ~= 1.35 then error("Bigger controls: larger switches") end end
+        for _, row in ipairs(T.rows.shown) do if row.switch then rawset(row.switch, "SetScale", nil); rawset(row.switch, "Click", nil) end
+            if row.button then rawset(row.button, "GetScript", nil) end end
+        ns.db.bigControls = keep.big
+        -- the Guide tab: no planner control, and Planner settings opens the window
+        local page = env.CreateFrame("Frame")
+        local saveGuide = ns.guidePage
+        local GT = ns.BuildGuidePage(page)
+        ns.guidePage = saveGuide
+        for field in pairs(switches) do if GT[field] then error("the Guide tab has no " .. field) end end
+        for _, field in ipairs({ "groupButton", "breakButton", "findGroupChannel", "styleButton", "zoneGoalButton", "sharePlanButton", "introButton" }) do
+            if GT[field] then error("the Guide tab has no " .. field) end
+        end
+        for _, row in ipairs(GT.rows.list) do
+            if type(row.navKey) == "string" and row.navKey:find("^planner") then error("the Guide tab has no planner switch: " .. row.navKey) end
+        end
+        if not GT.plannerSettingsButton then error("the Guide tab has Planner settings") end
+        local opened, hidden = 0, 0
+        ns.PlannerOpen = function() opened = opened + 1; return true end
+        ns.HideConfig = function() hidden = hidden + 1 end
+        Click(GT.plannerSettingsButton, nil, "Planner settings")
+        ns.PlannerOpen, ns.HideConfig = keep.open, keep.hide
+        if opened ~= 1 or hidden ~= 1 then error("Planner settings: the settings close and the planner window opens") end
+        -- the Guide tab's controls with the planner folder not loaded: each loads it, or only reads and writes ns.db
+        local real = { cmd = ns.PlannerPlanCommand, start = ns.PlannerStart, open = ns.PlannerOpen, due = ns.PlannerIntroDue, intro = ns.PlannerIntro,
+                       load = ns.LoadFolder, on = ns.GuideOn }
+        local loads, started, opens = {}, 0, 0
+        local function Unload()
+            ns.PlannerPlanCommand, ns.PlannerIntroDue, ns.PlannerIntro = nil, nil, nil
+            ns.PlannerStart, ns.PlannerOpen = ns.folderStubs.PlannerStart, ns.folderStubs.PlannerOpen
+        end
+        ns.LoadFolder = function(_, k)                         -- (what loading the folder does: its functions are there)
+            loads[#loads + 1] = k
+            ns.PlannerStart = function() started = started + 1; return true end
+            ns.PlannerOpen = function() opens = opens + 1; return true end
+            ns.PlannerPlanCommand, ns.PlannerIntroDue, ns.PlannerIntro = nil, real.due, real.intro
+            return true
+        end
+        ns.GuideOn = function() return true end
+        local ok2, err2 = pcall(function()
+            Unload()
+            local upage = env.CreateFrame("Frame")
+            local UT = ns.BuildGuidePage(upage)
+            upage.Refresh()
+            Click(UT.planButton, nil, "Plan my route, unloaded")
+            if not (loads[1] == "planner" and started == 1) then error("unloaded: Plan my route loads the planner and plans: " .. tostring(loads[1]) .. " " .. started) end
+            Unload()
+            ns.HideConfig = function() end
+            Click(UT.plannerSettingsButton, nil, "Planner settings, unloaded")
+            if not (loads[2] == "planner" and opens == 1) then error("unloaded: Planner settings loads the planner and opens its window") end
+            Unload()
+            for _, row in ipairs(UT.rows.list) do if row.switch then Click(row.switch, nil, row.navKey); Click(row.switch, nil, row.navKey) end end
+            if #loads ~= 2 then error("unloaded: the Guide tab's switches only write ns.db") end
+        end)
+        ns.PlannerPlanCommand, ns.PlannerStart, ns.PlannerOpen, ns.PlannerIntroDue, ns.PlannerIntro = real.cmd, real.start, real.open, real.due, real.intro
+        ns.LoadFolder, ns.GuideOn, ns.HideConfig = real.load, real.on, keep.hide
+        ns.guidePage = saveGuide
+        if not ok2 then error(err2, 0) end
+        -- locked again: the window is put away
+        local hid = false
+        rawset(f, "Hide", function() hid = true end)
+        ns.GuideUnlocked = function() return false end
+        ns:GuideLock()
+        rawset(f, "Hide", nil)
+        if not hid then error("locked: the window is hidden") end
+        if #ns.errors ~= keep.errors then error("no errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    env.CreateFrame = keep.cf
+    if ns.PlannerStop then ns:PlannerStop() end
+    ns.plannerQueued = false
+    ns.GuideUnlocked, ns.root.guideState, ns.root.guides, ns.db.questGuide = keep.unlocked, keep.state, keep.guides, keep.on
+    env.UnitLevel, env.GetMoney, env.UnitClass, ns.PlannerRidingKnown, ns.GoldOpen = keep.level, keep.money, keep.class, keep.known, keep.gold
+    ns.root.goldChars, ns.PlannerIntro, ns.root.plannerIntroSeen, ns.PlannerOpen, ns.HideConfig = keep.chars, keep.intro, keep.seen, keep.open, keep.hide
+    ns.db.keyNav, ns.db.bigControls, ns.root.guideKey = keep.keyNav, keep.big, keep.guideKey
+    for k in pairs(ns.db) do if type(k) == "string" and k:find("^planner") and keep.db[k] == nil then ns.db[k] = nil end end
+    for k, v in pairs(keep.db) do ns.db[k] = v end
+    if ns.plannerWindow then ns.plannerWindow:Hide() end
+    if ns.goldWindow then ns.goldWindow.suiGoldOn = false; ns.goldWindow:Hide() end
+    if ns.GuideForget then ns.GuideForget() end
+    if ns.HideLists then ns:HideLists() end
+    if not ok then error(err, 0) end
+end)
 -- folders tests C (window): end
 -- folders tests D (go): begin
 -- folders tests D (go): end
