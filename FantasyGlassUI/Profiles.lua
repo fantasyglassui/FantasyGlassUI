@@ -143,6 +143,14 @@ local function Shareable(db)
     if type(db) ~= "table" or (ns.GuideUnlocked and ns:GuideUnlocked()) then return db end
     local out = {}
     for k, v in pairs(db) do if not ns.GuideGatedKey(k) then out[k] = v end end
+    -- the guide panel's place and size (its "questGuide" entry): copies without it, the profile's own tables untouched
+    for _, t in ipairs({ "pos", "scale" }) do
+        if type(db[t]) == "table" then
+            local copy = {}
+            for k, v in pairs(db[t]) do if k ~= "questGuide" then copy[k] = v end end
+            out[t] = copy
+        end
+    end
     return out
 end
 

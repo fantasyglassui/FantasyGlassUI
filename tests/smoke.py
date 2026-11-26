@@ -16659,6 +16659,122 @@ try("13.5 together: final review", function()
     if not ok then error(err, 0) end
 end)
 
+-- batch 5's last two fixes (N1, N2), and the Guide tab in the 12.3 settings look
+try("13.5 together: batch 5's last two fixes", function()
+    local CI = env.C_ChatInfo
+    local O = ns.optUI
+    local saved = { on = ns.GuideOn, here = ns.GuideHere, unlocked = ns.GuideUnlocked, raw = ns.PrintRaw, show = ns.ShowList,
+                    guideState = ns.root.guideState, guides = ns.root.guides, key = ns.root.guideKey, planner = ns.root.planner,
+                    level = env.UnitLevel, name = env.UnitName, time = env.GetTime, combat = env.InCombatLockdown,
+                    send = CI.SendAddonMessage, lock = CI.InChatMessagingLockdown, ask = ns.db.plannerDuoAsk, duo = ns.plannerDuo,
+                    pos = ns.db.pos, scale = ns.db.scale, lang = ns.root.language, realCF = env.CreateFrame, errors = #ns.errors }
+    local clock = 40000
+    local ok, err = pcall(function()
+        -- N1: locked, a profile or pack code leaves out the guide panel's place and size; the profile keeps them
+        ns.db.pos = { questGuide = { "CENTER", "CENTER", 10, 20 }, Player = { "CENTER", "CENTER", -200, -100 } }
+        ns.db.scale = { questGuide = 1.2, Player = 0.9 }
+        ns.GuideUnlocked = function() return false end
+        for _, code in ipairs({ ns:ExportProfile(), ns:ExportPack() }) do
+            if code:find("questGuide", 1, true) then error("locked: a code names the guide panel's place or size") end
+            local kind, data = ns:DecodeShared(code)
+            local p = kind == "pack" and data.profile or data
+            if not (type(p) == "table" and type(p.pos) == "table" and type(p.pos.Player) == "table" and p.pos.Player[3] == -200) then error("locked: the other places are still in the " .. tostring(kind) .. " code") end
+            if not (type(p.scale) == "table" and p.scale.Player == 0.9) then error("locked: the other sizes are still in the " .. tostring(kind) .. " code") end
+        end
+        if not (ns.db.pos.questGuide and ns.db.pos.questGuide[3] == 10 and ns.db.scale.questGuide == 1.2) then error("the profile's own tables keep the guide panel's place and size") end
+        ns.GuideUnlocked = function() return true end
+        local _, open = ns:DecodeShared(ns:ExportProfile())
+        if not (open.pos.questGuide and open.scale.questGuide == 1.2) then error("unlocked: the code has the guide panel's place and size") end
+        ns.db.pos, ns.db.scale = saved.pos, saved.scale
+
+        -- N2: the friend plans from their own level for as many levels as the leader's plan covers
+        ns.GuideOn = function() return true end
+        ns.GuideHere = function() return 1429, 30, 40 end
+        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
+        ns.root.planner, ns.root.guides, ns.root.guideState = {}, {}, {}
+        ns.db.plannerDuoAsk = true
+        env.GetTime = function() return clock end
+        env.UnitLevel = function() return 18 end
+        env.UnitName = function(u) if u == "player" then return "Mira" end return "Someone" end
+        env.InCombatLockdown = function() return false end
+        CI.InChatMessagingLockdown = function() return false end
+        CI.SendAddonMessage = function() return 0 end
+        local lists = {}
+        ns.ShowList = function(self, key, title, lines, ...) lists[key] = lines; return saved.show(self, key, title, lines, ...) end
+        ns.PrintRaw = function() end
+        local function addon(text) fireEvent("CHAT_MSG_ADDON", "FGUIPlan", text, "WHISPER", "Leo-Realm") end
+        local function flush() for _ = 1, 120 do ns.PlannerDuoFlush() end end
+        local function frames(k) for _ = 1, k or 30 do for i = 1, #handlers do local h = handlers[i]; if h.name == "OnUpdate" then pcall(h.fn, h.self, 0) end end end end
+        ns:GuideSetPlan(nil); ns:PlannerStop(); ns.plannerQueued = false
+        addon("D1:ASK:ab51:20")
+        for _, r in ipairs(lists.PlanDuoAsk or {}) do if r.click and r.left:find("Plan together", 1, true) then r.click() end end
+        frames(); flush()
+        if ns.PlannerDuoRole() ~= "friend" then error("Mira plans with Leo: " .. tostring(ns.PlannerDuoRole())) end
+        local steps = { ns.GuideParseLine("accept 7001 Hogger @ 1429:24.5,79.6") }
+        local function send(planId, from, to)
+            local text = ns.PlannerDuoPlanText({ name = ns.GUIDE_PLANNED, steps = steps }, { zone = 1429, fromLevel = from, toLevel = to, xp = 3000, seconds = 1200 }, planId)
+            local parts = ns.ShareChunks(text)
+            for i, p in ipairs(parts) do addon(string.format("SS:ab51z%d:%d:%d:plan:%s", planId, i, #parts, p)) end
+            flush()
+            local st = ns.GuideState()
+            if not (st and st.name == ns.GUIDE_PLANNED and type(st.summary) == "table") then error("Mira follows Leo's plan " .. planId) end
+            return st.summary
+        end
+        local s1 = send(1, 20, 21.5)
+        if s1.fromLevel ~= 18 or s1.toLevel ~= 19.5 then error("Leo's 20 -> 21.5 is 18 -> 19.5 for Mira, got " .. tostring(s1.fromLevel) .. " -> " .. tostring(s1.toLevel)) end
+        local s2 = send(2, 20, 19)
+        if s2.fromLevel ~= 18 or s2.toLevel ~= 18 then error("a plan that ends lower never goes under her own level, got " .. tostring(s2.toLevel)) end
+        if ns.plannerDuo then ns:PlannerDuoEnd(nil, true, true) end
+        flush(); ns.PlannerDuoTick(); ns:PlannerStop(); ns.plannerQueued = false; ns:GuideSetPlan(nil)
+
+        -- the Guide tab in the 12.3 look: section labels upper-case in English, switches in the window's look
+        ns.root.language = "enUS"
+        local texts = {}
+        env.CreateFrame = function(...)
+            local f = saved.realCF(...)
+            local parent = select(3, ...)
+            rawset(f, "GetParent", function() return parent end)     -- (the switch asks its parents whose look it is in)
+            local make = f.CreateFontString
+            rawset(f, "CreateFontString", function(self, ...)
+                local fs = make(self, ...)
+                local set = fs.SetText
+                rawset(fs, "SetText", function(x, t) texts[tostring(t)] = true; return set(x, t) end)
+                return fs
+            end)
+            return f
+        end
+        if ns.configFrame and ns.configFrame:IsShown() then ns:ToggleConfig() end
+        O.frame = nil
+        ns:ToggleConfig("guide")
+        env.CreateFrame = saved.realCF
+        local T = ns.guidePage
+        if not (T and T.unlocked == true) then error("unlocked: the Guide tab shows the controls") end
+        for _, label in ipairs({ "QUEST GUIDES", "PLAN MY ROUTE", "HOW LONG YOU PLAY", "SPEED OR STORY" }) do
+            if not texts[label] then error("the Guide tab's heading is a section label: " .. label) end
+        end
+        for _, box in ipairs({ T.onBox, T.flightsBox, T.dryBox, T.mapLineBox, T.breaksBox, T.raceBox, T.speakBox, T.findGroupBox, T.duoAskBox }) do
+            if rawget(box, "suiSwitch") ~= true then error("a Guide tab switch wears the settings window's look") end
+        end
+        ns:ToggleConfig()
+        if #ns.errors ~= saved.errors then error("no errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    env.CreateFrame = saved.realCF
+    if ns.plannerDuo then ns:PlannerDuoEnd(nil, true, true) end
+    for _ = 1, 50 do ns.PlannerDuoFlush() end
+    ns.PlannerDuoTick()
+    ns:PlannerStop(); ns.plannerQueued = false
+    ns:GuideSetPlan(nil)
+    if ns.HideLists then ns:HideLists() end
+    if ns.configFrame and ns.configFrame:IsShown() then pcall(ns.ToggleConfig, ns) end
+    ns.GuideOn, ns.GuideHere, ns.GuideUnlocked, ns.PrintRaw, ns.ShowList = saved.on, saved.here, saved.unlocked, saved.raw, saved.show
+    ns.root.guideState, ns.root.guides, ns.root.guideKey, ns.root.planner, ns.root.language = saved.guideState, saved.guides, saved.key, saved.planner, saved.lang
+    env.UnitLevel, env.UnitName, env.GetTime, env.InCombatLockdown = saved.level, saved.name, saved.time, saved.combat
+    CI.SendAddonMessage, CI.InChatMessagingLockdown = saved.send, saved.lock
+    ns.db.plannerDuoAsk, ns.plannerDuo, ns.db.pos, ns.db.scale = saved.ask, saved.duo, saved.pos, saved.scale
+    while #ns.errors > saved.errors do table.remove(ns.errors) end
+    if not ok then error(err, 0) end
+end)
+
 try("12.3 settings look: palette, accent, contrast, lettering", function()
     local keep = { theme = ns.db.theme, accent = ns.db.accent, lang = ns.root.language, style = ns.db.fontStyle }
     local function hex(r, g, b) return string.format("%02x%02x%02x", math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b * 255 + 0.5)) end

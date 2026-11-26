@@ -609,7 +609,8 @@ local function ApplyPlan(d, guide, header)
     local level = MyLevel()
     d.planId, d.atKey = header.planId, nil
     ns:PlannerStop()
-    ns:GuideSetPlan(guide, { zone = header.zone ~= 0 and header.zone or nil, fromLevel = level, toLevel = level, duo = true,
+    local toLevel = level + max(0, header.toLevel - header.fromLevel)    -- (the leader's gain, from your own level)
+    ns:GuideSetPlan(guide, { zone = header.zone ~= 0 and header.zone or nil, fromLevel = level, toLevel = toLevel, duo = true,
                              xp = header.xp, seconds = header.seconds })     -- (the leader's totals: a code shared from here adds them up)
     SendAt(d)
 end
