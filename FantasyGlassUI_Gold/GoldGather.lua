@@ -17,10 +17,6 @@ local type, tonumber, pairs, ipairs = type, tonumber, pairs, ipairs
 local floor, max, min, sqrt, huge = math.floor, math.max, math.min, math.sqrt, math.huge
 
 local HERBALISM, MINING, SKINNING = 182, 186, 393
-local NAME_CAP = 200                   -- node names whose loot is kept
-local LOOT_SECONDS = 5                 -- a loot window this soon after a gathering is that gathering's
-local GAP_SECONDS = 300                -- a longer pause between gatherings is not time spent gathering
-local PER_GATHER = 30                  -- seconds each gathering counts on top of the walk (the cast, the loot)
 local MAX_IDEAS = 6
 local STEP_CAP = 30
 
@@ -64,184 +60,17 @@ local function Clean(s)
     s = ns.Trim((s:gsub("[|@\r\n]", " ")))
     return s ~= "" and s or nil
 end
-local function Unlocked() return ns.GuideUnlocked ~= nil and ns:GuideUnlocked() == true end
 local function Root() return type(ns.root) == "table" and ns.root or nil end
-
-------------------------------------------------------------------------------------------
--- recorders (light; may stay in the main add-on when the folder moves)
-------------------------------------------------------------------------------------------
--- The gathering spells are the planner's (ns.PlannerGatherSkill, the one skill function), and so is the one
--- UNIT_SPELLCAST_SENT recorder: it records the node and hands each gathering here.
-local function Skill(spellID)
-    return type(ns.PlannerGatherSkill) == "function" and ns.PlannerGatherSkill(spellID) or nil
-end
+-- (the recorders are in the main add-on's GoldRecorders.lua: merchant prices, loot, gathering and the node fold)
 local function World(map, x, y)
     if type(ns.PlannerWorldPos) ~= "function" then return nil end
     return ns.PlannerWorldPos(map, x, y)
 end
-
 local function Ask(fn, ...)
     if type(fn) ~= "function" then return nil end
     local ok, a, b, c = pcall(fn, ...)
     if not ok then return nil end
     return a, b, c
-end
--- Where you stand: map, and x, y in percent to one decimal (as the guide tells it); nil when unknown.
-local function Here()
-    local map = Num((Ask(C_Map and C_Map.GetBestMapForUnit, "player")))
-    if not map then return nil end
-    local pos = Ask(C_Map.GetPlayerMapPosition, map, "player")
-    if type(pos) ~= "table" or ns:IsSecret(pos) then return map end
-    local x, y
-    if type(pos.GetXY) == "function" then x, y = Ask(pos.GetXY, pos) else x, y = pos.x, pos.y end
-    x, y = Num(x), Num(y)
-    if not (x and y) or (x == 0 and y == 0) then return map end
-    return map, floor(x * 1000 + 0.5) / 10, floor(y * 1000 + 0.5) / 10
-end
-local function Now() return Num((Ask(GetTime))) end
-
-local pending                          -- the gathering spell being cast: { name, skill }
-local gathered                         -- the last gathering that worked: { name, skill, map, at }
-local lastAt = {}                      -- map -> GetTime of the last gathering there (this session)
-
--- A gathering spell is being cast (the planner's UNIT_SPELLCAST_SENT recorder calls this, for herbs, ore and
--- skinning): what UNIT_SPELLCAST_SUCCEEDED and the loot window then count it as.
-function ns.GoldGatherSent(name, skill, spellID)
-    if not Unlocked() then return end
-    if skill ~= HERBALISM and skill ~= MINING and skill ~= SKINNING then return end
-    pending = { name = Clean(name), skill = skill }
-end
-
-local function ItemID(link)
-    if type(link) ~= "string" or ns:IsSecret(link) then return nil end
-    return tonumber(link:match("item:(%d+)"))
-end
-
-local function NoteLoot(g)
-    local root = Root()
-    local count = Num((Ask(GetNumLootItems)))
-    if not (root and count and count > 0) then return end
-    local got = {}
-    for slot = 1, min(count, 20) do
-        local id = ItemID((Ask(GetLootSlotLink, slot)))
-        local _, _, qty = Ask(GetLootSlotInfo, slot)
-        qty = Num(qty)
-        if id and qty and qty > 0 then got[id] = (got[id] or 0) + qty end
-    end
-    if not next(got) then return end
-    -- what this kind of node gives (herbs and ore; a skinned beast is not a node)
-    if g.name and g.skill ~= SKINNING then
-        if type(root.goldNodeItems) ~= "table" then root.goldNodeItems = {} end
-        local e = root.goldNodeItems[g.name]
-        if type(e) ~= "table" then
-            local names = 0
-            for _ in pairs(root.goldNodeItems) do names = names + 1 end
-            if names < NAME_CAP then e = { n = 0, items = {} }; root.goldNodeItems[g.name] = e end
-        end
-        if type(e) == "table" then
-            if type(e.items) ~= "table" then e.items = {} end
-            e.n = (tonumber(e.n) or 0) + 1
-            for id, q in pairs(got) do e.items[id] = (tonumber(e.items[id]) or 0) + q end
-        end
-    end
-    -- what gathering on this map brings, and for how long
-    if g.map then
-        if type(root.goldGather) ~= "table" then root.goldGather = {} end
-        local m = root.goldGather[g.map]
-        if type(m) ~= "table" then m = { secs = 0, n = 0, items = {} }; root.goldGather[g.map] = m end
-        if type(m.items) ~= "table" then m.items = {} end
-        m.n = (tonumber(m.n) or 0) + 1
-        m.secs = (tonumber(m.secs) or 0) + (g.gap or 0) + PER_GATHER
-        m.day = ns.Today()
-        for id, q in pairs(got) do m.items[id] = (tonumber(m.items[id]) or 0) + q end
-    end
-end
-
-do
-    local ev = CreateFrame("Frame")
-    do                                                    -- (the player's casts only; the handler checks the unit too)
-        local ok = type(ev.RegisterUnitEvent) == "function" and pcall(ev.RegisterUnitEvent, ev, "UNIT_SPELLCAST_SUCCEEDED", "player")
-        if not ok then pcall(ev.RegisterEvent, ev, "UNIT_SPELLCAST_SUCCEEDED") end
-    end
-    pcall(ev.RegisterEvent, ev, "LOOT_OPENED")
-    -- (a plain handler first: while locked it returns at once, so nothing named Gold is timed by /fgui perf)
-    local guarded = ns:Guard("Gold gather", function(_, event, a1, a2, a3, a4)
-        if event ~= "UNIT_SPELLCAST_SUCCEEDED" and event ~= "LOOT_OPENED" then return end
-        if not Unlocked() then return end
-        if event == "LOOT_OPENED" then
-            local g = gathered
-            gathered = nil
-            local now = Now()
-            if g and now and now >= g.at and now - g.at <= LOOT_SECONDS then NoteLoot(g) end
-            return
-        end
-        if ns:IsSecret(a1) or a1 ~= "player" then return end
-        do                                            -- UNIT_SPELLCAST_SUCCEEDED: unit, castGUID, spellID
-            local skill = Skill(a3)
-            if not skill then return end
-            local now = Now()
-            if not now then return end
-            local map = Here()
-            local p = (pending and pending.skill == skill) and pending or nil
-            pending = nil
-            local gap = 0
-            if map and lastAt[map] and now - lastAt[map] >= 0 and now - lastAt[map] <= GAP_SECONDS then gap = now - lastAt[map] end
-            if map then lastAt[map] = now end
-            gathered = { name = p and p.name or nil, skill = skill, map = map, at = now, gap = gap }
-        end
-    end)
-    ev:SetScript("OnEvent", function(...) if Unlocked() then guarded(...) end end)
-end
-
-------------------------------------------------------------------------------------------
--- The node fold: goldNodesSeen (from before the advisor and the planner met) moves into the planner's
--- plannerNodesSeen once, as a sliced job, and is then gone. Until it is done, both are read (Stores below).
-------------------------------------------------------------------------------------------
-local function SameNode(a, b)
-    return type(a) == "table" and type(b) == "table" and a.name == b.name and a.skill == b.skill
-        and tonumber(a.x) == tonumber(b.x) and tonumber(a.y) == tonumber(b.y)
-end
-local function FoldNodes()
-    local root = Root()
-    local gold = root and root.goldNodesSeen
-    if type(gold) ~= "table" then return end
-    local cap, totalCap = tonumber(ns.PLANNER_NODE_CAP) or 300, tonumber(ns.PLANNER_NODES_TOTAL) or 4000   -- (the planner's caps)
-    local total = 0
-    for _, l in pairs(type(root.plannerNodesSeen) == "table" and root.plannerNodesSeen or {}) do
-        if type(l) == "table" then total = total + #l end
-    end
-    local maps = {}
-    for map in pairs(gold) do maps[#maps + 1] = map end           -- (the keys first: the walk yields)
-    for _, map in ipairs(maps) do
-        local list = gold[map]
-        for _, n in ipairs(type(list) == "table" and list or {}) do
-            local mine = type(root.plannerNodesSeen) == "table" and root.plannerNodesSeen[map] or nil
-            local skip = type(n) ~= "table" or (type(mine) == "table" and #mine >= cap) or total >= totalCap   -- (a full map, or all maps full: the planner's own nodes stay)
-            if not skip and type(mine) == "table" then
-                for _, m in ipairs(mine) do if SameNode(m, n) then skip = true; break end end   -- (folded before: an interrupted fold runs again)
-            end
-            if not skip and ns.PlannerRecordNode(map, Num(n.x), Num(n.y), n.name, n.skill) then total = total + 1 end   -- (its 10-yard rule)
-            ns.GoldYield()
-        end
-        gold[map] = nil                                             -- (this map is moved, all of it)
-    end
-    if next(gold) == nil and root.goldNodesSeen == gold then root.goldNodesSeen = nil end
-end
--- Queue the fold (true when it was queued): only while unlocked, with an old memory to fold, and with the
--- planner's node recorder and world positions (without them nothing could be recorded, and the nodes would be lost).
-function ns.GoldFoldNodes()
-    local root = Root()
-    if not (Unlocked() and root and type(root.goldNodesSeen) == "table") then return false end
-    if type(ns.PlannerRecordNode) ~= "function" or type(ns.PlannerWorldPos) ~= "function" then return false end
-    return ns.GoldJob(FoldNodes, "nodeFold") == true
-end
-do
-    local ev, folded = CreateFrame("Frame"), false
-    pcall(ev.RegisterEvent, ev, "PLAYER_ENTERING_WORLD")
-    ev:SetScript("OnEvent", function(_, event)                 -- (plain: it only queues the job, at a loading screen while unlocked, once a session)
-        if event ~= "PLAYER_ENTERING_WORLD" or folded or not Unlocked() then return end
-        folded = ns.GoldFoldNodes()                             -- (not queued, as with nothing to fold: asked again at the next one)
-    end)
 end
 
 ------------------------------------------------------------------------------------------

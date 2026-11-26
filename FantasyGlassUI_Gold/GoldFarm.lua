@@ -9,12 +9,10 @@ if type(ns) ~= "table" then return end
 -- Everything here does nothing while the guide is locked.
 ------------------------------------------------------------------------------------------
 local floor, max, min, huge = math.floor, math.max, math.min, math.huge
-local MOB_CAP, ITEM_CAP = 400, 12          -- monsters kept, items kept per monster (the most looted)
 local LEARNED = 10                         -- loots before a monster's own drops replace the default
-local PACE_GAP, PACE_CAP, PACE_MIN = 120, 400, 20
+local PACE_MIN = 20
 local CANDIDATES, FARM_IDEAS, LOOP = 40, 8, 6
 local ZONE_DAYS = 90                    -- a farming zone not farmed for this long is left out
-local RECENT = 30                          -- corpses remembered, so opening one again is not a second loot
 
 local function Secret(v) return ns:IsSecret(v) end
 -- A plain finite number, or nil (hidden values are nil).
@@ -33,17 +31,9 @@ local function Ask(fn, ...)
     if ok and not Secret(v) then return v end
     return nil
 end
-local function Unlocked() return ns.GuideUnlocked ~= nil and ns:GuideUnlocked() == true end
-local function Count(t) local n = 0; for _ in pairs(t) do n = n + 1 end; return n end
 local function ItemOf(link)
     link = Str(link)
     return link and tonumber(link:match("item:(%d+)")) or nil
-end
--- The monster's id in a "Creature-0-server-instance-zone-npcID-spawn" guid; nil for any other kind.
-local function NpcOf(guid)
-    guid = Str(guid)
-    if not guid then return nil end
-    return tonumber(guid:match("^Creature%-[^%-]*%-[^%-]*%-[^%-]*%-[^%-]*%-(%d+)"))
 end
 local function PlayerLevel()
     local lv = Num(Ask(UnitLevel, "player"))
@@ -75,224 +65,11 @@ local function Here()
     end
     return here
 end
-local function CharRecord()
-    if type(ns.root) ~= "table" then return nil end
-    ns.root.goldChars = type(ns.root.goldChars) == "table" and ns.root.goldChars or {}
-    local key = ns:CharKey()
-    local rec = ns.root.goldChars[key]
-    if type(rec) ~= "table" then rec = {}; ns.root.goldChars[key] = rec end
-    return rec
-end
 local function Pace(charKey)
     local all = type(ns.root) == "table" and ns.root.goldChars
     local rec = type(all) == "table" and all[charKey]
     local pace = type(rec) == "table" and rec.pace
     return type(pace) == "table" and pace or nil
-end
-
-------------------------------------------------------------------------------------------
--- recorders (light; may stay in the main add-on when the folder moves)
--- LOOT_OPENED: each creature in the window is one loot of its kind, with what it gave. Coin is what
--- the money slot says each creature gave; failing that, with one creature in the window, your purse
--- at LOOT_CLOSED less your purse at LOOT_OPENED. Solo only (in a group, rolls and split coin are not
--- yours), never a window that follows Pick Pocket or a gathering cast, and never a living target.
-------------------------------------------------------------------------------------------
--- Casts whose loot window is not a kill: Pick Pocket here, and every gathering spell (skinning, herbs,
--- ore), which the planner's one skill function names: ns.PlannerGatherSkill (read when the cast comes).
-local NOT_A_KILL = { [921] = true }
-local CAST_WINDOW = 2                      -- seconds after such a cast in which a loot window is its
-local castAt                               -- GetTime() of the last such cast
-
--- The worth of `n` of an item now (0 while its details are not loaded: then only a vendor price counts).
-local function Worth(id, n, today)
-    local okI, name = pcall(ns.GetItemInfo, ns, id)
-    if not (okI and Str(name)) then return 0 end
-    return n * ns.GoldItemValue(id, today)
-end
--- Add `n` of item `id` to a monster's list. A full list takes a new item only when it is worth more a
--- loot than the least-looted one there; whatever is left out is kept as `other` (copper).
-local function AddItem(rec, id, n, today)
-    local items = rec.items
-    if items[id] then items[id] = items[id] + n; return end
-    if Count(items) < ITEM_CAP then items[id] = n; return end
-    local low, ln
-    for k, c in pairs(items) do
-        if not low or c < ln or (c == ln and k > low) then low, ln = k, c end
-    end
-    local mine, theirs = Worth(id, n, today), Worth(low, ln, today)
-    if mine > theirs then
-        items[low] = nil
-        items[id] = n
-        rec.other = (Num(rec.other) or 0) + theirs
-    else
-        rec.other = (Num(rec.other) or 0) + mine
-    end
-end
--- Keep MOB_CAP monsters, letting the longest unseen go (a job: it walks the store).
-local function TrimMobs()
-    local store = type(ns.root) == "table" and ns.root.goldMobs
-    if type(store) ~= "table" then return end
-    local list = {}
-    for id, rec in pairs(store) do
-        list[#list + 1] = { id = id, last = type(rec) == "table" and Num(rec.last) or 0 }
-        ns.GoldYield()
-    end
-    if #list <= MOB_CAP then return end
-    table.sort(list, function(a, b) if a.last ~= b.last then return a.last < b.last end return tostring(a.id) < tostring(b.id) end)
-    for i = 1, #list - MOB_CAP do
-        store[list[i].id] = nil
-        ns.GoldYield()
-    end
-end
-
--- One loot of a monster into ns.root.goldMobs. `now` is the day (yyyymmdd; today when nil).
--- `instance`: looted inside a dungeon or raid (such a monster is never a world farm idea).
-function ns.GoldMobNote(npcID, name, level, map, zone, x, y, items, copper, now, instance)
-    npcID = Num(npcID)
-    if not npcID or npcID <= 0 or type(ns.root) ~= "table" then return false end
-    local store = ns.root.goldMobs
-    if type(store) ~= "table" then store = {}; ns.root.goldMobs = store end
-    local rec = store[npcID]
-    local new = type(rec) ~= "table"
-    if new then rec = {}; store[npcID] = rec end
-    local today = Num(now) or ns.Today()
-    rec.name = Str(name) or Str(rec.name)
-    rec.level = Num(level) or Num(rec.level)
-    rec.map = Num(map) or Num(rec.map)
-    rec.zone = Str(zone) or Str(rec.zone)
-    if Num(x) and Num(y) then rec.x, rec.y = x, y end
-    if instance == true then rec.instance = true end
-    rec.loots = (Num(rec.loots) or 0) + 1
-    rec.copper = (Num(rec.copper) or 0) + max(0, Num(copper) or 0)
-    rec.items = type(rec.items) == "table" and rec.items or {}
-    local ids = {}
-    for id, n in pairs(type(items) == "table" and items or {}) do
-        if Num(id) and Num(n) and n > 0 then ids[#ids + 1] = id end
-    end
-    table.sort(ids)
-    for _, id in ipairs(ids) do AddItem(rec, id, items[id], today) end
-    rec.last = today
-    if new then ns.GoldJob(TrimMobs, "farm:trim") end
-    return true
-end
-
-local recent, recentAt = {}, 0             -- the last RECENT corpses looted (ring)
-local pending                              -- { npc, money } while a one-creature window waits for its coin
-local function Seen(guid)
-    for i = 1, RECENT do if recent[i] == guid then return true end end
-    return false
-end
-local function Remember(guid)
-    recentAt = recentAt % RECENT + 1
-    recent[recentAt] = guid
-end
-local function Pack(...) return { n = select("#", ...), ... } end
-local function Clock() return Num(Ask(GetTime)) end
-
-local function LootOpened()
-    if not Unlocked() then return end
-    if ns.Yes(Ask(IsInGroup)) then return end                                  -- (solo numbers only)
-    local t = Clock()
-    if castAt and t and t >= castAt and t - castAt <= CAST_WINDOW then return end  -- (Pick Pocket or gathering)
-    local slots = Num(Ask(GetNumLootItems))
-    if not slots or slots <= 0 then return end
-    local moneyType = Enum and Enum.LootSlotType and Enum.LootSlotType.Money
-    local found, order = {}, {}
-    for slot = 1, floor(slots) do
-        local r = Pack(pcall(GetLootSourceInfo, slot))
-        if r[1] == true then
-            local id
-            local kind = Ask(GetLootSlotType, slot)
-            local isMoney = moneyType ~= nil and kind ~= nil and kind == moneyType
-            if not isMoney then id = ItemOf(Ask(GetLootSlotLink, slot)) end
-            local slotQty
-            if id then
-                local okQ, _, _, q = pcall(GetLootSlotInfo, slot)
-                slotQty = okQ and Num(q) or nil
-            end
-            local sources = floor((r.n - 1) / 2)
-            for i = 2, r.n, 2 do
-                local guid = r[i]
-                local npc = NpcOf(guid)
-                if npc and not Seen(guid) then
-                    local src = found[guid]
-                    if not src then src = { npc = npc, guid = guid, items = {}, coin = 0 }; found[guid] = src; order[#order + 1] = src end
-                    if isMoney then
-                        local c = Num(r[i + 1])
-                        if c and c > 0 then src.coin, src.gaveCoin = src.coin + c, true end
-                    elseif id then
-                        local qty = Num(r[i + 1]) or (sources == 1 and slotQty) or 1
-                        if qty > 0 then src.items[id] = (src.items[id] or 0) + qty end
-                    end
-                end
-            end
-        end
-    end
-    if #order == 0 then return end
-    -- a living target in the window is a pickpocket's or someone else's business, not a kill
-    local target = Str(Ask(UnitGUID, "target"))
-    if target and found[target] and not ns.Yes(Ask(UnitIsDead, "target")) then return end
-    local here = Here() or {}
-    local zone = Str(Ask(GetRealZoneText))
-    local inside = ns.Yes(Ask(IsInInstance))
-    local today = ns.Today()
-    local coinRead = false
-    for _, src in ipairs(order) do
-        local name, level
-        if target and target == src.guid then
-            name, level = Str(Ask(UnitName, "target")), Num(Ask(UnitLevel, "target"))
-        end
-        if src.gaveCoin then coinRead = true end
-        ns.GoldMobNote(src.npc, name, level, here.map, zone, here.x, here.y, src.items, src.coin, today, inside)
-        Remember(src.guid)
-    end
-    if #order == 1 and not coinRead then
-        local money = Num(Ask(GetMoney))
-        if money then pending = { npc = order[1].npc, money = money } end
-    end
-    -- the pace: a loot within PACE_GAP seconds of the last adds the gap (per character)
-    local now = Num(Ask(time))
-    local rec = now and CharRecord()
-    if rec then
-        local pace = type(rec.pace) == "table" and rec.pace or { loots = 0, secs = 0 }
-        rec.pace = pace
-        local last = Num(pace.last)
-        if last and now >= last and now - last <= PACE_GAP then
-            pace.loots = (Num(pace.loots) or 0) + #order
-            pace.secs = (Num(pace.secs) or 0) + (now - last)
-            if pace.loots > PACE_CAP then pace.loots, pace.secs = pace.loots / 2, pace.secs / 2 end
-        end
-        pace.last = now
-    end
-end
-local function LootClosed()
-    local p = pending
-    pending = nil
-    if not p or not Unlocked() then return end
-    local money = Num(Ask(GetMoney))
-    local rec = money and type(ns.root) == "table" and type(ns.root.goldMobs) == "table" and ns.root.goldMobs[p.npc]
-    if type(rec) == "table" and money > p.money then rec.copper = (Num(rec.copper) or 0) + (money - p.money) end
-end
-local function CastDone(unit, spellID)
-    if not Unlocked() or Secret(unit) or unit ~= "player" then return end
-    spellID = Num(spellID)
-    local gather = spellID and type(ns.PlannerGatherSkill) == "function" and ns.PlannerGatherSkill(spellID)
-    if spellID and (NOT_A_KILL[spellID] or gather) then castAt = Clock() end
-end
-
-do
-    local ev = CreateFrame("Frame")
-    pcall(ev.RegisterEvent, ev, "LOOT_OPENED")
-    pcall(ev.RegisterEvent, ev, "LOOT_CLOSED")
-    local ok = type(ev.RegisterUnitEvent) == "function" and pcall(ev.RegisterUnitEvent, ev, "UNIT_SPELLCAST_SUCCEEDED", "player")
-    if not ok then pcall(ev.RegisterEvent, ev, "UNIT_SPELLCAST_SUCCEEDED") end
-    -- (a plain handler first: while locked it returns at once, so nothing named Gold is timed by /fgui perf)
-    local guarded = ns:Guard("Gold loot", function(_, event, a1, _, a3)
-        if event == "LOOT_OPENED" then LootOpened()
-        elseif event == "LOOT_CLOSED" then LootClosed()
-        elseif event == "UNIT_SPELLCAST_SUCCEEDED" then CastDone(a1, a3) end
-    end)
-    ev:SetScript("OnEvent", function(...) if Unlocked() then guarded(...) end end)
 end
 
 ------------------------------------------------------------------------------------------

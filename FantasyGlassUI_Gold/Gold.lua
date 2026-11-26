@@ -15,7 +15,6 @@ local Secret = function(v) return ns:IsSecret(v) end
 ------------------------------------------------------------------------------------------
 local floor, max, min, huge = math.floor, math.max, math.min, math.huge
 
-ns.GOLD_BUDGET_MS = 4
 ns.GOLD_KINDS = { sell = true, junk = true, vflip = true, aflip = true, flip = true, craft = true, gather = true, farm = true, dungeon = true }
 -- How little effort, by kind (farm and gather lose 10 away from where you are: the sources do that).
 ns.GOLD_EASE = { junk = 100, sell = 95, vflip = 70, aflip = 60, flip = 60, craft = 50, gather = 40, farm = 35, dungeon = 20 }
@@ -38,13 +37,6 @@ ns.GOLD_GOALS = {
 
 local BASIS = { guess = true, measured = true, prices = true }
 local WHERE = { window = true, auction = true, both = true }
-
-------------------------------------------------------------------------------------------
--- recorders (light; may stay in the main add-on when the folder moves)
--- The core keeps none: the merchant, loot, gathering and recipe recorders are in the groups' files.
--- The only thing watched here is whether a fight is on, and only once a job has been queued.
-------------------------------------------------------------------------------------------
-local fighting = false
 
 ------------------------------------------------------------------------------------------
 -- Ideas and sources
@@ -116,97 +108,6 @@ end
 
 local function Note(text)
     if type(ns.errors) == "table" and #ns.errors < 60 then ns.errors[#ns.errors + 1] = "Gold: " .. tostring(text) end
-end
-
-------------------------------------------------------------------------------------------
--- stays in the main add-on (when the folder moves): the recorders queue their work here.
--- Jobs: coroutines run one a frame, for at most ns.GOLD_BUDGET_MS, never in a fight, never while locked
-------------------------------------------------------------------------------------------
-local queue = {}                       -- { { co, key } }, the first one runs
-local slicing, sliceStart = false, 0
-local started = false
-
-local function Clock()
-    local v = debugprofilestop and debugprofilestop()
-    return type(v) == "number" and v or 0
-end
-local function InFight()
-    if fighting then return true end
-    local ok, v = pcall(InCombatLockdown)
-    return ok and ns.Yes(v)
-end
-
--- Called in a job's plain loops (never inside pcall, a sort or a gsub): hands the frame back once
--- the slice has used its time. Outside a job it does nothing.
-function ns.GoldYield()
-    if not slicing then return end
-    if fighting or Clock() - sliceStart >= (ns.GOLD_BUDGET_MS or 4) then coroutine.yield() end
-end
-
--- One frame's work: the first job runs until it yields or ends. False when nothing ran.
-function ns.GoldRunSlice()
-    local job = queue[1]
-    if not job or InFight() then return false end
-    slicing, sliceStart = true, Clock()
-    local ok, err = coroutine.resume(job.co)
-    slicing = false
-    if not ok then Note(err) end
-    if not ok or coroutine.status(job.co) == "dead" then
-        for i = 1, #queue do if queue[i] == job then table.remove(queue, i); break end end
-    end
-    return true
-end
-
-local function UnlockedNow() return ns.GuideUnlocked ~= nil and ns:GuideUnlocked() == true end
--- One frame's slice, guarded (an error is noted). Called only from the tick below, only while unlocked,
--- so nothing named Gold is timed by /fgui perf for a locked player.
-local GuardedSlice = ns:Guard("Gold", function() ns.GoldRunSlice() end)
-local tick                             -- a plain frame: shown while there is work or something to keep hidden
-local function Tick(self)
-    if not UnlockedNow() then                                   -- (locked again: hide everything and stop)
-        if type(ns.GoldLockedNow) == "function" then ns.GoldLockedNow() end   -- (an ns hook: it still reaches the window after the folder split)
-        self:Hide()
-        return
-    end
-    if queue[1] then GuardedSlice()
-    else
-        -- (kept going while the window or the panel is up, so a lock later still hides them)
-        local w, p = ns.goldWindow, ns.goldPanel
-        if not ((type(w) == "table" and w.suiGoldOn) or (type(p) == "table" and p.suiGoldOn)) then self:Hide() end
-    end
-end
-local function Start()
-    if not tick then
-        tick = CreateFrame("Frame")
-        tick:SetScript("OnUpdate", Tick)
-        ns.goldTick = tick
-    end
-    tick:Show()
-    if started then return end
-    started = true
-    local ev = CreateFrame("Frame")
-    pcall(ev.RegisterEvent, ev, "PLAYER_REGEN_DISABLED")
-    pcall(ev.RegisterEvent, ev, "PLAYER_REGEN_ENABLED")
-    ev:SetScript("OnEvent", function(_, event)                -- (plain: it only sets a flag, and is never timed by /fgui perf)
-        if event == "PLAYER_REGEN_DISABLED" then fighting = true
-        elseif event == "PLAYER_REGEN_ENABLED" then fighting = false end
-    end)
-end
-
--- Queue a job. A key already queued or running is refused.
-function ns.GoldJob(fn, key)
-    if type(fn) ~= "function" then return false end
-    key = (key ~= nil) and tostring(key) or tostring(fn)
-    Start()                                                     -- (first: a job left from before a lock runs again once asked for)
-    for i = 1, #queue do if queue[i].key == key then return false end end
-    queue[#queue + 1] = { co = coroutine.create(fn), key = key }
-    return true
-end
--- Is a job queued or running (this one, with a key)?
-function ns.GoldBusy(key)
-    if key == nil then return queue[1] ~= nil end
-    for i = 1, #queue do if queue[i].key == key then return true end end
-    return false
 end
 
 ------------------------------------------------------------------------------------------
@@ -282,35 +183,6 @@ end
 -- The same in one go (for the tests).
 function ns.GoldCollectNow(ctx)
     return Collect(type(ctx) == "table" and ctx or ns.GoldContext("window"), false)
-end
-
-------------------------------------------------------------------------------------------
--- stays in the main add-on (when the folder moves): VendorPrice and GoldItemValue, which the loot
--- recorder calls. What an item is worth, and how fresh that is
-------------------------------------------------------------------------------------------
-local function VendorPrice(id)
-    local ok, _, _, _, _, _, _, _, _, _, _, vendor = pcall(ns.GetItemInfo, ns, id)
-    if not ok or Secret(vendor) or type(vendor) ~= "number" or vendor ~= vendor or vendor <= 0 or vendor == huge then return 0 end
-    return vendor
-end
--- The better of the auction house (after its 5% cut) and a vendor: copper, "ah"|"vendor"|nil, and the
--- day of the auction price when that wins.
-function ns.GoldItemValue(id, today)
-    if Secret(id) or type(id) ~= "number" then return 0, nil, nil end
-    today = today or ns.Today()
-    local ah, day = 0, nil
-    local e = ns.PriceEntry(id)
-    if type(e) == "table" and type(e.price) == "number" then
-        local p = e.price
-        if e.day ~= today then p = ns.AuctionUsual(e) or e.price end
-        if type(p) == "number" and p == p and p > 0 and p < huge then
-            ah, day = floor(p * 0.95), (type(e.day) == "number") and e.day or nil
-        end
-    end
-    local vendor = VendorPrice(id)
-    if ah > 0 and ah > vendor then return ah, "ah", day end
-    if vendor > 0 then return vendor, "vendor", nil end
-    return 0, nil, nil
 end
 
 ------------------------------------------------------------------------------------------
@@ -534,17 +406,6 @@ function ns.GoldGoalAmount(name)
     return g.copper
 end
 
--- What a vendor asks for one, the day it was seen, and the entry; nil when unknown or 180 days old.
-function ns.GoldVendorBuy(id)
-    if Secret(id) or type(id) ~= "number" or type(ns.root) ~= "table" then return nil end
-    local store = ns.root.goldVendor
-    local items = type(store) == "table" and type(store.items) == "table" and store.items or nil
-    local e = items and items[id]
-    if type(e) ~= "table" or type(e.buy) ~= "number" or e.buy <= 0 or type(e.day) ~= "number" then return nil end
-    if ns.DaysBetween(e.day, ns.Today()) > 180 then return nil end
-    return e.buy, e.day, e
-end
-
 ------------------------------------------------------------------------------------------
 -- Go: the planner's travel when it is in (ns.GoldTravel), otherwise the steps in a list
 ------------------------------------------------------------------------------------------
@@ -571,7 +432,7 @@ function ns.GoldStepsList(idea)
 end
 function ns.GoldGo(idea)
     if type(idea) ~= "table" then return false end
-    if InFight() then ns:Print("Not during a fight."); return false end
+    if ns.GoldInFight() then ns:Print("Not during a fight."); return false end
     if type(ns.GoldTravel) ~= "function" and ns.LoadPlanner then pcall(ns.LoadPlanner, ns) end   -- (the travel is the planner's: its folder loads first)
     if type(ns.GoldTravel) == "function" then ns.GoldTravel(idea); return "travel" end
     if type(idea.go) == "function" then idea.go(idea); return "travel" end
@@ -816,7 +677,7 @@ local GuardedCollect = ns:Guard("Gold", function() CollectWindow() end)
 local function CollectLater() if Unlocked() then GuardedCollect() end end
 function CollectWindow()
     if not W or not Unlocked() then return end
-    win.waiting = InFight()
+    win.waiting = ns.GoldInFight()
     local queued = ns.GoldCollect(ns.GoldContext("window"), function(ideas)
         win.ideas, win.waiting = ideas, false                 -- (drawn on the next frame, outside the job's slice)
         ns:After(0, DrawLater)
@@ -976,7 +837,7 @@ local function Build()
         local mine = win.gen
         ns:After(2, function() if mine == win.gen and f.suiGoldOn and W == f then CollectLater() end end)
     end)
-    Start()
+    ns.GoldTickOn()
     return f
 end
 
@@ -1111,7 +972,7 @@ local function BuildPanel()
         if not Unlocked() then Shown(self, false); return end
         guardedTick(self, elapsed)
     end)
-    Start()
+    ns.GoldTickOn()
     return f
 end
 -- Show the panel on the open auction house and collect (nil while locked, or with no auction house).

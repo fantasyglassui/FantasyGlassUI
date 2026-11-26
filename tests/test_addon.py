@@ -254,3 +254,24 @@ def test_guide_seams_listed():
     assert not undefined, f"in the seam list but not defined in Guide.lua: {undefined}"
     assert not wrappers, f"a planner file wraps a guide function: {wrappers}"
     assert not assigned, f"a planner or gold file sets a guide function (only Guide.lua defines them): {assigned}"
+
+
+def test_gold_recorders_in_main():
+    """Gold's recorders (merchant prices, loot, gathering, recipes, the node fold and the job runner) are the main
+    add-on's GoldRecorders.lua, moved there, not copied: no gold folder file defines them again (the folders plan, Task 5)."""
+    names = ["GoldJob", "GoldYield", "GoldRunSlice", "GoldBusy", "GoldInFight", "GoldTickOn", "GoldItemValue", "GoldVendorNote",
+             "GoldVendorBuy", "GoldMobNote", "GoldGatherSent", "GoldFoldNodes", "GoldRecipesRead"]
+    defs = lambda text: {a or b for a, b in re.findall(r"^\s*(?:function ns[.:](\w+)|ns\.(\w+)\s*=(?!=))", text, re.M)}
+    main = open(os.path.join(ROOT, "FantasyGlassUI", "GoldRecorders.lua"), encoding="utf-8").read()
+    missing = sorted(set(names + ["GOLD_BUDGET_MS"]) - defs(main))
+    assert not missing, f"not defined in GoldRecorders.lua: {missing}"
+    events = ["PLAYER_REGEN_DISABLED", "MERCHANT_SHOW", "MERCHANT_UPDATE", "LOOT_OPENED", "LOOT_CLOSED", "UNIT_SPELLCAST_SUCCEEDED",
+              "PLAYER_ENTERING_WORLD", "TRADE_SKILL_SHOW", "TRADE_SKILL_LIST_UPDATE"]
+    for ev in events:
+        assert f'"{ev}"' in main, f"GoldRecorders.lua does not listen for {ev}"
+    for f in folder_files("gold"):
+        text = open(os.path.join(ROOT, FOLDER_KEYS["gold"], f), encoding="utf-8").read()
+        again = sorted(set(names + ["GOLD_BUDGET_MS"]) & defs(text))
+        assert not again, f"{FOLDER_KEYS['gold']}/{f} defines {again} too"
+        heard = [ev for ev in events + ["PLAYER_REGEN_ENABLED"] if f'"{ev}"' in text]
+        assert not heard, f"{FOLDER_KEYS['gold']}/{f} still listens for {heard}"

@@ -9668,6 +9668,157 @@ try("folders unloaded A: when you were last here, without the folder", function(
 end)
 -- folders tests unloaded A (planner recorders): end
 -- folders tests unloaded B (gold recorders): begin
+try("folders unloaded B: gold records while unloaded", function()
+    -- (the gold folder is not loaded: its recorders are the main add-on's, and nothing here loads it)
+    local envNames = { "GetMerchantNumItems", "GetMerchantItemID", "C_MerchantFrame", "GetMerchantItemCostInfo", "GetNumLootItems",
+        "GetLootSourceInfo", "GetLootSlotType", "GetLootSlotLink", "GetLootSlotInfo", "IsInGroup", "IsInInstance", "UnitGUID", "UnitIsDead",
+        "GetTime", "GetMoney", "time", "C_TradeSkillUI", "C_Map", "InCombatLockdown", "debugprofilestop", "GetRealZoneText" }
+    local keepEnv = {}
+    for _, n in ipairs(envNames) do keepEnv[n] = rawget(env, n) end
+    local rootKeys = { "goldVendor", "goldMobs", "goldChars", "goldNodeItems", "goldGather", "goldNodesSeen", "plannerNodesSeen" }
+    local keepRoot = {}
+    for _, k in ipairs(rootKeys) do keepRoot[k] = ns.root[k] end
+    local keep = { unlocked = ns.GuideUnlocked, load = rawget(env.C_AddOns, "LoadAddOn"), today = ns.Today, info = ns.GetItemInfo,
+        entry = ns.PriceEntry, skill = ns.PlannerGatherSkill, record = ns.PlannerRecordNode, slotType = env.Enum.LootSlotType,
+        perfOn = ns.perfOn, perfData = ns.perfData, passes = ns.goldVendorPasses }
+    local loads = 0
+    local function Handler(obj, name) for i = #handlers, 1, -1 do local h = handlers[i]; if h.self == obj and h.name == name then return h.fn end end end
+    -- the jobs run as in the game: a slice each frame, from the jobs' tick
+    local function Frames(n)
+        local tick = ns.goldTick
+        local onTick = tick and Handler(tick, "OnUpdate")
+        if not onTick then return 0 end
+        local ran = 0
+        for _ = 1, n do
+            if not (ns.GoldBusy and ns.GoldBusy()) then break end
+            onTick(tick, 0.01); ran = ran + 1
+        end
+        return ran
+    end
+    local function Drain() Frames(2000) end
+    local function Count(t) local c = 0; for _ in pairs(type(t) == "table" and t or {}) do c = c + 1 end; return c end
+    local ok, err = pcall(function()
+        if ns.folderReady.gold then error("the gold folder is not loaded here") end
+        for _, n in ipairs({ "GoldJob", "GoldYield", "GoldRunSlice", "GoldBusy", "GoldVendorNote", "GoldVendorBuy", "GoldMobNote",
+                             "GoldGatherSent", "GoldFoldNodes", "GoldRecipesRead", "GoldItemValue" }) do
+            if type(ns[n]) ~= "function" then error("ns." .. n .. " is there while gold is not loaded") end
+        end
+        if ns.GOLD_BUDGET_MS ~= 4 then error("the slice budget is there") end
+        rawset(env.C_AddOns, "LoadAddOn", function(name, ...) loads = loads + 1; return keep.load(name, ...) end)
+        local me, today = ns:CharKey(), 20261126
+        ns.Today = function() return today end
+        ns.PriceEntry = function() return nil end
+        ns.GetItemInfo = function(_, id) return "Item " .. tostring(id), nil, 1, nil, nil, nil, nil, nil, nil, nil, 5 end
+        env.InCombatLockdown = function() return false end
+        env.debugprofilestop = function() return 0 end
+        fireEvent("PLAYER_REGEN_ENABLED")
+        for _, k in ipairs(rootKeys) do ns.root[k] = nil end
+        -- the game: a merchant, a loot window, where you stand, a profession window
+        local wares = { { 2320, 10, 1 }, { 2321, 100, 1 }, { 4470, 40, 5 } }
+        env.GetMerchantNumItems = function() return #wares end
+        env.GetMerchantItemID = function(i) return wares[i] and wares[i][1] end
+        env.GetMerchantItemCostInfo = function() return 0 end
+        env.C_MerchantFrame = { GetItemInfo = function(i) local w = wares[i]; return w and { price = w[2], stackCount = w[3], numAvailable = -1 } end }
+        local slots, clock, money, now = {}, 5000, 1000, 1800000000
+        env.Enum.LootSlotType = { None = 0, Item = 1, Money = 2, Currency = 3 }
+        env.IsInGroup = function() return false end
+        env.IsInInstance = function() return false, "none" end
+        env.UnitIsDead = function() return true end
+        env.UnitGUID = function() return nil end
+        env.GetTime = function() return clock end
+        env.GetMoney = function() return money end
+        env.time = function() return now end
+        env.GetRealZoneText = function() return "Elwynn Forest" end
+        local unpackIt = table.unpack or unpack
+        env.GetNumLootItems = function() return #slots end
+        env.GetLootSlotType = function(i) return slots[i] and slots[i].link and 1 or 2 end
+        env.GetLootSlotLink = function(i) return slots[i] and slots[i].link end
+        env.GetLootSlotInfo = function(i) return 134400, "Thing", slots[i] and slots[i].qty or 0 end
+        env.GetLootSourceInfo = function(i) return unpackIt(slots[i] and slots[i].src or {}) end
+        env.C_Map = { GetBestMapForUnit = function() return 1429 end,
+                      GetPlayerMapPosition = function() return { GetXY = function() return 0.4, 0.6 end } end,
+                      GetMapInfo = function() return { name = "Elwynn Forest" } end }
+        env.C_TradeSkillUI = { IsTradeSkillReady = function() return true end, GetAllRecipeIDs = function() return { 7 } end,
+            GetRecipeInfo = function(id) return { recipeID = id, name = "Linen Bandage", learned = true } end,
+            GetRecipeSchematic = function() return { outputItemID = 1251, quantityMin = 1, quantityMax = 1,
+                reagentSlotSchematics = { { reagents = { { itemID = 2589 } }, quantityRequired = 1, reagentType = 1, required = true } } } end,
+            GetBaseProfessionInfo = function() return { professionName = "First Aid" } end }
+        -- (the planner's skill function and node recorder are group A's: stood in for here)
+        ns.PlannerGatherSkill = function(id) if id == 2366 then return 182 end end
+        local folded = {}
+        ns.PlannerRecordNode = function(map, x, y, name, skill) folded[#folded + 1] = { map, x, y, name, skill }; return true end
+        local PEACE, LINEN, FANG = "|Hitem:2447::|h[Peacebloom]|h", "|Hitem:2589::|h[Linen Cloth]|h", "|Hitem:3300::|h[Fang]|h"
+        local kobold = "Creature-0-1-2-3-475-0000F0F0"
+        local function Everything()
+            fireEvent("MERCHANT_SHOW")
+            slots = { { link = LINEN, qty = 2, src = { kobold, 2 } }, { link = FANG, qty = 1, src = { kobold, 1 } } }
+            fireEvent("LOOT_OPENED"); fireEvent("LOOT_CLOSED"); slots = {}
+            ns.GoldGatherSent("Peacebloom", 182, 2366)
+            clock = clock + 1
+            fireEvent("UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-3-1-2-3-2366-0001", 2366)
+            slots = { { link = PEACE, qty = 3, src = { "GameObject-0-1-2-3-1617-00001234", 3 } } }
+            fireEvent("LOOT_OPENED"); fireEvent("LOOT_CLOSED"); slots = {}
+            fireEvent("TRADE_SKILL_SHOW")
+            fireEvent("PLAYER_ENTERING_WORLD")
+            runTimers(); Drain()
+        end
+        -- locked: nothing is recorded, nothing named Gold is timed
+        ns.root.goldNodesSeen = { [1429] = { { name = "Peacebloom", skill = 182, x = 40, y = 60 } } }
+        ns.GuideUnlocked = function() return false end
+        ns.perfOn, ns.perfData = true, {}
+        Everything()
+        local timed = {}
+        local mine = { Gold = true, ["Gold loot"] = true, ["Gold gather"] = true, ["Gold recipes"] = true }   -- ("Gold history" is the public one)
+        for k in pairs(ns.perfData) do if mine[k] then timed[#timed + 1] = tostring(k) end end
+        ns.perfOn, ns.perfData = keep.perfOn, keep.perfData
+        if #timed > 0 then error("locked: timed " .. table.concat(timed, ", ")) end
+        for _, k in ipairs({ "goldVendor", "goldMobs", "goldChars", "goldNodeItems", "goldGather", "plannerNodesSeen" }) do
+            if ns.root[k] ~= nil then error("locked: " .. k .. " was written") end
+        end
+        if type(ns.root.goldNodesSeen) ~= "table" or #folded ~= 0 then error("locked: no fold") end
+        -- unlocked, the gold folder still not loaded: everything is recorded
+        ns.GuideUnlocked = function() return true end
+        clock = clock + 60
+        Everything()
+        local items = ns.root.goldVendor and ns.root.goldVendor.items
+        if Count(items) ~= 3 or ns.root.goldVendor.v ~= 1 then error("the merchant's 3 prices: " .. Count(items)) end
+        if ns.GoldVendorBuy(4470) ~= 8 or select(2, ns.GoldVendorBuy(4470)) ~= today then error("the price for one: " .. tostring(ns.GoldVendorBuy(4470))) end
+        local mob = ns.root.goldMobs and ns.root.goldMobs[475]
+        if type(mob) ~= "table" or mob.loots ~= 1 or Count(mob.items) ~= 2 or mob.items[2589] ~= 2 or mob.items[3300] ~= 1 or mob.map ~= 1429 then
+            error("the kill's loot: " .. tostring(mob and mob.loots) .. " " .. Count(mob and mob.items)) end
+        if Count(ns.root.goldMobs) ~= 1 then error("the gathering's loot window is not a kill") end
+        local pace = ns.root.goldChars and ns.root.goldChars[me] and ns.root.goldChars[me].pace
+        if type(pace) ~= "table" or pace.last ~= now then error("the pace is kept per character") end
+        local node = ns.root.goldNodeItems and ns.root.goldNodeItems.Peacebloom
+        if type(node) ~= "table" or node.n ~= 1 or node.items[2447] ~= 3 then error("what the herb gave: " .. tostring(node and node.n)) end
+        local here = ns.root.goldGather and ns.root.goldGather[1429]
+        if type(here) ~= "table" or here.n ~= 1 or here.items[2447] ~= 3 or here.day ~= today then error("what gathering on the map gave") end
+        local recs = ns.root.goldChars[me].recipes
+        if Count(recs) ~= 1 or type(recs[7]) ~= "table" or recs[7].out ~= 1251 or recs[7].prof ~= "First Aid" then error("one recipe: " .. Count(recs)) end
+        if #folded ~= 1 or folded[1][1] ~= 1429 or folded[1][4] ~= "Peacebloom" or ns.root.goldNodesSeen ~= nil then error("the pending nodes are folded at PEW: " .. #folded) end
+        -- a fight: no slice runs; after it the jobs finish
+        wares[4] = { 2678, 10, 1 }
+        fireEvent("PLAYER_REGEN_DISABLED")
+        fireEvent("MERCHANT_UPDATE"); runTimers()
+        if not ns.GoldBusy("goldVendorRecord") then error("the merchant's change is queued") end
+        Frames(10)
+        if not ns.GoldBusy("goldVendorRecord") or ns.root.goldVendor.items[2678] ~= nil then error("in a fight no slice runs") end
+        fireEvent("PLAYER_REGEN_ENABLED")
+        Drain()
+        if ns.GoldBusy() or ns.root.goldVendor.items[2678] == nil then error("after the fight the jobs finish") end
+        if loads ~= 0 or ns.folderReady.gold then error("nothing loaded a folder: " .. loads) end
+    end)
+    Drain()
+    if ns.goldRecordersTest then ns.goldRecordersTest.Reset() end
+    rawset(env.C_AddOns, "LoadAddOn", keep.load)
+    for _, n in ipairs(envNames) do rawset(env, n, keepEnv[n]) end
+    for _, k in ipairs(rootKeys) do ns.root[k] = keepRoot[k] end
+    env.Enum.LootSlotType = keep.slotType
+    ns.GuideUnlocked, ns.Today, ns.GetItemInfo, ns.PriceEntry = keep.unlocked, keep.today, keep.info, keep.entry
+    ns.PlannerGatherSkill, ns.PlannerRecordNode = keep.skill, keep.record
+    ns.perfOn, ns.perfData, ns.goldVendorPasses = keep.perfOn, keep.perfData, keep.passes
+    if not ok then error(err, 0) end
+end)
 -- folders tests unloaded B (gold recorders): end
 try("folders: load for the tests", function()
     -- (the fixture the tests after this rely on: both folders loaded, as an unlocked player has them once used)
@@ -25081,6 +25232,35 @@ try("folders A: a friend's ask once the planner is loaded: not handed over", fun
 end)
 -- folders tests A (planner recorders): end
 -- folders tests B (gold recorders): begin
+try("folders B: recorders moved, not copied", function()
+    -- each recorder name is defined by the main add-on's GoldRecorders.lua, and no gold folder file defines it again
+    local names = { "GoldJob", "GoldYield", "GoldRunSlice", "GoldBusy", "GoldInFight", "GoldTickOn", "GoldItemValue", "GoldVendorNote",
+                    "GoldVendorBuy", "GoldMobNote", "GoldGatherSent", "GoldFoldNodes", "GoldRecipesRead" }
+    local files = folderFiles.FantasyGlassUI_Gold
+    if type(files) ~= "table" or #files ~= 5 then error("the gold folder's files") end
+    local function Escape(s) return (s:gsub("%p", "%%%0")) end
+    for _, n in ipairs(names) do
+        local fn = ns[n]
+        if type(fn) ~= "function" then error("ns." .. n .. " is nil") end
+        local src = debug.getinfo(fn, "S").source
+        if src ~= "@GoldRecorders.lua" then error("ns." .. n .. " comes from " .. tostring(src)) end
+        local def = "function ns[.:]" .. Escape(n) .. "%f[^%w_]"
+        local set = "ns%." .. Escape(n) .. "%s*=[^=]"
+        for _, f in ipairs(files) do
+            local text = sources[f]
+            if text:find(def) or text:find(set) then error(f .. " defines ns." .. n .. " too") end
+        end
+    end
+    if not sources["GoldRecorders.lua"]:find("ns.GOLD_BUDGET_MS = 4", 1, true) then error("the slice budget is the recorders'") end
+    for _, f in ipairs(files) do
+        local text = sources[f]
+        if text:find("GOLD_BUDGET_MS%s*=") then error(f .. " sets the slice budget too") end
+        for _, ev in ipairs({ "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "MERCHANT_SHOW", "MERCHANT_UPDATE", "LOOT_OPENED", "LOOT_CLOSED",
+                              "UNIT_SPELLCAST_SUCCEEDED", "PLAYER_ENTERING_WORLD", "TRADE_SKILL_SHOW", "TRADE_SKILL_LIST_UPDATE" }) do
+            if text:find('"' .. ev .. '"', 1, true) then error(f .. " still listens for " .. ev) end
+        end
+    end
+end)
 -- folders tests B (gold recorders): end
 -- folders tests C (window): begin
 -- folders tests C (window): end
