@@ -1,0 +1,222 @@
+{
+  "in your bank": [
+    "in deiner Bank",
+    "dans votre banque",
+    "en tu banco",
+    "в вашем банке",
+    "no seu banco",
+    "nella tua banca",
+    "은행에 있음",
+    "在你的银行里"
+  ],
+  "Sell now": [
+    "Jetzt verkaufen",
+    "Vendre maintenant",
+    "Vender ya",
+    "Продать сейчас",
+    "Venda agora",
+    "Vendi ora",
+    "지금 판매",
+    "现在出售"
+  ],
+  "Go to the auction house": [
+    "Geh zum Auktionshaus",
+    "Allez à l'hôtel des ventes",
+    "Ve a la casa de subastas",
+    "Идите на аукцион",
+    "Vá à casa de leilões",
+    "Vai alla casa d'aste",
+    "경매장으로 가세요",
+    "前往拍卖行"
+  ],
+  "Take the marked items out of your bank": [
+    "Nimm die markierten Gegenstände aus deiner Bank",
+    "Retirez les objets marqués de votre banque",
+    "Saca los objetos marcados de tu banco",
+    "Заберите отмеченные предметы из банка",
+    "Retire os itens marcados do seu banco",
+    "Ritira gli oggetti segnati dalla tua banca",
+    "표시된 아이템을 은행에서 꺼내세요",
+    "从银行取出标记的物品"
+  ],
+  "Sell what is in your bank at the auction house": [
+    "Verkaufe, was in deiner Bank liegt, im Auktionshaus",
+    "Vendez ce qui est dans votre banque à l'hôtel des ventes",
+    "Vende lo que hay en tu banco en la casa de subastas",
+    "Продайте на аукционе то, что лежит в банке",
+    "Venda o que está no seu banco na casa de leilões",
+    "Vendi all'asta ciò che è nella tua banca",
+    "은행에 있는 것을 경매장에서 판매",
+    "在拍卖行出售你银行里的东西"
+  ],
+  "Sell your bags at the auction house": [
+    "Verkaufe deine Taschen im Auktionshaus",
+    "Vendez le contenu de vos sacs à l'hôtel des ventes",
+    "Vende lo de tus bolsas en la casa de subastas",
+    "Продайте содержимое сумок на аукционе",
+    "Venda o que está nas bolsas na casa de leilões",
+    "Vendi il contenuto delle borse all'asta",
+    "가방에 있는 것을 경매장에서 판매",
+    "在拍卖行出售你背包里的东西"
+  ],
+  "Sell them to any vendor": [
+    "Verkaufe sie an einen beliebigen Händler",
+    "Vendez-les à n'importe quel marchand",
+    "Véndelos a cualquier vendedor",
+    "Продайте их любому торговцу",
+    "Venda-os a qualquer vendedor",
+    "Vendili a qualsiasi mercante",
+    "아무 상인에게 판매하세요",
+    "卖给任意商人"
+  ],
+  "Vendor the junk in your bank": [
+    "Verkaufe den Plunder in deiner Bank beim Händler",
+    "Vendez la camelote de votre banque à un marchand",
+    "Vende al vendedor la basura de tu banco",
+    "Продайте торговцу хлам из банка",
+    "Venda ao vendedor o lixo do seu banco",
+    "Vendi al mercante la robaccia nella tua banca",
+    "은행의 잡동사니를 상인에게 판매",
+    "把银行里的垃圾卖给商人"
+  ],
+  "Vendor your junk": [
+    "Verkaufe deinen Plunder beim Händler",
+    "Vendez votre camelote à un marchand",
+    "Vende tu basura al vendedor",
+    "Продайте хлам торговцу",
+    "Venda seu lixo ao vendedor",
+    "Vendi la robaccia al mercante",
+    "잡동사니를 상인에게 판매",
+    "把垃圾卖给商人"
+  ],
+  "Buy %s from a vendor, sell at the auction house": [
+    "Kaufe %s bei einem Händler, verkaufe im Auktionshaus",
+    "Achetez %s à un marchand, vendez à l'hôtel des ventes",
+    "Compra %s a un vendedor, véndelo en la casa de subastas",
+    "Купите %s у торговца, продайте на аукционе",
+    "Compre %s de um vendedor, venda na casa de leilões",
+    "Compra %s da un mercante, vendilo all'asta",
+    "상인에게서 %s 구입, 경매장에서 판매",
+    "从商人处购买%s，在拍卖行出售"
+  ],
+  "Buy %d from the vendor that sells it": [
+    "Kaufe %d beim Händler, der es verkauft",
+    "Achetez-en %d au marchand qui le vend",
+    "Compra %d al vendedor que lo vende",
+    "Купите %d шт. у торговца, который это продаёт",
+    "Compre %d do vendedor que o vende",
+    "Comprane %d dal mercante che lo vende",
+    "파는 상인에게서 %d개 구입",
+    "从出售它的商人处购买 %d 个"
+  ],
+  "Sell them at the auction house": [
+    "Verkaufe sie im Auktionshaus",
+    "Vendez-les à l'hôtel des ventes",
+    "Véndelos en la casa de subastas",
+    "Продайте их на аукционе",
+    "Venda-os na casa de leilões",
+    "Vendili all'asta",
+    "경매장에서 판매하세요",
+    "在拍卖行出售"
+  ],
+  "A vendor asks": [
+    "Ein Händler verlangt",
+    "Un marchand demande",
+    "Un vendedor pide",
+    "Торговец просит",
+    "Um vendedor pede",
+    "Un mercante chiede",
+    "상인 판매가",
+    "商人售价"
+  ],
+  "Its usual auction price": [
+    "Sein üblicher Auktionspreis",
+    "Son prix habituel aux enchères",
+    "Su precio habitual en subasta",
+    "Обычная цена на аукционе",
+    "Seu preço habitual no leilão",
+    "Il suo prezzo abituale all'asta",
+    "평소 경매 가격",
+    "平常拍卖价格"
+  ],
+  "Listed in the last scan": [
+    "Im letzten Scan angeboten",
+    "Mis en vente lors du dernier scan",
+    "En venta en el último escaneo",
+    "Выставлено при последнем сканировании",
+    "Anunciados na última varredura",
+    "In vendita nell'ultima scansione",
+    "마지막 검색에서 등록된 수",
+    "上次扫描时的挂单数"
+  ],
+  "Gain on each, after the auction house's cut": [
+    "Gewinn pro Stück, nach dem Anteil des Auktionshauses",
+    "Gain par objet, après la part de l'hôtel des ventes",
+    "Ganancia por unidad, tras la comisión de la casa de subastas",
+    "Прибыль с каждого после комиссии аукциона",
+    "Ganho por unidade, após a taxa da casa de leilões",
+    "Guadagno per ognuno, dopo la quota della casa d'aste",
+    "수수료를 뺀 개당 이익",
+    "扣除拍卖行手续费后的每件收益"
+  ],
+  "Buy %s at the auction house, a vendor pays more": [
+    "Kaufe %s im Auktionshaus, ein Händler zahlt mehr",
+    "Achetez %s à l'hôtel des ventes, un marchand paie plus",
+    "Compra %s en la casa de subastas, un vendedor paga más",
+    "Купите %s на аукционе, торговец заплатит больше",
+    "Compre %s na casa de leilões, um vendedor paga mais",
+    "Compra %s all'asta, un mercante paga di più",
+    "경매장에서 %s 구입, 상인이 더 많이 줍니다",
+    "在拍卖行购买%s，商人出价更高"
+  ],
+  "Buy the cheapest one": [
+    "Kaufe das günstigste",
+    "Achetez le moins cher",
+    "Compra el más barato",
+    "Купите самый дешёвый",
+    "Compre o mais barato",
+    "Compra il più economico",
+    "가장 싼 것을 구입하세요",
+    "购买最便宜的一个"
+  ],
+  "Sell it to any vendor": [
+    "Verkaufe es an einen beliebigen Händler",
+    "Vendez-le à n'importe quel marchand",
+    "Véndelo a cualquier vendedor",
+    "Продайте его любому торговцу",
+    "Venda-o a qualquer vendedor",
+    "Vendilo a qualsiasi mercante",
+    "아무 상인에게 판매하세요",
+    "卖给任意商人"
+  ],
+  "The cheapest listing today": [
+    "Das günstigste Angebot heute",
+    "L'offre la moins chère aujourd'hui",
+    "La oferta más barata de hoy",
+    "Самый дешёвый лот сегодня",
+    "O anúncio mais barato hoje",
+    "L'inserzione più economica di oggi",
+    "오늘 가장 싼 매물",
+    "今天最便宜的挂单"
+  ],
+  "A vendor pays": [
+    "Ein Händler zahlt",
+    "Un marchand paie",
+    "Un vendedor paga",
+    "Торговец платит",
+    "Um vendedor paga",
+    "Un mercante paga",
+    "상인 매입가",
+    "商人收购价"
+  ],
+  "in your bank, seen %s": [
+    "in deiner Bank, gesehen %s",
+    "dans votre banque, vu %s",
+    "en tu banco, visto %s",
+    "в вашем банке, видели %s",
+    "no seu banco, visto %s",
+    "nella tua banca, visto %s",
+    "은행에 있음, %s 확인",
+    "在你的银行里，%s看到"
+  ]
+}
