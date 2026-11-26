@@ -838,6 +838,7 @@ function ns:GuideMenu(entries)
         stepMenu = CreateFrame("Frame", "FantasyGlassUIGuideMenu", UIParent, ns.template)
         stepMenu:SetSize(200, 26)
         stepMenu:SetFrameStrata("DIALOG")
+        if stepMenu.SetClampedToScreen then stepMenu:SetClampedToScreen(true) end      -- (opened near an edge: still all on the screen)
         stepMenu:SetBackdrop(ns.BACKDROP)
         ns:Paint(stepMenu, "SetBackdropColor", "window", 0.95)
         ns:Paint(stepMenu, "SetBackdropBorderColor", "@border", 1)
@@ -852,25 +853,35 @@ function ns:GuideMenu(entries)
             if stepMenu:IsShown() and not MenuOver() then stepMenu:Hide() end
         end)
     end
+    -- as wide as its longest label (at least 200), each button at least 24 high (larger with "Bigger controls")
+    local bh = math.floor(24 * ((ns.db and ns.db.bigControls) and 1.3 or 1) + 0.5)
+    local width = 200
     for i, e in ipairs(entries) do
         local b = stepMenu.buttons[i]
         if not b then
-            b = ns:CreateButton(stepMenu, "", 192, 20, function(self)
+            b = ns:CreateButton(stepMenu, "", 192, 24, function(self)
                 local fn = self.entryFn
                 stepMenu:Hide()
                 if type(fn) == "function" then fn() end
             end)
-            b:SetPoint("TOP", stepMenu, "TOP", 0, -3 - (i - 1) * 22)
-            b:HookScript("OnLeave", function() if not MenuOver() then stepMenu:Hide() end end)
+            b:HookScript("OnLeave", ns:Guard("Guide menu", function() if not MenuOver() then stepMenu:Hide() end end))
             stepMenu.buttons[i] = b
         end
         b.entryFn, b.entryLabel = e[2], ns:Tr(tostring(e[1]))
         b.text:SetText(b.entryLabel)
+        width = math.max(width, ns.GuideFitButton(b, 192) + 8)
         b:Show()
+    end
+    for i, e in ipairs(entries) do
+        local b = stepMenu.buttons[i]
+        b:SetSize(width - 8, bh)
+        if b.text.suiFit then b.text.suiFit() end
+        b:ClearAllPoints()
+        b:SetPoint("TOP", stepMenu, "TOP", 0, -3 - (i - 1) * (bh + 2))
     end
     for i = #entries + 1, #stepMenu.buttons do stepMenu.buttons[i]:Hide() end
     stepMenu.button = stepMenu.buttons[1]
-    stepMenu:SetSize(200, 6 + #entries * 20 + (#entries - 1) * 2)
+    stepMenu:SetSize(width, 6 + #entries * bh + (#entries - 1) * 2)
     stepMenu:ClearAllPoints()
     local ok, cx, cy = pcall(GetCursorPosition)
     local scale = UIParent and UIParent.GetEffectiveScale and UIParent:GetEffectiveScale() or 1
@@ -921,100 +932,250 @@ function ns:GuideReputation()
     end
     return ns:ShowList("Reputation", "Reputation I want", lines, "Click a faction to cycle: Honored, Revered, Exalted, off. Quests that give it count for more.", 400, 340)
 end
+-- The panel's measures. Its width grows a little with the lettering (up to 1.25 times); every line sits under the
+-- one before by its measured height, so nothing overlaps at any font scale; the panel grows downward only (its top
+-- stays put); the footer's buttons are at least 24 x 22, larger with "Bigger controls".
+local PANEL_W, FOOTER_H = 280, 22
+local LINE_KEYS = { "skipped", "talent", "riding", "rep", "moved", "classq", "advice", "extra" }
+local UNKNOWN_KIND = { "-", { 0.8, 0.8, 0.8 }, "Note" }     -- (a step kind this version does not know: a saved guide from a newer one)
+local function KindOf(step) return ns.guideKinds[step.kind] or UNKNOWN_KIND end
+local function FontScale() return math.max(0.7, math.min(1.5, tonumber(ns.fontScale) or 1)) end
+local function PanelWidth() return math.floor(PANEL_W * math.min(1.25, math.max(1, FontScale())) + 0.5) end
+local function Big() return (ns.db and ns.db.bigControls) and 1.3 or 1 end
+-- A text's height on screen in whole pixels (what `size` points take on one line when the game can't say).
+local function TextHeight(fs, size)
+    local ok, h = pcall(fs.GetStringHeight, fs)
+    h = (ok and not Secret(h)) and tonumber(h) or nil
+    if not h or h <= 0 then h = (size or 10) * FontScale() end
+    return math.ceil(h)
+end
+-- A button as wide as its whole label needs, at least `least`; returns that width.
+local function FitButton(b, least)
+    local w = least
+    if b.text then
+        pcall(b.text.SetWidth, b.text, 0)
+        ns:Font(b.text, 12)                                  -- (the label at its full size, to measure it)
+        local ok, sw = pcall(b.text.GetStringWidth, b.text)
+        sw = (ok and not Secret(sw)) and tonumber(sw) or nil
+        if sw then w = math.max(least, math.ceil(sw) + 14) end
+    end
+    b:SetWidth(w)
+    b.suiW = w
+    if b.text and b.text.suiFit then b.text.suiFit() end
+    return w
+end
+ns.GuideFitButton = FitButton
+-- Badge colours read on dark panels; on a pale one (a light theme of your own) they are darkened, so they still read.
+local function BadgeColor(c)
+    local ok, r, g, b = pcall(ns.Role, ns, "window")
+    if ok and type(r) == "number" and type(g) == "number" and type(b) == "number" and 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.55 then
+        return c[1] * 0.55, c[2] * 0.55, c[3] * 0.55
+    end
+    return c[1], c[2], c[3]
+end
+-- The footer: "<" ">" "Plan again" on the left, "..." "Guides" on the right; Plan again is left out when the two
+-- sides would meet (a long word in another language): the key binding and the preview still have it.
+local function Footer()
+    local W, big = panel.drawnWidth or PanelWidth(), Big()
+    local bh, sq = math.floor(FOOTER_H * big + 0.5), math.floor(24 * big + 0.5)
+    for _, b in ipairs({ panel.back, panel.skip, panel.more }) do b:SetSize(sq, bh); b.suiW = sq end
+    panel.again:SetHeight(bh)
+    panel.list:SetHeight(bh)
+    local left = 8 + sq + 4 + sq + 4 + (panel.againW or 72)
+    local right = 8 + (panel.listW or 64) + (panel.moreShown and (4 + sq) or 0)
+    panel.againFits = left + 6 + right <= W
+    panel.hover:ClearAllPoints()
+    panel.hover:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, 0)
+    panel.hover:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", 0, bh + 10)
+    return bh
+end
+-- Every line in its place, top to bottom, and the panel as tall as they need.
+local function Layout()
+    local W, s, big = PanelWidth(), FontScale(), Big()
+    if W ~= panel.drawnWidth then panel.drawnWidth = W; panel:SetWidth(W) end
+    local inner = W - 22
+    panel.title:SetWidth(W - 64)
+    local y = -8 - TextHeight(panel.title, 12) - 3
+    panel.bar:ClearAllPoints()
+    panel.bar:SetPoint("TOPLEFT", 10, y)
+    panel.bar:SetPoint("TOPRIGHT", -10, y)
+    y = y - 3 - 6
+    local bw = math.ceil(20 * s)
+    panel.badge:SetWidth(bw)
+    panel.badge:ClearAllPoints()
+    panel.badge:SetPoint("TOPLEFT", 10, y)
+    local nx = 10 + bw + 6
+    panel.now:ClearAllPoints()
+    panel.now:SetPoint("TOPLEFT", nx, y)
+    panel.now:SetWidth(W - nx - 10)
+    local nh = math.max(TextHeight(panel.now, 12), math.ceil(20 * s))
+    panel.stepButton:ClearAllPoints()
+    panel.stepButton:SetPoint("TOPLEFT", nx, y)
+    panel.stepButton:SetSize(W - nx - 10, nh)
+    y = y - nh - 4
+    for i = 1, 2 do
+        local fs = panel.later[i]
+        fs:SetWidth(inner)
+        fs:ClearAllPoints()
+        fs:SetPoint("TOPLEFT", 12, y)
+        if panel.laterShown[i] then y = y - TextHeight(fs, 10) - 1 end
+    end
+    y = y - 4
+    local tb = panel.talentButton
+    local th = math.floor(20 * big + 0.5)
+    for _, key in ipairs(LINE_KEYS) do
+        local fs = panel[key]
+        if panel.lineShown[key] then
+            fs:SetWidth(key == "talent" and (inner - (tb.suiW or 56) - 6) or inner)
+            fs:ClearAllPoints()
+            fs:SetPoint("TOPLEFT", 12, y)
+            local h = TextHeight(fs, 10)
+            if key == "talent" then
+                tb:SetHeight(th)
+                tb:ClearAllPoints()
+                tb:SetPoint("RIGHT", panel, "TOPRIGHT", -8, y - h / 2)          -- (beside its line, at its middle)
+                h = math.max(h, th)
+            end
+            y = y - h - 3
+        end
+    end
+    local bh = Footer()
+    local h = math.ceil(-y + 6 + bh + 6)
+    if h ~= panel.drawnHeight then panel.drawnHeight = h; panel:SetHeight(h) end   -- (only when it changes: a resize redraws the frame)
+end
+-- The whole of what the panel says, in a tooltip: a line cut short on the panel is read here.
+local function PanelTip(owner, menuHint)
+    if not (panel and GameTooltip and type(panel.tipLines) == "table") then return end
+    GameTooltip:SetOwner(owner, "ANCHOR_LEFT")
+    for i, t in ipairs(panel.tipLines) do
+        if i == 1 then GameTooltip:AddLine(ns:AccentHex() .. t .. "|r") else GameTooltip:AddLine(t, 1, 1, 1, true) end
+    end
+    if menuHint then GameTooltip:AddLine(ns:Tr("Right-click: more for this step"), 0.75, 0.75, 0.75, true) end
+    GameTooltip:Show()
+end
 Draw = function()
     if not panel then return end
     local st = State()
     local guide = st and ns:GuideGet(st.name)
     if not guide then panel:Hide(); return end
     local at, steps = st.at or 1, guide.steps
+    local planned = Planned(st)
     panel.title:SetText(Title(st, guide))
-    local skipped = (Planned(st) and st.planFailed) and ns:Tr("Couldn't plan the route; trying again after your next quest") or SkippedText(st)
-    panel.skipped:SetText(skipped or "")
-    panel.skipped:SetShown(skipped ~= nil)
-    local talents = Planned(st) and TalentText() or nil          -- (talent points waiting; the planned guide only)
-    panel.talent:SetText(talents or "")
-    panel.talent:SetShown(talents ~= nil)
-    panel.talentButton:SetShown(talents ~= nil)
-    panel.talent:ClearAllPoints()
-    panel.talent:SetPoint("TOPLEFT", 12, skipped and -105 or -92)
-    panel.talentButton:ClearAllPoints()
-    panel.talentButton:SetPoint("TOPRIGHT", -8, skipped and -103 or -90)
-    local riding = (Planned(st) and ns.db and ns.db.plannerMount ~= false) and RidingText() or nil
-    panel.riding:SetText(riding or "")
-    panel.riding:SetShown(riding ~= nil)
-    panel.riding:ClearAllPoints()
-    panel.riding:SetPoint("TOPLEFT", 12, -92 - (skipped and 13 or 0) - (talents and 13 or 0))
-    local rep = Planned(st) and RepText(st) or nil
-    panel.rep:SetText(rep or "")
-    panel.rep:SetShown(rep ~= nil)
-    panel.rep:ClearAllPoints()
-    panel.rep:SetPoint("TOPLEFT", 12, -92 - (skipped and 13 or 0) - (talents and 13 or 0) - (riding and 13 or 0))
-    local moved = Planned(st) and MovedText(st) or nil
-    panel.moved:SetText(moved or "")
-    panel.moved:SetShown(moved ~= nil)
-    panel.moved:ClearAllPoints()
-    panel.moved:SetPoint("TOPLEFT", 12, -92 - (skipped and 13 or 0) - (talents and 13 or 0) - (riding and 13 or 0) - (rep and 13 or 0))
-    local classq = ClassText(st)
-    panel.classq:SetText(classq or "")
-    panel.classq:SetShown(classq ~= nil)
-    panel.classq:ClearAllPoints()
-    panel.classq:SetPoint("TOPLEFT", 12, -92 - (skipped and 13 or 0) - (talents and 13 or 0) - (riding and 13 or 0) - (rep and 13 or 0) - (moved and 13 or 0))
-    local advice = (Planned(st) and ns.PlannerAdviceLines) and ns.PlannerAdviceLines(steps, at, st.summary) or {}
-    panel.advice:SetText(table.concat(advice, "\n"))
-    panel.advice:SetShown(#advice > 0)
-    panel.advice:ClearAllPoints()
-    panel.advice:SetPoint("TOPLEFT", 12, -92 - (skipped and 13 or 0) - (talents and 13 or 0) - (riding and 13 or 0) - (rep and 13 or 0) - (moved and 13 or 0) - (classq and 13 or 0))
+    local texts = {}
+    texts.skipped = (planned and st.planFailed) and ns:Tr("Couldn't plan the route; trying again after your next quest") or SkippedText(st)
+    texts.talent = planned and TalentText() or nil          -- (talent points waiting; the planned guide only)
+    texts.riding = (planned and ns.db and ns.db.plannerMount ~= false) and RidingText() or nil
+    texts.rep = planned and RepText(st) or nil
+    texts.moved = planned and MovedText(st) or nil
+    texts.classq = ClassText(st)
+    local advice = (planned and ns.PlannerAdviceLines) and ns.PlannerAdviceLines(steps, at, st.summary) or {}
+    texts.advice = #advice > 0 and table.concat(advice, "\n") or nil
     local extra = {}                                -- (lines other files add: GuideRegisterLine)
     for _, e in ipairs(extraLines) do
         local t = Hook(e.key, e.fn, st, steps, at)
         if type(t) == "string" and t ~= "" then extra[#extra + 1] = t end
     end
-    panel.extra:SetText(table.concat(extra, "\n"))
-    panel.extra:SetShown(#extra > 0)
-    panel.extra:ClearAllPoints()
-    panel.extra:SetPoint("TOPLEFT", 12, -92 - (skipped and 13 or 0) - (talents and 13 or 0) - (riding and 13 or 0) - (rep and 13 or 0) - (moved and 13 or 0) - (classq and 13 or 0) - #advice * 13)
-    local h = 118 + (skipped and 13 or 0) + (talents and 13 or 0) + (riding and 13 or 0) + (rep and 13 or 0) + (moved and 13 or 0) + (classq and 13 or 0) + #advice * 13 + #extra * 13
-    if h ~= panel.drawnHeight then panel.drawnHeight = h; panel:SetHeight(h) end   -- (only when it changes: a resize redraws the frame)
+    texts.extra = #extra > 0 and table.concat(extra, "\n") or nil
+    if panel.advice.SetMaxLines then panel.advice:SetMaxLines(math.max(2, #advice * 2)) end   -- (each advice line may take two)
+    if panel.extra.SetMaxLines then panel.extra:SetMaxLines(math.max(2, #extra * 2)) end
+    panel.lineShown = {}
+    for _, key in ipairs(LINE_KEYS) do
+        panel[key]:SetText(texts[key] or "")
+        panel[key]:SetShown(texts[key] ~= nil)
+        panel.lineShown[key] = texts[key] ~= nil
+    end
+    panel.talentButton:SetShown(texts.talent ~= nil)
     panel.count:SetText(math.min(at, #steps) .. "/" .. #steps)
     local step = steps[at]
     if panel.stepButton then                        -- (it takes the mouse only while a planned step with a menu is shown)
-        panel.stepButton:SetShown(Planned(st) and type(step) == "table" and (type(step.quest) == "number" or #StepEntries(step) > 0))
+        panel.stepButton:SetShown(planned and type(step) == "table" and (type(step.quest) == "number" or #StepEntries(step) > 0))
     end
-    if panel.more then                              -- (the panel's menu: only while following the plan and some entry is there)
-        panel.more:SetShown(Planned(st) and #PanelEntries(step) > 0)
-    end
-    if panel.again then panel.again:SetShown(Planned(st) and ns.PlannerReplan ~= nil) end   -- (Plan again: only while following the plan)
+    panel.moreShown = planned and #PanelEntries(step) > 0   -- (the panel's menu: only while following the plan and some entry is there)
+    panel.more:SetShown(panel.moreShown)
+    Footer()
+    panel.again:SetShown(planned and ns.PlannerReplan ~= nil and panel.againFits ~= false)   -- (Plan again: only while following the plan)
+    local nowText
     if step then
-        local kind = ns.guideKinds[step.kind]
+        local kind = KindOf(step)
         panel.badge:SetText(kind[1])
-        panel.badge:SetTextColor(kind[2][1], kind[2][2], kind[2][3])
-        panel.now:SetText(ns.GuideStepText(step, guide))
+        panel.badge:SetTextColor(BadgeColor(kind[2]))
+        nowText = ns.GuideStepText(step, guide)
     else
         panel.badge:SetText("")
-        panel.now:SetText(EndText(st))
+        nowText = EndText(st)
     end
+    panel.now:SetText(nowText)
+    local tip = { tostring(Title(st, guide)), nowText }
+    panel.laterShown = {}
     for i = 1, 2 do
         local nextStep = steps[at + i]
-        local text = nextStep and (ns.guideKinds[nextStep.kind][1] .. "  " .. ns.GuideStepText(nextStep, guide)) or ""
+        local text = nextStep and (KindOf(nextStep)[1] .. "  " .. ns.GuideStepText(nextStep, guide)) or ""
         if nextStep and type(st.skipped) == "table" and st.skipped[at + i] then text = "|cff6f7682" .. text .. "  (" .. ns:Tr("skipped") .. ")|r" end   -- (dimmed)
         panel.later[i]:SetText(text)
+        panel.laterShown[i] = text ~= ""
+        if text ~= "" then tip[#tip + 1] = text end
     end
+    for _, key in ipairs(LINE_KEYS) do if texts[key] then tip[#tip + 1] = texts[key] end end
+    panel.tipLines = tip
     panel.bar:SetMinMaxValues(0, math.max(1, #steps))
     panel.bar:SetValue(math.min(at - 1, #steps))
+    Layout()
+end
+-- (the lettering or the theme changed: the buttons measured again, the fill's strength, every line placed again)
+local function Restyle()
+    if not panel then return end
+    ns:Paint(panel, "SetBackdropColor", "window", ns:IsHighContrast() and 1 or 0.95)   -- (high contrast: no world showing through)
+    panel.againW = FitButton(panel.again, 72)
+    panel.listW = FitButton(panel.list, 64)
+    FitButton(panel.talentButton, 56)
+    panel.drawnHeight, panel.drawnWidth = nil, nil
+    if panel:IsShown() then Draw() end
+end
+ns:OnTheme(function() pcall(Restyle) end)
+-- A saved place from before the panel grew downward (its middle, or the screen's right edge), made a top-left one
+-- where its top edge is now; so is the place a drag in move mode leaves (the middle), so lines added below never
+-- move its top.
+local function PinTop()
+    local pos = ns.db and type(ns.db.pos) == "table" and ns.db.pos.questGuide
+    if type(pos) ~= "table" or pos[1] == "TOPLEFT" then return end
+    local okL, l = pcall(panel.GetLeft, panel)
+    local okT, t = pcall(panel.GetTop, panel)
+    if not (okL and okT and type(l) == "number" and type(t) == "number") or Secret(l) or Secret(t) then return end
+    l, t = math.floor(l + 0.5), math.floor(t + 0.5)
+    panel:ClearAllPoints()
+    panel:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", l, t)
+    ns.db.pos.questGuide = { "TOPLEFT", "BOTTOMLEFT", l, t }
+end
+local function Line(size)
+    local fs = ns:NewText(panel, size or 10, "LEFT")
+    fs:SetPoint("TOPLEFT", 12, -92)
+    fs:SetWidth(258)
+    if fs.SetWordWrap then fs:SetWordWrap(true) end
+    if fs.SetMaxLines then fs:SetMaxLines(2) end
+    ns:Paint(fs, "SetTextColor", "dim")
+    fs:Hide()
+    return fs
 end
 function ns:GuideShowPanel()
     if not ns:GuideOn() then return nil end
     if not panel then
         panel = CreateFrame("Frame", "FantasyGlassUIGuide", UIParent, ns.template)
-        panel:SetSize(280, 118)
-        panel:SetPoint("RIGHT", UIParent, "RIGHT", -260, 120)
+        panel:SetSize(PanelWidth(), 118)
+        panel:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -290, -300)   -- (left of the quest tracker, growing down)
         panel:SetBackdrop(ns.BACKDROP)
-        ns:Paint(panel, "SetBackdropColor", "window", 0.9)
+        ns:Paint(panel, "SetBackdropColor", "window", ns:IsHighContrast() and 1 or 0.95)
         ns:Paint(panel, "SetBackdropBorderColor", "@border", 1)
         ns:Dress(panel)
+        panel.hover = CreateFrame("Frame", nil, panel)               -- (the whole of every line in a tooltip; clicks go through)
+        if panel.hover.SetMouseMotionEnabled and panel.hover.SetMouseClickEnabled then
+            pcall(panel.hover.SetMouseMotionEnabled, panel.hover, true)
+            pcall(panel.hover.SetMouseClickEnabled, panel.hover, false)
+            panel.hover:SetScript("OnEnter", function(self) PanelTip(self) end)
+            panel.hover:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        end
         panel.title = ns:NewText(panel, 12, "LEFT", true)
         panel.title:SetPoint("TOPLEFT", 10, -8)
-        panel.title:SetWidth(200)
+        panel.title:SetWidth(216)
         if panel.title.SetWordWrap then panel.title:SetWordWrap(false) end
         ns:Paint(panel.title, "SetTextColor", "@accent")
         panel.count = ns:NewText(panel, 10, "RIGHT")
@@ -1027,10 +1188,10 @@ function ns:GuideShowPanel()
         ns:Paint(panel.bar, "SetStatusBarColor", "@accent")
         panel.badge = ns:NewText(panel, 20, "CENTER", true)
         panel.badge:SetPoint("TOPLEFT", 10, -34)
-        panel.badge:SetWidth(18)
+        panel.badge:SetWidth(20)
         panel.now = ns:NewText(panel, 12, "LEFT")
-        panel.now:SetPoint("TOPLEFT", 34, -34)
-        panel.now:SetWidth(236)
+        panel.now:SetPoint("TOPLEFT", 36, -34)
+        panel.now:SetWidth(234)
         if panel.now.SetWordWrap then panel.now:SetWordWrap(true) end
         if panel.now.SetMaxLines then panel.now:SetMaxLines(2) end
         panel.later = {}
@@ -1039,63 +1200,27 @@ function ns:GuideShowPanel()
             fs:SetPoint("TOPLEFT", 12, -66 - (i - 1) * 13)
             fs:SetWidth(258)
             if fs.SetWordWrap then fs:SetWordWrap(false) end
-            ns:Paint(fs, "SetTextColor", "faint")
+            ns:Paint(fs, "SetTextColor", "dim")
             panel.later[i] = fs
         end
-        panel.skipped = ns:NewText(panel, 10, "LEFT")              -- (a planned route: quests left out by the group setting)
-        panel.skipped:SetPoint("TOPLEFT", 12, -92)
-        panel.skipped:SetWidth(258)
-        if panel.skipped.SetWordWrap then panel.skipped:SetWordWrap(false) end
-        ns:Paint(panel.skipped, "SetTextColor", "faint")
-        panel.talent = ns:NewText(panel, 10, "LEFT")               -- (a planned route: talent points waiting)
-        panel.talent:SetPoint("TOPLEFT", 12, -92)
-        panel.talent:SetWidth(206)
-        if panel.talent.SetWordWrap then panel.talent:SetWordWrap(false) end
-        ns:Paint(panel.talent, "SetTextColor", "faint")
-        panel.talentButton = ns:CreateButton(panel, "Build", 44, 14, function()
+        panel.laterShown, panel.lineShown = {}, {}
+        panel.skipped = Line()              -- (a planned route: quests left out by the group setting)
+        panel.talent = Line()               -- (a planned route: talent points waiting)
+        panel.talentButton = ns:CreateButton(panel, "Build", 56, 20, function()
             if ns.TalentCommand then ns:TalentCommand("") end         -- (your talent builds, as /fgui talents)
         end)
         panel.talentButton:SetPoint("TOPRIGHT", -8, -90)
-        panel.talent:Hide(); panel.talentButton:Hide()
-        panel.riding = ns:NewText(panel, 10, "LEFT")               -- (a planned route: gold still to find for riding)
-        panel.riding:SetPoint("TOPLEFT", 12, -92)
-        panel.riding:SetWidth(206)
-        if panel.riding.SetWordWrap then panel.riding:SetWordWrap(false) end
-        ns:Paint(panel.riding, "SetTextColor", "faint")
-        panel.riding:Hide()
-        panel.rep = ns:NewText(panel, 10, "LEFT")                  -- (a planned route: a wanted faction's reputation a quest gives)
-        panel.rep:SetPoint("TOPLEFT", 12, -92)
-        panel.rep:SetWidth(206)
-        if panel.rep.SetWordWrap then panel.rep:SetWordWrap(false) end
-        ns:Paint(panel.rep, "SetTextColor", "faint")
-        panel.rep:Hide()
-        panel.moved = ns:NewText(panel, 10, "LEFT")                -- (a planned route: a hub left out because you died twice there)
-        panel.moved:SetPoint("TOPLEFT", 12, -92)
-        panel.moved:SetWidth(258)
-        if panel.moved.SetWordWrap then panel.moved:SetWordWrap(false) end
-        ns:Paint(panel.moved, "SetTextColor", "faint")
-        panel.moved:Hide()
-        panel.classq = ns:NewText(panel, 10, "LEFT")               -- (a planned route: a class quest you could start now)
-        panel.classq:SetPoint("TOPLEFT", 12, -92)
-        panel.classq:SetWidth(258)
-        if panel.classq.SetWordWrap then panel.classq:SetWordWrap(false) end
-        ns:Paint(panel.classq, "SetTextColor", "faint")
-        panel.classq:Hide()
-        panel.advice = ns:NewText(panel, 10, "LEFT")               -- (a planned route: quests worth abandoning, an inn to log out at)
-        panel.advice:SetPoint("TOPLEFT", 12, -92)
-        panel.advice:SetWidth(258)
-        if panel.advice.SetWordWrap then panel.advice:SetWordWrap(false) end
-        ns:Paint(panel.advice, "SetTextColor", "faint")
-        panel.advice:Hide()
-        panel.extra = ns:NewText(panel, 10, "LEFT")                -- (lines other files add: GuideRegisterLine)
-        panel.extra:SetPoint("TOPLEFT", 12, -92)
-        panel.extra:SetWidth(258)
-        if panel.extra.SetWordWrap then panel.extra:SetWordWrap(false) end
-        ns:Paint(panel.extra, "SetTextColor", "faint")
-        panel.extra:Hide()
-        panel.stepButton = CreateFrame("Button", nil, panel)         -- (right click on a quest step: never suggest it)
-        panel.stepButton:SetPoint("TOPLEFT", 34, -34)
-        panel.stepButton:SetSize(236, 30)
+        panel.talentButton:Hide()
+        panel.riding = Line()               -- (a planned route: gold still to find for riding)
+        panel.rep = Line()                  -- (a planned route: a wanted faction's reputation a quest gives)
+        panel.moved = Line()                -- (a planned route: a hub left out because you died twice there)
+        panel.classq = Line()               -- (a planned route: a class quest you could start now)
+        panel.advice = Line()               -- (a planned route: quests worth abandoning, an inn to log out at)
+        panel.extra = Line()                -- (lines other files add: GuideRegisterLine)
+        panel.stepButton = CreateFrame("Button", nil, panel)         -- (right click on a quest step: its menu)
+        panel.stepButton:SetPoint("TOPLEFT", 36, -34)
+        panel.stepButton:SetSize(234, 30)
+        panel.stepButton:SetFrameLevel((tonumber(panel:GetFrameLevel()) or 1) + 3)
         panel.stepButton:RegisterForClicks("RightButtonUp")
         panel.stepButton:SetScript("OnClick", function(_, button)
             if button ~= "RightButton" then return end
@@ -1104,28 +1229,39 @@ function ns:GuideShowPanel()
             local step = guide and guide.steps[st.at or 1]
             if type(step) == "table" then ns:GuideStepMenu(step) end
         end)
-        local back = ns:CreateButton(panel, "<", 22, 18, function() ns:GuideSkip(true) end)
+        panel.stepButton:SetScript("OnEnter", function(self) PanelTip(self, true) end)
+        panel.stepButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        local back = ns:CreateButton(panel, "<", 24, FOOTER_H, function() ns:GuideSkip(true) end)
         back:SetPoint("BOTTOMLEFT", 8, 6)
-        local skip = ns:CreateButton(panel, ">", 22, 18, function() ns:GuideSkip(false) end)
+        local skip = ns:CreateButton(panel, ">", 24, FOOTER_H, function() ns:GuideSkip(false) end)
         skip:SetPoint("LEFT", back, "RIGHT", 4, 0)
-        panel.again = ns:CreateButton(panel, "Plan again", 72, 18, function() ns:GuidePlanAgain() end)
+        panel.back, panel.skip = back, skip
+        panel.again = ns:CreateButton(panel, "Plan again", 72, FOOTER_H, function() ns:GuidePlanAgain() end)
         panel.again:SetPoint("LEFT", skip, "RIGHT", 4, 0)
         panel.again:Hide()
-        local list = ns:CreateButton(panel, "Guides", 64, 18, function() ns:GuideList() end)
+        local list = ns:CreateButton(panel, "Guides", 64, FOOTER_H, function() ns:GuideList() end)
         list:SetPoint("BOTTOMRIGHT", -8, 6)
-        panel.more = ns:CreateButton(panel, "...", 22, 18, function()   -- (the panel's menu: GuideRegisterAction("panel", ...))
+        panel.list = list
+        panel.more = ns:CreateButton(panel, "...", 24, FOOTER_H, function()   -- (the panel's menu: GuideRegisterAction("panel", ...))
             local st = State()
             local guide = st and Planned(st) and ns:GuideGet(st.name)
             ns:GuideMenu(PanelEntries(guide and guide.steps[st.at or 1] or nil))
         end)
         panel.more:SetPoint("RIGHT", list, "LEFT", -4, 0)
         panel.more:Hide()
+        panel.againW = FitButton(panel.again, 72)
+        panel.listW = FitButton(list, 64)
+        FitButton(panel.talentButton, 56)
         for _, def in ipairs({ { back, "Back one step" }, { skip, "Tick this step off and move on" }, { list, "Your guides: follow another, record, write or paste one" }, { panel.talentButton, "Open your talent builds" }, { panel.again, "Plan the route again from where you are now" } }) do
             def[1]:HookScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine(ns:Tr(def[2]), 1, 1, 1); GameTooltip:Show() end)
             def[1]:HookScript("OnLeave", function() GameTooltip:Hide() end)
         end
         local entry = ns:RegisterMovable(panel, "questGuide", "Quest guide")
-        if type(entry) == "table" then entry.offPage = true end
+        if type(entry) == "table" then
+            entry.offPage = true
+            entry.onMoved = function() pcall(PinTop) end
+        end
+        pcall(PinTop)
     end
     panel.drawnHeight = nil                         -- (shown afresh: its height is set once more; a redraw sets it only when it changes)
     panel:Show()
@@ -1281,14 +1417,25 @@ function ns:GuideEdit(name)
         w.title:SetText(ns:Tr("Quest guide"))
         local close = ns:CreateButton(w, "X", 22, 20, function() w:Hide() end)
         close:SetPoint("TOPRIGHT", -8, -8)
-        w.note = ns:NewText(w, 10, "LEFT")
+        ns:KeepPlace(w, "GuideEditor")                         -- (where you drag it, it stays)
+        w.note = ns:NewText(w, 11, "LEFT")
         w.note:SetPoint("TOPLEFT", 14, -34)
         w.note:SetWidth(530)
-        ns:Paint(w.note, "SetTextColor", "faint")
+        if w.note.SetWordWrap then w.note:SetWordWrap(true) end
+        if w.note.SetMaxLines then w.note:SetMaxLines(3) end
+        ns:Paint(w.note, "SetTextColor", "dim")
         w.note:SetText(ns:Tr("One step to a line: accept, do or turnin, the quest's number and name; goto, note, level. \"| text\" adds a few words, \"@ map:x,y\" a place. Ctrl+A and Ctrl+C copy a guide; Ctrl+V pastes one."))
         local scroll = CreateFrame("ScrollFrame", "FantasyGlassUIGuideEditorScroll", w, "UIPanelScrollFrameTemplate")
-        scroll:SetPoint("TOPLEFT", 14, -66)
-        scroll:SetPoint("BOTTOMRIGHT", -32, 44)
+        w.scroll = scroll
+        function w:Place()                                     -- (the box starts under the help, however many lines it takes)
+            local okH, nh = pcall(self.note.GetStringHeight, self.note)
+            nh = (okH and not Secret(nh)) and tonumber(nh) or nil
+            if not nh or nh <= 0 then nh = 11 * (tonumber(ns.fontScale) or 1) * 2 end
+            self.scroll:ClearAllPoints()
+            self.scroll:SetPoint("TOPLEFT", 14, -(34 + math.ceil(nh) + 8))
+            self.scroll:SetPoint("BOTTOMRIGHT", -32, 44)
+        end
+        w:Place()
         local box = CreateFrame("EditBox", nil, scroll)
         box:SetMultiLine(true)
         box:SetAutoFocus(false)
@@ -1299,7 +1446,6 @@ function ns:GuideEdit(name)
         w.box = box
         w.status = ns:NewText(w, 11, "LEFT")
         w.status:SetPoint("BOTTOMLEFT", 14, 16)
-        w.status:SetWidth(250)
         function w:Read()
             local guide, problems = ns.GuideParse(self.box:GetText(), self.name)
             return guide, problems
@@ -1309,13 +1455,13 @@ function ns:GuideEdit(name)
             local ok, why = ns:GuideSave(guide)
             if not ok then w.status:SetText(ns:SignalHex("bad") .. ns:Tr(why) .. "|r"); return false end
             w.name = guide.name
-            w.status:SetText((#problems > 0) and ("|cffffd100" .. problems[1] .. ((#problems > 1) and format(" (+%d)", #problems - 1) or "") .. "|r")
+            w.status:SetText((#problems > 0) and (ns:SignalHex("warn") .. problems[1] .. ((#problems > 1) and format(" (+%d)", #problems - 1) or "") .. "|r")
                 or format(ns:Tr("Saved: %d steps."), #guide.steps))
             if follow then ns:GuideFollow(guide.name) end
             return true
         end
         w.Save = Save
-        local follow = ns:CreateButton(w, "Save and follow", 130, 24, function() Save(true) end)
+        local follow = ns:CreateButton(w, "Save and follow", 150, 24, function() Save(true) end)
         follow:SetPoint("BOTTOMRIGHT", -14, 12)
         local save = ns:CreateButton(w, "Save", 80, 24, function() Save(false) end)
         save:SetPoint("RIGHT", follow, "LEFT", -6, 0)
@@ -1323,12 +1469,15 @@ function ns:GuideEdit(name)
             if w.name and ns:GuideDelete(w.name) then w.status:SetText(ns:Tr("Deleted.")); w.box:SetText(""); w.name = nil end
         end)
         delete:SetPoint("RIGHT", save, "LEFT", -6, 0)
+        for _, b in ipairs({ follow, save, delete }) do ns.GuideFitButton(b, b.suiW or 80) end   -- (as wide as their labels)
+        w.status:SetPoint("RIGHT", delete, "LEFT", -8, 0)      -- (the message stops before Delete)
         editor = w
     end
     local guide = name and ns:GuideGet(name)
     editor.name = guide and guide.name or nil
     editor.box:SetText(guide and ns.GuideText(guide) or ("guide: " .. ((name and name ~= "") and name or "My route") .. "\n"))
     editor.status:SetText("")
+    editor:Place()
     editor:Show()
     return editor
 end

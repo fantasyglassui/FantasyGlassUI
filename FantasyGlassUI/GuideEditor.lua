@@ -84,14 +84,13 @@ function ns:GuideRouteEditor(name)
     end
     local Draw
     local function Pick(i) at = math.max(1, math.min(#work.steps, i)); Draw() end
+    local rowH = math.max(20, math.ceil(11 * (tonumber(ns.fontScale) or 1)) + 6)   -- (a row as tall as its lettering needs)
     Draw = function()
         win.title:SetText(ns:Tr("Route") .. ": " .. tostring(work.name) .. "  |cff9aa4b4(" .. #work.steps .. ")|r")
         for i, step in ipairs(work.steps) do
             local r = win.rows[i]
             if not r then
                 r = CreateFrame("Button", nil, win.sheet)
-                r:SetSize(580, 18)
-                r:SetPoint("TOPLEFT", 0, -(i - 1) * 18)
                 r.bg = r:CreateTexture(nil, "BACKGROUND")
                 r.bg:SetAllPoints()
                 r.bg:SetTexture(ns.FLAT)
@@ -103,12 +102,15 @@ function ns:GuideRouteEditor(name)
                 win.rows[i] = r
             end
             r.index = i
+            r:SetSize(580, rowH)
+            r:ClearAllPoints()
+            r:SetPoint("TOPLEFT", 0, -(i - 1) * rowH)
             r.text:SetText(format("|cff9aa4b4%d|r  %s", i, ns.GuideLine(step)))
             if i == at then ns:Paint(r.bg, "SetVertexColor", "@accent", 0.25) else r.bg:SetVertexColor(1, 1, 1, 0) end
             r:Show()
         end
         for i = #work.steps + 1, #win.rows do win.rows[i]:Hide() end
-        if win.area.SetContentHeight then win.area:SetContentHeight(#work.steps * 18) end
+        if win.area.SetContentHeight then win.area:SetContentHeight(#work.steps * rowH) end
         local step = work.steps[at]
         win.line:SetText(step and ns.GuideLine(step) or "")
     end
@@ -136,6 +138,16 @@ function ns:GuideRouteEditor(name)
         win.buttons.save = win.B("Save", 100, 14, y2)
         win.buttons.follow = win.B("Save and follow", 140, 120, y2)
         win.buttons.text = win.B("As text", 100, 266, y2)
+        -- each as wide as its label (a long word in another language), one after another along its row
+        for _, row in ipairs({ { "up", "down", "del", "change", "add", "here" }, { "save", "follow", "text" } }) do
+            local prev
+            for _, key in ipairs(row) do
+                local b = win.buttons[key]
+                if ns.GuideFitButton then ns.GuideFitButton(b, b.suiW or 70) end
+                if prev then b:ClearAllPoints(); b:SetPoint("LEFT", prev, "RIGHT", 6, 0) end
+                prev = b
+            end
+        end
     end
     local function Rebind()                                  -- point the shared buttons at this guide's list
         win.buttons.up:SetScript("OnClick", function() work.steps, at = ns.RouteMove(work.steps, at, -1); Draw() end)

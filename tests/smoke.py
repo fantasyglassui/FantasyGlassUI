@@ -20298,6 +20298,82 @@ try("13.6 leftovers: a timed run's travel", function()
     if ns.PlannerPosReset then ns.PlannerPosReset() end
     if not ok then error(err, 0) end
 end)
+-- polish P2: begin
+try("polish P2: the panel fits its lettering", function()
+    local saved = { unlocked = ns.GuideUnlocked, state = ns.root.guideState, scale = ns.fontScale, big = ns.db.bigControls, errors = #ns.errors }
+    local panel
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        ns.root.guideState = {}
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "one" }, { kind = "note", text = "two" }, { kind = "note", text = "three" } } }, {})
+        panel = ns:GuideShowPanel()
+        if not panel then error("the panel") end
+        -- at 1.5: every line is placed under the one before by its measured height, and the panel is as tall as they need
+        ns.fontScale = 1.5
+        local at, tall = {}, {}
+        local function watch(key, fs, h)
+            tall[key] = h
+            rawset(fs, "GetStringHeight", function() return h end)
+            rawset(fs, "SetPoint", function(_, p, x, y) if type(x) == "number" then at[key] = y end end)
+        end
+        watch("now", panel.now, 36); watch("later1", panel.later[1], 15); watch("later2", panel.later[2], 15); watch("extra", panel.extra, 30)
+        local height
+        rawset(panel, "SetHeight", function(_, h) height = h end)
+        ns.GuideRegisterLine("polishP2", function() return "a line from another file" end)
+        panel.drawnHeight = nil
+        ns:GuideRedraw()
+        ns.GuideRegisterLine("polishP2", nil)
+        if not (at.now and at.later1 and at.later2 and at.extra) then error("each line is placed: " .. tostring(at.now) .. " " .. tostring(at.later1) .. " " .. tostring(at.extra)) end
+        if at.later1 > at.now - tall.now then error("the next step starts under the step's two lines: " .. at.later1 .. " " .. at.now) end
+        if at.later2 > at.later1 - tall.later1 then error("the step after it starts under it") end
+        if at.extra > at.later2 - tall.later2 then error("the added line starts under the later steps") end
+        if not height or height < -at.extra + tall.extra + 30 then error("the panel holds its lines above the footer: " .. tostring(height) .. " " .. at.extra) end
+        -- the width grows with the lettering, to 1.25 times
+        local width
+        rawset(panel, "SetWidth", function(_, w) width = w end)
+        panel.drawnWidth = nil
+        ns:GuideRedraw()
+        if width ~= 350 then error("at 1.5 the panel is 350 wide: " .. tostring(width)) end
+        -- a footer too narrow for Plan again leaves it out; with room it is there
+        local shown
+        rawset(panel.again, "SetShown", function(_, v) shown = v end)
+        panel.againW = 400
+        ns:GuideRedraw()
+        if shown ~= false then error("no room: Plan again is left out") end
+        panel.againW = 72
+        ns:GuideRedraw()
+        if shown ~= true then error("room: Plan again shows") end
+        -- the whole of what the panel says, for the tooltip
+        if not (type(panel.tipLines) == "table" and panel.tipLines[2] == "one" and panel.tipLines[#panel.tipLines]) then error("the tooltip's lines") end
+        -- a step kind this version does not know: drawn, not an error
+        local st = ns.GuideState()
+        st.plan.steps[1] = { kind = "newerkind", text = "from a newer version" }
+        ns:GuideRedraw()
+        -- the menu: as wide as its longest label, each button at least 24 high, on the screen
+        ns.db.bigControls = false
+        local menu = ns:GuideMenu({ { "Short", function() end }, { "Another", function() end } })
+        local mh
+        rawset(menu.buttons[1], "SetSize", function(_, w, h) mh = h end)
+        ns:GuideMenu({ { "Short", function() end } })
+        if (mh or 0) < 24 then error("menu buttons at least 24 high: " .. tostring(mh)) end
+        ns.db.bigControls = true
+        ns:GuideMenu({ { "Short", function() end } })
+        if (mh or 0) < 30 then error("Bigger controls: bigger menu buttons: " .. tostring(mh)) end
+        rawset(menu.buttons[1], "SetSize", nil)
+        menu:Hide()
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    if panel then
+        for _, fs in ipairs({ panel.now, panel.later[1], panel.later[2], panel.extra }) do rawset(fs, "GetStringHeight", nil); rawset(fs, "SetPoint", nil) end
+        rawset(panel, "SetHeight", nil); rawset(panel, "SetWidth", nil); rawset(panel.again, "SetShown", nil)
+        panel.againW, panel.drawnWidth, panel.drawnHeight = 72, nil, nil
+    end
+    ns.fontScale, ns.db.bigControls = saved.scale, saved.big
+    ns:GuideStop()
+    ns.GuideUnlocked, ns.root.guideState = saved.unlocked, saved.state
+    if not ok then error(err, 0) end
+end)
+-- polish P2: end
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()
