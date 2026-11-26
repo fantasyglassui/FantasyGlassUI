@@ -11232,6 +11232,158 @@ try("gold seams: ideas, jobs and ranking", function()
     end
     if not ok then error(err, 0) end
 end)
+try("gold seams: the window, the panel, hidden while locked", function()
+    local keep = { key = ns.root.guideKey, unlocked = ns.GuideUnlocked, ctrl = env.IsControlKeyDown, combat = env.InCombatLockdown, money = env.GetMoney,
+        ahf = rawget(env, "AuctionHouseFrame"), house = ns.PriceHouse, chars = ns.root.goldChars, weights = ns.root.goldWeights, vendor = ns.root.goldVendor,
+        mobs = ns.root.goldMobs, gather = ns.root.goldGather, guides = ns.root.guides, state = ns.root.guideState, today = ns.Today }
+    local ok, err = pcall(function()
+        if type(ns.GoldOpen) ~= "function" then error("ns:GoldOpen is nil") end
+        keep.sources = ns.GoldSources()
+        for key in pairs(keep.sources) do ns.GoldRegister(key, nil) end
+        fireEvent("PLAYER_REGEN_ENABLED")
+        local function Handler(obj, name) for i = #handlers, 1, -1 do local h = handlers[i]; if h.self == obj and h.name == name then return h.fn end end end
+        local function Click(b, button) local f = Handler(b, "OnClick"); if not f then error("nothing to click") end; f(b, button or "LeftButton") end
+        local function Settle() local n = 0; while ns.GoldBusy() and n < 200 do ns.GoldRunSlice(); n = n + 1 end end
+        local function Said(from, text) for i = from + 1, #printed do if tostring(printed[i]):find(text, 1, true) then return true end end return false end
+        -- locked: no way in, nothing made, nothing translated
+        ns.root.guideKey = nil
+        if ns:GoldOpen() ~= nil then error("locked: no window") end
+        local added = 0
+        local tip = { AddLine = function() added = added + 1 end, AddDoubleLine = function() added = added + 1 end }
+        ns.LauncherTipExtra(tip)
+        if added ~= 0 then error("locked: no launcher line") end
+        env.IsControlKeyDown = function() return true end
+        if ns.LauncherClickExtra("LeftButton") ~= false then error("locked: Ctrl-click is the usual click") end
+        local mark = #printed
+        env.SlashCmdList["FANTASYGLASSUI"]("guide gold")
+        if not Said(mark, "Quest guides are coming soon.") then error("locked: /fgui guide gold is the usual answer") end
+        fireEvent("AUCTION_HOUSE_SHOW")
+        if ns.goldPanel ~= nil or rawget(env, "FantasyGlassUIGoldAH") ~= nil then error("locked: no auction house panel") end
+        fireEvent("PLAYER_ENTERING_WORLD"); runTimers()
+        if ns.goldWindow ~= nil or rawget(env, "FantasyGlassUIGold") ~= nil then error("locked: nothing made at login") end
+        for _, s in ipairs({ "Ways to make gold", "Ctrl-click: ways to make gold", "Gold ideas here", "Gold an hour" }) do
+            if ns.seenStrings[s] ~= nil then error("locked: never translated: " .. s) end
+        end
+        -- unlocked: the launcher, with no sources (and old records forgotten on the first open)
+        ns.GuideUnlocked = function() return true end
+        local today = 20261125
+        ns.Today = function() return today end
+        ns.root.goldVendor = { v = 1, items = { [5] = { buy = 1, day = 20260509 }, [6] = { buy = 1, day = today } } }
+        ns.root.goldMobs = { [1] = { last = 20260817 }, [2] = { last = today } }
+        ns.root.goldGather = { [1429] = { day = 20260817 }, [1411] = { day = today } }
+        ns.root.goldChars, ns.root.goldWeights = nil, nil
+        ns.LauncherTipExtra(tip)
+        if added ~= 1 then error("unlocked: the launcher says Ctrl-click") end
+        ns.LauncherClick("LeftButton")
+        local w = ns.goldWindow
+        if not w or rawget(w, "suiLook") ~= "settings" or ns.goldOpens ~= 1 then error("Ctrl-click opens the window, in the settings look") end
+        env.IsControlKeyDown = keep.ctrl
+        Settle()
+        local L = ns.GoldWindowLines()
+        if #L.ranked ~= 1 or not L.ranked[1]:find("No ideas yet", 1, true) or #L.now ~= 1 or L.now[1] ~= "Nothing right now." then error("empty: " .. tostring(L.ranked[1]) .. " | " .. tostring(L.now[1])) end
+        if L.preset ~= "Most gold" or L.goal ~= nil then error("Most gold, no goal") end
+        if ns.root.goldVendor.items[5] or not ns.root.goldVendor.items[6] or ns.root.goldMobs[1] or not ns.root.goldMobs[2] or ns.root.goldGather[1429] or not ns.root.goldGather[1411] then error("old records are forgotten") end
+        -- the guide panel's button, and /fgui guide gold
+        ns.root.guides, ns.root.guideState = nil, nil
+        ns:GuideSave(ns.GuideParse("guide: Gold test\nnote Sell and repair\n"))
+        ns:GuideFollow("Gold test")
+        local panel = ns:GuideShowPanel()
+        local b = panel and rawget(panel, "suiGoldButton")
+        if not b or rawget(b, "suiGoldOn") ~= true then error("the guide panel has a Gold button") end
+        Click(b)
+        if ns.goldOpens ~= 2 then error("the Gold button opens the window") end
+        env.SlashCmdList["FANTASYGLASSUI"]("guide gold")
+        if ns.goldOpens ~= 3 then error("/fgui guide gold opens it") end
+        Settle()
+        -- two sources
+        local function Idea(t)
+            local i = { kind = "sell", ease = 90, safety = 75, basis = "prices", where = "window", oneOff = false }
+            for k, v in pairs(t) do i[k] = v end
+            return i
+        end
+        ns.GoldRegister("t:per", function(ctx, add)
+            add(Idea({ id = "t:p1", kind = "farm", title = "P1", perHour = 10000, ease = 20, safety = 80, basis = "guess", steps = { { text = "Go" } } }))
+            add(Idea({ id = "t:p2", kind = "farm", title = "P2", perHour = 5000, ease = 90, safety = 50, basis = "measured" }))
+        end)
+        local calls = 0
+        ns.GoldRegister("t:one", function(ctx, add)
+            calls = calls + 1
+            add(Idea({ id = "t:o1", title = "O1", oneOff = true, total = 3000, minutes = 5, where = "both" }))
+            add(Idea({ id = "t:o2", title = "O2", oneOff = true, total = 3000, minutes = 2 }))
+            if ctx.where == "auction" then add(Idea({ id = "t:flip", kind = "flip", title = "Flip it", oneOff = true, total = 4500, minutes = 3, where = "auction" })) end
+        end)
+        ns:GoldRefresh(); Settle()
+        L = ns.GoldWindowLines()
+        if not (L.ranked[1] and L.ranked[1]:find("P1", 1, true) and L.ranked[1]:find("an hour", 1, true) and L.ranked[1]:find("guess", 1, true)) then error("the top idea: " .. tostring(L.ranked[1])) end
+        if not (L.now[1] and L.now[1]:find("O2", 1, true) and L.now[1]:find("in about 2 min", 1, true)) then error("right now: " .. tostring(L.now[1])) end
+        for _, row in ipairs(L.ranked) do if row:find("Flip it", 1, true) then error("auction-only ideas stay at the auction house") end end
+        Click(w.presetButton)
+        L = ns.GoldWindowLines()
+        if L.preset ~= "Easy money" or not L.ranked[1]:find("P2", 1, true) then error("the preset button: " .. tostring(L.preset)) end
+        Handler(w.sliders.gold.slider, "OnValueChanged")(w.sliders.gold.slider, 50)
+        L = ns.GoldWindowLines()
+        if L.preset ~= "Custom" or select(1, ns.GoldWeights()) ~= 50 then error("a moved slider: " .. tostring(L.preset)) end
+        env.GetMoney = function() return 0 end
+        rawset(w.goalBox, "GetText", function() return "2" end)
+        Handler(w.goalBox, "OnTextChanged")(w.goalBox, true)
+        L = ns.GoldWindowLines()
+        if ns.GoldGoal() ~= 20000 or L.bar ~= 0 or #L.ranked ~= 4 then error("a goal of 2 gold: " .. tostring(ns.GoldGoal()) .. " " .. tostring(L.bar)) end
+        for _, row in ipairs(L.ranked) do if not row:find(" · goal in ", 1, true) then error("every row has its time to the goal: " .. row) end end
+        if not L.goal:find("about", 1, true) then error("the goal line: " .. tostring(L.goal)) end
+        Click(w.goalCycle)
+        if ns.GoldGoal() ~= 1200000 or ns.GoldWindowLines().goalName ~= "Riding at 40" then error("Riding at 40: " .. tostring(ns.GoldGoal())) end
+        local realClass = env.UnitClass
+        env.UnitClass = function() return "Paladin", "PALADIN" end
+        local paladin = ns.GoldGoalAmount("mount")
+        env.UnitClass = realClass
+        if paladin ~= 1000000 or ns.GoldGoalAmount("epic") ~= 10000000 then error("riding by class: " .. tostring(paladin)) end
+        Click(w.goalCycle)
+        if ns.GoldGoal() ~= 10000000 or select(2, ns.GoldGoal()) ~= "epic" then error("Epic riding at 60") end
+        if ns.GoldWindowLines().goalName ~= "Epic riding at 60" then error("the named goal shows its name") end
+        env.GetMoney = function() return 20000000 end
+        ns:GoldRefresh(); Settle()
+        L = ns.GoldWindowLines()
+        if L.goal ~= "Goal reached" or L.bar ~= 1 or #L.now ~= 2 or #L.ranked ~= 2 then error("goal reached: two sections again") end
+        ns.GoldSetGoal(nil)
+        -- opened in a fight: it waits for the fight to end
+        env.InCombatLockdown = function() return true end
+        ns:GoldOpen(); Settle()
+        if ns.GoldWindowLines().ranked[1] ~= "Waiting for the fight to end." then error("in a fight: " .. tostring(ns.GoldWindowLines().ranked[1])) end
+        env.InCombatLockdown = keep.combat
+        fireEvent("PLAYER_REGEN_ENABLED"); Settle()
+        if #ns.GoldWindowLines().ranked ~= 2 then error("the list fills after the fight") end
+        -- the auction house panel
+        local scan = 1
+        ns.PriceHouse = function() return { scanAt = scan } end
+        env.AuctionHouseFrame = newmock()
+        fireEvent("AUCTION_HOUSE_SHOW"); Settle()
+        local p = ns.goldPanel
+        if not p or rawget(p, "suiGoldOn") ~= true or rawget(p, "suiLook") ~= "settings" then error("the auction house panel shows") end
+        local A = ns.GoldWindowLines().auction
+        if not (A and A[1] and A[1]:find("Flip it", 1, true)) or #A ~= 2 then error("the panel's ideas: " .. tostring(A and A[1])) end
+        local c0 = calls
+        local tick = Handler(p, "OnUpdate")
+        tick(p, 5); Settle()
+        if calls ~= c0 then error("the same scan: nothing collected") end
+        scan = 2
+        tick(p, 2); Settle()
+        if calls ~= c0 then error("checked every 5 s") end
+        tick(p, 3); Settle()
+        if calls ~= c0 + 1 then error("a new scan collects again") end
+        fireEvent("AUCTION_HOUSE_CLOSED")
+        if rawget(p, "suiGoldOn") ~= false then error("closed with the auction house") end
+    end)
+    ns.root.guideKey, ns.GuideUnlocked, env.IsControlKeyDown, env.InCombatLockdown, env.GetMoney = keep.key, keep.unlocked, keep.ctrl, keep.combat, keep.money
+    env.AuctionHouseFrame, ns.PriceHouse, ns.Today = keep.ahf, keep.house, keep.today
+    ns.root.goldChars, ns.root.goldWeights, ns.root.goldVendor, ns.root.goldMobs, ns.root.goldGather = keep.chars, keep.weights, keep.vendor, keep.mobs, keep.gather
+    ns.root.guides, ns.root.guideState = keep.guides, keep.state
+    if ns.goldWindow then ns.goldWindow:Hide() end
+    if ns.GoldRegister then
+        for _, key in ipairs({ "t:per", "t:one" }) do ns.GoldRegister(key, nil) end
+        for key, fn in pairs(keep.sources or {}) do ns.GoldRegister(key, fn) end
+    end
+    if not ok then error(err, 0) end
+end)
 -- gold tests seams: end
 -- gold tests A (sell): begin
 -- gold tests A (sell): end

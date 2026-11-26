@@ -13,10 +13,12 @@ ns:NewModule("launcher", function()
         tooltip:AddLine(ns:Tr("Left-click: options"), 1, 1, 1)
         tooltip:AddLine(ns:Tr("Right-click: move panels"), 1, 1, 1)
         tooltip:AddLine(ns:Tr("Shift-click: the Tools menu"), 1, 1, 1)
+        if ns.LauncherTipExtra then ns.LauncherTipExtra(tooltip) end      -- (a line another file adds, when it has one)
         tooltip:AddLine(ns:Tr("Drag: move this button around the minimap"), 0.6, 0.6, 0.6)
         if ns.safeMode then tooltip:AddLine(ns:Tr("Safe mode is on: every feature is off. /fgui safe leaves it."), 1, 0.82, 0.2, true) end
     end
     local function Click(button)
+        if ns.LauncherClickExtra and ns.LauncherClickExtra(button) then return end     -- (a click another file handles)
         if IsShiftKeyDown and IsShiftKeyDown() and ns.ToggleToolsMenu then ns:ToggleToolsMenu()
         elseif button == "RightButton" then ns:ToggleMove() else ns:ToggleConfig() end
     end

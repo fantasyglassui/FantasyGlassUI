@@ -27,8 +27,13 @@ ns.GOLD_SAFETY = {
 ns.GOLD_PRESETS = { most = { 100, 0, 0 }, easy = { 30, 70, 0 }, safe = { 30, 0, 70 } }
 ns.GOLD_PRESET_ORDER = { "most", "easy", "safe" }
 ns.GOLD_PRESET_NAMES = { most = "Most gold", easy = "Easy money", safe = "Safe", custom = "Custom" }
--- The named goals, in copper.
-ns.GOLD_GOALS = { mount = 1000000, epic = 10000000 }
+-- The named goals, in copper: riding and a mount at 40 (Paladins and Warlocks get their mount from a
+-- class quest, so only the riding), and epic riding at 60. The costs on Forever are not certain yet:
+-- the in-game checklist verifies them, and this table is the one place to change them.
+ns.GOLD_GOALS = {
+    mount = { name = "Riding at 40", copper = 1200000, byClass = { PALADIN = 1000000, WARLOCK = 1000000 } },
+    epic = { name = "Epic riding at 60", copper = 10000000 },
+}
 
 local BASIS = { guess = true, measured = true, prices = true }
 local WHERE = { window = true, auction = true, both = true }
@@ -474,6 +479,15 @@ function ns.GoldSetGoal(copper, name)
     return true
 end
 
+-- What a named goal costs this character (by class), or nil.
+function ns.GoldGoalAmount(name)
+    local g = ns.GOLD_GOALS[name]
+    if not g then return nil end
+    local ok, _, file = pcall(UnitClass, "player")
+    if ok and not Secret(file) and type(file) == "string" and type(g.byClass) == "table" and g.byClass[file] then return g.byClass[file] end
+    return g.copper
+end
+
 -- What a vendor asks for one, the day it was seen, and the entry; nil when unknown or 180 days old.
 function ns.GoldVendorBuy(id)
     if Secret(id) or type(id) ~= "number" or type(ns.root) ~= "table" then return nil end
@@ -512,4 +526,552 @@ function ns.GoldGo(idea)
     end
     ns:ShowList("GoldSteps", type(idea.title) == "string" and idea.title or "Go", lines)
     return "list"
+end
+
+------------------------------------------------------------------------------------------
+-- Forgetting old records: once a session, when the window first opens (a job)
+------------------------------------------------------------------------------------------
+local function ForgetOld()
+    local root = ns.root
+    if type(root) ~= "table" then return end
+    local today = ns.Today()
+    local function Walk(t, field, days)
+        if type(t) ~= "table" then return end
+        local keys = {}
+        for k in pairs(t) do keys[#keys + 1] = k end              -- (the keys first: the table may change between slices)
+        for _, k in ipairs(keys) do
+            local e = t[k]
+            if e ~= nil and not (type(e) == "table" and type(e[field]) == "number" and ns.DaysBetween(e[field], today) <= days) then t[k] = nil end
+            ns.GoldYield()
+        end
+    end
+    Walk(type(root.goldVendor) == "table" and root.goldVendor.items, "day", 180)
+    Walk(root.goldMobs, "last", 90)
+    Walk(root.goldGather, "day", 90)
+end
+
+------------------------------------------------------------------------------------------
+-- The window: "Right now", the sliders, the goal, and the ranked list
+------------------------------------------------------------------------------------------
+local function Unlocked() return ns.GuideUnlocked ~= nil and ns:GuideUnlocked() == true end
+-- Show or hide, and remember which (frames are asked through suiGoldOn, never IsShown).
+local function Shown(f, on)
+    if type(f) ~= "table" then return end
+    f.suiGoldOn = on and true or false
+    if on then f:Show() else f:Hide() end
+end
+local function Painted(fs, role) ns:Paint(fs, "SetTextColor", role or "text"); return fs end
+
+local W                                -- the window
+local win = { ideas = nil, waiting = false, again = false, gen = 0, drawn = { now = {}, ranked = {} } }
+local syncing = false                  -- (the sliders being set from the saved weights: not a move)
+local forgotten = false
+local NOW_ROWS, ROW_H, MAX_ROWS = 4, 40, 50
+local GOAL_ORDER = { "own", "mount", "epic" }
+
+local function Amount(idea)
+    if idea.oneOff == true then return format(ns:Tr("%s in about %s"), ns:Coins(idea.total), ns.GoldTimeText(idea.minutes)) end
+    return format(ns:Tr("%s an hour"), ns:Coins(idea.perHour))
+end
+local function Words(idea, today, withGoal)
+    local t = ns.GoldEaseWord(idea.ease) .. " · " .. ns.GoldSafetyWord(idea.safetyNow or idea.safety) .. " · " .. ns.GoldFreshText(idea, today)
+    if withGoal and idea.toGoal then t = t .. format(ns:Tr(" · goal in %s"), ns.GoldTimeText(idea.toGoal)) end
+    return t
+end
+local function OpenDetail(idea)
+    if type(idea) ~= "table" then return end
+    local lines = {}
+    if type(idea.detail) == "table" then lines = idea.detail
+    elseif type(idea.tip) == "table" then for _, t in ipairs(idea.tip) do lines[#lines + 1] = { left = tostring(t) } end end
+    ns:ShowList("GoldDetail", idea.title, lines, ns.GoldFreshText(idea))
+end
+local function RowTip(row)
+    local idea = row.suiIdea
+    if type(idea) ~= "table" then return end
+    GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
+    GameTooltip:AddLine(ns:AccentHex() .. idea.title .. "|r")
+    GameTooltip:AddLine(Amount(idea), 1, 1, 1)
+    GameTooltip:AddLine(Words(idea, ns.Today(), false), 0.7, 0.7, 0.7, true)
+    for _, t in ipairs(type(idea.tip) == "table" and idea.tip or {}) do GameTooltip:AddLine(tostring(t), 1, 1, 1, true) end
+    GameTooltip:Show()
+end
+local function Wire(row)
+    row:SetScript("OnClick", ns:Guard("Gold", function(self) OpenDetail(self.suiIdea) end))
+    row:SetScript("OnEnter", ns:Guard("Gold", RowTip))
+    row:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    local hl = row:CreateTexture(nil, "HIGHLIGHT")
+    hl:SetAllPoints()
+    hl:SetTexture(ns.FLAT)
+    hl:SetVertexColor(1, 1, 1, 0.05)
+end
+local function GoButton(row)
+    local go = ns:CreateButton(row, "Go", 44, 20, function() ns.GoldGo(row.suiIdea) end)
+    go:SetPoint("RIGHT", -4, 0)
+    return go
+end
+local function HasSteps(idea) return type(idea) == "table" and ((type(idea.steps) == "table" and #idea.steps > 0) or type(idea.go) == "function") end
+
+local function ListRow(i)
+    local r = W.rows[i]
+    if r then return r end
+    r = CreateFrame("Button", nil, W.sheet)
+    r:SetSize(556, ROW_H)
+    r:SetPoint("TOPLEFT", 0, -(i - 1) * ROW_H)
+    r.title = Painted(ns:NewText(r, 12, "LEFT"))
+    r.title:SetPoint("TOPLEFT", 4, -5)
+    r.title:SetWidth(320)
+    r.amount = Painted(ns:NewText(r, 12, "RIGHT"))
+    r.amount:SetPoint("TOPRIGHT", -54, -5)
+    r.amount:SetWidth(176)
+    r.sub = Painted(ns:NewText(r, 10, "LEFT"), "faint")
+    r.sub:SetPoint("TOPLEFT", 4, -23)
+    r.sub:SetWidth(496)
+    r.go = GoButton(r)
+    Wire(r)
+    W.rows[i] = r
+    return r
+end
+-- A row: an idea, or a line of text (idea nil). Returns the text drawn, for the tests.
+local function FillRow(r, idea, text, sub, amount)
+    r.suiIdea = idea
+    r.title:SetText(text or "")
+    r.amount:SetText(amount or "")
+    if r.sub then r.sub:SetText(sub or "") end
+    if r.words then r.words:SetText(sub or "") end
+    Shown(r.go, HasSteps(idea))
+    Shown(r, true)
+    local parts = { text or "" }
+    if sub and sub ~= "" then parts[#parts + 1] = sub end
+    if amount and amount ~= "" then parts[#parts + 1] = amount end
+    return table.concat(parts, "  ")
+end
+
+local function ForWindow(ideas)
+    local out = {}
+    for _, idea in ipairs(ideas or {}) do if idea.where ~= "auction" then out[#out + 1] = idea end end
+    return out
+end
+local function GoldText(copper)
+    if type(copper) ~= "number" then return "" end
+    if copper % 10000 == 0 then return tostring(copper / 10000) end
+    return format("%.2f", copper / 10000)
+end
+local function Money()
+    local m = Ask(GetMoney)
+    return type(m) == "number" and m or 0
+end
+
+local function Draw()
+    if not W then return end
+    local today = ns.Today()
+    local drawn = { now = {}, ranked = {} }
+    -- the mix
+    local g, e, s = ns.GoldWeights()
+    syncing = true
+    W.sliders.gold:SetValue(g); W.sliders.ease:SetValue(e); W.sliders.safety:SetValue(s)
+    syncing = false
+    drawn.preset = ns:Tr(ns.GOLD_PRESET_NAMES[ns.GoldPresetOf(g, e, s)])
+    W.presetButton.text:SetText(drawn.preset)
+    -- the goal
+    local goal, goalName = ns.GoldGoal()
+    local money = Money()
+    local left = goal and (goal - money) or nil
+    local named = goalName and ns.GOLD_GOALS[goalName]
+    drawn.goalName = ns:Tr(named and named.name or "Your own amount")
+    W.goalCycle.text:SetText(drawn.goalName)
+    if not ns.Yes(W.goalBox:HasFocus()) then W.goalBox:SetText(GoldText(goal)) end
+    local r = ns.GoldRank(ForWindow(win.ideas), { g, e, s }, (left and left > 0) and left or nil, today)
+    if goal then
+        local frac = (left <= 0 or goal <= 0) and 1 or max(0, min(1, money / goal))
+        W.bar:SetValue(frac)
+        Shown(W.bar, true)
+        drawn.bar = frac
+        if left <= 0 then drawn.goal = ns:Tr("Goal reached")
+        else
+            drawn.goal = format(ns:Tr("%s of %s"), ns:Coins(money), ns:Coins(goal))
+            local top = r.merged and r.merged[1]
+            if top then drawn.goal = drawn.goal .. "  " .. format(ns:Tr("about %s with the top idea"), ns.GoldTimeText(top.toGoal)) end
+        end
+        W.goalText:SetText(drawn.goal)
+    else
+        Shown(W.bar, false)
+        W.goalText:SetText("")
+    end
+    -- "Right now"
+    local nowList = r.merged and {} or r.now
+    if win.waiting or win.ideas == nil then nowList = {} end
+    for i = 1, NOW_ROWS do
+        local row, idea = W.nowRows[i], nowList[i]
+        if idea then drawn.now[i] = FillRow(row, idea, idea.title, Words(idea, today, false), Amount(idea))
+        elseif i == 1 then
+            local text = (win.waiting or win.ideas == nil) and "" or r.merged and ns:Tr("With a goal, everything is in one list below, by time to it.") or ns:Tr("Nothing right now.")
+            local shown = FillRow(row, nil, text)
+            if text ~= "" then drawn.now[1] = shown end
+        else row.suiIdea = nil; Shown(row, false) end
+    end
+    W.suiMore = nowList
+    if #nowList > NOW_ROWS then
+        W.more.text:SetText(format(ns:Tr("%d more"), #nowList - NOW_ROWS))
+        Shown(W.more, true)
+    else Shown(W.more, false) end
+    -- the list
+    local list = r.merged or r.ranked
+    local message
+    if win.waiting then message = ns:Tr("Waiting for the fight to end.")
+    elseif win.ideas == nil then message = ns:Tr("Looking for ways to make gold...")
+    elseif #list == 0 then message = ns:Tr("No ideas yet. Scan prices at the auction house, farm or gather a while, or open your professions, and ideas show up here.") end
+    local n = 0
+    if message then
+        n = 1
+        drawn.ranked[1] = FillRow(ListRow(1), nil, message)
+    else
+        for i = 1, min(#list, MAX_ROWS) do
+            local idea = list[i]
+            drawn.ranked[i] = FillRow(ListRow(i), idea, idea.title, Words(idea, today, r.merged ~= nil), Amount(idea))
+            n = i
+        end
+    end
+    for i = n + 1, #W.rows do W.rows[i].suiIdea = nil; Shown(W.rows[i], false) end
+    W.area:SetContentHeight(n * ROW_H)
+    W.footer:SetText(ns.PriceFreshText(ns.PriceHouse(), Ask(time)))
+    win.drawn.now, win.drawn.ranked, win.drawn.preset = drawn.now, drawn.ranked, drawn.preset
+    win.drawn.goal, win.drawn.bar, win.drawn.goalName = drawn.goal, drawn.bar, drawn.goalName
+end
+
+local function CollectWindow()
+    if not W then return end
+    win.waiting = InFight()
+    local queued = ns.GoldCollect(ns.GoldContext("window"), function(ideas)
+        win.ideas, win.waiting = ideas, false
+        Draw()
+        if win.again then win.again = false; ns:After(0, CollectWindow) end
+    end)
+    if not queued then win.again = true end
+    Draw()
+end
+
+local function ShowMoreNow()
+    local lines, today = {}, ns.Today()
+    for i = NOW_ROWS + 1, #(W.suiMore or {}) do
+        local idea = W.suiMore[i]
+        lines[#lines + 1] = { left = idea.title, right = Amount(idea), tip = { idea.title, Words(idea, today, false) }, click = function() OpenDetail(idea) end }
+    end
+    ns:ShowList("GoldNow", "Right now", lines)
+end
+local function CyclePreset()
+    local cur, nextKey = ns.GoldPresetOf(ns.GoldWeights()), "most"
+    local order = ns.GOLD_PRESET_ORDER
+    for i, key in ipairs(order) do if key == cur then nextKey = order[i % #order + 1] end end
+    ns.GoldSetPreset(nextKey)
+    Draw()
+end
+local function CycleGoal()
+    local goal, name = ns.GoldGoal()
+    local cur, nextKey = name or "own", "own"
+    for i, key in ipairs(GOAL_ORDER) do if key == cur then nextKey = GOAL_ORDER[i % #GOAL_ORDER + 1] end end
+    if nextKey == "own" then ns.GoldSetGoal(goal, nil) else ns.GoldSetGoal(ns.GoldGoalAmount(nextKey), nextKey) end
+    W.goalBox:SetText(GoldText((ns.GoldGoal())))
+    Draw()
+end
+-- The amount typed into "Save for:", in gold. Empty: no goal.
+local function Typed(text)
+    if Secret(text) or type(text) ~= "string" then return end
+    text = text:gsub("%s", ""):gsub(",", ".")
+    if text == "" then ns.GoldSetGoal(nil); Draw(); return end
+    local n = tonumber(text)
+    if not n or n ~= n or n < 0 or n == huge then return end
+    ns.GoldSetGoal(floor(n * 10000 + 0.5), nil)
+    Draw()
+end
+
+local function Build()
+    if W then return W end
+    local f = CreateFrame("Frame", "FantasyGlassUIGold", UIParent, ns.template)
+    ns:SetLook(f, "settings")
+    f:SetSize(600, 640)
+    f:SetPoint("CENTER")
+    f:SetFrameStrata("DIALOG")
+    f:SetBackdrop(ns.BACKDROP)
+    ns:Paint(f, "SetBackdropColor", "window", 1)
+    ns:Paint(f, "SetBackdropBorderColor", "@rim", 1)
+    f:EnableMouse(true)
+    f:SetMovable(true)
+    f:SetClampedToScreen(true)
+    f:RegisterForDrag("LeftButton")
+    f:SetScript("OnDragStart", f.StartMoving)
+    ns:KeepPlace(f, "Gold")
+    tinsert(UISpecialFrames, "FantasyGlassUIGold")
+    f:SetScript("OnHide", function(self) self.suiGoldOn = false end)
+    W = f
+    ns.goldWindow = f
+    -- the header
+    local title = Painted(ns:NewText(f, 16, "LEFT", true))
+    title:SetPoint("TOPLEFT", 18, -18)
+    title:SetText(ns:Tr("Ways to make gold"))
+    local close = ns:CreateButton(f, "X", 28, 28, function() f:Hide() end)
+    close:SetPoint("TOPRIGHT", -16, -16)
+    f.refresh = ns:CreateButton(f, "Refresh", 80, 24, function() ns:GoldRefresh() end)
+    f.refresh:SetPoint("RIGHT", close, "LEFT", -8, 0)
+    local function Heading(text, y)
+        local h = Painted(ns:NewText(f, 13, "LEFT", true))
+        h:SetPoint("TOPLEFT", 18, y)
+        h:SetText(ns:Tr(text))
+        return h
+    end
+    -- "Right now"
+    Heading("Right now", -64)
+    f.more = ns:CreateButton(f, "", 90, 18, function() ShowMoreNow() end)
+    f.more:SetPoint("TOPRIGHT", -18, -62)
+    Shown(f.more, false)
+    f.nowRows = {}
+    for i = 1, NOW_ROWS do
+        local r = CreateFrame("Button", nil, f)
+        r:SetSize(564, 22)
+        r:SetPoint("TOPLEFT", 18, -84 - (i - 1) * 22)
+        r.title = Painted(ns:NewText(r, 12, "LEFT"))
+        r.title:SetPoint("LEFT", 4, 0)
+        r.title:SetWidth(210)
+        r.words = Painted(ns:NewText(r, 10, "LEFT"), "faint")
+        r.words:SetPoint("LEFT", 220, 0)
+        r.words:SetWidth(180)
+        r.amount = Painted(ns:NewText(r, 12, "RIGHT"))
+        r.amount:SetPoint("RIGHT", -54, 0)
+        r.amount:SetWidth(110)
+        r.go = GoButton(r)
+        Wire(r)
+        f.nowRows[i] = r
+    end
+    -- the mix: a preset and three sliders
+    f.presetButton = ns:CreateButton(f, "", 130, 24, CyclePreset)
+    f.presetButton:SetPoint("TOPLEFT", 18, -192)
+    f.sliders = {}
+    local g, e, s = ns.GoldWeights()
+    for i, def in ipairs({ { "gold", "Gold an hour", g }, { "ease", "Ease", e }, { "safety", "Safety", s } }) do
+        local which = def[1]
+        local c = ns:CreateSlider(f, def[2], 0, 100, 10, def[3], "%d", function(v)
+            if syncing then return end
+            ns.GoldSetWeight(which, v)
+            Draw()
+        end, 130)
+        c:SetPoint("TOPLEFT", 150 + (i - 1) * 140, -186)
+        f.sliders[which] = c
+    end
+    -- the goal
+    local save = Painted(ns:NewText(f, 12, "LEFT"))
+    save:SetPoint("TOPLEFT", 18, -241)
+    save:SetText(ns:Tr("Save for:"))
+    f.goalBox = ns:CreateEditBox(f, 90, 22)
+    f.goalBox:SetPoint("TOPLEFT", 84, -236)
+    f.goalBox:HookScript("OnTextChanged", ns:Guard("Gold", function(self, user) if user then Typed(self:GetText()) end end))
+    local unit = ns:NewText(f, 12, "LEFT")
+    unit:SetPoint("LEFT", f.goalBox, "RIGHT", 4, 0)
+    unit:SetText("|cffffd700g|r")
+    f.goalCycle = ns:CreateButton(f, "", 130, 24, CycleGoal)
+    f.goalCycle:SetPoint("TOPLEFT", 196, -235)
+    f.bar = ns:NewStatusBar(f)
+    f.bar:SetSize(200, 10)
+    f.bar:SetPoint("TOPLEFT", 340, -238)
+    ns:Paint(f.bar, "SetStatusBarColor", "@accent")
+    f.goalText = Painted(ns:NewText(f, 10, "LEFT"), "dim")
+    f.goalText:SetPoint("TOPLEFT", 340, -254)
+    f.goalText:SetWidth(240)
+    -- the list
+    Heading("Ways to make gold now", -286)
+    f.area, f.sheet = ns:ScrollArea(f, 556, 640 - 306 - 40)
+    f.area:SetPoint("TOPLEFT", 18, -306)
+    f.rows = {}
+    f.footer = Painted(ns:NewText(f, 10, "LEFT"), "faint")
+    f.footer:SetPoint("BOTTOMLEFT", 18, 14)
+    -- collect again 2 s after the bags or the money last changed, while it is open
+    local ev = CreateFrame("Frame")
+    pcall(ev.RegisterEvent, ev, "BAG_UPDATE_DELAYED")
+    pcall(ev.RegisterEvent, ev, "PLAYER_MONEY")
+    ev:SetScript("OnEvent", ns:Guard("Gold", function(_, event)
+        if (event ~= "BAG_UPDATE_DELAYED" and event ~= "PLAYER_MONEY") or not f.suiGoldOn or not Unlocked() then return end
+        win.gen = win.gen + 1
+        local mine = win.gen
+        ns:After(2, function() if mine == win.gen and f.suiGoldOn then CollectWindow() end end)
+    end))
+    Start()
+    return f
+end
+
+-- Open the window (nil while the guide is locked) and collect.
+function ns:GoldOpen()
+    if not Unlocked() then return nil end
+    Build()
+    Shown(W, true)
+    ns.goldOpens = (ns.goldOpens or 0) + 1
+    if not forgotten then forgotten = true; ns.GoldJob(ForgetOld, "forget") end
+    CollectWindow()
+    return W
+end
+-- Collect again (Refresh).
+function ns:GoldRefresh()
+    if W and Unlocked() then CollectWindow() end
+end
+
+------------------------------------------------------------------------------------------
+-- The auction house panel: the ideas that live there
+------------------------------------------------------------------------------------------
+local P
+local panel = { ideas = nil, scanAt = nil, acc = 0, drawn = {} }
+local PANEL_ROWS = 12
+
+local function ScanAt()
+    local h = ns.PriceHouse()
+    local at = type(h) == "table" and h.scanAt or nil
+    if Secret(at) or type(at) ~= "number" then return nil end
+    return at
+end
+local function DrawPanel()
+    if not P then return end
+    local list = {}
+    for _, idea in ipairs(panel.ideas or {}) do if idea.where == "auction" or idea.where == "both" then list[#list + 1] = idea end end
+    local r = ns.GoldRank(list, { ns.GoldWeights() }, nil, ns.Today())
+    local perHour = {}
+    for _, idea in ipairs(r.ranked) do perHour[#perHour + 1] = idea end
+    table.sort(perHour, function(a, b) if a.perHour ~= b.perHour then return a.perHour > b.perHour end return tostring(a.id) < tostring(b.id) end)
+    list = r.now
+    for _, idea in ipairs(perHour) do list[#list + 1] = idea end
+    local drawn = {}
+    for i = 1, PANEL_ROWS do
+        local row, idea = P.rows[i], list[i]
+        row.suiIdea = idea
+        if idea then
+            row.title:SetText(idea.title)
+            row.amount:SetText(Amount(idea))
+            drawn[i] = idea.title .. "  " .. Amount(idea)
+            Shown(row, true)
+        elseif i == 1 then
+            local text = (panel.ideas == nil) and ns:Tr("Looking for ways to make gold...") or ns:Tr("Nothing to do here right now.")
+            row.title:SetText(text)
+            row.amount:SetText("")
+            drawn[1] = text
+            Shown(row, true)
+        else Shown(row, false) end
+    end
+    P.footer:SetText(ns.PriceFreshText(ns.PriceHouse(), Ask(time)))
+    panel.drawn = drawn
+end
+local function CollectPanel()
+    if not ns.GoldCollect(ns.GoldContext("auction"), function(ideas) panel.ideas = ideas; DrawPanel() end) then return end
+    DrawPanel()
+end
+local function BuildPanel()
+    if P then return P end
+    local ahf = _G.AuctionHouseFrame
+    if type(ahf) ~= "table" then return nil end
+    local f = CreateFrame("Frame", "FantasyGlassUIGoldAH", ahf, ns.template)
+    ns:SetLook(f, "settings")
+    f:SetSize(280, 440)
+    f:SetPoint("TOPLEFT", ahf, "TOPRIGHT", 6, 0)
+    f:SetBackdrop(ns.BACKDROP)
+    ns:Paint(f, "SetBackdropColor", "window", 1)
+    ns:Paint(f, "SetBackdropBorderColor", "@rim", 1)
+    f:EnableMouse(true)
+    P = f
+    ns.goldPanel = f
+    local title = Painted(ns:NewText(f, 14, "LEFT", true))
+    title:SetPoint("TOPLEFT", 14, -14)
+    title:SetText(ns:Tr("Gold ideas here"))
+    f.rows = {}
+    for i = 1, PANEL_ROWS do
+        local r = CreateFrame("Button", nil, f)
+        r:SetSize(252, 22)
+        r:SetPoint("TOPLEFT", 14, -42 - (i - 1) * 22)
+        r.amount = Painted(ns:NewText(r, 11, "RIGHT"))
+        r.amount:SetPoint("RIGHT", -2, 0)
+        r.title = Painted(ns:NewText(r, 11, "LEFT"))
+        r.title:SetPoint("LEFT", 2, 0)
+        r.title:SetPoint("RIGHT", r.amount, "LEFT", -6, 0)
+        Wire(r)
+        f.rows[i] = r
+    end
+    f.footer = Painted(ns:NewText(f, 10, "LEFT"), "faint")
+    f.footer:SetPoint("BOTTOMLEFT", 14, 12)
+    -- a new scan: collect again (looked at every 5 s while it is open)
+    f:SetScript("OnUpdate", ns:Guard("Gold", function(_, elapsed)
+        panel.acc = panel.acc + (tonumber(elapsed) or 0)
+        if panel.acc < 5 then return end
+        panel.acc = 0
+        local at = ScanAt()
+        if at ~= panel.scanAt then panel.scanAt = at; CollectPanel() end
+    end))
+    Start()
+    return f
+end
+-- Show the panel on the open auction house and collect (nil while locked, or with no auction house).
+function ns:GoldAuctionShow()
+    if not Unlocked() then return nil end
+    if not BuildPanel() then return nil end
+    Shown(P, true)
+    panel.acc, panel.scanAt = 0, ScanAt()
+    CollectPanel()
+    return P
+end
+
+-- The texts drawn, for the tests.
+function ns.GoldWindowLines()
+    local d = win.drawn
+    return { now = d.now, ranked = d.ranked, preset = d.preset, goal = d.goal, bar = d.bar, goalName = d.goalName, auction = panel.drawn }
+end
+
+------------------------------------------------------------------------------------------
+-- entry points (stay in the main add-on when the folder moves)
+-- Each does nothing while the guide is locked: the launcher's tooltip line and Ctrl-click, the guide
+-- panel's Gold button, /fgui guide gold, and the auction house panel.
+------------------------------------------------------------------------------------------
+do
+    local prevTip, prevClick = ns.LauncherTipExtra, ns.LauncherClickExtra
+    function ns.LauncherTipExtra(tooltip)
+        if prevTip then prevTip(tooltip) end
+        if Unlocked() and type(tooltip) == "table" and tooltip.AddLine then tooltip:AddLine(ns:Tr("Ctrl-click: ways to make gold"), 1, 1, 1) end
+    end
+    function ns.LauncherClickExtra(button)
+        if prevClick and prevClick(button) then return true end
+        if not Unlocked() then return false end
+        if not (IsControlKeyDown and ns.Yes(IsControlKeyDown())) then return false end
+        ns:GoldOpen()
+        return true
+    end
+
+    local GuidePanel, GuideCmd = ns.GuideShowPanel, ns.GuideCommand
+    if type(GuidePanel) == "function" then
+        function ns:GuideShowPanel(...)
+            local p = GuidePanel(self, ...)
+            if type(p) == "table" and Unlocked() then
+                local b = p.suiGoldButton
+                if not b then
+                    b = ns:CreateButton(p, "Gold", 48, 18, function() ns:GoldOpen() end)
+                    b:SetPoint("BOTTOMRIGHT", -76, 6)
+                    p.suiGoldButton = b
+                end
+                Shown(b, true)
+            elseif type(p) == "table" and p.suiGoldButton then
+                Shown(p.suiGoldButton, false)
+            end
+            return p
+        end
+    end
+    if type(GuideCmd) == "function" then
+        function ns:GuideCommand(text, ...)
+            if Unlocked() and type(text) == "string" and not Secret(text) and ns.Trim(text):lower() == "gold" then
+                ns:GoldOpen()
+                return true
+            end
+            return GuideCmd(self, text, ...)
+        end
+    end
+
+    local ev = CreateFrame("Frame")
+    pcall(ev.RegisterEvent, ev, "AUCTION_HOUSE_SHOW")
+    pcall(ev.RegisterEvent, ev, "AUCTION_HOUSE_CLOSED")
+    ev:SetScript("OnEvent", ns:Guard("Gold", function(_, event)
+        if event == "AUCTION_HOUSE_SHOW" then
+            if Unlocked() then ns:GoldAuctionShow() end
+        elseif event == "AUCTION_HOUSE_CLOSED" then
+            if P then Shown(P, false) end
+        end
+    end))
 end
