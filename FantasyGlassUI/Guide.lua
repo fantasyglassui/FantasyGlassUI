@@ -768,7 +768,10 @@ function ns:GuideAdvance(quiet)
     if not step and not st.finished then
         st.finished = true
         if not planned then ns:Print("Guide finished: %s", tostring(guide.name))
-        elseif #guide.steps > 0 and not (type(st.summary) == "table" and st.summary.empty) then EndReplan() end   -- (the plan ran out: the next one)
+        elseif #guide.steps > 0 and not (type(st.summary) == "table" and st.summary.empty) then
+            if ns.GuideKeepRoute() then ns:Print("Your route is done. Press Plan again for a new one.")   -- (kept: said once, no new plan)
+            else EndReplan() end                                                                         -- (the plan ran out: the next one)
+        end
     end
     if planned and step then                                  -- (past the hearthstone: plan from where it took you)
         for i = before, st.at - 1 do
@@ -923,6 +926,28 @@ function ns:GuideEndTrip(why)
     end
     return true
 end
+-- Keep my route (ns.db.plannerKeepRoute, the planner window): only Plan my route and Plan again make a new plan
+-- (ns:PlannerReplan refuses every other reason, Planner.lua).
+function ns.GuideKeepRoute() return type(ns.db) == "table" and ns.db.plannerKeepRoute == true end
+-- A quest that left the kept route's reach (abandoned, failed, skipped): its steps still to come are skipped, where a
+-- route that is not kept would be planned again. `q`: a step's quest id, or the id the game knows it by. true when one was.
+function ns.GuideSkipQuest(q)
+    local st = State()
+    if type(q) ~= "number" or not (st and st.name == ns.GUIDE_PLANNED and ns:GuideOn()) then return false end
+    local guide = ns:GuideGet(st.name)
+    if not guide then return false end
+    st.skipped = type(st.skipped) == "table" and st.skipped or {}
+    local any = false
+    for i = st.at or 1, #guide.steps do
+        local s = guide.steps[i]
+        if type(s) == "table" and type(s.quest) == "number" and not st.skipped[i]
+            and (s.quest == q or (ns.PlannerMappedId and ns.PlannerMappedId(s.quest) == q)) then
+            st.skipped[i], any = true, true
+        end
+    end
+    if any then ns:GuideAdvance() end
+    return any
+end
 -- Tick the step you are on off yourself (a note, or one the game cannot check), or step back one.
 function ns:GuideSkip(back)
     local st = State()
@@ -964,6 +989,7 @@ function ns:GuideSkipStep()
             return
         end
         if ns.PlannerSessionSkip then pcall(ns.PlannerSessionSkip, step.quest) end
+        if ns.GuideKeepRoute() then ns.GuideSkipQuest(step.quest); return end   -- (a kept route: the quest's other steps go too, no new plan)
         ns:GuidePlanAgain("skip")
     end
 end
@@ -1799,6 +1825,7 @@ FailedCheck = function(st)
     if ns.PlannerNoteFailed then ns.PlannerNoteFailed(q) end     -- (abandoning it now is to take it again, not a skip: every time it is seen)
     if failedSeen[q] then return end
     failedSeen[q] = true
+    if ns.GuideKeepRoute() then ns.GuideSkipQuest(q); return end     -- (a kept route: the quest's steps are skipped, not planned again)
     ns:GuidePlanAgain("failed")
 end
 -- The quest left your log or was taken again: a later failure plans again too. (`q` as the game knows it: a step's
@@ -1848,6 +1875,14 @@ do
         local st = State()
         if st then
             if event == "PLAYER_ENTERING_WORLD" then ns:GuideShowPanel() end
+            -- a kept route: a quest abandoned skips its steps (a second on: Forever may say QUEST_REMOVED before the hand-in)
+            if event == "QUEST_REMOVED" and Planned(st) and ns.GuideKeepRoute() and Id(a) then
+                local q = Id(a)
+                ns:After(1, function()
+                    local done = (ns.PlannerQuestDone and ns.PlannerQuestDone(q)) or Ask((C_QuestLog or {}).IsQuestFlaggedCompleted, q)
+                    if not done and ns.GuideKeepRoute() and not (LogId and LogId(q)) then pcall(ns.GuideSkipQuest, q) end
+                end)
+            end
             AdvanceSoon()
             if event == "QUEST_LOG_UPDATE" and Planned(st) then FailedCheck(st) end
         end

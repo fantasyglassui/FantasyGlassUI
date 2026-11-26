@@ -243,7 +243,7 @@ end
 -- the level too, where both sides have one), one to one, and the pair is remembered for the account in
 -- ns.root.plannerQuestIds = { [questieId] = serverId } (made at its first write, only while the guide is
 -- unlocked). Every hand-in is kept per character: rec.handedIn[serverId] = { title, repeatable }.
--- ns.PlannerServerId is the one helper for "in your log", progress and objectives; ns.PlannerQuestDone
+-- ns.PlannerServerId is the one helper for the in-your-log checks, progress and objectives; ns.PlannerQuestDone
 -- for "done". Nothing here writes while the guide is locked.
 ------------------------------------------------------------------------------------------
 local function TitleKey(s)

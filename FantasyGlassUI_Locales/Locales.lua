@@ -21,6 +21,9 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["Keep my route"] = "Meine Route behalten",
+    ["Levelling up, hand-ins and loading screens leave the route as it is. Only Plan my route and Plan again make a new one."] = "Stufenaufstiege, Abgaben und Ladebildschirme lassen deine Route, wie sie ist. Nur „Route planen“ und „Neu planen“ machen eine neue.",
+    ["Your route is done. Press Plan again for a new one."] = "Deine Route ist fertig. Drück „Neu planen“ für eine neue.",
     ["\"%s\" waits."] = "„%s“ wartet.",
     ["Stay as long as you like, then Stop this trip."] = "Bleib, so lange du magst, und beende dann diese Reise.",
     ["Gold trip: %s"] = "Goldreise: %s",
@@ -3843,6 +3846,9 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["Keep my route"] = "Garder mon itinéraire",
+    ["Levelling up, hand-ins and loading screens leave the route as it is. Only Plan my route and Plan again make a new one."] = "Les montées de niveau, les rendus de quête et les écrans de chargement laissent l'itinéraire tel quel. Seuls « Planifier mon itinéraire » et « Replanifier » en créent un nouveau.",
+    ["Your route is done. Press Plan again for a new one."] = "Ton itinéraire est terminé. Appuie sur « Replanifier » pour en avoir un nouveau.",
     ["\"%s\" waits."] = "« %s » t'attend.",
     ["Stay as long as you like, then Stop this trip."] = "Reste aussi longtemps que tu veux, puis arrête ce voyage.",
     ["Gold trip: %s"] = "Voyage pour l'or : %s",
@@ -7665,6 +7671,9 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["Keep my route"] = "Mantener mi ruta",
+    ["Levelling up, hand-ins and loading screens leave the route as it is. Only Plan my route and Plan again make a new one."] = "Subir de nivel, entregar misiones y las pantallas de carga dejan la ruta como está. Solo «Planificar mi ruta» y «Planear de nuevo» crean una nueva.",
+    ["Your route is done. Press Plan again for a new one."] = "Tu ruta ha terminado. Pulsa «Planear de nuevo» para tener una nueva.",
     ["\"%s\" waits."] = "«%s» te espera.",
     ["Stay as long as you like, then Stop this trip."] = "Quédate todo lo que quieras y luego detén este viaje.",
     ["Gold trip: %s"] = "Viaje de oro: %s",
@@ -11490,6 +11499,9 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["Keep my route"] = "Сохранять мой маршрут",
+    ["Levelling up, hand-ins and loading screens leave the route as it is. Only Plan my route and Plan again make a new one."] = "Новые уровни, сдача заданий и экраны загрузки не меняют маршрут. Новый строят только «Спланировать маршрут» и «Спланировать заново».",
+    ["Your route is done. Press Plan again for a new one."] = "Маршрут пройден. Нажмите «Спланировать заново», чтобы получить новый.",
     ["\"%s\" waits."] = "«%s» ждёт.",
     ["Stay as long as you like, then Stop this trip."] = "Оставайтесь сколько угодно, затем прервите поездку.",
     ["Gold trip: %s"] = "Поездка за золотом: %s",
@@ -15312,6 +15324,9 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["Keep my route"] = "Manter minha rota",
+    ["Levelling up, hand-ins and loading screens leave the route as it is. Only Plan my route and Plan again make a new one."] = "Subir de nível, entregar missões e telas de carregamento deixam a rota como está. Só \"Planejar minha rota\" e \"Planear de novo\" criam uma nova.",
+    ["Your route is done. Press Plan again for a new one."] = "Sua rota terminou. Clique em \"Planear de novo\" para ter uma nova.",
     ["\"%s\" waits."] = "\"%s\" está esperando.",
     ["Stay as long as you like, then Stop this trip."] = "Fique o quanto quiser e depois pare esta viagem.",
     ["Gold trip: %s"] = "Viagem pelo ouro: %s",
@@ -19134,6 +19149,9 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["Keep my route"] = "Mantieni il mio percorso",
+    ["Levelling up, hand-ins and loading screens leave the route as it is. Only Plan my route and Plan again make a new one."] = "Salire di livello, consegnare missioni e le schermate di caricamento lasciano il percorso com'è. Solo «Pianifica il mio percorso» e «Pianifica di nuovo» ne creano uno nuovo.",
+    ["Your route is done. Press Plan again for a new one."] = "Il tuo percorso è finito. Premi «Pianifica di nuovo» per averne uno nuovo.",
     ["\"%s\" waits."] = "«%s» ti aspetta.",
     ["Stay as long as you like, then Stop this trip."] = "Resta quanto vuoi, poi interrompi questo viaggio.",
     ["Gold trip: %s"] = "Viaggio per l'oro: %s",
@@ -22956,6 +22974,9 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["Keep my route"] = "내 경로 유지",
+    ["Levelling up, hand-ins and loading screens leave the route as it is. Only Plan my route and Plan again make a new one."] = "레벨 업, 퀘스트 완료 보고, 로딩 화면은 경로를 그대로 둡니다. '내 경로 계획'과 '다시 계획'만 새 경로를 만듭니다.",
+    ["Your route is done. Press Plan again for a new one."] = "경로를 모두 마쳤습니다. 새 경로는 '다시 계획'을 누르세요.",
     ["\"%s\" waits."] = "\"%s\"은(는) 기다리고 있습니다.",
     ["Stay as long as you like, then Stop this trip."] = "원하는 만큼 머문 뒤 이 여정을 중지하세요.",
     ["Gold trip: %s"] = "골드 여정: %s",
@@ -26781,6 +26802,9 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["Keep my route"] = "保留我的路线",
+    ["Levelling up, hand-ins and loading screens leave the route as it is. Only Plan my route and Plan again make a new one."] = "升级、交任务和载入画面都不会改动路线。只有“规划我的路线”和“重新规划”会生成新路线。",
+    ["Your route is done. Press Plan again for a new one."] = "路线已完成。按“重新规划”获取新路线。",
     ["\"%s\" waits."] = "“%s”在等你。",
     ["Stay as long as you like, then Stop this trip."] = "想待多久都行，然后停止这次旅程。",
     ["Gold trip: %s"] = "赚金之旅：%s",

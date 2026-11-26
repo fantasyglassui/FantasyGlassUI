@@ -25606,7 +25606,7 @@ try("folders C: the planner window", function()
         local function In(field, sec) if T[field].row.sec ~= sec then error(field .. " is under " .. sec .. ": " .. tostring(T[field].row.sec)) end end
         In("groupButton", "group"); In("soloElitesBox", "group"); In("classQuestsBox", "group"); In("mailBox", "stops"); In("gatherBox", "explore")
         In("skippedButton", "rewards"); In("zoneGoalButton", "time"); In("deathsBox", "time"); In("tomTomBox", "map"); In("whyBox", "records")
-        In("speakBox", "speak"); In("sharePlanButton", "together")
+        In("speakBox", "speak"); In("sharePlanButton", "together"); In("keepRouteBox", "time")
         -- on a trip
         -- (the real trip, as Go starts it: the levelling plan waits in resume)
         local tripSteps = {}
@@ -26367,6 +26367,88 @@ try("keep-and-ids A: Questie's other numbers, with the planner loaded", function
     if not ok then error(err, 0) end
 end)
 -- keep and ids tests A (ids): end
+-- keep and ids tests B (keep): begin
+try("keep-and-ids B: Keep my route", function()
+    local saved = { unlocked = ns.GuideUnlocked, ql = env.C_QuestLog, state = ns.root.guideState, keepRoute = ns.db.plannerKeepRoute, guide = ns.db.questGuide,
+        print = ns.Print, raw = ns.PrintRaw, planner = ns.root.planner, ids = ns.root.plannerQuestIds }
+    local said = {}
+    local logged = {}
+    local ok, err = pcall(function()
+        if ns.defaults.plannerKeepRoute ~= false then error("off by default") end
+        ns.Print = function(_, msg) said[#said + 1] = tostring(msg) end
+        ns.PrintRaw = function() end
+        ns.GuideUnlocked = function() return true end
+        ns.db.questGuide = true
+        ns.root.planner, ns.root.plannerQuestIds = {}, nil
+        env.C_QuestLog = {
+            IsOnQuest = function(id) return logged[id] == true end,
+            GetLogIndexForQuestID = function(id) if logged[id] then return 1 end end,
+            GetNumQuestLogEntries = function() return 0, 0 end, GetInfo = function() end,
+            GetQuestObjectives = function() return {} end,
+            IsQuestFlaggedCompleted = function() return false end,
+            IsComplete = function() return false end, ReadyForTurnIn = function() return false end, IsFailed = function() return false end,
+        }
+        local steps = {
+            { kind = "accept", quest = 300, title = "Wolves" },
+            { kind = "do", quest = 300, title = "Wolves", text = "Kill wolves" },
+            { kind = "turnin", quest = 300, title = "Wolves" },
+        }
+        local function Follow(at)
+            ns.root.guideState = { [ns:CharKey()] = { name = ns.GUIDE_PLANNED, at = at or 1, plan = { name = ns.GUIDE_PLANNED, steps = steps }, summary = {} } }
+        end
+        local function Queued() local q, r = ns.plannerQueued, ns.plannerReason; ns:PlannerStop(); return q, r end
+        Follow(); ns:PlannerStop()
+        -- off: a level up plans again, as before
+        ns.db.plannerKeepRoute = false
+        fireEvent("PLAYER_LEVEL_UP", 13)
+        local q, r = Queued()
+        if not q or r ~= "level" then error("off: a level up plans again: " .. tostring(r)) end
+        -- on: no reason the game gives plans again
+        ns.db.plannerKeepRoute = true
+        fireEvent("PLAYER_LEVEL_UP", 13)
+        if Queued() then error("kept: a level up leaves the route") end
+        fireEvent("QUEST_TURNED_IN", 555, 0, 0); fireEvent("PLAYER_ENTERING_WORLD", false, false); fireEvent("HEARTHSTONE_BOUND")
+        if Queued() then error("kept: a hand-in, a loading screen, the hearthstone leave the route") end
+        for _, why in ipairs({ "level", "hand-in", "loading screen", "log", "bind", "zone done", "quest removed", "settings", "time", "flight", "death",
+                               "window closed", "questie", "questie wait", "duo", "duo end", "from here", "end", "skip", "failed", "hearth" }) do
+            local okR, refused = ns:PlannerReplan(why)
+            if okR or refused ~= "refused" or Queued() then error("kept: refused: " .. why) end
+        end
+        -- Plan again, pressed: plans again
+        if not ns:GuidePlanAgain() then error("kept: Plan again plans") end
+        q, r = Queued()
+        if not q or r ~= "again" then error("kept: Plan again is queued: " .. tostring(r)) end
+        if not ns:PlannerReplan("again") then error("the window's Plan again too") end
+        Queued()
+        -- abandoned while kept: its steps are skipped, not planned again; then the route is done, said once
+        logged[300] = true
+        Follow(1)
+        ns:GuideAdvance()
+        if (ns.GuideState().at or 1) ~= 2 then error("accepted: on to the do step") end
+        logged[300] = nil
+        fireEvent("QUEST_REMOVED", 300)
+        runTimers()
+        local st = ns.GuideState()
+        if not (st.skipped and st.skipped[2] and st.skipped[3]) then error("abandoned: its steps are skipped") end
+        if Queued() then error("abandoned: no new plan") end
+        local done = 0
+        ns:GuideAdvance(); ns:GuideAdvance()
+        for _, m in ipairs(said) do if m == "Your route is done. Press Plan again for a new one." then done = done + 1 end end
+        if done ~= 1 then error("the kept route's end: said once (" .. done .. ")") end
+        -- not kept: the end plans again (as before), nothing said
+        said = {}
+        ns.db.plannerKeepRoute = false
+        Follow(4); ns:GuideAdvance()
+        if #said ~= 0 then error("not kept: nothing said at the end: " .. said[1]) end
+        ns:PlannerStop()
+    end)
+    ns:PlannerStop()
+    ns.GuideUnlocked, env.C_QuestLog, ns.root.guideState, ns.db.plannerKeepRoute, ns.db.questGuide = saved.unlocked, saved.ql, saved.state, saved.keepRoute, saved.guide
+    ns.Print, ns.PrintRaw, ns.root.planner, ns.root.plannerQuestIds = saved.print, saved.raw, saved.planner, saved.ids
+    runTimers()
+    if not ok then error(err, 0) end
+end)
+-- keep and ids tests B (keep): end
 -- folders tests together: begin
 -- folders tests together: end
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)

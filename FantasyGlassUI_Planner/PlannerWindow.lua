@@ -33,7 +33,7 @@ local ORDER = {
     stops = { "flightsBox", "trainerBox", "holdBox", "vendorBox", "suppliesBox", "professionBox", "mountBox", "mailBox" },
     explore = { "exploreBox", "gatherBox" },
     rewards = { "pickBox", "rewardsBox", "logAdviceBox", "innBox", "restedBox", "dryBox", "reputationButton", "skippedButton" },
-    time = { "playTimeButton", "breaksBox", "breakButton", "styleButton", "speedSlider", "safetySlider", "storySlider", "zoneGoalButton", "deathsBox" },
+    time = { "keepRouteBox", "playTimeButton", "breaksBox", "breakButton", "styleButton", "speedSlider", "safetySlider", "storySlider", "zoneGoalButton", "deathsBox" },
     map = { "mapLineBox", "mapHubsBox", "tomTomBox" },
     records = { "raceBox", "leftOffBox", "whyBox" },
     speak = { "speakBox" },
@@ -199,6 +199,10 @@ local function PaceSection(K, G, Replan, T)
         DrawBreak(b)
     end, true)
     T.playTimeButton, T.breaksBox, T.breakButton = timeButton, breaks, breakButton
+    -- Keep my route: no new plan by itself (no replan when it is switched, either)
+    T.keepRouteBox = K.SwitchRow(G, "time", "plannerKeepRoute", "Keep my route",
+        "Levelling up, hand-ins and loading screens leave the route as it is. Only Plan my route and Plan again make a new one.",
+        function() return ns.db.plannerKeepRoute == true end, function(v) ns.db.plannerKeepRoute = v and true or false end)
     refreshes[#refreshes + 1] = function()
         DrawTime(timeButton)
         breaks:SetChecked(ns.db.plannerBreaks == true)

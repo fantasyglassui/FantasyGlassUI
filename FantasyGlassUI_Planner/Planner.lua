@@ -978,10 +978,19 @@ local function Tick()
 end
 ns:Every(0, "Planner", Tick)
 
+-- Keep my route (ns.db.plannerKeepRoute): the reasons that still plan again, the ones you ask for yourself (Plan my
+-- route is ns:PlannerStart). Every other one is refused: a level, a hand-in, a loading screen, a quest taken or lost, the
+-- hearthstone, a new flight point, a death, a closed window, a setting, the time, the zone goal, Questie ready, the duo,
+-- the route's end, a skip, a failed quest, a hearth, Plan from here on the map.
+local KEPT_REPLANS = { again = true }
+function ns.PlannerKeepsRoute(reason)
+    return type(ns.db) == "table" and ns.db.plannerKeepRoute == true and not KEPT_REPLANS[reason]
+end
 -- Plan again (soon, a slice at a time). `reason` is only for debugging. Returns false when you are not
--- following the planned guide, and false, "refused" when a "replan" hook refused it.
+-- following the planned guide, and false, "refused" when a "replan" hook refused it or the route is kept.
 function ns:PlannerReplan(reason)
     if not Following() then return false end
+    if ns.PlannerKeepsRoute(reason) then return false, "refused" end
     if not ReplanOK(reason) then return false, "refused" end
     ns.plannerQueued, ns.plannerReason = true, reason
     if burst then burst.t, burst.frames = Now(), 0 end      -- (still coming: the burst goes on)
