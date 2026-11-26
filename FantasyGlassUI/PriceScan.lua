@@ -73,17 +73,23 @@ local function Stage(cur, a, today)
     e.listed, e.listedDay = a.listed, today
     return e
 end
--- Into the store, in one short pass that only assigns. A price noted while the entries were being built
--- (it differs from `bases`, the prices they were built from) is kept when it is lower. With `markUnlisted`, what the house knew that the scan did not list gets a
+-- Into the store, in one short pass that only assigns. What was noted while the entries were being built
+-- is kept: the day's low in the history always (the lower wins), and the price when it changed since the
+-- entry was built (`bases`) and is lower. With `markUnlisted`, what the house knew that the scan did not list gets a
 -- count of 0, and the house remembers this as a full scan (listedAt).
 local function Commit(house, staged, today, now, n, markUnlisted, bases)
     if type(house.items) ~= "table" then house.items = {} end
     local items = house.items
     for id, e in pairs(staged) do
         local cur = items[id]
-        if bases and type(cur) == "table" and cur.price ~= bases[id] then
-            e.seenDay = cur.seenDay
-            if cur.day == today and type(cur.price) == "number" and (type(e.price) ~= "number" or cur.price < e.price) then e.price, e.day = cur.price, today end
+        if bases and type(cur) == "table" then
+            local b = bases[id] or {}
+            local low = type(cur.hist) == "table" and cur.hist[today]
+            if cur.price ~= b.price or cur.day ~= b.day or low ~= b.low then
+                if type(cur.seenDay) == "number" then e.seenDay = cur.seenDay end
+                if cur.day == today and type(cur.price) == "number" and (type(e.price) ~= "number" or cur.price < e.price) then e.price, e.day = cur.price, today end
+                if type(low) == "number" then ns.AuctionHistoryAdd(e, today, low) end
+            end
         end
         items[id] = e
     end
@@ -143,20 +149,9 @@ local function Stop(message)
     Show()
 end
 
--- Did the house hold more than `limit` items?
-local function MoreThan(house, limit)
-    local n = 0
-    for _ in pairs(type(house) == "table" and type(house.items) == "table" and house.items or {}) do
-        n = n + 1
-        if n > limit then return true end
-    end
-    return false
-end
-
 -- The read is done: decide whether to trust it, then build the entries (in slices, from Read).
 local function StartWriting(s)
-    local house = ns.PriceHouse(false)
-    if next(s.acc) == nil and MoreThan(house, 50) then
+    if next(s.acc) == nil then                             -- (an empty reply is never a scan; the cooldown still runs)
         Stop("The scan came back empty: try again later.")
         return
     end
@@ -196,7 +191,7 @@ local function Read()
             if id == nil then Finish(); return end
             s.stageKey = id
             local cur = items[id]
-            s.bases[id] = type(cur) == "table" and cur.price or false
+            s.bases[id] = type(cur) == "table" and { price = cur.price, day = cur.day, low = type(cur.hist) == "table" and cur.hist[today] or nil } or false
             s.staged[id] = Stage(cur, a, today)
             s.count, work = s.count + 1, work + 1
         until Spent()

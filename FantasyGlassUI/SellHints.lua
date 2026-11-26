@@ -81,7 +81,9 @@ function ns.SellHintLine(id, bound)
     else text = ns:Tr("Vendor it: a vendor pays about as much") end
     local fresh
     if entry and type(entry.listedDay) ~= "number" then fresh = ns.AuctionSeenText(entry, ns.Today()) end   -- (only browsed: when it was seen)
-    fresh = fresh or ns.PriceFreshText(house, time and time() or 0)
+    local now = time and time() or 0
+    if why == "unlisted" then fresh = ns.PriceFreshText({ scanAt = type(house) == "table" and house.listedAt or nil }, now) end   -- (as old as the full scan)
+    fresh = fresh or ns.PriceFreshText(house, now)
     return text, fresh, kind
 end
 
