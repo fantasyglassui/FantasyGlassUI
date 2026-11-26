@@ -17,7 +17,6 @@ local type, tonumber, pairs, ipairs = type, tonumber, pairs, ipairs
 local floor, max, min, sqrt, huge = math.floor, math.max, math.min, math.sqrt, math.huge
 
 local HERBALISM, MINING, SKINNING = 182, 186, 393
-local NODE_CAP = 300                   -- nodes kept per map (the planner's): the fold adds none to a full map
 local NAME_CAP = 200                   -- node names whose loot is kept
 local LOOT_SECONDS = 5                 -- a loot window this soon after a gathering is that gathering's
 local GAP_SECONDS = 300                -- a longer pause between gatherings is not time spent gathering
@@ -206,17 +205,22 @@ local function FoldNodes()
     local root = Root()
     local gold = root and root.goldNodesSeen
     if type(gold) ~= "table" then return end
+    local cap, totalCap = tonumber(ns.PLANNER_NODE_CAP) or 300, tonumber(ns.PLANNER_NODES_TOTAL) or 4000   -- (the planner's caps)
+    local total = 0
+    for _, l in pairs(type(root.plannerNodesSeen) == "table" and root.plannerNodesSeen or {}) do
+        if type(l) == "table" then total = total + #l end
+    end
     local maps = {}
     for map in pairs(gold) do maps[#maps + 1] = map end           -- (the keys first: the walk yields)
     for _, map in ipairs(maps) do
         local list = gold[map]
         for _, n in ipairs(type(list) == "table" and list or {}) do
             local mine = type(root.plannerNodesSeen) == "table" and root.plannerNodesSeen[map] or nil
-            local skip = type(n) ~= "table" or (type(mine) == "table" and #mine >= NODE_CAP)   -- (a full map: the planner's own nodes stay)
+            local skip = type(n) ~= "table" or (type(mine) == "table" and #mine >= cap) or total >= totalCap   -- (a full map, or all maps full: the planner's own nodes stay)
             if not skip and type(mine) == "table" then
                 for _, m in ipairs(mine) do if SameNode(m, n) then skip = true; break end end   -- (folded before: an interrupted fold runs again)
             end
-            if not skip then ns.PlannerRecordNode(map, Num(n.x), Num(n.y), n.name, n.skill) end   -- (its 10-yard rule)
+            if not skip and ns.PlannerRecordNode(map, Num(n.x), Num(n.y), n.name, n.skill) then total = total + 1 end   -- (its 10-yard rule)
             ns.GoldYield()
         end
         gold[map] = nil                                             -- (this map is moved, all of it)

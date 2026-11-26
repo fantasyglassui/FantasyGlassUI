@@ -836,6 +836,25 @@ end
 -- summary.taken[n]: round n's hub { xp, seconds, travel, rate, score, map, x, y (to 0.1, as in summary.hubs), quests
 -- (how many), first (when a rule put it first), parts (the style's story and safety terms), beat = the runner-up
 -- { rate, name = its first quest, map, x, y, first, parts } or nil, lead = true for a lead-in }.
+-- The travel state a route (or a trip) is laid with: where you are, the flights (copies: learning one on the
+-- way marks only this plan's), the travel context, and whether flight points are learned on the way.
+local function TripState(ctx, c, here)
+    local flights = {}
+    for _, f in ipairs(ctx.flights or {}) do
+        local copy = {}
+        for k, v in pairs(f) do copy[k] = v end
+        flights[#flights + 1] = copy
+    end
+    local tctx = {}
+    for k, v in pairs(c) do tctx[k] = v end
+    tctx.flights = flights
+    return { rep = {}, pos = here, flights = flights, tctx = tctx, ctx = c, learn = ctx.learnFlights and true or false }
+end
+-- For a trip of its own (Go, the folders plan's Task 8): the state from ns.PlannerContext(), and the trip
+-- from state.pos to dest added to steps (seconds, or nil when dest can't be reached).
+function ns.PlannerTripState(ctx) return TripState(ctx, ctx, Here(ctx)) end
+function ns.PlannerTrip(state, dest, steps, between) return Trip(state, dest, steps, between) end
+
 local function Build(ctx, candidates, skipped)
     local hooks = type(ctx.hooks) == "table" and ctx.hooks or nil    -- (ns.PlannerContext's copies; else the hooks as they are now, kept for this Build:
     if not hooks then                                                --  a hook added or removed meanwhile waits for the next plan)
@@ -881,16 +900,8 @@ local function Build(ctx, candidates, skipped)
             lead, leadFirst, leadRate = h, h.first, Rate(h)
         end
     end
-    local flights = {}
-    for _, f in ipairs(ctx.flights or {}) do
-        local copy = {}
-        for k, v in pairs(f) do copy[k] = v end
-        flights[#flights + 1] = copy
-    end
-    local tctx = {}
-    for k, v in pairs(c) do tctx[k] = v end
-    tctx.flights = flights
-    local state = { rep = {}, pos = here, flights = flights, tctx = tctx, ctx = c, learn = ctx.learnFlights and true or false }
+    local state = TripState(ctx, c, here)
+    local tctx = state.tctx
     local xp, seconds, taken = 0, 0, {}
     local bound = false                              -- (the hearthstone is set at the zone's first hub, when the zone is new)
     local function Lay(hub, n)

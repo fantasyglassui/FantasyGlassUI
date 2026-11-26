@@ -25,3 +25,5 @@ PlannerGroup.lua
 PlannerDuo.lua
 PlannerCode.lua
 PlannerIntro.lua
+PlannerWindow.lua
+PlannerGo.lua

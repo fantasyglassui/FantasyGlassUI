@@ -2902,6 +2902,7 @@ SlashCmdList["FANTASYGLASSUI"] = function(msg)
     elseif msg == "" or msg == "options" or msg == "config" or msg == "show" then
         ns:ToggleConfig()
     else
+        if ns.HiddenCommand and ns.HiddenCommand(msg, raw) then return end   -- (a word not in the help: Folders.lua's, while unlocked only)
         local near = ns.ClosestCommand(msg)
         if near then
             ns:Print("\"%s\" is not a command. Did you mean |cffffff00/fgui %s|r?", raw, near)

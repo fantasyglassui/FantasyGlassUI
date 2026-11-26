@@ -42,6 +42,7 @@ local type, pairs, ipairs, tostring, pcall = type, pairs, ipairs, tostring, pcal
 --   PlannerMapName
 --   PlannerMapRedraw
 --   PlannerNoteFailed
+--   PlannerOpen
 --   PlannerPlanCommand
 --   PlannerRepGoals
 --   PlannerRepName
@@ -68,14 +69,15 @@ local type, pairs, ipairs, tostring, pcall = type, pairs, ipairs, tostring, pcal
 -- end of folder seams
 -- (Every ns.Planner* and ns.Gold* that a file of FantasyGlassUI/ or FantasyGlassUI_Options/ uses and that is not
 -- defined in FantasyGlassUI/ by name: each is defined in a folder file. A call site checks it is there first, or it
--- is one of the stand-ins below, which load the folder: GoldAuctionShow, GoldOpen, PlannerStart.
+-- is one of the stand-ins below, which load the folder: GoldAuctionShow, GoldOpen, PlannerOpen, PlannerStart. A stand-in
+-- whose folder function is still to come (PlannerOpen: the planner window, group C) hands back nil until then.
 -- tests/test_addon.py::test_folder_seams_listed keeps this list true.)
 
 ns.FOLDERS = {
     planner = { addon = "FantasyGlassUI_Planner", files = {
         "PlannerSource.lua", "Planner.lua", "PlannerRoute.lua", "PlannerStops.lua", "PlannerPath.lua", "PlannerAdvice.lua",
         "PlannerMap.lua", "PlannerPages.lua", "PlannerPace.lua", "PlannerRecords.lua", "PlannerGroup.lua", "PlannerDuo.lua",
-        "PlannerCode.lua", "PlannerIntro.lua",
+        "PlannerCode.lua", "PlannerIntro.lua", "PlannerWindow.lua", "PlannerGo.lua",
     },
         broken = "The planner could not start: /fgui check lists why.",
         missing = "The planner could not be opened (%s). It is in a folder, FantasyGlassUI_Planner, which must sit beside FantasyGlassUI in Interface/AddOns and be enabled." },
@@ -234,7 +236,7 @@ do
         return true
     end
 
-    ns.GuideRegisterAction("panel", "gold", "Ways to make gold", function() ns:GoldOpen() end, function() return Unlocked() end)
+    ns.GuideRegisterAction("panel", "gold", "Ways to make gold", function() ns:GoldOpen() end, function() return Unlocked() end, true)   -- (whatever guide you follow)
     ns.GuideRegisterCommand("gold", function() ns:GoldOpen(); return true end)
     ns.GuideRegisterLock("gold", function(unlocked)                -- (locked again: the window and the auction-house panel hide at once)
         if not unlocked and type(ns.GoldLockedNow) == "function" then ns.GoldLockedNow() end
@@ -275,4 +277,27 @@ do
         if name == nil or not (name == ns.GUIDE_PLANNED or name == ns.GUIDE_TRIP) then return end
         if ns:LoadPlanner(true) and ns.PlannerReplan then ns:PlannerReplan("loading screen") end
     end)
+end
+
+------------------------------------------------------------------------------------------
+-- The planner's own ways in: /fgui plan (in no help list: answered only while unlocked; locked, it is the
+-- usual "not a command"), and the Tools menu's "Guide" entries.
+------------------------------------------------------------------------------------------
+function ns.HiddenCommand(msg)
+    if not Unlocked() or type(msg) ~= "string" or ns:IsSecret(msg) then return false end
+    if msg ~= "plan" and msg:sub(1, 5) ~= "plan " then return false end
+    ns:PlannerOpen()
+    return true
+end
+do
+    local entries = {
+        { "planner", "Planner", "/fgui plan", function() ns:PlannerOpen() end, Unlocked },
+        { "gold", "Ways to make gold", "/fgui guide gold", function() ns:GoldOpen() end, Unlocked },
+    }
+    if ns.RegisterToolExtra then
+        for _, e in ipairs(entries) do ns.RegisterToolExtra(e[1], e[2], e[3], e[4], e[5]) end
+    else                                                        -- (Companion.lua loads after this file: it takes them as it loads)
+        ns.toolExtrasWaiting = ns.toolExtrasWaiting or {}
+        for _, e in ipairs(entries) do ns.toolExtrasWaiting[#ns.toolExtrasWaiting + 1] = e end
+    end
 end

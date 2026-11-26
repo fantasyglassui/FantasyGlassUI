@@ -34,6 +34,7 @@ ns.guideKinds = {
 ns.GUIDE_WINDOW_KINDS = { train = "TRAINER_CLOSED", vendor = "MERCHANT_CLOSED", mail = "MAIL_CLOSED" }
 ns.GUIDE_STOP_KINDS = { train = true, vendor = true, mail = true, explore = true, gather = true }   -- (the kinds a planner stop may be)
 ns.GUIDE_PLANNED = "\1planned"          -- the planned route's name: one no saved guide can have (guide names come from a line of text)
+ns.GUIDE_TRIP = "\1trip"                -- a trip followed for a while (a gold idea's Go): the plan waits, and comes back after it
 local QUEST_KIND = { accept = true, turnin = true, ["do"] = true }
 ns.builtinGuides = ns.builtinGuides or {}
 
@@ -364,6 +365,7 @@ local FailedCheck, NotHere                          -- (the guide's events and i
 -- Seams (what the planner uses of the guide):
 --   GUIDE_PLANNED
 --   GUIDE_STOP_KINDS
+--   GUIDE_TRIP
 --   GUIDE_WINDOW_KINDS
 --   GuideFollow
 --   GuideGet
@@ -404,7 +406,9 @@ local FailedCheck, NotHere                          -- (the guide's events and i
 -- in place, fn nil removes):
 --   ns.GuideRegisterLine(key, fn(st, steps, at) -> text|nil)    a faint line under the advice
 --   ns.GuideRegisterTitle(key, fn(st) -> text|nil)              " · text" after the title
---   ns.GuideRegisterAction("step"|"panel", key, label, fn(step), shown(step))   a menu entry (label: English, or fn(step) -> text)
+--   ns.GuideRegisterAction("step"|"panel", key, label, fn(step), shown(step), anyGuide)   a menu entry (label: English, or fn(step)
+--                                                                -> text); anyGuide: a panel entry offered whatever guide you follow,
+--                                                                not only the planned route (the "..." then shows for any guide)
 --   ns.GuideRegisterAdvance(key, fn(st, guide, step, at, moved, resumed))  the step you are on changed (resumed: the
 --                                                                first advance after a login or /reload, the step you were on: not new)
 --   ns.GuideRegisterCommand(word, fn(rest))                      /fgui guide <word> ...
@@ -432,9 +436,9 @@ end
 local function Fn(fn, entry) return type(fn) == "function" and entry or nil end
 function ns.GuideRegisterLine(key, fn) Register(extraLines, key, Fn(fn, { fn = fn })) end
 function ns.GuideRegisterTitle(key, fn) Register(titleParts, key, Fn(fn, { fn = fn })) end
-function ns.GuideRegisterAction(where, key, label, fn, shown)
+function ns.GuideRegisterAction(where, key, label, fn, shown, anyGuide)
     local list = (where == "step" and stepActions) or (where == "panel" and panelActions) or nil
-    if list then Register(list, key, Fn(fn, { label = label, fn = fn, shown = shown })) end
+    if list then Register(list, key, Fn(fn, { label = label, fn = fn, shown = shown, any = anyGuide and true or nil })) end
 end
 function ns.GuideRegisterAdvance(key, fn) Register(advanceHooks, key, Fn(fn, { fn = fn })) end
 function ns.GuideRegisterLock(key, fn) Register(lockHooks, key, Fn(fn, { fn = fn })) end
@@ -466,16 +470,17 @@ local function StepEntries(step)
     end
     return out
 end
-local function PanelEntries(step)
+-- (anyOnly: following a guide that is not the planned route, only the entries offered for any guide)
+local function PanelEntries(step, anyOnly)
     local out = {}
     for _, e in ipairs(panelActions) do
-        if ActionShown(e, step) then out[#out + 1] = { ActionLabel(e, step), function() e.fn(step) end } end
+        if (e.any or not anyOnly) and ActionShown(e, step) then out[#out + 1] = { ActionLabel(e, step), function() e.fn(step) end } end
     end
     return out
 end
 -- Is any entry of `list` shown for this step? (No tables made: the panel asks on every draw.)
-local function HasEntries(list, step)
-    for _, e in ipairs(list) do if ActionShown(e, step) then return true end end
+local function HasEntries(list, step, anyOnly)
+    for _, e in ipairs(list) do if (e.any or not anyOnly) and ActionShown(e, step) then return true end end
     return false
 end
 -- The entries shown for a step: { { label, fn } } (labels as registered: ns:GuideMenu translates them).
@@ -1145,7 +1150,11 @@ local function Footer()
     for _, b in ipairs({ panel.back, panel.skip, panel.more }) do b:SetSize(sq, bh); b.suiW = sq end
     panel.again:SetHeight(bh)
     panel.list:SetHeight(bh)
-    local right = 8 + (panel.listW or 64) + (panel.moreShown and (4 + sq) or 0)
+    local pw = math.floor(44 * big + 0.5)
+    panel.planner:SetSize(pw, bh)
+    panel.planner:ClearAllPoints()                          -- (left of "...", or of Guides when there is no menu)
+    panel.planner:SetPoint("RIGHT", panel.moreShown and panel.more or panel.list, "LEFT", -4, 0)
+    local right = 8 + (panel.listW or 64) + (panel.moreShown and (4 + sq) or 0) + (panel.plannerShown and (4 + pw) or 0)
     local room = W - (8 + sq + 4 + sq + 4) - 6 - right       -- (what is left for Plan again between the two sides)
     local want = panel.againW or 72
     panel.againFits = room >= math.min(want, 56)
@@ -1263,8 +1272,11 @@ Draw = function()
     if panel.stepButton then                        -- (it takes the mouse only while a planned step with a menu is shown)
         panel.stepButton:SetShown(planned and type(step) == "table" and (type(step.quest) == "number" or HasEntries(stepActions, step)))
     end
-    panel.moreShown = planned and HasEntries(panelActions, step)   -- (the panel's menu: only while following the plan and some entry is there)
+    panel.moreShown = HasEntries(panelActions, step, not planned)   -- (the panel's menu: some entry is there; another guide: those for any guide)
     panel.more:SetShown(panel.moreShown)
+    panel.plannerShown = ns:GuideUnlocked() == true                 -- (the route planner's own window)
+    panel.planner:SetShown(panel.plannerShown)
+    if panel.ridingButton then panel.ridingButton:SetShown(texts.riding ~= nil) end   -- (the riding line: a click saves for it)
     local nowText
     if step then
         local kind = KindOf(step)
@@ -1292,7 +1304,7 @@ Draw = function()
     panel.bar:SetValue(math.min(at - 1, #steps))
     panel.bar:SetShown(not planned)                 -- (a plan starts again at 1 with each replan: its bar would never move on)
     -- (placed again only when something that moves a line changed: the width, the lettering, a text, a line shown)
-    local sig = { PanelWidth(), FontScale(), Big(), tostring(panel.moreShown), tostring(panel.againW), tostring(panel.listW), tostring(panel.againSetW) }
+    local sig = { PanelWidth(), FontScale(), Big(), tostring(panel.moreShown), tostring(panel.plannerShown), tostring(panel.againW), tostring(panel.listW), tostring(panel.againSetW) }
     for _, t in ipairs(tip) do sig[#sig + 1] = t end
     for _, key in ipairs(LINE_KEYS) do sig[#sig + 1] = texts[key] and key or "-" end
     sig = table.concat(sig, "\1")
@@ -1425,16 +1437,31 @@ function ns:GuideShowPanel()
         panel.list = list
         panel.more = ns:CreateButton(panel, "...", 24, FOOTER_H, function()   -- (the panel's menu: GuideRegisterAction("panel", ...))
             local st = State()
-            local guide = st and Planned(st) and ns:GuideGet(st.name)
-            ns:GuideMenu(PanelEntries(guide and guide.steps[st.at or 1] or nil))
+            local planned = st and Planned(st)
+            local guide = planned and ns:GuideGet(st.name)
+            ns:GuideMenu(PanelEntries(guide and guide.steps[st.at or 1] or nil, not planned))   -- (another guide: the entries for any guide)
         end)
         panel.more:SetPoint("RIGHT", list, "LEFT", -4, 0)
         panel.more:Hide()
+        panel.planner = ns:CreateButton(panel, "Planner", 44, FOOTER_H, function() ns:PlannerOpen() end)   -- (the planner's own window: only while unlocked)
+        panel.planner:SetPoint("RIGHT", panel.more, "LEFT", -4, 0)
+        panel.planner:Hide()
+        panel.ridingButton = CreateFrame("Button", nil, panel)    -- (over the riding line: ways to make gold, saving for riding)
+        panel.ridingButton:SetAllPoints(panel.riding)
+        panel.ridingButton:SetFrameLevel((tonumber(panel:GetFrameLevel()) or 1) + 3)
+        panel.ridingButton:SetScript("OnClick", function() ns:GoldOpen({ goalName = "mount" }) end)
+        panel.ridingButton:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_TOP")
+            GameTooltip:AddLine(ns:Tr("Save for riding: ways to make gold"), 1, 1, 1)
+            GameTooltip:Show()
+        end)
+        panel.ridingButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        panel.ridingButton:Hide()
         panel.againW = FitButton(panel.again, 72)
         panel.listW = FitButton(list, 64)
         FitButton(panel.talentButton, 56)
         local function NextTip() return ns.GuideNextSkips() and "Skip this step" or "Tick this step off and move on" end
-        for _, def in ipairs({ { back, "Back one step" }, { skip, NextTip }, { list, "Your guides: follow another, record, write or paste one" }, { panel.talentButton, "Open your talent builds" }, { panel.again, "Plan the route again from where you are now" } }) do
+        for _, def in ipairs({ { back, "Back one step" }, { skip, NextTip }, { list, "Your guides: follow another, record, write or paste one" }, { panel.planner, "Your route planner: the plan and its settings" }, { panel.talentButton, "Open your talent builds" }, { panel.again, "Plan the route again from where you are now" } }) do
             def[1]:HookScript("OnEnter", function(self)
                 GameTooltip:SetOwner(self, "ANCHOR_TOP")
                 GameTooltip:AddLine(ns:Tr(type(def[2]) == "function" and def[2]() or def[2]), 1, 1, 1)

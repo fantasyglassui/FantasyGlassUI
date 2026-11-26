@@ -555,12 +555,9 @@ local function ZoneName(map)
     if Secret(name) or type(name) ~= "string" then return nil end
     return name
 end
-function ns.GoldGo(idea)
-    if type(idea) ~= "table" then return false end
-    if InFight() then ns:Print("Not during a fight."); return false end
-    if type(ns.GoldTravel) == "function" then ns.GoldTravel(idea); return "travel" end
-    if type(idea.go) == "function" then idea.go(idea); return "travel" end
-    ns:Print("Going there needs the planner's travel, which is not in yet. Here are the steps.")
+-- An idea's steps in a list window (when there is no way to go there): the window.
+function ns.GoldStepsList(idea)
+    if type(idea) ~= "table" then return nil end
     local lines = {}
     for i, step in ipairs(type(idea.steps) == "table" and idea.steps or {}) do
         if type(step) == "table" and type(step.text) == "string" then
@@ -570,7 +567,16 @@ function ns.GoldGo(idea)
             lines[#lines + 1] = { left = format("%d. %s", i, step.text), right = table.concat(right, "  ") }
         end
     end
-    ns:ShowList("GoldSteps", type(idea.title) == "string" and idea.title or ns:Tr("Go"), lines, nil, nil, nil, { rawTitle = true })
+    return ns:ShowList("GoldSteps", type(idea.title) == "string" and idea.title or ns:Tr("Go"), lines, nil, nil, nil, { rawTitle = true })
+end
+function ns.GoldGo(idea)
+    if type(idea) ~= "table" then return false end
+    if InFight() then ns:Print("Not during a fight."); return false end
+    if type(ns.GoldTravel) ~= "function" and ns.LoadPlanner then pcall(ns.LoadPlanner, ns) end   -- (the travel is the planner's: its folder loads first)
+    if type(ns.GoldTravel) == "function" then ns.GoldTravel(idea); return "travel" end
+    if type(idea.go) == "function" then idea.go(idea); return "travel" end
+    ns:Print("Going there needs the planner's travel, which is not in yet. Here are the steps.")
+    ns.GoldStepsList(idea)
     return "list"
 end
 
@@ -974,9 +980,15 @@ local function Build()
     return f
 end
 
--- Open the window (nil while the guide is locked) and collect.
-function ns:GoldOpen()
+-- Open the window (nil while the guide is locked) and collect. opts.goalName ("mount" or "epic"): that named goal,
+-- at what it costs this character, is set first (the riding line's "Save for riding").
+function ns:GoldOpen(opts)
     if not Unlocked() then return nil end
+    local goalName = type(opts) == "table" and opts.goalName or nil
+    if goalName == "mount" or goalName == "epic" then
+        local copper = ns.GoldGoalAmount(goalName)
+        if copper then ns.GoldSetGoal(copper, goalName) end
+    end
     Build()
     Shown(W, true)
     ns.goldOpens = (ns.goldOpens or 0) + 1

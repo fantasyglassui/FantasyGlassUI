@@ -9414,6 +9414,10 @@ try("folders: nothing loads while locked", function()
     rawset(env.C_AddOns, "LoadAddOn", keep.load)
     if not ok then error(err, 0) end
 end)
+-- folders tests unloaded A (planner recorders): begin
+-- folders tests unloaded A (planner recorders): end
+-- folders tests unloaded B (gold recorders): begin
+-- folders tests unloaded B (gold recorders): end
 try("folders: load for the tests", function()
     -- (the fixture the tests after this rely on: both folders loaded, as an unlocked player has them once used)
     local keep = { unlocked = ns.GuideUnlocked, load = rawget(env.C_AddOns, "LoadAddOn"), resting = env.IsResting, afk = env.UnitIsAFK }
@@ -22613,10 +22617,22 @@ try("gold seams: the window, the panel, hidden while locked", function()
         ns.root.guides, ns.root.guideState = nil, nil
         ns:GuideSave(ns.GuideParse("guide: Gold test\nnote Sell and repair\n"))
         ns:GuideFollow("Gold test")
-        ns:GuideShowPanel()
-        local entry
-        for _, e in ipairs(ns.GuidePanelEntries({ kind = "note", text = "Sell and repair" })) do if e[1] == "Ways to make gold" then entry = e end end
+        local gp = ns:GuideShowPanel()
+        -- (as a player does: a written guide, the "..." shown, clicked, and the entry picked from its menu)
+        local moreOn, menu
+        rawset(gp.more, "SetShown", function(_, v) moreOn = v end)
+        rawset(gp, "layoutSig", nil)
+        ns:GuideRedraw()
+        rawset(gp.more, "SetShown", nil)
+        if moreOn ~= true then error("a written guide, unlocked: the panel's \"...\" is shown") end
+        local realMenu = ns.GuideMenu
+        ns.GuideMenu = function(_, entries) menu = entries end
+        Click(gp.more)
+        ns.GuideMenu = realMenu
+        local entry, others = nil, 0
+        for _, e in ipairs(menu or {}) do if e[1] == "Ways to make gold" then entry = e else others = others + 1 end end
         if not entry then error("the guide panel's menu has Ways to make gold") end
+        if others ~= 0 then error("a written guide: only the entries for any guide (" .. others .. " more)") end
         entry[2]()
         if ns.goldOpens ~= 2 then error("the panel's entry opens the window") end
         env.SlashCmdList["FANTASYGLASSUI"]("guide gold")
@@ -23969,8 +23985,10 @@ try("gold together: one window from every source", function()
         seen = ns.root.goldNodesSeen, planner = ns.root.plannerNodesSeen, zones = ns.root.farmZones, runs = ns.root.runs, book = ns.root.lootBook,
         inv = ns.root.inventory, map = env.C_Map, loaded = env.C_AddOns.IsAddOnLoaded, count = env.C_Item.GetItemCount,
         time = rawget(env, "time"), merchant = rawget(env, "MerchantFrame"), profs = rawget(env, "GetProfessions"), ahf = rawget(env, "AuctionHouseFrame"),
-        tip = rawget(env, "GameTooltip"), money = env.GetMoney, ctrl = env.IsControlKeyDown, zone = env.GetRealZoneText, sources = nil }
+        tip = rawget(env, "GameTooltip"), money = env.GetMoney, ctrl = env.IsControlKeyDown, zone = env.GetRealZoneText, sources = nil,
+        repair = ns.db.autoRepair }
     local ok, err = pcall(function()
+        ns.db.autoRepair = false            -- (the harness hands every event to every handler, and this test has no gold: no repair)
         keep.sources = ns.GoldSources()
         for _, key in ipairs({ "sell", "vflip", "farm", "dungeon", "gather", "craft", "auction" }) do
             if type(keep.sources[key]) ~= "function" then error("the " .. key .. " source is registered") end
@@ -24182,7 +24200,7 @@ try("gold together: one window from every source", function()
     ns.root.inventory, env.C_Map, env.C_AddOns.IsAddOnLoaded, env.C_Item.GetItemCount = keep.inv, keep.map, keep.loaded, keep.count
     rawset(env, "time", keep.time)
     env.MerchantFrame, env.GetProfessions, env.AuctionHouseFrame, env.GameTooltip = keep.merchant, keep.profs, keep.ahf, keep.tip
-    env.GetMoney, env.IsControlKeyDown, env.GetRealZoneText = keep.money, keep.ctrl, keep.zone
+    env.GetMoney, env.IsControlKeyDown, env.GetRealZoneText, ns.db.autoRepair = keep.money, keep.ctrl, keep.zone, keep.repair
     if ns.goldWindow and ns.goldWindow.goalBox then rawset(ns.goldWindow.goalBox, "GetText", nil) end
     if ns.goldTest then ns.goldTest.Reset() end
     ns.goldDropped, ns.goldOpens = keep.dropped, keep.opens
@@ -24369,6 +24387,223 @@ try("folders 0: one branch, one node memory", function()
     while ns.GoldBusy and ns.GoldBusy() and n < 2000 do ns.GoldRunSlice(); n = n + 1 end
     if not ok then error(err, 0) end
 end)
+-- folders tests seams: begin
+try("folders: seams", function()
+    local keep = { unlocked = ns.GuideUnlocked, open = ns.PlannerOpen, gold = ns.GoldOpen, state = ns.root.guideState, guides = ns.root.guides,
+        on = ns.db.questGuide, print = ns.PrintRaw, level = env.UnitLevel, money = env.GetMoney, class = env.UnitClass, known = ns.PlannerRidingKnown,
+        mount = ns.db.plannerMount, chars = ns.root.goldChars, world = ns.PlannerWorldPos, travel = ns.GoldTravel, load = ns.LoadPlanner,
+        menu = ns.menuButton, hidden = ns.HiddenCommand }
+    local ok, err = pcall(function()
+        local function Handler(obj, name) for i = #handlers, 1, -1 do local h = handlers[i]; if h.self == obj and h.name == name then return h.fn end end end
+        local function Click(b, what) local f = Handler(b, "OnClick"); if not f then error("nothing to click: " .. what) end; f(b, "LeftButton") end
+        local opens, golds = 0, {}
+        ns.PlannerOpen = function() opens = opens + 1; return true end
+        ns.GoldOpen = function(_, opts) golds[#golds + 1] = opts or false; return true end
+        ns.db.questGuide = true
+        ns.root.guides = {}
+        ns.root.guideState = { [ns:CharKey()] = nil }
+        -- locked: no Planner button, a palette with no extras, /fgui plan as today
+        ns.GuideUnlocked = function() return false end
+        if ns.toolCommands.plan ~= nil then error("/fgui plan is no tool command") end
+        local said = {}
+        ns.PrintRaw = function(_, t) said[#said + 1] = tostring(t) end
+        env.SlashCmdList["FANTASYGLASSUI"]("plan")
+        local lockedSays = table.concat(said, "\n")
+        said = {}
+        ns.HiddenCommand = nil
+        env.SlashCmdList["FANTASYGLASSUI"]("plan")
+        ns.HiddenCommand = keep.hidden
+        if lockedSays ~= table.concat(said, "\n") or lockedSays == "" or opens ~= 0 then error("locked: /fgui plan says what it always said: " .. lockedSays) end
+        local function Palette()
+            local p = ns.toolPalette
+            if not p then ns:ToggleToolsMenu(); p = ns.toolPalette; ns:ToggleToolsMenu() end
+            local height, heading = nil, nil
+            local shown = {}
+            rawset(p, "SetHeight", function(_, h) height = h end)
+            rawset(p.extrasHeading, "SetShown", function(_, v) heading = v end)
+            for key, b in pairs(p.extraButtons or {}) do rawset(b, "SetShown", function(_, v) shown[key] = v end) end
+            p.open = false
+            ns:ToggleToolsMenu()
+            ns:ToggleToolsMenu()
+            rawset(p, "SetHeight", nil); rawset(p.extrasHeading, "SetShown", nil)
+            for _, b in pairs(p.extraButtons or {}) do rawset(b, "SetShown", nil) end
+            return p, height, heading, shown
+        end
+        local p, height, heading, shown = Palette()
+        if #p.buttons ~= #ns.TOOL_MENU then error("the palette's own buttons") end
+        if height ~= p.baseHeight or heading ~= false or shown.planner ~= false or shown.gold ~= false then
+            error("locked: the palette as with no extras: " .. tostring(height) .. " " .. tostring(p.baseHeight) .. " " .. tostring(heading)) end
+        -- unlocked: the panel's Planner button, the Tools extras, /fgui plan
+        ns.GuideUnlocked = function() return true end
+        ns.root.guideState = {}
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "Somewhere" }, { kind = "note", text = "then" } } }, { logFits = false })
+        ns:PlannerStop()
+        local panel = ns:GuideShowPanel()
+        local plannerOn, at
+        rawset(panel.planner, "SetShown", function(_, v) plannerOn = v end)
+        rawset(panel.planner, "SetPoint", function(_, ...) at = { ... } end)
+        rawset(panel, "layoutSig", nil)
+        ns:GuideRedraw()
+        rawset(panel.planner, "SetShown", nil); rawset(panel.planner, "SetPoint", nil)
+        if plannerOn ~= true then error("unlocked: the panel's Planner button is shown") end
+        if not (at and at[1] == "RIGHT" and (at[2] == panel.more or at[2] == panel.list) and at[3] == "LEFT" and at[4] == -4 and at[5] == 0) then
+            error("the Planner button sits left of the panel's menu button") end
+        Click(panel.planner, "panel.planner")
+        if opens ~= 1 then error("its click opens the planner") end
+        p, height, heading, shown = Palette()
+        if heading ~= true or shown.planner ~= true or shown.gold ~= true or not (height and height > p.baseHeight) then error("unlocked: the Guide heading and two extras") end
+        Click(p.extraButtons.planner, "p.extraButtons.planner")
+        if opens ~= 2 then error("the Tools menu's Planner opens it") end
+        Click(p.extraButtons.gold, "p.extraButtons.gold")
+        if #golds ~= 1 then error("the Tools menu's Ways to make gold opens gold") end
+        env.SlashCmdList["FANTASYGLASSUI"]("plan")
+        env.SlashCmdList["FANTASYGLASSUI"]("plan something")
+        if opens ~= 4 then error("/fgui plan opens the planner: " .. opens) end
+        -- the riding line: a Warrior at level 40 with 30g; its click saves for riding
+        env.UnitLevel = function() return 40 end
+        env.GetMoney = function() return 30 * 10000 end
+        env.UnitClass = function() return "Warrior", "WARRIOR" end
+        ns.PlannerRidingKnown = function() return false end
+        ns.db.plannerMount = true
+        if ns.GuideForget then ns.GuideForget() end
+        local ridingOn
+        rawset(panel.ridingButton, "SetShown", function(_, v) ridingOn = v end)
+        ns:GuideRedraw()
+        rawset(panel.ridingButton, "SetShown", nil)
+        if ridingOn ~= true then error("the riding line has its button") end
+        golds = {}
+        Click(panel.ridingButton, "panel.ridingButton")
+        if #golds ~= 1 or type(golds[1]) ~= "table" or golds[1].goalName ~= "mount" then error("its click: ways to make gold, saving for riding") end
+        -- GoldOpen with a named goal: what it costs this character
+        ns.GoldOpen = keep.gold
+        ns.root.goldChars = {}
+        ns:GoldOpen({ goalName = "mount" })
+        local rec = ns.root.goldChars[ns:CharKey()]
+        if not (rec and rec.goal == 1200000 and rec.goalName == "mount") then error("a Warrior's riding goal: " .. tostring(rec and rec.goal)) end
+        env.UnitClass = function() return "Paladin", "PALADIN" end
+        ns:GoldOpen({ goalName = "mount" })
+        if rec.goal ~= 1000000 then error("a Paladin's riding goal: " .. tostring(rec.goal)) end
+        if ns.goldWindow then ns.goldWindow.suiGoldOn = false; ns.goldWindow:Hide() end
+        -- the trip exports: a known flight, as the travel test's
+        keep.map, keep.vec = env.C_Map, rawget(env, "CreateVector2D")
+        local cm = {}
+        for k, v in pairs(keep.map) do cm[k] = v end
+        cm.GetWorldPosFromMapPos = function(map, v)          -- (the travel test's two maps, side by side)
+            local x, y = v.x * 1000, v.y * 1000
+            if map == 1 then return 0, { x = x, y = y } end
+            if map == 2 then return 0, { x = x + 3000, y = y } end
+        end
+        env.C_Map = cm
+        env.CreateVector2D = function(x, y) return { x = x, y = y } end
+        local ctx = { speed = 7, faction = "Alliance", crossings = {}, here = { map = 1, x = 10, y = 10 },
+            flights = { { node = 1, map = 1, x = 12, y = 10, known = true, name = "One" }, { node = 2, map = 2, x = 50, y = 50, known = true, name = "Two" } },
+            flightTime = function() return 60 end }
+        local state, steps = ns.PlannerTripState(ctx), {}
+        local secs = ns.PlannerTrip(state, { map = 2, x = 50, y = 50 }, steps, false)
+        local _, legs = ns.PlannerTravel(ctx.here, { map = 2, x = 50, y = 50 }, ctx)
+        local flown = false
+        for _, s in ipairs(steps) do if s.kind == "fly" and s.node == 2 then flown = true end end
+        if type(secs) ~= "number" or not flown or legs[2] == nil or legs[2].kind ~= "fly" then
+            local ks, ls = {}, {}
+            for _, x in ipairs(steps) do ks[#ks + 1] = tostring(x.kind) .. ":" .. tostring(x.node) end
+            for _, x in ipairs(legs or {}) do ls[#ls + 1] = tostring(x.kind) .. ":" .. tostring(x.node) end
+            error("the trip flies the known flight, as the route would: " .. tostring(secs) .. " | " .. table.concat(ks, ",") .. " | " .. table.concat(ls, ","))
+        end
+        if state.pos.map ~= 2 then error("the trip ends there") end
+        local before = #steps
+        if ns.PlannerTrip(state, { map = 9, x = 1, y = 1 }, steps, false) ~= nil or #steps ~= before then error("no way there: nil, nothing added") end
+        -- Go loads the planner first, for its travel
+        ns.GoldTravel = nil
+        local loaded = 0
+        ns.LoadPlanner = function() loaded = loaded + 1; ns.GoldTravel = function() end; return true end
+        local r = ns.GoldGo({ id = "x", title = "There", steps = { { text = "Go" } } })
+        if r ~= "travel" or loaded ~= 1 then error("Go: the planner's travel, loaded first: " .. tostring(r)) end
+        if type(ns.GoldStepsList) ~= "function" then error("the steps list is exported") end
+    end)
+    ns.GuideUnlocked, ns.PlannerOpen, ns.GoldOpen, ns.root.guideState, ns.root.guides = keep.unlocked, keep.open, keep.gold, keep.state, keep.guides
+    ns.db.questGuide, ns.PrintRaw, env.UnitLevel, env.GetMoney, env.UnitClass, ns.PlannerRidingKnown = keep.on, keep.print, keep.level, keep.money, keep.class, keep.known
+    ns.db.plannerMount, ns.root.goldChars, ns.PlannerWorldPos, ns.GoldTravel, ns.LoadPlanner, ns.HiddenCommand = keep.mount, keep.chars, keep.world, keep.travel, keep.load, keep.hidden
+    if keep.map then env.C_Map = keep.map; rawset(env, "CreateVector2D", keep.vec) end
+    if ns.toolPalette then ns.toolPalette:Hide(); ns.toolPalette.open = false end
+    if ns.GuideForget then ns.GuideForget() end
+    if ns.PlannerStop then ns:PlannerStop() end
+    if not ok then error(err, 0) end
+end)
+try("folders: the Task 1 review's minors", function()
+    local keep = { unlocked = ns.GuideUnlocked, here = ns.GuideHere, planner = ns.root.plannerNodesSeen, seen = ns.root.goldNodesSeen,
+        cap = ns.PLANNER_NODE_CAP, gather = ns.db.plannerGather }
+    local ok, err = pcall(function()
+        local function Settle() local n = 0; while ns.GoldBusy() and n < 5000 do ns.GoldRunSlice(); n = n + 1 end end
+        ns.GuideUnlocked = function() return true end
+        local function Node(name, x, y, sk) return { name = name, x = x, y = y, skill = sk or 182 } end
+        -- one cap, the planner's, read by the fold too
+        if ns.PLANNER_NODE_CAP ~= 300 then error("ns.PLANNER_NODE_CAP is the planner's 300") end
+        ns.PLANNER_NODE_CAP = 2
+        ns.root.plannerNodesSeen = { [1429] = { Node("Copper Vein", 1, 1, 186), Node("Copper Vein", 2, 2, 186) } }
+        ns.root.goldNodesSeen = { [1429] = { Node("Silverleaf", 40, 40) } }
+        ns.GoldFoldNodes(); Settle()
+        ns.PLANNER_NODE_CAP = keep.cap
+        if #ns.root.plannerNodesSeen[1429] ~= 2 or ns.root.goldNodesSeen ~= nil then error("the fold reads ns.PLANNER_NODE_CAP: a full map gains nothing") end
+        -- every map together at the cap: nothing is added, nothing pushed out
+        local all, total = {}, 0
+        for m = 1, 14 do
+            local l = {}
+            for i = 1, 286 do l[i] = Node("Far", i / 10, m, 186) end
+            all[2000 + m] = l
+            total = total + #l
+        end
+        all[1429] = {}
+        ns.root.plannerNodesSeen = all
+        ns.root.goldNodesSeen = { [1429] = { Node("Silverleaf", 40, 40) } }
+        if total < ns.PLANNER_NODES_TOTAL then error("the setup is at the all-maps cap") end
+        ns.GoldFoldNodes(); Settle()
+        local after = 0
+        for _, l in pairs(ns.root.plannerNodesSeen) do after = after + #l end
+        if #all[1429] ~= 0 or after ~= total or #all[2001] ~= 286 or ns.root.goldNodesSeen ~= nil then error("all maps at the cap: the fold adds and evicts nothing (" .. after .. ")") end
+        -- the one SENT recorder, where the game has no unit events: every unit's SENT, and the handler keeps the player's
+        local reg, script = {}, nil
+        local fakeCF = function(kind, ...)
+            local f = env.CreateFrame(kind, ...)
+            rawset(f, "RegisterUnitEvent", function() error("no unit events here") end)
+            rawset(f, "RegisterEvent", function(_, e) reg[#reg + 1] = e end)
+            rawset(f, "SetScript", function(_, name, fn) if name == "OnEvent" then script = fn end end)
+            return f
+        end
+        local proxy = setmetatable({}, { __index = ns })
+        local penv = setmetatable({ CreateFrame = fakeCF }, { __index = env })
+        penv._G = setmetatable({ FantasyGlassUI = proxy }, { __index = penv })
+        local fn = load(sources["planner/PlannerPath.lua"], "@planner/PlannerPath.lua", "t", penv)
+        fn()
+        local sent = false
+        for _, e in ipairs(reg) do if e == "UNIT_SPELLCAST_SENT" then sent = true end end
+        if not sent or type(script) ~= "function" then error("no unit events: UNIT_SPELLCAST_SENT registered plainly") end
+        proxy.GuideHere = function() return 1429, 60, 60 end
+        proxy.PlannerWorldPos = function(_, x, y) return 0, x * 100, y * 100 end
+        ns.db.plannerGather = true
+        ns.root.plannerNodesSeen = {}
+        script(nil, "UNIT_SPELLCAST_SENT", "party1", "Peacebloom", nil, 2366)
+        if ns.root.plannerNodesSeen[1429] then error("another unit's cast records nothing") end
+        script(nil, "UNIT_SPELLCAST_SENT", "player", "Peacebloom", nil, 2366)
+        local l = ns.root.plannerNodesSeen[1429]
+        if not (l and #l == 1) then error("the player's cast records its node") end
+    end)
+    ns.GuideUnlocked, ns.GuideHere, ns.root.plannerNodesSeen, ns.root.goldNodesSeen = keep.unlocked, keep.here, keep.planner, keep.seen
+    ns.PLANNER_NODE_CAP, ns.db.plannerGather = keep.cap, keep.gather
+    local n = 0
+    while ns.GoldBusy and ns.GoldBusy() and n < 2000 do ns.GoldRunSlice(); n = n + 1 end
+    if not ok then error(err, 0) end
+end)
+-- folders tests seams: end
+-- folders tests A (planner recorders): begin
+-- folders tests A (planner recorders): end
+-- folders tests B (gold recorders): begin
+-- folders tests B (gold recorders): end
+-- folders tests C (window): begin
+-- folders tests C (window): end
+-- folders tests D (go): begin
+-- folders tests D (go): end
+-- folders tests together: begin
+-- folders tests together: end
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()

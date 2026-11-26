@@ -21,6 +21,7 @@ ns.PLANNER_GATHER_SECONDS = 20          -- a node only when it adds at most this
 ns.PLANNER_GATHER_MAX = 5               -- per plan
 ns.PLANNER_NODE_YARDS = 10              -- two gatherings this close are one node
 local NODE_CAP = 300                    -- nodes kept per map
+ns.PLANNER_NODE_CAP = NODE_CAP         -- (the gold advisor's node fold reads it: one number)
 local SAMPLE_CAP = 200                  -- samples along one leg
 local APART = 2                         -- explore spots are this many sample spacings apart, at least
 local REACHED_CAP = 200                 -- reached explore spots kept per map
@@ -176,7 +177,8 @@ end
 -- what it gives. A plain handler first: while locked it returns at once, so nothing is timed by /fgui perf.
 do
     local ev = CreateFrame("Frame")
-    pcall(ev.RegisterUnitEvent, ev, "UNIT_SPELLCAST_SENT", "player")
+    local unitOk = type(ev.RegisterUnitEvent) == "function" and pcall(ev.RegisterUnitEvent, ev, "UNIT_SPELLCAST_SENT", "player")
+    if not unitOk then pcall(ev.RegisterEvent, ev, "UNIT_SPELLCAST_SENT") end   -- (no unit events: every unit's, and the handler keeps the player's)
     local guarded = ns:Guard("Planner gather", function(_, _, unit, target, _, spellID)
         if ns:IsSecret(unit) or unit ~= "player" then return end
         local skill = ns.PlannerGatherSkill(spellID)

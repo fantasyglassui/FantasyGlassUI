@@ -21,6 +21,9 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["Planner"] = "Planer",
+    ["Your route planner: the plan and its settings"] = "Dein Routenplaner: der Plan und seine Einstellungen",
+    ["Save for riding: ways to make gold"] = "Für das Reiten sparen: Wege zu Gold",
     ["The planner could not start: /fgui check lists why."] = "Der Planer konnte nicht starten: /fgui check zeigt, warum.",
     ["Ways to make gold could not start: /fgui check lists why."] = "Wege zu Gold konnte nicht starten: /fgui check zeigt, warum.",
     ["The planner could not be opened (%s). It is in a folder, FantasyGlassUI_Planner, which must sit beside FantasyGlassUI in Interface/AddOns and be enabled."] = "Der Planer konnte nicht geöffnet werden (%s). Er liegt in einem Ordner, FantasyGlassUI_Planner, der neben FantasyGlassUI in Interface/AddOns liegen und aktiviert sein muss.",
@@ -3815,6 +3818,9 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["Planner"] = "Plan",
+    ["Your route planner: the plan and its settings"] = "Ton planificateur d'itinéraire : le plan et ses réglages",
+    ["Save for riding: ways to make gold"] = "Économiser pour la monte : gagner de l'or",
     ["The planner could not start: /fgui check lists why."] = "Le planificateur n'a pas pu démarrer : /fgui check indique pourquoi.",
     ["Ways to make gold could not start: /fgui check lists why."] = "Gagner de l'or n'a pas pu démarrer : /fgui check indique pourquoi.",
     ["The planner could not be opened (%s). It is in a folder, FantasyGlassUI_Planner, which must sit beside FantasyGlassUI in Interface/AddOns and be enabled."] = "Le planificateur n'a pas pu être ouvert (%s). Il se trouve dans un dossier, FantasyGlassUI_Planner, qui doit être à côté de FantasyGlassUI dans Interface/AddOns et activé.",
@@ -7609,6 +7615,9 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["Planner"] = "Plan",
+    ["Your route planner: the plan and its settings"] = "Tu planificador de ruta: el plan y sus ajustes",
+    ["Save for riding: ways to make gold"] = "Ahorrar para la equitación: formas de ganar oro",
     ["The planner could not start: /fgui check lists why."] = "El planificador no pudo iniciarse: /fgui check indica por qué.",
     ["Ways to make gold could not start: /fgui check lists why."] = "Formas de ganar oro no pudo iniciarse: /fgui check indica por qué.",
     ["The planner could not be opened (%s). It is in a folder, FantasyGlassUI_Planner, which must sit beside FantasyGlassUI in Interface/AddOns and be enabled."] = "No se pudo abrir el planificador (%s). Está en una carpeta, FantasyGlassUI_Planner, que debe estar junto a FantasyGlassUI en Interface/AddOns y activada.",
@@ -11406,6 +11415,9 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["Planner"] = "План",
+    ["Your route planner: the plan and its settings"] = "Ваш планировщик маршрута: план и его настройки",
+    ["Save for riding: ways to make gold"] = "Накопить на верховую езду: как заработать золото",
     ["The planner could not start: /fgui check lists why."] = "Планировщик не смог запуститься: /fgui check покажет почему.",
     ["Ways to make gold could not start: /fgui check lists why."] = "«Как заработать золото» не удалось запустить: /fgui check покажет почему.",
     ["The planner could not be opened (%s). It is in a folder, FantasyGlassUI_Planner, which must sit beside FantasyGlassUI in Interface/AddOns and be enabled."] = "Не удалось открыть планировщик (%s). Он находится в папке FantasyGlassUI_Planner, которая должна лежать рядом с FantasyGlassUI в Interface/AddOns и быть включена.",
@@ -15200,6 +15212,9 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["Planner"] = "Plano",
+    ["Your route planner: the plan and its settings"] = "Seu planejador de rota: o plano e suas configurações",
+    ["Save for riding: ways to make gold"] = "Economizar para montaria: formas de ganhar ouro",
     ["The planner could not start: /fgui check lists why."] = "O planejador não pôde iniciar: /fgui check mostra o motivo.",
     ["Ways to make gold could not start: /fgui check lists why."] = "Formas de ganhar ouro não pôde iniciar: /fgui check mostra o motivo.",
     ["The planner could not be opened (%s). It is in a folder, FantasyGlassUI_Planner, which must sit beside FantasyGlassUI in Interface/AddOns and be enabled."] = "Não foi possível abrir o planejador (%s). Ele fica em uma pasta, FantasyGlassUI_Planner, que deve estar ao lado de FantasyGlassUI em Interface/AddOns e ativada.",
@@ -18994,6 +19009,9 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["Planner"] = "Piano",
+    ["Your route planner: the plan and its settings"] = "Il tuo pianificatore di percorso: il piano e le sue impostazioni",
+    ["Save for riding: ways to make gold"] = "Risparmiare per la cavalcatura: modi per fare oro",
     ["The planner could not start: /fgui check lists why."] = "Il pianificatore non è potuto partire: /fgui check indica il motivo.",
     ["Ways to make gold could not start: /fgui check lists why."] = "Modi per fare oro non è potuto partire: /fgui check indica il motivo.",
     ["The planner could not be opened (%s). It is in a folder, FantasyGlassUI_Planner, which must sit beside FantasyGlassUI in Interface/AddOns and be enabled."] = "Impossibile aprire il pianificatore (%s). Si trova in una cartella, FantasyGlassUI_Planner, che deve stare accanto a FantasyGlassUI in Interface/AddOns ed essere attivata.",
@@ -22788,6 +22806,9 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["Planner"] = "계획",
+    ["Your route planner: the plan and its settings"] = "경로 플래너: 계획과 그 설정",
+    ["Save for riding: ways to make gold"] = "탈것 타기를 위해 모으기: 골드 버는 방법",
     ["The planner could not start: /fgui check lists why."] = "플래너를 시작할 수 없습니다: /fgui check에서 이유를 볼 수 있습니다.",
     ["Ways to make gold could not start: /fgui check lists why."] = "골드 버는 방법을 시작할 수 없습니다: /fgui check에서 이유를 볼 수 있습니다.",
     ["The planner could not be opened (%s). It is in a folder, FantasyGlassUI_Planner, which must sit beside FantasyGlassUI in Interface/AddOns and be enabled."] = "플래너를 열 수 없습니다 (%s). 플래너는 FantasyGlassUI_Planner 폴더에 있으며, 이 폴더는 Interface/AddOns에서 FantasyGlassUI 옆에 있고 사용 설정되어 있어야 합니다.",
@@ -26585,6 +26606,9 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["Planner"] = "规划",
+    ["Your route planner: the plan and its settings"] = "你的路线规划器：计划及其设置",
+    ["Save for riding: ways to make gold"] = "为骑术攒钱：赚金方法",
     ["The planner could not start: /fgui check lists why."] = "规划器无法启动：/fgui check 会列出原因。",
     ["Ways to make gold could not start: /fgui check lists why."] = "赚金方法无法启动：/fgui check 会列出原因。",
     ["The planner could not be opened (%s). It is in a folder, FantasyGlassUI_Planner, which must sit beside FantasyGlassUI in Interface/AddOns and be enabled."] = "无法打开规划器（%s）。它位于 FantasyGlassUI_Planner 文件夹中，该文件夹必须放在 Interface/AddOns 中 FantasyGlassUI 旁边并已启用。",

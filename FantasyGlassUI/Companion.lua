@@ -34,7 +34,61 @@ ns.TOOL_MENU = {                                             -- (in groups: see 
 -- Where each group of the Tools menu starts, and its heading (the menu's buttons are in this order).
 ns.TOOL_MENU_GROUPS = { [1] = "Groups and raids", [11] = "Your characters", [23] = "Bags, gear and trade",
                         [32] = "People and notes", [37] = "The world", [40] = "The add-on itself" }
+-- Entries other files add at the end, under "Guide": { key, label, typed, fn, shown }. The same key replaces
+-- (in its place), fn nil removes. Each shows only while its shown() is true, so a locked player's palette is today's.
+local extras = {}
+function ns.RegisterToolExtra(key, label, typed, fn, shown)
+    if key == nil then return end
+    for i, e in ipairs(extras) do
+        if e.key == key then
+            if type(fn) == "function" then extras[i] = { key = key, label = label, typed = typed, fn = fn, shown = shown } else table.remove(extras, i) end
+            return
+        end
+    end
+    if type(fn) == "function" then extras[#extras + 1] = { key = key, label = label, typed = typed, fn = fn, shown = shown } end
+end
+for _, e in ipairs(ns.toolExtrasWaiting or {}) do ns.RegisterToolExtra(e[1], e[2], e[3], e[4], e[5]) end   -- (files loaded before this one)
+ns.toolExtrasWaiting = nil
 local palette
+-- The extras shown now, laid out under their heading; the palette as tall as what is shown.
+local function PlaceExtras()
+    local p = palette
+    if not p then return end
+    local COLS, BW, BH, HEAD = 4, 156, 22, 18
+    p.extraButtons = p.extraButtons or {}
+    local col, any = 0, false
+    local y = p.extrasY - HEAD
+    for _, e in ipairs(extras) do
+        local b = p.extraButtons[e.key]
+        if not b then                                            -- (made once, the first time it is there)
+            b = ns:CreateButton(p, e.label, BW, BH)
+            ns:ButtonTip(b, function() return "|cffffd100" .. tostring(e.typed or "") .. "|r" end)
+            if b.text then ns:Font(b.text, 11) end
+            p.extraButtons[e.key] = b
+        end
+        local fn = e.fn                                          -- (the entry as registered now: a key registered again acts anew)
+        b:SetScript("OnClick", function() p:Hide(); fn() end)
+        local on = true
+        if type(e.shown) == "function" then
+            local ok, v = pcall(e.shown)
+            on = ok and v == true
+        end
+        b:SetShown(on)
+        if on then
+            if col >= COLS then y = y - (BH + 2); col = 0 end
+            b:ClearAllPoints()
+            b:SetPoint("TOPLEFT", 8 + col * (BW + 4), y)
+            col, any = col + 1, true
+        end
+    end
+    for key, b in pairs(p.extraButtons) do                       -- (one removed since: hidden)
+        local still = false
+        for _, e in ipairs(extras) do if e.key == key then still = true end end
+        if not still then b:Hide() end
+    end
+    p.extrasHeading:SetShown(any)
+    p:SetHeight(any and (-(y - (BH + 2)) + 12) or p.baseHeight)
+end
 do
     local ev = CreateFrame("Frame")
     pcall(ev.RegisterEvent, ev, "PLAYER_REGEN_DISABLED")
@@ -44,6 +98,7 @@ function ns:ToggleToolsMenu(anchor)
     if InCombatLockdown() then ns:Print("Not during a fight."); return false end
     if palette then
         if palette.open then palette:Hide(); palette.open = false; return false end
+        PlaceExtras()
         palette:Show(); palette.open = true; return true
     end
     local COLS, BW, BH, HEAD = 4, 156, 22, 18            -- (four across keeps the panel on a small screen)
@@ -102,6 +157,14 @@ function ns:ToggleToolsMenu(anchor)
         if b.text then ns:Font(b.text, 11) end
         palette.buttons[i] = b
     end
+    palette.baseHeight = height
+    palette.extrasY = y - (BH + 2)                              -- (the extras: a new row under the last one, under "Guide")
+    palette.extrasHeading = ns:NewText(palette, 11, "LEFT")
+    palette.extrasHeading:SetPoint("TOPLEFT", 10, palette.extrasY - 3)
+    palette.extrasHeading:SetText(ns:Tr("Guide"))
+    ns:Paint(palette.extrasHeading, "SetTextColor", "dim")
+    palette.extrasHeading:Hide()
+    PlaceExtras()
     palette:ClearAllPoints()
     local a = anchor or ns.menuButton
     if a then palette:SetPoint("BOTTOMRIGHT", a, "TOPRIGHT", 0, 4) else palette:SetPoint("CENTER") end
