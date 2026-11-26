@@ -11400,6 +11400,23 @@ try("gold seams: the window, the panel, hidden while locked", function()
         fireEvent("BAG_UPDATE_DELAYED"); fireEvent("PLAYER_MONEY"); fireEvent("BAG_UPDATE_DELAYED")
         runTimers(); Settle()
         if calls ~= c1 + 1 then error("the changes are coalesced: " .. (calls - c1) .. " collections") end
+        -- an error while drawing is caught and noted, never handed to the game
+        local realRank, nOut, nErr, nPrinted = ns.GoldRank, #out, #ns.errors, #printed
+        ns:GoldRefresh()
+        local n2 = 0
+        while ns.GoldBusy() and n2 < 200 do ns.GoldRunSlice(); n2 = n2 + 1 end
+        ns.GoldRank = function() error("draw boom") end
+        local okT, errT = pcall(runTimers)
+        ns.GoldRank = realRank
+        local caught = false
+        for i = nErr + 1, #ns.errors do if tostring(ns.errors[i]):find("draw boom", 1, true) then caught = true end end
+        for i = nPrinted + 1, #printed do if tostring(printed[i]):find("draw boom", 1, true) then caught = true end end
+        local escaped = #out ~= nOut
+        for i = #out, nOut + 1, -1 do table.remove(out, i) end
+        for i = #ns.errors, nErr + 1, -1 do table.remove(ns.errors, i) end
+        for i = #printed, nPrinted + 1, -1 do table.remove(printed, i) end
+        if not okT or escaped or not caught then error("a drawing error is guarded: " .. tostring(okT) .. " " .. tostring(escaped) .. " " .. tostring(caught) .. " " .. tostring(n2) .. " " .. tostring(out[nOut + 1])) end
+        ns:GoldRefresh(); Settle()
         -- more than four one-offs: "%d more", and the rest in a list
         ns.GoldRegister("t:many", function(ctx, add)
             for i = 1, 4 do add(Idea({ id = "t:m" .. i, title = "M" .. i, oneOff = true, total = 1000 + i, minutes = 1 })) end

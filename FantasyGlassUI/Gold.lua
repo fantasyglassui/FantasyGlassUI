@@ -740,13 +740,17 @@ local function Draw()
     win.drawn.goal, win.drawn.bar, win.drawn.goalName, win.drawn.more = drawn.goal, drawn.bar, drawn.goalName, drawn.more
 end
 
-local function CollectWindow()
+-- (drawn on the next frame, guarded: an error is noted, never handed to the game)
+local DrawLater = ns:Guard("Gold", function() Draw() end)
+local CollectWindow
+local CollectLater = ns:Guard("Gold", function() CollectWindow() end)
+function CollectWindow()
     if not W then return end
     win.waiting = InFight()
     local queued = ns.GoldCollect(ns.GoldContext("window"), function(ideas)
         win.ideas, win.waiting = ideas, false                 -- (drawn on the next frame, outside the job's slice)
-        ns:After(0, Draw)
-        if win.again then win.again = false; ns:After(0, CollectWindow) end
+        ns:After(0, DrawLater)
+        if win.again then win.again = false; ns:After(0, CollectLater) end
     end)
     if not queued then win.again = true end
     Draw()
@@ -900,7 +904,7 @@ local function Build()
         if (event ~= "BAG_UPDATE_DELAYED" and event ~= "PLAYER_MONEY") or not f.suiGoldOn or W ~= f or not Unlocked() then return end
         win.gen = win.gen + 1
         local mine = win.gen
-        ns:After(2, function() if mine == win.gen and f.suiGoldOn and W == f then CollectWindow() end end)
+        ns:After(2, function() if mine == win.gen and f.suiGoldOn and W == f then CollectLater() end end)
     end)
     Start()
     return f
@@ -964,11 +968,14 @@ local function DrawPanel()
     P.footer:SetText(ns.PriceFreshText(ns.PriceHouse(), Ask(time)))
     panel.drawn = drawn
 end
-local function CollectPanel()
+local DrawPanelLater = ns:Guard("Gold", function() DrawPanel() end)
+local CollectPanel
+local CollectPanelLater = ns:Guard("Gold", function() CollectPanel() end)
+function CollectPanel()
     local queued = ns.GoldCollect(ns.GoldContext("auction"), function(ideas)
         panel.ideas = ideas                                    -- (drawn on the next frame, outside the job's slice)
-        ns:After(0, DrawPanel)
-        if panel.again then panel.again = false; ns:After(0, CollectPanel) end
+        ns:After(0, DrawPanelLater)
+        if panel.again then panel.again = false; ns:After(0, CollectPanelLater) end
     end)
     if not queued then panel.again = true; return end
     DrawPanel()
