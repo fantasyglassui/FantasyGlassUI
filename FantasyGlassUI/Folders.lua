@@ -184,14 +184,28 @@ function ns:LoadFolder(key, quiet)
     end
     ns.folderReady[key] = true
     RunLate(key)
+    -- (the game may load another folder with it, an optional dependency: every folder whose files all finished is
+    -- ready now, and does its late work at once, not at its first use)
+    for other, g in pairs(ns.FOLDERS) do
+        if not ns.folderReady[other] and not ns.folderBroken[other] and type(g) == "table" and type(g.files) == "table" and #g.files > 0 then
+            local all = true
+            for _, file in ipairs(g.files) do if not (done[other] and done[other][file]) then all = false end end
+            if all then ns.folderReady[other] = true; RunLate(other) end
+        end
+    end
     return true
 end
 function ns:LoadPlanner(quiet) return ns:LoadFolder("planner", quiet) end
 function ns:LoadGold(quiet) return ns:LoadFolder("gold", quiet) end
 
--- Stand-ins: each loads its folder and hands the call on (nil when the folder is not there).
+-- Stand-ins: each loads its folder and hands the call on (nil when the folder is not there). (FOLDER_STUBS is read by
+-- tests/folder_stubs.py, for forever_audit.py and the seam test: keep it one table of quoted names.)
+local FOLDER_STUBS = {
+    planner = { "PlannerStart", "PlannerOpen", "PlannerCatchUp" },
+    gold = { "GoldOpen", "GoldAuctionShow" },
+}
 ns.folderStubs = {}
-for key, names in pairs({ planner = { "PlannerStart", "PlannerOpen", "PlannerCatchUp" }, gold = { "GoldOpen", "GoldAuctionShow" } }) do
+for key, names in pairs(FOLDER_STUBS) do
     for _, name in ipairs(names) do
         local stub
         stub = function(self, ...)
@@ -222,6 +236,7 @@ end
 -- the launcher's tooltip line and Ctrl-click, the guide panel's "..." entry, /fgui guide gold, the
 -- auction house's panel.
 ------------------------------------------------------------------------------------------
+local ahWaiting = false                -- (the auction house opened in a fight, the gold folder not loaded yet)
 do
     local prevTip, prevClick = ns.LauncherTipExtra, ns.LauncherClickExtra
     function ns.LauncherTipExtra(tooltip)
@@ -246,8 +261,16 @@ do
     pcall(ev.RegisterEvent, ev, "AUCTION_HOUSE_SHOW")
     pcall(ev.RegisterEvent, ev, "AUCTION_HOUSE_CLOSED")
     -- (a plain handler: while locked it returns at once, so nothing named Gold is timed by /fgui perf)
-    local guarded
+    local guarded, ahOpen
     ev:SetScript("OnEvent", function(_, event)
+        if event == "AUCTION_HOUSE_SHOW" then ahOpen = true elseif event == "AUCTION_HOUSE_CLOSED" then ahOpen, ahWaiting = false, false end
+        if event == "PLAYER_REGEN_ENABLED" then                  -- (the auction house opened in a fight: loaded now, if it is still open)
+            pcall(ev.UnregisterEvent, ev, "PLAYER_REGEN_ENABLED")
+            local was = ahWaiting
+            ahWaiting = false
+            if was and ahOpen and Unlocked() and ns:LoadGold(true) then ns:GoldAuctionShow() end
+            return
+        end
         if event ~= "AUCTION_HOUSE_SHOW" and event ~= "AUCTION_HOUSE_CLOSED" then return end
         local p = ns.goldPanel
         if not Unlocked() then
@@ -256,7 +279,13 @@ do
         end
         guarded = guarded or ns:Guard("Gold", function(e)
             local panelNow = ns.goldPanel
-            if e == "AUCTION_HOUSE_SHOW" then ns:GoldAuctionShow()
+            if e == "AUCTION_HOUSE_SHOW" then
+                if ns.Yes(InCombatLockdown()) and not ns.folderReady.gold then   -- (an automatic load: after the fight, quietly)
+                    ahWaiting = true
+                    pcall(ev.RegisterEvent, ev, "PLAYER_REGEN_ENABLED")
+                    return
+                end
+                if ns:LoadGold(true) then ns:GoldAuctionShow() end
             elseif type(panelNow) == "table" then panelNow.suiGoldOn = false; panelNow:Hide() end
         end)
         guarded(event)
@@ -267,6 +296,21 @@ end
 -- The login load: following the planned guide (or a trip) means the planner is loaded, which every
 -- "if ns.Planner... then" in Guide.lua relies on. It runs behind the loading screen.
 ------------------------------------------------------------------------------------------
+local LoginLoad
+local function Following()
+    if not Unlocked() or not ns:GuideOn() then return false end
+    local st = ns.GuideState and ns.GuideState()
+    local name = type(st) == "table" and st.name or nil
+    return name ~= nil and (name == ns.GUIDE_PLANNED or name == ns.GUIDE_TRIP)
+end
+-- In a fight (a /reload in one): when it ends, the same checks again, then the load.
+function LoginLoad()
+    if ns.Yes(InCombatLockdown()) then
+        ns:AfterFight("Planner", function() if Following() then LoginLoad() end end)
+        return
+    end
+    if ns:LoadPlanner(true) and ns.PlannerReplan then ns:PlannerReplan("loading screen") end
+end
 do
     local ev = CreateFrame("Frame")
     pcall(ev.RegisterEvent, ev, "PLAYER_LOGIN")
@@ -275,7 +319,7 @@ do
         local st = ns.GuideState and ns.GuideState()
         local name = type(st) == "table" and st.name or nil
         if name == nil or not (name == ns.GUIDE_PLANNED or name == ns.GUIDE_TRIP) then return end
-        if ns:LoadPlanner(true) and ns.PlannerReplan then ns:PlannerReplan("loading screen") end
+        LoginLoad()
     end)
 end
 

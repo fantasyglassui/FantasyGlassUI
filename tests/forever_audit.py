@@ -168,10 +168,11 @@ for f in files:
     own_methods |= set(re.findall(r"(?:^|[\s{,])(\w+)\s*=\s*function", code[f], re.M))
     own_methods |= set(re.findall(r"(?:^|[\s{,])(\w+)\s*=\s*[\w.]+\s*[,}\n]", code[f], re.M))
 # Folders.lua's stand-ins (ns[name] = stub, for each name in one table): the add-on's own, before their folder defines them.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from folder_stubs import stub_names
 for f in files:
     if f.endswith("FantasyGlassUI/Folders.lua"):
-        m = re.search(r"for key, names in pairs\(\{(.*?)\}\) do", src[f], re.S)
-        if m: own_methods |= set(re.findall(r'"(\w+)"', m.group(1)))
+        own_methods |= stub_names(src[f])
 LIBRARY_METHODS = {"NewDataObject", "DataObjectIterator"}       # LibDataBroker's, when that add-on is there (anywhere in the add-on)
 FILE_METHODS = {                                                # other add-ons' methods, allowed only in the file that reads that add-on
     "FantasyGlassUI_Planner/PlannerSource.lua": {"GetQuestLogRewardXP", "GetUiMapIdByAreaId"},   # Questie's modules (QuestXP, ZoneDB)

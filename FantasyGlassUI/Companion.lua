@@ -47,6 +47,12 @@ function ns.RegisterToolExtra(key, label, typed, fn, shown)
     end
     if type(fn) == "function" then extras[#extras + 1] = { key = key, label = label, typed = typed, fn = fn, shown = shown } end
 end
+-- (the entries as registered: a copy, for the tests)
+function ns.ToolExtrasList()
+    local out = {}
+    for i, e in ipairs(extras) do out[i] = { key = e.key, label = e.label, typed = e.typed, fn = e.fn, shown = e.shown } end
+    return out
+end
 for _, e in ipairs(ns.toolExtrasWaiting or {}) do ns.RegisterToolExtra(e[1], e[2], e[3], e[4], e[5]) end   -- (files loaded before this one)
 ns.toolExtrasWaiting = nil
 local palette
@@ -59,21 +65,23 @@ local function PlaceExtras()
     local col, any = 0, false
     local y = p.extrasY - HEAD
     for _, e in ipairs(extras) do
-        local b = p.extraButtons[e.key]
-        if not b then                                            -- (made once, the first time it is there)
-            b = ns:CreateButton(p, e.label, BW, BH)
-            ns:ButtonTip(b, function() return "|cffffd100" .. tostring(e.typed or "") .. "|r" end)
-            if b.text then ns:Font(b.text, 11) end
-            p.extraButtons[e.key] = b
-        end
-        local fn = e.fn                                          -- (the entry as registered now: a key registered again acts anew)
-        b:SetScript("OnClick", function() p:Hide(); fn() end)
         local on = true
         if type(e.shown) == "function" then
             local ok, v = pcall(e.shown)
             on = ok and v == true
         end
-        b:SetShown(on)
+        local b = p.extraButtons[e.key]
+        if not b and on then                                     -- (made the first time it is shown: a hidden one is never made, nor its label read)
+            b = ns:CreateButton(p, e.label, BW, BH)
+            ns:ButtonTip(b, function() return "|cffffd100" .. tostring(e.typed or "") .. "|r" end)
+            if b.text then ns:Font(b.text, 11) end
+            p.extraButtons[e.key] = b
+        end
+        if b then
+            local fn = e.fn                                      -- (the entry as registered now: a key registered again acts anew)
+            b:SetScript("OnClick", function() p:Hide(); fn() end)
+            b:SetShown(on)
+        end
         if on then
             if col >= COLS then y = y - (BH + 2); col = 0 end
             b:ClearAllPoints()
@@ -85,6 +93,10 @@ local function PlaceExtras()
         local still = false
         for _, e in ipairs(extras) do if e.key == key then still = true end end
         if not still then b:Hide() end
+    end
+    if any and not p.extrasHeadingSet then                       -- (its word read the first time it is shown)
+        p.extrasHeadingSet = true
+        p.extrasHeading:SetText(ns:Tr("Guide"))
     end
     p.extrasHeading:SetShown(any)
     p:SetHeight(any and (-(y - (BH + 2)) + 12) or p.baseHeight)
@@ -161,7 +173,6 @@ function ns:ToggleToolsMenu(anchor)
     palette.extrasY = y - (BH + 2)                              -- (the extras: a new row under the last one, under "Guide")
     palette.extrasHeading = ns:NewText(palette, 11, "LEFT")
     palette.extrasHeading:SetPoint("TOPLEFT", 10, palette.extrasY - 3)
-    palette.extrasHeading:SetText(ns:Tr("Guide"))
     ns:Paint(palette.extrasHeading, "SetTextColor", "dim")
     palette.extrasHeading:Hide()
     PlaceExtras()

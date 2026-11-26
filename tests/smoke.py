@@ -9503,7 +9503,8 @@ try("folders: a folder that will not load", function()
     if not ok then error(err, 0) end
 end)
 try("folders: following the plan loads the planner at login", function()
-    local keep = { unlocked = ns.GuideUnlocked, load = ns.LoadFolder, replan = ns.PlannerReplan, state = ns.root.guideState, on = ns.db.questGuide }
+    local keep = { unlocked = ns.GuideUnlocked, load = ns.LoadFolder, replan = ns.PlannerReplan, state = ns.root.guideState, on = ns.db.questGuide,
+        combat = env.InCombatLockdown }
     local asked, replans = {}, {}
     local ok, err = pcall(function()
         ns.GuideUnlocked = function() return true end
@@ -9522,8 +9523,95 @@ try("folders: following the plan loads the planner at login", function()
         ns.root.guideState = { [ns:CharKey()] = { name = "My route", at = 1 } }
         fireEvent("PLAYER_LOGIN")
         for _, a in ipairs(asked) do if a[1] == "planner" then error("a written guide: the planner is not asked for") end end
+        -- in a fight at login (a /reload in one): it waits for the fight's end, then loads and replans
+        asked, replans = {}, {}
+        ns.root.guideState = { [ns:CharKey()] = { name = ns.GUIDE_PLANNED, at = 1 } }
+        local waiting = ns.AfterFightCount()
+        env.InCombatLockdown = function() return true end
+        fireEvent("PLAYER_LOGIN")
+        if #asked ~= 0 then error("in a fight: no load at login") end
+        if ns.AfterFightCount() ~= waiting + 1 then error("in a fight: the load waits for the fight's end") end
+        env.InCombatLockdown = keep.combat
+        fireEvent("PLAYER_REGEN_ENABLED")
+        local n2 = 0
+        for _, a in ipairs(asked) do if a[1] == "planner" and a[2] == true then n2 = n2 + 1 end end
+        local again = false
+        for _, w in ipairs(replans) do if w == "loading screen" then again = true end end
+        if n2 ~= 1 or not again then error("after the fight: loaded quietly once and replanned (" .. n2 .. ")") end
+        -- a fight that ends after you stopped following: nothing
+        asked = {}
+        env.InCombatLockdown = function() return true end
+        fireEvent("PLAYER_LOGIN")
+        env.InCombatLockdown = keep.combat
+        ns.root.guideState = { [ns:CharKey()] = { name = "My route", at = 1 } }
+        fireEvent("PLAYER_REGEN_ENABLED")
+        if #asked ~= 0 then error("no longer following when the fight ends: no load") end
     end)
+    env.InCombatLockdown = keep.combat
     ns.GuideUnlocked, ns.LoadFolder, ns.PlannerReplan, ns.root.guideState, ns.db.questGuide = keep.unlocked, keep.load, keep.replan, keep.state, keep.on
+    if not ok then error(err, 0) end
+end)
+try("folders: the auction house in a fight", function()
+    local keep = { unlocked = ns.GuideUnlocked, combat = env.InCombatLockdown, show = ns.GoldAuctionShow, raw = ns.PrintRaw, ready = ns.folderReady.gold }
+    local shows, said = 0, {}
+    local function Spoke()               -- (about the fight or the folder: the harness hands these events to every handler, so others speak too)
+        local n = 0
+        for _, l in ipairs(said) do
+            if l:find(ns:Tr("Not during a fight."), 1, true) or l:find("not during a fight", 1, true) or l:find("FantasyGlassUI_Gold", 1, true) then n = n + 1 end
+        end
+        return n
+    end
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        ns.GoldAuctionShow = function() shows = shows + 1; return true end
+        ns.PrintRaw = function(_, t) said[#said + 1] = tostring(t) end
+        ns.folderReady.gold = nil                                  -- (as before the first use: the folder is asked for again)
+        env.InCombatLockdown = function() return true end
+        fireEvent("AUCTION_HOUSE_SHOW")
+        if shows ~= 0 or ns.folderReady.gold then error("in a fight: nothing loads yet") end
+        if Spoke() ~= 0 then error("in a fight: no message") end
+        env.InCombatLockdown = keep.combat
+        fireEvent("PLAYER_REGEN_ENABLED")
+        if shows ~= 1 or ns.folderReady.gold ~= true or Spoke() ~= 0 then error("after the fight: loaded quietly, the panel shown (" .. shows .. ")") end
+        fireEvent("PLAYER_REGEN_ENABLED")
+        if shows ~= 1 then error("once") end
+        -- closed during the fight: nothing after it
+        ns.folderReady.gold = nil
+        env.InCombatLockdown = function() return true end
+        fireEvent("AUCTION_HOUSE_SHOW"); fireEvent("AUCTION_HOUSE_CLOSED")
+        env.InCombatLockdown = keep.combat
+        fireEvent("PLAYER_REGEN_ENABLED")
+        if shows ~= 1 or Spoke() ~= 0 then error("closed in the fight: nothing after it") end
+    end)
+    ns.GuideUnlocked, env.InCombatLockdown, ns.GoldAuctionShow, ns.PrintRaw = keep.unlocked, keep.combat, keep.show, keep.raw
+    ns.folderReady.gold = keep.ready
+    if not ok then error(err, 0) end
+end)
+try("folders: a folder the game loads with another", function()
+    -- (Forever may load a load-on-demand optional dependency with the folder that names it: gold's names the planner)
+    local keep = { unlocked = ns.GuideUnlocked, load = rawget(env.C_AddOns, "LoadAddOn") }
+    local ran, asked = 0, {}
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        ns.FOLDERS.testA = { addon = "FantasyGlassUI_TestA", files = { "A.lua" } }
+        ns.FOLDERS.testB = { addon = "FantasyGlassUI_TestB", files = { "B.lua" } }
+        rawset(env.C_AddOns, "LoadAddOn", function(name)
+            asked[#asked + 1] = name
+            if name == "FantasyGlassUI_TestB" then
+                ns.FolderLate("testA", "aLate", function() ran = ran + 1 end)   -- (A first, as its dependency)
+                ns.FolderFileDone("testA", "A.lua")
+                ns.FolderFileDone("testB", "B.lua")
+                return true
+            end
+            return keep.load(name)
+        end)
+        if not ns:LoadFolder("testB") then error("B loads") end
+        if ns.folderReady.testA ~= true or ran ~= 1 then error("A came with it: ready, and its late work done at once (" .. ran .. ")") end
+        if not ns:LoadFolder("testA") or #asked ~= 1 or ran ~= 1 then error("A is not loaded again, nor its late work run twice") end
+    end)
+    for _, k in ipairs({ "testA", "testB" }) do ns.FOLDERS[k], ns.folderReady[k], ns.folderBroken[k] = nil, nil, nil end
+    ns.GuideUnlocked = keep.unlocked
+    rawset(env.C_AddOns, "LoadAddOn", keep.load)
     if not ok then error(err, 0) end
 end)
 try("folders: late login work", function()
@@ -24429,10 +24517,27 @@ try("folders: seams", function()
             for _, b in pairs(p.extraButtons or {}) do rawset(b, "SetShown", nil) end
             return p, height, heading, shown
         end
+        if ns:GuideShowPanel() ~= nil then error("locked: no panel, so no Planner button") end
+        -- the palette with no extras registered, then with them, locked: the same, and no hidden word read
+        local words = { "Planner", "Ways to make gold" }
+        keep.words = {}
+        for _, w in ipairs(words) do keep.words[w] = ns.seenStrings[w]; ns.seenStrings[w] = nil end
+        local registered = ns.ToolExtrasList()
+        for _, e in ipairs(registered) do ns.RegisterToolExtra(e.key, nil) end
+        local p0, height0, heading0, shown0 = Palette()
+        local made0 = 0
+        for _ in pairs(p0.extraButtons or {}) do made0 = made0 + 1 end
+        for _, e in ipairs(registered) do ns.RegisterToolExtra(e.key, e.label, e.typed, e.fn, e.shown) end
+        if #ns.ToolExtrasList() ~= 2 then error("the two extras are registered again") end
         local p, height, heading, shown = Palette()
+        local made = 0
+        for _ in pairs(p.extraButtons or {}) do made = made + 1 end
         if #p.buttons ~= #ns.TOOL_MENU then error("the palette's own buttons") end
-        if height ~= p.baseHeight or heading ~= false or shown.planner ~= false or shown.gold ~= false then
-            error("locked: the palette as with no extras: " .. tostring(height) .. " " .. tostring(p.baseHeight) .. " " .. tostring(heading)) end
+        if height ~= height0 or height ~= p.baseHeight or heading ~= heading0 or made ~= made0 or shown.planner == true or shown.gold == true then
+            error("locked: the palette is the one with no extras: " .. tostring(height) .. " " .. tostring(height0) .. " " .. tostring(heading) .. " " .. made .. "/" .. made0) end
+        for _, w in ipairs(words) do
+            if ns.seenStrings[w] ~= nil then error("locked: the Tools menu read a hidden word: " .. w) end
+        end
         -- unlocked: the panel's Planner button, the Tools extras, /fgui plan
         ns.GuideUnlocked = function() return true end
         ns.root.guideState = {}
@@ -24446,6 +24551,12 @@ try("folders: seams", function()
         ns:GuideRedraw()
         rawset(panel.planner, "SetShown", nil); rawset(panel.planner, "SetPoint", nil)
         if plannerOn ~= true then error("unlocked: the panel's Planner button is shown") end
+        ns.GuideUnlocked = function() return false end           -- (locked again: a redraw never shows it)
+        rawset(panel.planner, "SetShown", function(_, v) if v then plannerOn = "shown while locked" end end)
+        ns:GuideRedraw()
+        rawset(panel.planner, "SetShown", nil)
+        ns.GuideUnlocked = function() return true end
+        if plannerOn ~= true then error("locked: the Planner button stays hidden") end
         if not (at and at[1] == "RIGHT" and (at[2] == panel.more or at[2] == panel.list) and at[3] == "LEFT" and at[4] == -4 and at[5] == 0) then
             error("the Planner button sits left of the panel's menu button") end
         Click(panel.planner, "panel.planner")
@@ -24509,6 +24620,12 @@ try("folders: seams", function()
             for _, x in ipairs(legs or {}) do ls[#ls + 1] = tostring(x.kind) .. ":" .. tostring(x.node) end
             error("the trip flies the known flight, as the route would: " .. tostring(secs) .. " | " .. table.concat(ks, ",") .. " | " .. table.concat(ls, ","))
         end
+        -- (step for step what the route lays for this leg: the run to flight point One is no step of its own, then the flight)
+        local f1 = steps[1]
+        if #steps ~= 1 or f1.kind ~= "fly" or f1.node ~= 2 or f1.text ~= "Two" or f1.map ~= 1 or f1.x ~= 12 or f1.y ~= 10
+           or not (type(f1.to) == "table" and f1.to.map == 2 and f1.to.x == 50 and f1.to.y == 50) or not (type(f1.why) == "table" and f1.why.saves == 426) then
+            error("the trip's steps: one flight from One to Two, from where the route would take it") end
+        if math.abs(secs - (legs[1].seconds + legs[2].seconds)) > 1e-6 or legs[1].kind ~= "run" or legs[1].node ~= 1 then error("the trip's time is the travel's: " .. tostring(secs)) end
         if state.pos.map ~= 2 then error("the trip ends there") end
         local before = #steps
         if ns.PlannerTrip(state, { map = 9, x = 1, y = 1 }, steps, false) ~= nil or #steps ~= before then error("no way there: nil, nothing added") end
@@ -24525,6 +24642,7 @@ try("folders: seams", function()
     ns.db.plannerMount, ns.root.goldChars, ns.PlannerWorldPos, ns.GoldTravel, ns.LoadPlanner, ns.HiddenCommand = keep.mount, keep.chars, keep.world, keep.travel, keep.load, keep.hidden
     if keep.map then env.C_Map = keep.map; rawset(env, "CreateVector2D", keep.vec) end
     if ns.toolPalette then ns.toolPalette:Hide(); ns.toolPalette.open = false end
+    for w, v in pairs(keep.words or {}) do if ns.seenStrings[w] == nil then ns.seenStrings[w] = v end end
     if ns.GuideForget then ns.GuideForget() end
     if ns.PlannerStop then ns:PlannerStop() end
     if not ok then error(err, 0) end

@@ -176,7 +176,7 @@
   - a "..." panel action, "Ways to make gold"
   - the riding line
 - The gold spec asks only for "the minimap launcher and the Planner window".
-- **The panel's bottom row**, from the left: `<` (8–30), `>` (34–56), batch 6's "Plan again" (60–132, shown while following the plan). From the right: "Guides" (208–272), "..." (182–204), and the new **"Planner"** button (44 wide, at BOTTOMRIGHT −98, 6, so 134–178), shown while unlocked.
+- **The panel's bottom row**, from the left: `<` (8–30), `>` (34–56), batch 6's "Plan again" (60–132, shown while following the plan). From the right: "Guides", "...", and the new **"Planner"** button (44 wide), shown while unlocked. It is anchored left of "..." (`RIGHT` to its `LEFT`, −4), or left of "Guides" when the menu is hidden. (Amended at Task 3, ruling T3-1: a fixed BOTTOMRIGHT −98 overlaps "...", which spans 76–100 px from the right edge at the default sizes. The footer counts the button's width, so "Plan again" gives way before anything overlaps.)
 - Its translations are fixed short so that they fit: de "Planer", fr "Plan", es "Plan", ru "План", pt "Plano", it "Piano", ko "계획", zh "规划".
 
 **8. Folding the two node memories into one (gold answer 2; the audit's A4)**
@@ -517,7 +517,7 @@
   - `ns.PlannerTrip(state, dest, steps, between) -> seconds|nil`: the local `Trip`.
 - **Guide.lua:**
   - `ns.GUIDE_TRIP = "\1trip"`
-  - `panel.planner`: `ns:CreateButton(panel, "Planner", 44, 18, fn)` at BOTTOMRIGHT (−98, 6). It is shown while unlocked, calls `ns:PlannerOpen()`, and its tooltip is "Your route planner: the plan and its settings".
+  - `panel.planner`: `ns:CreateButton(panel, "Planner", 44, 18, fn)`, anchored left of "..." (`RIGHT` to its `LEFT`, −4; left of "Guides" when "..." is hidden; amended at Task 3, ruling T3-1). It is shown while unlocked, calls `ns:PlannerOpen()`, and its tooltip is "Your route planner: the plan and its settings".
   - `panel.ridingButton`: an invisible Button over `panel.riding`, shown with it. A click calls `ns:GoldOpen({ goalName = "mount" })`; the tooltip is "Save for riding: ways to make gold".
   - The seam list gains `GUIDE_TRIP` and every new name.
 - **Core.lua:** in the slash handler's final `else`, first `if ns.HiddenCommand and ns.HiddenCommand(msg, raw) then return end`.
@@ -546,7 +546,7 @@
     - `/fgui plan` prints the same lines as `ns.ClosestCommand`'s path gives for "plan" with `ns.HiddenCommand` nil
     - `ns.toolCommands.plan == nil`
   - **Unlocked:**
-    - the panel's `planner` button is shown, sits at (−98, 6), and its click calls a stubbed `PlannerOpen` once
+    - the panel's `planner` button is shown, sits left of "..." (anchored `RIGHT` to its `LEFT`, −4), and its click calls a stubbed `PlannerOpen` once
     - the Tools menu shows the "Guide" heading and two extras, and a click on "Planner" calls `PlannerOpen`
     - `/fgui plan` calls `PlannerOpen`
   - **Riding line.** At level 40 with 30g, a Warrior: `panel.ridingButton` is shown, and its click calls `GoldOpen` with `{ goalName = "mount" }`.
@@ -803,6 +803,7 @@
   - **Duplicates** are merged into one line that names every source.
   - **New for this plan:**
     - the add-on list: both "extras" lines, their tooltips, load-on-demand, locked and unlocked
+    - the panel's Planner button sits left of "...", with no overlap, in English and German and with Bigger controls
     - the load hitch: time from the Planner button click to the window (`/fgui perf`), and the login while following
     - recording while unloaded, on a fresh login with neither folder loaded:
       - a flight and a boat, then their times

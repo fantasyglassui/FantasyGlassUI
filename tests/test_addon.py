@@ -132,10 +132,10 @@ def test_folder_seams_listed():
     for key, folder in FOLDER_KEYS.items():
         for f in folder_files(key):
             defined_folders |= defs(open(os.path.join(ROOT, folder, f), encoding="utf-8").read())
-    stubs = set()
-    m = re.search(r"for key, names in pairs\(\{(.*?)\}\) do", folders_lua(), re.S)
-    if m:
-        stubs = set(re.findall(r'"(\w+)"', m.group(1)))
+    sys.path.insert(0, TESTS)
+    from folder_stubs import stub_names
+    stubs = stub_names(folders_lua())
+    assert {"PlannerStart", "PlannerOpen", "PlannerCatchUp", "GoldOpen", "GoldAuctionShow"} <= stubs, stubs
     # (a stand-in may come before its folder function: the planner window's PlannerOpen is group C's)
     assert not sorted(listed - defined_folders - stubs), f"listed but defined in no folder file: {sorted(listed - defined_folders - stubs)}"
 
