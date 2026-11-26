@@ -21,6 +21,9 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["Another add-on's full scan of the auction house, Auctionator's or TSM's, is read for your prices too, the same way as Scan prices, and the button counts down from it."] = "Der vollständige Scan des Auktionshauses durch ein anderes Add-on, Auctionator oder TSM, wird auch für deine Preise gelesen, genauso wie Preise scannen, und die Schaltfläche zählt von ihm aus herunter.",
+    ["Where this add-on has no price for an item, the tooltip shows Auctionator's or TSM's, with its name. Those prices are never kept, and give only Vendor it, never Sell now or Hold."] = "Wo dieses Add-on keinen Preis für einen Gegenstand hat, zeigt der Tooltip den von Auctionator oder TSM, mit dessen Namen. Diese Preise werden nie gespeichert und ergeben nur An Händler verkaufen, nie Jetzt verkaufen oder Behalten.",
+    ["The Sell now, Hold and Vendor it description now says that every Vendor it hint is for common and uncommon items only."] = "Die Beschreibung von Jetzt verkaufen, Behalten und An Händler verkaufen sagt jetzt, dass jeder Hinweis An Händler verkaufen nur für gewöhnliche und ungewöhnliche Gegenstände gilt.",
     ["Another add-on scanned just now: its prices are being read."] = "Ein anderes Add-on hat gerade gescannt: seine Preise werden gelesen.",
     ["Prices read from another add-on's scan: %d items."] = "Preise aus dem Scan eines anderen Add-ons gelesen: %d Gegenstände.",
     ["Prices from Auctionator and TSM"] = "Preise von Auctionator und TSM",
@@ -3361,6 +3364,9 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["Another add-on's full scan of the auction house, Auctionator's or TSM's, is read for your prices too, the same way as Scan prices, and the button counts down from it."] = "L'analyse complète de l'hôtel des ventes par un autre add-on, Auctionator ou TSM, est lue aussi pour vos prix, de la même façon qu'Analyser les prix, et le bouton compte à rebours à partir d'elle.",
+    ["Where this add-on has no price for an item, the tooltip shows Auctionator's or TSM's, with its name. Those prices are never kept, and give only Vendor it, never Sell now or Hold."] = "Quand cet add-on n'a pas de prix pour un objet, l'infobulle montre celui d'Auctionator ou de TSM, avec son nom. Ces prix ne sont jamais gardés, et ne donnent que Au marchand, jamais Vendre maintenant ni Garder.",
+    ["The Sell now, Hold and Vendor it description now says that every Vendor it hint is for common and uncommon items only."] = "La description de Vendre maintenant, Garder et Au marchand dit maintenant que chaque conseil Au marchand ne concerne que les objets communs et peu communs.",
     ["Another add-on scanned just now: its prices are being read."] = "Un autre add-on vient d'analyser : ses prix sont en cours de lecture.",
     ["Prices read from another add-on's scan: %d items."] = "Prix lus depuis l'analyse d'un autre add-on : %d objets.",
     ["Prices from Auctionator and TSM"] = "Prix d'Auctionator et de TSM",
@@ -6701,6 +6707,9 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["Another add-on's full scan of the auction house, Auctionator's or TSM's, is read for your prices too, the same way as Scan prices, and the button counts down from it."] = "El escaneo completo de la casa de subastas de otro addon, Auctionator o TSM, también se lee para tus precios, igual que Escanear precios, y el botón cuenta atrás desde él.",
+    ["Where this add-on has no price for an item, the tooltip shows Auctionator's or TSM's, with its name. Those prices are never kept, and give only Vendor it, never Sell now or Hold."] = "Donde este addon no tiene precio para un objeto, la descripción muestra el de Auctionator o TSM, con su nombre. Esos precios nunca se guardan, y solo dan Al vendedor, nunca Vender ya ni Guardar.",
+    ["The Sell now, Hold and Vendor it description now says that every Vendor it hint is for common and uncommon items only."] = "La descripción de Vender ya, Guardar y Al vendedor ahora dice que toda pista Al vendedor es solo para objetos comunes y poco comunes.",
     ["Another add-on scanned just now: its prices are being read."] = "Otro addon acaba de escanear: se están leyendo sus precios.",
     ["Prices read from another add-on's scan: %d items."] = "Precios leídos del escaneo de otro addon: %d objetos.",
     ["Prices from Auctionator and TSM"] = "Precios de Auctionator y TSM",
@@ -10044,6 +10053,9 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["Another add-on's full scan of the auction house, Auctionator's or TSM's, is read for your prices too, the same way as Scan prices, and the button counts down from it."] = "Полное сканирование аукциона другой модификацией, Auctionator или TSM, тоже читается для ваших цен, так же как «Сканировать цены», и кнопка ведёт обратный отсчёт от него.",
+    ["Where this add-on has no price for an item, the tooltip shows Auctionator's or TSM's, with its name. Those prices are never kept, and give only Vendor it, never Sell now or Hold."] = "Если у этой модификации нет цены предмета, подсказка показывает цену Auctionator или TSM с её названием. Такие цены никогда не сохраняются и дают только «Продать торговцу», но никогда «Продать сейчас» или «Придержать».",
+    ["The Sell now, Hold and Vendor it description now says that every Vendor it hint is for common and uncommon items only."] = "Описание «Продать сейчас», «Придержать» и «Продать торговцу» теперь говорит, что любая подсказка «Продать торговцу» — только для обычных и необычных предметов.",
     ["Another add-on scanned just now: its prices are being read."] = "Другая модификация только что сканировала: её цены сейчас читаются.",
     ["Prices read from another add-on's scan: %d items."] = "Цены прочитаны из сканирования другой модификации: предметов %d.",
     ["Prices from Auctionator and TSM"] = "Цены из Auctionator и TSM",
@@ -13384,6 +13396,9 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["Another add-on's full scan of the auction house, Auctionator's or TSM's, is read for your prices too, the same way as Scan prices, and the button counts down from it."] = "O escaneamento completo da casa de leilões feito por outro addon, Auctionator ou TSM, também é lido para os seus preços, do mesmo jeito que Escanear preços, e o botão faz a contagem regressiva a partir dele.",
+    ["Where this add-on has no price for an item, the tooltip shows Auctionator's or TSM's, with its name. Those prices are never kept, and give only Vendor it, never Sell now or Hold."] = "Quando este addon não tem preço para um item, a dica mostra o do Auctionator ou do TSM, com o nome dele. Esses preços nunca são guardados, e só dão Venda ao vendedor, nunca Venda agora nem Segure.",
+    ["The Sell now, Hold and Vendor it description now says that every Vendor it hint is for common and uncommon items only."] = "A descrição de Venda agora, Segure e Venda ao vendedor agora diz que toda dica Venda ao vendedor é só para itens comuns e incomuns.",
     ["Another add-on scanned just now: its prices are being read."] = "Outro addon acabou de escanear: os preços dele estão sendo lidos.",
     ["Prices read from another add-on's scan: %d items."] = "Preços lidos do escaneamento de outro addon: %d itens.",
     ["Prices from Auctionator and TSM"] = "Preços do Auctionator e do TSM",
@@ -16724,6 +16739,9 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["Another add-on's full scan of the auction house, Auctionator's or TSM's, is read for your prices too, the same way as Scan prices, and the button counts down from it."] = "La scansione completa della casa d'aste di un altro add-on, Auctionator o TSM, viene letta anche per i tuoi prezzi, come Scansiona prezzi, e il pulsante fa il conto alla rovescia da essa.",
+    ["Where this add-on has no price for an item, the tooltip shows Auctionator's or TSM's, with its name. Those prices are never kept, and give only Vendor it, never Sell now or Hold."] = "Dove questo add-on non ha un prezzo per un oggetto, il suggerimento mostra quello di Auctionator o TSM, con il suo nome. Quei prezzi non vengono mai conservati, e danno solo Al mercante, mai Vendi ora o Tieni.",
+    ["The Sell now, Hold and Vendor it description now says that every Vendor it hint is for common and uncommon items only."] = "La descrizione di Vendi ora, Tieni e Al mercante ora dice che ogni consiglio Al mercante vale solo per oggetti comuni e non comuni.",
     ["Another add-on scanned just now: its prices are being read."] = "Un altro add-on ha appena scansionato: i suoi prezzi sono in lettura.",
     ["Prices read from another add-on's scan: %d items."] = "Prezzi letti dalla scansione di un altro add-on: %d oggetti.",
     ["Prices from Auctionator and TSM"] = "Prezzi da Auctionator e TSM",
@@ -20064,6 +20082,9 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["Another add-on's full scan of the auction house, Auctionator's or TSM's, is read for your prices too, the same way as Scan prices, and the button counts down from it."] = "다른 애드온(Auctionator나 TSM)의 경매장 전체 검색도 가격 검색과 같은 방식으로 내 가격에 읽어 들이며, 버튼은 그 검색부터 카운트다운합니다.",
+    ["Where this add-on has no price for an item, the tooltip shows Auctionator's or TSM's, with its name. Those prices are never kept, and give only Vendor it, never Sell now or Hold."] = "이 애드온에 아이템 가격이 없으면 툴팁에 Auctionator나 TSM의 가격을 이름과 함께 보여 줍니다. 이런 가격은 저장되지 않으며, 상인에게 판매만 주고 지금 판매나 보관은 주지 않습니다.",
+    ["The Sell now, Hold and Vendor it description now says that every Vendor it hint is for common and uncommon items only."] = "지금 판매, 보관, 상인에게 판매 설명에 이제 모든 상인에게 판매 힌트는 일반 및 고급 아이템에만 나온다고 적혀 있습니다.",
     ["Another add-on scanned just now: its prices are being read."] = "다른 애드온이 방금 검색했습니다: 그 가격을 읽는 중입니다.",
     ["Prices read from another add-on's scan: %d items."] = "다른 애드온의 검색에서 가격을 읽었습니다: 아이템 %d개.",
     ["Prices from Auctionator and TSM"] = "Auctionator 및 TSM 가격",
@@ -23407,6 +23428,9 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["Another add-on's full scan of the auction house, Auctionator's or TSM's, is read for your prices too, the same way as Scan prices, and the button counts down from it."] = "另一个插件（Auctionator 或 TSM）对拍卖行的完整扫描也会用于你的价格，读取方式与“扫描价格”相同，按钮会从那次扫描开始倒计时。",
+    ["Where this add-on has no price for an item, the tooltip shows Auctionator's or TSM's, with its name. Those prices are never kept, and give only Vendor it, never Sell now or Hold."] = "当本插件没有某物品的价格时，鼠标提示会显示 Auctionator 或 TSM 的价格，并注明来源。这些价格从不保存，只会给出“卖给商人”，绝不会给出“现在出售”或“暂留”。",
+    ["The Sell now, Hold and Vendor it description now says that every Vendor it hint is for common and uncommon items only."] = "“现在出售”“暂留”“卖给商人”的说明现在写明：所有“卖给商人”提示都仅限普通和优秀物品。",
     ["Another add-on scanned just now: its prices are being read."] = "另一个插件刚刚扫描过：正在读取它的价格。",
     ["Prices read from another add-on's scan: %d items."] = "已从另一个插件的扫描读取价格：%d 件物品。",
     ["Prices from Auctionator and TSM"] = "来自 Auctionator 和 TSM 的价格",

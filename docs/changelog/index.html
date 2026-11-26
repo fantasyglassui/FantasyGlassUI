@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Changelog · Fantasy Glass UI</title>
-<meta name="description" content="Every release of Fantasy Glass UI, the WoW Forever add-on, from the first to 12.4.0: what is new, what was fixed and what changed.">
+<meta name="description" content="Every release of Fantasy Glass UI, the WoW Forever add-on, from the first to 12.4.1: what is new, what was fixed and what changed.">
 <link rel="canonical" href="https://fantasyglassui.com/changelog/">
 <link rel="icon" type="image/png" href="/icon.png">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Fantasy Glass UI">
 <meta property="og:title" content="Fantasy Glass UI changelog">
-<meta property="og:description" content="Every release, from the first to 12.4.0.">
+<meta property="og:description" content="Every release, from the first to 12.4.1.">
 <meta property="og:url" content="https://fantasyglassui.com/changelog/">
 <meta property="og:image" content="https://fantasyglassui.com/og.jpg">
 <meta name="theme-color" content="#06070d">
@@ -74,10 +74,19 @@
 <main>
   <h1>Changelog</h1>
   <div class="intro"><p>The releases published on CurseForge. Each lists what changed since the release before it.</p></div>
-  <nav class="jump" aria-label="Versions"><a href="#v12-4-0">12.4.0</a><a href="#v12-3-0">12.3.0</a><a href="#v12-2-0">12.2.0</a><a href="#v12-1-0">12.1.0</a><a href="#v12-0-0">12.0.0</a><a href="#v11-18-0">11.18.0</a><a href="#v11-17-4">11.17.4</a><a href="#v11-17-3">11.17.3</a><a href="#v11-17-2">11.17.2</a><a href="#v11-17-1">11.17.1</a><a href="#v11-17-0">11.17.0</a><a href="#v11-16-0">11.16.0</a><a href="#v11-15-0">11.15.0</a><a href="#v11-14-1">11.14.1</a><a href="#v11-14-0">11.14.0</a><a href="#v11-13-0">11.13.0</a><a href="#v11-12-0">11.12.0</a><a href="#v11-11-0">11.11.0</a><a href="#v11-10-0">11.10.0</a><a href="#v11-9-1">11.9.1</a><a href="#v11-9-0">11.9.0</a><a href="#v11-8-1">11.8.1</a><a href="#v11-8-0">11.8.0</a><a href="#v11-7-0">11.7.0</a><a href="#v11-6-0">11.6.0</a><a href="#v11-5-0">11.5.0</a><a href="#v10-0-0">10.0.0</a><a href="#v9-8-0">9.8.0</a><a href="#v9-7-0">9.7.0</a><a href="#v9-6-0">9.6.0</a><a href="#v9-5-6">9.5.6</a><a href="#v9-0-0">9.0.0</a><a href="#v8-7-1">8.7.1</a><a href="#v8-4-7">8.4.7</a><a href="#v8-2-1">8.2.1</a></nav>
+  <nav class="jump" aria-label="Versions"><a href="#v12-4-1">12.4.1</a><a href="#v12-4-0">12.4.0</a><a href="#v12-3-0">12.3.0</a><a href="#v12-2-0">12.2.0</a><a href="#v12-1-0">12.1.0</a><a href="#v12-0-0">12.0.0</a><a href="#v11-18-0">11.18.0</a><a href="#v11-17-4">11.17.4</a><a href="#v11-17-3">11.17.3</a><a href="#v11-17-2">11.17.2</a><a href="#v11-17-1">11.17.1</a><a href="#v11-17-0">11.17.0</a><a href="#v11-16-0">11.16.0</a><a href="#v11-15-0">11.15.0</a><a href="#v11-14-1">11.14.1</a><a href="#v11-14-0">11.14.0</a><a href="#v11-13-0">11.13.0</a><a href="#v11-12-0">11.12.0</a><a href="#v11-11-0">11.11.0</a><a href="#v11-10-0">11.10.0</a><a href="#v11-9-1">11.9.1</a><a href="#v11-9-0">11.9.0</a><a href="#v11-8-1">11.8.1</a><a href="#v11-8-0">11.8.0</a><a href="#v11-7-0">11.7.0</a><a href="#v11-6-0">11.6.0</a><a href="#v11-5-0">11.5.0</a><a href="#v10-0-0">10.0.0</a><a href="#v9-8-0">9.8.0</a><a href="#v9-7-0">9.7.0</a><a href="#v9-6-0">9.6.0</a><a href="#v9-5-6">9.5.6</a><a href="#v9-0-0">9.0.0</a><a href="#v8-7-1">8.7.1</a><a href="#v8-4-7">8.4.7</a><a href="#v8-2-1">8.2.1</a></nav>
   <div id="log">
+<section class="ver" id="v12-4-1" data-v="12.4.1">
+<h2><a href="#v12-4-1">12.4.1</a> <span class="now">Current</span></h2>
+<h3>New: another add-on's scan is read too</h3>
+<ul><li>When another add-on, such as Auctionator or TSM, scans the whole auction house, Fantasy Glass UI reads the same list for its own prices. It is read the same way as with Scan prices: in small pieces, and never in a fight.</li><li>The auction house allows one such scan about every 15 minutes, shared by every add-on, so the Scan prices button counts down from that scan.</li><li>If you press the button while that list is being read, it says "Another add-on scanned just now: its prices are being read."</li></ul>
+<h3>New: prices from Auctionator and TSM</h3>
+<ul><li>When Fantasy Glass UI has no price for an item, the tooltip shows Auctionator's price, or else TSM's, marked "Auction house (Auctionator)" or "Auction house (TSM)". This needs that add-on to be loaded.</li><li>These prices are only shown, never kept. They can give Vendor it, when a vendor pays about as much, but never Sell now or Hold.</li><li>The setting is Prices from Auctionator and TSM, in Bags and items › Auction and trade. It is on by default.</li></ul>
+<h3>Changed</h3>
+<ul><li>The description of the Sell now, Hold and Vendor it hints now says that every Vendor it hint is for common and uncommon items only.</li></ul>
+</section>
 <section class="ver" id="v12-4-0" data-v="12.4.0">
-<h2><a href="#v12-4-0">12.4.0</a> <span class="now">Current</span></h2>
+<h2><a href="#v12-4-0">12.4.0</a></h2>
 <h3>New: Scan prices</h3>
 <ul><li>A <b>Scan prices</b> button on the auction house, left of Worth selling, reads the whole auction house in one click. The auction house allows it about every 15 minutes; the button counts down to the next one ("Scan in m:ss").</li><li>The list is read in small pieces, so the game doesn't freeze, and the reading pauses in a fight ("Paused for combat") and goes on after it. It never posts, buys or bids.</li><li>The prices it reads go into the tooltips and the sell hints, like the prices you see while you browse.</li></ul>
 <h3>New: prices for each auction house</h3>

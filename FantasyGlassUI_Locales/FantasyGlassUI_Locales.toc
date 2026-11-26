@@ -2,7 +2,7 @@
 ## Title: |cff33ccffFantasy Glass|r UI - translations
 ## Notes: The translations for Fantasy Glass UI. The game loads this only when the add-on is shown in a language other than English, so English players never spend memory on it. Leave it enabled.
 ## Author: DustyMouse
-## Version: 12.4.0
+## Version: 12.4.1
 ## LoadOnDemand: 1
 ## RequiredDeps: FantasyGlassUI
 ## Category: User Interface
