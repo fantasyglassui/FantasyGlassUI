@@ -203,7 +203,7 @@ end
 -- Every couple of seconds (and when a loading screen ends): which docks are we standing at? A crossing is timed
 -- from the FIRST look within NEAR of one of its docks (of one stay there: a look away from every dock and back
 -- starts the stay again) to the first look within NEAR of its other dock, when that is at least a minute and at
--- most PLANNER_CROSS_MOST seconds. So the time holds the wait at the dock, as the defaults in PLANNER_CROSSINGS
+-- most PLANNER_CROSS_MOST seconds (reaching the far dock counts as crossed either way). So the time holds the wait at the dock, as the defaults in PLANNER_CROSSINGS
 -- do. A loading screen on the way is allowed, never needed (Auberdine to Rut'theran has none), and a dock that
 -- several crossings share keeps all of them in mind.
 ns.PLANNER_CROSS_MOST = 900
@@ -233,9 +233,9 @@ local function DockTick()
     if dock then
         local secs = now - dock.time
         for id, side in pairs(at) do
-            if dock.ids[id] and dock.ids[id] ~= side and secs >= 60 and secs <= ns.PLANNER_CROSS_MOST then
-                crossed = id
-                RecordTime("plannerCrossTimes", id, secs)
+            if dock.ids[id] and dock.ids[id] ~= side then
+                crossed = id                                     -- (the far dock reached: crossed, however long it took)
+                if secs >= 60 and secs <= ns.PLANNER_CROSS_MOST then RecordTime("plannerCrossTimes", id, secs) end
             end
         end
     end

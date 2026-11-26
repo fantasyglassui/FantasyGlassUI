@@ -156,7 +156,15 @@ local function HubLoop(hub, ctx)
             if wanted then DrawRep(ctx, q) end
             t = t + ns.PlannerQuestTime(q, ctx)
         end
-        if IsTimed(ctx, q) then timed[#timed + 1] = q else rest[#rest + 1] = q end
+        if IsTimed(ctx, q) then
+            if away[q.id] and hub.take[q.id] then
+                hub.take[q.id] = nil                         -- (a clock on it and no hand-in here: not taken in this hub at all)
+            else
+                timed[#timed + 1] = q
+            end
+        else
+            rest[#rest + 1] = q
+        end
     end
     if wanted then ctx.repLeft = before end
     local base = hub

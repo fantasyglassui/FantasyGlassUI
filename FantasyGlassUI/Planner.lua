@@ -197,8 +197,10 @@ end
 -- logged one, and nothing else of its set); else, of the members that can still be taken (a record whose own
 -- list names a done quest cannot), a class quest; else the most real experience (ns.PlannerQuestXP's third
 -- value), then the lower id. A member joined only through another quest's list is not dropped by a done id it
--- never names. Runs inside the planning coroutine.
-function ns.PlannerExclusiveKeep(recs, ctx)
+-- never names. `blockers` (optional): logged records left out (a hook dropped them): they join sets and block
+-- their partners as a logged quest does, and are never kept. ctx.allExclusive: every member that can be taken
+-- stays (no pick of one). Runs inside the planning coroutine.
+function ns.PlannerExclusiveKeep(recs, ctx, blockers)
     local keep = {}
     if type(recs) ~= "table" then return keep end
     ctx = type(ctx) == "table" and ctx or {}
@@ -217,10 +219,14 @@ function ns.PlannerExclusiveKeep(recs, ctx)
     end
     local function Add(id) if up[id] == nil then up[id] = id; nodes[#nodes + 1] = id end end
     local own, blocked = {}, {}
-    for _, rec in ipairs(recs) do
+    local list = {}
+    for _, rec in ipairs(recs) do list[#list + 1] = { rec = rec, own = true } end
+    for _, rec in ipairs(type(blockers) == "table" and blockers or NONE) do list[#list + 1] = { rec = rec } end
+    for _, e in ipairs(list) do
         ns.PlannerYield()
+        local rec = e.rec
         if type(rec) == "table" and type(rec.id) == "number" then
-            own[#own + 1] = rec
+            if e.own then own[#own + 1] = rec end
             Add(rec.id)
             if done(rec.id) then blocked[rec.id] = true end
             for _, other in ipairs(type(rec.exclusive) == "table" and rec.exclusive or NONE) do
@@ -250,6 +256,8 @@ function ns.PlannerExclusiveKeep(recs, ctx)
             keep[rec.id] = true
         elseif logged[r] then
             if onQuest(rec.id) then keep[rec.id] = true end
+        elseif not blocked[rec.id] and ctx.allExclusive then
+            keep[rec.id] = true                              -- (every member you could take: a duo friend's list, the leader picks)
         elseif not blocked[rec.id] then
             local tier = class[rec.id] and 1 or 0
             local _, _, real = ns.PlannerQuestXP(rec, ctx)
@@ -298,7 +306,7 @@ function ns.PlannerCandidates(source, ctx)
     if type(source) ~= "table" or type(ctx) ~= "table" then return list, skipped end
     local level, done, onQuest = ctx.level or 1, ctx.done or function() return false end, ctx.onQuest or function() return false end
     local never = type(ctx.skip) == "table" and ctx.skip or nil
-    local items, groupOnly = {}, {}
+    local items, groupOnly, dropped = {}, {}, {}
     if source.begin then source.begin(level) end
     for _, id in ipairs(source.ids()) do
         ns.PlannerYield()
@@ -306,7 +314,7 @@ function ns.PlannerCandidates(source, ctx)
         local rec = (logged or not (never and never[id])) and (logged or not source.inRange or (type(ctx.windowPass) == "table" and ctx.windowPass[id]) or source.inRange(id, level, ctx.windowLo, ctx.windowHi)) and source.quest(id) or nil
         if rec then
             if logged then
-                if Keep(rec, ctx, true) then list[#list + 1] = rec end
+                if Keep(rec, ctx, true) then list[#list + 1] = rec else dropped[#dropped + 1] = rec end   -- (dropped: still blocks its partners)
             elseif rec.doable and not rec.repeatable and not done(id)
                 and InWindow(rec, ctx)
                 and AllDone(rec.pre, done) and AnyDone(rec.preAny, done) then
@@ -357,7 +365,7 @@ function ns.PlannerCandidates(source, ctx)
     local all = {}
     for _, r in ipairs(list) do all[#all + 1] = r end
     for _, r in ipairs(later) do all[#all + 1] = r end
-    local keep = ns.PlannerExclusiveKeep(all, ctx)
+    local keep = ns.PlannerExclusiveKeep(all, ctx, dropped)
     local kept, waiting = {}, {}
     for _, r in ipairs(list) do if keep[r.id] then kept[#kept + 1] = r end end
     for _, r in ipairs(later) do if keep[r.id] then waiting[#waiting + 1] = r end end
@@ -366,7 +374,7 @@ function ns.PlannerCandidates(source, ctx)
     local counted, isGroupOnly = {}, {}
     for _, r in ipairs(groupOnly) do counted[#counted + 1] = r; isGroupOnly[r.id] = true end
     for _, r in ipairs(list) do if onQuest(r.id) then counted[#counted + 1] = r end end
-    for id in pairs(ns.PlannerExclusiveKeep(counted, ctx)) do
+    for id in pairs(ns.PlannerExclusiveKeep(counted, ctx, dropped)) do
         if isGroupOnly[id] then skipped.group = skipped.group + 1 end
     end
     return kept, skipped, waiting

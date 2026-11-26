@@ -12,6 +12,7 @@ Kills and experience (group A):
 - [ ] `CHAT_MSG_COMBAT_XP_GAIN` arrives once per kill, before or after `PLAYER_XP_UPDATE`, within 1 s.
 - [ ] Two kills less than a second apart, each with its own XP change, give no `killXP` sample (ruling R8: a burst of exactly one line and one change is the only sample). Check that ordinary solo pulls still give samples.
 - [ ] The kill line's text in combat: is it hidden? A hidden line still counts as a kill (R9). Quest and exploration lines (`COMBATLOG_XPGAIN_QUEST`, `COMBATLOG_XPGAIN_FIRSTPERSON_UNNAMED`) never count.
+- [ ] `UnitCanAttack("player", "target")` on a corpse: `Victim` needs it to be true; if a corpse reads false, no `killXP` sample is ever taken.
 - [ ] The dead target's `UnitLevel` and `UnitClassification` read in combat, and what is hidden there. Hidden target values mean "no such target": the kill counts for the rate only (R2).
 - [ ] A DoT or pet kill with an older corpse still targeted: the older corpse's level is used (review M-7, a known limit).
 - [ ] `GetXPExhaustion` drops by the rested bonus on a rested kill, and `UPDATE_EXHAUSTION` order against `PLAYER_XP_UPDATE` (R4).
@@ -30,6 +31,7 @@ Questie's data (group B):
 
 The route's words, docks and the panel (group C):
 - [ ] The dock area ids (150, 513, 442, 702, 35, 392, 1637, 1497, 117) and their names from `C_Map.GetAreaInfo`; the zeppelin crossings.
+- [ ] The Undercity zeppelin dock: it is stored as `{ map = 1458, x = 60.5, y = 58.5 }` on the city map, while the tower stands in Tirisfal Glades (1420). Does the 300 yd look ever see you there?
 - [ ] Crossing times (Task 13 ruling): timed from the first look within 300 yd of the departure dock, so the wait is included. Check one boat and one zeppelin: is 300 yd enough to see you at both docks; does a normal wait plus ride stay under 900 s; are the recorded times near the defaults (270/240)?
 - [ ] `C_Map.GetMapInfoAtPosition` on the taxi continent map ("Go to Arathi Highlands: fly to Refuge Pointe").
 - [ ] "Plan again" fitting on the panel in all nine languages.
@@ -39,6 +41,8 @@ The route's words, docks and the panel (group C):
 The arrow and the keys (group C additions):
 - [ ] TomTom's API on Forever: `TomTom:AddWaypoint(map, x, y, opts)` returns a uid, `RemoveWaypoint(uid)` clears it, `crazy = true` shows its arrow.
 - [ ] How the accent arrow reads in each theme (tint through `ns:Paint`, desaturated texture), brighter within 30 yd, one pulse on arrival; reduced motion skips the pulse.
+- [ ] The public arrow too (`/fgui way 45 62`, and a Journey waypoint), in each theme: 0.85 alpha beyond 30 yd and 1 within; still easy to see for every player.
+- [ ] Standing a few yards from a dock or a flight master (waiting for the boat): the arrow points once at where you stand with the leg's words, never pulses, and does not point again; with TomTom, no new waypoint every second.
 - [ ] Another map: the arrow points at the flight master, the dock, or the edge of the map on the straight way. Where mountains block the straight way, is the edge point a sensible "exit"? Standing at the edge gives no repeated pulse.
 - [ ] Key bindings: the three "Guide: …" names translated in the key bindings window; nothing happens while locked or in combat.
 
@@ -50,6 +54,13 @@ Batch 5 files and the audit (group D):
 Carried from earlier batches (still open):
 - [ ] Mount vendor ids, riding skill line 633 (batch 2).
 
+## Release: the public changes this batch brings
+
+Everything else in this batch is behind the guide's lock. These three reach every player:
+- The waypoint arrow (`MapExtras.lua`): tinted with the theme's accent, 0.85 alpha beyond 30 yd and 1 within, one short pulse on arrival (none with reduced motion); a plain waypoint clears after the pulse and still says "You have arrived.".
+- Three key bindings (`Bindings.xml`, names set in `Guide.lua`): "Guide: next step", "Guide: skip step" and "Guide: refresh the route", under the add-on's header. They show in every player's Key Bindings window and do nothing while the guide is locked, off, or in combat. Kept, with this wording (controller's ruling).
+- One saved default (`Core.lua`): `plannerTomTom = true`. Nothing reads it while the guide is locked.
+
 ## Rulings as made or changed
 
 The plan's rulings stand, with these additions and changes.
@@ -60,7 +71,8 @@ Task 13 (merge):
 - **A done member (changes Task 1's ruling 2).** A done id no longer drops its whole exclusive set. A record whose own `exclusive` list names a done quest (or that is itself done) is dropped; one is still chosen from the rest of the set by the usual order. A member joined only through another quest's list stays takeable. Logged members still keep only the logged ones.
 - **The group-only count.** It runs `PlannerExclusiveKeep` over the group-only records plus the logged planned records, and counts only group-only ids. A group-only quest that one of your logged quests names is not counted. An unlogged solo partner is still not compared, so Task 1's ruling 1 example (9601 solo, 9602 group: count 1) holds.
 - **`ns.PlannerTimedQuest` errors.** The route still treats the quest as not timed, and writes the first error of each plan to `ns.errors` ("Planner timed quest: …"). The function must neither yield nor error.
-- **German.** Planner phrases use "du": the formal-singular ones were changed (the LFG chat line, "You stopped planning together", the hearthstone, flight, boat and sail step labels). "Ihr"/"euch" stay where they are the plural of "du" (two players planning together: "%s möchte eure Route gemeinsam planen", "Zwischen euch liegen %d Stufen"). Phrases shared with public code ("That is you.", used by Group.lua too) and the written-guide UI were left as they are.
+- **German (final review, M9).** The guide and planner screens are in one register: "du", "dein", and "Anleitung" as the one word for a guide ("Questanleitung", "Anleitungen"). Changed: the usage lines, the Guides list and its title, the editor's help, the recording lines, "Du folgst keiner Anleitung (mehr)", the Guide tab's name and switch lines, the coming-soon lines, the step labels "Geh zu" and "Erreiche Stufe", and the three binding names ("Anleitung: …"). Left for the polish check: the rest of the public add-on, and "That is you." (shared with Group.lua). "Boss guide" (the boss journal) and the Home page's "ask the guide" are other features and keep their words.
+- **German (Task 13).** Planner phrases use "du": the formal-singular ones were changed (the LFG chat line, "You stopped planning together", the hearthstone, flight, boat and sail step labels). "Ihr"/"euch" stay where they are the plural of "du" (two players planning together: "%s möchte eure Route gemeinsam planen", "Zwischen euch liegen %d Stufen"). Phrases shared with public code ("That is you.", used by Group.lua too) and the written-guide UI were left as they are.
 - **The batch 5 carried items** (`paceTimed`/`paceStyled` frozen in ctx; the 0.051 map-mark test) were already fixed in batch 5's merge (its notes, "Fixed during the merge"), so Task 13 adds nothing for them.
 - **Integration test.** The real runner and the real `ns.PlannerContext`, reading a fake Questie, with only travel and the log overridden. Between the first plan and "Plan again" the test forgets the remembered zone (`rec.zone`), because a planned zone is kept until you gain levels and the ratio could not move it otherwise. It also sets `ns.PLANNER_BUDGET_MS = 0` for the lock part so the plan is mid-run when the guide is locked.
 
@@ -141,8 +153,23 @@ Group D (Task 12): the vendor stop with supplies whose vendors never meet gives 
 - Group B Minor 2 (alternate object ids): ore alternates added; Ooze Covered ids and herb alternates in the in-game list.
 - Group B Minor 3 (`gatherCache` size): Fixed in B's review round (6 maps); memory in the in-game list.
 - Group B Minors 4–7: Fixed in B's review round.
-- Group C Minors 1–6 and Important 1–5: Fixed in C's review round; Important 4 (crossing time) changed again in Task 13.
+- Group C Minors 1–6 and Important 1–5: Fixed in C's review round; Important 4 (crossing time) changed again in Task 13. Important 1 (the arrow re-pointing): the map-edge case was fixed in C's round; the dock and flight master case in the final review round (I1).
 - Group D Minors 1–3: Fixed in D's review round.
+
+**Final review** (0 Critical, 3 Important, 10 Minor), all fixed in one round, each with a test in "13.6 leftovers: final review fixes" where it can be tested:
+- I1: a first run leg shorter than `GUIDE_NEAR` counts as arrived (the arrow points where you stand, with the leg's words, as a spot you pass through), and `LegReached` remembers the spot it reached, so it is not pointed at again on that map. Test: 8 yd from the dock and from the flight master, 10 ticks: no re-point, no pulse, no new TomTom waypoint.
+- I2: `HubSlots` skips a timed run's accepts and dos (with only those, the slot is after the run's last hand-in), and no slot inside a timed run is used, by the hub match or by the least-travel search. Test: a stop near the hub, beside the run, and off the route.
+- I3: reaching the far dock always sets `crossed`; the 60…900 s window only decides whether the time is recorded. Test: 1000 s, crossed and not timed.
+- M1: the arrow's leg is not worked out in a fight (the arrow keeps what it shows; the 1 s look points once the fight is over), and it is kept per step and map (worked out again after a leg is reached).
+- M2: logged records a hook dropped (a session skip) go to `PlannerExclusiveKeep` as blockers: they block their partners and are never kept.
+- M3: the duo friend's list holds every member of an exclusive set it could take (`ctx.allExclusive`); the leader picks one.
+- M4: on a duo friend, "skip step" only passes the step over here and says "Skipped here; %s plans the route."; no session skip, no replan. The leader's skips are unchanged.
+- M5: an untaken timed quest whose hand-in can't be reached from its hub is not taken there at all.
+- M6: the two kill-line patterns are made once per format string.
+- M7: kept, listed under "Release" above.
+- M8: 0.85 alpha beyond 30 yd; the public arrow added to the theme checks.
+- M9: the German register pass (see the ruling).
+- M10: the three in-game checks added.
 
 ## Merge conflicts outside a region
 
@@ -163,3 +190,10 @@ Group D (Task 12): the vendor stop with supplies whose vendors never meet gives 
 - pytest: 9 passed (batch 5's 8 and `test_guide_seams_listed`), run last.
 - Release guards: `docs/` unchanged since BASE; no "planner" in the tracked README, CHANGELOG, RELEASE, add-on .md, docs, site-src or wiki (the only hits are ignored `site-src/__pycache__` files that hold the worktree's path); no `ReloadUI` / `SendChatMessage` and no `local original = ns[` in `Planner*.lua`; `/fgui help` unchanged.
 - `missing_tr.py`: two new untranslated literals over SEAMS, neither shown to players ("again", a replan reason; "ore", from a comment).
+
+## Checks (final review round)
+
+- `luacheck . -q`: 0 warnings / 0 errors. smoke: `syntax: all 137 files OK`, `errors: no errors` twice. `forever_audit.py`: exit 0.
+- `secretaudit.py`: 0 lines compared a hidden value. `lockaudit.py`: no protected call in combat.
+- `node tests/plan_reader_check.js`: 20 codes OK. `python3 tests/sitecheck.py`: exit 0. pytest (last): 9 passed.
+- Batch 2's travel test now expects a 5 s loading screen between the docks to count as crossed (not timed), by the I3 ruling.

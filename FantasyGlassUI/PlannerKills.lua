@@ -128,19 +128,23 @@ do
 
     -- A kill line that is not a kill's: a quest's or the unnamed "You gain %d experience." (patterns from
     -- the game's own strings). A hidden line is taken as a kill: the ruling's one line per kill.
+    local patterns = {}                                  -- (format string -> pattern, made once)
     local function Pattern(fmt)
         if type(fmt) ~= "string" or ns:IsSecret(fmt) or fmt == "" then return nil end
+        local hit = patterns[fmt]
+        if hit then return hit end
         local p = fmt:gsub("([%(%)%.%+%-%*%?%[%]%^%$%%])", "%%%1")
         p = p:gsub("%%%%d", "%%d+"):gsub("%%%%s", ".+")
-        return "^" .. p .. "$"
+        hit = "^" .. p .. "$"
+        patterns[fmt] = hit
+        return hit
     end
+    ns.PlannerKillPattern = Pattern
     local function NotAKill(msg)
         if ns:IsSecret(msg) then return false end
         if type(msg) ~= "string" then return true end
-        for _, fmt in ipairs({ _G.COMBATLOG_XPGAIN_FIRSTPERSON_UNNAMED, _G.COMBATLOG_XPGAIN_QUEST }) do
-            local p = Pattern(fmt)
-            if p and msg:find(p) then return true end
-        end
+        local p1, p2 = Pattern(_G.COMBATLOG_XPGAIN_FIRSTPERSON_UNNAMED), Pattern(_G.COMBATLOG_XPGAIN_QUEST)
+        if (p1 and msg:find(p1)) or (p2 and msg:find(p2)) then return true end
         return false
     end
 

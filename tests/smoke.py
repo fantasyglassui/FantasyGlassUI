@@ -9280,7 +9280,8 @@ try("13.0 planner: travel", function()
         local real2 = ns.PLANNER_CROSSINGS
         ns.PLANNER_CROSSINGS = crossings
         at(3, 10, 10); ns.PlannerDockTick(); clock = clock + 5; at(1, 90, 90); fireEvent("PLAYER_ENTERING_WORLD")
-        if ns.PlannerCrossed("fake") or (ns.root.plannerCrossTimes and ns.root.plannerCrossTimes.fake) then error("a short loading screen is no crossing") end
+        -- (batch 6 final review: reaching the far dock always counts as crossed; under a minute is only not timed)
+        if not ns.PlannerCrossed("fake") or (ns.root.plannerCrossTimes and ns.root.plannerCrossTimes.fake) then error("a short loading screen: crossed, not timed") end
         at(1, 90, 90); ns.PlannerDockTick()
         clock = clock + 200; at(3, 10, 10); fireEvent("PLAYER_ENTERING_WORLD")
         if not ns.PlannerCrossed("fake") then error("crossed") end
@@ -19510,7 +19511,7 @@ try("13.6 leftovers C: the arrow and the guide's keys", function()
         rawset(arrow.pulse, "Play", function() pulses = pulses + 1 end)
         update(arrow, 0.1)
         local ar, ag, ab = ns:Role("@accent")
-        if not (tint and tint[1] == ar and tint[2] == ag and tint[3] == ab and tint[4] < 1) then error("far: the accent, dimmer") end
+        if not (tint and tint[1] == ar and tint[2] == ag and tint[3] == ab and math.abs(tint[4] - 0.85) < 1e-6) then error("far: the accent, a little dimmer (0.85)") end
         pos = { 1426, 54, 50 }; update(arrow, 0.1)                    -- (20 yards)
         if not (tint and tint[4] == 1) then error("within 30 yards: brighter") end
         pos = { 1426, 54.8, 50 }; update(arrow, 0.1)                  -- (4 yards: there)
@@ -20014,6 +20015,223 @@ try("13.6 leftovers: together", function()
     ns.root.plannerNodesSeen, ns.root.plannerFlightTimes = saved.nodes, saved.ft
     ns.db.questGuide, ns.db.plannerGather, ns.db.plannerExplore, ns.db.plannerWhy = saved.questGuide, saved.gather, saved.explore, saved.why
     if ns.PlannerPaceSync then ns.PlannerPaceSync() end
+    if not ok then error(err, 0) end
+end)
+-- batch 6, the final review's fixes
+try("13.6 leftovers: final review fixes", function()
+    local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), unlocked = ns.GuideUnlocked, state = ns.root.guideState, guides = ns.root.guides,
+        tomtom = rawget(env, "TomTom"), tt = ns.db.plannerTomTom, motion = ns.db.reduceMotion, combat = env.InCombatLockdown, faction = rawget(env, "UnitFactionGroup"),
+        time = env.GetTime, travel = ns.PlannerTravel, nodes = ns.root.plannerNodes, planner = ns.root.planner, stops = ns.plannerStops, timedQ = ns.PlannerTimedQuest,
+        role = ns.PlannerDuoRole, partner = ns.PlannerDuoPartner, raw = ns.PrintRaw, queued = ns.plannerQueued, reason = ns.plannerReason, context = ns.PlannerContext,
+        cands = ns.PlannerCandidates, level = env.UnitLevel, gsub = string.gsub, errors = #ns.errors }
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        ns.db.reduceMotion = false
+        env.UnitFactionGroup = function() return "Alliance", "Alliance" end
+        env.CreateVector2D = function(x, y) return { x = x, y = y } end
+        local clock = 100
+        env.GetTime = function() return clock end
+
+        -- I1, M1: a few yards from the dock or the flight master, the arrow points once and stays still
+        local regions = { [1437] = { 0, 4000, 4000 }, [1417] = { 0, 6000, 2000 }, [1445] = { 1, 5000, 5000 } }
+        local pos = { 1437, 50, 50 }
+        local cm = {}
+        for k, v in pairs(saved.map) do cm[k] = v end
+        cm.GetWorldPosFromMapPos = function(map, v)
+            local r = regions[map]
+            if r then return r[1], { x = r[2] + v.x * 2000, y = r[3] + v.y * 2000 } end
+        end
+        cm.GetBestMapForUnit = function() return pos[1] end
+        cm.GetPlayerMapPosition = function(map) if map == pos[1] then return { GetXY = function() return pos[2] / 100, pos[3] / 100 end } end end
+        cm.GetMapWorldSize = function() return 2000, 2000 end                 -- (a percent is 20 yards)
+        env.C_Map = cm
+        ns.root.planner = {}
+        ns.root.plannerNodes = { [7] = { map = 1437, x = 50, y = 50, name = "Menethil Harbor" }, [16] = { map = 1417, x = 50, y = 60, name = "Refuge Pointe" } }
+        ns.PlannerCharRecord(true).flights = { [7] = true, [16] = true }
+        ns.root.guides = { Far = { name = "Far", steps = { { kind = "goto", text = "Marsh", map = 1445, x = 70, y = 55 }, { kind = "goto", text = "Hill", map = 1417, x = 50, y = 50 },
+            { kind = "note", text = "end" } } } }
+        local travels = 0
+        ns.PlannerTravel = function(...) travels = travels + 1; return saved.travel(...) end
+        local function arrowUpdate(arrow)
+            for i = #handlers, 1, -1 do local h = handlers[i]; if h.self == arrow and h.name == "OnUpdate" then return h.fn end end
+        end
+        local sets, pulses, realSet = 0, 0, ns.SetWaypoint
+        ns.SetWaypoint = function(...) sets = sets + 1; return realSet(...) end
+        local added = {}
+        local function still(what, withTomTom)
+            local arrow = ns.waypointArrow
+            local update = arrow and arrowUpdate(arrow)
+            if arrow then rawset(arrow.pulse, "Play", function() pulses = pulses + 1 end) end
+            sets, pulses = 0, 0
+            local n = #added
+            for _ = 1, 10 do ns.guideTickTest(nil, 1); if update and not withTomTom then update(arrow, 0.1) end end
+            if arrow then rawset(arrow.pulse, "Play", nil) end
+            if sets ~= 0 or pulses ~= 0 or #added ~= n then error(what .. ": no re-point, no pulse, no new TomTom waypoint: " .. sets .. ", " .. pulses .. ", " .. (#added - n)) end
+        end
+        ns.db.plannerTomTom = false
+        pos = { 1437, 5.3, 62.0 }                                            -- (8 yards from the Menethil dock)
+        ns:GuideFollow("Far")
+        local st = ns.GuideState()
+        local w = ns.waypoint
+        if not (w and tostring(w.label):find("Take the boat", 1, true) and w.passing) then error("8 yards from the dock: the boat, where you stand: " .. tostring(w and w.label)) end
+        still("8 yards from the dock")
+        env.TomTom = { AddWaypoint = function(_, map, x, y, opts) added[#added + 1] = { map = map, x = x, y = y, title = opts and opts.title }; return "u" .. #added end,
+            RemoveWaypoint = function() end }
+        ns.db.plannerTomTom = true
+        travels = 0
+        ns.guideTickTest(nil, 1); ns:GuideAdvance()                            -- (TomTom on: pointed again, from the kept leg)
+        if #added ~= 1 or not tostring(added[1].title):find("Take the boat", 1, true) then error("TomTom has the boat: " .. #added) end
+        if travels ~= 0 then error("the same step on the same map: the leg is kept, not worked out again: " .. travels) end
+        still("8 yards from the dock, with TomTom", true)
+        env.TomTom = saved.tomtom
+        ns.db.plannerTomTom = false
+        -- the flight master, 8 yards away
+        st.at = 2
+        pos = { 1437, 50.4, 50 }
+        ns:GuideAdvance()
+        w = ns.waypoint
+        if not (w and w.label == ns:Tr("Take the flight") and w.passing) then error("8 yards from the flight master: the flight, where you stand: " .. tostring(w and w.label)) end
+        still("8 yards from the flight master")
+        -- M1: in a fight, no travel is worked out: the arrow keeps what it shows, and points once the fight is over
+        st.at = 1
+        travels = 0
+        env.InCombatLockdown = function() return true end
+        ns:GuideAdvance()
+        if travels ~= 0 or ns.waypoint.label ~= ns:Tr("Take the flight") then error("in a fight: no travel worked out, the arrow kept: " .. travels) end
+        ns.guideTickTest(nil, 1)
+        if travels ~= 0 then error("still in the fight") end
+        env.InCombatLockdown = saved.combat
+        ns.guideTickTest(nil, 1)
+        if travels ~= 1 or not tostring(ns.waypoint.label):find("Take the boat", 1, true) then error("after the fight: pointed: " .. travels .. " " .. tostring(ns.waypoint.label)) end
+        ns:GuideStop(); ns:ClearWaypoint(true)
+        ns.SetWaypoint = realSet
+        ns.PlannerTravel = saved.travel
+
+        -- the rest on map 1 (a percent is 10 yards) and map 3, another continent
+        cm.GetWorldPosFromMapPos = function(map, v)
+            if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end
+            if map == 3 then return 1, { x = v.x * 1000, y = v.y * 1000 } end
+        end
+        ns.PlannerPosReset()
+        -- I2: no stop between a timed quest's accept and its hand-in
+        local stopPlace = { name = "Vendor", map = 1, x = 31, y = 41 }
+        ns.plannerStops = { { id = "t13stop", kind = "vendor", want = function() return true end, places = function() return { stopPlace } end, text = function() return "Vendor" end } }
+        local function sp(kind, quest, x, y, timed) return { kind = kind, quest = quest, map = 1, x = x, y = y, hub = 1, timed = timed } end
+        local function stops(where)
+            stopPlace.x, stopPlace.y = where[1], where[2]
+            local guide = { steps = { sp("accept", 9680, 30, 40, true), sp("do", 9680, 32, 42, true), sp("turnin", 9680, 30, 40, true),
+                sp("do", 9681, 35, 45), sp("turnin", 9681, 30, 40) } }
+            ns.PlannerAddStops(guide, {}, { here = { map = 1, x = 30, y = 40 }, speed = 7, crossings = {}, flights = {}, faction = "Alliance" })
+            local o = {}
+            for _, s in ipairs(guide.steps) do o[#o + 1] = s.kind .. (s.quest and (":" .. s.quest) or "") end
+            return table.concat(o, " ")
+        end
+        local s = stops({ 31, 41 })
+        if not s:find("turnin:9680 vendor do:9681", 1, true) then error("the hub's stop: after the timed run: " .. s) end
+        s = stops({ 33, 43 })
+        if s:find("accept:9680 vendor", 1, true) or s:find("do:9680 vendor", 1, true) or not s:find("vendor", 1, true) then error("a stop nearest the timed run: never inside it: " .. s) end
+        s = stops({ 60, 40 })
+        if s:find("accept:9680 vendor", 1, true) or s:find("do:9680 vendor", 1, true) or not s:find("vendor", 1, true) then error("a stop off the route: never inside the timed run: " .. s) end
+        ns.plannerStops = saved.stops
+
+        -- M5: a timed quest handed in on another continent is not started here
+        local function rec(id, x, y, ends)
+            return { id = id, name = "Q" .. id, level = 10, minLevel = 1, xp = 900, starts = { { map = 1, x = x, y = y } }, ends = ends or { { map = 1, x = x, y = y } },
+                objectives = { { kind = "kill", count = 4, countKnown = true, mobLevel = 10, spots = { { map = 1, x = x + 1, y = y + 1 } } } },
+                pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+        end
+        local recs = { [9781] = rec(9781, 30, 40, { { map = 3, x = 50, y = 50 } }), [9782] = rec(9782, 31, 41) }
+        ns.PlannerTimedQuest = function(id) return id == 9781 and 600 or nil end
+        local guide = ns.PlannerRoute({ source = { kind = "test", ids = function() return { 9781, 9782 } end, quest = function(id) return recs[id] end },
+            level = 10, group = "solo", inGroup = false, speed = 7, faction = "Alliance", done = function() return false end, onQuest = function() return false end,
+            here = { map = 1, x = 30, y = 40 }, crossings = {}, flights = {}, learnFlights = false, pace = 1, flightTime = function() return nil end })
+        local seen = {}
+        for _, step in ipairs(guide.steps) do if step.quest then seen[step.quest] = (seen[step.quest] or "") .. step.kind .. " " end end
+        if seen[9781] or not seen[9782] then error("a timed quest with no hand-in here is not taken: " .. tostring(seen[9781])) end
+        ns.PlannerTimedQuest = saved.timedQ
+
+        -- I3: reaching the far dock always counts as crossed, however long it took (the time only within 60..900 s)
+        local here3 = { 1, 50, 10 }
+        cm.GetBestMapForUnit = function() return here3[1] end
+        cm.GetPlayerMapPosition = function() return { GetXY = function() return here3[2] / 100, here3[3] / 100 end } end
+        local crossings = ns.PLANNER_CROSSINGS
+        ns.PLANNER_CROSSINGS = { { id = "t13long", a = { map = 1, x = 50, y = 10 }, b = { map = 3, x = 50, y = 90 }, seconds = 100 } }
+        local ct, smp = ns.root.plannerCrossTimes, ns.root.plannerTimeSamples
+        ns.root.plannerCrossTimes, ns.root.plannerTimeSamples = nil, nil
+        ns.PlannerDockTick(); clock = clock + 1000; here3 = { 3, 50, 90 }; ns.PlannerDockTick()
+        local long = ns.PlannerCrossed("t13long")
+        local timedLong = ns.root.plannerCrossTimes and ns.root.plannerCrossTimes.t13long
+        ns.PLANNER_CROSSINGS, ns.root.plannerCrossTimes, ns.root.plannerTimeSamples = crossings, ct, smp
+        if not long or timedLong then error("1000 s: crossed, not timed: " .. tostring(long) .. " " .. tostring(timedLong)) end
+
+        -- M2: a logged quest a hook dropped still blocks its exclusive partner; M3: a duo friend lists every member it could take
+        local function crec(id, t)
+            local r = { id = id, name = "X" .. id, level = 20, minLevel = 1, xp = 500, starts = { { map = 1, x = 40, y = 40 } }, ends = {}, objectives = {},
+                pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+            for k, v in pairs(t or {}) do r[k] = v end
+            return r
+        end
+        local crecs = { [9761] = crec(9761, { exclusive = { 9762 } }), [9762] = crec(9762), [9771] = crec(9771, { exclusive = { 9772 } }), [9772] = crec(9772, { xp = 900 }),
+                        [9773] = crec(9773, { exclusive = { 9790 } }) }
+        local src = { kind = "fake", ids = function() return { 9761, 9762, 9771, 9772, 9773 } end, quest = function(id) return crecs[id] end }
+        local function cctx(extra)
+            local c = { level = 20, group = "all", inGroup = false, done = function(id) return id == 9790 end, onQuest = function(id) return id == 9761 end }
+            for k, v in pairs(extra or {}) do c[k] = v end
+            return c
+        end
+        local function have(list) local o = {}; for _, r in ipairs(list or {}) do o[r.id] = true end return o end
+        ns.PlannerSessionSkip(9761)
+        local h = have((ns.PlannerCandidates(src, cctx())))
+        ns.PlannerSessionSkipReset()
+        if h[9761] or h[9762] then error("a skipped logged quest still blocks its partner: " .. tostring(h[9762])) end
+        if not h[9772] or h[9771] then error("one of 9771/9772 for yourself") end
+        h = have((ns.PlannerCandidates(src, cctx({ allExclusive = true }))))
+        if not (h[9771] and h[9772]) or h[9773] or h[9762] then error("allExclusive: every member you could take, none you can't") end
+        local flag
+        ns.PlannerContext = function() return { source = { kind = "questie" }, level = 20 } end
+        ns.PlannerCandidates = function(_, c) flag = c.allExclusive; return {}, {}, {} end
+        env.UnitLevel = function() return 20 end
+        pcall(ns.PlannerDuoMyState, true)
+        ns.PlannerCandidates, ns.PlannerContext, env.UnitLevel = saved.cands, saved.context, saved.level
+        if flag ~= true then error("the duo friend's list asks for every exclusive member: " .. tostring(flag)) end
+
+        -- M4: skip on a duo friend: passed over here, nothing else
+        local said = {}
+        ns.PrintRaw = function(_, m) said[#said + 1] = tostring(m) end
+        ns.root.guideState = {}
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "accept", quest = 9791, title = "One" }, { kind = "note", text = "two" }, { kind = "note", text = "three" } } }, {})
+        ns:PlannerStop()
+        ns.plannerQueued, ns.plannerReason = false, nil
+        ns.PlannerDuoRole = function() return "friend" end
+        ns.PlannerDuoPartner = function() return "Leo" end
+        ns:GuideSkipStep()
+        st = ns.GuideState()
+        if not (st.skipped and st.skipped[1]) or ns.PlannerSessionSkipped(9791) or ns.plannerQueued then error("a duo friend's skip: passed over here only") end
+        if said[#said] ~= "Skipped here; Leo plans the route." then error("and says so: " .. tostring(said[#said])) end
+        ns.PlannerDuoRole, ns.PlannerDuoPartner = saved.role, saved.partner
+        ns:GuideStop()
+        ns.PrintRaw = saved.raw
+
+        -- M6: the kill line's patterns are made once
+        local calls = 0
+        string.gsub = function(...) calls = calls + 1; return saved.gsub(...) end
+        local p1 = ns.PlannerKillPattern("You gain %d experience (t13).")
+        local first = calls
+        local p2 = ns.PlannerKillPattern("You gain %d experience (t13).")
+        string.gsub = saved.gsub
+        if first == 0 or calls ~= first or p1 ~= p2 or not ("You gain 45 experience (t13)."):find(p1) then error("a pattern is made once: " .. first .. " " .. calls) end
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    string.gsub = saved.gsub
+    ns:PlannerStop(); ns:GuideStop(); ns:ClearWaypoint(true)
+    ns.PlannerSessionSkipReset()
+    env.C_Map = saved.map; rawset(env, "CreateVector2D", saved.vec); rawset(env, "TomTom", saved.tomtom); rawset(env, "UnitFactionGroup", saved.faction)
+    env.InCombatLockdown, env.GetTime, env.UnitLevel = saved.combat, saved.time, saved.level
+    ns.GuideUnlocked, ns.root.guideState, ns.root.guides, ns.root.plannerNodes, ns.root.planner = saved.unlocked, saved.state, saved.guides, saved.nodes, saved.planner
+    ns.db.plannerTomTom, ns.db.reduceMotion, ns.plannerQueued, ns.plannerReason = saved.tt, saved.motion, saved.queued, saved.reason
+    ns.PlannerTravel, ns.plannerStops, ns.PlannerTimedQuest, ns.PlannerDuoRole, ns.PlannerDuoPartner = saved.travel, saved.stops, saved.timedQ, saved.role, saved.partner
+    ns.PrintRaw, ns.PlannerContext, ns.PlannerCandidates = saved.raw, saved.context, saved.cands
+    if ns.PlannerPosReset then ns.PlannerPosReset() end
     if not ok then error(err, 0) end
 end)
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)

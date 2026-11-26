@@ -159,25 +159,42 @@ function ns.PlannerPlaces(ctx, kind, arg)
     return out
 end
 
+-- A slot (insert before steps[k]) inside a timed run: a step with a clock on it on both sides. Nothing goes there.
+local function InTimedRun(steps, k)
+    local a, b = steps[k - 1], steps[k]
+    return type(a) == "table" and type(b) == "table" and a.timed and b.timed and true or false
+end
+
 -- Where each step's hub takes a stop: after the hub's last accept, else before its first do; a step of
 -- no hub takes it right after itself (a flight or a boat: before, where you stand before leaving).
+-- The accepts and dos of a timed run are not counted (with only those: after the run's last hand-in), and a
+-- slot inside a timed run moves on to the run's end.
 local function HubSlots(steps)
-    local lastAccept, firstDo = {}, {}
+    local lastAccept, firstDo, lastTimed = {}, {}, {}
     for i, t in ipairs(steps) do
         ns.PlannerYield()
         local h = t.hub
         if h ~= nil then
-            if t.kind == "accept" then lastAccept[h] = i end
-            if t.kind == "do" and not firstDo[h] then firstDo[h] = i end
+            if t.timed then
+                if t.kind == "turnin" then lastTimed[h] = i end
+            else
+                if t.kind == "accept" then lastAccept[h] = i end
+                if t.kind == "do" and not firstDo[h] then firstDo[h] = i end
+            end
         end
+    end
+    local function Out(k)
+        while InTimedRun(steps, k) do k = k + 1 end
+        return k
     end
     return function(k)
         local s = steps[k]
         local h = s.hub
-        if h == nil then return (s.kind == "fly" or s.kind == "sail") and k or k + 1 end
-        if lastAccept[h] then return lastAccept[h] + 1 end
-        if firstDo[h] then return firstDo[h] end
-        return k + 1
+        if h == nil then return Out((s.kind == "fly" or s.kind == "sail") and k or k + 1) end
+        if lastAccept[h] then return Out(lastAccept[h] + 1) end
+        if firstDo[h] then return Out(firstDo[h]) end
+        if lastTimed[h] then return Out(lastTimed[h] + 1) end
+        return Out(k + 1)
     end
 end
 
@@ -253,7 +270,7 @@ local function Where(steps, places, ctx, tctx, after)
         for slot = 1, #steps + 1 do
             ns.PlannerYield()
             while placed[j] and placed[j].i < slot do j = j + 1 end
-            if slot > after then
+            if slot > after and not InTimedRun(steps, slot) then
                 local prev = j > 1 and placed[j - 1].spot or here
                 local toPlace = 0
                 if prev then

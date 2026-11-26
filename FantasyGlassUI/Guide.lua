@@ -434,7 +434,8 @@ local function MapEdge(fx, fy, u, v)
 end
 -- map, x, y (percent), the leg's words (nil: the step's own), and whether reaching it switches to another kind of
 -- travel (a walk to the flight master, the dock or the place you hearth from); nil when the arrow points at the step.
--- A walk to the map's edge does not switch: it is worked out again once you are on another map.
+-- A walk to the map's edge does not switch: it is worked out again once you are on another map. The last value:
+-- a spot you pass through, not one to arrive at (the map's edge, or where you stand when you are there already).
 local function LegPlace(map, x, y)
     if not (ns:GuideUnlocked() and type(map) == "number" and ns.PlannerTravel and ns.PlannerWorldPos and ns.MapPosition) then return nil end
     if ns.MapPosition(map, "player") then return nil end            -- (on its map, or on one it holds: the arrow points there itself)
@@ -446,14 +447,21 @@ local function LegPlace(map, x, y)
     local ok, _, legs = pcall(ns.PlannerTravel, { map = hereMap, x = hx, y = hy }, { map = map, x = x, y = y }, ctx)
     local leg, after = ok and type(legs) == "table" and legs[1], ok and type(legs) == "table" and legs[2]
     if type(leg) ~= "table" or type(leg.to) ~= "table" then return nil end   -- (no way there known: the arrow says "another map")
-    local to, label = leg.to, nil
-    if leg.kind ~= "run" then to, after = { map = hereMap, x = hx, y = hy }, leg end   -- (at the flight master or the dock already)
+    local to, label, there = leg.to, nil, false
+    if leg.kind ~= "run" then to, after, there = { map = hereMap, x = hx, y = hy }, leg, true end   -- (at the flight master or the dock already)
+    if leg.kind == "run" and type(after) == "table" and after.kind ~= "run" then  -- (a few yards from it: there already)
+        local c1, ax, ay = ns.PlannerWorldPos(hereMap, hx, hy)
+        local c2, bx, by = ns.PlannerWorldPos(to.map, to.x, to.y)
+        if c1 ~= nil and c1 == c2 and ((bx - ax) ^ 2 + (by - ay) ^ 2) ^ 0.5 < ns.GUIDE_NEAR then
+            to, leg, there = { map = hereMap, x = hx, y = hy }, after, true
+        end
+    end
     local kind = type(after) == "table" and after.kind or nil
     if kind == "fly" then label = ns:Tr("Take the flight")
     elseif kind == "sail" then label = (ns.PlannerSailText and ns.PlannerSailText(after)) or ns:Tr("Take the boat")
     elseif kind == "hearth" then label = ns:Tr("Use your hearthstone") end
     local switches = leg.kind == "run" and (kind == "fly" or kind == "sail" or kind == "hearth")
-    if ns.MapPosition(to.map, "player") then return to.map, to.x, to.y, label, switches end
+    if ns.MapPosition(to.map, "player") then return to.map, to.x, to.y, label, switches, there end   -- (there already: no arrival)
     local c, wx, wy = ns.PlannerWorldPos(to.map, to.x, to.y)
     local u, v
     if c then u, v = MapFraction(hereMap, c, wx, wy) end
@@ -475,25 +483,43 @@ local function TomTomClear()
     tomUid = nil
 end
 local pointed, legMap, legSpot, pointedTomTom      -- (legSpot: a leg that switches to another kind of travel when reached)
+local legReached                                    -- (the last leg spot reached, and the map you were on: never pointed at again there)
+local legCache                                      -- (the leg worked out for one step on one map: { step, index, here, result })
+local pointPending                                  -- (a leg not worked out in a fight: the 1 s look points once the fight is over)
+-- LegPlace, kept per step and map (worked out again after a leg is reached); in a fight, false when not yet known.
+local function LegFor(step, index, map, x, y)
+    local here = Here()
+    local c = legCache
+    if c and c.step == step and c.index == index and c.here == here then return unpack(c.result, 1, 6) end
+    if InCombatLockdown() then return false end              -- (no travel worked out in a fight: the arrow keeps what it shows)
+    local result = { LegPlace(map, x, y) }
+    legCache = { step = step, index = index, here = here, result = result }
+    return unpack(result, 1, 6)
+end
 local function Point(step, index)
     if not step then
         if pointed and ns.waypoint and ns.waypoint.quiet then ns:ClearWaypoint(true) end
         TomTomClear()
-        pointed, legMap, legSpot = nil, nil, nil
+        pointed, legMap, legSpot, legReached, legCache, pointPending = nil, nil, nil, nil, nil, nil
         return
     end
     local tt = TomTomAddon()                                  -- (pointed again: a new step, a leg on another map, TomTom on or off)
     if pointed == index and not (legMap and Here() ~= legMap) and (tt ~= nil) == pointedTomTom then return end
-    pointed, legMap, legSpot, pointedTomTom = index, nil, nil, tt ~= nil
     local map, x, y = PlaceOf(step)
+    local lm, lx, ly, words, switches, atEdge
+    if x then
+        lm, lx, ly, words, switches, atEdge = LegFor(step, index, map, x, y)
+        if lm == false then pointPending = true; return end
+    end
+    pointPending = nil
+    if legReached and legReached.here ~= Here() then legReached = nil end   -- (on another map: a spot may be pointed at again)
+    pointed, legMap, legSpot, pointedTomTom = index, nil, nil, tt ~= nil
     local label = ns.GuideStepText(step)
     local edge = false
-    if x then
-        local lm, lx, ly, words, switches, atEdge = LegPlace(map, x, y)
-        if lm then
-            map, x, y, label, legMap, edge = lm, lx, ly, words or label, Here(), atEdge == true
-            if switches then legSpot = { map = lm, x = lx, y = ly } end
-        end
+    if lm then
+        map, x, y, label, legMap, edge = lm, lx, ly, words or label, Here(), atEdge == true
+        local seen = legReached and legReached.map == lm and math.abs(legReached.x - lx) < 0.05 and math.abs(legReached.y - ly) < 0.05
+        if switches and not seen then legSpot = { map = lm, x = lx, y = ly } end
     end
     TomTomClear()
     if tt and x then
@@ -520,7 +546,8 @@ local function LegReached()
     if ns.MapWorldSize then width, height = ns.MapWorldSize(spot.map) end
     local _, distance = ns.WayArrow(px, py, spot.x / 100, spot.y / 100, width, height, 0)
     if distance >= ns.GUIDE_NEAR then return false end
-    legMap, legSpot = -1, nil                                 -- (not a map: the next Point works the leg out again)
+    legReached = { map = spot.map, x = spot.x, y = spot.y, here = Here() }
+    legMap, legSpot, legCache = -1, nil, nil                  -- (not a map: the next Point works the leg out again)
     return true
 end
 
@@ -658,6 +685,10 @@ function ns:GuideSkipStep()
     st.skipped[at] = true
     ns:GuideAdvance()
     if st.name == ns.GUIDE_PLANNED and type(step.quest) == "number" then
+        if ns.PlannerDuoRole and ns.PlannerDuoRole() == "friend" then     -- (planning together: the leader plans, so only passed over here)
+            ns:Print("Skipped here; %s plans the route.", tostring(ns.PlannerDuoPartner and ns.PlannerDuoPartner() or "?"))
+            return
+        end
         if ns.PlannerSessionSkip then pcall(ns.PlannerSessionSkip, step.quest) end
         ns:GuidePlanAgain("skip")
     end
@@ -1220,6 +1251,7 @@ do
         local guide = ns:GuideGet(st.name)
         local step = guide and guide.steps[st.at or 1]
         local reached = LegReached()                          -- (a leg reached: the arrow's next one, on any kind of step)
+        if pointPending and not InCombatLockdown() then reached = true end   -- (a leg left for after the fight)
         if step and (reached or step.kind == "goto" or step.kind == "level" or step.kind == "explore" or step.kind == "gather") then pcall(ns.GuideAdvance, ns) end
     end
     ev:SetScript("OnUpdate", Tick)

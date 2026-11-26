@@ -95,7 +95,7 @@ function ns:SetWaypoint(x, y, label, onMap, quiet)
             if type(facing) ~= "number" or Secret(facing) then facing = 0 end
             local turn, distance = ns.WayArrow(px, py, w.x, w.y, width, height, facing)
             local near = distance <= WAY_NEAR                     -- (the theme's accent, brighter once you are close)
-            if near ~= w.near then w.near = near; ns:Paint(self.tex, "SetVertexColor", "@accent", near and 1 or 0.7) end
+            if near ~= w.near then w.near = near; ns:Paint(self.tex, "SetVertexColor", "@accent", near and 1 or 0.85) end
             local now = GetTime and GetTime() or 0
             -- arrived: one pulse (the guide's waypoint where it counts you there; none at a spot you only pass through)
             if distance < (w.quiet and ns.GUIDE_NEAR or WAY_ARRIVED) and not w.arrived and not w.passing then

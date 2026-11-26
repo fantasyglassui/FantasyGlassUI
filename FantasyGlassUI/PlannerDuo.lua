@@ -286,8 +286,9 @@ function ns.PlannerDuoMyState(anyway)
     end
     -- what you could take: your own candidates, whatever the group setting (the leader's decides)
     if st.questie then
-        ctx.group = "all"
+        ctx.group, ctx.allExclusive = "all", true            -- (every member of an exclusive set you could take: the leader picks one)
         local list, _, later = ns.PlannerCandidates(src, ctx)
+        ctx.allExclusive = nil
         local count = 0
         for _, part in ipairs({ list or {}, later or {} }) do
             for _, rec in ipairs(part) do
