@@ -327,13 +327,13 @@
     if (go) { drawChosen(); drawGallery(); setTimeout(function () { var el = $(go); if (el) el.scrollIntoView({ block: "start" }); }, 60); }
   })();
   var SHOTS = [
-    ["celestial-overview", "Before and after", "A whole screen in a Celestial theme: party, player and target, bags, chat, action bars and the star-chart minimap."],
-    ["starcut-celestial", "Starcut, Celestial", "The Starcut frames in a Celestial theme: diamond portraits with stars on their points, and bars cut to points that glow."],
-    ["starcut-fantasy", "Starcut, Fantasy", "The same frames in a Fantasy theme, warm gold rims on dark leather."],
-    ["starcut-glass", "Starcut, Glass", "The same frames in a Glass theme, bright panes over the world."],
-    ["starcut-families", "Three families", "One frame in each family side by side: Glass, Fantasy and Celestial."],
-    ["celestial-bags", "Bags", "The one-window bags, sorted into sections, with item quality on every cut slot."],
-    ["celestial-minimap", "Star-chart minimap", "The Celestial minimap as a star chart, with degree marks and the moon along the top."]
+    ["celestial-live", "Before and after", "The same spot in Stormwind Harbor, before and after, in a Celestial theme."],
+    ["celestial-screen", "Celestial", "A whole screen in a Celestial theme: party, player and target, cast bar, action bars and the minimap."],
+    ["glass-overview", "Glass", "The same screen in a Glass theme."],
+    ["fantasy-overview", "Fantasy", "The same screen in a Fantasy theme."],
+    ["celestial-frames", "Unit frames", "The player and target frames up close, with the pet, the cast bar, buffs and the target's target."],
+    ["glass-bags", "Bags", "The bags in one window, with item quality on every cut slot, and search, sort and equip best along the top."],
+    ["glass-settings", "Options window", "The options window: every theme in one place, and every feature can be switched off."]
   ];
   var shotIdx = 0;
   function drawThumbs() {
@@ -344,7 +344,7 @@
   $("thumbs").addEventListener("click", function (ev) {
     var b = ev.target.closest("[data-n]"); if (!b) return;
     shotIdx = +b.getAttribute("data-n"); var s = SHOTS[shotIdx];
-    $("shot-img").srcset = BASE + "shots/" + s[0] + "-800.webp 800w, " + BASE + "shots/" + s[0] + ".webp 1600w"; $("shot-img").src = BASE + "shots/" + s[0] + ".webp"; $("shot-img").alt = L(s[2]); $("shot-cap").textContent = L(s[2]);
+    $("shot-img").srcset = BASE + "shots/" + s[0] + "-800.webp 800w, " + BASE + "shots/" + s[0] + ".webp 2400w"; $("shot-img").src = BASE + "shots/" + s[0] + ".webp"; $("shot-img").alt = L(s[2]); $("shot-cap").textContent = L(s[2]);
     $("cmp").hidden = shotIdx !== 0; $("shot-big").hidden = shotIdx === 0;     // the first is the before-and-after slider
     drawThumbs();
   });

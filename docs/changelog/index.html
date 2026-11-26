@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Changelog · Fantasy Glass UI</title>
-<meta name="description" content="Every release of Fantasy Glass UI, the WoW Forever add-on, from the first to 12.2.0: what is new, what was fixed and what changed.">
+<meta name="description" content="Every release of Fantasy Glass UI, the WoW Forever add-on, from the first to 12.4.0: what is new, what was fixed and what changed.">
 <link rel="canonical" href="https://fantasyglassui.com/changelog/">
 <link rel="icon" type="image/png" href="/icon.png">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Fantasy Glass UI">
 <meta property="og:title" content="Fantasy Glass UI changelog">
-<meta property="og:description" content="Every release, from the first to 12.2.0.">
+<meta property="og:description" content="Every release, from the first to 12.4.0.">
 <meta property="og:url" content="https://fantasyglassui.com/changelog/">
 <meta property="og:image" content="https://fantasyglassui.com/og.jpg">
 <meta name="theme-color" content="#06070d">
@@ -74,10 +74,32 @@
 <main>
   <h1>Changelog</h1>
   <div class="intro"><p>The releases published on CurseForge. Each lists what changed since the release before it.</p></div>
-  <nav class="jump" aria-label="Versions"><a href="#v12-2-0">12.2.0</a><a href="#v12-1-0">12.1.0</a><a href="#v12-0-0">12.0.0</a><a href="#v11-18-0">11.18.0</a><a href="#v11-17-4">11.17.4</a><a href="#v11-17-3">11.17.3</a><a href="#v11-17-2">11.17.2</a><a href="#v11-17-1">11.17.1</a><a href="#v11-17-0">11.17.0</a><a href="#v11-16-0">11.16.0</a><a href="#v11-15-0">11.15.0</a><a href="#v11-14-1">11.14.1</a><a href="#v11-14-0">11.14.0</a><a href="#v11-13-0">11.13.0</a><a href="#v11-12-0">11.12.0</a><a href="#v11-11-0">11.11.0</a><a href="#v11-10-0">11.10.0</a><a href="#v11-9-1">11.9.1</a><a href="#v11-9-0">11.9.0</a><a href="#v11-8-1">11.8.1</a><a href="#v11-8-0">11.8.0</a><a href="#v11-7-0">11.7.0</a><a href="#v11-6-0">11.6.0</a><a href="#v11-5-0">11.5.0</a><a href="#v10-0-0">10.0.0</a><a href="#v9-8-0">9.8.0</a><a href="#v9-7-0">9.7.0</a><a href="#v9-6-0">9.6.0</a><a href="#v9-5-6">9.5.6</a><a href="#v9-0-0">9.0.0</a><a href="#v8-7-1">8.7.1</a><a href="#v8-4-7">8.4.7</a><a href="#v8-2-1">8.2.1</a></nav>
+  <nav class="jump" aria-label="Versions"><a href="#v12-4-0">12.4.0</a><a href="#v12-3-0">12.3.0</a><a href="#v12-2-0">12.2.0</a><a href="#v12-1-0">12.1.0</a><a href="#v12-0-0">12.0.0</a><a href="#v11-18-0">11.18.0</a><a href="#v11-17-4">11.17.4</a><a href="#v11-17-3">11.17.3</a><a href="#v11-17-2">11.17.2</a><a href="#v11-17-1">11.17.1</a><a href="#v11-17-0">11.17.0</a><a href="#v11-16-0">11.16.0</a><a href="#v11-15-0">11.15.0</a><a href="#v11-14-1">11.14.1</a><a href="#v11-14-0">11.14.0</a><a href="#v11-13-0">11.13.0</a><a href="#v11-12-0">11.12.0</a><a href="#v11-11-0">11.11.0</a><a href="#v11-10-0">11.10.0</a><a href="#v11-9-1">11.9.1</a><a href="#v11-9-0">11.9.0</a><a href="#v11-8-1">11.8.1</a><a href="#v11-8-0">11.8.0</a><a href="#v11-7-0">11.7.0</a><a href="#v11-6-0">11.6.0</a><a href="#v11-5-0">11.5.0</a><a href="#v10-0-0">10.0.0</a><a href="#v9-8-0">9.8.0</a><a href="#v9-7-0">9.7.0</a><a href="#v9-6-0">9.6.0</a><a href="#v9-5-6">9.5.6</a><a href="#v9-0-0">9.0.0</a><a href="#v8-7-1">8.7.1</a><a href="#v8-4-7">8.4.7</a><a href="#v8-2-1">8.2.1</a></nav>
   <div id="log">
+<section class="ver" id="v12-4-0" data-v="12.4.0">
+<h2><a href="#v12-4-0">12.4.0</a> <span class="now">Current</span></h2>
+<h3>New: Scan prices</h3>
+<ul><li>A <b>Scan prices</b> button on the auction house, left of Worth selling, reads the whole auction house in one click. The auction house allows it about every 15 minutes; the button counts down to the next one ("Scan in m:ss").</li><li>The list is read in small pieces, so the game doesn't freeze, and the reading pauses in a fight ("Paused for combat") and goes on after it. It never posts, buys or bids.</li><li>The prices it reads go into the tooltips and the sell hints, like the prices you see while you browse.</li></ul>
+<h3>New: prices for each auction house</h3>
+<ul><li>Prices are kept for each realm and faction: a character on another realm or faction has its own.</li><li>Your old prices move in once, into the auction house you first open after the update. Until then, your tooltips keep showing them.</li></ul>
+<h3>New: Sell now / Hold / Vendor it</h3>
+<ul><li>Item tooltips say <b>Sell now</b> when an item is well above its usual price, <b>Hold</b> when it is cheap today, and <b>Vendor it</b> when a vendor pays about as much or nobody lists it, with how fresh the prices are.</li><li>On the bag window, a small coloured square says the same: green for Sell now, amber for Hold, grey for Vendor it.</li><li>Vendor it is for common and uncommon items only. Bound items get no hint.</li><li>Both are in Bags and items › Auction and trade, and on by default.</li></ul>
+<h3>Known limits</h3>
+<ul><li>A neutral auction house shares its faction's prices.</li><li>Connected realms keep separate prices: each realm of a connected group has its own.</li></ul>
+<h3>Fixed</h3>
+<ul><li><code>/fgui shop</code> counts what your other characters hold again.</li></ul>
+</section>
+<section class="ver" id="v12-3-0" data-v="12.3.0">
+<h2><a href="#v12-3-0">12.3.0</a></h2>
+<h3>New: a new look for the settings window</h3>
+<ul><li>The settings window (<code>/fgui</code>) has a look of its own: calm and dark whatever your theme, with only your theme's accent color showing through, and clear lettering.</li><li>Settings sit in cards with room between them, and every on/off setting is a switch.</li><li>A tidier list of categories down the left, with the open one's sections under it.</li><li>Themes are shown as a grid of pictures, with a large preview beside it.</li><li>High-contrast themes give the window a black-and-white version, so nothing gets harder to read.</li><li>The Readable and Dyslexia-friendly lettering still apply in the window, and so do the text size and outline choices.</li><li>Only the settings window changes: every other window still wears your theme, and every setting is where it was.</li></ul>
+<h3>Changed: where the window's own controls are</h3>
+<ul><li>Search every option is in the window's header.</li><li>Simple / All options is at the top of the list on the left.</li><li>"Reset &lt;category&gt; to how it came" is in the footer, beside Undo last change.</li><li>What you changed lately is in Undo last change's tooltip: point at the button.</li><li>Click a theme to preview it beside the grid; "Use this theme" wears it.</li><li>The window starts wide enough for everything in it to show whole. Drag its corner to make it wider: the pages and the theme grid follow.</li></ul>
+<h3>Fixed</h3>
+<ul><li>The buttons that reload the interface work again: the setup's Finish &amp; reload and its language list, Use on a profile, Reset positions, Leave safe mode, and <code>/rl</code>. Where the game refuses, the add-on says "Type /reload to finish."</li></ul>
+</section>
 <section class="ver" id="v12-2-0" data-v="12.2.0">
-<h2><a href="#v12-2-0">12.2.0</a> <span class="now">Current</span></h2>
+<h2><a href="#v12-2-0">12.2.0</a></h2>
 <h3>New: more accessibility</h3>
 <ul><li>Read talk and quests aloud: what an NPC says (and the choices it offers), a quest's text when you are offered it, its progress and its reward, and a book or letter are read with the game's voice as soon as they open; the reading stops when you close them.</li><li>Read what I point at: when the mouse rests on something for half a second, its tooltip is read aloud. (The game's own screen narrator only works before you log in.)</li><li>Move through the game's windows with the keyboard: with an NPC's talk, a quest, a vendor, the mailbox, loot, a trainer, a flight master, the bank or a question box open, Tab or Down goes to the next thing to press, Shift+Tab or Up to the one before, and Enter or Space presses it. A ring shows where you are, and each choice can be said aloud with where it is in the list. Never while you type, and not in a fight.</li><li>Keys for one hand: one button binds moving, jumping, targeting, interacting and the first action buttons round W, A, S and D for the left hand, another puts them all on the number pad for the right. The keys they take are noted, and "Put my keys back" returns every one (<code>/fgui keys left</code>, <code>numpad</code> or <code>back</code>).</li><li>Celestial: High contrast, a black sky with white stars and rims, the third high-contrast theme beside Glass and Fantasy. "Use the high-contrast theme" (and <code>/fgui contrast</code>) picks the one for the family you use.</li><li>Still sky: the celestial sky keeps its stars but holds still, while everything else moves as usual.</li><li>Wait before a tooltip shows: up to two seconds of rest before a tooltip appears.</li><li>All of these travel in the one line of accessibility settings you can share.</li></ul>
 </section>

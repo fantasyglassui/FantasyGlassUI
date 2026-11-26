@@ -224,7 +224,7 @@ local PLACE = {
     ["Bags and items › Item tooltips"] = { "tooltip", "itemCounts", "tooltipExtras", "tooltipIDs", "madeByTip" },
     ["Bags and items › Vendors"] = { "autoSell", "autoRepair", "repairGuild", "vendorSummary", "vendorStack", "vendorKnown", "trainAll", "restockOn" },
     ["Bags and items › Mail"] = { "mailTools", "mailAlts", "mailButton", "mailRulesOn", "mailCloth", "mailLeather", "mailOre", "mailHerbs", "mailCooking", "mailElemental", "mailEnchanting", "mailGems", "mailPotions" },
-    ["Bags and items › Auction and trade"] = { "auctionMemory", "auctionHelper", "tradeLog" },
+    ["Bags and items › Auction and trade"] = { "auctionMemory", "auctionScan", "sellHints", "auctionHelper", "tradeLog" },
     ["Bags and items › Professions"] = { "craftBar", "profCooldowns", "skillUps" },
     ["Bags and items › Gold and farming"] = { "farming" },
     ["Quests and map › Quests"] = { "questTracker", "questRewards", "questLog", "quests", "autoQuest", "gossipOne" },
@@ -290,6 +290,5 @@ function ns:SeeSection(sec)
     ns.root.seenNew[sec.id] = true
 end
 
--- Home: which places get a card, with a few words on each.
-ns.homeCards = { "look", "access", "frames", "combat", "groups", "items", "quests", "chat", "auto", "layout", "tools" }
+-- Home: the quick switches, a card each.
 ns.homeQuick = { "bagWindow", "damageMeter", "autoSell", "autoRepair", "questTracker", "plateQuest" }

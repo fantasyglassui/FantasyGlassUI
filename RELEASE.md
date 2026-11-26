@@ -1,23 +1,31 @@
-## 12.2.0
+## 12.4.0
 
-**New: more accessibility**
-- Read talk and quests aloud: what an NPC says (and the choices it offers), a quest's text when you
-  are offered it, its progress and its reward, and a book or letter are read with the game's voice
-  as soon as they open; the reading stops when you close them.
-- Read what I point at: when the mouse rests on something for half a second, its tooltip is read
-  aloud. (The game's own screen narrator only works before you log in.)
-- Move through the game's windows with the keyboard: with an NPC's talk, a quest, a vendor, the
-  mailbox, loot, a trainer, a flight master, the bank or a question box open, Tab or Down goes to the
-  next thing to press, Shift+Tab or Up to the one before, and Enter or Space presses it. A ring shows
-  where you are, and each choice can be said aloud with where it is in the list. Never while you
-  type, and not in a fight.
-- Keys for one hand: one button binds moving, jumping, targeting, interacting and the first action
-  buttons round W, A, S and D for the left hand, another puts them all on the number pad for the
-  right. The keys they take are noted, and "Put my keys back" returns every one (`/fgui keys left`,
-  `numpad` or `back`).
-- Celestial: High contrast, a black sky with white stars and rims, the third high-contrast theme
-  beside Glass and Fantasy. "Use the high-contrast theme" (and `/fgui contrast`) picks the one for
-  the family you use.
-- Still sky: the celestial sky keeps its stars but holds still, while everything else moves as usual.
-- Wait before a tooltip shows: up to two seconds of rest before a tooltip appears.
-- All of these travel in the one line of accessibility settings you can share.
+**New: Scan prices**
+- A **Scan prices** button on the auction house, left of Worth selling, reads the whole auction
+  house in one click. The auction house allows it about every 15 minutes; the button counts down
+  to the next one ("Scan in m:ss").
+- The list is read in small pieces, so the game doesn't freeze, and the reading pauses in a fight
+  ("Paused for combat") and goes on after it. It never posts, buys or bids.
+- The prices it reads go into the tooltips and the sell hints, like the prices you see while you
+  browse.
+
+**New: prices for each auction house**
+- Prices are kept for each realm and faction: a character on another realm or faction has its own.
+- Your old prices move in once, into the auction house you first open after the update. Until
+  then, your tooltips keep showing them.
+
+**New: Sell now / Hold / Vendor it**
+- Item tooltips say **Sell now** when an item is well above its usual price, **Hold** when it is
+  cheap today, and **Vendor it** when a vendor pays about as much or nobody lists it, with how fresh
+  the prices are.
+- On the bag window, a small coloured square says the same: green for Sell now, amber for Hold,
+  grey for Vendor it.
+- Vendor it is for common and uncommon items only. Bound items get no hint.
+- Both are in Bags and items › Auction and trade, and on by default.
+
+**Known limits**
+- A neutral auction house shares its faction's prices.
+- Connected realms keep separate prices: each realm of a connected group has its own.
+
+**Fixed**
+- `/fgui shop` counts what your other characters hold again.

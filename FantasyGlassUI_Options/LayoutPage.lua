@@ -13,18 +13,26 @@ local function BuildLayout(page)
     move:SetPoint("TOPLEFT", 0, 0)
     local preview = ns:CreateButton(page, "Preview", 90, 24, function() ns:TogglePreview() end)
     preview:SetPoint("LEFT", move, "RIGHT", 8, 0)
-    local reset
-    reset = ns:CreateButton(page, "Reset positions", 130, 24, function(self)
-        if self.armed then
-            self.armed = false
-            self.text:SetText(ns:Tr("Reset positions"))
-            ns:ResetPositions()
-        else
-            self.armed = true
-            self.text:SetText(ns:SignalHex("bad") .. ns:Tr("Click to confirm") .. "|r")
-            ns:After(4, function() if reset.armed then reset.armed = false; reset.text:SetText(ns:Tr("Reset positions")) end end)
-        end
-    end)
+    -- The first click only asks; while it asks, the button is a reload button (ns:ReloadButton), so the
+    -- second click clears the positions and the game itself reloads.
+    -- (If the reload does not come, it goes back to asking after the same 4 seconds; each ask has its
+    -- own turn, so an older ask's timer never cuts a newer one short.)
+    local reset, Arm
+    local turn = 0
+    local function Disarm()
+        reset.armed = false
+        reset.text:SetText(ns:Tr("Reset positions"))
+        ns:ReloadButton(reset, false, Arm)
+    end
+    Arm = function(self)
+        self.armed = true
+        turn = turn + 1
+        local mine = turn
+        self.text:SetText(ns:SignalHex("bad") .. ns:Tr("Click to confirm") .. "|r")
+        ns:ReloadButton(self, function() ns:ResetPositions() end)
+        ns:After(4, function() if reset.armed and turn == mine then Disarm() end end)
+    end
+    reset = ns:CreateButton(page, "Reset positions", 130, 24, Arm)
     reset:SetPoint("TOPRIGHT", page, "TOPRIGHT", 0, 0)
     local roleLayout = ns:CreateButton(page, "Role layout", 110, 24, function() ns:ApplyRoleLayout() end)
     roleLayout:SetPoint("RIGHT", reset, "LEFT", -8, 0)
@@ -175,7 +183,8 @@ local function BuildProfiles(page)
                 r.name = r:CreateFontString(nil, "OVERLAY")
                 ns:Font(r.name, 12)
                 r.name:SetPoint("LEFT", 4, 0)
-                r.use = ns:CreateButton(r, "Use", 70, 22, function() ns:UseProfile(r.profile) end)
+                r.use = ns:CreateButton(r, "Use", 70, 22)
+                ns:ReloadButton(r.use, function() return (ns:UseProfile(r.profile)) end)
                 r.use:SetPoint("LEFT", 260, 0)
                 ns:ButtonTip(r.use, "Switch to this profile.")
                 r.del = ns:CreateButton(r, "Delete", 70, 22, ns:ConfirmClick(function()

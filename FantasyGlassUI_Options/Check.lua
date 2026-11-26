@@ -226,7 +226,9 @@ function ns:SelfCheck(quiet)
     add("Flight timer: " .. st("flightTimer", ns.flightState) .. "; fishing mode: " .. st("fishingMode", ns.fishingState)
         .. "; smaller map: " .. st("smallMap", ns.smallMapState) .. "; group on map: " .. st("mapGroup", ns.mapGroupState)
         .. "; minimap pings named: " .. tostring(ns.pingCount or 0) .. "; tracking menu opened by: " .. tostring(ns.trackingOpened or "not tried"))
-    add("Auction prices: " .. st("auctionMemory", ns.auctionState) .. "; loot logged: " .. tostring(ns.lootLog and #ns.lootLog or 0)
+    local kept = 0
+    for _ in pairs(ns.PriceItems()) do kept = kept + 1 end
+    add("Auction prices: " .. st("auctionMemory", ns.auctionState) .. "; prices kept here: " .. kept .. "; scan prices: " .. st("auctionScan", ns.priceScanState) .. "; loot logged: " .. tostring(ns.lootLog and #ns.lootLog or 0)
         .. "; rolls seen: " .. tostring(ns.rolls and #ns.rolls or 0) .. "; chat names: " .. st("chatNames", ns.chatNamesState)
         .. "; keyword hits: " .. tostring(ns.keywordHits or 0) .. "; repeated lines hidden: " .. tostring(ns.spamHidden or 0))
     add("Short commands: " .. st("shortCommands", ns.shortCommandsState) .. "; friends list colors: " .. st("friendColors", ns.friendColorsState, ", " .. tostring(ns.friendColored or 0) .. " colored")
@@ -677,7 +679,7 @@ function ns:CheckNew(quiet)
     try("Auction house helper", function()
         if not on("auctionHelper") then return "OFF" end
         local seen = 0
-        for _ in pairs(type(ns.root.auctionSeen) == "table" and ns.root.auctionSeen or {}) do seen = seen + 1 end
+        for _ in pairs(ns.PriceItems()) do seen = seen + 1 end
         local ahf = _G.AuctionHouseFrame
         if type(ahf) ~= "table" then return "WAIT", format("open the auction house, then check again (%d prices seen)", seen) end
         local sf = ahf.ItemSellFrame or ahf.CommoditiesSellFrame

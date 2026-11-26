@@ -2,6 +2,66 @@
 
 The releases published on CurseForge. Each lists what changed since the release before it.
 
+## 12.4.0
+
+**New: Scan prices**
+- A **Scan prices** button on the auction house, left of Worth selling, reads the whole auction
+  house in one click. The auction house allows it about every 15 minutes; the button counts down
+  to the next one ("Scan in m:ss").
+- The list is read in small pieces, so the game doesn't freeze, and the reading pauses in a fight
+  ("Paused for combat") and goes on after it. It never posts, buys or bids.
+- The prices it reads go into the tooltips and the sell hints, like the prices you see while you
+  browse.
+
+**New: prices for each auction house**
+- Prices are kept for each realm and faction: a character on another realm or faction has its own.
+- Your old prices move in once, into the auction house you first open after the update. Until
+  then, your tooltips keep showing them.
+
+**New: Sell now / Hold / Vendor it**
+- Item tooltips say **Sell now** when an item is well above its usual price, **Hold** when it is
+  cheap today, and **Vendor it** when a vendor pays about as much or nobody lists it, with how fresh
+  the prices are.
+- On the bag window, a small coloured square says the same: green for Sell now, amber for Hold,
+  grey for Vendor it.
+- Vendor it is for common and uncommon items only. Bound items get no hint.
+- Both are in Bags and items › Auction and trade, and on by default.
+
+**Known limits**
+- A neutral auction house shares its faction's prices.
+- Connected realms keep separate prices: each realm of a connected group has its own.
+
+**Fixed**
+- `/fgui shop` counts what your other characters hold again.
+
+## 12.3.0
+
+**New: a new look for the settings window**
+- The settings window (`/fgui`) has a look of its own: calm and dark whatever your theme, with
+  only your theme's accent color showing through, and clear lettering.
+- Settings sit in cards with room between them, and every on/off setting is a switch.
+- A tidier list of categories down the left, with the open one's sections under it.
+- Themes are shown as a grid of pictures, with a large preview beside it.
+- High-contrast themes give the window a black-and-white version, so nothing gets harder to read.
+- The Readable and Dyslexia-friendly lettering still apply in the window, and so do the text size
+  and outline choices.
+- Only the settings window changes: every other window still wears your theme, and every setting
+  is where it was.
+
+**Changed: where the window's own controls are**
+- Search every option is in the window's header.
+- Simple / All options is at the top of the list on the left.
+- "Reset <category> to how it came" is in the footer, beside Undo last change.
+- What you changed lately is in Undo last change's tooltip: point at the button.
+- Click a theme to preview it beside the grid; "Use this theme" wears it.
+- The window starts wide enough for everything in it to show whole. Drag its corner to make it
+  wider: the pages and the theme grid follow.
+
+**Fixed**
+- The buttons that reload the interface work again: the setup's Finish & reload and its language
+  list, Use on a profile, Reset positions, Leave safe mode, and `/rl`. Where the game refuses, the
+  add-on says "Type /reload to finish."
+
 ## 12.2.0
 
 **New: more accessibility**

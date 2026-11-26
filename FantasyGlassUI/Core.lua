@@ -1,6 +1,6 @@
 local ADDON, ns = ...
 _G.FantasyGlassUI = ns
-ns.version = "12.2.0"
+ns.version = "12.4.0"
 ns.author = "DustyMouse"
 
 ns.modules = {}
@@ -250,6 +250,8 @@ ns.defaults = {
     bagSetMark       = true,        -- gear set items say "Set" in the bags and are never sold
     tradeLog         = true,        -- what changed hands, with whom
     auctionMemory    = true,        -- the last auction price you saw, in tooltips
+    auctionScan      = true,        -- a Scan prices button on the auction house
+    sellHints        = true,        -- Sell now / Hold / Vendor it in tooltips and on the bag window
     lootLog          = true,        -- /fgui loot
     chatKeywords     = true,        -- words you chose are picked out (nothing until you choose one)
     chatSpam         = false,       -- the same line repeated within seconds is hidden
@@ -1329,6 +1331,16 @@ function ns:ApplyTheme()
     ns.FONTFLAGS = (ownBody and style.flags) or ""
     if ns.db.textOutline == "thin" then ns.FONTFLAGS = "OUTLINE"                     -- (12.1: an outline round every letter)
     elseif ns.db.textOutline == "thick" then ns.FONTFLAGS = "THICKOUTLINE" end
+    -- (12.3) The settings window's own lettering (ns:Font, inside a look): Barlow, in the languages
+    -- whose letters it has, unless a lettering made for reading (low vision, dyslexia) is chosen;
+    -- otherwise the faces picked above. The outline choice applies to it too.
+    local reading = ns.db.fontStyle == "READABLE" or ns.db.fontStyle == "DYSLEXIC"
+    if latin[locale] and not reading then
+        ns.LOOKFONT, ns.LOOKTITLEFONT = ns.MEDIA .. "Barlow-Medium.ttf", ns.MEDIA .. "Barlow-SemiBold.ttf"
+        ns.LOOKFLAGS = (ns.db.textOutline == "thin" and "OUTLINE") or (ns.db.textOutline == "thick" and "THICKOUTLINE") or ""
+    else
+        ns.LOOKFONT, ns.LOOKTITLEFONT, ns.LOOKFLAGS = nil, nil, nil
+    end
     ns.BAR = ns.db.barTexture and (ns.MEDIA .. ((ns.style == "GLASS") and "bar_glass.tga" or "bar.tga")) or ns.FLAT
     if ns.ApplySharedMedia then pcall(ns.ApplySharedMedia, ns) end        -- (a font or bar texture chosen from another add-on)
 end
@@ -1623,6 +1635,16 @@ end
 
 -- What's new: shown once after an update (never on a first install, where the setup opens instead).
 ns.whatsNew = {
+    { "12.4.0", { "Scan prices, on the auction house: the whole auction house in one click, about every 15 minutes. It is read in small pieces and pauses in a fight.",
+                  "Prices are kept for each realm and faction. Your old prices move in once, into the first auction house you open.",
+                  "Sell now, Hold and Vendor it in item tooltips, and as a coloured square on the bag window. Vendor it is for common and uncommon items only, and bound items get no hint.",
+                  "A neutral auction house shares its faction's prices, and connected realms keep separate prices." } },
+    { "12.3.0", { "A new look for the settings window: calm and dark whatever your theme, with only your theme's accent color showing through, and clear lettering.",
+                  "Settings sit in cards with a switch on each, and the list of categories down the left is tidier.",
+                  "Themes are shown as a grid of pictures, with a large preview beside it.",
+                  "High-contrast themes give the window a black-and-white version, and the Readable and Dyslexia-friendly lettering still apply.",
+                  "Where things are in the window: search is in the header, Simple / All options at the top of the list, Reset in the footer, and your recent changes in the Undo button's tooltip. Click a theme to preview it; Use this theme wears it.",
+                  "The buttons that reload the interface work again: the setup's Finish & reload and its language list, Use on a profile, Reset positions, Leave safe mode and /rl. If the game refuses, type /reload to finish." } },
     { "12.2.0", { "Read talk and quests aloud: what an NPC says, a quest's text and a book are read as they open. Read what I point at: a tooltip is read when the mouse rests on it.",
                   "Move through the game's windows with the keyboard: in NPC talk, quests, vendors, mail, loot and question boxes, Tab goes from button to button and Enter presses, with each choice said aloud if you like.",
                   "Keys for one hand: everything round W, A, S and D, or all on the number pad, with one button, and one to put your keys back (/fgui keys).",

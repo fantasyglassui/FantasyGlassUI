@@ -17,6 +17,33 @@ local function Heading(parent, text, x, y, width)
     ns:Paint(line, "SetVertexColor", "@border", 0.8)
     return fs
 end
+-- (12.3) The Guide tab's headings are section labels as in the rest of the settings window (O.Header):
+-- 13, secondary, upper-case in English only; a plain rule under each. Its switches are as wide as the
+-- tab's column, so a long label is not cut short.
+local GUIDE_SWITCH_W = 460
+local function GuideHeading(parent, text, x, y, width)
+    local fs = parent:CreateFontString(nil, "OVERLAY")
+    ns:Font(fs, 13, true)
+    fs:SetPoint("TOPLEFT", x, y)
+    local shown = ns:Tr(text)
+    local O = ns.optUI
+    if O and O.LabelCase then shown = O.LabelCase(shown) end
+    fs:SetText(shown)
+    ns:Paint(fs, "SetTextColor", "dim")
+    ns:IndexOption(text, fs)
+    local line = parent:CreateTexture(nil, "ARTWORK")
+    line:SetTexture(ns.FLAT)
+    line:SetHeight(1)
+    line:SetPoint("TOPLEFT", x, y - 20)
+    line:SetWidth(width or 240)
+    ns:Paint(line, "SetVertexColor", "@border", 1)
+    return fs
+end
+local function GuideSwitch(parent, label, checked, onChange)
+    local c = ns:CreateCheckbox(parent, label, checked, onChange)
+    c:SetWidth(GUIDE_SWITCH_W)
+    return c
+end
 local function Small(parent, size, width)
     local fs = parent:CreateFontString(nil, "OVERLAY")
     ns:Font(fs, size or 11)
@@ -255,12 +282,12 @@ end
 -- Group A: the route and the hubs on the map.
 local function FeelMapSection(live, y, Replan, T)
     local function Redraw() if ns.PlannerMapRedraw then ns.PlannerMapRedraw() end end
-    local line = ns:CreateCheckbox(live, "The route on the map", ns.db.plannerMapLine ~= false, function(v)
+    local line = GuideSwitch(live, "The route on the map", ns.db.plannerMapLine ~= false, function(v)
         ns.db.plannerMapLine = v
         Redraw()
     end)
     line:SetPoint("TOPLEFT", 0, y)
-    local hubs = ns:CreateCheckbox(live, "Hubs on the map", ns.db.plannerMapHubs ~= false, function(v)
+    local hubs = GuideSwitch(live, "Hubs on the map", ns.db.plannerMapHubs ~= false, function(v)
         ns.db.plannerMapHubs = v
         Redraw()
     end)
@@ -300,7 +327,7 @@ end
 local function FeelPaceSection(live, y, Replan, T)
     local refreshes = {}
     -- The time you have and break reminders
-    Heading(live, "How long you play", 0, y, 736)
+    GuideHeading(live, "How long you play", 0, y, 736)
     y = y - 30
     local times = ns.PLANNER_PLAY_TIMES or { { 0, "No limit" } }
     local function DrawTime(b)
@@ -324,7 +351,7 @@ local function FeelPaceSection(live, y, Replan, T)
     ns:Paint(how, "SetTextColor", "faint")
     how:SetText(ns:Tr("Used by /fgui guide plan with no number. The plan then takes only what fits, and ends at a place to stop."))
     y = y - 30
-    local breaks = ns:CreateCheckbox(live, "Remind me to take a break at a stopping place", ns.db.plannerBreaks == true, function(v) ns.db.plannerBreaks = v end)
+    local breaks = GuideSwitch(live, "Remind me to take a break at a stopping place", ns.db.plannerBreaks == true, function(v) ns.db.plannerBreaks = v end)
     breaks:SetPoint("TOPLEFT", 0, y)
     y = y - 30
     local lengths = { { 60, "1 hour" }, { 90, "1 hour 30" }, { 120, "2 hours" }, { 180, "3 hours" } }
@@ -349,7 +376,7 @@ local function FeelPaceSection(live, y, Replan, T)
     end
 
     -- Speed or story: a style, and the three weights it sets (a slider moved makes it Custom)
-    Heading(live, "Speed or story", 0, y, 736)
+    GuideHeading(live, "Speed or story", 0, y, 736)
     y = y - 30
     local styles = { { "speed", "Speed" }, { "story", "Story" }, { "custom", "Custom" } }
     local function DrawStyle(b)
@@ -399,11 +426,12 @@ end
 
 -- Group D: level times, race your best, where you left off, save as guide, read aloud.
 local function FeelRecordsSection(live, y, Replan, T)
-    local race = ns:CreateCheckbox(live, "Race your best", ns.db.plannerRace == true, function(v) ns.db.plannerRace = v end)
+    local race = GuideSwitch(live, "Race your best", ns.db.plannerRace == true, function(v) ns.db.plannerRace = v end)
     race:SetPoint("TOPLEFT", 0, y)
-    local leftOff = ns:CreateCheckbox(live, "Where you left off, at login", ns.db.plannerLeftOff ~= false, function(v) ns.db.plannerLeftOff = v end)
+    local leftOff = GuideSwitch(live, "Where you left off, at login", ns.db.plannerLeftOff ~= false, function(v) ns.db.plannerLeftOff = v end)
     leftOff:SetPoint("TOPLEFT", 0, y - 26)
-    local speak = ns:CreateCheckbox(live, "Read the route aloud", ns.db.plannerSpeak ~= false, function(v) ns.db.plannerSpeak = v end)
+    local speak = GuideSwitch(live, "Read the route aloud", ns.db.plannerSpeak ~= false, function(v) ns.db.plannerSpeak = v end)
+    speak:SetWidth(260)                                       -- (narrower: the hint sits at its right)
     speak:SetPoint("TOPLEFT", 0, y - 52)
     local hint = Small(live, 11, 440)                         -- (reading aloud is one switch in Accessibility; this one only narrows it)
     hint:SetPoint("LEFT", speak, "RIGHT", 12, 0)
@@ -426,7 +454,7 @@ end
 -- Each group writes only inside its own function's body.
 -- Group A: find a group for a group quest.
 local function TogetherGroupSection(live, y, Replan, T)
-    local find = ns:CreateCheckbox(live, "Find a group button", ns.db.plannerFindGroup ~= false, function(v)
+    local find = GuideSwitch(live, "Find a group button", ns.db.plannerFindGroup ~= false, function(v)
         ns.db.plannerFindGroup = v
         if ns.GuideRedraw then ns:GuideRedraw() end
     end)
@@ -454,7 +482,7 @@ end
 
 -- Group B: plan with a friend (the duo).
 local function TogetherDuoSection(live, y, Replan, T)
-    local ask = ns:CreateCheckbox(live, "Let friends ask to plan with you", ns.db.plannerDuoAsk ~= false, function(v) ns.db.plannerDuoAsk = v end)
+    local ask = GuideSwitch(live, "Let friends ask to plan with you", ns.db.plannerDuoAsk ~= false, function(v) ns.db.plannerDuoAsk = v end)
     ask:SetPoint("TOPLEFT", 0, y)
     local start = ns:CreateButton(live, "Plan with a friend", 180, 24, function()
         if ns.PlannerDuoStart then ns:PlannerDuoStart() end         -- (your target, your one party member, or it says how)
@@ -510,16 +538,16 @@ function ns.BuildGuidePage(page)
     local LIVE_HEIGHT                       -- (set below the last section)
     live:SetSize(736, 896)
     T.live = live
-    Heading(live, "Quest guides", 0, 0, 736)
+    GuideHeading(live, "Quest guides", 0, 0, 736)
     local status = Small(live, 12, 700)
     status:SetPoint("TOPLEFT", 0, -30)
-    local on = ns:CreateCheckbox(live, "Quest guides", ns.db.questGuide ~= false, function(v)
+    local on = GuideSwitch(live, "Quest guides", ns.db.questGuide ~= false, function(v)
         ns.db.questGuide = v
         if ns.GuideApplySwitch then ns:GuideApplySwitch() end
         page.Refresh()
     end)
     on:SetPoint("TOPLEFT", 0, -62)
-    local sound = ns:CreateCheckbox(live, "A sound when a step is done", ns.db.guideSound ~= false, function(v) ns.db.guideSound = v end)
+    local sound = GuideSwitch(live, "A sound when a step is done", ns.db.guideSound ~= false, function(v) ns.db.guideSound = v end)
     sound:SetPoint("TOPLEFT", 0, -88)
     local list = ns:CreateButton(live, "Your guides", 170, 24, function() if ns.HideConfig then ns.HideConfig() end; ns:GuideList() end)
     list:SetPoint("TOPLEFT", 0, -126)
@@ -531,7 +559,7 @@ function ns.BuildGuidePage(page)
     end)
     route:SetPoint("LEFT", write, "RIGHT", 8, 0)
     T.routeButton = route
-    Heading(live, "Record a guide as you play", 0, -170, 736)
+    GuideHeading(live, "Record a guide as you play", 0, -170, 736)
     local name = ns:CreateEditBox(live, 240, 24, "a name for the guide")
     name:SetPoint("TOPLEFT", 0, -200)
     local recBtn
@@ -547,7 +575,7 @@ function ns.BuildGuidePage(page)
     T.onBox, T.recordButton, T.nameBox = on, recBtn, name
 
     -- The route planner: a button, and what it takes into account. Changing a setting plans again, if it is running.
-    Heading(live, "Plan my route", 0, -270, 736)
+    GuideHeading(live, "Plan my route", 0, -270, 736)
     local function Replan() if ns.PlannerReplan then ns:PlannerReplan("settings") end end
     local plan = ns:CreateButton(live, "Plan my route", 170, 24, function() if ns.PlannerStart then ns:PlannerStart() end; page.Refresh() end)
     plan:SetPoint("TOPLEFT", 0, -300)
@@ -565,67 +593,67 @@ function ns.BuildGuidePage(page)
         Replan()
     end)
     group:SetPoint("LEFT", plan, "RIGHT", 8, 0)
-    local flights = ns:CreateCheckbox(live, "Learn new flight points on the way", ns.db.plannerLearnFlights ~= false, function(v)
+    local flights = GuideSwitch(live, "Learn new flight points on the way", ns.db.plannerLearnFlights ~= false, function(v)
         ns.db.plannerLearnFlights = v
         Replan()
     end)
     flights:SetPoint("TOPLEFT", 0, -334)
-    local why = ns:CreateCheckbox(live, "Show why each step is there", ns.db.plannerWhy ~= false, function(v)
+    local why = GuideSwitch(live, "Show why each step is there", ns.db.plannerWhy ~= false, function(v)
         ns.db.plannerWhy = v
         Replan()
     end)
     why:SetPoint("TOPLEFT", 0, -360)
-    local trainer = ns:CreateCheckbox(live, "Visit your trainer on the way", ns.db.plannerTrainer ~= false, function(v)
+    local trainer = GuideSwitch(live, "Visit your trainer on the way", ns.db.plannerTrainer ~= false, function(v)
         ns.db.plannerTrainer = v
         Replan()
     end)
     trainer:SetPoint("TOPLEFT", 0, -386)
-    local hold = ns:CreateCheckbox(live, "Save hand-ins to level in town", ns.db.plannerHold ~= false, function(v)
+    local hold = GuideSwitch(live, "Save hand-ins to level in town", ns.db.plannerHold ~= false, function(v)
         ns.db.plannerHold = v
         Replan()
     end)
     hold:SetPoint("TOPLEFT", 0, -412)
-    local vendor = ns:CreateCheckbox(live, "Sell and repair stops", ns.db.plannerVendor ~= false, function(v)
+    local vendor = GuideSwitch(live, "Sell and repair stops", ns.db.plannerVendor ~= false, function(v)
         ns.db.plannerVendor = v
         Replan()
     end)
     vendor:SetPoint("TOPLEFT", 0, -438)
-    local supplies = ns:CreateCheckbox(live, "Buy supplies at the vendor stop", ns.db.plannerSupplies ~= false, function(v)
+    local supplies = GuideSwitch(live, "Buy supplies at the vendor stop", ns.db.plannerSupplies ~= false, function(v)
         ns.db.plannerSupplies = v
         Replan()
     end)
     supplies:SetPoint("TOPLEFT", 0, -464)
-    local profession = ns:CreateCheckbox(live, "Profession training stops", ns.db.plannerProfession ~= false, function(v)
+    local profession = GuideSwitch(live, "Profession training stops", ns.db.plannerProfession ~= false, function(v)
         ns.db.plannerProfession = v
         Replan()
     end)
     profession:SetPoint("TOPLEFT", 0, -490)
-    local mount = ns:CreateCheckbox(live, "Mount reminder", ns.db.plannerMount ~= false, function(v)
+    local mount = GuideSwitch(live, "Mount reminder", ns.db.plannerMount ~= false, function(v)
         ns.db.plannerMount = v
         Replan()
     end)
     mount:SetPoint("TOPLEFT", 0, -516)
-    local mail = ns:CreateCheckbox(live, "Mail stops", ns.db.plannerMail ~= false, function(v)
+    local mail = GuideSwitch(live, "Mail stops", ns.db.plannerMail ~= false, function(v)
         ns.db.plannerMail = v
         Replan()
     end)
     mail:SetPoint("TOPLEFT", 0, -542)
-    local explore = ns:CreateCheckbox(live, "Explore on the way", ns.db.plannerExplore ~= false, function(v)
+    local explore = GuideSwitch(live, "Explore on the way", ns.db.plannerExplore ~= false, function(v)
         ns.db.plannerExplore = v
         Replan()
     end)
     explore:SetPoint("TOPLEFT", 0, -568)
-    local gather = ns:CreateCheckbox(live, "Gather on the way", ns.db.plannerGather ~= false, function(v)
+    local gather = GuideSwitch(live, "Gather on the way", ns.db.plannerGather ~= false, function(v)
         ns.db.plannerGather = v
         Replan()
     end)
     gather:SetPoint("TOPLEFT", 0, -594)
-    local rested = ns:CreateCheckbox(live, "Count rested experience", ns.db.plannerRested ~= false, function(v)
+    local rested = GuideSwitch(live, "Count rested experience", ns.db.plannerRested ~= false, function(v)
         ns.db.plannerRested = v
         Replan()
     end)
     rested:SetPoint("TOPLEFT", 0, -620)
-    local rewards = ns:CreateCheckbox(live, "Count upgrades in rewards", ns.db.plannerRewards ~= false, function(v)
+    local rewards = GuideSwitch(live, "Count upgrades in rewards", ns.db.plannerRewards ~= false, function(v)
         ns.db.plannerRewards = v
         Replan()
     end)
@@ -634,32 +662,32 @@ function ns.BuildGuidePage(page)
     repButton:SetPoint("TOPLEFT", 0, -676)
     local skipButton = ns:CreateButton(live, "Quests you skipped", 170, 24, function() if ns.GuideSkipped then ns:GuideSkipped() end end)
     skipButton:SetPoint("TOPLEFT", 180, -676)
-    local deaths = ns:CreateCheckbox(live, "Learn from my deaths", ns.db.plannerDeaths ~= false, function(v)
+    local deaths = GuideSwitch(live, "Learn from my deaths", ns.db.plannerDeaths ~= false, function(v)
         ns.db.plannerDeaths = v
         Replan()
     end)
     deaths:SetPoint("TOPLEFT", 0, -706)
-    local soloElites = ns:CreateCheckbox(live, "Include elites my class has soloed", ns.db.plannerSoloElites ~= false, function(v)
+    local soloElites = GuideSwitch(live, "Include elites my class has soloed", ns.db.plannerSoloElites ~= false, function(v)
         ns.db.plannerSoloElites = v
         Replan()
     end)
     soloElites:SetPoint("TOPLEFT", 0, -732)
-    local classQuests = ns:CreateCheckbox(live, "Plan class quests", ns.db.plannerClassQuests ~= false, function(v)
+    local classQuests = GuideSwitch(live, "Plan class quests", ns.db.plannerClassQuests ~= false, function(v)
         ns.db.plannerClassQuests = v
         Replan()
     end)
     classQuests:SetPoint("TOPLEFT", 0, -758)
     T.classQuestsBox = classQuests
-    local pick = ns:CreateCheckbox(live, "Pick the best quest reward", ns.db.plannerPickReward ~= false, function(v) ns.db.plannerPickReward = v end)
+    local pick = GuideSwitch(live, "Pick the best quest reward", ns.db.plannerPickReward ~= false, function(v) ns.db.plannerPickReward = v end)
     pick:SetPoint("TOPLEFT", 0, -784)
-    local logAdvice = ns:CreateCheckbox(live, "Quest log advice", ns.db.plannerLogAdvice ~= false, function(v)
+    local logAdvice = GuideSwitch(live, "Quest log advice", ns.db.plannerLogAdvice ~= false, function(v)
         ns.db.plannerLogAdvice = v
         if ns.GuideShowPanel and ns.GuidePanelShown and ns:GuidePanelShown() then ns:GuideShowPanel() end
     end)
     logAdvice:SetPoint("TOPLEFT", 0, -810)
-    local inn = ns:CreateCheckbox(live, "Suggest an inn when you stop", ns.db.plannerInn ~= false, function(v) ns.db.plannerInn = v end)
+    local inn = GuideSwitch(live, "Suggest an inn when you stop", ns.db.plannerInn ~= false, function(v) ns.db.plannerInn = v end)
     inn:SetPoint("TOPLEFT", 0, -836)
-    local dry = ns:CreateCheckbox(live, "Suggest what to do when quests run dry", ns.db.plannerDry ~= false, function(v)
+    local dry = GuideSwitch(live, "Suggest what to do when quests run dry", ns.db.plannerDry ~= false, function(v)
         ns.db.plannerDry = v
         Replan()
     end)

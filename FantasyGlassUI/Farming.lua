@@ -40,7 +40,7 @@ function ns.FarmTotals(s, now, money)
     local secs = math.max(1, (tonumber(s.elapsed) or 0) + ((s.resumed and (now or Now()) - s.resumed) or 0))
     local gold = (tonumber(s.gold) or 0) + ((money and s.moneyMark) and (money - s.moneyMark) or 0)
     local value = 0
-    local seen = type(ns.root) == "table" and ns.root.auctionSeen or nil
+    local seen = ns.PriceItems()
     for id, it in pairs(type(s.items) == "table" and s.items or {}) do
         value = value + (ns.FarmItemValue(id, it.vendor, seen)) * (tonumber(it.n) or 0)
     end
@@ -104,7 +104,7 @@ end
 function ns.FarmZonesSave(s, history, now)
     if type(s) ~= "table" or type(history) ~= "table" then return 0 end
     ns.FarmZoneSwitch(s, nil, now)
-    local seen = type(ns.root) == "table" and ns.root.auctionSeen or nil
+    local seen = ns.PriceItems()
     local n = 0
     for zone, e in pairs(type(s.zones) == "table" and s.zones or {}) do
         if type(e) == "table" and (tonumber(e.secs) or 0) >= 60 then        -- (a minute passing through is not farming there)
@@ -247,7 +247,7 @@ function ns:Farm(text)
     end
     -- the session window
     local t = ns.FarmTotals(s, Now(), Money())
-    local seen = type(ns.root) == "table" and ns.root.auctionSeen or nil
+    local seen = ns.PriceItems()
     local lines = {
         { left = ns:Tr("Time"), right = Clock(t.secs) },
         { left = ns:Tr("Gold made"), right = Gold(t.gold) .. "   " .. format(ns:Tr("%s an hour"), Gold(t.goldHour)) },

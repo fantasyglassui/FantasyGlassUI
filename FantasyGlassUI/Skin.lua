@@ -135,13 +135,111 @@ function ns:TranslateBindings()
     for k, english in pairs(ns.bindingEnglish) do _G[k] = ns.L[english] end
 end
 
+-- Looks (12.3) -------------------------------------------------------------------------------------
+-- A look is a fixed palette of its own for one window, worn whatever the theme: everything under a
+-- frame marked `frame.suiLook = "<name>"` is painted from ns.LOOKS[name] instead of the theme (only
+-- the accent still comes from the theme, live), and lettered in Barlow where the language allows
+-- (ns.LOOKFONT, worked out with the theme). The settings window wears "settings"; with a
+-- high-contrast theme it wears that look's black-and-white version.
+local function RGB(hex)
+    return { tonumber(hex:sub(1, 2), 16) / 255, tonumber(hex:sub(3, 4), 16) / 255, tonumber(hex:sub(5, 6), 16) / 255 }
+end
+local function Look(t)
+    local look = {}
+    for role, hex in pairs(t) do look[role] = RGB(hex) end
+    return look
+end
+ns.LOOKS = {
+    settings = Look({
+        window = "12141a", inset = "12141a",                                       -- the ground
+        ["@bg"] = "181b22", bg = "181b22", bg2 = "181b22", bg3 = "181b22", bg4 = "181b22", card = "181b22",
+        plate = "1e222b", plate2 = "1e222b", plateHover = "262b36", select = "1f232d",   -- buttons (and under the mouse), the selection
+        field = "1a1d25",
+        ["@border"] = "22262f", border = "22262f", rule = "22262f", trough = "22262f",
+        ["@rim"] = "262b36", rim = "262b36",
+        text = "e9ecf3", ["@btn"] = "e9ecf3", ["@light"] = "e9ecf3",
+        dim = "9aa3b5", sub = "8b94a6", faint = "6f7889",
+    }),
+    settingsContrast = Look({
+        window = "000000", inset = "000000",
+        ["@bg"] = "000000", bg = "000000", bg2 = "000000", bg3 = "000000", bg4 = "000000", card = "000000",
+        plate = "000000", plate2 = "000000", plateHover = "333333", select = "333333",
+        field = "0a0a0a", trough = "0a0a0a",
+        ["@border"] = "ffffff", border = "ffffff", rule = "ffffff",
+        ["@rim"] = "ffffff", rim = "ffffff",
+        text = "ffffff", ["@btn"] = "ffffff", ["@light"] = "ffffff",
+        dim = "e6e6e6", sub = "e6e6e6", faint = "cccccc",
+    }),
+}
+local CONTRAST_LOOK = { settings = "settingsContrast" }
+-- (a switch's track while off)
+ns.LOOKS.settings.track = RGB("2c313c")
+ns.LOOKS.settingsContrast.track = RGB("333333")
+local HIGH_CONTRAST = { CONTRAST = true, FCONTRAST = true, C_CONTRAST = true }
+function ns:IsHighContrast()
+    local key = ns.db and ns.db.theme or ""
+    local list = ns.CONTRAST_THEMES                         -- (Access.lua's list, when it is there, so a new family's is not missed)
+    if type(list) == "table" then
+        for _, v in pairs(list) do if v == key then return true end end
+    end
+    return HIGH_CONTRAST[key] or false
+end
+-- Which look an object is under: the name, or false. Found once per object (walking up its
+-- parents) and kept, so painting again costs nothing. A frame marked after things under it were
+-- painted is marked with ns:SetLook: the next repaint then looks again for every object, once per
+-- frame for the whole repaint; otherwise a repaint uses what is kept, as it is called often.
+local lookKey = setmetatable({}, { __mode = "k" })
+local walked = {}
+local lookGen, paintedGen = 0, 0
+local function FindLook(obj, memo)
+    local f, key, n = obj, false, 0
+    for _ = 0, 30 do
+        if type(f) ~= "table" then break end
+        local mark = rawget(f, "suiLook")
+        if mark then key = mark break end
+        if memo then
+            local m = memo[f]
+            if m ~= nil then key = m break end
+            n = n + 1; walked[n] = f
+        end
+        local get = f.GetParent
+        if not get then break end
+        local ok, p = pcall(get, f)                         -- (a forbidden frame up the line: stop there)
+        if not ok or p == f then break end
+        f = p
+    end
+    for i = 1, n do memo[walked[i]] = key; walked[i] = nil end
+    return key
+end
+function ns:SetLook(frame, name)
+    if type(frame) ~= "table" then return end
+    frame.suiLook = name or nil
+    lookGen = lookGen + 1
+end
+function ns:LookOf(obj)
+    if type(obj) ~= "table" then return nil end
+    local key = lookKey[obj]
+    if key == nil then key = FindLook(obj); lookKey[obj] = key end
+    if not key then return nil end
+    if CONTRAST_LOOK[key] and ns:IsHighContrast() then key = CONTRAST_LOOK[key] end
+    return ns.LOOKS[key]
+end
+-- The face and outline for a font string: a language's own face first, then the look's, then the theme's.
+local function FaceOf(fs, title)
+    local fixed = rawget(fs, "suiFixedFont")
+    if fixed then return fixed, ns.FONTFLAGS end
+    if ns.LOOKFONT and ns:LookOf(fs) then return (title and ns.LOOKTITLEFONT or ns.LOOKFONT), ns.LOOKFLAGS or ns.FONTFLAGS end
+    return (title and ns.TITLEFONT or ns.FONT), ns.FONTFLAGS
+end
+
 local fonts = setmetatable({}, { __mode = "k" })
 function ns:Font(fs, size, title)
     if not fs or not fs.SetFont then return end
     local e = fonts[fs]
     if e then e[1], e[2] = size, title else fonts[fs] = { size, title } end
     if rawget(fs, "suiFamily") then return end              -- (a language name drawn with the game's font family)
-    fs:SetFont(rawget(fs, "suiFixedFont") or (title and ns.TITLEFONT or ns.FONT), size * (ns.fontScale or 1), ns.FONTFLAGS)
+    local face, flags = FaceOf(fs, title)
+    fs:SetFont(face, size * (ns.fontScale or 1), flags)
     if fs.SetShadowOffset then
         fs:SetShadowOffset(1, -1)
         fs:SetShadowColor(0, 0, 0, 0.9)
@@ -216,6 +314,26 @@ function ns:Guard(label, fn)
             ns:PrintRaw("|cffff4444" .. label .. ":|r " .. tostring(err))
         end
     end
+end
+-- Where ns:Guard's wrapper is defined ("Skin.lua:299"), read from a call stack taken inside a
+-- guarded function: the first function of this add-on there is that function, the next different
+-- one is the wrapper. Blocked.lua steps over it to name the line that really asked.
+function ns.GuardFrameOf(stack)
+    if type(stack) ~= "string" then return nil end
+    local inner
+    for line in stack:gmatch("[^\n]+") do
+        local file, def = line:match("in function <[^>]-FantasyGlassUI[%w_]*[/\\]([%w_]+%.lua):(%d+)>")
+        if file then
+            local at = file .. ":" .. def
+            if not inner then inner = at elseif at ~= inner then return at end
+        end
+    end
+    return nil
+end
+do
+    local ok, stack
+    ns:Guard("probe", function() ok, stack = pcall(debugstack, 1, 6, 0) end)()
+    ns.guardAt = ok and ns.GuardFrameOf(stack) or nil
 end
 
 -- Make a Blizzard frame/texture invisible WITHOUT hooking or hiding it.
@@ -354,7 +472,16 @@ end
 local painted = setmetatable({}, { __mode = "k" })
 local DIRECT = { ["@accent"] = "accent", ["@border"] = "border", ["@bg"] = "bg", ["@btn"] = "btn", ["@light"] = "light", ["@rim"] = "rim" }
 
-function ns:Role(role, alpha)
+-- With `obj`, an object under a look takes the look's color for any role the look holds.
+function ns:Role(role, alpha, obj)
+    if obj ~= nil then
+        local look = ns:LookOf(obj)
+        local c = look and look[role]
+        if c then
+            if alpha ~= nil then return c[1], c[2], c[3], alpha end
+            return c[1], c[2], c[3]
+        end
+    end
     local key = DIRECT[role]
     if key then
         local c = ns.theme[key]
@@ -372,7 +499,7 @@ function ns:Paint(obj, method, role, alpha)
     if not list then list = {}; painted[obj] = list end
     local e = list[method]
     if e then e[1], e[2] = role, alpha else list[method] = { role, alpha } end
-    fn(obj, ns:Role(role, alpha))
+    fn(obj, ns:Role(role, alpha, obj))
 end
 
 -- Stop re-applying a remembered color (the object is about to take one of its own).
@@ -386,14 +513,21 @@ function ns:OnTheme(fn) themeHooks[#themeHooks + 1] = fn end
 
 -- Re-apply every remembered color and font, then let modules refresh what they draw themselves.
 function ns:Repaint()
+    local memo = (paintedGen ~= lookGen) and {} or nil      -- (a look was set since: each frame's found again, once)
+    paintedGen = lookGen
     for obj, list in pairs(painted) do
+        if memo then lookKey[obj] = FindLook(obj, memo) end
         for method, e in pairs(list) do
             local fn = obj[method]
-            if fn then pcall(fn, obj, ns:Role(e[1], e[2])) end
+            if fn then pcall(fn, obj, ns:Role(e[1], e[2], obj)) end
         end
     end
     for fs, e in pairs(fonts) do
-        if not rawget(fs, "suiFamily") then pcall(fs.SetFont, fs, rawget(fs, "suiFixedFont") or (e[2] and ns.TITLEFONT or ns.FONT), e[1] * (ns.fontScale or 1), ns.FONTFLAGS) end
+        if memo then lookKey[fs] = FindLook(fs, memo) end
+        if not rawget(fs, "suiFamily") then
+            local face, flags = FaceOf(fs, e[2])
+            pcall(fs.SetFont, fs, face, e[1] * (ns.fontScale or 1), flags)
+        end
         local fit = rawget(fs, "suiFit")
         if fit then pcall(fit) end                               -- (a button's label: fitted again at the new size)
     end
@@ -1225,21 +1359,30 @@ function ns:CreateButton(parent, text, w, h, onClick, template, name)
     b:SetSize(w or 100, h or 24)
     b.suiW = w or 100
     b:SetBackdrop(ns.BACKDROP)
-    ns:Paint(b, "SetBackdropColor", "plate", (ns.style == "GLASS") and 0.55 or 1)
+    -- (12.3) Inside a look (the settings window) a button is the look's flat plate, the same on
+    -- every theme and family: opaque, no lit top edge, a lighter plate under the mouse.
+    local inLook = ns:LookOf(b) ~= nil
+    b.suiInLook = inLook or nil
+    ns:Paint(b, "SetBackdropColor", "plate", inLook and 1 or ((ns.style == "GLASS") and 0.55 or 1))
     ns:Paint(b, "SetBackdropBorderColor", "@border", 1)
     local side = ns:CanRound() and 4 or 1
     b.wash = b:CreateTexture(nil, "ARTWORK")                   -- accent wash shown under the mouse
     b.wash:SetPoint("TOPLEFT", side, -1)
     b.wash:SetPoint("BOTTOMRIGHT", -side, 1)
     b.wash:SetTexture(ns.FLAT)
-    ns:Paint(b.wash, "SetVertexColor", "@accent", (ns.style == "GLASS") and 0.26 or 0.10)
+    if inLook then ns:Paint(b.wash, "SetVertexColor", "plateHover", 1)
+    else ns:Paint(b.wash, "SetVertexColor", "@accent", (ns.style == "GLASS") and 0.26 or 0.10) end
     b.wash:Hide()
     if ns:CanRound() then ns:Round(b) end
     local plate = b:CreateTexture(nil, "BORDER")
     plate:SetPoint("TOPLEFT", side, -1)
     plate:SetPoint("BOTTOMRIGHT", -side, 1)
     plate:SetTexture(ns.FLAT)
-    if plate.SetGradient and CreateColor then
+    b.plate = plate
+    if inLook then
+        plate:SetVertexColor(0, 0, 0, 0)
+        plate:Hide()
+    elseif plate.SetGradient and CreateColor then
         local lt = th.light
         if ns.style == "GLASS" then
             plate:SetGradient("VERTICAL", CreateColor(lt[1], lt[2], lt[3], 0), CreateColor(lt[1], lt[2], lt[3], 0.12))
@@ -1268,16 +1411,17 @@ function ns:CreateButton(parent, text, w, h, onClick, template, name)
         if room > 0 then
             pcall(t.SetWidth, t, 0)
             local e = fonts[t]
-            local base, face = (e and e[1]) or 12, rawget(t, "suiFixedFont") or ((e and e[2]) and ns.TITLEFONT or ns.FONT)
+            local base = (e and e[1]) or 12
+            local face, flags = FaceOf(t, e and e[2])         -- (inside a look, the look's lettering)
             local size = base
             local function Wide()
                 local ok, sw = pcall(t.GetStringWidth, t)
                 return ok and type(sw) == "number" and sw > room
             end
-            pcall(t.SetFont, t, face, size * (ns.fontScale or 1), ns.FONTFLAGS)
+            pcall(t.SetFont, t, face, size * (ns.fontScale or 1), flags)
             while size > 9 and Wide() do
                 size = size - 1
-                pcall(t.SetFont, t, face, size * (ns.fontScale or 1), ns.FONTFLAGS)
+                pcall(t.SetFont, t, face, size * (ns.fontScale or 1), flags)
             end
             if Wide() then pcall(t.SetWidth, t, room) end
         end
@@ -1291,7 +1435,11 @@ function ns:CreateButton(parent, text, w, h, onClick, template, name)
     ns:Paint(b.text, "SetTextColor", "@btn")
     b:SetScript("OnEnter", function(self)
         ns:Paint(self, "SetBackdropBorderColor", "@accent", 1)
-        self.text:SetTextColor(1, 1, 1)
+        local own = self.suiTextColor                       -- (a label in a colour of its own keeps it under the mouse too)
+        if type(own) == "table" then
+            ns:Unpaint(self.text, "SetTextColor")
+            self.text:SetTextColor(own[1], own[2], own[3])
+        elseif ns:LookOf(self) then ns:Paint(self.text, "SetTextColor", "text") else self.text:SetTextColor(1, 1, 1) end   -- (in the window's look: its text colour)
         self.wash:Show()
         local tip = self.suiTip or (type(text) == "string" and ns.BUTTON_TIPS[text])
         local cut = self.text.IsTruncated and ns.Yes(self.text:IsTruncated())
@@ -1307,13 +1455,47 @@ function ns:CreateButton(parent, text, w, h, onClick, template, name)
     b:SetScript("OnLeave", function(self)
         ns:Paint(self, "SetBackdropBorderColor", "@border", 1)
         local c = self.suiTextColor                         -- (a label in a color of its own, such as a class color, keeps it)
-        if type(c) == "table" then self.text:SetTextColor(c[1], c[2], c[3]) else ns:Paint(self.text, "SetTextColor", "@btn") end
+        if type(c) == "table" then ns:Unpaint(self.text, "SetTextColor"); self.text:SetTextColor(c[1], c[2], c[3]) else ns:Paint(self.text, "SetTextColor", "@btn") end
         self.wash:Hide()
         if self.suiTipShown then self.suiTipShown = nil; GameTooltip:Hide() end
     end)
     if onClick then b:SetScript("OnClick", onClick) end
     b:SetScript("PostClick", function() ns.UISound("IG_MAINMENU_OPTION") end)    -- (the game's own click, whatever OnClick becomes)
     ns:IndexOption(text, b)
+    return b
+end
+-- (12.3) A button that reloads the interface. This client refuses its reload when the call comes
+-- from add-on code, even inside a click; a button whose OnClick is the game's own ReloadUI runs that
+-- untainted, and it reloads. So the add-on's own work (saving a choice) goes in PreClick, and OnClick
+-- is ReloadUI itself, never a function of ours around it. If `before` fails or says false, that click
+-- stops there. `before` must not hide the button or its window: a button hidden before its OnClick
+-- might not get one, and the reload takes the window down anyway. ns:ReloadButton(b, false, onClick) makes it an ordinary button again (a click that
+-- only arms a confirmation). The click sound (PostClick) is CreateButton's.
+ns.reloadButtons = setmetatable({}, { __mode = "k" })
+function ns:ReloadButton(b, before, onClick)
+    if type(b) ~= "table" or not b.SetScript then return b end
+    if before == false then
+        ns.reloadButtons[b] = nil
+        b:SetScript("PreClick", nil)
+        b:SetScript("OnClick", onClick)
+        return b
+    end
+    ns.reloadButtons[b] = true
+    b:SetScript("PreClick", function(self, ...)
+        local go = true
+        if before then
+            local ok, r = pcall(before, self, ...)
+            if not ok then
+                go = false
+                if #ns.errors < 60 then ns.errors[#ns.errors + 1] = "reload: " .. tostring(r) end
+                ns:PrintRaw("|cffff4444reload:|r " .. tostring(r))
+            elseif r == false then
+                go = false
+            end
+        end
+        self:SetScript("OnClick", go and ReloadUI or nil)
+    end)
+    b:SetScript("OnClick", ReloadUI)
     return b
 end
 -- The tooltip a button shows by its label, unless it was given one of its own (ns:ButtonTip).
@@ -1409,7 +1591,9 @@ function ns:CreateCheckbox(parent, label, checked, onChange)
     c:SetSize(260, 22)
     local round = ns:CanRound()
     c.box = CreateFrame("Frame", nil, c, (not round) and ns.template or nil)
-    c.box:SetSize(28, 14)
+    local inLook = ns:LookOf(c) and true or false              -- (12.3: in the settings window, a bigger switch with no outline)
+    c.suiSwitch = inLook
+    c.box:SetSize(inLook and 38 or 28, inLook and 22 or 14)
     c.box:SetPoint("LEFT", 0, 0)
     if round then
         c.fill = c.box:CreateTexture(nil, "BACKGROUND")
@@ -1422,11 +1606,11 @@ function ns:CreateCheckbox(parent, label, checked, onChange)
         c.box:SetBackdrop(ns.BACKDROP)
     end
     c.tick = c.box:CreateTexture(nil, "OVERLAY")              -- the knob
-    c.tick:SetSize(10, 10)
+    c.tick:SetSize(inLook and 16 or 10, inLook and 16 or 10)
     c.tick:SetTexture(round and (ns.MEDIA .. "dot.tga") or ns.FLAT)
     c.label = c:CreateFontString(nil, "OVERLAY")
     ns:Font(c.label, 12)
-    c.label:SetPoint("LEFT", c.box, "RIGHT", 8, 0)
+    c.label:SetPoint("LEFT", c.box, "RIGHT", inLook and 12 or 8, 0)
     c.label:SetJustifyH("LEFT")
     if c.label.SetWordWrap then c.label:SetWordWrap(false) end
     c.label:SetText(ns:Tr(label))
@@ -1434,7 +1618,7 @@ function ns:CreateCheckbox(parent, label, checked, onChange)
     -- "..." (and shown whole under the mouse) instead of running into whatever sits beside it.
     local function FitLabel(_, w)
         w = tonumber(w)
-        if w and not ns:IsSecret(w) and w > 60 then c.label:SetWidth(w - 36) end
+        if w and not ns:IsSecret(w) and w > 60 then c.label:SetWidth(w - (inLook and 50 or 36)) end        -- (the track, and the gap before the label)
     end
     c:HookScript("OnSizeChanged", FitLabel)
     if hooksecurefunc then                                   -- (and at once when it is given a width, before it is first drawn)
@@ -1444,6 +1628,21 @@ function ns:CreateCheckbox(parent, label, checked, onChange)
     FitLabel(c, 260)
     local function Draw(self, hover)
         local on = self.checked
+        if inLook then                                        -- accent with a dark knob when on, a grey track and knob when off
+            local role = on and "@accent" or (hover and "rim" or "track")
+            if self.fill then
+                ns:Paint(self.fill, "SetVertexColor", role, 1)
+                self.edge:Hide()
+            else
+                ns:Paint(self.box, "SetBackdropColor", role, 1)
+                ns:Paint(self.box, "SetBackdropBorderColor", role, 1)
+            end
+            ns:Paint(self.tick, "SetVertexColor", on and "window" or "dim", 1)
+            ns:Paint(self.label, "SetTextColor", on and "text" or "dim")
+            self.tick:ClearAllPoints()
+            if on then self.tick:SetPoint("RIGHT", self.box, "RIGHT", -3, 0) else self.tick:SetPoint("LEFT", self.box, "LEFT", 3, 0) end
+            return
+        end
         local rim = (on or hover) and "@accent" or "@border"
         if self.fill then
             ns:Paint(self.fill, "SetVertexColor", on and "@accent" or "field", on and 0.32 or 1)
@@ -1826,9 +2025,8 @@ function ns:ShowSafeBanner()
     body:SetWordWrap(true)
     body:SetText(ns:Tr("Every feature is off. Switch off whatever was causing trouble in the options, then leave safe mode."))
     ns:Paint(body, "SetTextColor", "text")
-    local leave = ns:CreateButton(f, "Leave safe mode", 130, 24, function()
-        if ns:SetSafeMode(false) then ReloadUI() end
-    end)
+    local leave = ns:CreateButton(f, "Leave safe mode", 130, 24)
+    ns:ReloadButton(leave, function() ns:SetSafeMode(false) end)      -- (already off: reloading still finishes it)
     leave:SetPoint("BOTTOMRIGHT", -12, 12)
     ns:ButtonTip(leave, "Turn your features back on and reload.")
     local options = ns:CreateButton(f, "Options", 70, 24, function() ns:ToggleConfig() end)
@@ -2512,9 +2710,11 @@ function ns:SetPanelScale(keys, value)
     return true
 end
 
+-- Every panel back where it came. It shows after a reload, which the button that asks for this does
+-- itself (ns:ReloadButton: the game refuses a reload called from here).
 function ns:ResetPositions()
     ns.db.pos, ns.db.scale = {}, {}
-    ReloadUI()
+    return true
 end
 
 -- Preview mode (/fgui test): modules register a function(on) that shows sample content -----
@@ -3610,7 +3810,7 @@ local function WindowApply(frame, on)
             l:SetTexCoord(c[2], c[3], c[4], c[5])
             l:SetSize(spec.size, spec.size)
             l:SetPoint(c[1], frame, c[1], c[6], c[7])
-            ns:Paint(l, "SetVertexColor", "@border", 1)
+            ns:Paint(l, "SetVertexColor", ns:LookOf(frame) and "@rim" or "@border", 1)    -- (in a look: its window rim)
             w.lines[i] = l
         end
     end
@@ -3620,7 +3820,7 @@ local function WindowApply(frame, on)
         if t.SetShown then t:SetShown(not cut) end
     end
     -- stars on the two top cuts of a big window
-    local big = w.kind == "window" and ns.style ~= "GLASS" and (frame:GetWidth() or 0) >= 300 and (frame:GetHeight() or 0) >= 200
+    local big = w.kind == "window" and ns.style ~= "GLASS" and not ns:LookOf(frame) and (frame:GetWidth() or 0) >= 300 and (frame:GetHeight() or 0) >= 200
     if on and big and not w.stars then
         w.stars = {}
         for i, pt in ipairs({ "TOPLEFT", "TOPRIGHT" }) do

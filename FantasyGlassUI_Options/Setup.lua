@@ -121,11 +121,11 @@ end
 
 -- Step 1: welcome: language, and how much of the interface to take over ----------------------------------
 -- Picking a language in the setup. Every label was written when its window was built, so the change
--- needs a reload; the setup then opens again by itself, in the language chosen.
+-- needs a reload; the setup then opens again by itself, in the language chosen. The language's button
+-- does the reload (ns:ReloadButton); false here (the language already in use) and it does not.
 function ns:SetupPickLanguage(code)
     if not ns:SetLanguage(code) then return false end
     ns.root.resumeSetup = true
-    ReloadUI()
     return true
 end
 
@@ -146,7 +146,9 @@ local function BuildWelcome(page)
     list:Hide()
     for i, def in ipairs(ns.languages) do
         local code = def[1]
-        local b = ns:CreateButton(list, "", 190, 22, function() list:Hide(); ns:SetupPickLanguage(code) end)
+        local b = ns:CreateButton(list, "", 190, 22)
+        ns:ReloadButton(b, function() return ns:SetupPickLanguage(code) end)
+        b:HookScript("PostClick", function() list:Hide() end)      -- (after the click: a reload button is never hidden before its OnClick)
         b.text:SetText(ns:LanguageName(code))
         ns:LanguageFont(b.text, code)                         -- (Korean and Chinese in a face that has their letters)
         b:SetPoint("TOPLEFT", 5, -5 - (i - 1) * 24)
@@ -221,7 +223,7 @@ ns.playStyles = {
     QUESTING = { "questTracker", "questRewards", "questLog", "quests", "plateQuest", "xpBar", "mapCoords", "upgradeArrows", "upgradePrompt" },
     GROUPS   = { "lootBook", "lootBossTip", "bossGuide", "bossTimer", "runLog", "groupLoot", "gearCheck", "lootRoll", "rollAdvice", "readyAlert", "threatMeter" },
     PVP      = { "bgHelper", "enemyCDs", "ufArena", "queueAlert", "locAlert" },
-    COLLECT  = { "storage", "itemCounts", "skillUps", "profCooldowns", "craftBar", "auctionMemory", "auctionHelper", "mailTools", "rareAlert", "rareMemory", "farming" },
+    COLLECT  = { "storage", "itemCounts", "skillUps", "profCooldowns", "craftBar", "auctionMemory", "auctionScan", "sellHints", "auctionHelper", "mailTools", "rareAlert", "rareMemory", "farming" },
     SOCIAL   = { "chatSkin", "chatExtras", "chatClassColors", "chatHighlight", "whisperWindow", "playerNotes", "recentMates", "guildNotices", "friendColors", "groupNotices" },
 }
 local INTERESTS = {
@@ -636,12 +638,13 @@ local function Show(n)
         if i == step then ns:Paint(dot, "SetVertexColor", "@accent", 1) else ns:Paint(dot, "SetVertexColor", "faint", 0.6) end
     end
     frame.back:SetAlpha(step == 1 and 0.4 or 1)
-    frame.next.text:SetText(ns:Tr(step < #STEPS and "Next" or "Finish & reload"))
+    if step < #STEPS then frame.next:Show(); frame.finish:Hide() else frame.next:Hide(); frame.finish:Show() end
     frame.count:SetText(step .. " / " .. #STEPS .. "   " .. ns:Tr(STEPS[step]))
 end
 
 local function Build()
     frame = CreateFrame("Frame", "FantasyGlassUISetup", UIParent, ns.template)
+    ns.setupFrame = frame
     frame:SetSize(PAGE_W + 60, 500)
     frame:SetPoint("CENTER", UIParent, "CENTER", 0, 40)
     frame:SetFrameStrata("DIALOG")
@@ -696,21 +699,22 @@ local function Build()
 
     frame.back = ns:CreateButton(frame, "Back", 90, 26, function() if step > 1 then Show(step - 1) end end)
     frame.back:SetPoint("BOTTOMLEFT", 30, 16)
-    frame.next = ns:CreateButton(frame, "Next", 160, 26, function()
-        if step < #STEPS then
-            Show(step + 1)
-        else
-            if not ns.db.role then ns:SetRole("NONE") end
-            ns.db.setupDone = true
-            -- Finishing always reloads, so everything chosen is in place at once. The tour (and the
-            -- note on where everything is) comes after the reload.
-            needReload = false
-            ns.root.setupJustFinished = true
-            frame:Hide()
-            ReloadUI()
-        end
-    end)
+    frame.next = ns:CreateButton(frame, "Next", 160, 26, function() if step < #STEPS then Show(step + 1) end end)
     frame.next:SetPoint("BOTTOMRIGHT", -30, 16)
+    -- Finishing always reloads, so everything chosen is in place at once. The tour (and the note on
+    -- where everything is) comes after the reload. Its own button, in Next's place on the last step:
+    -- the choices are kept in PreClick and the game's own ReloadUI is the click (ns:ReloadButton).
+    -- The window is not hidden first: the reload takes it down, and a button hidden before its
+    -- OnClick might not get one.
+    frame.finish = ns:CreateButton(frame, "Finish & reload", 160, 26)
+    frame.finish:SetPoint("BOTTOMRIGHT", -30, 16)
+    frame.finish:Hide()
+    ns:ReloadButton(frame.finish, function()
+        if not ns.db.role then ns:SetRole("NONE") end
+        ns.db.setupDone = true
+        needReload = false
+        ns.root.setupJustFinished = true
+    end)
     frame:SetScript("OnHide", function()
         if not ns.db.role then ns.db.role = "NONE" end      -- closing counts as "skip": don't ask again every login
         if needReload then

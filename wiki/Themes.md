@@ -1,6 +1,6 @@
 # Themes
 
-116 themes in three families, in **Look and themes** (`/fgui look`) and in the setup. Each theme button shows a small picture; point at one for a larger card, click to wear it. Switching to another family finishes after a `/reload`.
+116 themes in three families, in **Look and themes** (`/fgui look`) and in the setup. Each theme shows a small picture in the grid; click one to preview it beside the grid (a sample frame in its colors, its name and family), then **Use this theme** to wear it. Switching to another family finishes after a `/reload`.
 
 - **Glass:** see-through panes with soft shadows and a bright top edge. How see-through is yours to set (Look and themes › Game windows).
 - **Fantasy:** solid panels with a dark rim, a grain and gold corner ornaments.

@@ -56,6 +56,10 @@ EXTRAS.mailTargets = function(parent)
     return f, h
 end
 ns.FeatureExtras = EXTRAS
+-- (12.3) The blocks lent from the older pages are laid out for 736 px. Each sits on a card with this
+-- padding at either side, and the card stops this far short of the page's right; the window's least
+-- width is worked out from these (Config.lua), so none is ever cut.
+O.LEGACY_W, O.BLOCK_PAD, O.CARD_GAP = 736, 18, 12
 
 -- A setting's name, whichever kind it is.
 function O.RowLabel(name)
@@ -69,55 +73,114 @@ function O.RowDesc(name)
     return def and def.desc or DESC[name] or ""
 end
 
-local ROW_H, SLIDER_H, BUTTON_H = 42, 48, 36
+local SLIDER_H, BUTTON_H, MIN_H, PAD = 66, 58, 58, 16     -- (12.3) a switch row grows with its description; the others are this tall
 local function BuildSections(page)
     page.rows = {}                                            -- every row, made once: { [name] = frame }
     page.boxes = {}                                           -- a feature's switch, by its key
     local area = page.area
 
-    -- the top: where this is, its name, a line on what is in it, and two buttons
+    -- the top (12.3): where this is (12, secondary), its name (24), a line on what is in it, the All / On /
+    -- Off filter at the title's right and the sample frames button under it. ("Reset ..." is in the
+    -- window's footer, see Config.lua.)
     local crumb = page:CreateFontString(nil, "OVERLAY")
-    ns:Font(crumb, 11)
+    ns:Font(crumb, 12)
     crumb:SetPoint("TOPLEFT", 0, 0)
-    ns:Paint(crumb, "SetTextColor", "faint")
+    ns:Paint(crumb, "SetTextColor", "dim")
     local heading = page:CreateFontString(nil, "OVERLAY")
-    ns:Font(heading, 18, true)
-    heading:SetPoint("TOPLEFT", 0, -16)
-    ns:Paint(heading, "SetTextColor", "@accent")
+    ns:Font(heading, 24, true)
+    heading:SetPoint("TOPLEFT", 0, -18)
+    ns:Paint(heading, "SetTextColor", "text")
+    heading:SetJustifyH("LEFT")
+    if heading.SetWordWrap then heading:SetWordWrap(true) end      -- (a long title wraps under itself, clear of the filter)
     local newTag = ns.NewTag(page)
-    newTag:SetPoint("LEFT", heading, "RIGHT", 10, 0)
+    newTag:SetPoint("TOPLEFT", heading, "TOPLEFT", 0, -8)          -- (put after the title's text by page.Show)
     local intro = page:CreateFontString(nil, "OVERLAY")
-    ns:Font(intro, 11)
-    intro:SetPoint("TOPLEFT", 0, -42)
+    ns:Font(intro, 13)
+    intro:SetPoint("TOPLEFT", 0, -54)                              -- (moved under a title that wraps by page.Show)
     intro:SetWidth(520)
     intro:SetJustifyH("LEFT")
     ns:Paint(intro, "SetTextColor", "dim")
-    page.heading, page.crumb, page.intro = heading, crumb, intro
+    page.heading, page.crumb, page.intro, page.newTag = heading, crumb, intro, newTag
 
-    local resetBtn = ns:CreateButton(page, "", 220, 22, ns:ConfirmClick(function() O.ResetCategory(page.category) end))
-    resetBtn:SetPoint("TOPRIGHT", page, "TOPRIGHT", -12, -14)
-    resetBtn:HookScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
-        GameTooltip:AddLine(self.text:GetText())
-        GameTooltip:AddLine(ns:Tr("Every switch and slider of this category goes back to how Fantasy Glass UI comes. Your lists, rules, designs and positions are kept."), 1, 1, 1, true)
-        GameTooltip:Show()
-    end)
-    resetBtn:HookScript("OnLeave", function() GameTooltip:Hide() end)
-    page.resetButton = resetBtn
+    page.filter = "all"
+    page.filterButtons = {}
+    function page.DrawFilter()
+        for mode, b in pairs(page.filterButtons) do
+            ns:Paint(b, "SetBackdropBorderColor", (page.filter == mode) and "@accent" or "@border", 1)
+        end
+    end
+    local function SetFilter(mode)
+        page.filter = mode
+        page.DrawFilter()
+        if page.section then page.Show(page.section) end
+    end
+    local FILTER_W = 3 * 56 + 2 * 6                           -- (the filter's width, at the title's right)
+    local prev
+    for i = 3, 1, -1 do
+        local mode = ({ "all", "on", "off" })[i]
+        local b = ns:CreateButton(page, ({ "All", "On", "Off" })[i], 56, 24, function() SetFilter(mode) end)
+        if prev then b:SetPoint("RIGHT", prev, "LEFT", -6, 0) else b:SetPoint("TOPRIGHT", page, "TOPRIGHT", -12, -14) end
+        page.filterButtons[mode] = b
+        prev = b
+    end
+    page.DrawFilter()
     local sampleBtn = ns:CreateButton(page, "", 170, 22, function()
         if ns.TogglePreview then ns:TogglePreview() end
         page.DrawSamples()
     end)
-    sampleBtn:SetPoint("RIGHT", resetBtn, "LEFT", -8, 0)
+    sampleBtn:SetPoint("TOPRIGHT", page, "TOPRIGHT", -12, -48)
     O.Tip(sampleBtn, "Show sample frames", "Made-up party, raid and boss frames, bars and alerts, so you can see what you change. Click again to put them away.")
     local sampleNote = page:CreateFontString(nil, "OVERLAY")
-    ns:Font(sampleNote, 10)
+    ns:Font(sampleNote, 12)
     sampleNote:SetPoint("TOPRIGHT", sampleBtn, "BOTTOMRIGHT", 0, -4)
     ns:Paint(sampleNote, "SetTextColor", "@accent")
     page.sampleButton = sampleBtn
     function page.DrawSamples()
         sampleBtn.text:SetText(ns:Tr(ns.previewing and "Hide sample frames" or "Show sample frames"))
         sampleNote:SetText(ns.previewing and ns:Tr("Showing sample frames") or "")
+    end
+
+    -- The card the rows sit in (rounded where the theme rounds, flat otherwise), one rule between rows.
+    local function NewCard()
+        local c = CreateFrame("Frame", nil, page, ns.template)
+        c:SetBackdrop(ns.BACKDROP)
+        ns:Paint(c, "SetBackdropColor", "card", 1)
+        ns:Paint(c, "SetBackdropBorderColor", "rule", 1)
+        c:SetFrameLevel(page:GetFrameLevel() or 1)
+        if ns:CanRound() then
+            ns:Round(c)
+        elseif ns.StarcutWindow then                          -- (where the theme cannot round: the Starcut cut, small)
+            pcall(ns.StarcutWindow, c, "tip")
+        end
+        c:Hide()
+        return c
+    end
+    local card = NewCard()
+    page.card = card
+    page.blockCards = {}                                      -- a card behind each block of another page's settings
+    page.lentFrames = {}
+    local function RowWidth()
+        local w = page.GetWidth and page:GetWidth()
+        return (type(w) == "number" and w > 300) and (w - O.CARD_GAP) or (O.LEGACY_W + 2 * O.BLOCK_PAD)
+    end
+    -- the height of a text: what the game says, or an estimate where it cannot (before it is drawn)
+    local function TextHeight(fs, size, width)
+        local h = fs.GetStringHeight and fs:GetStringHeight()
+        if type(h) == "number" and h > 0 then return h end
+        local scale = ns.fontScale or 1
+        local chars = #(fs.GetText and fs:GetText() or "")
+        local lines = math.max(1, math.ceil(chars * 0.5 * size * scale / math.max(80, width)))
+        return lines * size * scale * 1.25
+    end
+
+    -- a slider or button row: its description sits at the right of the control, wraps, and the row grows to hold it
+    local function GrowTo(row, desc, x, minH, top)
+        local w = math.max(120, RowWidth() - x - PAD)
+        desc:SetWidth(w)
+        local dh = TextHeight(desc, 13, w)
+        local h = math.max(minH, top + dh + 14)
+        row:SetHeight(h)
+        return h
     end
 
     -- Rows ---------------------------------------------------------------------------------------
@@ -147,14 +210,16 @@ local function BuildSections(page)
         row.wash = row:CreateTexture(nil, "BACKGROUND")
         row.wash:SetAllPoints()
         row.wash:SetTexture(ns.FLAT)
-        ns:Paint(row.wash, "SetVertexColor", "@accent", 0.08)
+        ns:Paint(row.wash, "SetVertexColor", "select", 1)
         row.wash:Hide()
         row.line = row:CreateTexture(nil, "BORDER")
         row.line:SetTexture(ns.FLAT)
         row.line:SetHeight(1)
-        row.line:SetPoint("TOPLEFT", 0, 0)
-        row.line:SetPoint("TOPRIGHT", 0, 0)
-        ns:Paint(row.line, "SetVertexColor", "@border", 0.45)
+        row.line:SetPoint("TOPLEFT", PAD, 0)
+        row.line:SetPoint("TOPRIGHT", -PAD, 0)
+        ns:Paint(row.line, "SetVertexColor", "rule", 1)
+        row.baseH = h
+        row.Layout = function() row:SetHeight(h); return h end
         row:SetScript("OnEnter", function(self) Hover(self, true); Explain(self) end)
         row:SetScript("OnLeave", function(self) Hover(self, false); GameTooltip:Hide() end)
         row:Hide()
@@ -165,27 +230,46 @@ local function BuildSections(page)
         row.words = strlower(ns:Tr(O.RowLabel(name) or name) .. " " .. ns:Tr(O.RowDesc(name)) .. " " .. name)
     end
     local function MakeSwitchRow(name, feature)
-        local row = Base(name, ROW_H)
+        local row = Base(name, MIN_H)
         row.feature = feature
+        local def = ns.settingRows[name]
         row.title = row:CreateFontString(nil, "OVERLAY")
-        ns:Font(row.title, 12)
-        row.title:SetPoint("TOPLEFT", 10, -6)
+        ns:Font(row.title, 14)
+        row.title:SetPoint("TOPLEFT", PAD, -14)
         row.title:SetJustifyH("LEFT")
         if row.title.SetWordWrap then row.title:SetWordWrap(false) end
+        ns:Paint(row.title, "SetTextColor", "text")
         row.title:SetText(ns:Tr(O.RowLabel(name)))
-        row.tag = row:CreateFontString(nil, "OVERLAY")
-        ns:Font(row.tag, 10)
-        row.tag:SetPoint("LEFT", row.title, "RIGHT", 8, 0)
-        ns:Paint(row.tag, "SetTextColor", "faint")
-        row.tag:SetText((feature and not INSTANT[name]) and ns:Tr("after /reload") or "")
         row.desc = row:CreateFontString(nil, "OVERLAY")
-        ns:Font(row.desc, 11)
-        row.desc:SetPoint("TOPLEFT", 10, -23)
-        row.desc:SetPoint("RIGHT", row, "RIGHT", -64, 0)
+        ns:Font(row.desc, 13)
         row.desc:SetJustifyH("LEFT")
-        if row.desc.SetWordWrap then row.desc:SetWordWrap(false) end
+        row.desc:SetJustifyV("TOP")
+        if row.desc.SetWordWrap then row.desc:SetWordWrap(true) end
         ns:Paint(row.desc, "SetTextColor", "dim")
-        row.desc:SetText(ns:Tr(O.RowDesc(name)))
+        local text = ns:Tr(O.RowDesc(name))
+        if feature and not INSTANT[name] then text = (text ~= "" and (text .. "  -  ") or "") .. ns:Tr("after /reload") end
+        row.desc:SetText(text)
+        row.reserve = PAD + 38 + PAD                          -- (the switch, and a button before it for a setting that opens more)
+        if def and def.setup then
+            local setup = ns:CreateButton(row, "Set up", 76, 24, function() def.setup() end)
+            setup:SetPoint("RIGHT", row, "RIGHT", -(PAD + 38 + 12), 0)
+            setup:HookScript("OnEnter", function() Hover(row, true); Explain(row) end)
+            setup:HookScript("OnLeave", function() Hover(row, false); GameTooltip:Hide() end)
+            row.setup = setup
+            row.reserve = row.reserve + 76 + 12
+        end
+        row.Layout = function()
+            local w = RowWidth() - PAD - row.reserve
+            row.title:SetWidth(w)
+            row.desc:SetWidth(w)
+            local th = TextHeight(row.title, 14, w)
+            local dh = (text ~= "") and TextHeight(row.desc, 13, w) or 0
+            row.desc:ClearAllPoints()
+            row.desc:SetPoint("TOPLEFT", row, "TOPLEFT", PAD, -(14 + th + 4))
+            local h = math.max(MIN_H, 14 + th + ((dh > 0) and (4 + dh) or 0) + 14)
+            row:SetHeight(h)
+            return h
+        end
         local sw = ns:CreateCheckbox(row, O.RowLabel(name), ns.db[name], function(v)
             ns.db[name] = v
             if feature then
@@ -199,10 +283,10 @@ local function BuildSections(page)
             end
             O.NoteChange()
         end)
-        sw:SetWidth(36)
+        sw:SetWidth(sw.suiSwitch and 38 or 36)
         sw.label:Hide()
         sw:ClearAllPoints()
-        sw:SetPoint("RIGHT", row, "RIGHT", -14, 0)
+        sw:SetPoint("RIGHT", row, "RIGHT", -PAD, 0)
         sw.key, sw.row = name, row
         sw:HookScript("OnEnter", function() Hover(row, true); Explain(row) end)
         sw:HookScript("OnLeave", function() Hover(row, false); GameTooltip:Hide() end)
@@ -223,19 +307,21 @@ local function BuildSections(page)
             if def.apply then def.apply(v) end
             O.NoteChange()
         end, 300)
-        s:SetPoint("TOPLEFT", 10, -7)
+        s:SetPoint("TOPLEFT", PAD, -12)
         row.slider = s
         row.Sync = function()
             local v = def.get and def.get() or tonumber(ns.db[name]) or def.default or def.min
             syncing = true; pcall(s.SetValue, s, v); syncing = false
         end
         row.desc = row:CreateFontString(nil, "OVERLAY")
-        ns:Font(row.desc, 11)
-        row.desc:SetPoint("TOPLEFT", 336, -8)
-        row.desc:SetPoint("RIGHT", row, "RIGHT", -14, 0)
+        ns:Font(row.desc, 13)
+        row.desc:SetPoint("TOPLEFT", 352, -14)
         row.desc:SetJustifyH("LEFT")
+        row.desc:SetJustifyV("TOP")
+        if row.desc.SetWordWrap then row.desc:SetWordWrap(true) end
         ns:Paint(row.desc, "SetTextColor", "dim")
         row.desc:SetText(ns:Tr(def.desc or ""))
+        row.Layout = function() return GrowTo(row, row.desc, 352, SLIDER_H, 14) end
         if s.slider then s.slider:HookScript("OnEnter", function() Hover(row, true); Explain(row) end); s.slider:HookScript("OnLeave", function() Hover(row, false); GameTooltip:Hide() end) end
         s.row = row
         Words(row, name)
@@ -287,18 +373,19 @@ local function BuildSections(page)
             O.NoteChange()
         end)
         b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-        b:SetPoint("TOPLEFT", 10, -6)
-        ns:Font(b.text, 11)
+        b:SetPoint("TOPLEFT", PAD, -17)
+        ns:Font(b.text, 12)
         b:HookScript("OnEnter", function() Hover(row, true); Explain(row) end)
         b:HookScript("OnLeave", function() Hover(row, false); GameTooltip:Hide() end)
         b.row = row
         row.button, row.Sync = b, Draw
         row.desc = row:CreateFontString(nil, "OVERLAY")
-        ns:Font(row.desc, 11)
-        row.desc:SetPoint("TOPLEFT", 316, -11)
-        row.desc:SetPoint("RIGHT", row, "RIGHT", -14, 0)
+        ns:Font(row.desc, 13)
+        row.desc:SetPoint("TOPLEFT", 332, -19)
         row.desc:SetJustifyH("LEFT")
-        if row.desc.SetWordWrap then row.desc:SetWordWrap(false) end
+        row.desc:SetJustifyV("TOP")
+        if row.desc.SetWordWrap then row.desc:SetWordWrap(true) end
+        row.Layout = function() return GrowTo(row, row.desc, 332, BUTTON_H, 19) end
         ns:Paint(row.desc, "SetTextColor", "dim")
         local desc = def.desc or ""
         if def.kind == "media" and not (ns.SharedMedia and ns.SharedMedia()) then desc = "No add-on here brings LibSharedMedia, so there is nothing to choose from yet." end
@@ -353,6 +440,8 @@ local function BuildSections(page)
         inner:SetScript("OnMouseWheel", function(_, delta) area:Scroll(-(tonumber(delta) or 0) * 42) end)
         return function() inner:SetScript("OnMouseWheel", inner.suiOwnWheel or nil) end
     end
+    local BX, BY = O.BLOCK_PAD, 14                            -- (12.3) a block's padding inside its card
+    local function BW() return math.max(300, RowWidth() - 2 * BX) end
     local function Lend(frame, y, height)
         local parent = frame:GetParent()
         local points = {}
@@ -363,9 +452,10 @@ local function BuildSections(page)
         frame:SetParent(page)
         frame.lentTo = page
         frame:ClearAllPoints()
-        frame:SetPoint("TOPLEFT", page, "TOPLEFT", 0, y)
+        frame:SetPoint("TOPLEFT", page, "TOPLEFT", BX, y)
         if height and frame.SetHeight then frame:SetHeight(height) end
         frame:Show()
+        page.lentFrames[#page.lentFrames + 1] = frame
         lent[#lent + 1] = function()
             frame.lentTo = nil
             frame:SetParent(parent)
@@ -393,7 +483,9 @@ local function BuildSections(page)
         if block.from == sec.title then HideHead(sheet, block.from) end
         local inner = host.area
         Lend(inner, y, height)
-        inner:SetWidth(736)
+        inner:SetWidth(BW())
+        sheet:SetWidth(BW())                                  -- (the lent page follows the card's width: the theme grid reflows)
+        if sheet.FollowWidth then pcall(sheet.FollowWidth, BW()) end
         inner:SetBand(top, height)
         lent[#lent + 1] = Wheel(inner)
         lent[#lent + 1] = function() inner:SetBand(nil) end
@@ -429,18 +521,19 @@ local function BuildSections(page)
         if #at == 0 then return 0 end
         local h = 0
         if #at > 1 then
-            local x, row = 0, 0
+            local x, row = BX, 0
             for n, i in ipairs(at) do
                 local b = Chip(n)
                 b.text:SetText(ns:Tr(items[i].title))
                 local w = b.text.GetStringWidth and b.text:GetStringWidth()
                 if type(w) ~= "number" or w <= 0 then w = #ns:Tr(items[i].title) * 7 end
                 w = math.floor(w + 20)
-                if x + w > 736 then x = 0; row = row + 1 end
+                if x + w > BX + BW() then x = BX; row = row + 1 end
                 b:SetWidth(w)
                 b:ClearAllPoints()
                 b:SetPoint("TOPLEFT", page, "TOPLEFT", x, y - row * 26)
                 b:Show()
+                page.lentFrames[#page.lentFrames + 1] = b
                 b.pick = function()
                     host.sheet.NavSelect(i)
                     for k = 1, #at do
@@ -459,7 +552,7 @@ local function BuildSections(page)
         end
         local inner = host.area
         Lend(inner, y - h, 540)
-        inner:SetWidth(736)
+        inner:SetWidth(BW())
         inner:SetBand(0, 540)
         lent[#lent + 1] = Wheel(inner)
         page.shownHosts.bars = true
@@ -474,7 +567,7 @@ local function BuildSections(page)
         local h = frame.GetHeight and frame:GetHeight()
         return (type(h) == "number" and h > 0) and h or 200
     end
-    local function Block(block, y, sec)
+    local function BlockRaw(block, y, sec)
         if block.host then return HostBlock(block, y, sec)
         elseif block.bars then return BarsBlock(block, y)
         elseif block.list then return ToolBlock(ns.toolsPage and ns.toolsPage.listBlocks[block.list], y)
@@ -487,13 +580,30 @@ local function BuildSections(page)
                 extras[block.extra] = e
             end
             e.frame:ClearAllPoints()
-            e.frame:SetPoint("TOPLEFT", page, "TOPLEFT", 0, y)
+            e.frame:SetPoint("TOPLEFT", page, "TOPLEFT", BX, y)
             if e.frame.Refresh then e.frame.Refresh() end
             e.frame:Show()
+            page.lentFrames[#page.lentFrames + 1] = e.frame
             lent[#lent + 1] = function() e.frame:Hide() end
             return e.height
         end
         return 0
+    end
+
+    -- (12.3) what another page makes is shown on a card of its own, as the rows above
+    local function Block(block, y, sec)
+        local h = BlockRaw(block, y - BY, sec)
+        if not (h and h > 0) then return h end
+        page.blockUsed = page.blockUsed + 1
+        page.blockInner = { left = BX, top = BY, width = BW() }
+        local c = page.blockCards[page.blockUsed]
+        if not c then c = NewCard(); page.blockCards[page.blockUsed] = c end
+        c:ClearAllPoints()
+        c:SetPoint("TOPLEFT", page, "TOPLEFT", 0, y)
+        c:SetPoint("TOPRIGHT", page, "TOPRIGHT", -O.CARD_GAP, y)
+        c:SetHeight(h + 2 * BY)
+        c:Show()
+        return h + 2 * BY
     end
 
     -- Showing a section ----------------------------------------------------------------------------
@@ -503,7 +613,8 @@ local function BuildSections(page)
         if ns.settingRows[name] then return true end
         return not ns:SettingsSimple() or ns.simpleFeatures[name] == true
     end
-    function page.Show(sec)
+    function page.Show(sec, keepScroll)                       -- (keepScroll: laid out again where it is, for a new width)
+        local was = keepScroll and area.offset or 0
         GiveBack()
         page.focused = nil
         if page.focusRing then page.focusRing:Hide() end
@@ -511,39 +622,93 @@ local function BuildSections(page)
         hidden = {}
         for _, row in pairs(page.rows) do row:Hide() end
         page.shownHosts, page.chipCount = {}, 0
+        page.lentFrames = {}                                  -- (what the blocks put on the page, for the width test)
+        if page.section ~= sec then page.filter = "all"; page.DrawFilter() end
         page.section, page.category = sec, sec.category
+        card:Hide()
+        for _, c in ipairs(page.blockCards) do c:Hide() end
+        page.blockUsed = 0
         crumb:SetText(ns:Tr(sec.category.title))
         heading:SetText(ns:Tr(sec.title))
         newTag:SetShown(ns:SectionIsNew(sec))
         ns:SeeSection(sec)
         intro:SetText(ns:Tr(sec.category.desc or ""))
-        resetBtn.text:SetText(format(ns:Tr("Reset %s to how it came"), ns:Tr(sec.category.title)))
-        resetBtn.suiArmed, resetBtn.suiLabel = false, nil
-        local w = resetBtn.text.GetStringWidth and resetBtn.text:GetStringWidth()
-        if type(w) == "number" and w > 0 then resetBtn:SetWidth(math.min(300, math.floor(w + 24))) end
-        resetBtn:SetShown(not sec.category.noReset and #(sec.category.sections or {}) > 0 and O.CategoryHasSettings(sec.category))
+        local resetBtn = O.resetButton
+        if resetBtn then
+            resetBtn.suiFull = format(ns:Tr("Reset %s to how it came"), ns:Tr(sec.category.title))
+            resetBtn.text:SetText(resetBtn.suiFull)
+            resetBtn.suiArmed, resetBtn.suiLabel = false, nil
+            local w = resetBtn.text.GetStringWidth and resetBtn.text:GetStringWidth()
+            if type(w) == "number" and w > 0 then resetBtn:SetWidth(math.min(260, math.floor(w + 24))) end
+            resetBtn:SetShown(not sec.category.noReset and #(sec.category.sections or {}) > 0 and O.CategoryHasSettings(sec.category))
+            if O.LayoutFooter then O.LayoutFooter() end           -- (in a narrow window the label is cut to "Reset")
+        end
         sampleBtn:SetShown(sec.category.samples and ns.TogglePreview ~= nil)
         page.DrawSamples()
-        local y = -70
-        local shown = {}
+        -- the title keeps clear of the All / On / Off filter at its right (and the NEW tag after it): a long
+        -- one wraps, and the line under it and the card move down
+        local hasFilter = false
+        for _, name in ipairs(sec.rows or {}) do
+            local row = page.rows[name]
+            if row and row.switch and row.switch.key == name and page.RowShown(name) then hasFilter = true; break end
+        end
+        local tagW = 0
+        if newTag:IsShown() then
+            local w = newTag:GetWidth()
+            tagW = ((type(w) == "number" and w > 0) and w or 34) + 10
+        end
+        local right = math.max(hasFilter and FILTER_W or 0, sampleBtn:IsShown() and (sampleBtn:GetWidth() or 170) or 0)   -- (the filter, and the sample frames button under it)
+        local headW = math.max(160, RowWidth() - ((right > 0) and (right + 16) or 0) - tagW)
+        heading:SetWidth(headW)
+        local textW = heading.GetStringWidth and heading:GetStringWidth()
+        textW = (type(textW) == "number" and textW > 0) and math.min(textW, headW) or headW
+        newTag:ClearAllPoints()
+        newTag:SetPoint("TOPLEFT", heading, "TOPLEFT", math.floor(textW + 10), -8)
+        local headH = TextHeight(heading, 24, headW)
+        local introY = -math.max(54, 18 + math.ceil(headH) + 8)
+        intro:ClearAllPoints()
+        intro:SetPoint("TOPLEFT", page, "TOPLEFT", 0, introY)
+        page.headWidth, page.headHeight, page.introY, page.filterWidth = headW, headH, introY, FILTER_W
+        -- the line under the title keeps clear of the sample frames button, and the card starts under it
+        local introW = math.min(520, RowWidth() - (sampleBtn:IsShown() and (170 + 24) or 0))
+        intro:SetWidth(introW)
+        page.introWidth = introW
+        local introH = (sec.category.desc and sec.category.desc ~= "") and TextHeight(intro, 13, introW) or 0
+        local top = math.min(-92, introY - introH - 16)
+        local y = top
+        local shown, switches = {}, 0
         for _, name in ipairs(sec.rows) do
             local row = page.rows[name]
             if row and page.RowShown(name) then
-                row:ClearAllPoints()
-                row:SetPoint("TOPLEFT", page, "TOPLEFT", 0, y)
-                row:SetPoint("RIGHT", page, "RIGHT", -12, 0)
-                if row.switch then row.switch:SetChecked(ns.db[name]) end
-                if row.Sync then row.Sync() end
-                -- (12.1) "Bigger controls": taller lines and larger switches and buttons
-                local big = ns.db.bigControls
-                row.suiBase = row.suiBase or row:GetHeight()
-                row:SetHeight(row.suiBase + (big and 12 or 0))
-                local control = row.switch or row.button or (row.slider and row.slider.slider)
-                if control and control.SetScale then control:SetScale(big and 1.35 or 1) end
-                row:Show()
-                y = y - row:GetHeight()
-                shown[#shown + 1] = name
+                local isSwitch = row.switch and row.switch.key == name or false
+                if isSwitch then switches = switches + 1 end
+                local off = isSwitch and page.filter ~= "all" and ((ns.db[name] and true or false) ~= (page.filter == "on"))
+                if not off then
+                    row:ClearAllPoints()
+                    row:SetPoint("TOPLEFT", page, "TOPLEFT", 0, y)
+                    row:SetPoint("RIGHT", page, "RIGHT", -12, 0)
+                    if row.switch then row.switch:SetChecked(ns.db[name]) end
+                    if row.Sync then row.Sync() end
+                    row.line:SetShown(#shown > 0)
+                    -- (12.1) "Bigger controls": taller lines and larger switches and buttons
+                    local big = ns.db.bigControls
+                    local h = row.Layout() + (big and 12 or 0)
+                    row:SetHeight(h)
+                    local control = row.switch or row.button or (row.slider and row.slider.slider)
+                    if control and control.SetScale then control:SetScale(big and 1.35 or 1) end
+                    row:Show()
+                    y = y - h
+                    shown[#shown + 1] = name
+                end
             end
+        end
+        for _, b in pairs(page.filterButtons) do b:SetShown(switches > 0) end
+        if #shown > 0 then
+            card:ClearAllPoints()
+            card:SetPoint("TOPLEFT", page, "TOPLEFT", 0, top)
+            card:SetPoint("TOPRIGHT", page, "TOPRIGHT", -12, top)
+            card:SetHeight(top - y)
+            card:Show()
         end
         page.shownKeys = shown
         if #shown > 0 then y = y - 18 end
@@ -557,7 +722,7 @@ local function BuildSections(page)
         page.Dim()
         page.contentHeight = -y + 20
         area:SetContentHeight(page.contentHeight)
-        area:ScrollTo(0)
+        area:ScrollTo(was)
         return #shown
     end
     page.GiveBack = GiveBack

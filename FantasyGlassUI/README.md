@@ -6,7 +6,7 @@ A complete interface replacement for **WoW Forever** (interface 16001): unit fra
 bars, action bars, bags and bank, quest tracker and quest log, minimap, buffs, nameplates, chat and
 the game's own windows, in one look that you choose from 116 glass, fantasy and celestial themes.
 
-Version 12.2.0
+Version 12.4.0
 
 ## Install
 
@@ -381,7 +381,8 @@ Options, below). The list here is grouped a little differently. Point at a switc
   on a right-click of the minimap, and who pinged it.
 - Bags and gold: a restock list, gold history, a shopping list for the selected recipe, a "Set" mark
   on gear set items (never sold), an open-all button, a trade log, a Deposit button in the bank,
-  auction prices in tooltips, a loot log.
+  auction prices in tooltips (kept for each realm and faction), a Scan prices button on the auction
+  house, Sell now / Hold / Vendor it hints in tooltips and on the bag window, a loot log.
 - Chat: keyword alerts, repeated lines hidden, Alt-click a name to invite, a whisper window, a Loot
   and a Whispers tab made for you, /rl /rc /tt, guild and friend notices, the friends list in class
   colors.
@@ -399,6 +400,12 @@ Options, below). The list here is grouped a little differently. Point at a switc
   the game lays the bar out. This needs a layout of your own: the game's two presets cannot be
   changed (Esc, Edit Mode, Layout, New Layout makes one).
 - A bar that is not showing is see-through; its buttons can still be pressed where they were.
+
+**Added in 12.4**
+- **Scan prices** on the auction house: the whole auction house in one click, about every 15
+  minutes, read in small pieces and paused in a fight. Prices are kept for each realm and faction.
+- **Sell now / Hold / Vendor it** in item tooltips, and as a coloured square on the bag window.
+  Vendor it is for common and uncommon items only; bound items get no hint.
 
 **Added in 12.1**
 - Accessibility as a category of its own: color vision for each kind, captions for sounds, read
@@ -673,25 +680,32 @@ Options, below). The list here is grouped a little differently. Point at a switc
 `/fgui` lists its categories down the left: **Home**, **Look and themes**, **Frames and bars**,
 **Combat**, **Groups and raids**, **Bags and items**, **Quests and map**, **Chat and people**,
 **Done for you**, **Layout and profiles** and **Tools**. The category that is open lists its
-sections under it, each with how many of its switches are on; choosing one shows it on the right.
-Every setting there has a line of its own, with what it does under its name and its switch or
-slider at the end, and "after /reload" where it needs one. Point at a line for the whole story.
-Under the lines come the larger pieces that go with them: the theme grid, the frame and bar
-designers, the cooldown list, your lists and rules, and so on.
+sections under it; choosing one shows it on the right. Every setting there has a line of its own,
+with what it does under its name and its switch or slider at the end, and "after /reload" where it
+needs one. Point at a line for the whole story. Sections with switches have an **All / On / Off**
+filter at the right of their title. Under the lines come the larger pieces that go with them, each
+on a card of its own: the theme grid, the frame and bar designers, the cooldown list, your lists
+and rules, and so on.
 
-- **Home**: a card for each category, a few quick switches, what you changed lately, the three
-  presets (Standard, Everything, Minimal: click twice), *Ask the guide* - type a question in plain
-  words ("how do I make the bars bigger") and it names the feature or command, with a Show me
-  button that takes you to it - and a few switches suggested for your class.
-- **Search every option**, at the top of the list: it finds any setting, says where it lives
-  ("Auto-repair · Bags and items › Vendors"), and Enter goes to the first one.
-- **Simple / All options**, at the top: Simple shows the settings most players look for (it starts
-  that way for a new player); All options shows every one. The search always finds them all.
-- **Undo last change**, at the foot, takes back what you changed, one step at a time, and each
-  category has **Reset to how it came** for its switches and sliders (your lists, rules, designs
-  and positions are kept). Frames and bars has **Show sample frames**.
-- The header names the profile you are changing; click it for Layout and profiles › Profiles. Drag
-  the window's bottom right corner to make it bigger or smaller.
+- **Home**: a greeting with the theme and frame style you wear, the quick switches as cards with
+  the three presets beside them (Standard, Everything, Minimal: click twice), what is new in this
+  version, and *Ask the guide* - type a question in plain words ("how do I make the bars bigger")
+  and it names the feature or command, with a Show me button that takes you to it - with a few
+  switches suggested for your class under it.
+- **Search every option**, in the header: it finds any setting, says where it lives
+  ("Auto-repair · Bags and items › Vendors"), and Enter goes to the first one. The header also has
+  the Language button and names the profile you are changing; click that for Layout and profiles ›
+  Profiles.
+- **Simple / All options**, at the top of the list on the left: Simple shows the settings most
+  players look for (it starts that way for a new player); All options shows every one. The search
+  always finds them all.
+- **Undo last change**, in the footer, takes back what you changed, one step at a time; point at it
+  to see your last few changes. **Reset <category> to how it came**, in the footer too, puts the open
+  category's switches and sliders back (click twice; your lists, rules, designs and positions are
+  kept). Frames and bars has **Show sample frames**.
+- **Themes**: click a theme to preview it beside the grid, and **Use this theme** to wear it.
+- Drag the window's bottom right corner to make it bigger (it starts at its smallest, so nothing in
+  it is cut off); the pages and the theme grid follow its width.
 - **Look and themes**: themes, accent and lettering (and fonts and bar textures from other
   add-ons), your own theme from three colors, theme by place, class colors, the game's windows,
   sounds and notifications, the AFK screen and screenshots, and Accessibility.

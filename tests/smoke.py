@@ -81,7 +81,9 @@ local function boom() error("attempt to use a SECRET value", 2) end
 for _, m in ipairs({ "__add", "__sub", "__mul", "__div", "__mod", "__unm", "__lt", "__le", "__concat", "__len", "__call", "__idiv", "__pow" }) do secretmt[m] = boom end
 local function SV(n) if secretMode then return setmetatable({ __secret = true }, secretmt) end return n end
 local env = {}
+local reloadCount = 0                -- the game's ReloadUI: counts, so a test can see a reload
 local known = {
+  ReloadUI = function() reloadCount = reloadCount + 1 end,
   ipairs=ipairs, pairs=pairs, pcall=pcall, select=select, type=type, tostring=tostring, tonumber=tonumber,
   table=table, math=math, string=string, setmetatable=setmetatable, getmetatable=getmetatable, rawset=rawset, rawget=rawget,
   next=next, error=error, assert=assert, coroutine=coroutine,
@@ -893,6 +895,15 @@ try("Item counts", function()
         if not joined:find(want, 1, true) then error("missing '" .. want .. "' in: " .. joined) end
     end
     if ns:AddItemCounts(tip, "|Hitem:999999|h[Nothing]|h") then error("counts for an item nobody has") end
+    -- (12.4) a number item id, as /fgui shop passes it, finds what an alt holds
+    local owners, me = ns:ItemOwners(101)
+    local alt = type(owners) == "table" and owners["Alt - Realm"]
+    if not (alt and alt.bags == 5 and alt.bank == 7) then error("a number item id does not find the alt's count") end
+    if me == "Alt - Realm" then error("the alt is not the character being played") end
+    local others = 0
+    for owner, o in pairs(owners) do if owner ~= me then others = others + (o.bags or 0) + (o.bank or 0) end end
+    if others ~= 15 then error("a number item id counts " .. others .. " held by other characters, not 15") end
+    if ns:ItemOwners(999999) ~= nil then error("a number item id nobody has finds owners") end
 end)
 try("Click cast", function()
     ns.db.clickCast = { { mod = "shift", button = 1, spell = "Renew" }, { mod = "", button = 3, spell = "Heal" }, { mod = "bogus", button = 9, spell = "x" } }
@@ -1849,21 +1860,24 @@ try("Look tab sections", function()
     ns.db.theme, ns.db.accent = "SMOKE", "AZURE"; ns:Retheme()
     ns:ToggleConfig("look")
     local page = ns.lookPage
-    if not page or not page.themeGroups then error("the Look tab did not build its theme groups") end
-    local glass, fantasy, skyG, mine = page.themeGroups[1], page.themeGroups[2], page.themeGroups[3], page.themeGroups[4]
-    local function count(group) local n = 0; for _, b in ipairs(group.buttons) do if b.key and ns.themes[b.key] then n = n + 1 end end return n end
-    if count(glass) ~= 38 or count(fantasy) ~= 39 or count(skyG) ~= 39 then error("expected 38 glass, 39 fantasy and 39 celestial buttons, got " .. count(glass) .. ", " .. count(fantasy) .. " and " .. count(skyG)) end
-    for _, b in ipairs(glass.buttons) do if ns.themes[b.key].style ~= "GLASS" then error("a fantasy theme is under Glass: " .. b.key) end end
-    for _, b in ipairs(fantasy.buttons) do if ns.themes[b.key].style == "GLASS" or ns.themes[b.key].style == "CELESTIAL" or ns.themes[b.key].custom then error("wrong theme under Fantasy: " .. b.key) end end
-    for _, b in ipairs(skyG.buttons) do if b.key and ns.themes[b.key].style ~= "CELESTIAL" then error("wrong theme under Celestial: " .. b.key) end end
+    if not page or not page.themePicker then error("the Look tab did not build its theme picker") end
+    local pk = page.themePicker
+    local function listOf(fam) pk.family = fam; pk.Draw(); local out = {}; for i, k in ipairs(pk.list) do out[i] = k end return out end
+    local glass, fantasy, skyG = listOf("GLASS"), listOf("FANTASY"), listOf("CELESTIAL")
+    if #glass ~= 38 or #fantasy ~= 39 or #skyG ~= 39 then error("expected 38 glass, 39 fantasy and 39 celestial tiles, got " .. #glass .. ", " .. #fantasy .. " and " .. #skyG) end
+    for _, k in ipairs(glass) do if ns.themes[k].style ~= "GLASS" then error("a fantasy theme is under Glass: " .. k) end end
+    for _, k in ipairs(fantasy) do if ns.themes[k].style == "GLASS" or ns.themes[k].style == "CELESTIAL" or ns.themes[k].custom then error("wrong theme under Fantasy: " .. k) end end
+    for _, k in ipairs(skyG) do if ns.themes[k].style ~= "CELESTIAL" then error("wrong theme under Celestial: " .. k) end end
     for name in pairs(ns.db.customThemes) do ns:DeleteCustomTheme(name) end       -- (earlier tests may have left some)
     ns.db.theme, ns.db.accent = "SMOKE", "AZURE"; ns:Retheme(); page.Refresh()
-    if count(mine) ~= 0 then error("no themes of your own: that group should be empty, has " .. count(mine)) end
-    -- one of your own, of either kind, goes in the third group
+    listOf("MINE")
+    if pk.family == "MINE" then error("no themes of your own: that family should not be offered") end
+    -- one of your own, of either kind, goes in the fourth family
     local key = ns:SaveCustomTheme("Mine Own", { panel = { 0.1, 0.1, 0.1 }, rim = { 0.5, 0.5, 0.5 }, accent = { 1, 1, 1 }, style = "FANTASY" })
     page.Refresh()
-    if count(mine) ~= 1 or mine.buttons[1].key ~= key then error("your own theme should be listed under Your themes") end
-    if count(fantasy) ~= 39 then error("your own fantasy theme must not be listed under Fantasy as well") end
+    local mine = listOf("MINE")
+    if #mine ~= 1 or mine[1] ~= key then error("your own theme should be listed under Your themes") end
+    if #listOf("FANTASY") ~= 39 then error("your own fantasy theme must not be listed under Fantasy as well") end
     ns:DeleteCustomTheme("Mine Own"); page.Refresh()
     -- the panel behind the action bars starts off, and the switch reaches the bars
     if ns.defaults.barPanel ~= false then error("the action bar panel should start off") end
@@ -2404,15 +2418,16 @@ try("Choosing a language", function()
     local names = {}
     for _, def in ipairs(ns.languages) do names[def[1]] = def[2] end
     if names.deDE ~= "Deutsch" or names.frFR ~= "Français" or names.esES ~= "Español" or names.enUS ~= "English" then error("languages should be listed under their own names") end
-    -- picking one in the setup: saved, marked to come back, and the interface reloaded
+    -- picking one in the setup: saved and marked to come back (the language's button then hands the
+    -- click to the game's own reload: see "12.3 reload"); the one already in use says no, so no reload
     env.GetLocale = function() return "enUS" end
     ns.root.language = nil; ns:LoadLocale()
     local reloads = 0
     local realReload = env.ReloadUI
     env.ReloadUI = function() reloads = reloads + 1 end
     if not ns:SetupPickLanguage("esES") then error("picking Spanish in the setup should take") end
-    if reloads ~= 1 or ns.root.resumeSetup ~= true or ns.root.language ~= "esES" then error("the setup should save the language, mark itself to resume, and reload") end
-    if ns:SetupPickLanguage("esES") or reloads ~= 1 then error("picking the language already in use must not reload") end
+    if reloads ~= 0 or ns.root.resumeSetup ~= true or ns.root.language ~= "esES" then error("the setup should save the language and mark itself to resume, and leave the reload to its button") end
+    if ns:SetupPickLanguage("esES") then error("picking the language already in use must say no, so its button does not reload") end
     -- after the reload, logging in opens the setup again and clears the mark
     fireEvent("PLAYER_LOGIN"); runTimers()
     if ns.root.resumeSetup ~= nil then error("the mark should be cleared once the setup has come back") end
@@ -3079,8 +3094,9 @@ try("Every theme and lettering style can be reached", function()
     ns:ToggleConfig("look")
     local page = ns.lookPage
     local shown = 0
-    for _, group in ipairs(page.themeGroups) do
-        for _, b in ipairs(group.buttons) do if b.key and ns.themes[b.key] and not ns.themes[b.key].custom then shown = shown + 1 end end
+    for _, fam in ipairs({ "GLASS", "FANTASY", "CELESTIAL" }) do
+        page.themePicker.family = fam; page.themePicker.Draw()
+        for _, k in ipairs(page.themePicker.list) do if ns.themes[k] and not ns.themes[k].custom then shown = shown + 1 end end
     end
     if shown ~= #ns.themeOrder then error("the Look tab shows " .. shown .. " of " .. #ns.themeOrder .. " themes") end
     local fonts = 0
@@ -3100,12 +3116,9 @@ do   -- (the sections show slices of the page: each starts at a heading, and the
         local ct, ch = O.Band(page, "Class colors")
         if ch < 36 + #ns.classOrder * 24 then error("Class colors should be tall enough for every class: " .. ch) end
     end
-    -- groups sit one under another without overlapping
-    local g, f, rg, m = page.themeGroups[1], page.themeGroups[2], page.themeGroups[3], page.themeGroups[4]
-    if not (g.y > f.y and f.y > rg.y and rg.y > m.y) then error("the theme groups are out of order") end
-    if g.y - f.y < 24 + g.rows * 28 then error("the Fantasy group overlaps the Glass group") end
-    if f.y - rg.y < 24 + f.rows * 28 then error("the Celestial group overlaps the Fantasy group") end
-    if rg.y - m.y < 24 + rg.rows * 28 then error("Your themes overlaps the Celestial group") end
+    -- the themes' slice runs from the top down to the heading under it
+    local _, hh = ns.optUI.Band(page, "Glass", "Your themes")
+    if hh < 420 then error("the themes' slice should hold the grid, got " .. tostring(hh)) end
     ns:ToggleConfig()
     -- the setup: both grids hold everything too
     ns:ShowSetup()
@@ -3298,9 +3311,7 @@ try("Nameplate size", function()
     env.C_CVar = realC
 end)
 try("Safe mode", function()
-    local reloads = 0
-    local realReload = env.ReloadUI
-    env.ReloadUI = function() reloads = reloads + 1 end
+    local base = reloadCount         -- (the game's own ReloadUI stays in place: the banner's button is built with it)
     ns.root.safeMode = nil
     if not ns:SetSafeMode(true) or ns.root.safeMode ~= true then error("safe mode should be switched on and kept") end
     if ns:SetSafeMode(true) then error("switching it on twice is not a change") end
@@ -3308,7 +3319,7 @@ try("Safe mode", function()
     -- the command goes in, and comes back out
     ns.safeMode = nil
     env.SlashCmdList.FANTASYGLASSUI("safe")
-    if ns.root.safeMode ~= true or reloads ~= 1 then error("/fgui safe should switch safe mode on and reload") end
+    if ns.root.safeMode ~= true or reloadCount - base ~= 1 then error("/fgui safe should switch safe mode on and reload") end
     -- logging in while it is on: nothing is started, and the banner is put up
     local before = {}
     for k, v in pairs(ns.loaded) do before[k] = v end
@@ -3318,10 +3329,9 @@ try("Safe mode", function()
     if next(ns.loaded) then error("in safe mode no feature may be started") end
     if not ns.safeBanner then error("safe mode should say so on screen") end
     env.SlashCmdList.FANTASYGLASSUI("safe")
-    if ns.root.safeMode ~= nil or reloads ~= 2 then error("/fgui safe again should leave safe mode and reload") end
+    if ns.root.safeMode ~= nil or reloadCount - base ~= 2 then error("/fgui safe again should leave safe mode and reload") end
     ns.safeMode = nil
     for k, v in pairs(before) do ns.loaded[k] = v end
-    env.ReloadUI = realReload
 end)
 try("Group finder", function()
     local g = known.__lfg
@@ -7874,6 +7884,439 @@ try("11.7: ready me, boss notes, death recap, backups, history, templates, packs
     if #worth ~= 1 or worth[1].item.id ~= 1 or worth[1].total ~= 1000 then error("worth selling") end
     ns:ShowWorthSelling()
     if ns.auctionHelperTest then ns.auctionHelperTest.Dress() end
+    -- the price store: one per auction house (realm and faction), the old prices moved in once
+    local function HouseAs(realm, faction)                     -- (the key is kept for the session: let it go after a change)
+        env.GetRealmName = function() return realm end
+        env.UnitFactionGroup = function() return faction end
+        ns.PriceHouseKeyReset()
+    end
+    do
+        local oldRealm, oldFaction = env.GetRealmName, env.UnitFactionGroup
+        local okP, errP = pcall(function()
+            HouseAs("Stormreach", "Alliance")
+            if ns.PriceHouseKey() ~= "Stormreach|Alliance" then error("house key") end
+            env.UnitFactionGroup = function() return "Horde" end
+            if ns.PriceHouseKey() ~= "Stormreach|Alliance" then error("the key is kept for the session") end
+            fireEvent("UNIT_FACTION", "player")
+            if ns.PriceHouseKey() ~= "Stormreach|Horde" then error("a faction change lets the key go") end
+            HouseAs("Stormreach", "Neutral")
+            if ns.PriceHouseKey() ~= nil then error("a neutral character has no auction house") end
+            local root = { auctionSeen = { [10] = { price = 500, day = 20261120, hist = { [20261120] = 500 } }, [11] = "junk", [12] = { price = "x" } } }
+            local moved = ns.PricesMigrate(root, "Stormreach|Alliance")
+            if moved ~= 1 or root.auctionSeen ~= nil or not root.prices.migrated or root.prices.houses["Stormreach|Alliance"].items[10].price ~= 500 then error("migrated once") end
+            if ns.PricesMigrate(root, "Stormreach|Alliance") ~= 0 then error("only once") end
+            local root2 = { auctionSeen = { [10] = { price = 1, day = 1 } } }
+            if ns.PricesMigrate(root2, nil) ~= 0 or not root2.auctionSeen then error("no key: wait, keep the old prices") end
+            -- the house already has the item: the later day gives the price, the histories are merged (the lower each day)
+            local root3 = { auctionSeen = { [10] = { price = 7, day = 20261101, hist = { [20261101] = 7, [20261110] = 4 } }, [11] = { price = 9, day = 20261124 } },
+                prices = { v = 1, houses = { K = { items = { [10] = { price = 5, day = 20261110, hist = { [20261110] = 5 } }, [11] = { price = 3, day = 20261110 } } } } } }
+            ns.PricesMigrate(root3, "K")
+            local m10 = root3.prices.houses.K.items[10]
+            if m10.price ~= 5 or root3.prices.houses.K.items[11].price ~= 9 then error("the later day wins") end
+            if m10.hist[20261101] ~= 7 or m10.hist[20261110] ~= 4 then error("both histories are kept, the lower price each day") end
+            local long = { price = 1, day = 20261130, hist = {} }
+            for d = 1, 10 do long.hist[20261100 + d] = d end
+            local root4 = { auctionSeen = { [10] = long }, prices = { v = 1, houses = { K = { items = { [10] = { price = 2, day = 20261120, hist = { [20261120] = 2, [20261121] = 2, [20261122] = 2, [20261123] = 2, [20261124] = 2, [20261125] = 2, [20261126] = 2 } } } } } } }
+            ns.PricesMigrate(root4, "K")
+            local nh = 0
+            for _ in pairs(root4.prices.houses.K.items[10].hist) do nh = nh + 1 end
+            if nh ~= 14 or root4.prices.houses.K.items[10].price ~= 1 then error("merged histories keep 14 days: " .. nh) end
+            -- a hidden realm is no key
+            env.GetRealmName = function() return setmetatable({ __secret = true }, secretmt) end
+            ns.PriceHouseKeyReset()
+            if ns.PriceHouseKey() ~= nil then error("a hidden realm is no key") end
+            -- the move happens where you first open the auction house, never for a neutral character
+            local keepSeen, keepPrices = ns.root.auctionSeen, ns.root.prices
+            local okM, errM = pcall(function()
+                -- before the first auction house visit, the old prices are still read (never written)
+                ns.root.auctionSeen = { [30] = { price = 70, day = ns.Today(), hist = { [1] = 70, [2] = 70 } }, [31] = "odd" }
+                ns.root.prices = nil
+                HouseAs("Stormreach", "Alliance")
+                if not ns.PriceEntry(30) or ns.PriceEntry(30).price ~= 70 or ns.PriceEntry(31) then error("before the move: the old prices are read") end
+                local ft = ns.FarmTotals({ elapsed = 60, gold = 0, items = { [30] = { n = 2, vendor = 1 } } }, 0, nil)
+                if ft.value ~= 140 then error("before the move: farming totals count the old price: " .. tostring(ft.value)) end
+                local zones = {}
+                ns.FarmZonesSave({ zones = { Elwynn = { secs = 120, gold = 0, items = { [30] = { n = 3, vendor = 1 } } } } }, zones, 100)
+                if not zones.Elwynn or zones.Elwynn[1].value ~= 210 then error("before the move: saved zone values keep auction prices") end
+                local keepMem, keepTipG = ns.db.auctionMemory, env.GameTooltip
+                local got = {}
+                local t0 = setmetatable({ AddDoubleLine = function(_, l) got[#got + 1] = l end }, { __index = function() return function() end end })
+                env.GameTooltip = t0
+                ns.db.auctionMemory = true
+                ns.PriceTooltip(t0, { id = 30 })
+                env.GameTooltip, ns.db.auctionMemory = keepTipG, keepMem
+                if not got[1] or not tostring(got[1]):find(ns:Tr("Auction house"), 1, true) then error("before the move: the tooltip shows the old price") end
+                if not ns.PriceNote(30, 50) or ns.root.auctionSeen[30].price ~= 70 then error("the old prices are never written") end
+                ns.root.prices = nil
+                HouseAs("Stormreach", "Neutral")
+                if ns.PriceEntry(30) then error("a neutral character reads nothing") end
+                fireEvent("AUCTION_HOUSE_SHOW")
+                if not ns.root.auctionSeen or (ns.root.prices and ns.root.prices.migrated) then error("a neutral character moves nothing") end
+                HouseAs("Stormreach", "Alliance")
+                fireEvent("AUCTION_HOUSE_SHOW")
+                if ns.root.auctionSeen or not ns.PriceEntry(30) or ns.PriceEntry(30).price ~= 70 then error("moved when the auction house opens") end
+            end)
+            ns.root.auctionSeen, ns.root.prices = keepSeen, keepPrices
+            if not okM then error(errM, 0) end
+            HouseAs("Stormreach", "Alliance")
+            -- old characters' odd entries: skipped or forgotten, every reader still works
+            ns.root.auctionSeen = { [20] = { price = 300, day = ns.Today(), hist = { [ns.Today()] = 300, [1] = "odd" } }, [21] = 5, [22] = { price = "x", day = "y" },
+                [23] = { day = 1 }, x = { price = 1, day = 1 } }
+            ns.root.prices = nil
+            local okR, errR = pcall(function()
+                ns.PricesStart(ns.root, ns.PriceHouseKey(), ns.Today())
+                if ns.root.auctionSeen ~= nil or not ns.PriceEntry(20) or ns.PriceEntry(20).price ~= 300 or ns.PriceEntry(21) or ns.PriceEntry(22) or ns.PriceEntry(23) then error("odd entries") end
+                if not ns.PriceNote(20, 250) or ns.PriceEntry(20).price ~= 250 or ns.PriceEntry(20).listed ~= nil or ns.PriceEntry(20).seenDay ~= ns.Today() then error("browsing tops the store up, never the listed count") end
+                if ns.PriceNote(20, setmetatable({ __secret = true }, secretmt)) or ns.PriceNote(20, 0) then error("hidden or no price is ignored") end
+                local t = ns.FarmTotals({ elapsed = 60, gold = 0, items = { [20] = { n = 2, vendor = 1 } } }, 0, nil)
+                if t.value ~= 500 then error("farming totals read the store: " .. tostring(t.value)) end
+                ns:ShowWorthSelling()
+                local lines = ns:CheckNew(true)
+                for _, l in ipairs(lines) do if l:find("Auction", 1, true) and l:find("error:", 1, true) then error("/fgui check: " .. l) end end
+                if not table.concat(ns:SelfCheck(true), "\n"):find("prices kept here: 1", 1, true) then error("the self-check counts the store") end
+                HouseAs("Stormreach", "Horde")
+                if ns.PriceEntry(20) ~= nil then error("prices never cross factions") end
+                -- at login the current house is cleaned a slice at a time (200 entries a frame with no clock)
+                local items = {}
+                for i = 1, 500 do items[i] = { price = 1, day = (i % 2 == 0) and 20261125 or 20260101 } end
+                ns.PricesForget(items, 20261125)
+                local calls = 1
+                while ns.PricesForgetStep() do calls = calls + 1 end
+                local left = 0
+                for _ in pairs(items) do left = left + 1 end
+                if calls < 3 or left ~= 250 then error("the cleaning is sliced: " .. calls .. " calls, " .. left .. " left") end
+            end)
+            ns.root.auctionSeen, ns.root.prices = keepSeen, keepPrices
+            if not okR then error(errR, 0) end
+            HouseAs("Stormreach", "Horde")
+            if ns.PriceEntry(10) ~= nil then error("prices never cross factions") end
+            HouseAs("Stormreach", nil)
+            if ns.PriceNote(10, 100) or next(ns.PriceItems()) ~= nil then error("no key: nothing noted, nothing read") end
+        end)
+        env.GetRealmName, env.UnitFactionGroup = oldRealm, oldFaction
+        ns.PriceHouseKeyReset()
+        if not okP then error(errP, 0) end
+        if ns.PriceFreshText(nil, env.time()) ~= ns:Tr("Never scanned") then error("never scanned") end
+        if ns.PriceFreshText({ scanAt = env.time() }, env.time()) ~= ns:Tr("Scanned today") then error("today") end
+        if ns.PriceFreshText({ scanAt = env.time() - 86400 }, env.time()) ~= ns:Tr("Scanned yesterday") then error("yesterday") end
+        if ns.PriceFreshText({ scanAt = env.time() - 3 * 86400 }, env.time()) ~= string.format(ns:Tr("Scanned %d days ago"), 3) then error("days ago") end
+    end
+    -- Scan prices: the rows, the write, the cooldown, and whole reads (a fight, a closed auction house, rows read again)
+    do
+        local hidden = {}
+        local rows = { [0] = { 1, 1000, 5 }, [1] = { 4, 2000, 5 }, [2] = { 2, 0, 6 }, [3] = { 1, 300, nil }, [4] = { 1, hidden, 8 }, [5] = { 0, 50, 9 } }
+        local function read(i) local r = rows[i]; return r[1], r[2], r[3] end
+        local realIsSecret = ns.IsSecret
+        ns.IsSecret = function(self, v) if rawequal(v, hidden) then return true end return realIsSecret(self, v) end
+        local acc = {}
+        local okS, retry, skipped = pcall(ns.PriceScanRows, read, 6, acc, 0, 99)
+        ns.IsSecret = realIsSecret
+        if not okS then error(retry, 0) end
+        if acc[5].low ~= 500 or acc[5].listed ~= 5 then error("rows: the lowest unit price and the count") end
+        if acc[6].low ~= nil or acc[6].listed ~= 2 then error("bid only: listed, no price") end
+        if #retry ~= 1 or retry[1] ~= 3 then error("a row with no item is read again") end
+        if acc[8] or skipped ~= 1 then error("a row with a hidden value is skipped, and counted") end
+        if acc[9].low ~= 50 or acc[9].listed ~= 0 then error("count 0") end
+        local house = { items = { [5] = { price = 900, day = 20261120, hist = { [20261120] = 900 } }, [7] = { price = 1234, day = 20261120, listed = 3 } } }
+        local nw = ns.PriceScanWrite(house, { [5] = acc[5], [6] = acc[6] }, 20261125, 1800000000)
+        if nw ~= 2 or house.items[5].price ~= 500 or house.items[5].listed ~= 5 or house.items[5].hist[20261125] ~= 500 or house.items[5].listedDay ~= 20261125 then error("write: a scanned item") end
+        if house.items[7].listed ~= 0 or house.items[7].price ~= 1234 or house.items[7].listedDay ~= 20261125 then error("write: an item nobody lists keeps its price") end
+        if house.scanAt ~= 1800000000 or house.scanItems ~= 2 or house.listedAt ~= 1800000000 then error("write: the scan's time") end
+        if house.items[6].listed ~= 2 or house.items[6].price ~= nil then error("write: bid only") end
+        local house2 = { items = { [7] = { price = 1234, day = 20261120, listed = 3 } } }
+        ns.PriceScanWrite(house2, { [5] = acc[5] }, 20261125, 1800000000, false)
+        if house2.items[7].listed ~= 3 or house2.listedAt ~= nil or house2.items[5].price ~= 500 then error("an incomplete scan leaves listed alone") end
+        local keepPrices, keepSeenW = ns.root.prices, ns.root.auctionSeen
+        ns.root.auctionSeen = nil
+        local oldRealm, oldFaction, oldAH, oldCombat = env.GetRealmName, env.UnitFactionGroup, env.C_AuctionHouse, env.InCombatLockdown
+        local okW, errW = pcall(function()
+            ns.root.prices = { v = 1, lastScan = 1000 - 60 }
+            local ready, left = ns.PriceScanReady(1000)
+            if ready or left ~= 840 then error("the cooldown: " .. tostring(left)) end
+            ns.root.prices = { v = 1 }
+            if not ns.PriceScanReady(1000) then error("ready") end
+            HouseAs("Stormreach", "Alliance")
+            local calls, combat, total, missingOnce, readAt, distinct, hideHalf = 0, false, 3, {}, {}, false, false
+            env.InCombatLockdown = function() return combat end
+            env.C_AuctionHouse = { ReplicateItems = function() calls = calls + 1 end, GetNumReplicateItems = function() return total end,
+                GetReplicateItemInfo = function(i)
+                    readAt[i] = true
+                    if type(i) ~= "number" or i < 0 or i >= total then error("row " .. tostring(i) .. " is outside the list") end
+                    local id = distinct and (1000 + i) or (100 + (i % 3))
+                    if missingOnce[i] then missingOnce[i] = nil; id = nil end
+                    local count = 2
+                    if hideHalf and i % 2 == 0 then count = setmetatable({ __secret = true }, secretmt) end
+                    return "Name", 1, count, 1, true, 1, nil, 0, 0, 1000 * (1 + i % 3), 0, false, nil, "Owner", nil, 0, id, true
+                end }
+            local T = ns.priceScanTest
+            local function Run(limit) for _ = 1, limit or 60 do if not T.state() then return end; T.Read() end end
+            local function Fresh() ns.root.prices = { v = 1 } end
+            local function Said(from, text) for i = from + 1, #printed do if tostring(printed[i]):find(text, 1, true) then return true end end return false end
+            if ns.auctionScanTest.Label(1000) ~= ns:Tr("Scan prices") then error("the button when ready") end
+            combat = true
+            if ns:PriceScanStart() ~= false or calls ~= 0 then error("never in a fight") end
+            combat = false
+            if ns:PriceScanStart() ~= true or calls ~= 1 or ns.root.prices.lastScan ~= env.time() then error("the scan starts") end
+            if ns:PriceScanStart() then error("one at a time") end
+            if ns.auctionScanTest.Label() ~= ns:Tr("Waiting for the list…") then error("waiting: " .. ns.auctionScanTest.Label()) end
+            fireEvent("REPLICATE_ITEM_LIST_UPDATE")
+            Run()
+            local h = ns.PriceHouse()
+            if T.state() or not h or h.scanItems ~= 3 or ns.PriceEntry(100).price ~= 500 or ns.PriceEntry(101).price ~= 1000 or ns.PriceEntry(102).listed ~= 2 then error("a whole read is written") end
+            if not readAt[0] or readAt[total] then error("the rows are counted from 0 to n - 1") end
+            if h.listedAt == nil then error("a whole list is a full scan") end
+            if ns.auctionScanTest.Label(env.time() + 60) ~= string.format(ns:Tr("Scan in %d:%02d"), 14, 0) then error("the countdown: " .. ns.auctionScanTest.Label(env.time() + 60)) end
+            if ns:PriceScanStart() then error("not again within 15 minutes") end
+            -- a complete scan marks what the house knew and nobody lists now
+            ns.root.prices = { v = 1, houses = { ["Stormreach|Alliance"] = { items = { [7] = { price = 1234, day = 20261120, listed = 3 } } } } }
+            ns:PriceScanStart(); fireEvent("REPLICATE_ITEM_LIST_UPDATE"); Run()
+            if ns.PriceEntry(7).listed ~= 0 or ns.PriceEntry(7).price ~= 1234 then error("a full scan: listed 0 for the item it did not find") end
+            -- a fight starts after the first slice: nothing is written until it ends
+            total = 450
+            Fresh()
+            if not ns:PriceScanStart() then error("the second scan starts") end
+            fireEvent("REPLICATE_ITEM_LIST_UPDATE")
+            T.Read()
+            if not T.state() or ns.PriceHouse() then error("450 rows take more than one slice") end
+            combat = true
+            T.Read(); T.Read()
+            if ns.auctionScanTest.Label() ~= ns:Tr("Paused for combat") then error("paused: " .. ns.auctionScanTest.Label()) end
+            combat = false
+            T.Read()
+            if ns.PriceHouse() or T.state().i ~= 200 then error("a fight pauses the read") end
+            fireEvent("PLAYER_REGEN_ENABLED")
+            Run()
+            if T.state() or not ns.PriceHouse() or ns.PriceEntry(100).listed ~= 300 then error("the read goes on after the fight") end
+            -- the auction house closes mid-read: nothing written
+            Fresh()
+            local mark = #printed
+            if not ns:PriceScanStart() then error("the third scan starts") end
+            fireEvent("REPLICATE_ITEM_LIST_UPDATE")
+            T.Read()
+            fireEvent("AUCTION_HOUSE_CLOSED")
+            T.Read()
+            if T.state() or ns.PriceHouse() or not Said(mark, "closed before the scan") then error("closed mid-read: thrown away") end
+            -- no list within a minute
+            Fresh()
+            mark = #printed
+            ns:PriceScanStart()
+            runTimers()
+            if T.state() or not Said(mark, "did not send its list") then error("no list: given up") end
+            -- a row whose item isn't loaded yet is read again
+            total = 3
+            Fresh()
+            missingOnce[1] = true
+            ns:PriceScanStart()
+            fireEvent("REPLICATE_ITEM_LIST_UPDATE")
+            T.Read()
+            if not T.state() or ns.PriceHouse() then error("waits to read a row again") end
+            runTimers()
+            Run()
+            if T.state() or ns.PriceEntry(101) == nil then error("the row read again is written") end
+            -- a big list: the entries are built in slices too, and the house is untouched until the last one
+            total, distinct = 5000, true
+            Fresh()
+            ns:PriceScanStart(); fireEvent("REPLICATE_ITEM_LIST_UPDATE")
+            for _ = 1, 100 do if not T.state() or T.state().phase == "writing" then break end; T.Read() end
+            if not T.state() or T.state().phase ~= "writing" or ns.PriceHouse() then error("the read is done, nothing written yet") end
+            local writes = 0
+            while T.state() and writes < 100 do
+                if ns.PriceHouse() then error("the house changed before the write was done") end
+                T.Read(); writes = writes + 1
+            end
+            if writes < 2 or ns.PriceHouse().scanItems ~= 5000 or ns.PriceEntry(1000).price ~= 500 then error("the write is sliced: " .. writes .. " calls") end
+            -- a price browsed while the entries are being built: its day low is kept, and its price when it is lower
+            total, distinct = 450, true
+            ns.root.prices = { v = 1, houses = { ["Stormreach|Alliance"] = { items = { [1000] = { price = 900, day = 20261120, hist = { [20261120] = 900 } } } } } }
+            ns:PriceScanStart(); fireEvent("REPLICATE_ITEM_LIST_UPDATE")
+            for _ = 1, 20 do if T.state().phase == "writing" then break end; T.Read() end
+            T.Read()
+            local stagedFirst = T.state() and T.state().staged[1000] ~= nil
+            if not T.state() or not ns.PriceNote(1000, 1) then error("(the browse during the write)") end
+            Run()
+            local e1000 = ns.PriceEntry(1000)
+            if T.state() or e1000.hist[ns.Today()] ~= 1 or e1000.seenDay ~= ns.Today() then error("the browse's day low is kept") end
+            if (stagedFirst and e1000.price ~= 1) or (not stagedFirst and e1000.price ~= 500) then error("the browse's price: " .. tostring(e1000.price)) end
+            -- an empty reply where the house knew more than 50 items: a failed scan, nothing written
+            distinct = false
+            local many = {}
+            for i = 1, 60 do many[i] = { price = 10, day = 20261120, listed = 1 } end
+            ns.root.prices = { v = 1, houses = { ["Stormreach|Alliance"] = { items = many } } }
+            total = 0
+            mark = #printed
+            ns:PriceScanStart(); fireEvent("REPLICATE_ITEM_LIST_UPDATE"); Run()
+            if T.state() or ns.PriceHouse().scanAt or many[1].listed ~= 1 or not Said(mark, "came back empty") then error("an empty scan is a failed scan") end
+            Fresh()
+            mark = #printed
+            ns:PriceScanStart(); fireEvent("REPLICATE_ITEM_LIST_UPDATE"); Run()
+            if T.state() or ns.PriceHouse() or not ns.root.prices.lastScan or not Said(mark, "came back empty") then error("an empty reply is never a scan, even into an empty house; the cooldown runs") end
+            -- half the rows hidden: prices are written, but nothing is said about what nobody lists
+            total, hideHalf = 40, true
+            ns.root.prices = { v = 1, houses = { ["Stormreach|Alliance"] = { items = { [7] = { price = 1234, day = 20261120, listed = 3 } } } } }
+            ns:PriceScanStart(); fireEvent("REPLICATE_ITEM_LIST_UPDATE"); Run()
+            local hh = ns.PriceHouse()
+            if T.state() or not hh.scanAt or hh.listedAt or ns.PriceEntry(7).listed ~= 3 or not ns.PriceEntry(101) then error("too many rows unread: prices only") end
+            if not tostring(ns.priceScanState):find("20 of 40 rows unread", 1, true) then error("the unread rows are counted: " .. tostring(ns.priceScanState)) end
+            hideHalf, total = false, 3
+            -- hidden values in the list: no error, nothing stored
+            Fresh()
+            env.C_AuctionHouse.GetReplicateItemInfo = function() local x = setmetatable({ __secret = true }, secretmt); return "N", 1, x, 1, true, 1, nil, 0, 0, x, 0, false, nil, "O", nil, 0, x, true end
+            ns:PriceScanStart()
+            fireEvent("REPLICATE_ITEM_LIST_UPDATE")
+            Run()
+            if T.state() or next(ns.PriceItems()) ~= nil then error("hidden rows are skipped") end
+        end)
+        ns.root.prices, ns.root.auctionSeen = keepPrices, keepSeenW
+        env.GetRealmName, env.UnitFactionGroup, env.C_AuctionHouse, env.InCombatLockdown = oldRealm, oldFaction, oldAH, oldCombat
+        ns.PriceHouseKeyReset()
+        if not okW then error(errW, 0) end
+        ns.auctionScanTest.Dress()
+    end
+    -- Sell now, Hold, Vendor it
+    do
+        local today = 20261125
+        local hist = { [20261120] = 1000, [20261121] = 1000, [20261122] = 1000, [20261123] = 950, [20261124] = 1050 }
+        local function E(price, day, extra) local e = { price = price, day = day or today, hist = hist }; for k, v in pairs(extra or {}) do e[k] = v end; return e end
+        local H = ns.SellHint
+        local k, pct = H(E(1200), 0, 2, false, today, nil)
+        if k ~= "sell" or pct ~= 20 then error("sell now: " .. tostring(k) .. " " .. tostring(pct)) end
+        k, pct = H(E(700), 0, 2, false, today, nil)
+        if k ~= "hold" or pct ~= 30 then error("hold: " .. tostring(k) .. " " .. tostring(pct)) end
+        if H(E(700), 650, 2, false, today, nil) ~= "vendor" then error("a vendor pays about as much (700 <= 747.5)") end
+        if H(E(700), 650, 3, false, today, nil) ~= "hold" then error("a rare cheap today: hold, never vendor it") end
+        if H(E(700, today - 8), 900, 3, false, today, nil) ~= nil or H(E(700, today - 8), 900, 4, false, today, nil) ~= nil then error("a rare or epic near a vendor's price gets no hint, never vendor it") end
+        if H(E(700, today - 8), 900, 2, false, today, nil) ~= "vendor" then error("(the same, uncommon: vendor it)") end
+        if H(E(700, today - 8), 900, nil, false, today, nil) ~= nil then error("quality not known yet: no vendor it") end
+        if H(E(700), 900, 3, false, today, nil) ~= nil then error("hold needs a usual price above what a vendor pays") end
+        if H(E(1200, today - 8), 0, 2, false, today, nil) ~= nil then error("an old price gives no sell or hold") end
+        if H(nil, 50, 1, false, today, today - 1) ~= "vendor" then error("nobody lists it: uncommon or lower") end
+        if H(nil, 50, 3, false, today, today - 1) ~= nil then error("a rare nobody lists is never vendor it") end
+        if H(nil, 50, 1, false, today, today - 5) ~= nil then error("an old scan says nothing about who lists it") end
+        if H(nil, 50, 1, false, today, nil) ~= nil then error("never scanned: nothing about who lists it") end
+        if H(E(1200, nil, { listed = 0 }), 50, 2, false, today, today) ~= "vendor" then error("listed 0, uncommon: vendor it") end
+        if H(E(1200, nil, { listed = 0, seenDay = today }), 50, 2, false, today, today) ~= "sell" then error("seen listed since the scan: not nobody lists it") end
+        if H(E(1200), 50, 2, true, today, today) ~= nil then error("bound: no hint") end
+        if H(nil, 0, 1, false, today, today) ~= nil then error("no vendor price, never seen: no hint") end
+        if H({ price = 1200, day = today, hist = { [1] = 1000, [2] = 1000 } }, 0, 2, false, today, nil) ~= nil then error("two days of history are not enough") end
+        if H({ day = today, listed = 2 }, 50, 1, false, today, today) ~= nil then error("bid only, listed: no hint") end
+        -- the tooltip lines (prices first, then the hint), bound items, and the bag window
+        local oldRealm, oldFaction, keepPrices, realGII, keepTip = env.GetRealmName, env.UnitFactionGroup, ns.root.prices, ns.GetItemInfo, env.GameTooltip
+        local realFor, keepOn, keepMem, keepShould = ns.SellHintFor, ns.db.sellHints, ns.db.auctionMemory, ns.ShouldSell
+        local I = env.C_Item
+        local keepLoc, keepBound, keepSoul = rawget(I, "GetItemLocation"), rawget(I, "IsBound"), rawget(env, "ITEM_SOULBOUND")
+        local C = env.C_Container
+        local keepSlots, keepInfo = C.GetContainerNumSlots, C.GetContainerItemInfo
+        local keepSeenT = ns.root.auctionSeen
+        ns.root.auctionSeen = nil
+        local keepDate, keepTime = env.date, env.time
+        local okT, errT = pcall(function()
+            HouseAs("Stormreach", "Alliance")
+            -- "nobody lists it" is as fresh as the last full scan, not the last scan
+            env.date, env.time = function(f, t) return os.date(f, t) end, function() return os.time() end
+            ns.root.prices = { v = 1, houses = { ["Stormreach|Alliance"] = { items = {}, scanAt = os.time(), listedAt = os.time() - 2 * 86400 } } }
+            local realGII0 = ns.GetItemInfo
+            ns.GetItemInfo = function(self, id) if id == 4244 then return "Cloth", "|Hitem:4244|h[Cloth]|h", 1, 10, 1, "Trade Goods", "", 20, "", 1, 50, 7, 0, 0 end return realGII0(self, id) end
+            local text, fresh = ns.SellHintLine(4244)
+            ns.GetItemInfo = realGII0
+            env.date, env.time = keepDate, keepTime
+            if text ~= ns:Tr("Vendor it: nobody lists it here") or fresh ~= string.format(ns:Tr("Scanned %d days ago"), 2) then error("nobody lists it, and how fresh: " .. tostring(text) .. " | " .. tostring(fresh)) end
+            ns.root.prices = { v = 1, houses = { ["Stormreach|Alliance"] = { items = { [4242] = { price = 1200, day = ns.Today(), hist = hist, listed = 3, listedDay = ns.Today() },
+                [4243] = { price = 1200, day = ns.Today(), hist = hist } }, scanAt = env.time() } } }
+            ns.GetItemInfo = function(self, id)
+                if id == 4242 then return "Thing", "|Hitem:4242|h[Thing]|h", 2, 10, 1, "Trade Goods", "", 20, "", 1, 50, 7, 0, 0 end
+                if id == 4243 then return "Heirloom", "|Hitem:4243|h[Heirloom]|h", 2, 10, 1, "Armor", "", 1, "", 1, 50, 4, 0, 7 end
+                return realGII(self, id)
+            end
+            local lines = {}
+            local tip = setmetatable({ AddDoubleLine = function(_, l, r) lines[#lines + 1] = { l, r } end }, { __index = function() return function() end end })
+            env.GameTooltip = tip
+            local sell = string.format(ns:Tr("Sell now: %d%% above its usual price"), 20)
+            ns.db.auctionMemory, ns.db.sellHints = true, true
+            ns.sellHintsTest.Tip(tip, { id = 4242 })
+            if #lines ~= 3 or not tostring(lines[1][1]):find(ns:Tr("Auction house"), 1, true) or not tostring(lines[2][1]):find(string.format(ns:Tr("Usual price (%d days)"), 5), 1, true)
+                or lines[3][1] ~= sell or lines[3][2] ~= ns:Tr("Scanned today") then error("the tooltip: the prices, then the hint: " .. tostring(lines[3] and lines[3][1])) end
+            lines = {}
+            ns.db.auctionMemory = false
+            ns.sellHintsTest.Tip(tip, { id = 4242 })
+            if #lines ~= 1 or lines[1][1] ~= sell then error("prices off: the hint alone") end
+            lines = {}
+            ns.db.auctionMemory, ns.db.sellHints = true, false
+            ns.sellHintsTest.Tip(tip, { id = 4242 })
+            if #lines ~= 2 then error("hints off: the prices alone") end
+            ns.db.sellHints = true
+            -- a bound item: from its place in the bags, or from the game's Soulbound line
+            rawset(I, "GetItemLocation", function(guid) if guid == "G1" then return { guid = guid } end end)
+            rawset(I, "IsBound", function(loc) return loc.guid == "G1" end)
+            lines = {}
+            ns.db.auctionMemory = false
+            ns.sellHintsTest.Tip(tip, { id = 4242, guid = "G1" })
+            if #lines ~= 0 then error("a soulbound item (from its bag place) gets no hint") end
+            rawset(I, "GetItemLocation", nil)
+            rawset(env, "ITEM_SOULBOUND", "Soulbound")
+            ns.sellHintsTest.Tip(tip, { id = 4242, lines = { { leftText = "Thing" }, { leftText = "Soulbound" } } })
+            if #lines ~= 0 then error("a soulbound item (from its tooltip line) gets no hint") end
+            ns.sellHintsTest.Tip(tip, { id = 4242, lines = { { leftText = setmetatable({ __secret = true }, secretmt) } } })
+            if #lines ~= 1 then error("an unbound item still gets its hint") end
+            if ns.SellHintFor(4243) ~= nil then error("bound to the account (bind type 7): no hint") end
+            ns.root.prices.houses["Stormreach|Alliance"].items[4242].listedDay = nil
+            lines = {}
+            ns.sellHintsTest.Tip(tip, { id = 4242 })
+            if not lines[1] or lines[1][2] ~= ns:Tr("today") then error("browsed only: when it was seen") end
+            ns.sellHintsTest.Tip(tip, { id = setmetatable({ __secret = true }, secretmt) })
+            HouseAs("Stormreach", nil)
+            lines = {}
+            ns.sellHintsTest.Tip(tip, { id = 4242 })
+            if #lines ~= 0 then error("no house: no hint") end
+            -- the bag window draws the square: green for Sell now; hidden when off, and under the junk coin
+            local bag = ns.bagTest and ns.bagTest.FantasyGlassUIBags
+            if not bag then error("no bag window to test") end
+            local first
+            C.GetContainerNumSlots = function(id) if first == nil then first = id end; return id == first and 2 or 0 end
+            C.GetContainerItemInfo = function(_, slot) return { iconFileID = 1, stackCount = 1, quality = 1, itemID = 100 + slot, hyperlink = "item:" .. slot } end
+            ns.SellHintFor = function(id) if id == 101 then return "sell", 20 end end
+            ns.ShouldSell = function() return false end
+            local function each(fn) for _, list in pairs(bag.slots()) do for _, b in pairs(list) do fn(b) end end end
+            local okL, eL = pcall(bag.Layout)
+            if not okL then error("the bag window could not be arranged: " .. tostring(eL)) end
+            local marks = {}
+            each(function(b)
+                local sq = rawget(b, "sellHint")
+                if sq then
+                    local m = { shown = false }
+                    marks[b] = m
+                    rawset(sq, "SetColorTexture", function(_, r, g, bl) m.color = { r, g, bl } end)
+                    rawset(sq, "Show", function() m.shown = true end)
+                    rawset(sq, "Hide", function() m.shown = false end)
+                end
+            end)
+            local function Seen()
+                local shown, color = 0, nil
+                for _, m in pairs(marks) do if m.shown then shown = shown + 1; color = m.color end end
+                return shown, color
+            end
+            bag.Layout()
+            local shown, color = Seen()
+            if shown ~= 1 or not color or color[1] ~= 0.30 or color[2] ~= 0.85 or color[3] ~= 0.40 then error("the bag square: one green square, got " .. shown) end
+            ns.db.sellHints = false
+            bag.Layout()
+            if Seen() ~= 0 then error("the bag square with the hints off") end
+            ns.db.sellHints = true
+            local keepJunk = ns.db.bagJunkIcon
+            ns.db.bagJunkIcon = true
+            ns.ShouldSell = function() return true end
+            bag.Layout()
+            ns.db.bagJunkIcon = keepJunk
+            if Seen() ~= 0 then error("the bag square under the junk coin") end
+        end)
+        env.GetRealmName, env.UnitFactionGroup, ns.root.prices, ns.GetItemInfo, env.GameTooltip = oldRealm, oldFaction, keepPrices, realGII, keepTip
+        ns.root.auctionSeen, env.date, env.time = keepSeenT, keepDate, keepTime
+        ns.SellHintFor, ns.db.sellHints, ns.db.auctionMemory, ns.ShouldSell = realFor, keepOn, keepMem, keepShould
+        rawset(I, "GetItemLocation", keepLoc); rawset(I, "IsBound", keepBound); rawset(env, "ITEM_SOULBOUND", keepSoul)
+        C.GetContainerNumSlots, C.GetContainerItemInfo = keepSlots, keepInfo
+        ns.PriceHouseKeyReset()
+        if not okT then error(errT, 0) end
+        ns:RefreshBagWindow()
+    end
     -- home key
     local ways = { { kind = "spell", id = 3561 }, { kind = "spell", id = 556 }, { kind = "item", id = 6948 }, { kind = "item", id = 64488 } }
     local best, ready = ns.BestWayHome(ways, function() return true end)
@@ -8011,10 +8454,12 @@ try("11.9: check of the new features, celestial art, theme previews", function()
     if ns:ThemeColors("NOPE") then error("no such theme") end
     if ns:ThemeColors("CCLASS").style ~= "CELESTIAL" or ns:ThemeColors("GCLASS").style ~= "GLASS" then error("family of the class themes") end
     local page = ns.lookPage
-    if not (page and page.ThemeCard and page.themeGroups) then error("the Look page") end
-    local b = page.themeGroups[3].buttons[1]
-    if not b or not b.swatch then error("each theme button has its picture") end
-    page.ThemeCard(b, "C_POLARIS")
+    if not (page and page.themePicker and page.ShowSwatch) then error("the Look page") end
+    local pk = page.themePicker
+    pk.family = "CELESTIAL"; pk.Draw()
+    local b = pk.tiles[1]
+    if not b or not b.swatch then error("each theme tile has its picture") end
+    pk.Pick("C_POLARIS")
     page.ShowSwatch(b.swatch, "CCLASS")
 end)
 try("Chat bubbles: the look sleeps until someone speaks", function()
@@ -16214,6 +16659,1340 @@ try("13.5 together: final review", function()
     if not ok then error(err, 0) end
 end)
 
+try("12.3 settings look: palette, accent, contrast, lettering", function()
+    local keep = { theme = ns.db.theme, accent = ns.db.accent, lang = ns.root.language, style = ns.db.fontStyle }
+    local function hex(r, g, b) return string.format("%02x%02x%02x", math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b * 255 + 0.5)) end
+    local ok, err = pcall(function()
+        ns.db.theme, ns.db.accent, ns.root.language, ns.db.fontStyle = "MIDNIGHT", "VIOLET", "enUS", "GLASS"     -- (Smoke's own ground is #12141a)
+        ns:Retheme()
+        if hex(ns:T("window")) == "12141a" then error("the test needs a theme whose ground differs") end
+        ns:ToggleConfig("home")
+        local win = ns.configFrame
+        if rawget(win, "suiLook") ~= "settings" then error("the settings window is marked with its look") end
+        if type(ns.LOOKS) ~= "table" or type(ns.LOOKS.settings) ~= "table" or type(ns.LOOKS.settingsContrast) ~= "table" then error("the two looks") end
+        for _, look in pairs(ns.LOOKS) do
+            if look["@accent"] or look.accent then error("a look never holds the accent") end
+            for _, role in ipairs({ "window", "@bg", "bg", "field", "@border", "@rim", "@light", "@btn", "text", "dim", "faint" }) do
+                if type(look[role]) ~= "table" then error("a look holds " .. role) end
+            end
+        end
+        local parents = 0
+        local function under(parent)
+            local t = newmock()
+            rawset(t, "GetParent", function() parents = parents + 1; return parent end)
+            rawset(t, "SetVertexColor", function(self, r, g, b) rawset(self, "rgb", { r, g, b }) end)
+            rawset(t, "SetTextColor", function(self, r, g, b) rawset(self, "rgb", { r, g, b }) end)
+            rawset(t, "SetFont", function(self, path, size, flags) rawset(self, "face", path); rawset(self, "size", size); rawset(self, "flags", flags) end)
+            return t
+        end
+        local function reads(t) local c = rawget(t, "rgb"); return c and hex(c[1], c[2], c[3]) or "nothing" end
+        local row = newmock(); rawset(row, "GetParent", function() return win end)          -- (two levels down)
+        local elsewhere = newmock(); rawset(elsewhere, "GetParent", function() return env.UIParent end)
+        -- the ground: the look's own under the window, the theme's anywhere else
+        local ground = under(row); ns:Paint(ground, "SetVertexColor", "window", 0.97)
+        if reads(ground) ~= "12141a" then error("the window's ground is #12141a, got " .. reads(ground)) end
+        local outside = under(elsewhere); ns:Paint(outside, "SetVertexColor", "window", 0.97)
+        if reads(outside) ~= hex(ns:T("window")) then error("another window keeps the theme's ground, got " .. reads(outside)) end
+        local text = under(row); ns:Paint(text, "SetTextColor", "text")
+        if reads(text) ~= "e9ecf3" then error("text in the window is #e9ecf3, got " .. reads(text)) end
+        -- the look is looked up once per object, not on every paint
+        local before = parents
+        for _ = 1, 5 do ns:Paint(ground, "SetVertexColor", "window", 0.97) end
+        if parents ~= before then error("painting again walks the parents again") end
+        -- a frame marked later is found on the next repaint (and unmarked, lets go)
+        ns:SetLook(elsewhere, "settings"); ns:Repaint()
+        if reads(outside) ~= "12141a" then error("a frame marked later takes the look on the next repaint") end
+        before = parents
+        ns:Repaint()
+        if parents ~= before then error("a repaint with no new look does not walk the parents") end
+        ns:SetLook(elsewhere, nil); ns:Repaint()
+        if reads(outside) ~= hex(ns:T("window")) then error("unmarked, it wears the theme again") end
+        -- the accent is the theme's, live
+        local acc = under(row); ns:Paint(acc, "SetVertexColor", "@accent", 1)
+        local a = ns.theme.accent
+        if reads(acc) ~= hex(a[1], a[2], a[3]) then error("the accent under the window is the theme's") end
+        local was = reads(acc)
+        ns.db.accent = "CRIMSON"; ns:ApplyAccent(); ns:Repaint()
+        if reads(acc) ~= hex(ns:AccentColor("CRIMSON")) or reads(acc) == was then error("a new accent repaints at once, got " .. reads(acc)) end
+        if reads(ground) ~= "12141a" or reads(text) ~= "e9ecf3" then error("nothing else in the window changes with the accent") end
+        -- high contrast: black ground, white text, without a reload
+        if ns:IsHighContrast() then error("Smoke is not high contrast") end
+        ns.db.theme = "C_CONTRAST"; ns:Retheme()
+        if not ns:IsHighContrast() then error("C_CONTRAST is high contrast") end
+        if reads(ground) ~= "000000" or reads(text) ~= "ffffff" then error("high contrast: black ground and white text, got " .. reads(ground) .. " / " .. reads(text)) end
+        local a2 = ns.theme.accent
+        if reads(acc) ~= hex(a2[1], a2[2], a2[3]) then error("high contrast keeps the theme's accent") end
+        for _, k in ipairs({ "CONTRAST", "FCONTRAST" }) do
+            ns.db.theme = k
+            if not ns:IsHighContrast() then error(k .. " is high contrast") end
+        end
+        ns.db.theme = "MIDNIGHT"; ns:Retheme()
+        if reads(ground) ~= "12141a" then error("back to the calm look") end
+        -- lettering: Barlow in Latin-script languages; Korean, Chinese, Russian and the reading styles keep theirs
+        local fs = under(row); ns:Font(fs, 14)
+        local title = under(row); ns:Font(title, 24, true)
+        local out = under(elsewhere); ns:Font(out, 14)
+        local function face(t) return tostring(rawget(t, "face")) end
+        if not face(fs):find("Barlow%-Medium%.ttf$") then error("body text in the window is Barlow Medium, got " .. face(fs)) end
+        if not face(title):find("Barlow%-SemiBold%.ttf$") then error("titles in the window are Barlow SemiBold, got " .. face(title)) end
+        if face(out) ~= ns.FONT or face(out):find("Barlow") then error("other windows keep the chosen lettering, got " .. face(out)) end
+        if math.abs((rawget(fs, "size") or 0) - 14 * (ns.fontScale or 1)) > 0.001 then error("the text size still applies") end
+        local keepOutline = ns.db.textOutline
+        ns.db.textOutline = "thick"; ns:Retheme()
+        if rawget(fs, "flags") ~= "THICKOUTLINE" then error("the outline choice still applies to Barlow") end
+        ns.db.textOutline = keepOutline; ns:Retheme()
+        for _, code in ipairs({ "koKR", "zhCN", "ruRU" }) do
+            ns.root.language = code; ns:Retheme()
+            if face(fs):find("Barlow") or face(fs) ~= ns.FONT then error(code .. " keeps its own face, got " .. face(fs)) end
+            if face(title) ~= ns.TITLEFONT then error(code .. " titles keep their own face") end
+        end
+        ns.root.language = "enUS"; ns:Retheme()
+        if not face(fs):find("Barlow") then error("back in English, Barlow again") end
+        for _, st in ipairs({ "DYSLEXIC", "READABLE" }) do
+            ns.db.fontStyle = st; ns:Retheme()
+            if face(fs):find("Barlow") or face(fs) ~= ns.FONT then error(st .. " lettering wins over Barlow, got " .. face(fs)) end
+        end
+        ns.db.fontStyle = "GLASS"; ns:Retheme()
+        ns:ToggleConfig()
+    end)
+    ns.db.theme, ns.db.accent, ns.root.language, ns.db.fontStyle = keep.theme, keep.accent, keep.lang, keep.style
+    ns:Retheme()
+    if not ok then error(err, 0) end
+end)
+try("12.3 settings look: buttons and the window's corners", function()
+    local keep = { theme = ns.db.theme, accent = ns.db.accent, lang = ns.root.language, style = ns.db.fontStyle, uf = ns.db.ufStyle }
+    local realCF = env.CreateFrame
+    local made = {}
+    local function hex(c) return string.format("%02x%02x%02x", math.floor(c[1] * 255 + 0.5), math.floor(c[2] * 255 + 0.5), math.floor(c[3] * 255 + 0.5)) end
+    -- frames that know their parent, and the textures and strings made on them
+    local function Region(owner)
+        local t = newmock()
+        rawset(t, "GetParent", function() return owner end)
+        rawset(t, "SetVertexColor", function(x, r, g, b, a) rawset(x, "rgba", { r, g, b, a or 1 }) end)
+        rawset(t, "SetTexture", function(x, path) rawset(x, "tex", path) end)
+        rawset(t, "SetGradient", function(x) rawset(x, "gradient", true) end)
+        rawset(t, "SetFont", function(x, path) rawset(x, "face", path) end)
+        rawset(t, "GetStringWidth", function() return 10 end)
+        made[#made + 1] = t
+        return t
+    end
+    local function Real(f, parent)
+        rawset(f, "GetParent", function() return parent end)
+        rawset(f, "CreateTexture", function(self) return Region(self) end)
+        rawset(f, "CreateFontString", function(self) return Region(self) end)
+        rawset(f, "SetBackdropColor", function(x, r, g, b, a) rawset(x, "bg", { r, g, b, a or 1 }) end)
+        rawset(f, "GetBackdropColor", false)                 -- (left square: the plain backdrop is what is read)
+        rawset(f, "GetWidth", function() return 120 end)
+        return f
+    end
+    local ok, err = pcall(function()
+        ns.db.theme, ns.db.accent, ns.root.language, ns.db.fontStyle = "MIDNIGHT", "VIOLET", "enUS", "GLASS"
+        ns:Retheme()
+        ns:ToggleConfig("home")
+        local win = ns.configFrame
+        env.CreateFrame = function(kind, name, parent, ...) return Real(realCF(kind, name, parent, ...), parent) end
+        local holder = env.CreateFrame("Frame", nil, win)
+        local away = env.CreateFrame("Frame", nil, env.UIParent)
+        -- a button in the window is lettered in Barlow: made, given new text, repainted
+        local b1 = ns:CreateButton(holder, "Run setup again", 132, 24)
+        local out = ns:CreateButton(away, "Run setup again", 132, 24)
+        local function face(b) return tostring(rawget(b.text, "face")) end
+        if not face(b1):find("Barlow%-Medium%.ttf$") then error("a button in the window is lettered in Barlow, got " .. face(b1)) end
+        if face(out) ~= ns.FONT then error("a button elsewhere keeps the theme's lettering, got " .. face(out)) end
+        b1.text:SetText("Something much longer than before")
+        b1.text.suiFit()                                    -- (what the SetText hook runs)
+        if not face(b1):find("Barlow") then error("after SetText, still Barlow, got " .. face(b1)) end
+        ns:Repaint()
+        if not face(b1):find("Barlow") then error("after a repaint, still Barlow, got " .. face(b1)) end
+        if face(out) ~= ns.FONT then error("after a repaint, the button elsewhere keeps the theme's lettering") end
+        -- its plate: the look's, opaque, flat; the same on a Glass and a Fantasy theme
+        local function plate(b) local c = rawget(b, "bg"); return hex(c) .. "/" .. tostring(c[4]) end
+        if plate(b1) ~= "1e222b/1" then error("a button in the window is a flat #1e222b plate, got " .. plate(b1)) end
+        if rawget(b1.plate, "gradient") then error("no lit top edge in the window") end
+        local wash = rawget(b1.wash, "rgba")
+        if hex(wash) ~= "262b36" or wash[4] ~= 1 then error("under the mouse a lighter plate, got " .. hex(wash) .. "/" .. tostring(wash[4])) end
+        if not rawget(out.plate, "gradient") then error("a button elsewhere keeps its lit edge") end
+        -- under the mouse its label is the look's text colour (#e9ecf3), not white; elsewhere white as before
+        local function Hovered(b)
+            rawset(b.text, "SetTextColor", function(x, r, g, bl) rawset(x, "rgb", { r, g, bl }) end)
+            for _, h in ipairs(handlers) do if h.self == b and h.name == "OnEnter" then h.fn(b); break end end
+            return rawget(b.text, "rgb") and hex(rawget(b.text, "rgb")) or "none"
+        end
+        if Hovered(b1) ~= "e9ecf3" then error("a hovered button's label in the window is #e9ecf3, got " .. Hovered(b1)) end
+        if Hovered(out) ~= "ffffff" then error("a hovered button's label elsewhere stays white, got " .. Hovered(out)) end
+        local glassPlate, glassWash, glassOut = plate(b1), hex(wash) .. tostring(wash[4]), plate(out)
+        ns.db.theme = "WARM"; ns:Retheme()
+        if ns.style ~= "FANTASY" then error("WARM is a Fantasy theme") end
+        local b2 = ns:CreateButton(holder, "Discord", 96, 24)
+        local w2 = rawget(b2.wash, "rgba")
+        if plate(b2) ~= glassPlate or plate(b1) ~= glassPlate then error("the plate is the same on Fantasy as on Glass, got " .. plate(b2) .. " / " .. plate(b1)) end
+        if hex(w2) .. tostring(w2[4]) ~= glassWash then error("the hover is the same on Fantasy as on Glass") end
+        if rawget(b2.plate, "gradient") then error("no lit top edge on Fantasy either") end
+        local out2 = ns:CreateButton(away, "Discord", 96, 24)
+        if plate(out2) == glassOut then error("(the check needs the themes' own plates to differ)") end
+        -- the window's corners: the cut, its lines in the rim color, no stars, on every family
+        ns.db.ufStyle = "STARCUT"
+        local was = ns.StarcutCanSlice()
+        ns.StarcutCanSlice(true)
+        local function Window(marked)
+            local f = env.CreateFrame("Frame", nil, env.UIParent)
+            if marked then ns:SetLook(f, "settings") end
+            rawset(f, "GetWidth", function() return 1000 end); rawset(f, "GetHeight", function() return 680 end)
+            rawset(f, "CreateMaskTexture", function() local m = newmock(); rawset(m, "SetTextureSliceMargins", function() end); return m end)
+            rawset(f, "GetRegions", function() end)
+            local from = #made
+            ns.StarcutWindow(f)
+            local lines, stars = {}, 0
+            for i = from + 1, #made do
+                local t = made[i]
+                if rawget(t, "scCutLine") then lines[#lines + 1] = t
+                elseif tostring(rawget(t, "tex")):find("\\star$") then stars = stars + 1 end
+            end
+            return f, lines, stars
+        end
+        local plain, _, plainStars = Window(false)
+        if plainStars == 0 then error("(the check needs a Fantasy window elsewhere to get its stars)") end
+        local look, lines, stars = Window(true)
+        if rawget(look, "scCut") ~= true then error("the settings window keeps the Starcut cut") end
+        if stars ~= 0 then error("no Starcut stars on the settings window, got " .. stars) end
+        if #lines == 0 then error("the cut has its lines") end
+        for _, l in ipairs(lines) do
+            if hex(rawget(l, "rgba")) ~= "262b36" then error("the cut lines are the window's rim, got " .. hex(rawget(l, "rgba"))) end
+        end
+        ns:SetLook(look, nil); ns:SetLook(plain, nil)
+        ns.StarcutCanSlice(true)
+        if was ~= nil then ns.StarcutWindow(realCF("Frame")) end
+        ns:ToggleConfig()
+    end)
+    env.CreateFrame = realCF
+    ns.db.theme, ns.db.accent, ns.root.language, ns.db.fontStyle, ns.db.ufStyle = keep.theme, keep.accent, keep.lang, keep.style, keep.uf
+    ns:Retheme()
+    if ns.ApplyFrameStyle then ns:ApplyFrameStyle() end
+    if not ok then error(err, 0) end
+end)
+try("12.3 reload: every reload button hands the click to the game", function()
+    -- the game refuses a reload asked for by add-on code, even inside a click: a reload button's
+    -- OnClick is the game's own ReloadUI itself, and the add-on's saving goes in PreClick
+    local function Last(b, name)
+        local fn
+        for i = 1, #handlers do local h = handlers[i]; if h.self == b and h.name == name then fn = h.fn end end
+        return fn
+    end
+    ns:ShowSetup(); ns:HideSetup()
+    if ns.safeBanner then ns.safeBanner:Hide() else ns:ShowSafeBanner():Hide() end
+    ns:ToggleConfig("profiles"); ns:ToggleConfig("profiles")
+    local list = {}
+    for b in pairs(ns.reloadButtons) do list[#list + 1] = b end
+    if #list < #ns.languages + 3 then error("too few reload buttons: " .. #list) end
+    for _, b in ipairs(list) do
+        if Last(b, "OnClick") ~= env.ReloadUI then error("a reload button's OnClick is not the game's own ReloadUI") end
+        if type(Last(b, "PreClick")) ~= "function" then error("a reload button has no PreClick") end
+        if type(Last(b, "PostClick")) ~= "function" then error("a reload button lost its click sound") end
+    end
+    -- the setup's Finish & reload: the choices are kept before the game reloads
+    local fin = ns.setupFrame and ns.setupFrame.finish
+    if not (fin and ns.reloadButtons[fin]) then error("the setup's Finish & reload is not a reload button") end
+    -- nothing may be hidden in a reload button's PreClick (the button or its window): a button hidden
+    -- before its OnClick might not get one, and the reload would fail as before
+    local hidden = {}
+    local realCall = mockmt.__call
+    local function Watch() mockmt.__call = function(fn, obj, ...) if type(obj) == "table" and rawget(obj, "Hide") == fn then hidden[#hidden + 1] = obj end return newmock() end end
+    local function Unwatch() mockmt.__call = realCall end
+    local keep = { done = ns.db.setupDone, just = ns.root.setupJustFinished, role = ns.db.role }
+    ns.db.setupDone, ns.root.setupJustFinished = nil, nil
+    local before = reloadCount
+    Watch()
+    local okF, errF = pcall(Last(fin, "PreClick"), fin, "LeftButton")
+    Unwatch()
+    if not okF then error(errF, 0) end
+    if #hidden > 0 then error("Finish & reload's PreClick hides something before the reload") end
+    if ns.db.setupDone ~= true or ns.root.setupJustFinished ~= true then error("Finish & reload should keep the setup as done before the reload") end
+    if reloadCount ~= before then error("the PreClick must not reload by itself") end
+    if Last(fin, "OnClick") ~= env.ReloadUI then error("after its PreClick, Finish's click should still be the game's ReloadUI") end
+    ns.db.setupDone, ns.root.setupJustFinished, ns.db.role = keep.done, keep.just, keep.role
+    -- the other buttons: each does its own saving in PreClick (language, profile, safe mode)
+    local spy = { lang = 0, profile = 0, safe = 0 }
+    local real = { lang = ns.SetupPickLanguage, profile = ns.UseProfile, safe = ns.SetSafeMode }
+    ns.SetupPickLanguage = function() spy.lang = spy.lang + 1; return true end
+    ns.UseProfile = function() spy.profile = spy.profile + 1; return true end
+    ns.SetSafeMode = function() spy.safe = spy.safe + 1; return true end
+    Watch()
+    local okP, errP = pcall(function() for _, b in ipairs(list) do if b ~= fin then Last(b, "PreClick")(b, "LeftButton") end end end)
+    Unwatch()
+    ns.SetupPickLanguage, ns.UseProfile, ns.SetSafeMode = real.lang, real.profile, real.safe
+    if not okP then error(errP, 0) end
+    if #hidden > 0 then error("a reload button's PreClick hides something before the reload (" .. #hidden .. ")") end
+    if spy.lang ~= #ns.languages then error("each setup language button should pick its language first: " .. spy.lang) end
+    if spy.safe < 1 then error("Leave safe mode should switch safe mode off first") end
+    if spy.profile < 1 then error("a profile's Use should switch the profile first") end
+    if reloadCount ~= before then error("no PreClick may reload by itself") end
+    -- Reset positions: the first click only asks; the confirming one keeps the change and is the
+    -- game's reload; left alone for 4 seconds it goes back to asking
+    runTimers()                                                        -- (any earlier ask has gone back)
+    local reset
+    for _, e in ipairs(ns.optionIndex) do if e.label == "Reset positions" then reset = e.frame end end
+    if not reset then error("the Reset positions button was not found") end
+    local arm = Last(reset, "OnClick")
+    if type(arm) ~= "function" or arm == env.ReloadUI or ns.reloadButtons[reset] then
+        error("Reset positions should start by asking, not reloading (" .. type(arm) .. ", " .. tostring(arm == env.ReloadUI) .. ", " .. tostring(ns.reloadButtons[reset]) .. ", armed " .. tostring(reset.armed) .. ")")
+    end
+    arm(reset)
+    if reloadCount ~= before or not reset.armed then error("the first click on Reset positions should only arm it") end
+    if not ns.reloadButtons[reset] or Last(reset, "OnClick") ~= env.ReloadUI then error("once armed, Reset positions' click should be the game's ReloadUI") end
+    local keepPos, keepScale = ns.db.pos, ns.db.scale
+    ns.db.pos, ns.db.scale = { probe = { 1, 2 } }, { probe = 2 }
+    Last(reset, "PreClick")(reset, "LeftButton")
+    if next(ns.db.pos) ~= nil or next(ns.db.scale) ~= nil then error("the confirming click should clear the positions before the reload") end
+    if reloadCount ~= before or Last(reset, "OnClick") ~= env.ReloadUI then error("the confirming click's reload should be the game's own, in OnClick") end
+    ns.db.pos, ns.db.scale = keepPos, keepScale
+    arm(reset); runTimers()                                            -- (asked, then left alone)
+    if reset.armed or ns.reloadButtons[reset] or Last(reset, "OnClick") ~= arm then error("after 4 seconds Reset positions should go back to asking") end
+    arm(reset)
+    if not (reset.armed and ns.reloadButtons[reset]) then error("after the disarm the next click should arm it again") end
+    runTimers()
+    -- /rl: the game's own /reload handler where there is one, otherwise ours
+    local shortCommands
+    for _, m in ipairs(ns.modules) do if m.key == "shortCommands" then shortCommands = m.fn end end
+    if not shortCommands then error("the short commands module is missing") end
+    local SL = env.SlashCmdList
+    local keepRL, keepReload, keepKey = SL.FANTASYGLASSUIRL, SL.RELOAD, env.SLASH_FANTASYGLASSUIRL1
+    local own = function() end
+    SL.RELOAD = own; SL.FANTASYGLASSUIRL = nil
+    shortCommands()
+    if SL.FANTASYGLASSUIRL ~= own then error("/rl should be the game's own /reload handler when it has one") end
+    SL.RELOAD = nil; SL.FANTASYGLASSUIRL = nil
+    shortCommands()
+    local rl = SL.FANTASYGLASSUIRL
+    if type(rl) ~= "function" or rl == own then error("without the game's handler /rl should still be made") end
+    rl("")
+    if reloadCount ~= before + 1 then error("without the game's handler /rl should call ReloadUI") end
+    before = reloadCount
+    SL.FANTASYGLASSUIRL, SL.RELOAD, env.SLASH_FANTASYGLASSUIRL1 = keepRL, keepReload, keepKey
+    -- a PreClick that says no: that click stops before the reload
+    local b = ns:CreateButton(env.UIParent, "Probe", 80, 24)
+    ns:ReloadButton(b, function() return false end)
+    local cleared = false
+    rawset(b, "SetScript", function(_, name, fn) if name == "OnClick" and fn == nil then cleared = true end end)
+    Last(b, "PreClick")(b)
+    if not cleared then error("a PreClick that says no should take the reload off that click") end
+    ns.reloadButtons[b] = nil
+    -- where a refused action came from: past Blocked.lua's handler and ns:Guard's wrapper
+    local guardLine = "[Interface/AddOns/FantasyGlassUI/Skin.lua]:306: in function <Interface/AddOns/FantasyGlassUI/Skin.lua:299>"
+    local probe = "[C]: in function 'pcall'\n[Interface/AddOns/FantasyGlassUI/Skin.lua]:322: in function <Interface/AddOns/FantasyGlassUI/Skin.lua:322>\n"
+               .. "[C]: in function 'pcall'\n" .. guardLine .. "\n[Interface/AddOns/FantasyGlassUI/Skin.lua]:322: in main chunk"
+    if ns.GuardFrameOf(probe) ~= "Skin.lua:299" then error("ns:Guard's wrapper was not found in a stack: " .. tostring(ns.GuardFrameOf(probe))) end
+    local stack = "[Interface/AddOns/FantasyGlassUI/Blocked.lua]:120: in function <Interface/AddOns/FantasyGlassUI/Blocked.lua:118>\n"
+               .. "[C]: in function 'pcall'\n" .. guardLine .. "\n[C]: in function 'Reload'\n"
+               .. "[Interface/AddOns/Blizzard_SharedXML/InterfaceUtil.lua]:30: in function 'ReloadUI'\n"
+               .. "[Interface/AddOns/FantasyGlassUI_Options/Setup.lua]:710: in function <Interface/AddOns/FantasyGlassUI_Options/Setup.lua:699>"
+    local keepAt = ns.guardAt
+    for _, at in ipairs({ "Skin.lua:299", false }) do                 -- (the wrapper known, and not known)
+        ns.guardAt = at or nil
+        local where = ns.BlockedWhere(stack)
+        if where ~= "options: Setup.lua:710" then error("a refused reload should be put on Setup.lua:710, not " .. tostring(where)) end
+    end
+    ns.guardAt = keepAt
+    -- a refused reload: the player is told the game's own /reload finishes it
+    local keepB, keepSaved = ns.blocked, ns.root.blockedNow
+    ns.blocked = { total = 0, list = {}, byKey = {} }
+    local n = #printed
+    ns:NoteBlocked("ADDON_ACTION_BLOCKED", "FantasyGlassUI_Options", "Reload()", stack)
+    local said = false
+    for i = n + 1, #printed do if tostring(printed[i]):find("/reload", 1, true) then said = true end end
+    if not said then error("a refused reload should say to type /reload") end
+    n = #printed
+    ns:NoteBlocked("ADDON_ACTION_BLOCKED", "FantasyGlassUI", "Frame:Show()", stack)
+    for i = n + 1, #printed do if tostring(printed[i]):find("/reload", 1, true) then error("only a refused reload should mention /reload") end end
+    ns.blocked, ns.root.blockedNow = keepB, keepSaved
+end)
+try("12.3 settings look: rows and switches", function()
+    local keep = { theme = ns.db.theme, accent = ns.db.accent, lang = ns.root.language, scale = ns.fontScale, big = ns.db.bigControls }
+    local realCF = env.CreateFrame
+    local function hex(c) return string.format("%02x%02x%02x", math.floor(c[1] * 255 + 0.5), math.floor(c[2] * 255 + 0.5), math.floor(c[3] * 255 + 0.5)) end
+    local O = ns.optUI
+    local function Fn(b, name)
+        local f = b:GetScript(name)
+        if type(f) ~= "function" then for _, h in ipairs(handlers) do if h.self == b and h.name == name then f = h.fn end end end
+        return f
+    end
+    local function Press(b) local f = Fn(b, "OnClick"); if f then f(b) end end
+    local ok, err = pcall(function()
+        ns.db.theme, ns.db.accent, ns.root.language, ns.db.bigControls = "MIDNIGHT", "VIOLET", "enUS", false
+        ns.fontScale = 1
+        ns:Retheme()
+        ns:ToggleConfig("combat:Alerts and warnings")
+        local page = ns.featuresPage
+        if not (O.current and O.current.id == "combat:Alerts and warnings") then error("Combat > Alerts and warnings is open") end
+        if #(page.shownKeys or {}) < 3 then error("the section shows its settings") end
+        -- every row is laid out one under the next: record where and how tall
+        local at, tall = {}, {}
+        local function Watch(row)
+            rawset(row, "SetPoint", function(r, point, rel, _, _, y) if point == "TOPLEFT" then at[r] = y end end)
+            rawset(row, "SetHeight", function(r, h) tall[r] = h end)
+            rawset(row, "SetAlpha", function(r, a) rawset(r, "alpha", a) end)
+        end
+        for _, row in pairs(page.rows) do Watch(row) end
+        local function Layout()
+            page.Show(page.section)
+            local list, last = {}, nil
+            for _, name in ipairs(page.shownKeys) do
+                local row = page.rows[name]
+                if last then
+                    local want = at[last] - tall[last]
+                    if math.abs(at[row] - want) > 0.01 then error(name .. " overlaps or leaves a gap after the row above: " .. at[row] .. " vs " .. want) end
+                end
+                if tall[row] < 56 then error(name .. " is at least 56 high, got " .. tall[row]) end
+                list[#list + 1] = row
+                last = row
+            end
+            return list
+        end
+        local rows = Layout()
+        -- each switch row: a title, a description, a switch showing the saved setting
+        local first
+        for _, name in ipairs(page.shownKeys) do
+            local row = page.rows[name]
+            if row.switch and row.switch.key == name then
+                first = first or name
+                if not (row.title and row.desc) then error(name .. " has a title and a description") end
+                if row.switch.checked ~= (ns.db[name] and true or false) then error(name .. ": the switch shows the saved setting") end
+            end
+        end
+        if not first then error("the section has switch rows") end
+        -- clicking flips it, the tooltip shows
+        local row, before = page.rows[first], ns.db[first]
+        Press(row.switch)
+        if ns.db[first] == before or row.switch.checked ~= (ns.db[first] and true or false) then error("clicking the switch flips the setting") end
+        local enter = Fn(row, "OnEnter")
+        if type(enter) ~= "function" then error("the row has its tooltip") end
+        local realGT, tipShown = env.GameTooltip, false
+        local gt = newmock()
+        rawset(gt, "Show", function() tipShown = true end)
+        env.GameTooltip = gt
+        local okTip, errTip = pcall(enter, row)
+        env.GameTooltip = realGT
+        if not okTip then error(errTip, 0) end
+        if not tipShown then error("hovering the row shows its tooltip") end
+        Press(row.switch)
+        if ns.db[first] ~= before then error("clicking again puts it back") end
+        -- a dependent setting is dimmed while its parent is off
+        local child, parent
+        for key in pairs(page.boxes) do
+            if ns.featureNeeds[key] and page.boxes[key].row then child, parent = key, ns.featureNeeds[key]; break end
+        end
+        if not child then error("(the check needs a setting that depends on another)") end
+        local was = ns.db[parent]
+        ns.db[parent] = false; page.Dim()
+        if rawget(page.rows[child], "alpha") ~= 0.5 then error("a dependent setting is dimmed while its parent is off") end
+        ns.db[parent] = true; page.Dim()
+        if rawget(page.rows[child], "alpha") ~= 1 then error("and not when it is on") end
+        ns.db[parent] = was
+        -- the All / On / Off filter
+        local all = #page.shownKeys
+        local function Count(want)
+            local n = 0
+            for _, name in ipairs(page.shownKeys) do
+                local r = page.rows[name]
+                if r.switch and r.switch.key == name then
+                    n = n + 1
+                    if want ~= nil and (ns.db[name] and true or false) ~= want then error(name .. " is in the wrong filter") end
+                end
+            end
+            return n
+        end
+        Press(page.filterButtons.on)
+        local nOn = Count(true)
+        Press(page.filterButtons.off)
+        local nOff = Count(false)
+        Press(page.filterButtons.all)
+        if #page.shownKeys ~= all then error("All shows every row again") end
+        if nOn == 0 or nOff == 0 then error("(the check needs both on and off settings here) " .. nOn .. "/" .. nOff) end
+        -- a long description grows the row at a bigger text size and in German, and nothing overlaps
+        local name = first
+        local r = page.rows[name]
+        rawset(r.desc, "GetText", function() return string.rep("Eine lange Beschreibung auf Deutsch. ", 9) end)
+        ns.root.language = "deDE"
+        ns.fontScale = 1
+        Layout()
+        local h1 = tall[r]
+        ns.fontScale = 1.3
+        Layout()
+        local h2 = tall[r]
+        if h2 <= h1 then error("at text size 1.3 the long row is taller: " .. h1 .. " -> " .. h2) end
+        -- slider and button rows grow and wrap too (a long German description at text size 1.3)
+        ns:ToggleConfig("access:Seeing")
+        if not (O.current and O.current.id == "access:Seeing") then error("Accessibility > Seeing is open") end
+        for _, row in pairs(page.rows) do Watch(row) end
+        local sliderName, buttonName
+        for _, n in ipairs(page.section.rows) do
+            local r = page.rows[n]
+            if rawget(r, "slider") and not sliderName then sliderName = n end
+            if rawget(r, "button") and not buttonName then buttonName = n end
+        end
+        if not (sliderName and buttonName) then error("(the check needs a slider row and a button row here)") end
+        ns.root.language, ns.fontScale = "deDE", 1
+        Layout()
+        local sh1, bh1 = tall[page.rows[sliderName]], tall[page.rows[buttonName]]
+        for _, n in ipairs({ sliderName, buttonName }) do
+            rawset(page.rows[n].desc, "GetText", function() return string.rep("Eine sehr lange Beschreibung auf Deutsch. ", 12) end)
+        end
+        Layout()
+        local sh2, bh2 = tall[page.rows[sliderName]], tall[page.rows[buttonName]]
+        if sh2 <= sh1 then error("a long slider description makes its row taller: " .. sh1 .. " -> " .. sh2) end
+        if bh2 <= bh1 then error("a long button description makes its row taller: " .. bh1 .. " -> " .. bh2) end
+        ns.fontScale = 1.3
+        Layout()
+        if tall[page.rows[sliderName]] <= sh2 or tall[page.rows[buttonName]] <= bh2 then error("and taller still at text size 1.3") end
+        ns.fontScale = 1
+        -- a section from each of the other pages sits on cards of its own
+        ns.root.language = "enUS"
+        local hosts = { ["combat:Alerts and warnings"] = "combat", ["layout:Moving and scale"] = "layout", ["frames:Nameplates"] = "bars", ["tools:Tools"] = "tools" }
+        for _, id in ipairs({ "combat:Alerts and warnings", "layout:Moving and scale", "frames:Nameplates", "tools:Tools" }) do
+            ns:ToggleConfig(id)
+            if not (O.current and O.current.id == id) then error(id .. " opens") end
+            if (page.blockUsed or 0) < 1 or not page.blockCards[1] then error(id .. " shows its settings on a card") end
+            -- the page's content frame sits 18 inside the card at each side and 14 below its top
+            local inner = O.pages[hosts[id]].area
+            local cx, cy, ix, iy, iw
+            rawset(page.blockCards[1], "SetPoint", function(_, pt, _, _, x, y) if pt == "TOPLEFT" then cx, cy = x, y end end)
+            rawset(inner, "SetPoint", function(_, pt, _, _, x, y) if pt == "TOPLEFT" then ix, iy = x, y end end)
+            rawset(inner, "SetWidth", function(_, w) iw = w end)
+            ns:ToggleConfig(id); ns:ToggleConfig(id)
+            rawset(page.blockCards[1], "SetPoint", nil); rawset(inner, "SetPoint", nil); rawset(inner, "SetWidth", nil)
+            if not ix then error(id .. ": the content frame was placed") end
+            if ix - cx < 18 then error(id .. ": 18 inside the card at the left, got " .. (ix - cx)) end
+            if cy - iy < 14 then error(id .. ": 14 inside the card at the top, got " .. (cy - iy)) end
+            local cardW = O.LEGACY_W + 2 * O.BLOCK_PAD                   -- (the card a page with no width of its own is laid out for)
+            if iw and ix + iw > cardW - 18 then error(id .. ": 18 inside the card at the right: " .. (ix + iw) .. " of " .. cardW) end
+            if iw and iw < O.LEGACY_W then error(id .. ": the content gets the 736 it is laid out for, got " .. iw) end
+        end
+        ns:ToggleConfig("access:Hearing")
+        if page.blockUsed ~= 0 then error("a section with no block has no block card") end
+        ns:ToggleConfig("combat:Alerts and warnings")
+        -- the reset button is in the footer
+        if not O.resetButton or not O.resetButton:IsShown() then error("Reset <category> is in the window's footer") end
+        -- the switch: 38 x 22 with a 16 knob, accent with a dark knob when on, grey when off, only in the window
+        ns.fontScale = 1
+        local sizes, colors = {}, {}
+        env.CreateFrame = function(kind, nm, parent, ...)
+            local f = realCF(kind, nm, parent, ...)
+            rawset(f, "GetParent", function() return parent end)
+            rawset(f, "SetSize", function(x, w, h) rawset(x, "sz", { w, h }) end)
+            rawset(f, "SetBackdropColor", function(x, a, b, c, d) rawset(x, "bg", { a, b, c, d or 1 }) end)
+            rawset(f, "CreateTexture", function(self)
+                local t = newmock()
+                rawset(t, "GetParent", function() return self end)
+                rawset(t, "SetSize", function(x, w, h) rawset(x, "sz", { w, h }) end)
+                rawset(t, "SetVertexColor", function(x, a, b, c, d) rawset(x, "rgba", { a, b, c, d or 1 }) end)
+                return t
+            end)
+            return f
+        end
+        local holder = env.CreateFrame("Frame", nil, O.frame)
+        local away = env.CreateFrame("Frame", nil, env.UIParent)
+        local inWin = ns:CreateCheckbox(holder, "x", true)
+        local outWin = ns:CreateCheckbox(away, "x", true)
+        if rawget(inWin.box, "sz")[1] ~= 38 or rawget(inWin.box, "sz")[2] ~= 22 then error("the switch track is 38 x 22") end
+        if rawget(inWin.tick, "sz")[1] ~= 16 then error("the knob is 16") end
+        if rawget(outWin.box, "sz")[1] ~= 28 then error("a switch outside the window keeps its size") end
+        local function Track(c) local t = c.fill and rawget(c.fill, "rgba") or rawget(c.box, "bg"); return hex(t) end
+        local function Knob(c) return hex(rawget(c.tick, "rgba")) end
+        local acc = { ns:Role("@accent") }
+        if Track(inWin) ~= hex(acc) then error("on: the track is the accent, got " .. Track(inWin)) end
+        if Knob(inWin) ~= "12141a" then error("on: a dark knob, got " .. Knob(inWin)) end
+        inWin:SetChecked(false)
+        if Track(inWin) ~= "2c313c" then error("off: the track is #2c313c, got " .. Track(inWin)) end
+        if Knob(inWin) ~= "9aa3b5" then error("off: a grey knob, got " .. Knob(inWin)) end
+        -- a labelled switch keeps its text inside its own width: track 38, gap 12
+        local function LabelWidth(c)
+            local got
+            rawset(c.label, "SetWidth", function(_, w) got = w end)
+            local f = Fn(c, "OnSizeChanged")
+            f(c, 300)
+            return got
+        end
+        local lw = LabelWidth(inWin)
+        if not lw or 38 + 12 + lw > 300 then error("a labelled switch's text ends inside its row: " .. tostring(lw)) end
+        local lo = LabelWidth(outWin)
+        if not lo or 28 + 8 + lo > 300 then error("outside the window too: " .. tostring(lo)) end
+        -- a section label is upper-case in English only; every other language keeps the label's own case
+        local function Label(text)
+            local box = env.CreateFrame("Frame", nil, O.frame)
+            local fs
+            rawset(box, "CreateFontString", function() fs = newmock(); rawset(fs, "SetText", function(x, t) rawset(x, "txt", t) end); return fs end)
+            O.Header(box, text, 0, 0)
+            return rawget(fs, "txt")
+        end
+        ns.root.language = "enUS"
+        if Label("Alerts and warnings") ~= "ALERTS AND WARNINGS" then error("English labels are upper-case") end
+        ns.root.language = "deDE"
+        if Label("Größe ändern") ~= "Größe ändern" then error("German labels keep their own case") end
+        if Label("Alerts and warnings") ~= "Alerts and warnings" then error("(and a plain German label too)") end
+    end)
+    env.CreateFrame = realCF
+    pcall(function()
+        for _, row in pairs(ns.featuresPage.rows) do
+            for _, k in ipairs({ "SetPoint", "SetHeight", "SetAlpha" }) do rawset(row, k, nil) end
+            if row.desc then rawset(row.desc, "GetText", nil) end
+        end
+    end)
+    ns.root.language, ns.fontScale, ns.db.bigControls = keep.lang, keep.scale, keep.big
+    ns.db.theme, ns.db.accent = keep.theme, keep.accent
+    ns:Retheme()
+    pcall(ns.ToggleConfig, ns)
+    if not ok then error(err, 0) end
+end)
+try("12.3 settings look: sidebar and Home", function()
+    local keep = { scale = ns.fontScale, theme = ns.db.theme, lang = ns.root.language, uf = ns.db.ufStyle, sec = ns.root.optionsSection, mode = ns.root.settingsMode }
+    local keepSwitch = {}
+    for _, k in ipairs(ns.homeQuick) do keepSwitch[k] = ns.db[k] end
+    local realCF, realTime, realClass = env.CreateFrame, env.GetGameTime, env.UnitClass
+    local made = {}
+    local function Region(owner)
+        local t = newmock()
+        rawset(t, "GetParent", function() return owner end)
+        rawset(t, "SetText", function(x, v) rawset(x, "text", v) end)
+        rawset(t, "GetText", function(x) return rawget(x, "text") end)
+        rawset(t, "GetStringWidth", function() return 10 end)
+        rawset(t, "GetStringHeight", function(x) return rawget(x, "fakeH") or 16 end)
+        rawset(t, "SetWordWrap", function(x, v) rawset(x, "wrap", v) end)
+        rawset(t, "SetMaxLines", function(x, v) rawset(x, "maxLines", v) end)
+        rawset(t, "SetTexture", function(x, v) rawset(x, "tex", v) end)
+        made[#made + 1] = t
+        return t
+    end
+    local function Real(f, parent)
+        rawset(f, "GetParent", function() return parent end)
+        rawset(f, "SetParent", function(_, p) parent = p end)
+        local shown = true
+        rawset(f, "Show", function() shown = true end)
+        rawset(f, "Hide", function() shown = false end)
+        rawset(f, "SetShown", function(_, v) shown = v and true or false end)
+        rawset(f, "IsShown", function() return shown end)
+        local height
+        rawset(f, "SetSize", function(_, _, h) height = h end)
+        rawset(f, "SetHeight", function(_, h) height = h end)
+        rawset(f, "GetHeight", function() return height or 0 end)
+        rawset(f, "CreateTexture", function(self) return Region(self) end)
+        rawset(f, "CreateFontString", function(self) return Region(self) end)
+        rawset(f, "SetChecked", nil)
+        local scripts = {}
+        rawset(f, "SetScript", function(_, name, fn) scripts[name] = fn end)
+        rawset(f, "HookScript", function(_, name, fn) local old = scripts[name]; scripts[name] = old and function(...) old(...); fn(...) end or fn end)
+        rawset(f, "GetScript", function(_, name) return scripts[name] end)
+        return f
+    end
+    local ok, err = pcall(function()
+        ns.db.theme, ns.root.language = "MIDNIGHT", "enUS"
+        ns.root.settingsMode = "all"
+        ns:Retheme()
+        ns:ToggleConfig()                                       -- (shut)
+        local O = ns.optUI
+        O.frame = nil
+        env.CreateFrame = function(kind, name, parent, ...) return Real(realCF(kind, name, parent, ...), parent) end
+        env.GetGameTime = function() return 9, 30 end
+        env.UnitClass = function() return "Rogue", "ROGUE" end
+        ns:ToggleConfig("home")
+        if not O.current or not O.current.home then error("the window opens on Home") end
+        local page = O.home
+        -- the greeting, by the game's clock, with the class name
+        local function title() return rawget(page.title, "text") end
+        if title() ~= "Good morning, Rogue" then error("morning greeting, got " .. tostring(title())) end
+        env.GetGameTime = function() return 11, 59 end; page.Refresh()
+        if title() ~= "Good morning, Rogue" then error("11:59 is still morning") end
+        env.GetGameTime = function() return 12, 0 end; page.Refresh()
+        if title() ~= "Good afternoon, Rogue" then error("noon is afternoon, got " .. tostring(title())) end
+        env.GetGameTime = function() return 17, 59 end; page.Refresh()
+        if title() ~= "Good afternoon, Rogue" then error("17:59 is still afternoon") end
+        env.GetGameTime = function() return 18, 0 end; page.Refresh()
+        if title() ~= "Good evening, Rogue" then error("18:00 is evening, got " .. tostring(title())) end
+        env.UnitClass = function() return "Death Knight", "DEATHKNIGHT" end; page.Refresh()
+        if title() ~= "Good evening, Death Knight" then error("the class name as the game gives it, got " .. tostring(title())) end
+        -- the line under it: theme, frames, counts
+        local on, total = ns:CountFeatures()
+        local want = ns:ThemeName(ns.db.theme, "plain") .. " · Starcut frames · " .. total .. " settings, " .. (total - on) .. " switched off"
+        ns.db.ufStyle = "STARCUT"; page.Refresh()
+        if rawget(page.intro, "text") ~= want then error("the theme line, wanted '" .. want .. "' got '" .. tostring(rawget(page.intro, "text")) .. "'") end
+        ns.db.ufStyle = "CLASSIC"; page.Refresh()
+        if not tostring(rawget(page.intro, "text")):find("· Classic frames ·", 1, true) then error("Classic frames, got " .. tostring(rawget(page.intro, "text"))) end
+        ns.db.ufStyle = "STARCUT"
+        -- a switch changed elsewhere moves the counts
+        local flip = nil
+        for key in pairs(ns.defaults) do if type(ns.defaults[key]) == "boolean" and ns.featureDesc[key] and not ns:FeatureHidden(key) and not page.quick[key] then flip = key; break end end
+        local before = ns.db[flip]
+        ns.db[flip] = not before; page.Refresh()
+        local on2, total2 = ns:CountFeatures()
+        if on2 == on or not tostring(rawget(page.intro, "text")):find(" " .. (total2 - on2) .. " switched off", 1, true) then error("the counts follow the switches") end
+        ns.db[flip] = before; page.Refresh()
+        -- one card per quick switch, and its switch flips the setting
+        local cards = 0
+        for _, key in ipairs(ns.homeQuick) do
+            if not ns:FeatureHidden(key) and O.RowLabel(key) then
+                cards = cards + 1
+                local cb = page.quick[key]
+                if not cb then error("a card for " .. key) end
+                local card
+                for _, c in ipairs(page.quickCards) do if c.key == key then card = c end end
+                if not card or rawget(card.name, "text") ~= ns:Tr(O.RowLabel(key)) then error(key .. "'s card is titled with its name") end
+                if (rawget(card.hint, "text") or "") == "" then error(key .. "'s card has a line on what it does") end
+                local was = ns.db[key] and true or false
+                cb:GetScript("OnClick")(cb)
+                if (ns.db[key] and true or false) == was then error(key .. "'s switch flips the setting") end
+                if cb.checked ~= ns.db[key] then error(key .. "'s switch shows the setting") end
+                cb:GetScript("OnClick")(cb)
+                if (ns.db[key] and true or false) ~= was then error(key .. "'s switch flips back") end
+            end
+        end
+        if cards ~= #page.quickCards or cards < 3 then error("a card for each quick switch, got " .. cards) end
+        -- the titles in German, a long one at fontScale 1.3: translated, wrapped, nothing cut off, no overlap
+        ns.root.language = "deDE"; ns:LoadLocale()
+        local keepScale = ns.fontScale
+        ns.fontScale = 1.3
+        for _, c in ipairs(page.quickCards) do rawset(c.name, "fakeH", 44) end      -- (two lines at that size)
+        page.Refresh()
+        local sawGerman = false
+        for _, c in ipairs(page.quickCards) do
+            local de = ns:Tr(O.RowLabel(c.key))
+            if rawget(c.name, "text") ~= de then error(c.key .. "'s title is the German text, got " .. tostring(rawget(c.name, "text"))) end
+            if de ~= O.RowLabel(c.key) then sawGerman = true end
+            if rawget(c.name, "wrap") ~= true or rawget(c.name, "maxLines") ~= 2 then error(c.key .. "'s title wraps to two lines") end
+            if c:GetHeight() < 13 + 44 + 4 + 16 + 14 then error(c.key .. "'s card grows to hold a two-line title, got " .. c:GetHeight()) end
+        end
+        if not sawGerman then error("at least one quick card has a German title") end
+        for r, row in ipairs(page.quickRows) do
+            local tallest = 0
+            for i, c in ipairs(page.quickCards) do if math.floor((i - 1) / 3) + 1 == r then tallest = math.max(tallest, c:GetHeight()) end end
+            if row.height ~= tallest then error("row " .. r .. " is as tall as its tallest card") end
+            local nextRow = page.quickRows[r + 1]
+            if nextRow and nextRow.top > row.top - row.height then error("row " .. (r + 1) .. " overlaps row " .. r) end
+        end
+        local lastRow = page.quickRows[#page.quickRows]
+        if page.contentHeight < -lastRow.top + lastRow.height then error("the page is as tall as its cards") end
+        for _, c in ipairs(page.quickCards) do rawset(c.name, "fakeH", nil) end
+        ns.fontScale = keepScale
+        ns.root.language = "enUS"; ns:LoadLocale()
+        page.Refresh()
+        -- "Changed lately" lives in the Undo button's tooltip: the last five changes, most recent first
+        local savedChanges = {}
+        for i, ch in ipairs(O.changes) do savedChanges[i] = ch end
+        for i = #O.changes, 1, -1 do O.changes[i] = nil end
+        local keys = { "bagWindow", "damageMeter", "autoSell", "autoRepair", "questTracker", "plateQuest", "bagWindow" }
+        for i, key in ipairs(keys) do O.changes[#O.changes + 1] = { key = key, old = (i % 2 == 0), new = (i % 2 == 1) } end
+        local lines = O.LatelyLines()
+        if #lines ~= 5 then error("the last five changes, got " .. #lines) end
+        for n = 1, 5 do
+            local ch = O.changes[#O.changes + 1 - n]
+            local want = ns:Tr(O.ChangeLabel(ch.key)) .. ": " .. O.ChangeValue(ch.key, ch.new)
+            if lines[n] ~= want then error("change " .. n .. " newest first: wanted '" .. want .. "' got '" .. tostring(lines[n]) .. "'") end
+        end
+        local realTip, shown = env.GameTooltip, {}
+        local tip = newmock()
+        rawset(tip, "AddLine", function(_, text) shown[#shown + 1] = tostring(text) end)
+        rawset(tip, "SetOwner", function() end)
+        env.GameTooltip = tip
+        O.frame.undoButton:GetScript("OnEnter")(O.frame.undoButton)
+        env.GameTooltip = realTip
+        local joined = "\n" .. table.concat(shown, "\n") .. "\n"
+        if not joined:find("\nChanged lately\n", 1, true) then error("the Undo tooltip has a Changed lately heading, got " .. joined) end
+        for n = 1, 5 do if not joined:find("\n" .. lines[n] .. "\n", 1, true) then error("the Undo tooltip lists change " .. n) end end
+        for i = #O.changes, 1, -1 do O.changes[i] = nil end
+        for i, ch in ipairs(savedChanges) do O.changes[i] = ch end
+        -- "New in 12.x": the current what's new lines, a diamond each
+        local entry = ns.whatsNew[1]
+        for _, e in ipairs(ns.whatsNew) do if tostring(e[1]):match("^(%d+%.%d+)") == tostring(ns.version):match("^(%d+%.%d+)") then entry = e; break end end
+        local ver = entry[1]:match("^(%d+%.%d+)")
+        if rawget(page.newTitle, "text") ~= "New in " .. ver then error("the card is titled New in " .. ver .. ", got " .. tostring(rawget(page.newTitle, "text"))) end
+        if #page.newLines ~= math.min(#entry[2], 5) or #page.newDots ~= #page.newLines then error("a line and a diamond for each of the what's new lines") end
+        for i, fs in ipairs(page.newLines) do
+            local first = entry[2][i]:match("^(.-[%.!?])%s") or entry[2][i]
+            if rawget(fs, "text") ~= first then error("what's new line " .. i .. ": " .. tostring(rawget(fs, "text"))) end
+        end
+        if not page.askCard or ns.toolsPage.askFrame:GetParent() ~= page.askCard then error("the guide's question box sits in the Ask the guide card") end
+        if ns.toolsPage.suggestFrame:GetParent() ~= page.askCard then error("the class suggestions sit in the same card") end
+        -- the sidebar: no counts; only the picked row is selected
+        local function rows()
+            local list = {}
+            for _, b in ipairs(O.catButtons) do if b:IsShown() and rawget(b, "cat") then list[#list + 1] = b end end
+            for _, b in ipairs(O.secButtons) do if b:IsShown() and rawget(b, "sec") then list[#list + 1] = b end end
+            return list
+        end
+        local sideKids = {}
+        for _, b in ipairs(O.catButtons) do sideKids[b] = true end
+        for _, b in ipairs(O.secButtons) do sideKids[b] = true end
+        for _, t in ipairs(made) do
+            local owner = t:GetParent()
+            local text = rawget(t, "text")
+            if sideKids[owner] and type(text) == "string" and text:find("^%d+/%d+$") then error("the sidebar shows no counts, found " .. text) end
+        end
+        for _, b in ipairs(rows()) do if rawget(b, "count") or rawget(b, "bar") then error("no count and no accent bar on a sidebar row") end end
+        local function picked()
+            local list = {}
+            for _, b in ipairs(rows()) do if rawget(b, "picked") then list[#list + 1] = b end end
+            return list
+        end
+        local p = picked()
+        if #p ~= 1 or not rawget(p[1], "cat") or not p[1].cat.home then error("on Home only Home is selected, got " .. #p) end
+        O.Open("items:Vendors")
+        p = picked()
+        if #p ~= 1 or rawget(p[1], "sec") ~= O.current or p[1].sec.id ~= "items:Vendors" then error("opening a section selects only its row, got " .. #p) end
+        local items = 0
+        for _, b in ipairs(rows()) do if rawget(b, "sec") then items = items + 1 end end
+        if items ~= #ns:SettingsCategory("items").sections then error("the open category's sections are indented under it, got " .. items .. " of " .. #O.secButtons .. " buttons, " .. #ns:SettingsCategory("items").sections .. " sections") end
+        for _, b in ipairs(rows()) do
+            local h = b:GetHeight()
+            if rawget(b, "sec") and h ~= 32 then error("a section row is 32 px, got " .. tostring(h)) end
+            if rawget(b, "cat") and h ~= 36 then error("a category row is 36 px, got " .. tostring(h) .. " " .. tostring(rawget(b, "GetHeight")) .. " " .. tostring(rawget(b, "cat").id)) end
+        end
+        O.Open("home")
+        p = picked()
+        if #p ~= 1 or not rawget(p[1], "cat") or not p[1].cat.home then error("back on Home, only Home is selected, got " .. #p .. " " .. tostring(rawget(p[1], "cat") and p[1].cat.id) .. " " .. tostring(rawget(p[2], "cat") and p[2].cat.id) .. tostring(p[2] and rawget(p[2], "sec") and p[2].sec.id)) end
+        for _, b in ipairs(O.secButtons) do if b:IsShown() then error("Home has no sections under it") end end
+        -- Simple / All options stay at the top of the sidebar
+        local modes = O.frame.modeButtons
+        if modes.simple:GetParent() ~= O.side or modes.all:GetParent() ~= O.side then error("the mode buttons are at the top of the sidebar") end
+        ns:ToggleConfig()
+    end)
+    env.CreateFrame, env.GetGameTime, env.UnitClass = realCF, realTime, realClass
+    ns.db.theme, ns.root.language, ns.db.ufStyle, ns.root.optionsSection, ns.root.settingsMode = keep.theme, keep.lang, keep.uf, keep.sec, keep.mode
+    for k, v in pairs(keepSwitch) do ns.db[k] = v end
+    ns.fontScale = keep.scale
+    ns:LoadLocale()
+    ns:Retheme()
+    if not ok then error(err, 0) end
+end)
+try("12.3 settings look: themes page", function()
+    local keep = { theme = ns.db.theme, accent = ns.db.accent }
+    local ok, err = pcall(function()
+        for name in pairs(ns.db.customThemes) do ns:DeleteCustomTheme(name) end
+        ns.db.theme, ns.db.accent = "MIDNIGHT", "VIOLET"
+        ns:Retheme()
+        ns:ToggleConfig("look")
+        local page = ns.lookPage
+        local pk = page and page.themePicker
+        if not pk then error("the Themes page has no picker") end
+        page.Refresh()
+        -- the family control: three families (a fourth only once you have your own themes), the current one first selected
+        local shownFamilies = 0
+        for _, fam in ipairs({ "GLASS", "FANTASY", "CELESTIAL" }) do if pk.familyButtons[fam] then shownFamilies = shownFamilies + 1 end end
+        if shownFamilies ~= 3 then error("the family control lists three families, got " .. shownFamilies) end
+        if pk.family ~= "GLASS" then error("MIDNIGHT is Glass, so Glass is the family shown, got " .. tostring(pk.family)) end
+        -- Glass shows every Glass theme as a tile
+        local want = 0
+        for _, key in ipairs(ns.themeOrder) do if ns.themes[key].style == "GLASS" and not ns.themes[key].custom then want = want + 1 end end
+        local shown, tileOf = 0, {}
+        for i, key in ipairs(pk.list) do
+            local b = pk.tiles[i]
+            if not (b and b.key == key and b.swatch and b.swatch.tile) then error("a tile for " .. tostring(key)) end
+            shown = shown + 1
+            tileOf[key] = b
+        end
+        if shown ~= want or want < 10 then error("Glass shows " .. shown .. " of " .. want .. " Glass themes") end
+        -- the tile of the theme in use is the ringed one, and the preview names it
+        local function ringed()
+            local list = {}
+            for i, key in ipairs(pk.list) do if pk.tiles[i].picked then list[#list + 1] = key end end
+            return list
+        end
+        local r = ringed()
+        if #r ~= 1 or r[1] ~= "MIDNIGHT" then error("the theme in use is the one ringed, got " .. table.concat(r, ",")) end
+        local famName = ns:Tr("Glass") .. ": " .. ns:ThemeName("MIDNIGHT", "short")
+        if pk.nameText ~= famName then error("the preview names '" .. famName .. "', got " .. tostring(pk.nameText)) end
+        if pk.descText ~= ns:Tr("See-through panes with soft shadows and a bright top edge.") then error("the preview gives the family's line") end
+        -- clicking a tile previews: the name changes, the theme does not
+        local before = ns.db.theme
+        tileOf.SMOKE:suiClick()
+        if ns.db.theme ~= before then error("a click on a tile must not change the theme") end
+        if pk.picked ~= "SMOKE" then error("the click picks the tile") end
+        if pk.nameText ~= ns:Tr("Glass") .. ": " .. ns:ThemeName("SMOKE", "short") then error("the preview names the picked theme, got " .. tostring(pk.nameText)) end
+        r = ringed()
+        if #r ~= 1 or r[1] ~= "SMOKE" then error("the picked tile is ringed, got " .. table.concat(r, ",")) end
+        -- the preview carries the picked theme's own colours, not the window's
+        local c = ns:ThemeColors("SMOKE")
+        local function hex(t) return string.format("%02x%02x%02x", math.floor(t[1] * 255 + 0.5), math.floor(t[2] * 255 + 0.5), math.floor(t[3] * 255 + 0.5)) end
+        local sw = tileOf.SMOKE.swatch
+        if sw.key ~= "SMOKE" or hex(sw.panel) ~= hex(c.bg) or hex(sw.rim) ~= hex(c.border) then error("the tile carries the theme's own panel and rim colours") end
+        if pk.sample.key ~= "SMOKE" or hex(pk.sample.panel) ~= hex(c.bg) or hex(pk.sample.rim) ~= hex(c.border) then error("the sample frame is in the picked theme's colours") end
+        -- "Use this theme" applies it, as a click on a theme did before
+        pk.Apply(pk.picked)
+        if ns.db.theme ~= "SMOKE" then error("Use this theme puts the picked theme on, got " .. tostring(ns.db.theme)) end
+        r = ringed()
+        if #r ~= 1 or r[1] ~= "SMOKE" then error("after using it, its tile is the ringed one") end
+        -- between families the reload note still comes
+        local noted = false
+        local realRetheme = ns.Retheme
+        ns.Retheme = function(self) noted = true; return realRetheme(self) end
+        pk.family = "CELESTIAL"; pk.Draw()
+        pk.Pick(pk.list[1])
+        pk.Apply(pk.picked)
+        ns.Retheme = realRetheme
+        if not noted then error("applying a theme goes through Retheme (it says when a reload is needed)") end
+        if ns.themes[ns.db.theme].style ~= "CELESTIAL" then error("the Celestial theme is on") end
+        -- your own theme and the class-colour themes are tiles too
+        local mineKey = ns:SaveCustomTheme("Tile Test", { panel = { 0.1, 0.2, 0.3 }, rim = { 0.5, 0.5, 0.5 }, accent = { 1, 0.5, 0 }, style = "FANTASY" })
+        page.Refresh()
+        pk.family = "MINE"; pk.Draw()
+        if pk.list[1] ~= mineKey or not pk.familyButtons.MINE then error("your own theme is a tile under Your themes") end
+        ns:DeleteCustomTheme("Tile Test")
+        page.Refresh()
+        local classTile = false
+        for _, fam in ipairs({ "GLASS", "FANTASY", "CELESTIAL" }) do
+            pk.family = fam; pk.Draw()
+            for _, k in ipairs(pk.list) do if k == "CLASS" or k == "GCLASS" or k == "CCLASS" then classTile = true end end
+        end
+        if not classTile then error("the class-colour themes are tiles") end
+        for _, key in ipairs({ "CONTRAST", "FCONTRAST", "C_CONTRAST" }) do
+            local found
+            for _, fam in ipairs({ "GLASS", "FANTASY", "CELESTIAL" }) do
+                pk.family = fam; pk.Draw()
+                for _, k in ipairs(pk.list) do if k == key then found = true end end
+            end
+            if not found then error("the high-contrast theme " .. key .. " is a tile in its family") end
+        end
+        -- (the grid's reflow at the window's real widths: "12.3 settings look: pages follow the window's width")
+        pk.family = "GLASS"; pk.Draw()
+        pk.Layout(736)
+        ns:ToggleConfig()
+    end)
+    for name in pairs(ns.db.customThemes) do ns:DeleteCustomTheme(name) end
+    ns.db.theme, ns.db.accent = keep.theme, keep.accent
+    ns:Retheme()
+    if not ok then error(err, 0) end
+end)
+try("12.3 settings look: pages follow the window's width", function()
+    local keep = { accent = ns.db.accent, theme = ns.db.theme, lang = ns.root.language, size = ns.root.optionsSize, sec = ns.root.optionsSection, mode = ns.root.settingsMode, scale = ns.fontScale, dbScale = ns.db.fontScale }
+    local realCF, realHook = env.CreateFrame, env.hooksecurefunc
+    -- stand-in frames that keep their width, height, anchors, scripts and text, so a layout can be measured
+    local function Adopt(parent, f)                         -- (each frame and region is listed under its parent, so a block's parts can be walked)
+        local pst = type(parent) == "table" and rawget(parent, "geo")
+        if pst then pst.kids[#pst.kids + 1] = f end
+    end
+    local function Disown(parent, f)
+        local pst = type(parent) == "table" and rawget(parent, "geo")
+        if not pst then return end
+        for i = #pst.kids, 1, -1 do if pst.kids[i] == f then table.remove(pst.kids, i) end end
+    end
+    local function Geo(f, parent)
+        local st = { w = nil, h = nil, pts = {}, shown = true, scripts = {}, kids = {} }
+        rawset(f, "geo", st)
+        Adopt(parent, f)
+        rawset(f, "GetParent", function() return parent end)
+        rawset(f, "SetParent", function(_, p) Disown(parent, f); parent = p; Adopt(p, f) end)
+        rawset(f, "SetSize", function(_, w, h) st.w, st.h = w, h end)
+        rawset(f, "SetWidth", function(_, w) st.w = w end)
+        rawset(f, "SetHeight", function(_, h) st.h = h end)
+        rawset(f, "GetWidth", function() return st.w or 0 end)
+        rawset(f, "GetHeight", function() return st.h or 0 end)
+        rawset(f, "ClearAllPoints", function() st.pts = {}; st.all = nil end)
+        rawset(f, "SetPoint", function(_, point, a, b, c, d)
+            local rel, rp, x, y = a, point, b, c
+            if type(a) ~= "table" then rel, x, y = parent, a, b end
+            if type(a) == "string" then rel, rp, x, y = parent, a, b, c end
+            if type(b) == "string" then rp, x, y = b, c, d end
+            st.pts[point] = { rel = rel, rp = rp, x = tonumber(x) or 0, y = tonumber(y) or 0 }
+        end)
+        rawset(f, "SetAllPoints", function(_, to) st.pts = {}; st.all = (type(to) == "table") and to or parent end)
+        rawset(f, "SetScrollChild", function(_, c) local cst = type(c) == "table" and rawget(c, "geo"); if cst then cst.scrollParent = f end end)
+        rawset(f, "Show", function() st.shown = true end)
+        rawset(f, "Hide", function() st.shown = false end)
+        rawset(f, "SetShown", function(_, v) st.shown = v and true or false end)
+        rawset(f, "IsShown", function() return st.shown end)
+        rawset(f, "SetScript", function(_, name, fn) st.scripts[name] = fn end)
+        rawset(f, "HookScript", function(_, name, fn) local old = st.scripts[name]; st.scripts[name] = old and function(...) old(...); fn(...) end or fn end)
+        rawset(f, "GetScript", function(_, name) return st.scripts[name] end)
+        rawset(f, "SetResizeBounds", function(_, ...) st.bounds = { ... } end)
+        rawset(f, "EnableMouse", function(_, v) st.mouse = v and true or false end)
+        return f
+    end
+    local function Region(owner)
+        local t = Geo(newmock(), owner)
+        local st = rawget(t, "geo")
+        rawset(t, "SetText", function(_, v) st.text = v end)
+        rawset(t, "GetText", function() return st.text end)
+        rawset(t, "SetFont", function(_, _, size) st.size = tonumber(size) end)
+        rawset(t, "SetTextColor", function(_, r, g, b) st.color = { r, g, b } end)
+        local function CharW() return (st.size or 11) * 0.55 end         -- (a letter: about half its size wide, 6 px at 11)
+        local function Plain() return (tostring(st.text or ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) end
+        rawset(t, "GetStringWidth", function() return #Plain() * CharW() end)
+        rawset(t, "GetStringHeight", function()                  -- (as many lines as the text takes at its width)
+            local text = Plain()
+            if text == "" then return 0 end
+            local w = (st.w and st.w > 0) and st.w or 400
+            return math.max(1, math.ceil(#text * CharW() / w)) * (st.size or 11) * 1.25
+        end)
+        return t
+    end
+    local function W(f) return rawget(f, "geo").w or 0 end
+    local function Pt(f, p) return rawget(f, "geo").pts[p] end
+    -- Where a frame or region lies across, in `root`'s coordinates: its anchors followed to `root`
+    -- (nil where they lead elsewhere, or it has none). A text with no width set is as wide as its text.
+    local function Span(f, root, memo)
+        local m = memo[f]
+        if m ~= nil then if m then return m[1], m[2] end; return nil end
+        memo[f] = false                                      -- (a loop of anchors places nothing)
+        local st = type(f) == "table" and rawget(f, "geo")
+        if not st then return nil end
+        if f == root then memo[f] = { 0, st.w or 0 }; return 0, st.w or 0 end
+        local L, R, C
+        local function X(rel, rp)
+            local l, r = Span(rel, root, memo)
+            if not l then return nil end
+            if rp:find("LEFT") then return l elseif rp:find("RIGHT") then return r end
+            return (l + r) / 2
+        end
+        if st.all then L, R = Span(st.all, root, memo) end
+        for point, p in pairs(st.pts) do
+            local x = X(p.rel, p.rp or point)
+            if x then
+                x = x + p.x
+                if point:find("LEFT") then L = x elseif point:find("RIGHT") then R = x else C = x end
+            else
+                return nil
+            end
+        end
+        if not (L or R or C) and st.scrollParent then L = Span(st.scrollParent, root, memo) end
+        if not (L or R or C) then return nil end
+        local w = st.w or 0
+        if w <= 0 and rawget(f, "GetStringWidth") then w = f:GetStringWidth() end
+        if not (L and R) then
+            if L then R = L + w elseif R then L = R - w else L, R = C - w / 2, C + w / 2 end
+        end
+        memo[f] = { L, R }
+        return L, R
+    end
+    -- every part of a frame that shows, the frame included
+    local function Shown(f, list, seen)
+        local st = type(f) == "table" and rawget(f, "geo")
+        if not st or not st.shown or seen[f] then return list end
+        seen[f] = true
+        list[#list + 1] = f
+        for _, k in ipairs(st.kids) do Shown(k, list, seen) end
+        return list
+    end
+    local ok, err = pcall(function()
+        ns.db.theme, ns.root.language, ns.root.optionsSize, ns.root.settingsMode = "MIDNIGHT", "enUS", nil, "all"
+        ns:Retheme()
+        local O = ns.optUI
+        if O.frame and O.frame:IsShown() then ns:ToggleConfig() end
+        O.frame = nil
+        env.hooksecurefunc = function(a, b, c)                   -- (a frame's own method hooked as the game does: a switch's label follows its width)
+            if type(a) == "table" and type(b) == "string" and type(c) == "function" and type(rawget(a, b)) == "function" then
+                local was = rawget(a, b)
+                rawset(a, b, function(...) local r = table.pack(was(...)); c(...); return table.unpack(r, 1, r.n) end)
+                return
+            end
+            return realHook(a, b, c)
+        end
+        env.CreateFrame = function(kind, name, parent, ...)
+            local f = Geo(realCF(kind, name, parent, ...), parent)
+            rawset(f, "CreateFontString", function(self) return Region(self) end)
+            rawset(f, "CreateTexture", function(self) return Region(self) end)
+            return f
+        end
+        ns:ToggleConfig("home")
+        -- the window: it starts, and goes no narrower than, the width at which a block laid out for 736
+        -- fits inside its card (its padding at both sides, the card's gap, the sidebar and the margins)
+        local MIN = 736 + 2 * 18 + 12 + (14 + 216 + 14) + 16 + 10
+        local bounds = rawget(O.frame, "geo").bounds
+        if MIN ~= 1054 or not bounds or bounds[1] ~= MIN or O.MIN_W ~= MIN or bounds[3] ~= 1600 then error("the window's width goes from " .. MIN .. " to 1600, got " .. tostring(bounds and bounds[1]) .. " to " .. tostring(bounds and bounds[3])) end
+        if W(O.frame) ~= MIN or O.W ~= MIN then error("the window starts " .. MIN .. " wide, got " .. W(O.frame)) end
+        if O.PageWidth(MIN) - 12 - 2 * 18 ~= 736 then error("at its least width a block's card is 736 inside, got " .. (O.PageWidth(MIN) - 48)) end
+        if O.PageWidth(900) ~= O.PageWidth(MIN) then error("the pages are never laid out narrower than the window's least width") end
+        local function Size(w)
+            O.frame:SetSize(w, 680)
+            local f = O.frame:GetScript("OnSizeChanged")
+            if type(f) ~= "function" then error("the window follows its size") end
+            f(O.frame, w, 680)
+            runTimers()
+            if O.pageWidth ~= O.PageWidth(w) or W(O.sections) ~= O.pageWidth or W(O.home) ~= O.pageWidth then error("at " .. w .. " the pages are as wide as the window gives them") end
+            return O.pageWidth
+        end
+        local function Inside(what, left, width, pw)
+            if left < 0 or left + width > pw + 0.5 then error(what .. " leaves the page: " .. left .. " + " .. width .. " of " .. pw) end
+        end
+        -- every section's blocks, at the window's width: each shown part of what is lent to the page lies
+        -- inside its card's inner edge (the walk follows the real frames and their anchors)
+        local function LentInside(edge)
+            local bad, most, seen = {}, 0, 0
+            for _, cat in ipairs(ns.settingsCategories) do
+                for _, sec in ipairs(cat.sections or {}) do
+                    if sec.blocks and #sec.blocks > 0 then
+                        O.Open(sec.id)
+                        local page = O.sections
+                        local pw = W(page)
+                        local left, right = 18, edge or (pw - 12 - 18)
+                        local memo = {}
+                        for _, f in ipairs(page.lentFrames or {}) do
+                            for _, part in ipairs(Shown(f, {}, {})) do
+                                local l, r = Span(part, page, memo)
+                                if l and r > l then
+                                    seen = seen + 1
+                                    if r - left > most then most = r - left end
+                                    if l < left - 0.5 or r > right + 0.5 then
+                                        local st = rawget(part, "geo")
+                                        bad[#bad + 1] = sec.id .. ": " .. (st.text and ("'" .. tostring(st.text) .. "'") or "a part") .. " at " .. l .. ".." .. r
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+            return bad, most, seen
+        end
+        for _, w in ipairs({ MIN, 1600 }) do                      -- (at the least width, which is where it starts, and the widest)
+            Size(w)
+            local bad, most, seen = LentInside()
+            if seen < 1000 then error("the walk found the blocks' parts at " .. w .. ": " .. seen) end
+            if #bad > 0 then error(#bad .. " parts of the blocks leave their card at " .. w .. ":\n" .. table.concat(bad, "\n", 1, math.min(#bad, 20))) end
+            if w == MIN and most ~= 736 then error("the widest block is laid out for 736, got " .. most) end
+        end
+        -- and the walk does see a part that is cut: the window made narrower than it may be
+        do
+            O.sections:SetWidth(O.PageWidth(MIN) - 60)
+            local bad = LentInside()
+            O.sections:SetWidth(O.pageWidth)
+            if #bad == 0 then error("the walk finds a block's part past its card") end
+        end
+        local cols = {}
+        for _, w in ipairs({ MIN, 1300 }) do
+            -- Home: the quick cards, New and Ask the guide inside the page
+            O.Open("home")
+            local pw = Size(w)
+            local home = O.home
+            if home.width ~= pw then error("Home is laid out for the page's width at " .. w) end
+            for _, c in ipairs(home.quickCards) do
+                local at = Pt(c, "TOPLEFT")
+                Inside("a quick card at " .. w, at.x, W(c), pw)
+                -- pointing at the card, not only its switch, shows what it does
+                if rawget(c, "geo").mouse ~= true or type(c:GetScript("OnEnter")) ~= "function" then error("a quick card takes the mouse and has a tooltip: " .. tostring(c.label)) end
+            end
+            Inside("the New card at " .. w, 0, W(home.newCard), pw)
+            Inside("the Ask card at " .. w, 0, W(home.askCard), pw)
+            local T = ns.toolsPage
+            -- the guide's answer stops short of "Show me" (it was ~10 px under it)
+            local af = W(T.askFrame)
+            if 16 + af > W(home.askCard) then error("the question box is inside its card at " .. w) end
+            if 2 + W(T.answer) + 12 > af - W(T.showButton) then error("at " .. w .. " the answer runs under Show me: " .. W(T.answer) .. " of " .. af) end
+            if Pt(T.showButton, "TOPRIGHT").rel ~= T.askFrame then error("Show me sits at the box's right") end
+            -- the Ask card is as tall as what is in it: a long answer makes it taller
+            T.answer:SetText("short")
+            home.Layout()
+            local short = home.askCardHeight
+            T.answer:SetText(string.rep("A long answer from the guide. ", 30))
+            home.Layout()
+            local long = home.askCardHeight
+            if not (long > short) or rawget(home.askCard, "geo").h ~= long then error("the Ask card grows with its answer: " .. tostring(short) .. " -> " .. tostring(long)) end
+            if long == 290 or short == 290 then error("the Ask card is not a fixed 290") end
+            T.answer:SetText("")
+            home.Layout()
+            local empty = home.askCardHeight
+            T.Ask("how do I move the action bars")                   -- (asking lays Home out again for the answer)
+            if not (home.askCardHeight > empty) then error("the Ask card follows a new answer: " .. empty .. " -> " .. home.askCardHeight) end
+            T.answer:SetText("")
+            home.Layout()
+            cols["home" .. w] = home.cols
+            -- a section: the card, the rows and the blocks inside the page
+            O.Open("frames:Your frames")
+            local page = O.sections
+            if W(page) ~= pw then error("the section page is as wide as the window gives it") end
+            local rowW = pw - 12
+            local c = Pt(page.card, "TOPRIGHT")
+            if not page.card:IsShown() or Pt(page.card, "TOPLEFT").x ~= 0 or not c or c.rel ~= page or c.x ~= -12 then error("the rows' card spans the page at " .. w) end
+            local n = 0
+            for _, name in ipairs(page.shownKeys) do
+                local row = page.rows[name]
+                n = n + 1
+                local r = Pt(row, "RIGHT")
+                if Pt(row, "TOPLEFT").x ~= 0 or not r or r.x ~= -12 then error(name .. "'s row spans the card at " .. w) end
+                for _, part in ipairs({ "title", "desc" }) do
+                    local fs = row[part]
+                    if fs and rawget(fs, "geo") and W(fs) > 0 then
+                        local at = Pt(fs, "TOPLEFT")
+                        Inside(name .. "'s " .. part .. " at " .. w, at and at.x or 0, W(fs), rowW - ((part == "title" or row.switch and row.switch.key == name) and (row.reserve or 0) or 0))
+                    end
+                end
+            end
+            if n == 0 then error("rows shown") end
+            local blocks = 0
+            for i = 1, page.blockUsed do
+                local bc = page.blockCards[i]
+                local r = Pt(bc, "TOPRIGHT")
+                if not r or r.x ~= -12 then error("a block's card spans the page at " .. w) end
+                blocks = blocks + 1
+            end
+            if blocks == 0 or page.blockInner.left + page.blockInner.width > rowW - 18 + 0.5 then error("a block's content sits inside its card at " .. w) end
+            if page.sampleButton:IsShown() and page.introWidth + 170 + 24 > rowW then error("the line under the title runs under Show sample frames at " .. w) end
+            -- the footer: its two ends do not meet
+            local foot = O.footer
+            if not O.resetButton:IsShown() or not foot or foot.left + foot.right + 24 > w then error("the footer fits at " .. w .. ": " .. tostring(foot and foot.left) .. " + " .. tostring(foot and foot.right)) end
+            -- the Themes section: the grid's columns, and no tile under the preview column
+            O.Open("look:Themes")
+            local pk = O.pages.look.sheet.themePicker
+            local inner = page.blockInner.width
+            if pk.width ~= inner then error("the theme grid is laid out for its card's width at " .. w .. ": " .. tostring(pk.width) .. " vs " .. inner) end
+            cols[w] = pk.cols
+            if pk.gridW + 8 + 8 > pk.previewX then error("at " .. w .. " the grid reaches the preview column: " .. pk.gridW .. " vs " .. pk.previewX) end
+            if pk.previewX + pk.pvW > pk.width or W(pk.pv) ~= pk.pvW or W(pk.use) ~= pk.pvW then error("the preview column fits at " .. w) end
+            for i = 1, #pk.list do
+                local b = pk.tiles[i]
+                if b.px + W(b) > pk.gridW then error("a tile sticks out of the grid at " .. w) end
+                if W(pk.grid) + 8 > pk.previewX then error("the grid's scroll track reaches the preview at " .. w) end
+            end
+        end
+        if cols[MIN] ~= 4 or cols[1300] ~= 7 then error("the theme grid has 4 columns at " .. MIN .. " and more as it widens (7 at 1300), got " .. tostring(cols[MIN]) .. " and " .. tostring(cols[1300])) end
+        if cols["home" .. MIN] ~= 3 or cols.home1300 ~= 3 then error("Home's quick cards: 3 to a row") end
+        if ns.homeCards ~= nil then error("the old Home cards list is gone (Home shows the quick switches)") end
+        Size(1600)
+        O.Open("look:Themes")
+        if O.pages.look.sheet.themePicker.cols ~= 10 then error("at 1600 the theme grid has 10 columns, got " .. tostring(O.pages.look.sheet.themePicker.cols)) end
+
+        -- the footer at the least width: its two ends do not meet, with a reload waiting too; made
+        -- narrower than the window can be, the version gives way first, then "Reset ..." is cut to "Reset"
+        Size(MIN)
+        O.Open("frames:Your frames")
+        local rb = O.resetButton
+        local function Label() return rawget(rb.text, "geo").text end
+        local foot = O.footer
+        if foot.left + foot.right + 24 > MIN then error("the footer fits at " .. MIN .. ": " .. foot.left .. " + " .. foot.right) end
+        if foot.stage < 3 and Label() ~= rb.suiFull then error("at " .. MIN .. " the Reset label is whole, got " .. tostring(Label())) end
+        if not tostring(rb.suiFull):find("Frames and bars", 1, true) then error("Reset names its category: " .. tostring(rb.suiFull)) end
+        O.NeedReload("testA"); O.NeedReload("testB")
+        foot = O.footer
+        if foot.left + foot.right + 24 > MIN then error("with the reload note the footer still fits at " .. MIN .. ": " .. foot.left .. " + " .. foot.right) end
+        if O.frame.version:IsShown() ~= (foot.stage == 0) then error("the version shows only when everything else has room") end
+        O.LayoutFooter(760)
+        if O.footer.stage < 3 or O.frame.version:IsShown() or Label() ~= ns:Tr("Reset") then error("in a footer too narrow the version goes, then Reset is cut short: stage " .. O.footer.stage .. ", " .. tostring(Label())) end
+        O.LayoutFooter()
+        if O.footer.width ~= MIN then error("the footer is laid out for the window again") end
+        -- arming "Reset ..." ("Click to confirm") and its running out lay the footer out again
+        local whole = rb:GetWidth()
+        O.footer = nil
+        rb:GetScript("OnClick")(rb)
+        if not rb.suiArmed or not tostring(Label()):find(ns:Tr("Click to confirm"), 1, true) then error("one click arms Reset: " .. tostring(Label())) end
+        if not O.footer or O.footer.left + O.footer.right + 24 > MIN then error("the footer is laid out again for the armed label") end
+        if rb:GetWidth() == whole then error("the armed Reset button is fitted to its new label") end
+        O.footer = nil
+        runTimers()                                              -- (it runs out)
+        if rb.suiArmed or not O.footer or Label() ~= rb.suiFull and Label() ~= ns:Tr("Reset") then error("Reset disarms and the footer is laid out again: " .. tostring(Label())) end
+
+        -- a tile being previewed stays when the window is resized or the page refreshed; "Use this theme" wears it
+        O.Open("look:Themes")
+        local pk = O.pages.look.sheet.themePicker
+        local other
+        for _, key in ipairs(pk.list) do if key ~= ns.db.theme then other = key; break end end
+        pk.Pick(other)
+        Size(1300)
+        if pk.picked ~= other then error("a resize keeps the previewed tile, got " .. tostring(pk.picked)) end
+        if O.RefreshAll then O.RefreshAll() end
+        if pk.picked ~= other or pk.nameText == nil or not pk.nameText:find(ns:ThemeName(other, "short"), 1, true) then error("a refresh keeps the previewed tile, got " .. tostring(pk.picked)) end
+        pk.use:GetScript("OnClick")(pk.use)
+        if ns.db.theme ~= other or pk.picked ~= other then error("Use this theme wears the previewed one") end
+        Size(MIN)
+        -- its label: dark on a light accent, white on a dark one, after hovering it and after the
+        -- accent is changed from somewhere else (a repaint puts no button colour back over it)
+        local light, dark, most, least = nil, nil, 0, 1
+        for _, key in ipairs(ns.accentOrder) do                  -- (the lightest accent and the darkest)
+            local r, g, b = ns:AccentColor(key)
+            local lum = r * 0.299 + g * 0.587 + b * 0.114
+            if lum > most then light, most = key, lum end
+            if lum < least then dark, least = key, lum end
+        end
+        if not (most > 0.55 and least < 0.55) then error("(the check needs a light accent and a dark one: " .. most .. ", " .. least .. ")") end
+        local function UseColor() return rawget(pk.use.text, "geo").color or {} end
+        ns.db.accent = light
+        ns:Retheme()
+        if (UseColor()[1] or 1) > 0.2 then error("on a light accent (" .. tostring(light) .. ") the label is dark") end
+        pk.use:GetScript("OnEnter")(pk.use)
+        pk.use:GetScript("OnLeave")(pk.use)
+        ns:Repaint()
+        if (UseColor()[1] or 1) > 0.2 then error("after a hover and a repaint the label is still dark, got " .. tostring(UseColor()[1])) end
+        ns.db.accent = dark
+        ns:Retheme()
+        if UseColor()[1] ~= 1 then error("on a dark accent (" .. tostring(dark) .. ") the label is white") end
+
+        -- a long section title wraps clear of the All / On / Off filter, and what is under it moves down
+        -- (French, lettering at 130%), at the window's least width (where it starts) and wider
+        ns:SetLanguage("frFR")
+        ns.db.fontScale = 130
+        ns:Retheme()
+        local queues
+        for _, cat in ipairs(ns.settingsCategories) do
+            for _, sec in ipairs(cat.sections or {}) do if sec.title == "Queues and battlegrounds" then queues = sec end end
+        end
+        for _, w in ipairs({ MIN, 1300 }) do
+            Size(w)
+            O.Open(queues.id)
+            local page = O.sections
+            local hd = page.heading
+            local hst = rawget(hd, "geo")
+            if hst.text ~= "Files d'attente et champs de bataille" or math.abs((hst.size or 0) - 24 * 1.3) > 0.01 then error("the French title at 130%: " .. tostring(hst.text) .. " " .. tostring(hst.size)) end
+            if not page.filterButtons.all:IsShown() then error("the section has the filter") end
+            local memo = {}
+            local fl = Span(page.filterButtons.off, page, memo)
+            local fr = select(2, Span(page.filterButtons.all, page, memo))
+            local hl, hr = Span(hd, page, memo)
+            if not (fl and hl) or fr > W(page) - 12 + 0.5 then error("the filter and title are placed") end
+            if hr > fl - 8 then error("at " .. w .. " the title runs into the filter: " .. hr .. " vs " .. fl) end
+            if page.newTag:IsShown() then
+                local _, tr = Span(page.newTag, page, memo)
+                if tr > fl - 4 then error("the NEW tag runs into the filter at " .. w) end
+            end
+            local natural = #hst.text * hst.size * 0.55
+            if w == MIN and natural <= page.headWidth then error("the test's title is long enough to wrap at " .. w) end
+            local lines = math.ceil(natural / page.headWidth)
+            if math.abs(hd:GetStringHeight() - page.headHeight) > 0.5 or (lines > 1 and page.headHeight < lines * hst.size) then error("the title's height is what it wraps to") end
+            local introTop = Pt(page.intro, "TOPLEFT").y
+            if -introTop < 18 + page.headHeight then error("at " .. w .. " the line under the title starts under it: " .. introTop .. " vs " .. page.headHeight) end
+            local cardTop = Pt(page.card, "TOPLEFT").y
+            if cardTop > introTop - page.intro:GetStringHeight() then error("the card starts under the line under the title at " .. w) end
+        end
+        -- and on a section with no switches (no filter) but the sample frames button, a long title
+        -- stops short of that button (still French at 130%, at the least width)
+        Size(MIN)
+        -- (every section of Frames and bars has switches now: one is given none for the check)
+        local plain = ns:SettingsSection("frames:Nameplates")
+        local rows = plain.rows
+        plain.rows = {}
+        local title = plain.title
+        plain.title = "Files d'attente et champs de bataille et cadres de raid"
+        local okT, errT = pcall(function()
+            O.Open(plain.id)
+            local page = O.sections
+            if page.filterButtons.all:IsShown() or not page.sampleButton:IsShown() then error("(the section shows the sample frames button and no filter)") end
+            local memo = {}
+            local sl = Span(page.sampleButton, page, memo)
+            local _, hr = Span(page.heading, page, memo)
+            local hst = rawget(page.heading, "geo")
+            if #hst.text * hst.size * 0.55 <= page.headWidth then error("the long title wraps") end
+            if not (sl and hr) or hr > sl - 8 then error("a long title runs under Show sample frames: " .. tostring(hr) .. " vs " .. tostring(sl)) end
+        end)
+        plain.title, plain.rows = title, rows
+        if not okT then error(errT, 0) end
+        -- Home's section labels: in capitals in English only, as the section pages' labels
+        ns:ToggleConfig()
+        O.frame = nil
+        ns:ToggleConfig("home")
+        local fr = ns:Tr("Quick switches")
+        local found
+        for _, part in ipairs(Shown(O.home, {}, {})) do
+            local t = rawget(part, "geo").text
+            if t == fr then found = true end
+            if t == fr:upper() and fr ~= fr:upper() then error("a French Home label is upper-cased: " .. t) end
+        end
+        if fr == "Quick switches" or not found then error("Home's Quick switches label in French: " .. tostring(fr)) end
+        if O.LabelCase("Quick switches") ~= "Quick switches" then error("labels keep their case outside English") end
+        ns:SetLanguage("enUS")
+        if O.LabelCase("Quick switches") ~= "QUICK SWITCHES" then error("English labels are in capitals") end
+        ns:ToggleConfig()
+    end)
+    env.CreateFrame, env.hooksecurefunc = realCF, realHook
+    ns.db.theme, ns.root.language, ns.root.optionsSize, ns.root.optionsSection, ns.root.settingsMode, ns.fontScale = keep.theme, keep.lang, keep.size, keep.sec, keep.mode, keep.scale
+    ns.db.fontScale, ns.db.accent = keep.dbScale, keep.accent
+    pcall(ns.LoadLocale, ns)
+    ns:Retheme()
+    if ns.optUI.frame and ns.optUI.frame:IsShown() then ns:ToggleConfig() end
+    if not ok then error(err, 0) end
+end)
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()

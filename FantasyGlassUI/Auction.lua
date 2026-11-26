@@ -8,7 +8,7 @@ local Secret = function(v) return ns:IsSecret(v) end
 -- the auction house than at a vendor, best first; click one to put it on the sell page. Posting
 -- is always your own click: the game allows nothing else.
 ------------------------------------------------------------------------------------------
-local function Seen() return (type(ns.root) == "table" and type(ns.root.auctionSeen) == "table") and ns.root.auctionSeen or {} end
+local function Seen() return ns.PriceItems() end              -- (this auction house's prices: Prices.lua)
 
 -- The price to post at: one copper under today's lowest, never under the vendor price. nil if none.
 function ns.UndercutPrice(entry, today, vendor)
