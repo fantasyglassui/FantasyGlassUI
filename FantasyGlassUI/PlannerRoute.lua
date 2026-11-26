@@ -435,6 +435,12 @@ local function Place(step, s)
     return step
 end
 
+-- Where a flight or the hearthstone lands, for the guide (the step is done within 60 yards of it): nil when unknown.
+local function To(s)
+    if type(s) ~= "table" or type(s.map) ~= "number" or type(s.x) ~= "number" or type(s.y) ~= "number" then return nil end
+    return { map = s.map, x = R1(s.x), y = R1(s.y) }
+end
+
 local function FlightName(state, node)
     for _, f in ipairs(state.flights) do if f.node == node then return Clean(f.name) end end
 end
@@ -529,12 +535,12 @@ local function Legs(state, dest, steps)
                 steps[#steps + 1] = Place({ kind = "goto", text = l.node and FlightName(state, l.node) or nil }, l.to)
             end
         elseif l.kind == "fly" then
-            local s = Place({ kind = "fly", node = l.node, text = FlyText(state, state.pos, l) }, state.pos)
+            local s = Place({ kind = "fly", node = l.node, text = FlyText(state, state.pos, l), to = To(l.to) }, state.pos)
             local saved = Saves(state.pos, l.to, l.seconds, state.tctx)
             if saved then s.why = { saves = saved } end
             steps[#steps + 1] = s
         elseif l.kind == "hearth" then
-            local s = { kind = "hearth" }
+            local s = { kind = "hearth", to = To(l.to) }       -- (where it takes you: the guide ticks it there)
             local saved = Saves(state.pos, dest, secs, state.tctx)
             if saved then s.why = { saves = saved } end
             steps[#steps + 1] = s
@@ -1142,6 +1148,7 @@ function ns.PlannerRoute(ctx)
             end
         end
     end
+    summary.source = type(ctx.source) == "table" and type(ctx.source.kind) == "string" and ctx.source.kind or nil   -- ("questie" or "log": the panel's EndText and the zone goal read it)
     summary.logReasons, summary.logFits = LogReasons(ctx, candidates, guide)   -- (the quest log advice: worked out here, in slices; the panel only reads it)
     if summary.empty and ns.PlannerDry then summary.dry = ns.PlannerDry(ctx) end    -- (nothing worth the trip: a dungeon or grinding, PlannerAdvice.lua)
     if next(classMap) then                           -- (a class quest you could start that the plan does not take: said on the panel)
@@ -1169,6 +1176,12 @@ end
 -- Quests you skipped a step of on the planned route, this session only (in memory: never the permanent
 -- "never suggest"): left out of the plans made after it, a quest in your log too ("candidate" hook).
 local sessionSkip = {}
+-- Quests seen failed in your log (a timed or escort quest), this session: one you abandon then is to be taken
+-- again, not left out (F9). questID -> true.
+local failedLogged = {}
+function ns.PlannerNoteFailed(id) if type(id) == "number" then failedLogged[id] = true end end
+function ns.PlannerWasFailed(id) return type(id) == "number" and failedLogged[id] == true end
+function ns.PlannerFailedReset(id) if type(id) == "number" then failedLogged[id] = nil end end
 function ns.PlannerSessionSkip(id)
     if type(id) == "number" then sessionSkip[id] = true end
 end
@@ -1262,7 +1275,13 @@ function ns.PlannerContext()
         xp = Num(Call(UnitXP, "player")), xpMax = Num(Call(UnitXPMax, "player")),
         group = db.plannerGroup or "solo", inGroup = Call(IsInGroup) == true,
         done = function(id) return Call(QL.IsQuestFlaggedCompleted, id) == true end,
-        onQuest = function(id) return Call(QL.IsOnQuest, id) == true end,
+        -- (a quest the game marks failed counts as not in your log: the plan takes it again from its giver, and
+        -- the panel says to abandon it first; abandoning it then is not a skip, ns.PlannerWasFailed)
+        onQuest = function(id)
+            if Call(QL.IsOnQuest, id) ~= true then return false end
+            if Call(QL.IsFailed, id) == true then failedLogged[id] = true; return false end
+            return true
+        end,
         here = (map and x and y) and { map = map, x = x, y = y } or nil,
         speed = RunSpeed(),
         faction = (function() local f = Call(UnitFactionGroup, "player"); return type(f) == "string" and not ns:IsSecret(f) and f or nil end)(),

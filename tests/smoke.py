@@ -11612,7 +11612,7 @@ try("13.3 choices: skip list, deaths, soloed elites", function()
         if not ids(ctx)[201] then error("201 is a candidate") end
         ns.PlannerSkip(201, true)
         local rc = ns.PlannerCharRecord(false)
-        if not (rc and rc.skip and rc.skip[201] == true) then error("rec.skip[201] is true") end
+        if not (rc and rc.skip and rc.skip[201]) then error("rec.skip[201] is set") end   -- (polish merge, F25: the quest's name when the game gives one, else true)
         ctx.skip = rc.skip
         if ids(ctx)[201] then error("a skipped quest is not a candidate") end
         inlog[201] = true
@@ -21297,6 +21297,308 @@ try("polish P3: the Guide tab's rows, the hidden saved data and the planner's to
     if not ok then error(err, 0) end
 end)
 -- polish P3: end
+-- polish merge: begin
+try("polish merge: the cross-group fixes", function()
+    local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), ql = env.C_QuestLog, unlocked = ns.GuideUnlocked, on = ns.GuideOn,
+        gstate = ns.GuideState, state = ns.root.guideState, guides = ns.root.guides, planner = ns.root.planner, raw = ns.PrintRaw,
+        showList = ns.ShowList, scale = ns.fontScale, errors = #ns.errors }
+    local ok, err = pcall(function()
+        local cm = {}
+        for k, v in pairs(saved.map) do cm[k] = v end
+        cm.GetWorldPosFromMapPos = function(map, v)
+            local x, y = v.x * 1000, v.y * 1000
+            if map == 1 then return 0, { x = x, y = y } end
+            if map == 2 then return 0, { x = x + 1000, y = y } end
+        end
+        env.C_Map = cm
+        env.CreateVector2D = function(x, y) return { x = x, y = y } end
+        if ns.PlannerPosReset then ns.PlannerPosReset() end
+        local function rec(id, map, x, y, xp, ox, oy)
+            return { id = id, name = "Quest " .. id, level = 10, minLevel = 1, xp = xp,
+                starts = { { map = map, x = x, y = y } }, ends = { { map = map, x = x, y = y } },
+                objectives = { { kind = "kill", count = 4, countKnown = true, mobLevel = 10, spots = { { map = map, x = ox, y = oy } } } },
+                pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+        end
+        local function solo(extra, kind)
+            local one = { [501] = rec(501, 2, 80, 80, 3000, 81, 81) }
+            local c = { source = { kind = kind or "questie", ids = function() return { 501 } end, quest = function(id) return one[id] end },
+                level = 10, group = "solo", speed = 7, faction = "Alliance", done = function() return false end, onQuest = function() return false end,
+                here = { map = 1, x = 10, y = 10 }, crossings = {}, flights = {}, learnFlights = false, pace = 1, flightTime = function() return nil end }
+            for k, v in pairs(extra) do c[k] = v end
+            return ns.PlannerRoute(c)
+        end
+        local function find(steps, kind) for _, st in ipairs(steps) do if st.kind == kind then return st end end end
+
+        -- P2's F10 and F36: a hearth or fly step knows where it lands, and the guide ticks it there
+        local g, summary = solo({ hearth = { map = 2, x = 80, y = 80 } })
+        local hs = find(g.steps, "hearth")
+        if not (hs and type(hs.to) == "table" and hs.to.map == 2 and hs.to.x == 80 and hs.to.y == 80) then error("a hearth step's landing place") end
+        local world = { near = function(to, r) return to.map == 2 and math.abs(to.x - 80) < 1 and (r or 0) == 60 end }
+        if not ns.GuideStepDone(hs, world) then error("the guide ticks a hearth step at its landing place") end
+        g = solo({ flights = { { node = 7, map = 1, x = 11, y = 10, known = true, name = "Seven" }, { node = 8, map = 2, x = 80, y = 79, known = true, name = "Eight" } } })
+        local fs = find(g.steps, "fly")
+        if not (fs and type(fs.to) == "table" and fs.to.map == 2 and fs.to.x == 80 and fs.to.y == 79) then error("a fly step's landing place") end
+        if not ns.GuideStepDone({ kind = "fly", to = fs.to }, { near = function(to) return to.y == 79 end, landedAt = function() return false end }) then error("a fly step ticks near where it lands") end
+
+        -- P2's F18 and F30: the route says where its quests came from
+        if summary.source ~= "questie" then error("summary.source from Questie: " .. tostring(summary.source)) end
+        g, summary = solo({}, "log")
+        if summary.source ~= "log" then error("summary.source from the quest log: " .. tostring(summary.source)) end
+        local _, empty = ns.PlannerRoute({ source = { kind = "log", ids = function() return {} end, quest = function() end }, level = 10, here = { map = 1, x = 10, y = 10 },
+            crossings = {}, flights = {}, pace = 1, done = function() return false end, onQuest = function() return false end })
+        if not (empty.empty and empty.source == "log") then error("an empty plan from the log says so") end
+
+        -- P2's F25: the skip list keeps the quest's name
+        ns.GuideUnlocked = function() return true end
+        ns.root.planner = {}
+        env.C_QuestLog = setmetatable({ GetTitleForQuestID = function(id) return id == 9932 and "Titled" or nil end, IsOnQuest = function() return false end },
+            { __index = saved.ql })
+        ns.PrintRaw = function() end
+        ns.PlannerSkip(9931, true, "Lost Pages")
+        ns.PlannerSkip(9932, true)
+        ns.PlannerSkip(9933, true)
+        local list = ns.PlannerSkipList()
+        if list[9931] ~= "Lost Pages" or list[9932] ~= "Titled" or list[9933] ~= true then error("the names kept with the skips") end
+        if ns.PlannerRejects({ id = 9931, level = 1 }, { level = 10, skip = list }) ~= "skipped" then error("a named skip is still a skip") end
+        local shown
+        ns.ShowList = function(_, _, _, lines) shown = lines end
+        ns:GuideSkipped()
+        if not (shown and shown[1] and shown[1].left == "Lost Pages") then error("the skip list shows the kept name: " .. tostring(shown and shown[1] and shown[1].left)) end
+        ns.ShowList = saved.showList
+        ns.PlannerSkip(9931, false); ns.PlannerSkip(9932, false); ns.PlannerSkip(9933, false)
+        ns.PlannerSessionSkipReset()
+
+        -- P2's F9: a failed quest in your log is planned from its giver again, and abandoning it is not a skip
+        env.C_QuestLog = setmetatable({ IsOnQuest = function(id) return id == 9921 end, IsFailed = function(id) return id == 9921 end,
+            IsQuestFlaggedCompleted = function() return false end }, { __index = saved.ql })
+        local live = ns.PlannerContext()
+        if live.onQuest(9921) ~= false or not ns.PlannerWasFailed(9921) then error("a failed quest counts as not taken") end
+        if ns.GuideStepDone({ kind = "accept", quest = 9921 }, { onQuest = function() return true end, completed = function() return false end, failed = function() return true end }) then
+            error("a failed quest's accept step is not done") end
+        if not ns.GuideStepDone({ kind = "accept", quest = 9921 }, { onQuest = function() return true end, completed = function() return false end }) then error("an accept step is done once taken") end
+        if not ns.GuideStepBase({ kind = "accept", quest = 9921, title = "Escort" }):find(ns:Tr("(failed: abandon it and take it again)"), 1, true) then error("the accept step says to abandon it") end
+        ns.root.guides, ns.root.guideState = {}, {}
+        ns.GuideOn = function() return true end
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "accept", quest = 9921, title = "Escort" } } }, { logFits = false })
+        ns:PlannerStop()
+        env.C_QuestLog = setmetatable({ IsOnQuest = function() return false end, IsQuestFlaggedCompleted = function() return false end }, { __index = saved.ql })
+        fireEvent("QUEST_REMOVED", 9921)
+        if ns.PlannerSessionSkipped(9921) or ns.PlannerWasFailed(9921) then error("a failed quest abandoned is to be taken again") end
+        if not ns.plannerQueued then error("and planned again") end
+        ns:PlannerStop(); ns:GuideStop()
+
+        -- P3's I13: Following() asks GuideOn() before it reads the guide state
+        local reads = 0
+        ns.GuideOn = function() return false end
+        ns.GuideState = function(...) reads = reads + 1; return saved.gstate(...) end
+        if ns:PlannerReplan("test") ~= false or reads ~= 0 then error("the guide off: the state is never read: " .. reads) end
+        ns.GuideState, ns.GuideOn = saved.gstate, saved.on
+
+        -- I19: the copy box grows with the font scale, and has a close button
+        ns.fontScale = 1
+        local box = ns:ShowCopyBox("code", "Copy this plan code.")
+        local h1 = box and box.fitHeight
+        ns.fontScale = 1.6
+        ns:ShowCopyBox("code", "Copy this plan code.")
+        if not (h1 and box.fitHeight > h1) then error("the copy box grows with the font: " .. tostring(h1) .. " -> " .. tostring(box.fitHeight)) end
+        if not box.close then error("the copy box has a close button") end
+        local hidden = false
+        rawset(box, "Hide", function() hidden = true end)
+        for _, h in ipairs(handlers) do if h.self == box.close and h.name == "OnClick" then h.fn(box.close, "LeftButton") end end
+        rawset(box, "Hide", nil)
+        if not hidden then error("the close button closes it") end
+        box:Hide()
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    ns:PlannerStop(); ns:GuideStop()
+    ns.PlannerSessionSkipReset()
+    env.C_Map = saved.map; rawset(env, "CreateVector2D", saved.vec); env.C_QuestLog = saved.ql
+    ns.GuideUnlocked, ns.GuideOn, ns.GuideState, ns.PrintRaw, ns.ShowList, ns.fontScale = saved.unlocked, saved.on, saved.gstate, saved.raw, saved.showList, saved.scale
+    ns.root.guideState, ns.root.guides, ns.root.planner = saved.state, saved.guides, saved.planner
+    if ns.PlannerPosReset then ns.PlannerPosReset() end
+    if not ok then error(err, 0) end
+end)
+try("polish: together", function()
+    local real = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), ql = env.C_QuestLog, level = env.UnitLevel, time = env.GetTime,
+        combat = env.InCombatLockdown, source = ns.PlannerSource, context = ns.PlannerContext, hash = ns.GuideHash, replan = ns.PlannerReplan,
+        raw = ns.PrintRaw, budget = ns.PLANNER_BUDGET_MS, errors = #ns.errors, qguide = ns.db.questGuide, lang = ns.root.language }
+    local saved = { key = ns.root.guideKey, guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner, seen = ns.root.plannerIntroSeen }
+    local key = tonumber((sources["Guide.lua"] or ""):match("local GUIDE_KEY = (%d+)"))
+    local pos, clock = { 1, 10, 10 }, 900000
+    local cm = {}
+    for k, v in pairs(real.map) do cm[k] = v end
+    cm.GetWorldPosFromMapPos = function(map, v)
+        local x, y = v.x * 1000, v.y * 1000
+        if map == 1 then return 0, { x = x, y = y } end
+        if map == 2 then return 0, { x = x + 1000, y = y } end
+    end
+    cm.GetBestMapForUnit = function() return pos and pos[1] or nil end
+    cm.GetPlayerMapPosition = function(map) return (pos and map == pos[1]) and { GetXY = function() return pos[2] / 100, pos[3] / 100 end } or nil end
+    local accepted, handed, complete = {}, {}, {}
+    local QL = { IsOnQuest = function(id) return accepted[id] or false end, IsQuestFlaggedCompleted = function(id) return handed[id] or false end,
+        IsComplete = function(id) return complete[id] or false end, ReadyForTurnIn = function(id) return complete[id] or false end, IsFailed = function() return false end,
+        GetTitleForQuestID = function(id) return "Quest " .. id end, GetNumQuestLogEntries = function() return 0 end, GetInfo = function() return nil end,
+        GetLogIndexForQuestID = function() return nil end, GetNextWaypoint = function() return nil end }
+    local function rec(id, x, y)
+        return { id = id, name = "Quest " .. id, level = 10, minLevel = 1, xp = 3000,
+            starts = { { map = 2, x = x, y = y } }, ends = { { map = 2, x = x, y = y } },
+            objectives = { { kind = "kill", count = 4, countKnown = true, mobLevel = 10, spots = { { map = 2, x = x + 1, y = y + 1 } } } },
+            pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+    end
+    local recs = { [501] = rec(501, 80, 80), [502] = rec(502, 81, 80) }
+    local world = { kind = "questie", ids = function() return { 501, 502 } end, quest = function(id) return recs[id] end, inns = function() return {} end }
+    local function frame()
+        for i = 1, #handlers do local h = handlers[i]; if h.name == "OnUpdate" then pcall(h.fn, h.self, 0.02) end end
+        runTimers()
+    end
+    local function settle()
+        for _ = 1, 3000 do
+            if not ns.plannerBusy and not ns.plannerQueued then return end
+            frame()
+        end
+        error("the planner never finished: " .. tostring(ns.plannerReason))
+    end
+    local function steps() local gd = ns:GuideGet(ns.GUIDE_PLANNED); return gd and gd.steps or {} end
+    local function plans(id) for _, s in ipairs(steps()) do if s.quest == id then return true end end return false end
+    local function current() local st = ns.GuideState(); return st and steps()[st.at or 1], st end
+    local function neutral(where)
+        for i = 1, 3 do
+            if env["BINDING_NAME_FANTASYGLASSUI_EXTRA" .. i] ~= string.format(ns:Tr("Fantasy Glass UI: extra %d"), i) then
+                error(where .. ": the neutral name of key " .. i .. ": " .. tostring(env["BINDING_NAME_FANTASYGLASSUI_EXTRA" .. i])) end
+        end
+    end
+    local function nothingLocked(where)              -- (a locked player: no planner data, whatever the game does)
+        ns.root.guides, ns.root.guideState, ns.root.planner, ns.root.plannerIntroSeen = nil, nil, nil, nil
+        accepted[501] = true; fireEvent("QUEST_ACCEPTED", 1, 501)
+        accepted[501] = nil; fireEvent("QUEST_REMOVED", 501)
+        fireEvent("QUEST_TURNED_IN", 502, 400, 0); fireEvent("QUEST_LOG_UPDATE"); fireEvent("PLAYER_LEVEL_UP", 11)
+        fireEvent("HEARTHSTONE_BOUND"); fireEvent("ZONE_CHANGED_NEW_AREA"); fireEvent("PLAYER_ENTERING_WORLD", false, true)
+        if ns:PlannerStart() ~= false then error(where .. ": locked, Plan my route does nothing") end
+        if ns.PlannerIntro and ns:PlannerIntro(1) ~= false then error(where .. ": locked, no tour") end
+        clock = clock + 2; for _ = 1, 5 do frame() end
+        for _, k in ipairs({ "guides", "guideState", "planner", "plannerIntroSeen" }) do
+            if ns.root[k] ~= nil then error(where .. ": a locked player has no " .. k) end
+        end
+        if ns.plannerBusy or ns.plannerQueued then error(where .. ": locked, nothing is planned") end
+        neutral(where)
+    end
+    local ok, err = pcall(function()
+        env.C_Map, env.C_QuestLog = cm, QL
+        env.CreateVector2D = function(x, y) return { x = x, y = y } end
+        env.UnitLevel = function() return 10 end
+        env.GetTime = function() return clock end
+        if ns.PlannerPosReset then ns.PlannerPosReset() end
+        ns.PlannerSourceReset()
+        ns.PlannerSessionSkipReset()
+        ns.PrintRaw = function() end
+        ns.db.questGuide = true
+        ns.root.language = "enUS"
+        ns.PlannerSource = function() return world end
+        ns.PlannerContext = function()
+            local c = real.context()
+            c.hearth, c.bindSpot, c.flights, c.crossings, c.learnFlights = { map = 2, x = 80, y = 80 }, { map = 2, x = 80, y = 80 }, {}, {}, false
+            c.deaths, c.repGoals, c.classQuests, c.rested, c.lastZone, c.lastZoneLevel = nil, nil, nil, nil, nil, nil
+            return c
+        end
+        fireEvent("PLAYER_REGEN_ENABLED")
+
+        -- 1. Locked: nothing, and the keys have neutral names
+        ns.root.guideKey = nil
+        if ns:GuideUnlocked() then error("starts locked") end
+        nothingLocked("before the unlock")
+
+        -- 2. Unlocked (the stored number, through the real unlock: its hooks run), the keys are named
+        ns.GuideHash = function() return key end
+        if not ns:GuideUnlock("x") then error("the unlock") end
+        ns.GuideHash = real.hash
+        if env.BINDING_NAME_FANTASYGLASSUI_EXTRA1 ~= ns:Tr("Guide: next step") then error("unlocked: the keys are named: " .. tostring(env.BINDING_NAME_FANTASYGLASSUI_EXTRA1)) end
+
+        -- 3. The first open of the Guide tab shows the tour, once
+        local O = ns.optUI
+        if O then
+            if ns.configFrame and ns.configFrame:IsShown() then ns:ToggleConfig() end
+            O.frame = nil
+            ns:ToggleConfig("guide")
+            runTimers()
+            O.Open("guide:Guide")
+            if ns.root.plannerIntroSeen ~= true then error("the first-time tour is shown") end
+            local win = ns.PlannerIntroWindow and ns:PlannerIntroWindow()
+            if not win then error("the tour's window") end
+            if ns:PlannerIntroDue() then error("the tour is seen once") end
+            win:Hide()
+            ns:ToggleConfig()
+        end
+
+        -- 4. Plan: a hearthstone to the quests, each step knowing where it lands
+        if ns:PlannerStart() ~= true then error("Plan my route") end
+        settle()
+        local st = ns.GuideState()
+        if not (st and st.name == ns.GUIDE_PLANNED and #steps() > 0) then error("following the planned route") end
+        if not (type(st.summary) == "table" and st.summary.source == "questie") then error("the plan says where its quests came from") end
+        local step = current()
+        if not (step and step.kind == "hearth" and type(step.to) == "table" and step.to.map == 2) then error("the first step is the hearthstone, with its landing place: " .. tostring(step and step.kind)) end
+        if not (plans(501) and plans(502)) then error("both quests are planned") end
+
+        -- 5. Hearth: it ticks where it lands (no zone text needed), and the route is planned again from there
+        local reasons = {}
+        ns.PlannerReplan = function(self, why) reasons[#reasons + 1] = why; return real.replan(self, why) end
+        pos = { 2, 80, 80 }
+        fireEvent("ZONE_CHANGED_NEW_AREA")
+        clock = clock + 2; frame(); runTimers()
+        settle()
+        step = current()
+        if step and step.kind == "hearth" then error("the hearth step ticks at its landing place") end
+
+        -- 6. Follow a step: taking the quest ticks its accept step
+        accepted[501] = true
+        fireEvent("QUEST_ACCEPTED", 1, 501); runTimers(); settle(); runTimers()
+        step = current()
+        if not step or (step.kind == "accept" and step.quest == 501) then error("taking the quest ticks its step: " .. tostring(step and step.kind)) end
+
+        -- 7. Abandon a quest: it stays out of the plans made after
+        accepted[502] = true
+        fireEvent("QUEST_ACCEPTED", 1, 502); runTimers(); settle()
+        accepted[502] = nil
+        fireEvent("QUEST_REMOVED", 502); runTimers()
+        if not ns.PlannerSessionSkipped(502) then error("an abandoned quest is left out this session") end
+        settle()
+        if plans(502) then error("the abandoned quest stays out of the new plan") end
+        if not plans(501) then error("the other quest is still planned") end
+
+        -- 8. The plan's end: done and handed in, the route runs out and is planned again
+        complete[501] = true
+        fireEvent("QUEST_LOG_UPDATE"); runTimers(); settle(); runTimers()
+        reasons = {}
+        handed[501], accepted[501], complete[501] = true, nil, nil
+        fireEvent("QUEST_REMOVED", 501); fireEvent("QUEST_TURNED_IN", 501, 3000, 0); runTimers()
+        local again = false
+        for _, r in ipairs(reasons) do if r == "end" then again = true end end
+        if not again then error("the plan ran out: planned again (\"end\"): " .. table.concat(reasons, ",")) end
+        settle()
+        if plans(502) or plans(501) then error("after the end: the abandoned quest stays out, the handed-in one is gone") end
+        ns.PlannerReplan = real.replan
+
+        -- 9. Locked again: the keys are neutral, and a locked player has no planner data
+        ns:GuideLock()
+        neutral("locked again")
+        nothingLocked("locked again")
+        if #ns.errors ~= real.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    ns.PlannerReplan, ns.GuideHash = real.replan, real.hash
+    ns:PlannerStop(); ns:GuideStop()
+    local win = ns.PlannerIntroWindow and ns:PlannerIntroWindow()
+    if win then win:Hide() end
+    env.C_Map, env.C_QuestLog, env.UnitLevel, env.GetTime, env.InCombatLockdown = real.map, real.ql, real.level, real.time, real.combat
+    rawset(env, "CreateVector2D", real.vec)
+    ns.PlannerSource, ns.PlannerContext, ns.PrintRaw, ns.PLANNER_BUDGET_MS = real.source, real.context, real.raw, real.budget
+    ns.db.questGuide, ns.root.language = real.qguide, real.lang
+    ns.PlannerSourceReset(); ns.PlannerSessionSkipReset()
+    if ns.PlannerPosReset then ns.PlannerPosReset() end
+    ns.root.guideKey, ns.root.guides, ns.root.guideState, ns.root.planner, ns.root.plannerIntroSeen = saved.key, saved.guides, saved.state, saved.planner, saved.seen
+    ns.GuideBindingNames(ns:GuideUnlocked())
+    if not ok then error(err, 0) end
+end)
+-- polish merge: end
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()

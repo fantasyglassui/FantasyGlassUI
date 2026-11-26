@@ -162,6 +162,9 @@ function ns.GuideStepBase(step)
     if k == "do" and Failed(step.quest) then
         return (step.text or (step.title or ("#" .. step.quest))) .. "  " .. ns:Tr("(failed: abandon it and take it again)")
     end
+    if k == "accept" and Failed(step.quest) then         -- (planned again from its giver, F9: abandon it first)
+        return ns:Tr("Accept") .. ": " .. (step.title or ("#" .. step.quest)) .. "  " .. ns:Tr("(failed: abandon it and take it again)")
+    end
     if k == "accept" then return ns:Tr("Accept") .. ": " .. (step.title or ("#" .. step.quest)) .. (step.text and ("  (" .. step.text .. ")") or "") end
     if k == "turnin" then return ns:Tr("Turn in") .. ": " .. (step.title or ("#" .. step.quest)) .. (step.text and ("  (" .. step.text .. ")") or "") end
     if k == "do" then return step.text or (step.title or ("#" .. step.quest)) end
@@ -191,7 +194,9 @@ end
 function ns.GuideStepDone(step, world, ticked)
     if ticked then return true end
     local k, q = step.kind, step.quest
-    if k == "accept" then return world.onQuest(q) or world.completed(q) end
+    if k == "accept" then   -- (a failed quest in your log is not taken yet: abandon it and take it again, F9)
+        return (world.onQuest(q) and not (type(world.failed) == "function" and world.failed(q) == true)) or world.completed(q)
+    end
     if k == "turnin" then return world.completed(q) end
     if k == "do" then return world.completed(q) or world.ready(q) end
     if k == "goto" then return world.near(step) end
@@ -261,6 +266,7 @@ function ns:GuideWorld()
         landedAt = function(node) return Planner(ns.PlannerLandedAt, node) end,
         crossed = function(crossing) return Planner(ns.PlannerCrossed, crossing) end,
         onQuest = function(id) return Ask(QL().IsOnQuest, id) end,
+        failed = function(id) return Failed(id) end,
         completed = function(id) return Ask(QL().IsQuestFlaggedCompleted, id) end,
         ready = function(id) return Ask(QL().IsComplete, id) or Ask(QL().ReadyForTurnIn, id) end,
         level = (type(level) == "number" and not Secret(level)) and level or 0,
@@ -1018,7 +1024,7 @@ function ns:GuideStepMenu(step)
         quest = step.quest
         skipped = (ns.PlannerSkipList and ns.PlannerSkipList()[quest]) and true or false
         entries[1] = { skipped and "Suggest again" or "Never suggest this quest", function()
-            if ns.PlannerSkip then ns.PlannerSkip(quest, not skipped) end
+            if ns.PlannerSkip then ns.PlannerSkip(quest, not skipped, step.title) end
         end }
         local st = State()
         local guide = st and Planned(st) and ns:GuideGet(st.name)
@@ -1583,6 +1589,7 @@ FailedCheck = function(st)
     local q = type(step) == "table" and step.quest
     if type(q) ~= "number" or failedSeen[q] or not Failed(q) then return end
     failedSeen[q] = true
+    if ns.PlannerNoteFailed then ns.PlannerNoteFailed(q) end     -- (abandoning it now is to take it again, not a skip)
     ns:GuidePlanAgain("failed")
 end
 -- Standing at an accept step's place for a minute without the quest: its giver may not be there (old quest data).

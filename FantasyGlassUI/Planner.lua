@@ -500,13 +500,25 @@ end
 local DEATHS_MAX = 50
 
 -- Never suggest this quest (on), or suggest it again (off); plans again at once.
-function ns.PlannerSkip(questID, on)
+-- `name`: the quest's name to keep with it (the skip list shows it once the quest is gone from your log);
+-- else the game's title for it, when it can read one. The entry is the name, or true.
+local function SkipName(questID, name)
+    if type(name) == "string" and not ns:IsSecret(name) then
+        name = ns.Trim(name)
+        if name ~= "" and name:sub(1, 1) ~= "#" then return name:sub(1, 120) end
+    end
+    local QL = C_QuestLog
+    local ok, t = pcall(function() return QL and QL.GetTitleForQuestID and QL.GetTitleForQuestID(questID) end)
+    if ok and type(t) == "string" and not ns:IsSecret(t) and t ~= "" then return t:sub(1, 120) end
+    return true
+end
+function ns.PlannerSkip(questID, on, name)
     if type(questID) ~= "number" then return end
     local rec = ns.PlannerCharRecord(on and true or false)
     if not rec then return end
     if on then
         if type(rec.skip) ~= "table" then rec.skip = {} end
-        rec.skip[questID] = true
+        rec.skip[questID] = SkipName(questID, name)
         -- (a quest in your log stays in the plan as long as it is there: left out of this session's plans too, and said so)
         if ns.PlannerSessionSkip then ns.PlannerSessionSkip(questID) end
         local QL = C_QuestLog
@@ -925,7 +937,8 @@ local function Plan()
         ns:Print(line)
     end
     local guide, summary = ns.PlannerRoute(ctx)
-    summary.source, summary.sourceWhy = type(ctx.source) == "table" and ctx.source.kind or nil, ctx.sourceWhy
+    summary.sourceWhy = ctx.sourceWhy                        -- (summary.source: set by the route, PlannerRoute.lua; here too for a route that did not)
+    if summary.source == nil and type(ctx.source) == "table" then summary.source = ctx.source.kind end
     local d = ns.PlannerCharRecord(false)                    -- (what this character has yet to show the planner: PlannerTravel.lua's lines)
     summary.noFlights = not (type(d) == "table" and type(d.flights) == "table") or nil
     summary.noBind = not (type(d) == "table" and type(d.bindAt) == "table") or nil
@@ -1407,6 +1420,8 @@ do
                     if took and not done then Removed(a, now).took = took end    -- (kept a second, for a QUEST_TURNED_IN to come)
                 end
                 if done then CountHandIn(a, plan, now)
+                elseif ns.PlannerWasFailed and ns.PlannerWasFailed(a) then  -- (a failed quest abandoned: to be taken again, F9)
+                    if ns.PlannerFailedReset then ns.PlannerFailedReset(a) end
                 elseif ns.PlannerSessionSkip then ns.PlannerSessionSkip(a) end   -- (abandoned: not planned again this session)
             end
             ns:PlannerReplan("quest removed")
