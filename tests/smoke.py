@@ -13513,8 +13513,8 @@ try("13.4 feel B: time to level, why this, preview", function()
         end
         if all:find("Moved:", 1, true) then error("no moved line without a moved hub") end
         summary.moved = 14
-        if not text(ns.PlannerPreviewLines({ steps = steps }, summary)):find("Moved: you died twice here (back at level 14)", 1, true) then error("the moved line") end
-        if ns.GuideMovedText(summary) ~= "Moved: you died twice here (back at level 14)" or ns.GuideSkippedText(summary) ~= "Skipped: 3 group quests (Solo is on)" then
+        if not text(ns.PlannerPreviewLines({ steps = steps }, summary)):find("Moved: you died twice here; only the quests you have are kept (back at level 14)", 1, true) then error("the moved line") end
+        if ns.GuideMovedText(summary) ~= "Moved: you died twice here; only the quests you have are kept (back at level 14)" or ns.GuideSkippedText(summary) ~= "Skipped: 3 group quests (Solo is on)" then
             error("the panel's own skipped and moved lines are the preview's")
         end
         summary.moved = nil
@@ -20686,7 +20686,7 @@ try("polish P2: no stuck states", function()
 end)
 try("polish P2: speed and safety", function()
     local saved = { unlocked = ns.GuideUnlocked, state = ns.root.guideState, guides = ns.root.guides, advance = ns.GuideAdvance, raw = ns.PrintRaw,
-        cluster = rawget(env, "MinimapCluster"), errors = #ns.errors }
+        cluster = rawget(env, "MinimapCluster"), errors = #ns.errors, levels = ns.root.plannerLevels, alts = ns.root.alts }
     local ok, err = pcall(function()
         ns.GuideUnlocked = function() return true end
         -- reading the guide's state saves nothing: a character that never followed a guide keeps nothing of it
@@ -20722,11 +20722,32 @@ try("polish P2: speed and safety", function()
         if ns:OpenTrackingMenu() ~= false or clicked ~= 0 then error("an old drop-down button is not clicked from add-on code") end
         env.MinimapCluster = { Tracking = { Button = { OpenMenu = function() opened = opened + 1 end } } }
         if ns:OpenTrackingMenu() ~= "menu" or opened ~= 1 then error("the newer menu opens") end
+        -- a locked player's first quest event makes neither saved table
+        ns.GuideUnlocked = function() return false end
+        ns.root.guideState, ns.root.guides = nil, nil
+        fireEvent("QUEST_ACCEPTED", 1, 2); fireEvent("QUEST_LOG_UPDATE"); fireEvent("QUEST_TURNED_IN", 2, 0, 0); runTimers()
+        if ns.root.guideState ~= nil or ns.root.guides ~= nil then error("locked: a quest event made the guide's saved tables") end
+        ns.GuideUnlocked = function() return true end
+        -- the far dock of a crossing ticks a sail step; a dark accent is lightened to read on the panel
+        local dock = ns.GuideFarDock({ kind = "sail", crossing = "auberdine-rutheran", map = 1439, x = 33, y = 40 })
+        if not (dock and dock.map == 1438) then error("the far dock: Rut'theran") end
+        local r, g, b = ns.GuideAccentText()
+        if type(r) ~= "number" then error("the accent as text") end
+        -- a forgotten character's planner records go too
+        ns.root.plannerLevels = ns.root.plannerLevels or {}
+        ns.root.alts = ns.root.alts or {}
+        ns.root.alts["Gone - Realm"] = { name = "Gone" }
+        ns.root.plannerLevels["Gone - Realm"] = { [10] = { s = 60 } }
+        ns.root.guideState = { ["Gone - Realm"] = { name = "x" } }
+        ns:ForgetCharacter("Gone - Realm")
+        if ns.root.plannerLevels["Gone - Realm"] or ns.root.guideState["Gone - Realm"] then error("a forgotten character's guide and level records go") end
         if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
     end)
     ns.GuideAdvance, ns.PrintRaw = saved.advance, saved.raw
     rawset(env, "MinimapCluster", saved.cluster)
     ns:GuideStop()
+    if type(ns.root.alts) == "table" then ns.root.alts["Gone - Realm"] = nil end
+    ns.root.plannerLevels, ns.root.alts = saved.levels, saved.alts
     ns.GuideUnlocked, ns.root.guideState, ns.root.guides = saved.unlocked, saved.state, saved.guides
     if not ok then error(err, 0) end
 end)

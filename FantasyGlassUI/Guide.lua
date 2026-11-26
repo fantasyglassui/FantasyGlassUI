@@ -176,6 +176,17 @@ function ns.GuideStepBase(step)
     return step.text or ""
 end
 
+-- The dock a sail step's crossing takes you to: the one farther from the step's own place (where you board), or nil.
+function ns.GuideFarDock(step)
+    if type(step) ~= "table" or not (step.x and step.y) then return nil end
+    for _, c in ipairs(ns.PLANNER_CROSSINGS or {}) do
+        if c.id == step.crossing and type(c.a) == "table" and type(c.b) == "table" then
+            local function Off(d) return (d.map == step.map) and ((d.x - step.x) ^ 2 + (d.y - step.y) ^ 2) or math.huge end
+            return Off(c.a) <= Off(c.b) and c.b or c.a
+        end
+    end
+    return nil
+end
 -- Is this step done? `world` answers the questions about the game; `ticked` = you ticked it off yourself.
 function ns.GuideStepDone(step, world, ticked)
     if ticked then return true end
@@ -196,7 +207,7 @@ function ns.GuideStepDone(step, world, ticked)
     end
     if k == "hearth" then return Landed(step.to) or Ask1(world.hearthed, step) end
     if k == "learnflight" then return Ask1(world.knownFlight, step.node) end
-    if k == "sail" then return Ask1(world.crossed, step.crossing) end
+    if k == "sail" then return Ask1(world.crossed, step.crossing) or Landed(ns.GuideFarDock(step)) end   -- (or at the far dock: a crossing with no loading screen, after a /reload on board)
     if k == "bind" then return world.bind ~= nil and world.bind == step.text end
     if k == "explore" or k == "gather" then return step.x ~= nil and Ask1(world.near, step) end   -- (passing it is enough)
     return false                                              -- (train, vendor, mail: ticked when the window closes)
@@ -360,6 +371,7 @@ local FailedCheck, NotHere                          -- (the guide's events and i
 --   GuidePanelShown
 --   GuideParse
 --   GuideParseLine
+--   GuidePlanAgain
 --   GuidePlanFailed
 --   GuideRedraw
 --   GuideRegisterAction
@@ -369,6 +381,7 @@ local FailedCheck, NotHere                          -- (the guide's events and i
 --   GuideRegisterLock
 --   GuideRegisterTitle
 --   GuideSave
+--   GuideSaySent
 --   GuideSetPlan
 --   GuideShowPanel
 --   GuideSkip
@@ -814,6 +827,7 @@ local function EndText(st)
     if not Planned(st) then return ns:Tr("This guide is finished.") end
     local s = type(st.summary) == "table" and st.summary
     if not s then return ns:Tr("Planning your route...") end
+    if s.empty and s.source == "log" then return ns:Tr("Install Questie to plan new quests; your quest log has none to plan") end   -- (not the world's fault)
     if s.empty then return ns:Tr("No quests left worth the trip; grinding or a dungeon may be faster") end
     return ns:Tr("Planning what's next...")
 end
@@ -872,11 +886,12 @@ local function RepText(st)
     if not (good and type(nice) == "string") then nice = tostring(math.floor(need)) end
     return format(ns:Tr("%s: %s reputation to %s"), ns.PlannerRepName(best), nice, ns.PlannerRepStandingName(goals[best]))
 end
--- "Moved: you died twice here (back at level 14)": a hub left out of this plan because you died twice there.
+-- "Moved: you died twice here; only the quests you have are kept (back at level 14)": a hub left out of this plan
+-- because you died twice there (its quests already in your log still are planned).
 function ns.GuideMovedText(s)
     local lv = type(s) == "table" and tonumber(s.moved)
     if not lv then return nil end
-    return format(ns:Tr("Moved: you died twice here (back at level %d)"), lv)
+    return format(ns:Tr("Moved: you died twice here; only the quests you have are kept (back at level %d)"), lv)
 end
 local function MovedText(st)
     return Planned(st) and ns.GuideMovedText(st.summary) or nil
@@ -1071,6 +1086,26 @@ local function FitButton(b, least)
     return w
 end
 ns.GuideFitButton = FitButton
+-- The accent as text on the panel: lightened toward white (or darkened, on a pale panel) until it reads at 4.5:1
+-- against the panel's fill, so a dark accent (Midnight, Scarlet) still reads as a title.
+local function Lum(r, g, b)
+    local function c(v) return v <= 0.03928 and v / 12.92 or ((v + 0.055) / 1.055) ^ 2.4 end
+    return 0.2126 * c(r) + 0.7152 * c(g) + 0.0722 * c(b)
+end
+function ns.GuideAccentText()
+    local ar, ag, ab = ns:Role("@accent")
+    local ok, wr, wg, wb = pcall(ns.Role, ns, "window")
+    if not (type(ar) == "number" and ok and type(wr) == "number" and type(wg) == "number" and type(wb) == "number") then return ar, ag, ab end
+    local bg = Lum(wr, wg, wb)
+    local to = bg > 0.4 and 0 or 1                           -- (toward black on a pale panel, toward white on a dark one)
+    local r, g, b = ar, ag, ab
+    for _ = 1, 10 do
+        local l = Lum(r, g, b)
+        if (math.max(l, bg) + 0.05) / (math.min(l, bg) + 0.05) >= 4.5 then break end
+        r, g, b = r + (to - r) * 0.15, g + (to - g) * 0.15, b + (to - b) * 0.15
+    end
+    return r, g, b
+end
 -- Badge colours read on dark panels; on a pale one (a light theme of your own) they are darkened, so they still read.
 local function BadgeColor(c)
     local ok, r, g, b = pcall(ns.Role, ns, "window")
@@ -1174,6 +1209,7 @@ Draw = function()
     local at, steps = st.at or 1, guide.steps
     local planned = Planned(st)
     panel.title:SetText(Title(st, guide))
+    panel.title:SetTextColor(ns.GuideAccentText())
     local texts = {}
     texts.skipped = (planned and st.planFailed) and ns:Tr("Could not plan the route; trying again after your next quest") or SkippedText(st)
     texts.talent = planned and Cached("talent", TalentText) or nil          -- (talent points waiting; the planned guide only)
@@ -1292,7 +1328,6 @@ function ns:GuideShowPanel()
         panel.title:SetPoint("TOPLEFT", 10, -8)
         panel.title:SetWidth(216)
         if panel.title.SetWordWrap then panel.title:SetWordWrap(false) end
-        ns:Paint(panel.title, "SetTextColor", "@accent")
         panel.count = ns:NewText(panel, 10, "RIGHT")
         panel.count:SetPoint("TOPRIGHT", -10, -9)
         ns:Paint(panel.count, "SetTextColor", "faint")
