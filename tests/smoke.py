@@ -18500,6 +18500,103 @@ try("13.6 leftovers C: plan again and plan my route", function()
     ns.plannerQueued, ns.plannerReason = saved.queued, saved.reason
     if not ok then error(err, 0) end
 end)
+try("13.6 leftovers C: route and travel leftovers", function()
+    local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), travel = ns.PlannerTravel, timedQ = ns.PlannerTimedQuest, unlocked = ns.GuideUnlocked,
+        taxi = rawget(env, "UnitOnTaxi"), time = env.GetTime, planner = ns.root.planner, nodes = ns.root.plannerNodes, ft = ns.root.plannerFlightTimes,
+        ct = ns.root.plannerCrossTimes, smp = ns.root.plannerTimeSamples, crossings = ns.PLANNER_CROSSINGS, errors = #ns.errors }
+    local pos, clock, taxi = { 1, 10, 10 }, 5000, false
+    local cm = {}
+    for k, v in pairs(saved.map) do cm[k] = v end
+    cm.GetWorldPosFromMapPos = function(map, v)                 -- (map 1: a percent is 10 yards; map 3 on another continent)
+        if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end
+        if map == 3 then return 1, { x = v.x * 1000, y = v.y * 1000 } end
+    end
+    cm.GetBestMapForUnit = function() return pos[1] end
+    cm.GetPlayerMapPosition = function() return { GetXY = function() return pos[2] / 100, pos[3] / 100 end } end
+    env.C_Map = cm
+    env.CreateVector2D = function(x, y) return { x = x, y = y } end
+    env.GetTime = function() return clock end
+    env.UnitOnTaxi = function() return taxi end
+    ns.GuideUnlocked = function() return true end
+    local function rec(id, sx, sy, ends, xp)
+        return { id = id, name = "Quest " .. id, level = 10, minLevel = 1, xp = xp or 3000, starts = { { map = 1, x = sx, y = sy } }, ends = ends or { { map = 1, x = sx, y = sy } },
+            objectives = { { kind = "kill", count = 4, countKnown = true, mobLevel = 10, spots = { { map = 1, x = sx + 1, y = sy + 1 } } } },
+            pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+    end
+    local function route(list, extra)
+        local byId, ids = {}, {}
+        for _, r in ipairs(list) do byId[r.id] = r; ids[#ids + 1] = r.id end
+        local c = { source = { kind = "questie", ids = function() return ids end, quest = function(id) return byId[id] end },
+            level = 10, group = "solo", speed = 7, faction = "Alliance", done = function() return false end, onQuest = function() return false end,
+            crossings = {}, flights = {}, learnFlights = true, pace = 1, flightTime = function() return nil end }
+        for k, v in pairs(extra or {}) do c[k] = v end
+        return ns.PlannerRoute(c)
+    end
+    local function count(guide, kind, quest)
+        local n = 0
+        for _, st in ipairs(guide.steps) do if st.kind == kind and (quest == nil or st.quest == quest) then n = n + 1 end end
+        return n
+    end
+    local ok, err = pcall(function()
+        -- a hand-in on a map you can't reach: no hand-in step, and its experience leaves the summary
+        local near = rec(9801, 50, 50)
+        local _, alone = route({ near }, { here = { map = 1, x = 40, y = 40 } })
+        local guide, summary = route({ near, rec(9802, 51, 50, { { map = 3, x = 50, y = 50 } }) }, { here = { map = 1, x = 40, y = 40 } })
+        if count(guide, "turnin", 9802) ~= 0 or count(guide, "turnin", 9801) ~= 1 then error("no hand-in step for the unreachable one") end
+        if summary.xp ~= alone.xp then error("its experience leaves the summary: " .. summary.xp .. " / " .. alone.xp) end
+        -- a trip that learns a flight point and then can't reach its end: the learn step and the point are put back
+        local unknown = { node = 21, map = 1, x = 49, y = 49, known = false, name = "Twenty-one" }
+        local far = { node = 22, map = 1, x = 94, y = 94, known = true, name = "Twenty-two" }
+        ns.PlannerTravel = function(from, to, ctx)
+            if type(from) == "table" and type(to) == "table" and from.x == 49 and from.y == 49 and to.x == 95 then return math.huge, {} end
+            return saved.travel(from, to, ctx)
+        end
+        guide, summary = route({ rec(9803, 50, 50, { { map = 1, x = 95, y = 95 } }) }, { flights = { unknown, far } })
+        if count(guide, "learnflight") ~= 0 or count(guide, "turnin", 9803) ~= 0 or count(guide, "accept", 9803) ~= 1 then error("the failed trip's steps are put back") end
+        if summary.xp ~= 0 then error("an unreachable hand-in: no experience: " .. summary.xp) end
+        -- a first trip that fails, then one that works: the second is still the way into the hub (a learn detour)
+        local island = rec(9804, 52, 50)
+        ns.PlannerTravel = function(from, to, ctx)
+            if type(to) == "table" and to.x == 52 and to.y == 50 then return math.huge, {} end
+            return saved.travel(from, to, ctx)
+        end
+        ns.PlannerTimedQuest = function(id) return id == 9804 and 600 or nil end
+        guide = route({ island, rec(9805, 50, 50) }, { here = { map = 1, x = 10, y = 10 }, flights = { { node = 23, map = 1, x = 30, y = 30, known = false, name = "Twenty-three" } } })
+        if count(guide, "accept", 9804) ~= 0 or count(guide, "accept", 9805) ~= 1 then error("the island quest is left out") end
+        if count(guide, "learnflight") ~= 1 or guide.steps[1].kind ~= "learnflight" then error("the way in may learn a flight point: " .. ns.GuideLine(guide.steps[1])) end
+        ns.PlannerTravel, ns.PlannerTimedQuest = saved.travel, saved.timedQ
+        -- flights: control lost while not on a taxi forgets the take-off
+        ns.root.plannerNodes = { [31] = { map = 1, x = 10, y = 10, name = "A" }, [32] = { map = 1, x = 80, y = 80, name = "B" } }
+        ns.root.plannerFlightTimes, ns.root.plannerTimeSamples, ns.root.plannerCrossTimes = nil, nil, nil
+        local me = ns.PlannerCharRecord(true)
+        me.flights = { [31] = true, [32] = true }
+        if not ns.PlannerKnownFlight(31) then error("the travel file reads the planner's own record") end
+        pos = { 1, 10, 10 }; taxi = true; fireEvent("PLAYER_CONTROL_LOST")
+        taxi = false; fireEvent("PLAYER_CONTROL_LOST")
+        clock = clock + 90; pos = { 1, 80, 80 }; fireEvent("PLAYER_CONTROL_GAINED")
+        if ns.root.plannerFlightTimes and ns.root.plannerFlightTimes["31-32"] then error("no flight time after control lost off a taxi") end
+        pos = { 1, 10, 10 }; taxi = true; fireEvent("PLAYER_CONTROL_LOST")
+        clock = clock + 90; pos = { 1, 80, 80 }; fireEvent("PLAYER_CONTROL_GAINED"); taxi = false
+        if not (ns.root.plannerFlightTimes and ns.root.plannerFlightTimes["31-32"] == 90) then error("a real flight is still timed") end
+        -- crossings: timed only when you were at the dock at the last look, and the wait and ride took at most 15 minutes
+        ns.PLANNER_CROSSINGS = { { id = "fake6c", a = { map = 1, x = 90, y = 90 }, b = { map = 3, x = 10, y = 10 }, seconds = 100 } }
+        local function cross(wait, away)
+            pos = { 1, 90, 90 }; ns.PlannerDockTick()
+            if away then pos = { 1, 10, 10 }; ns.PlannerDockTick() end
+            clock = clock + wait; pos = { 3, 10, 10 }; fireEvent("PLAYER_ENTERING_WORLD")
+            return ns.root.plannerCrossTimes and ns.root.plannerCrossTimes.fake6c
+        end
+        if cross(300, true) then error("left the dock: no crossing time") end
+        if cross(1000) then error("1000 s: no crossing time") end
+        if math.abs((cross(300) or 0) - 300) > 1 then error("300 s at the dock: recorded") end
+        if not ns.PlannerCrossed("fake6c") then error("crossed") end
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    ns.PlannerTravel, ns.PlannerTimedQuest, ns.GuideUnlocked, ns.PLANNER_CROSSINGS = saved.travel, saved.timedQ, saved.unlocked, saved.crossings
+    env.C_Map = saved.map; rawset(env, "CreateVector2D", saved.vec); rawset(env, "UnitOnTaxi", saved.taxi); env.GetTime = saved.time
+    ns.root.planner, ns.root.plannerNodes, ns.root.plannerFlightTimes, ns.root.plannerCrossTimes, ns.root.plannerTimeSamples = saved.planner, saved.nodes, saved.ft, saved.ct, saved.smp
+    if not ok then error(err, 0) end
+end)
 -- batch 6 tests C (route): end
 -- batch 6 tests D (leftovers): begin
 -- batch 6 tests D (leftovers): end

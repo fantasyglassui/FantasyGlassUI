@@ -126,6 +126,10 @@ local function DrawRep(ctx, q)
     end
 end
 
+-- Where a quest is handed in: the hand-in nearest `from`, else one on another continent (the trip there says
+-- whether it can be reached at all; nil only when no hand-in can be placed).
+local function HandIn(q, from) return Nearest(q.ends, from) or Nearest(q.ends) end
+
 -- A hub's loop, in order, with its time: accepts, dos and turnins as { rec, spot }. A quest with a clock
 -- on it is a run of its own (accept if not yet, do, hand in) before anything else in the hub (hub.timed).
 local function HubLoop(hub, ctx)
@@ -157,7 +161,7 @@ local function HubLoop(hub, ctx)
             run.spot = DoSpot(q, base)
             if run.spot then t = t + Walk(base, run.spot, ctx); base = run.spot end
         end
-        run.turnin = Nearest(q.ends, base)
+        run.turnin = HandIn(q, base)
         if run.turnin then t = t + Walk(base, run.turnin, ctx); base = run.turnin end
         t = t + HANDLE
         runs[#runs + 1] = run
@@ -180,7 +184,7 @@ local function HubLoop(hub, ctx)
     for _, d in ipairs(dos) do
         if d.spot then t = t + Walk(at, d.spot, ctx); at = d.spot end
     end
-    for _, q in ipairs(rest) do turnins[#turnins + 1] = { rec = q, spot = Nearest(q.ends, at) } end
+    for _, q in ipairs(rest) do turnins[#turnins + 1] = { rec = q, spot = HandIn(q, at) } end
     turnins = Sweep(turnins, at)
     for _, e in ipairs(turnins) do
         if e.spot then t = t + Walk(at, e.spot, ctx); at = e.spot end
@@ -545,7 +549,7 @@ local function Trip(state, dest, steps, between)
     if not dest then return 0 end
     if not state.pos then state.pos = dest; return 0 end
     if ns.PlannerTravel(state.pos, dest, state.tctx) == huge then return nil end
-    local t = 0
+    local t, count, pos, hearth, learned = 0, #steps, state.pos, state.tctx.hearth, {}
     for _ = 1, 4 do
         local f = state.learn and LearnOnWay(state, state.pos, dest, between)
         if not f then break end
@@ -555,9 +559,15 @@ local function Trip(state, dest, steps, between)
         t = t + legs + HANDLE
         steps[#steps + 1] = Place({ kind = "learnflight", node = f.node, text = Clean(f.name) }, spot)
         f.known = true
+        learned[#learned + 1] = f
     end
     local last = Legs(state, dest, steps)
-    return last and t + last or nil
+    if last then return t + last end
+    -- (the end can't be reached from where the detours led: the trip is undone, as if never tried)
+    for i = #steps, count + 1, -1 do steps[i] = nil end
+    for _, f in ipairs(learned) do f.known = false end
+    state.pos, state.tctx.hearth = pos, hearth
+    return nil
 end
 
 local function QuestStep(kind, rec, spot)
@@ -612,10 +622,9 @@ end
 
 local function HubSteps(state, hub, steps, inn, n)
     local t, xp, gone, first, kept = 0, 0, {}, true, 0
-    local function Go(spot)
+    local function Go(spot)                                   -- (the first trip that works is the way into the hub: `first` until then)
         local tt = Trip(state, spot, steps, first)
-        first = false
-        if tt then t = t + tt end
+        if tt then t, first = t + tt, false end
         return tt ~= nil
     end
     local function Do(rec, spot)                              -- (an escort's step says so, and a kill spot you skin at)
@@ -700,11 +709,15 @@ local function HubSteps(state, hub, steps, inn, n)
         end
     end
     for _, e in ipairs(hub.turnins) do
-        if not gone[e.rec.id] and Go(e.spot) then
+        if gone[e.rec.id] then
+            -- (left out above)
+        elseif Go(e.spot) then
             local s = QuestStep("turnin", e.rec, e.spot)
             s.hub = n
             steps[#steps + 1] = s
             t = t + HANDLE
+        else
+            gone[e.rec.id] = true                             -- (its hand-in can't be reached: its experience and time are not counted)
         end
     end
     for _, q in ipairs(hub.quests) do

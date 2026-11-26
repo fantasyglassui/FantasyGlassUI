@@ -75,19 +75,13 @@ end
 ------------------------------------------------------------------------------------------
 -- Saved data (created when first needed; ns.root may be absent early)
 ------------------------------------------------------------------------------------------
--- Saved tables: read without creating (nil when absent); create = true only when writing.
+-- Saved tables: read without creating (nil when absent); create = true only when writing. Your own record is
+-- the planner's (ns.PlannerCharRecord, Planner.lua: loaded after this file, so looked up when called).
 local function CharData(create)
-    if type(ns.root) ~= "table" then return nil end
-    local key = ns:CharKey()
-    if type(ns.root.planner) ~= "table" then
-        if not create then return nil end
-        ns.root.planner = {}
-    end
-    if type(ns.root.planner[key]) ~= "table" then
-        if not create then return nil end
-        ns.root.planner[key] = {}
-    end
-    return ns.root.planner[key]
+    local rec = ns.PlannerCharRecord
+    if type(rec) ~= "function" then return nil end
+    local ok, d = pcall(rec, create)
+    return (ok and type(d) == "table") and d or nil
 end
 
 local function Account(name, create)
@@ -187,7 +181,7 @@ local function NearDock(spot, d, radius)
 end
 
 local function ControlLost()
-    if not (UnitOnTaxi and UnitOnTaxi("player")) then return end
+    if not (UnitOnTaxi and UnitOnTaxi("player")) then takeoff = nil; return end   -- (a stun or a fear: no flight from here)
     local map, x, y = PlayerSpot()
     takeoff = { node = map and NearestKnown(map, x, y) or nil, time = GetTime() }
 end
@@ -228,7 +222,10 @@ local function DockTick()
 end
 ns.PlannerDockTick = DockTick
 
--- Back from a loading screen: are we at the other end of the crossing we waited for?
+-- Back from a loading screen: are we at the other end of the crossing we waited for? The wait and the ride are
+-- timed only when you were still at the dock at the last look before the loading screen, and took at most
+-- PLANNER_CROSS_MOST seconds (longer: you did something else meanwhile).
+ns.PLANNER_CROSS_MOST = 900
 local function EnteringWorld()
     local from = dock
     if not from then return end
@@ -241,7 +238,7 @@ local function EnteringWorld()
                 dock = nil
                 if secs >= 60 then
                     crossed = c.id
-                    RecordTime("plannerCrossTimes", c.id, secs)
+                    if from.inside and secs <= ns.PLANNER_CROSS_MOST then RecordTime("plannerCrossTimes", c.id, secs) end
                 end
             end
             return
