@@ -9,8 +9,14 @@ local Secret = function(v) return ns:IsSecret(v) end
 -- A key (or /fgui read) says what is under the mouse with the game's text-to-speech voice: the
 -- tooltip if one is showing, otherwise the quest being read, otherwise the last whisper.
 -- /fgui read tooltip | quest | whisper picks one.
+-- (the ready-check tick a finished objective ends in, Guide.lua: said as a word, since a texture is not read)
+local TICK = "|T[Ii]nterface\\[Rr]aid[Ff]rame\\[Rr]eady[Cc]heck%-[Rr]eady[^|]*|t"
 local function Plain(text)
     if type(text) ~= "string" or Secret(text) then return nil end
+    if text:find(TICK) then
+        local word = tostring(ns:Tr("done")):gsub("%%", "%%%%")
+        text = text:gsub(TICK, " " .. word)
+    end
     text = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|T.-|t", ""):gsub("|A.-|a", ""):gsub("|H.-|h(.-)|h", "%1"):gsub("|n", " ")
     text = text:gsub("%s+", " "):gsub("^ ", ""):gsub(" $", "")
     return text ~= "" and text or nil

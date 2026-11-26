@@ -1338,9 +1338,10 @@ function ns.PlannerContext()
             and type(ns.PLANNER_CLASS_QUESTS[ns.PlannerClassToken()]) == "table" and #ns.PLANNER_CLASS_QUESTS[ns.PlannerClassToken()] > 0)
             and ns.PLANNER_CLASS_QUESTS[ns.PlannerClassToken()] or nil,
         timed = function(id) local v = Num(Call(QL.GetTimeAllowed, ServerId(id) or id)); return v ~= nil and v > 0 end,
-        -- (a candidate Questie numbers otherwise: matched to the log by its title and level; the pair, once known)
-        matchLog = function(rec)
-            return ns.PlannerServerId ~= nil and type(rec) == "table" and ns.PlannerServerId(rec.id, rec.name, rec.level) ~= nil
+        -- (a candidate Questie numbers otherwise: matched to the log by its title and level, unless another of `rivals`, the
+        -- candidates, has that title; the pair, once known)
+        matchLog = function(rec, rivals)
+            return ns.PlannerServerId ~= nil and type(rec) == "table" and ns.PlannerServerId(rec.id, rec.name, rec.level, rivals) ~= nil
         end,
         mappedId = ns.PlannerMappedId,   -- (a quest in the log with a clock on it)
         itemCount = function(id) return Num(Call(C_Item and C_Item.GetItemCount, id)) or 0 end,

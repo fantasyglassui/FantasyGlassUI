@@ -324,6 +324,7 @@ function ns.FolderFollowCheck()
     LoginLoad()
     if not fight and not ns.folderReady.planner then followFailed = true end
 end
+function ns.FolderFollowReset() followFailed = false end    -- (the tests: a new session)
 ns.GuideRegisterLock("plannerFollow", function(unlocked)
     if unlocked then ns.FolderFollowCheck() end
 end)

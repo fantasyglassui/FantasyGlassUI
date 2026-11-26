@@ -407,26 +407,19 @@ local function State()
     return state[ns:CharKey()]
 end
 ns.GuideState = State
--- The quests of the plan you follow ({ [id] = true }): a log entry that is one of them is never matched to another.
-local planQuestsFor, planQuests
-local function PlanQuests()
+-- The steps of the guide you follow (the plan, a trip or a written guide): their quests are never matched to one another,
+-- and a log entry that is one of them is never matched to another (PlannerRecorders.lua).
+local function GuideSteps()
     local st = State()
-    local plan = type(st) == "table" and st.name == ns.GUIDE_PLANNED and type(st.plan) == "table" and st.plan or nil
-    if not plan then return nil end
-    if planQuestsFor ~= plan then
-        planQuestsFor, planQuests = plan, {}
-        for _, s in ipairs(type(plan.steps) == "table" and plan.steps or {}) do
-            if type(s) == "table" and type(s.quest) == "number" then planQuests[s.quest] = true end
-        end
-    end
-    return planQuests
+    local guide = type(st) == "table" and st.name ~= nil and ns:GuideGet(st.name) or nil
+    return type(guide) == "table" and type(guide.steps) == "table" and guide.steps or nil
 end
 LogId = function(id, step)
     if type(id) ~= "number" then return nil end
     if not ns.PlannerServerId then return Ask(QL().IsOnQuest, id) and id or nil end
     local name, level
     if type(step) == "table" and step.quest == id then name, level = step.title, step.qlevel end
-    return ns.PlannerServerId(id, name, level, name and PlanQuests() or nil)
+    return ns.PlannerServerId(id, name, level, name and GuideSteps() or nil)
 end
 -- On a trip (Go: a gold idea's way there): the trip is followed under ns.GUIDE_TRIP, and the state you were in
 -- (the planned route, a written guide, or none) waits in st.resume, one level deep.

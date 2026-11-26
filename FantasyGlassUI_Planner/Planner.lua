@@ -278,14 +278,14 @@ function ns.PlannerCandidates(source, ctx)
     local level, done, onQuest = ctx.level or 1, ctx.done or function() return false end, ctx.onQuest or function() return false end
     local never = type(ctx.skip) == "table" and ctx.skip or nil
     local items, groupOnly, dropped = {}, {}, {}
+    local maybe = {}                                     -- (not in your log under its own id: matched by its title below)
     if source.begin then source.begin(level) end
     for _, id in ipairs(source.ids()) do
         ns.PlannerYield()
         local logged = onQuest(id)
         local rec = (logged or not (never and never[id])) and (logged or not source.inRange or (type(ctx.windowPass) == "table" and ctx.windowPass[id]) or source.inRange(id, level, ctx.windowLo, ctx.windowHi)) and source.quest(id) or nil
-        if rec and not logged and type(ctx.matchLog) == "function" and ctx.matchLog(rec) then
-            logged = onQuest(id)                         -- (in your log under another id, by its title: taken, with the log's progress)
-            if logged then rec = source.quest(id) or rec end
+        if rec and not logged and type(ctx.matchLog) == "function" and rec.doable and not rec.repeatable and not done(id) then
+            maybe[#maybe + 1] = rec                      -- (one you could take: once every candidate is known, below)
         end
         if rec then
             if logged then
@@ -302,6 +302,21 @@ function ns.PlannerCandidates(source, ctx)
                         list[#list + 1] = rec
                     end
                 end
+            end
+        end
+    end
+    -- in your log under another id, by its title (and level), when no other candidate has that title: taken, with the
+    -- log's progress, instead of offered (a quest you could not take, or a repeatable one, is never matched)
+    if #maybe > 0 then
+        local function Without(t, r)
+            for i = #t, 1, -1 do if t[i] == r then table.remove(t, i) end end
+        end
+        for _, r in ipairs(maybe) do
+            ns.PlannerYield()
+            if ctx.matchLog(r, maybe) and onQuest(r.id) then
+                Without(list, r); Without(items, r); Without(groupOnly, r)
+                local rec = source.quest(r.id) or r
+                if Keep(rec, ctx, true) then list[#list + 1] = rec else dropped[#dropped + 1] = rec end
             end
         end
     end
@@ -829,8 +844,12 @@ local function Estimates(guide, summary, ctx)
     return out, share
 end
 
--- Questie still loading: since when (uptime), and when to look again; nil when it is not.
+-- Questie still loading: since when (uptime), and when to look again; nil when it is not. waitAsked: the plan waiting
+-- is one you asked for (Plan my route, Plan again, Plan from here), so Keep my route lets Questie's two retries through.
 local waitingSince, waitRetryAt
+local waitAsked = false
+local KEPT_REPLANS = { again = true, ["from here"] = true }   -- (asked for: Plan again, and the map's Plan from here; Keep my route, below)
+local QUESTIE_RETRIES = { questie = true, ["questie wait"] = true }
 local WAIT_RETRY = 5
 
 -- The coroutine's body: guide, summary, ctx; nil and "waiting" while Questie is still loading (it asks again,
@@ -957,11 +976,13 @@ local function Tick()
     running, ns.plannerBusy, planToken = nil, false, nil
     if ns.plannerQueued then return end                      -- queued meanwhile: never apply a stale result
     if ok and guide == nil and summary == "waiting" then     -- (Questie still loading: the old plan stays; look again in a while)
+        waitAsked = waitAsked or startPending or KEPT_REPLANS[runReason] == true
         local now = Now()
         waitRetryAt = now and now + WAIT_RETRY or nil
         if ns.GuideRedraw then ns:GuideRedraw() end
         return
     end
+    waitAsked = false                                        -- (that run is over: Questie's retries are automatic again)
     if not ok then
         -- keep the last good plan; the panel says so (every time, not only the first), /fgui check lists it.
         -- The start's plan failed: a later plan is not that start's (no preview for it, its own reason).
@@ -979,11 +1000,12 @@ end
 ns:Every(0, "Planner", Tick)
 
 -- Keep my route (ns.db.plannerKeepRoute): the reasons that still plan again, the ones you ask for yourself (Plan my
--- route is ns:PlannerStart). Every other one is refused: a level, a hand-in, a loading screen, a quest taken or lost, the
--- hearthstone, a new flight point, a death, a closed window, a setting, the time, the zone goal, Questie ready, the duo,
--- the route's end, a skip, a failed quest, a hearth, Plan from here on the map.
-local KEPT_REPLANS = { again = true, ["from here"] = true }   -- (asked for: Plan again, and the map's Plan from here)
+-- route is ns:PlannerStart; Plan again; Plan from here on the map). Every other one is refused: a level, a hand-in, a
+-- loading screen, a quest taken or lost, the hearthstone, a new flight point, a death, a closed window, a setting, the
+-- time, the zone goal, Questie ready, the duo, the route's end, a skip, a failed quest, a hearth. Questie's two retries
+-- ("questie", "questie wait") pass only while a plan you asked for waits on Questie (waitAsked): they bring that plan.
 function ns.PlannerKeepsRoute(reason)
+    if waitAsked and QUESTIE_RETRIES[reason] then return false end
     return type(ns.db) == "table" and ns.db.plannerKeepRoute == true and not KEPT_REPLANS[reason]
 end
 -- Plan again (soon, a slice at a time). `reason` is only for debugging. Returns false when you are not
@@ -1017,6 +1039,7 @@ end
 
 function ns:PlannerStop()
     running, ns.plannerBusy, ns.plannerQueued, startPending, planToken = nil, false, false, false, nil
+    waitAsked = false
     waitRetryAt, burst, placeWait = nil, nil, 0
 end
 
