@@ -11739,6 +11739,387 @@ try("gold A: bags, junk and vendor flips", function()
 end)
 -- gold tests A (sell): end
 -- gold tests B (farm): begin
+try("gold B: monsters worth killing", function()
+    local envNames = { "GetNumLootItems", "GetLootSlotType", "GetLootSlotLink", "GetLootSlotInfo", "GetLootSourceInfo", "GetMoney", "time",
+        "UnitGUID", "UnitName", "UnitLevel", "GetRealZoneText", "QuestieLoader", "Questie", "GetQuestLogRewardMoney", "C_QuestLog", "C_Map",
+        "debugprofilestop", "InCombatLockdown", "IsInGroup", "IsInInstance", "UnitIsDead", "GetTime" }
+    local keepEnv = {}
+    local keepSlotType = env.Enum.LootSlotType
+    for _, n in ipairs(envNames) do keepEnv[n] = rawget(env, n) end
+    local keep = { unlocked = ns.GuideUnlocked, mobs = ns.root.goldMobs, chars = ns.root.goldChars, zones = ns.root.farmZones,
+        info = ns.GetItemInfo, entry = ns.PriceEntry, today = ns.Today, loaded = env.C_AddOns.IsAddOnLoaded, sources = nil }
+    local ok, err = pcall(function()
+        if type(ns.GoldMobNote) ~= "function" or type(ns.GoldFarmIdeas) ~= "function" then error("ns.GoldMobNote is nil") end
+        keep.sources = ns.GoldSources()
+        for key in pairs(keep.sources) do ns.GoldRegister(key, nil) end
+        local function Drain() local n = 0; while ns.GoldBusy() and n < 2000 do ns.GoldRunSlice(); n = n + 1 end; return n end
+        Drain()
+        ns.GuideUnlocked = function() return true end
+        env.InCombatLockdown = function() return false end
+        fireEvent("PLAYER_REGEN_ENABLED")
+        local today = 20261125
+        ns.Today = function() return today end
+        ns.root.goldMobs, ns.root.goldChars, ns.root.farmZones = nil, nil, nil
+        ns.PriceEntry = function() return nil end
+        local vendor = { [2589] = 13 }
+        ns.GetItemInfo = function(_, id) return "Item " .. tostring(id), nil, 1, nil, nil, nil, nil, nil, nil, nil, vendor[id] end
+        env.C_AddOns.IsAddOnLoaded = function() return false end
+        -- the game: a loot window, the target, where you stand, your purse and the clock
+        local slots, money, now, target = {}, 1000, 1800000000, nil
+        local grouped, inside, dead, clock = false, false, true, 5000
+        env.Enum.LootSlotType = { None = 0, Item = 1, Money = 2, Currency = 3 }
+        env.IsInGroup = function() return grouped end
+        env.IsInInstance = function() return inside, inside and "party" or "none" end
+        env.UnitIsDead = function() return dead end
+        env.GetTime = function() return clock end
+        local unpackIt = table.unpack or unpack
+        env.GetNumLootItems = function() return #slots end
+        env.GetLootSlotType = function(i) return slots[i] and slots[i].link and 1 or 2 end
+        env.GetLootSlotLink = function(i) return slots[i] and slots[i].link end
+        env.GetLootSlotInfo = function(i) return 134400, "Thing", slots[i] and slots[i].qty or 0 end
+        env.GetLootSourceInfo = function(i) return unpackIt(slots[i] and slots[i].src or {}) end
+        env.GetMoney = function() return money end
+        env.time = function() return now end
+        env.UnitGUID = function(u) if u == "target" then return target end return "Player-1-00000001" end
+        env.UnitName = function(u) if u == "target" then return "Defias Thug" end return "Someone" end
+        env.UnitLevel = function(u) if u == "target" then return 18 end return 20 end
+        env.GetRealZoneText = function() return "Westfall" end
+        env.C_Map = { GetBestMapForUnit = function() return 1436 end,
+                      GetPlayerMapPosition = function() return { GetXY = function() return 0.49, 0.5 end } end,
+                      GetMapInfo = function(id) if id == 1436 then return { name = "Westfall" } end end }
+        local LINEN = "|cffffffff|Hitem:2589::::::::20:::::|h[Linen Cloth]|h|r"
+        local n = 0
+        local function Guid(npc) n = n + 1; return string.format("Creature-0-1-2-3-%d-%08X", npc, n) end
+        local function Loot(list, gain, step)
+            now = now + (step or 30)
+            clock = clock + (step or 30)
+            slots = list
+            fireEvent("LOOT_OPENED")
+            money = money + (gain or 0)
+            fireEvent("LOOT_CLOSED")
+            slots = {}
+        end
+        local function Count(t) local c = 0; for _ in pairs(t or {}) do c = c + 1 end; return c end
+        -- loot recording
+        local g = "Creature-0-1-2-3-589-0000AAAA"
+        target = g
+        Loot({ { link = LINEN, qty = 2, src = { g, 2 } }, { src = { g, 0 } } }, 150)
+        local m = ns.root.goldMobs and ns.root.goldMobs[589]
+        if type(m) ~= "table" or m.loots ~= 1 or m.copper ~= 150 or type(m.items) ~= "table" or m.items[2589] ~= 2 then
+            error("one monster's loot: " .. tostring(m and m.loots) .. " " .. tostring(m and m.copper) .. " " .. tostring(m and m.items and m.items[2589])) end
+        if m.name ~= "Defias Thug" or m.level ~= 18 or m.map ~= 1436 or m.zone ~= "Westfall" or m.x ~= 49 or m.y ~= 50 or m.last ~= today then
+            error("who and where: " .. tostring(m.name) .. " " .. tostring(m.level) .. " " .. tostring(m.map) .. " " .. tostring(m.x)) end
+        Loot({ { link = LINEN, qty = 2, src = { g, 2 } } }, 150)
+        if m.loots ~= 1 or m.copper ~= 150 then error("the same corpse again is not a second loot") end
+        Loot({ { link = LINEN, qty = 1, src = { "Player-1-0000BEEF", 1 } } }, 50)
+        if Count(ns.root.goldMobs) ~= 1 then error("a player's loot is not a monster's") end
+        local two1, two2 = Guid(590), Guid(591)
+        Loot({ { link = LINEN, qty = 3, src = { two1, 1, two2, 2 } } }, 100)
+        local a, b = ns.root.goldMobs[590], ns.root.goldMobs[591]
+        if not (a and b) or a.items[2589] ~= 1 or b.items[2589] ~= 2 or a.copper ~= 0 or b.copper ~= 0 or a.loots ~= 1 then error("two monsters: items kept, no coin") end
+        if a.name ~= nil then error("a name only from the target") end
+        ns.GuideUnlocked = function() return false end
+        Loot({ { link = LINEN, qty = 1, src = { Guid(592), 1 } } }, 10)
+        ns.GuideUnlocked = function() return true end
+        if ns.root.goldMobs[592] ~= nil then error("locked: nothing kept") end
+        -- the caps: 12 items a monster, 400 monsters
+        local many = {}
+        for i = 1, 13 do many[5000 + i] = i; vendor[5000 + i] = 10 end
+        ns.GoldMobNote(593, "Hoarder", 10, 1436, "Westfall", 10, 10, many, 0, today)
+        if Count(ns.root.goldMobs[593].items) ~= 12 or ns.root.goldMobs[593].items[5001] ~= nil or ns.root.goldMobs[593].other ~= 10 then error("12 items, the most looted; the rest as other") end
+        -- a rare valuable drop gets into a full list; a cheap one does not, and counts as other
+        local full = {}
+        for i = 1, 12 do full[6000 + i] = 5; vendor[6000 + i] = 10 end
+        ns.GoldMobNote(594, "Rich", 10, 1436, "Westfall", 10, 10, full, 0, today)
+        vendor[7000], vendor[7001] = 10000, 1
+        ns.GoldMobNote(594, nil, nil, nil, nil, nil, nil, { [7000] = 1 }, 0, today)
+        ns.GoldMobNote(594, nil, nil, nil, nil, nil, nil, { [7001] = 1 }, 0, today)
+        local rich = ns.root.goldMobs[594]
+        if rich.items[7000] ~= 1 or rich.items[7001] ~= nil or Count(rich.items) ~= 12 or rich.other ~= 51 then error("the rare drop: " .. tostring(rich.other)) end
+        rich.loots = 10
+        if ns.GoldMobValue(rich, today) ~= math.floor((11 * 50 + 10000 + 51) / 10) then error("the learned value counts other: " .. tostring(ns.GoldMobValue(rich, today))) end
+        -- an item not loaded yet counts nothing
+        local realInfo = ns.GetItemInfo
+        ns.GetItemInfo = function(self, id) if id == 7000 then return nil end return realInfo(self, id) end
+        if ns.GoldMobValue(rich, today) ~= math.floor((11 * 50 + 51) / 10) then error("an item not loaded counts nothing") end
+        ns.GetItemInfo = realInfo
+        -- coin from the money slot, per creature; a second LOOT_OPENED keeps the coin it waits for
+        local c1, c2 = Guid(595), Guid(596)
+        Loot({ { link = LINEN, qty = 2, src = { c1, 1, c2, 1 } }, { src = { c1, 30, c2, 70 } } }, 100)
+        if ns.root.goldMobs[595].copper ~= 30 or ns.root.goldMobs[596].copper ~= 70 then error("coin per creature from the money slot") end
+        local c3 = Guid(597)
+        slots = { { link = LINEN, qty = 1, src = { c3, 1 } } }
+        fireEvent("LOOT_OPENED"); fireEvent("LOOT_OPENED")
+        money = money + 40
+        fireEvent("LOOT_CLOSED")
+        slots = {}
+        if ns.root.goldMobs[597].copper ~= 40 or ns.root.goldMobs[597].loots ~= 1 then error("a repeated LOOT_OPENED keeps the coin: " .. tostring(ns.root.goldMobs[597].copper)) end
+        -- solo only; inside an instance it is kept, but never a world farm idea
+        grouped = true
+        Loot({ { link = LINEN, qty = 1, src = { Guid(598), 1 } } }, 10)
+        grouped = false
+        if ns.root.goldMobs[598] ~= nil then error("in a group nothing is kept") end
+        inside = true
+        Loot({ { link = LINEN, qty = 1, src = { Guid(599), 1 } } }, 10)
+        inside = false
+        if not ns.root.goldMobs[599] or ns.root.goldMobs[599].instance ~= true then error("looted in a dungeon: marked") end
+        local only599 = {}
+        ns.GoldFarmIdeas(ns.GoldContext("window"), function(i) only599[#only599 + 1] = i end, { [599] = ns.root.goldMobs[599] }, {}, nil, nil)
+        if #only599 ~= 0 then error("a dungeon monster is not a farm idea") end
+        -- Pick Pocket and gathering windows are not kills, and a living target is not either
+        local pp = Guid(610)
+        target = pp
+        fireEvent("UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-1", 921)
+        clock = clock + 1
+        slots = { { link = LINEN, qty = 1, src = { pp, 1 } } }; fireEvent("LOOT_OPENED"); fireEvent("LOOT_CLOSED"); slots = {}
+        if ns.root.goldMobs[610] ~= nil then error("Pick Pocket is not a loot") end
+        Loot({ { link = LINEN, qty = 1, src = { pp, 1 } } }, 0, 5)
+        if not ns.root.goldMobs[610] or ns.root.goldMobs[610].loots ~= 1 then error("the corpse after Pick Pocket is a loot") end
+        local sk = Guid(611)
+        fireEvent("UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-2", 8613)
+        clock = clock + 1
+        slots = { { link = LINEN, qty = 1, src = { sk, 1 } } }; fireEvent("LOOT_OPENED"); fireEvent("LOOT_CLOSED"); slots = {}
+        if ns.root.goldMobs[611] ~= nil then error("skinning is not a loot") end
+        fireEvent("UNIT_SPELLCAST_SUCCEEDED", "party1", "Cast-3", 921)
+        local alive = Guid(612)
+        target, dead = alive, false
+        Loot({ { link = LINEN, qty = 1, src = { alive, 1 } } }, 0, 5)
+        if ns.root.goldMobs[612] ~= nil then error("a living target is not a loot") end
+        dead = true
+        Loot({ { link = LINEN, qty = 1, src = { alive, 1 } } }, 0, 5)
+        if not ns.root.goldMobs[612] then error("once dead it is, and the first window was not remembered") end
+        for _, id in ipairs({ 594, 595, 596, 597, 599, 610, 611, 612 }) do ns.root.goldMobs[id] = nil end
+        target = g
+        Drain()
+        -- the default until 10 loots, then what it has taught
+        for _ = 2, 9 do target = Guid(589); Loot({ { src = { target, 0 } } }, 0) end
+        if m.loots ~= 9 then error("nine loots: " .. tostring(m.loots)) end
+        if ns.GoldKillDefault(18) ~= 150 or ns.GoldKillDefault(9) ~= 30 or ns.GoldKillDefault(29) ~= 400 or ns.GoldKillDefault(60) ~= 2600 or ns.GoldKillDefault(nil) ~= 400 then error("the defaults by level") end
+        local v, day, learned = ns.GoldMobValue(m, today)
+        if v ~= 150 or learned ~= false or day ~= nil then error("nine loots: the default: " .. tostring(v)) end
+        target = Guid(589); Loot({ { src = { target, 0 } } }, 0)
+        v, day, learned = ns.GoldMobValue(m, today)
+        if learned ~= true or v ~= 17 then error("ten loots: learned (150 + 2 x 13) / 10: " .. tostring(v)) end
+        -- kill speed: your own pace, else how many Questie lists
+        if ns.GoldKillSeconds(nil) ~= 40 or ns.GoldKillSeconds(30) ~= 30 or ns.GoldKillSeconds(12) ~= 40 or ns.GoldKillSeconds(5) ~= 60 then error("kill seconds by spawns") end
+        ns.root.goldChars = nil
+        for _ = 1, 21 do Loot({ { src = { Guid(700), 0 } } }, 0, 30) end
+        local pace = ns.root.goldChars and ns.root.goldChars[ns:CharKey()] and ns.root.goldChars[ns:CharKey()].pace
+        if type(pace) ~= "table" or pace.loots ~= 20 or pace.secs ~= 600 then error("the pace: " .. tostring(pace and pace.loots) .. " " .. tostring(pace and pace.secs)) end
+        Loot({ { src = { Guid(700), 0 } } }, 0, 500)
+        if pace.loots ~= 20 or pace.secs ~= 600 then error("a loot after a long gap adds nothing") end
+        local ctx = ns.GoldContext("window")
+        local function Ideas(zones, questie, here)
+            local got = {}
+            ns.GoldFarmIdeas(ctx, function(i) got[#got + 1] = i end, ns.root.goldMobs, zones or {}, questie, here)
+            local by = {}
+            for _, i in ipairs(got) do by[i.id] = i end
+            return got, by
+        end
+        local got, by = Ideas()
+        local thug = by["farm:1436:589"]
+        if not thug or thug.killSeconds ~= 30 or thug.perHour ~= math.floor(3600 / 30 * 17) or thug.kind ~= "farm" or thug.basis ~= "guess" then
+            error("your own pace: " .. tostring(thug and thug.killSeconds) .. " " .. tostring(thug and thug.perHour)) end
+        if thug.title ~= "Kill Defias Thug in Westfall" or thug.ease ~= 35 or not ns.GoldIdeaValid(thug) then error("the idea: " .. tostring(thug.title) .. " " .. tostring(thug.ease)) end
+        if #got > 8 then error("at most 8") end
+        -- no Questie: one spot, the place you looted it
+        if #thug.steps ~= 2 or thug.steps[1].text ~= "Go to Westfall" or thug.steps[1].map ~= 1436 or thug.steps[2].text ~= "Kill Defias Thug around here"
+            or thug.steps[2].x ~= 49 or thug.steps[2].y ~= 50 then error("one spot without Questie: " .. #thug.steps) end
+        if thug.tip ~= nil then error("no Questie, no quest part") end
+        -- Questie: the quest item it drops, how many there are, and a loop round them
+        ns.root.goldChars[ns:CharKey()].pace = nil
+        local pts = { { 50, 50 }, { 53, 50 }, { 58, 50 }, { 40, 50 }, { 30, 50 }, { 65, 50 }, { 70, 50 }, { 20, 50 }, { 10, 50 }, { 80, 50 }, { 90, 50 }, { 5, 50 } }
+        local npcs = { [589] = { name = "Defias Thug", minLevel = 17, maxLevel = 18, spawns = { [40] = pts } },
+                       [601] = { name = "Gnoll Mystic", minLevel = 15, maxLevel = 16, spawns = { [40] = { { 30, 30 }, { 31, 30 } }, [41] = { { 1, 1 } } } } }
+        local fakes = {
+            QuestieDB = { QueryNPCSingle = function(id, k) return npcs[id] and npcs[id][k] end,
+                          QueryItemSingle = function(id, k) if id == 900 and k == "npcDrops" then return { 589 } end
+                                                            if id == 901 and k == "npcDrops" then return { 601 } end end,
+                          QueryQuestSingle = function(id, k) if k ~= "objectives" then return nil end
+                                                             if id == 100 then return { nil, nil, { { 900, 5 } } } end
+                                                             if id == 101 then return { nil, nil, { { 901 } } } end end },
+            ZoneDB = { GetUiMapIdByAreaId = function(_, area) if area == 40 then return 1436 end if area == 41 then return 1429 end end },
+        }
+        env.QuestieLoader = { ImportModule = function(_, name) return fakes[name] end }
+        env.Questie = { API = { isReady = true } }
+        env.C_AddOns.IsAddOnLoaded = function(name) return name == "Questie" end
+        env.GetQuestLogRewardMoney = function(id) if id == 100 then return 2000 end if id == 101 then return 400 end return 0 end
+        env.C_QuestLog = { GetNumQuestLogEntries = function() return 3 end,
+                           GetInfo = function(i) if i == 1 then return { title = "Westfall", isHeader = true } end
+                                                 if i == 2 then return { title = "The Defias", questID = 100 } end
+                                                 if i == 3 then return { title = "Gnoll Paws", questID = 101 } end end,
+                           IsComplete = function() return false end,
+                           GetQuestObjectives = function(id) if id == 101 then return { { type = "item", numRequired = 4 } } end return {} end }
+        local Q = ns.GoldFarmQuestie()
+        if type(Q) ~= "table" then error("Questie is read") end
+        got, by = Ideas({}, Q, { map = 1436, x = 49, y = 50 })
+        thug = by["farm:1436:589"]
+        if not thug or thug.perLoot ~= 17 + 200 or thug.killSeconds ~= 40 or thug.perHour ~= 1530 + 2000 then error("the quest item adds 2000 / 5 x 0.5: " .. tostring(thug and thug.perLoot) .. " " .. tostring(thug and thug.killSeconds)) end
+        if type(thug.tip) ~= "table" or thug.tip[1] ~= "Includes the reward of The Defias." then error("the tip says which quest: " .. tostring(thug.tip and thug.tip[1])) end
+        local once, first = nil, nil
+        for _, line in ipairs(thug.detail or {}) do
+            if line.left == "Includes a one-time quest reward of " .. ns:Coins(2000) and line.copper == 2000 then once = line end
+            if line.left == "1. Kill Defias Thug around here" and line.right == "50.0, 50.0" then first = line end
+        end
+        if not once then error("the quest part is capped at the reward, and says so") end
+        if not first then error("the way round counts its stops from 1") end
+        local want = { 50, 53, 58, 65, 70, 80 }
+        if #thug.steps ~= 7 or thug.steps[2].text ~= "Kill Defias Thug around here" then error("a loop of 6 spawns: " .. #thug.steps) end
+        for i, x in ipairs(want) do
+            local s = thug.steps[i + 1]
+            if s.x ~= x or s.y ~= 50 or s.map ~= 1436 then error("the loop's stop " .. i .. ": " .. tostring(s.x)) end
+        end
+        local routeLine = false
+        for _, line in ipairs(thug.detail or {}) do if line.right == "53.0, 50.0" then routeLine = true end end
+        if not routeLine then error("the loop is in the detail too") end
+        local mystic = by["farm:1436:601"]
+        if not mystic or mystic.perLoot ~= ns.GoldKillDefault(16) + 50 or mystic.killSeconds ~= 60 or mystic.title ~= "Kill Gnoll Mystic in Westfall"
+            or mystic.ease ~= 35 or #mystic.steps ~= 3 or mystic.steps[2].x ~= 31 then
+            error("a Questie dropper: " .. tostring(mystic and mystic.perLoot) .. " " .. tostring(mystic and mystic.killSeconds)) end
+        if mystic.oneOff ~= true or mystic.total ~= 400 or mystic.minutes ~= 4 or mystic.perHour ~= nil or not ns.GoldIdeaValid(mystic) then
+            error("only the quest: a one-off: " .. tostring(mystic.total) .. " " .. tostring(mystic.minutes)) end
+        env.C_QuestLog.GetQuestObjectives = function(id) if id == 101 then return { { type = "item", numRequired = 4, finished = true } } end return {} end
+        got, by = Ideas({}, ns.GoldFarmQuestie(), { map = 1436, x = 49, y = 50 })
+        if by["farm:1436:601"] ~= nil then error("a finished objective brings nothing") end
+        env.C_AddOns.IsAddOnLoaded = function() return false end
+        if ns.GoldFarmQuestie() ~= nil then error("Questie missing") end
+        got, by = Ideas({}, nil, { map = 1436, x = 49, y = 50 })
+        if by["farm:1436:589"].perLoot ~= 17 or by["farm:1436:601"] ~= nil then error("Questie missing: no quest part") end
+        env.QuestieLoader = { ImportModule = function() error("broken") end }
+        env.C_AddOns.IsAddOnLoaded = function(name) return name == "Questie" end
+        if ns.GoldFarmQuestie() ~= nil then error("a broken Questie is no Questie") end
+        env.C_AddOns.IsAddOnLoaded = function() return false end
+        -- measured beats guess, through the source itself
+        ns.root.farmZones = { Westfall = { { secs = 1200, gold = 5000, value = 5000 } }, Duskwood = { { secs = 300, gold = 90000, value = 0 } } }
+        ns.GoldRegister("farm", nil)
+        local ideas = ns.GoldCollectNow(ctx)
+        if #ideas ~= 0 then error("the source is registered at load, and this test unregistered it") end
+        ns.GoldRegister("farm", keep.sources.farm)
+        ideas = ns.GoldCollectNow(ctx)
+        by = {}
+        for _, i in ipairs(ideas) do by[i.id] = i end
+        local zone = by["farm:zone:Westfall"]
+        if not zone or zone.basis ~= "measured" or zone.perHour ~= 30000 or zone.title ~= "Farm in Westfall (your own times)" then error("measured: " .. tostring(zone and zone.perHour)) end
+        if by["farm:1436:589"] or by["farm:zone:Duskwood"] then error("the monster is a line of the zone; under 10 minutes is not measured") end
+        local shown = false
+        for _, line in ipairs(zone.detail or {}) do if tostring(line.left):find("Defias Thug", 1, true) then shown = true end end
+        if not shown then error("the monster is in the zone's detail") end
+        if #ns.GoldCollectNow(ns.GoldContext("auction")) ~= 0 then error("nothing for the auction house panel") end
+        -- the pure function, 400 monsters, across slices
+        local mobs = {}
+        for i = 1, 400 do mobs[10000 + i] = { name = "Mob " .. i, level = 10, map = 1436, zone = "Elwynn", x = 10, y = 10, loots = 12, copper = 12 * i, items = { [2589] = 3 }, last = today } end
+        local t = 0
+        env.debugprofilestop = function() t = t + 0.01; return t end
+        local added, result = 0, nil
+        ns.GoldJob(function() result = ns.GoldFarmIdeas(ctx, function() added = added + 1 end, mobs, {}, nil, nil) end, "t:farm400")
+        local slices = Drain()
+        if slices < 2 or type(result) ~= "table" or added ~= 8 or #result ~= 8 then error("400 monsters across slices: " .. slices .. " slices, " .. added .. " added") end
+        if result[1].id ~= "farm:1436:10400" then error("the best first: " .. tostring(result[1].id)) end
+        env.debugprofilestop = keepEnv.debugprofilestop
+        -- 400 monsters kept at most, the oldest let go
+        local store = {}
+        for i = 1, 400 do store[20000 + i] = { loots = 1, copper = 0, items = {}, last = 20261001 + (i % 20) } end
+        store[20001].last = 20250101
+        ns.root.goldMobs = store
+        ns.GoldMobNote(30000, "New", 5, 1436, "Westfall", 1, 1, {}, 0, today)
+        Drain()
+        if Count(store) ~= 400 or store[30000] == nil or store[20001] ~= nil then error("400 monsters: " .. Count(store)) end
+    end)
+    for _, n in ipairs(envNames) do rawset(env, n, keepEnv[n]) end
+    env.Enum.LootSlotType = keepSlotType
+    env.C_AddOns.IsAddOnLoaded = keep.loaded
+    ns.GuideUnlocked, ns.GetItemInfo, ns.PriceEntry, ns.Today = keep.unlocked, keep.info, keep.entry, keep.today
+    ns.root.goldMobs, ns.root.goldChars, ns.root.farmZones = keep.mobs, keep.chars, keep.zones
+    ns.GoldRegister("t:farm400", nil)
+    if keep.sources then
+        for key in pairs(ns.GoldSources()) do ns.GoldRegister(key, nil) end
+        for key, fn in pairs(keep.sources) do ns.GoldRegister(key, fn) end
+    end
+    if not ok then error(err, 0) end
+end)
+try("gold B: dungeon drops", function()
+    local keepTime = rawget(env, "time")
+    local keep = { unlocked = ns.GuideUnlocked, runs = ns.root.runs, book = ns.root.lootBook, info = ns.GetItemInfo, entry = ns.PriceEntry,
+        today = ns.Today, sources = nil }
+    local ok, err = pcall(function()
+        if type(ns.GoldRunValue) ~= "function" then error("ns.GoldRunValue is nil") end
+        keep.sources = ns.GoldSources()
+        for key in pairs(keep.sources) do ns.GoldRegister(key, nil) end
+        ns.GoldRegister("dungeon", keep.sources.dungeon)
+        ns.GuideUnlocked = function() return true end
+        local today, now = 20261125, 1800000000
+        ns.Today = function() return today end
+        env.time = function() return now end
+        local function L(id) return string.format("|cff0070dd|Hitem:%d::::::::60:::::|h[Drop %d]|h|r", id, id) end
+        -- item: vendor, bind type (1 = when picked up); auction prices by id
+        local items = { [1] = { 5000, 2 }, [2] = { 3000, 2 }, [3] = { 500, 1 }, [4] = { 1000, 2 } }
+        local prices = { [3] = { price = 90000, day = today } }
+        ns.PriceEntry = function(id) return prices[id] end
+        ns.GetItemInfo = function(_, what)
+            local id = type(what) == "number" and what or tonumber(tostring(what):match("item:(%d+)"))
+            local it = items[id] or { 0, 0 }
+            return "Drop " .. tostring(id), L(id or 0), 3, 60, 0, "Armor", "Cloth", 1, "INVTYPE_CHEST", 134400, it[1], 4, 1, it[2]
+        end
+        local function Run(instance, ago, secs, loot)
+            local start = now - ago
+            return { instance = instance, start = start, lastKill = start + secs, kills = { Boss = secs }, loot = loot, wipes = {}, deaths = 0, fights = {} }
+        end
+        local ctx = ns.GoldContext("window")
+        local function Ideas()
+            local by, list = {}, ns.GoldCollectNow(ctx)
+            for _, i in ipairs(list) do by[i.id] = i end
+            return by, list
+        end
+        -- an empty run log: nothing, and no error
+        ns.root.runs, ns.root.lootBook = {}, nil
+        local by, list = Ideas()
+        if #list ~= 0 then error("no runs, no ideas") end
+        -- a bound drop counts its vendor price only
+        local bop = Run("Shadowfang Keep", 3600, 1800, { L(3) })
+        local v = ns.GoldRunValue(bop, today)
+        if v ~= 500 then error("bound when picked up: vendor only: " .. tostring(v)) end
+        if ns.GoldRunValue(Run("Deadmines", 100, 1800, { L(1) }), today) ~= 5000 then error("a drop's worth") end
+        prices[5] = { price = 90000, day = today }
+        local cached = ns.GetItemInfo
+        ns.GetItemInfo = function(self, what) if tostring(what):find("item:5:", 1, true) or what == 5 then return nil end return cached(self, what) end
+        if ns.GoldRunValue(Run("Deadmines", 100, 1800, { L(5) }), today) ~= 0 then error("a drop not loaded yet counts nothing, not its auction price") end
+        ns.GetItemInfo = cached
+        -- two runs of 1800 s: measured; one run: a guess; a short or old run is not counted
+        ns.root.runs = { Run("Deadmines", 86400, 1800, { L(1) }), Run("Deadmines", 7200, 1800, { L(2) }), Run("Deadmines", 3600, 200, { L(1), L(1) }),
+                         Run("Deadmines", 100 * 86400, 1800, { L(1), L(1), L(1) }), bop }
+        ns.root.lootBook = { Deadmines = { ["Edwin VanCleef"] = { kills = 4, items = { [4] = { n = 2, link = L(4) } } }, Nobody = { kills = 0, items = {} } } }
+        by, list = Ideas()
+        local dm, sfk = by["dungeon:Deadmines"], by["dungeon:Shadowfang Keep"]
+        if not dm or dm.perHour ~= 8000 or dm.basis ~= "measured" or dm.kind ~= "dungeon" then error("Deadmines: " .. tostring(dm and dm.perHour) .. " " .. tostring(dm and dm.basis)) end
+        if dm.title ~= "Run Deadmines (rare drops)" or dm.ease ~= 20 or dm.where ~= "window" or dm.safety ~= 60 then error("the idea: " .. tostring(dm.title)) end
+        if type(dm.tip) ~= "table" or dm.tip[1] ~= "Counts rare and better drops only; coin and trash are not in it." then error("the tip") end
+        if type(dm.steps) ~= "table" or #dm.steps ~= 1 or dm.steps[1].text ~= "Go to Deadmines" then error("the steps") end
+        if not sfk or sfk.basis ~= "guess" or sfk.perHour ~= 1000 or sfk.safety ~= 35 then error("one run is a guess: " .. tostring(sfk and sfk.perHour)) end
+        local boss, item = nil, nil
+        for _, line in ipairs(dm.detail or {}) do
+            if tostring(line.left):find("Edwin VanCleef", 1, true) then boss = line end
+            if line.left == L(1) then item = line end
+        end
+        if not boss or boss.copper ~= 500 or boss.right ~= ns:Coins(500) then error("a boss's kill is worth 2 / 4 x 1000: " .. tostring(boss and boss.copper)) end
+        if not item or item.copper ~= 5000 then error("your runs' drops with their worth") end
+        for _, line in ipairs(dm.detail) do if tostring(line.left):find("Nobody", 1, true) then error("a boss never killed has no line") end end
+        -- at most 5, by gold an hour
+        local many = {}
+        for i = 1, 7 do many[#many + 1] = Run("Place " .. i, 3600, 1800, { L(1) }); many[#many + 1] = Run("Place " .. i, 3600, 1800 + i * 100, { L(2) }) end
+        ns.root.runs, ns.root.lootBook = many, nil
+        by, list = Ideas()
+        if #list ~= 5 or not by["dungeon:Place 1"] or by["dungeon:Place 7"] then error("at most 5, the best: " .. #list) end
+        if #ns.GoldCollectNow(ns.GoldContext("auction")) ~= 0 then error("nothing for the auction house panel") end
+    end)
+    rawset(env, "time", keepTime)
+    ns.GuideUnlocked, ns.GetItemInfo, ns.PriceEntry, ns.Today = keep.unlocked, keep.info, keep.entry, keep.today
+    ns.root.runs, ns.root.lootBook = keep.runs, keep.book
+    if keep.sources then
+        for key in pairs(ns.GoldSources()) do ns.GoldRegister(key, nil) end
+        for key, fn in pairs(keep.sources) do ns.GoldRegister(key, fn) end
+    end
+    if not ok then error(err, 0) end
+end)
 -- gold tests B (farm): end
 -- gold tests C (gather): begin
 -- gold tests C (gather): end
