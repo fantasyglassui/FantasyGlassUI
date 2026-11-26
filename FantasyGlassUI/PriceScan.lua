@@ -4,8 +4,9 @@ local Secret = function(v) return ns:IsSecret(v) end
 ------------------------------------------------------------------------------------------
 -- Scan prices: a button on the auction house that asks for the whole list of auctions at once (the
 -- game's own full-list call; the server allows it about every 15 minutes, for the whole account) and
--- reads it a few milliseconds a frame, never in a fight. What it read goes into this auction house's
--- prices (Prices.lua) in one go at the end, so nothing ever sees half a scan. It never posts, buys or
+-- reads it a few milliseconds a frame, never in a fight. The finished entries are built beside the store,
+-- also in slices, then put into this auction house's prices (Prices.lua) in one short step, so nothing
+-- ever sees half a scan. It never posts, buys or
 -- bids: those stay your own clicks.
 ------------------------------------------------------------------------------------------
 local COOLDOWN = 15 * 60                     -- (seconds between scans, as the server allows)
@@ -25,16 +26,17 @@ end
 
 -- Rows `from`..`to` of a list of `n` (counted from 0) into acc[itemID] = { low, listed }. read(i) gives
 -- count, buyout, itemID. A row whose item can't be read yet is returned, to be read again; a row with a
--- hidden value is skipped. A row with no buyout (bid only) counts as listed but gives no price.
+-- hidden value is skipped and counted (the second return). A row with no buyout (bid only) counts as
+-- listed but gives no price.
 function ns.PriceScanRows(read, n, acc, from, to)
-    local retry = {}
+    local retry, skipped = {}, 0
     to = math.min(to, n - 1)
     for i = from, to do
         local ok, count, buyout, id = pcall(read, i)
         if not ok then
             retry[#retry + 1] = i
         elseif Secret(id) or Secret(count) or Secret(buyout) then
-            -- (a hidden value is never stored)
+            skipped = skipped + 1                              -- (a hidden value is never stored)
         elseif type(id) ~= "number" then
             retry[#retry + 1] = i
         else
@@ -49,30 +51,59 @@ function ns.PriceScanRows(read, n, acc, from, to)
             end
         end
     end
-    return retry
+    return retry, skipped
 end
 
--- The whole read into a house, at once: the lowest price and the count for each item listed, and a
--- count of 0 for what it already knew that nobody lists now. Returns how many items were read.
-function ns.PriceScanWrite(house, acc, today, now)
-    if type(house.items) ~= "table" then house.items = {} end
-    local items, n = house.items, 0
-    for id, a in pairs(acc) do
-        local e = items[id]
-        if type(e) ~= "table" then e = {}; items[id] = e end
-        if a.low then
-            e.price, e.day = a.low, today
-            ns.AuctionHistoryAdd(e, today, a.low)
-        elseif type(e.day) ~= "number" then
-            e.day = today                                  -- (bid only, and new: kept as long as a price would be)
+-- One item's finished entry, built beside the store (a copy: the store is not touched yet).
+local function Stage(cur, a, today)
+    local e = {}
+    if type(cur) == "table" then
+        for k, v in pairs(cur) do e[k] = v end
+        if type(cur.hist) == "table" then
+            e.hist = {}
+            for d, p in pairs(cur.hist) do e.hist[d] = p end
         end
-        e.listed, e.listedDay = a.listed, today
-        n = n + 1
     end
-    for id, e in pairs(items) do
-        if not acc[id] and type(e) == "table" then e.listed, e.listedDay = 0, today end
+    if a.low then
+        e.price, e.day = a.low, today
+        ns.AuctionHistoryAdd(e, today, a.low)
+    elseif type(e.day) ~= "number" then
+        e.day = today                                  -- (bid only, and new: kept as long as a price would be)
+    end
+    e.listed, e.listedDay = a.listed, today
+    return e
+end
+-- Into the store, in one short pass that only assigns. A price noted while the entries were being built
+-- (it differs from `bases`, the prices they were built from) is kept when it is lower. With `markUnlisted`, what the house knew that the scan did not list gets a
+-- count of 0, and the house remembers this as a full scan (listedAt).
+local function Commit(house, staged, today, now, n, markUnlisted, bases)
+    if type(house.items) ~= "table" then house.items = {} end
+    local items = house.items
+    for id, e in pairs(staged) do
+        local cur = items[id]
+        if bases and type(cur) == "table" and cur.price ~= bases[id] then
+            e.seenDay = cur.seenDay
+            if cur.day == today and type(cur.price) == "number" and (type(e.price) ~= "number" or cur.price < e.price) then e.price, e.day = cur.price, today end
+        end
+        items[id] = e
+    end
+    if markUnlisted then
+        for id, e in pairs(items) do
+            if not staged[id] and type(e) == "table" then e.listed, e.listedDay = 0, today end
+        end
+        house.listedAt = now
     end
     house.scanAt, house.scanItems = now, n
+end
+
+-- The whole read into a house, at once (the scan itself does the same in slices): the lowest price and
+-- the count for each item listed, and with `markUnlisted` (the default) a count of 0 for what it already
+-- knew that nobody lists now. Returns how many items were read.
+function ns.PriceScanWrite(house, acc, today, now, markUnlisted)
+    local staged, n = {}, 0
+    local items = type(house.items) == "table" and house.items or {}
+    for id, a in pairs(acc) do staged[id] = Stage(items[id], a, today); n = n + 1 end
+    Commit(house, staged, today, now, n, markUnlisted ~= false)
     return n
 end
 
@@ -82,14 +113,18 @@ local function GameRow(i)
     return count, buyout, id
 end
 
-local scan                                   -- the read under way: { phase, n, i, acc, retry, queue, qi, tries, paused }
+-- the read under way: { phase = waiting | reading | gap | writing, n, i, acc, retry, skipped, queue, qi,
+--   tries, paused, staged, stageKey, count }
+local scan
 local button
 local function Now() return (time and time()) or 0 end
 
 local function Label(now)
     if scan then
-        local done = 0
-        if scan.phase == "reading" or scan.phase == "gap" then done = (scan.n > 0) and math.floor(100 * math.min(scan.i, scan.n) / scan.n) or 100 end
+        if scan.paused then return ns:Tr("Paused for combat") end
+        if scan.phase == "waiting" then return ns:Tr("Waiting for the list…") end
+        local done = (scan.n > 0) and math.floor(100 * math.min(scan.i, scan.n) / scan.n) or 100
+        if scan.phase == "writing" then done = 100 end
         return format(ns:Tr("Reading %d%%"), done)
     end
     local ready, left = ns.PriceScanReady(now or Now())
@@ -108,41 +143,83 @@ local function Stop(message)
     Show()
 end
 
+-- Did the house hold more than `limit` items?
+local function MoreThan(house, limit)
+    local n = 0
+    for _ in pairs(type(house) == "table" and type(house.items) == "table" and house.items or {}) do
+        n = n + 1
+        if n > limit then return true end
+    end
+    return false
+end
+
+-- The read is done: decide whether to trust it, then build the entries (in slices, from Read).
+local function StartWriting(s)
+    local house = ns.PriceHouse(false)
+    if next(s.acc) == nil and MoreThan(house, 50) then
+        Stop("The scan came back empty: try again later.")
+        return
+    end
+    s.unread = s.skipped + #s.retry
+    s.full = s.n > 0 and s.unread <= s.n * 0.01            -- (only a nearly whole list can say what nobody lists)
+    s.staged, s.bases, s.count, s.stageKey, s.phase = {}, {}, 0, nil, "writing"
+end
+
 local function Finish()
     local s = scan
     scan = nil
     local house = ns.PriceHouse(true)
     if not house then Stop(); return 0 end
-    local n = ns.PriceScanWrite(house, s.acc, ns.Today(), Now())
-    ns.priceScanState = format("last scan: %d items, %d rows unread", n, #s.retry)
-    ns:Print("Prices scanned: %d items.", n)
+    Commit(house, s.staged, ns.Today(), Now(), s.count, s.full, s.bases)
+    ns.priceScanState = format("last scan: %d items, %d of %d rows unread%s", s.count, s.unread, s.n, s.full and "" or " (too many to say what nobody lists)")
+    ns:Print("Prices scanned: %d items.", s.count)
     if ns.RefreshBagWindow then pcall(ns.RefreshBagWindow, ns) end
     Show()
-    return n
+    return s.count
 end
 
--- One slice of the read: at most 4 ms (or 200 rows where there is no clock). Never in a fight.
+-- One slice: at most 4 ms (or 200 rows or entries where there is no clock). Never in a fight.
 local function Read()
     local s = scan
-    if not s or s.phase ~= "reading" or s.paused then return end
-    if InCombatLockdown() then s.paused = true; return end
+    if not s or s.paused or (s.phase ~= "reading" and s.phase ~= "writing") then return end
+    if InCombatLockdown() then s.paused = true; Show(); return end
     local clock = type(debugprofilestop) == "function" and debugprofilestop or nil
     local start = clock and clock()
-    local rows = 0
+    local work = 0
+    local function Spent() return (clock and clock() - start >= BUDGET_MS) or (not clock and work >= ROWS_NO_CLOCK) end
+    if s.phase == "writing" then
+        local house = ns.PriceHouse(false)
+        local items = (house and type(house.items) == "table") and house.items or {}
+        local today = ns.Today()
+        repeat
+            local id, a = next(s.acc, s.stageKey)              -- (acc is not changed while it is walked)
+            if id == nil then Finish(); return end
+            s.stageKey = id
+            local cur = items[id]
+            s.bases[id] = type(cur) == "table" and cur.price or false
+            s.staged[id] = Stage(cur, a, today)
+            s.count, work = s.count + 1, work + 1
+        until Spent()
+        return
+    end
     repeat
         if s.queue then                                          -- (a pass over the rows to read again)
             local idx = s.queue[s.qi]
             if idx == nil then break end
-            for _, r in ipairs(ns.PriceScanRows(GameRow, s.n, s.acc, idx, idx)) do s.retry[#s.retry + 1] = r end
-            s.qi, rows = s.qi + 1, rows + 1
+            local again, skipped = ns.PriceScanRows(GameRow, s.n, s.acc, idx, idx)
+            for _, r in ipairs(again) do s.retry[#s.retry + 1] = r end
+            s.skipped = s.skipped + skipped
+            s.qi, work = s.qi + 1, work + 1
         else
             if s.i >= s.n then break end
             local to = math.min(s.i + CHUNK - 1, s.n - 1)
-            for _, r in ipairs(ns.PriceScanRows(GameRow, s.n, s.acc, s.i, to)) do s.retry[#s.retry + 1] = r end
-            rows = rows + (to - s.i + 1)
+            local again, skipped = ns.PriceScanRows(GameRow, s.n, s.acc, s.i, to)
+            for _, r in ipairs(again) do s.retry[#s.retry + 1] = r end
+            s.skipped = s.skipped + skipped
+            work = work + (to - s.i + 1)
             s.i = to + 1
         end
-    until (clock and clock() - start >= BUDGET_MS) or (not clock and rows >= ROWS_NO_CLOCK)
+    until Spent()
     local passDone = (s.queue and s.queue[s.qi] == nil) or (not s.queue and s.i >= s.n)
     if not passDone then return end
     if #s.retry > 0 and s.tries < RETRIES then
@@ -152,7 +229,7 @@ local function Read()
         ns:After(RETRY_GAP, function() if scan == s and s.phase == "gap" then s.phase = "reading" end end)
         return
     end
-    Finish()
+    StartWriting(s)
 end
 
 -- The list has arrived: how many rows, then read it.
@@ -174,7 +251,7 @@ function ns:PriceScanStart()
     if not pcall(A.ReplicateItems) then return false end
     if type(ns.root.prices) ~= "table" then ns.root.prices = { v = 1 } end
     ns.root.prices.lastScan = now                             -- (the server counts the call, read or not)
-    local s = { phase = "waiting", n = 0, i = 0, acc = {}, retry = {}, tries = 0 }
+    local s = { phase = "waiting", n = 0, i = 0, acc = {}, retry = {}, skipped = 0, tries = 0 }
     scan = s
     ns.priceScanState = "waiting for the list"
     ns:After(WAIT, function()
@@ -192,7 +269,7 @@ ns:NewModule("auctionScan", function()
         local ahf = _G.AuctionHouseFrame
         if done or type(ahf) ~= "table" then return false end
         done = true
-        button = ns:CreateButton(ahf, "Scan prices", 120, 22, function()
+        button = ns:CreateButton(ahf, "Scan prices", 150, 22, function()
             if InCombatLockdown() then return end
             ns:PriceScanStart()
         end)
@@ -228,9 +305,9 @@ ns:NewModule("auctionScan", function()
         elseif event == "REPLICATE_ITEM_LIST_UPDATE" then
             Arrived()
         elseif event == "PLAYER_REGEN_DISABLED" then
-            if scan then scan.paused = true end
+            if scan then scan.paused = true; Show() end
         elseif event == "PLAYER_REGEN_ENABLED" then
-            if scan then scan.paused = nil end
+            if scan then scan.paused = nil; Show() end
         end
     end))
 end)

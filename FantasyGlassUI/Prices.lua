@@ -6,19 +6,25 @@ local Secret = function(v) return ns:IsSecret(v) end
 -- What you see while browsing (Economy.lua), and what Scan prices reads (PriceScan.lua), goes in here;
 -- tooltips, the auction house helper, farming and the sell hints read it through the functions below.
 --   ns.root.prices = { v = 1, lastScan, migrated, houses = { ["Realm|Faction"] = { items = { [itemID] =
---     { price, day, hist, listed, listedDay } }, scanAt, scanItems } } }
+--     { price, day, hist, listed, listedDay, seenDay } }, scanAt, listedAt, scanItems } } }
 -- Prices are never mixed between factions. The game cannot say whether a neutral auction house is open,
--- so a neutral one shares its faction's prices.
+-- so a neutral one shares its faction's prices; a neutral character (a pandaren before choosing) has no
+-- house at all. Connected realms each keep their own prices: Forever cannot list the connected realms.
 ------------------------------------------------------------------------------------------
 
--- The current auction house's key, or nil while the realm or faction can't be read.
+-- The current auction house's key, or nil while the realm or faction can't be read, or for a neutral
+-- character. Kept for the session; let go when the realm or faction could change.
+local cachedKey
 function ns.PriceHouseKey()
+    if cachedKey then return cachedKey end
     local okR, realm = pcall(GetRealmName)
     local okF, faction = pcall(UnitFactionGroup, "player")
     if not okR or not okF or Secret(realm) or Secret(faction) then return nil end
-    if type(realm) ~= "string" or type(faction) ~= "string" or realm == "" or faction == "" then return nil end
-    return realm .. "|" .. faction
+    if type(realm) ~= "string" or realm == "" or (faction ~= "Alliance" and faction ~= "Horde") then return nil end
+    cachedKey = realm .. "|" .. faction
+    return cachedKey
 end
+function ns.PriceHouseKeyReset() cachedKey = nil end
 
 -- A house record in a saved root; the tables are made only when `create` is set.
 local function House(root, key, create)
@@ -65,6 +71,7 @@ function ns.PriceNote(id, price)
     local e = h.items[id]
     if type(e) ~= "table" then e = {}; h.items[id] = e end
     if e.day ~= today or type(e.price) ~= "number" or price < e.price then e.price, e.day = price, today end
+    e.seenDay = today                                     -- (seen listed: a scan from before can't say nobody lists it)
     ns.AuctionHistoryAdd(e, today, price)
     return true
 end
@@ -88,10 +95,21 @@ function ns.PricesMigrate(root, key)
         if type(id) == "number" and type(e) == "table" and type(e.price) == "number" and type(e.day) == "number" then
             local h = House(root, key, true)
             local have = h.items[id]
-            if type(have) ~= "table" or type(have.day) ~= "number" or e.day > have.day then
-                h.items[id] = Clean(e)
-                moved = moved + 1
+            local clean = Clean(e)
+            if type(have) == "table" and type(have.day) == "number" then
+                -- both kept a history: one history, the lower price each day, the last 14 days
+                local later = (e.day > have.day) and clean or have
+                local merged = { price = later.price, day = later.day, listed = have.listed, listedDay = have.listedDay, seenDay = have.seenDay }
+                for _, src in ipairs({ have, clean }) do
+                    for d, pr in pairs(type(src.hist) == "table" and src.hist or {}) do
+                        if type(d) == "number" and type(pr) == "number" then ns.AuctionHistoryAdd(merged, d, pr) end
+                    end
+                end
+                h.items[id] = merged
+            else
+                h.items[id] = clean
             end
+            moved = moved + 1
         end
     end
     if type(root.prices) ~= "table" then root.prices = { v = 1 } end
@@ -100,21 +118,58 @@ function ns.PricesMigrate(root, key)
     return moved
 end
 
--- At start: the old prices moved in, and prices not seen for two months let go, in every house.
+-- The old prices moved in and this house's prices not seen for two months let go, at once (for the tests).
 function ns.PricesStart(root, key, today)
     local moved = ns.PricesMigrate(root, key)
-    local gone = 0
-    local p = type(root) == "table" and root.prices
-    for _, h in pairs((type(p) == "table" and type(p.houses) == "table") and p.houses or {}) do
-        if type(h) == "table" and type(h.items) == "table" then gone = gone + ns.AuctionForget(h.items, today, 60) end
-    end
+    local h = House(root, key, false)
+    local gone = (h and type(h.items) == "table") and ns.AuctionForget(h.items, today, 60) or 0
     return moved, gone
+end
+
+-- At login only the current house is cleaned, a slice a frame (4 ms, or 200 entries with no clock).
+local forget                                          -- { items, key, today }
+function ns.PricesForgetStep()
+    local f = forget
+    if not f then return false end
+    local clock = type(debugprofilestop) == "function" and debugprofilestop or nil
+    local start, n = clock and clock(), 0
+    while true do
+        local ok, id, e = pcall(next, f.items, f.key)
+        if not ok then forget = nil; return false end     -- (the list changed under us: the rest waits for the next login)
+        if id == nil then forget = nil; return false end
+        f.key = id
+        if type(e) ~= "table" or type(e.day) ~= "number" or ns.DaysBetween(e.day, f.today) > 60 then
+            f.items[id] = nil                             -- (clearing the current key is allowed while walking)
+        end
+        n = n + 1
+        if (clock and clock() - start >= 4) or (not clock and n >= 200) then return true end
+    end
+end
+function ns.PricesForget(items, today)
+    forget = type(items) == "table" and { items = items, today = today } or nil
 end
 local started = false
 function ns.PricesBegin()
     if started or type(ns.root) ~= "table" then return end
     started = true
-    ns.PricesStart(ns.root, ns.PriceHouseKey(), ns.Today())
+    local h = House(ns.root, ns.PriceHouseKey(), false)
+    if h then ns.PricesForget(h.items, ns.Today()) end
+end
+
+do
+    local ev = CreateFrame("Frame")
+    for _, e in ipairs({ "PLAYER_LOGIN", "NEUTRAL_FACTION_SELECT_RESULT", "UNIT_FACTION", "AUCTION_HOUSE_SHOW" }) do pcall(ev.RegisterEvent, ev, e) end
+    ev:SetScript("OnEvent", ns:Guard("Prices", function(_, event, unit)
+        if event == "UNIT_FACTION" then
+            if not Secret(unit) and unit == "player" then cachedKey = nil end
+        elseif event == "AUCTION_HOUSE_SHOW" then
+            -- the old prices move into the house where you first open the auction house, once
+            if type(ns.root) == "table" then ns.PricesMigrate(ns.root, ns.PriceHouseKey()) end
+        else
+            cachedKey = nil
+        end
+    end))
+    ev:SetScript("OnUpdate", ns:Guard("Prices", function() if forget then ns.PricesForgetStep() end end))
 end
 
 -- How fresh the last scan of this house is, in words.
@@ -130,4 +185,66 @@ function ns.PriceFreshText(house, now)
     if days == 0 then return ns:Tr("Scanned today") end
     if days == 1 then return ns:Tr("Scanned yesterday") end
     return format(ns:Tr("Scanned %d days ago"), days)
+end
+
+------------------------------------------------------------------------------------------
+-- The item tooltip: the price lines (Auction prices in tooltips), then the Sell now / Hold / Vendor
+-- it line (SellHints.lua), always in that order, from one hook that either feature puts in place.
+------------------------------------------------------------------------------------------
+-- Is the item under this tooltip bound to you? From its place in your bags (data.guid), else from the
+-- game's own "Soulbound" lines. Nil when it can't be told.
+local BOUND_LINES = { "ITEM_SOULBOUND", "ITEM_ACCOUNTBOUND", "ITEM_BNETACCOUNTBOUND" }
+function ns.TooltipItemBound(data)
+    if type(data) ~= "table" then return nil end
+    local guid = data.guid
+    local I = C_Item
+    if guid ~= nil and not Secret(guid) and type(I) == "table" and type(I.GetItemLocation) == "function" and type(I.IsBound) == "function" then
+        local okL, loc = pcall(I.GetItemLocation, guid)
+        if okL and type(loc) == "table" then
+            local okB, bound = pcall(I.IsBound, loc)
+            if okB and not Secret(bound) and bound ~= nil then return bound and true or false end
+        end
+    end
+    if type(data.lines) == "table" then
+        for _, line in ipairs(data.lines) do
+            local text = type(line) == "table" and line.leftText
+            if type(text) == "string" and not Secret(text) then
+                for _, name in ipairs(BOUND_LINES) do
+                    local want = _G[name]
+                    if type(want) == "string" and want ~= "" and text == want then return true end
+                end
+            end
+        end
+    end
+    return nil
+end
+function ns.PriceTooltip(tooltip, data)
+    if tooltip ~= GameTooltip and tooltip ~= _G.ItemRefTooltip then return end
+    local id = type(data) == "table" and data.id
+    if Secret(id) then return end
+    if type(id) ~= "number" and tooltip.GetItem then local ok, _, link = pcall(tooltip.GetItem, tooltip); if ok then id = ns:ItemIDOf(link) end end
+    if Secret(id) or type(id) ~= "number" then return end
+    if ns.db.auctionMemory then
+        local e = ns.PriceEntry(id)
+        local when = ns.AuctionSeenText(e, ns.Today())
+        if when then tooltip:AddDoubleLine(ns:Tr("Auction house") .. " (" .. ns:Tr(when) .. ")", ns:Coins(e.price), 0.6, 0.8, 1, 1, 1, 1) end
+        local usual, days = ns.AuctionUsual(e)
+        if usual and days >= 2 then tooltip:AddDoubleLine(format(ns:Tr("Usual price (%d days)"), days), ns:Coins(usual), 0.6, 0.8, 1, 1, 1, 1) end
+    end
+    if ns.db.sellHints and ns.SellHintLine then
+        local text, fresh, kind = ns.SellHintLine(id, ns.TooltipItemBound(data))
+        local c = text and ns.SELL_HINT_COLOR[kind]
+        if c then tooltip:AddDoubleLine(text, fresh or "", c[1], c[2], c[3], 0.7, 0.7, 0.7) end
+    end
+end
+local hooked = false
+function ns.PriceTooltipHook()
+    if hooked then return end
+    hooked = true
+    local safe = ns:Guard("Auction prices", ns.PriceTooltip)
+    if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType and Enum.TooltipDataType.Item then
+        pcall(TooltipDataProcessor.AddTooltipPostCall, Enum.TooltipDataType.Item, safe)
+    elseif GameTooltip and GameTooltip.HookScript then
+        pcall(GameTooltip.HookScript, GameTooltip, "OnTooltipSetItem", safe)
+    end
 end

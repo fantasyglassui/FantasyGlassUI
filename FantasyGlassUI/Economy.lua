@@ -432,7 +432,7 @@ function ns.DaysBetween(a, b)
 end
 ns:NewModule("auctionMemory", function()
     if type(ns.root) ~= "table" then return end
-    ns.PricesBegin()                                              -- (the old prices moved in once; two months old let go)
+    ns.PricesBegin()                                              -- (this house's prices not seen for two months let go, in slices)
     local function Note(id, price)                                -- (the store itself is in Prices.lua)
         if ns.PriceNote(id, price) then ns.auctionNoted = (ns.auctionNoted or 0) + 1 end
     end
@@ -455,23 +455,7 @@ ns:NewModule("auctionMemory", function()
         end
         ns.auctionState = "on; prices noted this session: " .. tostring(ns.auctionNoted or 0)
     end))
-    local function Tip(tooltip, data)
-        if tooltip ~= GameTooltip and tooltip ~= _G.ItemRefTooltip then return end
-        local id = type(data) == "table" and data.id
-        if type(id) ~= "number" and tooltip.GetItem then local ok, _, link = pcall(tooltip.GetItem, tooltip); if ok then id = ns:ItemIDOf(link) end end
-        if type(id) ~= "number" or Secret(id) then return end
-        local e = ns.PriceEntry(id)
-        local when = ns.AuctionSeenText(e, ns.Today())
-        if when then tooltip:AddDoubleLine(ns:Tr("Auction house") .. " (" .. ns:Tr(when) .. ")", ns:Coins(e.price), 0.6, 0.8, 1, 1, 1, 1) end
-        local usual, days = ns.AuctionUsual(e)
-        if usual and days >= 2 then tooltip:AddDoubleLine(format(ns:Tr("Usual price (%d days)"), days), ns:Coins(usual), 0.6, 0.8, 1, 1, 1, 1) end
-    end
-    local safe = ns:Guard("Auction prices", Tip)
-    if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType and Enum.TooltipDataType.Item then
-        pcall(TooltipDataProcessor.AddTooltipPostCall, Enum.TooltipDataType.Item, safe)
-    elseif GameTooltip and GameTooltip.HookScript then
-        pcall(GameTooltip.HookScript, GameTooltip, "OnTooltipSetItem", safe)
-    end
+    ns.PriceTooltipHook()                                         -- (the lines themselves: ns.PriceTooltip in Prices.lua)
 end)
 
 ------------------------------------------------------------------------------------------
