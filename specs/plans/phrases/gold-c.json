@@ -88,5 +88,15 @@
     "Nessun nodo registrato qui finora: una stima da ciò che cresce qui con la tua abilità.",
     "아직 기록된 채집지가 없습니다: 이곳에서 당신의 숙련도로 얻을 수 있는 것으로 추정합니다.",
     "这里还没有记录的采集点：按你的技能在此能采到的东西估算。"
+  ],
+  "Also gathered here, and counted in this: %s": [
+    "Hier auch gesammelt und mitgezählt: %s",
+    "Également récolté ici, et compté dedans : %s",
+    "También recogido aquí, e incluido: %s",
+    "Здесь также собрано и учтено: %s",
+    "Também coletado aqui, e incluído: %s",
+    "Raccolto anche qui, e incluso: %s",
+    "여기서 함께 채집, 포함됨: %s",
+    "此处也采集了，并已计入：%s"
   ]
 }

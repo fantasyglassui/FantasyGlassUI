@@ -15,11 +15,15 @@ local type, tonumber, pairs, ipairs = type, tonumber, pairs, ipairs
 local floor, max, min, sqrt, huge = math.floor, math.max, math.min, math.sqrt, math.huge
 
 local HERBALISM, MINING, SKINNING = 182, 186, 393
-local NODE_YARDS = 10                  -- two gatherings this close are one node (the planner's)
+local function NodeYards()             -- two gatherings this close are one node (the planner's)
+    local v = ns.PLANNER_NODE_YARDS
+    return (type(v) == "number" and v > 0) and v or 10
+end
 local NODE_CAP = 300                   -- nodes kept per map (the planner's)
 local NAME_CAP = 200                   -- node names whose loot is kept
 local LOOT_SECONDS = 5                 -- a loot window this soon after a gathering is that gathering's
 local GAP_SECONDS = 300                -- a longer pause between gatherings is not time spent gathering
+local PER_GATHER = 30                  -- seconds each gathering counts on top of the walk (the cast, the loot)
 local MAX_IDEAS = 6
 local STEP_CAP = 30
 
@@ -112,7 +116,7 @@ function ns.GoldRecordNode(map, x, y, name, skill)
         for _, n in ipairs(list) do
             if type(n) == "table" and n.skill == skill and n.name == name then
                 local c2, x2, y2 = World(map, tonumber(n.x), tonumber(n.y))
-                if c2 == c1 and sqrt((x1 - x2) ^ 2 + (y1 - y2) ^ 2) <= NODE_YARDS then return false end
+                if c2 == c1 and sqrt((x1 - x2) ^ 2 + (y1 - y2) ^ 2) <= NodeYards() then return false end
             end
         end
         if #list >= NODE_CAP then return false end
@@ -187,7 +191,7 @@ local function NoteLoot(g)
         if type(m) ~= "table" then m = { secs = 0, n = 0, items = {} }; root.goldGather[g.map] = m end
         if type(m.items) ~= "table" then m.items = {} end
         m.n = (tonumber(m.n) or 0) + 1
-        m.secs = (tonumber(m.secs) or 0) + (g.gap or 0)
+        m.secs = (tonumber(m.secs) or 0) + (g.gap or 0) + PER_GATHER
         m.day = ns.Today()
         for id, q in pairs(got) do m.items[id] = (tonumber(m.items[id]) or 0) + q end
     end
@@ -195,7 +199,11 @@ end
 
 do
     local ev = CreateFrame("Frame")
-    for _, e in ipairs({ "UNIT_SPELLCAST_SENT", "UNIT_SPELLCAST_SUCCEEDED", "LOOT_OPENED" }) do pcall(ev.RegisterEvent, ev, e) end
+    for _, e in ipairs({ "UNIT_SPELLCAST_SENT", "UNIT_SPELLCAST_SUCCEEDED" }) do      -- (the player's casts only; the handler checks the unit too)
+        local ok = type(ev.RegisterUnitEvent) == "function" and pcall(ev.RegisterUnitEvent, ev, e, "player")
+        if not ok then pcall(ev.RegisterEvent, ev, e) end
+    end
+    pcall(ev.RegisterEvent, ev, "LOOT_OPENED")
     ev:SetScript("OnEvent", ns:Guard("Gold gather", function(_, event, a1, a2, a3, a4)
         if event ~= "UNIT_SPELLCAST_SENT" and event ~= "UNIT_SPELLCAST_SUCCEEDED" and event ~= "LOOT_OPENED" then return end
         if not Unlocked() then return end
@@ -212,7 +220,7 @@ do
             if not skill then return end
             local name = Clean(a2)
             pending = { name = name, skill = skill }
-            if name and skill ~= SKINNING then
+            if name and skill ~= SKINNING and not (type(ns.db) == "table" and ns.db.plannerGather == false) then
                 local map, x, y = Here()
                 if map and x and y then ns.GoldRecordNode(map, x, y, name, skill) end
             end
@@ -325,13 +333,22 @@ local function Learned(name, ctx, days)
     return sum / n
 end
 
+-- The node memories there are: the gold advisor's and the planner's (either may be missing).
+local function Stores()
+    local root, out = Root(), {}
+    if not root then return out end
+    if type(root.goldNodesSeen) == "table" then out[#out + 1] = root.goldNodesSeen end
+    if type(root.plannerNodesSeen) == "table" then out[#out + 1] = root.plannerNodesSeen end
+    return out
+end
+
 -- The nodes of this skill on a map, from both memories (the gold advisor's and the planner's),
 -- each spot once.
 local function Nodes(map, skill)
     local root, out, seen = Root(), {}, {}
     if not root then return out end
-    for _, store in ipairs({ root.goldNodesSeen, root.plannerNodesSeen }) do
-        local list = type(store) == "table" and store[map]
+    for _, store in ipairs(Stores()) do
+        local list = store[map]
         for _, n in ipairs(type(list) == "table" and list or {}) do
             if type(n) == "table" and n.skill == skill and Clean(n.name) and Num(n.x) and Num(n.y) then
                 local key = n.name .. "@" .. R1(n.x) .. "," .. R1(n.y)
@@ -364,19 +381,19 @@ local function Idea(ctx, map, skill, basis, perHour, title, days, long)
     }
 end
 
--- The skill a map's measure is mostly of: herbs, ore, or skinning.
+-- The skill a map's measure is mostly of, by the listed herbs and ores it holds (an item not on the
+-- list says nothing either way). A map with neither is skinning, the only other gathering measured.
+-- Also the other skill when the map holds some of both, for the detail.
 local function MeasuredSkill(items)
-    local by = { [HERBALISM] = 0, [MINING] = 0, [SKINNING] = 0 }
+    local herbs, ores = 0, 0
     for id, count in pairs(items) do
         local c = Num(count) or 0
-        if ns.GOLD_GATHER_ITEMS[HERBALISM][id] then by[HERBALISM] = by[HERBALISM] + c
-        elseif ns.GOLD_GATHER_ITEMS[MINING][id] then by[MINING] = by[MINING] + c
-        else by[SKINNING] = by[SKINNING] + c end
+        if ns.GOLD_GATHER_ITEMS[HERBALISM][id] then herbs = herbs + c
+        elseif ns.GOLD_GATHER_ITEMS[MINING][id] then ores = ores + c end
     end
-    local best = SKINNING
-    if by[HERBALISM] > by[best] then best = HERBALISM end
-    if by[MINING] > by[best] then best = MINING end
-    return best
+    if herbs == 0 and ores == 0 then return SKINNING, nil end
+    if herbs >= ores then return HERBALISM, (ores > 0) and MINING or nil end
+    return MINING, (herbs > 0) and HERBALISM or nil
 end
 
 -- Every gathering idea for these skills ({ [182|186|393] = level }), at most 6, by gold an hour.
@@ -402,13 +419,14 @@ function ns.GoldGatherIdeas(ctx, add, skills)
             end
             ns.GoldYield()
             local perHour = floor(sum / secs * 3600)
-            local skill = MeasuredSkill(m.items)
+            local skill, other = MeasuredSkill(m.items)
             local zone = ZoneName(ctx, map)
             local title = (skill == SKINNING) and format(ns:Tr("Skin beasts in %s"), zone)
                 or format(ns:Tr("Gather %s in %s"), ns:Tr(SKILL_WORD[skill]), zone)
             local idea = Idea(ctx, map, skill, "measured", perHour, title, days, false)
             idea.steps = { { text = format(ns:Tr("Go to %s"), zone), map = map } }
             idea.detail = { { left = format(ns:Tr("Measured: %d gatherings in %s"), n, ns.GoldTimeText(secs / 60)) } }
+            if other then idea.detail[2] = { left = format(ns:Tr("Also gathered here, and counted in this: %s"), ns:Tr(SKILL_WORD[other])) } end
             found[idea.id] = idea
         end
     end
@@ -420,8 +438,8 @@ function ns.GoldGatherIdeas(ctx, add, skills)
             for map in pairs(ns.GOLD_GATHER_ZONES) do
                 if ns.GoldGatherFits(map, skill, level) then maps[map] = true end
             end
-            for _, store in ipairs({ root and root.goldNodesSeen, root and root.plannerNodesSeen }) do
-                for map in pairs(type(store) == "table" and store or {}) do if Num(map) then maps[map] = true end end
+            for _, store in ipairs(Stores()) do
+                for map in pairs(store) do if Num(map) then maps[map] = true end end
             end
             for map in pairs(maps) do
                 local id = "gather:" .. map .. ":" .. skill
