@@ -51,15 +51,27 @@ end
 function ns.PriceHouse(create)
     return House(ns.root, ns.PriceHouseKey(), create)
 end
+-- The old account-wide prices, while they wait to move into the house where you first open the
+-- auction house: until then they are read (never written) as this house's, as they always were.
+local function Unmoved()
+    local root = ns.root
+    if type(root) ~= "table" or type(root.auctionSeen) ~= "table" then return nil end
+    if type(root.prices) == "table" and root.prices.migrated then return nil end
+    if not ns.PriceHouseKey() then return nil end
+    return root.auctionSeen
+end
 -- The current house's items, for reading only. With no house, an empty table that is never kept.
 function ns.PriceItems()
+    local old = Unmoved()
+    if old then return old end
     local h = ns.PriceHouse()
     return (h and type(h.items) == "table") and h.items or {}
 end
 function ns.PriceEntry(id)
     if Secret(id) or type(id) ~= "number" then return nil end
     local e = ns.PriceItems()[id]
-    return type(e) == "table" and e or nil
+    if type(e) ~= "table" or type(e.day) ~= "number" or (e.price ~= nil and type(e.price) ~= "number") then return nil end   -- (an odd old entry)
+    return e
 end
 
 -- A price seen while browsing: today's lowest, and the day's low for the usual price. False when ignored.
@@ -145,8 +157,10 @@ function ns.PricesForgetStep()
         if (clock and clock() - start >= 4) or (not clock and n >= 200) then return true end
     end
 end
+local runner
 function ns.PricesForget(items, today)
     forget = type(items) == "table" and { items = items, today = today } or nil
+    if forget and runner then runner:Show() end
 end
 local started = false
 function ns.PricesBegin()
@@ -158,8 +172,11 @@ end
 
 do
     local ev = CreateFrame("Frame")
+    runner = CreateFrame("Frame")                         -- (shown only while there is cleaning to do)
+    runner:Hide()
     for _, e in ipairs({ "PLAYER_LOGIN", "NEUTRAL_FACTION_SELECT_RESULT", "UNIT_FACTION", "AUCTION_HOUSE_SHOW" }) do pcall(ev.RegisterEvent, ev, e) end
     ev:SetScript("OnEvent", ns:Guard("Prices", function(_, event, unit)
+        if ns.safeMode then return end                    -- (safe mode: every feature is off, this too)
         if event == "UNIT_FACTION" then
             if not Secret(unit) and unit == "player" then cachedKey = nil end
         elseif event == "AUCTION_HOUSE_SHOW" then
@@ -169,7 +186,9 @@ do
             cachedKey = nil
         end
     end))
-    ev:SetScript("OnUpdate", ns:Guard("Prices", function() if forget then ns.PricesForgetStep() end end))
+    runner:SetScript("OnUpdate", ns:Guard("Prices", function(self)
+        if ns.safeMode or not (forget and ns.PricesForgetStep()) then self:Hide() end
+    end))
 end
 
 -- How fresh the last scan of this house is, in words.

@@ -41,12 +41,22 @@ Every ruling is in `2026-11-25-gold-core-rulings.md`. The ones a player can noti
 - **Vendor it.** It is never given for rare or better. Both reasons need quality 2 or lower: a vendor pays about as much, and nobody lists it. That amends the plan's rule 2, at the coordinator's call. It is also never given for a bound item: soulbound (from the item's bag place or its tooltip line), bind on pick-up, quest, or account-bound (bind types 7 and 8).
 - **Browsing.** Prices seen while browsing top up the store, but never change the listed count. An item seen listed on or after the scan day is no longer "nobody lists it".
 
+## Fixed after the final review
+
+- **Prices before the first auction house visit (N1).** Until the old prices move in, `ns.PriceItems` and `ns.PriceEntry` read the old account-wide `auctionSeen` as this house's, read-only (odd entries skipped). They do this only while a key exists and `migrated` isn't set. Tooltips, Farming totals and the saved zone values keep their auction prices from the first login after the update. New prices still go only into the house.
+- **A price browsed while a scan's entries are being built (N2).** It is kept: the day's low in the history always, and the price when it changed since the entry was built and is lower.
+- **An empty reply (N3).** It is never a scan, whatever the house size. Nothing is written and `scanAt` doesn't move. The message is "The scan came back empty: try again later." `lastScan` is still set, because the server's cooldown applies.
+- **Safe mode (N4).** The Prices event frame does nothing in safe mode. The login cleaning runs from a frame that is shown only while there is cleaning to do.
+- **Freshness of "nobody lists it" (N6).** The line says how old the last full scan is (`listedAt`), not the last scan.
+
 ## In-game checklist
 
 - [ ] Scan prices on a live auction house:
   - how long the read takes, and the item count printed
   - any freeze, at the end of the scan above all, where the entries are written
   - the button's texts: Waiting for the list…, Reading n%, then Scan in m:ss
+- [ ] The Scan prices button (150 wide, at TOPRIGHT −186, −30, reaching to about −336) doesn't overlap the Browse tab's search bar, and the longest translations of "Waiting for the list…" and "Paused for combat" fit.
+- [ ] Prices before the first auction house visit after the update: on an old character, right after logging in, tooltips still show "Auction house (…)" and "Usual price", and a farming session counts auction values.
 - [ ] A fight started in the middle of a read: the button says "Paused for combat", and the read goes on after the fight.
 - [ ] Closing the auction house mid-read: the message, and the store unchanged.
 - [ ] The cooldown text after /reload: it still counts down from the last scan.
