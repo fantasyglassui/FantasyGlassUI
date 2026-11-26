@@ -327,6 +327,11 @@ function ns:GuideGet(name)
         local plan = type(st) == "table" and st.name == name and st.plan
         return (type(plan) == "table" and type(plan.steps) == "table") and plan or nil
     end
+    if name ~= nil and name == ns.GUIDE_TRIP then                   -- a trip: kept with the state it paused (st.trip)
+        local st = state[ns:CharKey()]
+        local trip = type(st) == "table" and st.name == name and st.trip
+        return (type(trip) == "table" and type(trip.steps) == "table") and trip or nil
+    end
     return guides[name] or ns.builtinGuides[name]
 end
 function ns:GuideNames()
@@ -357,6 +362,12 @@ local function State()
     return state[ns:CharKey()]
 end
 ns.GuideState = State
+-- On a trip (Go: a gold idea's way there): the trip is followed under ns.GUIDE_TRIP, and the state you were in
+-- (the planned route, a written guide, or none) waits in st.resume, one level deep.
+local function OnTrip(st)
+    return type(st) == "table" and st.name ~= nil and st.name == ns.GUIDE_TRIP and type(st.trip) == "table" and type(st.trip.steps) == "table"
+end
+function ns.GuideOnTrip() return OnTrip(State()) end
 
 local panel
 local Draw
@@ -367,6 +378,7 @@ local FailedCheck, NotHere                          -- (the guide's events and i
 --   GUIDE_STOP_KINDS
 --   GUIDE_TRIP
 --   GUIDE_WINDOW_KINDS
+--   GuideEndTrip
 --   GuideFollow
 --   GuideGet
 --   GuideHere
@@ -375,6 +387,7 @@ local FailedCheck, NotHere                          -- (the guide's events and i
 --   GuideMenu
 --   GuideMovedText
 --   GuideOn
+--   GuideOnTrip
 --   GuidePanelEntries
 --   GuidePanelShown
 --   GuideParse
@@ -394,6 +407,7 @@ local FailedCheck, NotHere                          -- (the guide's events and i
 --   GuideShowPanel
 --   GuideSkip
 --   GuideSkippedText
+--   GuideStartTrip
 --   GuideState
 --   GuideStepBase
 --   GuideText
@@ -678,6 +692,10 @@ function ns:GuideAdvance(quiet)
     local step = guide.steps[st.at]
     if st.at ~= before and PlaySound and SOUNDKIT and ns.db.guideSound ~= false then pcall(PlaySound, SOUNDKIT.IG_QUEST_LIST_SELECT or 875) end
     local planned = st.name == ns.GUIDE_PLANNED
+    if not step and OnTrip(st) then                           -- (the trip's last step done: what it paused comes back)
+        ns:GuideEndTrip("done")
+        return nil
+    end
     if not step and not st.finished then
         st.finished = true
         if not planned then ns:Print("Guide finished: %s", tostring(guide.name))
@@ -709,6 +727,9 @@ function ns:GuideAdvance(quiet)
     return step, st.at
 end
 function ns:GuideFollow(name)
+    if ns.GuideOnTrip() and not (name ~= nil and name == ns.GUIDE_TRIP) then   -- (another guide during a trip: the trip goes, and
+        ns:GuideEndTrip("other")                                         --  what it paused is no longer waiting: you chose)
+    end
     if name ~= nil and name == ns.GUIDE_PLANNED then return ns.PlannerStart ~= nil and ns:PlannerStart() end
     local guide = ns:GuideGet(name)
     if not guide then ns:Print("There is no guide called \"%s\". /fgui guide lists them.", tostring(name)); return false end
@@ -735,7 +756,9 @@ end
 -- planner stop by its stopKey, so the next visit to the same trainer is a new step).
 function ns:GuideSetPlan(guide, summary)
     local _, state = Store(true)
-    local old = state[ns:CharKey()]
+    local cur = state[ns:CharKey()]
+    local trip = OnTrip(cur)
+    local old = trip and cur.resume or cur                    -- (on a trip: the plan goes where it waits, never over the trip)
     local plan = guide or { name = ns.GUIDE_PLANNED, steps = {} }
     local ticked, had = {}, {}
     if type(old) == "table" and old.name == ns.GUIDE_PLANNED and type(old.plan) == "table" and type(old.plan.steps) == "table" and type(old.ticked) == "table" then
@@ -754,7 +777,9 @@ function ns:GuideSetPlan(guide, summary)
     if type(old) == "table" and old.name ~= nil and old.name ~= ns.GUIDE_PLANNED and ns:GuideGet(old.name) then   -- (a written guide: its place kept)
         written = { [old.name] = { at = old.at, ticked = old.ticked } }
     end
-    state[ns:CharKey()] = { name = ns.GUIDE_PLANNED, at = 1, ticked = ticked, summary = summary, plan = plan, written = written }
+    local new = { name = ns.GUIDE_PLANNED, at = 1, ticked = ticked, summary = summary, plan = plan, written = written }
+    if trip then cur.resume = new; return end
+    state[ns:CharKey()] = new
     pointed, freshPlan = nil, true
     ns:GuideShowPanel()
     ns:GuideAdvance()
@@ -762,6 +787,7 @@ end
 -- Planning failed: keep the plan you have, and say so on the panel.
 function ns:GuidePlanFailed()
     local st = State()
+    if OnTrip(st) then st = st.resume end                     -- (on a trip: said on the plan that waits)
     if not (type(st) == "table" and st.name == ns.GUIDE_PLANNED) then return end
     st.planFailed = true
     if Draw then Draw() end
@@ -773,6 +799,60 @@ function ns:GuideStop()
     Point(nil)
     seenKey = nil
     if panel then panel:Hide() end
+end
+-- A trip (Go, PlannerGo.lua): follow `guide`'s steps for a while; the state you are in waits in resume and comes
+-- back when the trip is done or stopped. info = { title, id, minutes|nil }. A trip during a trip replaces it and
+-- keeps the first resume. False (and nothing changed) while the guide is off or with no steps.
+function ns:GuideStartTrip(guide, info)
+    if not ns:GuideOn() or type(guide) ~= "table" or type(guide.steps) ~= "table" or #guide.steps == 0 then return false end
+    info = type(info) == "table" and info or {}
+    local title = (type(info.title) == "string" and not Secret(info.title)) and info.title or ""
+    local _, state = Store(true)
+    local key = ns:CharKey()
+    local old = state[key]
+    local resume = old
+    if OnTrip(old) then resume = old.resume end              -- (one level deep)
+    if type(resume) ~= "table" then resume = nil end
+    state[key] = { name = ns.GUIDE_TRIP, at = 1, ticked = {}, resume = resume,
+        trip = { name = ns.GUIDE_TRIP, steps = guide.steps, title = title, id = info.id, minutes = tonumber(info.minutes) } }
+    if ns.PlannerStop then ns:PlannerStop() end               -- (no plan is made over a trip: one asked for later waits in resume)
+    Point(nil)
+    pointed, freshPlan = nil, true
+    ns.GuideMarkDirty()
+    ns:GuideShowPanel()
+    ns:GuideAdvance()
+    return true
+end
+-- The trip ends ("done": its last step; "stop": Stop this trip, /fgui guide stop or off; "other": another guide
+-- is followed, quietly) and the state it paused comes back. Back on the planned route: said, and planned again
+-- from where you are. False when not on a trip.
+function ns:GuideEndTrip(why)
+    local _, state = Store()
+    local key = ns:CharKey()
+    local st = state[key]
+    if not OnTrip(st) then return false end
+    local trip, back = st.trip, st.resume
+    if type(back) ~= "table" then back = nil end
+    state[key] = back
+    if back and not ns:GuideGet(back.name) then state[key] = nil; back = nil end   -- (its guide deleted meanwhile)
+    Point(nil)
+    pointed, freshPlan = nil, true
+    ns.GuideMarkDirty()
+    if why == "other" then return true end
+    if not back then
+        seenKey = nil
+        if panel then panel:Hide() end
+        if why == "done" then ns:Print("Guide finished: %s", tostring(trip.title or "")) else ns:Print("No longer following a guide.") end
+        return true
+    end
+    if ns:GuideOn() then ns:GuideShowPanel(); ns:GuideAdvance() end
+    if back.name == ns.GUIDE_PLANNED then
+        ns:Print("Back to your levelling plan.")
+        if ns.PlannerReplan then Hook("trip", ns.PlannerReplan, ns, "trip over") end
+    else
+        ns:Print("Back to \"%s\".", tostring(back.name))
+    end
+    return true
 end
 -- Tick the step you are on off yourself (a note, or one the game cannot check), or step back one.
 function ns:GuideSkip(back)
@@ -843,6 +923,7 @@ local function Title(st, guide)
     return text
 end
 TitleBase = function(st, guide)
+    if OnTrip(st) then return format(ns:Tr("Gold trip: %s"), tostring(st.trip.title or "")) end
     if not Planned(st) then return guide.name end
     local s = type(st.summary) == "table" and st.summary
     local zone = s and ZoneName(s.zone)
@@ -1272,7 +1353,8 @@ Draw = function()
     if panel.stepButton then                        -- (it takes the mouse only while a planned step with a menu is shown)
         panel.stepButton:SetShown(planned and type(step) == "table" and (type(step.quest) == "number" or HasEntries(stepActions, step)))
     end
-    panel.moreShown = HasEntries(panelActions, step, not planned)   -- (the panel's menu: some entry is there; another guide: those for any guide)
+    panel.moreShown = OnTrip(st) or HasEntries(panelActions, step, not planned)   -- (the panel's menu: some entry is there; another guide: those for
+                                                                                   --  any guide; a trip: Stop this trip)
     panel.more:SetShown(panel.moreShown)
     panel.plannerShown = ns:GuideUnlocked() == true                 -- (the route planner's own window)
     panel.planner:SetShown(panel.plannerShown)
@@ -1439,7 +1521,9 @@ function ns:GuideShowPanel()
             local st = State()
             local planned = st and Planned(st)
             local guide = planned and ns:GuideGet(st.name)
-            ns:GuideMenu(PanelEntries(guide and guide.steps[st.at or 1] or nil, not planned))   -- (another guide: the entries for any guide)
+            local entries = PanelEntries(guide and guide.steps[st.at or 1] or nil, not planned)   -- (another guide: the entries for any guide)
+            if OnTrip(st) then table.insert(entries, 1, { "Stop this trip", function() ns:GuideEndTrip("stop") end }) end   -- (a trip: and its own end)
+            ns:GuideMenu(entries)
         end)
         panel.more:SetPoint("RIGHT", list, "LEFT", -4, 0)
         panel.more:Hide()
@@ -1818,7 +1902,7 @@ function ns:GuideList()
     end
     lines[#lines + 1] = { left = "" }
     lines[#lines + 1] = { left = "+ " .. ns:Tr("Write or paste a guide"), action = true, click = function() ns:GuideEdit("") end }
-    if st then lines[#lines + 1] = { left = "x " .. ns:Tr("Stop following"), action = true, click = function() ns:GuideStop(); ns:GuideList() end } end
+    if st then lines[#lines + 1] = { left = "x " .. ns:Tr("Stop following"), action = true, click = function() if not ns:GuideEndTrip("stop") then ns:GuideStop() end; ns:GuideList() end } end   -- (a trip: what it paused comes back)
     lines[#lines + 1] = { left = ns:Tr("Record one as you play: /fgui guide record My route"), tone = "dim", wrap = true }   -- (a hint, not a button)
     return ns:ShowList("Guides", "Quest guides", lines, "Click a guide to follow it. Right-click to read, change, copy or delete it.", 460, 340)
 end
@@ -1872,13 +1956,13 @@ function ns:GuideCommand(text)
     if word == "" or word == "list" then return ns:GuideList()
     elseif word == "record" then return ns:GuideRecord(rest)
     elseif word == "stop" then
-        if not ns:GuideRecordStop() then ns:GuideStop(); ns:Print("No longer following a guide.") end
+        if not ns:GuideRecordStop() and not ns:GuideEndTrip("stop") then ns:GuideStop(); ns:Print("No longer following a guide.") end   -- (a trip: what it paused comes back)
         if ns.PlannerInnSuggest then ns.PlannerInnSuggest() end
     elseif word == "edit" or word == "new" or word == "paste" then return ns:GuideEdit(rest)
     elseif word == "route" then return ns.GuideRouteEditor and ns:GuideRouteEditor(rest ~= "" and rest or nil)
     elseif word == "next" or word == "skip" then ns:GuideSkip(false)
     elseif word == "back" then ns:GuideSkip(true)
-    elseif word == "off" then ns:GuideStop(); ns:Print("No longer following a guide.")
+    elseif word == "off" then if not ns:GuideEndTrip("stop") then ns:GuideStop(); ns:Print("No longer following a guide.") end
     elseif word == "follow" then return ns:GuideFollow(rest)
     elseif word == "plan" then return ns.PlannerStart ~= nil and ns:PlannerStart()
     elseif ns:GuideGet(text) then return ns:GuideFollow(text)

@@ -1,0 +1,42 @@
+{
+  "Gold trip: %s": [
+    "Goldreise: %s",
+    "Voyage pour l'or : %s",
+    "Viaje de oro: %s",
+    "Поездка за золотом: %s",
+    "Viagem pelo ouro: %s",
+    "Viaggio per l'oro: %s",
+    "골드 여정: %s",
+    "赚金之旅：%s"
+  ],
+  "Stop this trip": [
+    "Diese Reise beenden",
+    "Arrêter ce voyage",
+    "Detener este viaje",
+    "Прервать поездку",
+    "Parar esta viagem",
+    "Interrompi questo viaggio",
+    "이 여정 중지",
+    "停止这次旅程"
+  ],
+  "Back to your levelling plan.": [
+    "Zurück zu deinem Levelplan.",
+    "Retour à votre plan de montée de niveau.",
+    "De vuelta a tu plan de subida de nivel.",
+    "Возвращаемся к вашему плану прокачки.",
+    "De volta ao seu plano de evolução.",
+    "Di nuovo al tuo piano di livellamento.",
+    "레벨업 계획으로 돌아갑니다.",
+    "回到你的升级计划。"
+  ],
+  "Back to \"%s\".": [
+    "Zurück zu „%s“.",
+    "Retour à « %s ».",
+    "De vuelta a «%s».",
+    "Возвращаемся к «%s».",
+    "De volta a \"%s\".",
+    "Di nuovo a «%s».",
+    "\"%s\"(으)로 돌아갑니다.",
+    "回到“%s”。"
+  ]
+}
