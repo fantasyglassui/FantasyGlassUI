@@ -300,29 +300,37 @@ function ns.PlannerMapDraw(mapID)
     return nLines, nMarks, nDots
 end
 
-local lastSig
+-- What the map shows: its id, its zoom and whether the route is followed (three values, no string made each tick).
+local lastId, lastScale, lastOn
 local function Signature(canvas, map)
     local id = map.GetMapID and map:GetMapID()
-    if type(id) ~= "number" or ns:IsSecret(id) then return nil, nil end
+    if type(id) ~= "number" or ns:IsSecret(id) then return nil end
     local scale = canvas.GetScale and canvas:GetScale()
-    return id, id .. "|" .. tostring(type(scale) == "number" and scale or 1) .. "|" .. (Following() and "on" or "off")
+    scale = (type(scale) == "number" and not ns:IsSecret(scale)) and scale or 1
+    return id, scale, Following() and true or false
 end
 function ns.PlannerMapRedraw()
     local canvas, map = Canvas()
     if not canvas or not (map.IsShown and ns.Yes(map:IsShown())) then return false end
-    local id, sig = Signature(canvas, map)
+    local id, scale, on = Signature(canvas, map)
     if not id then return false end
-    lastSig = sig
+    lastId, lastScale, lastOn = id, scale, on
     ns.PlannerMapDraw(id)
     return true
 end
 
--- Every half second while the map is shown: again when the map, its zoom or whether the route is followed changed.
+-- Every half second while the map is shown (and the guide is unlocked): again when the map, its zoom or whether the
+-- route is followed changed.
 local function Tick()
+    if not (ns.GuideUnlocked and ns:GuideUnlocked()) then
+        if lastId and holder then ns.PlannerMapDraw(nil) end         -- (locked since: whatever was drawn goes)
+        lastId = nil
+        return
+    end
     local canvas, map = Canvas()
-    if not canvas or not (map.IsShown and ns.Yes(map:IsShown())) then lastSig = nil return end
-    local id, sig = Signature(canvas, map)
-    if id and sig ~= lastSig then ns.PlannerMapRedraw() end
+    if not canvas or not (map.IsShown and ns.Yes(map:IsShown())) then lastId = nil return end
+    local id, scale, on = Signature(canvas, map)
+    if id and (id ~= lastId or scale ~= lastScale or on ~= lastOn) then ns.PlannerMapRedraw() end
 end
 test.tick = Tick
 ns:Every(0.5, "Planner on the map", Tick)

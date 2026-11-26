@@ -20671,6 +20671,52 @@ try("polish P2: no stuck states", function()
     ns.GuideUnlocked, ns.root.guideState, ns.root.guides, ns.PrintRaw = saved.unlocked, saved.state, saved.guides, saved.raw
     if not ok then error(err, 0) end
 end)
+try("polish P2: speed and safety", function()
+    local saved = { unlocked = ns.GuideUnlocked, state = ns.root.guideState, guides = ns.root.guides, advance = ns.GuideAdvance, raw = ns.PrintRaw,
+        cluster = rawget(env, "MinimapCluster"), errors = #ns.errors }
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        -- reading the guide's state saves nothing: a character that never followed a guide keeps nothing of it
+        ns.root.guideState, ns.root.guides = nil, nil
+        ns:GuideAdvance(); ns:GuideGet("x"); ns:GuideNames(); ns.GuideState(); ns:GuideStop()
+        fireEvent("QUEST_ACCEPTED", 1, 2); runTimers()
+        if ns.root.guideState ~= nil or ns.root.guides ~= nil then error("reads made saved tables") end
+        ns:GuideSave({ name = "Kept", steps = {} })
+        if type(ns.root.guides) ~= "table" or not ns.root.guides.Kept then error("a write makes them") end
+        -- a burst of quest events: one advance
+        ns.root.guideState = {}
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "x" } } }, {})
+        ns:PlannerStop(); ns.plannerQueued = false
+        runTimers()
+        local n = 0
+        ns.GuideAdvance = function(...) n = n + 1; return saved.advance(...) end
+        for _ = 1, 6 do fireEvent("QUEST_LOG_UPDATE") end
+        runTimers()
+        ns.GuideAdvance = saved.advance
+        if n ~= 1 then error("six quest log updates, one advance: " .. n) end
+        -- a recording stops growing at its cap, and says so once
+        local said = {}
+        ns.PrintRaw = function(_, m) said[#said + 1] = tostring(m) end
+        local r = { name = "Long", steps = {} }
+        for i = 1, ns.GUIDE_RECORD_MAX do r.steps[i] = { kind = "accept", quest = 100000 + i } end
+        local a1 = ns.GuideRecordStep(r, { kind = "accept", quest = 1 })
+        local a2 = ns.GuideRecordStep(r, { kind = "accept", quest = 2 })
+        ns.PrintRaw = saved.raw
+        if a1 or a2 or #r.steps ~= ns.GUIDE_RECORD_MAX or #said ~= 1 then error("a full recording: no more steps, said once: " .. #said) end
+        -- the minimap's tracking menu: only a button with the newer menu is opened from here
+        local opened, clicked = 0, 0
+        env.MinimapCluster = { Tracking = { Button = { Click = function() clicked = clicked + 1 end } } }
+        if ns:OpenTrackingMenu() ~= false or clicked ~= 0 then error("an old drop-down button is not clicked from add-on code") end
+        env.MinimapCluster = { Tracking = { Button = { OpenMenu = function() opened = opened + 1 end } } }
+        if ns:OpenTrackingMenu() ~= "menu" or opened ~= 1 then error("the newer menu opens") end
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    ns.GuideAdvance, ns.PrintRaw = saved.advance, saved.raw
+    rawset(env, "MinimapCluster", saved.cluster)
+    ns:GuideStop()
+    ns.GuideUnlocked, ns.root.guideState, ns.root.guides = saved.unlocked, saved.state, saved.guides
+    if not ok then error(err, 0) end
+end)
 -- polish P2: end
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)

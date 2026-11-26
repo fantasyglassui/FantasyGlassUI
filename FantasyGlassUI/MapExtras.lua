@@ -395,11 +395,14 @@ end)
 ------------------------------------------------------------------------------------------
 -- Minimap: right-click for the tracking menu, and the name of whoever pinged it.
 ------------------------------------------------------------------------------------------
+-- Only the game's newer menus (a tracking button with OpenMenu, as WoW Forever's has: MiniMapTrackingButtonMixin with its
+-- menu descriptions) are opened from here: those are safe to open from an add-on. A client whose tracking menu is the
+-- old drop-down kind is left alone, since opening that from add-on code taints the shared drop-down state (later
+-- "action blocked" on unit menus); its own button still works.
 function ns:OpenTrackingMenu()
     local cluster = _G.MinimapCluster
     local button = cluster and ((cluster.Tracking and cluster.Tracking.Button) or (cluster.TrackingFrame and cluster.TrackingFrame.Button))
-    if type(button) == "table" and button.OpenMenu then return pcall(button.OpenMenu, button) and "menu" or false end
-    if type(button) == "table" and button.Click then return pcall(button.Click, button) and "click" or false end
+    if type(button) == "table" and type(button.OpenMenu) == "function" then return pcall(button.OpenMenu, button) and "menu" or false end
     return false
 end
 ns:NewModule("mapTracking", function()

@@ -218,29 +218,35 @@ local function Here()
 end
 ns.GuideHere = Here
 ns.GUIDE_NEAR = 15                                            -- yards: close enough to count as "there"
+-- (one table, made once: each look refreshes its level and hearthstone; the questions read C_QuestLog as it is then)
+local theWorld
+local function Planner(fn, arg)
+    if type(fn) ~= "function" then return false end
+    local ok, v = pcall(fn, arg)
+    return ok and v == true
+end
+local function QL() return C_QuestLog or {} end
 function ns:GuideWorld()
-    local Q = C_QuestLog or {}
     local level = UnitLevel and UnitLevel("player")
     local bind
     if GetBindLocation then
         local ok, v = pcall(GetBindLocation)
         if ok and type(v) == "string" and not Secret(v) and v ~= "" then bind = v end
     end
-    local function Planner(fn, arg)
-        if type(fn) ~= "function" then return false end
-        local ok, v = pcall(fn, arg)
-        return ok and v == true
+    if theWorld then
+        theWorld.bind, theWorld.level = bind, (type(level) == "number" and not Secret(level)) and level or 0
+        return theWorld
     end
-    return {
+    theWorld = {
         bind = bind,
         knownFlight = function(node) return Planner(ns.PlannerKnownFlight, node) end,
         landedAt = function(node) return Planner(ns.PlannerLandedAt, node) end,
         crossed = function(crossing) return Planner(ns.PlannerCrossed, crossing) end,
-        onQuest = function(id) return Ask(Q.IsOnQuest, id) end,
-        completed = function(id) return Ask(Q.IsQuestFlaggedCompleted, id) end,
-        ready = function(id) return Ask(Q.IsComplete, id) or Ask(Q.ReadyForTurnIn, id) end,
+        onQuest = function(id) return Ask(QL().IsOnQuest, id) end,
+        completed = function(id) return Ask(QL().IsQuestFlaggedCompleted, id) end,
+        ready = function(id) return Ask(QL().IsComplete, id) or Ask(QL().ReadyForTurnIn, id) end,
         level = (type(level) == "number" and not Secret(level)) and level or 0,
-        hearthed = function(step) return ns.GuideHearthed(step, bind) end,
+        hearthed = function(step) return ns.GuideHearthed(step, theWorld.bind) end,
         near = function(step, radius)
             if not (step.x and step.y and ns.MapPosition and ns.WayArrow) then return false end
             if ns.Yes(UnitIsDeadOrGhost and UnitIsDeadOrGhost("player")) then return false end   -- (a ghost running to its body passes places, never reaches them)
@@ -254,6 +260,7 @@ function ns:GuideWorld()
             return distance < (tonumber(radius) or ns.GUIDE_NEAR)
         end,
     }
+    return theWorld
 end
 -- The hearth step without a place: done once you stand where your hearthstone is set (by the place's name, as the
 -- game gives it) after being somewhere else while the step was up. `hearthFrom`: that step, and whether you were away.
@@ -278,11 +285,15 @@ function ns.GuideHearthed(step, bind)
 end
 
 -- Guides kept with the settings (for every character), and the one this character is following ----
-local function Store()
+-- (made in the saved settings only when something is written: reading, as every quest event does, makes nothing,
+-- so a character that never followed a guide saves nothing of it)
+local function Store(create)
     if type(ns.root) ~= "table" then return {}, {} end
-    if type(ns.root.guides) ~= "table" then ns.root.guides = {} end
-    if type(ns.root.guideState) ~= "table" then ns.root.guideState = {} end
-    return ns.root.guides, ns.root.guideState
+    if create then
+        if type(ns.root.guides) ~= "table" then ns.root.guides = {} end
+        if type(ns.root.guideState) ~= "table" then ns.root.guideState = {} end
+    end
+    return type(ns.root.guides) == "table" and ns.root.guides or {}, type(ns.root.guideState) == "table" and ns.root.guideState or {}
 end
 function ns:GuideGet(name)
     local guides, state = Store()
@@ -303,8 +314,8 @@ function ns:GuideNames()
     return names
 end
 function ns:GuideSave(guide)
-    if type(guide) ~= "table" or type(guide.name) ~= "string" or ns.Trim(guide.name) == "" then return false, "the guide needs a name (a first line such as \"guide: My route\")" end
-    local guides = Store()
+    if type(guide) ~= "table" or type(guide.name) ~= "string" or ns.Trim(guide.name) == "" then return false, "The guide needs a name (a first line such as \"guide: My route\")." end
+    local guides = Store(true)
     guides[guide.name] = { name = guide.name, steps = guide.steps or {} }
     return true
 end
@@ -444,7 +455,7 @@ local function PlaceOf(step)
     if step.x and step.y then return step.map, step.x, step.y end
     if step.quest and step.kind ~= "accept" and C_QuestLog and C_QuestLog.GetNextWaypoint then
         local ok, map, x, y = pcall(C_QuestLog.GetNextWaypoint, step.quest)
-        if ok and type(map) == "number" and type(x) == "number" and type(y) == "number" and not Secret(x) then return map, x * 100, y * 100 end
+        if ok and type(map) == "number" and type(x) == "number" and type(y) == "number" and not Secret(map) and not Secret(x) and not Secret(y) then return map, x * 100, y * 100 end
     end
 end
 -- A step on a map you are not on: the arrow points at the next leg of the way there, from the planner's travel
@@ -654,7 +665,7 @@ function ns:GuideFollow(name)
     if name ~= nil and name == ns.GUIDE_PLANNED then return ns.PlannerStart ~= nil and ns:PlannerStart() end
     local guide = ns:GuideGet(name)
     if not guide then ns:Print("There is no guide called \"%s\". /fgui guide lists them.", tostring(name)); return false end
-    local _, state = Store()
+    local _, state = Store(true)
     local old = state[ns:CharKey()]
     local kept = type(old) == "table" and type(old.written) == "table" and old.written[name]   -- (where you were in it before a plan took over)
     state[ns:CharKey()] = (old and old.name == name) and old
@@ -676,7 +687,7 @@ end
 -- Steps you ticked off yourself in the old plan stay ticked where the new plan has them too (a
 -- planner stop by its stopKey, so the next visit to the same trainer is a new step).
 function ns:GuideSetPlan(guide, summary)
-    local _, state = Store()
+    local _, state = Store(true)
     local old = state[ns:CharKey()]
     local plan = guide or { name = ns.GUIDE_PLANNED, steps = {} }
     local ticked, had = {}, {}
@@ -810,6 +821,15 @@ end
 local function SkippedText(st)
     return Planned(st) and ns.GuideSkippedText(st.summary) or nil
 end
+-- The talent and riding lines read the game's talents, spells and money: kept until one of those changes (or the
+-- panel is shown afresh), not read again on every quest event.
+local cached = {}
+local function Cached(key, fn)
+    local c = cached[key]
+    if c == nil then c = fn() or false; cached[key] = c end
+    return c or nil
+end
+function ns.GuideForget() cached = {} end
 -- "2 talent points to spend", when the game says there are some.
 local function TalentText()
     local n = ns.PlannerUnspentTalents and ns.PlannerUnspentTalents()
@@ -918,11 +938,13 @@ function ns:GuideMenu(entries)
         stepMenu:Hide()
         if type(UISpecialFrames) == "table" then tinsert(UISpecialFrames, "FantasyGlassUIGuideMenu") end   -- (Escape closes it)
         ns.guideStepMenu = stepMenu
-        local away = CreateFrame("Frame")                    -- (a click anywhere else closes it)
-        pcall(away.RegisterEvent, away, "GLOBAL_MOUSE_DOWN")
-        away:SetScript("OnEvent", function()
+        local away = CreateFrame("Frame")                    -- (a click anywhere else closes it: heard only while it is open)
+        away:SetScript("OnEvent", ns:Guard("Guide menu", function()
             if stepMenu:IsShown() and not MenuOver() then stepMenu:Hide() end
-        end)
+        end))
+        stepMenu:SetScript("OnShow", function() pcall(away.RegisterEvent, away, "GLOBAL_MOUSE_DOWN") end)
+        stepMenu:SetScript("OnHide", function() pcall(away.UnregisterEvent, away, "GLOBAL_MOUSE_DOWN") end)
+        stepMenu.away = away
     end
     -- as wide as its longest label (at least 200), each button at least 24 high (larger with "Bigger controls")
     local bh = math.floor(24 * ((ns.db and ns.db.bigControls) and 1.3 or 1) + 0.5)
@@ -1138,9 +1160,9 @@ Draw = function()
     local planned = Planned(st)
     panel.title:SetText(Title(st, guide))
     local texts = {}
-    texts.skipped = (planned and st.planFailed) and ns:Tr("Couldn't plan the route; trying again after your next quest") or SkippedText(st)
-    texts.talent = planned and TalentText() or nil          -- (talent points waiting; the planned guide only)
-    texts.riding = (planned and ns.db and ns.db.plannerMount ~= false) and RidingText() or nil
+    texts.skipped = (planned and st.planFailed) and ns:Tr("Could not plan the route; trying again after your next quest") or SkippedText(st)
+    texts.talent = planned and Cached("talent", TalentText) or nil          -- (talent points waiting; the planned guide only)
+    texts.riding = (planned and ns.db and ns.db.plannerMount ~= false) and Cached("riding", RidingText) or nil
     texts.rep = planned and RepText(st) or nil
     texts.moved = planned and MovedText(st) or nil
     texts.classq = ClassText(st)
@@ -1339,6 +1361,12 @@ function ns:GuideShowPanel()
             end)
             def[1]:HookScript("OnLeave", function() GameTooltip:Hide() end)
         end
+        local watch = CreateFrame("Frame")                         -- (money, talents and skills: the talent and riding lines again)
+        for _, e in ipairs({ "PLAYER_MONEY", "CHARACTER_POINTS_CHANGED", "TRAIT_CONFIG_UPDATED", "SKILL_LINES_CHANGED" }) do pcall(watch.RegisterEvent, watch, e) end
+        watch:SetScript("OnEvent", ns:Guard("Guide panel", function()
+            cached = {}
+            if panel:IsShown() and not InCombatLockdown() then Draw() end
+        end))
         local entry = ns:RegisterMovable(panel, "questGuide", "Quest guide")
         if type(entry) == "table" then
             entry.offPage = true
@@ -1347,6 +1375,7 @@ function ns:GuideShowPanel()
         pcall(PinTop)
     end
     panel.drawnHeight = nil                         -- (shown afresh: its height is set once more; a redraw sets it only when it changes)
+    cached = {}
     panel:Show()
     Draw()
     return panel
@@ -1439,10 +1468,18 @@ local function Objectives(id)
     return (#parts > 0) and table.concat(parts, ", ") or nil
 end
 -- Add a step to a recording, unless the same one was just added.
+ns.GUIDE_RECORD_MAX = 500                                  -- (a recording left on for weeks stops growing here, and says so once)
 function ns.GuideRecordStep(recording, step)
     for i = #recording.steps, math.max(1, #recording.steps - 40), -1 do
         local s = recording.steps[i]
         if s.kind == step.kind and s.quest == step.quest and (step.quest or s.text == step.text) then return false end
+    end
+    if #recording.steps >= ns.GUIDE_RECORD_MAX then
+        if not recording.full then
+            recording.full = true
+            ns:Print("Recording \"%s\" is full (%d steps): start another to go on.", tostring(recording.name), ns.GUIDE_RECORD_MAX)
+        end
+        return false
     end
     recording.steps[#recording.steps + 1] = step
     return true
@@ -1500,11 +1537,20 @@ end
 do
     local ev = CreateFrame("Frame")
     for _, e in ipairs({ "QUEST_ACCEPTED", "QUEST_TURNED_IN", "QUEST_LOG_UPDATE", "PLAYER_LEVEL_UP", "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA" }) do pcall(ev.RegisterEvent, ev, e) end
-    ev:SetScript("OnEvent", ns:Guard("Quest guide", function(_, event, a, b)
+    -- every event in a burst (QUEST_LOG_UPDATE comes several times a kill) asks for one advance, 0.3 s on
+    local advancePending = false
+    local function AdvanceSoon()
+        if advancePending then return end
+        advancePending = true
+        ns:After(0.3, function() advancePending = false; pcall(ns.GuideAdvance, ns) end)      -- (once the game has caught up)
+    end
+    local function Id(v) return (type(v) == "number" and not Secret(v)) and v or nil end
+    ev:SetScript("OnEvent", ns:Guard("Guide events", function(_, event, a, b)
         if not ns:GuideOn() then return end
+        if event ~= "QUEST_LOG_UPDATE" and event ~= "ZONE_CHANGED_NEW_AREA" then cached = {} end   -- (a level, a quest: the talent and riding lines again)
         if rec then
-            if event == "QUEST_ACCEPTED" then ns:GuideRecordEvent("accept", (type(b) == "number") and b or a)
-            elseif event == "QUEST_TURNED_IN" then ns:GuideRecordEvent("turnin", a)
+            if event == "QUEST_ACCEPTED" then ns:GuideRecordEvent("accept", Id(b) or Id(a))
+            elseif event == "QUEST_TURNED_IN" then ns:GuideRecordEvent("turnin", Id(a))
             elseif event == "QUEST_LOG_UPDATE" then
                 local Q = C_QuestLog or {}
                 for id, state in pairs(rec.open) do
@@ -1515,7 +1561,7 @@ do
         local st = State()
         if st then
             if event == "PLAYER_ENTERING_WORLD" then ns:GuideShowPanel() end
-            ns:After(0.3, function() pcall(ns.GuideAdvance, ns) end)      -- (once the game has caught up)
+            AdvanceSoon()
             if event == "QUEST_LOG_UPDATE" and Planned(st) then FailedCheck(st) end
         end
     end))
@@ -1535,7 +1581,7 @@ do
         if step and (reached or step.kind == "goto" or step.kind == "level" or step.kind == "explore" or step.kind == "gather" or step.kind == "hearth" or step.kind == "fly") then pcall(ns.GuideAdvance, ns) end
         NotHere(st, step)
     end
-    ev:SetScript("OnUpdate", Tick)
+    ev:SetScript("OnUpdate", ns:Guard("Guide tick", Tick))    -- (a bad saved step says so once, never once a second)
     ns.guideTickTest = Tick
 end
 
