@@ -347,7 +347,16 @@ function ns.GoldCraftIdeas(ctx, add, recipes, have)
         for i, f in ipairs(found) do recs[i] = f.rec end
         have = Haves(recs)
     end
-    for _, f in ipairs(found) do add(CraftIdea(f, today, have)) end
+    -- what the kept ideas use, for the sell ideas' "Also used in" (the sell source runs after this one)
+    local uses = type(ctx) == "table" and {} or nil
+    for _, f in ipairs(found) do
+        local idea = CraftIdea(f, today, have)
+        add(idea)
+        if uses then
+            for _, r in ipairs(f.rec.reagents) do if Num(r.id) and not uses[r.id] then uses[r.id] = idea.title end end
+        end
+    end
+    if uses then ctx.craftUses = uses end
 end
 
 ns.GoldRegister("craft", function(ctx, add)
@@ -391,6 +400,10 @@ local function Flip(id, e, today)
     local listed, listedDay = Num(e.listed), Num(e.listedDay)
     if not listed or listed < 3 or not listedDay or ns.DaysBetween(listedDay, today) > 1 then return nil end
     if p > 0.6 * u then return nil end
+    -- a vendor pays more than it costs: that is the auction-to-vendor flip (GoldSell.lua), the safer one
+    local okV, _, _, _, _, _, _, _, _, _, _, vendor = pcall(ns.GetItemInfo, ns, id)
+    vendor = okV and Num(vendor) or nil
+    if vendor and vendor > 0 and p <= 0.9 * vendor and vendor - p >= 100 then return nil end
     local profit = floor(u * 95 / 100) - p
     if profit < 2000 then return nil end
     local q = Quality(id)
@@ -439,5 +452,6 @@ function ns.GoldFlipIdeas(ctx, add, items, today)
 end
 
 ns.GoldRegister("auction", function(ctx, add)
+    if type(ctx) ~= "table" or ctx.where ~= "auction" then return end    -- (only at the auction house: nowhere else shows flips)
     ns.GoldFlipIdeas(ctx, add, ns.PriceItems(), type(ctx) == "table" and ctx.today or nil)
 end)

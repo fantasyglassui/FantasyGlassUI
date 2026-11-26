@@ -12,6 +12,7 @@ local MOB_CAP, ITEM_CAP = 400, 12          -- monsters kept, items kept per mons
 local LEARNED = 10                         -- loots before a monster's own drops replace the default
 local PACE_GAP, PACE_CAP, PACE_MIN = 120, 400, 20
 local CANDIDATES, FARM_IDEAS, LOOP = 40, 8, 6
+local ZONE_DAYS = 90                    -- a farming zone not farmed for this long is left out
 local RECENT = 30                          -- corpses remembered, so opening one again is not a second loot
 
 local function Secret(v) return ns:IsSecret(v) end
@@ -51,6 +52,14 @@ local function MapName(map)
     if not Num(map) then return nil end
     local info = Ask(C_Map and C_Map.GetMapInfo, map)
     return type(info) == "table" and Str(info.name) or nil
+end
+-- Is this a dungeon's map (a monster there is not world farming)?
+local function DungeonMap(map)
+    if not Num(map) then return false end
+    local info = Ask(C_Map and C_Map.GetMapInfo, map)
+    local kind = type(info) == "table" and info.mapType or nil
+    local dungeon = type(Enum) == "table" and type(Enum.UIMapType) == "table" and Enum.UIMapType.Dungeon or nil
+    return kind ~= nil and dungeon ~= nil and not ns:IsSecret(kind) and kind == dungeon
 end
 -- Where you stand: { map, x, y } with x and y 0..100 to one decimal, or nil.
 local function Here()
@@ -513,7 +522,10 @@ function ns.GoldFarmIdeas(ctx, add, mobs, zones, questie, here)
     local bonus, questNames = QuestDrops(questie)
     -- the candidates
     local cands = {}
-    for npc, rec in pairs(mobs) do
+    local npcs = {}
+    for npc in pairs(mobs) do npcs[#npcs + 1] = npc end          -- (the keys first: the loot recorder may add one between slices)
+    for _, npc in ipairs(npcs) do
+        local rec = mobs[npc]
         if Num(npc) and type(rec) == "table" then
             local lv = Num(rec.level) or level
             if lv <= level + 2 and rec.instance ~= true then                      -- (dungeon monsters are not world farming)
@@ -532,8 +544,10 @@ function ns.GoldFarmIdeas(ctx, add, mobs, zones, questie, here)
                 if (lv or level) <= level + 2 then
                     spawnCache[npc] = SpawnsByMap(questie, npc)
                     local map = MostSpawns(spawnCache[npc])
-                    cands[#cands + 1] = { npc = npc, name = Str(questie.npc(npc, "name")), level = lv or level, map = map,
-                                          value = ns.GoldKillDefault(lv or level), learned = false, loots = 0 }
+                    if not DungeonMap(map) then                      -- (a dropper inside an instance is not world farming)
+                        cands[#cands + 1] = { npc = npc, name = Str(questie.npc(npc, "name")), level = lv or level, map = map,
+                                              value = ns.GoldKillDefault(lv or level), learned = false, loots = 0 }
+                    end
                 end
             end
             ns.GoldYield()
@@ -615,6 +629,7 @@ function ns.GoldFarmIdeas(ctx, add, mobs, zones, questie, here)
             id = "farm:" .. tostring(map or 0) .. ":" .. tostring(c.npc), kind = "farm", oneOff = false,
             title = format(ns:Tr("Kill %s in %s"), name, zone), perHour = perHour,
             ease = max(0, min(100, ease)), safety = ns.GOLD_SAFETY.farm.guess, basis = "guess", priceDay = c.day,
+            builtIn = (not c.learned and c.day == nil) or nil,           -- (a default for its level: "default values")
             where = "window", map = map, steps = steps, detail = detail, tip = tip,
             npc = c.npc, perLoot = c.perLoot, killSeconds = secs, zone = zone,
         }
@@ -643,6 +658,7 @@ function ns.GoldFarmIdeas(ctx, add, mobs, zones, questie, here)
             ideas[#ideas + 1] = {
                 id = "farm:zone:" .. name, kind = "farm", oneOff = false, title = format(ns:Tr("Farm in %s (your own times)"), name),
                 perHour = perHour, ease = max(0, min(100, ease)), safety = ns.GOLD_SAFETY.farm.measured, basis = "measured",
+                priceDay = Num(z.day), priceWord = z.auction and "auction" or nil,   -- (the newest time there, and its loot valued at the auction prices then)
                 where = "window", map = m.map, steps = { { text = format(ns:Tr("Go to %s"), name), map = m.map } }, detail = detail,
             }
         end
@@ -660,7 +676,31 @@ ns.GoldRegister("farm", function(ctx, add)
     if type(ctx) ~= "table" or ctx.where == "auction" then return end           -- (farm ideas live in the window)
     local root = type(ns.root) == "table" and ns.root or {}
     local zones = {}
-    if type(ns.FarmZoneRanking) == "function" and type(root.farmZones) == "table" then zones = ns.FarmZoneRanking(root.farmZones) end
+    if type(ns.FarmZoneRanking) == "function" and type(root.farmZones) == "table" then
+        -- only zones farmed in the last 90 days; each knows its newest time there (its day, and whether
+        -- its loot was valued: then at the auction prices seen that day)
+        local today, recent, newest = ctx.today or ns.Today(), {}, {}
+        local names = {}
+        for name in pairs(root.farmZones) do names[#names + 1] = name end
+        for _, name in ipairs(names) do
+            local list = root.farmZones[name]
+            local last = type(list) == "table" and list[#list]
+            local at = type(last) == "table" and Num(last.at)
+            local okD, d = false, nil
+            if at then okD, d = pcall(date, "%Y%m%d", at) end
+            local day = okD and tonumber(d) or nil
+            if type(list) == "table" and (not at or (day and ns.DaysBetween(day, today) <= ZONE_DAYS)) then
+                recent[name] = list
+                newest[name] = { day = day, auction = type(last) == "table" and (Num(last.value) or 0) > 0 }
+            end
+            ns.GoldYield()
+        end
+        zones = ns.FarmZoneRanking(recent)
+        for _, z in ipairs(zones) do
+            local n = type(z) == "table" and newest[z.zone]
+            if n then z.day, z.auction = n.day, n.auction end
+        end
+    end
     ns.GoldFarmIdeas(ctx, add, root.goldMobs, zones, ns.GoldFarmQuestie(), Here())
 end)
 

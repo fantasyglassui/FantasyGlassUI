@@ -63,8 +63,9 @@ It checks the following:
 - **Right now** holds `vflip:2320`, `sell:junk`, `sell:bags` and `craft:1`, ordered by total. It shows four rows, with no "more".
   - The flip (`flip:8`) is auction-only, so by the window ruling it ranks among the panel's one-offs instead. This is the one deviation from the brief's wording, and it is deliberate.
 - **The ranked list** holds the farm, dungeon and gather ideas, each "an hour", best first.
-- **The auction panel** shows exactly `flip`, `vflip`, `sell`, `craft` and `aflip`, sorted like Right now. Junk, farm, dungeon and gather never reach it.
-- **Freshness.** Every window row carries its `GoldFreshText`. Every panel row's tooltip carries it too, because the panel shows the words there. The texts are checked: "from prices · prices from today", "from prices · vendor prices" and "measured…".
+- **The auction panel** shows exactly `flip`, `vflip`, `sell`, `craft` and `aflip`, sorted like Right now. Junk, farm, dungeon and gather never reach it, and the window's collection has no flips.
+- **A reagent you would sell** (the cloth in your bags) carries "Also used in: Make 3 × …" and stays in "Sell your bags".
+- **Freshness.** Every window row carries its `GoldFreshText`. Every panel row carries it too, with its safety word, on its second line and in its tooltip. The texts are checked: "from prices · prices from today", "from prices · vendor prices" and "measured…".
 - **A goal** (50g) merges the two lists into one. Right now points to it. All seven ideas are in the one list, each with its " · goal in" and its freshness.
 - **Locked again**, nothing opens:
   - not the window
@@ -84,17 +85,28 @@ It checks the following:
 
 They follow the same rule: one node per 10 world yards (`ns.PLANNER_NODE_YARDS`) per name and skill, at most 300 per map, and herbs and ore only.
 
-**The fold is one step**, run once where both are loaded (at login, or when the planner's folder loads):
+**The fold** runs once where both are loaded (at login, or when the planner's folder loads), as a sliced job. It runs only when `ns.PlannerWorldPos` exists, because without a world position `PlannerRecordNode` records nothing and the nodes would be lost. It clears a map's gold list only after that whole map has been moved, and clears `goldNodesSeen` only once every map is done:
 
 ```lua
-local gold = ns.root.goldNodesSeen
-if type(gold) == "table" and type(ns.PlannerRecordNode) == "function" then
-    for map, list in pairs(gold) do
-        for _, n in ipairs(list) do ns.PlannerRecordNode(map, n.x, n.y, n.name, n.skill) end   -- (its 10-yard rule and cap)
+local function FoldNodes()
+    local gold = ns.root.goldNodesSeen
+    if type(gold) ~= "table" or type(ns.PlannerRecordNode) ~= "function" or type(ns.PlannerWorldPos) ~= "function" then return end
+    local maps = {}
+    for map in pairs(gold) do maps[#maps + 1] = map end           -- (the keys first: a gathering may add one between slices)
+    for _, map in ipairs(maps) do
+        local list = gold[map]
+        for _, n in ipairs(type(list) == "table" and list or {}) do
+            ns.PlannerRecordNode(map, n.x, n.y, n.name, n.skill)    -- (its 10-yard rule and cap)
+            ns.GoldYield()
+        end
+        gold[map] = nil                                             -- (this map is moved, all of it)
     end
-    ns.root.goldNodesSeen = nil
+    if next(gold) == nil then ns.root.goldNodesSeen = nil end
 end
+if type(ns.PlannerWorldPos) == "function" then ns.GoldJob(FoldNodes, "foldNodes") end
 ```
+
+A gathering recorded into `goldNodesSeen` during the fold lands in a map that is either still waiting (it is moved with it) or a new key (it waits for the next fold), so nothing is lost.
 
 After the fold:
 - `ns.GoldRecordNode` can call `ns.PlannerRecordNode`, or simply stop recording.
@@ -114,7 +126,36 @@ After the fold:
 - **`ns.goldTest`** (the tests' reset) ships in the add-on. It is harmless.
 - **Stale pending state.** A recorder's pending loot or gathering state, set while unlocked, can outlive a lock that happens in the middle of a loot window. It is cleared at the next unlocked event. This is harmless.
 - **Smoke runtime.** The full smoke takes about 7–9 minutes a run on this machine.
-- **Clean-up.** The worktrees `/home/claude/fgui-gold-a…d` and the branches `gold-a…d` are still there. The plan's step 5 removes them after the final review.
+- **Clean-up.** Done after the final review's fixes: the worktrees `/home/claude/fgui-gold-a…d` are removed and the branches `gold-a…d` deleted.
+- **The planner's own recorder** on `quest-planner` (`PlannerPath.lua`, `ns:Guard("Planner gather")` without an unlock-first check) will time a "Planner gather" row in `/fgui perf` while locked once the branches meet. Fix it with the fold.
+
+## The final review's fixes (rulings)
+
+- **I1.** A bank item whose details are not loaded yet (no bind type) is skipped until a later collection knows it.
+- **I2.** A measured farm zone takes `priceDay` from its newest time there (`at`). A zone not farmed for 90 days is left out. When that time's loot was valued (its `value` is above 0), the text says "auction prices from …", because `FarmZonesSave` values loot at the auction prices seen then; a coin-only time says "prices from …". A zone record with no `at` (none are written that way) is kept, with no day.
+- **I3.** Every panel row has a faint second line (ease · how sure · how fresh), as the window's rows have. The panel holds 10 rows of 34 px.
+- **I4.** "Sell your bags" leaves out an item whose hint is Hold, and names it as "Hold: %s (cheap today)". It is not junk either.
+- **I5.** The built-in gathering guess is the median of the band's items (an unpriced one counts 0), with rare spawns left out: `ns.GOLD_GATHER_RARE` (Black Lotus). A node not learned yet whose name is a listed item's name is valued by that item.
+- **I6.** In Gold.lua, the job runner (`GoldJob`, `GoldYield`, `GoldBusy`, `GoldRunSlice`, the tick and the fight flag) and `VendorPrice` / `GoldItemValue` carry a "stays in the main add-on" banner. The auction-house entry point uses only `ns.goldPanel` and plain frame calls.
+- **M1.** One listing never gives both an `aflip` and a `flip`: a flip is skipped when a vendor pays more than the listing costs, and the aflip is kept.
+- **M2.** The auction source returns at once away from the auction house (`ctx.where ~= "auction"`).
+- **M3.** The monster walk and the auction-to-vendor walk take their keys first, then walk them across yields.
+- **M4.** The jobs run from a plain tick frame, not `ns:Every`. While locked it hides the window and the panel and stops, so a lock mid-session leaves no "Gold" row in `/fgui perf`. It keeps going while the window or panel is up, so a later lock still hides them.
+- **M5.** A monster at its level default reads "guess · default values". A measured gathering map says "Last gathered %s".
+- **M6.** For ordering only, under any preset, a guess counts at 80% and an idea whose prices are more than 7 days old at 90% (`ns.GoldOrderFactor`): the gold part is measured against the best such adjusted amount, and the ease and safety parts are scaled the same way. The amounts shown stay true. One-offs in Right now keep their order by total.
+- **M7.** A Questie dropper whose spawns are on a dungeon map (`C_Map.GetMapInfo(map).mapType == Enum.UIMapType.Dungeon`) is no farm idea.
+- **M8.** The node fold above is sliced, runs only with `ns.PlannerWorldPos`, and clears only what it has moved.
+- **M9.** `ns.GoldContext` stamps this character's `goldChars` record with `seen`; forgetting drops records not seen for 180 days. A record from before the stamp is stamped, not dropped, and the one being played is always kept.
+- **M10.** The craft source leaves `ctx.craftUses = { [itemID] = title }` for the sources after it (they run in key order, so craft comes before sell). A sell or junk line for such an item gets "Also used in: %s" and stays in the list.
+- **M11.** "Sell your bags" is Sure (75) for an item listed in a scan (`listed > 0`, `listedDay`) or seen while browsing (`seenDay`) in the last 7 days, and likely (60, which reads "Fairly sure") otherwise. The idea's safety is the share of the money, weighted.
+
+## Later: the folder move
+
+What must stay in the main add-on when the advisor moves into `FantasyGlassUI_Gold`, because the recorders call it while the folder is not loaded:
+- Gold.lua: the job runner (`ns.GoldJob`, `ns.GoldYield`, `ns.GoldBusy`, `ns.GoldRunSlice`, the tick frame and the fight flag), `VendorPrice` and `ns.GoldItemValue`. These are marked "stays in the main add-on".
+- Gold.lua: the entry points at the end (the launcher hooks, the guide panel's button, `/fgui guide gold`, and the auction-house frame, which now reads only `ns.goldPanel`).
+- The recorder blocks of GoldSell.lua (merchant prices, with `ns.GoldVendorNote`), GoldFarm.lua (loot, with `ns.GoldMobNote`), GoldGather.lua (gathering, with `ns.GoldGatherSkill`, `ns.GOLD_GATHER_SPELLS` and `ns.GoldRecordNode`) and GoldCraft.lua (recipes, with `ns.GoldRecipesRead`).
+- The node fold, if the planner has moved by then.
 
 ## In-game checklist
 

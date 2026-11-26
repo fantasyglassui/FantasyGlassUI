@@ -21,6 +21,13 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["default values"] = "Standardwerte",
+    ["auction prices from today"] = "Auktionspreise von heute",
+    ["auction prices from yesterday"] = "Auktionspreise von gestern",
+    ["auction prices from %d days ago"] = "Auktionspreise von vor %d Tagen",
+    ["Hold: %s (cheap today)"] = "Behalten: %s (heute billig)",
+    ["Also used in: %s"] = "Auch verwendet für: %s",
+    ["Last gathered %s"] = "Zuletzt gesammelt: %s",
     ["item %d"] = "Gegenstand %d",
     ["auction"] = "Auktion",
     ["%d to buy, %s each"] = "%d zu kaufen, je %s",
@@ -3469,6 +3476,13 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["default values"] = "valeurs par défaut",
+    ["auction prices from today"] = "prix des enchères d'aujourd'hui",
+    ["auction prices from yesterday"] = "prix des enchères d'hier",
+    ["auction prices from %d days ago"] = "prix des enchères d'il y a %d jours",
+    ["Hold: %s (cheap today)"] = "Garder : %s (bon marché aujourd'hui)",
+    ["Also used in: %s"] = "Sert aussi à : %s",
+    ["Last gathered %s"] = "Dernière récolte : %s",
     ["item %d"] = "objet %d",
     ["auction"] = "enchères",
     ["%d to buy, %s each"] = "%d à acheter, %s l'unité",
@@ -6917,6 +6931,13 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["default values"] = "valores por defecto",
+    ["auction prices from today"] = "precios de subasta de hoy",
+    ["auction prices from yesterday"] = "precios de subasta de ayer",
+    ["auction prices from %d days ago"] = "precios de subasta de hace %d días",
+    ["Hold: %s (cheap today)"] = "Conservar: %s (barato hoy)",
+    ["Also used in: %s"] = "También se usa en: %s",
+    ["Last gathered %s"] = "Última recolección: %s",
     ["item %d"] = "objeto %d",
     ["auction"] = "subasta",
     ["%d to buy, %s each"] = "%d por comprar, %s cada uno",
@@ -10368,6 +10389,13 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["default values"] = "значения по умолчанию",
+    ["auction prices from today"] = "аукционные цены за сегодня",
+    ["auction prices from yesterday"] = "аукционные цены за вчера",
+    ["auction prices from %d days ago"] = "аукционные цены %d дн. назад",
+    ["Hold: %s (cheap today)"] = "Придержать: %s (сегодня дёшево)",
+    ["Also used in: %s"] = "Также нужно для: %s",
+    ["Last gathered %s"] = "Последний сбор: %s",
     ["item %d"] = "предмет %d",
     ["auction"] = "аукцион",
     ["%d to buy, %s each"] = "купить %d, по %s",
@@ -13816,6 +13844,13 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["default values"] = "valores padrão",
+    ["auction prices from today"] = "preços do leilão de hoje",
+    ["auction prices from yesterday"] = "preços do leilão de ontem",
+    ["auction prices from %d days ago"] = "preços do leilão de %d dias atrás",
+    ["Hold: %s (cheap today)"] = "Guardar: %s (barato hoje)",
+    ["Also used in: %s"] = "Também usado em: %s",
+    ["Last gathered %s"] = "Última coleta: %s",
     ["item %d"] = "item %d",
     ["auction"] = "leilão",
     ["%d to buy, %s each"] = "%d para comprar, %s cada",
@@ -17264,6 +17299,13 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["default values"] = "valori predefiniti",
+    ["auction prices from today"] = "prezzi d'asta di oggi",
+    ["auction prices from yesterday"] = "prezzi d'asta di ieri",
+    ["auction prices from %d days ago"] = "prezzi d'asta di %d giorni fa",
+    ["Hold: %s (cheap today)"] = "Tieni: %s (economico oggi)",
+    ["Also used in: %s"] = "Usato anche in: %s",
+    ["Last gathered %s"] = "Ultima raccolta: %s",
     ["item %d"] = "oggetto %d",
     ["auction"] = "asta",
     ["%d to buy, %s each"] = "%d da comprare, %s l'uno",
@@ -20712,6 +20754,13 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["default values"] = "기본값",
+    ["auction prices from today"] = "오늘의 경매장 가격",
+    ["auction prices from yesterday"] = "어제의 경매장 가격",
+    ["auction prices from %d days ago"] = "%d일 전의 경매장 가격",
+    ["Hold: %s (cheap today)"] = "보관: %s (오늘은 저렴함)",
+    ["Also used in: %s"] = "다음에도 사용: %s",
+    ["Last gathered %s"] = "마지막 채집: %s",
     ["item %d"] = "아이템 %d",
     ["auction"] = "경매",
     ["%d to buy, %s each"] = "%d개 구매, 개당 %s",
@@ -24163,6 +24212,13 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["default values"] = "默认数值",
+    ["auction prices from today"] = "今天的拍卖价格",
+    ["auction prices from yesterday"] = "昨天的拍卖价格",
+    ["auction prices from %d days ago"] = "%d天前的拍卖价格",
+    ["Hold: %s (cheap today)"] = "保留：%s（今天便宜）",
+    ["Also used in: %s"] = "也用于：%s",
+    ["Last gathered %s"] = "上次采集：%s",
     ["item %d"] = "物品 %d",
     ["auction"] = "拍卖",
     ["%d to buy, %s each"] = "需购买 %d 个，每个 %s",

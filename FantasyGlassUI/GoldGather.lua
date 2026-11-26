@@ -39,6 +39,9 @@ ns.GOLD_GATHER_ITEMS = {
         [2770] = 1, [2771] = 65, [2775] = 75, [2772] = 125, [2776] = 155, [3858] = 175, [7911] = 230, [10620] = 245,
     },
 }
+-- Rare spawns: kept above for the skill labels, left out of the built-in guess (one would make every
+-- zone of its band look rich, where most of the time it does not grow at all).
+ns.GOLD_GATHER_RARE = { [13468] = true }   -- Black Lotus
 -- uiMapID -> { lowest skill, highest skill } that zone suits.
 ns.GOLD_GATHER_ZONES = {}
 do
@@ -311,18 +314,36 @@ local function Worth(id, ctx, days)
     return v
 end
 
--- The built-in worth of a node in this zone at your skill: the average of what grows there that you
--- can gather, x 1.5 for herbs (more than one a node) or x 2 for ore.
+local function PerNode(skill) return (skill == HERBALISM) and 1.5 or 2 end   -- (more than one herb a node; ore x 2)
+-- The built-in worth of a node in this zone at your skill: the median of what grows there that you
+-- can gather (rare spawns left out; an unpriced item counts 0), x 1.5 for herbs or x 2 for ore.
 local function BuiltIn(map, skill, level, ctx, days)
     local band = ns.GOLD_GATHER_ZONES[map] or WHOLE
-    local sum, count = 0, 0
+    local worths = {}
     for id, need in pairs(ns.GOLD_GATHER_ITEMS[skill] or {}) do
-        if need <= level and need >= band[1] and need <= band[2] then
-            sum, count = sum + Worth(id, ctx, days), count + 1
+        if need <= level and need >= band[1] and need <= band[2] and not ns.GOLD_GATHER_RARE[id] then
+            worths[#worths + 1] = Worth(id, ctx, days)
         end
     end
-    if count == 0 then return 0 end
-    return sum / count * (skill == HERBALISM and 1.5 or 2)
+    local n = #worths
+    if n == 0 then return 0 end
+    table.sort(worths)
+    local mid = (n % 2 == 1) and worths[(n + 1) / 2] or (worths[n / 2] + worths[n / 2 + 1]) / 2
+    return mid * PerNode(skill)
+end
+-- The listed item of this skill whose name is a node's name ("Peacebloom"), or nil (names from the
+-- item details, so only once they are loaded). `cache` keeps the names for one collection.
+local function ItemNamed(name, skill, cache)
+    local byName = cache[skill]
+    if not byName then
+        byName = {}
+        for id in pairs(ns.GOLD_GATHER_ITEMS[skill] or {}) do
+            local ok, n = pcall(ns.GetItemInfo, ns, id)
+            if ok and type(n) == "string" and not ns:IsSecret(n) and n ~= "" then byName[n] = id end
+        end
+        cache[skill] = byName
+    end
+    return byName[name]
 end
 
 -- What one node of this name gives, once it has been looted 3 times; nil before.
@@ -409,6 +430,7 @@ function ns.GoldGatherIdeas(ctx, add, skills)
     local root = Root()
     local speed = ((Num(ctx.level) or 0) >= 40) and 11.2 or 7
     local found = {}                                 -- id -> idea
+    local names = {}                                 -- skill -> { item name -> id }, for this collection
     -- measured: what an hour of gathering on a map really brought (skinning only this way)
     -- (the keys first: a gathering may add a map between slices)
     local measured = root and type(root.goldGather) == "table" and root.goldGather or {}
@@ -431,7 +453,9 @@ function ns.GoldGatherIdeas(ctx, add, skills)
             local idea = Idea(ctx, map, skill, "measured", perHour, title, days, false)
             idea.steps = { { text = format(ns:Tr("Go to %s"), zone), map = map } }
             idea.detail = { { left = format(ns:Tr("Measured: %d gatherings in %s"), n, ns.GoldTimeText(secs / 60)) } }
-            if other then idea.detail[2] = { left = format(ns:Tr("Also gathered here, and counted in this: %s"), ns:Tr(SKILL_WORD[other])) } end
+            local last = Num(m.day) and ns.AuctionSeenText and ns.AuctionSeenText({ price = 0, day = m.day }, ctx.today or ns.Today())
+            if last then idea.detail[#idea.detail + 1] = { left = format(ns:Tr("Last gathered %s"), last) } end
+            if other then idea.detail[#idea.detail + 1] = { left = format(ns:Tr("Also gathered here, and counted in this: %s"), ns:Tr(SKILL_WORD[other])) } end
             found[idea.id] = idea
         end
     end
@@ -458,6 +482,8 @@ function ns.GoldGatherIdeas(ctx, add, skills)
                             local v = cache[node.name]
                             if v == nil then
                                 v = Learned(node.name, ctx, days)
+                                local own = (v == nil) and ItemNamed(node.name, skill, names) or nil
+                                if own then v = Worth(own, ctx, days) * PerNode(skill) end   -- (the node's own item)
                                 if v == nil then
                                     base = base or BuiltIn(map, skill, level, ctx, days)
                                     v = base

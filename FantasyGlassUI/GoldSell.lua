@@ -204,27 +204,55 @@ local function BankMark(bank)
     return ns:Tr("in your bank")
 end
 
--- Sell at the auction house. Returns the ids it sells, so the junk leaves them alone.
+-- Is this price one that says the item sells: listed in a scan, or seen while browsing, in the last
+-- 7 days? (Otherwise it is only likely to sell.)
+local SURE_DAYS, SURE, LIKELY = 7, ns.GOLD_SAFETY.sell.prices, 60
+local function SellsSurely(e, today)
+    if type(e) ~= "table" then return false end
+    local listed, listedDay, seenDay = Num(e.listed), Num(e.listedDay), Num(e.seenDay)
+    if listed and listed > 0 and listedDay and ns.DaysBetween(listedDay, today) <= SURE_DAYS then return true end
+    return seenDay ~= nil and ns.DaysBetween(seenDay, today) <= SURE_DAYS
+end
+-- "Also used in: Make 3 × …", for an item a shown craft idea uses (the craft source runs first and
+-- leaves ctx.craftUses = { [itemID] = title }).
+local function AlsoUsed(ctx, detail, id)
+    local uses = type(ctx.craftUses) == "table" and ctx.craftUses[id]
+    if type(uses) == "string" then detail[#detail + 1] = { left = "|cff9aa4b4" .. format(ns:Tr("Also used in: %s"), uses) .. "|r" } end
+end
+
+-- Sell at the auction house. Returns the ids it sells (and holds), so the junk leaves them alone.
 local function SellIdea(ctx, add, list, items, inBank)
     local worth = ns.WorthSelling(list, items, ctx.today)
     local sold = {}
     if #worth == 0 then return sold end
-    local total, oldest, detail = 0, nil, {}
+    local total, oldest, detail, held, sure = 0, nil, {}, {}, 0
     for _, w in ipairs(worth) do
         local it = w.item
         sold[it.id] = true
-        local net = floor(w.total * 0.95)
-        total = total + net
-        local e = items[it.id]
-        local d = type(e) == "table" and Num(e.day) or nil
-        if d and (not oldest or d < oldest) then oldest = d end
-        local right = ns:Coins(net)
-        if ns.SellHintFor and ns.SellHintFor(it.id, it.bound) == "sell" then right = "|cff4dd966" .. ns:Tr("Sell now") .. "|r  " .. right end
-        detail[#detail + 1] = { left = Mark(format("%s ×%d", (Info(it.id)), it.count), inBank), right = right }
+        local hint = ns.SellHintFor and ns.SellHintFor(it.id, it.bound)
+        if hint == "hold" then
+            -- cheap today against its usual price: not counted, only named
+            held[#held + 1] = { left = "|cff9aa4b4" .. Mark(format(ns:Tr("Hold: %s (cheap today)"), (Info(it.id))), inBank) .. "|r" }
+        else
+            local net = floor(w.total * 0.95)
+            total = total + net
+            local e = items[it.id]
+            if SellsSurely(e, ctx.today) then sure = sure + net end
+            local d = type(e) == "table" and Num(e.day) or nil
+            if d and (not oldest or d < oldest) then oldest = d end
+            local right = ns:Coins(net)
+            if hint == "sell" then right = "|cff4dd966" .. ns:Tr("Sell now") .. "|r  " .. right end
+            detail[#detail + 1] = { left = Mark(format("%s ×%d", (Info(it.id)), it.count), inBank), right = right }
+            AlsoUsed(ctx, detail, it.id)
+        end
         ns.GoldYield()
     end
+    for _, line in ipairs(held) do detail[#detail + 1] = line end
+    if total <= 0 then return sold end
+    -- how sure: the share of the money from items that surely sell, the rest only likely
+    local safety = floor((SURE * sure + LIKELY * (total - sure)) / total + 0.5)
     local steps = { { text = ns:Tr("Go to the auction house") } }
-    local minutes = min(15, 3 + 0.5 * #worth)
+    local minutes = min(15, 3 + 0.5 * (#worth - #held))
     if inBank then
         table.insert(steps, 1, { text = ns:Tr("Take the marked items out of your bank") })
         minutes = min(10, minutes + BANK_MINUTES)
@@ -232,7 +260,7 @@ local function SellIdea(ctx, add, list, items, inBank)
     add({
         id = inBank and "sell:bank" or "sell:bags", kind = "sell", oneOff = true, total = total, minutes = minutes,
         title = ns:Tr(inBank and "Sell what is in your bank at the auction house" or "Sell your bags at the auction house"),
-        ease = ns.GOLD_EASE.sell, safety = ns.GOLD_SAFETY.sell.prices, basis = "prices", priceDay = oldest, where = "both",
+        ease = ns.GOLD_EASE.sell, safety = safety, basis = "prices", priceDay = oldest, where = "both",
         steps = steps, detail = detail, tip = inBank and { inBank } or nil,
     })
     return sold
@@ -249,6 +277,7 @@ local function JunkIdea(ctx, add, list, sold, inBank)
                 local value = vendor * it.count
                 total = total + value
                 detail[#detail + 1] = { left = Mark(format("%s ×%d", name, it.count), inBank), right = ns:Coins(value) }
+                AlsoUsed(ctx, detail, it.id)
             end
         end
         ns.GoldYield()
@@ -312,8 +341,9 @@ local function BankItems()
         local id = type(link) == "string" and tonumber(link:match("item:(%d+)")) or nil
         if id then
             local _, _, vendor, bindType = Info(id)
-            -- (bind on equip or use: the list cannot say whether this one is bound yet, so it is never suggested)
-            if bindType ~= 2 and bindType ~= 3 then
+            -- (bind on equip or use: the list cannot say whether this one is bound yet, so it is never
+            -- suggested; details not loaded yet (no bind type): skipped until a later collection knows)
+            if bindType ~= nil and bindType ~= 2 and bindType ~= 3 then
                 local o = at[id]
                 if not o then
                     o = { id = id, count = 0, vendor = vendor, bound = BOUND[bindType] == true, link = link }
@@ -384,19 +414,12 @@ local function VendorToAuction(ctx, items, flips)
 end
 
 local function AuctionToVendor(ctx, items, flips)
-    -- today's entries, a step at a time (the prices may change between slices: an entry taken away
-    -- ends the walk, since next() cannot go on from it; one added may come twice, so each is kept once)
-    local keys, seen = {}, {}
-    local id, e = next(items)
-    while id ~= nil do
-        if type(e) == "table" and e.day == ctx.today and not seen[id] then seen[id] = true; keys[#keys + 1] = id end
-        ns.GoldYield()
-        if items[id] == nil then break end
-        id, e = next(items, id)
-    end
+    -- the keys first, in one go with no yield (the prices may change between slices), then walked
+    local keys = {}
+    for id in pairs(items) do keys[#keys + 1] = id end
     for _, id in ipairs(keys) do
         local e = items[id]
-        local p = type(e) == "table" and Num(e.price) or nil
+        local p = type(e) == "table" and e.day == ctx.today and Num(e.price) or nil
         if p and p > 0 then
             local name, _, v = Info(id)
             if v > 0 and p <= 0.9 * v and v - p >= 100 then

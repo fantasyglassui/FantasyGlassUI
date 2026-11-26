@@ -11240,6 +11240,18 @@ try("gold seams: ideas, jobs and ranking", function()
         r = ns.GoldRank({ P1, P2, P3, O1, O2 }, { 30, 70, 0 }, 20000, today)
         m = r.merged
         if m[1] ~= P1 or m[2] ~= O2 or m[3] ~= O1 or m[4] ~= P2 or m[5] ~= P3 or O2.toGoal ~= 206 then error("within the sliders first: " .. tostring(O2.toGoal)) end
+        -- for ordering only, a guess counts at 80% and prices over 7 days old at 90%, under any preset
+        local G100, M90 = PerHour("t:g100", 1000000, 50, 50), PerHour("t:m90", 900000, 50, 50)
+        M90.basis = "measured"
+        for _, w in ipairs({ { 100, 0, 0 }, { 30, 70, 0 }, { 30, 0, 70 } }) do
+            r = ns.GoldRank({ G100, M90 }, w, nil, today)
+            if r.ranked[1] ~= M90 then error("a measured 90g ranks above a guess of 100g: " .. table.concat(w, "/")) end
+        end
+        if G100.perHour ~= 1000000 or M90.perHour ~= 900000 then error("the amounts stay true") end
+        local Old, New = PerHour("t:old", 1000000, 50, 50), PerHour("t:new", 950000, 50, 50)
+        Old.basis, New.basis, Old.priceDay, New.priceDay = "measured", "measured", 20261110, today
+        if ns.GoldRank({ Old, New }, { 100, 0, 0 }, nil, today).ranked[1] ~= New then error("prices over 7 days old count at 90%") end
+        if ns.GoldFreshText({ basis = "guess", builtIn = true }, today) ~= "guess · default values" then error("a level default") end
         if ns.GoldRank(all, { 100, 0, 0 }, 0, today).merged ~= nil or ns.GoldRank(all, { 100, 0, 0 }, -5, today).merged ~= nil then error("a goal reached: no merge") end
         local big = OneOff("t:o3", 30000, 4)
         ns.GoldRank({ O1, big }, { 100, 0, 0 }, 20000, today)
@@ -11339,7 +11351,8 @@ try("gold seams: the window, the panel, hidden while locked", function()
         ns.root.goldVendor = { v = 1, items = items }
         ns.root.goldMobs = { [1] = { last = 20260817 }, [2] = { last = today } }
         ns.root.goldGather = { [1429] = { day = 20260817 }, [1411] = { day = today } }
-        ns.root.goldChars, ns.root.goldWeights = nil, nil
+        ns.root.goldChars, ns.root.goldWeights = { ["Gone - Realm"] = { seen = 20260509, recipes = {} }, ["Fresh - Realm"] = { seen = 20261101 },
+            ["Unstamped - Realm"] = { recipes = {} } }, nil
         ns.LauncherTipExtra(tip)
         if added ~= 1 then error("unlocked: the launcher says Ctrl-click") end
         ns.LauncherClick("LeftButton")
@@ -11358,6 +11371,10 @@ try("gold seams: the window, the panel, hidden while locked", function()
         local L = ns.GoldWindowLines()
         if #L.ranked ~= 1 or not L.ranked[1]:find("No ideas yet", 1, true) or #L.now ~= 1 or L.now[1] ~= "Nothing right now." then error("empty: " .. tostring(L.ranked[1]) .. " | " .. tostring(L.now[1])) end
         if L.preset ~= "Most gold" or L.goal ~= nil then error("Most gold, no goal") end
+        local chars = ns.root.goldChars
+        if chars["Gone - Realm"] or not chars["Fresh - Realm"] or not chars["Unstamped - Realm"] or chars["Unstamped - Realm"].seen ~= today then
+            error("characters not seen for 180 days are forgotten; an unstamped one is stamped") end
+        ns.root.goldChars = nil
         if ns.root.goldVendor.items[5] or not ns.root.goldVendor.items[6] or ns.root.goldMobs[1] or not ns.root.goldMobs[2] or ns.root.goldGather[1429] or not ns.root.goldGather[1411] then error("old records are forgotten") end
         -- the guide panel's button, and /fgui guide gold
         ns.root.guides, ns.root.guideState = nil, nil
@@ -11483,6 +11500,7 @@ try("gold seams: the window, the panel, hidden while locked", function()
         if not p or rawget(p, "suiGoldOn") ~= true or rawget(p, "suiLook") ~= "settings" then error("the auction house panel shows") end
         local A = ns.GoldWindowLines().auction
         if not (A and A[1] and A[1]:find("Flip it", 1, true)) or #A ~= 2 then error("the panel's ideas: " .. tostring(A and A[1])) end
+        for _, row in ipairs(A) do if not row:find("Sure", 1, true) or not row:find("from prices", 1, true) then error("a panel row says how sure it is: " .. row) end end
         local c0 = calls
         local tick = Handler(p, "OnUpdate")
         tick(p, 5); Settle()
@@ -11494,6 +11512,25 @@ try("gold seams: the window, the panel, hidden while locked", function()
         if calls ~= c0 + 1 then error("a new scan collects again") end
         fireEvent("AUCTION_HOUSE_CLOSED")
         if rawget(p, "suiGoldOn") ~= false then error("closed with the auction house") end
+        -- locked again while the window is up: the tick hides it and stops, the job waits, and nothing
+        -- named Gold is timed
+        ns:GoldOpen(); Settle()
+        ns.GoldJob(function() coroutine.yield() end, "t:locked")
+        ns.GuideUnlocked = function() return false end
+        ns.perfOn, ns.perfData = true, {}
+        local tickFrame = ns.goldTick
+        local onTick = tickFrame and Handler(tickFrame, "OnUpdate")
+        if not onTick then error("the jobs' tick") end
+        onTick(tickFrame, 0.01)
+        local timedLocked = ns.perfData.Gold
+        ns.perfOn, ns.perfData = keep.perfOn, keep.perfData
+        if rawget(w, "suiGoldOn") ~= false then error("locked again: the window hides") end
+        if timedLocked ~= nil then error("locked again: nothing named Gold is timed") end
+        if not ns.GoldBusy("t:locked") then error("locked: the job waits") end
+        ns.GuideUnlocked = function() return true end
+        onTick(tickFrame, 0.01)
+        Settle()
+        if ns.GoldBusy("t:locked") then error("unlocked: the tick runs the job") end
         -- a list's title or note shown as it is
         ns:ShowList("GoldRawTest", "Made 7 x Thing", {}, "Note 9 x", nil, nil, { rawTitle = true, rawNote = true })
         if ns.seenStrings["Made 7 x Thing"] ~= nil or ns.seenStrings["Note 9 x"] ~= nil then error("rawTitle and rawNote are not translated") end
@@ -11614,6 +11651,28 @@ try("gold A: bags, junk and vendor flips", function()
         got = {}
         ns.GoldSellIdeas(ctx, Add, { { id = 5, count = 2, vendor = 50 }, { id = 6, count = 1, vendor = 30 } }, prices)
         if got["sell:junk"].total ~= 30 or got["sell:bags"].total ~= 950 then error("junk: grey items with a vendor price") end
+        -- Hold (cheap today against its usual price): named, never counted, and not junk either
+        local realHint = ns.SellHintFor
+        ns.SellHintFor = function(id) if id == 5 then return "sell" end if id == 11 then return "hold" end end
+        got = {}
+        ns.GoldSellIdeas(ctx, Add, { { id = 5, count = 2, vendor = 50 }, { id = 11, count = 1, vendor = 200 } }, { [5] = prices[5], [11] = { price = 1000, day = today } })
+        ns.SellHintFor = realHint
+        local held, holdLine = got["sell:bags"], false
+        for _, l in ipairs(held and held.detail or {}) do if tostring(l.left):find(string.format(ns:Tr("Hold: %s (cheap today)"), "Wool Bolt"), 1, true) then holdLine = true end end
+        if not held or held.total ~= 950 or not holdLine or #held.detail ~= 2 then error("a Hold item is named, not counted: " .. tostring(held and held.total)) end
+        if got["sell:junk"] then error("a Hold item is not junk") end
+        -- how sure: Sure for what was listed in a scan or seen in the last 7 days, likely otherwise, by its share of the money
+        got = {}
+        ns.GoldSellIdeas(ctx, Add, { { id = 5, count = 2, vendor = 50 }, { id = 11, count = 1, vendor = 200 } },
+            { [5] = { price = 500, day = today, listed = 4, listedDay = 20261120 }, [11] = { price = 1500, day = today } })
+        local mix = got["sell:bags"]
+        if not mix or mix.total ~= 2375 or mix.safety ~= 66 then error("how sure, by share: " .. tostring(mix and mix.total) .. " " .. tostring(mix and mix.safety)) end
+        got = {}
+        ns.GoldSellIdeas(ctx, Add, { { id = 5, count = 2, vendor = 50 } }, { [5] = { price = 500, day = today, seenDay = 20261119 } })
+        if got["sell:bags"].safety ~= 75 or ns.GoldSafetyWord(got["sell:bags"].safety) ~= "Sure" then error("seen in the last 7 days: Sure") end
+        got = {}
+        ns.GoldSellIdeas(ctx, Add, { { id = 5, count = 2, vendor = 50 } }, { [5] = { price = 500, day = today, listed = 4, listedDay = 20261110, seenDay = 20261110 } })
+        if got["sell:bags"].safety ~= 60 or ns.GoldSafetyWord(got["sell:bags"].safety) == "Sure" then error("an old scan: only likely") end
         env.MerchantFrame = { IsShown = function() return true end }
         got = {}
         ns.GoldSellIdeas(ctx, Add, { { id = 6, count = 2, vendor = 30 }, { id = 10, count = 1, vendor = 200, bound = true } }, prices)
@@ -11634,9 +11693,10 @@ try("gold A: bags, junk and vendor flips", function()
         if not got["sell:bank"].detail[1].left:find("in your bank, seen 3 days ago", 1, true) then error("the bank's age: " .. got["sell:bank"].detail[1].left) end
         -- the source reads the bank the storage window remembers, and only once it has been seen
         local myKey = ns:CharKey()
+        -- (item 77: its details are not loaded, so its bind type is unknown: never suggested)
         ns.root.inventory = { chars = { [myKey] = { bank = { { "|Hitem:8::::|h[Silk Cloth]|h", 3, 1 }, { "|Hitem:9::::|h[Bound Ring]|h", 1, 2 },
-            { "|Hitem:12::::|h[Fine Sword]|h", 1, 2 }, { "|Hitem:13::::|h[Worn Belt]|h", 1, 0 } } } } }
-        ns.PriceItems = function() return { [8] = prices[8], [9] = { price = 90000, day = today }, [12] = { price = 90000, day = today } } end
+            { "|Hitem:12::::|h[Fine Sword]|h", 1, 2 }, { "|Hitem:13::::|h[Worn Belt]|h", 1, 0 }, { "|Hitem:77::::|h[Mystery]|h", 1, 2 } } } } }
+        ns.PriceItems = function() return { [8] = prices[8], [9] = { price = 90000, day = today }, [12] = { price = 90000, day = today }, [77] = { price = 90000, day = today } } end
         local counts = nil
         env.C_Item = setmetatable({ GetItemCount = function(id, bank) if counts then return bank and counts[1] or counts[2] end end }, { __index = keep.citem })
         ns.AuctionBagItems = function() return { { id = 5, count = 2, vendor = 50 } } end
@@ -11648,7 +11708,7 @@ try("gold A: bags, junk and vendor flips", function()
         ideas = ns.GoldCollectNow(ctx)
         local fromBank
         for _, i in ipairs(ideas) do if i.id == "sell:bank" then fromBank = i end end
-        if not fromBank or fromBank.total ~= 2850 or #fromBank.detail ~= 1 then error("the remembered bank is read, a bound ring and a bind-on-equip sword left out") end
+        if not fromBank or fromBank.total ~= 2850 or #fromBank.detail ~= 1 then error("the remembered bank is read; a bound ring, a bind-on-equip sword and an item not loaded yet left out") end
         if not fromBank.detail[1].left:find("in your bank, seen 3 days ago", 1, true) then error("the bank's age shows: " .. fromBank.detail[1].left) end
         for _, i in ipairs(ideas) do if i.id == "sell:bankjunk" then error("a bind-on-use grey in the bank is never suggested") end end
         local function BankIdea()
@@ -12003,6 +12063,15 @@ try("gold B: monsters worth killing", function()
             error("a Questie dropper: " .. tostring(mystic and mystic.perLoot) .. " " .. tostring(mystic and mystic.killSeconds)) end
         if mystic.oneOff ~= true or mystic.total ~= 400 or mystic.minutes ~= 4 or mystic.perHour ~= nil or not ns.GoldIdeaValid(mystic) then
             error("only the quest: a one-off: " .. tostring(mystic.total) .. " " .. tostring(mystic.minutes)) end
+        if ns.GoldFreshText(mystic, today) ~= "guess · default values" then error("a level default says so: " .. ns.GoldFreshText(mystic, today)) end
+        -- a dropper whose spawns are in a dungeon is not world farming
+        local realMap, realEnumMap = env.C_Map, env.Enum.UIMapType
+        env.Enum.UIMapType = { Dungeon = 4, Zone = 3 }
+        env.C_Map = setmetatable({ GetMapInfo = function(id) if id == 1436 then return { name = "Westfall", mapType = 4 } end end }, { __index = realMap })
+        got, by = Ideas({}, ns.GoldFarmQuestie(), { map = 1436, x = 49, y = 50 })
+        env.C_Map, env.Enum.UIMapType = realMap, realEnumMap
+        if by["farm:1436:601"] ~= nil then error("a Questie dropper in a dungeon is no farm idea") end
+        if not by["farm:1436:589"] then error("a monster you looted outside stays") end
         env.C_QuestLog.GetQuestObjectives = function(id) if id == 101 then return { { type = "item", numRequired = 4, finished = true } } end return {} end
         got, by = Ideas({}, ns.GoldFarmQuestie(), { map = 1436, x = 49, y = 50 })
         if by["farm:1436:601"] ~= nil then error("a finished objective brings nothing") end
@@ -12030,6 +12099,25 @@ try("gold B: monsters worth killing", function()
         for _, line in ipairs(zone.detail or {}) do if tostring(line.left):find("Defias Thug", 1, true) then shown = true end end
         if not shown then error("the monster is in the zone's detail") end
         if #ns.GoldCollectNow(ns.GoldContext("auction")) ~= 0 then error("nothing for the auction house panel") end
+        -- a measured zone is as fresh as its newest time there, valued at the auction prices then; one
+        -- not farmed for 90 days is left out
+        local realDate = env.date
+        env.date = function(f, t) return os.date(f, t) end
+        local noon = os.time({ year = 2026, month = 11, day = 25, hour = 12 })
+        ns.root.farmZones = { Westfall = { { at = noon - 30 * 86400, secs = 1200, gold = 5000, value = 5000 } },
+                              Redridge = { { at = noon - 100 * 86400, secs = 1200, gold = 90000, value = 0 } },
+                              Elwynn = { { at = noon - 2 * 86400, secs = 1200, gold = 6000, value = 0 } } }
+        by = {}
+        for _, i in ipairs(ns.GoldCollectNow(ctx)) do by[i.id] = i end
+        env.date = realDate
+        zone = by["farm:zone:Westfall"]
+        if not zone or zone.priceDay ~= 20261026 or ns.GoldFreshText(zone, today) ~= "measured · auction prices from 30 days ago" then
+            error("a measured zone's freshness: " .. tostring(zone and zone.priceDay) .. " " .. tostring(zone and ns.GoldFreshText(zone, today))) end
+        ns.GoldRank({ zone }, { 100, 0, 0 }, nil, today)
+        if zone.safetyNow ~= 32 or ns.GoldSafetyWord(zone.safetyNow) == "Sure" then error("a month-old measure is less sure: " .. tostring(zone.safetyNow)) end
+        if by["farm:zone:Redridge"] then error("a zone not farmed for 100 days is left out") end
+        local coin = by["farm:zone:Elwynn"]
+        if not coin or ns.GoldFreshText(coin, today) ~= "measured · prices from 2 days ago" then error("coin only: " .. tostring(coin and ns.GoldFreshText(coin, today))) end
         -- the pure function, 400 monsters, across slices
         local mobs = {}
         for i = 1, 400 do mobs[10000 + i] = { name = "Mob " .. i, level = 10, map = 1436, zone = "Elwynn", x = 10, y = 10, loots = 12, copper = 12 * i, items = { [2589] = 3 }, last = today } end
@@ -12246,7 +12334,7 @@ try("gold C: gathering", function()
         local order, yards = ns.GoldGatherRoute(pts)
         if table.concat(order or {}, ",") ~= "1,5,2,3,4" or math.abs((yards or 0) - 441.4) > 1 then error("the tour: " .. table.concat(order or {}, ",") .. " " .. tostring(yards)) end
         -- per hour along those 5 nodes
-        local values = { [2447] = 100, [765] = 100, [2449] = 100 }
+        local values = { [2447] = 100, [765] = 100, [2449] = 50 }     -- (the built-in guess: the median of 0, 50, 100, 100)
         ns.GoldItemValue = function(id) return values[id] or 0, "vendor", nil end
         ns.root.goldNodeItems = { Peacebloom = { n = 3, items = { [2447] = 3 } } }
         ns.root.goldGather = nil
@@ -12296,7 +12384,8 @@ try("gold C: gathering", function()
         ideas = {}
         ns.GoldGatherIdeas(ctx, Add, { [182] = 60 })
         m = Find("gather:1429:182")
-        if not m or m.basis ~= "measured" or m.perHour ~= 4500 or not m.title:find(ns:Tr("herbs"), 1, true) or #m.detail ~= 2 then error("herbs the larger share, the ore noted") end
+        if not m or m.basis ~= "measured" or m.perHour ~= 4500 or not m.title:find(ns:Tr("herbs"), 1, true) or #m.detail ~= 3 then error("herbs the larger share, the ore noted") end
+        if m.detail[2].left ~= string.format(ns:Tr("Last gathered %s"), ns:Tr("today")) then error("a measured map says how old its measure is: " .. tostring(m.detail[2].left)) end
         if Find("gather:1429:393") then error("an unlisted herb is not skinning") end
         local sk = Find("gather:1436:393")
         if not sk or sk.perHour ~= 15000 or sk.title ~= string.format(ns:Tr("Skin beasts in %s"), "Westfall") then error("only unlisted items: skinning") end
@@ -12308,6 +12397,29 @@ try("gold C: gathering", function()
         ns.GoldGatherIdeas(ctx, Add, { [182] = 60 })
         r = Find("gather:1436:182")
         if not r or #r.steps ~= 5 or r.perHour ~= 3600 then error("both memories make one route") end
+        -- a node not learned yet but named as a listed herb: valued by that herb (x 1.5), not the zone's guess
+        local realInfo, realItems = ns.GetItemInfo, ns.root.goldNodeItems
+        ns.root.goldNodeItems = nil
+        ns.GetItemInfo = function(_, id) if id == 2447 then return "Peacebloom" end end
+        values[2447] = 1000
+        ideas = {}
+        ns.GoldGatherIdeas(ctx, Add, { [182] = 60 })
+        ns.GetItemInfo, ns.root.goldNodeItems = realInfo, realItems
+        r = Find("gather:1436:182")
+        if not r or r.perHour ~= 54000 then error("a node valued by its own herb: " .. tostring(r and r.perHour)) end
+        -- the built-in guess is the median of the band, Black Lotus left out: its band never tops the list
+        values = {}
+        for id in pairs(ns.GOLD_GATHER_ITEMS[182]) do values[id] = 300 end
+        values[13468] = 500000
+        local keepGather = ns.root.goldGather
+        ns.root.goldGather = { [1436] = { n = 25, secs = 1200, items = { [2447] = 40 }, day = 20261125 } }
+        ideas = {}
+        ns.GoldGatherIdeas({ today = 20261125, level = 60, map = 1436, where = "window" }, Add, { [182] = 300 })
+        ns.root.goldGather = keepGather
+        local lotusBand = Find("gather:1427:182")
+        if not lotusBand or lotusBand.perHour ~= 13500 then error("a Black Lotus band: the median of the rest: " .. tostring(lotusBand and lotusBand.perHour)) end
+        if not ideas[1] or ideas[1].id ~= "gather:1436:182" or ideas[1].basis ~= "measured" then error("a Black Lotus band does not come out on top: " .. tostring(ideas[1] and ideas[1].id)) end
+        values = { [2447] = 100, [765] = 100, [2449] = 50 }
         -- the source, through the professions
         env.GetProfessions = function() return 1 end
         env.GetProfessionInfo = function() return "Herbalism", 136246, 60, 75, 1, 0, 182 end
@@ -12542,6 +12654,15 @@ try("gold D: auction flips", function()
         local stale = Entry(5000, today, 6, 4); stale.listedDay = 20261115
         if #Flips({ [8] = stale }) ~= 0 then error("no flip on an old count of listings") end
         if #Flips({ [9] = Entry(5000, today, 6, 4) }) ~= 0 then error("no flip on a grey item") end
+        -- a vendor pays more than the listing costs: that is the auction-to-vendor flip, never a second idea
+        local realInfo = ns.GetItemInfo
+        ns.GetItemInfo = function(self, id) if id == 8 then return "Item 8", nil, 2, nil, nil, nil, nil, nil, nil, nil, 9000 end return realInfo(self, id) end
+        local both = #Flips({ [8] = Entry(5000, today, 6, 4) })
+        ns.GetItemInfo = realInfo
+        if both ~= 0 then error("one listing, one idea: the aflip is kept") end
+        -- away from the auction house the source adds nothing (its ideas show only there)
+        ns.PriceItems = function() return { [8] = Entry(5000, today, 6, 4) } end
+        if #ns.GoldCollectNow(ns.GoldContext("window")) ~= 0 or #ns.GoldCollectNow(ctx) ~= 1 then error("flips are collected only at the auction house") end
         -- at most 10, by profit
         local many = {}
         for i = 1, 12 do many[100 + i] = Entry(5000 - i * 100, today, 6, 4) end
@@ -12619,13 +12740,13 @@ try("gold together: one window from every source", function()
             [2320] = { price = 210, day = today, listed = 6, hist = hist4 },                     -- A: vendor -> auction (vflip)
             [8] = { price = 5000, day = today, hist = ringHist, listed = 4, listedDay = today },  -- D: an auction flip
             [2581] = { price = 300, day = today, listed = 12, listedDay = today },               -- D: the bandage made
-            [2589] = { price = 60, day = 20261124 },                                             -- D: its cloth
+            [2589] = { price = 200, day = today },                                               -- D: its cloth (also in your bags: A sells it)
         }
         ns.PriceItems = function() return prices end
         ns.PriceEntry = function(id) return prices[id] end
         ns.PriceHouse = function() return { scanAt = 1 } end
         ns.root.goldVendor = { v = 1, items = { [2320] = { buy = 10, stack = 20, day = today }, [2589] = { buy = 50, stack = 1, day = today } } }
-        ns.AuctionBagItems = function() return { { id = 5, count = 2, vendor = 50 }, { id = 6, count = 5, vendor = 300 } } end
+        ns.AuctionBagItems = function() return { { id = 5, count = 2, vendor = 50 }, { id = 6, count = 5, vendor = 300 }, { id = 2589, count = 1, vendor = 1 } } end
         -- B: a measured farming zone, and two dungeon runs
         ns.root.goldMobs = nil
         ns.root.farmZones = { Westfall = { { secs = 1200, gold = 5000, value = 5000 } } }
@@ -12651,6 +12772,13 @@ try("gold together: one window from every source", function()
                 error("the window's collection has " .. id .. ": " .. table.concat(have, ", ") .. " (dropped " .. tostring(ns.goldDropped) .. ")")
             end
         end
+        if W["flip:8"] or W["aflip:7"] then error("no auction flips away from the auction house") end
+        -- selling the cloth the craft idea uses: it says so, and stays in the list
+        local also = false
+        for _, l in ipairs(W["sell:bags"].detail or {}) do
+            if tostring(l.left):find(string.format(ns:Tr("Also used in: %s"), W["craft:1"].title), 1, true) then also = true end
+        end
+        if not also or W["sell:bags"].total ~= 1140 then error("a reagent a craft idea uses: " .. tostring(W["sell:bags"].total)) end
         -- the window
         ns.goldTest.Reset()
         ns:GoldOpen(); Settle()
@@ -12699,6 +12827,8 @@ try("gold together: one window from every source", function()
             if not idea then error("the auction collection has " .. id) end
             panelKinds[idea.kind] = true
             if A[i]:sub(1, #idea.title) ~= idea.title then error("panel row " .. i .. " is " .. id .. ": " .. A[i]) end
+            if not A[i]:find(ns.GoldSafetyWord(idea.safetyNow or idea.safety), 1, true) or not A[i]:find(Fresh(idea), 1, true) then
+                error("panel row " .. i .. " shows how sure and how fresh: " .. A[i]) end
         end
         for _, k in ipairs({ "sell", "vflip", "aflip", "flip", "craft" }) do if not panelKinds[k] then error("the panel has a " .. k) end end
         for id, idea in pairs(aideas) do

@@ -118,7 +118,8 @@ local function Note(text)
 end
 
 ------------------------------------------------------------------------------------------
--- Jobs: coroutines run one a frame, for at most ns.GOLD_BUDGET_MS, never in a fight
+-- stays in the main add-on (when the folder moves): the recorders queue their work here.
+-- Jobs: coroutines run one a frame, for at most ns.GOLD_BUDGET_MS, never in a fight, never while locked
 ------------------------------------------------------------------------------------------
 local queue = {}                       -- { { co, key } }, the first one runs
 local slicing, sliceStart = false, 0
@@ -155,10 +156,34 @@ function ns.GoldRunSlice()
     return true
 end
 
+local function UnlockedNow() return ns.GuideUnlocked ~= nil and ns:GuideUnlocked() == true end
+-- One frame's slice, guarded (an error is noted). Called only from the tick below, only while unlocked,
+-- so nothing named Gold is timed by /fgui perf for a locked player.
+local GuardedSlice = ns:Guard("Gold", function() ns.GoldRunSlice() end)
+local tick                             -- a plain frame: shown while there is work or something to keep hidden
+local LockedNow                        -- (set by the window: hide the window and the panel)
+local function Tick(self)
+    if not UnlockedNow() then                                   -- (locked again: hide everything and stop)
+        if LockedNow then LockedNow() end
+        self:Hide()
+        return
+    end
+    if queue[1] then GuardedSlice()
+    else
+        -- (kept going while the window or the panel is up, so a lock later still hides them)
+        local w, p = ns.goldWindow, ns.goldPanel
+        if not ((type(w) == "table" and w.suiGoldOn) or (type(p) == "table" and p.suiGoldOn)) then self:Hide() end
+    end
+end
 local function Start()
+    if not tick then
+        tick = CreateFrame("Frame")
+        tick:SetScript("OnUpdate", Tick)
+        ns.goldTick = tick
+    end
+    tick:Show()
     if started then return end
     started = true
-    ns:Every(0, "Gold", function() if queue[1] then ns.GoldRunSlice() end end)
     local ev = CreateFrame("Frame")
     pcall(ev.RegisterEvent, ev, "PLAYER_REGEN_DISABLED")
     pcall(ev.RegisterEvent, ev, "PLAYER_REGEN_ENABLED")
@@ -193,8 +218,14 @@ local function Ask(fn, ...)
     if ok and not Secret(v) then return v end
     return nil
 end
+-- (a source may leave notes on ctx for the sources after it, in key order: the craft source leaves
+-- ctx.craftUses = { [itemID] = idea title }, which the sell source reads)
 function ns.GoldContext(where)
     local level, money, now = Ask(UnitLevel, "player"), Ask(GetMoney), Ask(time)
+    -- (this character was seen: its record in goldChars is kept another 180 days)
+    local chars = type(ns.root) == "table" and ns.root.goldChars
+    local mine = type(chars) == "table" and chars[ns:CharKey()]
+    if type(mine) == "table" then mine.seen = ns.Today() end
     local map = Ask(C_Map and C_Map.GetBestMapForUnit, "player")
     local zone = Ask(GetRealZoneText)
     return {
@@ -254,7 +285,8 @@ function ns.GoldCollectNow(ctx)
 end
 
 ------------------------------------------------------------------------------------------
--- What an item is worth, and how fresh that is
+-- stays in the main add-on (when the folder moves): VendorPrice and GoldItemValue, which the loot
+-- recorder calls. What an item is worth, and how fresh that is
 ------------------------------------------------------------------------------------------
 local function VendorPrice(id)
     local ok, _, _, _, _, _, _, _, _, _, _, vendor = pcall(ns.GetItemInfo, ns, id)
@@ -281,6 +313,9 @@ function ns.GoldItemValue(id, today)
     return 0, nil, nil
 end
 
+------------------------------------------------------------------------------------------
+-- (the rest of this file can move with the folder)
+------------------------------------------------------------------------------------------
 -- How much an idea's safety still counts with prices this old (nil: no auction price, so 1).
 function ns.GoldFreshFactor(priceDay, today)
     if type(priceDay) ~= "number" then return 1 end
@@ -297,13 +332,14 @@ function ns.GoldFreshText(idea, today)
     idea = type(idea) == "table" and idea or {}
     local basis = ns:Tr(BASIS_WORD[idea.basis] or "guess")
     local age
+    local auction = idea.priceWord == "auction"            -- (a measure valued at the auction prices seen then)
     if type(idea.priceDay) ~= "number" then
-        age = ns:Tr("vendor prices")
+        age = ns:Tr(idea.builtIn and "default values" or "vendor prices")   -- (builtIn: a default for its level, no price at all)
     else
         local days = max(0, ns.DaysBetween(idea.priceDay, today or ns.Today()))
-        if days == 0 then age = ns:Tr("prices from today")
-        elseif days == 1 then age = ns:Tr("prices from yesterday")
-        else age = format(ns:Tr("prices from %d days ago"), days) end
+        if days == 0 then age = ns:Tr(auction and "auction prices from today" or "prices from today")
+        elseif days == 1 then age = ns:Tr(auction and "auction prices from yesterday" or "prices from yesterday")
+        else age = format(ns:Tr(auction and "auction prices from %d days ago" or "prices from %d days ago"), days) end
     end
     return basis .. " · " .. age
 end
@@ -365,6 +401,13 @@ local function GoalOrder(a, b)
     return tostring(a.id) < tostring(b.id)
 end
 
+-- How much an idea counts for ordering only (its amounts stay true): a guess 80%, prices more than
+-- 7 days old 90%, under any preset.
+function ns.GoldOrderFactor(idea, today)
+    local f = (idea.basis == "guess") and 0.8 or 1
+    if type(idea.priceDay) == "number" and ns.DaysBetween(idea.priceDay, today or ns.Today()) > 7 then f = f * 0.9 end
+    return f
+end
 -- Rank checked ideas. weights = { gold, ease, safety }; goalLeft = copper still to save, or nil.
 -- Each idea gets .safetyNow, .score (per-hour ideas) and .toGoal (minutes, with a goal still to reach).
 function ns.GoldRank(ideas, weights, goalLeft, today)
@@ -379,12 +422,14 @@ function ns.GoldRank(ideas, weights, goalLeft, today)
         if idea.oneOff == true then now[#now + 1] = idea
         else
             ranked[#ranked + 1] = idea
-            most = max(most, tonumber(idea.perHour) or 0)
+            idea.orderFactor = ns.GoldOrderFactor(idea, today)
+            most = max(most, (tonumber(idea.perHour) or 0) * idea.orderFactor)
         end
     end
     for _, idea in ipairs(ranked) do
-        local g = (most > 0) and (100 * idea.perHour / most) or 0
-        idea.score = (wg * g + we * (tonumber(idea.ease) or 0) + ws * idea.safetyNow) / (wg + we + ws)
+        local f = idea.orderFactor
+        local g = (most > 0) and (100 * idea.perHour * f / most) or 0
+        idea.score = (wg * g + (we * (tonumber(idea.ease) or 0) + ws * idea.safetyNow) * f) / (wg + we + ws)
     end
     table.sort(ranked, ScoreOrder)
     table.sort(now, NowOrder)
@@ -549,6 +594,21 @@ local function ForgetOld()
     Walk(type(root.goldVendor) == "table" and root.goldVendor.items, "day", 180)
     Walk(root.goldMobs, "last", 90)
     Walk(root.goldGather, "day", 90)
+    -- characters not seen for 180 days (a record from before the stamp is stamped now, not dropped;
+    -- the one being played is always kept)
+    local chars = root.goldChars
+    if type(chars) == "table" then
+        local me, keys = ns:CharKey(), {}
+        for k in pairs(chars) do keys[#keys + 1] = k end
+        for _, k in ipairs(keys) do
+            local rec = chars[k]
+            if k == me and type(rec) == "table" then rec.seen = today
+            elseif type(rec) ~= "table" then chars[k] = nil
+            elseif type(rec.seen) ~= "number" then rec.seen = today
+            elseif ns.DaysBetween(rec.seen, today) > 180 then chars[k] = nil end
+            ns.GoldYield()
+        end
+    end
 end
 
 ------------------------------------------------------------------------------------------
@@ -664,6 +724,7 @@ end
 
 local function Draw()
     if not W then return end
+    if not Unlocked() then Shown(W, false); return end       -- (locked again since it opened)
     local today = ns.Today()
     local drawn = { now = {}, ranked = {} }
     -- the mix
@@ -930,7 +991,7 @@ end
 ------------------------------------------------------------------------------------------
 local P
 local panel = { ideas = nil, scanAt = nil, acc = 0, again = false, drawn = {} }
-local PANEL_ROWS = 12
+local PANEL_ROWS, PANEL_ROW_H = 10, 34
 
 local function ScanAt()
     local h = ns.PriceHouse()
@@ -953,14 +1014,17 @@ local function DrawPanel()
         local row, idea = P.rows[i], list[i]
         row.suiIdea = idea
         if idea then
+            local words = Words(idea, ns.Today(), false)
             row.title:SetText(idea.title)
             row.amount:SetText(Amount(idea))
-            drawn[i] = idea.title .. "  " .. Amount(idea)
+            row.sub:SetText(words)
+            drawn[i] = idea.title .. "  " .. words .. "  " .. Amount(idea)
             Shown(row, true)
         elseif i == 1 then
             local text = (panel.ideas == nil) and ns:Tr("Looking for ways to make gold...") or ns:Tr("Nothing to do here right now.")
             row.title:SetText(text)
             row.amount:SetText("")
+            row.sub:SetText("")
             drawn[1] = text
             Shown(row, true)
         else Shown(row, false) end
@@ -1001,13 +1065,16 @@ local function BuildPanel()
     f.rows = {}
     for i = 1, PANEL_ROWS do
         local r = CreateFrame("Button", nil, f)
-        r:SetSize(252, 22)
-        r:SetPoint("TOPLEFT", 14, -42 - (i - 1) * 22)
+        r:SetSize(252, PANEL_ROW_H)
+        r:SetPoint("TOPLEFT", 14, -42 - (i - 1) * PANEL_ROW_H)
         r.amount = Painted(ns:NewText(r, 11, "RIGHT"))
-        r.amount:SetPoint("RIGHT", -2, 0)
+        r.amount:SetPoint("TOPRIGHT", -2, -4)
         r.title = Painted(ns:NewText(r, 11, "LEFT"))
-        r.title:SetPoint("LEFT", 2, 0)
+        r.title:SetPoint("TOPLEFT", 2, -4)
         r.title:SetPoint("RIGHT", r.amount, "LEFT", -6, 0)
+        r.sub = Painted(ns:NewText(r, 9, "LEFT"), "faint")         -- (ease · how sure · how fresh, as the window's rows)
+        r.sub:SetPoint("TOPLEFT", 2, -19)
+        r.sub:SetWidth(248)
         Wire(r)
         f.rows[i] = r
     end
@@ -1034,6 +1101,12 @@ function ns:GoldAuctionShow()
     panel.acc, panel.scanAt = 0, ScanAt()
     CollectPanel()
     return P
+end
+
+-- Locked again: the window and the panel hide (the tick calls this, and then stops).
+LockedNow = function()
+    if W and W.suiGoldOn then Shown(W, false) end
+    if P and P.suiGoldOn then Shown(P, false) end
 end
 
 -- For the tests: let the window and the panel go, as at login (their frames stay, unused).
@@ -1107,12 +1180,16 @@ do
     local guarded
     ev:SetScript("OnEvent", function(_, event)
         if event ~= "AUCTION_HOUSE_SHOW" and event ~= "AUCTION_HOUSE_CLOSED" then return end
+        -- (only ns.goldPanel and plain frame calls here: this block stays in the main add-on when the folder moves)
+        local p = ns.goldPanel
         if not Unlocked() then
-            if P and event == "AUCTION_HOUSE_CLOSED" then Shown(P, false) end
+            if type(p) == "table" and event == "AUCTION_HOUSE_CLOSED" then p.suiGoldOn = false; p:Hide() end
             return
         end
         guarded = guarded or ns:Guard("Gold", function(e)
-            if e == "AUCTION_HOUSE_SHOW" then ns:GoldAuctionShow() elseif P then Shown(P, false) end
+            local panelNow = ns.goldPanel
+            if e == "AUCTION_HOUSE_SHOW" then ns:GoldAuctionShow()
+            elseif type(panelNow) == "table" then panelNow.suiGoldOn = false; panelNow:Hide() end
         end)
         guarded(event)
     end)
