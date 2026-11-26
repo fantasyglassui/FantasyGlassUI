@@ -74,6 +74,52 @@ function ns.PriceEntry(id)
     return e
 end
 
+-- (12.4.1) Prices from other add-ons, for an item this house has no price for: Auctionator's, then TSM's.
+-- They are only shown, with their source, and never kept in the store. Each add-on is asked only when it
+-- is loaded, inside pcall, and a hidden value is never used.
+local function AddOnLoaded(name)
+    local AddOns = C_AddOns
+    local f = type(AddOns) == "table" and AddOns.IsAddOnLoaded
+    if type(f) ~= "function" then return false end
+    local ok, yes = pcall(f, name)
+    if not ok or Secret(yes) then return false end
+    return yes == true
+end
+local function Copper(ok, v)
+    if not ok or Secret(v) or type(v) ~= "number" or v ~= v or v <= 0 or v >= 1e15 then return nil end
+    return math.floor(v)
+end
+local OTHER_PRICES = {
+    { source = "Auctionator", addon = "Auctionator", ask = function(id)
+        local Auc = _G.Auctionator
+        if Secret(Auc) or type(Auc) ~= "table" or Secret(Auc.API) or type(Auc.API) ~= "table" then return nil end
+        local v1 = Auc.API.v1
+        if Secret(v1) or type(v1) ~= "table" then return nil end
+        local f = v1.GetAuctionPriceByItemID
+        if Secret(f) or type(f) ~= "function" then return nil end
+        return Copper(pcall(f, "FantasyGlassUI", id))
+    end },
+    { source = "TSM", addon = "TradeSkillMaster", ask = function(id)
+        local T = _G.TSM_API
+        if Secret(T) or type(T) ~= "table" then return nil end
+        local f = T.GetCustomPriceValue
+        if Secret(f) or type(f) ~= "function" then return nil end
+        return Copper(pcall(f, "DBMarket", "i:" .. string.format("%d", id)))
+    end },
+}
+-- Another add-on's price for an item, and its source ("Auctionator" or "TSM"), or nil.
+function ns.OtherAddonPrice(id)
+    if not (type(ns.db) == "table" and ns.db.otherAddonPrices) then return nil end
+    if Secret(id) or type(id) ~= "number" or id <= 0 or id ~= math.floor(id) then return nil end
+    for _, o in ipairs(OTHER_PRICES) do
+        if AddOnLoaded(o.addon) then
+            local ok, price = pcall(o.ask, id)
+            if ok and not Secret(price) and type(price) == "number" then return price, o.source end
+        end
+    end
+    return nil
+end
+
 -- A price seen while browsing: today's lowest, and the day's low for the usual price. False when ignored.
 function ns.PriceNote(id, price)
     if Secret(id) or Secret(price) or type(id) ~= "number" or type(price) ~= "number" or price <= 0 then return false end
@@ -246,7 +292,11 @@ function ns.PriceTooltip(tooltip, data)
     if ns.db.auctionMemory then
         local e = ns.PriceEntry(id)
         local when = ns.AuctionSeenText(e, ns.Today())
-        if when then tooltip:AddDoubleLine(ns:Tr("Auction house") .. " (" .. ns:Tr(when) .. ")", ns:Coins(e.price), 0.6, 0.8, 1, 1, 1, 1) end
+        if when then tooltip:AddDoubleLine(ns:Tr("Auction house") .. " (" .. ns:Tr(when) .. ")", ns:Coins(e.price), 0.6, 0.8, 1, 1, 1, 1)
+        else
+            local other, source = ns.OtherAddonPrice(id)               -- (none here: another add-on's, with its name)
+            if other then tooltip:AddDoubleLine(ns:Tr("Auction house") .. " (" .. source .. ")", ns:Coins(other), 0.6, 0.8, 1, 1, 1, 1) end
+        end
         local usual, days = ns.AuctionUsual(e)
         if usual and days >= 2 then tooltip:AddDoubleLine(format(ns:Tr("Usual price (%d days)"), days), ns:Coins(usual), 0.6, 0.8, 1, 1, 1, 1) end
     end

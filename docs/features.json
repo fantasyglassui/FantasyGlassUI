@@ -1061,12 +1061,17 @@
     {
      "key": "auctionScan",
      "label": "Scan prices button",
-     "desc": "A Scan prices button on the auction house reads every auction at once (the auction house allows it about every 15 minutes) for the prices in tooltips and the Sell now, Hold and Vendor it hints."
+     "desc": "A Scan prices button on the auction house reads every auction at once (the auction house allows it about every 15 minutes) for the prices in tooltips and the Sell now, Hold and Vendor it hints. It also reads full scans made by other add-ons."
     },
     {
      "key": "sellHints",
      "label": "Sell now, Hold and Vendor it hints",
-     "desc": "In item tooltips: Sell now when an item is well above its usual price, Hold when it is cheap today, Vendor it when a vendor pays about as much or nobody lists it (nobody lists it: common and uncommon items only). On the bag window, a small square says the same: green for Sell now, amber for Hold, grey for Vendor it. From the prices you have seen and scanned."
+     "desc": "In item tooltips: Sell now when an item is well above its usual price, Hold when it is cheap today, Vendor it when a vendor pays about as much or nobody lists it. Every Vendor it hint is for common and uncommon items only. On the bag window, a small square says the same: green for Sell now, amber for Hold, grey for Vendor it. From the prices you have seen and scanned."
+    },
+    {
+     "key": "otherAddonPrices",
+     "label": "Prices from Auctionator and TSM",
+     "desc": "When this add-on has no price for an item, the tooltip shows Auctionator's price, or else TSM's, with its name beside it, if that add-on is loaded. Such a price is never kept, and gives only Vendor it (when a vendor pays about as much), never Sell now or Hold. Shown in tooltips while Auction prices in tooltips is on."
     },
     {
      "key": "auctionHelper",

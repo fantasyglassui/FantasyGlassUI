@@ -1,6 +1,6 @@
 local ADDON, ns = ...
 _G.FantasyGlassUI = ns
-ns.version = "12.4.0"
+ns.version = "12.4.1"
 ns.author = "DustyMouse"
 
 ns.modules = {}
@@ -253,6 +253,7 @@ ns.defaults = {
     auctionMemory    = true,        -- the last auction price you saw, in tooltips
     auctionScan      = true,        -- a Scan prices button on the auction house
     sellHints        = true,        -- Sell now / Hold / Vendor it in tooltips and on the bag window
+    otherAddonPrices = true,        -- Auctionator's or TSM's price where we have none (shown, never kept)
     lootLog          = true,        -- /fgui loot
     chatKeywords     = true,        -- words you chose are picked out (nothing until you choose one)
     chatSpam         = false,       -- the same line repeated within seconds is hidden
@@ -1681,6 +1682,9 @@ end
 
 -- What's new: shown once after an update (never on a first install, where the setup opens instead).
 ns.whatsNew = {
+    { "12.4.1", { "Another add-on's full scan of the auction house, such as Auctionator's, is read for your prices too, the same way as Scan prices, and the button counts down from it.",
+                  "Where this add-on has no price for an item, the tooltip shows Auctionator's or TSM's, with its name. Those prices are never kept, and give only Vendor it, never Sell now or Hold.",
+                  "The Sell now, Hold and Vendor it description now says that every Vendor it hint is for common and uncommon items only." } },
     { "12.4.0", { "Scan prices, on the auction house: the whole auction house in one click, about every 15 minutes. It is read in small pieces and pauses in a fight.",
                   "Prices are kept for each realm and faction. Your old prices move in once, into the first auction house you open.",
                   "Sell now, Hold and Vendor it in item tooltips, and as a coloured square on the bag window. Vendor it is for common and uncommon items only, and bound items get no hint.",
