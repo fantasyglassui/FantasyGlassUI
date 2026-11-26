@@ -436,6 +436,7 @@ read_globals = {
     "UnitIsConnected",
     "UnitIsDead",
     "UnitIsDeadOrGhost",
+    "UnitIsFriend",
     "UnitIsGroupAssistant",
     "UnitIsGroupLeader",
     "UnitIsInMyGuild",
