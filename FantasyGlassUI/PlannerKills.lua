@@ -162,7 +162,7 @@ do
         local l, g = b.lines[1], b.gains[1]
         if l.mobLevel then ns.PlannerRecordKill({ xp = g.xp, level = g.level, mobLevel = l.mobLevel, elite = l.elite }) end
     end
-    local Check
+    local Check, Later
     Check = function()
         if not burst then return end
         local t = Now()
@@ -170,14 +170,15 @@ do
         if t < burst.t or t - burst.t > ns.PLANNER_KILL_PAIR then
             if ns:GuideUnlocked() then Settle() else burst = nil end
         elseif C_Timer and C_Timer.After then
-            pcall(C_Timer.After, ns.PLANNER_KILL_PAIR, Check)
+            pcall(C_Timer.After, ns.PLANNER_KILL_PAIR, Later)
         end
     end
+    Later = ns:Guard("Planner kills", Check)          -- (a timer's call: an error is caught and listed, never the game's popup)
     local function Add(kind, e)
         if burst and (e.t < burst.t or e.t - burst.t > ns.PLANNER_KILL_PAIR) then Settle() end
         if not burst then
             burst = { lines = {}, gains = {}, t = e.t }
-            if C_Timer and C_Timer.After then pcall(C_Timer.After, ns.PLANNER_KILL_PAIR + 0.1, Check) end
+            if C_Timer and C_Timer.After then pcall(C_Timer.After, ns.PLANNER_KILL_PAIR + 0.1, Later) end
         end
         local list = burst[kind]
         list[#list + 1] = e

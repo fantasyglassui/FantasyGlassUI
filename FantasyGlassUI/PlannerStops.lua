@@ -938,7 +938,7 @@ for _, line in ipairs(ns.PLANNER_PROFESSION_LINES) do
             end
         end,
         places = function(ctx) return ns.PlannerPlaces(ctx, "professionTrainer", line) end,
-        text = function(place, reason) return string.format(ns:Tr("Train %s at %s"), reason.name, place.name or "") end,
+        text = function(place, reason) return string.format(ns:Tr("Learn %s at %s"), reason.name, place.name or "") end,
         key = function(reason) return reason.maxRank end,
     })
 end
@@ -950,7 +950,7 @@ ns.PlannerRegisterStop({
         if r and r.short <= 0 then return { mount = r.mount, after = 0 } end
     end,
     places = function(ctx) return ns.PlannerPlaces(ctx, "professionTrainer", ns.PLANNER_RIDING_LINE) end,
-    text = function(place) return string.format(ns:Tr("Train %s at %s"), ns:Tr("Riding"), place.name or "") end,
+    text = function(place) return string.format(ns:Tr("Learn %s at %s"), ns:Tr("Riding"), place.name or "") end,
     key = function() return "riding" end,
 })
 

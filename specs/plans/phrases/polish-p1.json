@@ -1,0 +1,197 @@
+{
+  "Questie's data has changed in a way the planner can't read yet, so only quests in your log are planned. Updating Fantasy Glass UI or Questie usually fixes this.": [
+    "Questies Daten haben sich so geändert, dass der Planer sie noch nicht lesen kann, daher werden nur Quests aus deinem Questlog geplant. Ein Update von Fantasy Glass UI oder Questie behebt das meist.",
+    "Les données de Questie ont changé d'une façon que le planificateur ne sait pas encore lire : seules les quêtes de votre journal sont planifiées. Mettre à jour Fantasy Glass UI ou Questie règle généralement le problème.",
+    "Los datos de Questie han cambiado de una forma que el planificador aún no puede leer, así que solo se planifican las misiones de tu registro. Actualizar Fantasy Glass UI o Questie suele solucionarlo.",
+    "Данные Questie изменились так, что планировщик пока не может их прочитать, поэтому планируются только задания из вашего журнала. Обычно помогает обновление Fantasy Glass UI или Questie.",
+    "Os dados do Questie mudaram de um jeito que o planejador ainda não consegue ler, então só as missões do seu registro são planejadas. Atualizar o Fantasy Glass UI ou o Questie costuma resolver.",
+    "I dati di Questie sono cambiati in un modo che il pianificatore non sa ancora leggere, quindi vengono pianificate solo le missioni del tuo registro. Aggiornare Fantasy Glass UI o Questie di solito risolve.",
+    "Questie 데이터가 플래너가 아직 읽을 수 없는 방식으로 바뀌어서 퀘스트 목록에 있는 퀘스트만 계획합니다. 보통 Fantasy Glass UI나 Questie를 업데이트하면 해결됩니다.",
+    "Questie 的数据发生了规划器暂时无法读取的变化，因此只规划你任务日志中的任务。更新 Fantasy Glass UI 或 Questie 通常可以解决。"
+  ],
+  "Left out of your plans; it stays in your quest log until you abandon it.": [
+    "Aus deinen Plänen genommen; sie bleibt in deinem Questlog, bis du sie abbrichst.",
+    "Retirée de vos plans ; elle reste dans votre journal de quêtes jusqu'à ce que vous l'abandonniez.",
+    "Quitada de tus planes; sigue en tu registro de misiones hasta que la abandones.",
+    "Исключено из ваших планов; задание остаётся в журнале, пока вы его не отмените.",
+    "Removida dos seus planos; ela continua no seu registro de missões até você abandoná-la.",
+    "Esclusa dai tuoi piani; resta nel registro delle missioni finché non la abbandoni.",
+    "계획에서 뺐습니다. 포기할 때까지 퀘스트 목록에는 남아 있습니다.",
+    "已从你的规划中移除；在你放弃之前，它仍留在任务日志中。"
+  ],
+  "Waiting until you land to plan": [
+    "Geplant wird, sobald du gelandet bist",
+    "Planification dès votre atterrissage",
+    "Se planificará cuando aterrices",
+    "План будет построен после приземления",
+    "O plano será feito quando você pousar",
+    "Si pianifica appena atterri",
+    "착륙하면 계획합니다",
+    "落地后再规划"
+  ],
+  "Waiting until you are back on your feet to plan": [
+    "Geplant wird, sobald du wieder auf den Beinen bist",
+    "Planification dès que vous serez de nouveau sur pied",
+    "Se planificará cuando vuelvas a estar en pie",
+    "План будет построен, когда вы снова встанете на ноги",
+    "O plano será feito quando você estiver de pé de novo",
+    "Si pianifica appena sarai di nuovo in piedi",
+    "다시 일어서면 계획합니다",
+    "复活后再规划"
+  ],
+  "Waiting until you are outdoors to plan": [
+    "Geplant wird, sobald du wieder draußen bist",
+    "Planification dès que vous serez à l'extérieur",
+    "Se planificará cuando estés al aire libre",
+    "План будет построен, когда вы окажетесь снаружи",
+    "O plano será feito quando você estiver ao ar livre",
+    "Si pianifica appena sarai all'aperto",
+    "야외로 나가면 계획합니다",
+    "回到野外后再规划"
+  ],
+  "Questie is still loading: your route is planned once it is ready": [
+    "Questie lädt noch: deine Route wird geplant, sobald es bereit ist",
+    "Questie est encore en chargement : votre itinéraire sera planifié dès qu'il sera prêt",
+    "Questie aún se está cargando: tu ruta se planificará cuando esté listo",
+    "Questie ещё загружается: маршрут будет построен, когда он будет готов",
+    "O Questie ainda está carregando: sua rota será planejada quando ele estiver pronto",
+    "Questie si sta ancora caricando: il percorso verrà pianificato quando sarà pronto",
+    "Questie를 아직 불러오는 중입니다. 준비되면 경로를 계획합니다",
+    "Questie 仍在加载：准备好后会规划你的路线"
+  ],
+  "Install Questie to plan new quests; your quest log has none to plan": [
+    "Installiere Questie, um neue Quests zu planen; in deinem Questlog ist keine zu planen",
+    "Installez Questie pour planifier de nouvelles quêtes ; votre journal n'en a aucune à planifier",
+    "Instala Questie para planificar misiones nuevas; tu registro no tiene ninguna que planificar",
+    "Установите Questie, чтобы планировать новые задания; в журнале нет заданий для плана",
+    "Instale o Questie para planejar novas missões; seu registro não tem nenhuma para planejar",
+    "Installa Questie per pianificare nuove missioni; il tuo registro non ne ha da pianificare",
+    "새 퀘스트를 계획하려면 Questie를 설치하세요. 퀘스트 목록에 계획할 퀘스트가 없습니다",
+    "安装 Questie 才能规划新任务；你的任务日志中没有可规划的任务"
+  ],
+  "Questie is still loading: planning from your quest log for now": [
+    "Questie lädt noch: vorerst wird aus deinem Questlog geplant",
+    "Questie est encore en chargement : planification depuis votre journal pour l'instant",
+    "Questie aún se está cargando: por ahora se planifica con tu registro",
+    "Questie ещё загружается: пока план строится по журналу заданий",
+    "O Questie ainda está carregando: por enquanto o plano vem do seu registro",
+    "Questie si sta ancora caricando: per ora si pianifica dal tuo registro",
+    "Questie를 아직 불러오는 중입니다. 우선 퀘스트 목록으로 계획합니다",
+    "Questie 仍在加载：暂时根据你的任务日志规划"
+  ],
+  "Questie can't be read: only quests in your log are planned": [
+    "Questie ist nicht lesbar: nur Quests aus deinem Questlog werden geplant",
+    "Questie est illisible : seules les quêtes de votre journal sont planifiées",
+    "No se puede leer Questie: solo se planifican las misiones de tu registro",
+    "Questie не читается: планируются только задания из журнала",
+    "Não dá para ler o Questie: só as missões do seu registro são planejadas",
+    "Questie non è leggibile: vengono pianificate solo le missioni del registro",
+    "Questie를 읽을 수 없습니다. 퀘스트 목록의 퀘스트만 계획합니다",
+    "无法读取 Questie：只规划任务日志中的任务"
+  ],
+  "planning…": [
+    "wird geplant …",
+    "planification…",
+    "planificando…",
+    "планирование…",
+    "planejando…",
+    "pianificazione…",
+    "계획 중…",
+    "规划中…"
+  ],
+  "Open any flight master's map once so the planner knows your flight paths": [
+    "Öffne einmal die Karte eines Flugmeisters, damit der Planer deine Flugrouten kennt",
+    "Ouvrez une fois la carte d'un maître de vol pour que le planificateur connaisse vos trajets aériens",
+    "Abre una vez el mapa de un maestro de vuelo para que el planificador conozca tus rutas de vuelo",
+    "Откройте один раз карту у распорядителя полётов, чтобы планировщик знал ваши маршруты",
+    "Abra uma vez o mapa de um mestre de voo para o planejador conhecer suas rotas de voo",
+    "Apri una volta la mappa di un maestro di volo così il pianificatore conosce le tue rotte",
+    "비행 조련사의 지도를 한 번 열어 플래너가 비행 경로를 알 수 있게 하세요",
+    "打开一次任意飞行管理员的地图，让规划器知道你的飞行路线"
+  ],
+  "Set your hearthstone once so the planner can use it": [
+    "Leg deinen Ruhestein einmal fest, damit der Planer ihn nutzen kann",
+    "Liez votre pierre de foyer une fois pour que le planificateur puisse l'utiliser",
+    "Vincula tu piedra de hogar una vez para que el planificador pueda usarla",
+    "Привяжите камень возвращения один раз, чтобы планировщик мог его использовать",
+    "Vincule sua pedra de regresso uma vez para o planejador poder usá-la",
+    "Lega la tua pietra del ritorno una volta così il pianificatore può usarla",
+    "귀환석을 한 번 귀속해 플래너가 쓸 수 있게 하세요",
+    "设置一次炉石，让规划器可以使用它"
+  ],
+  "Item %d": [
+    "Gegenstand %d", "Objet %d", "Objeto %d", "Предмет %d", "Item %d", "Oggetto %d", "아이템 %d", "物品 %d"
+  ],
+  "Best reward for you: %s": [
+    "Beste Belohnung für dich: %s",
+    "Meilleure récompense pour vous : %s",
+    "La mejor recompensa para ti: %s",
+    "Лучшая награда для вас: %s",
+    "Melhor recompensa para você: %s",
+    "Ricompensa migliore per te: %s",
+    "가장 좋은 보상: %s",
+    "最适合你的奖励：%s"
+  ],
+  "Try %s: 1 quest, start at %s": [
+    "Versuch %s: 1 Quest, Start in %s",
+    "Essayez %s : 1 quête, départ à %s",
+    "Prueba %s: 1 misión, empieza en %s",
+    "Попробуйте %s: 1 задание, начало: %s",
+    "Tente %s: 1 missão, começa em %s",
+    "Prova %s: 1 missione, inizia a %s",
+    "%s 도전: 퀘스트 1개, 시작 위치 %s",
+    "试试%s：1 个任务，从%s开始"
+  ],
+  "Learn %s at %s": [
+    "%s lernen bei %s",
+    "Apprendre %s auprès de %s",
+    "Aprender %s con %s",
+    "Изучить: %s у %s",
+    "Aprender %s com %s",
+    "Impara %s da %s",
+    "%s 배우기 (%s)",
+    "学习 %s（%s）"
+  ],
+  "1 h 30 min": [
+    "1 Std. 30 Min.", "1 h 30 min", "1 h 30 min", "1 ч 30 мин", "1 h 30 min", "1 h 30 min", "1시간 30분", "1 小时 30 分钟"
+  ],
+  "Good place to take a break (press > to keep playing)": [
+    "Guter Ort für eine Pause (drück >, um weiterzuspielen)",
+    "Bon endroit pour faire une pause (appuyez sur > pour continuer)",
+    "Buen lugar para un descanso (pulsa > para seguir jugando)",
+    "Хорошее место для перерыва (нажмите >, чтобы играть дальше)",
+    "Bom lugar para uma pausa (aperte > para continuar jogando)",
+    "Buon posto per una pausa (premi > per continuare a giocare)",
+    "쉬기 좋은 곳입니다 (계속하려면 > 누르기)",
+    "适合休息的地方（按 > 继续游戏）"
+  ],
+  "Keep playing (no time limit)": [
+    "Weiterspielen (ohne Zeitlimit)",
+    "Continuer à jouer (sans limite de temps)",
+    "Seguir jugando (sin límite de tiempo)",
+    "Играть дальше (без ограничения времени)",
+    "Continuar jogando (sem limite de tempo)",
+    "Continua a giocare (senza limite di tempo)",
+    "계속 플레이 (시간 제한 없음)",
+    "继续游戏（不限时间）"
+  ],
+  "Away for 1 day": [
+    "1 Tag weg", "Absent depuis 1 jour", "Ausente 1 día", "Отсутствие: 1 день", "Ausente por 1 dia", "Assente da 1 giorno", "1일 동안 자리 비움", "离开了 1 天"
+  ],
+  "Away for 1 hour": [
+    "1 Stunde weg", "Absent depuis 1 heure", "Ausente 1 hora", "Отсутствие: 1 час", "Ausente por 1 hora", "Assente da 1 ora", "1시간 동안 자리 비움", "离开了 1 小时"
+  ],
+  "Away for %d hours": [
+    "%d Stunden weg", "Absent depuis %d heures", "Ausente %d horas", "Отсутствие, часов: %d", "Ausente por %d horas", "Assente da %d ore", "%d시간 동안 자리 비움", "离开了 %d 小时"
+  ],
+  "1 quest in your log, %d of them in the plan": [
+    "1 Quest in deinem Questlog, davon %d im Plan",
+    "1 quête dans votre journal, dont %d dans le plan",
+    "1 misión en tu registro, %d de ellas en el plan",
+    "Заданий в журнале: 1, из них в плане: %d",
+    "1 missão no seu registro, %d delas no plano",
+    "1 missione nel registro, %d nel piano",
+    "퀘스트 목록에 1개, 그중 %d개가 계획에 있음",
+    "任务日志中有 1 个任务，其中 %d 个在规划中"
+  ]
+}

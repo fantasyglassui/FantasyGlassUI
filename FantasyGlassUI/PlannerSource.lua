@@ -8,6 +8,7 @@ local _, ns = ...
 ns.PLANNER_CONTRACT = "4"
 
 local pcall, type, pairs, ipairs, tonumber = pcall, type, pairs, ipairs, tonumber
+local format = string.format
 local waiting = false
 
 -- Run f; true plus its results, or false.
@@ -99,8 +100,10 @@ local function Objectives(db, zones, quest, state)
     -- Questie has no kill counts: the quest log has them, for a quest being worked on.
     local logged = C_QuestLog and C_QuestLog.GetLogIndexForQuestID and C_QuestLog.GetLogIndexForQuestID(quest.Id or 0)
         and C_QuestLog.GetQuestObjectives and C_QuestLog.GetQuestObjectives(quest.Id)
+    if ns:IsSecret(logged) then logged = nil end
     for i, o in ipairs(out) do
-        local n = o.kind ~= "place" and type(logged) == "table" and type(logged[i]) == "table" and tonumber(logged[i].numRequired)
+        local need = o.kind ~= "place" and type(logged) == "table" and type(logged[i]) == "table" and logged[i].numRequired
+        local n = type(need) == "number" and not ns:IsSecret(need) and need
         if n and n > 0 then o.count, o.countKnown = n, true
         elseif o.kind ~= "place" then o.count, o.countKnown = nil, false end
     end
@@ -133,8 +136,8 @@ local function Tags(id, quest, db, zones, state)
     local info = C_QuestLog and C_QuestLog.GetQuestTagInfo and C_QuestLog.GetLogIndexForQuestID
         and C_QuestLog.GetLogIndexForQuestID(id) and C_QuestLog.GetQuestTagInfo(id)
     if type(info) == "table" then
-        elite = elite or info.isElite or false
-        group, dungeon = TagKinds(info.tagID)
+        elite = elite or ns.Yes(info.isElite)
+        group, dungeon = TagKinds(not ns:IsSecret(info.tagID) and info.tagID or nil)
     else
         local function Ask(name)
             if type(db[name]) ~= "function" then return false end
@@ -208,7 +211,7 @@ local function InLog(id)
     local QL = C_QuestLog
     if not (QL and QL.IsOnQuest) then return false end
     local ok, v = Try(QL.IsOnQuest, id)
-    return ok and v and true or false
+    return ok and ns.Yes(v)
 end
 
 -- A Questie quest as a plain record, or nil when it cannot be placed on a known map (a quest in the
@@ -231,7 +234,7 @@ local function Record(env, id)
                 for _, npc in ipairs(type(drops) == "table" and drops or {}) do Merge(spots, Spots(db, zones, npc)) end
                 if #spots > 0 then
                     local name = db.QueryItemSingle(item, "name")
-                    fromItem = { id = item, name = type(name) == "string" and name or ("Item " .. item) }
+                    fromItem = { id = item, name = type(name) == "string" and name or format(ns:Tr("Item %d"), item) }
                     starts = spots
                 end
             end
@@ -244,13 +247,13 @@ local function Record(env, id)
     local elite, group, dungeon = Tags(id, quest, db, zones, state)
     local repeatable = tonumber(quest.specialFlags) and tonumber(quest.specialFlags) % 2 == 1 or false
     return {
-        id = id, name = quest.name or ("Quest " .. id), sort = tonumber(quest.zoneOrSort),
+        id = id, name = type(quest.name) == "string" and quest.name or format(ns:Tr("Quest %d"), id), sort = tonumber(quest.zoneOrSort),
         level = tonumber(quest.level) or tonumber(quest.questLevel) or 1,
         minLevel = tonumber(quest.requiredLevel) or 1,
         xp = tonumber(xpMod:GetQuestLogRewardXP(id)) or 0,
         starts = starts, ends = ends, objectives = objectives,
         pre = Ids(quest.preQuestGroup), preAny = Ids(quest.preQuestSingle), exclusive = Ids(quest.exclusiveTo),
-        nextQuest = tonumber(quest.nextQuestInChain) and quest.nextQuestInChain > 0 and quest.nextQuestInChain or nil,
+        nextQuest = (tonumber(quest.nextQuestInChain) or 0) > 0 and tonumber(quest.nextQuestInChain) or nil,
         elite = elite, group = group, dungeon = dungeon, repeatable = repeatable,
         reputation = Reputation(quest.reputationReward),
         fromItem = fromItem, escort = ns.PLANNER_ESCORTS[id] == true,
@@ -258,12 +261,14 @@ local function Record(env, id)
     }
 end
 
-local changed = false
 local mapCache = nil              -- quest ids by zone map (one scan of every quest a session; a reset empties it)
 ns.PLANNER_GATHER_MAPS = 6       -- maps whose Questie gathering nodes are kept at once (the least recently asked go first)
 local gatherCache, gatherOrder, gatherAreas = {}, {}, {}   -- nodes by map, the maps kept (oldest first), area -> map (a reset empties them)
 local zoneCache, grindCache = {}, {}   -- dungeon quest ids by area, grinding spots by level and continent (static data: a reset empties them)
 local recCache, cacheLevel = {}, nil   -- built records by quest id (not those in the log); emptied on a new level and by a reset
+local logToken, logRecs = nil, {}      -- the records of logged quests, for the one plan being made (ns.PlannerPlanToken)
+local failed = {}                      -- quests whose record failed: told once a session (ns.errors)
+local builtSource                      -- the Questie source last built, and the modules it was built on
 
 -- Has `flags` the single bit `mask`? (bit.band when the client has it, else plain arithmetic.)
 local function HasFlag(flags, mask)
@@ -305,6 +310,7 @@ end
 -- (a rehash reorders the walk, so keys come back twice), not always: no guarantee rests on it.
 -- The list returned is shared (kept for the session): do not modify it; src.ids() hands out a copy.
 local ID_SLICE = 64
+local IdSet                       -- (below)
 local idLists = {}                -- by name: { t = the table read, ids = its ids }
 local function IdTable(name)
     local db = Import("QuestieDB")
@@ -343,8 +349,24 @@ local function IdList(name)
         end
         if list then ids = list end
     end
-    idLists[name] = { t = t, ids = ids }
+    idLists[name] = { t = t, ids = ids, values = ids ~= keys }
     return ids
+end
+-- Is an id in that list? fn(id) -> true/false, for a list IdList has read (nil otherwise). A table keyed by id
+-- is asked directly; a plain sequence of ids gets a set, made once.
+IdSet = function(name)
+    local hit = idLists[name]
+    if not hit then return nil end
+    if not hit.values then
+        local t = hit.t
+        return function(id) local ok, v = Try(function() return t[id] end); return ok and v ~= nil end
+    end
+    if not hit.set then
+        hit.set = {}
+        for _, id in ipairs(hit.ids) do hit.set[id] = true end
+    end
+    local set = hit.set
+    return function(id) return set[id] == true end
 end
 
 -- Gathering nodes in Questie's object data. Questie has no "herb" or "ore" flag, so the objects are named
@@ -465,7 +487,7 @@ local function Friendly(f)
     if f == nil or f == "AH" then return true end
     local ok, faction = Try(UnitFactionGroup, "player")
     if not ok then return false end
-    local mine = faction == "Alliance" and "A" or faction == "Horde" and "H" or nil
+    local mine = ns.Is(faction, "Alliance") and "A" or ns.Is(faction, "Horde") and "H" or nil
     return mine ~= nil and f == mine
 end
 
@@ -623,7 +645,6 @@ function ns.PlannerSource()
         end
         return nil, "waiting"
     end
-    if changed then changed = false; return nil, "changed" end -- told once; the next check starts fresh
     local meta = C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata("Questie", "X-QuestieDB-Contract")
     if meta ~= ns.PLANNER_CONTRACT then return nil, "changed" end
     local env = { db = Import("QuestieDB"), xp = Import("QuestXP"), zones = Import("ZoneDB") }
@@ -633,13 +654,24 @@ function ns.PlannerSource()
         or type(env.xp.GetQuestLogRewardXP) ~= "function" or type(env.zones.GetUiMapIdByAreaId) ~= "function" then
         return nil, "changed"
     end
+    -- (the same Questie modules: the source already built is handed out again, not a new one each call)
+    local kept = builtSource
+    if kept and kept.db == env.db and kept.xp == env.xp and kept.zones == env.zones then return kept.src end
     local src = { kind = "questie" }
-    -- A copy of the shared list, so a caller may sort or change it (not ready yet: none this time).
+    builtSource = { db = env.db, xp = env.xp, zones = env.zones, src = src }
+    -- Has Questie's quest list been read? (Not yet: the plan waits for it, PlannerSource's "waiting".)
+    function src.ready() return IdList("QuestPointers") ~= nil end
+    -- A copy of the shared list, so a caller may sort or change it (not ready yet: none this time), and the
+    -- quests in your log that Questie does not list (src.quest gives them from the log).
     function src.ids()
         local ids, out = IdList("QuestPointers"), {}
         for i, id in ipairs(ids or {}) do
             if i % ID_SLICE == 0 then ns.PlannerYield() end
             out[i] = id
+        end
+        local listed = ids and IdSet("QuestPointers") or nil
+        for _, id in ipairs(ns.PlannerLogSource().ids()) do
+            if not (listed and listed(id)) and InLog(id) then out[#out + 1] = id end
         end
         return out
     end
@@ -663,10 +695,22 @@ function ns.PlannerSource()
         if not lv or lv <= 0 then return true end        -- unknown or scaling: the record decides
         return lv >= (tonumber(lo) or level - 4) and lv <= (tonumber(hi) or level + 2)
     end
+    -- A quest as a record. One in your log is built again for each plan (its progress changes), once per plan;
+    -- one Questie can't give (not listed, or its record fails) comes from the quest log. A record that fails is
+    -- left out for the session and written to ns.errors once: it never turns the whole source to the log.
     function src.quest(id)
-        local logged = InLog(id)                            -- (progress changes: always rebuilt)
-        local hit
-        if not logged then hit = recCache[id] end
+        local logged = InLog(id)
+        local hit, token
+        if logged then
+            token = ns.PlannerPlanToken and ns.PlannerPlanToken() or nil
+            if token then
+                if token ~= logToken then logToken, logRecs = token, {} end
+                hit = logRecs[id]
+                if hit ~= nil then return hit or nil end
+            end
+        else
+            hit = recCache[id]
+        end
         if hit ~= nil and hit ~= false then
             local okD, doable = Try(env.db.IsDoable, id)    -- (a hand-in can open a follow-up)
             if okD then hit.doable = doable and true or false end
@@ -674,12 +718,20 @@ function ns.PlannerSource()
         end
         if hit == false then return nil end
         local ok, rec = Try(Record, env, id)
-        if ok then
-            if not logged then recCache[id] = rec or false end
-            return rec
+        if not ok then
+            if not failed[id] then
+                failed[id] = true
+                if type(ns.errors) == "table" and #ns.errors < 60 then ns.errors[#ns.errors + 1] = "Planner source: quest " .. tostring(id) .. ": " .. tostring(rec) end
+            end
+            rec = nil
         end
-        changed = true
-        return nil
+        if not rec and logged then rec = ns.PlannerLogSource().quest(id) end
+        if logged then
+            if token then logRecs[id] = rec or false end
+        else
+            recCache[id] = rec or false
+        end
+        return rec
     end
     -- The ids of the quests Questie files under one area (a dungeon's): read once a session per area.
     function src.zoneQuests(zone)
@@ -704,7 +756,7 @@ function ns.PlannerSource()
     function src.mapQuests(map)
         if type(map) ~= "number" or type(env.db.QueryQuestSingle) ~= "function" then return {} end
         if not mapCache then
-            local scan, areas, ids = {}, {}, src.ids()
+            local scan, areas, ids = {}, {}, IdList("QuestPointers") or {}   -- (Questie's own list: the log's extra quests are not filed by zone)
             for _, id in ipairs(ids) do
                 ns.PlannerYield()
                 local ok, v = Try(env.db.QueryQuestSingle, id, "zoneOrSort")
@@ -739,7 +791,7 @@ function ns.PlannerSource()
         local key = level .. ":" .. tostring(hc)
         if grindCache[key] then return grindCache[key] end
         local okF, faction = Try(UnitFactionGroup, "player")
-        local mine = okF and (faction == "Alliance" and "A" or faction == "Horde" and "H") or nil
+        local mine = okF and (ns.Is(faction, "Alliance") and "A" or ns.Is(faction, "Horde") and "H") or nil
         local cells = {}
         local ids = IdList("NPCPointers")
         if not ids then return {} end                       -- (not ready yet: not kept)
@@ -769,21 +821,30 @@ function ns.PlannerSource()
                 end
             end
         end
-        local list = {}
-        for _, cell in pairs(cells) do
-            local best, bestN
-            for name, n in pairs(cell.names) do
-                if not bestN or n > bestN or (n == bestN and name < best) then best, bestN = name, n end
-            end
-            list[#list + 1] = { map = cell.map, x = cell.x, y = cell.y, count = cell.count, name = best, mobLevel = math.floor(cell.mobs / cell.count + 0.5) }
-        end
-        table.sort(list, function(a, b)
+        -- the best 3 cells, in one pass (most monsters first; then by map, x and y)
+        local function Better(a, b)
             if a.count ~= b.count then return a.count > b.count end
             if a.map ~= b.map then return a.map < b.map end
             if a.x ~= b.x then return a.x < b.x end
             return a.y < b.y
-        end)
-        while #list > 3 do list[#list] = nil end
+        end
+        local list = {}
+        for _, cell in pairs(cells) do
+            ns.PlannerYield()
+            if #list < 3 or Better(cell, list[#list]) then
+                local i = #list + 1
+                while i > 1 and Better(cell, list[i - 1]) do list[i] = list[i - 1]; i = i - 1 end
+                list[i] = cell
+                if #list > 3 then list[4] = nil end
+            end
+        end
+        for i, cell in ipairs(list) do
+            local best, bestN
+            for name, n in pairs(cell.names) do
+                if not bestN or n > bestN or (n == bestN and name < best) then best, bestN = name, n end
+            end
+            list[i] = { map = cell.map, x = cell.x, y = cell.y, count = cell.count, name = best, mobLevel = math.floor(cell.mobs / cell.count + 0.5) }
+        end
         grindCache[key] = list
         return list
     end
@@ -826,35 +887,57 @@ function ns.PlannerSource()
     return src
 end
 
--- The quest log alone: only quests being worked on, with where each ends.
+-- The quest log alone: only quests being worked on, with where each ends. (Every value the game gives is read
+-- through pcall and checked before it is looked at: a hidden one counts as missing.)
+local function LogNum(v) if type(v) == "number" and not ns:IsSecret(v) then return v end end
+local function LogStr(v) if type(v) == "string" and not ns:IsSecret(v) and v ~= "" then return v end end
 function ns.PlannerLogSource()
     local src = { kind = "log" }
     function src.ids()
         local out = {}
         local QL = C_QuestLog
         if not (QL and QL.GetNumQuestLogEntries and QL.GetInfo) then return out end
-        for i = 1, (QL.GetNumQuestLogEntries()) do
-            local info = QL.GetInfo(i)
-            if type(info) == "table" and not info.isHeader and info.questID then out[#out + 1] = info.questID end
+        local okN, n = Try(QL.GetNumQuestLogEntries)
+        for i = 1, math.min(okN and LogNum(n) or 0, 200) do
+            local ok, info = Try(QL.GetInfo, i)
+            local id = ok and type(info) == "table" and not ns.Yes(info.isHeader) and LogNum(info.questID)
+            if id then out[#out + 1] = id end
         end
         return out
     end
     function src.quest(id)
         local QL = C_QuestLog
-        if not (QL and QL.GetLogIndexForQuestID and QL.GetLogIndexForQuestID(id)) then return nil end
-        local info = QL.GetInfo and QL.GetInfo(QL.GetLogIndexForQuestID(id))
+        if not (QL and QL.GetLogIndexForQuestID) then return nil end
+        local okI, index = Try(QL.GetLogIndexForQuestID, id)
+        index = okI and LogNum(index)
+        if not index then return nil end
+        local info
+        if QL.GetInfo then
+            local ok, v = Try(QL.GetInfo, index)
+            info = ok and type(v) == "table" and v or nil
+        end
         local ends = {}
         if QL.GetNextWaypoint then
-            local map, x, y = QL.GetNextWaypoint(id)
+            local ok, map, x, y = Try(QL.GetNextWaypoint, id)
+            map, x, y = ok and LogNum(map), ok and LogNum(x), ok and LogNum(y)
             if map and x and y then ends[1] = { map = map, x = x * 100, y = y * 100 } end
         end
-        local tag = QL.GetQuestTagInfo and QL.GetQuestTagInfo(id)
-        local group, dungeon = TagKinds(type(tag) == "table" and tag.tagID or nil)
+        local tag
+        if QL.GetQuestTagInfo then
+            local ok, v = Try(QL.GetQuestTagInfo, id)
+            tag = ok and type(v) == "table" and v or nil
+        end
+        local group, dungeon = TagKinds(tag and LogNum(tag.tagID) or nil)
+        local title
+        if QL.GetTitleForQuestID then
+            local ok, v = Try(QL.GetTitleForQuestID, id)
+            title = ok and LogStr(v)
+        end
         return {
-            id = id, name = (QL.GetTitleForQuestID and QL.GetTitleForQuestID(id)) or (info and info.title) or ("Quest " .. id),
-            level = info and info.questLevel or 1, minLevel = 1, xp = 0,
+            id = id, name = title or (info and LogStr(info.title)) or format(ns:Tr("Quest %d"), id),
+            level = info and LogNum(info.questLevel) or 1, minLevel = 1, xp = 0,
             starts = {}, ends = ends, objectives = {}, pre = {}, preAny = {}, exclusive = {},
-            elite = type(tag) == "table" and tag.isElite or false, group = group,
+            elite = tag and ns.Yes(tag.isElite) or false, group = group,
             dungeon = dungeon,
             repeatable = false, doable = true, reputation = {}, escort = ns.PLANNER_ESCORTS[id] == true,
         }
@@ -877,7 +960,9 @@ function ns.PlannerLogSource()
 end
 
 function ns.PlannerSourceReset()
-    changed, waiting, placeCaches, recCache, cacheLevel = false, false, { questie = {}, log = {}, questieScan = {}, logScan = {} }, {}, nil
+    waiting, placeCaches, recCache, cacheLevel = false, { questie = {}, log = {}, questieScan = {}, logScan = {} }, {}, nil
+    logToken, logRecs, failed, builtSource = nil, {}, {}, nil
+    ns.plannerInns = nil                        -- (PlannerAdvice.lua: the innkeepers, read again from the new source)
     zoneCache, grindCache, mapCache, idLists = {}, {}, nil, {}
     gatherCache, gatherOrder, gatherAreas = {}, {}, {}
     ns.plannerExploreMaps = {}                  -- (PlannerPath.lua: the maps known to report exploration)
@@ -911,7 +996,7 @@ function ns.PlannerSeen(kind)
     local repair = false
     if kind == "vendor" and CanMerchantRepair then
         local okR, can = Try(CanMerchantRepair)
-        repair = okR and can == true
+        repair = okR and ns.Is(can, true)
     end
     for _, p in ipairs(list or {}) do
         if type(p) == "table" and p.faction == faction and tonumber(p.map) and tonumber(p.x) and tonumber(p.y) and SeenYards(here, p) < SEEN_NEAR then

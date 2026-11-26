@@ -52,13 +52,53 @@ function ns.PlannerBestChoice()
     return upAt or priceAt
 end
 
+-- The best reward is shown, never chosen: a frame of our own lies over the game's reward button (it is not
+-- clicked, and none of the game's quest frames is written to), and a chat line names it. The click is yours.
+local mark, markedAt
+function ns.PlannerRewardMarked() return markedAt end            -- (the choice shown, or nil)
+local function Unmark()
+    markedAt = nil
+    if mark then mark:Hide() end
+end
+local function Mark(button)
+    if not mark then
+        mark = CreateFrame("Frame")
+        local r, g, b = ns:Role("@accent")
+        local fill = mark:CreateTexture(nil, "OVERLAY")
+        fill:SetAllPoints()
+        fill:SetColorTexture(r, g, b, 0.18)
+        local function Edge(a1, a2, w, h)
+            local t = mark:CreateTexture(nil, "OVERLAY")
+            t:SetColorTexture(r, g, b, 0.9)
+            t:SetPoint(a1); t:SetPoint(a2)
+            if w then t:SetWidth(w) else t:SetHeight(h) end
+        end
+        Edge("TOPLEFT", "TOPRIGHT", nil, 2); Edge("BOTTOMLEFT", "BOTTOMRIGHT", nil, 2)
+        Edge("TOPLEFT", "BOTTOMLEFT", 2); Edge("TOPRIGHT", "BOTTOMRIGHT", 2)
+        mark:EnableMouse(false)                    -- (the click goes through to the game's button)
+    end
+    mark:SetParent(button)
+    mark:ClearAllPoints()
+    mark:SetAllPoints(button)
+    local okL, level = pcall(button.GetFrameLevel, button)
+    if okL and type(level) == "number" and not ns:IsSecret(level) then mark:SetFrameLevel(level + 5) end
+    mark:Show()
+end
 local function PickReward()
+    Unmark()
     if not On("plannerPickReward") then return end
     local i = ns.PlannerBestChoice()
     if not i then return end
+    markedAt = i
     local okB, button = pcall(function() return _G.QuestInfo_GetRewardButton(_G.QuestInfoFrame.rewardsFrame, i) end)
-    if not (okB and button) then return end
-    pcall(_G.QuestInfoItem_OnClick, button)        -- (selects it only: the hand-in itself is yours)
+    if okB and type(button) == "table" and type(button.GetFrameLevel) == "function" then pcall(Mark, button) end
+    local okL, link = pcall(_G.GetQuestItemLink, "choice", i)
+    local name = okL and type(link) == "string" and not ns:IsSecret(link) and link ~= "" and link or nil
+    if not name then
+        local okI, n = pcall(_G.GetQuestItemInfo, "choice", i)
+        name = okI and Clean(n) or nil
+    end
+    if name then ns:Print("Best reward for you: %s", name) end
 end
 
 ------------------------------------------------------------------------------------------
@@ -82,7 +122,7 @@ function ns.PlannerLogAdvice(steps, at, summary)
     local quests = {}
     for i = 1, num do
         local ok, info = pcall(QL.GetInfo, i)
-        if ok and type(info) == "table" and not info.isHeader and Num(info.questID) then
+        if ok and type(info) == "table" and not ns.Yes(info.isHeader) and Num(info.questID) then
             quests[#quests + 1] = { id = info.questID, name = Clean(info.title) or ("#" .. info.questID), level = Num(info.level) or 0 }
         end
     end
@@ -224,7 +264,10 @@ local function DryLines(summary)
     local out = {}
     local function Dungeon()
         local d = dry.dungeon
-        if type(d) == "table" then out[#out + 1] = format(ns:Tr("Try %s: %d quests, start at %s"), tostring(d.name), tonumber(d.count) or 0, tostring(d.start)) end
+        if type(d) == "table" then
+            local n = tonumber(d.count) or 0
+            out[#out + 1] = format(ns:TrN(n, "Try %s: 1 quest, start at %s", "Try %s: %d quests, start at %s"), tostring(d.name), n == 1 and tostring(d.start) or n, tostring(d.start))
+        end
     end
     local function Grind()
         local g = dry.grind
@@ -328,6 +371,7 @@ end
 do
     local ev = CreateFrame("Frame")
     pcall(ev.RegisterEvent, ev, "QUEST_COMPLETE")
+    pcall(ev.RegisterEvent, ev, "QUEST_FINISHED")               -- (the hand-in window closed: the mark goes)
     -- (one frame later: the game's own hand-in panel resets its selection while it is drawn)
     local pick = ns:Guard("Planner reward", PickReward)
     pcall(ev.RegisterEvent, ev, "PLAYER_ENTERING_WORLD")
@@ -342,6 +386,7 @@ do
             else ns.root.plannerSessionAt = now; ns.plannerSessionStart = now end
             return
         end
+        if event == "QUEST_FINISHED" then Unmark(); return end
         if C_Timer and C_Timer.After then
             local ok = pcall(C_Timer.After, 0, pick)
             if ok then return end

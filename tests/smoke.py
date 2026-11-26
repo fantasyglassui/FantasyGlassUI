@@ -9110,7 +9110,9 @@ try("13.0 planner: reading Questie", function()
         if q.objectives[1].spots[1].y ~= 60 or q.ends[1].map ~= 1436 then error("spots and ends") end
         if src.quest(102) ~= nil or src.quest(103) ~= nil then error("no giver on a map: skipped") end
         if not src.quest(104).elite then error("elite from the objective's rank") end
-        if #src.ids() ~= 6 then error("ids") end
+        local extraLog = 0                                    -- (polish P1, F2: logged quests Questie does not list come too)
+        for _, id in ipairs(ns.PlannerLogSource().ids()) do if not fakes.QuestieDB.QuestPointers[id] and env.C_QuestLog.IsOnQuest and env.C_QuestLog.IsOnQuest(id) == true then extraLog = extraLog + 1 end end
+        if #src.ids() ~= 6 + extraLog then error("ids: " .. #src.ids() .. " " .. extraLog) end
         local has101 = false
         for _, id in ipairs(src.ids()) do if id == 101 then has101 = true end if id == 5432 then error("a pointer's offset is not an id") end end
         if not has101 then error("ids are the pointer map's keys") end
@@ -9135,7 +9137,10 @@ try("13.0 planner: reading Questie", function()
         meta = "5"; src, why = ns.PlannerSource(); if src or why ~= "changed" then error("another contract is a change") end
         meta = "4"; fakes.QuestieDB.GetQuest = function() error("boom") end
         src, why = ns.PlannerSource(); local okQ = src and pcall(src.quest, 999); if src and (not okQ) then error("errors inside Questie are caught") end
-        src, why = ns.PlannerSource(); if src or why ~= "changed" then error("an error inside Questie is a change") end
+        -- (polish P1, F1: one record that fails is left out and written down once; the source stays Questie's)
+        src, why = ns.PlannerSource(); if not src or why ~= nil then error("one failing record is no change: " .. tostring(why)) end
+        if not tostring(ns.errors[#ns.errors]):find("Planner source: quest 999", 1, true) then error("the failure is written down: " .. tostring(ns.errors[#ns.errors])) end
+        ns.errors[#ns.errors] = nil
         env.Questie.API.isReady = false; src, why = ns.PlannerSource(); if src or why ~= "waiting" then error("waits for Questie") end
         if not ready then error("registers for ready") end
         local replans, realReplan = {}, ns.PlannerReplan
@@ -10587,7 +10592,7 @@ try("13.1 stops: professions and riding", function()
         skills = { { 186, "Mining", 75, 75 } }
         local guide = plan()
         local at, step = find(guide, "train")
-        if not at or step.text ~= "Train Mining at Miner Mo" or step.stopKey ~= "profession:186:75" then error("Mining 75/75: a train step, got " .. tostring(step and step.text) .. " " .. tostring(step and step.stopKey)) end
+        if not at or step.text ~= "Learn Mining at Miner Mo" or step.stopKey ~= "profession:186:75" then error("Mining 75/75: a train step, got " .. tostring(step and step.text) .. " " .. tostring(step and step.stopKey)) end
         local back = ns.GuideParse(ns.GuideText(guide))
         for i, s in ipairs(guide.steps) do if ns.GuideLine(back.steps[i]) ~= ns.GuideLine(s) then error("the profession step round-trips") end end
         skills = { { 186, "Mining", 74, 75 } }
@@ -10613,7 +10618,7 @@ try("13.1 stops: professions and riding", function()
         guide = plan()
         local t, v = find(guide, "train", "Rider Rae"), find(guide, "vendor", "Horse Hal")
         if not t or not v or v <= t then error("warrior, 130g: the riding trainer, then the mount vendor: " .. tostring(t) .. " " .. tostring(v)) end
-        if guide.steps[t].text ~= "Train Riding at Rider Rae" or guide.steps[v].text ~= "Buy your mount at Horse Hal" then error("riding texts: " .. guide.steps[t].text .. " / " .. guide.steps[v].text) end
+        if guide.steps[t].text ~= "Learn Riding at Rider Rae" or guide.steps[v].text ~= "Buy your mount at Horse Hal" then error("riding texts: " .. guide.steps[t].text .. " / " .. guide.steps[v].text) end
         if guide.steps[t].stopKey ~= "riding:riding" or guide.steps[v].stopKey ~= "mount:mount" then error("riding keys") end
         money = 80 * 10000
         guide = plan()
@@ -11608,6 +11613,8 @@ try("13.3 choices: skip list, deaths, soloed elites", function()
         ctx.skip = rc.skip
         if ids(ctx)[201] then error("a skipped quest is not a candidate") end
         inlog[201] = true
+        if ids(ctx)[201] then error("never suggest, in the log: left out of this session's plans too (polish P1, F7)") end
+        ns.PlannerSessionSkipReset()
         if not ids(ctx)[201] then error("a skipped quest in the log stays in the plan") end
         inlog[201] = nil
         ns.PlannerSkip(201, false)
@@ -12029,28 +12036,31 @@ try("13.3 choices: hand-in, quest log, inn", function()
         ns.db.plannerPickReward = nil
         ups[links[2]] = 3
         prices.B = 1
+        -- (polish P1, I9: the best reward is marked and named, never clicked)
+        local function marked() return ns.PlannerRewardMarked() end
         fireEvent("QUEST_COMPLETE"); runTimers()
-        if #clicked ~= 1 or clicked[1] ~= 2 then error("the upgrade is picked: " .. #clicked) end
+        if #clicked ~= 0 or marked() ~= 2 then error("the upgrade is marked, not clicked: " .. #clicked .. " " .. tostring(marked())) end
         if rewarded ~= 0 then error("the hand-in is yours") end
         ups[links[2]] = nil
         prices.B = 50
-        clicked = {}
         fireEvent("QUEST_COMPLETE"); runTimers()
-        if #clicked ~= 1 or clicked[1] ~= 2 then error("the best price is picked") end
-        n = 1; clicked = {}
+        if #clicked ~= 0 or marked() ~= 2 then error("the best price is marked") end
+        fireEvent("QUEST_FINISHED")
+        if marked() ~= nil then error("the hand-in closed: no mark") end
+        n = 1
         fireEvent("QUEST_COMPLETE"); runTimers()
-        if #clicked ~= 0 then error("one choice: nothing to pick") end
+        if marked() ~= nil then error("one choice: nothing to mark") end
         n = 3; links = {}
         fireEvent("QUEST_COMPLETE"); runTimers()
-        if #clicked ~= 0 then error("nothing to judge: nothing picked") end
+        if marked() ~= nil then error("nothing to judge: nothing marked") end
         links = { "|Hitem:1|h[A]|h", "|Hitem:2|h[B]|h", "|Hitem:3|h[C]|h" }
         ns.db.plannerPickReward = false
         fireEvent("QUEST_COMPLETE"); runTimers()
-        if #clicked ~= 0 then error("switch off: nothing picked") end
+        if marked() ~= nil then error("switch off: nothing marked") end
         ns.db.plannerPickReward = nil
         ns.GuideUnlocked = function() return false end
         fireEvent("QUEST_COMPLETE"); runTimers()
-        if #clicked ~= 0 then error("locked: nothing picked") end
+        if marked() ~= nil or #clicked ~= 0 then error("locked: nothing marked") end
         ns.GuideUnlocked = function() return true end
         -- the quest log
         env.UnitLevel = function() return 30 end
@@ -13929,7 +13939,7 @@ try("13.4 feel C: time you have, breaks, catch-up", function()
         ps = questsOf(guide)
         if not ps[1] or ps[2] or ps[3] then error("one hub fits: " .. table.concat((function() local o = {} for _, s in ipairs(guide.steps) do o[#o + 1] = s.kind .. (s.quest or "") end return o end)(), ",")) end
         local note, stop = last(guide), last(guide, 1)
-        if not (note.kind == "note" and note.text == "Good place to stop") then error("the last step is the note") end
+        if not (note.kind == "note" and note.text == "Good place to take a break (press > to keep playing)") then error("the last step is the note") end
         if not (stop.kind == "goto" and stop.x == 44 and stop.text == "Fake Inn") then error("a goto to the inn before the note: " .. tostring(stop.kind) .. " " .. tostring(stop.x)) end
         if summary.empty then error("a plan with a stop is not empty") end
         -- the real context has them too
@@ -14034,7 +14044,7 @@ try("13.4 feel C: time you have, breaks, catch-up", function()
         ns.PlannerStart = function() starts = starts + 1; return true end
         if not okLit then error(errLit, 0) end
         local lq = questsOf(literal)
-        if not lq[1] or lq[2] or lq[3] or last(literal).text ~= "Good place to stop" or last(literal, 1).kind ~= "goto" then
+        if not lq[1] or lq[2] or lq[3] or last(literal).text ~= "Good place to take a break (press > to keep playing)" or last(literal, 1).kind ~= "goto" then
             error("plan 30 with three hubs of 900 s: the first hub, the inn, the note")
         end
         ns.PlannerSetPlayTime(0)
@@ -14046,7 +14056,7 @@ try("13.4 feel C: time you have, breaks, catch-up", function()
         local win = ns:ListWindow("PlanTime")
         local names = {}
         for _, l in ipairs(win.lines) do names[#names + 1] = l.left end
-        if table.concat(names, "|") ~= "No limit|30 min|1 hour|1 hour 30|2 hours" then error("the list: " .. table.concat(names, "|")) end
+        if table.concat(names, "|") ~= "No limit|30 min|1 hour|1 h 30 min|2 hours" then error("the list: " .. table.concat(names, "|")) end
         win.lines[3].click()
         if ns.PlannerTimeLeft() ~= 3600 then error("1 hour picked") end
         win.lines[1].click()
@@ -14951,7 +14961,7 @@ try("13.4 feel: together", function()
         if not (summary.zoneGoal and summary.zoneGoal.map == 1429 and summary.zoneGoal.total == 4) then error("the goal's count: " .. tostring(summary.zoneGoal and summary.zoneGoal.total)) end
         -- C: the far hub does not fit in 30 minutes, and the plan ends at a place to stop
         local last = guide.steps[#guide.steps]
-        if planned[509] or not summary.stop or last.kind ~= "note" or last.text ~= ns:Tr("Good place to stop") then error("30 minutes: the far hub is cut, the plan ends with a stop") end
+        if planned[509] or not summary.stop or last.kind ~= "note" or last.text ~= ns:Tr("Good place to take a break (press > to keep playing)") then error("30 minutes: the far hub is cut, the plan ends with a stop") end
         -- C: Story's weights were in the plan
         if not (panelBits.extra or ""):find("Style: Story", 1, true) then error("the panel says the style: " .. tostring(panelBits.extra)) end
         if not (panelBits.extra or ""):find("Zone: 0 of 4 quests", 1, true) then error("the panel counts the zone: " .. tostring(panelBits.extra)) end
@@ -19802,8 +19812,8 @@ try("13.6 leftovers: merge fixes", function()
 
         -- the session's skipped quests: forgotten at login and at a fresh plan, kept by a replan
         ns.PlannerSessionSkip(9751)
-        fireEvent("PLAYER_LOGIN")
-        if ns.PlannerSessionSkipped(9751) then error("PLAYER_LOGIN forgets the session's skips") end
+        fireEvent("PLAYER_ENTERING_WORLD", true, false)           -- (polish P1, F24: a login, not a /reload)
+        if ns.PlannerSessionSkipped(9751) then error("a login forgets the session's skips") end
         ns.GuideOn = function() return true end
         ns.root.guides, ns.root.guideState = {}, {}
         ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "x" } } }, {})
@@ -20298,6 +20308,231 @@ try("13.6 leftovers: a timed run's travel", function()
     if ns.PlannerPosReset then ns.PlannerPosReset() end
     if not ok then error(err, 0) end
 end)
+-- polish P1: begin
+try("polish P1: planning and speed", function()
+    local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), unlocked = ns.GuideUnlocked, on = ns.GuideOn, state = ns.root.guideState,
+        guides = ns.root.guides, planner = ns.root.planner, times = ns.root.plannerQuestTimes, nodes = ns.root.plannerNodesSeen, raw = ns.PrintRaw,
+        taxi = rawget(env, "UnitOnTaxi"), dead = rawget(env, "UnitIsDeadOrGhost"), here = ns.GuideHere, world = ns.PlannerWorldPos, ql = env.C_QuestLog,
+        cap = ns.PLANNER_QUEST_TIMES_CAP, total = ns.PLANNER_NODES_TOTAL, questie = rawget(env, "Questie"), loader = rawget(env, "QuestieLoader"),
+        loaded = env.C_AddOns.IsAddOnLoaded, meta = rawget(env.C_AddOns, "GetAddOnMetadata"), qguide = ns.db.questGuide, time = env.GetTime,
+        context = ns.PlannerContext, route = ns.PlannerRoute, choices = rawget(env, "GetNumQuestChoices"), link = rawget(env, "GetQuestItemLink"),
+        click = rawget(env, "QuestInfoItem_OnClick"), button = rawget(env, "QuestInfo_GetRewardButton"), qframe = rawget(env, "QuestInfoFrame"),
+        up = ns.UpgradeAmount, pick = ns.db.plannerPickReward, errors = #ns.errors }
+    local said = {}
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        ns.PrintRaw = function(_, m) said[#said + 1] = tostring(m) end
+        local calls = 0
+        local cm = {}
+        for k, v in pairs(saved.map) do cm[k] = v end
+        cm.GetWorldPosFromMapPos = function(map, v) calls = calls + 1; if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end end
+        env.C_Map = cm
+        env.CreateVector2D = function(x, y) return { x = x, y = y } end
+        if ns.PlannerPosReset then ns.PlannerPosReset() end
+
+        -- I3/I4: a spot's world position is worked out once while its place stays the same
+        local spot = { map = 1, x = 10, y = 20 }
+        local c, wx = ns.PlannerSpotPos(spot)
+        ns.PlannerSpotPos(spot)
+        if c ~= 0 or wx ~= 100 or calls ~= 1 then error("a spot is placed once: " .. calls) end
+        spot.x = 30
+        c, wx = ns.PlannerSpotPos(spot)
+        if wx ~= 300 or calls ~= 2 then error("a moved spot is placed again") end
+
+        -- I1: the spread of many spots, in a straight line, without measuring every pair
+        local spots = {}
+        for i = 0, 99 do spots[#spots + 1] = { map = 1, x = i, y = 50 } end
+        local rec = { id = 1, objectives = { { kind = "kill", count = 1, spots = spots } } }
+        local t = ns.PlannerQuestTime(rec, { speed = 10, noAlts = true })
+        if math.abs(t - (25 + 990 / 10)) > 0.01 then error("the spread of 100 spots: " .. t) end
+
+        -- F11, F4 and F27: no plan in the air, as a ghost, or with no place in the world; and why
+        ns.GuideHere = function() return 1, 50, 50 end
+        env.UnitOnTaxi = function() return true end
+        local placed, why = ns.PlannerPlaced()
+        if placed or why ~= "taxi" then error("in the air: " .. tostring(why)) end
+        env.UnitOnTaxi = function() return false end
+        env.UnitIsDeadOrGhost = function() return true end
+        placed, why = ns.PlannerPlaced()
+        if placed or why ~= "dead" then error("a ghost: " .. tostring(why)) end
+        env.UnitIsDeadOrGhost = function() return false end
+        ns.GuideHere = function() return 2, 50, 50 end
+        placed, why = ns.PlannerPlaced()
+        if placed or why ~= "away" then error("no place: " .. tostring(why)) end
+        ns.GuideHere = function() return 1, 50, 50 end
+        if not ns.PlannerPlaced() then error("outdoors: placed") end
+
+        -- F41: Plan my route with the guide switched off says so
+        ns.db.questGuide = false
+        said = {}
+        if ns:PlannerStart() ~= false or not (said[1] or ""):find("switched off", 1, true) then error("guide off: said so: " .. tostring(said[1])) end
+        ns.db.questGuide = saved.qguide
+
+        -- F7: never suggest a quest in your log: out of this session's plans now, and said so
+        ns.root.planner = {}
+        env.C_QuestLog = setmetatable({ IsOnQuest = function(id) return id == 9901 end }, { __index = saved.ql })
+        said = {}
+        ns.PlannerSkip(9901, true)
+        if not (ns.PlannerSessionSkipped(9901) and ns.PlannerSkipList()[9901]) then error("never suggest: skipped now and for good") end
+        if not (said[#said] or ""):find("stays in your quest log", 1, true) then error("and says so: " .. tostring(said[#said])) end
+        ns.PlannerSkip(9901, false)
+
+        -- F24: a /reload keeps this session's skips
+        fireEvent("PLAYER_ENTERING_WORLD", false, true)
+        if not ns.PlannerSessionSkipped(9901) then error("a /reload keeps the session's skips") end
+        ns.PlannerSessionSkipReset()
+
+        -- I13: a locked character's quest event reads no guide state
+        local reads, realState = 0, ns.GuideState
+        ns.GuideUnlocked = function() return false end
+        ns.GuideState = function(...) reads = reads + 1; return realState(...) end
+        fireEvent("QUEST_ACCEPTED", 1, 9902)
+        ns.GuideState = realState
+        ns.GuideUnlocked = function() return true end
+        if reads ~= 0 then error("locked: the guide state is never read: " .. reads) end
+
+        -- F8 and F26: following the plan, an abandoned quest is left out, a quest taken outside it plans again
+        ns.root.guides, ns.root.guideState = {}, {}
+        ns.GuideOn = function() return true end
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "accept", quest = 9903, title = "Three" } } }, { logFits = false })
+        ns:PlannerStop()
+        env.C_QuestLog = setmetatable({ IsQuestFlaggedCompleted = function() return false end, IsOnQuest = function() return false end }, { __index = saved.ql })
+        fireEvent("QUEST_REMOVED", 9903)
+        if not ns.PlannerSessionSkipped(9903) or not ns.plannerQueued then error("abandoned: left out this session, and planned again") end
+        ns:PlannerStop()
+        fireEvent("QUEST_ACCEPTED", 1, 9904)
+        if not ns.plannerQueued then error("a quest taken outside the plan plans again, room or not") end
+        ns:PlannerStop()
+        ns.PlannerSessionSkipReset()
+
+        -- F15 and F14: Plan my route starts the Guide tab's time limit, and clears one that ran out
+        ns.root.planner = { [ns:CharKey()] = { playDefault = 30 } }
+        ns:PlannerStart()
+        local left = ns.PlannerTimeLeft()
+        if not (left and left > 25 * 60 and left <= 30 * 60) then error("the default limit: " .. tostring(left)) end
+        ns.root.planner[ns:CharKey()] = { playUntil = env.time() - 60 }
+        if ns.PlannerTimeLeft() ~= 0 then error("ran out: 0 left") end
+        ns:PlannerStart()
+        if ns.PlannerTimeLeft() ~= nil then error("a fresh route clears a limit that ran out") end
+        ns:PlannerStop()
+
+        -- F3: Questie still loading: the route waits, then after 30 seconds comes from your quest log
+        local clock = 1000
+        env.GetTime = function() return clock end
+        local applied
+        ns.PlannerContext = function() return { sourceWhy = "waiting", source = { kind = "log" }, level = 10, flights = {} } end
+        ns.PlannerRoute = function(ctx) applied = ctx.sourceWhy; return { name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "n" } } }, {} end
+        ns.root.planner = {}
+        local function frame() for i = 1, #handlers do local h = handlers[i]; if h.name == "OnUpdate" then pcall(h.fn, h.self, 0.02) end end end
+        ns:PlannerStart()
+        for _ = 1, 5 do frame() end
+        if applied ~= nil then error("still loading: no plan yet") end
+        clock = clock + 31
+        for _ = 1, 10 do frame() end
+        if applied ~= "loading" then error("after 30 seconds: from your quest log: " .. tostring(applied)) end
+        local st = ns.GuideState()
+        if not (type(st.summary) == "table" and st.summary.sourceWhy == "loading" and st.summary.source == "log") then error("the summary says where the plan came from") end
+        ns:PlannerStop()
+        ns.PlannerContext, ns.PlannerRoute = saved.context, saved.route
+        env.GetTime = saved.time
+
+        -- F1 and F2: Questie's source keeps a logged quest it does not list, and one failing record changes nothing else
+        ns.PlannerSourceReset()
+        local quests = { [9911] = { name = "Listed", level = 10, startedBy = { { 9 } }, finishedBy = { { 9 } } } }
+        local fakes = {
+            QuestieDB = { QuestPointers = { [9911] = true, [9912] = true }, NPCPointers = { [9] = true },
+                GetQuest = function(id) if id == 9912 then error("bad record") end return quests[id] end, IsDoable = function() return true end,
+                QueryNPCSingle = function(id, key) if key == "spawns" then return { [40] = { { 30, 40 } } } end end },
+            QuestXP = { GetQuestLogRewardXP = function() return 100 end },
+            ZoneDB = { GetUiMapIdByAreaId = function() return 1 end },
+        }
+        env.Questie = { API = { isReady = true, RegisterOnReady = function() end } }
+        env.QuestieLoader = { ImportModule = function(_, name) return fakes[name] end }
+        env.C_AddOns.IsAddOnLoaded = function() return true end
+        rawset(env.C_AddOns, "GetAddOnMetadata", function() return ns.PLANNER_CONTRACT end)
+        local logIds = { 9911, 9913 }
+        env.C_QuestLog = setmetatable({ GetNumQuestLogEntries = function() return #logIds end, GetInfo = function(i) return { questID = logIds[i], questLevel = 9, title = "Logged " .. logIds[i] } end,
+            GetLogIndexForQuestID = function(id) for i, v in ipairs(logIds) do if v == id then return i end end end,
+            IsOnQuest = function(id) return id == 9911 or id == 9913 end, GetQuestObjectives = function() return {} end,
+            GetTitleForQuestID = function() return nil end, GetNextWaypoint = function() return nil end, GetQuestTagInfo = function() return nil end }, { __index = saved.ql })
+        local src = ns.PlannerSource()
+        if not src or src ~= ns.PlannerSource() then error("the same Questie: the same source") end
+        local have = {}
+        for _, id in ipairs(src.ids()) do have[id] = (have[id] or 0) + 1 end
+        if have[9911] ~= 1 or have[9912] ~= 1 or have[9913] ~= 1 then error("Questie's ids, and a logged quest it does not list, once each") end
+        local q = src.quest(9913)
+        if not (q and q.name == "Logged 9913" and q.level == 9) then error("a logged quest Questie can't give: from the log") end
+        if src.quest(9912) ~= nil then error("a failing record that is not logged: left out") end
+        local errs = #ns.errors
+        src.quest(9912)
+        if #ns.errors ~= errs then error("written down once") end
+        local again, why2 = ns.PlannerSource()
+        if not again or why2 ~= nil then error("one failing record does not change the source: " .. tostring(why2)) end
+        if not tostring(ns.errors[#ns.errors]):find("quest 9912", 1, true) then error("the failure is listed") end
+        ns.errors[#ns.errors] = nil
+        ns.PlannerSourceReset()
+        rawset(env, "Questie", saved.questie); rawset(env, "QuestieLoader", saved.loader)
+        env.C_AddOns.IsAddOnLoaded = saved.loaded; rawset(env.C_AddOns, "GetAddOnMetadata", saved.meta)
+        env.C_QuestLog = saved.ql
+
+        -- I9: the best reward is marked and named in chat, and the game's button is never clicked
+        local clicked = 0
+        env.GetNumQuestChoices = function() return 2 end
+        env.GetQuestItemLink = function(_, i) return ({ "|Hitem:1|h[Axe]|h", "|Hitem:2|h[Bow]|h" })[i] end
+        ns.UpgradeAmount = function(link) return link:find("Bow", 1, true) and 5 or nil end
+        env.QuestInfoFrame = { rewardsFrame = {} }
+        env.QuestInfo_GetRewardButton = function() return CreateFrame("Button") end
+        env.QuestInfoItem_OnClick = function() clicked = clicked + 1 end
+        ns.db.plannerPickReward = nil
+        said = {}
+        fireEvent("QUEST_COMPLETE"); runTimers()
+        if clicked ~= 0 or ns.PlannerRewardMarked() ~= 2 then error("marked, not clicked") end
+        local named = false
+        for _, l in ipairs(said) do if l:find("Best reward for you: |Hitem:2|h[Bow]|h", 1, true) then named = true end end
+        if not named then error("named in chat: " .. table.concat(said, " / ")) end
+        fireEvent("QUEST_FINISHED")
+
+        -- M1: the quest times keep the most recent quests only
+        ns.root.plannerQuestTimes = { [1] = { n = 1, avg = 60, seen = 1 } }
+        ns.PLANNER_QUEST_TIMES_CAP = 2
+        ns.PlannerRecordQuestTime(2, 60); ns.PlannerRecordQuestTime(3, 60)
+        local qt = ns.root.plannerQuestTimes
+        if qt[1] or not (qt[2] and qt[3]) then error("over the cap: the one seen longest ago goes") end
+
+        -- M3: a full store of nodes keeps learning (the oldest goes)
+        ns.root.plannerNodesSeen = {}
+        ns.PLANNER_NODES_TOTAL = 2
+        ns.PlannerRecordNode(1, 10, 10, "Copper Vein", 186); ns.PlannerRecordNode(1, 30, 30, "Copper Vein", 186); ns.PlannerRecordNode(1, 50, 50, "Copper Vein", 186)
+        local nodes = ns.root.plannerNodesSeen[1]
+        if #nodes ~= 2 or nodes[1].x ~= 30 or nodes[2].x ~= 50 then error("the oldest node goes: " .. #nodes) end
+
+        -- I-4: one quest is one quest
+        local lines = ns.PlannerAdviceLines({}, 1, { empty = true, dry = { dungeon = { name = "The Deadmines", count = 1, start = "Westfall" }, first = "dungeon" } })
+        local found = false
+        for _, l in ipairs(lines) do if l == "Try The Deadmines: 1 quest, start at Westfall" then found = true end end
+        if not found then error("singular: " .. table.concat(lines, " / ")) end
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    ns:PlannerStop(); ns:GuideStop()
+    ns.PlannerSessionSkipReset()
+    env.C_Map = saved.map; rawset(env, "CreateVector2D", saved.vec)
+    rawset(env, "UnitOnTaxi", saved.taxi); rawset(env, "UnitIsDeadOrGhost", saved.dead)
+    rawset(env, "Questie", saved.questie); rawset(env, "QuestieLoader", saved.loader)
+    env.C_AddOns.IsAddOnLoaded = saved.loaded; rawset(env.C_AddOns, "GetAddOnMetadata", saved.meta)
+    rawset(env, "GetNumQuestChoices", saved.choices); rawset(env, "GetQuestItemLink", saved.link); rawset(env, "QuestInfoItem_OnClick", saved.click)
+    rawset(env, "QuestInfo_GetRewardButton", saved.button); rawset(env, "QuestInfoFrame", saved.qframe)
+    env.C_QuestLog, env.GetTime = saved.ql, saved.time
+    ns.UpgradeAmount, ns.db.plannerPickReward = saved.up, saved.pick
+    ns.GuideUnlocked, ns.GuideOn, ns.GuideHere, ns.PlannerWorldPos = saved.unlocked, saved.on, saved.here, saved.world
+    ns.root.guideState, ns.root.guides, ns.root.planner = saved.state, saved.guides, saved.planner
+    ns.root.plannerQuestTimes, ns.root.plannerNodesSeen = saved.times, saved.nodes
+    ns.PLANNER_QUEST_TIMES_CAP, ns.PLANNER_NODES_TOTAL = saved.cap, saved.total
+    ns.PlannerContext, ns.PlannerRoute, ns.PrintRaw, ns.db.questGuide = saved.context, saved.route, saved.raw, saved.qguide
+    ns.PlannerSourceReset()
+    if ns.PlannerPosReset then ns.PlannerPosReset() end
+    if not ok then error(err, 0) end
+end)
+-- polish P1: end
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()

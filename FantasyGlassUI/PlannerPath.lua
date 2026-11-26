@@ -85,22 +85,51 @@ local function SpellName(id)
     return type(name) == "string" and not ns:IsSecret(name) and name or nil
 end
 
--- The skill line (182, 186, 393) a spell gathers with, or nil.
+-- The skill line (182, 186, 393) a spell gathers with, or nil. The answer is kept per spell for the session
+-- ("none" too), and the base spells' names once: a cast in a fight asks the game nothing new.
+local skillOf, baseNames = {}, nil
 function ns.PlannerGatherSkill(spellID)
     spellID = Num(spellID)
     if not spellID then return nil end
     if GATHER_SPELLS[spellID] then return GATHER_SPELLS[spellID] end
+    local hit = skillOf[spellID]
+    if hit ~= nil then return hit or nil end
     local name = SpellName(spellID)
-    if not name then return nil end
-    for id, line in pairs(BASE_SPELLS) do
-        if SpellName(id) == name then return line end
+    if not name then return nil end                  -- (not readable now: asked again next time)
+    if not baseNames then
+        local names, all = {}, true
+        for id, line in pairs(BASE_SPELLS) do
+            local n = SpellName(id)
+            if n then names[n] = line else all = false end
+        end
+        if not all then
+            for n, line in pairs(names) do if n == name then return line end end
+            return nil
+        end
+        baseNames = names
     end
+    skillOf[spellID] = baseNames[name] or false
+    return baseNames[name]
 end
+function ns.PlannerGatherSkillReset() skillOf, baseNames = {}, nil end   -- (the tests: a new language)
 
 local function NodeWorld(map, x, y)
     local c, wx, wy = ns.PlannerWorldPos(map, x, y)
     return c, wx, wy
 end
+-- A saved node's world position, kept beside it for the session (a weak table: nothing is added to the saved node).
+local nodePos = setmetatable({}, { __mode = "k" })
+local function NodePos(map, n)
+    local e = nodePos[n]
+    local x, y = tonumber(n.x), tonumber(n.y)
+    if not e or e[1] ~= map or e[2] ~= x or e[3] ~= y then
+        local c, wx, wy = NodeWorld(map, x, y)
+        e = { map, x, y, c or false, wx, wy }
+        nodePos[n] = e
+    end
+    if e[4] then return e[4], e[5], e[6] end
+end
+ns.PLANNER_NODES_TOTAL = 4000           -- nodes kept on all maps together (past it the fullest map loses its oldest)
 
 -- Record a node (once per 10 yards, per skill). Saved tables are made only here.
 function ns.PlannerRecordNode(map, x, y, name, skill)
@@ -114,16 +143,29 @@ function ns.PlannerRecordNode(map, x, y, name, skill)
     if list then
         for _, n in ipairs(list) do
             if type(n) == "table" and n.skill == skill and n.name == name then
-                local c2, x2, y2 = NodeWorld(map, tonumber(n.x), tonumber(n.y))
+                local c2, x2, y2 = NodePos(map, n)
                 if c2 == c1 and sqrt((x1 - x2) ^ 2 + (y1 - y2) ^ 2) <= ns.PLANNER_NODE_YARDS then return false end
             end
         end
-        if #list >= NODE_CAP then return false end
     end
     if type(ns.root.plannerNodesSeen) ~= "table" then ns.root.plannerNodesSeen = {} end
-    if type(ns.root.plannerNodesSeen[map]) ~= "table" then ns.root.plannerNodesSeen[map] = {} end
-    local out = ns.root.plannerNodesSeen[map]
+    local all = ns.root.plannerNodesSeen
+    if type(all[map]) ~= "table" then all[map] = {} end
+    local out = all[map]
     out[#out + 1] = { name = name, x = R1(x), y = R1(y), skill = skill }
+    while #out > NODE_CAP do table.remove(out, 1) end      -- (a full map keeps learning: its oldest node goes)
+    local total, fullest, most = 0, nil, 0
+    for m, l in pairs(all) do
+        if type(l) == "table" then
+            total = total + #l
+            if #l > most then fullest, most = m, #l end
+        end
+    end
+    while total > ns.PLANNER_NODES_TOTAL and fullest do
+        table.remove(all[fullest], 1)
+        total, most = total - 1, most - 1
+        for m, l in pairs(all) do if type(l) == "table" and #l > most then fullest, most = m, #l end end
+    end
     return true
 end
 

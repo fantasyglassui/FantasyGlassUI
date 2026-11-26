@@ -22,9 +22,10 @@ ns.PLANNER_REPICK_LEVELS = 3
 local huge = math.huge
 local HANDLE = 5                        -- seconds to talk to a giver and take or hand in a quest
 
+-- (a spot's world position is kept beside it: ns.PlannerSpotPos, PlannerTravel.lua)
 local function Pos(s)
     if type(s) ~= "table" then return nil end
-    return ns.PlannerWorldPos(s.map, s.x, s.y)
+    return ns.PlannerSpotPos(s)
 end
 
 -- Straight-line yards between two spots (math.huge on different continents or unplaceable).
@@ -41,8 +42,17 @@ local function Speed(ctx) return tonumber(ctx.speed) or ns.PLANNER_SPEED.run end
 -- The spot of a list nearest to `from` (only spots that can be placed).
 local function Nearest(list, from)
     local best, bestD
-    for _, s in ipairs(list or {}) do
-        local d = from and Yards(from, s) or (Pos(s) and 0 or huge)
+    local fc, fx, fy
+    if from then fc, fx, fy = Pos(from) end
+    for i, s in ipairs(list or {}) do
+        if i % 32 == 0 then ns.PlannerYield() end
+        local d
+        if from then
+            local c, x, y = Pos(s)
+            if c and fc and c == fc then local dx, dy = x - fx, y - fy; d = sqrt(dx * dx + dy * dy) else d = huge end
+        else
+            d = Pos(s) and 0 or huge
+        end
         if d < huge and (not bestD or d < bestD) then best, bestD = s, d end
     end
     return best
@@ -150,6 +160,7 @@ local function HubLoop(hub, ctx)
     end
     local away = {}
     for _, q in ipairs(hub.quests) do
+        ns.PlannerYield()
         if HandedInAway(q, hub) then away[q.id] = true end
         if not away[q.id] then
             xp = xp + ns.PlannerQuestXP(q, ctx)
@@ -186,6 +197,7 @@ local function HubLoop(hub, ctx)
     end
     local held = {}                                  -- (an item in your bags starts it where you stand: that comes first)
     for _, q in ipairs(rest) do
+        ns.PlannerYield()
         if hub.take[q.id] then
             local e = { rec = q, spot = Nearest(q.starts, hub) }
             if q.haveItem then held[#held + 1] = e else accepts[#accepts + 1] = e end
@@ -196,6 +208,7 @@ local function HubLoop(hub, ctx)
     local at = accepts[1] and accepts[1].spot or base
     for _, a in ipairs(accepts) do t = t + Walk(at, a.spot, ctx) + HANDLE; at = a.spot end
     for _, q in ipairs(rest) do
+        ns.PlannerYield()
         if #(q.objectives or {}) > 0 then dos[#dos + 1] = { rec = q, spot = DoSpot(q, hub) } end
     end
     dos = Sweep(dos, at)
@@ -203,6 +216,7 @@ local function HubLoop(hub, ctx)
         if d.spot then t = t + Walk(at, d.spot, ctx); at = d.spot end
     end
     for _, q in ipairs(rest) do
+        ns.PlannerYield()
         if not away[q.id] then turnins[#turnins + 1] = { rec = q, spot = Nearest(q.ends, at) } end
     end
     turnins = Sweep(turnins, at)
@@ -1163,10 +1177,12 @@ function ns.PlannerSessionSkipReset() sessionSkip = {} end
 ns.PlannerHook("candidate", "sessionSkip", function(rec)
     if type(rec) == "table" and sessionSkip[rec.id] then return false end
 end)
-do                                                  -- (a new session starts with none; so does a fresh plan, ns:PlannerStart)
+do                                                  -- (a new session starts with none, a /reload keeps them; so does a fresh plan, ns:PlannerStart)
     local ev = CreateFrame("Frame")
-    pcall(ev.RegisterEvent, ev, "PLAYER_LOGIN")
-    ev:SetScript("OnEvent", ns:Guard("Planner session skips", function() ns.PlannerSessionSkipReset() end))
+    pcall(ev.RegisterEvent, ev, "PLAYER_ENTERING_WORLD")
+    ev:SetScript("OnEvent", ns:Guard("Planner session skips", function(_, _, isInitial, isReload)
+        if ns.Is(isInitial, true) and not ns.Yes(isReload) then ns.PlannerSessionSkipReset() end
+    end))
 end
 local HEARTHSTONE = 6948
 
@@ -1209,7 +1225,7 @@ local function LogCount()
     local n = 0
     for i = 1, math.min(num, 100) do
         local info = Call(QL.GetInfo, i)
-        if type(info) == "table" and not info.isHeader and Num(info.questID) then n = n + 1 end
+        if type(info) == "table" and not ns.Yes(info.isHeader) and Num(info.questID) then n = n + 1 end
     end
     local most = Num(Call(QL.GetMaxNumQuestsCanAccept))
     return n, (most and most > 0) and most or ns.PLANNER_LOG_SIZE or 25
@@ -1219,7 +1235,7 @@ end
 local function RunSpeed()
     local _, run = Call(GetUnitSpeed, "player")
     run = Num(run)
-    local mounted = Call(IsMounted) == true
+    local mounted = ns.Is(Call(IsMounted), true)
     if mounted then
         local d = PaceRecord(true)
         local v = (run and run > ns.PLANNER_SPEED.run) and run or ns.PLANNER_SPEED.mount
@@ -1249,7 +1265,7 @@ function ns.PlannerContext()
         onQuest = function(id) return Call(QL.IsOnQuest, id) == true end,
         here = (map and x and y) and { map = map, x = x, y = y } or nil,
         speed = RunSpeed(),
-        faction = Call(UnitFactionGroup, "player"),
+        faction = (function() local f = Call(UnitFactionGroup, "player"); return type(f) == "string" and not ns:IsSecret(f) and f or nil end)(),
         flights = ns.PlannerFlightPoints(),
         flightTime = function(a, b) return times and tonumber(times[a .. "-" .. b]) or nil end,
         hearth = HearthSpot(), bind = BindName(), bindSpot = BindSpot(),

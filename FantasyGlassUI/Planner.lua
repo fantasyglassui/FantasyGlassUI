@@ -385,23 +385,48 @@ end
 ------------------------------------------------------------------------------------------
 -- The farthest two spots of an objective, in yards (0 when they can't be placed). Kept on the objective
 -- (o.spread) the first time: the time and the monsters on the way both read it, and the spots don't move.
+-- Up to SPREAD_EXACT spots on a continent every pair is measured; past that (an NPC with hundreds of spawns)
+-- two sweeps find it: the spot farthest from any one, then the spot farthest from that (at least half the
+-- true spread, and nearly always all of it), so the work grows with the spots, not with their square.
+local SPREAD_EXACT = 48
 local function Spread(o)
     if type(o.spread) == "number" then return o.spread end
-    local pts = {}
+    local byC, order, n = {}, {}, 0
     for _, s in ipairs(o.spots or {}) do
-        local c, x, y = ns.PlannerWorldPos(s.map, s.x, s.y)
-        if c then pts[#pts + 1] = { c = c, x = x, y = y } end
-    end
-    local far = 0
-    for i = 1, #pts do
-        for j = i + 1, #pts do
-            if pts[i].c == pts[j].c then
-                local dx, dy = pts[i].x - pts[j].x, pts[i].y - pts[j].y
-                far = max(far, sqrt(dx * dx + dy * dy))
-            end
+        ns.PlannerYield()
+        local c, x, y
+        if ns.PlannerSpotPos then c, x, y = ns.PlannerSpotPos(s) else c, x, y = ns.PlannerWorldPos(s.map, s.x, s.y) end
+        if c then
+            local list = byC[c]
+            if not list then list = {}; byC[c] = list; order[#order + 1] = c end
+            list[#list + 1] = { x = x, y = y }
+            n = n + 1
         end
     end
-    if #pts > 0 or #(o.spots or {}) == 0 then o.spread = far end   -- (spots that can't be placed yet are tried again)
+    local function D(a, b) local dx, dy = a.x - b.x, a.y - b.y; return sqrt(dx * dx + dy * dy) end
+    local function Farthest(pts, from)
+        local best, bestD = from, -1
+        for i = 1, #pts do
+            if i % 64 == 0 then ns.PlannerYield() end
+            local d = D(pts[i], from)
+            if d > bestD then best, bestD = pts[i], d end
+        end
+        return best, bestD
+    end
+    local far = 0
+    for _, c in ipairs(order) do
+        local pts = byC[c]
+        if #pts <= SPREAD_EXACT then
+            for i = 1, #pts do
+                for j = i + 1, #pts do far = max(far, D(pts[i], pts[j])) end
+            end
+        else
+            local a = Farthest(pts, pts[1])
+            local _, d = Farthest(pts, a)
+            far = max(far, d)
+        end
+    end
+    if n > 0 or #(o.spots or {}) == 0 then o.spread = far end   -- (spots that can't be placed yet are tried again)
     return far
 end
 
@@ -431,15 +456,42 @@ end
 
 -- A sample of how long a quest took from accept to hand-in (while following the plan); over 2 hours is away.
 local QUEST_TIME_MAX = 7200
+-- At most this many quests are remembered (per account): past it, the one seen longest ago goes first (an
+-- entry from before days were kept counts as oldest; the same day: the lower id).
+ns.PLANNER_QUEST_TIMES_CAP = 3000
+local questTimesN                    -- how many entries the table holds (counted once a session)
 function ns.PlannerRecordQuestTime(questID, seconds)
     seconds = tonumber(seconds)
     if type(questID) ~= "number" or not seconds or seconds <= 0 or seconds > QUEST_TIME_MAX or not ns.root then return end
     local root = ns.root
     if type(root.plannerQuestTimes) ~= "table" then root.plannerQuestTimes = {} end
-    local e = root.plannerQuestTimes[questID]
-    if type(e) ~= "table" or not tonumber(e.n) or not tonumber(e.avg) then e = { n = 0, avg = 0 }; root.plannerQuestTimes[questID] = e end
+    local times = root.plannerQuestTimes
+    if not questTimesN or questTimesN.t ~= times then
+        local count = 0
+        for _ in pairs(times) do count = count + 1 end
+        questTimesN = { t = times, n = count }
+    end
+    local okT, now = pcall(time)
+    local day = okT and type(now) == "number" and not ns:IsSecret(now) and floor(now / 86400) or 0
+    local e = times[questID]
+    if type(e) ~= "table" or not tonumber(e.n) or not tonumber(e.avg) then
+        if times[questID] == nil then questTimesN.n = questTimesN.n + 1 end
+        e = { n = 0, avg = 0 }
+        times[questID] = e
+    end
     e.avg = (e.avg * e.n + seconds) / (e.n + 1)
     e.n = e.n + 1
+    e.seen = day
+    while questTimesN.n > ns.PLANNER_QUEST_TIMES_CAP do
+        local old, oldDay
+        for k, v in pairs(times) do
+            local d = type(v) == "table" and tonumber(v.seen) or 0
+            if k ~= questID and (not old or d < oldDay or (d == oldDay and tonumber(k) and tonumber(old) and k < old)) then old, oldDay = k, d end
+        end
+        if old == nil then break end
+        times[old] = nil
+        questTimesN.n = questTimesN.n - 1
+    end
 end
 
 ------------------------------------------------------------------------------------------
@@ -455,6 +507,11 @@ function ns.PlannerSkip(questID, on)
     if on then
         if type(rec.skip) ~= "table" then rec.skip = {} end
         rec.skip[questID] = true
+        -- (a quest in your log stays in the plan as long as it is there: left out of this session's plans too, and said so)
+        if ns.PlannerSessionSkip then ns.PlannerSessionSkip(questID) end
+        local QL = C_QuestLog
+        local okQ, logged = pcall(function() return QL and QL.IsOnQuest and QL.IsOnQuest(questID) end)
+        if okQ and ns.Is(logged, true) then ns:Print("Left out of your plans; it stays in your quest log until you abandon it.") end
     elseif type(rec.skip) == "table" then
         rec.skip[questID] = nil
     end
@@ -554,7 +611,7 @@ function ns.PlannerRewardBonus(rec, ctx)
     local best = 0
     local function Scan(count, kind)
         local okN, n = pcall(count, rec.id)
-        n = okN and tonumber(n) or 0
+        n = okN and type(n) == "number" and not ns:IsSecret(n) and n or 0
         for i = 1, min(n, 10) do
             local okL, link = pcall(GetQuestLogItemLink, kind, i, rec.id)
             if okL and type(link) == "string" and not ns:IsSecret(link) then
@@ -645,7 +702,7 @@ function ns.PlannerKnownFactions()
     n = okN and tonumber(n) or 0
     for i = 1, min(n, 300) do
         local ok, d = pcall(C.GetFactionDataByIndex, i)
-        if ok and type(d) == "table" and not d.isHeader and type(d.factionID) == "number" and d.factionID > 0
+        if ok and type(d) == "table" and not ns.Yes(d.isHeader) and type(d.factionID) == "number" and not ns:IsSecret(d.factionID) and d.factionID > 0
             and type(d.name) == "string" and not ns:IsSecret(d.name) and not seen[d.factionID] then
             seen[d.factionID] = true
             out[#out + 1] = { id = d.factionID, name = d.name }
@@ -756,7 +813,12 @@ ns.PlannerCharRecord = PaceRecord
 ------------------------------------------------------------------------------------------
 local fighting = false
 local told = {}                      -- the Questie lines, once a session each
-local SOURCE_LINES = { missing = "Install Questie to plan new quests too.", changed = "Questie changed; planning from your quest log only." }
+local SOURCE_LINES = { missing = "Install Questie to plan new quests too.",
+    changed = "Questie's data has changed in a way the planner can't read yet, so only quests in your log are planned. Updating Fantasy Glass UI or Questie usually fixes this." }
+ns.PLANNER_QUESTIE_WAIT = 30         -- seconds Questie may take to load before the plan is made from your quest log for now
+ns.PLANNER_SETTLE = 0.75             -- a plan thrown away by a new request waits this long (or SETTLE_FRAMES frames) for the burst to end
+local SETTLE_FRAMES = 120
+local PLACE_RECHECK = 30             -- frames between looks at your place while a plan waits for one (or a second)
 
 -- Pace, measured between marks: a route takes a hub's quests together (accept all, do all, hand in
 -- all), so one quest's own accept-to-hand-in time says little. The time from the mark to a run of
@@ -791,15 +853,33 @@ local function HandedIn(id, plan)
 end
 
 local function Following()
+    if not ns:GuideOn() then return false, nil end           -- (asked first: a locked character's state is never read, so never made)
     local st = ns.GuideState and ns.GuideState()
-    return (ns:GuideOn() and type(st) == "table" and st.name == ns.GUIDE_PLANNED) and true or false, st
+    return (type(st) == "table" and st.name == ns.GUIDE_PLANNED) and true or false, st
 end
 
-local function Placed()
-    if not ns.GuideHere then return false end
-    local map, x, y = ns.GuideHere()
-    return ns.PlannerWorldPos(map, x, y) ~= nil
+local function Flag(fn, ...)
+    if type(fn) ~= "function" then return false end
+    local ok, v = pcall(fn, ...)
+    return ok and ns.Is(v, true)
 end
+local function Now()
+    local okT, now = pcall(GetTime)
+    if okT and type(now) == "number" and not ns:IsSecret(now) then return now end
+end
+
+-- Can a plan start from where you are? false and why: "taxi" (in the air: it plans once you land), "dead"
+-- (a ghost on a corpse run), "away" (no place in the outdoor world: an instance, a battleground, a map the
+-- planner can't place).
+local function Placed()
+    if not ns.GuideHere then return false, "away" end
+    if Flag(UnitOnTaxi, "player") then return false, "taxi" end
+    if Flag(UnitIsDeadOrGhost, "player") then return false, "dead" end
+    local map, x, y = ns.GuideHere()
+    if ns.PlannerWorldPos(map, x, y) == nil then return false, "away" end
+    return true
+end
+ns.PlannerPlaced = Placed
 
 -- Each planned quest's time at a pace of 1 (what hand-ins are measured against), and the travel
 -- between them as a share of that.
@@ -821,16 +901,34 @@ local function Estimates(guide, summary, ctx)
     return out, share
 end
 
--- The coroutine's body: guide, summary, ctx; nothing while Questie is still loading (it asks again).
+-- Questie still loading: since when (uptime), and when to look again; nil when it is not.
+local waitingSince, waitRetryAt
+local WAIT_RETRY = 5
+
+-- The coroutine's body: guide, summary, ctx; nil and "waiting" while Questie is still loading (it asks again,
+-- and after ns.PLANNER_QUESTIE_WAIT seconds the plan is made from your quest log, ctx.sourceWhy "loading").
 local function Plan()
     local ctx = ns.PlannerContext()
-    if ctx.sourceWhy == "waiting" then return nil end
+    local src = ctx.source
+    local notReady = ctx.sourceWhy == nil and type(src) == "table" and type(src.ready) == "function" and not src.ready()
+    if ctx.sourceWhy == "waiting" or notReady then
+        local now = Now()
+        waitingSince = waitingSince or now
+        if not (now and waitingSince and now - waitingSince >= ns.PLANNER_QUESTIE_WAIT) then return nil, "waiting" end
+        ctx.source, ctx.sourceWhy = ns.PlannerLogSource(), "loading"
+    else
+        waitingSince = nil
+    end
     local line = SOURCE_LINES[ctx.sourceWhy]
     if line and not told[ctx.sourceWhy] then
         told[ctx.sourceWhy] = true
         ns:Print(line)
     end
     local guide, summary = ns.PlannerRoute(ctx)
+    summary.source, summary.sourceWhy = type(ctx.source) == "table" and ctx.source.kind or nil, ctx.sourceWhy
+    local d = ns.PlannerCharRecord(false)                    -- (what this character has yet to show the planner: PlannerTravel.lua's lines)
+    summary.noFlights = not (type(d) == "table" and type(d.flights) == "table") or nil
+    summary.noBind = not (type(d) == "table" and type(d.bindAt) == "table") or nil
     guide.estimates, guide.travelShare = Estimates(guide, summary, ctx)
     return guide, summary, ctx
 end
@@ -874,22 +972,67 @@ local function RunJob()
     end
 end
 
+-- A token for the plan being made: the same table for every call inside one run of the planning coroutine,
+-- nil anywhere else (PlannerSource keeps the records of logged quests for one plan by it).
+local planToken
+function ns.PlannerPlanToken()
+    local co = coroutine.running()
+    if co and co == running then return planToken end
+end
+
+local burst                          -- a run thrown away by a new request: { t, frames } until the requests settle
+local placeWait, placeWaitAt, placeWhy = 0, nil, nil   -- (not placed: frames until the next look, when it was, and why)
+local function Settled(w)
+    w.frames = w.frames + 1
+    local now = Now()
+    return (now and w.t and now - w.t >= ns.PLANNER_SETTLE) or w.frames >= SETTLE_FRAMES
+end
+local function PlaceOK()
+    if placeWait > 0 then
+        placeWait = placeWait - 1
+        local now = Now()
+        if not (now and placeWaitAt and now - placeWaitAt >= 1) then return false end
+    end
+    local ok, why = Placed()
+    if ok then placeWait, placeWaitAt, placeWhy = 0, nil, nil; return true end
+    placeWait, placeWaitAt, placeWhy = PLACE_RECHECK, Now(), why
+    return false
+end
+
 local function Tick()
     if batch then Flush(GetTime()) end
-    if not (ns.plannerBusy or ns.plannerQueued) then RunJob(); return end
+    if not (ns.plannerBusy or ns.plannerQueued) then
+        if waitRetryAt then                                   -- (Questie still loading: look again now and then)
+            local now = Now()
+            if now and now >= waitRetryAt then waitRetryAt = nil; ns:PlannerReplan("questie wait") end
+        end
+        RunJob(); return
+    end
     if not Following() then ns:PlannerStop(); return end
-    if fighting or InCombatLockdown() or not Placed() then return end
-    if running and ns.plannerQueued then running = nil end   -- a replan asked for mid-run: that run's context is stale
+    if fighting or InCombatLockdown() or not PlaceOK() then return end
+    if running and ns.plannerQueued then                     -- a replan asked for mid-run: that run's context is stale
+        running, burst = nil, { t = Now(), frames = 0 }      -- (and more may follow: a run of hand-ins plans once)
+    end
     if not running then
+        if burst then
+            if not Settled(burst) then return end
+            burst = nil
+        end
         ns.plannerQueued, ns.plannerBusy = false, true
-        running, runReason = coroutine.create(Plan), ns.plannerReason
+        running, runReason, planToken = coroutine.create(Plan), ns.plannerReason, {}
     end
     sliceStart = Clock()
     ns.plannerSteps = ns.plannerSteps + 1
     local ok, guide, summary, ctx = coroutine.resume(running)
     if ok and coroutine.status(running) ~= "dead" then return end
-    running, ns.plannerBusy = nil, false
+    running, ns.plannerBusy, planToken = nil, false, nil
     if ns.plannerQueued then return end                      -- queued meanwhile: never apply a stale result
+    if ok and guide == nil and summary == "waiting" then     -- (Questie still loading: the old plan stays; look again in a while)
+        local now = Now()
+        waitRetryAt = now and now + WAIT_RETRY or nil
+        if ns.GuideRedraw then ns:GuideRedraw() end
+        return
+    end
     if not ok then
         -- keep the last good plan; the panel says so (every time, not only the first), /fgui check lists it.
         -- The start's plan failed: a later plan is not that start's (no preview for it, its own reason).
@@ -912,24 +1055,53 @@ function ns:PlannerReplan(reason)
     if not Following() then return false end
     if not ReplanOK(reason) then return false, "refused" end
     ns.plannerQueued, ns.plannerReason = true, reason
+    if burst then burst.t, burst.frames = Now(), 0 end      -- (still coming: the burst goes on)
+    placeWait = 0                                           -- (look at your place again at once)
     return true
 end
 
 -- Follow the planned route, and plan it from scratch.
 function ns:PlannerStart()
-    if not ns:GuideOn() then return false end
+    if not ns:GuideOn() then
+        if ns:GuideUnlocked() then ns:Print("Quest guides are switched off. Switch them on under Guide in /fgui, or in the setup.") end
+        return false
+    end
     if not ReplanOK("start") then return false end
     if ns.PlannerSessionSkipReset then ns.PlannerSessionSkipReset() end   -- (a fresh plan: the steps skipped this session count again)
+    if ns.PlannerApplyPlayDefault then ns.PlannerApplyPlayDefault() end   -- (the Guide tab's "How long can you play?", PlannerPace.lua)
     if not Following() then ns:GuideSetPlan(nil) end
     ns:GuideShowPanel()
     mark, batch = nil, nil
+    waitRetryAt, burst, placeWait = nil, nil, 0
     ns.plannerQueued, ns.plannerReason, startPending = true, "start", true
     return true
 end
 
 function ns:PlannerStop()
-    running, ns.plannerBusy, ns.plannerQueued, startPending = nil, false, false, false
+    running, ns.plannerBusy, ns.plannerQueued, startPending, planToken = nil, false, false, false, nil
+    waitRetryAt, burst, placeWait = nil, nil, 0
 end
+
+-- What the panel says while a plan waits or comes from your quest log (the planned route only).
+local function PlannedState(st) return type(st) == "table" and st.name == ns.GUIDE_PLANNED and ns:GuideUnlocked() end
+local WAIT_WORDS = { taxi = "Waiting until you land to plan", dead = "Waiting until you are back on your feet to plan",
+    away = "Waiting until you are outdoors to plan" }
+ns.GuideRegisterLine("plannerWait", function(st)
+    if not PlannedState(st) then return nil end
+    local s = type(st.summary) == "table" and st.summary or nil
+    if (ns.plannerQueued or ns.plannerBusy) and placeWhy and WAIT_WORDS[placeWhy] then return ns:Tr(WAIT_WORDS[placeWhy]) end
+    if (waitingSince or waitRetryAt) and not (s and s.sourceWhy == "loading") then
+        return ns:Tr("Questie is still loading: your route is planned once it is ready")
+    end
+    if not s or s.source ~= "log" then return nil end
+    if s.empty and s.sourceWhy == "missing" then return ns:Tr("Install Questie to plan new quests; your quest log has none to plan") end
+    if s.sourceWhy == "loading" then return ns:Tr("Questie is still loading: planning from your quest log for now") end
+    if s.sourceWhy == "missing" then return ns:Tr("Install Questie to plan new quests too.") end
+    if s.sourceWhy == "changed" then return ns:Tr("Questie can't be read: only quests in your log are planned") end
+end)
+ns.GuideRegisterTitle("plannerBusy", function(st)
+    if PlannedState(st) and (ns.plannerQueued or ns.plannerBusy) and type(st.summary) == "table" then return ns:Tr("planning…") end
+end)
 
 -- The level of your last class trainer visit. The trainer whose window opened is yours when it is no
 -- profession trainer and, where your class trainers are known, it is one of them (by its id, or
@@ -940,7 +1112,7 @@ local ridingTrainer = false
 local function IsClassTrainer()
     ridingTrainer = false
     local ok, trade = pcall(IsTradeskillTrainer)
-    if ok and trade == true then return false end
+    if ok and ns.Is(trade, true) then return false end
     local src = ns.PlannerSource and ns.PlannerSource() or nil
     local places = (src and ns.PlannerPlaces) and ns.PlannerPlaces({ source = src }, "classTrainer") or {}
     local riding = (src and ns.PlannerPlaces) and ns.PlannerPlaces({ source = src }, "professionTrainer", ns.PLANNER_RIDING_LINE or 762) or {}
@@ -1025,7 +1197,7 @@ do
         local QL = C_QuestLog
         if type(QL) ~= "table" or type(QL.IsQuestFlaggedCompleted) ~= "function" then return false end
         local ok, v = pcall(QL.IsQuestFlaggedCompleted, id)
-        return ok and v == true
+        return ok and ns.Is(v, true)
     end
     -- A hand-in is counted for the pace once, by whichever of QUEST_TURNED_IN and QUEST_REMOVED (of a quest
     -- flagged completed) comes first; the other one only clears the mark. questID -> when it was counted.
@@ -1103,7 +1275,18 @@ do
             return
         end
         if event == "PLAYER_DEAD" then                -- (where you died: a hub that took you twice is left alone for two levels)
-            if ns:GuideUnlocked() then ns.PlannerRecordDeath() end
+            if ns:GuideUnlocked() then
+                ns.PlannerRecordDeath()
+                -- (the second death here: plan again now, once you are back on your feet, not at the next hand-in)
+                local d = ns.PlannerCharRecord(false)
+                local level = UnitLevel and UnitLevel("player")
+                if type(d) == "table" and type(d.deaths) == "table" and type(level) == "number" and not ns:IsSecret(level) and ns.GuideHere and Following() then
+                    local map, x, y = ns.GuideHere()
+                    if map and x and y and ns.PlannerHubTooHard({ map = map, x = x, y = y }, { deaths = d.deaths, level = level }) then
+                        ns:PlannerReplan("death")
+                    end
+                end
+            end
             return
         end
         local recent = (event == "QUEST_TURNED_IN" and type(a) == "number") and JustRemoved(a, Now()) or nil   -- (removed a moment ago: a hand-in)
@@ -1111,7 +1294,7 @@ do
             local id = (event == "QUEST_ACCEPTED" and type(b) == "number") and b or a
             if type(id) == "number" then
                 local okG, grouped = pcall(IsInGroup)
-                grouped = not okG or grouped ~= false
+                grouped = not okG or not ns.Is(grouped, false)      -- (hidden or unreadable: counted as grouped)
                 if event == "QUEST_ACCEPTED" then
                     local list = SoloAt(false)
                     if list then list[id] = nil end
@@ -1187,8 +1370,8 @@ do
                 Share(now)
                 open[id], openN, since[id] = 0, openN + 1, now
             end
-            -- (a plan made while the log had room asked nothing about it: a quest taken outside the plan may fill it)
-            if type(id) == "number" and type(st.summary) == "table" and st.summary.logFits then
+            -- (a quest taken outside the plan, shared by a party member or picked up on the way: the plan takes it in)
+            if type(id) == "number" then
                 local inPlan = false
                 for _, s in ipairs(type(plan.steps) == "table" and plan.steps or {}) do
                     if type(s) == "table" and s.quest == id then inPlan = true; break end
@@ -1223,7 +1406,8 @@ do
                     if took and done then ns.PlannerRecordQuestTime(a, took) end
                     if took and not done then Removed(a, now).took = took end    -- (kept a second, for a QUEST_TURNED_IN to come)
                 end
-                if done then CountHandIn(a, plan, now) end
+                if done then CountHandIn(a, plan, now)
+                elseif ns.PlannerSessionSkip then ns.PlannerSessionSkip(a) end   -- (abandoned: not planned again this session)
             end
             ns:PlannerReplan("quest removed")
         end

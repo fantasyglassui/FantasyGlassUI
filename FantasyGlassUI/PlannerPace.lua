@@ -39,7 +39,7 @@ ns.PLANNER_BREAK_REPEAT = 3600              -- a break reminder at most once in 
 ns.PLANNER_BREAK_SHOWN = 600                -- and its panel line for this long
 ns.PLANNER_CATCHUP_DAYS = 14                -- away this many days or more: the catch-up page
 ns.PLANNER_CATCHUP_NEW = 3                  -- at most this many "New:" lines
-ns.PLANNER_PLAY_TIMES = { { 0, "No limit" }, { 30, "30 min" }, { 60, "1 hour" }, { 90, "1 hour 30" }, { 120, "2 hours" } }
+ns.PLANNER_PLAY_TIMES = { { 0, "No limit" }, { 30, "30 min" }, { 60, "1 hour" }, { 90, "1 h 30 min" }, { 120, "2 hours" } }
 local STOP_KEY = "pace:stop"
 local Sync                                  -- (below: what is registered)
 
@@ -146,7 +146,7 @@ local function RouteTime(guide, summary, ctx, c)
         local p = at.place
         guide.steps[#guide.steps + 1] = { kind = "goto", text = at.name, map = p.map, x = R1(p.x), y = R1(p.y), stopKey = STOP_KEY }
     end
-    guide.steps[#guide.steps + 1] = { kind = "note", text = ns:Tr("Good place to stop"), stopKey = STOP_KEY }
+    guide.steps[#guide.steps + 1] = { kind = "note", text = ns:Tr("Good place to take a break (press > to keep playing)"), stopKey = STOP_KEY }
     summary.stop = true
 end
 
@@ -160,6 +160,22 @@ local function AdvanceStop(st, guide, _, at, moved)
         end
     end
 end
+
+-- "Plan my route" (ns:PlannerStart): with no limit running, the Guide tab's default starts one; a limit that ran
+-- out is cleared first (you asked for a new route, not for the stop again).
+function ns.PlannerApplyPlayDefault()
+    if not Unlocked() then return end
+    local left = ns.PlannerTimeLeft()
+    if left and left > 0 then return end
+    local rec = Rec(false)
+    local d = rec and tonumber(rec.playDefault)
+    if d and d > 0 then ns.PlannerSetPlayTime(d)
+    elseif left == 0 then ns.PlannerSetPlayTime(0) end
+end
+
+-- The panel's "Keep playing": shown once the time is up, it clears the limit and plans on.
+local function KeepPlaying() ns.PlannerSetPlayTime(0); Replan("time") end
+local function TimeUp() return ns.PlannerTimeLeft() == 0 end
 
 -- /fgui guide plan [minutes]: a number sets the time (0 clears it); with none, the default from the Guide tab
 -- (none, 30, 60, 90 or 120) starts a fresh limit, and with no default a limit you already have is kept; then plan.
@@ -272,7 +288,9 @@ function ns:PlannerCatchUp(away, since)
     away = tonumber(away) or (rec and tonumber(rec.lastSeen) and Now() - rec.lastSeen) or 0
     since = since or (rec and rec.lastVersion)
     local lines = {}
-    lines[#lines + 1] = { left = format(ns:Tr("Away for %d days"), floor(away / 86400)) }
+    local days, hours = floor(away / 86400), floor(away / 3600)
+    if days >= 1 then lines[#lines + 1] = { left = format(ns:TrN(days, "Away for 1 day", "Away for %d days"), days) }
+    elseif hours >= 1 then lines[#lines + 1] = { left = format(ns:TrN(hours, "Away for 1 hour", "Away for %d hours"), hours) } end   -- (under an hour: no line)
     local st = ns.GuideState and ns.GuideState()
     local steps = type(st) == "table" and st.name == ns.GUIDE_PLANNED and type(st.plan) == "table" and st.plan.steps or nil
     if steps then
@@ -298,7 +316,7 @@ function ns:PlannerCatchUp(away, since)
             if okQ and on == true then inPlan = inPlan + 1 end
         end
     end
-    lines[#lines + 1] = { left = format(ns:Tr("%d quests in your log, %d of them in the plan"), inLog, inPlan) }
+    lines[#lines + 1] = { left = format(ns:TrN(inLog, "1 quest in your log, %d of them in the plan", "%d quests in your log, %d of them in the plan"), inLog == 1 and inPlan or inLog, inPlan) }
     local okL, level = pcall(UnitLevel, "player")
     level = okL and Num(level) or 1
     local pace = ns.PlannerPace and ns.PlannerPace() or 1
@@ -485,12 +503,12 @@ function ns.PlannerDanger(hub, ctx)
             if o.kind == "kill" and (tonumber(o.mobLevel) or 0) >= level + ns.PLANNER_DANGER_LEVELS then sum = sum + 0.5 end
         end
     end
-    if type(ctx.deaths) == "table" and ns.PlannerWorldPos then
-        local hc, hx, hy = ns.PlannerWorldPos(hub.map, hub.x, hub.y)
+    if type(ctx.deaths) == "table" and ns.PlannerSpotPos then
+        local hc, hx, hy = ns.PlannerSpotPos(hub)
         for _, d in ipairs(ctx.deaths) do
             ns.PlannerYield()
             if type(d) == "table" and (tonumber(d.level) or 0) >= level - ns.PLANNER_DEATH_LEVELS and (tonumber(d.level) or 0) <= level then
-                local dc, dx, dy = ns.PlannerWorldPos(d.map, d.x, d.y)
+                local dc, dx, dy = ns.PlannerSpotPos(d)          -- (a death's place is worked out once, not per hub per round)
                 if hc and dc == hc then
                     local ddx, ddy = dx - hx, dy - hy
                     if ddx * ddx + ddy * ddy <= (ns.PLANNER_HUB_YARDS or 150) ^ 2 then sum = sum + 1 end
@@ -562,8 +580,8 @@ end
 local function StyleLine()
     if not On() then return nil end
     local speed, safety, story = ns.PlannerWeights()
-    if speed == FULL and safety == 0 and story == 0 then return nil end
     local style = ns.PlannerStyle()
+    if speed == FULL and safety == 0 and story == 0 and style == "speed" then return nil end   -- ("Custom" picked at 100/0/0 still says so)
     return format(ns:Tr("Style: %s"), ns:Tr((style == "story" and "Story") or (style == "speed" and "Speed") or "Custom"))
 end
 
@@ -599,12 +617,13 @@ Sync = function()
     ns.GuideRegisterLine("paceBreak", Reg(BreakLine))
     ns.GuideRegisterLine("paceStyle", Reg(StyleLine))
     ns.GuideRegisterAction("panel", "paceTime", "How long can you play?", Reg(OpenTimeList))
+    ns.GuideRegisterAction("panel", "paceKeep", "Keep playing (no time limit)", Reg(KeepPlaying), TimeUp)
     local rec = open and Rec(false) or nil
     if rec and tonumber(rec.playUntil) and not ns.PlannerTimeLeft() then rec.playUntil = nil end   -- (ran out long ago: forgotten)
     local timed = rec and tonumber(rec.playUntil) and true or false
     local speed, safety, story = ns.PlannerWeights()
     local styled = open and not (speed == FULL and safety == 0 and story == 0) or false
-    paceTimed, paceStyled = timed, styled
+    paceTimed, paceStyled = timed, styled                -- (a hook already there only gets its fn again: nothing is made)
     local on = timed or styled
     ns.PlannerHook("context", "pace", on and ContextPace or nil)
     ns.PlannerHook("rank", "pace", on and RankPace or nil)
