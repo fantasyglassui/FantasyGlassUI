@@ -2223,7 +2223,7 @@ Z = {
     "A thin line on the target's health bar at a percentage you choose, 20 unless you change it with /fgui execute.": "在目标生命条上你选择的百分比处画一条细线，默认 20，可用 /fgui execute 修改。",
     "Keeps a list of everything you loot this session. /fgui loot shows it with what a vendor would pay for it all.": "记录本次登录拾取的所有物品。/fgui loot 显示列表及商人收购总价。",
     "Our own bar for breath underwater, fatigue when you swim too far out, and feign death, in place of the game's.": "以我们的计时条替代游戏的，显示水下呼吸、游太远时的疲劳和假死。",
-    "Remembers the lowest price you last saw for each item at the auction house and shows it in the item's tooltip.": "记住每件物品你最近在拍卖行看到的最低价，并显示在提示中。",
+    "Remembers the lowest price you last saw or scanned for each item at the auction house and shows it in the item's tooltip.": "记住你最近在拍卖行看到或扫描到的每件物品的最低价格，并显示在物品的鼠标提示中。",
     "Starts the game's combat log file when you enter a raid and stops it when you leave (only if this started it).": "进入团队副本时开始游戏战斗记录，离开时停止（仅限由此功能开启的记录）。",
     "Clocks show the game server's time instead of your computer's. Takes effect at once. Presets never change this.": "时钟显示游戏服务器时间而非电脑时间。立即生效。预设从不更改此项。",
     "Your hearthstone and every teleport or portal you know, on one bar with their cooldowns. Place it in move mode.": "炉石及你掌握的所有传送和传送门，带冷却显示在一条动作条上。可在移动模式中摆放。",

@@ -439,7 +439,9 @@ ns:NewModule("storage", function()
     end
 
     -- Who has this item: { [owner] = { bags, bank, guild } }, and the key of the character being played.
+    -- (12.4) A number item id is taken too, as "item:N": /fgui shop and the skill-up list pass one.
     function ns:ItemOwners(link)
+        if type(link) == "number" and link == math.floor(link) then link = "item:" .. string.format("%d", link) end
         local id = ItemID(link)
         if not id then return nil, myKey end
         if not index then BuildIndex() end
