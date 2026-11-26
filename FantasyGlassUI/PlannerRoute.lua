@@ -401,6 +401,75 @@ local function FlightName(state, node)
     for _, f in ipairs(state.flights) do if f.node == node then return Clean(f.name) end end
 end
 
+-- A map's details, or nil (the call is pcall'd: a bad id or a missing API gives nil).
+local function MapInfo(map)
+    local get = C_Map and C_Map.GetMapInfo
+    if type(get) ~= "function" or type(map) ~= "number" then return nil end
+    local ok, info = pcall(get, map)
+    return (ok and type(info) == "table") and info or nil
+end
+local function Readable(s) if type(s) == "string" and not ns:IsSecret(s) then return Clean(s) end end
+local function MapName(map) local info = MapInfo(map); return info and Readable(info.name) or nil end
+
+-- The zone (a mapType 3 map) a spot lies in: on a continent map (where flight points are kept) the map at that
+-- spot, then up through the parents (a city or a cave map to its zone). Nil when it can't be told.
+function ns.PlannerZoneAt(map, x, y)
+    map = tonumber(map)
+    local info = MapInfo(map)
+    if not info then return nil end
+    if tonumber(info.mapType) == 2 then
+        local at = C_Map and C_Map.GetMapInfoAtPosition
+        x, y = tonumber(x), tonumber(y)
+        if type(at) ~= "function" or not (x and y) then return nil end
+        local ok, here = pcall(at, map, x / 100, y / 100)
+        local id = ok and type(here) == "table" and here.mapID or nil
+        map = (id ~= nil and not ns:IsSecret(id)) and tonumber(id) or nil
+        if not map then return nil end
+        info = MapInfo(map)
+        if not info then return nil end
+    end
+    for _ = 1, 8 do
+        local t = tonumber(info.mapType)
+        if t == 3 then return map end
+        local parent = tonumber(info.parentMapID)
+        if not t or t < 3 or not parent or parent == 0 or parent == map then return nil end
+        map = parent
+        info = MapInfo(map)
+        if not info then return nil end
+    end
+end
+
+-- A flight's words: "Go to <zone>: fly to <point>" when it lands in another zone than it takes off from, else
+-- the flight point's name. Nil (the panel's own "Take the flight") when there is nothing to say.
+local function FlyText(state, from, leg)
+    local name = FlightName(state, leg.node)
+    local z1 = from and ns.PlannerZoneAt(from.map, from.x, from.y)
+    local z2 = z1 and ns.PlannerZoneAt(leg.to.map, leg.to.x, leg.to.y)
+    local zone = z2 and z2 ~= z1 and MapName(z2)
+    if not zone then return name end
+    if name then return Clean(format(ns:Tr("Go to %s: fly to %s"), zone, name)) end
+    return Clean(format(ns:Tr("Go to %s: take the flight"), zone))
+end
+
+-- A dock's name: its area's, else its map's.
+local function DockName(dock)
+    if type(dock) ~= "table" then return nil end
+    local get, area = C_Map and C_Map.GetAreaInfo, tonumber(dock.area)
+    if area and type(get) == "function" then
+        local ok, name = pcall(get, area)
+        name = ok and Readable(name) or nil
+        if name then return name end
+    end
+    return MapName(tonumber(dock.map))
+end
+
+-- A crossing's words: "Take the boat (zeppelin) from <dock> to <dock>". Nil (the panel's own words) when a name can't be read.
+local function SailText(leg)
+    local a, b = DockName(leg.from), DockName(leg.at)
+    if not (a and b) then return nil end
+    return Clean(format(ns:Tr(leg.ship == "zeppelin" and "Take the zeppelin from %s to %s" or "Take the boat from %s to %s"), a, b))
+end
+
 -- Seconds saved against running the same way, when running is possible at all.
 local function Saves(from, to, seconds, ctx)
     local d = Yards(from, to)
@@ -421,7 +490,7 @@ local function Legs(state, dest, steps)
                 steps[#steps + 1] = Place({ kind = "goto", text = l.node and FlightName(state, l.node) or nil }, l.to)
             end
         elseif l.kind == "fly" then
-            local s = Place({ kind = "fly", node = l.node, text = FlightName(state, l.node) }, state.pos)
+            local s = Place({ kind = "fly", node = l.node, text = FlyText(state, state.pos, l) }, state.pos)
             local saved = Saves(state.pos, l.to, l.seconds, state.tctx)
             if saved then s.why = { saves = saved } end
             steps[#steps + 1] = s
@@ -432,7 +501,7 @@ local function Legs(state, dest, steps)
             steps[#steps + 1] = s
             state.tctx.hearth = nil                      -- one use; it is on cooldown after
         elseif l.kind == "sail" then
-            local s = Place({ kind = "sail", crossing = l.crossing }, state.pos)
+            local s = Place({ kind = "sail", crossing = l.crossing, text = SailText(l) }, state.pos)
             local saved = Saves(state.pos, l.to, l.seconds, state.tctx)
             if saved then s.why = { saves = saved } end
             steps[#steps + 1] = s

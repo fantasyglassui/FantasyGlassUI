@@ -12,18 +12,24 @@ local pcall, type, pairs, ipairs, tonumber = pcall, type, pairs, ipairs, tonumbe
 local sqrt, huge = math.sqrt, math.huge
 
 ------------------------------------------------------------------------------------------
--- Crossings. Boats and zeppelins between the towns. The map ids and coordinates below are from
--- memory and MUST be checked in the game before release; the seconds are a ride plus an average
--- wait (270 boats, 240 zeppelins) until a real crossing has been recorded.
+-- Crossings. Boats and zeppelins between the towns. The map ids, coordinates and dock areas below are
+-- from memory and MUST be checked in the game before release; the seconds are a ride plus an average
+-- wait (270 boats, 240 zeppelins) until a real crossing has been recorded. `area`: the dock's area
+-- (its name, from C_Map.GetAreaInfo, on the step); `ship`: what you take.
 ------------------------------------------------------------------------------------------
+local MENETHIL, THERAMORE = { map = 1437, x = 4.9, y = 62.0, area = 150 }, { map = 1445, x = 71.5, y = 56.5, area = 513 }
+local AUBERDINE, RUTHERAN = { map = 1439, x = 33.0, y = 40.0, area = 442 }, { map = 1438, x = 55.0, y = 93.5, area = 702 }
+local BOOTYBAY, RATCHET = { map = 1434, x = 26.0, y = 73.0, area = 35 }, { map = 1413, x = 63.5, y = 38.5, area = 392 }
+local ORGRIMMAR, UNDERCITY = { map = 1411, x = 50.9, y = 13.8, area = 1637 }, { map = 1458, x = 60.5, y = 58.5, area = 1497 }
+local GROMGOL = { map = 1434, x = 31.5, y = 29.5, area = 117 }
 ns.PLANNER_CROSSINGS = {
-    { id = "menethil-theramore", a = { map = 1437, x = 4.9, y = 62.0 }, b = { map = 1445, x = 71.5, y = 56.5 }, faction = "Alliance", seconds = 270 },
-    { id = "menethil-auberdine", a = { map = 1437, x = 4.9, y = 62.0 }, b = { map = 1439, x = 33.0, y = 40.0 }, faction = "Alliance", seconds = 270 },
-    { id = "auberdine-rutheran", a = { map = 1439, x = 33.0, y = 40.0 }, b = { map = 1438, x = 55.0, y = 93.5 }, faction = "Alliance", seconds = 270 },
-    { id = "bootybay-ratchet", a = { map = 1434, x = 26.0, y = 73.0 }, b = { map = 1413, x = 63.5, y = 38.5 }, seconds = 270 },
-    { id = "orgrimmar-undercity", a = { map = 1411, x = 50.9, y = 13.8 }, b = { map = 1458, x = 60.5, y = 58.5 }, faction = "Horde", seconds = 240 },
-    { id = "orgrimmar-gromgol", a = { map = 1411, x = 50.9, y = 13.8 }, b = { map = 1434, x = 31.5, y = 29.5 }, faction = "Horde", seconds = 240 },
-    { id = "undercity-gromgol", a = { map = 1458, x = 60.5, y = 58.5 }, b = { map = 1434, x = 31.5, y = 29.5 }, faction = "Horde", seconds = 240 },
+    { id = "menethil-theramore", a = MENETHIL, b = THERAMORE, faction = "Alliance", seconds = 270, ship = "boat" },
+    { id = "menethil-auberdine", a = MENETHIL, b = AUBERDINE, faction = "Alliance", seconds = 270, ship = "boat" },
+    { id = "auberdine-rutheran", a = AUBERDINE, b = RUTHERAN, faction = "Alliance", seconds = 270, ship = "boat" },
+    { id = "bootybay-ratchet", a = BOOTYBAY, b = RATCHET, seconds = 270, ship = "boat" },
+    { id = "orgrimmar-undercity", a = ORGRIMMAR, b = UNDERCITY, faction = "Horde", seconds = 240, ship = "zeppelin" },
+    { id = "orgrimmar-gromgol", a = ORGRIMMAR, b = GROMGOL, faction = "Horde", seconds = 240, ship = "zeppelin" },
+    { id = "undercity-gromgol", a = UNDERCITY, b = GROMGOL, faction = "Horde", seconds = 240, ship = "zeppelin" },
 }
 
 ------------------------------------------------------------------------------------------
@@ -337,7 +343,7 @@ function ns.PlannerTravel(from, to, ctx)
                         best = t1 + secs + t2
                         legs = {}
                         for _, l in ipairs(l1) do legs[#legs + 1] = l end
-                        legs[#legs + 1] = { kind = "sail", to = Spot(q), crossing = c.id, seconds = secs }
+                        legs[#legs + 1] = { kind = "sail", to = Spot(q), crossing = c.id, seconds = secs, from = p, at = q, ship = c.ship }   -- (from, at: the two docks)
                         for _, l in ipairs(l2) do legs[#legs + 1] = l end
                     end
                 end

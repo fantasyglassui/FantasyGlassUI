@@ -18308,6 +18308,121 @@ end)
 -- batch 6 tests B (questie): begin
 -- batch 6 tests B (questie): end
 -- batch 6 tests C (route): begin
+try("13.6 leftovers C: moving zones in words", function()
+    local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), unlocked = ns.GuideUnlocked, why = ns.db.plannerWhy,
+        state = ns.root.guideState, here = ns.GuideHere, errors = #ns.errors }
+    -- Eastern Kingdoms (1415): Wetlands 1437 and Arathi 1417 on it, Undercity 1458; Kalimdor: Dustwallow 1445, Durotar 1411
+    local regions = { [1437] = { 0, 4000, 4000 }, [1417] = { 0, 6000, 2000 }, [1458] = { 0, 1000, 1000 }, [1445] = { 1, 5000, 5000 }, [1411] = { 1, 7000, 2000 } }
+    local infos = { [1415] = { mapID = 1415, name = "Eastern Kingdoms", mapType = 2, parentMapID = 947 },
+        [1437] = { mapID = 1437, name = "Wetlands", mapType = 3, parentMapID = 1415 }, [1417] = { mapID = 1417, name = "Arathi Highlands", mapType = 3, parentMapID = 1415 },
+        [1458] = { mapID = 1458, name = "Undercity", mapType = 3, parentMapID = 1415 }, [1445] = { mapID = 1445, name = "Dustwallow Marsh", mapType = 3, parentMapID = 1414 },
+        [1411] = { mapID = 1411, name = "Durotar", mapType = 3, parentMapID = 1414 } }
+    local areas = { [150] = "Menethil Harbor", [513] = "Theramore Isle", [1637] = "Orgrimmar", [1497] = "Undercity" }
+    local cm = {}
+    for k, v in pairs(saved.map) do cm[k] = v end
+    cm.GetWorldPosFromMapPos = function(map, v)
+        if map == 1415 then return 0, { x = v.x * 10000, y = v.y * 10000 } end      -- (a percent of the continent is 100 yards)
+        local r = regions[map]
+        if r then return r[1], { x = r[2] + v.x * 2000, y = r[3] + v.y * 2000 } end
+    end
+    cm.GetMapInfo = function(map) return infos[map] end
+    cm.GetMapInfoAtPosition = function(map, x, y)
+        if map ~= 1415 then return nil end
+        for id, r in pairs(regions) do
+            if r[1] == 0 and x * 10000 >= r[2] and x * 10000 <= r[2] + 2000 and y * 10000 >= r[3] and y * 10000 <= r[3] + 2000 then return { mapID = id, mapType = 3, name = infos[id].name } end
+        end
+    end
+    cm.GetAreaInfo = function(id) return areas[id] end
+    env.C_Map = cm
+    env.CreateVector2D = function(x, y) return { x = x, y = y } end
+    ns.GuideUnlocked = function() return true end
+    local function rec(id, map, x, y)
+        return { id = id, name = "Quest " .. id, level = 10, minLevel = 1, xp = 3000, starts = { { map = map, x = x, y = y } }, ends = { { map = map, x = x, y = y } },
+            objectives = { { kind = "kill", count = 4, countKnown = true, mobLevel = 10, spots = { { map = map, x = x + 1, y = y + 1 } } } },
+            pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+    end
+    local function route(quest, extra)
+        local c = { source = { kind = "questie", ids = function() return { quest.id } end, quest = function() return quest end },
+            level = 10, group = "solo", speed = 7, faction = "Alliance", done = function() return false end, onQuest = function() return false end,
+            crossings = ns.PLANNER_CROSSINGS, flights = {}, learnFlights = false, pace = 1, flightTime = function() return nil end }
+        for k, v in pairs(extra) do c[k] = v end
+        return ns.PlannerRoute(c)
+    end
+    local function find(guide, kind) for _, st in ipairs(guide.steps) do if st.kind == kind then return st end end end
+    local function kept(st)                                   -- (the text comes back from a guide line)
+        local back = ns.GuideParseLine(ns.GuideLine(st))
+        if not back or back.text ~= st.text then error("the line keeps the text: " .. ns.GuideLine(st)) end
+    end
+    local menethil = { node = 7, map = 1415, x = 50, y = 50, known = true, name = "Menethil Harbor" }
+    local refuge = { node = 16, map = 1415, x = 62, y = 39, known = true, name = "Refuge Pointe" }
+    local arathi = rec(9701, 1417, 12, 90)
+    local ok, err = pcall(function()
+        if ns.PlannerZoneAt(1415, 62, 39) ~= 1417 or ns.PlannerZoneAt(1437, 50, 50) ~= 1437 or ns.PlannerZoneAt(1415, 1, 99) ~= nil or ns.PlannerZoneAt(nil) ~= nil then
+            error("the zone at a spot") end
+        -- Wetlands to Arathi by air: where you are going and how
+        local guide = route(arathi, { here = { map = 1437, x = 50, y = 50 }, flights = { menethil, refuge } })
+        local fly = find(guide, "fly")
+        if not fly or fly.text ~= "Go to Arathi Highlands: fly to Refuge Pointe" then error("a flight into another zone: " .. tostring(fly and fly.text)) end
+        kept(fly)
+        -- Show why: the panel says the step's words and what the flight saves
+        ns.db.plannerWhy = true
+        ns.GuideHere = function() return 1437, 50, 50 end
+        ns:GuideSetPlan(guide, {})
+        local panel = ns:GuideShowPanel()
+        local said
+        rawset(panel.now, "SetText", function(_, t) said = t end)
+        ns:GuideRedraw()
+        rawset(panel.now, "SetText", nil)
+        if said ~= fly.text .. "  (saves ~3 min)" then error("the panel's step with its why: " .. tostring(said)) end
+        ns:GuideStop()
+        -- a flight within Arathi keeps the flight point's name
+        local stromgarde = { node = 17, map = 1415, x = 76, y = 24, known = true, name = "Stromgarde" }
+        fly = find(route(arathi, { here = { map = 1417, x = 80, y = 20 }, flights = { stromgarde, refuge } }), "fly")
+        if not fly or fly.text ~= "Refuge Pointe" then error("a flight within one zone: " .. tostring(fly and fly.text)) end
+        kept(fly)
+        -- no flight name
+        local nameless = { node = 16, map = 1415, x = 62, y = 39, known = true }
+        fly = find(route(arathi, { here = { map = 1437, x = 50, y = 50 }, flights = { menethil, nameless } }), "fly")
+        if not fly or fly.text ~= "Go to Arathi Highlands: take the flight" then error("no flight name: " .. tostring(fly and fly.text)) end
+        kept(fly)
+        -- a zone whose name can't be read: the flight point's name, never "Go to nil"
+        infos[1417] = nil
+        fly = find(route(arathi, { here = { map = 1437, x = 50, y = 50 }, flights = { menethil, refuge } }), "fly")
+        if not fly or fly.text ~= "Refuge Pointe" then error("an unreadable zone: " .. tostring(fly and fly.text)) end
+        cm.GetMapInfo = function() error("boom") end
+        fly = find(route(arathi, { here = { map = 1437, x = 50, y = 50 }, flights = { menethil, refuge } }), "fly")
+        if not fly or fly.text ~= "Refuge Pointe" then error("a failing map lookup: " .. tostring(fly and fly.text)) end
+        cm.GetMapInfo = function(map) return infos[map] end
+        infos[1417] = { mapID = 1417, name = "Arathi Highlands", mapType = 3, parentMapID = 1415 }
+        -- the boat, with the docks' names
+        local marsh = rec(9702, 1445, 70, 55)
+        local sail = find(route(marsh, { here = { map = 1437, x = 4.9, y = 62.0 } }), "sail")
+        if not sail or sail.crossing ~= "menethil-theramore" or sail.text ~= "Take the boat from Menethil Harbor to Theramore Isle" then error("the boat: " .. tostring(sail and sail.text)) end
+        kept(sail)
+        cm.GetAreaInfo = function() return nil end
+        sail = find(route(marsh, { here = { map = 1437, x = 4.9, y = 62.0 } }), "sail")
+        if not sail or sail.text ~= "Take the boat from Wetlands to Dustwallow Marsh" then error("no dock names: the maps' names: " .. tostring(sail and sail.text)) end
+        kept(sail)
+        cm.GetAreaInfo = function(id) return areas[id] end
+        -- the zeppelin, the other way round
+        local uc = rec(9703, 1458, 60, 60)
+        sail = find(route(uc, { faction = "Horde", here = { map = 1411, x = 50.9, y = 13.8 } }), "sail")
+        if not sail or sail.crossing ~= "orgrimmar-undercity" or sail.text ~= "Take the zeppelin from Orgrimmar to Undercity" then error("the zeppelin: " .. tostring(sail and sail.text)) end
+        kept(sail)
+        local back = route(rec(9704, 1411, 52, 15), { faction = "Horde", here = { map = 1458, x = 60.5, y = 58.5 } })
+        sail = find(back, "sail")
+        if not sail or sail.text ~= "Take the zeppelin from Undercity to Orgrimmar" then error("the zeppelin back: " .. tostring(sail and sail.text)) end
+        for _, c in ipairs(ns.PLANNER_CROSSINGS) do
+            if not (c.a.area and c.b.area and (c.ship == "boat" or c.ship == "zeppelin")) then error("each dock has an area and each crossing a ship: " .. c.id) end
+            if (c.faction == "Horde") ~= (c.ship == "zeppelin") then error("zeppelins for the Horde crossings: " .. c.id) end
+        end
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    ns:GuideStop()
+    env.C_Map = saved.map; rawset(env, "CreateVector2D", saved.vec)
+    ns.GuideUnlocked, ns.db.plannerWhy, ns.root.guideState, ns.GuideHere = saved.unlocked, saved.why, saved.state, saved.here
+    if not ok then error(err, 0) end
+end)
 -- batch 6 tests C (route): end
 -- batch 6 tests D (leftovers): begin
 -- batch 6 tests D (leftovers): end
