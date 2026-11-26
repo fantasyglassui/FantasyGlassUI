@@ -989,8 +989,8 @@ end
 ------------------------------------------------------------------------------------------
 -- Timed quests known before you take them. Questie has no timer data, so there are two sources of
 -- our own: ns.PLANNER_TIMED (written by hand) and a per-account memory of every quest any of your
--- characters accepted with a clock on it (ns.root.plannerTimed[questID] = { secs = seconds, seen = day },
--- written only while the guide is unlocked; an older plain number reads as { secs = n }; at most
+-- characters accepted with a clock on it (ns.root.plannerTimed[questID] = { secs = seconds, seen = day };
+-- an older plain number reads as { secs = n }; at most
 -- ns.PLANNER_TIMED_CAP, the oldest `seen` go first). The route plans such a quest as a timed run before you take it.
 ------------------------------------------------------------------------------------------
 ns.PLANNER_TIMED = {}             -- { [questID] = seconds }: fill from the in-game checks

@@ -4,12 +4,11 @@ if type(ns) ~= "table" then return end
 ------------------------------------------------------------------------------------------
 -- Planner, batch 5 group C: the plan code for the website's plan page (#44) (Tasks 5 and 6).
 -- Built on the seams: ns.PlannerHook (Planner.lua, with "candidate" and "replan"), the panel's
--- registries (Guide.lua) and its section of the Guide tab (Bars.lua). Everything here is behind ns:GuideUnlocked().
+-- registries (Guide.lua) and its section of the Guide tab (Bars.lua).
 ------------------------------------------------------------------------------------------
 
 local floor = math.floor
 
-local function Unlocked() return ns.GuideUnlocked ~= nil and ns:GuideUnlocked() == true end
 
 ns.PLANNER_CODE_HEADER = "SUIP1!"
 local MAX_STEPS, MAX_TEXT, MAX_ZONE = 60, 80, 40
@@ -128,15 +127,14 @@ function ns.PlannerReadPlanCode(code)
     return plan
 end
 
--- Are you following the planned guide (with it unlocked)?
+-- Are you following the planned guide?
 function ns.PlannerCodeFollowing()
-    local st = Unlocked() and ns.GuideState and ns.GuideState()
+    local st = ns.GuideState and ns.GuideState()
     return type(st) == "table" and st.name ~= nil and st.name == ns.GUIDE_PLANNED
 end
 
 -- Share plan: the code in a box ready for Ctrl+C.
 function ns:PlannerSharePlan()
-    if not Unlocked() then return false end
     local st = ns.GuideState and ns.GuideState()
     local guide = ns.PlannerCodeFollowing() and ns:GuideGet(ns.GUIDE_PLANNED) or nil
     local code = guide and ns.PlannerPlanCode(guide, st.summary)

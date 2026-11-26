@@ -3,11 +3,9 @@ if type(ns) ~= "table" then return end
 
 ------------------------------------------------------------------------------------------
 -- The planner's first-time tour: four short pages on what the route planner does, shown once for the
--- account the first time the Guide tab or the planner window is opened after the guide was unlocked, and
--- again whenever "How the planner works" is pressed in the planner window. It wears the settings window's look. It can be
+-- account the first time the Guide tab or the planner window is opened, and again whenever "How the planner works" is pressed in the planner window. It wears the settings window's look. It can be
 -- skipped at once, read aloud (with "Read talk and quests aloud" on), and used from the keyboard:
--- Left and Right go between pages, Enter or Space goes on, Esc closes. Behind ns:GuideUnlocked():
--- while the guide is locked nothing here makes a frame or writes anything.
+-- Left and Right go between pages, Enter or Space goes on, Esc closes.
 ------------------------------------------------------------------------------------------
 local PAGES = {
     { "What the planner does", "The planner works out a route of quests for your level: which to take, in what order, and when to fly, train or hand in. As you play it plans again, so the route keeps up with you. It finds quests through Questie; without Questie it plans the quests in your log." },
@@ -20,10 +18,9 @@ local NAME = "FantasyGlassUIPlannerIntro"
 local W, PAD = 480, 22
 local win
 
-local function Unlocked() return ns.GuideUnlocked ~= nil and ns:GuideUnlocked() == true end
 -- Is the tour still to be shown on this account?
 function ns:PlannerIntroDue()
-    return Unlocked() and type(ns.root) == "table" and not ns.root.plannerIntroSeen
+    return type(ns.root) == "table" and not ns.root.plannerIntroSeen
 end
 
 local function Height(fs, size, width)
@@ -146,7 +143,7 @@ end
 
 -- Show the tour at page `at` (1 when not given). Seen once is seen for the account.
 function ns:PlannerIntro(at)
-    if not Unlocked() or InCombatLockdown() then return false end
+    if InCombatLockdown() then return false end
     win = win or Build()
     ShowPage(at or 1)
     win:Show()
@@ -155,8 +152,4 @@ function ns:PlannerIntro(at)
     return win
 end
 function ns:PlannerIntroWindow() return win end
--- Locked again: the tour is put away.
-if ns.GuideRegisterLock then
-    ns.GuideRegisterLock("intro", function(unlocked) if not unlocked and win then win:Hide() end end)
-end
 ns.FolderFileDone("planner", "PlannerIntro.lua")

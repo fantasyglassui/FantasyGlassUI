@@ -35,7 +35,7 @@ ns.TOOL_MENU = {                                             -- (in groups: see 
 ns.TOOL_MENU_GROUPS = { [1] = "Groups and raids", [11] = "Your characters", [23] = "Bags, gear and trade",
                         [32] = "People and notes", [37] = "The world", [40] = "The add-on itself" }
 -- Entries other files add at the end, under "Guide": { key, label, typed, fn, shown }. The same key replaces
--- (in its place), fn nil removes. Each shows only while its shown() is true, so a locked player's palette is today's.
+-- (in its place), fn nil removes. Each shows only while its shown() is true (no shown(): always).
 local extras = {}
 function ns.RegisterToolExtra(key, label, typed, fn, shown)
     if key == nil then return end

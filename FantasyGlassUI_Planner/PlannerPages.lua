@@ -4,7 +4,7 @@ if type(ns) ~= "table" then return end
 ------------------------------------------------------------------------------------------
 -- Planner, batch 4 group B: time to level, "Why this?", the preview page and finish the zone (Tasks 3 and 4).
 -- Built on the seams: ns.PlannerHook (Planner.lua), the panel's registries (Guide.lua) and its
--- section of the Guide tab (Bars.lua). Everything here is behind ns:GuideUnlocked().
+-- section of the Guide tab (Bars.lua).
 ------------------------------------------------------------------------------------------
 
 local format, floor, max = string.format, math.floor, math.max
@@ -32,7 +32,6 @@ local function LevelText(v)
     if not v then return "?" end
     return (v == floor(v)) and format("%d", v) or format("%.1f", v)
 end
-local function Unlocked() return ns:GuideUnlocked() == true end
 -- The guide state, when it is the planned guide.
 local function Planned()
     local st = ns.GuideState and ns.GuideState()
@@ -57,7 +56,7 @@ function ns.PlannerTimeToLevel(summary)
 end
 
 ns.GuideRegisterTitle("planB", function(st)
-    if not (Unlocked() and type(st) == "table" and st.name ~= nil and st.name == ns.GUIDE_PLANNED) then return nil end
+    if not (type(st) == "table" and st.name ~= nil and st.name == ns.GUIDE_PLANNED) then return nil end
     local minutes = ns.PlannerTimeToLevel(st.summary)
     local level = Read(UnitLevel, "player")
     if not (minutes and level) then return nil end
@@ -120,11 +119,11 @@ end
 
 ns.GuideRegisterAction("step", "why", "Why this?", function(step)
     local st = Planned()
-    if not (st and Unlocked()) then return end
+    if not st then return end
     ns:ShowList("PlanWhy", "Why this?", ns.PlannerWhyLines(step, st.summary), nil, 420, 260)
 end, function(step)
     local st = Planned()
-    return (st and Unlocked() and type(step) == "table" and #ns.PlannerWhyLines(step, st.summary) > 0) and true or false
+    return (st and type(step) == "table" and #ns.PlannerWhyLines(step, st.summary) > 0) and true or false
 end)
 
 -- The plan, as a page: its steps in order, what it earns, flights and crossings, what was left out.
@@ -170,7 +169,7 @@ local function ShowPreview(guide, summary)
 end
 function ns:PlannerPreview()
     local st = Planned()
-    if not (st and Unlocked()) then return false end
+    if not st then return false end
     local guide = ns:GuideGet(st.name)
     if type(guide) ~= "table" or type(guide.steps) ~= "table" or #guide.steps == 0 then return false end
     return ShowPreview(guide, st.summary)
@@ -178,11 +177,11 @@ end
 
 ns.GuideRegisterAction("panel", "preview", "Preview", function() ns:PlannerPreview() end, function()
     local st = Planned()
-    return (st and Unlocked() and type(st.summary) == "table" and (tonumber(st.summary.xp) or 0) > 0) and true or false   -- (a plan that earns something)
+    return (st and type(st.summary) == "table" and (tonumber(st.summary.xp) or 0) > 0) and true or false   -- (a plan that earns something)
 end)
 -- The first plan after "Plan my route" opens the preview over it (a replan later does not).
 ns.PlannerHook("applied", "preview", function(guide, summary, _, reason)
-    if reason ~= "start" or not Unlocked() then return end
+    if reason ~= "start" then return end
     if type(guide) ~= "table" or type(guide.steps) ~= "table" or #guide.steps == 0 or (type(summary) == "table" and summary.empty) then return end   -- (nothing to preview)
     local ok, err = pcall(ShowPreview, guide, summary)
     if not ok and type(ns.errors) == "table" and #ns.errors < 60 then ns.errors[#ns.errors + 1] = "Planner preview: " .. tostring(err) end
@@ -198,13 +197,11 @@ end)
 local goalHubs                           -- did the zone hook find hubs on the goal map in the plan being made (nil: not asked)
 
 function ns.PlannerZoneGoal()
-    if not Unlocked() then return nil end
     local rec = ns.PlannerCharRecord and ns.PlannerCharRecord(false)
     return type(rec) == "table" and tonumber(rec.zoneGoal) or nil
 end
 -- Set the goal (a map) or clear it (nil), and plan again.
 function ns.PlannerSetZoneGoal(map)
-    if not Unlocked() then return false end
     map = tonumber(map)
     if map == nil and not ns.PlannerZoneGoal() then return true end
     local rec = ns.PlannerCharRecord and ns.PlannerCharRecord(true)
@@ -318,7 +315,7 @@ ns.PlannerHook("applied", "zoneGoal", function(_, summary, ctx)
 end)
 
 ns.GuideRegisterLine("zoneGoal", function(st)
-    if not (Unlocked() and type(st) == "table" and st.name ~= nil and st.name == ns.GUIDE_PLANNED) then return nil end
+    if not (type(st) == "table" and st.name ~= nil and st.name == ns.GUIDE_PLANNED) then return nil end
     if ns.PlannerZoneGoal() and type(st.summary) == "table" and st.summary.source == "log" then return ns:Tr("Zone goal needs Questie") end   -- (the quest log alone cannot count a zone)
     local zg = type(st.summary) == "table" and st.summary.zoneGoal
     if type(zg) ~= "table" or not (tonumber(zg.done) and tonumber(zg.total)) then return nil end

@@ -4,7 +4,7 @@ if type(ns) ~= "table" then return end
 ------------------------------------------------------------------------------------------
 -- Planner, batch 4 group A: the route on the world map and the hubs on the map (Task 2).
 -- Built on the seams: ns.PlannerHook (Planner.lua), the panel's registries (Guide.lua) and its
--- section of the Guide tab (Bars.lua). Everything here is behind ns:GuideUnlocked().
+-- section of the Guide tab (Bars.lua).
 -- The route: the dots and line of the current hub's loop and the trip to the next. The hubs: a
 -- mark on each hub the planner worked out on the map shown, brighter the better its rate, and a
 -- click on one plans from there (once).
@@ -43,9 +43,9 @@ local function Now() return tonumber(GetTime and GetTime()) or 0 end
 
 local function Switch(key) return ns.db and ns.db[key] ~= false end
 
--- Is there a planned route to draw: unlocked, following the planned guide, out of combat.
+-- Is there a planned route to draw: following the planned guide, out of combat.
 local function Following()
-    if not (ns.GuideUnlocked and ns:GuideUnlocked() and ns.GuideOn and ns:GuideOn()) then return nil end
+    if not (ns.GuideOn and ns:GuideOn()) then return nil end
     if InCombatLockdown and InCombatLockdown() then return nil end
     local st = ns.GuideState and ns.GuideState()
     if type(st) ~= "table" or st.name == nil or st.name ~= ns.GUIDE_PLANNED then return nil end
@@ -156,7 +156,7 @@ test.holder = function() return holder end
 
 -- Plan from here: ask once, then plan again with this hub taken first.
 function ns.PlannerMapPick(spot)
-    if not (ns.GuideUnlocked and ns:GuideUnlocked()) or type(spot) ~= "table" then return nil end
+    if type(spot) ~= "table" then return nil end
     local w
     local function Close() if w and w.Hide then w:Hide() end end
     local lines = {
@@ -218,7 +218,7 @@ local function Mark(i)
 end
 
 -- Draw the route and the hubs of the map `mapID`. Returns how many lines, hub marks and stop dots are
--- shown. Nothing unless unlocked, following the planned guide and out of combat.
+-- shown. Nothing unless following the planned guide and out of combat.
 function ns.PlannerMapDraw(mapID)
     local nLines, nMarks, nDots = 0, 0, 0
     local canvas = Canvas()
@@ -320,14 +320,9 @@ function ns.PlannerMapRedraw()
     return true
 end
 
--- Every half second while the map is shown (and the guide is unlocked): again when the map, its zoom or whether the
+-- Every half second while the map is shown: again when the map, its zoom or whether the
 -- route is followed changed.
 local function Tick()
-    if not (ns.GuideUnlocked and ns:GuideUnlocked()) then
-        if lastId and holder then ns.PlannerMapDraw(nil) end         -- (locked since: whatever was drawn goes)
-        lastId = nil
-        return
-    end
     local canvas, map = Canvas()
     if not canvas or not (map.IsShown and ns.Yes(map:IsShown())) then lastId = nil return end
     local id, scale, on = Signature(canvas, map)
@@ -359,7 +354,7 @@ end
 local function FromHere()
     local from = ns.plannerFromHere
     if type(from) ~= "table" then return nil end
-    if not (ns.GuideUnlocked and ns:GuideUnlocked()) or Aged(from) then
+    if Aged(from) then
         ns.plannerFromHere = nil
         return nil
     end

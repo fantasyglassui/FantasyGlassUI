@@ -5,8 +5,7 @@ local _, ns = ...
 -- work on, merchant prices, monster loot, what gathering gave, the node fold and the recipes you know. They are
 -- here, not in the FantasyGlassUI_Gold folder, so nothing goes deaf while that folder is not loaded. Each part
 -- is its file's "recorders" block, moved without change (saved data, keys and Guard labels as before), in a
--- do ... end of its own with the small helpers it used there. As before, each records nothing while the guide
--- is locked, and a locked player's events return at once, so nothing named Gold is timed by /fgui perf.
+-- do ... end of its own with the small helpers it used there.
 ------------------------------------------------------------------------------------------
 
 ------------------------------------------------------------------------------------------
@@ -31,7 +30,7 @@ end
 
 ------------------------------------------------------------------------------------------
 -- stays in the main add-on (when the folder moves): the recorders queue their work here.
--- Jobs: coroutines run one a frame, for at most ns.GOLD_BUDGET_MS, never in a fight, never while locked
+-- Jobs: coroutines run one a frame, for at most ns.GOLD_BUDGET_MS, never in a fight
 ------------------------------------------------------------------------------------------
 local queue = {}                       -- { { co, key } }, the first one runs
 local slicing, sliceStart = false, 0
@@ -68,23 +67,11 @@ function ns.GoldRunSlice()
     return true
 end
 
-local function UnlockedNow() return ns.GuideUnlocked ~= nil and ns:GuideUnlocked() == true end
--- One frame's slice, guarded (an error is noted). Called only from the tick below, only while unlocked,
--- so nothing named Gold is timed by /fgui perf for a locked player.
+-- One frame's slice, guarded (an error is noted). Called only from the tick below.
 local GuardedSlice = ns:Guard("Gold", function() ns.GoldRunSlice() end)
-local tick                             -- a plain frame: shown while there is work or something to keep hidden
+local tick                             -- a plain frame: shown while there is work
 local function Tick(self)
-    if not UnlockedNow() then                                   -- (locked again: hide everything and stop)
-        if type(ns.GoldLockedNow) == "function" then ns.GoldLockedNow() end   -- (an ns hook: it still reaches the window after the folder split)
-        self:Hide()
-        return
-    end
-    if queue[1] then GuardedSlice()
-    else
-        -- (kept going while the window or the panel is up, so a lock later still hides them)
-        local w, p = ns.goldWindow, ns.goldPanel
-        if not ((type(w) == "table" and w.suiGoldOn) or (type(p) == "table" and p.suiGoldOn)) then self:Hide() end
-    end
+    if queue[1] then GuardedSlice() else self:Hide() end
 end
 local function Start()
     if not tick then
@@ -108,7 +95,7 @@ end
 function ns.GoldJob(fn, key)
     if type(fn) ~= "function" then return false end
     key = (key ~= nil) and tostring(key) or tostring(fn)
-    Start()                                                     -- (first: a job left from before a lock runs again once asked for)
+    Start()
     for i = 1, #queue do if queue[i].key == key then return false end end
     queue[#queue + 1] = { co = coroutine.create(fn), key = key }
     return true
@@ -119,8 +106,7 @@ function ns.GoldBusy(key)
     for i = 1, #queue do if queue[i].key == key then return true end end
     return false
 end
--- For the gold folder: is a fight on (the flag or the lockdown), and keep the tick going (a lock then hides
--- the window and the panel).
+-- For the gold folder: is a fight on (the flag or the lockdown), and start the tick (it stops when no job is left).
 function ns.GoldInFight() return InFight() end
 function ns.GoldTickOn() Start() end
 
@@ -173,7 +159,6 @@ local Secret = function(v) return ns:IsSecret(v) end
 local floor, max, min, huge = math.floor, math.max, math.min, math.huge
 local VENDOR_CAP = 3000                -- vendor prices kept; the oldest go first
 
-local function Unlocked() return ns.GuideUnlocked ~= nil and ns:GuideUnlocked() == true end
 local function Num(v)
     if Secret(v) or type(v) ~= "number" or v ~= v or v == huge or v == -huge then return nil end
     return v
@@ -290,7 +275,7 @@ local function RecordJob()
     if again then again = false; ns:After(0, Queue) end            -- (the merchant changed while this one ran)
 end
 function Queue()
-    if not Unlocked() or InFight() then return end
+    if InFight() then return end
     if not ns.GoldJob(RecordJob, "goldVendorRecord") then again = true end
 end
 
@@ -299,14 +284,13 @@ do
     local ev = CreateFrame("Frame")
     pcall(ev.RegisterEvent, ev, "MERCHANT_SHOW")
     pcall(ev.RegisterEvent, ev, "MERCHANT_UPDATE")
-    -- (a plain handler first: while locked it returns at once, so nothing named Gold is timed by /fgui perf)
     local guarded = ns:Guard("Gold", function(_, event)
-        if (event ~= "MERCHANT_SHOW" and event ~= "MERCHANT_UPDATE") or not Unlocked() then return end
+        if (event ~= "MERCHANT_SHOW" and event ~= "MERCHANT_UPDATE") then return end
         gen = gen + 1
         local mine = gen
         ns:After(0.5, function() if mine == gen then Queue() end end)
     end)
-    ev:SetScript("OnEvent", function(...) if Unlocked() then guarded(...) end end)
+    ev:SetScript("OnEvent", guarded)
 end
 end
 
@@ -336,7 +320,6 @@ local function Ask(fn, ...)
     if ok and not Secret(v) then return v end
     return nil
 end
-local function Unlocked() return ns.GuideUnlocked ~= nil and ns:GuideUnlocked() == true end
 local function Count(t) local n = 0; for _ in pairs(t) do n = n + 1 end; return n end
 local function ItemOf(link)
     link = Str(link)
@@ -470,7 +453,6 @@ local function Pack(...) return { n = select("#", ...), ... } end
 local function Clock() return Num(Ask(GetTime)) end
 
 local function LootOpened()
-    if not Unlocked() then return end
     if ns.Yes(Ask(IsInGroup)) then return end                                  -- (solo numbers only)
     local t = Clock()
     if castAt and t and t >= castAt and t - castAt <= CAST_WINDOW then return end  -- (Pick Pocket or gathering)
@@ -548,13 +530,13 @@ end
 local function LootClosed()
     local p = pending
     pending = nil
-    if not p or not Unlocked() then return end
+    if not p then return end
     local money = Num(Ask(GetMoney))
     local rec = money and type(ns.root) == "table" and type(ns.root.goldMobs) == "table" and ns.root.goldMobs[p.npc]
     if type(rec) == "table" and money > p.money then rec.copper = (Num(rec.copper) or 0) + (money - p.money) end
 end
 local function CastDone(unit, spellID)
-    if not Unlocked() or Secret(unit) or unit ~= "player" then return end
+    if Secret(unit) or unit ~= "player" then return end
     spellID = Num(spellID)
     local gather = spellID and type(ns.PlannerGatherSkill) == "function" and ns.PlannerGatherSkill(spellID)
     if spellID and (NOT_A_KILL[spellID] or gather) then castAt = Clock() end
@@ -566,13 +548,12 @@ do
     pcall(ev.RegisterEvent, ev, "LOOT_CLOSED")
     local ok = type(ev.RegisterUnitEvent) == "function" and pcall(ev.RegisterUnitEvent, ev, "UNIT_SPELLCAST_SUCCEEDED", "player")
     if not ok then pcall(ev.RegisterEvent, ev, "UNIT_SPELLCAST_SUCCEEDED") end
-    -- (a plain handler first: while locked it returns at once, so nothing named Gold is timed by /fgui perf)
     local guarded = ns:Guard("Gold loot", function(_, event, a1, _, a3)
         if event == "LOOT_OPENED" then LootOpened()
         elseif event == "LOOT_CLOSED" then LootClosed()
         elseif event == "UNIT_SPELLCAST_SUCCEEDED" then CastDone(a1, a3) end
     end)
-    ev:SetScript("OnEvent", function(...) if Unlocked() then guarded(...) end end)
+    ev:SetScript("OnEvent", guarded)
 end
 end
 
@@ -594,7 +575,6 @@ local function Clean(s)
     s = ns.Trim((s:gsub("[|@\r\n]", " ")))
     return s ~= "" and s or nil
 end
-local function Unlocked() return ns.GuideUnlocked ~= nil and ns:GuideUnlocked() == true end
 local function Root() return type(ns.root) == "table" and ns.root or nil end
 
 ------------------------------------------------------------------------------------------
@@ -633,7 +613,6 @@ local lastAt = {}                      -- map -> GetTime of the last gathering t
 -- A gathering spell is being cast (the planner's UNIT_SPELLCAST_SENT recorder calls this, for herbs, ore and
 -- skinning): what UNIT_SPELLCAST_SUCCEEDED and the loot window then count it as.
 function ns.GoldGatherSent(name, skill, spellID)
-    if not Unlocked() then return end
     if skill ~= HERBALISM and skill ~= MINING and skill ~= SKINNING then return end
     pending = { name = Clean(name), skill = skill }
 end
@@ -690,10 +669,8 @@ do
         if not ok then pcall(ev.RegisterEvent, ev, "UNIT_SPELLCAST_SUCCEEDED") end
     end
     pcall(ev.RegisterEvent, ev, "LOOT_OPENED")
-    -- (a plain handler first: while locked it returns at once, so nothing named Gold is timed by /fgui perf)
     local guarded = ns:Guard("Gold gather", function(_, event, a1, a2, a3, a4)
         if event ~= "UNIT_SPELLCAST_SUCCEEDED" and event ~= "LOOT_OPENED" then return end
-        if not Unlocked() then return end
         if event == "LOOT_OPENED" then
             local g = gathered
             gathered = nil
@@ -716,7 +693,7 @@ do
             gathered = { name = p and p.name or nil, skill = skill, map = map, at = now, gap = gap }
         end
     end)
-    ev:SetScript("OnEvent", function(...) if Unlocked() then guarded(...) end end)
+    ev:SetScript("OnEvent", guarded)
 end
 
 ------------------------------------------------------------------------------------------
@@ -753,19 +730,19 @@ local function FoldNodes()
     end
     if next(gold) == nil and root.goldNodesSeen == gold then root.goldNodesSeen = nil end
 end
--- Queue the fold (true when it was queued): only while unlocked, with an old memory to fold, and with the
+-- Queue the fold (true when it was queued): only with an old memory to fold, and with the
 -- planner's node recorder and world positions (without them nothing could be recorded, and the nodes would be lost).
 function ns.GoldFoldNodes()
     local root = Root()
-    if not (Unlocked() and root and type(root.goldNodesSeen) == "table") then return false end
+    if not (root and type(root.goldNodesSeen) == "table") then return false end
     if type(ns.PlannerRecordNode) ~= "function" or type(ns.PlannerWorldPos) ~= "function" then return false end
     return ns.GoldJob(FoldNodes, "nodeFold") == true
 end
 do
     local ev, folded = CreateFrame("Frame"), false
     pcall(ev.RegisterEvent, ev, "PLAYER_ENTERING_WORLD")
-    ev:SetScript("OnEvent", function(_, event)                 -- (plain: it only queues the job, at a loading screen while unlocked, once a session)
-        if event ~= "PLAYER_ENTERING_WORLD" or folded or not Unlocked() then return end
+    ev:SetScript("OnEvent", function(_, event)                 -- (plain: it only queues the job, at a loading screen, once a session)
+        if event ~= "PLAYER_ENTERING_WORLD" or folded then return end
         folded = ns.GoldFoldNodes()                             -- (not queued, as with nothing to fold: asked again at the next one)
     end)
     -- (for the tests: a new session, so the next PLAYER_ENTERING_WORLD may fold again)
@@ -797,7 +774,6 @@ local function Call(fn, ...)
     if not ok or Secret(v) then return nil end
     return v
 end
-local function Unlocked() return ns.GuideUnlocked ~= nil and ns:GuideUnlocked() == true end
 local function InFight()
     local ok, v = pcall(InCombatLockdown)
     return ok and ns.Yes(v)
@@ -865,7 +841,7 @@ end
 
 local again = false                    -- another profession opened while one was being read: read again after
 local function ReadRecipes()
-    if not Unlocked() or not Ready() then return end
+    if not Ready() then return end
     local T = C_TradeSkillUI
     local prof = ProfessionName()
     local ids = Call(T.GetAllRecipeIDs)
@@ -917,10 +893,10 @@ local function RecipesJob()
     end
 end
 
--- Read the open profession's recipes, as a job. False when locked, in a fight or not ready. While a read
+-- Read the open profession's recipes, as a job. False in a fight or when not ready. While a read
 -- is already queued, the open profession is read again right after it (true).
 function ns.GoldRecipesRead()
-    if not Unlocked() or InFight() or not Ready() then return false end
+    if InFight() or not Ready() then return false end
     if ns.GoldBusy("recipes") then again = true; return true end
     return ns.GoldJob(RecipesJob, "recipes")
 end
@@ -929,13 +905,12 @@ do
     local ev, gen = CreateFrame("Frame"), 0
     pcall(ev.RegisterEvent, ev, "TRADE_SKILL_SHOW")
     pcall(ev.RegisterEvent, ev, "TRADE_SKILL_LIST_UPDATE")
-    -- (a plain handler first: while locked it returns at once, so nothing named Gold is timed by /fgui perf)
     local guarded = ns:Guard("Gold recipes", function(_, event)
-        if (event ~= "TRADE_SKILL_SHOW" and event ~= "TRADE_SKILL_LIST_UPDATE") or not Unlocked() then return end
+        if (event ~= "TRADE_SKILL_SHOW" and event ~= "TRADE_SKILL_LIST_UPDATE") then return end
         gen = gen + 1
         local mine = gen
         ns:After(1, function() if mine == gen then ns.GoldRecipesRead() end end)
     end)
-    ev:SetScript("OnEvent", function(...) if Unlocked() then guarded(...) end end)
+    ev:SetScript("OnEvent", guarded)
 end
 end

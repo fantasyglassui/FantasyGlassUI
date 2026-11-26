@@ -2,8 +2,7 @@ local _, ns = ...
 local Secret = function(v) return ns:IsSecret(v) end
 
 ------------------------------------------------------------------------------------------
--- Quest guide, 11.0: a route editor and the route on the world map. Part of the guide, so only
--- where guides are unlocked (see Guide.lua).
+-- Quest guide, 11.0: a route editor and the route on the world map. Part of the guide (see Guide.lua).
 --
 -- Route editor (/fgui guide route <name>, or "Edit the route" on the Guide tab): the steps in order;
 -- choose one to change its line, move it up or down, delete it, or put a new step after it. "Here"
@@ -41,7 +40,6 @@ end
 
 local win
 function ns:GuideRouteEditor(name)
-    if not (ns.GuideUnlocked and ns:GuideUnlocked()) then ns:Print("Quest guides are coming soon."); return false end
     local source = name and ns:GuideGet(name)
     if not source then
         local st = ns.GuideState and ns.GuideState()

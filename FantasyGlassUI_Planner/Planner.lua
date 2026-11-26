@@ -796,7 +796,7 @@ local function HandedIn(id, plan)
 end
 
 local function Following()
-    if not ns:GuideOn() then return false, nil end           -- (asked first: a locked character's state is never read, so never made)
+    if not ns:GuideOn() then return false, nil end           -- (asked first: with the guide off, the state is never read, so never made)
     local st = ns.GuideState and ns.GuideState()
     return (type(st) == "table" and st.name == ns.GUIDE_PLANNED) and true or false, st
 end
@@ -1023,7 +1023,7 @@ end
 -- Follow the planned route, and plan it from scratch.
 function ns:PlannerStart()
     if not ns:GuideOn() then
-        if ns:GuideUnlocked() then ns:Print("Quest guides are switched off. Switch them on under Guide in /fgui, or in the setup.") end
+        ns:Print("Quest guides are switched off. Switch them on under Guide in /fgui, or in the setup.")
         return false
     end
     if not ReplanOK("start") then return false end
@@ -1044,7 +1044,7 @@ function ns:PlannerStop()
 end
 
 -- What the panel says while a plan waits or comes from your quest log (the planned route only).
-local function PlannedState(st) return type(st) == "table" and st.name == ns.GUIDE_PLANNED and ns:GuideUnlocked() end
+local function PlannedState(st) return type(st) == "table" and st.name == ns.GUIDE_PLANNED end
 local WAIT_WORDS = { taxi = "Waiting until you land to plan", dead = "Waiting until you are back on your feet to plan",
     away = "Waiting until you are outdoors to plan" }
 ns.GuideRegisterLine("plannerWait", function(st)
@@ -1090,7 +1090,6 @@ do
         return true
     end
     deathCheck = ns:Guard("Planner", function()
-        if not ns:GuideUnlocked() then return end
         local d = ns.PlannerCharRecord(false)
         local level = UnitLevel and UnitLevel("player")
         if type(d) == "table" and type(d.deaths) == "table" and type(level) == "number" and not ns:IsSecret(level) and ns.GuideHere and Following() then
@@ -1110,10 +1109,10 @@ do
         if event == "PLAYER_REGEN_ENABLED" then fighting = false; return end
         if event == "PLAYER_DEAD" then                -- (the second death here: plan again now, once you are back on your feet, not at the next hand-in)
             -- (a moment later: the main add-on's recorder has written the death down by then, whichever frame hears it first)
-            if ns:GuideUnlocked() and not (C_Timer and C_Timer.After and pcall(C_Timer.After, 0, deathCheck)) then deathCheck() end
+            if not (C_Timer and C_Timer.After and pcall(C_Timer.After, 0, deathCheck)) then deathCheck() end
             return
         end
-        if event == "QUEST_ACCEPTED" and ns:GuideUnlocked() then
+        if event == "QUEST_ACCEPTED" then
             local id = (type(b) == "number") and b or a
             if type(id) == "number" and ns.PlannerSessionRetaken then ns.PlannerSessionRetaken(id) end   -- (abandoned, then taken again: planned again)
         end

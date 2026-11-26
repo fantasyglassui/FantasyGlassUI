@@ -7,13 +7,11 @@ local _, ns = ...
 -- needs, quest times, soloed elites, deaths, trainer visits and riding, the reward pick, the session start,
 -- gathering nodes, places used, timed quests, the bind place, the level clock, when you were last here (and
 -- the catch-up page it may call for), and the duo's prefix with a friend's ask handed over to the folder.
--- Everything here records nothing while the guide is locked.
 ------------------------------------------------------------------------------------------
 local ipairs, pairs, type, tonumber, math, pcall, select = ipairs, pairs, type, tonumber, math, pcall, select
 local floor, min, max, sqrt = math.floor, math.min, math.max, math.sqrt
 local format = string.format
 
-local function Unlocked() return ns.GuideUnlocked ~= nil and ns:GuideUnlocked() == true end
 
 ------------------------------------------------------------------------------------------
 -- The per-character record (Planner.lua): ns.root.planner[charKey]
@@ -182,12 +180,12 @@ local function IsClassTrainer()
     return At(places)
 end
 local function TrainerClosed()
-    if ridingTrainer and ns:GuideUnlocked() then           -- (you were at the riding trainer: you ride from now on)
+    if ridingTrainer then           -- (you were at the riding trainer: you ride from now on)
         local r = PaceRecord(true)
         if r then r.ridingKnown = true end
     end
     ridingTrainer = false                                  -- (once per visit: a second close sets nothing again)
-    if not classTrainer or not ns:GuideUnlocked() then return end
+    if not classTrainer then return end
     local level = UnitLevel and UnitLevel("player")
     if type(level) ~= "number" or ns:IsSecret(level) then return end
     local d = PaceRecord(true)
@@ -211,7 +209,7 @@ end
 
 -- Following the planned guide (as Planner.lua asks it): quest times are taken only then.
 local function Following()
-    if not ns:GuideOn() then return false, nil end           -- (asked first: a locked character's state is never read, so never made)
+    if not ns:GuideOn() then return false, nil end           -- (asked first: with the guide off, the state is never read, so never made)
     local st = ns.GuideState and ns.GuideState()
     return (type(st) == "table" and st.name == ns.GUIDE_PLANNED) and true or false, st
 end
@@ -242,15 +240,14 @@ end
 -- misses in the game's log, so such a quest is matched to a log entry by its title (trimmed, any case;
 -- the level too, where both sides have one), one to one, and the pair is remembered for the account in
 -- ns.root.plannerQuestIds = { [questieId] = serverId }, with the title it was matched by in
--- ns.root.plannerQuestIdTitles = { [questieId] = title key } (each made at its first write, only while the guide is
--- unlocked).
+-- ns.root.plannerQuestIdTitles = { [questieId] = title key } (each made at its first write).
 -- A match is tried only for an id the server does not know: one in Questie's quest table (so never without Questie,
 -- nor before that table is built), not in your log and not flagged completed. It is refused when two log entries, or
 -- two quests the caller names (a guide's steps, the planner's candidates), share the title. A pair is let go once it
 -- is proven wrong: Questie's id turns up in your log, or the server id's title is no longer the one it was matched by.
 -- Every hand-in is kept per character: rec.handedIn[serverId] = { title, repeatable, n }, the newest
 -- ns.PLANNER_HANDIN_CAP of them. ns.PlannerServerId is the one helper for the in-your-log checks, progress and
--- objectives; ns.PlannerQuestDone for "done". Nothing here writes while the guide is locked.
+-- objectives; ns.PlannerQuestDone for "done".
 ------------------------------------------------------------------------------------------
 local function TitleKey(s)
     if type(s) ~= "string" or ns:IsSecret(s) then return nil end
@@ -347,9 +344,8 @@ local function ServerTitle(sid)
     local ok, t = pcall(function() return QL and QL.GetTitleForQuestID and QL.GetTitleForQuestID(sid) end)
     return ok and TitleKey(t) or nil
 end
--- A pair proven wrong is let go (only while the guide is unlocked; locked, it is only not used).
+-- A pair proven wrong is let go.
 local function Forget(id)
-    if not Unlocked() then return end
     local map, titles = IdMap(), IdTitles(false)
     if map then map[id] = nil end
     if titles then titles[id] = nil end
@@ -371,11 +367,10 @@ local function Mapped(id, key)
 end
 -- The server id a Questie id was matched to, or nil.
 function ns.PlannerMappedId(id) return Mapped(id) end
--- Remember that Questie's questieId is the server's serverId (only while the guide is unlocked, and only a Questie id of
--- Questie's built table to an id it does not know; one to one: another quest matched to that server id lets go of it).
+-- Remember that Questie's questieId is the server's serverId (only a Questie id of Questie's built table to an id it does not know; one to one: another quest matched to that server id lets go of it).
 -- `key`: the title it was matched by (else the server's title now). true when written.
 function ns.PlannerLearnId(questieId, serverId, key)
-    if type(questieId) ~= "number" or type(serverId) ~= "number" or questieId == serverId or not Unlocked() or type(ns.root) ~= "table" then return false end
+    if type(questieId) ~= "number" or type(serverId) ~= "number" or questieId == serverId or type(ns.root) ~= "table" then return false end
     if ns:IsSecret(questieId) or ns:IsSecret(serverId) then return false end
     if not QuestieKnows(questieId) or QuestieKnows(serverId) then return false end
     key = (type(key) == "string" and not ns:IsSecret(key)) and key or ServerTitle(serverId)
@@ -532,7 +527,7 @@ local function NoteLogRepeatables()
     end
 end
 function ns.PlannerRecordHandIn(id)
-    if type(id) ~= "number" or ns:IsSecret(id) or not Unlocked() then return end
+    if type(id) ~= "number" or ns:IsSecret(id) then return end
     local QL = C_QuestLog
     local ok, t = pcall(function() return QL and QL.GetTitleForQuestID and QL.GetTitleForQuestID(id) end)
     local title = ok and type(t) == "string" and not ns:IsSecret(t) and ns.Trim(t) or nil
@@ -575,7 +570,7 @@ do
     -- time split evenly among the quests open at once (a hub's quests are done together). Memory only.
     -- (a quest carried longer than a sample may be, 2 hours, gives none and stops taking a share)
     -- Time passes for them only while you are present and out of town: not AFK and not resting (each
-    -- readable; a hidden flag counts as present). The state is read at login and at an unlock (you may
+    -- readable; a hidden flag counts as present). The state is read at login (you may
     -- log in at an inn), then PLAYER_FLAGS_CHANGED and PLAYER_UPDATE_RESTING share out the time so far
     -- and set the new state.
     local open, openN, openAt, since = {}, 0, nil, {}  -- questID -> seconds so far; how many; the last time shared out; accepted at
@@ -626,7 +621,6 @@ do
         if now then Share(now) end
         away = Away()
     end
-    ns.GuideRegisterLock("questclock", function(unlocked) if unlocked then ReadAway(); NoteLogRepeatables() end end)
     -- A QUEST_REMOVED of a quest not (yet) flagged completed: abandoned, unless QUEST_TURNED_IN for it follows
     -- within a second (then it was a hand-in, counted once). questID -> { t, level = a soloed elite's, took = its time }.
     local removed = {}
@@ -665,60 +659,58 @@ do
             if event == "QUEST_LOG_UPDATE" then return end
         end
         if event == "PLAYER_FLAGS_CHANGED" or event == "PLAYER_UPDATE_RESTING" or event == "PLAYER_LOGIN" then   -- (away or in town: the quest clock stops)
-            if (event == "PLAYER_FLAGS_CHANGED" and a ~= "player") or not ns:GuideUnlocked() then return end
+            if event == "PLAYER_FLAGS_CHANGED" and a ~= "player" then return end
             ReadAway()
             if event == "PLAYER_LOGIN" then NoteLogRepeatables() end   -- (repeatable quests in your log, read while they are there)
             return
         end
-        if event == "TRAINER_SHOW" then               -- (a locked guide: nothing is looked up)
+        if event == "TRAINER_SHOW" then
             classTrainer, ridingTrainer = false, false
-            if ns:GuideUnlocked() then classTrainer = IsClassTrainer() == true end
+            classTrainer = IsClassTrainer() == true
             return
         end
         if event == "TRAINER_CLOSED" then TrainerClosed(); return end
         if event == "PLAYER_MOUNT_DISPLAY_CHANGED" then          -- (seen mounted: you have a mount and ride; kept for the character)
-            if ns:GuideUnlocked() and ns.PlannerMountSeen then ns.PlannerMountSeen() end
+            if ns.PlannerMountSeen then ns.PlannerMountSeen() end
             return
         end
         if event == "PLAYER_DEAD" then                -- (where you died: a hub that took you twice is left alone for two levels)
-            if ns:GuideUnlocked() then ns.PlannerRecordDeath() end
+            ns.PlannerRecordDeath()
             return
         end
         if event ~= "QUEST_ACCEPTED" and event ~= "QUEST_TURNED_IN" and event ~= "QUEST_REMOVED" then return end
         local recent = (event == "QUEST_TURNED_IN" and type(a) == "number") and JustRemoved(a, Now()) or nil   -- (removed a moment ago: a hand-in)
-        if ns:GuideUnlocked() then
-            local id = (event == "QUEST_ACCEPTED" and type(b) == "number") and b or a
-            if type(id) == "number" then
-                local okG, grouped = pcall(IsInGroup)
-                grouped = not okG or not ns.Is(grouped, false)      -- (hidden or unreadable: counted as grouped)
-                if event == "QUEST_ACCEPTED" then
-                    NoteRepeatable(id)
-                    local on, st = Following()                 -- (a planned step's quest by its title, numbered otherwise by Questie)
-                    if on and type(st.plan) == "table" and type(st.plan.steps) == "table" then ns.PlannerLearnAccepted(id, st.plan.steps) end
-                    local list = SoloAt(false)
-                    if list then list[id] = nil end
-                    if not grouped then
-                        local okQ, q = pcall(LoggedQuest, id)
-                        if okQ and type(q) == "table" and q.elite == true and type(q.level) == "number" then
-                            list = SoloAt(true)
-                            if list then list[id] = q.level end
-                        end
+        local id = (event == "QUEST_ACCEPTED" and type(b) == "number") and b or a
+        if type(id) == "number" then
+            local okG, grouped = pcall(IsInGroup)
+            grouped = not okG or not ns.Is(grouped, false)      -- (hidden or unreadable: counted as grouped)
+            if event == "QUEST_ACCEPTED" then
+                NoteRepeatable(id)
+                local on, st = Following()                 -- (a planned step's quest by its title, numbered otherwise by Questie)
+                if on and type(st.plan) == "table" and type(st.plan.steps) == "table" then ns.PlannerLearnAccepted(id, st.plan.steps) end
+                local list = SoloAt(false)
+                if list then list[id] = nil end
+                if not grouped then
+                    local okQ, q = pcall(LoggedQuest, id)
+                    if okQ and type(q) == "table" and q.elite == true and type(q.level) == "number" then
+                        list = SoloAt(true)
+                        if list then list[id] = q.level end
                     end
-                elseif event == "QUEST_REMOVED" and not Completed(id) then         -- (abandoned, unless QUEST_TURNED_IN follows at once)
-                    local list = SoloAt(false)
-                    local e = Removed(id, Now())
-                    if list then e.level = list[id]; list[id] = nil end
-                else                                                         -- (handed in: Forever may say so by QUEST_REMOVED first)
-                    if event == "QUEST_TURNED_IN" then ns.PlannerRecordHandIn(id) end   -- (every hand-in, by the server's id)
-                    local list = SoloAt(false)
-                    local questLevel = list and tonumber(list[id])
-                    if list then list[id] = nil end
-                    if not questLevel and recent then questLevel = tonumber(recent.level) end
-                    local level = UnitLevel and UnitLevel("player")
-                    local class = ns.PlannerClassToken()
-                    if questLevel and not grouped and class and type(level) == "number" and not ns:IsSecret(level) then
-                        ns.PlannerRecordSoloElite(class, questLevel - level)
-                    end
+                end
+            elseif event == "QUEST_REMOVED" and not Completed(id) then         -- (abandoned, unless QUEST_TURNED_IN follows at once)
+                local list = SoloAt(false)
+                local e = Removed(id, Now())
+                if list then e.level = list[id]; list[id] = nil end
+            else                                                         -- (handed in: Forever may say so by QUEST_REMOVED first)
+                if event == "QUEST_TURNED_IN" then ns.PlannerRecordHandIn(id) end   -- (every hand-in, by the server's id)
+                local list = SoloAt(false)
+                local questLevel = list and tonumber(list[id])
+                if list then list[id] = nil end
+                if not questLevel and recent then questLevel = tonumber(recent.level) end
+                local level = UnitLevel and UnitLevel("player")
+                local class = ns.PlannerClassToken()
+                if questLevel and not grouped and class and type(level) == "number" and not ns:IsSecret(level) then
+                    ns.PlannerRecordSoloElite(class, questLevel - level)
                 end
             end
         end
@@ -768,7 +760,7 @@ local function Clean(s)
     return s ~= "" and s or nil
 end
 local function On(setting)
-    return ns.GuideUnlocked and ns:GuideUnlocked() and ns.db and ns.db[setting] ~= false
+    return ns.db and ns.db[setting] ~= false
 end
 
 -- Which of the choices to take: the biggest upgrade, else the best sell price; nil when none can be judged.
@@ -856,7 +848,7 @@ do
             if not (isInitial or isReload) then return end            -- (a zone change)
             local okT, now = pcall(GetTime)
             now = okT and Num(now) or nil
-            if not (now and type(ns.root) == "table" and ns:GuideUnlocked()) then return end
+            if not (now and type(ns.root) == "table") then return end
             local was = tonumber(ns.root.plannerSessionAt)
             if isReload and not isInitial and was and was <= now then ns.plannerSessionStart = was
             else ns.root.plannerSessionAt = now; ns.plannerSessionStart = now end
@@ -982,7 +974,7 @@ end
 
 -- The one UNIT_SPELLCAST_SENT recorder: a herb or ore node goes into plannerNodesSeen (unless plannerGather is
 -- off), and every gathering, skinning too, is handed to the gold advisor (ns.GoldGatherSent), which records
--- what it gives. A plain handler first: while locked it returns at once, so nothing is timed by /fgui perf.
+-- what it gives.
 -- ns.PlannerGatherFrame(frame) builds it on a frame (the tests: one without unit events).
 function ns.PlannerGatherFrame(ev)
     local unitOk = type(ev.RegisterUnitEvent) == "function" and pcall(ev.RegisterUnitEvent, ev, "UNIT_SPELLCAST_SENT", "player")
@@ -998,14 +990,14 @@ function ns.PlannerGatherFrame(ev)
         end
         if type(ns.GoldGatherSent) == "function" then ns.GoldGatherSent(name, skill, spellID) end
     end)
-    ev:SetScript("OnEvent", function(...) if ns.GuideUnlocked and ns:GuideUnlocked() == true then guarded(...) end end)
+    ev:SetScript("OnEvent", guarded)
     return ev
 end
 ns.PlannerGatherFrame(CreateFrame("Frame"))
 
 ------------------------------------------------------------------------------------------
 -- Places you have used (PlannerSource.lua): where you stood at a mailbox or a vendor, saved per account
--- (only while the guide is unlocked) with your faction, unique within 30 yards per faction; at most
+-- with your faction, unique within 30 yards per faction; at most
 -- ns.PLANNER_SEEN_CAP of each kind (the oldest go first).
 ------------------------------------------------------------------------------------------
 local SEEN_NEAR = 30
@@ -1027,7 +1019,7 @@ local function SeenYards(a, b)
 end
 
 function ns.PlannerSeen(kind)
-    if not ns:GuideUnlocked() or not ns.GuideHere then return end
+    if not ns.GuideHere then return end
     local map, x, y = ns.GuideHere()
     if not (tonumber(map) and tonumber(x) and tonumber(y)) then return end
     local here = { map = map, x = x, y = y }
@@ -1067,8 +1059,7 @@ end
 
 ------------------------------------------------------------------------------------------
 -- Timed quests (PlannerSource.lua): a per-account memory of every quest any of your characters accepted with
--- a clock on it (ns.root.plannerTimed[questID] = { secs = seconds, seen = day }, written only while the guide
--- is unlocked; at most ns.PLANNER_TIMED_CAP, the oldest `seen` go first). PlannerSource.lua reads it.
+-- a clock on it (ns.root.plannerTimed[questID] = { secs = seconds, seen = day }; at most ns.PLANNER_TIMED_CAP, the oldest `seen` go first). PlannerSource.lua reads it.
 ------------------------------------------------------------------------------------------
 ns.PLANNER_TIMED_CAP = 500
 
@@ -1078,7 +1069,7 @@ local function Seconds(v) if type(v) == "number" and not ns:IsSecret(v) and v > 
 local function SeenDay(e) return type(e) == "table" and tonumber(e.seen) or 0 end
 
 function ns.PlannerRecordTimed(id)
-    if type(id) ~= "number" or ns:IsSecret(id) or not ns:GuideUnlocked() or type(ns.root) ~= "table" then return end
+    if type(id) ~= "number" or ns:IsSecret(id) or type(ns.root) ~= "table" then return end
     local QL = C_QuestLog
     if not (QL and type(QL.GetTimeAllowed) == "function") then return end
     local ok, total = pcall(QL.GetTimeAllowed, id)
@@ -1126,7 +1117,7 @@ do
     local ev = CreateFrame("Frame")
     pcall(ev.RegisterEvent, ev, "HEARTHSTONE_BOUND")
     ev:SetScript("OnEvent", ns:Guard("Planner bind", function(_, event)
-        if event ~= "HEARTHSTONE_BOUND" or not ns:GuideUnlocked() then return end
+        if event ~= "HEARTHSTONE_BOUND" then return end
         local name = BindName()
         local m, px, py
         if ns.GuideHere then m, px, py = ns.GuideHere() end
@@ -1156,7 +1147,6 @@ end
 -- Add a tick to this character's clock. `elapsed` is the GetTime() time since the last tick, at most
 -- 30 s, so a reload or a loading screen adds nothing extra. Skips when the level or the xp max is unreadable.
 function ns.PlannerLevelTick(elapsed)
-    if not Unlocked() then return false end
     elapsed = tonumber(elapsed) or 0
     if elapsed ~= elapsed or elapsed < 0 then elapsed = 0 end
     elapsed = min(elapsed, TICK_MAX)
@@ -1176,7 +1166,7 @@ end
 
 -- PLAYER_LEVEL_UP: keep the level you left, then start a clock for the new one.
 function ns.PlannerRecordLevel(oldLevel)
-    if not Unlocked() or type(oldLevel) ~= "number" then return false end
+    if type(oldLevel) ~= "number" then return false end
     local rec = ns.PlannerCharRecord and ns.PlannerCharRecord(true)
     if type(rec) ~= "table" or type(ns.root) ~= "table" then return false end
     local c = rec.levelClock
@@ -1226,10 +1216,9 @@ local function Commas(n)
     return s
 end
 
--- The Levels part of /fgui stats: lines for ShowLifetime (empty while locked or with nothing recorded).
+-- The Levels part of /fgui stats: lines for ShowLifetime (empty with nothing recorded).
 function ns.PlannerLevelLines()
     local lines = {}
-    if not Unlocked() then return lines end
     local sum = ns.PlannerLevelSummary()
     if sum.count < 1 then return lines end
     lines[1] = { left = " " }
@@ -1243,7 +1232,6 @@ end
 -- The run log's first list: one line per recorded level of this character, newest first, at most 20.
 function ns.PlannerLevelRunLines()
     local lines = {}
-    if not Unlocked() then return lines end
     local root = ns.root
     local list = type(root) == "table" and type(root.plannerLevels) == "table" and root.plannerLevels[ns:CharKey()]
     if type(list) ~= "table" then return lines end
@@ -1267,9 +1255,8 @@ do
     local ev = CreateFrame("Frame")
     for _, e in ipairs({ "PLAYER_LEVEL_UP", "PLAYER_ENTERING_WORLD" }) do pcall(ev.RegisterEvent, ev, e) end
     local loginAt
-    function ns.PlannerLoginAt() return loginAt end                 -- (the GetTime of this session's initial login, seen unlocked; or nil)
+    function ns.PlannerLoginAt() return loginAt end                 -- (the GetTime of this session's initial login; or nil)
     ev:SetScript("OnEvent", ns:Guard("Planner records", function(_, event, a)
-        if not Unlocked() then return end
         if event == "PLAYER_LEVEL_UP" then
             if type(a) == "number" and a > 1 then ns.PlannerRecordLevel(a - 1) end
         elseif event == "PLAYER_ENTERING_WORLD" and a == true then       -- (an initial login: not a reload, not a loading screen)
@@ -1287,7 +1274,7 @@ do
         local gap = last and (now - last) or 0           -- (the first tick after a login or a reload adds nothing)
         last = now
         ns.PlannerLevelTick(gap)
-        if ns.db and ns.db.plannerRace == true and Unlocked() and ns.GuideRedraw and not InCombatLockdown() then     -- (the race line follows the clock, on a panel you can see; not in a fight)
+        if ns.db and ns.db.plannerRace == true and ns.GuideRedraw and not InCombatLockdown() then     -- (the race line follows the clock, on a panel you can see; not in a fight)
             local panel = _G.FantasyGlassUIGuide
             if type(panel) == "table" and panel.IsShown and panel:IsShown() then ns:GuideRedraw() end
         end
@@ -1301,9 +1288,8 @@ end
 ns.PLANNER_CATCHUP_DAYS = 14                -- away this many days or more: the catch-up page
 
 local entered = false                        -- (the login's own handling is done: the clock may be saved from now on)
-local inWorld = false                        -- (a PLAYER_ENTERING_WORLD came, locked or not: an unlock after it starts the clock at once)
 -- Forget that the login was handled (the pace reset of PlannerPace.lua, the tests).
-function ns.PlannerSeenReset() entered, inWorld = false, false end
+function ns.PlannerSeenReset() entered = false end
 
 local function SeenNow()
     local ok, t = pcall(time)
@@ -1312,7 +1298,7 @@ end
 
 -- Remember when you were last here, and which version it was (every minute, and at logout).
 function ns.PlannerSeenSave()
-    if not entered or not Unlocked() then return end            -- (whether or not the guide is on: you are still playing)
+    if not entered then return end            -- (whether or not the guide is on: you are still playing)
     local rec = PaceRecord(true)
     if rec then rec.lastSeen, rec.lastVersion = SeenNow(), ns.version end
 end
@@ -1322,7 +1308,7 @@ local function CatchUp(away, since)
     if ns:LoadPlanner(true) then ns:PlannerCatchUp(away, since); return end
     if InCombatLockdown() then
         ns:AfterFight("Catch me up", function()
-            if Unlocked() and ns:LoadPlanner(true) then ns:PlannerCatchUp(away, since) end
+            if ns:LoadPlanner(true) then ns:PlannerCatchUp(away, since) end
         end, true)                                                   -- (automatic: it waits without a word)
     end
 end
@@ -1334,8 +1320,7 @@ do
     ev:SetScript("OnEvent", ns:Guard("Planner pace", function(_, event, isInitial)
         if event == "PLAYER_LOGOUT" then ns.PlannerSeenSave(); return end
         if event ~= "PLAYER_ENTERING_WORLD" then return end
-        inWorld = true
-        if not (type(ns.root) == "table" and Unlocked()) then return end
+        if type(ns.root) ~= "table" then return end
         if isInitial and ns.GuideOn ~= nil and ns:GuideOn() == true then
             local rec = PaceRecord(false)
             local was = rec and tonumber(rec.lastSeen)
@@ -1349,18 +1334,11 @@ do
         if entered then ns.PlannerSeenSave() end
     end)
 end
--- Unlocked mid-session: the login is long handled, so the clock is saved from now on, at once.
-ns.GuideRegisterLock("paceSeen", function(unlocked)
-    if unlocked and inWorld and not entered and Unlocked() then
-        entered = true
-        ns.PlannerSeenSave()
-    end
-end)
 
 ------------------------------------------------------------------------------------------
 -- The duo's prefix (PlannerDuo.lua), and a friend's ask while the planner's folder is not loaded: the folder
 -- is loaded and the ask handed to its listener (ns.PlannerDuoEvent), once. Only "D1:ASK:<session>:<level>",
--- whispered with our prefix, every value readable, unlocked, with asking on. In a fight the latest ask waits
+-- whispered with our prefix, every value readable, with asking on. In a fight the latest ask waits
 -- (one at most) and is handed over when the fight ends, if it is under 60 s old. Nothing is sent from here,
 -- and once the folder is loaded nothing more is handed over: its own listener hears them.
 ------------------------------------------------------------------------------------------
@@ -1368,10 +1346,9 @@ ns.PLANNER_DUO_PREFIX = "FGUIPlan"
 local DUO_PREFIX, DUO_MAX_BYTES, ASK_HELD = ns.PLANNER_DUO_PREFIX, 255, 60
 
 local registered = false
-local AskListen                                  -- (below: CHAT_MSG_ADDON, only while unlocked and the folder is not loaded)
--- The prefix, registered once, when the guide is unlocked.
+local AskListen                                  -- (below: CHAT_MSG_ADDON, only while the folder is not loaded)
+-- The prefix, registered once, at login.
 function ns.PlannerDuoRegister()
-    if not ns:GuideUnlocked() then return end
     if AskListen then AskListen(true) end
     if registered then return end
     local chat = C_ChatInfo
@@ -1383,7 +1360,7 @@ do
     pcall(ev.RegisterEvent, ev, "PLAYER_LOGIN")
     pcall(ev.RegisterEvent, ev, "PLAYER_REGEN_ENABLED")
     local listening, held = false, nil               -- held: { prefix, msg, channel, sender, at }
-    AskListen = function(on)                         -- (a locked player does not even hear add-on messages)
+    AskListen = function(on)                         -- (once the folder is loaded, it hears its own)
         on = (on and not ns.folderReady.planner) and true or false
         if on == listening then return end
         listening = on
@@ -1394,7 +1371,7 @@ do
         return ok and Num(t) or nil
     end
     local function HandOver(prefix, msg, channel, sender)
-        if ns.folderReady.planner or not Unlocked() then return end
+        if ns.folderReady.planner then return end
         if not ns:LoadPlanner(true) then return end
         AskListen(false)
         if type(ns.PlannerDuoEvent) == "function" then ns.PlannerDuoEvent("CHAT_MSG_ADDON", prefix, msg, channel, sender) end
@@ -1410,7 +1387,7 @@ do
         end
         if event ~= "CHAT_MSG_ADDON" then return end
         if ns.folderReady.planner then AskListen(false); return end     -- (the folder hears its own)
-        if not Unlocked() or (ns.db and ns.db.plannerDuoAsk == false) then return end
+        if ns.db and ns.db.plannerDuoAsk == false then return end
         if ns:IsSecret(prefix) or ns:IsSecret(msg) or ns:IsSecret(channel) or ns:IsSecret(sender) then return end
         if type(prefix) ~= "string" or type(msg) ~= "string" or type(channel) ~= "string" or type(sender) ~= "string" or sender == "" then return end
         if prefix ~= DUO_PREFIX or channel ~= "WHISPER" or #msg > DUO_MAX_BYTES then return end
@@ -1423,8 +1400,4 @@ do
         end
         HandOver(prefix, msg, channel, sender)
     end))
-    ns.GuideRegisterLock("duoPrefix", function(unlocked)
-        if unlocked and ns:GuideUnlocked() then ns.PlannerDuoRegister()
-        else registered, held = false, nil; AskListen(false) end
-    end)
 end

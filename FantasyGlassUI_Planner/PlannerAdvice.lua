@@ -4,7 +4,7 @@ if type(ns) ~= "table" then return end
 ------------------------------------------------------------------------------------------
 -- Advice around the plan: the best reward at a hand-in, quests worth dropping from a full log,
 -- and an inn when you have played a long while. Advice only: nothing here hands in, abandons or
--- travels for you. Everything is behind the guide being unlocked.
+-- travels for you.
 ------------------------------------------------------------------------------------------
 local ipairs, type, pcall = ipairs, type, pcall
 local format = string.format
@@ -24,7 +24,7 @@ local function Clean(s)
     return s ~= "" and s or nil
 end
 local function On(setting)
-    return ns.GuideUnlocked and ns:GuideUnlocked() and ns.db and ns.db[setting] ~= false
+    return ns.db and ns.db[setting] ~= false
 end
 
 -- (The best reward, ns.PlannerBestChoice and its mark at a hand-in, and the session start, ns.plannerSessionStart:

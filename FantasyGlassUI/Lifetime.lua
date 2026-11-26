@@ -172,7 +172,7 @@ function ns:ShowLifetime()
             if p.best then lines[#lines + 1] = { left = "    " .. p.instance, right = ns.RunClock(ns.RunLength(p.best)), click = function() ns:ShowRuns() end } end
         end
     end
-    -- level times (the planner's play clock; only while the guide is unlocked)
+    -- level times (the planner's play clock)
     if ns.PlannerLevelLines then
         for _, l in ipairs(ns.PlannerLevelLines()) do lines[#lines + 1] = l end
     end

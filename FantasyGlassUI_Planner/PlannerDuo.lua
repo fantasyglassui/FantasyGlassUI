@@ -4,12 +4,12 @@ if type(ns) ~= "table" then return end
 ------------------------------------------------------------------------------------------
 -- Planner, batch 5 group B: plan with a friend, the duo (#35) (Tasks 3 and 4).
 -- Built on the seams: ns.PlannerHook (Planner.lua, with "candidate" and "replan"), the panel's
--- registries (Guide.lua) and its section of the Guide tab (Bars.lua). Everything here is behind ns:GuideUnlocked().
+-- registries (Guide.lua) and its section of the Guide tab (Bars.lua).
 --
 -- The two add-ons talk only by add-on message, prefix ns.PLANNER_DUO_PREFIX, always a WHISPER to the one
 -- partner, through one queue (one message every 0.25 s at most, each 255 bytes at most), held in a fight and
 -- inside an instance. Nothing is ever said in public chat, nothing secret is sent, nothing received is run:
--- every text is read by patterns. A locked guide (or a friend who switched asking off) sends nothing at all.
+-- every text is read by patterns. A friend who switched asking off sends nothing at all.
 -- Messages ("D1:" lines, fields split by ":"; <s> is the session, 4 to 8 hex digits):
 --   ASK:<s>:<level>   YES:<s>   NO:<s>   AT:<s>:<planId>:<at>:<n>   HI:<s>   END:<s>
 -- and the friend's state and the leader's plan as pieces, "SS:<s>z<count>:<i>:<n>:<state|plan>:<piece>".
@@ -64,7 +64,6 @@ local pieceCount = 0                 -- (each state or plan sent gets its own pi
 ------------------------------------------------------------------------------------------
 -- Queue one message to the partner (or `to`): false when it is too long, holds a secret, or there is no one.
 function ns.PlannerDuoSend(text, to)
-    if not ns:GuideUnlocked() then return false end
     if ns:IsSecret(text) or type(text) ~= "string" or text == "" or #text > MAX_BYTES then return false end
     local d = ns.plannerDuo
     to = Str(to) or (d and (d.to or d.partner))
@@ -224,7 +223,6 @@ end
 
 -- Ask a friend to plan together (you lead): ASK, then 30 s for YES and the friend's state.
 function ns:PlannerDuoStart(name)
-    if not ns:GuideUnlocked() then return false end
     local d = ns.plannerDuo
     if d then ns:Print("You are already planning with %s. /fgui guide duo off stops it.", d.partner); return false end
     if ns:SayMessagingLocked() then return false end
@@ -478,7 +476,7 @@ local function Accept()
     local a = pendingAsk
     pendingAsk = nil
     HideAsk()
-    if not a or ns.plannerDuo or not ns:GuideUnlocked() or ns.db.plannerDuoAsk == false then return end
+    if not a or ns.plannerDuo or ns.db.plannerDuoAsk == false then return end
     if a.held or (Now() or 0) - a.at > ANSWER_WAIT then return end   -- (too late: the leader has given up)
     local now = Now() or 0
     ns.plannerDuo = { role = "friend", partner = a.from, to = a.to, session = a.session, heard = now, asked = now }
@@ -491,7 +489,7 @@ local function Decline()
     local a = pendingAsk
     pendingAsk = nil
     HideAsk()
-    if a and ns:GuideUnlocked() then ns.PlannerDuoSend("D1:NO:" .. a.session, a.to) end
+    if a then ns.PlannerDuoSend("D1:NO:" .. a.session, a.to) end
 end
 
 -- The ask page: the question (on two lines when it is long), the two answers, and how long is left to answer.
@@ -749,13 +747,13 @@ end
 local duoHooks = { context = DuoContext, candidate = DuoCandidate, applied = DuoApplied, replan = DuoReplan }
 Sync = function()
     syncLater = false
-    local lead = ns:GuideUnlocked() and Lead() ~= nil
+    local lead = Lead() ~= nil
     local h = duoHooks
     ns.PlannerHook("context", "duo", lead and h.context or nil)
     ns.PlannerHook("window", "duo", nil)                -- (the window of both: ctx.windowShift, see DuoContext)
     ns.PlannerHook("candidate", "duo", lead and h.candidate or nil)
     ns.PlannerHook("applied", "duo", lead and h.applied or nil)
-    ns.PlannerHook("replan", "duo", (ns:GuideUnlocked() and Friend() ~= nil) and h.replan or nil)
+    ns.PlannerHook("replan", "duo", Friend() ~= nil and h.replan or nil)
 end
 ns.PlannerDuoSync = function() Sync() end             -- (the tests: a duo set up by hand)
 
@@ -826,21 +824,8 @@ end
 ------------------------------------------------------------------------------------------
 -- The ticker, the prefix, the panel's entry and the command
 ------------------------------------------------------------------------------------------
-local Listen                         -- (CHAT_MSG_ADDON, only while the guide is unlocked)
-local function Reset()
-    if Listen and not ns:GuideUnlocked() then Listen(false) end
-    queue, pendingAsk = {}, nil
-    HideAsk()
-    if ns.plannerDuo then ns.plannerDuo = nil end
-    Sync()
-end
-
+local Listen                         -- (CHAT_MSG_ADDON)
 local function Tick()
-    if not ns:GuideUnlocked() then
-        if ns.plannerDuo or #queue > 0 or pendingAsk then Reset() end
-        if Listen then Listen(false) end
-        return
-    end
     if Listen then Listen(true) end
     if syncLater then Sync() end
     ns.PlannerDuoFlush()
@@ -869,7 +854,6 @@ ns:Every(0.25, "Planner duo", Tick)
 
 -- The prefix (registered by the main add-on), and the add-on messages listened to from then on.
 Register = function()
-    if not ns:GuideUnlocked() then return end
     if Listen then Listen(true) end
     ns.PlannerDuoRegister()
 end
@@ -879,7 +863,7 @@ do
     pcall(ev.RegisterEvent, ev, "PLAYER_REGEN_ENABLED")
     ns.FolderLate("planner", "duoPrefix", function() Register() end)   -- (what the login did: the folder loads later)
     local listening = false
-    Listen = function(on)                                -- (a locked player does not even hear add-on messages)
+    Listen = function(on)
         on = on and true or false
         if on == listening then return end
         listening = on
@@ -888,10 +872,10 @@ do
     ns.PlannerDuoListening = function() return listening end
     local OnEvent = ns:Guard("Planner duo", function(_, event, prefix, msg, channel, sender)
         if event == "PLAYER_REGEN_ENABLED" then                      -- (a plan that came in a fight: followed now)
-            if ns:GuideUnlocked() and ns.PlannerDuoAfterFight then ns.PlannerDuoAfterFight() end
+            if ns.PlannerDuoAfterFight then ns.PlannerDuoAfterFight() end
             return
         end
-        if event ~= "CHAT_MSG_ADDON" or not ns:GuideUnlocked() then return end
+        if event ~= "CHAT_MSG_ADDON" then return end
         if ns:IsSecret(prefix) or ns:IsSecret(msg) or ns:IsSecret(channel) or ns:IsSecret(sender) then return end
         if type(prefix) ~= "string" or type(msg) ~= "string" or type(channel) ~= "string" then return end
         if prefix ~= PREFIX or channel ~= WHISPER or #msg > MAX_BYTES then return end
@@ -903,15 +887,9 @@ do
     ns.PlannerDuoEvent = function(...) return OnEvent(ev, ...) end    -- (the same, called directly: the tests)
 end
 
--- Locking ends the duo at once, sending nothing (the main add-on registers the prefix again at the next unlock;
--- the game takes a second registration of the same prefix without harm).
-ns.GuideRegisterLock("duo", function(unlocked)
-    if not (unlocked and ns:GuideUnlocked()) then Reset() end
-end)
-
 ns.GuideRegisterAction("panel", "duo", function() return ns.plannerDuo and "Stop planning together" or "Plan with a friend" end, function()
     if ns.plannerDuo then ns:PlannerDuoEnd("off") else ns:PlannerDuoStart() end
-end, function() return ns:GuideUnlocked() and (Planned()) end)
+end, function() return (Planned()) end)
 ns.GuideRegisterAdvance("duo", function(st)
     local d = ns.plannerDuo
     if d and d.planId and type(st) == "table" and st.name ~= nil and st.name == ns.GUIDE_PLANNED then SendAt(d) end

@@ -459,7 +459,6 @@ local FailedCheck, NotHere                          -- (the guide's events and i
 --   GuideRegisterAdvance
 --   GuideRegisterCommand
 --   GuideRegisterLine
---   GuideRegisterLock
 --   GuideRegisterTitle
 --   GuideReputation
 --   GuideSave
@@ -474,7 +473,6 @@ local FailedCheck, NotHere                          -- (the guide's events and i
 --   GuideStepBase
 --   GuideStop
 --   GuideText
---   GuideUnlocked
 -- end of seams
 -- (Every ns.Guide* and ns.GUIDE_* a Planner*.lua file uses is listed here and defined in this file: the small API the
 -- planner may lean on; tests/test_addon.py::test_guide_seams_listed keeps it true. No file wraps a ns.Guide* function.)
@@ -489,11 +487,9 @@ local FailedCheck, NotHere                          -- (the guide's events and i
 --   ns.GuideRegisterAdvance(key, fn(st, guide, step, at, moved, resumed))  the step you are on changed (resumed: the
 --                                                                first advance after a login or /reload, the step you were on: not new)
 --   ns.GuideRegisterCommand(word, fn(rest))                      /fgui guide <word> ...
---   ns.GuideRegisterLock(key, fn(unlocked))                      after ns:GuideUnlock worked (true), and after ns:GuideLock
---                                                                cleared the key (false), before the switch is applied
 -- Each is called through pcall (a command word too); a failure goes to ns.errors as "Guide hook <key>: <error>".
 -- Menu labels stay English (or text a label fn made) until ns:GuideMenu, the one place they go through ns:Tr.
-local extraLines, titleParts, stepActions, panelActions, advanceHooks, commands, lockHooks = {}, {}, {}, {}, {}, {}, {}
+local extraLines, titleParts, stepActions, panelActions, advanceHooks, commands = {}, {}, {}, {}, {}, {}
 local function Register(list, key, entry)
     if key == nil then return end
     for i, e in ipairs(list) do
@@ -518,12 +514,6 @@ function ns.GuideRegisterAction(where, key, label, fn, shown, anyGuide)
     if list then Register(list, key, Fn(fn, { label = label, fn = fn, shown = shown, any = anyGuide and true or nil })) end
 end
 function ns.GuideRegisterAdvance(key, fn) Register(advanceHooks, key, Fn(fn, { fn = fn })) end
-function ns.GuideRegisterLock(key, fn) Register(lockHooks, key, Fn(fn, { fn = fn })) end
-local function LockChanged(unlocked)                       -- (on a copy: a hook may register or remove one)
-    local copy = {}
-    for i, e in ipairs(lockHooks) do copy[i] = e end
-    for _, e in ipairs(copy) do Hook(e.key, e.fn, unlocked) end
-end
 function ns.GuideRegisterCommand(word, fn)
     if type(word) ~= "string" or word == "" then return end
     commands[word:lower()] = type(fn) == "function" and fn or nil
@@ -571,8 +561,8 @@ local function PlaceOf(step)
         if ok and type(map) == "number" and type(x) == "number" and type(y) == "number" and not Secret(map) and not Secret(x) and not Secret(y) then return map, x * 100, y * 100 end
     end
 end
--- A step on a map you are not on: the arrow points at the next leg of the way there, from the planner's travel
--- (only while the guide is unlocked): the flight master, the dock, or where your way leaves the map you are on.
+-- A step on a map you are not on: the arrow points at the next leg of the way there, from the planner's travel:
+-- the flight master, the dock, or where your way leaves the map you are on.
 -- (A planned route's own travel steps, a flight, a boat, the hearthstone, come before such a step and are pointed
 -- at as they are; this is the walk between maps a plan leaves out, and a written guide's steps.)
 -- Fractions of `map` for a world spot on continent c (off the map: below 0 or above 1), or nil.
@@ -602,7 +592,7 @@ end
 -- A walk to the map's edge does not switch: it is worked out again once you are on another map. The last value:
 -- a spot you pass through, not one to arrive at (the map's edge, or where you stand when you are there already).
 local function LegPlace(map, x, y)
-    if not (ns:GuideUnlocked() and type(map) == "number" and ns.PlannerTravel and ns.PlannerWorldPos and ns.MapPosition) then return nil end
+    if not (type(map) == "number" and ns.PlannerTravel and ns.PlannerWorldPos and ns.MapPosition) then return nil end
     if ns.MapPosition(map, "player") then return nil end            -- (on its map, or on one it holds: the arrow points there itself)
     local hereMap, hx, hy = Here()
     if not (hereMap and hx and hereMap ~= map) then return nil end
@@ -639,7 +629,7 @@ end
 -- our own arrow stays hidden (TomTom shows its own: crazy = true).
 local tomUid
 local function TomTomAddon()
-    if not (ns:GuideUnlocked() and ns.db and ns.db.plannerTomTom ~= false) then return nil end
+    if not (ns.db and ns.db.plannerTomTom ~= false) then return nil end
     if type(TomTom) == "table" and type(TomTom.AddWaypoint) == "function" then return TomTom end
 end
 local function TomTomClear()
@@ -1445,7 +1435,7 @@ Draw = function()
     panel.moreShown = OnTrip(st) or HasEntries(panelActions, step, not planned)   -- (the panel's menu: some entry is there; another guide: those for
                                                                                    --  any guide; a trip: Stop this trip)
     panel.more:SetShown(panel.moreShown)
-    panel.plannerShown = ns:GuideUnlocked() == true                 -- (the route planner's own window)
+    panel.plannerShown = true                                       -- (the route planner's own window)
     panel.planner:SetShown(panel.plannerShown)
     if panel.ridingButton then panel.ridingButton:SetShown(texts.riding ~= nil) end   -- (the riding line: a click saves for it)
     local nowText, progress
@@ -1619,7 +1609,7 @@ function ns:GuideShowPanel()
         end)
         panel.more:SetPoint("RIGHT", list, "LEFT", -4, 0)
         panel.more:Hide()
-        panel.planner = ns:CreateButton(panel, "Planner", 44, FOOTER_H, function() ns:PlannerOpen() end)   -- (the planner's own window: only while unlocked)
+        panel.planner = ns:CreateButton(panel, "Planner", 44, FOOTER_H, function() ns:PlannerOpen() end)   -- (the planner's own window)
         panel.planner:SetPoint("RIGHT", panel.more, "LEFT", -4, 0)
         panel.planner:Hide()
         panel.ridingButton = CreateFrame("Button", nil, panel)    -- (over the riding line: ways to make gold, saving for riding)
@@ -1711,22 +1701,21 @@ function ns:GuideNextButton()
 end
 
 -- Key bindings (Bindings.xml): next step (tick it off), skip step (ns:GuideSkipStep: passed over, not done), plan
--- again (as the panel's button). Each does nothing while the guide is locked or off, and nothing in combat. Their
--- tokens in Bindings.xml are neutral (FANTASYGLASSUI_EXTRA1 to 3), and so are their names in the key bindings window
--- while the guide is locked ("Fantasy Glass UI: extra 1"); they are named "Guide: ..." only once it is unlocked.
+-- again (as the panel's button). Each does nothing while the guide is off, and nothing in combat. Their tokens in
+-- Bindings.xml stay FANTASYGLASSUI_EXTRA1 to 3, so keys bound to them before 13.0 still work; their names in the key
+-- bindings window are "Guide: ...".
 local EXTRA_KEYS = { { "NEXT", "Guide: next step" }, { "SKIP", "Guide: skip step" }, { "AGAIN", "Guide: plan again" } }
-function ns.GuideBindingNames(unlocked)
+function ns.GuideBindingNames()
     for i, e in ipairs(EXTRA_KEYS) do
-        _G["BINDING_NAME_FANTASYGLASSUI_EXTRA" .. i] = unlocked and ns:Tr(e[2]) or format(ns:Tr("Fantasy Glass UI: extra %d"), i)
+        _G["BINDING_NAME_FANTASYGLASSUI_EXTRA" .. i] = ns:Tr(e[2])
     end
 end
-ns.GuideBindingNames(false)
+ns.GuideBindingNames()
 do
-    local names = CreateFrame("Frame")                         -- (the translations and the unlock are known at login)
+    local names = CreateFrame("Frame")                         -- (the translations are known at login)
     names:RegisterEvent("PLAYER_LOGIN")
-    names:SetScript("OnEvent", ns:Guard("Guide keys", function() ns.GuideBindingNames(ns:GuideUnlocked()) end))
+    names:SetScript("OnEvent", ns:Guard("Guide keys", function() ns.GuideBindingNames() end))
 end
-ns.GuideRegisterLock("keys", function(unlocked) ns.GuideBindingNames(unlocked) end)
 FantasyGlassUI_ExtraBinding = ns:Guard("Guide keys", function(which)
     if not (ns.db and ns:GuideOn()) or InCombatLockdown() then return end
     local st = State()
@@ -1991,7 +1980,7 @@ end
 function ns:GuideList()
     local st = State()
     local lines = {}
-    if ns:GuideUnlocked() and ns.PlannerStart then                -- (the planned route first: following it starts a plan)
+    if ns.PlannerStart then                -- (the planned route first: following it starts a plan)
         local mine = st and Planned(st)
         lines[1] = { left = ns:Tr("Plan my route") .. (mine and ("  " .. ns:SignalHex("good") .. ns:Tr("following") .. "|r") or ""), tone = mine and "@accent" or nil,
             click = function()
@@ -2013,30 +2002,9 @@ function ns:GuideList()
     return ns:ShowList("Guides", "Quest guides", lines, "Click a guide to follow it. Right-click to read, change, copy or delete it.", 460, 340)
 end
 
--- Quest guides are not released yet. Everyone sees a "coming soon" page; the guide itself runs only
--- where it has been unlocked with the author's phrase (/fgui unlock <phrase>; /fgui lock undoes it).
--- Only a number worked out from the phrase is kept here, not the phrase.
-local GUIDE_KEY = 1859047492
-function ns.GuideHash(text)
-    local h = 5381
-    text = tostring(text or "")
-    for i = 1, #text do h = (h * 33 + text:byte(i)) % 4294967296 end
-    return h
-end
-function ns:GuideUnlocked() return type(ns.root) == "table" and ns.root.guideKey == GUIDE_KEY end
-function ns:GuideUnlock(phrase)
-    if type(ns.root) ~= "table" or ns.GuideHash(ns.Trim(phrase):lower()) ~= GUIDE_KEY then return false end
-    ns.root.guideKey = GUIDE_KEY
-    LockChanged(true)
-    return true
-end
+-- Quest guides, the route planner and the gold advisor are for everyone since 13.0.
+function ns:GuideOn() return not (ns.db and ns.db.questGuide == false) end
 -- The switch (on the Guide tab, and in the setup) was changed: put that into effect.
-function ns:GuideOn() return ns:GuideUnlocked() and not (ns.db and ns.db.questGuide == false) end
-function ns:GuideLock()
-    if type(ns.root) == "table" then ns.root.guideKey = nil end
-    LockChanged(false)
-    return ns:GuideApplySwitch()
-end
 function ns:GuideApplySwitch()
     if ns:GuideOn() then
         if State() then ns:GuideShowPanel(); ns:GuideAdvance() end
@@ -2052,7 +2020,6 @@ end
 -- /fgui guide ...
 function ns:GuideCommand(text)
     text = ns.Trim(text)
-    if not ns:GuideUnlocked() then ns:Print("Quest guides are coming soon."); return false end
     if not ns:GuideOn() then
         ns:Print("Quest guides are switched off. Switch them on under Guide in /fgui, or in the setup.")
         return false

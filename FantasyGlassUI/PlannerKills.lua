@@ -7,7 +7,7 @@ local _, ns = ...
 -- and only when no other line or XP change is that close), with a level rolled over added and the rested part taken off: the base the formula predicts.
 -- Per character: killXP[diff] = { n, r } (r: what you get against ns.PlannerKillXP, the last 20),
 -- killGaps (the last 50 gaps between solo kills of 180 s or less) and killsPerHour (from their median).
--- Nothing while grouped (split experience), while locked, or when a value is hidden. It only reads:
+-- Nothing while grouped (split experience), or when a value is hidden. It only reads:
 -- it runs in fights, and calls nothing protected.
 ------------------------------------------------------------------------------------------
 local floor, min, max = math.floor, math.min, math.max
@@ -37,7 +37,7 @@ end
 -- sample = { xp = base, level, mobLevel|nil, elite, t|nil }: t counts the kill for the rate (the kill
 -- line), mobLevel with xp and level is a sample of what the kill gave (its XP change, paired).
 function ns.PlannerRecordKill(sample)
-    if type(sample) ~= "table" or not ns:GuideUnlocked() then return end
+    if type(sample) ~= "table" then return end
     local t = tonumber(sample.t)
     if t then
         local gap = lastKill and t - lastKill
@@ -154,7 +154,6 @@ do
     -- line still counts for the rate). A burst is settled once it has been quiet that long.
     local last                       -- your experience before the next change
     local burst                      -- { lines = { { t, mobLevel, elite } }, gains = { { t, xp, level } }, t = the last event }
-    local function Forget() last, burst, lastKill = nil, nil, nil end
     local function Settle()
         local b = burst
         burst = nil
@@ -168,7 +167,7 @@ do
         local t = Now()
         if not t then burst = nil; return end
         if t < burst.t or t - burst.t > ns.PLANNER_KILL_PAIR then
-            if ns:GuideUnlocked() then Settle() else burst = nil end
+            Settle()
         elseif C_Timer and C_Timer.After then
             pcall(C_Timer.After, ns.PLANNER_KILL_PAIR, Later)
         end
@@ -211,7 +210,6 @@ do
     end
 
     local function OnEvent(_, event, unit)
-        if not ns:GuideUnlocked() then Forget(); return end
         if event == "PLAYER_ENTERING_WORLD" then
             last, burst = Snapshot(), nil
         elseif event == "PLAYER_XP_UPDATE" then

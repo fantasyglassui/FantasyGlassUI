@@ -1480,29 +1480,6 @@ function ns:CharKey()
     return (type(name) == "string" and name or "Unknown") .. " - " .. (type(realm) == "string" and realm or "")
 end
 
--- polish P3: begin
--- The settings only an unlocked quest guide uses (as ns.GuideGatedKey in Profiles.lua), and how a
--- locked player's profile reads them: their defaults, never written.
-local function GuideGated(k)
-    return type(k) == "string" and (k:find("^planner") ~= nil or k == "questGuide" or k == "guideSound")
-end
-local GATED_READ = { __index = function(_, k) if GuideGated(k) then return ns.defaults[k] end end }
--- Unlocked during the session: the guide's defaults are written now, as at load for an unlocked player.
-function ns:FillGatedDefaults(profile)
-    if type(profile) ~= "table" or not (ns.GuideUnlocked and ns:GuideUnlocked()) then return end
-    for k, v in pairs(ns.defaults) do
-        if GuideGated(k) and rawget(profile, k) == nil then profile[k] = v end
-    end
-end
--- And at logout while locked, the guide's own stores, if a read made them empty, are not saved.
-function ns:DropGatedStores()
-    local root = ns.root
-    if type(root) ~= "table" or (ns.GuideUnlocked and ns:GuideUnlocked()) then return end
-    for _, key in ipairs({ "guides", "guideState" }) do
-        if type(root[key]) == "table" and next(root[key]) == nil then root[key] = nil end
-    end
-end
--- polish P3: end
 function ns:FillDefaults(profile)
     -- Settings from older versions: carry over the ones that still mean something, drop the rest.
     if profile.microMode == nil and profile.fadeMicro == false then profile.microMode = "SHOW" end
@@ -1526,22 +1503,8 @@ function ns:FillDefaults(profile)
     for where, key in pairs(profile.placeThemes) do if type(key) == "string" then profile.placeThemes[where] = ns.CelestialFor(key) end end
     for _, def in pairs(profile.customThemes) do if type(def) == "table" and def.style == "RUNIC" then def.style = "CELESTIAL" end end
     if type(profile.alertBuffs) ~= "table" then profile.alertBuffs = {} end
-    -- polish P3: begin
-    -- (polish) While the quest guide is locked, its settings are not written into the profile, so
-    -- the saved file never names them: they are read through to their defaults instead, and a
-    -- default written by an older version is taken out again (a value someone set is kept).
-    local locked = not (ns.GuideUnlocked and ns:GuideUnlocked())
-    if locked then
-        for k, v in pairs(ns.defaults) do
-            if GuideGated(k) and type(v) ~= "table" and rawget(profile, k) == v then profile[k] = nil end
-        end
-        if getmetatable(profile) == nil then setmetatable(profile, GATED_READ) end
-    end
-    -- polish P3: end
     for k, v in pairs(ns.defaults) do
-        if locked and GuideGated(k) then
-            -- (read through GATED_READ)
-        elseif rawget(profile, k) == nil then
+        if rawget(profile, k) == nil then
             if type(v) == "table" then                       -- (a table of its own: never the defaults' table, shared by every profile)
                 local copy = {}
                 for kk, vv in pairs(v) do copy[kk] = vv end
@@ -1584,14 +1547,6 @@ function ns:InitDB()
     if ns.TakeBackups then pcall(ns.TakeBackups, ns, root) end       -- (Safety.lua: before anything of this session changes them)
     ns.root, ns.profile = root, name
     ns.db = ns:FillDefaults(root.profiles[name])
-    -- polish P3: begin
-    if ns.GuideRegisterLock then ns.GuideRegisterLock("gatedDefaults", function(unlocked) if unlocked then ns:FillGatedDefaults(ns.db) end end) end
-    if not ns.gatedLogout then
-        ns.gatedLogout = CreateFrame("Frame")
-        ns.gatedLogout:RegisterEvent("PLAYER_LOGOUT")
-        ns.gatedLogout:SetScript("OnEvent", function() ns:DropGatedStores() end)
-    end
-    -- polish P3: end
     -- Does this client refuse add-ons any buff/debuff data during combat? Remembered once found out.
     if root.aurasLocked == nil then
         local ok, _, _, _, toc = pcall(GetBuildInfo)
@@ -2730,11 +2685,6 @@ ns.toolCommands = {
         if not ns.ButtonBagLines then ns:Print("The minimap button collector is switched off."); return end
         ns:ShowTextWindow("Minimap buttons", table.concat(ns:ButtonBagLines(), "\n"))
     end,
-    unlock = function(t)
-        if ns:GuideUnlock(t) then ns:Print("Quest guides are unlocked on this account. They are under Guide in /fgui.")
-        else ns:Print("That is not the phrase.") end
-    end,
-    lock = function() ns:GuideLock(); ns:Print("Quest guides are locked again.") end,
     ask = function(t) if ns:LoadOptions() and ns.GuidePrint then ns:GuidePrint(t) end end,
 }
 -- Runs one of them if `msg` starts with its word. Returns true when it did.
@@ -2903,7 +2853,7 @@ SlashCmdList["FANTASYGLASSUI"] = function(msg)
     elseif msg == "" or msg == "options" or msg == "config" or msg == "show" then
         ns:ToggleConfig()
     else
-        if ns.HiddenCommand and ns.HiddenCommand(msg, raw) then return end   -- (a word not in the help: Folders.lua's, while unlocked only)
+        if ns.HiddenCommand and ns.HiddenCommand(msg, raw) then return end   -- (Folders.lua's /fgui plan)
         local near = ns.ClosestCommand(msg)
         if near then
             ns:Print("\"%s\" is not a command. Did you mean |cffffff00/fgui %s|r?", raw, near)

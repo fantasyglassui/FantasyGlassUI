@@ -116,7 +116,7 @@ ns:Every(0, "Planner go", function()
     local r = ready
     ready = nil
     if ns:GuideOn() then Apply(r)
-    elseif ns:GuideUnlocked() and ns.GoldStepsList then ns.GoldStepsList(r.idea) end   -- (the guide switched off meanwhile: the steps in a list)
+    elseif ns.GoldStepsList then ns.GoldStepsList(r.idea) end   -- (the guide switched off meanwhile: the steps in a list)
 end)
 
 -- Go for a gold idea: true when its trip is being laid (a planner job; the trip starts when it is done).

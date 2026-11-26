@@ -4,12 +4,11 @@ if type(ns) ~= "table" then return end
 ------------------------------------------------------------------------------------------
 -- Planner, batch 5 group A: find a group for a group quest (#31) (Task 2).
 -- Built on the seams: ns.PlannerHook (Planner.lua, with "candidate" and "replan"), the panel's
--- registries (Guide.lua) and its section of the Guide tab (Bars.lua). Everything here is behind ns:GuideUnlocked().
+-- registries (Guide.lua) and its section of the Guide tab (Bars.lua).
 -- The add-on never sends the line: it only puts it in your chat box (ChatFrameUtil.OpenChat) and you press Enter.
 ------------------------------------------------------------------------------------------
 local format, floor = string.format, math.floor
 
-local function Unlocked() return ns.GuideUnlocked ~= nil and ns:GuideUnlocked() == true end
 local function Clean(s)                                   -- (text from a quest: a string we can show, without |-escapes or control characters)
     if type(s) ~= "string" or ns:IsSecret(s) then return nil end
     s = s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|T.-|t", ""):gsub("|H.-|h", ""):gsub("|h", "")
@@ -48,7 +47,7 @@ end
 -- Does the button apply now, apart from which step you are on: the switch, the planned guide, the group setting
 -- (not Solo, unless you are the duo friend), and no full party or raid.
 local function Allowed(st)
-    if not Unlocked() or not (ns.GuideOn and ns:GuideOn()) then return false end
+    if not (ns.GuideOn and ns:GuideOn()) then return false end
     if type(st) ~= "table" or st.name == nil or st.name ~= ns.GUIDE_PLANNED then return false end
     if not ns.db or ns.db.plannerFindGroup == false then return false end
     if (ns.db.plannerGroup or "solo") == "solo" then
@@ -122,7 +121,7 @@ end
 
 -- Put the line in your chat box (true), or print it for you to copy when the chat box can't be opened (false).
 function ns.PlannerFindGroup(step)
-    if not Unlocked() or type(step) ~= "table" then return false end
+    if type(step) ~= "table" then return false end
     local prefix = ""
     local channel = ns.db and ns.db.plannerLFGChannel
     if type(channel) == "string" and channel ~= "" then

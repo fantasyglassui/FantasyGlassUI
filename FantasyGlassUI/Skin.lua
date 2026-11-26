@@ -1943,12 +1943,11 @@ function ns:SearchOptions(query, limit)
     query = strlower((query:gsub("^%s+", ""):gsub("%s+$", "")))
     if #query < 2 then return out end
     local first, rest, seen = {}, {}, {}
-    local guideOpen = ns.GuideUnlocked ~= nil and ns:GuideUnlocked() == true      -- (the Guide tab is hidden while locked: so are its controls)
     for _, entry in ipairs(ns.optionIndex) do
         local shown = ns:Tr(entry.label)
         local text = strlower(shown)
         local id = entry.tab .. "|" .. text
-        if not seen[id] and (guideOpen or entry.tab ~= "guide") then
+        if not seen[id] then
             local at = text:find(query, 1, true)
             if at then
                 seen[id] = true

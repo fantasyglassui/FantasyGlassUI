@@ -6,7 +6,6 @@ if type(ns) ~= "table" then return end
 -- Monsters: what each one you loot drops (for all your characters), how fast you kill (per
 -- character), and from those, plus Questie's spawns and quest items, which monsters are worth
 -- killing and the way round them. Your own farming by zone ("measured") beats any guess.
--- Everything here does nothing while the guide is locked.
 ------------------------------------------------------------------------------------------
 local floor, max, min, huge = math.floor, math.max, math.min, math.huge
 local LEARNED = 10                         -- loots before a monster's own drops replace the default

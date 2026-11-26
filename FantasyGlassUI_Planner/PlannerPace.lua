@@ -4,15 +4,13 @@ if type(ns) ~= "table" then return end
 ------------------------------------------------------------------------------------------
 -- Planner, batch 4 group C: the time you have, break reminders, catch me up, speed or story (Tasks 5 and 6).
 -- Built on the seams: ns.PlannerHook (Planner.lua), the panel's registries (Guide.lua) and its
--- section of the Guide tab (Bars.lua). Everything here is behind ns:GuideUnlocked(): the hooks
--- and the panel's entries are only registered while the guide is unlocked (ns.PlannerPaceSync),
--- and a planner hook only while its feature is in use, so a plan that uses neither is unchanged.
+-- section of the Guide tab (Bars.lua). A planner hook is only registered while its feature is in use
+-- (ns.PlannerPaceSync), so a plan that uses neither is unchanged.
 ------------------------------------------------------------------------------------------
 local format, floor, min, max = string.format, math.floor, math.min, math.max
 local ipairs, type, tonumber, tostring = ipairs, type, tonumber, tostring
 
-local function Unlocked() return ns.GuideUnlocked ~= nil and ns:GuideUnlocked() == true end
-local function On() return Unlocked() and ns.GuideOn ~= nil and ns:GuideOn() == true end
+local function On() return ns.GuideOn ~= nil and ns:GuideOn() == true end
 local function Rec(create) return ns.PlannerCharRecord and ns.PlannerCharRecord(create) or nil end
 local function Num(v) if type(v) == "number" and not ns:IsSecret(v) then return v end end
 local function Now()
@@ -72,7 +70,6 @@ end
 
 -- "context": with a deadline the plan has the time left and a horizon of 6 hubs.
 local function ContextTime(ctx)
-    if not Unlocked() then return end
     local left = ns.PlannerTimeLeft()
     if left then
         ctx.timeLeft = left
@@ -152,7 +149,7 @@ end
 
 -- Advance: the note "Good place to stop" done: the time limit is over.
 local function AdvanceStop(st, guide, _, at, moved)
-    if not moved or not Unlocked() or type(st) ~= "table" or st.name ~= ns.GUIDE_PLANNED or type(guide) ~= "table" then return end
+    if not moved or type(st) ~= "table" or st.name ~= ns.GUIDE_PLANNED or type(guide) ~= "table" then return end
     for i, s in ipairs(guide.steps or {}) do
         if type(s) == "table" and s.kind == "note" and s.stopKey == STOP_KEY then
             if (tonumber(at) or 0) > i then ns.PlannerSetPlayTime(0) end
@@ -164,7 +161,6 @@ end
 -- "Plan my route" (ns:PlannerStart): with no limit running, the Guide tab's default starts one; a limit that ran
 -- out is cleared first (you asked for a new route, not for the stop again).
 function ns.PlannerApplyPlayDefault()
-    if not Unlocked() then return end
     local left = ns.PlannerTimeLeft()
     if left and left > 0 then return end
     local rec = Rec(false)
@@ -502,7 +498,6 @@ end
 
 -- "context": the weights, and with story at 100 a lower end of the window for chains.
 local function ContextStyle(ctx)
-    if not Unlocked() then return end
     local speed, safety, story = ns.PlannerWeights()
     ctx.weights = { speed = speed, safety = safety, story = story }
     local level = tonumber(ctx.level) or 1
@@ -567,7 +562,7 @@ local function StyleLine()
 end
 
 ------------------------------------------------------------------------------------------
--- What is registered: with the guide unlocked, the panel's entries; a planner hook only while its feature is in use.
+-- What is registered: the panel's entries; a planner hook only while its feature is in use.
 -- The time limit and the style share one "context" and one "rank" hook ("pace"), so the order is always the
 -- same whatever was turned on first: the time cut, then the style (which works out its best rate over the hubs
 -- the time left in).
@@ -590,20 +585,18 @@ ns.PlannerPaceHooks = { time = { context = ContextTime, rank = RankTime, route =
                           style = { context = ContextStyle, window = WindowStyle, rank = RankStyle },
                           pace = { context = ContextPace, rank = RankPace } }
 Sync = function()
-    local open = Unlocked()
-    local function Reg(fn) return open and fn or nil end
-    ns.GuideRegisterCommand("plan", Reg(ns.PlannerPlanCommand))
-    ns.GuideRegisterAdvance("paceStop", Reg(AdvanceStop))
-    ns.GuideRegisterAdvance("paceBreak", Reg(AdvanceBreak))
-    ns.GuideRegisterLine("paceBreak", Reg(BreakLine))
-    ns.GuideRegisterLine("paceStyle", Reg(StyleLine))
-    ns.GuideRegisterAction("panel", "paceTime", "How long can you play?", Reg(OpenTimeList))
-    ns.GuideRegisterAction("panel", "paceKeep", "Keep playing (no time limit)", Reg(KeepPlaying), TimeUp)
-    local rec = open and Rec(false) or nil
+    ns.GuideRegisterCommand("plan", ns.PlannerPlanCommand)
+    ns.GuideRegisterAdvance("paceStop", AdvanceStop)
+    ns.GuideRegisterAdvance("paceBreak", AdvanceBreak)
+    ns.GuideRegisterLine("paceBreak", BreakLine)
+    ns.GuideRegisterLine("paceStyle", StyleLine)
+    ns.GuideRegisterAction("panel", "paceTime", "How long can you play?", OpenTimeList)
+    ns.GuideRegisterAction("panel", "paceKeep", "Keep playing (no time limit)", KeepPlaying, TimeUp)
+    local rec = Rec(false)
     if rec and tonumber(rec.playUntil) and not ns.PlannerTimeLeft() then rec.playUntil = nil end   -- (ran out long ago: forgotten)
     local timed = rec and tonumber(rec.playUntil) and true or false
     local speed, safety, story = ns.PlannerWeights()
-    local styled = open and not (speed == FULL and safety == 0 and story == 0) or false
+    local styled = not (speed == FULL and safety == 0 and story == 0)
     paceTimed, paceStyled = timed, styled                -- (a hook already there only gets its fn again: nothing is made)
     local on = timed or styled
     ns.PlannerHook("context", "pace", on and ContextPace or nil)
@@ -612,6 +605,4 @@ Sync = function()
     ns.PlannerHook("window", "paceStyle", styled and WindowStyle or nil)
 end
 ns.PlannerPaceSync = function() Sync() end
--- Unlocking or locking the guide registers or removes everything at once (not up to a minute later).
-ns.GuideRegisterLock("pace", function() Sync() end)   -- (and the clock is saved from an unlock on: PlannerRecorders.lua)
 ns.FolderFileDone("planner", "PlannerPace.lua")

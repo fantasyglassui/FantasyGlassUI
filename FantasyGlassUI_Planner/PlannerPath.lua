@@ -203,7 +203,7 @@ end
 function ns.PlannerExploreReached(step)
     if type(step) ~= "table" or step.kind ~= "explore" then return false end
     local map, x, y = Num(tonumber(step.map)), Num(tonumber(step.x)), Num(tonumber(step.y))
-    if not (map and x and y) or not ns:GuideUnlocked() then return false end
+    if not (map and x and y) then return false end
     local list = ReachedList(map, true)
     if not list then return false end
     list[#list + 1] = { x = R1(x), y = R1(y) }

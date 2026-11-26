@@ -244,7 +244,7 @@ end
 -- several crossings share keeps all of them in mind.
 ns.PLANNER_CROSS_MOST = 900
 local function DockTick()
-    if not ns:GuideUnlocked() or (InCombatLockdown and InCombatLockdown()) then return end   -- (no crossing starts in a fight)
+    if InCombatLockdown and InCombatLockdown() then return end   -- (no crossing starts in a fight)
     local map, x, y = PlayerSpot()
     if not map then return end
     local hc, hx, hy = WorldPos(map, x, y)
@@ -285,7 +285,6 @@ do
     local ev = CreateFrame("Frame")
     for _, e in ipairs({ "TAXIMAP_OPENED", "PLAYER_CONTROL_LOST", "PLAYER_CONTROL_GAINED", "PLAYER_ENTERING_WORLD" }) do pcall(ev.RegisterEvent, ev, e) end
     ev:SetScript("OnEvent", ns:Guard("Planner travel", function(_, event)
-        if not ns:GuideUnlocked() then return end
         if event == "TAXIMAP_OPENED" then LearnFlights()
         elseif event == "PLAYER_CONTROL_LOST" then ControlLost()
         elseif event == "PLAYER_CONTROL_GAINED" then ControlGained()
@@ -294,11 +293,11 @@ do
     if ns.Every then ns:Every(2, "Planner docks", DockTick) end
 end
 
--- A new character (or a first unlock) knows no flight point and no bind place until the game shows them:
+-- A new character knows no flight point and no bind place until the game shows them:
 -- a plan made while it did not know says how to teach it (summary.noFlights, summary.noBind: Planner.lua),
 -- until it knows.
 local function Summary(st)
-    if not (type(st) == "table" and st.name == ns.GUIDE_PLANNED and ns:GuideUnlocked()) then return nil end
+    if not (type(st) == "table" and st.name == ns.GUIDE_PLANNED) then return nil end
     return type(st.summary) == "table" and st.summary or nil
 end
 ns.GuideRegisterLine("travelFlights", function(st)
