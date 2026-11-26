@@ -67,27 +67,40 @@ local function Ready()
     return true
 end
 
--- The basic reagents of a schematic, as Economy's shopping list reads them: { { id, need } }.
+-- The basic reagents of a schematic, as Economy's shopping list reads them: { { id, need } }, and
+-- true when a slot that counts could not be read (its item, its count or its kind): such a recipe is
+-- never priced, since the cost would be too low.
 local function SchematicReagents(s)
-    local out = {}
+    local out, incomplete = {}, false
     for _, slot in ipairs(type(s.reagentSlotSchematics) == "table" and s.reagentSlotSchematics or {}) do
         if type(slot) == "table" then
-            local first = type(slot.reagents) == "table" and slot.reagents[1]
             local rt = slot.reagentType
-            local basic = not Secret(rt) and (rt == nil or rt == 1 or ns.Is(slot.required, true))
-            local id = type(first) == "table" and Num(first.itemID)
-            local need = Num(slot.quantityRequired)
-            if basic and id and need and need > 0 then out[#out + 1] = { id = id, need = need } end
+            if Secret(rt) or Secret(slot.required) then
+                incomplete = true
+            elseif rt == nil or rt == 1 or ns.Is(slot.required, true) then
+                local first = type(slot.reagents) == "table" and slot.reagents[1]
+                local id = type(first) == "table" and Num(first.itemID)
+                local need = Num(slot.quantityRequired)
+                if not id or not need then incomplete = true
+                elseif need > 0 then out[#out + 1] = { id = id, need = need } end
+            end
         end
     end
-    return out
+    return out, incomplete
 end
 
+-- The open profession's name, or nil.
+local function ProfessionName()
+    local T = C_TradeSkillUI
+    local base = type(T) == "table" and Call(T.GetBaseProfessionInfo)
+    return type(base) == "table" and Str(base.professionName) or nil
+end
+
+local again = false                    -- another profession opened while one was being read: read again after
 local function ReadRecipes()
     if not Unlocked() or not Ready() then return end
     local T = C_TradeSkillUI
-    local base = Call(T.GetBaseProfessionInfo)
-    local prof = type(base) == "table" and Str(base.professionName) or nil
+    local prof = ProfessionName()
     local ids = Call(T.GetAllRecipeIDs)
     if not prof or type(ids) ~= "table" then return end           -- (whose recipes these are must be known to replace them)
     local today = ns.Today()
@@ -103,12 +116,17 @@ local function ReadRecipes()
                 local nMax = Num(s.quantityMax) or nMin
                 if nMin < 1 then nMin = 1 end
                 if nMax < nMin then nMax = nMin end
-                found[id] = { name = Str(info.name) or Str(s.name), out = out, nMin = nMin, nMax = nMax, reagents = SchematicReagents(s), prof = prof, day = today }
+                local reagents, incomplete = SchematicReagents(s)
+                found[id] = { name = Str(info.name) or Str(s.name), out = out, nMin = nMin, nMax = nMax, reagents = reagents,
+                              incomplete = incomplete or nil, prof = prof, day = today }
                 order[#order + 1] = id
             end
         end
         ns.GoldYield()
     end
+    -- the window closed or went to another profession between slices: this read is not kept
+    if not Ready() then return end
+    if ProfessionName() ~= prof then again = true; return end
     -- this profession's old recipes go; the others stay; at most RECIPE_CAP in all
     local rec = CharRecord(#order > 0)
     if not rec then return end
@@ -124,11 +142,20 @@ local function ReadRecipes()
     end
     rec.recipes = kept
 end
+local function RecipesJob()
+    ReadRecipes()
+    if again then
+        again = false
+        ns:After(0, function() ns.GoldRecipesRead() end)          -- (next frame: this job is gone by then)
+    end
+end
 
--- Read the open profession's recipes, as a job. False when locked, in a fight, not ready, or already queued.
+-- Read the open profession's recipes, as a job. False when locked, in a fight or not ready. While a read
+-- is already queued, the open profession is read again right after it (true).
 function ns.GoldRecipesRead()
     if not Unlocked() or InFight() or not Ready() then return false end
-    return ns.GoldJob(ReadRecipes, "recipes")
+    if ns.GoldBusy("recipes") then again = true; return true end
+    return ns.GoldJob(RecipesJob, "recipes")
 end
 
 do
@@ -189,8 +216,10 @@ end
 function ns.GoldCraftMargin(rec, today)
     if type(rec) ~= "table" then return nil, "no recipe" end
     today = today or ns.Today()
+    -- a reagent that could not be read, or none at all: the cost is not known, so no profit is claimed
+    if rec.incomplete or type(rec.reagents) ~= "table" or #rec.reagents == 0 then return nil, "unpriced" end
     local cost, oldest = 0, nil
-    for _, r in ipairs(type(rec.reagents) == "table" and rec.reagents or {}) do
+    for _, r in ipairs(rec.reagents) do
         local need = type(r) == "table" and Num(r.need)
         if not need or need <= 0 then return nil, "unpriced" end
         local unit, from, day = ReagentPrice(r.id, today)
@@ -208,19 +237,41 @@ function ns.GoldCraftMargin(rec, today)
     return sale - cost, cost, sale, oldest
 end
 
--- On this character (bags and bank), and on your other characters (bags and bank).
-local function Have(id)
-    local mine = Num(Call(C_Item and C_Item.GetItemCount, id, true)) or 0
-    local others = 0
-    if type(ns.ItemOwners) == "function" then
-        local ok, owners, me = pcall(ns.ItemOwners, ns, "item:" .. tostring(id))
-        if ok and type(owners) == "table" then
-            for owner, o in pairs(owners) do
-                if owner ~= me and type(o) == "table" then others = others + (Num(o.bags) or 0) + (Num(o.bank) or 0) end
+-- How many of these items your other characters hold (bags and bank), from what Storage has saved:
+-- { [itemID] = n }. It walks the saved lists itself, a slice at a time, instead of asking
+-- ns:ItemOwners, whose index is rebuilt in one go after every bag change. Only while the storage
+-- feature is on (it is what defines ns.ItemOwners); the guild bank is not counted.
+local function AltCounts(wanted)
+    local out = {}
+    local inv = type(ns.root) == "table" and ns.root.inventory
+    if type(ns.ItemOwners) ~= "function" or type(inv) ~= "table" or type(inv.chars) ~= "table" then return out end
+    local me = ns:CharKey()
+    local keys = {}
+    for key in pairs(inv.chars) do if key ~= me then keys[#keys + 1] = key end end
+    for _, key in ipairs(keys) do
+        local c = inv.chars[key]
+        for _, field in ipairs({ "bags", "bank" }) do
+            local list = type(c) == "table" and c[field]
+            for _, it in ipairs(type(list) == "table" and list or {}) do
+                local link = type(it) == "table" and it[1]
+                local id = type(link) == "string" and tonumber(link:match("item:(%d+)")) or nil
+                if id and wanted[id] then out[id] = (out[id] or 0) + (tonumber(it[2]) or 1) end
+                ns.GoldYield()
             end
         end
     end
-    return mine, others
+    return out
+end
+-- have(id) -> on this character (bags and bank), on your other characters, for these recipes' reagents.
+local function Haves(recs)
+    local wanted = {}
+    for _, rec in ipairs(recs) do
+        for _, r in ipairs(rec.reagents) do wanted[r.id] = true end
+    end
+    local alts = AltCounts(wanted)
+    return function(id)
+        return Num(Call(C_Item and C_Item.GetItemCount, id, true)) or 0, alts[id] or 0
+    end
 end
 
 local function CraftIdea(f, today, have)
@@ -243,6 +294,9 @@ local function CraftIdea(f, today, have)
         end
         detail[#detail + 1] = { left = format("%d × %s  |cff9aa4b4(%d)|r", r.need, name, r.mine), right = right }
     end
+    if not f.counted then
+        detail[#detail + 1] = { left = "|cff9aa4b4" .. ns:Tr("No recent scan says how many are listed, so this is for one.") .. "|r" }
+    end
     local steps = buys
     for _, s in ipairs(gets) do steps[#steps + 1] = s end
     steps[#steps + 1] = { text = format(ns:Tr("Make %d × %s"), count, product) }
@@ -261,11 +315,10 @@ local function ByTotal(a, b)
     return a.id < b.id
 end
 -- The craft ideas from these recipes: the best CRAFT_MAX by total. `have(id) -> mine, others` (the
--- bags, the bank and your other characters by default).
+-- bags, the bank and your other characters by default, counted only for the ideas that are kept).
 function ns.GoldCraftIdeas(ctx, add, recipes, have)
     if type(recipes) ~= "table" or type(add) ~= "function" then return end
     local today = (type(ctx) == "table" and Num(ctx.today)) or ns.Today()
-    have = have or Have
     local ids = {}
     for id in pairs(recipes) do if Num(id) then ids[#ids + 1] = id end end   -- (the keys first: the table may change between slices)
     local found = {}
@@ -274,16 +327,25 @@ function ns.GoldCraftIdeas(ctx, add, recipes, have)
         if type(rec) == "table" then
             local margin, cost, _, day = ns.GoldCraftMargin(rec, today)
             if margin and margin >= max(50, 0.1 * cost) then
+                -- how many to make follows how many are listed, from a scan no more than a day old
                 local e = ns.PriceEntry(rec.out)
                 local listed = type(e) == "table" and Num(e.listed) or nil
+                local listedDay = type(e) == "table" and Num(e.listedDay) or nil
+                if not listedDay or ns.DaysBetween(listedDay, today) > 1 then listed = nil end
                 local count = listed and min(5, max(1, floor(listed / 4))) or 1
-                found[#found + 1] = { id = id, rec = rec, count = count, total = margin * count, day = day }
+                found[#found + 1] = { id = id, rec = rec, count = count, counted = listed ~= nil, total = margin * count, day = day }
             end
         end
         ns.GoldYield()
     end
     table.sort(found, ByTotal)
-    for i = 1, min(CRAFT_MAX, #found) do add(CraftIdea(found[i], today, have)) end
+    for i = #found, CRAFT_MAX + 1, -1 do found[i] = nil end
+    if not have then
+        local recs = {}
+        for i, f in ipairs(found) do recs[i] = f.rec end
+        have = Haves(recs)
+    end
+    for _, f in ipairs(found) do add(CraftIdea(f, today, have)) end
 end
 
 ns.GoldRegister("craft", function(ctx, add)
@@ -294,7 +356,8 @@ end)
 ------------------------------------------------------------------------------------------
 -- Auction flips: an item listed today well under its usual price, bought to list again near it.
 -- Flips can lose gold, so only a sure-looking case counts: today's price, at least five days of
--- history, at least three listed in a recent scan, and the tips say to check before buying.
+-- history in the last 14 days (four of them before today), at least three listed in a recent scan,
+-- and the tips say to check before buying.
 ------------------------------------------------------------------------------------------
 local FLIP_MAX = 10
 
@@ -308,9 +371,20 @@ local function Flip(id, e, today)
     if not Num(id) or type(e) ~= "table" or e.day ~= today then return nil end
     local p = Num(e.price)
     if not p or p <= 0 then return nil end
-    local u, days = ns.AuctionUsual(e)
+    -- the usual price from the last 14 days only, and at least 4 of those days from before today:
+    -- old lows from months back would make a price that has fallen look like a bargain
+    local recent, before = {}, 0
+    for d, low in pairs(type(e.hist) == "table" and e.hist or {}) do
+        local age = Num(d) and ns.DaysBetween(d, today)
+        if age and age >= 0 and age <= 14 and Num(low) then
+            recent[d] = low
+            if age >= 1 then before = before + 1 end
+        end
+    end
+    if before < 4 then return nil end
+    local u, days = ns.AuctionUsual({ hist = recent })
     u, days = Num(u), Num(days)
-    if not u or not days or days < 5 then return nil end
+    if not u or u <= 0 or not days or days < 5 then return nil end
     -- a thin listing, or a count from an old scan, says nothing about whether it sells
     local listed, listedDay = Num(e.listed), Num(e.listedDay)
     if not listed or listed < 3 or not listedDay or ns.DaysBetween(listedDay, today) > 1 then return nil end

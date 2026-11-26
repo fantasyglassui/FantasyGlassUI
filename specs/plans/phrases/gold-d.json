@@ -158,5 +158,15 @@
     "Niente viene comprato per te: ogni acquisto è un tuo clic.",
     "대신 사 주는 것은 없습니다. 모든 구매는 직접 클릭합니다.",
     "不会替你购买任何东西：每次购买都是你自己点击。"
+  ],
+  "No recent scan says how many are listed, so this is for one.": [
+    "Kein aktueller Scan sagt, wie viele angeboten werden, also gilt dies für eins.",
+    "Aucun scan récent ne dit combien sont en vente, donc ceci vaut pour un seul.",
+    "Ningún escaneo reciente dice cuántos hay en venta, así que esto es para uno.",
+    "Нет свежего сканирования о том, сколько выставлено, поэтому расчёт на один.",
+    "Nenhuma varredura recente diz quantos estão anunciados, então isto é para um.",
+    "Nessuna scansione recente dice quanti sono in vendita, quindi questo vale per uno.",
+    "최근 검색에 등록 수가 없어 하나 기준입니다.",
+    "最近没有扫描显示在售数量，所以按一个计算。"
   ]
 }

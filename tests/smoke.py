@@ -11443,7 +11443,8 @@ end)
 -- gold tests D (craft): begin
 try("gold D: crafting for profit", function()
     local keep = { unlocked = ns.GuideUnlocked, combat = env.InCombatLockdown, T = env.C_TradeSkillUI, count = env.C_Item.GetItemCount,
-        owners = ns.ItemOwners, entry = ns.PriceEntry, info = ns.GetItemInfo, today = ns.Today, vbuy = ns.GoldVendorBuy, chars = ns.root.goldChars }
+        owners = ns.ItemOwners, entry = ns.PriceEntry, info = ns.GetItemInfo, today = ns.Today, vbuy = ns.GoldVendorBuy, chars = ns.root.goldChars,
+        inv = ns.root.inventory, clock = env.debugprofilestop }
     local ok, err = pcall(function()
         if type(ns.GoldCraftMargin) ~= "function" or type(ns.GoldCraftIdeas) ~= "function" or type(ns.GoldRecipesRead) ~= "function" then error("ns.GoldCraftMargin is nil") end
         keep.sources = ns.GoldSources()
@@ -11460,9 +11461,10 @@ try("gold D: crafting for profit", function()
         local schem = {
             [1] = { outputItemID = 2581, quantityMin = 1, quantityMax = 1, reagentSlotSchematics = { { reagents = { { itemID = 2589 } }, quantityRequired = 2, reagentType = 1, required = true } } },
             [2] = { outputItemID = 9999, quantityMin = 1, quantityMax = 1, reagentSlotSchematics = {} },
+            [3] = { outputItemID = 2582, quantityMin = 1, quantityMax = 1, reagentSlotSchematics = { { reagents = {}, quantityRequired = 1, reagentType = 1, required = true } } },
         }
-        env.C_TradeSkillUI = { IsTradeSkillReady = function() return true end, GetAllRecipeIDs = function() return { 1, 2 } end,
-            GetRecipeInfo = function(id) return { recipeID = id, name = (id == 1) and "Heavy Linen Bandage" or "Other", learned = (id == 1) } end,
+        env.C_TradeSkillUI = { IsTradeSkillReady = function() return true end, GetAllRecipeIDs = function() return { 1, 2, 3 } end,
+            GetRecipeInfo = function(id) return { recipeID = id, name = (id == 1) and "Heavy Linen Bandage" or "Other", learned = (id ~= 2) } end,
             GetRecipeSchematic = function(id) return schem[id] end,
             GetBaseProfessionInfo = function() return { professionName = "First Aid" } end }
         ns.GuideUnlocked = function() return false end
@@ -11477,6 +11479,13 @@ try("gold D: crafting for profit", function()
         local char = ns.root.goldChars and ns.root.goldChars[me]
         local recs = char and char.recipes
         if type(recs) ~= "table" or type(recs[1]) ~= "table" or recs[2] ~= nil then error("only the learned recipe is kept") end
+        if not recs[3] or recs[3].incomplete ~= true or recs[1].incomplete ~= nil then error("a reagent that cannot be read marks the recipe") end
+        -- someone else's list, a guild's or an NPC's crafting: not read
+        for _, f in ipairs({ "IsTradeSkillLinked", "IsTradeSkillGuild", "IsNPCCrafting" }) do
+            env.C_TradeSkillUI[f] = function() return true end
+            if ns.GoldRecipesRead() ~= false then error("not your own list: " .. f) end
+            env.C_TradeSkillUI[f] = nil
+        end
         local r1 = recs[1]
         if r1.name ~= "Heavy Linen Bandage" or r1.out ~= 2581 or r1.nMin ~= 1 or r1.nMax ~= 1 or r1.prof ~= "First Aid" or r1.day ~= today
             or #r1.reagents ~= 1 or r1.reagents[1].id ~= 2589 or r1.reagents[1].need ~= 2 then error("the recipe as kept") end
@@ -11488,6 +11497,42 @@ try("gold D: crafting for profit", function()
         recs = ns.root.goldChars[me].recipes
         if recs[77] ~= nil or recs[78] == nil or recs[1] == nil then error("the profession's old entries are replaced") end
         recs[78] = nil
+        -- at most 600, a fight in the middle of the walk, and another profession opened during it
+        local T = env.C_TradeSkillUI
+        local keepIds, keepSchem, keepBase = T.GetAllRecipeIDs, T.GetRecipeSchematic, T.GetBaseProfessionInfo
+        local bigIds = {}
+        for i = 1, 700 do bigIds[i] = 1000 + i end
+        T.GetAllRecipeIDs = function() return bigIds end
+        T.GetRecipeSchematic = function(id) return schem[id] or schem[1] end
+        local t = 0
+        env.debugprofilestop = function() t = t + 0.01; return t end
+        ns.GoldRecipesRead()
+        ns.GoldRunSlice()
+        if not ns.GoldBusy("recipes") then error("700 recipes take more than one slice") end
+        fireEvent("PLAYER_REGEN_DISABLED")
+        for _ = 1, 5 do ns.GoldRunSlice() end
+        if not ns.GoldBusy("recipes") or ns.root.goldChars[me].recipes[1001] ~= nil then error("nothing runs in a fight that starts mid-read") end
+        fireEvent("PLAYER_REGEN_ENABLED")
+        Settle()
+        local n = 0
+        for _ in pairs(ns.root.goldChars[me].recipes) do n = n + 1 end
+        if n ~= 600 or ns.root.goldChars[me].recipes[1001] == nil then error("at most 600 recipes: " .. n) end
+        ns.root.goldChars[me].recipes = {}
+        ns.GoldRecipesRead()
+        ns.GoldRunSlice()
+        T.GetBaseProfessionInfo = function() return { professionName = "Cooking" } end
+        T.GetAllRecipeIDs = function() return { 1 } end
+        fireEvent("TRADE_SKILL_LIST_UPDATE"); runTimers()
+        Settle(); runTimers(); Settle()
+        recs = ns.root.goldChars[me].recipes
+        if recs[1001] ~= nil or not recs[1] or recs[1].prof ~= "Cooking" then error("the read that saw the profession change is dropped, and the new one read after it") end
+        env.debugprofilestop = keep.clock
+        T.GetAllRecipeIDs, T.GetRecipeSchematic, T.GetBaseProfessionInfo = keepIds, keepSchem, keepBase
+        ns.root.goldChars[me].recipes = {}
+        ns.GoldRecipesRead(); Settle()
+        recs = ns.root.goldChars[me].recipes
+        r1 = recs[1]
+        if not r1 or r1.prof ~= "First Aid" then error("read again") end
         -- the margin: the cheaper of the auction and a vendor for reagents, the house's cut off the sale
         local names = { [2581] = "Heavy Linen Bandage", [2589] = "Linen Cloth" }
         ns.GetItemInfo = function(self, id) return names[id], nil, 1, nil, nil, nil, nil, nil, nil, nil, 1 end
@@ -11497,10 +11542,9 @@ try("gold D: crafting for profit", function()
         local m, c, s, d = ns.GoldCraftMargin(r1, today)
         if m ~= 185 or c ~= 100 or s ~= 285 or d ~= today then error("margin: " .. tostring(m) .. " " .. tostring(c) .. " " .. tostring(s) .. " " .. tostring(d)) end
         -- the idea, with its shopping list
-        ns.ItemOwners = function(self, link)
-            if tostring(link):find("2589", 1, true) then return { [me] = { bags = 1, bank = 0, guild = 0 }, ["Alt - Realm"] = { bags = 2, bank = 0, guild = 0 } }, me end
-            return nil, me
-        end
+        -- the other characters' counts come from the saved bags, a slice at a time, never ns:ItemOwners's index
+        ns.ItemOwners = function() error("ns:ItemOwners is not asked in a slice") end
+        ns.root.inventory = { chars = { [me] = { bags = { { "|Hitem:2589::|h", 1 } } }, ["Alt - Realm"] = { bags = { { "|Hitem:2589::|h", 1 } }, bank = { { "|Hitem:2589::|h", 1 }, { "|Hitem:4306::|h", 9 } } } }, guilds = {} }
         env.C_Item.GetItemCount = function(id) if id == 2589 then return 1 end return 0 end
         local ctx = ns.GoldContext("window")
         local got = {}
@@ -11516,6 +11560,20 @@ try("gold D: crafting for profit", function()
         local st = idea.steps or {}
         if not st[1] or st[1].text ~= "Buy 3 × Linen Cloth" or st[#st].text ~= "Sell them at the auction house" or st[#st - 1].text ~= "Make 3 × Heavy Linen Bandage" then
             error("the steps: " .. tostring(st[1] and st[1].text)) end
+        if tostring(idea.detail[#idea.detail].left):find("No recent scan", 1, true) then error("a fresh count of listings is used") end
+        -- a count of listings from an old scan: one, and the detail says so
+        entries[2581].listedDay = 20261115
+        got = {}
+        ns.GoldCraftIdeas(ctx, function(i) got[#got + 1] = i end, recs)
+        if #got ~= 1 or got[1].total ~= 185 or got[1].minutes ~= 6 or not tostring(got[1].detail[#got[1].detail].left):find("No recent scan says how many are listed", 1, true) then
+            error("an old count of listings: " .. tostring(got[1] and got[1].total)) end
+        entries[2581].listedDay = today
+        -- an unreadable reagent, or none at all: never priced, even with the product worth a lot
+        entries[2582] = { price = 100000, day = today, listed = 12, listedDay = today }
+        local um, uwhy = ns.GoldCraftMargin(recs[3], today)
+        if um ~= nil or uwhy ~= "unpriced" then error("an unreadable reagent: " .. tostring(um)) end
+        um, uwhy = ns.GoldCraftMargin({ out = 2582, nMin = 1, nMax = 1, reagents = {} }, today)
+        if um ~= nil or uwhy ~= "unpriced" then error("no reagents at all: " .. tostring(um)) end
         -- through the source
         local ideas = ns.GoldCollectNow(ctx)
         if #ideas ~= 1 or ideas[1].id ~= idea.id then error("the craft source adds it: " .. #ideas) end
@@ -11551,6 +11609,8 @@ try("gold D: crafting for profit", function()
     end)
     ns.GuideUnlocked, env.InCombatLockdown, env.C_TradeSkillUI, env.C_Item.GetItemCount = keep.unlocked, keep.combat, keep.T, keep.count
     ns.ItemOwners, ns.PriceEntry, ns.GetItemInfo, ns.Today, ns.GoldVendorBuy, ns.root.goldChars = keep.owners, keep.entry, keep.info, keep.today, keep.vbuy, keep.chars
+    ns.root.inventory, env.debugprofilestop = keep.inv, keep.clock
+    fireEvent("PLAYER_REGEN_ENABLED")
     for key, fn in pairs(keep.sources or {}) do ns.GoldRegister(key, fn) end
     if not ok then error(err, 0) end
 end)
@@ -11571,7 +11631,7 @@ try("gold D: auction flips", function()
         -- a usual price of 10000 over `days` days, the lowest `p` on `day`, `listed` in the last scan
         local function Entry(p, day, days, listed)
             local hist = {}
-            for i = 1, days - 1 do hist[20261100 + i] = 10000 end
+            for i = 1, days - 1 do hist[today - i] = 10000 end
             hist[day] = p
             return { price = p, day = day, hist = hist, listed = listed, listedDay = today }
         end
@@ -11590,6 +11650,12 @@ try("gold D: auction flips", function()
         local cases = { { "listed 2", Entry(5000, today, 6, 2) }, { "p 7000", Entry(7000, today, 6, 4) }, { "4 days", Entry(5000, today, 4, 4) },
             { "yesterday", Entry(5000, 20261124, 6, 4) } }
         for _, c in ipairs(cases) do if #Flips({ [8] = c[2] }) ~= 0 then error("no flip: " .. c[1]) end end
+        local old = Entry(5000, today, 1, 4)
+        for d = 20260601, 20260605 do old.hist[d] = 10000 end
+        if #Flips({ [8] = old }) ~= 0 then error("no flip on months-old history") end
+        local mixed = Entry(5000, today, 4, 4)
+        for d = 20261101, 20261102 do mixed.hist[d] = 10000 end
+        if #Flips({ [8] = mixed }) ~= 0 then error("no flip with only 3 recent days before today") end
         local stale = Entry(5000, today, 6, 4); stale.listedDay = 20261115
         if #Flips({ [8] = stale }) ~= 0 then error("no flip on an old count of listings") end
         if #Flips({ [9] = Entry(5000, today, 6, 4) }) ~= 0 then error("no flip on a grey item") end
