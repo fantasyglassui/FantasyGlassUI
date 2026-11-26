@@ -811,7 +811,8 @@ Draw = function()
     panel.extra:SetShown(#extra > 0)
     panel.extra:ClearAllPoints()
     panel.extra:SetPoint("TOPLEFT", 12, -92 - (skipped and 13 or 0) - (talents and 13 or 0) - (riding and 13 or 0) - (rep and 13 or 0) - (moved and 13 or 0) - (classq and 13 or 0) - #advice * 13)
-    panel:SetHeight(118 + (skipped and 13 or 0) + (talents and 13 or 0) + (riding and 13 or 0) + (rep and 13 or 0) + (moved and 13 or 0) + (classq and 13 or 0) + #advice * 13 + #extra * 13)
+    local h = 118 + (skipped and 13 or 0) + (talents and 13 or 0) + (riding and 13 or 0) + (rep and 13 or 0) + (moved and 13 or 0) + (classq and 13 or 0) + #advice * 13 + #extra * 13
+    if h ~= panel.drawnHeight then panel.drawnHeight = h; panel:SetHeight(h) end   -- (only when it changes: a resize redraws the frame)
     panel.count:SetText(math.min(at, #steps) .. "/" .. #steps)
     local step = steps[at]
     if panel.stepButton then                        -- (it takes the mouse only while a planned step with a menu is shown)
@@ -820,6 +821,7 @@ Draw = function()
     if panel.more then                              -- (the panel's menu: only while following the plan and some entry is there)
         panel.more:SetShown(Planned(st) and #PanelEntries(step) > 0)
     end
+    if panel.again then panel.again:SetShown(Planned(st) and ns.PlannerReplan ~= nil) end   -- (Plan again: only while following the plan)
     if step then
         local kind = ns.guideKinds[step.kind]
         panel.badge:SetText(kind[1])
@@ -942,6 +944,9 @@ function ns:GuideShowPanel()
         back:SetPoint("BOTTOMLEFT", 8, 6)
         local skip = ns:CreateButton(panel, ">", 22, 18, function() ns:GuideSkip(false) end)
         skip:SetPoint("LEFT", back, "RIGHT", 4, 0)
+        panel.again = ns:CreateButton(panel, "Plan again", 72, 18, function() ns:GuidePlanAgain() end)
+        panel.again:SetPoint("LEFT", skip, "RIGHT", 4, 0)
+        panel.again:Hide()
         local list = ns:CreateButton(panel, "Guides", 64, 18, function() ns:GuideList() end)
         list:SetPoint("BOTTOMRIGHT", -8, 6)
         panel.more = ns:CreateButton(panel, "...", 22, 18, function()   -- (the panel's menu: GuideRegisterAction("panel", ...))
@@ -951,18 +956,26 @@ function ns:GuideShowPanel()
         end)
         panel.more:SetPoint("RIGHT", list, "LEFT", -4, 0)
         panel.more:Hide()
-        for _, def in ipairs({ { back, "Back one step" }, { skip, "Tick this step off and move on" }, { list, "Your guides: follow another, record, write or paste one" }, { panel.talentButton, "Open your talent builds" } }) do
+        for _, def in ipairs({ { back, "Back one step" }, { skip, "Tick this step off and move on" }, { list, "Your guides: follow another, record, write or paste one" }, { panel.talentButton, "Open your talent builds" }, { panel.again, "Plan the route again from where you are now" } }) do
             def[1]:HookScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine(ns:Tr(def[2]), 1, 1, 1); GameTooltip:Show() end)
             def[1]:HookScript("OnLeave", function() GameTooltip:Hide() end)
         end
         local entry = ns:RegisterMovable(panel, "questGuide", "Quest guide")
         if type(entry) == "table" then entry.offPage = true end
     end
+    panel.drawnHeight = nil                         -- (shown afresh: its height is set once more; a redraw sets it only when it changes)
     panel:Show()
     Draw()
     return panel
 end
 function ns:GuidePanelShown() return (panel and ns.Yes(panel:IsShown())) or false end
+-- Plan the route again from where you are (the panel's button, the key binding): no preview, your pace mark
+-- kept. A "replan" hook may refuse it (a duo friend's sends its state, so the leader plans again).
+function ns:GuidePlanAgain()
+    local st = State()
+    if not (st and Planned(st) and ns:GuideOn() and ns.PlannerReplan) then return false end
+    return Hook("again", ns.PlannerReplan, ns, "again") == true
+end
 
 -- Recording: play as usual and every quest you take, finish and hand in becomes a step -----------
 local rec
@@ -1139,6 +1152,11 @@ end
 function ns:GuideList()
     local st = State()
     local lines = {}
+    if ns:GuideUnlocked() and ns.PlannerStart then                -- (the planned route first: following it starts a plan)
+        local mine = st and Planned(st)
+        lines[1] = { left = ns:Tr("Plan my route") .. (mine and ("  |cff33ff66" .. ns:Tr("following") .. "|r") or ""), color = mine and { 1, 0.82, 0.3 } or nil,
+            click = function() ns:GuideFollow(ns.GUIDE_PLANNED); ns:GuideList() end }
+    end
     for _, name in ipairs(ns:GuideNames()) do
         local guide = ns:GuideGet(name)
         local mine = st and st.name == name

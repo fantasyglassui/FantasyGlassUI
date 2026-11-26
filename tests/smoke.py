@@ -18423,6 +18423,83 @@ try("13.6 leftovers C: moving zones in words", function()
     ns.GuideUnlocked, ns.db.plannerWhy, ns.root.guideState, ns.GuideHere = saved.unlocked, saved.why, saved.state, saved.here
     if not ok then error(err, 0) end
 end)
+try("13.6 leftovers C: plan again and plan my route", function()
+    local saved = { unlocked = ns.GuideUnlocked, state = ns.root.guideState, guides = ns.root.guides, start = ns.PlannerStart, show = ns.ShowList,
+        queued = ns.plannerQueued, reason = ns.plannerReason, key = ns.root.guideKey, errors = #ns.errors }
+    ns.GuideUnlocked = function() return true end
+    ns.root.guides = { Written = { name = "Written", steps = { { kind = "note", text = "a" }, { kind = "note", text = "b" } } } }
+    local function click(b, ...)
+        local f = b:GetScript("OnClick")
+        if type(f) ~= "function" then for _, h in ipairs(handlers) do if h.self == b and h.name == "OnClick" then f = h.fn end end end
+        f(b, ...)
+    end
+    local ok, err = pcall(function()
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "planned" } } }, {})
+        ns:PlannerStop()
+        local panel = ns:GuideShowPanel()
+        if not panel.again then error("the panel has a Plan again button") end
+        local shown, heights = nil, 0
+        rawset(panel.again, "SetShown", function(_, v) shown = v end)
+        ns:GuideRedraw()
+        if shown ~= true then error("shown while following the plan") end
+        -- its click plans again from here: no preview (no fresh start), your pace mark kept
+        local starts = 0
+        ns.PlannerStart = function(...) starts = starts + 1; return saved.start(...) end
+        ns.plannerQueued, ns.plannerReason = false, nil
+        click(panel.again)
+        if ns.plannerQueued ~= true or ns.plannerReason ~= "again" or starts ~= 0 then error("Plan again replans: " .. tostring(ns.plannerReason) .. ", starts " .. starts) end
+        -- a "replan" hook that refuses (a duo friend's): nothing changes, no error
+        ns:PlannerStop()
+        ns.plannerQueued, ns.plannerReason = false, nil
+        ns.PlannerHook("replan", "test6c", function() return false end)
+        click(panel.again)
+        ns.PlannerHook("replan", "test6c", nil)
+        if ns.plannerQueued ~= false or ns.plannerReason ~= nil then error("a refused replan changes nothing") end
+        -- the height is set only when it changes
+        rawset(panel, "SetHeight", function() heights = heights + 1 end)
+        ns.GuideRegisterLine("test6c", function() return "one more line" end)
+        ns:GuideRedraw(); ns:GuideRedraw()
+        ns.GuideRegisterLine("test6c", nil)
+        if heights ~= 1 then error("two draws at one height set it once: " .. heights) end
+        ns:GuideRedraw()
+        rawset(panel, "SetHeight", nil)
+        if heights ~= 2 then error("a new height is set: " .. heights) end
+        -- the Guides list: "Plan my route" first, marked while you follow the plan
+        local lines
+        ns.ShowList = function(_, _, _, l) lines = l end
+        ns:GuideList()
+        if not (lines and lines[1].left:find("Plan my route", 1, true) and lines[1].left:find("following", 1, true)) then error("the first line, following: " .. tostring(lines and lines[1].left)) end
+        -- a written guide: no Plan again; the first line is not marked
+        ns:GuideFollow("Written")
+        ns:GuideRedraw()
+        if shown ~= false then error("hidden on a written guide") end
+        ns:GuideList()
+        if not lines[1].left:find("Plan my route", 1, true) or lines[1].left:find("following", 1, true) then error("not following the plan: " .. lines[1].left) end
+        local before, redrawn = lines, 0
+        ns.ShowList = function(_, _, _, l) redrawn = redrawn + 1; lines = l end
+        before[1].click("LeftButton")
+        if starts ~= 1 or redrawn ~= 1 then error("its click starts the plan once and the list redraws: " .. starts .. ", " .. redrawn) end
+        if ns.GuideState().name ~= ns.GUIDE_PLANNED then error("following the plan now") end
+        ns:PlannerStop()
+        -- locked: no such line
+        ns.GuideUnlocked = saved.unlocked
+        ns.root.guideKey = nil
+        ns:GuideList()
+        for _, l in ipairs(lines) do if type(l.left) == "string" and l.left:find("Plan my route", 1, true) then error("locked: no Plan my route") end end
+        ns.GuideUnlocked = function() return true end
+        ns.PlannerStart = nil
+        ns:GuideList()
+        if lines[1].left:find("Plan my route", 1, true) then error("no planner: no line") end
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    ns.ShowList, ns.PlannerStart = saved.show, saved.start
+    ns.GuideRegisterLine("test6c", nil); ns.PlannerHook("replan", "test6c", nil)
+    ns:GuideStop()
+    if ns.HideLists then ns:HideLists() end
+    ns.GuideUnlocked, ns.root.guideState, ns.root.guides, ns.root.guideKey = saved.unlocked, saved.state, saved.guides, saved.key
+    ns.plannerQueued, ns.plannerReason = saved.queued, saved.reason
+    if not ok then error(err, 0) end
+end)
 -- batch 6 tests C (route): end
 -- batch 6 tests D (leftovers): begin
 -- batch 6 tests D (leftovers): end
