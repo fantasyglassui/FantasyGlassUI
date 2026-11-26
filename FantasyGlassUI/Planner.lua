@@ -77,7 +77,7 @@ function ns.PlannerHookCopy(point)
     return out
 end
 -- The hooks a plan uses: the copies ns.PlannerContext took (ctx.hooks), else the lists as they are now.
-ns.PLANNER_HOOK_POINTS = { "context", "window", "xp", "zone", "rank", "route" }
+ns.PLANNER_HOOK_POINTS = { "context", "window", "xp", "zone", "rank", "route", "candidate" }
 function ns.PlannerHooksFor(ctx, point)
     local own = type(ctx) == "table" and type(ctx.hooks) == "table" and ctx.hooks[point]
     return type(own) == "table" and own or hooks[point] or NONE
@@ -85,7 +85,7 @@ end
 
 -- Does every "candidate" hook let this record be kept? (Any hook returning exactly false drops it.)
 local function Keep(rec, ctx, logged)
-    for _, h in ipairs(hooks.candidate or NONE) do
+    for _, h in ipairs(ns.PlannerHooksFor(ctx, "candidate")) do    -- (the run's own copy, like every hook inside a plan)
         if h.fn(rec, ctx, logged) == false then return false end
     end
     return true

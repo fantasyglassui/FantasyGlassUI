@@ -411,7 +411,9 @@ local function QueueState()
     local d = Friend()
     if d and ns.plannerJobKey == "duoState" then d.stateAgain = true; return end
     ns.PlannerJob(function()
-        if not Friend() then return end
+        local mine = Friend()
+        if not mine then return end
+        mine.stateAgain = nil                             -- (a "once more" left by a state job that died or stopped is stale: this one is it)
         local st = ns.PlannerDuoMyState()
         d = Friend()                                      -- (it may have ended meanwhile)
         if not d then return end

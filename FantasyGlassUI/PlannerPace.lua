@@ -573,14 +573,19 @@ end
 -- same whatever was turned on first: the time cut, then the style (which works out its best rate over the hubs
 -- the time left in).
 ------------------------------------------------------------------------------------------
+-- The two flags are frozen into the plan's context when it starts (ctx.paceTimed, ctx.paceStyled): a time
+-- limit set or cleared, or a slider moved, mid-run changes the next plan, never the one running.
 local paceTimed, paceStyled = false, false
 local function ContextPace(ctx)
-    if paceTimed then ContextTime(ctx) end
-    if paceStyled then ContextStyle(ctx) end
+    ctx.paceTimed, ctx.paceStyled = paceTimed, paceStyled
+    if ctx.paceTimed then ContextTime(ctx) end
+    if ctx.paceStyled then ContextStyle(ctx) end
 end
 local function RankPace(ranked, c, info)
-    if paceTimed then RankTime(ranked, c, info) end
-    if paceStyled then RankStyle(ranked, c, info) end
+    local timed, styled = paceTimed, paceStyled
+    if type(c) == "table" and c.paceTimed ~= nil then timed, styled = c.paceTimed, c.paceStyled end
+    if timed then RankTime(ranked, c, info) end
+    if styled then RankStyle(ranked, c, info) end
 end
 ns.PlannerPaceHooks = { time = { context = ContextTime, rank = RankTime, route = RouteTime },
                           style = { context = ContextStyle, window = WindowStyle, rank = RankStyle },

@@ -15579,6 +15579,23 @@ try("13.5 together B: review fixes", function()
             if kd == "state" and not stateIds[id] then stateIds[id] = true; nStates = nStates + 1 end
         end
         if nStates ~= 2 then error("asked mid-job: two states: " .. nStates) end
+        -- a state job that dies after a "once more" leaves nothing behind: the next job sends one state (merge fix)
+        local realState = ns.PlannerDuoMyState
+        local errorsBefore = #ns.errors
+        ns.PlannerDuoMyState = function() ns.PlannerDuoQueueState(); error("state job dies") end
+        ns.PlannerDuoQueueState(); frames()
+        ns.PlannerDuoMyState = realState
+        if not (ns.plannerDuo and ns.plannerDuo.stateAgain == true and #ns.errors == errorsBefore + 1) then error("the job asked once more, then died") end
+        while #ns.errors > errorsBefore do table.remove(ns.errors) end
+        before = #sends
+        ns.PlannerDuoQueueState()
+        frames(); flush(); ns.PlannerDuoTick(); frames(); flush(); clock = clock + 3; ns.PlannerDuoTick(); frames(); flush()
+        stateIds, nStates = {}, 0
+        for i = before + 1, #sends do
+            local id, _, _, kd = ns.ParseSharePiece(sends[i].text)
+            if kd == "state" and not stateIds[id] then stateIds[id] = true; nStates = nStates + 1 end
+        end
+        if nStates ~= 1 or ns.plannerDuo.stateAgain or ns.plannerDuo.stateAt then error("after a dead job: one state, no extra: " .. nStates) end
         -- "Plan my route": the hook after the duo's is still asked
         local asked = {}
         ns.PlannerHook("replan", "reviewTest", function(why) asked[#asked + 1] = why end)
@@ -15787,6 +15804,198 @@ try("13.5 together C: the plan code", function()
     if not ok then error(err, 0) end
 end)
 -- batch 5 tests C (code): end
+-- batch 5: the three groups on one plan (Task 7)
+try("13.5 together: together", function()
+    local CI = env.C_ChatInfo
+    local saved = { on = ns.GuideOn, here = ns.GuideHere, unlocked = ns.GuideUnlocked, raw = ns.PrintRaw, show = ns.ShowList, source = ns.PlannerSource,
+                    guideState = ns.root.guideState, guides = ns.root.guides, key = ns.root.guideKey, planner = ns.root.planner, map = env.C_Map,
+                    level = env.UnitLevel, name = env.UnitName, time = env.GetTime, combat = env.InCombatLockdown, context = ns.PlannerContext,
+                    send = CI.SendAddonMessage, sendChat = rawget(CI, "SendChatMessage"), lock = CI.InChatMessagingLockdown, gSendChat = rawget(env, "SendChatMessage"),
+                    chat = rawget(env, "ChatFrameUtil"), members = rawget(env, "GetNumGroupMembers"), raid = env.IsInRaid,
+                    group = ns.db.plannerGroup, find = ns.db.plannerFindGroup, lfg = ns.db.plannerLFGChannel, ask = ns.db.plannerDuoAsk, duo = ns.plannerDuo, errors = #ns.errors }
+    local addonSends, chatSends, opened, clock = {}, 0, {}, 20000
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        ns.GuideOn = function() return true end
+        ns.GuideHere = function() return 1429, 30, 40 end
+        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
+        ns.root.planner, ns.root.guides, ns.root.guideState = {}, {}, {}
+        ns.db.plannerDuoAsk, ns.db.plannerGroup, ns.db.plannerFindGroup, ns.db.plannerLFGChannel = true, "solo", true, ""
+        env.GetTime = function() return clock end
+        env.UnitLevel = function() return 20 end
+        env.UnitName = function(u) if u == "player" then return "Mira" end return "Someone" end
+        env.InCombatLockdown = function() return false end
+        env.GetNumGroupMembers = function() return 2 end
+        env.IsInRaid = function() return false end
+        CI.InChatMessagingLockdown = function() return false end
+        CI.SendAddonMessage = function(prefix, text, channel, target)
+            addonSends[#addonSends + 1] = { prefix = prefix, text = text, channel = channel, target = target }
+            return 0
+        end
+        CI.SendChatMessage = function() chatSends = chatSends + 1 end
+        env.SendChatMessage = function() chatSends = chatSends + 1 end
+        env.ChatFrameUtil = { OpenChat = function(text) opened[#opened + 1] = text end }
+        env.C_Map = setmetatable({ GetMapInfo = function(map) if map == 1429 then return { name = "Elwynn Forest", mapID = map } end end }, { __index = saved.map })
+        local function q(id, extra)
+            local spot = { { map = 1429, x = 30, y = 40 } }
+            local r = { id = id, name = "Q" .. id, level = 20, minLevel = 1, xp = 400, starts = spot, ends = spot, objectives = {}, pre = {}, preAny = {}, exclusive = {},
+                        elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+            for k, v in pairs(extra or {}) do r[k] = v end
+            return r
+        end
+        local recs = { [7001] = q(7001, { name = "Hogger", elite = true }), [7002] = q(7002, { name = "Plain" }) }
+        local source = { kind = "test", ids = function() return { 7001, 7002 } end, quest = function(id) return recs[id] end }
+        ns.PlannerSource = function() return source end
+        if ns.PlannerNeedsGroupReset then ns.PlannerNeedsGroupReset() end
+        ns.PlannerContext = function()
+            local c = { source = source, level = 20, group = "all", inGroup = true, done = function() return false end,
+                        onQuest = function() return false end, flights = {} }
+            c.windowLo, c.windowHi = 16, 22
+            return c
+        end
+        local lists = {}
+        ns.ShowList = function(self, key, title, lines, ...) lists[key] = lines; return saved.show(self, key, title, lines, ...) end
+        ns.PrintRaw = function() end
+        local function addon(text) fireEvent("CHAT_MSG_ADDON", "FGUIPlan", text, "WHISPER", "Leo-Realm") end
+        local function flush() for _ = 1, 120 do ns.PlannerDuoFlush() end end
+        local function frames() for _ = 1, 300 do for i = 1, #handlers do local h = handlers[i]; if h.name == "OnUpdate" then pcall(h.fn, h.self, 0.02) end end end end
+        ns:GuideSetPlan(nil); ns:PlannerStop(); ns.plannerQueued = false
+
+        -- Mira is asked by Leo and plans together (B)
+        addon("D1:ASK:ab31:20")
+        for _, r in ipairs(lists.PlanDuoAsk or {}) do if r.click and r.left:find("Plan together", 1, true) then r.click() end end
+        frames(); flush()
+        if ns.PlannerDuoRole() ~= "friend" or ns.PlannerDuoPartner() ~= "Leo" then error("Mira plans with Leo: " .. tostring(ns.PlannerDuoRole())) end
+        -- Leo's plan: an elite quest first
+        local steps = { ns.GuideParseLine("accept 7001 Hogger @ 1429:24.5,79.6"), ns.GuideParseLine("accept 7002 Plain @ 1429:30,30"),
+                        ns.GuideParseLine("turnin 7001 @ 1429:24.5,79.6") }
+        if not (steps[1] and steps[2] and steps[3]) then error("the leader's steps parse") end
+        local text = ns.PlannerDuoPlanText({ name = ns.GUIDE_PLANNED, steps = steps }, { zone = 1429, fromLevel = 20, toLevel = 21 }, 1)
+        local parts = ns.ShareChunks(text)
+        for i, p in ipairs(parts) do addon(string.format("SS:ab31z1:%d:%d:plan:%s", i, #parts, p)) end
+        flush()
+        local guide = ns:GuideGet(ns.GUIDE_PLANNED)
+        local st = ns.GuideState()
+        if not (guide and #guide.steps == 3 and st.name == ns.GUIDE_PLANNED) then error("Mira follows Leo's plan") end
+
+        -- find a group (A) on the friend's side, in Solo: the leader's setting made the plan
+        local at = tonumber(st.at) or 1
+        local step = ns.PlannerFindGroupStep(st, guide.steps, at)
+        if not (step and step.quest == 7001) then error("the friend's first step is a group quest") end
+        if ns.PlannerGroupLine(st, guide.steps, at) ~= "Group quest: Hogger" then error("the panel line: " .. tostring(ns.PlannerGroupLine(st, guide.steps, at))) end
+        local clicked
+        for _, e in ipairs(ns.GuidePanelEntries(step)) do if e[1] == "Find a group" then e[2](); clicked = true end end
+        if not clicked then error("the panel offers Find a group") end
+        if #opened ~= 1 or opened[1] ~= "LFG Hogger, Elwynn Forest" then error("the line goes into the chat box: " .. table.concat(opened, ";")) end
+
+        -- the friend's received plan as a code (C)
+        local code = ns.PlannerPlanCode(guide, st.summary)
+        local back, why = ns.PlannerReadPlanCode(code)
+        if not (back and type(back.st) == "table" and #back.st == #guide.steps) then error("the code reads back with every step: " .. tostring(why)) end
+
+        -- nothing in public chat; every add-on message a FGUIPlan whisper to Leo
+        if chatSends ~= 0 then error("SendChatMessage called " .. chatSends .. " times") end
+        if #addonSends == 0 then error("the friend answered Leo") end
+        for _, s in ipairs(addonSends) do
+            if s.prefix ~= "FGUIPlan" or s.channel ~= "WHISPER" or ns.GroupShortName(s.target) ~= "Leo" then
+                error("a message not to the partner: " .. tostring(s.prefix) .. " " .. tostring(s.channel) .. " " .. tostring(s.target))
+            end
+        end
+        if #ns.errors ~= saved.errors then error("no errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    if ns.plannerDuo then ns:PlannerDuoEnd(nil, true, true) end
+    for _ = 1, 50 do ns.PlannerDuoFlush() end
+    ns.PlannerDuoTick()
+    ns:PlannerStop(); ns.plannerQueued = false
+    ns:GuideSetPlan(nil)
+    if ns.HideLists then ns:HideLists() end
+    ns.GuideOn, ns.GuideHere, ns.GuideUnlocked, ns.PrintRaw, ns.ShowList, ns.PlannerSource, ns.PlannerContext = saved.on, saved.here, saved.unlocked, saved.raw, saved.show, saved.source, saved.context
+    ns.root.guideState, ns.root.guides, ns.root.guideKey, ns.root.planner, env.C_Map = saved.guideState, saved.guides, saved.key, saved.planner, saved.map
+    env.UnitLevel, env.UnitName, env.GetTime, env.InCombatLockdown, env.IsInRaid = saved.level, saved.name, saved.time, saved.combat, saved.raid
+    CI.SendAddonMessage, CI.InChatMessagingLockdown = saved.send, saved.lock
+    rawset(CI, "SendChatMessage", saved.sendChat); rawset(env, "SendChatMessage", saved.gSendChat)
+    rawset(env, "ChatFrameUtil", saved.chat); rawset(env, "GetNumGroupMembers", saved.members)
+    ns.db.plannerGroup, ns.db.plannerFindGroup, ns.db.plannerLFGChannel, ns.db.plannerDuoAsk, ns.plannerDuo = saved.group, saved.find, saved.lfg, saved.ask, saved.duo
+    if ns.PlannerNeedsGroupReset then ns.PlannerNeedsGroupReset() end
+    while #ns.errors > saved.errors do table.remove(ns.errors) end
+    if not ok then error(err, 0) end
+end)
+-- batch 4's final re-review, carried into the merge: the pace flags frozen per run, and a map mark's match
+try("13.5 together: batch 4 leftovers", function()
+    local saved = { unlocked = ns.GuideUnlocked, planner = ns.root.planner, time = env.time, worldPos = ns.PlannerWorldPos, fromHere = ns.plannerFromHere }
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        ns.root.planner = {}
+        local now = 1800000000
+        env.time = function() return now end
+        -- a run starts with a time limit and a story style: both frozen into its context
+        local rec = ns.PlannerCharRecord(true)
+        rec.playUntil, rec.weights = now + 1800, { speed = 50, safety = 0, story = 50 }
+        ns.PlannerPaceSync()
+        local P = ns.PlannerPaceHooks.pace
+        local ctx = { level = 14 }
+        P.context(ctx)
+        if not (ctx.paceTimed == true and ctx.paceStyled == true and ctx.timeLeft and type(ctx.weights) == "table") then error("the run's flags are frozen when it starts") end
+        -- mid-run the limit is cleared and the sliders go back to speed: this run still cuts by time and weighs by style
+        rec.playUntil, rec.weights = nil, nil
+        ns.PlannerPaceSync()
+        local function ranked() return { { score = 1, rate = 10, travel = 0, hub = { map = 1, x = 1, y = 1, seconds = 5000 } },
+                                         { score = 1, rate = 5, travel = 0, hub = { map = 1, x = 2, y = 2, seconds = 10 } } } end
+        local r = ranked()
+        P.rank(r, ctx, { round = 1, horizon = 6, seconds = 0 })
+        if r[1].score ~= -1 then error("the time cut stays on for the run it started with") end
+        if type(r[2].parts) ~= "table" then error("the style stays on for the run it started with") end
+        -- the next run has both off
+        local nextCtx = { level = 14 }
+        P.context(nextCtx)
+        if nextCtx.paceTimed ~= false or nextCtx.paceStyled ~= false or nextCtx.timeLeft then error("the next run has the flags as they are now") end
+        -- and the other way round: a run frozen with both off is not changed by turning them on
+        rec.playUntil, rec.weights = now + 1800, { speed = 50, safety = 0, story = 50 }
+        ns.PlannerPaceSync()
+        local off = { level = 14, paceTimed = false, paceStyled = false, timeLeft = 10, weights = { speed = 50, safety = 0, story = 50 } }
+        r = ranked()
+        P.rank(r, off, { round = 1, horizon = 6, seconds = 0 })
+        if r[1].score ~= 1 or r[2].parts ~= nil then error("a run that started with both off stays so") end
+        rec.playUntil, rec.weights = nil, nil
+        ns.PlannerPaceSync()
+
+        -- plan from here: a mark within 0.051 of a hub (0-100) picks that hub, one 0.06 away does not
+        ns.PlannerWorldPos = nil                              -- (the match by the mark's place only, not the yards around it)
+        local mapRank
+        for _, h in ipairs(ns.PlannerHookList("rank")) do if h.key == "map" then mapRank = h.fn end end
+        if not mapRank then error("the map's rank hook") end
+        local function picks(dx, dy)
+            ns.plannerFromHere = { map = 1429, x = 30 + dx, y = 40 + dy, at = env.GetTime() }
+            local list = { { score = 1, rate = 1, hub = { map = 1429, x = 30, y = 40 } } }
+            mapRank(list, {}, { round = 1 })
+            return list[1].first == 3
+        end
+        if not picks(0.05, 0.05) or not picks(-0.05, -0.05) or not picks(0, 0) then error("a mark within 0.051 picks the hub") end
+        if picks(0.06, 0) or picks(0, 0.06) or picks(-0.06, 0) then error("a mark 0.06 away does not") end
+
+        -- the "candidate" hooks a plan asks are the copies its context took, like every other hook inside a plan (merge fix)
+        local rec9 = { id = 9101, name = "Q9101", level = 14, minLevel = 1, xp = 100, starts = {}, ends = {}, objectives = {}, pre = {}, preAny = {}, exclusive = {},
+                       elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+        local src = { kind = "test", ids = function() return { 9101 } end, quest = function(id) if id == 9101 then return rec9 end end }
+        local function cands(hooks)
+            local c = { source = src, level = 14, group = "all", inGroup = false, done = function() return false end, onQuest = function() return false end, hooks = hooks }
+            local n = 0
+            for _ in ipairs((ns.PlannerCandidates(src, c))) do n = n + 1 end
+            return n
+        end
+        ns.PlannerHook("candidate", "leftovers", function() return false end)
+        local kept, dropped, copied = cands({ candidate = {} }), cands(nil), cands({ candidate = ns.PlannerHookCopy("candidate") })
+        ns.PlannerHook("candidate", "leftovers", nil)
+        if kept ~= 1 or dropped ~= 0 or copied ~= 0 then error("a run asks its own copy of the candidate hooks: " .. kept .. "/" .. dropped .. "/" .. copied) end
+        local found = false
+        for _, point in ipairs(ns.PLANNER_HOOK_POINTS) do if point == "candidate" then found = true end end
+        if not found then error("ns.PlannerContext copies the candidate hooks too") end
+    end)
+    ns.PlannerHook("candidate", "leftovers", nil)
+    ns.GuideUnlocked, ns.root.planner, env.time, ns.PlannerWorldPos, ns.plannerFromHere = saved.unlocked, saved.planner, saved.time, saved.worldPos, saved.fromHere
+    ns.PlannerPaceSync()
+    if not ok then error(err, 0) end
+end)
 
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
