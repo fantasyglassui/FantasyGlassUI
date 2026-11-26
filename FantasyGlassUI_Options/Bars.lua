@@ -292,8 +292,14 @@ local function FeelMapSection(live, y, Replan, T)
         Redraw()
     end)
     hubs:SetPoint("TOPLEFT", 0, y - 26)
-    T.mapLineBox, T.mapHubsBox = line, hubs
-    return y - 52, function()
+    local tomtom = GuideSwitch(live, "Use TomTom's arrow when TomTom is loaded", ns.db.plannerTomTom ~= false, function(v)
+        ns.db.plannerTomTom = v
+        if ns.GuideAdvance then ns:GuideAdvance() end
+    end)
+    tomtom:SetPoint("TOPLEFT", 0, y - 52)
+    T.mapLineBox, T.mapHubsBox, T.tomTomBox = line, hubs, tomtom
+    return y - 78, function()
+        tomtom:SetChecked(ns.db.plannerTomTom ~= false)
         line:SetChecked(ns.db.plannerMapLine ~= false)
         hubs:SetChecked(ns.db.plannerMapHubs ~= false)
     end

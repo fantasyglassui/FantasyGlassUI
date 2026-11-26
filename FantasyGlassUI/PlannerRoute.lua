@@ -126,6 +126,11 @@ local function DrawRep(ctx, q)
     end
 end
 
+-- Is a quest handed in out of the hub's reach (every hand-in that can be placed lies on another continent)? Then it is
+-- not this hub's: no hand-in step, and none of its experience or time (its accept and objectives may still be on
+-- the way; a later plan takes you to where it is handed in). A quest with no hand-in that can be placed is not.
+local function HandedInAway(q, hub) return Nearest(q.ends, hub) == nil and Nearest(q.ends) ~= nil end
+
 -- A hub's loop, in order, with its time: accepts, dos and turnins as { rec, spot }. A quest with a clock
 -- on it is a run of its own (accept if not yet, do, hand in) before anything else in the hub (hub.timed).
 local function HubLoop(hub, ctx)
@@ -138,10 +143,14 @@ local function HubLoop(hub, ctx)
         for k, v in pairs(type(before) == "table" and before or {}) do copy[k] = v end
         ctx.repLeft = copy
     end
+    local away = {}
     for _, q in ipairs(hub.quests) do
-        xp = xp + ns.PlannerQuestXP(q, ctx)
-        if wanted then DrawRep(ctx, q) end
-        t = t + ns.PlannerQuestTime(q, ctx)
+        if HandedInAway(q, hub) then away[q.id] = true end
+        if not away[q.id] then
+            xp = xp + ns.PlannerQuestXP(q, ctx)
+            if wanted then DrawRep(ctx, q) end
+            t = t + ns.PlannerQuestTime(q, ctx)
+        end
         if IsTimed(ctx, q) then timed[#timed + 1] = q else rest[#rest + 1] = q end
     end
     if wanted then ctx.repLeft = before end
@@ -180,13 +189,15 @@ local function HubLoop(hub, ctx)
     for _, d in ipairs(dos) do
         if d.spot then t = t + Walk(at, d.spot, ctx); at = d.spot end
     end
-    for _, q in ipairs(rest) do turnins[#turnins + 1] = { rec = q, spot = Nearest(q.ends, at) } end
+    for _, q in ipairs(rest) do
+        if not away[q.id] then turnins[#turnins + 1] = { rec = q, spot = Nearest(q.ends, at) } end
+    end
     turnins = Sweep(turnins, at)
     for _, e in ipairs(turnins) do
         if e.spot then t = t + Walk(at, e.spot, ctx); at = e.spot end
         t = t + HANDLE
     end
-    hub.accepts, hub.dos, hub.turnins, hub.timed, hub.last = accepts, dos, turnins, runs, at
+    hub.accepts, hub.dos, hub.turnins, hub.timed, hub.last, hub.away = accepts, dos, turnins, runs, at, away
     hub.xp, hub.seconds = xp, max(t, 1)
 end
 
@@ -401,6 +412,76 @@ local function FlightName(state, node)
     for _, f in ipairs(state.flights) do if f.node == node then return Clean(f.name) end end
 end
 
+-- A map's details, or nil (the call is pcall'd: a bad id or a missing API gives nil).
+local function MapInfo(map)
+    local get = C_Map and C_Map.GetMapInfo
+    if type(get) ~= "function" or type(map) ~= "number" then return nil end
+    local ok, info = pcall(get, map)
+    return (ok and type(info) == "table") and info or nil
+end
+local function Readable(s) if type(s) == "string" and not ns:IsSecret(s) then return Clean(s) end end
+local function MapName(map) local info = MapInfo(map); return info and Readable(info.name) or nil end
+
+-- The zone (a mapType 3 map) a spot lies in: on a continent map (where flight points are kept) the map at that
+-- spot, then up through the parents (a city or a cave map to its zone). Nil when it can't be told.
+function ns.PlannerZoneAt(map, x, y)
+    map = tonumber(map)
+    local info = MapInfo(map)
+    if not info then return nil end
+    if tonumber(info.mapType) == 2 then
+        local at = C_Map and C_Map.GetMapInfoAtPosition
+        x, y = tonumber(x), tonumber(y)
+        if type(at) ~= "function" or not (x and y) then return nil end
+        local ok, here = pcall(at, map, x / 100, y / 100)
+        local id = ok and type(here) == "table" and here.mapID or nil
+        map = (id ~= nil and not ns:IsSecret(id)) and tonumber(id) or nil
+        if not map then return nil end
+        info = MapInfo(map)
+        if not info then return nil end
+    end
+    for _ = 1, 8 do
+        local t = tonumber(info.mapType)
+        if t == 3 then return map end
+        local parent = tonumber(info.parentMapID)
+        if not t or t < 3 or not parent or parent == 0 or parent == map then return nil end
+        map = parent
+        info = MapInfo(map)
+        if not info then return nil end
+    end
+end
+
+-- A flight's words: "Go to <zone>: fly to <point>" when it lands in another zone than it takes off from, else
+-- the flight point's name. Nil (the panel's own "Take the flight") when there is nothing to say.
+local function FlyText(state, from, leg)
+    local name = FlightName(state, leg.node)
+    local z1 = from and ns.PlannerZoneAt(from.map, from.x, from.y)
+    local z2 = z1 and ns.PlannerZoneAt(leg.to.map, leg.to.x, leg.to.y)
+    local zone = z2 and z2 ~= z1 and MapName(z2)
+    if not zone then return name end
+    if name then return Clean(format(ns:Tr("Go to %s: fly to %s"), zone, name)) end
+    return Clean(format(ns:Tr("Go to %s: take the flight"), zone))
+end
+
+-- A dock's name: its area's, else its map's.
+local function DockName(dock)
+    if type(dock) ~= "table" then return nil end
+    local get, area = C_Map and C_Map.GetAreaInfo, tonumber(dock.area)
+    if area and type(get) == "function" then
+        local ok, name = pcall(get, area)
+        name = ok and Readable(name) or nil
+        if name then return name end
+    end
+    return MapName(tonumber(dock.map))
+end
+
+-- A crossing's words: "Take the boat (zeppelin) from <dock> to <dock>". Nil (the panel's own words) when a name can't be read.
+local function SailText(leg)
+    local a, b = DockName(leg.from), DockName(leg.at)
+    if not (a and b) then return nil end
+    return Clean(format(ns:Tr(leg.ship == "zeppelin" and "Take the zeppelin from %s to %s" or "Take the boat from %s to %s"), a, b))
+end
+ns.PlannerSailText = SailText                    -- (the guide's arrow says it at the dock)
+
 -- Seconds saved against running the same way, when running is possible at all.
 local function Saves(from, to, seconds, ctx)
     local d = Yards(from, to)
@@ -421,7 +502,7 @@ local function Legs(state, dest, steps)
                 steps[#steps + 1] = Place({ kind = "goto", text = l.node and FlightName(state, l.node) or nil }, l.to)
             end
         elseif l.kind == "fly" then
-            local s = Place({ kind = "fly", node = l.node, text = FlightName(state, l.node) }, state.pos)
+            local s = Place({ kind = "fly", node = l.node, text = FlyText(state, state.pos, l) }, state.pos)
             local saved = Saves(state.pos, l.to, l.seconds, state.tctx)
             if saved then s.why = { saves = saved } end
             steps[#steps + 1] = s
@@ -432,7 +513,7 @@ local function Legs(state, dest, steps)
             steps[#steps + 1] = s
             state.tctx.hearth = nil                      -- one use; it is on cooldown after
         elseif l.kind == "sail" then
-            local s = Place({ kind = "sail", crossing = l.crossing }, state.pos)
+            local s = Place({ kind = "sail", crossing = l.crossing, text = SailText(l) }, state.pos)
             local saved = Saves(state.pos, l.to, l.seconds, state.tctx)
             if saved then s.why = { saves = saved } end
             steps[#steps + 1] = s
@@ -476,7 +557,7 @@ local function Trip(state, dest, steps, between)
     if not dest then return 0 end
     if not state.pos then state.pos = dest; return 0 end
     if ns.PlannerTravel(state.pos, dest, state.tctx) == huge then return nil end
-    local t = 0
+    local t, count, pos, hearth, learned = 0, #steps, state.pos, state.tctx.hearth, {}
     for _ = 1, 4 do
         local f = state.learn and LearnOnWay(state, state.pos, dest, between)
         if not f then break end
@@ -486,9 +567,15 @@ local function Trip(state, dest, steps, between)
         t = t + legs + HANDLE
         steps[#steps + 1] = Place({ kind = "learnflight", node = f.node, text = Clean(f.name) }, spot)
         f.known = true
+        learned[#learned + 1] = f
     end
     local last = Legs(state, dest, steps)
-    return last and t + last or nil
+    if last then return t + last end
+    -- (the end can't be reached from where the detours led: the trip is undone, as if never tried)
+    for i = #steps, count + 1, -1 do steps[i] = nil end
+    for _, f in ipairs(learned) do f.known = false end
+    state.pos, state.tctx.hearth = pos, hearth
+    return nil
 end
 
 local function QuestStep(kind, rec, spot)
@@ -543,10 +630,9 @@ end
 
 local function HubSteps(state, hub, steps, inn, n)
     local t, xp, gone, first, kept = 0, 0, {}, true, 0
-    local function Go(spot)
+    local function Go(spot)                                   -- (the first trip that works is the way into the hub: `first` until then)
         local tt = Trip(state, spot, steps, first)
-        first = false
-        if tt then t = t + tt end
+        if tt then t, first = t + tt, false end
         return tt ~= nil
     end
     local function Do(rec, spot)                              -- (an escort's step says so, and a kill spot you skin at)
@@ -631,15 +717,19 @@ local function HubSteps(state, hub, steps, inn, n)
         end
     end
     for _, e in ipairs(hub.turnins) do
-        if not gone[e.rec.id] and Go(e.spot) then
+        if gone[e.rec.id] then
+            -- (left out above)
+        elseif Go(e.spot) then
             local s = QuestStep("turnin", e.rec, e.spot)
             s.hub = n
             steps[#steps + 1] = s
             t = t + HANDLE
+        else
+            gone[e.rec.id] = true                             -- (its hand-in can't be reached: its experience and time are not counted)
         end
     end
     for _, q in ipairs(hub.quests) do
-        if not gone[q.id] then
+        if not gone[q.id] and not (hub.away and hub.away[q.id]) then
             kept = kept + 1
             t = t + ns.PlannerQuestTime(q, state.ctx)
             local _, extra, real = ns.PlannerQuestXP(q, state.ctx)
@@ -1042,6 +1132,17 @@ end
 ------------------------------------------------------------------------------------------
 -- The live game as the planner's ctx
 ------------------------------------------------------------------------------------------
+-- Quests you skipped a step of on the planned route, this session only (in memory: never the permanent
+-- "never suggest"): left out of the plans made after it, a quest in your log too ("candidate" hook).
+local sessionSkip = {}
+function ns.PlannerSessionSkip(id)
+    if type(id) == "number" then sessionSkip[id] = true end
+end
+function ns.PlannerSessionSkipped(id) return sessionSkip[id] == true end
+function ns.PlannerSessionSkipReset() sessionSkip = {} end
+ns.PlannerHook("candidate", "sessionSkip", function(rec)
+    if type(rec) == "table" and sessionSkip[rec.id] then return false end
+end)
 local HEARTHSTONE = 6948
 
 local function Num(v) if type(v) == "number" and not ns:IsSecret(v) then return v end end

@@ -23,6 +23,7 @@ function ns.WayArrow(px, py, wx, wy, width, height, facing)
 end
 
 local arrow
+local WAY_NEAR, WAY_ARRIVED, ARRIVED_PULSE = 30, 10, 0.3     -- yards: brighter within, there within; the pulse's seconds
 local function Position(map, unit)
     if not (C_Map and C_Map.GetPlayerMapPosition) then return nil end
     local ok, pos = pcall(C_Map.GetPlayerMapPosition, map, unit)
@@ -70,6 +71,12 @@ function ns:SetWaypoint(x, y, label, onMap, quiet)
         arrow.tex:SetSize(36, 36)
         arrow.tex:SetPoint("TOP")
         arrow.tex:SetTexture("Interface\\Minimap\\MinimapArrow")
+        local pulse = arrow:CreateAnimationGroup()                -- (one short pulse when you arrive)
+        local grow = pulse:CreateAnimation("Scale")
+        if grow.SetScaleFrom then grow:SetScaleFrom(1.35, 1.35); grow:SetScaleTo(1, 1) end
+        grow:SetDuration(ARRIVED_PULSE)
+        if grow.SetSmoothing then grow:SetSmoothing("OUT") end
+        arrow.pulse = pulse
         arrow.text = ns:NewText(arrow, 12, "CENTER")
         arrow.text:SetPoint("BOTTOM", 0, 12)
         arrow.name = ns:NewText(arrow, 10, "CENTER")
@@ -87,13 +94,28 @@ function ns:SetWaypoint(x, y, label, onMap, quiet)
             local facing = GetPlayerFacing and GetPlayerFacing()
             if type(facing) ~= "number" or Secret(facing) then facing = 0 end
             local turn, distance = ns.WayArrow(px, py, w.x, w.y, width, height, facing)
-            if distance < 10 and not w.quiet then ns:Print("You have arrived."); ns:ClearWaypoint(true); return end
+            local near = distance <= WAY_NEAR                     -- (the theme's accent, brighter once you are close)
+            if near ~= w.near then w.near = near; ns:Paint(self.tex, "SetVertexColor", "@accent", near and 1 or 0.7) end
+            local now = GetTime and GetTime() or 0
+            -- arrived: one pulse (the guide's waypoint where it counts you there; none at a spot you only pass through)
+            if distance < (w.quiet and ns.GUIDE_NEAR or WAY_ARRIVED) and not w.arrived and not w.passing then
+                w.arrived = true
+                local motion = ns:Motion()
+                if motion and self.pulse then self.pulse:Stop(); self.pulse:Play() end
+                if not w.quiet then ns:Print("You have arrived."); w.leaveAt = now + (motion and ARRIVED_PULSE or 0) end
+            end
+            if w.leaveAt and now >= w.leaveAt then ns:ClearWaypoint(true); return end
             self.tex:Show()
             if self.tex.SetRotation then self.tex:SetRotation(turn) end
             self.text:SetText(format("%d %s", math.floor((tonumber(distance) or 0) + 0.5), ns:Tr("yd")))
         end))
+        ns.waypointArrow = arrow
         local entry = ns:RegisterMovable(arrow, "waypoint", "Waypoint")
         if type(entry) == "table" then entry.offPage = true end        -- (scaled from its own right-click menu in move mode)
+    end
+    if not arrow.tex.suiPlain then                            -- (the gold arrow made grey once, so the accent tint reads true)
+        arrow.tex.suiPlain = true
+        if arrow.tex.SetDesaturated then pcall(arrow.tex.SetDesaturated, arrow.tex, true) end
     end
     arrow.name:SetText(ns.waypoint.label)
     arrow:Show()

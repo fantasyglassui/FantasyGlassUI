@@ -19036,6 +19036,500 @@ try("13.6 leftovers B: timed quests before you take them", function()
 end)
 -- batch 6 tests B (questie): end
 -- batch 6 tests C (route): begin
+try("13.6 leftovers C: moving zones in words", function()
+    local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), unlocked = ns.GuideUnlocked, why = ns.db.plannerWhy,
+        state = ns.root.guideState, errors = #ns.errors }
+    -- Eastern Kingdoms (1415): Wetlands 1437 and Arathi 1417 on it, Undercity 1458; Kalimdor: Dustwallow 1445, Durotar 1411
+    local regions = { [1437] = { 0, 4000, 4000 }, [1417] = { 0, 6000, 2000 }, [1458] = { 0, 1000, 1000 }, [1445] = { 1, 5000, 5000 }, [1411] = { 1, 7000, 2000 } }
+    local infos = { [1415] = { mapID = 1415, name = "Eastern Kingdoms", mapType = 2, parentMapID = 947 },
+        [1437] = { mapID = 1437, name = "Wetlands", mapType = 3, parentMapID = 1415 }, [1417] = { mapID = 1417, name = "Arathi Highlands", mapType = 3, parentMapID = 1415 },
+        [1458] = { mapID = 1458, name = "Undercity", mapType = 3, parentMapID = 1415 }, [1445] = { mapID = 1445, name = "Dustwallow Marsh", mapType = 3, parentMapID = 1414 },
+        [1411] = { mapID = 1411, name = "Durotar", mapType = 3, parentMapID = 1414 } }
+    local areas = { [150] = "Menethil Harbor", [513] = "Theramore Isle", [1637] = "Orgrimmar", [1497] = "Undercity" }
+    local cm = {}
+    for k, v in pairs(saved.map) do cm[k] = v end
+    cm.GetWorldPosFromMapPos = function(map, v)
+        if map == 1415 then return 0, { x = v.x * 10000, y = v.y * 10000 } end      -- (a percent of the continent is 100 yards)
+        local r = regions[map]
+        if r then return r[1], { x = r[2] + v.x * 2000, y = r[3] + v.y * 2000 } end
+    end
+    cm.GetMapInfo = function(map) return infos[map] end
+    cm.GetMapInfoAtPosition = function(map, x, y)
+        if map ~= 1415 then return nil end
+        for id, r in pairs(regions) do
+            if r[1] == 0 and x * 10000 >= r[2] and x * 10000 <= r[2] + 2000 and y * 10000 >= r[3] and y * 10000 <= r[3] + 2000 then return { mapID = id, mapType = 3, name = infos[id].name } end
+        end
+    end
+    cm.GetAreaInfo = function(id) return areas[id] end
+    env.C_Map = cm
+    env.CreateVector2D = function(x, y) return { x = x, y = y } end
+    ns.GuideUnlocked = function() return true end
+    local function rec(id, map, x, y)
+        return { id = id, name = "Quest " .. id, level = 10, minLevel = 1, xp = 3000, starts = { { map = map, x = x, y = y } }, ends = { { map = map, x = x, y = y } },
+            objectives = { { kind = "kill", count = 4, countKnown = true, mobLevel = 10, spots = { { map = map, x = x + 1, y = y + 1 } } } },
+            pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+    end
+    local function route(quest, extra)
+        local c = { source = { kind = "questie", ids = function() return { quest.id } end, quest = function() return quest end },
+            level = 10, group = "solo", speed = 7, faction = "Alliance", done = function() return false end, onQuest = function() return false end,
+            crossings = ns.PLANNER_CROSSINGS, flights = {}, learnFlights = false, pace = 1, flightTime = function() return nil end }
+        for k, v in pairs(extra) do c[k] = v end
+        return ns.PlannerRoute(c)
+    end
+    local function find(guide, kind) for _, st in ipairs(guide.steps) do if st.kind == kind then return st end end end
+    local function kept(st)                                   -- (the text comes back from a guide line)
+        local back = ns.GuideParseLine(ns.GuideLine(st))
+        if not back or back.text ~= st.text then error("the line keeps the text: " .. ns.GuideLine(st)) end
+    end
+    local menethil = { node = 7, map = 1415, x = 50, y = 50, known = true, name = "Menethil Harbor" }
+    local refuge = { node = 16, map = 1415, x = 62, y = 39, known = true, name = "Refuge Pointe" }
+    local arathi = rec(9701, 1417, 12, 90)
+    local ok, err = pcall(function()
+        if ns.PlannerZoneAt(1415, 62, 39) ~= 1417 or ns.PlannerZoneAt(1437, 50, 50) ~= 1437 or ns.PlannerZoneAt(1415, 1, 99) ~= nil or ns.PlannerZoneAt(nil) ~= nil then
+            error("the zone at a spot") end
+        -- Wetlands to Arathi by air: where you are going and how
+        local guide = route(arathi, { here = { map = 1437, x = 50, y = 50 }, flights = { menethil, refuge } })
+        local fly = find(guide, "fly")
+        if not fly or fly.text ~= "Go to Arathi Highlands: fly to Refuge Pointe" then error("a flight into another zone: " .. tostring(fly and fly.text)) end
+        kept(fly)
+        -- Show why: the panel says the step's words and what the flight saves
+        ns.db.plannerWhy = true
+        ns:GuideSetPlan(guide, {})
+        local panel = ns:GuideShowPanel()
+        local said
+        rawset(panel.now, "SetText", function(_, t) said = t end)
+        ns:GuideRedraw()
+        rawset(panel.now, "SetText", nil)
+        if said ~= fly.text .. "  (saves ~3 min)" then error("the panel's step with its why: " .. tostring(said)) end
+        ns:GuideStop()
+        -- a flight within Arathi keeps the flight point's name
+        local stromgarde = { node = 17, map = 1415, x = 76, y = 24, known = true, name = "Stromgarde" }
+        fly = find(route(arathi, { here = { map = 1417, x = 80, y = 20 }, flights = { stromgarde, refuge } }), "fly")
+        if not fly or fly.text ~= "Refuge Pointe" then error("a flight within one zone: " .. tostring(fly and fly.text)) end
+        kept(fly)
+        -- no flight name
+        local nameless = { node = 16, map = 1415, x = 62, y = 39, known = true }
+        fly = find(route(arathi, { here = { map = 1437, x = 50, y = 50 }, flights = { menethil, nameless } }), "fly")
+        if not fly or fly.text ~= "Go to Arathi Highlands: take the flight" then error("no flight name: " .. tostring(fly and fly.text)) end
+        kept(fly)
+        -- a zone whose name can't be read: the flight point's name, never "Go to nil"
+        infos[1417] = nil
+        fly = find(route(arathi, { here = { map = 1437, x = 50, y = 50 }, flights = { menethil, refuge } }), "fly")
+        if not fly or fly.text ~= "Refuge Pointe" then error("an unreadable zone: " .. tostring(fly and fly.text)) end
+        cm.GetMapInfo = function() error("boom") end
+        fly = find(route(arathi, { here = { map = 1437, x = 50, y = 50 }, flights = { menethil, refuge } }), "fly")
+        if not fly or fly.text ~= "Refuge Pointe" then error("a failing map lookup: " .. tostring(fly and fly.text)) end
+        cm.GetMapInfo = function(map) return infos[map] end
+        infos[1417] = { mapID = 1417, name = "Arathi Highlands", mapType = 3, parentMapID = 1415 }
+        -- the boat, with the docks' names
+        local marsh = rec(9702, 1445, 70, 55)
+        local sail = find(route(marsh, { here = { map = 1437, x = 4.9, y = 62.0 } }), "sail")
+        if not sail or sail.crossing ~= "menethil-theramore" or sail.text ~= "Take the boat from Menethil Harbor to Theramore Isle" then error("the boat: " .. tostring(sail and sail.text)) end
+        kept(sail)
+        cm.GetAreaInfo = function() return nil end
+        sail = find(route(marsh, { here = { map = 1437, x = 4.9, y = 62.0 } }), "sail")
+        if not sail or sail.text ~= "Take the boat from Wetlands to Dustwallow Marsh" then error("no dock names: the maps' names: " .. tostring(sail and sail.text)) end
+        kept(sail)
+        cm.GetAreaInfo = function(id) return areas[id] end
+        -- the zeppelin, the other way round
+        local uc = rec(9703, 1458, 60, 60)
+        sail = find(route(uc, { faction = "Horde", here = { map = 1411, x = 50.9, y = 13.8 } }), "sail")
+        if not sail or sail.crossing ~= "orgrimmar-undercity" or sail.text ~= "Take the zeppelin from Orgrimmar to Undercity" then error("the zeppelin: " .. tostring(sail and sail.text)) end
+        kept(sail)
+        local back = route(rec(9704, 1411, 52, 15), { faction = "Horde", here = { map = 1458, x = 60.5, y = 58.5 } })
+        sail = find(back, "sail")
+        if not sail or sail.text ~= "Take the zeppelin from Undercity to Orgrimmar" then error("the zeppelin back: " .. tostring(sail and sail.text)) end
+        for _, c in ipairs(ns.PLANNER_CROSSINGS) do
+            if not (c.a.area and c.b.area and (c.ship == "boat" or c.ship == "zeppelin")) then error("each dock has an area and each crossing a ship: " .. c.id) end
+            if (c.faction == "Horde") ~= (c.ship == "zeppelin") then error("zeppelins for the Horde crossings: " .. c.id) end
+        end
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    ns:GuideStop()
+    env.C_Map = saved.map; rawset(env, "CreateVector2D", saved.vec)
+    ns.GuideUnlocked, ns.db.plannerWhy, ns.root.guideState = saved.unlocked, saved.why, saved.state
+    if not ok then error(err, 0) end
+end)
+try("13.6 leftovers C: plan again and plan my route", function()
+    local saved = { unlocked = ns.GuideUnlocked, state = ns.root.guideState, guides = ns.root.guides, start = ns.PlannerStart, show = ns.ShowList,
+        queued = ns.plannerQueued, reason = ns.plannerReason, key = ns.root.guideKey, errors = #ns.errors }
+    ns.GuideUnlocked = function() return true end
+    ns.root.guides = { Written = { name = "Written", steps = { { kind = "note", text = "a" }, { kind = "note", text = "b" } } } }
+    local function click(b, ...)
+        local f = b:GetScript("OnClick")
+        if type(f) ~= "function" then for _, h in ipairs(handlers) do if h.self == b and h.name == "OnClick" then f = h.fn end end end
+        f(b, ...)
+    end
+    local ok, err = pcall(function()
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "planned" } } }, {})
+        ns:PlannerStop()
+        local panel = ns:GuideShowPanel()
+        if not panel.again then error("the panel has a Plan again button") end
+        local shown, heights = nil, 0
+        rawset(panel.again, "SetShown", function(_, v) shown = v end)
+        ns:GuideRedraw()
+        if shown ~= true then error("shown while following the plan") end
+        -- its click plans again from here: no preview (no fresh start), your pace mark kept
+        local starts = 0
+        ns.PlannerStart = function(...) starts = starts + 1; return saved.start(...) end
+        ns.plannerQueued, ns.plannerReason = false, nil
+        click(panel.again)
+        if ns.plannerQueued ~= true or ns.plannerReason ~= "again" or starts ~= 0 then error("Plan again replans: " .. tostring(ns.plannerReason) .. ", starts " .. starts) end
+        -- a "replan" hook that refuses (a duo friend's): nothing changes, no error
+        ns:PlannerStop()
+        ns.plannerQueued, ns.plannerReason = false, nil
+        ns.PlannerHook("replan", "test6c", function() return false end)
+        click(panel.again)
+        ns.PlannerHook("replan", "test6c", nil)
+        if ns.plannerQueued ~= false or ns.plannerReason ~= nil then error("a refused replan changes nothing") end
+        -- the height is set only when it changes
+        rawset(panel, "SetHeight", function() heights = heights + 1 end)
+        ns.GuideRegisterLine("test6c", function() return "one more line" end)
+        ns:GuideRedraw(); ns:GuideRedraw()
+        ns.GuideRegisterLine("test6c", nil)
+        if heights ~= 1 then error("two draws at one height set it once: " .. heights) end
+        ns:GuideRedraw()
+        rawset(panel, "SetHeight", nil)
+        if heights ~= 2 then error("a new height is set: " .. heights) end
+        -- the Guides list: "Plan my route" first, marked while you follow the plan
+        local lines
+        ns.ShowList = function(_, _, _, l) lines = l end
+        ns:GuideList()
+        if not (lines and lines[1].left:find("Plan my route", 1, true) and lines[1].left:find("following", 1, true)) then error("the first line, following: " .. tostring(lines and lines[1].left)) end
+        local hid, realHide = 0, ns.HideLists
+        ns.HideLists = function() hid = hid + 1 end
+        lines[1].click("LeftButton")
+        ns.HideLists = realHide
+        if hid ~= 1 or starts ~= 0 then error("following the plan already: the click only closes the list: " .. hid .. ", " .. starts) end
+        -- a written guide: no Plan again; the first line is not marked
+        ns:GuideFollow("Written")
+        ns:GuideRedraw()
+        if shown ~= false then error("hidden on a written guide") end
+        ns:GuideList()
+        if not lines[1].left:find("Plan my route", 1, true) or lines[1].left:find("following", 1, true) then error("not following the plan: " .. lines[1].left) end
+        local before, redrawn = lines, 0
+        ns.ShowList = function(_, _, _, l) redrawn = redrawn + 1; lines = l end
+        before[1].click("LeftButton")
+        if starts ~= 1 or redrawn ~= 1 then error("its click starts the plan once and the list redraws: " .. starts .. ", " .. redrawn) end
+        if ns.GuideState().name ~= ns.GUIDE_PLANNED then error("following the plan now") end
+        ns:PlannerStop()
+        -- locked: no such line
+        ns.GuideUnlocked = saved.unlocked
+        ns.root.guideKey = nil
+        ns:GuideList()
+        for _, l in ipairs(lines) do if type(l.left) == "string" and l.left:find("Plan my route", 1, true) then error("locked: no Plan my route") end end
+        ns.GuideUnlocked = function() return true end
+        ns.PlannerStart = nil
+        ns:GuideList()
+        if lines[1].left:find("Plan my route", 1, true) then error("no planner: no line") end
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    ns.ShowList, ns.PlannerStart = saved.show, saved.start
+    ns.GuideRegisterLine("test6c", nil); ns.PlannerHook("replan", "test6c", nil)
+    ns:GuideStop()
+    if ns.HideLists then ns:HideLists() end
+    ns.GuideUnlocked, ns.root.guideState, ns.root.guides, ns.root.guideKey = saved.unlocked, saved.state, saved.guides, saved.key
+    ns.plannerQueued, ns.plannerReason = saved.queued, saved.reason
+    if not ok then error(err, 0) end
+end)
+try("13.6 leftovers C: route and travel leftovers", function()
+    local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), travel = ns.PlannerTravel, timedQ = ns.PlannerTimedQuest, unlocked = ns.GuideUnlocked,
+        taxi = rawget(env, "UnitOnTaxi"), time = env.GetTime, planner = ns.root.planner, nodes = ns.root.plannerNodes, ft = ns.root.plannerFlightTimes,
+        ct = ns.root.plannerCrossTimes, smp = ns.root.plannerTimeSamples, crossings = ns.PLANNER_CROSSINGS, errors = #ns.errors }
+    local pos, clock, taxi = { 1, 10, 10 }, 5000, false
+    local cm = {}
+    for k, v in pairs(saved.map) do cm[k] = v end
+    cm.GetWorldPosFromMapPos = function(map, v)                 -- (map 1: a percent is 10 yards; map 3 on another continent)
+        if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end
+        if map == 3 then return 1, { x = v.x * 1000, y = v.y * 1000 } end
+    end
+    cm.GetBestMapForUnit = function() return pos[1] end
+    cm.GetPlayerMapPosition = function() return { GetXY = function() return pos[2] / 100, pos[3] / 100 end } end
+    env.C_Map = cm
+    env.CreateVector2D = function(x, y) return { x = x, y = y } end
+    env.GetTime = function() return clock end
+    env.UnitOnTaxi = function() return taxi end
+    ns.GuideUnlocked = function() return true end
+    local function rec(id, sx, sy, ends, xp)
+        return { id = id, name = "Quest " .. id, level = 10, minLevel = 1, xp = xp or 3000, starts = { { map = 1, x = sx, y = sy } }, ends = ends or { { map = 1, x = sx, y = sy } },
+            objectives = { { kind = "kill", count = 4, countKnown = true, mobLevel = 10, spots = { { map = 1, x = sx + 1, y = sy + 1 } } } },
+            pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+    end
+    local function route(list, extra)
+        local byId, ids = {}, {}
+        for _, r in ipairs(list) do byId[r.id] = r; ids[#ids + 1] = r.id end
+        local c = { source = { kind = "questie", ids = function() return ids end, quest = function(id) return byId[id] end },
+            level = 10, group = "solo", speed = 7, faction = "Alliance", done = function() return false end, onQuest = function() return false end,
+            crossings = {}, flights = {}, learnFlights = true, pace = 1, flightTime = function() return nil end }
+        for k, v in pairs(extra or {}) do c[k] = v end
+        return ns.PlannerRoute(c)
+    end
+    local function count(guide, kind, quest)
+        local n = 0
+        for _, st in ipairs(guide.steps) do if st.kind == kind and (quest == nil or st.quest == quest) then n = n + 1 end end
+        return n
+    end
+    local ok, err = pcall(function()
+        -- a hand-in on a map you can't reach: no hand-in step, and its experience leaves the summary
+        local near = rec(9801, 50, 50)
+        local _, alone = route({ near }, { here = { map = 1, x = 40, y = 40 } })
+        local guide, summary = route({ near, rec(9802, 51, 50, { { map = 3, x = 50, y = 50 } }) }, { here = { map = 1, x = 40, y = 40 } })
+        if count(guide, "turnin", 9802) ~= 0 or count(guide, "turnin", 9801) ~= 1 then error("no hand-in step for the unreachable one") end
+        if summary.xp ~= alone.xp then error("its experience leaves the summary: " .. summary.xp .. " / " .. alone.xp) end
+        -- the same with a boat there: still not this hub's, and no crossing in the middle of it
+        local sea = { { id = "sea6c", a = { map = 1, x = 60, y = 50 }, b = { map = 3, x = 50, y = 50 }, seconds = 100 } }
+        guide, summary = route({ near, rec(9802, 51, 50, { { map = 3, x = 50, y = 50 } }) }, { here = { map = 1, x = 40, y = 40 }, crossings = sea })
+        if count(guide, "turnin", 9802) ~= 0 or count(guide, "sail") ~= 0 or summary.xp ~= alone.xp then error("a hand-in over the sea is not this hub's") end
+        -- a trip that learns a flight point and then can't reach its end: the learn step and the point are put back
+        local unknown = { node = 21, map = 1, x = 49, y = 49, known = false, name = "Twenty-one" }
+        local far = { node = 22, map = 1, x = 94, y = 94, known = true, name = "Twenty-two" }
+        ns.PlannerTravel = function(from, to, ctx)
+            if type(from) == "table" and type(to) == "table" and from.x == 49 and from.y == 49 and to.x == 95 then return math.huge, {} end
+            return saved.travel(from, to, ctx)
+        end
+        guide, summary = route({ rec(9803, 50, 50, { { map = 1, x = 95, y = 95 } }) }, { flights = { unknown, far } })
+        if count(guide, "learnflight") ~= 0 or count(guide, "turnin", 9803) ~= 0 or count(guide, "accept", 9803) ~= 1 then error("the failed trip's steps are put back") end
+        if summary.xp ~= 0 then error("an unreachable hand-in: no experience: " .. summary.xp) end
+        -- a first trip that fails, then one that works: the second is still the way into the hub (a learn detour)
+        local island = rec(9804, 52, 50)
+        ns.PlannerTravel = function(from, to, ctx)
+            if type(to) == "table" and to.x == 52 and to.y == 50 then return math.huge, {} end
+            return saved.travel(from, to, ctx)
+        end
+        ns.PlannerTimedQuest = function(id) return id == 9804 and 600 or nil end
+        guide = route({ island, rec(9805, 50, 50) }, { here = { map = 1, x = 10, y = 10 }, flights = { { node = 23, map = 1, x = 30, y = 30, known = false, name = "Twenty-three" } } })
+        if count(guide, "accept", 9804) ~= 0 or count(guide, "accept", 9805) ~= 1 then error("the island quest is left out") end
+        if count(guide, "learnflight") ~= 1 or guide.steps[1].kind ~= "learnflight" then error("the way in may learn a flight point: " .. ns.GuideLine(guide.steps[1])) end
+        ns.PlannerTravel, ns.PlannerTimedQuest = saved.travel, saved.timedQ
+        -- flights: control lost while not on a taxi forgets the take-off
+        ns.root.plannerNodes = { [31] = { map = 1, x = 10, y = 10, name = "A" }, [32] = { map = 1, x = 80, y = 80, name = "B" } }
+        ns.root.plannerFlightTimes, ns.root.plannerTimeSamples, ns.root.plannerCrossTimes = nil, nil, nil
+        local me = ns.PlannerCharRecord(true)
+        me.flights = { [31] = true, [32] = true }
+        if not ns.PlannerKnownFlight(31) then error("the travel file reads the planner's own record") end
+        pos = { 1, 10, 10 }; taxi = true; fireEvent("PLAYER_CONTROL_LOST")
+        taxi = false; fireEvent("PLAYER_CONTROL_LOST")
+        clock = clock + 90; pos = { 1, 80, 80 }; fireEvent("PLAYER_CONTROL_GAINED")
+        if ns.root.plannerFlightTimes and ns.root.plannerFlightTimes["31-32"] then error("no flight time after control lost off a taxi") end
+        pos = { 1, 10, 10 }; taxi = true; fireEvent("PLAYER_CONTROL_LOST")
+        clock = clock + 90; pos = { 1, 80, 80 }; fireEvent("PLAYER_CONTROL_GAINED"); taxi = false
+        if not (ns.root.plannerFlightTimes and ns.root.plannerFlightTimes["31-32"] == 90) then error("a real flight is still timed") end
+        -- crossings: timed only when you were at the dock at the last look, and the wait and ride took at most 15 minutes
+        ns.PLANNER_CROSSINGS = { { id = "fake6c", a = { map = 1, x = 90, y = 90 }, b = { map = 3, x = 10, y = 10 }, seconds = 100 } }
+        -- crossings: from the last look at one dock to the first look at its other dock, within 15 minutes
+        local D1, D2, D3 = { map = 1, x = 90, y = 90 }, { map = 3, x = 10, y = 10 }, { map = 3, x = 90, y = 90 }
+        ns.PLANNER_CROSSINGS = { { id = "x-y", a = D1, b = D2, seconds = 100 }, { id = "x-z", a = D1, b = D3, seconds = 100 } }
+        local function tick(wait, map, x, y) clock = clock + wait; pos = { map, x, y }; ns.PlannerDockTick() end
+        local function times(id) return ns.root.plannerCrossTimes and ns.root.plannerCrossTimes[id] end
+        -- a boat: mid-sea at the loading screen, short of the far dock at first
+        tick(0, 1, 90, 90)
+        tick(60, 1, 50, 50)
+        clock = clock + 60; pos = { 3, 40, 40 }; fireEvent("PLAYER_ENTERING_WORLD")
+        tick(60, 3, 35, 35)
+        if times("x-y") then error("short of the far dock: not yet") end
+        tick(30, 3, 10, 10)
+        if math.abs((times("x-y") or 0) - 210) > 1 or not ns.PlannerCrossed("x-y") then error("the boat is timed: " .. tostring(times("x-y"))) end
+        if times("x-z") then error("the shared dock: only the crossing whose far dock you reached") end
+        -- no loading screen at all (Auberdine to Rut'theran), the other way
+        tick(200, 1, 90, 90)
+        if math.abs((times("x-y") or 0) - 205) > 1 then error("no loading screen: timed too: " .. tostring(times("x-y"))) end
+        -- the shared dock: from it to the other crossing's far dock
+        tick(250, 3, 90, 90)
+        if math.abs((times("x-z") or 0) - 250) > 1 or math.abs(times("x-y") - 205) > 1 then error("the shared dock's other crossing: " .. tostring(times("x-z"))) end
+        -- more than 15 minutes, or under a minute: not timed
+        tick(1000, 1, 90, 90)
+        tick(30, 3, 90, 90)
+        if math.abs(times("x-z") - 250) > 1 then error("1000 s or 30 s: no crossing time: " .. tostring(times("x-z"))) end
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    ns.PlannerTravel, ns.PlannerTimedQuest, ns.GuideUnlocked, ns.PLANNER_CROSSINGS = saved.travel, saved.timedQ, saved.unlocked, saved.crossings
+    env.C_Map = saved.map; rawset(env, "CreateVector2D", saved.vec); rawset(env, "UnitOnTaxi", saved.taxi); env.GetTime = saved.time
+    ns.root.planner, ns.root.plannerNodes, ns.root.plannerFlightTimes, ns.root.plannerCrossTimes, ns.root.plannerTimeSamples = saved.planner, saved.nodes, saved.ft, saved.ct, saved.smp
+    if not ok then error(err, 0) end
+end)
+try("13.6 leftovers C: the arrow and the guide's keys", function()
+    local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), unlocked = ns.GuideUnlocked, state = ns.root.guideState, guides = ns.root.guides,
+        key = ns.root.guideKey, tomtom = rawget(env, "TomTom"), tt = ns.db.plannerTomTom, motion = ns.db.reduceMotion, combat = env.InCombatLockdown,
+        faction = rawget(env, "UnitFactionGroup"), time = env.GetTime, queued = ns.plannerQueued, reason = ns.plannerReason, errors = #ns.errors }
+    -- Dun Morogh 1426, Wetlands 1437 and Arathi 1417 side by side on one continent; Dustwallow 1445 over the sea
+    local regions = { [1426] = { 0, 2000, 4000 }, [1437] = { 0, 4000, 4000 }, [1417] = { 0, 6000, 2000 }, [1445] = { 1, 5000, 5000 } }
+    local pos, clock = { 1426, 50, 50 }, 100
+    local cm = {}
+    for k, v in pairs(saved.map) do cm[k] = v end
+    cm.GetWorldPosFromMapPos = function(map, v)
+        local r = regions[map]
+        if r then return r[1], { x = r[2] + v.x * 2000, y = r[3] + v.y * 2000 } end
+    end
+    cm.GetBestMapForUnit = function() return pos[1] end
+    cm.GetPlayerMapPosition = function(map) if map == pos[1] then return { GetXY = function() return pos[2] / 100, pos[3] / 100 end } end end
+    cm.GetMapWorldSize = function() return 2000, 2000 end                 -- (a percent is 20 yards)
+    env.C_Map = cm
+    env.CreateVector2D = function(x, y) return { x = x, y = y } end
+    env.UnitFactionGroup = function() return "Alliance", "Alliance" end
+    env.GetTime = function() return clock end
+    ns.GuideUnlocked = function() return true end
+    ns.root.guides = { Far = { name = "Far", steps = { { kind = "goto", text = "Arathi", map = 1417, x = 50, y = 50 }, { kind = "goto", text = "Marsh", map = 1445, x = 70, y = 55 },
+        { kind = "goto", text = "Here", map = 1426, x = 60, y = 50 }, { kind = "note", text = "end" } } } }
+    local function arrowUpdate(arrow)
+        for i = #handlers, 1, -1 do local h = handlers[i]; if h.self == arrow and h.name == "OnUpdate" then return h.fn end end
+    end
+    local ok, err = pcall(function()
+        -- the guide's keys: names in the key bindings window, and nothing while locked or in combat
+        for _, k in ipairs({ "GUIDENEXT", "GUIDESKIP", "GUIDEAGAIN" }) do
+            local name = env["BINDING_NAME_FANTASYGLASSUI_" .. k]
+            if type(name) ~= "string" or not name:find("^Guide") then error("the " .. k .. " key's name: " .. tostring(name)) end
+        end
+        ns.db.plannerTomTom = false
+        ns:GuideFollow("Far")
+        local st = ns.GuideState()
+        ns.GuideUnlocked = function() return false end
+        env.FantasyGlassUI_GuideBinding("NEXT"); env.FantasyGlassUI_GuideBinding("AGAIN")
+        ns.GuideUnlocked = function() return true end
+        if st.at ~= 1 then error("locked: the keys do nothing") end
+        -- another map: the arrow points where your way leaves this one (two maps away, toward Arathi)
+        local w = ns.waypoint
+        if not (w and w.map == 1426 and math.abs(w.x - 1) < 0.001 and math.abs(w.y - 0.25) < 0.001) then
+            error("a step two maps away: the crossing on this map: " .. tostring(w and w.map) .. " " .. tostring(w and w.x) .. "," .. tostring(w and w.y)) end
+        if not w.passing then error("the map's edge is a spot you pass through") end
+        -- standing at that edge: no new waypoint and no pulse, however long you wait (the map's change moves it on)
+        local sets, edgePulses, realSet = 0, 0, ns.SetWaypoint
+        local arrow0 = ns.waypointArrow
+        local update0 = arrowUpdate(arrow0)
+        ns.SetWaypoint = function(...) sets = sets + 1; return realSet(...) end
+        rawset(arrow0.pulse, "Play", function() edgePulses = edgePulses + 1 end)
+        pos = { 1426, 99.6, 25.2 }
+        for _ = 1, 10 do ns.guideTickTest(nil, 1); update0(arrow0, 0.1) end
+        ns.SetWaypoint = realSet; rawset(arrow0.pulse, "Play", nil)
+        if sets ~= 0 or edgePulses ~= 0 then error("at the edge: no re-point and no pulse: " .. sets .. ", " .. edgePulses) end
+        pos = { 1426, 50, 50 }
+        env.InCombatLockdown = function() return true end
+        env.FantasyGlassUI_GuideBinding("NEXT")
+        env.InCombatLockdown = saved.combat
+        if st.at ~= 1 then error("in combat: the keys do nothing") end
+        env.FantasyGlassUI_GuideBinding("NEXT")
+        if st.at ~= 2 then error("next step: " .. tostring(st.at)) end
+        -- over the sea: the dock on this map (you walk to Wetlands first)
+        pos = { 1437, 50, 50 }
+        ns:GuideAdvance()
+        w = ns.waypoint
+        if not (w and w.map == 1437 and math.abs(w.x - 0.049) < 0.001 and math.abs(w.y - 0.62) < 0.001) then error("the dock: " .. tostring(w and w.x) .. "," .. tostring(w and w.y)) end
+        if not tostring(w.label):find("Take the boat", 1, true) then error("the dock's words: " .. tostring(w.label)) end
+        -- with TomTom pointing, on a goto step: reaching the dock moves the arrow on to the boat
+        local tAdded, tRemoved = {}, {}
+        env.TomTom = { AddWaypoint = function(_, map, x, y, opts) tAdded[#tAdded + 1] = { map = map, x = x, y = y, title = opts and opts.title }; return "t" .. #tAdded end,
+            RemoveWaypoint = function(_, uid) tRemoved[#tRemoved + 1] = uid end }
+        ns.db.plannerTomTom = true
+        ns:GuideAdvance()
+        if #tAdded ~= 1 or math.abs(tAdded[1].x - 0.049) > 0.001 then error("TomTom points at the dock: " .. #tAdded) end
+        pos = { 1437, 4.9, 62.0 }
+        ns.guideTickTest(nil, 1)
+        if #tAdded ~= 2 or tRemoved[1] ~= "t1" or not tostring(tAdded[2].title):find("Take the boat", 1, true) then error("at the dock: the boat: " .. #tAdded .. " " .. tostring(tAdded[2] and tAdded[2].title)) end
+        env.TomTom = saved.tomtom
+        ns.db.plannerTomTom = false
+        pos = { 1437, 50, 50 }
+        ns:GuideAdvance()
+        -- skip step on a written guide: passed over, not done; plan again does nothing off the plan
+        ns.plannerQueued, ns.plannerReason = false, nil
+        env.FantasyGlassUI_GuideBinding("SKIP")
+        env.FantasyGlassUI_GuideBinding("AGAIN")
+        if st.at ~= 3 or ns.plannerQueued or st.ticked[2] or not (st.skipped and st.skipped[2]) then error("skip on a written guide: " .. tostring(st.at)) end
+        -- TomTom: a waypoint of its own per step, the old one removed, and our arrow hidden
+        local added, removed = {}, {}
+        env.TomTom = { AddWaypoint = function(self, map, x, y, opts) added[#added + 1] = { map = map, x = x, y = y, title = opts and opts.title, crazy = opts and opts.crazy }; return "uid" .. #added end,
+            RemoveWaypoint = function(self, uid) removed[#removed + 1] = uid end }
+        ns.db.plannerTomTom = true
+        pos = { 1426, 50, 50 }
+        ns:GuideSkip(true)
+        ns:GuideSkip(false)
+        if #added < 2 or added[#added].map ~= 1426 or math.abs(added[#added].x - 0.6) > 0.001 or added[#added].title ~= "Here" then error("TomTom has the step: " .. #added) end
+        if removed[#removed] ~= "uid" .. (#added - 1) then error("the previous TomTom waypoint is removed: " .. tostring(removed[#removed])) end
+        if ns.waypoint ~= nil then error("our own arrow is hidden while TomTom points") end
+        if added[#added].crazy ~= true then error("TomTom shows its own arrow (crazy)") end
+        env.TomTom.AddWaypoint = function() return nil end
+        ns:GuideSkip(true); ns:GuideSkip(false)
+        if not (ns.waypoint and ns.waypoint.quiet) then error("TomTom gave no waypoint: our own arrow") end
+        env.TomTom.AddWaypoint = function() error("boom") end
+        ns:GuideSkip(true); ns:GuideSkip(false)
+        if not (ns.waypoint and ns.waypoint.quiet) then error("a failing TomTom: our own arrow") end
+        env.TomTom = saved.tomtom
+        ns.db.plannerTomTom = false
+        local n = #added
+        ns:GuideSkip(true); ns:GuideSkip(false)
+        if #added ~= n or not (ns.waypoint and ns.waypoint.x == 0.6) then error("TomTom off: our own arrow") end
+        -- the planned guide: refresh the route plans again; skipping a quest step leaves that quest out for this session
+        local planSteps = { { kind = "accept", quest = 9901, title = "Skipped one" }, { kind = "note", text = "two" }, { kind = "note", text = "three" }, { kind = "note", text = "four" } }
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = planSteps }, {})
+        ns:PlannerStop()
+        ns.plannerQueued, ns.plannerReason = false, nil
+        env.FantasyGlassUI_GuideBinding("AGAIN")
+        if not (ns.plannerQueued and ns.plannerReason == "again") then error("plan again: " .. tostring(ns.plannerReason)) end
+        ns:PlannerStop()
+        local movedSeen
+        ns.GuideRegisterAdvance("test6c", function(_, _, _, _, moved) movedSeen = moved end)
+        env.FantasyGlassUI_GuideBinding("SKIP")
+        ns.GuideRegisterAdvance("test6c", nil)
+        st = ns.GuideState()
+        if not (st.at == 2 and st.skipped[1] and not st.ticked[1] and ns.plannerQueued and ns.plannerReason == "skip") then error("skip on the plan: " .. tostring(ns.plannerReason)) end
+        if movedSeen ~= false then error("a skipped step is not a step done: " .. tostring(movedSeen)) end
+        if not ns.PlannerSessionSkipped(9901) or ns.PlannerSkipList()[9901] then error("left out for this session only, never the permanent skip") end
+        local rec = { id = 9901, name = "Skipped one", level = 10, minLevel = 1, xp = 100, starts = {}, ends = {}, objectives = {}, pre = {}, preAny = {}, exclusive = {},
+            doable = true, repeatable = false }
+        local cands = ns.PlannerCandidates({ ids = function() return { 9901 } end, quest = function() return rec end },
+            { level = 10, group = "all", done = function() return false end, onQuest = function() return true end })
+        if #cands ~= 0 then error("the session skip leaves it out, even from your log") end
+        ns:PlannerStop()
+        -- a skipped step later on is drawn dimmed; a new plan does not carry it
+        st.skipped[3] = true
+        local panel = ns:GuideShowPanel()
+        local laterText
+        rawset(panel.later[1], "SetText", function(_, t) laterText = t end)
+        ns:GuideRedraw()
+        rawset(panel.later[1], "SetText", nil)
+        if not tostring(laterText):find("(skipped)", 1, true) then error("a skipped step is dimmed: " .. tostring(laterText)) end
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = planSteps }, {})
+        st = ns.GuideState()
+        if st.skipped or st.ticked[1] then error("a new plan does not carry a skip") end
+        ns.PlannerSessionSkipReset()
+        ns:PlannerStop()
+        ns:GuideStop()
+        -- the arrow's look: the theme's accent, brighter near, one pulse on arrival (none with reduced motion)
+        ns.db.reduceMotion = false
+        pos = { 1426, 50, 50 }
+        ns:SetWaypoint(55, 50, "the cave", 1426, false)               -- (100 yards east)
+        local arrow = ns.waypointArrow
+        local update = arrowUpdate(arrow)
+        local tint, pulses, grey = nil, 0, nil
+        arrow.tex.suiPlain = nil
+        rawset(arrow.tex, "SetDesaturated", function(_, v) grey = v end)
+        ns:SetWaypoint(55, 50, "the cave", 1426, false)
+        rawset(arrow.tex, "SetDesaturated", nil)
+        if grey ~= true then error("the arrow is made grey, so the tint reads true") end
+        rawset(arrow.tex, "SetVertexColor", function(_, r, g, b, a) tint = { r, g, b, a } end)
+        rawset(arrow.pulse, "Play", function() pulses = pulses + 1 end)
+        update(arrow, 0.1)
+        local ar, ag, ab = ns:Role("@accent")
+        if not (tint and tint[1] == ar and tint[2] == ag and tint[3] == ab and tint[4] < 1) then error("far: the accent, dimmer") end
+        pos = { 1426, 54, 50 }; update(arrow, 0.1)                    -- (20 yards)
+        if not (tint and tint[4] == 1) then error("within 30 yards: brighter") end
+        pos = { 1426, 54.8, 50 }; update(arrow, 0.1)                  -- (4 yards: there)
+        update(arrow, 0.1)
+        if pulses ~= 1 then error("one pulse on arrival: " .. pulses) end
+        clock = clock + 1; update(arrow, 0.1)
+        if ns.waypoint ~= nil then error("after the pulse, the waypoint goes") end
+        ns.db.reduceMotion = true
+        ns:SetWaypoint(55, 50, "the cave", 1426, false)
+        update(arrow, 0.1)
+        if pulses ~= 1 or ns.waypoint ~= nil then error("reduced motion: no pulse, gone at once") end
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    ns:PlannerStop(); ns:GuideStop(); ns:ClearWaypoint(true)
+    env.C_Map = saved.map; rawset(env, "CreateVector2D", saved.vec); rawset(env, "TomTom", saved.tomtom); rawset(env, "UnitFactionGroup", saved.faction)
+    env.InCombatLockdown, env.GetTime = saved.combat, saved.time
+    ns.GuideUnlocked, ns.root.guideState, ns.root.guides, ns.root.guideKey = saved.unlocked, saved.state, saved.guides, saved.key
+    ns.db.plannerTomTom, ns.db.reduceMotion, ns.plannerQueued, ns.plannerReason = saved.tt, saved.motion, saved.queued, saved.reason
+    ns.GuideRegisterAdvance("test6c", nil); ns.PlannerSessionSkipReset()
+    if not ok then error(err, 0) end
+end)
 -- batch 6 tests C (route): end
 -- batch 6 tests D (leftovers): begin
 -- batch 6 tests D (leftovers): end
