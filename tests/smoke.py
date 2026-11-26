@@ -9678,6 +9678,100 @@ try("folders unloaded A: when you were last here, without the folder", function(
     if not ok then error(err, 0) end
 end)
 -- folders tests unloaded A (planner recorders): end
+-- keep and ids tests unloaded: begin
+try("keep-and-ids: a quest Questie numbers otherwise, before the planner loads", function()
+    -- Questie calls the quest 900001 ("Agitator"); the server's log and completion use 50123.
+    local keep = { unlocked = ns.GuideUnlocked, ql = env.C_QuestLog, planner = ns.root.planner, ids = ns.root.plannerQuestIds, state = ns.root.guideState,
+        print = ns.Print, raw = ns.PrintRaw, guide = ns.db.questGuide }
+    local said = {}
+    local function Said(_, msg)                  -- (every handler hears every event here: only what is about the quest, or the route)
+        msg = tostring(msg)
+        if msg:find("Agitator") or msg:lower():find("route") then said[#said + 1] = msg end
+    end
+    local logged, done, kills, objText = {}, {}, 0, "Agitators slain"
+    local entries = { [50123] = { title = "Agitator", level = 12 } }
+    local function Log()
+        local list = {}
+        for id in pairs(logged) do list[#list + 1] = id end
+        table.sort(list)
+        return list
+    end
+    local ok, err = pcall(function()
+        if ns.folderReady.planner then error("the planner's folder is not loaded yet") end
+        ns.Print, ns.PrintRaw = Said, Said
+        ns.db.questGuide = true
+        env.C_QuestLog = {
+            IsOnQuest = function(id) return logged[id] == true end,
+            GetLogIndexForQuestID = function(id) for i, q in ipairs(Log()) do if q == id then return i end end end,
+            GetNumQuestLogEntries = function() return #Log(), #Log() end,
+            GetInfo = function(i) local id = Log()[i]; if id then return { title = entries[id].title, level = entries[id].level, questID = id, isHeader = false } end end,
+            GetTitleForQuestID = function(id) return entries[id] and entries[id].title end,
+            GetQuestObjectives = function(id)
+                if logged[id] then return { { text = objText and (objText .. ": " .. kills .. "/8") or nil, numFulfilled = kills, numRequired = 8, finished = kills >= 8, type = "monster" } } end
+            end,
+            IsQuestFlaggedCompleted = function(id) return done[id] == true end,
+            IsComplete = function() return false end, ReadyForTurnIn = function() return false end, IsFailed = function() return false end,
+            IsRepeatableQuest = function() return false end,
+        }
+        local steps = {
+            { kind = "accept", quest = 900001, title = "Agitator", qlevel = 12 },
+            { kind = "do", quest = 900001, title = "Agitator", qlevel = 12, text = "Kill agitators" },
+            { kind = "turnin", quest = 900001, title = "Agitator", qlevel = 12 },
+        }
+        local function Follow() ns.root.guideState = { [ns:CharKey()] = { name = ns.GUIDE_PLANNED, at = 1, plan = { name = ns.GUIDE_PLANNED, steps = steps } } } end
+        -- locked: nothing is matched into the saved settings, nothing kept, nothing said
+        ns.GuideUnlocked = function() return false end
+        ns.root.planner, ns.root.plannerQuestIds = nil, nil
+        Follow()
+        logged[50123] = true
+        fireEvent("QUEST_ACCEPTED", 1, 50123)
+        if ns.PlannerServerId(900001, "Agitator", 12) ~= 50123 then error("locked: the log entry is still found") end
+        logged[50123] = nil
+        fireEvent("QUEST_TURNED_IN", 50123, 0, 0)
+        runTimers()
+        if ns.root.plannerQuestIds ~= nil or ns.root.planner ~= nil then error("locked: nothing is written") end
+        if #said ~= 0 then error("locked: nothing is said: " .. said[1]) end
+        -- unlocked: accepting it learns the pair (the planned step's title), and the step shows the log's kills
+        ns.GuideUnlocked = function() return true end
+        ns.root.planner = {}
+        Follow()
+        logged[50123] = true
+        fireEvent("QUEST_ACCEPTED", 1, 50123)
+        if not (ns.root.plannerQuestIds and ns.root.plannerQuestIds[900001] == 50123) then error("QUEST_ACCEPTED: Questie's 900001 is the server's 50123") end
+        local w = ns:GuideWorld()
+        if not ns.GuideStepDone(steps[1], w) then error("the accept step is done: the quest is in the log by its server id") end
+        if ns.GuideStepDone(steps[2], w) then error("the kills are not done yet") end
+        kills = 3
+        local text = ns.GuideProgress(steps[2])
+        if text ~= "Agitators slain: 3/8" then error("the step shows the log's kills, by the server's id, in the log's words: " .. tostring(text)) end
+        if ns.GuideStepBase(steps[2]) ~= "Kill agitators" then error("the step's own text stays as it is (it goes into shared plans)") end
+        ns:GuideShowPanel(); ns:GuideAdvance()
+        local now = ns.GuideReadText()
+        if not (now and now:find("Agitators slain: 3/8", 1, true)) then error("the panel shows it: " .. tostring(now)) end
+        objText = nil
+        if ns.GuideProgress(steps[2]) ~= "3/8" then error("no text from the log: the bare count") end
+        objText = "Agitators slain"
+        kills = 8
+        if ns.GuideProgress(steps[2]) ~= "Agitators slain: 8/8 ✓" then error("finished: marked: " .. tostring(ns.GuideProgress(steps[2]))) end
+        kills = 3
+        -- handed in: Forever does not flag it, but the hand-in is kept (by the server's id)
+        logged[50123] = nil
+        fireEvent("QUEST_TURNED_IN", 50123, 0, 0)
+        runTimers()
+        local rec = ns.PlannerCharRecord(false)
+        if not (rec and type(rec.handedIn) == "table" and type(rec.handedIn[50123]) == "table" and rec.handedIn[50123].title == "Agitator") then error("QUEST_TURNED_IN: kept, with its title") end
+        if not ns.PlannerQuestDone(900001) then error("Questie's id is done through the pair and the hand-in") end
+        if not ns.GuideStepDone(steps[3], w) then error("the turn-in step is done") end
+        if ns.PlannerQuestDone(900001, true) then error("a repeatable quest is never done through the hand-ins kept") end
+        -- (for the planner, once it loads: what was kept here)
+        rawset(env, "__keepIdsSaved", { ids = { [900001] = 50123 }, handedIn = { [50123] = rec.handedIn[50123] } })
+    end)
+    ns.GuideUnlocked, env.C_QuestLog, ns.root.planner, ns.root.plannerQuestIds, ns.root.guideState = keep.unlocked, keep.ql, keep.planner, keep.ids, keep.state
+    ns.Print, ns.PrintRaw, ns.db.questGuide = keep.print, keep.raw, keep.guide
+    runTimers()
+    if not ok then error(err, 0) end
+end)
+-- keep and ids tests unloaded: end
 -- folders tests unloaded B (gold recorders): begin
 try("folders unloaded B: gold records while unloaded", function()
     -- (the gold folder is not loaded: its recorders are the main add-on's, and nothing here loads it)
@@ -26136,6 +26230,143 @@ try("folders D: Go", function()
     if not ok then error(err, 0) end
 end)
 -- folders tests D (go): end
+-- keep and ids tests A (ids): begin
+try("keep-and-ids A: Questie's other numbers, with the planner loaded", function()
+    local saved = { unlocked = ns.GuideUnlocked, on = ns.GuideOn, ql = env.C_QuestLog, planner = ns.root.planner, ids = ns.root.plannerQuestIds,
+        state = ns.root.guideState, level = env.UnitLevel, faction = rawget(env, "UnitFactionGroup"), loaded = env.C_AddOns.IsAddOnLoaded,
+        meta = rawget(env.C_AddOns, "GetAddOnMetadata"), Q = rawget(env, "Questie"), loader = rawget(env, "QuestieLoader"), map = env.C_Map,
+        vec = rawget(env, "CreateVector2D"), print = ns.Print, raw = ns.PrintRaw, world = ns.PlannerWorldPos, errors = #ns.errors }
+    local logged, done, kills = {}, {}, 0
+    local entries = { [50123] = { title = "Agitator", level = 12 }, [50999] = { title = "  agitator ", level = 30 } }
+    local function Log()
+        local list = {}
+        for id in pairs(logged) do list[#list + 1] = id end
+        table.sort(list)
+        return list
+    end
+    local npcs = { [9] = { spawns = { [40] = { { 30, 40 } } }, name = "Sky Warden", minLevel = 20, maxLevel = 20 },
+                   [77] = { spawns = { [40] = { { 35, 45 }, { 36, 46 } } }, name = "Agitator", minLevel = 11, maxLevel = 12 } }
+    local quests = { [900001] = { name = "Agitator", questLevel = 12, level = 12, requiredLevel = 10, startedBy = { { 9 } }, finishedBy = { { 9 } },
+                                  objectives = { { { 77 } } } } }
+    local db = { QuestPointers = { [900001] = 1 }, NPCPointers = { [9] = 1, [77] = 2 },
+        GetQuest = function(id) return quests[id] end, IsDoable = function() return true end,
+        QueryNPCSingle = function(id, key) return npcs[id] and npcs[id][key] end,
+        QueryQuestSingle = function(id, key) return quests[id] and quests[id][key] end }
+    local fakes = { QuestieDB = db, QuestXP = { GetQuestLogRewardXP = function() return 400 end },
+                    ZoneDB = { GetUiMapIdByAreaId = function(_, area) return area == 40 and 1429 or nil end } }
+    local said = {}
+    local function Said(_, msg)                  -- (every handler hears every event here: only what is about the quest, or the route)
+        msg = tostring(msg)
+        if msg:find("Agitator") or msg:lower():find("route") then said[#said + 1] = msg end
+    end
+    local ok, err = pcall(function()
+        if not ns.folderReady.planner then error("the planner's folder is loaded") end
+        ns.Print, ns.PrintRaw = Said, Said
+        ns.GuideUnlocked = function() return true end
+        ns.GuideOn = function() return ns:GuideUnlocked() end
+        env.UnitLevel = function() return 12 end
+        rawset(env, "UnitFactionGroup", function() return "Alliance" end)
+        env.C_Map = setmetatable({ GetWorldPosFromMapPos = function(map, v) if map == 1429 then return 0, { x = v.x * 1000, y = v.y * 1000 } end end },
+                                 { __index = saved.map })
+        env.CreateVector2D = function(x, y) return { x = x, y = y } end
+        ns.PlannerWorldPos = function(map, x, y) if map == 1429 then return 0, x * 10, y * 10 end end
+        env.C_QuestLog = {
+            IsOnQuest = function(id) return logged[id] == true end,
+            GetLogIndexForQuestID = function(id) for i, q in ipairs(Log()) do if q == id then return i end end end,
+            GetNumQuestLogEntries = function() return #Log(), #Log() end,
+            GetInfo = function(i) local id = Log()[i]; if id then return { title = entries[id].title, level = entries[id].level, questID = id, isHeader = false } end end,
+            GetTitleForQuestID = function(id) return entries[id] and entries[id].title end,
+            GetQuestObjectives = function(id) if logged[id] then return { { text = "Agitator slain: " .. kills .. "/8", numFulfilled = kills, numRequired = 8, type = "monster" } } end end,
+            IsQuestFlaggedCompleted = function(id) return done[id] == true end,
+            IsComplete = function() return false end, ReadyForTurnIn = function() return false end, IsFailed = function() return false end,
+            IsRepeatableQuest = function() return false end, GetTimeAllowed = function() return 0 end,
+        }
+        env.Questie = { API = { isReady = true, RegisterOnReady = function() end }, db = { char = { complete = {} } } }
+        env.QuestieLoader = { ImportModule = function(_, name) return fakes[name] end }
+        env.C_AddOns.IsAddOnLoaded = function() return true end
+        rawset(env.C_AddOns, "GetAddOnMetadata", function() return "4" end)
+        local function Fresh() ns.root.planner, ns.root.plannerQuestIds = {}, nil; logged, done = {}, {}; env.Questie.db.char.complete = {}; ns.PlannerSourceReset() end
+        local function Offered()
+            fireEvent("QUEST_LOG_UPDATE")                       -- (the log changed: the game says so)
+            local src = ns.PlannerSource()
+            if not src then error("the Questie source") end
+            local list = ns.PlannerCandidates(src, ns.PlannerContext())
+            local by = {}
+            for _, r in ipairs(list) do by[r.id] = r end
+            return by
+        end
+        -- not taken yet: offered
+        Fresh()
+        if not Offered()[900001] then error("not taken: Agitator is offered") end
+        -- taken (the log calls it 50123): matched by its title, planned as in your log, with the log's kill count; one quest, not two
+        Fresh()
+        logged[50123] = true
+        local by = Offered()
+        local rec = by[900001]
+        if not rec then error("taken: Questie's Agitator is planned") end
+        if by[50123] then error("taken: the log's own entry is the same quest, not a second one") end
+        if not (ns.root.plannerQuestIds and ns.root.plannerQuestIds[900001] == 50123) then error("the pair is learned") end
+        local o = rec.objectives and rec.objectives[1]
+        if not (o and o.count == 8 and o.countKnown) then error("the log's kill count (8): " .. tostring(o and o.count)) end
+        if not ns.PlannerContext().onQuest(900001) then error("in your log, through the pair") end
+        -- handed in with the planner loaded (the game flags nothing): never offered again
+        logged[50123] = nil
+        fireEvent("QUEST_TURNED_IN", 50123, 0, 0)
+        if Offered()[900001] then error("handed in (the planner loaded): not offered again") end
+        -- the game's flag for the server's id alone does it too
+        ns.root.planner = {}
+        done[50123] = true
+        if Offered()[900001] then error("flagged completed under the server's id: not offered") end
+        -- handed in before the planner loaded (what the main add-on kept then)
+        local before = rawget(env, "__keepIdsSaved")
+        if type(before) ~= "table" then error("the test before the folder loaded kept its hand-in") end
+        Fresh()
+        ns.root.plannerQuestIds = { [900001] = before.ids[900001] }
+        ns.PlannerCharRecord(true).handedIn = { [50123] = before.handedIn[50123] }
+        if Offered()[900001] then error("handed in before the planner loaded: not offered") end
+        -- Questie's own completed list
+        Fresh()
+        env.Questie.db.char.complete = { [900001] = true }
+        if Offered()[900001] then error("Questie's own list says done: not offered") end
+        env.Questie.db.char.complete = "not a table"
+        if not Offered()[900001] then error("Questie's list read only when it is a table") end
+        -- a repeatable quest is not done through the hand-ins kept
+        Fresh()
+        ns.root.plannerQuestIds = { [900001] = 50123 }
+        ns.PlannerCharRecord(true).handedIn = { [50123] = { title = "Agitator" } }
+        quests[900001].specialFlags = 1
+        if ns.PlannerContext().done(900001) then error("repeatable: the hand-ins kept do not make it done") end
+        quests[900001].specialFlags = nil
+        -- two quests of one title at other levels are not one quest
+        Fresh()
+        logged[50999] = true
+        by = Offered()
+        if not by[900001] then error("another level: Agitator is still offered") end
+        if ns.root.plannerQuestIds ~= nil then error("another level: no pair") end
+        if ns.PlannerServerId(900001, "Agitator", 12) ~= nil then error("another level: no match") end
+        if ns.PlannerServerId(900001, "Agitator", nil) ~= 50999 then error("(no level on one side: the title is enough)") end
+        -- locked: nothing is learned or kept, nothing said
+        Fresh()
+        ns.root.planner = nil
+        ns.GuideUnlocked = function() return false end
+        logged[50123] = true
+        Offered()
+        fireEvent("QUEST_ACCEPTED", 1, 50123)
+        logged[50123] = nil
+        fireEvent("QUEST_TURNED_IN", 50123, 0, 0)
+        if ns.root.plannerQuestIds ~= nil or ns.root.planner ~= nil then error("locked: nothing is written") end
+        if #said ~= 0 then error("locked: nothing is said: " .. said[1]) end
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    ns.GuideUnlocked, ns.GuideOn, env.C_QuestLog, ns.root.planner, ns.root.plannerQuestIds, ns.root.guideState = saved.unlocked, saved.on, saved.ql, saved.planner, saved.ids, saved.state
+    env.UnitLevel, env.C_Map, ns.Print, ns.PrintRaw, ns.PlannerWorldPos = saved.level, saved.map, saved.print, saved.raw, saved.world
+    rawset(env, "UnitFactionGroup", saved.faction); rawset(env, "CreateVector2D", saved.vec)
+    env.C_AddOns.IsAddOnLoaded = saved.loaded; rawset(env.C_AddOns, "GetAddOnMetadata", saved.meta)
+    rawset(env, "Questie", saved.Q); rawset(env, "QuestieLoader", saved.loader)
+    ns.PlannerSourceReset()
+    if not ok then error(err, 0) end
+end)
+-- keep and ids tests A (ids): end
 -- folders tests together: begin
 -- folders tests together: end
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)

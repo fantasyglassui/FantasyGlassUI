@@ -65,13 +65,15 @@ function ns.PlannerLogAdvice(steps, at, summary)
     for i = at, #steps do
         local st = steps[i]
         if type(st) == "table" then
-            if type(st.quest) == "number" then planned[st.quest] = true end
-            if st.kind == "accept" and type(st.quest) == "number" and not inLog[st.quest] then
-                inLog[st.quest] = true
+            local q = st.quest                                            -- (as the log knows it: a quest Questie numbers otherwise, matched)
+            if type(q) == "number" and ns.PlannerMappedId then q = ns.PlannerMappedId(q) or q end
+            if type(q) == "number" then planned[q] = true end
+            if st.kind == "accept" and type(q) == "number" and not inLog[q] then
+                inLog[q] = true
                 occ = occ + 1
                 if occ > peak then peak = occ end
-            elseif st.kind == "turnin" and type(st.quest) == "number" and inLog[st.quest] then
-                inLog[st.quest] = nil
+            elseif st.kind == "turnin" and type(q) == "number" and inLog[q] then
+                inLog[q] = nil
                 occ = occ - 1
             end
         end

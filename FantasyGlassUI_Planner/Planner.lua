@@ -283,6 +283,10 @@ function ns.PlannerCandidates(source, ctx)
         ns.PlannerYield()
         local logged = onQuest(id)
         local rec = (logged or not (never and never[id])) and (logged or not source.inRange or (type(ctx.windowPass) == "table" and ctx.windowPass[id]) or source.inRange(id, level, ctx.windowLo, ctx.windowHi)) and source.quest(id) or nil
+        if rec and not logged and type(ctx.matchLog) == "function" and ctx.matchLog(rec) then
+            logged = onQuest(id)                         -- (in your log under another id, by its title: taken, with the log's progress)
+            if logged then rec = source.quest(id) or rec end
+        end
         if rec then
             if logged then
                 if Keep(rec, ctx, true) then list[#list + 1] = rec else dropped[#dropped + 1] = rec end   -- (dropped: still blocks its partners)
@@ -299,6 +303,22 @@ function ns.PlannerCandidates(source, ctx)
                     end
                 end
             end
+        end
+    end
+    -- a quest Questie numbers otherwise, kept by its own record: the log's entry for it is the same quest, and goes
+    if type(ctx.mappedId) == "function" then
+        local same = {}
+        for _, r in ipairs(list) do
+            local m = ctx.mappedId(r.id)
+            if type(m) == "number" and m ~= r.id then same[m] = true end
+        end
+        if next(same) then
+            local function Drop(t)
+                local o = {}
+                for _, r in ipairs(t) do if not same[r.id] then o[#o + 1] = r end end
+                return o
+            end
+            list, dropped = Drop(list), Drop(dropped)
         end
     end
     local have = {}
@@ -454,7 +474,10 @@ function ns.PlannerSkip(questID, on, name)
         -- (a quest in your log stays in the plan as long as it is there: left out of this session's plans too, and said so)
         if ns.PlannerSessionSkip then ns.PlannerSessionSkip(questID) end
         local QL = C_QuestLog
-        local okQ, logged = pcall(function() return QL and QL.IsOnQuest and QL.IsOnQuest(questID) end)
+        local okQ, logged = pcall(function()
+            if ns.PlannerServerId then return ns.PlannerServerId(questID) ~= nil end      -- (its own id, or the one it was matched to)
+            return QL and QL.IsOnQuest and QL.IsOnQuest(questID)
+        end)
         if okQ and ns.Is(logged, true) then ns:Print("Left out of your plans; it stays in your quest log until you abandon it.") end
     else
         if type(rec.skip) == "table" then rec.skip[questID] = nil end
@@ -1102,9 +1125,12 @@ do
             -- (a quest taken outside the plan, shared by a party member or picked up on the way: the plan takes it in)
             if type(id) == "number" then
                 local inPlan = false
-                for _, s in ipairs(type(plan.steps) == "table" and plan.steps or {}) do
-                    if type(s) == "table" and s.quest == id then inPlan = true; break end
+                local steps = type(plan.steps) == "table" and plan.steps or {}
+                for _, s in ipairs(steps) do
+                    if type(s) == "table" and (s.quest == id or (ns.PlannerMappedId and ns.PlannerMappedId(s.quest) == id)) then inPlan = true; break end
                 end
+                -- (a planned quest Questie numbers otherwise, taken: its title says so, and the pair is learned)
+                if not inPlan and ns.PlannerLearnAccepted and ns.PlannerLearnAccepted(id, steps) then inPlan = true end
                 if not inPlan then ns:PlannerReplan("log") end
             end
             return

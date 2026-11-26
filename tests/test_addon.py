@@ -145,7 +145,9 @@ PLANNER_RECORDERS = ["PlannerCharRecord", "PlannerKillXP", "PlannerRecordQuestTi
                      "PlannerRecordDeath", "PlannerMountSeen", "PlannerBestChoice", "PlannerGatherSkill", "PlannerRecordNode", "PlannerSeen",
                      "PlannerRecordTimed", "PlannerLevelTick", "PlannerRecordLevel", "PlannerLevelSummary", "PlannerLevelLines",
                      "PlannerLevelRunLines", "PlannerSeenSave", "PlannerDuoRegister", "PLANNER_CATCHUP_DAYS", "PLANNER_SEEN_CAP",
-                     "PLANNER_QUEST_TIMES_CAP", "PLANNER_NODE_CAP", "PLANNER_TIMED_CAP", "PLANNER_DUO_PREFIX", "plannerSessionStart"]
+                     "PLANNER_QUEST_TIMES_CAP", "PLANNER_NODE_CAP", "PLANNER_TIMED_CAP", "PLANNER_DUO_PREFIX", "plannerSessionStart",
+                     "PlannerServerId", "PlannerMappedId", "PlannerLearnId", "PlannerLearnAccepted", "PlannerLogEntries", "PlannerRecordHandIn",
+                     "PlannerQuestDone"]
 
 
 def test_recorders_in_main():

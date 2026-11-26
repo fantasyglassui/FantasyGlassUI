@@ -150,20 +150,60 @@ end
 function ns.GuideStepText(step, guide)
     return ns.GuideStepBase(step) .. WhyText(step, guide)
 end
--- Has the game marked this quest failed (a timed or escort quest)?
-local function Failed(q)
+-- The id the game knows a step's quest by in your log (Questie may number it otherwise: PlannerRecorders.lua), or nil.
+local LogId                                         -- (below, with the guide's state)
+-- Has the game marked this quest failed (a timed or escort quest)? `step`: the step it is for (its title, for a
+-- quest the game numbers otherwise).
+local function Failed(q, step)
     local f = type(q) == "number" and C_QuestLog and C_QuestLog.IsFailed
     if type(f) ~= "function" then return false end
-    local ok, v = pcall(f, q)
+    local ok, v = pcall(f, (LogId and LogId(q, step)) or q)
     return ok and ns.Is(v, true)
 end
 ns.GuideQuestFailed = Failed
+-- A quest step's progress in your log, as the log counts it: each objective's own text ("Gnoll Paw: 3/8"), or the bare
+-- "3/8" when the log gives no readable text; a finished one ends in a check mark. At most four, each cut short. nil
+-- when the quest is not in your log or nothing has a count. (The panel's line only: never the step's text, which
+-- goes into shared plans and waypoint labels.)
+local PROGRESS_TEXT = 40                            -- characters of an objective's text, at most
+local function Short(t, n)
+    if #t <= n then return t end
+    local cut = t:sub(1, n):gsub("[\192-\255][\128-\191]*$", "")   -- (never half a letter)
+    return ns.Trim(cut) .. "…"
+end
+local function Progress(step)
+    local sid = type(step) == "table" and LogId and LogId(step.quest, step)
+    local f = sid and C_QuestLog and C_QuestLog.GetQuestObjectives
+    if type(f) ~= "function" then return nil end
+    local ok, list = pcall(f, sid)
+    if not ok or type(list) ~= "table" or Secret(list) then return nil end
+    local parts = {}
+    for _, o in ipairs(list) do
+        if #parts >= 4 then break end
+        local a, b = type(o) == "table" and o.numFulfilled, type(o) == "table" and o.numRequired
+        if type(a) == "number" and type(b) == "number" and not Secret(a) and not Secret(b) and b > 0 then
+            local text = o.text
+            if type(text) == "string" and not Secret(text) then
+                text = ns.Trim((text:gsub("[\r\n|]", " ")))
+                text = text ~= "" and Short(text, PROGRESS_TEXT) or nil
+            else
+                text = nil
+            end
+            text = text or format("%d/%d", math.min(a, b), b)
+            local fin = o.finished
+            if (type(fin) == "boolean" and not Secret(fin) and fin) or a >= b then text = text .. " ✓" end
+            parts[#parts + 1] = text
+        end
+    end
+    return #parts > 0 and table.concat(parts, ", ") or nil
+end
+ns.GuideProgress = Progress
 function ns.GuideStepBase(step)
     local k = step.kind
-    if k == "do" and Failed(step.quest) then
+    if k == "do" and Failed(step.quest, step) then
         return (step.text or (step.title or ("#" .. step.quest))) .. "  " .. ns:Tr("(failed: abandon it and take it again)")
     end
-    if k == "accept" and Failed(step.quest) then         -- (planned again from its giver, F9: abandon it first)
+    if k == "accept" and Failed(step.quest, step) then         -- (planned again from its giver, F9: abandon it first)
         return ns:Tr("Accept") .. ": " .. (step.title or ("#" .. step.quest)) .. "  " .. ns:Tr("(failed: abandon it and take it again)")
     end
     if k == "accept" then return ns:Tr("Accept") .. ": " .. (step.title or ("#" .. step.quest)) .. (step.text and ("  (" .. step.text .. ")") or "") end
@@ -196,10 +236,10 @@ function ns.GuideStepDone(step, world, ticked)
     if ticked then return true end
     local k, q = step.kind, step.quest
     if k == "accept" then   -- (a failed quest in your log is not taken yet: abandon it and take it again, F9)
-        return (world.onQuest(q) and not (type(world.failed) == "function" and world.failed(q) == true)) or world.completed(q)
+        return (world.onQuest(q, step) and not (type(world.failed) == "function" and world.failed(q, step) == true)) or world.completed(q, step)
     end
-    if k == "turnin" then return world.completed(q) end
-    if k == "do" then return world.completed(q) or world.ready(q) end
+    if k == "turnin" then return world.completed(q, step) end
+    if k == "do" then return world.completed(q, step) or world.ready(q, step) end
     if k == "goto" then return world.near(step) end
     if k == "level" then return (world.level or 0) >= step.level end
     local function Ask1(fn, arg) return type(fn) == "function" and fn(arg) == true end
@@ -266,10 +306,14 @@ function ns:GuideWorld()
         knownFlight = function(node) return Planner(ns.PlannerKnownFlight, node) end,
         landedAt = function(node) return Planner(ns.PlannerLandedAt, node) end,
         crossed = function(crossing) return Planner(ns.PlannerCrossed, crossing) end,
-        onQuest = function(id) return Ask(QL().IsOnQuest, id) end,
-        failed = function(id) return Failed(id) end,
-        completed = function(id) return Ask(QL().IsQuestFlaggedCompleted, id) end,
-        ready = function(id) return Ask(QL().IsComplete, id) or Ask(QL().ReadyForTurnIn, id) end,
+        -- (a step's quest by the id the game knows it by: LogId; done also by the hand-ins kept, PlannerRecorders.lua)
+        onQuest = function(id, step) return LogId(id, step) ~= nil end,
+        failed = function(id, step) return Failed(id, step) end,
+        completed = function(id) return (ns.PlannerQuestDone and ns.PlannerQuestDone(id)) or Ask(QL().IsQuestFlaggedCompleted, id) end,
+        ready = function(id, step)
+            local sid = LogId(id, step) or id
+            return Ask(QL().IsComplete, sid) or Ask(QL().ReadyForTurnIn, sid)
+        end,
         level = (type(level) == "number" and not Secret(level)) and level or 0,
         hearthed = function(step) return ns.GuideHearthed(step, theWorld.bind) end,
         near = function(step, radius)
@@ -362,6 +406,27 @@ local function State()
     return state[ns:CharKey()]
 end
 ns.GuideState = State
+-- The quests of the plan you follow ({ [id] = true }): a log entry that is one of them is never matched to another.
+local planQuestsFor, planQuests
+local function PlanQuests()
+    local st = State()
+    local plan = type(st) == "table" and st.name == ns.GUIDE_PLANNED and type(st.plan) == "table" and st.plan or nil
+    if not plan then return nil end
+    if planQuestsFor ~= plan then
+        planQuestsFor, planQuests = plan, {}
+        for _, s in ipairs(type(plan.steps) == "table" and plan.steps or {}) do
+            if type(s) == "table" and type(s.quest) == "number" then planQuests[s.quest] = true end
+        end
+    end
+    return planQuests
+end
+LogId = function(id, step)
+    if type(id) ~= "number" then return nil end
+    if not ns.PlannerServerId then return Ask(QL().IsOnQuest, id) and id or nil end
+    local name, level
+    if type(step) == "table" and step.quest == id then name, level = step.title, step.qlevel end
+    return ns.PlannerServerId(id, name, level, name and PlanQuests() or nil)
+end
 -- On a trip (Go: a gold idea's way there): the trip is followed under ns.GUIDE_TRIP, and the state you were in
 -- (the planned route, a written guide, or none) waits in st.resume, one level deep.
 local function OnTrip(st)
@@ -1363,16 +1428,19 @@ Draw = function()
     panel.plannerShown = ns:GuideUnlocked() == true                 -- (the route planner's own window)
     panel.planner:SetShown(panel.plannerShown)
     if panel.ridingButton then panel.ridingButton:SetShown(texts.riding ~= nil) end   -- (the riding line: a click saves for it)
-    local nowText
+    local nowText, progress
     if step then
         local kind = KindOf(step)
         panel.badge:SetText(kind[1])
         panel.badge:SetTextColor(BadgeColor(kind[2]))
         nowText = ns.GuideStepText(step, guide)
+        progress = step.kind == "do" and Progress(step) or nil        -- (the log's count of a quest you are doing, a line of its own)
+        if progress then nowText = nowText .. "\n" .. progress end
     else
         panel.badge:SetText("")
         nowText = EndText(st)
     end
+    if panel.now.SetMaxLines then panel.now:SetMaxLines(progress and 4 or 2) end   -- (two for the step, two for its count)
     panel.now:SetText(nowText)
     local tip = { tostring(Title(st, guide)), nowText }
     panel.laterShown = {}
@@ -1727,14 +1795,19 @@ FailedCheck = function(st)
     local guide = ns:GuideGet(st.name)
     local step = guide and guide.steps[st.at or 1]
     local q = type(step) == "table" and step.quest
-    if type(q) ~= "number" or not Failed(q) then return end
+    if type(q) ~= "number" or not Failed(q, step) then return end
     if ns.PlannerNoteFailed then ns.PlannerNoteFailed(q) end     -- (abandoning it now is to take it again, not a skip: every time it is seen)
     if failedSeen[q] then return end
     failedSeen[q] = true
     ns:GuidePlanAgain("failed")
 end
--- The quest left your log or was taken again: a later failure plans again too.
-function ns.GuideFailedForget(q) if type(q) == "number" then failedSeen[q] = nil end end
+-- The quest left your log or was taken again: a later failure plans again too. (`q` as the game knows it: a step's
+-- quest matched to it is forgotten too.)
+function ns.GuideFailedForget(q)
+    if type(q) ~= "number" then return end
+    failedSeen[q] = nil
+    for k in pairs(failedSeen) do if ns.PlannerMappedId and ns.PlannerMappedId(k) == q then failedSeen[k] = nil end end
+end
 -- Standing at an accept step's place for a minute without the quest: its giver may not be there (old quest data).
 local notHereAt
 NotHere = function(st, step)

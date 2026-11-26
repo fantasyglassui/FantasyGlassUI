@@ -237,6 +237,193 @@ local function LoggedQuest(id)
     return { level = info and LogNum(info.questLevel) or 1, elite = tag and ns.Yes(tag.isElite) or false }
 end
 
+------------------------------------------------------------------------------------------
+-- Quests Questie numbers differently from the server (WoW: Forever's own quests). Questie's id
+-- misses in the game's log, so such a quest is matched to a log entry by its title (trimmed, any case;
+-- the level too, where both sides have one), one to one, and the pair is remembered for the account in
+-- ns.root.plannerQuestIds = { [questieId] = serverId } (made at its first write, only while the guide is
+-- unlocked). Every hand-in is kept per character: rec.handedIn[serverId] = { title, repeatable }.
+-- ns.PlannerServerId is the one helper for "in your log", progress and objectives; ns.PlannerQuestDone
+-- for "done". Nothing here writes while the guide is locked.
+------------------------------------------------------------------------------------------
+local function TitleKey(s)
+    if type(s) ~= "string" or ns:IsSecret(s) then return nil end
+    s = ns.Trim(s):lower()
+    return s ~= "" and s or nil
+end
+local function Lvl(v) if ns:IsSecret(v) then return nil end return LogNum(tonumber(v)) end
+local function AskQL(name, id)
+    local QL = C_QuestLog
+    local f = type(QL) == "table" and QL[name]
+    if type(f) ~= "function" then return false end
+    local ok, v = pcall(f, id)
+    return ok and ns.Is(v, true)
+end
+-- Is this id in your log, as the game knows it? (IsOnQuest, as every check before.)
+local function InLog(id) return type(id) == "number" and AskQL("IsOnQuest", id) end
+local function IdMap()
+    local t = type(ns.root) == "table" and ns.root.plannerQuestIds
+    return type(t) == "table" and t or nil
+end
+-- The server id a Questie id was matched to, or nil.
+function ns.PlannerMappedId(id)
+    local map = IdMap()
+    local v = map and type(id) == "number" and map[id]
+    return type(v) == "number" and v or nil
+end
+-- Remember that Questie's questieId is the server's serverId (only while the guide is unlocked; one to one:
+-- another quest matched to that server id lets go of it). true when written.
+function ns.PlannerLearnId(questieId, serverId)
+    if type(questieId) ~= "number" or type(serverId) ~= "number" or questieId == serverId or not Unlocked() or type(ns.root) ~= "table" then return false end
+    if ns:IsSecret(questieId) or ns:IsSecret(serverId) then return false end
+    local map = IdMap()
+    if map and map[questieId] == serverId then return true end
+    if not map then map = {}; ns.root.plannerQuestIds = map end
+    for q, s in pairs(map) do if s == serverId and q ~= questieId then map[q] = nil end end
+    map[questieId] = serverId
+    return true
+end
+-- Does Questie know a quest by this id (then the id is the server's own, and no other quest is matched to it)?
+local function QuestieKnows(id)
+    local L = _G.QuestieLoader
+    if type(L) ~= "table" or type(L.ImportModule) ~= "function" then return false end
+    local ok, known = pcall(function()
+        local db = L.ImportModule(L, "QuestieDB")
+        local p = type(db) == "table" and db.QuestPointers
+        return type(p) == "table" and p[id] ~= nil
+    end)
+    return ok and known == true
+end
+-- The quests in your log that a misnumbered quest may be matched to: { { id, key = title key, level } }, Questie's own
+-- ids left out. Read again when the log changed (its events), the game's quest log table or the time is another.
+local logVersion, entriesCache = 0, nil
+function ns.PlannerLogEntries()
+    local QL = C_QuestLog
+    local okT, now = pcall(GetTime)
+    now = okT and LogNum(now) or 0
+    local c = entriesCache
+    if c and c.ver == logVersion and c.ql == QL and c.t == now then return c.list end
+    local out = {}
+    if type(QL) == "table" and type(QL.GetNumQuestLogEntries) == "function" and type(QL.GetInfo) == "function" then
+        local okN, n = pcall(QL.GetNumQuestLogEntries)
+        n = okN and LogNum(n) or 0
+        for i = 1, min(n, 200) do
+            local ok, info = pcall(QL.GetInfo, i)
+            if ok and type(info) == "table" and not ns.Yes(info.isHeader) then
+                local id, key = LogNum(info.questID), TitleKey(info.title)
+                if id and key and not QuestieKnows(id) then
+                    out[#out + 1] = { id = id, key = key, level = LogNum(info.level) or LogNum(info.questLevel) }
+                end
+            end
+        end
+    end
+    entriesCache = { ver = logVersion, ql = QL, t = now, list = out }
+    return out
+end
+-- The log entry of this title (and level) that no other quest is matched to, when there is exactly one.
+-- `skip`: { [serverId] = true } entries not to take (the plan's own quests).
+local function Match(id, name, level, skip)
+    local key = TitleKey(name)
+    if not key then return nil end
+    level = Lvl(level)
+    local map, taken = IdMap(), {}
+    if map then for q, s in pairs(map) do if q ~= id then taken[s] = true end end end
+    local hit
+    for _, e in ipairs(ns.PlannerLogEntries()) do
+        if e.key == key and e.id ~= id and not taken[e.id] and not (skip and skip[e.id])
+            and not (level and e.level and level ~= e.level) then
+            if hit then return nil end                       -- (two of that title: not told apart)
+            hit = e.id
+        end
+    end
+    return hit
+end
+-- The id the game knows this quest by in your log: its own, the one it was matched to, or (given its name, and its
+-- level where known) a log entry of that title, learned then. nil when it is not in your log.
+function ns.PlannerServerId(id, name, level, skip)
+    if type(id) ~= "number" or ns:IsSecret(id) then return nil end
+    if InLog(id) then return id end
+    local mapped = ns.PlannerMappedId(id)
+    if mapped then return InLog(mapped) and mapped or nil end
+    local hit = Match(id, name, level, skip)
+    if hit then ns.PlannerLearnId(id, hit) end
+    return hit
+end
+-- A quest just accepted (its server id): the planned step it is, by title, when its own id names none. The pair is
+-- learned. Returns that step's quest id, or nil.
+function ns.PlannerLearnAccepted(serverId, steps)
+    if type(serverId) ~= "number" or ns:IsSecret(serverId) or type(steps) ~= "table" or QuestieKnows(serverId) then return nil end
+    local key, level
+    for _, e in ipairs(ns.PlannerLogEntries()) do if e.id == serverId then key, level = e.key, e.level end end
+    if not key then
+        local QL = C_QuestLog
+        local ok, t = pcall(function() return QL and QL.GetTitleForQuestID and QL.GetTitleForQuestID(serverId) end)
+        key = ok and TitleKey(t) or nil
+    end
+    if not key then return nil end
+    local found, seen = nil, {}
+    for _, s in ipairs(steps) do
+        local q = type(s) == "table" and s.quest
+        if q == serverId then return nil end                 -- (a step of its own: no other quest is it)
+        if type(q) == "number" and not seen[q] then
+            seen[q] = true
+            local lv = Lvl(s.qlevel)
+            if TitleKey(s.title) == key and not (lv and level and lv ~= level) and not InLog(q) then
+                local mapped = ns.PlannerMappedId(q)
+                if not (mapped and mapped ~= serverId and InLog(mapped)) then
+                    if found and found ~= q then return nil end   -- (two planned quests of that title: not told apart)
+                    found = q
+                end
+            end
+        end
+    end
+    if found then ns.PlannerLearnId(found, serverId) end
+    return found
+end
+
+-- Hand-ins, per character (QUEST_TURNED_IN, below): { [serverId] = { title = text|nil, repeatable = true|nil } }.
+local function HandIns(create)
+    local r = PaceRecord(create)
+    if type(r) ~= "table" then return nil end
+    if type(r.handedIn) ~= "table" then
+        if not create then return nil end
+        r.handedIn = {}
+    end
+    return r.handedIn
+end
+function ns.PlannerRecordHandIn(id)
+    if type(id) ~= "number" or ns:IsSecret(id) or not Unlocked() then return end
+    local QL = C_QuestLog
+    local ok, t = pcall(function() return QL and QL.GetTitleForQuestID and QL.GetTitleForQuestID(id) end)
+    local title = ok and type(t) == "string" and not ns:IsSecret(t) and ns.Trim(t) or nil
+    local list = HandIns(true)
+    if not list then return end
+    list[id] = { title = (title and title ~= "") and title:sub(1, 120) or nil, repeatable = AskQL("IsRepeatableQuest", id) or nil }
+end
+local function HandedIn(list, id)
+    local e = list and type(id) == "number" and list[id]
+    return e ~= nil and not (type(e) == "table" and e.repeatable)    -- (a repeatable quest never becomes done through the list)
+end
+-- Is this quest (Questie's id, or the server's) handed in for this character? The game for that id or the id it was
+-- matched to; the hand-ins kept (not for `repeatable`); or Questie's own completed list.
+function ns.PlannerQuestDone(id, repeatable)
+    if type(id) ~= "number" or ns:IsSecret(id) then return false end
+    if AskQL("IsQuestFlaggedCompleted", id) then return true end
+    local mapped = ns.PlannerMappedId(id)
+    if mapped and AskQL("IsQuestFlaggedCompleted", mapped) then return true end
+    if not repeatable then
+        local list = HandIns(false)
+        if HandedIn(list, id) or (mapped and HandedIn(list, mapped)) then return true end
+    end
+    local ok, v = pcall(function()
+        local Q = _G.Questie
+        local c = type(Q) == "table" and type(Q.db) == "table" and type(Q.db.char) == "table" and Q.db.char.complete
+        if type(c) ~= "table" then return false end
+        return c[id]
+    end)
+    return ok and v ~= nil and v ~= false
+end
+
 do
     local ev = CreateFrame("Frame")
     -- Quest times: each quest accepted while following gathers its share of the time that passes, the
@@ -323,11 +510,15 @@ do
         end
         return r.soloAt
     end
-    for _, e in ipairs({ "QUEST_ACCEPTED", "QUEST_TURNED_IN", "QUEST_REMOVED", "TRAINER_SHOW", "TRAINER_CLOSED",
+    for _, e in ipairs({ "QUEST_ACCEPTED", "QUEST_TURNED_IN", "QUEST_REMOVED", "QUEST_LOG_UPDATE", "TRAINER_SHOW", "TRAINER_CLOSED",
                          "PLAYER_MOUNT_DISPLAY_CHANGED", "PLAYER_DEAD", "PLAYER_FLAGS_CHANGED", "PLAYER_UPDATE_RESTING", "PLAYER_LOGIN" }) do
         pcall(ev.RegisterEvent, ev, e)
     end
     ev:SetScript("OnEvent", ns:Guard("Planner", function(_, event, a, b)
+        if event == "QUEST_LOG_UPDATE" or event == "QUEST_ACCEPTED" or event == "QUEST_TURNED_IN" or event == "QUEST_REMOVED" then
+            logVersion = logVersion + 1                       -- (the log changed: ns.PlannerLogEntries reads it again)
+            if event == "QUEST_LOG_UPDATE" then return end
+        end
         if event == "PLAYER_FLAGS_CHANGED" or event == "PLAYER_UPDATE_RESTING" or event == "PLAYER_LOGIN" then   -- (away or in town: the quest clock stops)
             if (event == "PLAYER_FLAGS_CHANGED" and a ~= "player") or not ns:GuideUnlocked() then return end
             ReadAway()
@@ -355,6 +546,8 @@ do
                 local okG, grouped = pcall(IsInGroup)
                 grouped = not okG or not ns.Is(grouped, false)      -- (hidden or unreadable: counted as grouped)
                 if event == "QUEST_ACCEPTED" then
+                    local on, st = Following()                 -- (a planned step's quest by its title, numbered otherwise by Questie)
+                    if on and type(st.plan) == "table" and type(st.plan.steps) == "table" then ns.PlannerLearnAccepted(id, st.plan.steps) end
                     local list = SoloAt(false)
                     if list then list[id] = nil end
                     if not grouped then
@@ -369,6 +562,7 @@ do
                     local e = Removed(id, Now())
                     if list then e.level = list[id]; list[id] = nil end
                 else                                                         -- (handed in: Forever may say so by QUEST_REMOVED first)
+                    if event == "QUEST_TURNED_IN" then ns.PlannerRecordHandIn(id) end   -- (every hand-in, by the server's id)
                     local list = SoloAt(false)
                     local questLevel = list and tonumber(list[id])
                     if list then list[id] = nil end

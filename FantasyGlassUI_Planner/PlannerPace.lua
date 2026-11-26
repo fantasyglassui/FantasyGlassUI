@@ -308,7 +308,8 @@ function ns:PlannerCatchUp(away, since)
         local id = type(s) == "table" and s.quest
         if id and not seen[id] then
             seen[id] = true
-            local okQ, on = pcall(QL.IsOnQuest or function() return false end, id)
+            local okQ, on = pcall(ns.PlannerServerId and function(q) return ns.PlannerServerId(q) ~= nil end   -- (its own id, or the one it was matched to)
+                or QL.IsOnQuest or function() return false end, id)
             if okQ and on == true then inPlan = inPlan + 1 end
         end
     end

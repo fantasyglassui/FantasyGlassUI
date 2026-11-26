@@ -63,7 +63,8 @@ local function NpcObjective(db, zones, ids, state)
     return o
 end
 
-local function Objectives(db, zones, quest, state)
+local ServerId                    -- (below: the id the game knows a quest by in your log)
+local function Objectives(db, zones, quest, state, id)
     local out, raw = {}, quest.objectives
     if type(raw) == "table" then
         for _, e in ipairs(type(raw[1]) == "table" and raw[1] or {}) do
@@ -98,9 +99,10 @@ local function Objectives(db, zones, quest, state)
         end
         out[#out + 1] = o
     end
-    -- Questie has no kill counts: the quest log has them, for a quest being worked on.
-    local logged = C_QuestLog and C_QuestLog.GetLogIndexForQuestID and C_QuestLog.GetLogIndexForQuestID(quest.Id or 0)
-        and C_QuestLog.GetQuestObjectives and C_QuestLog.GetQuestObjectives(quest.Id)
+    -- Questie has no kill counts: the quest log has them, for a quest being worked on (by the id the game knows it by).
+    local sid = ServerId(id or quest.Id)
+    local logged = sid and C_QuestLog and C_QuestLog.GetLogIndexForQuestID and C_QuestLog.GetLogIndexForQuestID(sid)
+        and C_QuestLog.GetQuestObjectives and C_QuestLog.GetQuestObjectives(sid)
     if ns:IsSecret(logged) then logged = nil end
     for i, o in ipairs(out) do
         local need = o.kind ~= "place" and type(logged) == "table" and type(logged[i]) == "table" and logged[i].numRequired
@@ -134,8 +136,9 @@ end
 
 local function Tags(id, quest, db, zones, state)
     local elite, group, dungeon = state.elite
+    local sid = ServerId(id) or id
     local info = C_QuestLog and C_QuestLog.GetQuestTagInfo and C_QuestLog.GetLogIndexForQuestID
-        and C_QuestLog.GetLogIndexForQuestID(id) and C_QuestLog.GetQuestTagInfo(id)
+        and C_QuestLog.GetLogIndexForQuestID(sid) and C_QuestLog.GetQuestTagInfo(sid)
     if type(info) == "table" then
         elite = elite or ns.Yes(info.isElite)
         group, dungeon = TagKinds(not ns:IsSecret(info.tagID) and info.tagID or nil)
@@ -208,12 +211,16 @@ ns.PLANNER_DUNGEONS = {
     { name = "The Temple of Atal'Hakkar", minLevel = 50, maxLevel = 60, map = 1435, x = 70, y = 54, zone = 1477 },
 }
 
-local function InLog(id)
+-- The id the game knows a quest by in your log: its own, or the one it was matched to (PlannerRecorders.lua); nil when
+-- it is not in your log. (A quest matched by its title, ns.PlannerCandidates, is in your log from then on.)
+ServerId = function(id)
+    if ns.PlannerServerId then return ns.PlannerServerId(id) end
     local QL = C_QuestLog
-    if not (QL and QL.IsOnQuest) then return false end
+    if not (QL and QL.IsOnQuest) then return nil end
     local ok, v = Try(QL.IsOnQuest, id)
-    return ok and ns.Yes(v)
+    return (ok and ns.Yes(v)) and id or nil
 end
+local function InLog(id) return ServerId(id) ~= nil end
 
 -- A Questie quest as a plain record, or nil when it cannot be placed on a known map (a quest in the
 -- log is kept even then: an item, object or drop started it, but its objectives and hand-in count).
@@ -244,7 +251,7 @@ local function Record(env, id)
     if #starts == 0 and not InLog(id) then return nil end
     for _, npc in ipairs(Ids(fin[1])) do Merge(ends, Spots(db, zones, npc)) end
     local state = {}
-    local objectives = Objectives(db, zones, quest, state)
+    local objectives = Objectives(db, zones, quest, state, id)
     local elite, group, dungeon = Tags(id, quest, db, zones, state)
     local repeatable = tonumber(quest.specialFlags) and tonumber(quest.specialFlags) % 2 == 1 or false
     return {
@@ -675,6 +682,13 @@ function ns.PlannerSource()
             if not (listed and listed(id)) and InLog(id) then out[#out + 1] = id end
         end
         return out
+    end
+    -- Is this quest repeatable (Questie's flags)? Cheap: no record is built. (A hand-in kept never makes one done.)
+    function src.repeatable(id)
+        if type(env.db.QueryQuestSingle) ~= "function" then return false end
+        local ok, v = Try(env.db.QueryQuestSingle, id, "specialFlags")
+        v = ok and tonumber(v)
+        return v ~= nil and v % 2 == 1
     end
     -- A new level empties the record cache (the level window moved).
     function src.begin(level)

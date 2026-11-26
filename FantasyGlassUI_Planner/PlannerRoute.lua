@@ -613,7 +613,8 @@ local function Trip(state, dest, steps, between)
 end
 
 local function QuestStep(kind, rec, spot)
-    return Place({ kind = kind, quest = rec.id, title = Clean(rec.name) }, spot)
+    return Place({ kind = kind, quest = rec.id, title = Clean(rec.name), qlevel = tonumber(rec.level) }, spot)   -- (the title and level: a quest Questie
+                                                                                                                -- numbers otherwise is found in the log by them)
 end
 
 -- The innkeeper nearest a hub, within the hub's reach.
@@ -1234,6 +1235,12 @@ local function Call(f, ...)
     if ok then return a, b, c end
 end
 
+-- The id the game knows a quest by in your log (its own, or the one it was matched to), or nil.
+local function ServerId(id)
+    if ns.PlannerServerId then return ns.PlannerServerId(id) end
+    return Call((C_QuestLog or {}).IsOnQuest, id) == true and id or nil
+end
+
 local function BindName()
     local v = Call(GetBindLocation)
     if type(v) == "string" and not ns:IsSecret(v) and v ~= "" then return v end
@@ -1302,12 +1309,18 @@ function ns.PlannerContext()
         level = Num(Call(UnitLevel, "player")) or 1,
         xp = Num(Call(UnitXP, "player")), xpMax = Num(Call(UnitXPMax, "player")),
         group = db.plannerGroup or "solo", inGroup = Call(IsInGroup) == true,
-        done = function(id) return Call(QL.IsQuestFlaggedCompleted, id) == true end,
+        -- (done: the game, for Questie's id or the one it was matched to, the hand-ins kept, or Questie's own list: PlannerRecorders.lua)
+        done = function(id)
+            if ns.PlannerQuestDone then return ns.PlannerQuestDone(id, type(src) == "table" and type(src.repeatable) == "function" and src.repeatable(id) or nil) end
+            return Call(QL.IsQuestFlaggedCompleted, id) == true
+        end,
         -- (a quest the game marks failed counts as not in your log: the plan takes it again from its giver, and
         -- the panel says to abandon it first; abandoning it then is not a skip, ns.PlannerWasFailed)
+        -- (in your log by its own id or the one it was matched to; a candidate is matched by its title in ns.PlannerCandidates)
         onQuest = function(id)
-            if Call(QL.IsOnQuest, id) ~= true then return false end
-            if Call(QL.IsFailed, id) == true then failedLogged[id] = true; return false end
+            local sid = ServerId(id)
+            if not sid then return false end
+            if Call(QL.IsFailed, sid) == true then failedLogged[id], failedLogged[sid] = true, true; return false end
             return true
         end,
         here = (map and x and y) and { map = map, x = x, y = y } or nil,
@@ -1324,7 +1337,12 @@ function ns.PlannerContext()
         classQuests = (db.plannerClassQuests ~= false and type(ns.PLANNER_CLASS_QUESTS) == "table" and ns.PlannerClassToken()
             and type(ns.PLANNER_CLASS_QUESTS[ns.PlannerClassToken()]) == "table" and #ns.PLANNER_CLASS_QUESTS[ns.PlannerClassToken()] > 0)
             and ns.PLANNER_CLASS_QUESTS[ns.PlannerClassToken()] or nil,
-        timed = function(id) local v = Num(Call(QL.GetTimeAllowed, id)); return v ~= nil and v > 0 end,   -- (a quest in the log with a clock on it)
+        timed = function(id) local v = Num(Call(QL.GetTimeAllowed, ServerId(id) or id)); return v ~= nil and v > 0 end,
+        -- (a candidate Questie numbers otherwise: matched to the log by its title and level; the pair, once known)
+        matchLog = function(rec)
+            return ns.PlannerServerId ~= nil and type(rec) == "table" and ns.PlannerServerId(rec.id, rec.name, rec.level) ~= nil
+        end,
+        mappedId = ns.PlannerMappedId,   -- (a quest in the log with a clock on it)
         itemCount = function(id) return Num(Call(C_Item and C_Item.GetItemCount, id)) or 0 end,
         deaths = db.plannerDeaths ~= false and d and type(d.deaths) == "table" and #d.deaths > 0 and d.deaths or nil,
         repGoals = next(ns.PlannerRepGoals()) and ns.PlannerRepGoals() or nil,
