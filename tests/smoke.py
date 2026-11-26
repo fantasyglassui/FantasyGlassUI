@@ -18468,6 +18468,95 @@ try("13.6 leftovers A: recording kills", function()
     if ns.PlannerKillsEvent then ns.PlannerKillsEvent("PLAYER_ENTERING_WORLD") end
     if not ok then error(err, 0) end
 end)
+try("13.6 leftovers A: kills in the plan", function()
+    local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), planner = ns.root.planner, times = ns.root.plannerQuestTimes, ratio = ns.PlannerKillRatio,
+                    dry = ns.db.plannerDry, unlocked = ns.GuideUnlocked, combat = env.InCombatLockdown, errors = #ns.errors }
+    local ok, err = pcall(function()
+        if ns.PLANNER_WAY_KILLS ~= 0.5 then error("half a monster a minute on the way") end
+        ns.GuideUnlocked = function() return true end
+        local cm = {}
+        for k, v in pairs(saved.map) do cm[k] = v end
+        cm.GetWorldPosFromMapPos = function(map, v)
+            if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end
+            if map == 2 then return 0, { x = v.x * 1000 + 5000, y = v.y * 1000 } end
+        end
+        cm.GetMapInfo = function(map) return { name = "Zone" .. tostring(map) } end
+        env.C_Map = cm
+        env.CreateVector2D = function(x, y) return { x = x, y = y } end
+        ns.root.planner, ns.root.plannerQuestTimes = {}, nil
+        local key = ns:CharKey()
+        local function near(a, b) return type(a) == "number" and math.abs(a - b) < 1e-6 end
+        local function rec(id, extra)
+            local r = { id = id, name = "Q" .. id, level = 20, minLevel = 1, xp = 500, starts = {}, ends = {},
+                objectives = { { kind = "kill", count = 8, countKnown = true, mobLevel = 20, spots = { { map = 1, x = 10, y = 10 }, { map = 1, x = 10, y = 52 } } } },
+                pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+            for k, v in pairs(extra or {}) do r[k] = v end
+            return r
+        end
+        local ctx = { level = 20, speed = 7 }
+        local way = 420 / 7 / 60 * 0.5                  -- a minute's walk between the spots: half a monster
+        -- no ratio: the kills and the monsters on the way at the formula
+        local q = rec(1)
+        local _, _, real = ns.PlannerQuestXP(q, ctx)
+        if not near(real, 500 + 8 * 145 + way * 145) then error("8 kills and the way at 145: " .. tostring(real)) end
+        if not near(q.objectives[1].spread, 420) then error("the spread is kept on the objective: " .. tostring(q.objectives[1].spread)) end
+        if not near(ns.PlannerQuestTime(q, { speed = 7 }), 8 * 25 + 60) then error("the time is as before: " .. ns.PlannerQuestTime(q, { speed = 7 })) end
+        q.objectives[1].spots = {}                       -- (kept: not worked out again)
+        if not near(ns.PlannerQuestTime(q, { speed = 7 }), 8 * 25 + 60) then error("the time reads the kept spread") end
+        -- with what you really get: 5 samples of 1.5 at level difference 0
+        ns.root.planner[key] = { killXP = { [0] = { n = 5, r = 1.5 } } }
+        local k = (1 + 7.5) / 6
+        _, _, real = ns.PlannerQuestXP(rec(2), ctx)
+        if not near(real, 500 + (8 + way) * 145 * k) then error("both kill parts at the ratio: " .. tostring(real)) end
+        -- speed 0 (or none): no monsters on the way
+        _, _, real = ns.PlannerQuestXP(rec(3), { level = 20, speed = 0 })
+        if not near(real, 500 + 8 * 145 * k) then error("speed 0: no way kills: " .. tostring(real)) end
+        _, _, real = ns.PlannerQuestXP(rec(3), { level = 20 })
+        if not near(real, 500 + 8 * 145 * k) then error("no speed: no way kills") end
+        -- the rested extra is the same kill part
+        local c = { level = 20, speed = 7, rested = 100000 }
+        local _, extra, all = ns.PlannerQuestXP(rec(4), c)
+        if not near(extra, (8 + way) * 145 * k) or not near(ns.PlannerRestedExtra(rec(4), c), extra) then error("the rested extra: " .. tostring(extra)) end
+        if not near(all, 500 + 2 * extra) then error("and the real experience has it twice") end
+        -- a monster level other than the quest's: the ratio at its own difference
+        ns.root.planner[key].killXP[2] = { n = 1, r = 2 }
+        local q5 = rec(5, { objectives = { { kind = "kill", count = 4, countKnown = true, mobLevel = 22, spots = {} } } })
+        _, _, real = ns.PlannerQuestXP(q5, ctx)
+        if not near(real, 500 + 4 * ns.PlannerKillXP(20, 22) * 1.5) then error("diff 2 reads its own ratio: " .. tostring(real)) end
+        -- two zones: the kill quest loses at the formula, and wins once the kills give 1.5
+        ns.root.planner[key] = {}
+        local function one(id, map, xp, objective)
+            return rec(id, { xp = xp, starts = { { map = map, x = 50, y = 50 } }, ends = { { map = map, x = 50, y = 50 } }, objectives = { objective } })
+        end
+        local killer = one(11, 1, 300, { kind = "kill", count = 8, countKnown = true, mobLevel = 20, spots = { { map = 1, x = 52, y = 52 } } })
+        local giver = one(12, 2, 1700, { kind = "item", count = 4, countKnown = true, spots = { { map = 2, x = 52, y = 52 } } })
+        local recs = { [11] = killer, [12] = giver }
+        local source = { kind = "fake", ids = function() return { 11, 12 } end, quest = function(id) return recs[id] end, inns = function() return {} end }
+        local zc = { source = source, level = 20, group = "solo", inGroup = false, speed = 7, faction = "Alliance", done = function() return false end,
+                     onQuest = function() return false end, crossings = {}, learnFlights = false, pace = 1, flights = {}, flightTime = function() return nil end }
+        if ns.PlannerPickZone({ killer, giver }, zc) ~= 2 then error("at the formula the reward quest's zone wins") end
+        ns.root.planner[key] = { killXP = { [0] = { n = 5, r = 1.5 } } }
+        if ns.PlannerPickZone({ killer, giver }, zc) ~= 1 then error("at 1.5 the kill quest's zone wins") end
+        -- grinding at your own rate: 90 kills an hour at a level-20 spot
+        ns.db.plannerDry = nil
+        env.InCombatLockdown = function() return false end
+        ns.root.planner[key] = { killsPerHour = 90 }
+        local spots = { { map = 1, x = 50, y = 50, count = 30, name = "Boar", mobLevel = 20 } }
+        local gctx = { source = { kind = "fake", grindSpots = function() return spots end }, level = 20, group = "solo", inGroup = false }
+        local function line()
+            local dry = ns.PlannerDry(gctx)
+            local lines = ns.PlannerAdviceLines({}, 1, { empty = true, dry = dry })
+            return table.concat(lines, " / ")
+        end
+        if not line():find("about 13050 xp an hour", 1, true) then error("90 an hour at 145: " .. line()) end
+        ns.PlannerKillRatio = function() return 1.5 end
+        if not line():find("about 19575 xp an hour", 1, true) then error("and at 1.5: " .. line()) end
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    env.C_Map, env.CreateVector2D, ns.root.planner, ns.root.plannerQuestTimes = saved.map, saved.vec, saved.planner, saved.times
+    ns.PlannerKillRatio, ns.db.plannerDry, ns.GuideUnlocked, env.InCombatLockdown = saved.ratio, saved.dry, saved.unlocked, saved.combat
+    if not ok then error(err, 0) end
+end)
 -- batch 6 tests A (learning): end
 -- batch 6 tests B (questie): begin
 -- batch 6 tests B (questie): end

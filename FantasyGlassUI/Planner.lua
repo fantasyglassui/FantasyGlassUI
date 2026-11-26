@@ -364,10 +364,12 @@ end
 ------------------------------------------------------------------------------------------
 -- Time
 ------------------------------------------------------------------------------------------
--- The farthest two spots of an objective, in yards (0 when they can't be placed).
-local function Spread(spots)
+-- The farthest two spots of an objective, in yards (0 when they can't be placed). Kept on the objective
+-- (o.spread) the first time: the time and the monsters on the way both read it, and the spots don't move.
+local function Spread(o)
+    if type(o.spread) == "number" then return o.spread end
     local pts = {}
-    for _, s in ipairs(spots or {}) do
+    for _, s in ipairs(o.spots or {}) do
         local c, x, y = ns.PlannerWorldPos(s.map, s.x, s.y)
         if c then pts[#pts + 1] = { c = c, x = x, y = y } end
     end
@@ -380,6 +382,7 @@ local function Spread(spots)
             end
         end
     end
+    o.spread = far
     return far
 end
 
@@ -394,7 +397,7 @@ function ns.PlannerQuestTime(rec, ctx)
         elseif o.kind == "item" then t = t + Count(o) * 25 / 0.5
         elseif o.kind == "place" then t = t + 0
         else t = t + 60 end
-        if speed > 0 then t = t + Spread(o.spots) / speed end
+        if speed > 0 then t = t + Spread(o) / speed end
     end
     t = t * (ctx.pace or 1)
     if ctx.noAlts then return t end                  -- (the formula alone: the pace is measured against it)
@@ -484,11 +487,22 @@ end
 ------------------------------------------------------------------------------------------
 -- Experience
 ------------------------------------------------------------------------------------------
-local function KillPart(rec, level)
+-- The monsters met while walking between a kill objective's spots (the walk PlannerQuestTime times), a minute.
+ns.PLANNER_WAY_KILLS = 0.5
+
+-- What a quest's kills give: each kill objective's count, and the monsters on the way, at the formula
+-- times what your kills at that level difference really give (PlannerKills.lua).
+local function KillPart(rec, ctx)
+    local level, speed = ctx.level or 1, tonumber(ctx.speed) or 0
     local xp = 0
     for _, o in ipairs(rec.objectives or {}) do
         if o.kind == "kill" then
-            xp = xp + Count(o) * ns.PlannerKillXP(level, o.mobLevel or rec.level, rec.elite)
+            local mob = o.mobLevel or rec.level
+            local each = ns.PlannerKillXP(level, mob, rec.elite)
+            if each > 0 and ns.PlannerKillRatio and tonumber(mob) then each = each * ns.PlannerKillRatio(mob - level, rec.elite) end
+            local kills = Count(o)
+            if speed > 0 then kills = kills + Spread(o) / speed / 60 * ns.PLANNER_WAY_KILLS end
+            xp = xp + kills * each
         end
     end
     return xp
@@ -501,7 +515,7 @@ function ns.PlannerRestedExtra(rec, ctx)
     local left = tonumber(ctx.restedLeft)
     if left == nil then left = tonumber(ctx.rested) end
     if not left or left <= 0 then return 0 end
-    return min(left, KillPart(rec, ctx.level or 1))
+    return min(left, KillPart(rec, ctx))
 end
 
 -- Experience from a better item among the rewards of a quest in the log: 2% of a level per item level
@@ -666,7 +680,7 @@ end
 function ns.PlannerQuestXP(rec, ctx)
     ctx = ctx or {}
     local extra = ns.PlannerRestedExtra(rec, ctx)
-    local real = (rec.xp or 0) + KillPart(rec, ctx.level or 1) + extra
+    local real = (rec.xp or 0) + KillPart(rec, ctx) + extra
     local xp = real + ns.PlannerRewardBonus(rec, ctx) + ns.PlannerRepBonus(rec, ctx)
     for _, h in ipairs(ns.PlannerHooksFor(ctx, "xp")) do xp = xp + (tonumber(h.fn(rec, ctx)) or 0) end
     if rec.nextQuest and ctx.candidate then
