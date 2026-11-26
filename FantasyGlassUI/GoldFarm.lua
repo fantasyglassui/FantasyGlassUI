@@ -82,17 +82,42 @@ end
 
 ------------------------------------------------------------------------------------------
 -- recorders (light; may stay in the main add-on when the folder moves)
--- LOOT_OPENED: each creature in the window is one loot of its kind, with what it gave. Coin is your
--- purse at LOOT_CLOSED less your purse at LOOT_OPENED, and only with one creature in the window.
+-- LOOT_OPENED: each creature in the window is one loot of its kind, with what it gave. Coin is what
+-- the money slot says each creature gave; failing that, with one creature in the window, your purse
+-- at LOOT_CLOSED less your purse at LOOT_OPENED. Solo only (in a group, rolls and split coin are not
+-- yours), never a window that follows Pick Pocket or a gathering cast, and never a living target.
 ------------------------------------------------------------------------------------------
--- Keep only the ITEM_CAP most-looted items (ties: the lower id stays).
-local function TrimItems(items)
-    while Count(items) > ITEM_CAP do
-        local worst, wn
-        for id, n in pairs(items) do
-            if not worst or n < wn or (n == wn and id > worst) then worst, wn = id, n end
-        end
-        items[worst] = nil
+-- Casts whose loot window is not a kill: Pick Pocket, and skinning, herbs and ore (the ids group C uses).
+local NOT_A_KILL = { [921] = true,
+    [2366] = true, [2368] = true, [3570] = true, [11993] = true,
+    [2575] = true, [2576] = true, [3564] = true, [10248] = true,
+    [8613] = true, [8617] = true, [8618] = true, [10768] = true }
+local CAST_WINDOW = 2                      -- seconds after such a cast in which a loot window is its
+local castAt                               -- GetTime() of the last such cast
+
+-- The worth of `n` of an item now (0 while its details are not loaded: then only a vendor price counts).
+local function Worth(id, n, today)
+    local okI, name = pcall(ns.GetItemInfo, ns, id)
+    if not (okI and Str(name)) then return 0 end
+    return n * ns.GoldItemValue(id, today)
+end
+-- Add `n` of item `id` to a monster's list. A full list takes a new item only when it is worth more a
+-- loot than the least-looted one there; whatever is left out is kept as `other` (copper).
+local function AddItem(rec, id, n, today)
+    local items = rec.items
+    if items[id] then items[id] = items[id] + n; return end
+    if Count(items) < ITEM_CAP then items[id] = n; return end
+    local low, ln
+    for k, c in pairs(items) do
+        if not low or c < ln or (c == ln and k > low) then low, ln = k, c end
+    end
+    local mine, theirs = Worth(id, n, today), Worth(low, ln, today)
+    if mine > theirs then
+        items[low] = nil
+        items[id] = n
+        rec.other = (Num(rec.other) or 0) + theirs
+    else
+        rec.other = (Num(rec.other) or 0) + mine
     end
 end
 -- Keep MOB_CAP monsters, letting the longest unseen go (a job: it walks the store).
@@ -113,7 +138,8 @@ local function TrimMobs()
 end
 
 -- One loot of a monster into ns.root.goldMobs. `now` is the day (yyyymmdd; today when nil).
-function ns.GoldMobNote(npcID, name, level, map, zone, x, y, items, copper, now)
+-- `instance`: looted inside a dungeon or raid (such a monster is never a world farm idea).
+function ns.GoldMobNote(npcID, name, level, map, zone, x, y, items, copper, now, instance)
     npcID = Num(npcID)
     if not npcID or npcID <= 0 or type(ns.root) ~= "table" then return false end
     local store = ns.root.goldMobs
@@ -121,25 +147,29 @@ function ns.GoldMobNote(npcID, name, level, map, zone, x, y, items, copper, now)
     local rec = store[npcID]
     local new = type(rec) ~= "table"
     if new then rec = {}; store[npcID] = rec end
+    local today = Num(now) or ns.Today()
     rec.name = Str(name) or Str(rec.name)
     rec.level = Num(level) or Num(rec.level)
     rec.map = Num(map) or Num(rec.map)
     rec.zone = Str(zone) or Str(rec.zone)
     if Num(x) and Num(y) then rec.x, rec.y = x, y end
+    if instance == true then rec.instance = true end
     rec.loots = (Num(rec.loots) or 0) + 1
     rec.copper = (Num(rec.copper) or 0) + max(0, Num(copper) or 0)
     rec.items = type(rec.items) == "table" and rec.items or {}
+    local ids = {}
     for id, n in pairs(type(items) == "table" and items or {}) do
-        if Num(id) and Num(n) and n > 0 then rec.items[id] = (Num(rec.items[id]) or 0) + n end
+        if Num(id) and Num(n) and n > 0 then ids[#ids + 1] = id end
     end
-    TrimItems(rec.items)
-    rec.last = Num(now) or ns.Today()
+    table.sort(ids)
+    for _, id in ipairs(ids) do AddItem(rec, id, items[id], today) end
+    rec.last = today
     if new then ns.GoldJob(TrimMobs, "farm:trim") end
     return true
 end
 
 local recent, recentAt = {}, 0             -- the last RECENT corpses looted (ring)
-local pending                              -- { npc, money } while a one-creature window is open
+local pending                              -- { npc, money } while a one-creature window waits for its coin
 local function Seen(guid)
     for i = 1, RECENT do if recent[i] == guid then return true end end
     return false
@@ -149,10 +179,13 @@ local function Remember(guid)
     recent[recentAt] = guid
 end
 local function Pack(...) return { n = select("#", ...), ... } end
+local function Clock() return Num(Ask(GetTime)) end
 
 local function LootOpened()
-    pending = nil
     if not Unlocked() then return end
+    if ns.Yes(Ask(IsInGroup)) then return end                                  -- (solo numbers only)
+    local t = Clock()
+    if castAt and t and t >= castAt and t - castAt <= CAST_WINDOW then return end  -- (Pick Pocket or gathering)
     local slots = Num(Ask(GetNumLootItems))
     if not slots or slots <= 0 then return end
     local moneyType = Enum and Enum.LootSlotType and Enum.LootSlotType.Money
@@ -162,7 +195,8 @@ local function LootOpened()
         if r[1] == true then
             local id
             local kind = Ask(GetLootSlotType, slot)
-            if moneyType == nil or kind == nil or kind ~= moneyType then id = ItemOf(Ask(GetLootSlotLink, slot)) end
+            local isMoney = moneyType ~= nil and kind ~= nil and kind == moneyType
+            if not isMoney then id = ItemOf(Ask(GetLootSlotLink, slot)) end
             local slotQty
             if id then
                 local okQ, _, _, q = pcall(GetLootSlotInfo, slot)
@@ -174,8 +208,11 @@ local function LootOpened()
                 local npc = NpcOf(guid)
                 if npc and not Seen(guid) then
                     local src = found[guid]
-                    if not src then src = { npc = npc, guid = guid, items = {} }; found[guid] = src; order[#order + 1] = src end
-                    if id then
+                    if not src then src = { npc = npc, guid = guid, items = {}, coin = 0 }; found[guid] = src; order[#order + 1] = src end
+                    if isMoney then
+                        local c = Num(r[i + 1])
+                        if c and c > 0 then src.coin, src.gaveCoin = src.coin + c, true end
+                    elseif id then
                         local qty = Num(r[i + 1]) or (sources == 1 and slotQty) or 1
                         if qty > 0 then src.items[id] = (src.items[id] or 0) + qty end
                     end
@@ -184,19 +221,24 @@ local function LootOpened()
         end
     end
     if #order == 0 then return end
+    -- a living target in the window is a pickpocket's or someone else's business, not a kill
+    local target = Str(Ask(UnitGUID, "target"))
+    if target and found[target] and not ns.Yes(Ask(UnitIsDead, "target")) then return end
     local here = Here() or {}
     local zone = Str(Ask(GetRealZoneText))
-    local target = Str(Ask(UnitGUID, "target"))
+    local inside = ns.Yes(Ask(IsInInstance))
     local today = ns.Today()
+    local coinRead = false
     for _, src in ipairs(order) do
         local name, level
         if target and target == src.guid then
             name, level = Str(Ask(UnitName, "target")), Num(Ask(UnitLevel, "target"))
         end
-        ns.GoldMobNote(src.npc, name, level, here.map, zone, here.x, here.y, src.items, 0, today)
+        if src.gaveCoin then coinRead = true end
+        ns.GoldMobNote(src.npc, name, level, here.map, zone, here.x, here.y, src.items, src.coin, today, inside)
         Remember(src.guid)
     end
-    if #order == 1 then
+    if #order == 1 and not coinRead then
         local money = Num(Ask(GetMoney))
         if money then pending = { npc = order[1].npc, money = money } end
     end
@@ -223,13 +265,23 @@ local function LootClosed()
     local rec = money and type(ns.root) == "table" and type(ns.root.goldMobs) == "table" and ns.root.goldMobs[p.npc]
     if type(rec) == "table" and money > p.money then rec.copper = (Num(rec.copper) or 0) + (money - p.money) end
 end
+local function CastDone(unit, spellID)
+    if not Unlocked() or Secret(unit) or unit ~= "player" then return end
+    spellID = Num(spellID)
+    local gather = spellID and type(ns.GoldGatherSkill) == "function" and ns.GoldGatherSkill(spellID)
+    if spellID and (NOT_A_KILL[spellID] or gather) then castAt = Clock() end
+end
 
 do
     local ev = CreateFrame("Frame")
     pcall(ev.RegisterEvent, ev, "LOOT_OPENED")
     pcall(ev.RegisterEvent, ev, "LOOT_CLOSED")
-    ev:SetScript("OnEvent", ns:Guard("Gold loot", function(_, event)
-        if event == "LOOT_OPENED" then LootOpened() elseif event == "LOOT_CLOSED" then LootClosed() end
+    local ok = type(ev.RegisterUnitEvent) == "function" and pcall(ev.RegisterUnitEvent, ev, "UNIT_SPELLCAST_SUCCEEDED", "player")
+    if not ok then pcall(ev.RegisterEvent, ev, "UNIT_SPELLCAST_SUCCEEDED") end
+    ev:SetScript("OnEvent", ns:Guard("Gold loot", function(_, event, a1, _, a3)
+        if event == "LOOT_OPENED" then LootOpened()
+        elseif event == "LOOT_CLOSED" then LootClosed()
+        elseif event == "UNIT_SPELLCAST_SUCCEEDED" then CastDone(a1, a3) end
     end))
 end
 
@@ -245,13 +297,16 @@ function ns.GoldKillDefault(level)
 end
 
 -- Copper a loot, the day of the oldest auction price in it (nil: none), and whether it is learned.
+-- The items it no longer lists count as their `other` copper.
 function ns.GoldMobValue(rec, today)
     if type(rec) ~= "table" then return 0, nil, false end
     local loots = Num(rec.loots) or 0
     if loots < LEARNED then return ns.GoldKillDefault(rec.level), nil, false end
-    local sum, oldest = max(0, Num(rec.copper) or 0), nil
+    local sum, oldest = max(0, Num(rec.copper) or 0) + max(0, Num(rec.other) or 0), nil
     for id, n in pairs(type(rec.items) == "table" and rec.items or {}) do
-        local value, _, day = ns.GoldItemValue(id, today)
+        local okI, name = pcall(ns.GetItemInfo, ns, id)
+        local value, _, day = 0, nil, nil
+        if okI and Str(name) then value, _, day = ns.GoldItemValue(id, today) end      -- (not loaded yet: skipped until it is)
         if Num(n) and n > 0 then sum = sum + n * value end
         if day and (not oldest or day < oldest) then oldest = day end
     end
@@ -270,7 +325,8 @@ end
 ------------------------------------------------------------------------------------------
 -- Questie, read-only through pcall (the same calls PlannerSource.lua makes)
 ------------------------------------------------------------------------------------------
--- The quests in your log not yet complete: { id, title, money, needs = { numRequired of each item objective } }.
+-- The quests in your log not yet complete: { id, title, money, needs = { numRequired of each item
+-- objective }, done = { whether each of those is finished } }.
 local function LogQuests()
     local QL = C_QuestLog
     local out = {}
@@ -280,12 +336,15 @@ local function LogQuests()
         local info = Ask(QL.GetInfo, i)
         local id = type(info) == "table" and not ns.Yes(info.isHeader) and Num(info.questID)
         if id and not ns.Yes(Ask(QL.IsComplete, id)) then
-            local needs = {}
+            local needs, done = {}, {}
             local objectives = Ask(QL.GetQuestObjectives, id)
             for _, o in ipairs(type(objectives) == "table" and objectives or {}) do
-                if type(o) == "table" and Str(o.type) == "item" then needs[#needs + 1] = Num(o.numRequired) or 1 end
+                if type(o) == "table" and Str(o.type) == "item" then
+                    needs[#needs + 1] = Num(o.numRequired) or 1
+                    done[#needs] = ns.Yes(o.finished)
+                end
             end
-            out[#out + 1] = { id = id, title = Str(info.title) or tostring(id), money = max(0, Num(Ask(GetQuestLogRewardMoney, id)) or 0), needs = needs }
+            out[#out + 1] = { id = id, title = Str(info.title) or tostring(id), money = max(0, Num(Ask(GetQuestLogRewardMoney, id)) or 0), needs = needs, done = done }
         end
         ns.GoldYield()
     end
@@ -394,7 +453,8 @@ local function ByValue(a, b)
     return a.npc < b.npc
 end
 local function ByHour(a, b)
-    if a.perHour ~= b.perHour then return a.perHour > b.perHour end
+    local ga, gb = a.perHour or a.total or 0, b.perHour or b.total or 0                  -- (a one-off by its total)
+    if ga ~= gb then return ga > gb end
     return a.id < b.id
 end
 local function ItemName(id)
@@ -402,7 +462,9 @@ local function ItemName(id)
     return ok and Str(name) or format(ns:Tr("Item %d"), id)
 end
 
--- The quest money a monster's drops bring: { [npc] = copper a loot }, and the quests' names.
+-- The quest money a monster's drops bring: { [npc] = { per = copper a loot, money = the rewards still
+-- to earn (each quest once), need = items still wanted } }, and the quests' names. Finished objectives
+-- are left out.
 local function QuestDrops(questie)
     local bonus, names = {}, {}
     if type(questie) ~= "table" then return bonus, names end
@@ -411,14 +473,17 @@ local function QuestDrops(questie)
         local items = type(objectives) == "table" and type(objectives[3]) == "table" and objectives[3] or {}
         for k, e in ipairs(items) do
             local item = type(e) == "table" and Num(e[1])
-            if item then
+            if item and not (quest.done and quest.done[k]) then
                 local need = Num(e[2]) or (quest.needs and quest.needs[k]) or 1
                 local per = floor((quest.money or 0) / max(1, need) * 0.5)
                 local drops = questie.item(item, "npcDrops")
                 for _, npc in ipairs(type(drops) == "table" and drops or {}) do
                     npc = Num(npc)
                     if npc then
-                        bonus[npc] = (bonus[npc] or 0) + per
+                        local b = bonus[npc] or { per = 0, money = 0, need = 0, quests = {} }
+                        bonus[npc] = b
+                        b.per, b.need = b.per + per, b.need + max(1, need)
+                        if not b.quests[quest.id] then b.quests[quest.id] = true; b.money = b.money + (quest.money or 0) end
                         if per > 0 then
                             names[npc] = names[npc] or {}
                             names[npc][#names[npc] + 1] = quest.title
@@ -435,7 +500,9 @@ end
 -- Farm ideas from the monsters you have looted (`mobs`, as ns.root.goldMobs), Questie's droppers of
 -- your quests' items, and your farming by zone (`zones`, as ns.FarmZoneRanking gives it). `questie`
 -- is ns.GoldFarmQuestie() or nil; `here` is { map, x, y } or nil. Calls add(idea) for at most 8
--- ideas, and returns them.
+-- ideas, and returns them. It writes nothing. Besides its arguments it reads: your kill pace
+-- (ns.root.goldChars[ctx.charKey].pace), what items are worth (ns.GoldItemValue, ns:GetItemInfo) and
+-- zone names (C_Map.GetMapInfo).
 function ns.GoldFarmIdeas(ctx, add, mobs, zones, questie, here)
     ctx = type(ctx) == "table" and ctx or {}
     mobs = type(mobs) == "table" and mobs or {}
@@ -449,9 +516,9 @@ function ns.GoldFarmIdeas(ctx, add, mobs, zones, questie, here)
     for npc, rec in pairs(mobs) do
         if Num(npc) and type(rec) == "table" then
             local lv = Num(rec.level) or level
-            if lv <= level + 2 then
+            if lv <= level + 2 and rec.instance ~= true then                      -- (dungeon monsters are not world farming)
                 local value, day, learned = ns.GoldMobValue(rec, today)
-                cands[#cands + 1] = { npc = npc, name = Str(rec.name), level = lv, map = Num(rec.map), zone = Str(rec.zone), x = Num(rec.x), y = Num(rec.y),
+                cands[#cands + 1] = { npc = npc, recorded = true, name = Str(rec.name), level = lv, map = Num(rec.map), zone = Str(rec.zone), x = Num(rec.x), y = Num(rec.y),
                                       value = value, day = day, learned = learned, loots = Num(rec.loots) or 0, items = rec.items }
             end
         end
@@ -472,7 +539,7 @@ function ns.GoldFarmIdeas(ctx, add, mobs, zones, questie, here)
             ns.GoldYield()
         end
     end
-    for _, c in ipairs(cands) do c.perLoot = c.value + (bonus[c.npc] or 0) end
+    for _, c in ipairs(cands) do c.perLoot = c.value + (bonus[c.npc] and bonus[c.npc].per or 0) end
     table.sort(cands, ByValue)
     -- the measured zones (ten minutes or more of your own farming)
     local measured = {}
@@ -491,7 +558,11 @@ function ns.GoldFarmIdeas(ctx, add, mobs, zones, questie, here)
         local map = c.map or MostSpawns(byMap)
         local pts = map and byMap[map] or {}
         local secs = paceSecs or ns.GoldKillSeconds(questie and #pts or nil)
-        local perHour = floor(3600 / secs * c.perLoot)
+        -- the quest part is one-time money: an hour of it is at most what the quests still pay
+        local b = bonus[c.npc]
+        local quest = b and b.per > 0 and min(b.per * 3600 / secs, b.money) or 0
+        local perHour = floor(3600 / secs * c.value + quest)
+        local oneOff = b and b.per > 0 and (not c.recorded or c.value <= 0) or false   -- (the quest is the only real reason)
         local zone = c.zone or MapName(map) or ns:Tr("an unknown place")
         local name = c.name or format(ns:Tr("Monster %d"), c.npc)
         -- the way: there, then round its spawns (nearest you first), or the one spot known
@@ -523,7 +594,7 @@ function ns.GoldFarmIdeas(ctx, add, mobs, zones, questie, here)
             { left = c.learned and format(ns:Tr("Learned from %d of your kills."), c.loots)
                 or ns:Tr("A guess for its level, until you have looted it 10 times.") },
         }
-        if tip then detail[#detail + 1] = { left = tip[1], right = ns:Coins(bonus[c.npc]) } end
+        if tip then detail[#detail + 1] = { left = format(ns:Tr("Includes a one-time quest reward of %s"), ns:Coins(b.money)), right = tip[1], copper = b.money } end
         if c.learned and type(c.items) == "table" then
             local list = {}
             for id, n in pairs(c.items) do if Num(id) and Num(n) and n > 0 then list[#list + 1] = { id = id, n = n } end end
@@ -532,8 +603,12 @@ function ns.GoldFarmIdeas(ctx, add, mobs, zones, questie, here)
         end
         if #route > 0 then
             detail[#detail + 1] = { left = ns:Tr("The way round") }
-            for k, step in ipairs(steps) do
-                if step.x then detail[#detail + 1] = { left = format("%d. %s", k, step.text), right = format("%.1f, %.1f", step.x, step.y) } end
+            local stop = 0
+            for _, step in ipairs(steps) do
+                if step.x then
+                    stop = stop + 1
+                    detail[#detail + 1] = { left = format("%d. %s", stop, step.text), right = format("%.1f, %.1f", step.x, step.y) }
+                end
             end
         end
         local idea = {
@@ -543,8 +618,14 @@ function ns.GoldFarmIdeas(ctx, add, mobs, zones, questie, here)
             where = "window", map = map, steps = steps, detail = detail, tip = tip,
             npc = c.npc, perLoot = c.perLoot, killSeconds = secs, zone = zone,
         }
-        local m = measured[c.zone or zone]
-        if m then
+        if oneOff then
+            idea.oneOff, idea.perHour = true, nil
+            idea.total, idea.minutes = b.money, b.need * secs / 60
+        end
+        local m = not oneOff and measured[c.zone or zone]
+        if oneOff then
+            if idea.total >= 100 then ideas[#ideas + 1] = idea end
+        elseif m then
             m.map = m.map or map
             m.lines[#m.lines + 1] = { left = idea.title, right = format(ns:Tr("%s an hour"), ns:Coins(perHour)) .. " (" .. ns:Tr("guess") .. ")" }
         elseif perHour >= 100 then
@@ -588,12 +669,14 @@ end)
 ------------------------------------------------------------------------------------------
 local DUNGEON_DAYS, DUNGEON_MIN_SECS, DUNGEON_IDEAS = 90, 300, 5
 
--- What one drop is worth: an item bound when picked up (bind type 1) only to a vendor.
+-- What one drop is worth: an item bound when picked up (bind type 1) only to a vendor; an item whose
+-- details are not loaded yet, nothing (its vendor price and bind type are not known either).
 local function DropWorth(link, today)
     local id = ItemOf(link)
     if not id then return 0, nil, nil end
-    local ok, _, _, _, _, _, _, _, _, _, _, vendor, _, _, bind = pcall(ns.GetItemInfo, ns, link)
-    if ok and Num(bind) == 1 then return max(0, Num(vendor) or 0), nil, id end
+    local ok, name, _, _, _, _, _, _, _, _, _, vendor, _, _, bind = pcall(ns.GetItemInfo, ns, link)
+    if not (ok and Str(name)) then return 0, nil, id end                        -- (not loaded yet: counted once it is)
+    if Num(bind) == 1 then return max(0, Num(vendor) or 0), nil, id end
     local value, _, day = ns.GoldItemValue(id, today)
     return value, day, id
 end

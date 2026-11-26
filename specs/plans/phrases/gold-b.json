@@ -198,5 +198,15 @@
     "Conta solo il bottino raro o migliore; monete e cianfrusaglie non sono incluse.",
     "희귀 등급 이상 전리품만 계산하며, 돈과 잡동사니는 포함하지 않습니다.",
     "只计算稀有及以上的掉落；金币和垃圾不计入。"
+  ],
+  "Includes a one-time quest reward of %s": [
+    "Enthält eine einmalige Questbelohnung von %s",
+    "Inclut une récompense de quête unique de %s",
+    "Incluye una recompensa de misión única de %s",
+    "Включает разовую награду за задание: %s",
+    "Inclui uma recompensa única de missão de %s",
+    "Include una ricompensa unica della missione di %s",
+    "1회성 퀘스트 보상 %s 포함",
+    "包含一次性的任务奖励 %s"
   ]
 }
