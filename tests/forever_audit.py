@@ -164,7 +164,10 @@ for f in files:
     own_methods |= set(re.findall(r"[.:](\w+)\s*=\s*function", code[f]))
     own_methods |= set(re.findall(r"(?:^|[\s{,])(\w+)\s*=\s*function", code[f], re.M))
     own_methods |= set(re.findall(r"(?:^|[\s{,])(\w+)\s*=\s*[\w.]+\s*[,}\n]", code[f], re.M))
-LIBRARY_METHODS = {"NewDataObject", "DataObjectIterator", "GetQuestLogRewardXP", "GetUiMapIdByAreaId"}       # LibDataBroker's and Questie's, when those add-ons are there
+LIBRARY_METHODS = {"NewDataObject", "DataObjectIterator"}       # LibDataBroker's, when that add-on is there (anywhere in the add-on)
+FILE_METHODS = {                                                # other add-ons' methods, allowed only in the file that reads that add-on
+    "FantasyGlassUI/PlannerSource.lua": {"GetQuestLogRewardXP", "GetUiMapIdByAreaId"},   # Questie's modules (QuestXP, ZoneDB)
+}
 LUA_STRING = set("byte char find format gmatch gsub len lower match rep reverse sub upper".split())   # ("text":lower() and the like)
 for f in files:
     s = src[f]
@@ -183,6 +186,8 @@ for f in files:
             note("Sounds Forever does not have", "SOUNDKIT." + m.group(1), where(f, m.start()))
     for m in re.finditer(r":\s*([A-Za-z_]\w*)\s*\(", code[f]):
         name = m.group(1)
+        if name in FILE_METHODS.get(f.replace(ROOT, ""), ()):
+            continue
         if name not in METHODS and name not in own_methods and name not in LIBRARY_METHODS and name not in LUA_STRING:
             note("Frame methods Forever does not have", name, where(f, m.start()))
 

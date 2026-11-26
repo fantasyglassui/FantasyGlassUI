@@ -12,7 +12,8 @@ local _, ns = ...
 -- Messages ("D1:" lines, fields split by ":"; <s> is the session, 4 to 8 hex digits):
 --   ASK:<s>:<level>   YES:<s>   NO:<s>   AT:<s>:<planId>:<at>:<n>   HI:<s>   END:<s>
 -- and the friend's state and the leader's plan as pieces, "SS:<s>z<count>:<i>:<n>:<state|plan>:<piece>".
--- The "D1:" messages go ahead of waiting pieces; a new state or plan drops the unsent pieces of the one before.
+-- The "D1:" messages go ahead of waiting pieces; a new state or plan drops the unsent pieces of the one before,
+-- and a new AT the unsent AT before it.
 -- The duo lives in memory only: a /reload or logout ends it.
 ------------------------------------------------------------------------------------------
 ns.PLANNER_DUO_PREFIX = "FGUIPlan"
@@ -67,6 +68,9 @@ function ns.PlannerDuoSend(text, to)
     if type(to) ~= "string" or to == "" then return false end
     local _, _, _, pkind = ns.ParseSharePiece(text)
     local m = { text = text, to = to, tries = 0, pkind = pkind }
+    if not pkind and text:find("^D1:AT:") then          -- (only the newest step matters: an unsent older AT goes, so ATs held in an instance never fill the cap)
+        for i = #queue, 1, -1 do local q = queue[i]; if q.to == to and not q.pkind and q.text:find("^D1:AT:") then table.remove(queue, i) end end
+    end
     if #queue >= QUEUE_MAX then                        -- (full: the oldest plan piece goes, else the oldest piece, else the oldest message)
         local drop
         for i, q in ipairs(queue) do if q.pkind == "plan" then drop = i; break end end
@@ -427,11 +431,13 @@ local function HideAsk()
 end
 
 local LevelLater
+local stateQueued = false            -- (a "duoState" job waits in the planner's job list)
 -- Work out your state (a job, sliced) and send it. Asked for while it is being worked out: once more, after it.
 local function QueueState()
     local d = Friend()
     if d and ns.plannerJobKey == "duoState" then d.stateAgain = true; return end
-    ns.PlannerJob(function()
+    if ns.PlannerJob(function()
+        stateQueued = false
         local mine = Friend()
         if not mine then return end
         mine.stateAgain = nil                             -- (a "once more" left by a state job that died or stopped is stale: this one is it)
@@ -447,7 +453,11 @@ local function QueueState()
         if not st then LevelLater(d); return end
         d.levelTries = 0
         ns.PlannerDuoSendChunks("state", ns.PlannerDuoStateText(st))
-    end, "duoState")
+    end, "duoState") then stateQueued = true end
+end
+-- A "once more" whose job died or was stopped (no state job waits or runs): stale, dropped.
+local function StaleState(d)
+    if d.stateAgain and not stateQueued and ns.plannerJobKey ~= "duoState" then d.stateAgain = nil end
 end
 ns.PlannerDuoQueueState = QueueState
 LevelLater = function(d)
@@ -775,6 +785,7 @@ local function Tick()
         if now - (d.yesAt or now) > STATE_WAIT then ns:PlannerDuoEnd("noanswer") end
         return
     end
+    if d.role == "friend" then StaleState(d) end
     if d.role == "friend" and d.retryAt and now >= d.retryAt then d.retryAt = nil; QueueState() end
     StayInTouch(d, now)
 end

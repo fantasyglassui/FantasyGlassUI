@@ -92,13 +92,17 @@ local function ZoneName(map)
 end
 
 -- "LFG <title>, <zone>" (no zone: "LFG <title>"), at most 200 bytes with `reserve` bytes more in front of it
--- (a "/4 " channel): the title is cut short, on a whole character, to fit.
+-- (a "/4 " channel): the title is cut short, on a whole character, to fit. Never "LFG , <zone>": a title cut to
+-- nothing gives way to the record's name (cut too), then "#<id>" (whole, never cut).
 function ns.PlannerLFGText(step, reserve)
     if type(step) ~= "table" then return "" end
     local title, zone = Title(step), ZoneName(step.map)
     local pattern = ns:Tr(zone and "LFG %s, %s" or "LFG %s")
     local fixed = #(zone and format(pattern, "", zone) or format(pattern, ""))
-    title = Cut(title, MAX_LINE - (tonumber(reserve) or 0) - fixed)
+    local room, id = MAX_LINE - (tonumber(reserve) or 0) - fixed, "#" .. tostring(step.quest)
+    title = Cut(title, room)
+    if title == "" then title = Cut(RecordName(step.quest) or "", room) end
+    if title == "" then title = id end                 -- (a few bytes over the 200 only when nothing fits at all)
     return zone and format(pattern, title, zone) or format(pattern, title)
 end
 
