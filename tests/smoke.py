@@ -9752,7 +9752,7 @@ try("keep-and-ids: a quest Questie numbers otherwise, before the planner loads",
         if ns.GuideProgress(steps[2]) ~= "3/8" then error("no text from the log: the bare count") end
         objText = "Agitators slain"
         kills = 8
-        if ns.GuideProgress(steps[2]) ~= "Agitators slain: 8/8 ✓" then error("finished: marked: " .. tostring(ns.GuideProgress(steps[2]))) end
+        if ns.GuideProgress(steps[2]) ~= "Agitators slain: 8/8 |TInterface\\RaidFrame\\ReadyCheck-Ready:0|t" then error("finished: marked: " .. tostring(ns.GuideProgress(steps[2]))) end
         kills = 3
         -- handed in: Forever does not flag it, but the hand-in is kept (by the server's id)
         logged[50123] = nil
@@ -26410,10 +26410,12 @@ try("keep-and-ids B: Keep my route", function()
         fireEvent("QUEST_TURNED_IN", 555, 0, 0); fireEvent("PLAYER_ENTERING_WORLD", false, false); fireEvent("HEARTHSTONE_BOUND")
         if Queued() then error("kept: a hand-in, a loading screen, the hearthstone leave the route") end
         for _, why in ipairs({ "level", "hand-in", "loading screen", "log", "bind", "zone done", "quest removed", "settings", "time", "flight", "death",
-                               "window closed", "questie", "questie wait", "duo", "duo end", "from here", "end", "skip", "failed", "hearth" }) do
+                               "window closed", "questie", "questie wait", "duo", "duo end", "end", "skip", "failed", "hearth" }) do
             local okR, refused = ns:PlannerReplan(why)
             if okR or refused ~= "refused" or Queued() then error("kept: refused: " .. why) end
         end
+        if not ns:PlannerReplan("from here") or not Queued() then error("kept: the map's Plan from here, asked for, still replans") end
+        ns.plannerQueued = nil
         -- Plan again, pressed: plans again
         if not ns:GuidePlanAgain() then error("kept: Plan again plans") end
         q, r = Queued()

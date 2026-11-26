@@ -982,7 +982,7 @@ ns:Every(0, "Planner", Tick)
 -- route is ns:PlannerStart). Every other one is refused: a level, a hand-in, a loading screen, a quest taken or lost, the
 -- hearthstone, a new flight point, a death, a closed window, a setting, the time, the zone goal, Questie ready, the duo,
 -- the route's end, a skip, a failed quest, a hearth, Plan from here on the map.
-local KEPT_REPLANS = { again = true }
+local KEPT_REPLANS = { again = true, ["from here"] = true }   -- (asked for: Plan again, and the map's Plan from here)
 function ns.PlannerKeepsRoute(reason)
     return type(ns.db) == "table" and ns.db.plannerKeepRoute == true and not KEPT_REPLANS[reason]
 end

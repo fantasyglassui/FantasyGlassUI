@@ -171,6 +171,7 @@ local function Short(t, n)
     local cut = t:sub(1, n):gsub("[\192-\255][\128-\191]*$", "")   -- (never half a letter)
     return ns.Trim(cut) .. "…"
 end
+local DONE_TICK = "|TInterface\\RaidFrame\\ReadyCheck-Ready:0|t"   -- (the ready-check tick the raid frames use: the game font has no ✓)
 local function Progress(step)
     local sid = type(step) == "table" and LogId and LogId(step.quest, step)
     local f = sid and C_QuestLog and C_QuestLog.GetQuestObjectives
@@ -191,7 +192,7 @@ local function Progress(step)
             end
             text = text or format("%d/%d", math.min(a, b), b)
             local fin = o.finished
-            if (type(fin) == "boolean" and not Secret(fin) and fin) or a >= b then text = text .. " ✓" end
+            if (type(fin) == "boolean" and not Secret(fin) and fin) or a >= b then text = text .. " " .. DONE_TICK end
             parts[#parts + 1] = text
         end
     end
