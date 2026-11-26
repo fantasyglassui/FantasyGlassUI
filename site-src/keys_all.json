@@ -180,7 +180,7 @@
  "Try “move” or “reset”",
  "Asked often",
  "Which game is it for?",
- "<b>WoW Forever</b> (interface 16001). It goes in <code>World of Warcraft/_forever_/Interface/AddOns</code>, as three folders side by side.",
+ "<b>WoW Forever</b> (interface 16001). It goes in <code>World of Warcraft/_forever_/Interface/AddOns</code>, as folders side by side (all of them from the zip).",
  "Does it work with my other add-ons?",
  "Yes. When you already use an add-on that does the same job, like Plater for nameplates, Bagnon or Baganator for bags, or Grid2, VuhDo or Cell for raid frames, Fantasy Glass UI steps aside for that part and keeps everything else. <code>/fgui conflicts off</code> makes it keep its own instead.",
  "Can I use only some of it?",
