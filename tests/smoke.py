@@ -12122,6 +12122,181 @@ try("gold B: dungeon drops", function()
 end)
 -- gold tests B (farm): end
 -- gold tests C (gather): begin
+try("gold C: gathering", function()
+    local keep = { unlocked = ns.GuideUnlocked, map = env.C_Map, time = env.GetTime, num = env.GetNumLootItems, link = env.GetLootSlotLink,
+        info = env.GetLootSlotInfo, profs = env.GetProfessions, prof = env.GetProfessionInfo, world = ns.PlannerWorldPos, value = ns.GoldItemValue,
+        today = ns.Today, seen = ns.root.goldNodesSeen, items = ns.root.goldNodeItems, gather = ns.root.goldGather, planner = ns.root.plannerNodesSeen,
+        secret = ns.IsSecret, yards = ns.PLANNER_NODE_YARDS, switch = ns.db.plannerGather }
+    local ok, err = pcall(function()
+        if type(ns.GoldRecordNode) ~= "function" then error("ns.GoldRecordNode is nil") end
+        ns.root.goldNodesSeen, ns.root.goldNodeItems, ns.root.goldGather, ns.root.plannerNodesSeen = nil, nil, nil, nil
+        ns.Today = function() return 20261125 end
+        local clock, pos = 1000, { 1429, 50, 50 }
+        env.GetTime = function() return clock end
+        local cm = {}
+        for k, v in pairs(keep.map) do cm[k] = v end
+        cm.GetBestMapForUnit = function() return pos[1] end
+        cm.GetPlayerMapPosition = function() return { GetXY = function() return pos[2] / 100, pos[3] / 100 end } end
+        cm.GetMapInfo = function(m) return { name = ({ [1429] = "Elwynn Forest", [1436] = "Westfall" })[m] or "Somewhere" } end
+        env.C_Map = cm
+        ns.PlannerWorldPos = function(map, x, y) if map == 1429 then return 0, x * 100, y * 100 end end
+        -- node recording: once a spot, never while locked
+        ns.GuideUnlocked = function() return false end
+        fireEvent("UNIT_SPELLCAST_SENT", "player", "Peacebloom", nil, 2366)
+        if ns.root.goldNodesSeen ~= nil then error("nothing is recorded while locked") end
+        ns.GuideUnlocked = function() return true end
+        fireEvent("UNIT_SPELLCAST_SENT", "player", "Peacebloom", nil, 2366)
+        local list = ns.root.goldNodesSeen and ns.root.goldNodesSeen[1429]
+        if type(list) ~= "table" or #list ~= 1 then error("one node recorded") end
+        local n = list[1]
+        if n.name ~= "Peacebloom" or n.x ~= 50 or n.y ~= 50 or n.skill ~= 182 then error("the planner's shape: { name, x, y, skill }") end
+        fireEvent("UNIT_SPELLCAST_SENT", "player", "Peacebloom", nil, 2366)
+        if #ns.root.goldNodesSeen[1429] ~= 1 then error("the same spot again is the same node") end
+        -- what the node gave
+        env.GetNumLootItems = function() return 1 end
+        env.GetLootSlotLink = function(slot) if slot == 1 then return "|cffffffff|Hitem:2447::::::::20:::::|h[Peacebloom]|h|r" end end
+        env.GetLootSlotInfo = function(slot) if slot == 1 then return 133939, "Peacebloom", 2, nil, 1 end end
+        fireEvent("UNIT_SPELLCAST_SUCCEEDED", "player", nil, 2366)
+        clock = clock + 2
+        fireEvent("LOOT_OPENED")
+        local got = ns.root.goldNodeItems and ns.root.goldNodeItems.Peacebloom
+        if not (got and got.n == 1 and got.items[2447] == 2) then error("the node's loot: " .. tostring(got and got.items[2447])) end
+        fireEvent("LOOT_OPENED")
+        if got.items[2447] ~= 2 then error("one loot a gathering") end
+        local g = ns.root.goldGather and ns.root.goldGather[1429]
+        if not (g and g.n == 1 and g.items[2447] == 2 and g.day == 20261125) then error("the map's measure") end
+        if g.secs ~= 30 then error("one gathering counts 30 s: " .. tostring(g.secs)) end
+        clock = 1010                                     -- the next, 10 s on: the gap and 30 s
+        fireEvent("UNIT_SPELLCAST_SENT", "player", "Peacebloom", nil, 2366)
+        fireEvent("UNIT_SPELLCAST_SUCCEEDED", "player", nil, 2366); fireEvent("LOOT_OPENED")
+        if g.n ~= 2 or g.secs ~= 70 or got.n ~= 2 or got.items[2447] ~= 4 then error("the gap counts: " .. tostring(g.secs)) end
+        -- loot that is not a gathering's: too late, none before, not a gathering spell, or locked
+        local before = g.n
+        clock = 1020
+        fireEvent("UNIT_SPELLCAST_SUCCEEDED", "player", nil, 2366); clock = 1026; fireEvent("LOOT_OPENED")
+        fireEvent("LOOT_OPENED")
+        fireEvent("UNIT_SPELLCAST_SUCCEEDED", "player", nil, 133); fireEvent("LOOT_OPENED")
+        fireEvent("UNIT_SPELLCAST_SUCCEEDED", "player", nil, 2366)
+        ns.GuideUnlocked = function() return false end
+        fireEvent("LOOT_OPENED")
+        ns.GuideUnlocked = function() return true end
+        if g.n ~= before or got.n ~= 2 then error("only a gathering's loot within 5 s, and never while locked") end
+        -- hidden or odd values, the planner's switch, its node distance, no world position, the cap
+        local hidden = {}
+        ns.IsSecret = function(self, v) if rawequal(v, hidden) then return true end return keep.secret(self, v) end
+        fireEvent("UNIT_SPELLCAST_SENT", "player", hidden, nil, 2366)
+        fireEvent("UNIT_SPELLCAST_SENT", hidden, "Silverleaf", nil, 2366)
+        fireEvent("UNIT_SPELLCAST_SENT", "player", "Silverleaf", nil, hidden)
+        fireEvent("UNIT_SPELLCAST_SENT", "player", "Silverleaf", nil, "2366")
+        if ns.GoldRecordNode(1429, hidden, 50, "Silverleaf", 182) then error("a hidden x") end
+        ns.IsSecret = keep.secret
+        if #list ~= 1 then error("hidden or odd values record nothing") end
+        ns.db.plannerGather = false
+        fireEvent("UNIT_SPELLCAST_SENT", "player", "Silverleaf", nil, 2366)
+        ns.db.plannerGather = keep.switch
+        if #list ~= 1 then error("the planner's gathering switch off: nothing recorded") end
+        ns.PLANNER_NODE_YARDS = 1000
+        if ns.GoldRecordNode(1429, 55, 50, "Peacebloom", 182) then error("the planner's node distance is used") end
+        ns.PLANNER_NODE_YARDS = keep.yards
+        if not ns.GoldRecordNode(1429, 55, 50, "Peacebloom", 182) or #list ~= 2 then error("500 yards away is another node") end
+        if ns.GoldRecordNode(1436, 50, 50, "Peacebloom", 182) then error("no world position: nothing recorded") end
+        for _ = 1, 298 do list[#list + 1] = { name = "Far", x = 0, y = 0, skill = 186 } end
+        if ns.GoldRecordNode(1429, 90, 90, "Silverleaf", 182) or #list ~= 300 then error("300 nodes a map") end
+        for i = 300, 3, -1 do list[i] = nil end
+        -- skinning: the map's measure, never a node
+        env.GetLootSlotLink = function(slot) if slot == 1 then return "|Hitem:2318::|h[Light Leather]|h" end end
+        env.GetLootSlotInfo = function(slot) if slot == 1 then return 1, "Light Leather", 3 end end
+        clock = 1100
+        fireEvent("UNIT_SPELLCAST_SENT", "player", "Young Wolf", nil, 8613)
+        fireEvent("UNIT_SPELLCAST_SUCCEEDED", "player", nil, 8613); fireEvent("LOOT_OPENED")
+        if ns.root.goldNodeItems["Young Wolf"] ~= nil or g.items[2318] ~= 3 or #list ~= 2 then error("skinning: the map's measure only") end
+        -- skill and zone
+        if ns.GoldGatherSkill(2575) ~= 186 or ns.GoldGatherSkill(8613) ~= 393 or ns.GoldGatherSkill(133) ~= nil then error("the gathering skills") end
+        if not ns.GoldGatherFits(1429, 182, 60) or ns.GoldGatherFits(1446, 182, 60) then error("skill 60: Elwynn fits, Tanaris does not") end
+        if ns.GOLD_GATHER_ITEMS[182][13468] ~= 300 or ns.GOLD_GATHER_ITEMS[186][10620] ~= 245 or ns.GOLD_GATHER_ZONES[1446][1] ~= 160 then error("the built-in lists") end
+        -- the route, in map percent
+        ns.PlannerWorldPos = function() return nil end
+        local pts = { { x = 0, y = 0 }, { x = 10, y = 0 }, { x = 10, y = 10 }, { x = 0, y = 10 }, { x = 5, y = 5 } }
+        for _, p in ipairs(pts) do p.map = 1436 end
+        local order, yards = ns.GoldGatherRoute(pts)
+        if table.concat(order or {}, ",") ~= "1,5,2,3,4" or math.abs((yards or 0) - 441.4) > 1 then error("the tour: " .. table.concat(order or {}, ",") .. " " .. tostring(yards)) end
+        -- per hour along those 5 nodes
+        local values = { [2447] = 100, [765] = 100, [2449] = 100 }
+        ns.GoldItemValue = function(id) return values[id] or 0, "vendor", nil end
+        ns.root.goldNodeItems = { Peacebloom = { n = 3, items = { [2447] = 3 } } }
+        ns.root.goldGather = nil
+        ns.root.goldNodesSeen = { [1436] = {} }
+        for _, p in ipairs(pts) do table.insert(ns.root.goldNodesSeen[1436], { name = "Peacebloom", x = p.x, y = p.y, skill = 182 }) end
+        local ideas = {}
+        local function Add(i) ideas[#ideas + 1] = i end
+        local function Find(id) for _, i in ipairs(ideas) do if i.id == id then return i end end end
+        local ctx = { today = 20261125, level = 20, map = 1436, where = "window" }
+        ns.GoldGatherIdeas(ctx, Add, { [182] = 60 })
+        local r = Find("gather:1436:182")
+        if not r or r.perHour ~= 3600 or r.basis ~= "guess" or r.kind ~= "gather" or r.ease ~= 40 then error("the route's gold an hour: " .. tostring(r and r.perHour)) end
+        if not r.title:find("Westfall", 1, true) or #r.steps ~= 5 or r.steps[2].text ~= "Peacebloom" or r.steps[2].x ~= 5 then error("the route's title and steps") end
+        if not ns.GoldIdeaValid(r) then error("the route idea is valid: " .. tostring(select(2, ns.GoldIdeaValid(r)))) end
+        if #ideas > 6 then error("at most 6 ideas") end
+        -- either memory alone
+        local five = ns.root.goldNodesSeen
+        ns.root.goldNodesSeen, ns.root.plannerNodesSeen = nil, five
+        ideas = {}
+        ns.GoldGatherIdeas(ctx, Add, { [182] = 60 })
+        r = Find("gather:1436:182")
+        if not r or #r.steps ~= 5 or r.perHour ~= 3600 then error("the planner's nodes alone make a route") end
+        ns.root.goldNodesSeen, ns.root.plannerNodesSeen = five, nil
+        ideas = {}
+        ns.GoldGatherIdeas(ctx, Add, { [182] = 60 })
+        r = Find("gather:1436:182")
+        if not r or #r.steps ~= 5 or r.perHour ~= 3600 then error("the gold nodes alone make a route") end
+        -- no nodes: a guess with one step (where you stand first among equals)
+        ideas = {}
+        ns.GoldGatherIdeas({ today = 20261125, level = 20, map = 1429, where = "window" }, Add, { [182] = 60 })
+        local e = Find("gather:1429:182")
+        if not e or not e.title:find("Elwynn Forest", 1, true) or #e.steps ~= 1 or e.steps[1].map ~= 1429 or e.ease ~= 40 or e.perHour ~= 3375 then error("try gathering in Elwynn: " .. tostring(e and e.perHour)) end
+        local w = Find("gather:1436:182")
+        if not w or w.ease ~= 30 then error("the route away from where you are is 10 harder") end
+        if e.title ~= string.format(ns:Tr("Try gathering in %s"), "Elwynn Forest") then error("the try title: " .. e.title) end
+        -- measured
+        values[2447] = 50
+        ns.root.goldGather = { [1429] = { n = 25, secs = 1200, items = { [2447] = 40 }, day = 20261125 } }
+        ideas = {}
+        ns.GoldGatherIdeas(ctx, Add, { [182] = 60 })
+        local m = Find("gather:1429:182")
+        if not m or m.basis ~= "measured" or m.perHour ~= 6000 then error("measured: " .. tostring(m and m.perHour)) end
+        -- the measure's label: listed herbs against listed ores; unlisted items say nothing; neither is skinning
+        values[2318] = 100
+        ns.root.goldGather = { [1429] = { n = 25, secs = 1200, items = { [2447] = 30, [2770] = 10, [2452] = 100 }, day = 20261125 },
+            [1436] = { n = 25, secs = 1200, items = { [2318] = 50 }, day = 20261125 } }
+        ideas = {}
+        ns.GoldGatherIdeas(ctx, Add, { [182] = 60 })
+        m = Find("gather:1429:182")
+        if not m or m.basis ~= "measured" or m.perHour ~= 4500 or not m.title:find(ns:Tr("herbs"), 1, true) or #m.detail ~= 2 then error("herbs the larger share, the ore noted") end
+        if Find("gather:1429:393") then error("an unlisted herb is not skinning") end
+        local sk = Find("gather:1436:393")
+        if not sk or sk.perHour ~= 15000 or sk.title ~= string.format(ns:Tr("Skin beasts in %s"), "Westfall") then error("only unlisted items: skinning") end
+        -- both node memories
+        values[2447] = 100
+        ns.root.goldNodesSeen = { [1436] = { ns.root.goldNodesSeen[1436][1], ns.root.goldNodesSeen[1436][2] } }
+        ns.root.plannerNodesSeen = { [1436] = { { name = "Peacebloom", x = 10, y = 10, skill = 182 }, { name = "Peacebloom", x = 0, y = 10, skill = 182 }, { name = "Peacebloom", x = 5, y = 5, skill = 182 } } }
+        ideas = {}
+        ns.GoldGatherIdeas(ctx, Add, { [182] = 60 })
+        r = Find("gather:1436:182")
+        if not r or #r.steps ~= 5 or r.perHour ~= 3600 then error("both memories make one route") end
+        -- the source, through the professions
+        env.GetProfessions = function() return 1 end
+        env.GetProfessionInfo = function() return "Herbalism", 136246, 60, 75, 1, 0, 182 end
+        if type(ns.GoldSources().gather) ~= "function" then error("the gather source is registered") end
+        ideas = {}
+        ns.GoldSources().gather(ctx, Add)
+        if not Find("gather:1436:182") then error("the source reads your skills") end
+    end)
+    ns.GuideUnlocked, env.C_Map, env.GetTime, env.GetNumLootItems, env.GetLootSlotLink, env.GetLootSlotInfo = keep.unlocked, keep.map, keep.time, keep.num, keep.link, keep.info
+    env.GetProfessions, env.GetProfessionInfo, ns.PlannerWorldPos, ns.GoldItemValue, ns.Today = keep.profs, keep.prof, keep.world, keep.value, keep.today
+    ns.root.goldNodesSeen, ns.root.goldNodeItems, ns.root.goldGather, ns.root.plannerNodesSeen = keep.seen, keep.items, keep.gather, keep.planner
+    ns.IsSecret, ns.PLANNER_NODE_YARDS, ns.db.plannerGather = keep.secret, keep.yards, keep.switch
+    if not ok then error(err, 0) end
+end)
 -- gold tests C (gather): end
 -- gold tests D (craft): begin
 -- gold tests D (craft): end
