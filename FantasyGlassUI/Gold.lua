@@ -76,6 +76,7 @@ function ns.GoldIdeaValid(idea)
         if idea[k] > 100 then return false, k .. " above 100" end
     end
     if Secret(idea.oneOff) then return false, "secret oneOff" end
+    if idea.oneOff ~= nil and type(idea.oneOff) ~= "boolean" then return false, "oneOff is not true or false" end
     if idea.oneOff == true then
         local why = BadNumber(idea.total, "total") or BadNumber(idea.minutes, "minutes")
         if why then return false, why end
@@ -161,10 +162,10 @@ local function Start()
     local ev = CreateFrame("Frame")
     pcall(ev.RegisterEvent, ev, "PLAYER_REGEN_DISABLED")
     pcall(ev.RegisterEvent, ev, "PLAYER_REGEN_ENABLED")
-    ev:SetScript("OnEvent", ns:Guard("Gold", function(_, event)
+    ev:SetScript("OnEvent", function(_, event)                -- (plain: it only sets a flag, and is never timed by /fgui perf)
         if event == "PLAYER_REGEN_DISABLED" then fighting = true
         elseif event == "PLAYER_REGEN_ENABLED" then fighting = false end
-    end))
+    end)
 end
 
 -- Queue a job. A key already queued or running is refused.
@@ -524,7 +525,7 @@ function ns.GoldGo(idea)
             lines[#lines + 1] = { left = format("%d. %s", i, step.text), right = table.concat(right, "  ") }
         end
     end
-    ns:ShowList("GoldSteps", type(idea.title) == "string" and idea.title or "Go", lines)
+    ns:ShowList("GoldSteps", type(idea.title) == "string" and idea.title or ns:Tr("Go"), lines, nil, nil, nil, { rawTitle = true })
     return "list"
 end
 
@@ -583,7 +584,7 @@ local function OpenDetail(idea)
     local lines = {}
     if type(idea.detail) == "table" then lines = idea.detail
     elseif type(idea.tip) == "table" then for _, t in ipairs(idea.tip) do lines[#lines + 1] = { left = tostring(t) } end end
-    ns:ShowList("GoldDetail", idea.title, lines, ns.GoldFreshText(idea))
+    ns:ShowList("GoldDetail", idea.title, lines, ns.GoldFreshText(idea), nil, nil, { rawTitle = true, rawNote = true })
 end
 local function RowTip(row)
     local idea = row.suiIdea
@@ -711,7 +712,8 @@ local function Draw()
     end
     W.suiMore = nowList
     if #nowList > NOW_ROWS then
-        W.more.text:SetText(format(ns:Tr("%d more"), #nowList - NOW_ROWS))
+        drawn.more = format(ns:Tr("%d more"), #nowList - NOW_ROWS)
+        W.more.text:SetText(drawn.more)
         Shown(W.more, true)
     else Shown(W.more, false) end
     -- the list
@@ -735,15 +737,15 @@ local function Draw()
     W.area:SetContentHeight(n * ROW_H)
     W.footer:SetText(ns.PriceFreshText(ns.PriceHouse(), Ask(time)))
     win.drawn.now, win.drawn.ranked, win.drawn.preset = drawn.now, drawn.ranked, drawn.preset
-    win.drawn.goal, win.drawn.bar, win.drawn.goalName = drawn.goal, drawn.bar, drawn.goalName
+    win.drawn.goal, win.drawn.bar, win.drawn.goalName, win.drawn.more = drawn.goal, drawn.bar, drawn.goalName, drawn.more
 end
 
 local function CollectWindow()
     if not W then return end
     win.waiting = InFight()
     local queued = ns.GoldCollect(ns.GoldContext("window"), function(ideas)
-        win.ideas, win.waiting = ideas, false
-        Draw()
+        win.ideas, win.waiting = ideas, false                 -- (drawn on the next frame, outside the job's slice)
+        ns:After(0, Draw)
         if win.again then win.again = false; ns:After(0, CollectWindow) end
     end)
     if not queued then win.again = true end
@@ -751,6 +753,7 @@ local function CollectWindow()
 end
 
 local function ShowMoreNow()
+    if not W then return end
     local lines, today = {}, ns.Today()
     for i = NOW_ROWS + 1, #(W.suiMore or {}) do
         local idea = W.suiMore[i]
@@ -759,6 +762,7 @@ local function ShowMoreNow()
     ns:ShowList("GoldNow", "Right now", lines)
 end
 local function CyclePreset()
+    if not W then return end                                  -- (a window let go of: its buttons do nothing)
     local cur, nextKey = ns.GoldPresetOf(ns.GoldWeights()), "most"
     local order = ns.GOLD_PRESET_ORDER
     for i, key in ipairs(order) do if key == cur then nextKey = order[i % #order + 1] end end
@@ -766,15 +770,17 @@ local function CyclePreset()
     Draw()
 end
 local function CycleGoal()
+    if not W then return end                                  -- (a window let go of: its buttons do nothing)
     local goal, name = ns.GoldGoal()
     local cur, nextKey = name or "own", "own"
     for i, key in ipairs(GOAL_ORDER) do if key == cur then nextKey = GOAL_ORDER[i % #GOAL_ORDER + 1] end end
     if nextKey == "own" then ns.GoldSetGoal(goal, nil) else ns.GoldSetGoal(ns.GoldGoalAmount(nextKey), nextKey) end
-    W.goalBox:SetText(GoldText((ns.GoldGoal())))
+    if W then W.goalBox:SetText(GoldText((ns.GoldGoal()))) end
     Draw()
 end
 -- The amount typed into "Save for:", in gold. Empty: no goal.
 local function Typed(text)
+    if not W then return end                                  -- (a window let go of: its buttons do nothing)
     if Secret(text) or type(text) ~= "string" then return end
     text = text:gsub("%s", ""):gsub(",", ".")
     if text == "" then ns.GoldSetGoal(nil); Draw(); return end
@@ -800,7 +806,10 @@ local function Build()
     f:RegisterForDrag("LeftButton")
     f:SetScript("OnDragStart", f.StartMoving)
     ns:KeepPlace(f, "Gold")
-    tinsert(UISpecialFrames, "FantasyGlassUIGold")
+    local listed = false
+    for _, name in ipairs(UISpecialFrames) do if name == "FantasyGlassUIGold" then listed = true end end
+    if not listed then tinsert(UISpecialFrames, "FantasyGlassUIGold") end
+    if ns.After then ns:After(0, function() if ns.StarcutWindow then pcall(ns.StarcutWindow, f) end end) end   -- (the Starcut corner cut, as the settings window)
     f:SetScript("OnHide", function(self) self.suiGoldOn = false end)
     W = f
     ns.goldWindow = f
@@ -849,7 +858,7 @@ local function Build()
     for i, def in ipairs({ { "gold", "Gold an hour", g }, { "ease", "Ease", e }, { "safety", "Safety", s } }) do
         local which = def[1]
         local c = ns:CreateSlider(f, def[2], 0, 100, 10, def[3], "%d", function(v)
-            if syncing then return end
+            if syncing or not W then return end
             ns.GoldSetWeight(which, v)
             Draw()
         end, 130)
@@ -880,18 +889,19 @@ local function Build()
     f.area, f.sheet = ns:ScrollArea(f, 556, 640 - 306 - 40)
     f.area:SetPoint("TOPLEFT", 18, -306)
     f.rows = {}
+    for i = 1, MAX_ROWS do ListRow(i); Shown(f.rows[i], false) end   -- (all made now, never inside a job's slice)
     f.footer = Painted(ns:NewText(f, 10, "LEFT"), "faint")
     f.footer:SetPoint("BOTTOMLEFT", 18, 14)
     -- collect again 2 s after the bags or the money last changed, while it is open
     local ev = CreateFrame("Frame")
     pcall(ev.RegisterEvent, ev, "BAG_UPDATE_DELAYED")
     pcall(ev.RegisterEvent, ev, "PLAYER_MONEY")
-    ev:SetScript("OnEvent", ns:Guard("Gold", function(_, event)
-        if (event ~= "BAG_UPDATE_DELAYED" and event ~= "PLAYER_MONEY") or not f.suiGoldOn or not Unlocked() then return end
+    ev:SetScript("OnEvent", function(_, event)                -- (plain: cheap, and never timed by /fgui perf)
+        if (event ~= "BAG_UPDATE_DELAYED" and event ~= "PLAYER_MONEY") or not f.suiGoldOn or W ~= f or not Unlocked() then return end
         win.gen = win.gen + 1
         local mine = win.gen
-        ns:After(2, function() if mine == win.gen and f.suiGoldOn then CollectWindow() end end)
-    end))
+        ns:After(2, function() if mine == win.gen and f.suiGoldOn and W == f then CollectWindow() end end)
+    end)
     Start()
     return f
 end
@@ -915,7 +925,7 @@ end
 -- The auction house panel: the ideas that live there
 ------------------------------------------------------------------------------------------
 local P
-local panel = { ideas = nil, scanAt = nil, acc = 0, drawn = {} }
+local panel = { ideas = nil, scanAt = nil, acc = 0, again = false, drawn = {} }
 local PANEL_ROWS = 12
 
 local function ScanAt()
@@ -955,7 +965,12 @@ local function DrawPanel()
     panel.drawn = drawn
 end
 local function CollectPanel()
-    if not ns.GoldCollect(ns.GoldContext("auction"), function(ideas) panel.ideas = ideas; DrawPanel() end) then return end
+    local queued = ns.GoldCollect(ns.GoldContext("auction"), function(ideas)
+        panel.ideas = ideas                                    -- (drawn on the next frame, outside the job's slice)
+        ns:After(0, DrawPanel)
+        if panel.again then panel.again = false; ns:After(0, CollectPanel) end
+    end)
+    if not queued then panel.again = true; return end
     DrawPanel()
 end
 local function BuildPanel()
@@ -970,6 +985,7 @@ local function BuildPanel()
     ns:Paint(f, "SetBackdropColor", "window", 1)
     ns:Paint(f, "SetBackdropBorderColor", "@rim", 1)
     f:EnableMouse(true)
+    if ns.After then ns:After(0, function() if ns.StarcutWindow then pcall(ns.StarcutWindow, f) end end) end   -- (the Starcut corner cut, as the settings window)
     P = f
     ns.goldPanel = f
     local title = Painted(ns:NewText(f, 14, "LEFT", true))
@@ -991,7 +1007,9 @@ local function BuildPanel()
     f.footer = Painted(ns:NewText(f, 10, "LEFT"), "faint")
     f.footer:SetPoint("BOTTOMLEFT", 14, 12)
     -- a new scan: collect again (looked at every 5 s while it is open)
-    f:SetScript("OnUpdate", ns:Guard("Gold", function(_, elapsed)
+    f:SetScript("OnUpdate", ns:Guard("Gold", function(self, elapsed)
+        if self ~= P then return end                           -- (a panel let go of)
+        if not Unlocked() then Shown(self, false); return end   -- (locked again since it opened)
         panel.acc = panel.acc + (tonumber(elapsed) or 0)
         if panel.acc < 5 then return end
         panel.acc = 0
@@ -1011,10 +1029,21 @@ function ns:GoldAuctionShow()
     return P
 end
 
+-- For the tests: let the window and the panel go, as at login (their frames stay, unused).
+ns.goldTest = {
+    Reset = function()
+        if W then Shown(W, false) end
+        if P then Shown(P, false) end
+        W, P, ns.goldWindow, ns.goldPanel, ns.goldOpens = nil, nil, nil, nil, nil
+        win.ideas, win.waiting, win.again, win.drawn = nil, false, false, { now = {}, ranked = {} }
+        panel.ideas, panel.scanAt, panel.acc, panel.again, panel.drawn = nil, nil, 0, false, {}
+        forgotten = false
+    end,
+}
 -- The texts drawn, for the tests.
 function ns.GoldWindowLines()
     local d = win.drawn
-    return { now = d.now, ranked = d.ranked, preset = d.preset, goal = d.goal, bar = d.bar, goalName = d.goalName, auction = panel.drawn }
+    return { now = d.now, ranked = d.ranked, preset = d.preset, goal = d.goal, bar = d.bar, goalName = d.goalName, more = d.more, auction = panel.drawn }
 end
 
 ------------------------------------------------------------------------------------------
@@ -1067,11 +1096,17 @@ do
     local ev = CreateFrame("Frame")
     pcall(ev.RegisterEvent, ev, "AUCTION_HOUSE_SHOW")
     pcall(ev.RegisterEvent, ev, "AUCTION_HOUSE_CLOSED")
-    ev:SetScript("OnEvent", ns:Guard("Gold", function(_, event)
-        if event == "AUCTION_HOUSE_SHOW" then
-            if Unlocked() then ns:GoldAuctionShow() end
-        elseif event == "AUCTION_HOUSE_CLOSED" then
-            if P then Shown(P, false) end
+    -- (a plain handler: while locked it returns at once, so nothing named Gold is timed by /fgui perf)
+    local guarded
+    ev:SetScript("OnEvent", function(_, event)
+        if event ~= "AUCTION_HOUSE_SHOW" and event ~= "AUCTION_HOUSE_CLOSED" then return end
+        if not Unlocked() then
+            if P and event == "AUCTION_HOUSE_CLOSED" then Shown(P, false) end
+            return
         end
-    end))
+        guarded = guarded or ns:Guard("Gold", function(e)
+            if e == "AUCTION_HOUSE_SHOW" then ns:GoldAuctionShow() elseif P then Shown(P, false) end
+        end)
+        guarded(event)
+    end)
 end

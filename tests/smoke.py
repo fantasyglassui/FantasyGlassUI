@@ -11131,12 +11131,14 @@ try("gold seams: ideas, jobs and ranking", function()
             { "unknown kind", (function() local i = PerHour("v:f", 5000, 30, 40); i.kind = "rob"; return i end)() },
             { "no minutes", OneOff("v:g", 3000, nil) },
             { "secret total", OneOff("v:h", hidden, 5) },
+            { "oneOff not a boolean", (function() local i = OneOff("v:i", 3000, 5); i.oneOff = "true"; return i end)() },
         }
         for _, b in ipairs(bad) do
             local good, why = V(b[2])
             if good or type(why) ~= "string" or why == "" then error("rejected, with a reason: " .. b[1]) end
         end
         if select(2, V(OneOff("v:h", hidden, 5))):find("secret", 1, true) == nil then error("a hidden total is turned away as hidden") end
+        if not select(2, V(bad[#bad][2])):find("oneOff", 1, true) then error("a oneOff that is not true or false says so") end
         ns.IsSecret = keep.secret
         -- registry: bad ideas dropped and counted, an erroring source leaves the others alone
         local ctx = ns.GoldContext("window")
@@ -11284,7 +11286,8 @@ end)
 try("gold seams: the window, the panel, hidden while locked", function()
     local keep = { key = ns.root.guideKey, unlocked = ns.GuideUnlocked, ctrl = env.IsControlKeyDown, combat = env.InCombatLockdown, money = env.GetMoney,
         ahf = rawget(env, "AuctionHouseFrame"), house = ns.PriceHouse, chars = ns.root.goldChars, weights = ns.root.goldWeights, vendor = ns.root.goldVendor,
-        mobs = ns.root.goldMobs, gather = ns.root.goldGather, guides = ns.root.guides, state = ns.root.guideState, today = ns.Today }
+        mobs = ns.root.goldMobs, gather = ns.root.goldGather, guides = ns.root.guides, state = ns.root.guideState, today = ns.Today,
+        perfOn = ns.perfOn, perfData = ns.perfData, clock = env.debugprofilestop, cf = env.CreateFrame, dropped = ns.goldDropped, opens = ns.goldOpens }
     local ok, err = pcall(function()
         if type(ns.GoldOpen) ~= "function" then error("ns:GoldOpen is nil") end
         keep.sources = ns.GoldSources()
@@ -11292,7 +11295,7 @@ try("gold seams: the window, the panel, hidden while locked", function()
         fireEvent("PLAYER_REGEN_ENABLED")
         local function Handler(obj, name) for i = #handlers, 1, -1 do local h = handlers[i]; if h.self == obj and h.name == name then return h.fn end end end
         local function Click(b, button) local f = Handler(b, "OnClick"); if not f then error("nothing to click") end; f(b, button or "LeftButton") end
-        local function Settle() local n = 0; while ns.GoldBusy() and n < 200 do ns.GoldRunSlice(); n = n + 1 end end
+        local function Settle() local n = 0; while ns.GoldBusy() and n < 200 do ns.GoldRunSlice(); n = n + 1 end; runTimers() end
         local function Said(from, text) for i = from + 1, #printed do if tostring(printed[i]):find(text, 1, true) then return true end end return false end
         -- locked: no way in, nothing made, nothing translated
         ns.root.guideKey = nil
@@ -11306,7 +11309,11 @@ try("gold seams: the window, the panel, hidden while locked", function()
         local mark = #printed
         env.SlashCmdList["FANTASYGLASSUI"]("guide gold")
         if not Said(mark, "Quest guides are coming soon.") then error("locked: /fgui guide gold is the usual answer") end
-        fireEvent("AUCTION_HOUSE_SHOW")
+        ns.perfOn, ns.perfData = true, {}
+        fireEvent("AUCTION_HOUSE_SHOW"); fireEvent("AUCTION_HOUSE_CLOSED")
+        local timed = ns.perfData.Gold
+        ns.perfOn, ns.perfData = keep.perfOn, keep.perfData
+        if timed ~= nil then error("locked: nothing named Gold in /fgui perf") end
         if ns.goldPanel ~= nil or rawget(env, "FantasyGlassUIGoldAH") ~= nil then error("locked: no auction house panel") end
         fireEvent("PLAYER_ENTERING_WORLD"); runTimers()
         if ns.goldWindow ~= nil or rawget(env, "FantasyGlassUIGold") ~= nil then error("locked: nothing made at login") end
@@ -11317,7 +11324,10 @@ try("gold seams: the window, the panel, hidden while locked", function()
         ns.GuideUnlocked = function() return true end
         local today = 20261125
         ns.Today = function() return today end
-        ns.root.goldVendor = { v = 1, items = { [5] = { buy = 1, day = 20260509 }, [6] = { buy = 1, day = today } } }
+        ns.goldTest.Reset()
+        local items = { [5] = { buy = 1, day = 20260509 }, [6] = { buy = 1, day = today } }
+        for i = 100, 1099 do items[i] = { buy = 1, day = (i % 2 == 0) and today or 20260509 } end
+        ns.root.goldVendor = { v = 1, items = items }
         ns.root.goldMobs = { [1] = { last = 20260817 }, [2] = { last = today } }
         ns.root.goldGather = { [1429] = { day = 20260817 }, [1411] = { day = today } }
         ns.root.goldChars, ns.root.goldWeights = nil, nil
@@ -11327,6 +11337,14 @@ try("gold seams: the window, the panel, hidden while locked", function()
         local w = ns.goldWindow
         if not w or rawget(w, "suiLook") ~= "settings" or ns.goldOpens ~= 1 then error("Ctrl-click opens the window, in the settings look") end
         env.IsControlKeyDown = keep.ctrl
+        local t = 0
+        env.debugprofilestop = function() t = t + 0.01; return t end
+        local forgetSlices = 0
+        while ns.GoldBusy("forget") and forgetSlices < 200 do ns.GoldRunSlice(); forgetSlices = forgetSlices + 1 end
+        env.debugprofilestop = keep.clock
+        local left = 0
+        for _ in pairs(ns.root.goldVendor.items) do left = left + 1 end
+        if forgetSlices < 2 or left ~= 501 then error("forgetting is sliced: " .. forgetSlices .. " slices, " .. left .. " left") end
         Settle()
         local L = ns.GoldWindowLines()
         if #L.ranked ~= 1 or not L.ranked[1]:find("No ideas yet", 1, true) or #L.now ~= 1 or L.now[1] ~= "Nothing right now." then error("empty: " .. tostring(L.ranked[1]) .. " | " .. tostring(L.now[1])) end
@@ -11361,11 +11379,40 @@ try("gold seams: the window, the panel, hidden while locked", function()
             add(Idea({ id = "t:o2", title = "O2", oneOff = true, total = 3000, minutes = 2 }))
             if ctx.where == "auction" then add(Idea({ id = "t:flip", kind = "flip", title = "Flip it", oneOff = true, total = 4500, minutes = 3, where = "auction" })) end
         end)
-        ns:GoldRefresh(); Settle()
+        ns:GoldRefresh()
+        local made = 0
+        env.CreateFrame = function(...) made = made + 1; return keep.cf(...) end
+        local n = 0
+        while ns.GoldBusy() and n < 200 do ns.GoldRunSlice(); n = n + 1 end
+        env.CreateFrame = keep.cf
+        if made ~= 0 then error("the job makes no frames: " .. made) end
+        runTimers()
         L = ns.GoldWindowLines()
         if not (L.ranked[1] and L.ranked[1]:find("P1", 1, true) and L.ranked[1]:find("an hour", 1, true) and L.ranked[1]:find("guess", 1, true)) then error("the top idea: " .. tostring(L.ranked[1])) end
         if not (L.now[1] and L.now[1]:find("O2", 1, true) and L.now[1]:find("in about 2 min", 1, true)) then error("right now: " .. tostring(L.now[1])) end
         for _, row in ipairs(L.ranked) do if row:find("Flip it", 1, true) then error("auction-only ideas stay at the auction house") end end
+        if ns.seenStrings["O2"] ~= nil then error("idea titles are not translated") end
+        Click(w.nowRows[1])
+        if ns.seenStrings["O2"] ~= nil then error("a detail's title is not translated") end
+        ns:ListWindow("GoldDetail"):Hide()
+        -- the bags and the money: collected again once, 2 s after the last change
+        local c1 = calls
+        fireEvent("BAG_UPDATE_DELAYED"); fireEvent("PLAYER_MONEY"); fireEvent("BAG_UPDATE_DELAYED")
+        runTimers(); Settle()
+        if calls ~= c1 + 1 then error("the changes are coalesced: " .. (calls - c1) .. " collections") end
+        -- more than four one-offs: "%d more", and the rest in a list
+        ns.GoldRegister("t:many", function(ctx, add)
+            for i = 1, 4 do add(Idea({ id = "t:m" .. i, title = "M" .. i, oneOff = true, total = 1000 + i, minutes = 1 })) end
+        end)
+        ns:GoldRefresh(); Settle()
+        L = ns.GoldWindowLines()
+        if #L.now ~= 4 or L.more ~= "2 more" then error("four shown, the rest counted: " .. tostring(L.more)) end
+        Click(w.more)
+        local rest = ns:ListWindow("GoldNow").lines
+        if #rest ~= 2 or rest[1].left ~= "M2" or rest[2].left ~= "M1" then error("the rest in a list: " .. #rest) end
+        ns:ListWindow("GoldNow"):Hide()
+        ns.GoldRegister("t:many", nil)
+        ns:GoldRefresh(); Settle()
         Click(w.presetButton)
         L = ns.GoldWindowLines()
         if L.preset ~= "Easy money" or not L.ranked[1]:find("P2", 1, true) then error("the preset button: " .. tostring(L.preset)) end
@@ -11421,14 +11468,24 @@ try("gold seams: the window, the panel, hidden while locked", function()
         if calls ~= c0 + 1 then error("a new scan collects again") end
         fireEvent("AUCTION_HOUSE_CLOSED")
         if rawget(p, "suiGoldOn") ~= false then error("closed with the auction house") end
+        -- a list's title or note shown as it is
+        ns:ShowList("GoldRawTest", "Made 7 x Thing", {}, "Note 9 x", nil, nil, { rawTitle = true, rawNote = true })
+        if ns.seenStrings["Made 7 x Thing"] ~= nil or ns.seenStrings["Note 9 x"] ~= nil then error("rawTitle and rawNote are not translated") end
+        ns:ShowList("GoldRawTest", "Made 8 x Thing", {})
+        if not ns.seenStrings["Made 8 x Thing"] then error("a title is still translated by default") end
+        ns.seenStrings["Made 8 x Thing"] = nil
+        ns:ListWindow("GoldRawTest"):Hide()
     end)
     ns.root.guideKey, ns.GuideUnlocked, env.IsControlKeyDown, env.InCombatLockdown, env.GetMoney = keep.key, keep.unlocked, keep.ctrl, keep.combat, keep.money
     env.AuctionHouseFrame, ns.PriceHouse, ns.Today = keep.ahf, keep.house, keep.today
     ns.root.goldChars, ns.root.goldWeights, ns.root.goldVendor, ns.root.goldMobs, ns.root.goldGather = keep.chars, keep.weights, keep.vendor, keep.mobs, keep.gather
     ns.root.guides, ns.root.guideState = keep.guides, keep.state
-    if ns.goldWindow then ns.goldWindow:Hide() end
+    ns.perfOn, ns.perfData, env.debugprofilestop, env.CreateFrame = keep.perfOn, keep.perfData, keep.clock, keep.cf
+    if ns.goldWindow then rawset(ns.goldWindow.goalBox, "GetText", nil) end
+    if ns.goldTest then ns.goldTest.Reset() end
+    ns.goldDropped, ns.goldOpens = keep.dropped, keep.opens
     if ns.GoldRegister then
-        for _, key in ipairs({ "t:per", "t:one" }) do ns.GoldRegister(key, nil) end
+        for _, key in ipairs({ "t:per", "t:one", "t:many" }) do ns.GoldRegister(key, nil) end
         for key, fn in pairs(keep.sources or {}) do ns.GoldRegister(key, fn) end
     end
     if not ok then error(err, 0) end

@@ -135,10 +135,14 @@ function ns:HideLists()
     for key, w in pairs(windows) do if key ~= "SelfTest" and w:IsShown() then w:Hide(); n = n + 1 end end
     return n
 end
--- Open a list window with these lines (the usual case).
-function ns:ShowList(key, title, lines, note, width, height)
+-- Open a list window with these lines (the usual case). `opts`: rawTitle / rawNote = the title or the
+-- note is shown as it is, already translated or not meant to be (a name made from the game's data).
+function ns:ShowList(key, title, lines, note, width, height, opts)
     if type(lines) ~= "table" or #lines == 0 then lines = { { left = "|cff9aa4b4" .. ns:Tr("Nothing here yet.") .. "|r" } } end
-    local w = ns:ListWindow(key, title, note, width, height)
+    local rawTitle, rawNote = type(opts) == "table" and opts.rawTitle, type(opts) == "table" and opts.rawNote
+    local w = ns:ListWindow(key, (not rawTitle) and title or nil, (not rawNote) and note or nil, width, height)
+    if rawTitle then w.title:SetText(tostring(title or "")) end
+    if rawNote then w.note:SetText(tostring(note or "")) end
     w:SetLines(lines)
     w:Show()
     return w
