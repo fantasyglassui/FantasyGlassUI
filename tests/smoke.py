@@ -19532,6 +19532,201 @@ try("13.6 leftovers C: the arrow and the guide's keys", function()
 end)
 -- batch 6 tests C (route): end
 -- batch 6 tests D (leftovers): begin
+try("13.6 leftovers D: leftovers", function()
+    local CI = env.C_ChatInfo
+    local saved = { source = ns.PlannerSource, map = env.C_Map, unlocked = ns.GuideUnlocked, duo = ns.plannerDuo, myState = ns.PlannerDuoMyState,
+                    level = env.UnitLevel, raw = ns.PrintRaw, guideState = ns.root.guideState, guides = ns.root.guides,
+                    time = env.GetTime, combat = env.InCombatLockdown, send = CI.SendAddonMessage, lock = CI.InChatMessagingLockdown,
+                    vec = rawget(env, "CreateVector2D"), enum = env.Enum, class = env.UnitClass, power = env.UnitPowerType,
+                    free = env.C_Container.GetContainerNumFreeSlots, dur = env.GetInventoryItemDurability, count = env.C_Item.GetItemCount,
+                    itemID = rawget(env, "GetInventoryItemID"), instant = env.C_Item.GetItemInfoInstant,
+                    planner = ns.root.planner, vendor = ns.db.plannerVendor, supplies = ns.db.plannerSupplies, errors = #ns.errors }
+    local function frames(k) for _ = 1, k or 30 do for i = 1, #handlers do local h = handlers[i]; if h.name == "OnUpdate" then pcall(h.fn, h.self, 0) end end end end
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        -- "LFG <title>, <zone>": a title that cleans to nothing, or is cut to nothing, takes the record's name, else "#id"
+        local recs = { [7001] = { id = 7001, name = "Hogger" } }
+        ns.PlannerSource = function() return { kind = "test", quest = function(id) return recs[id] end } end
+        env.C_Map = setmetatable({ GetMapInfo = function(map) if map == 1429 then return { name = "Elwynn Forest", mapID = map } end end }, { __index = saved.map })
+        local blank = { kind = "accept", quest = 7001, title = "|cff00ff00|r", map = 1429 }
+        if ns.PlannerLFGText(blank) ~= "LFG Hogger, Elwynn Forest" then error("an empty title: the record's name: " .. ns.PlannerLFGText(blank)) end
+        local fixed = #"LFG , Elwynn Forest"
+        local wide = { kind = "accept", quest = 7001, title = "\195\169\195\169", map = 1429 }          -- ("éé": two 2-byte characters)
+        local cut = ns.PlannerLFGText(wide, 200 - fixed - 1)                                           -- (room for 1 byte: no whole "é")
+        if cut:find("LFG , ", 1, true) or cut ~= "LFG H, Elwynn Forest" then error("a title cut to nothing: the record's name, cut: " .. cut) end
+        recs[7001] = nil
+        if ns.PlannerLFGText(blank) ~= "LFG #7001, Elwynn Forest" then error("no record: the id: " .. ns.PlannerLFGText(blank)) end
+        cut = ns.PlannerLFGText(wide, 200 - fixed - 1)
+        if cut:find("LFG , ", 1, true) then error("no record, cut to nothing: never 'LFG , ': " .. cut) end
+        cut = ns.PlannerLFGText(wide, 200 - fixed)                                                     -- (no room at all: never empty)
+        if cut ~= "LFG #7001, Elwynn Forest" then error("no room: the whole id: " .. cut) end
+        if ns.PlannerLFGText({ kind = "accept", title = "Hogger", map = 1429 }) ~= "" or ns.PlannerLFGText({ kind = "accept", map = 1429 }) ~= "" then error("no quest: no line at all") end
+        if ns.PlannerFindGroup({ kind = "accept", title = "Hogger", map = 1429 }) ~= false then error("no quest: nothing goes in the chat box") end
+
+        -- the duo: a "once more" left by a state job that died is dropped once no state job is queued or running
+        local clock, sends = 5000, {}
+        env.GetTime = function() return clock end
+        env.InCombatLockdown = function() return false end
+        CI.InChatMessagingLockdown = function() return false end
+        CI.SendAddonMessage = function(prefix, text, _, target) if prefix == "FGUIPlan" then sends[#sends + 1] = { text = text, target = target } end return 0 end
+        local function flush() for _ = 1, 120 do ns.PlannerDuoFlush() end end
+        local function states(from)
+            local ids, n = {}, 0
+            for i = from + 1, #sends do
+                local id, _, _, kd = ns.ParseSharePiece(sends[i].text)
+                if kd == "state" and not ids[id] then ids[id] = true; n = n + 1 end
+            end
+            return n
+        end
+        ns:PlannerStop(); ns.plannerQueued = false
+        ns.plannerDuo = { role = "friend", partner = "Leo", to = "Leo", session = "ab61", heard = clock, asked = clock, hiAt = clock, lastTick = clock }
+        local d = ns.plannerDuo
+        local errorsBefore = #ns.errors
+        ns.PlannerDuoMyState = function() ns.PlannerDuoQueueState(); error("state job dies") end
+        ns.PlannerDuoQueueState(); frames()
+        if not (d.stateAgain == true and #ns.errors == errorsBefore + 1) then error("the job asked once more, then died") end
+        while #ns.errors > errorsBefore do table.remove(ns.errors) end
+        ns.PlannerDuoTick()
+        if d.stateAgain ~= nil then error("no state job queued or running: the 'once more' is cleared") end
+        ns.PlannerDuoMyState = function() return { level = 20, questie = true, log = {}, can = {}, flights = {} } end
+        local before = #sends
+        ns.PlannerDuoQueueState()
+        d.stateAgain = true                                       -- (a job queued, not yet started: kept)
+        ns.PlannerDuoTick()
+        if d.stateAgain ~= true then error("a state job is queued: the flag stays") end
+        frames(); flush(); ns.PlannerDuoTick(); frames(); flush(); clock = clock + 3; ns.PlannerDuoTick(); frames(); flush()
+        if states(before) ~= 1 or d.stateAgain or d.stateAt then error("the next state job sends one state, not two: " .. states(before)) end
+
+        -- the friend's level unreadable: the leader's plan is held, tried every 5 s, 6 times, then dropped quietly
+        ns:PlannerDuoEnd(nil, true, true); flush()
+        local level, said = nil, {}
+        env.UnitLevel = function() return level end
+        ns.PrintRaw = function(_, m) said[#said + 1] = tostring(m) end
+        ns.root.guideState, ns.root.guides = {}, {}
+        local function sendPlan(planId)
+            local body = string.format("# duo ab63 %d 0 20 22\n", planId) .. ns.GuideText({ name = "duo", steps = { { kind = "note", text = "One" }, { kind = "note", text = "Two" } } })
+            local parts = ns.ShareChunks(body)
+            for i, piece in ipairs(parts) do ns.PlannerDuoEvent("CHAT_MSG_ADDON", "FGUIPlan", string.format("SS:ab63z%d:%d:%d:plan:%s", planId, i, #parts, piece), "WHISPER", "Leo") end
+        end
+        ns.plannerDuo = { role = "friend", partner = "Leo", to = "Leo", session = "ab63", heard = clock, asked = clock, hiAt = clock, lastTick = clock }
+        d = ns.plannerDuo
+        sendPlan(5)
+        if d.planId ~= nil or not (d.waiting and d.waiting.tries == 1) then error("no level: the plan is held, not followed") end
+        clock = clock + 4; ns.PlannerDuoTick()
+        if d.waiting.tries ~= 1 then error("held: not again before 5 s") end
+        clock = clock + 1; ns.PlannerDuoTick()
+        if d.waiting.tries ~= 2 or d.planId ~= nil then error("5 s: tried again") end
+        level = 20
+        clock = clock + 5; ns.PlannerDuoTick()
+        local st = ns.GuideState()
+        if d.planId ~= 5 or d.waiting ~= nil or not (st and st.plan and #st.plan.steps == 2) then error("the level readable: the held plan is followed") end
+        level = nil
+        sendPlan(6)
+        for _ = 1, 5 do clock = clock + 5; ns.PlannerDuoTick() end
+        if not (d.waiting and d.waiting.tries == 6) then error("held through the fifth retry: " .. tostring(d.waiting and d.waiting.tries)) end
+        clock = clock + 5; ns.PlannerDuoTick()
+        if d.waiting ~= nil or d.planId ~= 5 then error("the sixth retry fails: dropped, the plan you had stays") end
+        clock = clock + 5; ns.PlannerDuoTick()
+        if #said ~= 0 then error("dropped quietly: " .. table.concat(said, ";")) end
+        ns:PlannerDuoEnd(nil, true, true); flush()
+        ns:GuideSetPlan(nil)
+        env.UnitLevel, ns.PrintRaw = saved.level, saved.raw
+
+        -- the queue's cap never drops the plan just queued (final re-review N3): a waiting AT is replaced by the newer one
+        ns:PlannerDuoEnd(nil, true, true); flush()
+        ns.plannerDuo = { role = "lead", partner = "Mira", to = "Mira", session = "ab62", heard = clock, asked = clock, accepted = true, state = {} }
+        env.InCombatLockdown = function() return true end         -- (a fight: nothing goes, everything waits)
+        local text = string.rep("x", 200 * 60)
+        local pieces = ns.PlannerDuoSendChunks("plan", text)
+        if pieces ~= 60 then error("60 plan pieces: " .. tostring(pieces)) end
+        for i = 1, 300 do ns.PlannerDuoSend(string.format("D1:AT:ab62:1:%d:80", (i % 80) + 1)) end
+        for _ = 1, 3 do ns.PlannerDuoSend("D1:HI:ab62") end
+        if ns.PlannerDuoPending() ~= 64 then error("one AT waits beside the plan and the words: " .. ns.PlannerDuoPending()) end
+        env.InCombatLockdown = function() return false end
+        before = #sends
+        flush()
+        local ats, his, got = {}, 0, {}
+        for i = before + 1, #sends do
+            local t = sends[i].text
+            if t:find("^D1:AT:") then ats[#ats + 1] = t elseif t == "D1:HI:ab62" then his = his + 1 end
+            local id, k, n, kd, piece = ns.ParseSharePiece(t)
+            if id then got[#got + 1] = ns.ShareReceive("Leo", id, k, n, kd, piece, clock) end
+        end
+        local order = {}
+        for i = before + 1, #sends do order[#order + 1] = sends[i].text:match("^D1:(%u+):") or (sends[i].text:find("^SS:") and "SS") or "?" end
+        if table.concat(order, " ", 1, 5) ~= "AT HI HI HI SS" or #order ~= 64 then error("the AT, then the words, then the pieces: " .. table.concat(order, " ", 1, 6)) end
+        if #ats ~= 1 or ats[1] ~= "D1:AT:ab62:1:61:80" or his ~= 3 then error("the newest AT, every word: " .. table.concat(ats, ";") .. " " .. his) end
+        if got[#got] ~= text then error("the whole plan arrives") end
+        ns:PlannerDuoEnd(nil, true, true); flush()
+
+        -- the vendor stop when the supplies' vendors never meet (batch 2 minor): one stop at the first's vendor
+        env.C_Map = setmetatable({ GetWorldPosFromMapPos = function(map, v) if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end end }, { __index = saved.map })
+        env.CreateVector2D = function(x, y) return { x = x, y = y } end
+        local function rec(id, x, y)
+            return { id = id, name = "Quest " .. id, level = 10, minLevel = 1, xp = 300,
+                starts = { { map = 1, x = x, y = y } }, ends = { { map = 1, x = x, y = y } },
+                objectives = { { kind = "kill", count = 4, countKnown = true, mobLevel = 10, spots = { { map = 1, x = x + 4, y = y + 4 } } } },
+                pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+        end
+        local quests = { [611] = rec(611, 30, 40), [612] = rec(612, 31, 40) }
+        local smith = { name = "Smith", map = 1, x = 33, y = 40, id = 60 }           -- repairs
+        local fletcher = { name = "Fletcher", map = 1, x = 40, y = 40, id = 61 }     -- arrows
+        local grocer = { name = "Grocer", map = 1, x = 30, y = 50, id = 62 }         -- food and drink
+        local places = { repair = { smith }, anyVendor = { smith, fletcher, grocer },
+                         ["vendor:Food"] = { grocer }, ["vendor:Drink"] = { grocer }, ["vendor:Ammo"] = { fletcher } }
+        local source = { kind = "questie", ids = function() return { 611, 612 } end, quest = function(id) return quests[id] end,
+            inns = function() return {} end, places = function(kind, arg) return places[arg and (kind .. ":" .. arg) or kind] or {} end }
+        local free, worn = 20, 0.9
+        env.C_Container.GetContainerNumFreeSlots = function(bag) return bag == 0 and free or 0 end
+        env.GetInventoryItemDurability = function(slot) if slot == 5 then return worn * 100, 100 end end
+        local counts = { [2515] = 50, [1179] = 0, [4541] = 50 }
+        env.C_Item.GetItemCount = function(item) return counts[item] end
+        env.GetInventoryItemID = function(_, slot) if slot == 18 then return 5001 end end
+        env.C_Item.GetItemInfoInstant = function(id)
+            if id == 5001 then return id, "Weapon", "Bows", "INVTYPE_RANGEDRIGHT", 1, 2, 2 end
+            return 1, "Armor", "Cloth", "INVTYPE_CHEST", 134400, 4, 1
+        end
+        env.Enum = setmetatable({ ItemClass = { Weapon = 2 }, ItemWeaponSubclass = { Bows = 2, Crossbow = 18, Guns = 3 }, PowerType = { Mana = 0 } }, { __index = saved.enum })
+        env.UnitClass = function() return "HUNTER", "HUNTER" end
+        env.UnitPowerType = function() return 0, "MANA" end
+        ns.db.plannerVendor, ns.db.plannerSupplies = true, true
+        local function vendorSteps()
+            ns.root.planner = nil
+            local guide = ns.PlannerRoute({ source = source, level = 11, group = "solo", inGroup = false, speed = 7, faction = "Alliance",
+                done = function() return false end, onQuest = function() return false end,
+                here = { map = 1, x = 30, y = 40 }, crossings = {}, learnFlights = false, flights = {}, pace = 1, flightTime = function() return nil end })
+            local out = {}
+            for _, s in ipairs(guide.steps) do if s.kind == "vendor" then out[#out + 1] = s.text end end
+            return out
+        end
+        local steps = vendorSteps()
+        if #steps ~= 1 or steps[1] ~= "Buy supplies at Fletcher; buy 600 arrows" then error("arrows and water apart: the first's vendor: " .. table.concat(steps, ";")) end
+        free = 2
+        steps = vendorSteps()
+        if #steps ~= 1 or steps[1] ~= "Sell at Fletcher; buy 600 arrows" then error("selling too: the same vendor: " .. table.concat(steps, ";")) end
+        free, worn = 20, 0.1
+        steps = vendorSteps()
+        if #steps ~= 1 or steps[1] ~= "Sell and repair at Smith" then error("repair: the repairer: " .. table.concat(steps, ";")) end
+        counts[2515] = 5000
+        worn = 0.9
+        steps = vendorSteps()
+        if #steps ~= 1 or steps[1] ~= "Buy supplies at Grocer; buy 20 water" then error("arrows bought: the water's vendor next: " .. table.concat(steps, ";")) end
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    if ns.plannerDuo then ns:PlannerDuoEnd(nil, true, true) end
+    env.InCombatLockdown, CI.InChatMessagingLockdown = saved.combat, saved.lock
+    for _ = 1, 120 do ns.PlannerDuoFlush() end
+    ns:PlannerStop(); ns.plannerQueued = false
+    ns.PlannerSource, env.C_Map, ns.GuideUnlocked, ns.plannerDuo, ns.PlannerDuoMyState = saved.source, saved.map, saved.unlocked, saved.duo, saved.myState
+    env.GetTime, CI.SendAddonMessage, env.CreateVector2D, env.Enum, env.UnitClass, env.UnitPowerType = saved.time, saved.send, saved.vec, saved.enum, saved.class, saved.power
+    env.C_Container.GetContainerNumFreeSlots, env.GetInventoryItemDurability, env.C_Item.GetItemCount = saved.free, saved.dur, saved.count
+    env.GetInventoryItemID, env.C_Item.GetItemInfoInstant = saved.itemID, saved.instant
+    ns.root.planner, ns.db.plannerVendor, ns.db.plannerSupplies = saved.planner, saved.vendor, saved.supplies
+    ns:GuideSetPlan(nil)
+    env.UnitLevel, ns.PrintRaw, ns.root.guideState, ns.root.guides = saved.level, saved.raw, saved.guideState, saved.guides
+    if ns.PlannerNeedsGroupReset then ns.PlannerNeedsGroupReset() end
+    if not ok then error(err, 0) end
+end)
 -- batch 6 tests D (leftovers): end
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
