@@ -4,13 +4,23 @@
 import os, shutil, glob, json, html, re, sys
 S = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, S)
+REPO = os.path.normpath(S + '/..')
+# --out DIR: write the public site to DIR (not docs); the draft pages in site/ are then left alone.
+# --plan: also write the plan page (plan_page.py) into the output; nothing links to it.
+_args = sys.argv[1:]
+OUT = None
+if '--out' in _args:
+    _i = _args.index('--out')
+    if _i + 1 >= len(_args) or _args[_i + 1].startswith('--'): sys.exit('build_site.py: --out needs a folder: --out DIR')
+    OUT = os.path.abspath(_args[_i + 1])
+WITH_PLAN = '--plan' in _args
 from lang_meta import META, OG_LOCALE
 D = S + '/site'
 os.chdir(D)
 h = open('head.html').read(); b = open('body.html').read()
 _v = re.search(r'window.FG_NEWS=\[\{"v": "([0-9.]+)"', open('data.js').read())          # (the version at the top: the newest What's new)
 if _v: b = re.sub(r'<b id="f-version">[0-9.]+</b>', '<b id="f-version">' + '.'.join(_v.group(1).split('.')[:2]) + '</b>', b); s = open('script.html').read(); data = open('data.js').read()
-open('index.html', 'w').write(h + b + '<script>\n' + data + '</script>\n' + s)
+if OUT is None: open('index.html', 'w').write(h + b + '<script>\n' + data + '</script>\n' + s)
 
 SITE = 'https://fantasyglassui.com/'
 CODES = ['en', 'de', 'fr', 'es', 'ru', 'pt', 'it', 'ko', 'zh']
@@ -38,7 +48,7 @@ bp = b.replace('    <span class="draft" title="This page is a draft and not publ
 assert 'class="draft"' not in bp
 bp = re.sub(r'(?<=[" ,])shots/', '/shots/', bp).replace('src="logo-64.webp"', 'src="/logo-64.webp"')
 assert 'src="shots/' not in bp
-R = os.path.normpath(S + '/../docs')
+R = OUT or os.path.normpath(S + '/../docs')
 for code in CODES:
     hp = h.replace('<title>Fantasy Glass UI</title>\n<meta name="claude:viewport-fit-sides" content="cover">', head_for(code), 1)
     assert 'og:image' in hp
@@ -47,7 +57,7 @@ for code in CODES:
     out = R + ('/index.html' if code == 'en' else f'/{code}/index.html')
     os.makedirs(os.path.dirname(out), exist_ok=True)
     open(out, 'w').write(page)
-    if code == 'en': open('public.html', 'w').write(page)
+    if code == 'en' and OUT is None: open('public.html', 'w').write(page)
 
 # sitemap with every language listed as an alternate of the others
 xs = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">']
@@ -69,7 +79,10 @@ for f in glob.glob('i18n/*.json'): shutil.copy(f, R + '/i18n/')
 # the changelog page, from the add-on's own CHANGELOG.md
 import subprocess
 os.makedirs(R + '/changelog', exist_ok=True)
-subprocess.run([sys.executable, S + '/changelog_page.py', R + '/../CHANGELOG.md', R + '/changelog/index.html'], check=True)
+subprocess.run([sys.executable, S + '/changelog_page.py', REPO + '/CHANGELOG.md', R + '/changelog/index.html'], check=True)
 os.makedirs(R + '/accessibility', exist_ok=True)
-subprocess.run([sys.executable, S + '/accessibility_page.py', R + '/accessibility/index.html', re.search(r'ns.version = "([^"]+)"', open(R + '/../FantasyGlassUI/Core.lua').read()).group(1)], check=True)
+subprocess.run([sys.executable, S + '/accessibility_page.py', R + '/accessibility/index.html', re.search(r'ns.version = "([^"]+)"', open(REPO + '/FantasyGlassUI/Core.lua').read()).group(1)], check=True)
+if WITH_PLAN:
+    import plan_page
+    plan_page.build(R)
 print('built')

@@ -74,3 +74,15 @@ def test_forever_api():
     """Only what the WoW: Forever client offers: see tests/forever_audit.py."""
     p = subprocess.run([sys.executable, os.path.join(TESTS, "forever_audit.py")], cwd=ROOT, capture_output=True, text=True, timeout=300)
     assert p.returncode == 0, p.stdout + p.stderr
+
+
+def test_plan_page_hidden():
+    """The plan page is built only with --plan, and a plain build knows nothing of it (tests/sitecheck.py)."""
+    p = subprocess.run([sys.executable, os.path.join(TESTS, "sitecheck.py")], cwd=ROOT, capture_output=True, text=True, timeout=600)
+    assert p.returncode == 0, p.stdout + p.stderr
+
+
+def test_plan_reader():
+    """The website's plan reader reads every code in tests/plan_codes.txt as the add-on's reader does."""
+    p = subprocess.run(["node", os.path.join(TESTS, "plan_reader_check.js")], cwd=ROOT, capture_output=True, text=True, timeout=120)
+    assert p.returncode == 0, p.stdout + p.stderr

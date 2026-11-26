@@ -1,0 +1,20 @@
+ok	5	2	4100	accept,do,turnin,fly,note	SUIP1!{S2:crN0;S2:flN1;S2:lv{N1;N8;N2;N10;}S1:sN1800;S2:st{N1;{S1:kS6:acceptS1:tS14:Accept: WolvesS1:xN48.2;S1:yN42;S1:zN1;}N2;{S1:kS2:doS1:tS3:#33}N3;{S1:kS6:turninS1:tS12:Turn in: #33S1:xN48.1;S1:yN42;S1:zN1;}N4;{S1:kS3:flyS1:tS9:StormwindS1:xN70.9;S1:yN72.5;S1:zN2;}N5;{S1:kS4:noteS1:tS18:Good place to stop}}S1:vN1;S2:xpN4100;S1:z{N1;{S1:mN1429;S1:nS13:Elwynn Forest}N2;{S1:mN1453;S1:nS14:Stormwind City}}}
+ok	4	2	2500	accept,hearth,sail,note	SUIP1!{S2:crN1;S2:flN0;S2:lv{N1;N20;N2;N21;}S1:sN900;S2:st{N1;{S1:kS6:acceptS1:tS27:Accept: Report to GoldshireS1:xN41.9;S1:yN65.6;S1:zN1;}N2;{S1:kS6:hearthS1:tS20:Use your hearthstoneS1:xN56.3;S1:yN47.5;S1:zN2;}N3;{S1:kS4:sailS1:tS26:Take the boat to DarkshoreS1:xN35.5;S1:yN53.1;S1:zN2;}N4;{S1:kS4:noteS1:tS12:Log out here}}S1:vN1;S2:xpN2500;S1:z{N1;{S1:mN1429;S1:nS13:Elwynn Forest}N2;{S1:mN1436;S1:nS8:Westfall}}}
+bad	empty	
+bad	kind	SUIT1!{S4:nameS1:x}
+bad	damaged	SUIP1!{S2:crN0;S2:flN1;S2:lv{N1;N8;N2;N10;}S1:sN1800;S2:st{N1;{S1:kS6:acceptS1:tS14:Accept
+bad	version	SUIP1!{S1:vN2;}
+ok	1	0	0	note	SUIP1!{S2:lv{N1;N8;N2;N9;}S2:st{N1;{S1:kS4:noteS1:tS4:Rest}}S1:vN1;S1:z{}}
+ok	1	1	0	note	SUIP1!{S5:extraS1:xS2:lv{N1;N8;N2;N9;}S2:st{N1;{S1:kS4:noteS1:tS4:Rest}}S1:vN1;S1:z{N1;{S1:nS1:A}}}
+bad	damaged	SUIP1!{S2:lv{N1;N8;N2;N9;N3;N10;}S2:st{}S1:vN1;S1:z{}}
+bad	damaged	SUIP1!{S2:lv{N1;N8;N2;N9;}S2:st{N1;{S1:kS4:noteS1:tS4:Rest}N3;{S1:kS4:noteS1:tS4:Rest}}S1:vN1;S1:z{}}
+bad	damaged	SUIP1!{S2:lv{N1;N8;N2;N9;}S2:st{}S1:vN1;S2:xpS1:5S1:z{}}
+bad	damaged	SUIP1!{S2:lv{N1;N8;N2;N9;}S2:st{N1;{S1:kS4:noteS1:tS1:RS1:xS1:5}}S1:vN1;S1:z{}}
+bad	damaged	SUIP1!{S2:lv{N1;N8;N2;N9;}S2:st{S1:1{S1:kS4:noteS1:tS4:Rest}}S1:vN1;S1:z{}}
+bad	damaged	SUIP1!{S2:lv{N1;N8;N2;N9;}S2:st{N1;{S1:kS4:noteS1:tS1:RS1:zN0;}}S1:vN1;S1:z{N1;{S1:nS1:A}}}
+bad	damaged	SUIP1!{S2:lv{N1;S1:8N2;N9;}S2:st{}S1:vN1;S1:z{}}
+bad	damaged	SUIP1!{S2:lv{N1;N8;N2;N9;}S2:st{}S1:vN1;S1:z{N1;{S1:mS1:1S1:nS1:A}}}
+bad	version	SUIP2!{}
+bad	version	SUIP12!garbage
+bad	kind	SUIP0!{}
+bad	kind	hello

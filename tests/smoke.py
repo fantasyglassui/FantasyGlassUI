@@ -15626,6 +15626,166 @@ try("13.5 together B: review fixes", function()
 end)
 -- batch 5 tests B (duo): end
 -- batch 5 tests C (code): begin
+try("13.5 together C: the plan code", function()
+    local saved = { unlocked = ns.GuideUnlocked, on = ns.GuideOn, state = ns.GuideState, get = ns.GuideGet, copy = ns.ShowCopyBox, map = env.C_Map, print = ns.PrintRaw }
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        ns.GuideOn = function() return true end
+        env.C_Map = setmetatable({ GetMapInfo = function(map)
+            return { name = ({ [1429] = "Elwynn Forest", [1453] = "Stormwind City", [1436] = "Westfall" })[map] or "Somewhere" } end }, { __index = saved.map })
+        local function build(lines)
+            local steps = {}
+            for _, l in ipairs(lines) do
+                local st, why = ns.GuideParseLine(l)
+                if not st then error("fixture line: " .. l .. " (" .. tostring(why) .. ")") end
+                steps[#steps + 1] = st
+            end
+            return { name = ns.GUIDE_PLANNED, steps = steps }
+        end
+        local guide = build({ "accept 33 Wolves @ 1429:48.17,42.04", "do 33", "turnin 33 @ 1429:48.1,42.0",
+                              "fly 41 | Stormwind @ 1453:70.9,72.5", "note | Good place to stop" })
+        local summary = { fromLevel = 8, toLevel = 9.6, xp = 4100, seconds = 1800 }
+        local guide2 = build({ "accept 40 Report to Goldshire @ 1429:41.9,65.6", "hearth @ 1436:56.3,47.5",
+                               "sail Auberdine | Take the boat to Darkshore @ 1436:35.5,53.1", "note | Log out here" })
+        local summary2 = { fromLevel = 20, toLevel = 21.2, xp = 2500, seconds = 900 }
+        local code, code2 = ns.PlannerPlanCode(guide, summary), ns.PlannerPlanCode(guide2, summary2)
+        if type(code) ~= "string" or code:sub(1, 6) ~= "SUIP1!" or ns.PLANNER_CODE_HEADER ~= "SUIP1!" then error("the code starts with SUIP1!: " .. tostring(code)) end
+        -- tests/plan_codes.txt: one case per line, tab separated
+        local cases, oks = {}, {}
+        for line in (planCodes or ""):gmatch("[^\r\n]+") do
+            local f = {}
+            for field in (line .. "\t"):gmatch("(.-)\t") do f[#f + 1] = field end
+            cases[#cases + 1] = f
+            if f[1] == "ok" then oks[#oks + 1] = f end
+        end
+        if #oks < 2 or not oks[1][6] or not oks[2][6] then error("two ok lines in plan_codes.txt (first: " .. code .. ") (second: " .. tostring(code2) .. ")") end
+        if oks[1][6] ~= code then error("the first ok line is the Step 1 plan's code, byte for byte: " .. code) end
+        if oks[2][6] ~= code2 then error("the second ok line is the two-zone plan's code, byte for byte: " .. tostring(code2)) end
+        local plan = ns.PlannerReadPlanCode(code)
+        if not (plan and #plan.st == 5 and #plan.z == 2 and plan.z[1].n == "Elwynn Forest" and plan.z[2].n == "Stormwind City") then error("5 steps in 2 zones") end
+        if not (plan.lv[1] == 8 and plan.lv[2] == 10 and plan.xp == 4100 and plan.fl == 1 and plan.cr == 0 and plan.s == 1800) then error("levels, xp, flights, crossings, seconds") end
+        if plan.st[1].x ~= 48.2 or plan.st[1].y ~= 42 or plan.st[1].z ~= 1 or plan.st[4].z ~= 2 then error("x and y to one decimal, the zone index") end
+        if plan.st[5].z ~= nil or plan.st[5].x ~= nil or plan.st[5].y ~= nil or plan.st[5].k ~= "note" then error("the note has no zone and no place") end
+        local p2 = ns.PlannerReadPlanCode(code2)
+        if not (p2 and #p2.z == 2 and p2.cr == 1 and p2.st[2].k == "hearth" and p2.st[3].k == "sail" and p2.st[4].z == nil) then error("the two-zone plan: a sail, a hearth, a note without a place") end
+        -- every line of the file reads as it says
+        local seenWhy = {}
+        for _, f in ipairs(cases) do
+            if f[1] == "ok" then
+                local pl = ns.PlannerReadPlanCode(f[6])
+                if not pl then error("an ok line reads: " .. tostring(f[6])) end
+                local kinds = {}
+                for _, st in ipairs(pl.st) do kinds[#kinds + 1] = st.k end
+                if #pl.st ~= tonumber(f[2]) or #pl.z ~= tonumber(f[3]) or pl.xp ~= tonumber(f[4]) or table.concat(kinds, ",") ~= f[5] then
+                    error("an ok line says what the code holds: " .. table.concat(f, " / "))
+                end
+            elseif f[1] == "bad" then
+                local pl, why = ns.PlannerReadPlanCode(f[3] or "")
+                if pl ~= nil or why ~= f[2] then error("a bad line reads as " .. tostring(f[2]) .. ": " .. tostring(why)) end
+                seenWhy[f[2]] = true
+            else error("a line is ok or bad: " .. tostring(f[1])) end
+        end
+        for _, w in ipairs({ "empty", "kind", "damaged", "version" }) do if not seenWhy[w] then error("a bad line for " .. w) end end
+        -- the reader's other refusals
+        local function bad(data, why, what)
+            local pl, w = ns.PlannerReadPlanCode(ns.PLANNER_CODE_HEADER .. ns.ShareEncode(data))
+            if pl ~= nil or w ~= why then error(what .. ": " .. tostring(w)) end
+        end
+        bad({ v = 1, lv = { 1, 2 }, z = {}, st = { { k = "teleport", t = "x" } } }, "damaged", "a step with a kind that is not a guide kind")
+        bad({ v = 1, lv = { 1, 2 }, z = {}, st = { { t = "x" } } }, "damaged", "a step without a kind")
+        bad({ v = 1, lv = { 1, 2 }, z = {}, st = { { k = "do", t = "x", z = 3 } } }, "damaged", "a zone that is not there")
+        if select(2, ns.PlannerReadPlanCode(code .. "x")) ~= "damaged" then error("text after the code") end
+        if select(2, ns.PlannerReadPlanCode(nil)) ~= "empty" or select(2, ns.PlannerReadPlanCode("   ")) ~= "empty" then error("nothing is empty") end
+        if ns.PlannerPlanCode({ steps = {} }, summary) ~= nil or ns.PlannerPlanCode(nil, nil) ~= nil then error("no steps: no code") end
+        -- text: cleaned, cut
+        local function one(text, extra)
+            local st = { kind = "do", text = text }
+            for k, v in pairs(extra or {}) do st[k] = v end
+            local pl = ns.PlannerReadPlanCode(ns.PlannerPlanCode({ steps = { st } }, summary))
+            return pl and pl.st[1].t, pl
+        end
+        if one("|cff00ff00Kill|r 8 wolves") ~= "Kill 8 wolves" then error("escapes are cleaned: " .. tostring(one("|cff00ff00Kill|r 8 wolves"))) end
+        if one("a|Tinterface\\icons\\x:0|tb|Hitem:1|h[c]|hd") ~= "ab[c]d" then error("textures and links are cleaned: " .. tostring(one("a|Tinterface\\icons\\x:0|tb|Hitem:1|h[c]|hd"))) end
+        if one("tab\there\1") ~= "tab here" then error("control characters are cleaned: " .. tostring(one("tab\there\1"))) end
+        if one("a|nb|Aatlas-name:12:12|ac") ~= "a bc" then error("|n and atlas escapes are cleaned: " .. tostring(one("a|nb|Aatlas-name:12:12|ac"))) end
+        if #one(string.rep("a", 300)) ~= 80 then error("a long text is cut to 80 bytes") end
+        local cut = one(string.rep("\195\169", 60))
+        if #cut ~= 80 or cut:sub(-2) ~= "\195\169" then error("a cut never splits a character: " .. #cut) end
+        local steps70 = {}
+        for i = 1, 70 do steps70[i] = { kind = "note", text = "n" .. i } end
+        local big = ns.PlannerReadPlanCode(ns.PlannerPlanCode({ steps = steps70 }, summary))
+        if not (big and #big.st == 60 and big.more == 10 and big.st[60].t == "n60") then error("60 steps and more = 10") end
+        if ns.PlannerReadPlanCode(code).more ~= 0 then error("no more when all fit") end
+        -- Share plan
+        local shown
+        ns.ShowCopyBox = function(_, text, caption) shown = { text, caption } end
+        local printed, current = {}, guide
+        ns.PrintRaw = function(_, m) printed[#printed + 1] = tostring(m) end
+        ns.GuideState = function() return { name = ns.GUIDE_PLANNED, at = 1, ticked = {}, summary = summary } end
+        ns.GuideGet = function(_, name) if name == ns.GUIDE_PLANNED then return current end return saved.get(ns, name) end
+        ns:GuideCommand("share")
+        if not (shown and shown[1] == code and shown[2] == ns:Tr("Copy this plan code and paste it on fantasyglassui.com/plan/")) then error("/fgui guide share: the copy box with the code and caption") end
+        shown = nil
+        current = { name = ns.GUIDE_PLANNED, steps = {} }
+        ns:GuideCommand("share")
+        if shown ~= nil or not (printed[#printed] or ""):find("There is no plan to share yet.", 1, true) then error("no plan: the line, no copy box: " .. tostring(printed[#printed])) end
+        current = guide
+        ns.GuideUnlocked = function() return false end
+        ns:GuideCommand("share")
+        if ns:PlannerSharePlan() ~= false or shown ~= nil then error("locked: nothing") end
+        ns.GuideUnlocked = function() return true end
+        local labels = {}
+        for _, en in ipairs(ns.GuidePanelEntries(guide.steps[1])) do labels[#labels + 1] = en[1] end
+        if not table.concat(labels, "|"):find("Share plan", 1, true) then error("the panel menu lists Share plan: " .. table.concat(labels, "|")) end
+        ns.GuideState = function() return nil end
+        for _, en in ipairs(ns.GuidePanelEntries(nil)) do if en[1] == "Share plan" then error("Share plan only while following the planned guide") end end
+        if ns.PlannerCodeFollowing() then error("not following") end
+        -- the Guide tab's button
+        ns.GuideState = function() return nil end
+        local page = env.CreateFrame("Frame")
+        local T = ns.BuildGuidePage(page)
+        local share = T and T.sharePlanButton
+        if not share then error("the Guide tab has the Share plan button") end
+        local alpha
+        rawset(share, "SetAlpha", function(_, a) alpha = a end)
+        page.Refresh()
+        if alpha ~= 0.45 then error("no plan: the Share plan button is greyed: " .. tostring(alpha)) end
+        local f = share:GetScript("OnClick")
+        if type(f) ~= "function" then for _, h in ipairs(handlers) do if h.self == share and h.name == "OnClick" then f = h.fn end end end
+        shown = nil
+        f(share)
+        if shown ~= nil then error("greyed: the click does nothing") end
+        ns.GuideState = function() return { name = ns.GUIDE_PLANNED, at = 1, summary = summary } end
+        page.Refresh()
+        if alpha ~= 1 then error("following a plan: the button is enabled: " .. tostring(alpha)) end
+        f(share)
+        if not (shown and shown[1] == code) then error("the button shares the plan") end
+        -- Profiles: the encoder is the one theme codes use
+        local t = { name = "x", n = { 1, 2.5, -3 }, s = "a:b{}", f = false, deep = { a = { b = { c = true } } } }
+        local back, nextAt = ns.ShareDecode(ns.ShareEncode(t), 1)
+        local function same(a, b)
+            if type(a) ~= type(b) then return false end
+            if type(a) ~= "table" then return a == b end
+            for k, v in pairs(a) do if not same(v, b[k]) then return false end end
+            for k in pairs(b) do if a[k] == nil then return false end end
+            return true
+        end
+        if not same(t, back) or nextAt ~= #ns.ShareEncode(t) + 1 then error("ShareDecode(ShareEncode(t), 1) gives t back") end
+        if ns.ShareDecode("{S1:", 1) ~= nil or ns.ShareDecode("Q", 1) ~= nil or ns.ShareDecode(nil, 1) ~= nil then error("a bad text decodes to nil, not an error") end
+        if ns.ShareEncode({ a = 1, b = "x" }) ~= "{S1:aN1;S1:bS1:x}" then error("the encoding's bytes: " .. ns.ShareEncode({ a = 1, b = "x" })) end
+        -- a theme code saved before this change (made by the old Encode, run on its own): the same bytes now
+        local pinned = "SUIT1!{S6:accent{N1;N0.1;N2;N0.2;N3;N0.3;}S1:nN-3;S4:nameS6:PinnedS2:noFS2:okTS5:panel{N1;N0.25;N2;N0.5;N3;N0.125;}S3:rim{N1;N1;N2;N0.75;N3;N0;}S5:styleS5:GLASS}"
+        local pinnedData, pinnedStop = ns.ShareDecode(pinned, 7)
+        if not pinnedData or pinnedStop ~= #pinned + 1 or "SUIT1!" .. ns.ShareEncode(pinnedData) ~= pinned then error("a theme code saved before the change decodes and encodes to the same bytes") end
+        if "SUIT1!" .. ns.ShareEncode({ name = "Pinned", panel = { 0.25, 0.5, 0.125 }, rim = { 1, 0.75, 0 }, accent = { 0.1, 0.2, 0.3 }, style = "GLASS", n = -3, ok = true, no = false }) ~= pinned then error("the same table gives the old bytes") end
+        local theme = ns:ExportTheme()
+        local data, stop = ns.ShareDecode(theme, 7)
+        if theme:sub(1, 6) ~= "SUIT1!" or ns.ShareEncode(data) ~= theme:sub(7) or stop ~= #theme + 1 then error("a theme exports the same bytes through the exported encoder") end
+    end)
+    ns.GuideUnlocked, ns.GuideOn, ns.GuideState, ns.GuideGet, ns.ShowCopyBox, ns.PrintRaw = saved.unlocked, saved.on, saved.state, saved.get, saved.copy, saved.print
+    env.C_Map = saved.map
+    if not ok then error(err, 0) end
+end)
 -- batch 5 tests C (code): end
 
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
