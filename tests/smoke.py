@@ -20373,6 +20373,59 @@ try("polish P2: the panel fits its lettering", function()
     ns.GuideUnlocked, ns.root.guideState = saved.unlocked, saved.state
     if not ok then error(err, 0) end
 end)
+try("polish P2: the arrow", function()
+    local saved = { map = env.C_Map, errors = #ns.errors, bands = ns.db.textBands }
+    local arrow
+    local ok, err = pcall(function()
+        local pos = { 1426, 50, 50 }
+        local sizes = 0
+        local cm = {}
+        for k, v in pairs(saved.map) do cm[k] = v end
+        cm.GetBestMapForUnit = function() return pos[1] end
+        cm.GetPlayerMapPosition = function(map) if map == pos[1] then return { GetXY = function() return pos[2] / 100, pos[3] / 100 end } end end
+        cm.GetMapWorldSize = function() sizes = sizes + 1; return 1000, 1000 end
+        cm.GetMapInfo = function(map) return { name = map == 1426 and "Dun Morogh" or "Elwynn Forest" } end
+        env.C_Map = cm
+        ns:SetWaypoint(55, 50, "x", 1426, true)
+        arrow = ns.waypointArrow
+        local update
+        for i = #handlers, 1, -1 do local h = handlers[i]; if h.self == arrow and h.name == "OnUpdate" then update = h.fn; break end end
+        -- a long label is cut at 240; the band and the frame follow the measured lines
+        local nameWidth, bandAlpha, height
+        rawset(arrow.name, "GetStringWidth", function() return 500 end)
+        rawset(arrow.name, "SetWidth", function(_, w) if w > 0 then nameWidth = w end end)
+        rawset(arrow.band, "SetVertexColor", function(_, r, g, b, a) bandAlpha = a end)
+        rawset(arrow, "SetHeight", function(_, h) height = h end)
+        ns.db.textBands = true
+        ns:SetWaypoint(55, 50, "Hand in The Defias Brotherhood at Sentinel Hill, a long way off", 1426, true)
+        if nameWidth ~= 240 then error("the label is at most 240 wide: " .. tostring(nameWidth)) end
+        if bandAlpha ~= 0.72 then error("a stronger band with Dark band behind messages: " .. tostring(bandAlpha)) end
+        if not (height and height > 36 + 12 + 10) then error("the frame holds the arrow and both lines: " .. tostring(height)) end
+        ns.db.textBands = false
+        ns:SetWaypoint(55, 50, "x", 1426, true)
+        if bandAlpha ~= 0.55 then error("the band otherwise: " .. tostring(bandAlpha)) end
+        -- the distance is set only when its number changes, and the map's size is asked once per waypoint
+        local texts = {}
+        rawset(arrow.text, "SetText", function(_, t) texts[#texts + 1] = t end)
+        sizes = 0
+        for _ = 1, 5 do update(arrow, 0.1) end
+        if #texts ~= 1 or texts[1] ~= "50 yd" then error("the distance once: " .. #texts .. " " .. tostring(texts[1])) end
+        if sizes ~= 1 then error("the map's size once: " .. sizes) end
+        -- on another map: once, with its name
+        pos = { 1429, 50, 50 }
+        texts = {}
+        for _ = 1, 3 do update(arrow, 0.1) end
+        if #texts ~= 1 or texts[1] ~= "On another map: Dun Morogh" then error("another map, named, once: " .. #texts .. " " .. tostring(texts[1])) end
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    if arrow then
+        rawset(arrow.name, "GetStringWidth", nil); rawset(arrow.name, "SetWidth", nil); rawset(arrow.band, "SetVertexColor", nil)
+        rawset(arrow, "SetHeight", nil); rawset(arrow.text, "SetText", nil)
+    end
+    ns:ClearWaypoint(true)
+    env.C_Map, ns.db.textBands = saved.map, saved.bands
+    if not ok then error(err, 0) end
+end)
 -- polish P2: end
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
