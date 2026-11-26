@@ -21935,6 +21935,11 @@ try("polish review: the final review's fixes", function()
         ns.PlannerSessionSkip(9963)
         fireEvent("QUEST_ACCEPTED", 1, 9963)
         if not ns.PlannerSessionSkipped(9963) then error("a skip you asked for stays when you take the quest") end
+        -- N1: a skip you asked for, then an abandon, then the quest taken again: still skipped
+        ns.PlannerSessionSkip(9965)
+        fireEvent("QUEST_REMOVED", 9965)
+        fireEvent("QUEST_ACCEPTED", 1, 9965)
+        if not ns.PlannerSessionSkipped(9965) or Kept(9965) then error("a skip you asked for survives an abandon and taking the quest again") end
         ns:PlannerStop()
         ns.PlannerSessionSkipReset()
 
@@ -21998,13 +22003,24 @@ try("polish review: the final review's fixes", function()
 
         -- I-C: while locked, a role template, a profile code and a pack store no guide settings
         rawset(ns.db, "plannerMapLine", false)
+        local keepPos, keepScale = ns.db.pos, ns.db.scale
+        ns.db.pos, ns.db.scale = {}, {}
+        for k, v in pairs(type(keepPos) == "table" and keepPos or {}) do ns.db.pos[k] = v end
+        for k, v in pairs(type(keepScale) == "table" and keepScale or {}) do ns.db.scale[k] = v end
+        ns.db.pos.questGuide, ns.db.scale.questGuide = { "CENTER", "CENTER", 10, 20 }, 1.2     -- (N2: an unlocked tester's code carries the panel's place)
         local code, pack = ns:ExportProfile(), ns:ExportPack()
+        ns.db.pos, ns.db.scale = keepPos, keepScale
         ns.GuideUnlocked = function() return false end
         local function NoGated(name, where)
             local p = ns.root.profiles[name]
             if type(p) ~= "table" then error(where .. ": no profile stored") end
             for k in pairs(p) do if ns.GuideGatedKey(k) then error(where .. ": a locked player's profile holds " .. k) end end
+            for _, t in ipairs({ "pos", "scale" }) do
+                if type(p[t]) == "table" and p[t].questGuide ~= nil then error(where .. ": a locked player's profile holds " .. t .. ".questGuide") end
+            end
         end
+        local packed = ns.CleanPackProfile({ pos = { questGuide = { "CENTER", "CENTER", 1, 2 }, other = { "CENTER", "CENTER", 3, 4 } }, scale = { questGuide = 1.1, other = 1 } })
+        if packed.pos.questGuide or packed.scale.questGuide or not packed.pos.other or packed.scale.other ~= 1 then error("N2: a locked pack keeps no guide panel place, and keeps the rest") end
         local okT, _, tname = ns:NewTemplateProfile("TANK")
         if not okT then error("the template") end
         NoGated(tname, "role template")
@@ -22337,6 +22353,9 @@ try("gold seams: the window, the panel, hidden while locked", function()
         local function Said(from, text) for i = from + 1, #printed do if tostring(printed[i]):find(text, 1, true) then return true end end return false end
         -- locked: no way in, nothing made, nothing translated
         ns.root.guideKey = nil
+        local goldWords = { "Ways to make gold", "Ctrl-click: ways to make gold", "Gold ideas here", "Gold an hour" }
+        keep.seenWords = {}
+        for _, s in ipairs(goldWords) do keep.seenWords[s] = ns.seenStrings[s]; ns.seenStrings[s] = nil end   -- (an earlier unlocked test may have shown the panel's menu)
         if ns:GoldOpen() ~= nil then error("locked: no window") end
         local added = 0
         local tip = { AddLine = function() added = added + 1 end, AddDoubleLine = function() added = added + 1 end }
@@ -22355,9 +22374,10 @@ try("gold seams: the window, the panel, hidden while locked", function()
         if ns.goldPanel ~= nil or rawget(env, "FantasyGlassUIGoldAH") ~= nil then error("locked: no auction house panel") end
         fireEvent("PLAYER_ENTERING_WORLD"); runTimers()
         if ns.goldWindow ~= nil or rawget(env, "FantasyGlassUIGold") ~= nil then error("locked: nothing made at login") end
-        for _, s in ipairs({ "Ways to make gold", "Ctrl-click: ways to make gold", "Gold ideas here", "Gold an hour" }) do
+        for _, s in ipairs(goldWords) do
             if ns.seenStrings[s] ~= nil then error("locked: never translated: " .. s) end
         end
+        for s, v in pairs(keep.seenWords) do if ns.seenStrings[s] == nil then ns.seenStrings[s] = v end end
         -- unlocked: the launcher, with no sources (and old records forgotten on the first open)
         ns.GuideUnlocked = function() return true end
         local today = 20261125
@@ -22393,15 +22413,16 @@ try("gold seams: the window, the panel, hidden while locked", function()
             error("characters not seen for 180 days are forgotten; an unstamped one is stamped") end
         ns.root.goldChars = nil
         if ns.root.goldVendor.items[5] or not ns.root.goldVendor.items[6] or ns.root.goldMobs[1] or not ns.root.goldMobs[2] or ns.root.goldGather[1429] or not ns.root.goldGather[1411] then error("old records are forgotten") end
-        -- the guide panel's button, and /fgui guide gold
+        -- the guide panel's "..." entry (no button of its own: folders ruling 7), and /fgui guide gold
         ns.root.guides, ns.root.guideState = nil, nil
         ns:GuideSave(ns.GuideParse("guide: Gold test\nnote Sell and repair\n"))
         ns:GuideFollow("Gold test")
-        local panel = ns:GuideShowPanel()
-        local b = panel and rawget(panel, "suiGoldButton")
-        if not b or rawget(b, "suiGoldOn") ~= true then error("the guide panel has a Gold button") end
-        Click(b)
-        if ns.goldOpens ~= 2 then error("the Gold button opens the window") end
+        ns:GuideShowPanel()
+        local entry
+        for _, e in ipairs(ns.GuidePanelEntries({ kind = "note", text = "Sell and repair" })) do if e[1] == "Ways to make gold" then entry = e end end
+        if not entry then error("the guide panel's menu has Ways to make gold") end
+        entry[2]()
+        if ns.goldOpens ~= 2 then error("the panel's entry opens the window") end
         env.SlashCmdList["FANTASYGLASSUI"]("guide gold")
         if ns.goldOpens ~= 3 then error("/fgui guide gold opens it") end
         Settle()
@@ -22592,6 +22613,7 @@ try("gold seams: the window, the panel, hidden while locked", function()
         ns:ListWindow("GoldRawTest"):Hide()
     end)
     ns.root.guideKey, ns.GuideUnlocked, env.IsControlKeyDown, env.InCombatLockdown, env.GetMoney = keep.key, keep.unlocked, keep.ctrl, keep.combat, keep.money
+    for s, v in pairs(keep.seenWords or {}) do if ns.seenStrings[s] == nil then ns.seenStrings[s] = v end end
     env.AuctionHouseFrame, ns.PriceHouse, ns.Today = keep.ahf, keep.house, keep.today
     ns.root.goldChars, ns.root.goldWeights, ns.root.goldVendor, ns.root.goldMobs, ns.root.goldGather = keep.chars, keep.weights, keep.vendor, keep.mobs, keep.gather
     ns.root.guides, ns.root.guideState = keep.guides, keep.state
@@ -23001,21 +23023,21 @@ try("gold B: monsters worth killing", function()
         clock = clock + 1
         slots = { { link = LINEN, qty = 1, src = { sk, 1 } } }; fireEvent("LOOT_OPENED"); fireEvent("LOOT_CLOSED"); slots = {}
         if ns.root.goldMobs[611] ~= nil then error("skinning is not a loot") end
-        -- (merge: the gathering spells are GoldGather.lua's one table, read here through ns.GoldGatherSkill)
-        if type(ns.GOLD_GATHER_SPELLS) ~= "table" or ns.GOLD_GATHER_SPELLS[10248] ~= 186 or ns.GOLD_GATHER_SPELLS[2366] ~= 182 then error("one table of gathering spells") end
+        -- (the gathering spells are the planner's one skill function, read here through ns.PlannerGatherSkill)
+        if ns.PlannerGatherSkill(10248) ~= 186 or ns.PlannerGatherSkill(2366) ~= 182 then error("one skill function for the gathering spells") end
         local mn = Guid(613)
         fireEvent("UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-4", 10248)
         clock = clock + 1
         slots = { { link = LINEN, qty = 1, src = { mn, 1 } } }; fireEvent("LOOT_OPENED"); fireEvent("LOOT_CLOSED"); slots = {}
         if ns.root.goldMobs[613] ~= nil then error("mining is not a loot") end
-        local realSkill = ns.GoldGatherSkill
-        ns.GoldGatherSkill = function() return nil end
+        local realSkill = ns.PlannerGatherSkill
+        ns.PlannerGatherSkill = function() return nil end
         clock = clock + 5
         fireEvent("UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-5", 10248)
         clock = clock + 1
         slots = { { link = LINEN, qty = 1, src = { mn, 1 } } }; fireEvent("LOOT_OPENED"); fireEvent("LOOT_CLOSED"); slots = {}
-        ns.GoldGatherSkill = realSkill
-        if not ns.root.goldMobs[613] then error("the farm reads the gathering spells only through ns.GoldGatherSkill") end
+        ns.PlannerGatherSkill = realSkill
+        if not ns.root.goldMobs[613] then error("the farm reads the gathering spells only through ns.PlannerGatherSkill") end
         ns.root.goldMobs[613] = nil
         fireEvent("UNIT_SPELLCAST_SUCCEEDED", "party1", "Cast-3", 921)
         local alive = Guid(612)
@@ -23293,7 +23315,7 @@ try("gold C: gathering", function()
         today = ns.Today, seen = ns.root.goldNodesSeen, items = ns.root.goldNodeItems, gather = ns.root.goldGather, planner = ns.root.plannerNodesSeen,
         secret = ns.IsSecret, yards = ns.PLANNER_NODE_YARDS, switch = ns.db.plannerGather }
     local ok, err = pcall(function()
-        if type(ns.GoldRecordNode) ~= "function" then error("ns.GoldRecordNode is nil") end
+        if type(ns.GoldGatherSent) ~= "function" then error("ns.GoldGatherSent is nil") end
         ns.root.goldNodesSeen, ns.root.goldNodeItems, ns.root.goldGather, ns.root.plannerNodesSeen = nil, nil, nil, nil
         ns.Today = function() return 20261125 end
         local clock, pos = 1000, { 1429, 50, 50 }
@@ -23305,18 +23327,18 @@ try("gold C: gathering", function()
         cm.GetMapInfo = function(m) return { name = ({ [1429] = "Elwynn Forest", [1436] = "Westfall" })[m] or "Somewhere" } end
         env.C_Map = cm
         ns.PlannerWorldPos = function(map, x, y) if map == 1429 then return 0, x * 100, y * 100 end end
-        -- node recording: once a spot, never while locked
+        -- node recording (the planner's one recorder, into the one memory): once a spot, never while locked
         ns.GuideUnlocked = function() return false end
         fireEvent("UNIT_SPELLCAST_SENT", "player", "Peacebloom", nil, 2366)
-        if ns.root.goldNodesSeen ~= nil then error("nothing is recorded while locked") end
+        if ns.root.plannerNodesSeen ~= nil then error("nothing is recorded while locked") end
         ns.GuideUnlocked = function() return true end
         fireEvent("UNIT_SPELLCAST_SENT", "player", "Peacebloom", nil, 2366)
-        local list = ns.root.goldNodesSeen and ns.root.goldNodesSeen[1429]
-        if type(list) ~= "table" or #list ~= 1 then error("one node recorded") end
+        local list = ns.root.plannerNodesSeen and ns.root.plannerNodesSeen[1429]
+        if type(list) ~= "table" or #list ~= 1 or ns.root.goldNodesSeen ~= nil then error("one node recorded, in the planner's memory") end
         local n = list[1]
         if n.name ~= "Peacebloom" or n.x ~= 50 or n.y ~= 50 or n.skill ~= 182 then error("the planner's shape: { name, x, y, skill }") end
         fireEvent("UNIT_SPELLCAST_SENT", "player", "Peacebloom", nil, 2366)
-        if #ns.root.goldNodesSeen[1429] ~= 1 then error("the same spot again is the same node") end
+        if #ns.root.plannerNodesSeen[1429] ~= 1 then error("the same spot again is the same node") end
         -- what the node gave
         env.GetNumLootItems = function() return 1 end
         env.GetLootSlotLink = function(slot) if slot == 1 then return "|cffffffff|Hitem:2447::::::::20:::::|h[Peacebloom]|h|r" end end
@@ -23353,7 +23375,7 @@ try("gold C: gathering", function()
         fireEvent("UNIT_SPELLCAST_SENT", hidden, "Silverleaf", nil, 2366)
         fireEvent("UNIT_SPELLCAST_SENT", "player", "Silverleaf", nil, hidden)
         fireEvent("UNIT_SPELLCAST_SENT", "player", "Silverleaf", nil, "2366")
-        if ns.GoldRecordNode(1429, hidden, 50, "Silverleaf", 182) then error("a hidden x") end
+        if ns.PlannerRecordNode(1429, hidden, 50, "Silverleaf", 182) then error("a hidden x") end
         ns.IsSecret = keep.secret
         if #list ~= 1 then error("hidden or odd values record nothing") end
         ns.db.plannerGather = false
@@ -23361,13 +23383,16 @@ try("gold C: gathering", function()
         ns.db.plannerGather = keep.switch
         if #list ~= 1 then error("the planner's gathering switch off: nothing recorded") end
         ns.PLANNER_NODE_YARDS = 1000
-        if ns.GoldRecordNode(1429, 55, 50, "Peacebloom", 182) then error("the planner's node distance is used") end
+        pos[2] = 55
+        fireEvent("UNIT_SPELLCAST_SENT", "player", "Peacebloom", nil, 2366)
+        if #list ~= 1 then error("the planner's node distance is used") end
         ns.PLANNER_NODE_YARDS = keep.yards
-        if not ns.GoldRecordNode(1429, 55, 50, "Peacebloom", 182) or #list ~= 2 then error("500 yards away is another node") end
-        if ns.GoldRecordNode(1436, 50, 50, "Peacebloom", 182) then error("no world position: nothing recorded") end
-        for _ = 1, 298 do list[#list + 1] = { name = "Far", x = 0, y = 0, skill = 186 } end
-        if ns.GoldRecordNode(1429, 90, 90, "Silverleaf", 182) or #list ~= 300 then error("300 nodes a map") end
-        for i = 300, 3, -1 do list[i] = nil end
+        fireEvent("UNIT_SPELLCAST_SENT", "player", "Peacebloom", nil, 2366)
+        if #list ~= 2 then error("500 yards away is another node") end
+        pos[1], pos[2] = 1436, 50
+        fireEvent("UNIT_SPELLCAST_SENT", "player", "Peacebloom", nil, 2366)
+        pos[1] = 1429
+        if ns.root.plannerNodesSeen[1436] ~= nil then error("no world position: nothing recorded") end
         -- skinning: the map's measure, never a node
         env.GetLootSlotLink = function(slot) if slot == 1 then return "|Hitem:2318::|h[Light Leather]|h" end end
         env.GetLootSlotInfo = function(slot) if slot == 1 then return 1, "Light Leather", 3 end end
@@ -23376,7 +23401,7 @@ try("gold C: gathering", function()
         fireEvent("UNIT_SPELLCAST_SUCCEEDED", "player", nil, 8613); fireEvent("LOOT_OPENED")
         if ns.root.goldNodeItems["Young Wolf"] ~= nil or g.items[2318] ~= 3 or #list ~= 2 then error("skinning: the map's measure only") end
         -- skill and zone
-        if ns.GoldGatherSkill(2575) ~= 186 or ns.GoldGatherSkill(8613) ~= 393 or ns.GoldGatherSkill(133) ~= nil then error("the gathering skills") end
+        if ns.PlannerGatherSkill(2575) ~= 186 or ns.PlannerGatherSkill(8613) ~= 393 or ns.PlannerGatherSkill(133) ~= nil then error("the gathering skills") end
         if not ns.GoldGatherFits(1429, 182, 60) or ns.GoldGatherFits(1446, 182, 60) then error("skill 60: Elwynn fits, Tanaris does not") end
         if ns.GOLD_GATHER_ITEMS[182][13468] ~= 300 or ns.GOLD_GATHER_ITEMS[186][10620] ~= 245 or ns.GOLD_GATHER_ZONES[1446][1] ~= 160 then error("the built-in lists") end
         -- the route, in map percent
@@ -23941,11 +23966,14 @@ try("gold together: one window from every source", function()
         local shown = rawget(p, "suiGoldOn") == true or ns:GoldAuctionShow() ~= nil
         fireEvent("AUCTION_HOUSE_CLOSED")
         -- every recorder is quiet too: nothing named Gold in /fgui perf
+        local lootN = env.GetNumLootItems
+        env.GetNumLootItems = function() return 0 end            -- (the loot browser and the upgrade check hear LOOT_OPENED too)
         for _, e in ipairs({ "MERCHANT_SHOW", "MERCHANT_UPDATE", "LOOT_OPENED", "LOOT_CLOSED", "UNIT_SPELLCAST_SENT", "UNIT_SPELLCAST_SUCCEEDED",
             "TRADE_SKILL_SHOW", "TRADE_SKILL_LIST_UPDATE", "BAG_UPDATE_DELAYED", "PLAYER_MONEY" }) do fireEvent(e, "player") end
+        env.GetNumLootItems = lootN
         runTimers()
         local timed = {}
-        local mine = { Gold = true, ["Gold loot"] = true, ["Gold gather"] = true, ["Gold recipes"] = true }   -- ("Gold history" is the public one)
+        local mine = { Gold = true, ["Gold loot"] = true, ["Gold gather"] = true, ["Gold recipes"] = true, ["Planner gather"] = true }   -- ("Gold history" is the public one; the planner's SENT recorder hands gathering to gold)
         for label in pairs(ns.perfData) do if mine[label] then timed[#timed + 1] = tostring(label) end end
         ns.perfOn, ns.perfData = perfOn, perfData
         if shown then error("locked: the panel does not open") end
@@ -23968,6 +23996,183 @@ try("gold together: one window from every source", function()
     if not ok then error(err, 0) end
 end)
 -- gold tests together: end
+try("folders 0: one branch, one node memory", function()
+    local keep = { unlocked = ns.GuideUnlocked, here = ns.GuideHere, world = ns.PlannerWorldPos, open = ns.GoldOpen, sent = ns.GoldGatherSent,
+        yield = ns.GoldYield, print = ns.Print, secret = ns.IsSecret, errors = ns.errors, value = ns.GoldItemValue, known = ns.PlannerRidingKnown,
+        planner = ns.root.plannerNodesSeen, seen = ns.root.goldNodesSeen, items = ns.root.goldNodeItems, gather = ns.root.goldGather,
+        chars = ns.root.goldChars, guides = ns.root.guides, state = ns.root.guideState, switch = ns.db.plannerGather, guideOn = ns.db.questGuide,
+        time = env.GetTime, num = env.GetNumLootItems, link = env.GetLootSlotLink, info = env.GetLootSlotInfo, map = env.C_Map,
+        spell = env.C_Spell, money = env.GetMoney, class = env.UnitClass }
+    local ok, err = pcall(function()
+        local function Settle() local n = 0; while ns.GoldBusy() and n < 2000 do ns.GoldRunSlice(); n = n + 1 end end
+        fireEvent("PLAYER_REGEN_ENABLED"); Settle()
+        ns.GuideUnlocked = function() return true end
+        ns.db.questGuide = true
+        -- the panel: no Gold button of its own; a "..." entry, and /fgui guide gold, while unlocked only
+        local opened = 0
+        ns.GoldOpen = function() opened = opened + 1; return true end
+        ns.root.guides, ns.root.guideState = {}, {}
+        local step = { kind = "note", text = "Somewhere" }
+        ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { step, { kind = "note", text = "then" } } }, { logFits = false })
+        ns:PlannerStop()
+        local panel = ns:GuideShowPanel()
+        if type(panel) ~= "table" then error("the panel") end
+        for k in pairs(panel) do if type(k) == "string" and k:find("Gold") then error("the panel has no Gold button of its own: " .. k) end end
+        local function GoldEntry()
+            for _, e in ipairs(ns.GuidePanelEntries(step)) do if e[1] == "Ways to make gold" then return e end end
+        end
+        local e = GoldEntry()
+        if not e then error("the panel's \"...\" lists Ways to make gold") end
+        e[2]()
+        if opened ~= 1 then error("the entry opens the gold window once: " .. opened) end
+        ns:GuideCommand("gold")
+        if opened ~= 2 then error("/fgui guide gold opens it too: " .. opened) end
+        local said
+        ns.Print = function(_, t) said = t end
+        ns.GuideUnlocked = function() return false end
+        if GoldEntry() then error("locked: no gold entry") end
+        ns:GuideCommand("gold")
+        ns.Print = keep.print
+        if opened ~= 2 or said ~= "Quest guides are coming soon." then error("locked: /fgui guide gold gives the usual answer: " .. tostring(said)) end
+        ns.GuideUnlocked = function() return true end
+        ns:PlannerStop(); ns:GuideStop()
+        -- one SENT recorder: the planner's, into its memory, handing every gathering to gold
+        local sentArgs = {}
+        ns.GoldGatherSent = function(...) sentArgs[#sentArgs + 1] = { ... }; return keep.sent(...) end
+        ns.GuideHere = function() return 1429, 50, 50 end
+        ns.PlannerWorldPos = function(map, x, y) if map == 1429 or map == 1436 then return 0, x * 100, y * 100 end end
+        ns.root.plannerNodesSeen, ns.root.goldNodesSeen, ns.root.goldNodeItems, ns.root.goldGather = {}, nil, nil, nil
+        fireEvent("UNIT_SPELLCAST_SENT", "player", "Peacebloom", nil, 2366)
+        local list = ns.root.plannerNodesSeen[1429]
+        if type(list) ~= "table" or #list ~= 1 or list[1].name ~= "Peacebloom" then error("one node in plannerNodesSeen") end
+        if ns.root.goldNodesSeen ~= nil then error("gold keeps no node memory of its own") end
+        local a = sentArgs[1]
+        if #sentArgs ~= 1 or a[1] ~= "Peacebloom" or a[2] ~= 182 or a[3] ~= 2366 then error("gold is told of the gathering once: " .. #sentArgs) end
+        -- gold's loot, with the planner's node switch off
+        ns.db.plannerGather = false
+        ns.root.plannerNodesSeen = {}
+        local clock = 5000
+        env.GetTime = function() return clock end
+        env.GetNumLootItems = function() return 1 end
+        env.GetLootSlotLink = function(slot) if slot == 1 then return "|cffffffff|Hitem:2447::::::::20:::::|h[Peacebloom]|h|r" end end
+        env.GetLootSlotInfo = function(slot) if slot == 1 then return 133939, "Peacebloom", 2, nil, 1 end end
+        fireEvent("UNIT_SPELLCAST_SENT", "player", "Peacebloom", nil, 2366)
+        fireEvent("UNIT_SPELLCAST_SUCCEEDED", "player", nil, 2366)
+        clock = clock + 1
+        fireEvent("LOOT_OPENED")
+        env.GetNumLootItems = function() return 0 end
+        if ns.root.plannerNodesSeen[1429] ~= nil then error("the switch off: no node") end
+        local got = ns.root.goldNodeItems and ns.root.goldNodeItems.Peacebloom
+        if not (got and got.items[2447] == 2) then error("the switch off: gold still counts what the node gave") end
+        ns.db.plannerGather = keep.switch
+        -- skinning: no node, and gold hears of it with its skill
+        sentArgs = {}
+        fireEvent("UNIT_SPELLCAST_SENT", "player", "Young Wolf", nil, 8613)
+        if ns.root.plannerNodesSeen[1429] ~= nil then error("skinning records no node") end
+        if #sentArgs ~= 1 or sentArgs[1][2] ~= 393 or sentArgs[1][3] ~= 8613 then error("skinning reaches gold with 393") end
+        ns.GoldGatherSent = keep.sent
+        -- one skill function
+        if ns.PlannerGatherSkill(2575) ~= 186 then error("one skill function, the planner's") end
+        for k in pairs(ns) do if type(k) == "string" and k:match("^Gold%w*Skill$") then error("gold has no skill function of its own: " .. k) end end
+        local hidden = {}
+        ns.IsSecret = function(self, v) if rawequal(v, hidden) then return true end return keep.secret(self, v) end
+        env.C_Spell = setmetatable({ GetSpellInfo = function() return hidden end }, { __index = keep.spell })
+        ns.PlannerGatherSkillReset()
+        local skill = ns.PlannerGatherSkill(99123)
+        env.C_Spell, ns.IsSecret = keep.spell, keep.secret
+        ns.PlannerGatherSkillReset()
+        if skill ~= nil then error("a hidden spell info: no skill") end
+        -- the fold: A is the planner's already, C is within 5 yards of B
+        local function Node(name, x, y, sk) return { name = name, x = x, y = y, skill = sk or 182 } end
+        local A, B, C = Node("Peacebloom", 10, 10), Node("Silverleaf", 40, 40), Node("Silverleaf", 40.03, 40)
+        local function Fresh()
+            ns.root.plannerNodesSeen = { [1429] = { Node("Peacebloom", 10, 10) } }
+            ns.root.goldNodesSeen = { [1429] = { Node("Peacebloom", 10, 10), Node("Silverleaf", 40, 40), Node("Silverleaf", 40.03, 40) } }
+        end
+        local function OnlyAB(where)
+            local l = ns.root.plannerNodesSeen[1429]
+            if #l ~= 2 or l[1].name ~= A.name or l[1].x ~= A.x or l[2].name ~= B.name or l[2].x ~= B.x or l[2].y ~= B.y then error(where .. ": the planner gained exactly B (" .. #l .. ")") end
+            if ns.root.goldNodesSeen ~= nil then error(where .. ": goldNodesSeen is gone") end
+        end
+        Fresh()
+        if not ns.GoldFoldNodes() then error("the fold is queued") end
+        if ns.GoldFoldNodes() then error("queued once") end
+        Settle()
+        OnlyAB("the fold")
+        if ns.GoldFoldNodes() then error("nothing left to fold: not queued") end
+        Settle()
+        OnlyAB("run again")
+        -- stopped after its first entry: everything stays, and the next run finishes with no duplicate
+        Fresh()
+        local raised = false
+        ns.errors = {}
+        ns.GoldYield = function() if not raised then raised = true; error("stopped") end return keep.yield() end
+        ns.GoldFoldNodes(); Settle()
+        ns.GoldYield = keep.yield
+        if not raised or #ns.errors ~= 1 then error("the job stopped with an error") end
+        ns.errors = keep.errors
+        if type(ns.root.goldNodesSeen) ~= "table" or #ns.root.goldNodesSeen[1429] ~= 3 then error("stopped: goldNodesSeen intact") end
+        if #ns.root.plannerNodesSeen[1429] > 2 then error("stopped: no more than one entry moved") end
+        if not ns.GoldFoldNodes() then error("the fold again") end
+        Settle()
+        OnlyAB("after a stop")
+        -- a full map: nothing is added, and the old memory is still cleared
+        local full = {}
+        for i = 1, 300 do full[i] = Node("Copper Vein", i / 10, 90, 186) end
+        ns.root.plannerNodesSeen = { [1429] = full }
+        ns.root.goldNodesSeen = { [1429] = { Node("Silverleaf", 40, 40) } }
+        ns.GoldFoldNodes(); Settle()
+        if #full ~= 300 or full[1].name ~= "Copper Vein" or full[300].name ~= "Copper Vein" or ns.root.goldNodesSeen ~= nil then error("a full map: nothing added, the store cleared") end
+        -- pending: the ideas still see both memories
+        ns.GoldItemValue = function(id) return id == 2447 and 100 or 0, "vendor", nil end
+        ns.root.goldNodeItems = { Peacebloom = { n = 3, items = { [2447] = 3 } } }
+        ns.root.goldGather = nil
+        local pts = { { 0, 0 }, { 10, 0 }, { 10, 10 }, { 0, 10 }, { 5, 5 } }
+        ns.root.goldNodesSeen = { [1436] = { Node("Peacebloom", 0, 0), Node("Peacebloom", 10, 0) } }
+        ns.root.plannerNodesSeen = { [1436] = {} }
+        for i = 3, 5 do table.insert(ns.root.plannerNodesSeen[1436], Node("Peacebloom", pts[i][1], pts[i][2])) end
+        local ideas = {}
+        ns.GoldGatherIdeas({ today = 20261125, level = 20, map = 1436, where = "window" }, function(i) ideas[#ideas + 1] = i end, { [182] = 60 })
+        local route
+        for _, i in ipairs(ideas) do if i.id == "gather:1436:182" then route = i end end
+        if not route or #route.steps ~= 5 then error("while the fold is pending, the ideas see both memories: " .. tostring(route and #route.steps)) end
+        -- locked: the fold is not queued at a loading screen; unlocked, it is
+        ns.root.goldNodesSeen = { [1429] = { Node("Silverleaf", 40, 40) } }
+        ns.root.plannerNodesSeen = {}
+        ns.GuideUnlocked = function() return false end
+        fireEvent("PLAYER_ENTERING_WORLD")
+        if ns.GoldBusy("nodeFold") then error("locked: no fold at PLAYER_ENTERING_WORLD") end
+        ns.GuideUnlocked = function() return true end
+        fireEvent("PLAYER_ENTERING_WORLD")
+        if not ns.GoldBusy("nodeFold") then error("unlocked: the fold is queued at PLAYER_ENTERING_WORLD") end
+        Settle()
+        if ns.root.goldNodesSeen ~= nil or #(ns.root.plannerNodesSeen[1429] or {}) ~= 1 then error("the loading screen's fold ran") end
+        ns:PlannerStop()
+        -- the riding goal is the planner's riding line: the same amounts, the same gold to go
+        local g = ns.GOLD_GOALS.mount
+        if g.copper ~= ns.PLANNER_RIDING_COPPER + ns.PLANNER_MOUNT_COPPER or g.byClass.PALADIN ~= ns.PLANNER_RIDING_COPPER
+           or g.byClass.WARLOCK ~= ns.PLANNER_RIDING_COPPER then error("the riding goal and the planner's riding costs agree") end
+        ns.PlannerRidingKnown = function() return false end
+        env.GetMoney = function() return 80 * 10000 end
+        for _, class in ipairs({ "WARRIOR", "PALADIN", "WARLOCK" }) do
+            env.UnitClass = function() return class, class end
+            ns.GoldSetGoal(ns.GoldGoalAmount("mount"), "mount")
+            local goal, name = ns.GoldGoal()
+            local r = ns.PlannerRiding(40)
+            if name ~= "mount" or not r or goal - 80 * 10000 ~= r.short then error(class .. ": gold's riding goal leaves what the planner's riding line says: " .. tostring(r and r.short)) end
+        end
+    end)
+    ns.GuideUnlocked, ns.GuideHere, ns.PlannerWorldPos, ns.GoldOpen, ns.GoldGatherSent = keep.unlocked, keep.here, keep.world, keep.open, keep.sent
+    ns.GoldYield, ns.Print, ns.IsSecret, ns.errors, ns.GoldItemValue, ns.PlannerRidingKnown = keep.yield, keep.print, keep.secret, keep.errors, keep.value, keep.known
+    ns.root.plannerNodesSeen, ns.root.goldNodesSeen, ns.root.goldNodeItems, ns.root.goldGather = keep.planner, keep.seen, keep.items, keep.gather
+    ns.root.goldChars, ns.root.guides, ns.root.guideState, ns.db.plannerGather, ns.db.questGuide = keep.chars, keep.guides, keep.state, keep.switch, keep.guideOn
+    env.GetTime, env.GetNumLootItems, env.GetLootSlotLink, env.GetLootSlotInfo, env.C_Map = keep.time, keep.num, keep.link, keep.info, keep.map
+    env.C_Spell, env.GetMoney, env.UnitClass = keep.spell, keep.money, keep.class
+    if ns.PlannerGatherSkillReset then ns.PlannerGatherSkillReset() end
+    local n = 0
+    while ns.GoldBusy and ns.GoldBusy() and n < 2000 do ns.GoldRunSlice(); n = n + 1 end
+    if not ok then error(err, 0) end
+end)
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()

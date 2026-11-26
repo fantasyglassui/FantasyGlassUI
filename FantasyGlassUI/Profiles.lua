@@ -184,15 +184,15 @@ function ns:ImportProfile(name, text)
     clean.pos, clean.scale = {}, {}
     if type(data.pos) == "table" then
         for k, p in pairs(data.pos) do
-            if type(k) == "string" and type(p) == "table" and type(p[1]) == "string" and type(p[2]) == "string"
-               and type(p[3]) == "number" and type(p[4]) == "number" then
+            if type(k) == "string" and not ns.GuideGatedHidden(k) and type(p) == "table" and type(p[1]) == "string" and type(p[2]) == "string"
+               and type(p[3]) == "number" and type(p[4]) == "number" then   -- (locked: not the guide panel's place)
                 clean.pos[k] = { p[1], p[2], p[3], p[4] }
             end
         end
     end
     if type(data.scale) == "table" then
         for k, v in pairs(data.scale) do
-            if type(k) == "string" and type(v) == "number" then clean.scale[k] = math.max(0.5, math.min(2, v)) end
+            if type(k) == "string" and type(v) == "number" and not ns.GuideGatedHidden(k) then clean.scale[k] = math.max(0.5, math.min(2, v)) end
         end
     end
     clean.classColors = {}
@@ -471,12 +471,13 @@ function ns.CleanPackProfile(p)
     end
     if type(clean.pos) == "table" then
         for k, at in pairs(clean.pos) do
-            if not (type(k) == "string" and type(at) == "table" and type(at[1]) == "string" and type(at[2]) == "string" and type(at[3]) == "number" and type(at[4]) == "number") then clean.pos[k] = nil end
+            if not (type(k) == "string" and type(at) == "table" and type(at[1]) == "string" and type(at[2]) == "string" and type(at[3]) == "number" and type(at[4]) == "number")
+               or ns.GuideGatedHidden(k) then clean.pos[k] = nil end   -- (locked: not the guide panel's place)
         end
     else clean.pos = {} end
     if type(clean.scale) == "table" then
         for k, v in pairs(clean.scale) do
-            if type(v) ~= "number" then clean.scale[k] = nil else clean.scale[k] = math.max(0.5, math.min(2, v)) end
+            if type(v) ~= "number" or ns.GuideGatedHidden(k) then clean.scale[k] = nil else clean.scale[k] = math.max(0.5, math.min(2, v)) end
         end
     else clean.scale = {} end
     return clean

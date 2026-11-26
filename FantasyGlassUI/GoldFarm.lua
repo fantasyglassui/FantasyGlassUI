@@ -97,7 +97,7 @@ end
 -- yours), never a window that follows Pick Pocket or a gathering cast, and never a living target.
 ------------------------------------------------------------------------------------------
 -- Casts whose loot window is not a kill: Pick Pocket here, and every gathering spell (skinning, herbs,
--- ore), which GoldGather.lua owns and names through ns.GoldGatherSkill (read when the cast comes).
+-- ore), which the planner's one skill function names: ns.PlannerGatherSkill (read when the cast comes).
 local NOT_A_KILL = { [921] = true }
 local CAST_WINDOW = 2                      -- seconds after such a cast in which a loot window is its
 local castAt                               -- GetTime() of the last such cast
@@ -275,7 +275,7 @@ end
 local function CastDone(unit, spellID)
     if not Unlocked() or Secret(unit) or unit ~= "player" then return end
     spellID = Num(spellID)
-    local gather = spellID and type(ns.GoldGatherSkill) == "function" and ns.GoldGatherSkill(spellID)
+    local gather = spellID and type(ns.PlannerGatherSkill) == "function" and ns.PlannerGatherSkill(spellID)
     if spellID and (NOT_A_KILL[spellID] or gather) then castAt = Clock() end
 end
 

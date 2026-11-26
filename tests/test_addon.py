@@ -89,22 +89,29 @@ def test_plan_reader():
 
 
 def test_guide_seams_listed():
-    """Every ns.Guide* and ns.GUIDE_* a Planner*.lua file uses is in Guide.lua's seam list, every name there is
-    defined in Guide.lua, and no planner file wraps a ns.Guide* function any more."""
+    """Every ns.Guide* and ns.GUIDE_* a Planner*.lua or Gold*.lua file uses is in Guide.lua's seam list, every name
+    there is defined in Guide.lua, and no planner or gold file wraps, assigns or defines a ns.Guide* function: they
+    use the guide's registries instead."""
     folder = os.path.join(ROOT, "FantasyGlassUI")
     guide = open(os.path.join(folder, "Guide.lua"), encoding="utf-8").read()
     block = re.search(r"^-- Seams \(what the planner uses of the guide\):\n(.*?)^-- end of seams$", guide, re.M | re.S)
     assert block, "Guide.lua has no seam list"
     listed = set(re.findall(r"^--\s+(\w+)\s*$", block.group(1), re.M))
-    used, wrappers = set(), []
+    used, wrappers, assigned, scanned = set(), [], [], []
     for name in sorted(os.listdir(folder)):
-        if not (name.startswith("Planner") and name.endswith(".lua")):
+        if not (name.startswith(("Planner", "Gold")) and name.endswith(".lua")):
             continue
+        scanned.append(name)
         text = open(os.path.join(folder, name), encoding="utf-8").read()
         used |= set(re.findall(r"ns[.:](Guide\w+)", text)) | set(re.findall(r"ns\.(GUIDE_\w+)", text))
         wrappers += [f"{name}:{i}" for i, line in enumerate(text.splitlines(), 1) if "local original = ns[" in line]
+        for i, line in enumerate(text.splitlines(), 1):
+            if re.search(r"\bfunction ns[.:]Guide\w+", line) or re.search(r"\bns\.Guide\w+\s*=(?!=)", line):
+                assigned.append(f"{name}:{i}: {line.strip()}")
+    assert "Gold.lua" in scanned and "PlannerPath.lua" in scanned, scanned
     missing = sorted(used - listed)
     assert not missing, f"used by the planner but not in the seam list: {missing}"
     undefined = sorted(n for n in listed if not re.search(r"^(?:function ns[.:]%s\b|ns\.%s\s*=)" % (n, n), guide, re.M))
     assert not undefined, f"in the seam list but not defined in Guide.lua: {undefined}"
     assert not wrappers, f"a planner file wraps a guide function: {wrappers}"
+    assert not assigned, f"a planner or gold file sets a guide function (only Guide.lua defines them): {assigned}"

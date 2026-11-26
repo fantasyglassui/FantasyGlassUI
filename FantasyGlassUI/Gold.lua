@@ -1137,7 +1137,7 @@ end
 ------------------------------------------------------------------------------------------
 -- entry points (stay in the main add-on when the folder moves)
 -- Each does nothing while the guide is locked: the launcher's tooltip line and Ctrl-click, the guide
--- panel's Gold button, /fgui guide gold, and the auction house panel.
+-- panel's "..." entry, /fgui guide gold, and the auction house panel.
 ------------------------------------------------------------------------------------------
 do
     local prevTip, prevClick = ns.LauncherTipExtra, ns.LauncherClickExtra
@@ -1153,32 +1153,15 @@ do
         return true
     end
 
-    local GuidePanel, GuideCmd = ns.GuideShowPanel, ns.GuideCommand
-    if type(GuidePanel) == "function" then
-        function ns:GuideShowPanel(...)
-            local p = GuidePanel(self, ...)
-            if type(p) == "table" and Unlocked() then
-                local b = p.suiGoldButton
-                if not b then
-                    b = ns:CreateButton(p, "Gold", 48, 18, function() ns:GoldOpen() end)
-                    b:SetPoint("BOTTOMRIGHT", -76, 6)
-                    p.suiGoldButton = b
-                end
-                Shown(b, true)
-            elseif type(p) == "table" and p.suiGoldButton then
-                Shown(p.suiGoldButton, false)
-            end
-            return p
-        end
+    -- the guide's registries (Guide.lua's seams; no wrapper): a "..." panel entry, /fgui guide gold, and the lock
+    if ns.GuideRegisterAction then
+        ns.GuideRegisterAction("panel", "gold", "Ways to make gold", function() ns:GoldOpen() end, function() return Unlocked() end)
     end
-    if type(GuideCmd) == "function" then
-        function ns:GuideCommand(text, ...)
-            if Unlocked() and type(text) == "string" and not Secret(text) and ns.Trim(text):lower() == "gold" then
-                ns:GoldOpen()
-                return true
-            end
-            return GuideCmd(self, text, ...)
-        end
+    if ns.GuideRegisterCommand then ns.GuideRegisterCommand("gold", function() ns:GoldOpen(); return true end) end
+    if ns.GuideRegisterLock then
+        ns.GuideRegisterLock("gold", function(unlocked)            -- (locked again: the window and the auction-house panel hide at once)
+            if not unlocked and type(ns.GoldLockedNow) == "function" then ns.GoldLockedNow() end
+        end)
     end
 
     local ev = CreateFrame("Frame")

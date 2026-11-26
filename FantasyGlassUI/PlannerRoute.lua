@@ -1187,8 +1187,10 @@ local fromAbandon = {}
 -- `abandoned`: the skip comes from abandoning the quest, not from ">" or "Skip this quest for now".
 function ns.PlannerSessionSkip(id, abandoned)
     if type(id) ~= "number" then return end
+    if abandoned then                                -- (a skip you asked for stays one: abandoning the quest does not change it)
+        if not sessionSkip[id] then fromAbandon[id] = true end
+    else fromAbandon[id] = nil end
     sessionSkip[id] = true
-    if abandoned then fromAbandon[id] = true else fromAbandon[id] = nil end
 end
 function ns.PlannerSessionSkipped(id) return sessionSkip[id] == true end
 -- "Suggest again" (ns.PlannerSkip(id, false)): this session's plans take it again too.

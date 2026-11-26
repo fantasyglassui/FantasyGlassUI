@@ -81,11 +81,12 @@ local BASE_SPELLS = { [2366] = HERBALISM, [2575] = MINING, [8613] = SKINNING }  
 local function SpellName(id)
     if type(C_Spell) ~= "table" or type(C_Spell.GetSpellInfo) ~= "function" then return nil end
     local ok, info = pcall(C_Spell.GetSpellInfo, id)
-    local name = ok and type(info) == "table" and info.name or nil
+    local name = ok and type(info) == "table" and not ns:IsSecret(info) and info.name or nil
     return type(name) == "string" and not ns:IsSecret(name) and name or nil
 end
 
--- The skill line (182, 186, 393) a spell gathers with, or nil. The answer is kept per spell for the session
+-- The skill line (182, 186, 393) a spell gathers with, or nil: the one such function (the gold advisor's
+-- gathering and farming read it too). The answer is kept per spell for the session
 -- ("none" too), and the base spells' names once: a cast in a fight asks the game nothing new.
 local skillOf, baseNames = {}, nil
 function ns.PlannerGatherSkill(spellID)
@@ -169,17 +170,24 @@ function ns.PlannerRecordNode(map, x, y, name, skill)
     return true
 end
 
+-- The one UNIT_SPELLCAST_SENT recorder: a herb or ore node goes into plannerNodesSeen (unless plannerGather is
+-- off), and every gathering, skinning too, is handed to the gold advisor (ns.GoldGatherSent), which records
+-- what it gives. A plain handler first: while locked it returns at once, so nothing is timed by /fgui perf.
 do
     local ev = CreateFrame("Frame")
     pcall(ev.RegisterUnitEvent, ev, "UNIT_SPELLCAST_SENT", "player")
-    ev:SetScript("OnEvent", ns:Guard("Planner gather", function(_, _, unit, target, _, spellID)
-        if ns:IsSecret(unit) or unit ~= "player" or not ns:GuideUnlocked() or (ns.db and ns.db.plannerGather == false) then return end
-        if type(target) ~= "string" or ns:IsSecret(target) or target == "" then return end
+    local guarded = ns:Guard("Planner gather", function(_, _, unit, target, _, spellID)
+        if ns:IsSecret(unit) or unit ~= "player" then return end
         local skill = ns.PlannerGatherSkill(spellID)
-        if not skill or skill == SKINNING or not ns.GuideHere then return end   -- (skinning only drives the "skin them" note)
-        local map, x, y = ns.GuideHere()
-        if map and x and y then ns.PlannerRecordNode(map, x, y, target, skill) end
-    end))
+        if not skill then return end
+        local name = (type(target) == "string" and not ns:IsSecret(target) and target ~= "") and target or nil
+        if name and skill ~= SKINNING and not (ns.db and ns.db.plannerGather == false) and ns.GuideHere then   -- (skinning only drives the "skin them" note)
+            local map, x, y = ns.GuideHere()
+            if map and x and y then ns.PlannerRecordNode(map, x, y, name, skill) end
+        end
+        if type(ns.GoldGatherSent) == "function" then ns.GoldGatherSent(name, skill, spellID) end
+    end)
+    ev:SetScript("OnEvent", function(...) if ns.GuideUnlocked and ns:GuideUnlocked() == true then guarded(...) end end)
 end
 
 ------------------------------------------------------------------------------------------
