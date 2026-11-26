@@ -669,9 +669,25 @@ local function Build()
     if O.frame.EnableKeyboard then O.frame:EnableKeyboard(true) end
     if O.frame.SetPropagateKeyboardInput and not (InCombatLockdown and InCombatLockdown()) then O.frame:SetPropagateKeyboardInput(true) end
     O.frame:SetScript("OnKeyDown", function(self, key)
-        if InCombatLockdown and InCombatLockdown() then return end
+        if InCombatLockdown and InCombatLockdown() then                  -- (the game owns the keys in a fight: the window lets go of them,
+            if self.SetPropagateKeyboardInput then pcall(self.SetPropagateKeyboardInput, self, true) end   -- even after a key it used)
+            if self.EnableKeyboard then pcall(self.EnableKeyboard, self, false) end
+            return
+        end
         local used = O.KeyPress(key)
-        if self.SetPropagateKeyboardInput then self:SetPropagateKeyboardInput(not used) end
+        if self.SetPropagateKeyboardInput then pcall(self.SetPropagateKeyboardInput, self, not used) end
+    end)
+    -- A fight: the window stops taking keys as it starts (as the planner window does), and takes them again after it.
+    O.frame:RegisterEvent("PLAYER_REGEN_DISABLED")
+    O.frame:RegisterEvent("PLAYER_REGEN_ENABLED")
+    O.frame:SetScript("OnEvent", function(self, event)
+        if event == "PLAYER_REGEN_DISABLED" then
+            if self.SetPropagateKeyboardInput then pcall(self.SetPropagateKeyboardInput, self, true) end
+            if self.EnableKeyboard then pcall(self.EnableKeyboard, self, false) end
+        elseif event == "PLAYER_REGEN_ENABLED" then
+            if self.EnableKeyboard then pcall(self.EnableKeyboard, self, true) end
+            if self.SetPropagateKeyboardInput then pcall(self.SetPropagateKeyboardInput, self, true) end
+        end
     end)
 
     -- Drag the corner to make the window bigger or smaller; the size is kept.

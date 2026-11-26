@@ -26449,6 +26449,44 @@ try("keep-and-ids B: Keep my route", function()
     if not ok then error(err, 0) end
 end)
 -- keep and ids tests B (keep): end
+-- keep and ids tests C (settings keys): begin
+try("keep-and-ids C: the settings window lets go of the keys in a fight", function()
+    local keep = { nav = ns.db.keyNav, combat = env.InCombatLockdown }
+    local f, kb, prop
+    local ok, err = pcall(function()
+        ns:ToggleConfig("access")
+        local O = ns.optUI
+        f = O and O.frame
+        if not f then error("the settings window") end
+        local down
+        for _, h in ipairs(handlers) do if h.name == "OnKeyDown" and h.self == f then down = h.fn end end
+        if not down then error("its key handler") end
+        kb, prop = true, true
+        rawset(f, "EnableKeyboard", function(_, on) kb = on and true or false end)
+        rawset(f, "SetPropagateKeyboardInput", function(_, on) prop = on and true or false end)
+        local fightNow = false
+        env.InCombatLockdown = function() return fightNow end
+        ns.db.keyNav = true
+        down(f, "TAB")
+        if prop ~= false then error("(a used key is not passed on)") end
+        fightNow = true
+        fireEvent("PLAYER_REGEN_DISABLED")
+        if kb and not prop then error("a fight starts after a used key: the window must not keep the keys") end
+        kb, prop = true, false                               -- (as if the start of the fight went unheard)
+        down(f, "TAB")
+        if kb and not prop then error("a key in a fight: the window must not keep the keys") end
+        fightNow = false
+        fireEvent("PLAYER_REGEN_ENABLED")
+        if not (kb and prop) then error("after the fight: the window takes keys again, passing on what it does not use") end
+        down(f, "TAB")
+        if prop ~= false then error("after the fight: the keys work again") end
+    end)
+    if f then rawset(f, "EnableKeyboard", nil); rawset(f, "SetPropagateKeyboardInput", nil) end
+    env.InCombatLockdown, ns.db.keyNav = keep.combat, keep.nav
+    pcall(ns.ToggleConfig, ns)
+    if not ok then error(err, 0) end
+end)
+-- keep and ids tests C (settings keys): end
 -- folders tests together: begin
 -- folders tests together: end
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
