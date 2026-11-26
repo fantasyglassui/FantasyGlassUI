@@ -1,0 +1,712 @@
+{
+ "What the route includes": [
+  "Was die Route enthält",
+  "Ce que comprend l'itinéraire",
+  "Qué incluye la ruta",
+  "Что входит в маршрут",
+  "O que a rota inclui",
+  "Cosa include il percorso",
+  "경로에 포함할 것",
+  "路线包含的内容"
+ ],
+ "Advice along the way": [
+  "Tipps unterwegs",
+  "Conseils en chemin",
+  "Consejos por el camino",
+  "Советы в пути",
+  "Dicas pelo caminho",
+  "Consigli lungo la strada",
+  "가는 길의 조언",
+  "沿途建议"
+ ],
+ "On the map": [
+  "Auf der Karte",
+  "Sur la carte",
+  "En el mapa",
+  "На карте",
+  "No mapa",
+  "Sulla mappa",
+  "지도에",
+  "地图上"
+ ],
+ "Your records": [
+  "Deine Rekorde",
+  "Vos records",
+  "Tus récords",
+  "Ваши рекорды",
+  "Seus recordes",
+  "I tuoi record",
+  "내 기록",
+  "你的纪录"
+ ],
+ "With other players": [
+  "Mit anderen Spielern",
+  "Avec d'autres joueurs",
+  "Con otros jugadores",
+  "С другими игроками",
+  "Com outros jogadores",
+  "Con altri giocatori",
+  "다른 플레이어와 함께",
+  "与其他玩家一起"
+ ],
+ "Use quest guides": [
+  "Questanleitungen nutzen",
+  "Utiliser les guides de quêtes",
+  "Usar guías de misiones",
+  "Использовать гайды по заданиям",
+  "Usar guias de missões",
+  "Usa le guide delle missioni",
+  "퀘스트 안내서 사용",
+  "使用任务指南"
+ ],
+ "Quest areas on the map": [
+  "Questgebiete auf der Karte",
+  "Zones de quêtes sur la carte",
+  "Zonas de misiones en el mapa",
+  "Районы заданий на карте",
+  "Áreas de missões no mapa",
+  "Zone di missioni sulla mappa",
+  "지도에 퀘스트 지역 표시",
+  "地图上的任务区域"
+ ],
+ "How the planner works": [
+  "So funktioniert der Planer",
+  "Comment fonctionne le planificateur",
+  "Cómo funciona el planificador",
+  "Как работает планировщик",
+  "Como o planejador funciona",
+  "Come funziona il pianificatore",
+  "플래너 사용법",
+  "规划器如何工作"
+ ],
+ "Follow the planned route to share it": [
+  "Folge der geplanten Route, um sie zu teilen",
+  "Suivez l'itinéraire planifié pour le partager",
+  "Sigue la ruta planificada para compartirla",
+  "Следуйте спланированному маршруту, чтобы поделиться им",
+  "Siga a rota planejada para compartilhá-la",
+  "Segui il percorso pianificato per condividerlo",
+  "공유하려면 계획된 경로를 따라가세요",
+  "跟随规划的路线才能分享"
+ ],
+ "The step panel, and the arrow that points to your step. Off, nothing of the guide shows.": [
+  "Das Schrittfenster und der Pfeil, der auf deinen Schritt zeigt. Aus, ist von der Anleitung nichts zu sehen.",
+  "Le panneau des étapes, et la flèche qui pointe vers votre étape. Désactivé, rien du guide ne s'affiche.",
+  "El panel de pasos y la flecha que apunta a tu paso. Desactivado, no se muestra nada de la guía.",
+  "Панель шагов и стрелка, указывающая на ваш шаг. Если выключено, от гайда ничего не видно.",
+  "O painel de etapas e a seta que aponta para a sua etapa. Desligado, nada do guia aparece.",
+  "Il pannello dei passi e la freccia che indica il tuo passo. Se spento, della guida non si vede nulla.",
+  "단계 패널과 지금 단계를 가리키는 화살표입니다. 끄면 안내서가 전혀 보이지 않습니다.",
+  "步骤面板，以及指向当前步骤的箭头。关闭后，指南的任何部分都不显示。"
+ ],
+ "A short sound each time a step ticks off.": [
+  "Ein kurzer Ton, sobald ein Schritt abgehakt ist.",
+  "Un son bref chaque fois qu'une étape est cochée.",
+  "Un sonido breve cada vez que se marca un paso.",
+  "Короткий звук каждый раз, когда шаг отмечен.",
+  "Um som curto cada vez que uma etapa é marcada.",
+  "Un breve suono ogni volta che un passo viene spuntato.",
+  "단계가 완료될 때마다 짧은 소리가 납니다.",
+  "每完成一个步骤都会响一声短音。"
+ ],
+ "The guides you have: follow one, or open it to change it.": [
+  "Deine Anleitungen: Folge einer oder öffne sie, um sie zu ändern.",
+  "Vos guides : suivez-en un, ou ouvrez-le pour le modifier.",
+  "Tus guías: sigue una o ábrela para cambiarla.",
+  "Ваши гайды: следуйте одному или откройте его, чтобы изменить.",
+  "Seus guias: siga um ou abra-o para alterá-lo.",
+  "Le tue guide: seguine una o aprila per modificarla.",
+  "가지고 있는 안내서입니다. 하나를 따라가거나 열어서 고칠 수 있습니다.",
+  "你拥有的指南：跟随其中一个，或打开它进行修改。"
+ ],
+ "The guide editor: write the steps yourself, or paste a guide someone gave you.": [
+  "Der Anleitungseditor: Schreib die Schritte selbst oder füge eine Anleitung ein, die dir jemand gegeben hat.",
+  "L'éditeur de guides : écrivez les étapes vous-même, ou collez un guide qu'on vous a donné.",
+  "El editor de guías: escribe tú los pasos o pega una guía que te hayan dado.",
+  "Редактор гайдов: напишите шаги сами или вставьте гайд, который вам дали.",
+  "O editor de guias: escreva as etapas você mesmo ou cole um guia que alguém lhe deu.",
+  "L'editor delle guide: scrivi tu i passi o incolla una guida che ti hanno dato.",
+  "안내서 편집기입니다. 단계를 직접 쓰거나 다른 사람이 준 안내서를 붙여 넣으세요.",
+  "指南编辑器：自己编写步骤，或粘贴别人给你的指南。"
+ ],
+ "The steps of the guide you are following, to change, move or take out.": [
+  "Die Schritte der Anleitung, der du folgst: zum Ändern, Verschieben oder Entfernen.",
+  "Les étapes du guide que vous suivez, à modifier, déplacer ou retirer.",
+  "Los pasos de la guía que sigues, para cambiarlos, moverlos o quitarlos.",
+  "Шаги гайда, которому вы следуете: изменить, переставить или убрать.",
+  "As etapas do guia que você segue, para alterar, mover ou tirar.",
+  "I passi della guida che stai seguendo, da modificare, spostare o togliere.",
+  "따라가는 안내서의 단계를 고치거나 옮기거나 뺄 수 있습니다.",
+  "你正在跟随的指南的步骤，可修改、移动或删除。"
+ ],
+ "The short tour from the first time: what the planner does, following a route, your pace, and planning with a friend.": [
+  "Die kurze Einführung vom ersten Mal: was der Planer tut, einer Route folgen, dein Tempo und mit einem Freund planen.",
+  "La courte présentation de la première fois : ce que fait le planificateur, suivre un itinéraire, votre rythme, et planifier avec un ami.",
+  "El breve recorrido de la primera vez: qué hace el planificador, seguir una ruta, tu ritmo y planificar con un amigo.",
+  "Короткое знакомство, как в первый раз: что делает планировщик, как следовать маршруту, ваш темп и планирование с другом.",
+  "O breve tour da primeira vez: o que o planejador faz, seguir uma rota, seu ritmo e planejar com um amigo.",
+  "Il breve giro della prima volta: cosa fa il pianificatore, seguire un percorso, il tuo ritmo e pianificare con un amico.",
+  "처음에 보였던 짧은 안내입니다. 플래너가 하는 일, 경로 따라가기, 진행 속도, 친구와 함께 계획하기를 다룹니다.",
+  "第一次打开时的简短导览：规划器做什么、跟随路线、你的节奏，以及与好友一起规划。"
+ ],
+ "Works out a route of quests for your level from where you are, and starts following it.": [
+  "Plant von deinem Standort aus eine Route aus Quests für deine Stufe und beginnt, ihr zu folgen.",
+  "Calcule un itinéraire de quêtes pour votre niveau depuis l'endroit où vous êtes, et commence à le suivre.",
+  "Calcula una ruta de misiones para tu nivel desde donde estás y empieza a seguirla.",
+  "Составляет маршрут из заданий для вашего уровня от того места, где вы стоите, и начинает следовать ему.",
+  "Monta uma rota de missões para o seu nível a partir de onde você está e começa a segui-la.",
+  "Calcola un percorso di missioni per il tuo livello da dove ti trovi e inizia a seguirlo.",
+  "지금 있는 곳에서 레벨에 맞는 퀘스트 경로를 짜고 따라가기 시작합니다.",
+  "从你所在的位置规划一条适合你等级的任务路线，并开始跟随。"
+ ],
+ "Solo plans only quests you can do alone. When grouped adds group quests while you are in a group, and Everything always does.": [
+  "„Allein“ plant nur Quests, die du allein schaffst. „In einer Gruppe“ nimmt Gruppenquests dazu, solange du in einer Gruppe bist, und „Alles“ immer.",
+  "« Seul » ne planifie que les quêtes faisables seul. « En groupe » ajoute les quêtes de groupe tant que vous êtes en groupe, et « Tout » toujours.",
+  "«En solitario» solo planifica misiones que puedes hacer solo. «En grupo» añade las de grupo mientras estás en un grupo, y «Todo» siempre.",
+  "«В одиночку» — только задания, которые можно выполнить одному. «В группе» добавляет групповые задания, пока вы в группе, а «Все» — всегда.",
+  "\"Sozinho\" planeja só missões que dá para fazer sozinho. \"Em grupo\" inclui as de grupo enquanto você está em um grupo, e \"Tudo\" sempre.",
+  "«Da solo» pianifica solo missioni che puoi fare da solo. «In gruppo» aggiunge quelle di gruppo mentre sei in un gruppo, e «Tutto» sempre.",
+  "'솔로'는 혼자 할 수 있는 퀘스트만 계획합니다. '파티 중일 때'는 파티에 있는 동안 파티 퀘스트를 더하고, '전체'는 항상 더합니다.",
+  "“单人”只规划能独自完成的任务。“组队时”在你组队期间加入组队任务，“全部”则始终加入。"
+ ],
+ "Level up plans the most experience wherever it is. Finish the zone plans every quest left in the zone you are in, then goes back to levelling.": [
+  "„Stufenaufstieg“ plant die meiste Erfahrung, wo auch immer sie ist. „Abschließen“ plant jede übrige Quest im Gebiet, in dem du bist, und kehrt dann zum Leveln zurück.",
+  "« Monter en niveau » planifie le plus d'expérience, où qu'elle soit. « Terminer » planifie toutes les quêtes restantes de la zone où vous êtes, puis revient à la montée en niveau.",
+  "«Subir de nivel» planifica la mayor experiencia, esté donde esté. «Terminar» planifica todas las misiones que quedan en la zona donde estás y luego vuelve a subir de nivel.",
+  "«Повышать уровень» планирует больше всего опыта, где бы он ни был. «Завершить зону» планирует все оставшиеся задания в зоне, где вы находитесь, а потом возвращается к повышению уровня.",
+  "\"Subir de nível\" planeja a maior experiência, onde quer que esteja. \"Terminar\" planeja todas as missões que faltam na zona onde você está e depois volta a subir de nível.",
+  "«Salire di livello» pianifica la maggiore esperienza ovunque si trovi. «Completare» pianifica tutte le missioni rimaste nella zona in cui sei, poi torna a salire di livello.",
+  "'레벨 올리기'는 어디에 있든 경험치를 가장 많이 주는 쪽으로 계획합니다. '완료'는 지금 있는 지역에 남은 퀘스트를 모두 계획한 뒤 다시 레벨 올리기로 돌아갑니다.",
+  "“升级”规划经验最多的路线，不论在哪里。“完成”规划你所在区域剩下的所有任务，然后回到升级。"
+ ],
+ "For each faction, the standing you want to reach: quests that raise it count for more until you get there.": [
+  "Für jede Fraktion der Ruf, den du erreichen willst: Quests, die ihn steigern, zählen mehr, bis du ihn hast.",
+  "Pour chaque faction, la réputation que vous voulez atteindre : les quêtes qui l'augmentent comptent davantage jusqu'à ce que vous y soyez.",
+  "Para cada facción, la reputación que quieres alcanzar: las misiones que la suben cuentan más hasta que llegues.",
+  "Для каждой фракции — репутация, которой вы хотите достичь: задания, повышающие её, ценятся выше, пока вы её не получите.",
+  "Para cada facção, a reputação que você quer alcançar: as missões que a aumentam contam mais até você chegar lá.",
+  "Per ogni fazione, la reputazione che vuoi raggiungere: le missioni che la alzano contano di più finché non ci arrivi.",
+  "세력마다 도달하고 싶은 평판을 정합니다. 그 평판을 올려 주는 퀘스트는 목표에 닿을 때까지 더 높게 칩니다.",
+  "为每个阵营设定想达到的声望：在达到之前，提升该声望的任务会更受重视。"
+ ],
+ "The quests you told the planner never to suggest. Click one there to have it suggested again.": [
+  "Die Quests, die der Planer nie vorschlagen soll. Klick dort auf eine, damit sie wieder vorgeschlagen wird.",
+  "Les quêtes que le planificateur ne doit jamais proposer. Cliquez sur l'une d'elles pour qu'elle soit de nouveau proposée.",
+  "Las misiones que le dijiste al planificador que nunca sugiera. Haz clic en una para que vuelva a sugerirla.",
+  "Задания, которые планировщик не должен предлагать. Нажмите на задание в списке, чтобы оно снова предлагалось.",
+  "As missões que você pediu ao planejador para nunca sugerir. Clique em uma para que ela volte a ser sugerida.",
+  "Le missioni che hai detto al pianificatore di non suggerire mai. Fai clic su una per farla suggerire di nuovo.",
+  "플래너가 절대 추천하지 않도록 한 퀘스트입니다. 거기서 하나를 클릭하면 다시 추천됩니다.",
+  "你让规划器永不推荐的任务。在那里点击一个，它就会再次被推荐。"
+ ],
+ "A short way round to a flight master you do not know yet, when the route passes close.": [
+  "Ein kleiner Umweg zu einem Flugmeister, den du noch nicht kennst, wenn die Route nah vorbeiführt.",
+  "Un petit détour vers un maître de vol que vous ne connaissez pas encore, quand l'itinéraire passe tout près.",
+  "Un pequeño desvío hasta un maestro de vuelo que aún no conoces, cuando la ruta pasa cerca.",
+  "Небольшой крюк к распорядителю полётов, которого вы ещё не знаете, когда маршрут проходит рядом.",
+  "Um pequeno desvio até um mestre de voo que você ainda não conhece, quando a rota passa perto.",
+  "Una breve deviazione verso un maestro di volo che non conosci ancora, quando il percorso passa vicino.",
+  "경로가 가까이 지나가면, 아직 모르는 비행 조련사에게 잠깐 들릅니다.",
+  "路线经过附近时，顺路去一个你还不认识的飞行管理员那里。"
+ ],
+ "A stop at your class trainer every two levels, for your new spells.": [
+  "Alle zwei Stufen ein Halt bei deinem Klassenlehrer, für deine neuen Zauber.",
+  "Un arrêt chez votre maître de classe tous les deux niveaux, pour vos nouveaux sorts.",
+  "Una parada con tu instructor de clase cada dos niveles, para tus hechizos nuevos.",
+  "Остановка у учителя вашего класса каждые два уровня — за новыми заклинаниями.",
+  "Uma parada no instrutor da sua classe a cada dois níveis, para os seus novos feitiços.",
+  "Una sosta dal tuo istruttore di classe ogni due livelli, per i nuovi incantesimi.",
+  "두 레벨마다 직업 전문가에게 들러 새 주문을 배웁니다.",
+  "每两级去一次职业训练师那里，学习新法术。"
+ ],
+ "A hand-in that would take you up a level waits until the route reaches your trainer's town.": [
+  "Eine Abgabe, die dich eine Stufe aufsteigen ließe, wartet, bis die Route die Stadt deines Lehrers erreicht.",
+  "Une remise de quête qui vous ferait monter de niveau attend que l'itinéraire atteigne la ville de votre maître.",
+  "Una entrega que te subiría de nivel espera hasta que la ruta llegue a la ciudad de tu instructor.",
+  "Сдача задания, которая подняла бы ваш уровень, ждёт, пока маршрут не дойдёт до города вашего учителя.",
+  "Uma entrega que subiria você de nível espera até a rota chegar à cidade do seu instrutor.",
+  "Una consegna che ti farebbe salire di livello aspetta finché il percorso non raggiunge la città del tuo istruttore.",
+  "레벨이 오를 퀘스트 완료는 경로가 전문가가 있는 마을에 닿을 때까지 미룹니다.",
+  "会让你升级的交任务会等到路线到达你训练师所在的城镇再交。"
+ ],
+ "A stop at a vendor when your bags are nearly full or your gear is worn.": [
+  "Ein Halt bei einem Händler, wenn deine Taschen fast voll sind oder deine Ausrüstung abgenutzt ist.",
+  "Un arrêt chez un marchand quand vos sacs sont presque pleins ou votre équipement usé.",
+  "Una parada con un vendedor cuando tus bolsas están casi llenas o tu equipo está gastado.",
+  "Остановка у торговца, когда сумки почти полны или снаряжение изношено.",
+  "Uma parada em um vendedor quando suas bolsas estão quase cheias ou seu equipamento está gasto.",
+  "Una sosta da un mercante quando le borse sono quasi piene o l'equipaggiamento è logoro.",
+  "가방이 거의 찼거나 장비가 닳았을 때 상인에게 들릅니다.",
+  "背包快满或装备磨损时，去商人那里停一下。"
+ ],
+ "At that stop, ammunition, food and drink are bought too.": [
+  "Bei diesem Halt werden auch Munition, Essen und Trinken gekauft.",
+  "À cet arrêt, munitions, nourriture et boisson sont aussi achetées.",
+  "En esa parada también se compran munición, comida y bebida.",
+  "На этой остановке также покупаются боеприпасы, еда и питьё.",
+  "Nessa parada também se compram munição, comida e bebida.",
+  "A quella sosta si comprano anche munizioni, cibo e bevande.",
+  "그 상인에게서 탄약과 음식, 음료도 삽니다.",
+  "在那一站也会购买弹药、食物和饮料。"
+ ],
+ "A stop at a profession's trainer when your skill has reached what you can learn now.": [
+  "Ein Halt beim Lehrer eines Berufs, wenn deine Fertigkeit erreicht hat, was du gerade lernen kannst.",
+  "Un arrêt chez le maître d'un métier quand votre compétence a atteint ce que vous pouvez apprendre pour l'instant.",
+  "Una parada con el instructor de una profesión cuando tu habilidad ha llegado a lo que puedes aprender ahora.",
+  "Остановка у учителя профессии, когда навык дошёл до предела того, что вы можете выучить сейчас.",
+  "Uma parada no instrutor de uma profissão quando sua perícia chegou ao que você pode aprender agora.",
+  "Una sosta dall'istruttore di una professione quando la tua abilità ha raggiunto quanto puoi imparare ora.",
+  "전문 기술 숙련도가 지금 배울 수 있는 한계에 닿으면 그 기술 전문가에게 들릅니다.",
+  "当专业技能达到当前可学的上限时，去该专业的训练师那里停一下。"
+ ],
+ "From level 40: the riding trainer, your mount, and how much gold is still to find.": [
+  "Ab Stufe 40: der Reitlehrer, dein Reittier und wie viel Gold dir noch fehlt.",
+  "À partir du niveau 40 : le maître de monte, votre monture, et l'or qu'il vous reste à trouver.",
+  "Desde el nivel 40: el instructor de equitación, tu montura y cuánto oro te falta.",
+  "С 40 уровня: учитель верховой езды, ваш скакун и сколько золота ещё не хватает.",
+  "A partir do nível 40: o instrutor de montaria, sua montaria e quanto ouro ainda falta.",
+  "Dal livello 40: l'istruttore di equitazione, la tua cavalcatura e quanto oro ti manca ancora.",
+  "40레벨부터: 탈것 전문가, 탈것, 그리고 아직 모아야 할 골드를 알려 줍니다.",
+  "从40级起：骑术训练师、你的坐骑，以及还差多少金币。"
+ ],
+ "A stop at a mailbox when mail is waiting and one is close.": [
+  "Ein Halt an einem Briefkasten, wenn Post auf dich wartet und einer in der Nähe ist.",
+  "Un arrêt à une boîte aux lettres quand du courrier vous attend et qu'une boîte est proche.",
+  "Una parada en un buzón cuando tienes correo esperando y hay uno cerca.",
+  "Остановка у почтового ящика, когда вас ждёт почта и ящик рядом.",
+  "Uma parada em uma caixa de correio quando há correio esperando e uma está perto.",
+  "Una sosta a una cassetta della posta quando c'è posta in attesa e una è vicina.",
+  "우편이 와 있고 우체통이 가까우면 들릅니다.",
+  "有邮件等待且邮箱就在附近时，去邮箱停一下。"
+ ],
+ "Places you have not discovered yet, when they are close to the route.": [
+  "Orte, die du noch nicht entdeckt hast, wenn sie nah an der Route liegen.",
+  "Les lieux que vous n'avez pas encore découverts, quand ils sont proches de l'itinéraire.",
+  "Lugares que aún no has descubierto, cuando están cerca de la ruta.",
+  "Места, которые вы ещё не открыли, если они рядом с маршрутом.",
+  "Lugares que você ainda não descobriu, quando estão perto da rota.",
+  "Luoghi che non hai ancora scoperto, quando sono vicini al percorso.",
+  "아직 발견하지 않은 곳이 경로 가까이에 있으면 들릅니다.",
+  "靠近路线的、你还没发现的地点。"
+ ],
+ "Herbs and ore you have gathered before, close to the route, and a note to skin what you kill.": [
+  "Kräuter und Erz, die du schon gesammelt hast, nah an der Route, und ein Hinweis, deine Beute zu häuten.",
+  "Les herbes et le minerai que vous avez déjà récoltés, près de l'itinéraire, et un rappel de dépecer ce que vous tuez.",
+  "Hierbas y mineral que ya has recogido, cerca de la ruta, y un aviso para desollar lo que matas.",
+  "Травы и руда, которые вы уже собирали, рядом с маршрутом, и напоминание снимать шкуры с убитых.",
+  "Ervas e minério que você já coletou, perto da rota, e um lembrete para esfolar o que você mata.",
+  "Erbe e minerali che hai già raccolto, vicino al percorso, e un promemoria per scuoiare ciò che uccidi.",
+  "전에 채집한 약초와 광석이 경로 가까이에 있으면 들르고, 잡은 짐승의 가죽을 벗기라고 알려 줍니다.",
+  "靠近路线的、你采集过的草药和矿石，并提醒你剥取所杀之物的皮。"
+ ],
+ "Your class quests go on the route at the right level, and the panel says when one is ready.": [
+  "Deine Klassenquests kommen zur richtigen Stufe auf die Route, und das Fenster sagt dir, wenn eine bereit ist.",
+  "Vos quêtes de classe sont placées sur l'itinéraire au bon niveau, et le panneau indique quand l'une est prête.",
+  "Tus misiones de clase entran en la ruta al nivel adecuado, y el panel avisa cuando una está lista.",
+  "Классовые задания ставятся в маршрут на нужном уровне, а панель сообщает, когда задание доступно.",
+  "Suas missões de classe entram na rota no nível certo, e o painel avisa quando uma está pronta.",
+  "Le missioni di classe entrano nel percorso al livello giusto, e il pannello avvisa quando una è pronta.",
+  "직업 퀘스트를 알맞은 레벨에 경로에 넣고, 받을 수 있게 되면 패널에서 알려 줍니다.",
+  "你的职业任务会在合适的等级加入路线，可以接时面板会提示。"
+ ],
+ "Kills are worth double while you are rested, and the route counts them so.": [
+  "Solange du erholt bist, bringen Kills doppelt so viel, und die Route rechnet sie so.",
+  "Les ennemis tués rapportent le double tant que vous êtes reposé, et l'itinéraire en tient compte.",
+  "Las muertes valen el doble mientras estás descansado, y la ruta las cuenta así.",
+  "Пока вы отдохнувший, убийства дают вдвое больше опыта, и маршрут это учитывает.",
+  "Abates valem o dobro enquanto você está descansado, e a rota os conta assim.",
+  "Le uccisioni valgono il doppio finché sei riposato, e il percorso le conta così.",
+  "휴식 상태일 때는 처치 경험치가 두 배이며, 경로도 그만큼 계산합니다.",
+  "处于休息状态时击杀经验翻倍，路线也会这样计算。"
+ ],
+ "A quest whose reward is better than what you wear counts for more.": [
+  "Eine Quest, deren Belohnung besser ist als das, was du trägst, zählt mehr.",
+  "Une quête dont la récompense est meilleure que ce que vous portez compte davantage.",
+  "Una misión cuya recompensa es mejor que lo que llevas puesto cuenta más.",
+  "Задание, награда за которое лучше вашего снаряжения, ценится выше.",
+  "Uma missão cuja recompensa é melhor do que o que você usa conta mais.",
+  "Una missione la cui ricompensa è migliore di ciò che indossi conta di più.",
+  "지금 착용한 것보다 좋은 보상을 주는 퀘스트를 더 높게 칩니다.",
+  "奖励比你身上装备更好的任务会更受重视。"
+ ],
+ "A place where you died twice is left alone until you are two levels higher.": [
+  "Ein Ort, an dem du zweimal gestorben bist, wird gemieden, bis du zwei Stufen höher bist.",
+  "Un endroit où vous êtes mort deux fois est laissé de côté jusqu'à ce que vous ayez deux niveaux de plus.",
+  "Un lugar donde moriste dos veces se deja de lado hasta que tengas dos niveles más.",
+  "Место, где вы погибли дважды, обходится стороной, пока вы не станете на два уровня выше.",
+  "Um lugar onde você morreu duas vezes fica de lado até você estar dois níveis acima.",
+  "Un posto in cui sei morto due volte viene lasciato stare finché non sei salito di due livelli.",
+  "두 번 죽은 곳은 두 레벨 더 오를 때까지 피합니다.",
+  "你死过两次的地方会被避开，直到你高出两级。"
+ ],
+ "Elite quests that one of your characters of this class has done alone count as Solo quests.": [
+  "Elite-Quests, die einer deiner Charaktere dieser Klasse allein geschafft hat, zählen als Solo-Quests.",
+  "Les quêtes élites qu'un de vos personnages de cette classe a faites seul comptent comme des quêtes en solo.",
+  "Las misiones de élite que uno de tus personajes de esta clase ha hecho solo cuentan como misiones en solitario.",
+  "Элитные задания, которые один из ваших персонажей этого класса выполнил в одиночку, считаются одиночными.",
+  "Missões de elite que um dos seus personagens desta classe fez sozinho contam como missões solo.",
+  "Le missioni élite che uno dei tuoi personaggi di questa classe ha fatto da solo contano come missioni in solitaria.",
+  "이 직업의 내 캐릭터가 혼자 해낸 정예 퀘스트는 솔로 퀘스트로 칩니다.",
+  "你这个职业的某个角色单独完成过的精英任务，算作单人任务。"
+ ],
+ "Each step on the panel says what it is worth: the experience, or the time it saves.": [
+  "Jeder Schritt im Fenster sagt, was er bringt: die Erfahrung oder die Zeit, die er spart.",
+  "Chaque étape du panneau indique ce qu'elle vaut : l'expérience, ou le temps qu'elle fait gagner.",
+  "Cada paso del panel dice lo que vale: la experiencia o el tiempo que ahorra.",
+  "Каждый шаг на панели показывает, что он даёт: опыт или сэкономленное время.",
+  "Cada etapa no painel diz o que vale: a experiência ou o tempo que economiza.",
+  "Ogni passo nel pannello dice quanto vale: l'esperienza o il tempo che fa risparmiare.",
+  "패널의 각 단계에 얻는 것, 곧 경험치나 아끼는 시간을 표시합니다.",
+  "面板上的每个步骤都会说明它的价值：经验，或节省的时间。"
+ ],
+ "Show the best quest reward": [
+  "Die beste Questbelohnung zeigen",
+  "Montrer la meilleure récompense de quête",
+  "Mostrar la mejor recompensa de misión",
+  "Показывать лучшую награду за задание",
+  "Mostrar a melhor recompensa de missão",
+  "Mostra la ricompensa migliore",
+  "가장 좋은 퀘스트 보상 표시",
+  "显示最佳任务奖励"
+ ],
+ "At a hand-in, the reward that suits you best is marked and named in chat. You choose it yourself.": [
+  "Bei einer Abgabe wird die Belohnung, die am besten zu dir passt, markiert und im Chat genannt. Wählen tust du sie selbst.",
+  "Lors d'une remise de quête, la récompense qui vous convient le mieux est signalée et nommée dans la discussion. C'est vous qui la choisissez.",
+  "Al entregar una misión, la recompensa que mejor te va se marca y se nombra en el chat. La eliges tú.",
+  "При сдаче задания лучшая для вас награда отмечается и называется в чате. Выбираете её вы сами.",
+  "Na entrega de uma missão, a recompensa que mais combina com você é marcada e citada no chat. Quem escolhe é você.",
+  "Alla consegna, la ricompensa più adatta a te viene evidenziata e nominata in chat. La scegli tu.",
+  "퀘스트를 완료할 때 가장 잘 맞는 보상을 표시하고 채팅에 알려 줍니다. 고르는 것은 직접 하세요.",
+  "交任务时，最适合你的奖励会被标出并在聊天中说明，由你自己选择。"
+ ],
+ "When your quest log is nearly full, the panel says which quests are worth abandoning.": [
+  "Wenn dein Questlog fast voll ist, sagt das Fenster, welche Quests sich abzubrechen lohnen.",
+  "Quand votre journal de quêtes est presque plein, le panneau indique quelles quêtes valent la peine d'être abandonnées.",
+  "Cuando tu registro de misiones está casi lleno, el panel dice qué misiones conviene abandonar.",
+  "Когда журнал заданий почти полон, панель подсказывает, от каких заданий стоит отказаться.",
+  "Quando seu registro de missões está quase cheio, o painel diz quais missões vale a pena abandonar.",
+  "Quando il registro delle missioni è quasi pieno, il pannello dice quali missioni conviene abbandonare.",
+  "퀘스트 목록이 거의 차면 어떤 퀘스트를 포기할 만한지 패널에서 알려 줍니다.",
+  "任务日志快满时，面板会告诉你哪些任务值得放弃。"
+ ],
+ "After a long stretch of play, the panel points to an inn close by, to log out in for rested experience.": [
+  "Nach einer langen Spielzeit zeigt das Fenster ein nahes Gasthaus, in dem du dich für den Erholungsbonus ausloggen kannst.",
+  "Après une longue séance de jeu, le panneau indique une auberge proche où vous déconnecter pour l'expérience de repos.",
+  "Tras un buen rato de juego, el panel señala una posada cercana donde desconectarte para la experiencia de descanso.",
+  "После долгой игры панель укажет таверну поблизости, где можно выйти из игры ради бонуса отдыха.",
+  "Depois de um bom tempo de jogo, o painel aponta uma estalagem por perto para você sair do jogo e ganhar experiência de descanso.",
+  "Dopo una lunga sessione di gioco, il pannello indica una locanda vicina dove disconnetterti per l'esperienza da riposo.",
+  "오래 플레이한 뒤에는 휴식 경험치를 받도록 로그아웃할 가까운 여관을 패널에서 알려 줍니다.",
+  "长时间游玩后，面板会指向附近的旅店，让你在那里下线获得休息经验。"
+ ],
+ "When no quest is worth the trip, a dungeon or a place to grind is suggested instead.": [
+  "Wenn sich keine Quest mehr lohnt, wird stattdessen ein Dungeon oder ein Ort zum Grinden vorgeschlagen.",
+  "Quand aucune quête ne vaut le déplacement, un donjon ou un endroit où farmer est proposé à la place.",
+  "Cuando ninguna misión merece el viaje, se sugiere en su lugar una mazmorra o un sitio para farmear.",
+  "Когда ни одно задание не стоит дороги, предлагается подземелье или место для фарма.",
+  "Quando nenhuma missão vale a viagem, uma masmorra ou um lugar para farmar é sugerido no lugar.",
+  "Quando nessuna missione vale il viaggio, viene suggerito invece un dungeon o un posto dove farmare.",
+  "갈 만한 퀘스트가 없으면 대신 던전이나 사냥터를 추천합니다.",
+  "当没有任务值得跑一趟时，会改为推荐一个地下城或刷怪地点。"
+ ],
+ "The route's stops, numbered, and the line between them on the world map.": [
+  "Die Halte der Route, nummeriert, und die Linie zwischen ihnen auf der Weltkarte.",
+  "Les arrêts de l'itinéraire, numérotés, et la ligne qui les relie sur la carte du monde.",
+  "Las paradas de la ruta, numeradas, y la línea entre ellas en el mapa del mundo.",
+  "Остановки маршрута с номерами и линия между ними на карте мира.",
+  "As paradas da rota, numeradas, e a linha entre elas no mapa-múndi.",
+  "Le soste del percorso, numerate, e la linea tra di esse sulla mappa del mondo.",
+  "세계 지도에 경로의 정류 지점을 번호와 함께, 그 사이를 선으로 표시합니다.",
+  "在世界地图上显示路线的各个停靠点（带编号）以及它们之间的连线。"
+ ],
+ "A mark on each area with quests the planner found, brighter where the experience comes faster.": [
+  "Eine Markierung auf jedem Gebiet mit Quests, das der Planer gefunden hat, heller, wo die Erfahrung schneller kommt.",
+  "Une marque sur chaque zone de quêtes trouvée par le planificateur, plus vive là où l'expérience vient plus vite.",
+  "Una marca en cada zona con misiones que encontró el planificador, más brillante donde la experiencia llega más rápido.",
+  "Метка на каждом районе с заданиями, найденном планировщиком; ярче там, где опыт идёт быстрее.",
+  "Uma marca em cada área com missões que o planejador encontrou, mais forte onde a experiência vem mais rápido.",
+  "Un segno su ogni zona con missioni trovata dal pianificatore, più luminoso dove l'esperienza arriva più in fretta.",
+  "플래너가 찾은 퀘스트 지역마다 표시하며, 경험치를 빨리 얻는 곳일수록 밝게 보입니다.",
+  "在规划器找到的每个任务区域上做标记，经验来得越快的地方越亮。"
+ ],
+ "The step you are on goes to TomTom's arrow instead of this add-on's.": [
+  "Dein aktueller Schritt geht an den Pfeil von TomTom statt an den dieses Add-ons.",
+  "L'étape en cours va à la flèche de TomTom au lieu de celle de cet add-on.",
+  "El paso en el que estás va a la flecha de TomTom en lugar de la de este addon.",
+  "Текущий шаг передаётся стрелке TomTom вместо стрелки этого аддона.",
+  "A etapa em que você está vai para a seta do TomTom em vez da deste addon.",
+  "Il passo in cui sei va alla freccia di TomTom invece che a quella di questo add-on.",
+  "지금 단계를 이 애드온의 화살표 대신 TomTom 화살표로 보냅니다.",
+  "当前步骤交给 TomTom 的箭头，而不是本插件的箭头。"
+ ],
+ "Plan my route then takes only what fits in this time, and ends at a good place to stop. /fgui guide plan with no number does the same.": [
+  "„Route planen“ nimmt dann nur, was in diese Zeit passt, und endet an einem guten Ort für eine Pause. /fgui guide plan ohne Zahl macht es genauso.",
+  "« Planifier mon itinéraire » ne prend alors que ce qui tient dans ce temps, et s'arrête à un bon endroit pour faire une pause. /fgui guide plan sans nombre fait de même.",
+  "«Planificar mi ruta» toma entonces solo lo que cabe en este tiempo y termina en un buen sitio para parar. /fgui guide plan sin número hace lo mismo.",
+  "«Спланировать маршрут» тогда берёт только то, что умещается в это время, и заканчивает в удобном месте для перерыва. /fgui guide plan без числа делает то же самое.",
+  "\"Planejar minha rota\" passa a pegar só o que cabe nesse tempo e termina em um bom lugar para parar. /fgui guide plan sem número faz o mesmo.",
+  "«Pianifica il mio percorso» prende allora solo ciò che sta in questo tempo e finisce in un buon punto per fermarsi. /fgui guide plan senza numero fa lo stesso.",
+  "'내 경로 계획'은 이 시간 안에 할 수 있는 것만 넣고, 쉬기 좋은 곳에서 끝납니다. 숫자 없이 /fgui guide plan을 써도 같습니다.",
+  "“规划我的路线”只会安排这段时间内能完成的内容，并在适合休息的地方结束。不带数字的 /fgui guide plan 也一样。"
+ ],
+ "After a long stretch of play, the panel says so when you reach a good place to stop.": [
+  "Nach einer langen Spielzeit sagt dir das Fenster Bescheid, wenn du einen guten Ort für eine Pause erreichst.",
+  "Après une longue séance de jeu, le panneau vous le dit quand vous atteignez un bon endroit pour faire une pause.",
+  "Tras un buen rato de juego, el panel te avisa cuando llegas a un buen sitio para parar.",
+  "После долгой игры панель сообщит, когда вы дойдёте до удобного места для перерыва.",
+  "Depois de um bom tempo de jogo, o painel avisa quando você chega a um bom lugar para parar.",
+  "Dopo una lunga sessione di gioco, il pannello te lo dice quando arrivi in un buon punto per fermarti.",
+  "오래 플레이했다면 쉬기 좋은 곳에 닿았을 때 패널에서 알려 줍니다.",
+  "长时间游玩后，当你到达适合休息的地方时，面板会提醒你。"
+ ],
+ "How long that stretch of play is.": [
+  "Wie lang diese Spielzeit ist.",
+  "La durée de cette séance de jeu.",
+  "Cuánto dura ese rato de juego.",
+  "Сколько длится такой отрезок игры.",
+  "Quanto dura esse tempo de jogo.",
+  "Quanto dura quella sessione di gioco.",
+  "그 플레이 시간이 얼마나 긴지 정합니다.",
+  "这段游玩时间有多长。"
+ ],
+ "Speed and Story each set the three sliders below. Set the sliders yourself for a style of your own.": [
+  "„Tempo“ und „Geschichte“ stellen jeweils die drei Regler unten ein. Stell die Regler selbst ein für deinen eigenen Stil.",
+  "« Vitesse » et « Histoire » règlent chacun les trois curseurs ci-dessous. Réglez les curseurs vous-même pour un style à vous.",
+  "«Rapidez» e «Historia» ajustan cada uno los tres deslizadores de abajo. Ajústalos tú para un estilo propio.",
+  "«Скорость» и «Сюжет» задают три ползунка ниже. Настройте ползунки сами, чтобы получить свой стиль.",
+  "\"Velocidade\" e \"História\" ajustam os três controles abaixo. Ajuste os controles você mesmo para um estilo seu.",
+  "«Velocità» e «Storia» impostano ciascuno i tre cursori qui sotto. Regola tu i cursori per uno stile tutto tuo.",
+  "'속도'와 '이야기'는 각각 아래 슬라이더 세 개를 맞춥니다. 슬라이더를 직접 맞추면 나만의 방식이 됩니다.",
+  "“速度”和“剧情”各自会设置下方的三个滑块。自己调整滑块，就是你自己的风格。"
+ ],
+ "How much the route goes for the most experience in the time.": [
+  "Wie sehr die Route auf die meiste Erfahrung in der Zeit aus ist.",
+  "À quel point l'itinéraire vise le plus d'expérience dans le temps donné.",
+  "Cuánto busca la ruta la mayor experiencia en el tiempo.",
+  "Насколько маршрут стремится к наибольшему опыту за время.",
+  "O quanto a rota busca a maior experiência no tempo.",
+  "Quanto il percorso punta alla maggiore esperienza nel tempo.",
+  "경로가 시간 대비 경험치를 얼마나 노릴지 정합니다.",
+  "路线在单位时间内追求最多经验的程度。"
+ ],
+ "How much it keeps away from elites, escorts and places where you died.": [
+  "Wie sehr sie Elites, Eskorten und Orte meidet, an denen du gestorben bist.",
+  "À quel point il évite les élites, les escortes et les endroits où vous êtes mort.",
+  "Cuánto evita élites, escoltas y lugares donde moriste.",
+  "Насколько он избегает элитных врагов, сопровождений и мест, где вы погибали.",
+  "O quanto ela evita elites, escoltas e lugares onde você morreu.",
+  "Quanto evita élite, scorte e posti in cui sei morto.",
+  "정예, 호위 퀘스트, 죽었던 곳을 얼마나 피할지 정합니다.",
+  "避开精英、护送任务和你死过的地方的程度。"
+ ],
+ "How much it goes for the zone's quest chains. At 100 it reaches back up to 10 levels for them.": [
+  "Wie sehr sie auf die Questreihen des Gebiets aus ist. Bei 100 greift sie dafür bis zu 10 Stufen zurück.",
+  "À quel point il vise les suites de quêtes de la zone. À 100, il remonte jusqu'à 10 niveaux en arrière pour elles.",
+  "Cuánto busca las cadenas de misiones de la zona. A 100 retrocede hasta 10 niveles por ellas.",
+  "Насколько он стремится к цепочкам заданий зоны. На 100 ради них он берёт задания до 10 уровней ниже.",
+  "O quanto ela busca as cadeias de missões da zona. Em 100, volta até 10 níveis por elas.",
+  "Quanto punta alle catene di missioni della zona. A 100 torna indietro fino a 10 livelli per esse.",
+  "지역의 연계 퀘스트를 얼마나 노릴지 정합니다. 100이면 연계 퀘스트를 위해 최대 10레벨 아래까지 내려갑니다.",
+  "追求本区域任务链的程度。为100时，会为此回溯最多10级。"
+ ],
+ "The panel says how far ahead or behind you are of your fastest character's time at this level.": [
+  "Das Fenster sagt, wie weit du der Zeit deines schnellsten Charakters auf dieser Stufe voraus oder hinterher bist.",
+  "Le panneau indique votre avance ou votre retard sur le temps de votre personnage le plus rapide à ce niveau.",
+  "El panel dice cuánto vas por delante o por detrás del tiempo de tu personaje más rápido en este nivel.",
+  "Панель показывает, насколько вы опережаете или отстаёте от времени вашего самого быстрого персонажа на этом уровне.",
+  "O painel diz o quanto você está à frente ou atrás do tempo do seu personagem mais rápido neste nível.",
+  "Il pannello dice quanto sei avanti o indietro rispetto al tempo del tuo personaggio più veloce a questo livello.",
+  "이 레벨에서 가장 빨랐던 캐릭터의 시간보다 얼마나 앞서거나 뒤처졌는지 패널에 표시합니다.",
+  "面板会显示你比自己最快角色在此等级的用时领先或落后多少。"
+ ],
+ "When you log in, a line says where you were on the route and what comes next.": [
+  "Beim Einloggen sagt dir eine Zeile, wo du auf der Route warst und was als Nächstes kommt.",
+  "À la connexion, une ligne indique où vous en étiez sur l'itinéraire et ce qui vient ensuite.",
+  "Al conectarte, una línea te dice dónde ibas en la ruta y qué viene después.",
+  "При входе в игру строка напомнит, где вы были на маршруте и что дальше.",
+  "Ao entrar no jogo, uma linha diz onde você estava na rota e o que vem a seguir.",
+  "Quando entri nel gioco, una riga dice dov'eri nel percorso e cosa viene dopo.",
+  "접속하면 경로의 어디에 있었는지와 다음 할 일을 한 줄로 알려 줍니다.",
+  "登录时，会有一行提示你在路线上的位置以及接下来要做什么。"
+ ],
+ "Each new step is read aloud as you reach it.": [
+  "Jeder neue Schritt wird vorgelesen, sobald du ihn erreichst.",
+  "Chaque nouvelle étape est lue à voix haute quand vous l'atteignez.",
+  "Cada paso nuevo se lee en voz alta al llegar a él.",
+  "Каждый новый шаг читается вслух, когда вы до него доходите.",
+  "Cada nova etapa é lida em voz alta quando você chega a ela.",
+  "Ogni nuovo passo viene letto ad alta voce quando lo raggiungi.",
+  "새 단계에 닿을 때마다 소리 내어 읽어 줍니다.",
+  "每到一个新步骤都会朗读出来。"
+ ],
+ "A group quest on the panel gets a button that writes a line asking for a group. It only fills your chat box: you send it.": [
+  "Eine Gruppenquest im Fenster bekommt einen Knopf, der eine Zeile schreibt, die nach einer Gruppe fragt. Er füllt nur dein Chatfeld: Abschicken tust du.",
+  "Une quête de groupe dans le panneau reçoit un bouton qui écrit une ligne pour demander un groupe. Il ne fait que remplir votre zone de discussion : c'est vous qui l'envoyez.",
+  "Una misión de grupo en el panel tiene un botón que escribe una línea pidiendo grupo. Solo rellena tu cuadro de chat: tú la envías.",
+  "У группового задания на панели появляется кнопка, которая пишет строку с поиском группы. Она только заполняет строку чата — отправляете вы сами.",
+  "Uma missão de grupo no painel ganha um botão que escreve uma linha pedindo grupo. Ele só preenche sua caixa de chat: quem envia é você.",
+  "Una missione di gruppo nel pannello ha un pulsante che scrive una riga per cercare un gruppo. Riempie solo la casella della chat: sei tu a inviarla.",
+  "패널의 파티 퀘스트에 파티를 구하는 문장을 쓰는 버튼이 생깁니다. 채팅창에 채워 넣기만 하니 보내는 것은 직접 하세요.",
+  "面板上的组队任务会多一个按钮，用来写一行求组的话。它只会填进你的聊天框，由你自己发送。"
+ ],
+ "Where that line goes: your chat box's current channel, or a channel you have joined.": [
+  "Wohin diese Zeile geht: in den aktuellen Kanal deines Chatfelds oder in einen Kanal, dem du beigetreten bist.",
+  "Où va cette ligne : le canal actuel de votre zone de discussion, ou un canal que vous avez rejoint.",
+  "Adónde va esa línea: al canal actual de tu cuadro de chat o a un canal al que te hayas unido.",
+  "Куда идёт эта строка: в текущий канал строки чата или в канал, к которому вы присоединились.",
+  "Para onde vai essa linha: o canal atual da sua caixa de chat ou um canal em que você entrou.",
+  "Dove va quella riga: nel canale attuale della casella della chat o in un canale a cui ti sei unito.",
+  "그 문장이 갈 곳입니다. 채팅창의 현재 채널이나 참여한 채널을 고르세요.",
+  "那行话发往何处：聊天框当前的频道，或你加入的某个频道。"
+ ],
+ "A friend with Fantasy Glass UI can ask to plan one route for you both. You are always asked first.": [
+  "Ein Freund mit Fantasy Glass UI kann fragen, ob ihr eine gemeinsame Route plant. Du wirst immer zuerst gefragt.",
+  "Un ami qui a Fantasy Glass UI peut demander à planifier un seul itinéraire pour vous deux. On vous demande toujours d'abord.",
+  "Un amigo con Fantasy Glass UI puede pedir planificar una sola ruta para los dos. Siempre se te pregunta antes.",
+  "Друг с Fantasy Glass UI может предложить спланировать один маршрут на двоих. Вас всегда спросят сначала.",
+  "Um amigo com Fantasy Glass UI pode pedir para planejar uma rota só para vocês dois. Você sempre é consultado antes.",
+  "Un amico con Fantasy Glass UI può chiedere di pianificare un unico percorso per entrambi. Ti viene sempre chiesto prima.",
+  "Fantasy Glass UI를 쓰는 친구가 둘이 함께할 경로를 계획하자고 요청할 수 있습니다. 언제나 먼저 묻습니다.",
+  "使用 Fantasy Glass UI 的好友可以请求为你们俩规划同一条路线。总会先征得你的同意。"
+ ],
+ "One route for you and your target or the one other player in your party: the same quests, in the same order.": [
+  "Eine Route für dich und dein Ziel oder den anderen Spieler in deiner Gruppe: dieselben Quests in derselben Reihenfolge.",
+  "Un seul itinéraire pour vous et votre cible, ou l'autre joueur de votre groupe : les mêmes quêtes, dans le même ordre.",
+  "Una sola ruta para ti y tu objetivo o el otro jugador de tu grupo: las mismas misiones, en el mismo orden.",
+  "Один маршрут для вас и вашей цели или второго игрока в группе: те же задания в том же порядке.",
+  "Uma rota para você e seu alvo ou o outro jogador do seu grupo: as mesmas missões, na mesma ordem.",
+  "Un percorso per te e il tuo bersaglio o l'altro giocatore del tuo gruppo: le stesse missioni, nello stesso ordine.",
+  "나와 대상, 또는 파티의 다른 한 명이 함께할 경로입니다. 같은 퀘스트를 같은 순서로 합니다.",
+  "为你和你的目标，或队伍里的另一名玩家规划同一条路线：相同的任务，相同的顺序。"
+ ],
+ "Turns the route you are following into a plan code to copy.": [
+  "Macht aus der Route, der du folgst, einen Plancode zum Kopieren.",
+  "Transforme l'itinéraire que vous suivez en un code de plan à copier.",
+  "Convierte la ruta que sigues en un código de plan para copiar.",
+  "Превращает маршрут, которому вы следуете, в код плана для копирования.",
+  "Transforma a rota que você segue em um código de plano para copiar.",
+  "Trasforma il percorso che stai seguendo in un codice del piano da copiare.",
+  "따라가는 경로를 복사할 수 있는 계획 코드로 바꿉니다.",
+  "把你正在跟随的路线变成一个可复制的计划代码。"
+ ],
+ "What the planner does": [
+  "Was der Planer tut",
+  "Ce que fait le planificateur",
+  "Qué hace el planificador",
+  "Что делает планировщик",
+  "O que o planejador faz",
+  "Cosa fa il pianificatore",
+  "플래너가 하는 일",
+  "规划器做什么"
+ ],
+ "The planner works out a route of quests for your level: which to take, in what order, and when to fly, train or hand in. As you play it plans again, so the route keeps up with you. It finds quests through Questie; without Questie it plans the quests in your log.": [
+  "Der Planer stellt eine Route aus Quests für deine Stufe zusammen: welche du annimmst, in welcher Reihenfolge und wann du fliegst, trainierst oder abgibst. Während du spielst, plant er neu, damit die Route mit dir Schritt hält. Quests findet er über Questie; ohne Questie plant er die Quests in deinem Questlog.",
+  "Le planificateur calcule un itinéraire de quêtes pour votre niveau : lesquelles prendre, dans quel ordre, et quand voler, vous entraîner ou rendre une quête. Pendant que vous jouez, il replanifie, pour que l'itinéraire suive votre progression. Il trouve les quêtes grâce à Questie ; sans Questie, il planifie les quêtes de votre journal.",
+  "El planificador calcula una ruta de misiones para tu nivel: cuáles aceptar, en qué orden y cuándo volar, entrenar o entregar. Mientras juegas vuelve a planificar, así la ruta va a tu paso. Encuentra las misiones con Questie; sin Questie planifica las misiones de tu registro.",
+  "Планировщик составляет маршрут из заданий для вашего уровня: какие брать, в каком порядке, когда лететь, учиться или сдавать. Пока вы играете, он планирует заново, чтобы маршрут не отставал от вас. Задания он находит через Questie; без Questie он планирует задания из вашего журнала.",
+  "O planejador monta uma rota de missões para o seu nível: quais pegar, em que ordem e quando voar, treinar ou entregar. Enquanto você joga, ele planeja de novo, para a rota acompanhar você. Ele encontra missões pelo Questie; sem o Questie, planeja as missões do seu registro.",
+  "Il pianificatore calcola un percorso di missioni per il tuo livello: quali prendere, in che ordine e quando volare, addestrarti o consegnare. Mentre giochi ripianifica, così il percorso ti tiene il passo. Trova le missioni tramite Questie; senza Questie pianifica le missioni del tuo registro.",
+  "플래너는 레벨에 맞는 퀘스트 경로를 짭니다. 어떤 퀘스트를 어떤 순서로 받고, 언제 날고, 배우고, 완료할지 정합니다. 플레이하는 동안 다시 계획하므로 경로가 늘 따라옵니다. 퀘스트는 Questie로 찾으며, Questie가 없으면 퀘스트 목록에 있는 퀘스트로 계획합니다.",
+  "规划器会为你的等级规划一条任务路线：接哪些任务、按什么顺序，以及何时飞行、训练或交任务。你在游玩时它会重新规划，让路线跟上你。它通过 Questie 寻找任务；没有 Questie 时，只规划你任务日志里的任务。"
+ ],
+ "Following a route": [
+  "Einer Route folgen",
+  "Suivre un itinéraire",
+  "Seguir una ruta",
+  "Как следовать маршруту",
+  "Seguir uma rota",
+  "Seguire un percorso",
+  "경로 따라가기",
+  "跟随路线"
+ ],
+ "The panel shows the step you are on, and the arrow points the way. Steps tick off by themselves as you do them. Press > to move past a step, Plan again to plan from where you are now, and right-click a step for more.": [
+  "Das Fenster zeigt deinen aktuellen Schritt, und der Pfeil zeigt den Weg. Schritte haken sich von selbst ab, wenn du sie erledigst. Drück >, um einen Schritt zu überspringen, „Neu planen“, um von deinem Standort aus neu zu planen, und klick mit rechts auf einen Schritt für mehr.",
+  "Le panneau montre l'étape en cours, et la flèche indique le chemin. Les étapes se cochent d'elles-mêmes quand vous les faites. Appuyez sur > pour passer une étape, sur « Replanifier » pour planifier depuis l'endroit où vous êtes, et faites un clic droit sur une étape pour en voir plus.",
+  "El panel muestra el paso en el que estás, y la flecha señala el camino. Los pasos se marcan solos al hacerlos. Pulsa > para pasar un paso, «Planear de nuevo» para planificar desde donde estás, y haz clic derecho en un paso para ver más.",
+  "Панель показывает текущий шаг, а стрелка указывает путь. Шаги отмечаются сами, когда вы их выполняете. Нажмите >, чтобы пропустить шаг, «Спланировать заново» — чтобы спланировать от того места, где вы сейчас, и щёлкните шаг правой кнопкой, чтобы увидеть больше.",
+  "O painel mostra a etapa em que você está, e a seta indica o caminho. As etapas são marcadas sozinhas quando você as faz. Pressione > para passar uma etapa, \"Planear de novo\" para planejar a partir de onde você está, e clique com o botão direito em uma etapa para ver mais.",
+  "Il pannello mostra il passo in cui sei, e la freccia indica la strada. I passi si spuntano da soli mentre li fai. Premi > per saltare un passo, «Pianifica di nuovo» per pianificare da dove sei ora, e fai clic destro su un passo per altro.",
+  "패널에 지금 단계가 보이고, 화살표가 길을 가리킵니다. 단계는 해내면 저절로 완료됩니다. >를 누르면 단계를 넘기고, '다시 계획'은 지금 있는 곳에서 다시 계획하며, 단계를 오른쪽 클릭하면 더 많은 기능이 나옵니다.",
+  "面板显示你当前所在的步骤，箭头指示方向。完成步骤时会自动勾掉。按 > 跳过一个步骤，按“重新规划”从你现在的位置重新规划，右键点击步骤可查看更多。"
+ ],
+ "Your pace": [
+  "Dein Tempo",
+  "Votre rythme",
+  "Tu ritmo",
+  "Ваш темп",
+  "Seu ritmo",
+  "Il tuo ritmo",
+  "진행 속도",
+  "你的节奏"
+ ],
+ "Under Guide in /fgui, the Speed, Safety and Story sliders set what the route goes for. Say how long you can play, and the route takes only what fits and ends at a good place to stop.": [
+  "Unter „Anleitung“ in /fgui legen die Regler „Tempo“, „Sicherheit“ und „Geschichte“ fest, worauf die Route aus ist. Sag, wie lange du spielen kannst, und die Route nimmt nur, was passt, und endet an einem guten Ort für eine Pause.",
+  "Dans Guide, sous /fgui, les curseurs « Vitesse », « Sécurité » et « Histoire » règlent ce que vise l'itinéraire. Indiquez combien de temps vous pouvez jouer, et l'itinéraire ne prend que ce qui tient dans ce temps et s'arrête à un bon endroit pour faire une pause.",
+  "En Guía, dentro de /fgui, los deslizadores «Rapidez», «Seguridad» e «Historia» fijan lo que busca la ruta. Di cuánto tiempo puedes jugar, y la ruta toma solo lo que cabe y termina en un buen sitio para parar.",
+  "В разделе «Гайд» в /fgui ползунки «Скорость», «Безопасность» и «Сюжет» задают, к чему стремится маршрут. Укажите, сколько вы можете играть, и маршрут возьмёт только то, что умещается, и закончится в удобном месте для перерыва.",
+  "Em Guia, no /fgui, os controles \"Velocidade\", \"Segurança\" e \"História\" definem o que a rota busca. Diga quanto tempo você pode jogar, e a rota pega só o que cabe e termina em um bom lugar para parar.",
+  "In Guida, in /fgui, i cursori «Velocità», «Sicurezza» e «Storia» stabiliscono a cosa punta il percorso. Di' quanto tempo puoi giocare, e il percorso prende solo ciò che ci sta e finisce in un buon punto per fermarsi.",
+  "/fgui의 안내서 항목에서 '속도', '안전', '이야기' 슬라이더로 경로가 무엇을 노릴지 정합니다. 플레이할 수 있는 시간을 정하면 그 안에 맞는 것만 넣고 쉬기 좋은 곳에서 끝납니다.",
+  "在 /fgui 的“指南”中，“速度”“安全”“剧情”三个滑块决定路线追求什么。告诉它你能玩多久，路线就只安排能完成的内容，并在适合休息的地方结束。"
+ ],
+ "With a friend": [
+  "Mit einem Freund",
+  "Avec un ami",
+  "Con un amigo",
+  "С другом",
+  "Com um amigo",
+  "Con un amico",
+  "친구와 함께",
+  "与好友一起"
+ ],
+ "Plan with a friend, and one route suits you both: the same quests, in the same order. Share plan turns your route into a plan code to copy.": [
+  "Plane mit einem Freund, und eine Route passt für euch beide: dieselben Quests in derselben Reihenfolge. „Plan teilen“ macht aus deiner Route einen Plancode zum Kopieren.",
+  "Planifiez avec un ami, et un seul itinéraire vous convient à tous les deux : les mêmes quêtes, dans le même ordre. « Partager le plan » transforme votre itinéraire en un code de plan à copier.",
+  "Planifica con un amigo y una sola ruta os sirve a los dos: las mismas misiones, en el mismo orden. «Compartir el plan» convierte tu ruta en un código de plan para copiar.",
+  "Планируйте с другом — и один маршрут подойдёт вам обоим: те же задания в том же порядке. «Поделиться планом» превращает ваш маршрут в код плана для копирования.",
+  "Planeje com um amigo, e uma rota serve para vocês dois: as mesmas missões, na mesma ordem. \"Compartilhar o plano\" transforma sua rota em um código de plano para copiar.",
+  "Pianifica con un amico, e un solo percorso va bene per entrambi: le stesse missioni, nello stesso ordine. «Condividi il piano» trasforma il tuo percorso in un codice del piano da copiare.",
+  "친구와 함께 계획하면 하나의 경로가 두 사람 모두에게 맞습니다. 같은 퀘스트를 같은 순서로 합니다. '계획 공유'는 경로를 복사할 수 있는 계획 코드로 바꿉니다.",
+  "与好友一起规划，一条路线适合你们两人：相同的任务，相同的顺序。“分享计划”会把你的路线变成可复制的计划代码。"
+ ],
+ "%d of %d": [
+  "%d von %d",
+  "%d sur %d",
+  "%d de %d",
+  "%d из %d",
+  "%d de %d",
+  "%d di %d",
+  "%d / %d",
+  "第 %d 页，共 %d 页"
+ ],
+ "Skip": [
+  "Überspringen",
+  "Passer",
+  "Saltar",
+  "Пропустить",
+  "Pular",
+  "Salta",
+  "건너뛰기",
+  "跳过"
+ ],
+ "Left and Right go between pages, Enter goes on, Esc closes.": [
+  "Links und Rechts wechseln die Seite, Enter geht weiter, Esc schließt.",
+  "Gauche et Droite changent de page, Entrée continue, Échap ferme.",
+  "Izquierda y Derecha cambian de página, Intro sigue, Esc cierra.",
+  "Влево и вправо — смена страниц, Enter — дальше, Esc — закрыть.",
+  "Esquerda e Direita mudam de página, Enter avança, Esc fecha.",
+  "Sinistra e Destra cambiano pagina, Invio va avanti, Esc chiude.",
+  "왼쪽·오른쪽 키로 페이지를 넘기고, Enter로 진행하며, Esc로 닫습니다.",
+  "左右键翻页，回车继续，Esc 关闭。"
+ ],
+ "Close the tour. \"How the planner works\" on the Guide tab opens it again.": [
+  "Schließt die Einführung. „So funktioniert der Planer“ unter „Anleitung“ öffnet sie wieder.",
+  "Ferme la présentation. « Comment fonctionne le planificateur », dans Guide, la rouvre.",
+  "Cierra el recorrido. «Cómo funciona el planificador», en Guía, lo vuelve a abrir.",
+  "Закрыть знакомство. «Как работает планировщик» в разделе «Гайд» откроет его снова.",
+  "Fecha o tour. \"Como o planejador funciona\", em Guia, abre de novo.",
+  "Chiude il giro. «Come funziona il pianificatore», in Guida, lo riapre.",
+  "안내를 닫습니다. 안내서 항목의 '플래너 사용법'으로 다시 열 수 있습니다.",
+  "关闭导览。在“指南”中点击“规划器如何工作”可再次打开。"
+ ]
+}

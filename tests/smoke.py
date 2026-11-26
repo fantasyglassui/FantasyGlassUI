@@ -21018,6 +21018,285 @@ try("polish P2: English words and plural forms", function()
     if not ok then error(err, 0) end
 end)
 -- polish P2: end
+-- polish P3: begin
+try("polish P3: the Guide tab's rows, the hidden saved data and the planner's tour", function()
+    local O = ns.optUI
+    local saved = { unlocked = ns.GuideUnlocked, seen = ns.root.plannerIntroSeen, big = ns.db.bigControls, keyNav = ns.db.keyNav,
+                    read = ns.db.readDialog, winKeys = ns.db.windowKeys, speak = ns.Speak, intro = ns.PlannerIntro, guides = ns.root.guides,
+                    state = ns.root.guideState, errors = #ns.errors, scale = ns.fontScale, paint = ns.Paint, cf = env.CreateFrame,
+                    code = ns.PlannerCodeFollowing, lang = ns.root.language, after = ns.After, queued = ns.plannerQueued, reason = ns.plannerReason }
+    local keys = { "questGuide", "guideSound", "plannerLearnFlights", "plannerTrainer", "plannerHold", "plannerVendor", "plannerSupplies",
+                   "plannerProfession", "plannerMount", "plannerMail", "plannerExplore", "plannerGather", "plannerClassQuests", "plannerRested",
+                   "plannerRewards", "plannerDeaths", "plannerSoloElites", "plannerWhy", "plannerPickReward", "plannerLogAdvice", "plannerInn",
+                   "plannerDry", "plannerMapLine", "plannerMapHubs", "plannerTomTom", "plannerBreaks", "plannerRace", "plannerLeftOff",
+                   "plannerSpeak", "plannerFindGroup", "plannerDuoAsk", "plannerGroup", "plannerBreakMinutes", "plannerLFGChannel" }
+    for _, k in ipairs(keys) do saved[k] = rawget(ns.db, k) end
+    local ok, err = pcall(function()
+        -- 1. Hidden saved data: while locked, the guide's settings are read through to their defaults, never written
+        ns.GuideUnlocked = function() return false end
+        local p = { design = 4, plannerTrainer = true, plannerMount = false, questGuide = true }
+        ns:FillDefaults(p)
+        for k in pairs(ns.defaults) do
+            if ns.GuideGatedKey(k) and k ~= "plannerMount" and rawget(p, k) ~= nil then error("locked: a guide setting is written into the profile: " .. k) end
+        end
+        if rawget(p, "plannerMount") ~= false then error("locked: a value someone set is kept") end
+        if p.plannerTrainer ~= true or p.plannerGroup ~= "solo" or p.plannerBreakMinutes ~= 120 or p.questGuide ~= true then error("locked: read through to the defaults") end
+        if rawget(p, "autoSell") ~= ns.defaults.autoSell then error("the other settings are written as before") end
+        for k in pairs(p) do if ns.GuideGatedKey(k) and k ~= "plannerMount" then error("locked: a saved file would name " .. k) end end
+        ns.GuideUnlocked = function() return true end
+        ns:FillGatedDefaults(p)
+        if rawget(p, "plannerTrainer") ~= true or rawget(p, "plannerMount") ~= false or rawget(p, "plannerGroup") ~= "solo" then error("unlocked in the session: the guide's defaults are written now") end
+        local q = ns:FillDefaults({ design = 4 })
+        if rawget(q, "plannerGroup") ~= "solo" or rawget(q, "questGuide") ~= true then error("unlocked at load: written as before") end
+        ns.GuideUnlocked = function() return false end
+        ns.root.guides, ns.root.guideState = {}, {}
+        ns:DropGatedStores()
+        if ns.root.guides ~= nil or ns.root.guideState ~= nil then error("locked: the guide's empty stores are not saved at logout") end
+        ns.root.guides = { mine = { steps = {} } }
+        ns:DropGatedStores()
+        if type(ns.root.guides) ~= "table" then error("a store with something in it is kept") end
+        ns.GuideUnlocked = function() return true end
+        ns.root.guides, ns.root.guideState = {}, {}
+        ns:DropGatedStores()
+        if type(ns.root.guides) ~= "table" then error("unlocked: the stores stay") end
+        ns.root.guides, ns.root.guideState = saved.guides, saved.state
+
+        -- 2. Locked: the tour makes nothing and writes nothing
+        ns.GuideUnlocked = function() return false end
+        ns.root.plannerIntroSeen = nil
+        if ns:PlannerIntro(1) ~= false or ns:PlannerIntroDue() then error("locked: no tour") end
+        if ns.root.plannerIntroSeen ~= nil then error("locked: nothing is written") end
+        ns.GuideUnlocked = function() return true end
+
+        -- 3. The Guide tab's rows: every setting a row with a name and what it does, in secondary lettering
+        local painted = setmetatable({}, { __mode = "k" })
+        ns.Paint = function(self, obj, method, role, alpha)
+            if method == "SetTextColor" then painted[obj] = role end
+            return saved.paint(self, obj, method, role, alpha)
+        end
+        ns.After = function() end                                -- (no re-showing of a section that is not there)
+        env.CreateFrame = function(...)                          -- (lettering that keeps its text, so its height can be worked out)
+            local f = saved.cf(...)
+            local make = f.CreateFontString
+            rawset(f, "CreateFontString", function(self, ...)
+                local fs = make(self, ...)
+                rawset(fs, "SetText", function(x, t) rawset(x, "__text", t) end)
+                rawset(fs, "GetText", function(x) return rawget(x, "__text") end)
+                return fs
+            end)
+            return f
+        end
+        local page = env.CreateFrame("Frame")
+        local T = ns.BuildGuidePage(page)
+        ns.Paint, env.CreateFrame = saved.paint, saved.cf
+        local G = T.rows
+        if not (G and G.shown and #G.shown >= 45) then error("the tab's rows: " .. tostring(G and G.shown and #G.shown)) end
+        local secs = {}
+        for _, row in ipairs(G.shown) do
+            secs[row.sec] = true
+            if row.desc then
+                if painted[row.desc] ~= "dim" then error("what a row does is in the secondary colour: " .. tostring(row.tipTitle)) end
+                local text = row.desc:GetText()
+                if type(text) ~= "string" or text == "" then error("a row says what it does: " .. tostring(row.tipTitle)) end
+            elseif not row.text then error("a row with no description: " .. tostring(row.tipTitle)) end
+            if row.switch and not row.title then error("a switch row has its name") end
+        end
+        for _, s in ipairs({ "guides", "record", "plan", "include", "advice", "map", "pace", "style", "records", "together" }) do
+            if not secs[s] then error("the section is on the tab: " .. s) end
+        end
+        local look = ns.LOOKS.settings
+        local function L(c) local function f(v) return v <= 0.03928 and v / 12.92 or ((v + 0.055) / 1.055) ^ 2.4 end return 0.2126 * f(c[1]) + 0.7152 * f(c[2]) + 0.0722 * f(c[3]) end
+        if (L(look.dim) + 0.05) / (L(look.card) + 0.05) < 4.5 then error("the secondary colour reads at 4.5:1 on the card") end
+        -- each switch still keeps its own setting, under the same key
+        local function click(f, button) for i = 1, #handlers do local h = handlers[i]; if h.self == f and h.name == "OnClick" then h.fn(f, button or "LeftButton") end end end
+        local boxes = { onBox = "questGuide", soundBox = "guideSound", flightsBox = "plannerLearnFlights", trainerBox = "plannerTrainer", holdBox = "plannerHold",
+                        vendorBox = "plannerVendor", suppliesBox = "plannerSupplies", professionBox = "plannerProfession", mountBox = "plannerMount",
+                        mailBox = "plannerMail", exploreBox = "plannerExplore", gatherBox = "plannerGather", classQuestsBox = "plannerClassQuests",
+                        restedBox = "plannerRested", rewardsBox = "plannerRewards", deathsBox = "plannerDeaths", soloElitesBox = "plannerSoloElites",
+                        whyBox = "plannerWhy", pickBox = "plannerPickReward", logAdviceBox = "plannerLogAdvice", innBox = "plannerInn", dryBox = "plannerDry",
+                        mapLineBox = "plannerMapLine", mapHubsBox = "plannerMapHubs", tomTomBox = "plannerTomTom", breaksBox = "plannerBreaks",
+                        raceBox = "plannerRace", leftOffBox = "plannerLeftOff", speakBox = "plannerSpeak", findGroupBox = "plannerFindGroup", duoAskBox = "plannerDuoAsk" }
+        for field, key in pairs(boxes) do
+            local box = T[field]
+            if not box then error("the switch is there: " .. field) end
+            if box.key ~= key or box.row.navKey ~= key then error("the switch is for " .. key .. ": " .. tostring(box.key)) end
+            local before = ns.db[key] and true or false
+            click(box)
+            if (ns.db[key] and true or false) == before then error("the switch changes " .. key) end
+            click(box)
+            if (ns.db[key] and true or false) ~= before then error("and back: " .. key) end
+        end
+        -- a choice steps back on a right-click
+        ns.db.plannerGroup = "solo"
+        click(T.groupButton, "RightButton")
+        if ns.db.plannerGroup ~= "all" then error("right-click: the choice before: " .. tostring(ns.db.plannerGroup)) end
+        click(T.groupButton)
+        if ns.db.plannerGroup ~= "solo" then error("left-click: the next one") end
+        ns.db.plannerBreakMinutes = 120
+        click(T.breakButton, "RightButton")
+        if ns.db.plannerBreakMinutes ~= 90 then error("the break length steps back: " .. tostring(ns.db.plannerBreakMinutes)) end
+        click(T.breakButton)
+        if ns.db.plannerBreakMinutes ~= 120 then error("and on again") end
+        -- rows sit one under the other, as tall as their text needs, and grow with the text size and Bigger controls
+        local function Measure()
+            local at = {}
+            for _, row in ipairs(G.shown) do
+                rawset(row, "SetPoint", function(_, _, _, _, _, y) at[row] = { y = y } end)
+                rawset(row, "SetHeight", function(_, h) at[row].h = h end)
+            end
+            T.Layout(736)
+            local total, prev = 0, nil
+            for _, row in ipairs(G.shown) do
+                local a = at[row]
+                if not (a and type(a.y) == "number" and type(a.h) == "number") then error("each row is placed and sized") end
+                if prev and prev.sec == row.sec and math.abs(at[prev].y - at[prev].h - a.y) > 0.01 then error("a row starts where the one above it ends: " .. tostring(row.tipTitle)) end
+                if prev and prev.sec ~= row.sec and a.y > at[prev].y - at[prev].h - 20 then error("a section starts under the one above, with its label between") end
+                total = total + a.h
+                prev = row
+            end
+            for _, row in ipairs(G.shown) do rawset(row, "SetPoint", nil); rawset(row, "SetHeight", nil) end
+            return total
+        end
+        ns.db.bigControls = false
+        ns.fontScale = 1
+        local base = Measure()
+        ns.fontScale = 1.5
+        local larger = Measure()
+        if not (larger > base) then error("larger text: taller rows: " .. base .. " " .. larger) end
+        ns.fontScale = 1
+        ns.db.bigControls = true
+        local scaled = {}
+        for _, row in ipairs(G.shown) do if row.switch then rawset(row.switch, "SetScale", function(_, s) scaled[row] = s end) end end
+        local bigger = Measure()
+        if math.abs(bigger - base - 12 * #G.shown) > 0.01 then error("Bigger controls: each row 12 taller: " .. base .. " " .. bigger) end
+        for _, row in ipairs(G.shown) do if row.switch and scaled[row] ~= 1.35 then error("Bigger controls: the switches are larger") end end
+        ns.db.bigControls, ns.fontScale = saved.big, saved.scale
+        for _, row in ipairs(G.shown) do if row.switch then rawset(row.switch, "SetScale", nil) end end
+        T.Layout(736)
+        if not (tonumber(page.contentHeight) and page.contentHeight > 1500) then error("the page is as tall as its rows: " .. tostring(page.contentHeight)) end
+        -- Share plan, greyed, says why and takes no click
+        local disabled, tip
+        rawset(T.sharePlanButton, "Disable", function() disabled = true end)
+        rawset(T.sharePlanButton, "Enable", function() disabled = false end)
+        ns.PlannerCodeFollowing = function() return false end
+        page.Refresh()
+        tip = rawget(T.sharePlanButton, "suiTip")
+        if disabled ~= true or type(tip) ~= "string" or tip == "" then error("Share plan, greyed: disabled, with a reason") end
+        ns.PlannerCodeFollowing = function() return true end
+        page.Refresh()
+        if disabled ~= false or rawget(T.sharePlanButton, "suiTip") ~= nil then error("following a plan: it is enabled again") end
+        ns.PlannerCodeFollowing = saved.code
+        -- the words: hubs are quest areas, and the guide switch is not named twice
+        if T.mapHubsBox.row.title:GetText() ~= ns:Tr("Quest areas on the map") then error("the map switch says quest areas") end
+        if T.onBox.row.title:GetText() ~= ns:Tr("Use quest guides") then error("the guide switch is not called Quest guides under the Quest guides label") end
+        ns.After = saved.after
+
+        -- 4. In the settings window: the tour on the first open, the keys and Bigger controls
+        local calls = 0
+        ns.PlannerIntro = function(self, ...) calls = calls + 1; return saved.intro(self, ...) end
+        ns.root.plannerIntroSeen = nil
+        ns.root.language = "enUS"
+        if ns.configFrame and ns.configFrame:IsShown() then ns:ToggleConfig() end
+        O.frame = nil
+        ns.db.keyNav = true
+        ns:ToggleConfig("guide")
+        runTimers()
+        O.Open("guide:Guide")                                    -- (after the window's own delayed calls)
+        local fp, P = O.sections, ns.guidePage
+        if not (P and P.unlocked == true) then error("the Guide tab shows its rows") end
+        if calls < 1 or ns.root.plannerIntroSeen ~= true then error("the first open of the Guide tab after the unlock shows the tour: " .. calls) end
+        local list = fp.shownKeys or {}
+        local at = {}
+        for i, k in ipairs(list) do at[k] = i end
+        for _, k in ipairs({ "questGuide", "plannerTrainer", "plannerMapHubs", "plannerDuoAsk", "guide:Plan my route", "guide:Speed", "guide:record" }) do
+            if not at[k] then
+                local host = O.pages.guide
+                error("the keys reach the row: " .. k .. " keys=" .. table.concat(list, ",") .. " lent=" .. tostring(host and host.area and rawget(host.area, "lentTo")) .. " fp=" .. tostring(fp) .. " sec=" .. tostring(fp.section and fp.section.id) .. " sheet=" .. tostring(host and host.sheet == ns.guidePage.live:GetParent()))
+            end
+        end
+        -- (the harness's frames do not run a script on :Click() or hand one back from :GetScript(): these do, as the game's)
+        for _, row in ipairs(P.rows.shown) do
+            if row.switch then rawset(row.switch, "Click", function(self) click(self) end) end
+            if row.button and row.button.SetScale then
+                rawset(row.button, "GetScript", function(self, name)
+                    return function(_, b) for i = 1, #handlers do local h = handlers[i]; if h.self == self and h.name == name then h.fn(self, b) end end end
+                end)
+            end
+        end
+        if fp.Focus(at.plannerTrainer) ~= "plannerTrainer" then error("Tab lands on the trainer row") end
+        local before = ns.db.plannerTrainer
+        fp.Use()
+        if ns.db.plannerTrainer == before then error("Space switches it") end
+        fp.Use()
+        if ns.db.plannerTrainer ~= before then error("and back") end
+        ns.db.plannerGroup = "solo"
+        fp.Focus(at["guide:Group quests"])
+        fp.Use(-1)
+        if ns.db.plannerGroup ~= "all" then error("Left steps a choice back: " .. tostring(ns.db.plannerGroup)) end
+        fp.Use(1)
+        if ns.db.plannerGroup ~= "solo" then error("Right steps it on") end
+        ns:ToggleConfig()
+        calls = 0
+        ns:ToggleConfig("guide")
+        runTimers()
+        O.Open("guide:Guide")
+        if calls ~= 0 then error("once seen, the tour does not open again by itself") end
+        click(ns.guidePage.introButton)
+        if calls ~= 1 then error("How the planner works opens it again") end
+        ns:ToggleConfig()
+
+        -- 5. The tour: four pages, Back and Next, the keys, reading aloud, skipped at once
+        local said = {}
+        ns.Speak = function(_, text) said[#said + 1] = text; return true end
+        ns.db.readDialog, ns.db.windowKeys = true, false
+        local win = saved.intro(ns, 1)
+        if not (win and win.at == 1) then error("the tour opens on its first page") end
+        if #ns.PLANNER_INTRO_PAGES < 3 or #ns.PLANNER_INTRO_PAGES > 4 then error("three or four pages") end
+        if not (said[#said] and said[#said]:find(ns:Tr(ns.PLANNER_INTRO_PAGES[1][1]), 1, true)) then error("read aloud: " .. tostring(said[#said])) end
+        click(win.next)
+        if win.at ~= 2 then error("Next") end
+        click(win.back)
+        if win.at ~= 1 then error("Back") end
+        local key
+        for i = 1, #handlers do local h = handlers[i]; if h.self == win and h.name == "OnKeyDown" then key = h.fn end end
+        if not key then error("the tour takes keys") end
+        local label = win.next.text
+        local keepSet, keepGet = rawget(label, "SetText"), rawget(label, "GetText")
+        rawset(label, "SetText", function(x, t) rawset(x, "__text", t) end)
+        rawset(label, "GetText", function(x) return rawget(x, "__text") end)
+        for _ = 1, 5 do key(win, "RIGHT") end
+        if win.at ~= #ns.PLANNER_INTRO_PAGES then error("Right goes on, and stops at the last page") end
+        if win.next.text:GetText() ~= ns:Tr("Done") then error("the last page's button says Done") end
+        key(win, "LEFT")
+        if win.at ~= #ns.PLANNER_INTRO_PAGES - 1 then error("Left goes back") end
+        if win.next.text:GetText() ~= ns:Tr("Next") then error("before the last page it says Next") end
+        rawset(label, "SetText", keepSet); rawset(label, "GetText", keepGet)
+        key(win, "ENTER")
+        local hidden = false
+        rawset(win, "Hide", function() hidden = true end)
+        click(win.skip)
+        if not hidden then error("Skip closes it") end
+        hidden = false
+        key(win, "ESCAPE")
+        if not hidden then error("Esc closes it") end
+        rawset(win, "Hide", nil)
+        win:Hide()
+        if #ns.errors ~= saved.errors then error("no errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    ns.Paint, ns.After, env.CreateFrame, ns.Speak, ns.PlannerIntro = saved.paint, saved.after, saved.cf, saved.speak, saved.intro
+    ns.PlannerCodeFollowing, ns.fontScale = saved.code, saved.scale
+    ns.plannerQueued, ns.plannerReason = saved.queued, saved.reason
+    if ns.configFrame and ns.configFrame:IsShown() then pcall(ns.ToggleConfig, ns) end
+    local win = ns.PlannerIntroWindow and ns:PlannerIntroWindow()
+    if win then win:Hide() end
+    ns.GuideUnlocked, ns.root.guides, ns.root.guideState = saved.unlocked, saved.guides, saved.state
+    ns.root.plannerIntroSeen, ns.root.language = saved.seen, saved.lang
+    ns.db.bigControls, ns.db.keyNav, ns.db.readDialog, ns.db.windowKeys = saved.big, saved.keyNav, saved.read, saved.winKeys
+    for _, k in ipairs(keys) do rawset(ns.db, k, saved[k]) end
+    while #ns.errors > saved.errors do table.remove(ns.errors) end
+    if not ok then error(err, 0) end
+end)
+-- polish P3: end
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()
