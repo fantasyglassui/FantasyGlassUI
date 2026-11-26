@@ -140,6 +140,27 @@ def test_folder_seams_listed():
     assert not sorted(listed - defined_folders - stubs), f"listed but defined in no folder file: {sorted(listed - defined_folders - stubs)}"
 
 
+# The planner's recorders (the folders plan's Task 4): moved to the main add-on, defined there only.
+PLANNER_RECORDERS = ["PlannerCharRecord", "PlannerKillXP", "PlannerRecordQuestTime", "PlannerRecordSoloElite", "PlannerClassToken",
+                     "PlannerRecordDeath", "PlannerMountSeen", "PlannerBestChoice", "PlannerGatherSkill", "PlannerRecordNode", "PlannerSeen",
+                     "PlannerRecordTimed", "PlannerLevelTick", "PlannerRecordLevel", "PlannerLevelSummary", "PlannerLevelLines",
+                     "PlannerLevelRunLines", "PlannerSeenSave", "PlannerDuoRegister", "PLANNER_CATCHUP_DAYS", "PLANNER_SEEN_CAP",
+                     "PLANNER_QUEST_TIMES_CAP", "PLANNER_NODE_CAP", "PLANNER_TIMED_CAP", "PLANNER_DUO_PREFIX", "plannerSessionStart"]
+
+
+def test_recorders_in_main():
+    defs = lambda text: {a or b for a, b in re.findall(r"^\s*(?:function ns[.:](\w+)|ns\.(\w+)\s*=(?!=))", text, re.M)}
+    main = open(os.path.join(ROOT, "FantasyGlassUI", "PlannerRecorders.lua"), encoding="utf-8").read()
+    missing = sorted(set(PLANNER_RECORDERS) - defs(main))
+    assert not missing, f"not defined in PlannerRecorders.lua: {missing}"
+    for f in folder_files("planner"):
+        text = open(os.path.join(ROOT, "FantasyGlassUI_Planner", f), encoding="utf-8").read()
+        copied = sorted(set(PLANNER_RECORDERS) & defs(text))
+        assert not copied, f"FantasyGlassUI_Planner/{f} defines a recorder of the main add-on's: {copied}"
+    toc = [l.strip() for l in open(os.path.join(ROOT, "FantasyGlassUI", "FantasyGlassUI.toc"), encoding="utf-8")]
+    assert toc.index("PlannerTravel.lua") < toc.index("PlannerRecorders.lua") < toc.index("PlannerKills.lua"), "PlannerRecorders.lua's place in the TOC"
+
+
 def test_packaging():
     pkg = open(os.path.join(ROOT, ".pkgmeta"), encoding="utf-8").read()
     for folder in FOLDER_KEYS.values():

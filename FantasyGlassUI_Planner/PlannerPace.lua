@@ -38,7 +38,6 @@ ns.PLANNER_STALE_SECONDS = 3600             -- a limit this long past is forgott
 ns.PLANNER_STOP_SECONDS = 300               -- the stop place is at most this far (or what time is left, if less)
 ns.PLANNER_BREAK_REPEAT = 3600              -- a break reminder at most once in this many seconds
 ns.PLANNER_BREAK_SHOWN = 600                -- and its panel line for this long
-ns.PLANNER_CATCHUP_DAYS = 14                -- away this many days or more: the catch-up page
 ns.PLANNER_CATCHUP_NEW = 3                  -- at most this many "New:" lines
 ns.PLANNER_PLAY_TIMES = { { 0, "No limit" }, { 30, "30 min" }, { 60, "1 hour" }, { 90, "1 h 30 min" }, { 120, "2 hours" } }
 local STOP_KEY = "pace:stop"
@@ -259,21 +258,17 @@ function ns.PlannerBreakReset() lastBreak, breakLine = nil, nil end
 ------------------------------------------------------------------------------------------
 -- Catch me up
 ------------------------------------------------------------------------------------------
-local entered = false                        -- (the login's own handling is done: the clock may be saved from now on)
-local inWorld = false                        -- (a PLAYER_ENTERING_WORLD came, locked or not: an unlock after it starts the clock at once)
+-- (When you were last here, ns.PlannerSeenSave, and the login's catch-up check: in the main add-on, PlannerRecorders.lua,
+-- which loads this folder for the page; ns.PLANNER_CATCHUP_DAYS is there too.)
 -- Forget what this session knows (the tests start each case from here): the last reminder, and that the login was handled.
-function ns.PlannerPaceReset() lastBreak, breakLine, entered, inWorld = nil, nil, false, false end
+function ns.PlannerPaceReset()
+    lastBreak, breakLine = nil, nil
+    if ns.PlannerSeenReset then ns.PlannerSeenReset() end
+end
 
 local function VersionNumber(v)
     local a, b, c = tostring(v or ""):match("^(%d+)%.?(%d*)%.?(%d*)")
     return (tonumber(a) or 0) * 10000 + (tonumber(b) or 0) * 100 + (tonumber(c) or 0)
-end
-
--- Remember when you were last here, and which version it was (every minute, and at logout).
-function ns.PlannerSeenSave()
-    if not entered or not Unlocked() then return end            -- (whether or not the guide is on: you are still playing)
-    local rec = Rec(true)
-    if rec then rec.lastSeen, rec.lastVersion = Now(), ns.version end
 end
 
 local function ZoneName(map)
@@ -342,28 +337,10 @@ function ns:PlannerCatchUp(away, since)
     return w
 end
 
--- Events: a login (never a reload) after 14 days or more away; the clock kept every minute and at logout.
+-- The minute's check of what is registered (the clock itself is saved by the main add-on).
 do
-    local ev = CreateFrame("Frame")
     ns.FolderLate("planner", "paceSync", function() Sync() end)   -- (what the login did: the folder loads later)
-    pcall(ev.RegisterEvent, ev, "PLAYER_ENTERING_WORLD")
-    pcall(ev.RegisterEvent, ev, "PLAYER_LOGOUT")
-    ev:SetScript("OnEvent", ns:Guard("Planner pace", function(_, event, isInitial)
-        if event == "PLAYER_LOGOUT" then ns.PlannerSeenSave(); return end
-        if event ~= "PLAYER_ENTERING_WORLD" then return end
-        inWorld = true
-        if not (type(ns.root) == "table" and Unlocked()) then return end
-        if isInitial and On() then
-            local rec = Rec(false)
-            local was = rec and tonumber(rec.lastSeen)
-            local away = was and Now() - was
-            if away and away >= ns.PLANNER_CATCHUP_DAYS * 86400 then ns:PlannerCatchUp(away, rec.lastVersion) end
-        end
-        entered = true
-        ns.PlannerSeenSave()
-    end))
-    ns:Every(60, "Planner seen", function()
-        if entered then ns.PlannerSeenSave() end
+    ns:Every(60, "Planner pace", function()
         if type(ns.root) == "table" then Sync() end
     end)
 end
@@ -635,11 +612,5 @@ Sync = function()
 end
 ns.PlannerPaceSync = function() Sync() end
 -- Unlocking or locking the guide registers or removes everything at once (not up to a minute later).
-ns.GuideRegisterLock("pace", function(unlocked)
-    Sync()
-    if unlocked and inWorld and not entered and Unlocked() then   -- (unlocked mid-session: the login is long handled)
-        entered = true
-        ns.PlannerSeenSave()
-    end
-end)
+ns.GuideRegisterLock("pace", function() Sync() end)   -- (and the clock is saved from an unlock on: PlannerRecorders.lua)
 ns.FolderFileDone("planner", "PlannerPace.lua")

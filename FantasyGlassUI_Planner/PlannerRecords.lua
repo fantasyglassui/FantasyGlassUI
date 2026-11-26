@@ -17,122 +17,8 @@ local function Read(fn, ...)
     return nil
 end
 
-------------------------------------------------------------------------------------------
--- Level times: a play clock per character (seconds while logged in, added by a 10 second ticker;
--- never RequestTimePlayed, which prints in chat). At a level-up the old level's time is kept per
--- account, ns.root.plannerLevels[charKey][level] = { s, xph, partial }, so characters can be
--- compared. The first level seen after install is partial (some of it was not timed): it is kept
--- but left out of fastest, slowest, average and the race.
-------------------------------------------------------------------------------------------
-local TICK, TICK_MAX = 10, 30
-
--- Add a tick to this character's clock. `elapsed` is the GetTime() time since the last tick, at most
--- 30 s, so a reload or a loading screen adds nothing extra. Skips when the level or the xp max is unreadable.
-function ns.PlannerLevelTick(elapsed)
-    if not Unlocked() then return false end
-    elapsed = tonumber(elapsed) or 0
-    if elapsed ~= elapsed or elapsed < 0 then elapsed = 0 end
-    elapsed = min(elapsed, TICK_MAX)
-    local level, xpMax = Read(UnitLevel, "player"), Read(UnitXPMax, "player")
-    if not level or level < 1 or not xpMax or xpMax <= 0 then return false end
-    local rec = ns.PlannerCharRecord and ns.PlannerCharRecord(true)
-    if type(rec) ~= "table" then return false end
-    local c = rec.levelClock
-    if type(c) ~= "table" or c.level ~= level then          -- (first tick, or a level gained while not timed: only part of it is known)
-        rec.levelClock = { level = level, seconds = elapsed, xpMax = xpMax, partial = true }
-    else
-        c.seconds = (tonumber(c.seconds) or 0) + elapsed
-        c.xpMax = xpMax
-    end
-    return true
-end
-
--- PLAYER_LEVEL_UP: keep the level you left, then start a clock for the new one.
-function ns.PlannerRecordLevel(oldLevel)
-    if not Unlocked() or type(oldLevel) ~= "number" then return false end
-    local rec = ns.PlannerCharRecord and ns.PlannerCharRecord(true)
-    if type(rec) ~= "table" or type(ns.root) ~= "table" then return false end
-    local c = rec.levelClock
-    local seconds, xpMax = type(c) == "table" and tonumber(c.seconds), type(c) == "table" and tonumber(c.xpMax)
-    if type(c) == "table" and c.level == oldLevel and seconds and seconds > 0 and xpMax and xpMax > 0 then
-        if type(ns.root.plannerLevels) ~= "table" then ns.root.plannerLevels = {} end
-        local key = ns:CharKey()
-        if type(ns.root.plannerLevels[key]) ~= "table" then ns.root.plannerLevels[key] = {} end
-        local s = floor(seconds + 0.5)
-        ns.root.plannerLevels[key][oldLevel] = { s = s, xph = floor(xpMax * 3600 / max(1, s) + 0.5), partial = c.partial and true or nil }
-    end
-    rec.levelClock = { level = oldLevel + 1, seconds = 0, xpMax = Read(UnitXPMax, "player") or 0, partial = false }   -- (a level begun at the level-up is whole)
-    return true
-end
-
--- The recorded levels of one character, whole ones only: { fastest = { level, s }, slowest = { level, s }, average, count }.
-function ns.PlannerLevelSummary(charKey)
-    local root = ns.root
-    local list = type(root) == "table" and type(root.plannerLevels) == "table" and root.plannerLevels[charKey or ns:CharKey()]
-    local out, total = { count = 0 }, 0
-    if type(list) ~= "table" then return out end
-    for level, e in pairs(list) do
-        local s = type(e) == "table" and not e.partial and tonumber(e.s)
-        if type(level) == "number" and s and s > 0 then
-            out.count, total = out.count + 1, total + s
-            local f, sl = out.fastest, out.slowest
-            if not f or s < f.s or (s == f.s and level < f.level) then out.fastest = { level = level, s = s } end
-            if not sl or s > sl.s or (s == sl.s and level < sl.level) then out.slowest = { level = level, s = s } end
-        end
-    end
-    if out.count > 0 then out.average = total / out.count end
-    return out
-end
-
--- A length of time as the stats page shows it: 1d 2h, 3h 5m, 12m.
-local function Span(secs)
-    secs = floor(tonumber(secs) or 0)
-    local d, h, m = floor(secs / 86400), floor(secs % 86400 / 3600), floor(secs % 3600 / 60)
-    if d > 0 then return format(ns:Tr("%d d %d h"), d, h) end           -- (the same way as the rest of the add-on writes a time)
-    if h > 0 then return format(ns:Tr("%d h %d min"), h, m) end
-    return format(ns:Tr("%d min"), m)
-end
-local function Commas(n)
-    local s = tostring(floor((tonumber(n) or 0) + 0.5))
-    local k
-    repeat s, k = s:gsub("^(-?%d+)(%d%d%d)", "%1,%2") until k == 0
-    return s
-end
-
--- The Levels part of /fgui stats: lines for ShowLifetime (empty while locked or with nothing recorded).
-function ns.PlannerLevelLines()
-    local lines = {}
-    if not Unlocked() then return lines end
-    local sum = ns.PlannerLevelSummary()
-    if sum.count < 1 then return lines end
-    lines[1] = { left = " " }
-    lines[2] = { left = ns:AccentHex() .. ns:Tr("Levels") .. "|r" }
-    lines[3] = { left = format(ns:Tr("Fastest level: %d (%s)"), sum.fastest.level, Span(sum.fastest.s)), indent = 16 }
-    lines[4] = { left = format(ns:Tr("Slowest level: %d (%s)"), sum.slowest.level, Span(sum.slowest.s)), indent = 16 }
-    lines[5] = { left = format(ns:Tr("Average per level: %s"), Span(sum.average)), indent = 16 }
-    return lines
-end
-
--- The run log's first list: one line per recorded level of this character, newest first, at most 20.
-function ns.PlannerLevelRunLines()
-    local lines = {}
-    if not Unlocked() then return lines end
-    local root = ns.root
-    local list = type(root) == "table" and type(root.plannerLevels) == "table" and root.plannerLevels[ns:CharKey()]
-    if type(list) ~= "table" then return lines end
-    local levels = {}
-    for level, e in pairs(list) do
-        if type(level) == "number" and type(e) == "table" and tonumber(e.s) then levels[#levels + 1] = level end
-    end
-    table.sort(levels, function(a, b) return a > b end)
-    for i = 1, min(20, #levels) do
-        local e = list[levels[i]]
-        local text = format(ns:Tr("Level %d: %s, %s xp an hour"), levels[i], Span(e.s), Commas(e.xph))
-        if e.partial then text = text .. "  " .. ns:ToneHex("dim") .. "(" .. ns:Tr("partly timed") .. ")|r" end     -- (not counted in fastest, slowest, average or the race)
-        lines[#lines + 1] = { left = text }
-    end
-    return lines
-end
+-- (Level times, the play clock and its 10 second ticker, ns.PlannerLevelLines and ns.PlannerLevelRunLines: in the main
+-- add-on, PlannerRecorders.lua, so the clock runs while this folder is not loaded.)
 
 ------------------------------------------------------------------------------------------
 -- Race your best: the fastest other character's whole time at your level, against the clock here.
@@ -294,37 +180,30 @@ ns.GuideRegisterCommand("keys", function()
 end)
 
 ------------------------------------------------------------------------------------------
--- Events and the 10 second ticker
+-- Events: the login's "where you left off" (the clock is the main add-on's)
 ------------------------------------------------------------------------------------------
 do
     local ev = CreateFrame("Frame")
-    for _, e in ipairs({ "PLAYER_LEVEL_UP", "PLAYER_ENTERING_WORLD" }) do pcall(ev.RegisterEvent, ev, e) end
+    pcall(ev.RegisterEvent, ev, "PLAYER_ENTERING_WORLD")
+    local sawLogin = false
+    -- said from the first plan made after the login (the saved one is replaced a moment later), or from the
+    -- saved one when no plan comes within 20 s
+    local function Wait(seconds)
+        leftOffWanted = true
+        ns:After(seconds, ns:Guard("Planner records", function() ns.PlannerLeftOffDue() end))
+    end
     ns.FolderLate("planner", "keyFrames", function() if Unlocked() then ns.PlannerKeyFrames() end end)   -- (what the login did: the folder loads later)
+    -- (loaded a moment after the initial login, whose PLAYER_ENTERING_WORLD this folder did not hear: the rest of the 20 s)
+    ns.FolderLate("planner", "leftOff", function()
+        local at = not sawLogin and Unlocked() and ns.PlannerLoginAt and ns.PlannerLoginAt()
+        local now = at and Read(GetTime)
+        if now and now >= at and now - at < 20 then Wait(20 - (now - at)) end
+    end)
     ev:SetScript("OnEvent", ns:Guard("Planner records", function(_, event, a)
         if not Unlocked() then return end
-        if event == "PLAYER_LEVEL_UP" then
-            if type(a) == "number" and a > 1 then ns.PlannerRecordLevel(a - 1) end
-        elseif event == "PLAYER_ENTERING_WORLD" and a == true then       -- (an initial login: not a reload, not a loading screen)
-            -- said from the first plan made after the login (the saved one is replaced a moment later), or from the
-            -- saved one when no plan comes within 20 s
-            leftOffWanted = true
-            ns:After(20, ns:Guard("Planner records", function() ns.PlannerLeftOffDue() end))
-        end
-    end))
-    local acc, last = 0, nil
-    ns.plannerRecordsFrame = ev
-    function ns.PlannerLevelGapReset() acc, last = 0, nil end      -- (as after a reload: the next tick adds nothing)
-    ev:SetScript("OnUpdate", ns:Guard("Planner records", function(_, elapsed)
-        acc = acc + (tonumber(elapsed) or 0)
-        if acc < TICK then return end
-        acc = 0
-        local now = GetTime()
-        local gap = last and (now - last) or 0           -- (the first tick after a login or a reload adds nothing)
-        last = now
-        ns.PlannerLevelTick(gap)
-        if ns.db and ns.db.plannerRace == true and Unlocked() and ns.GuideRedraw and not InCombatLockdown() then     -- (the race line follows the clock, on a panel you can see; not in a fight)
-            local panel = _G.FantasyGlassUIGuide
-            if type(panel) == "table" and panel.IsShown and panel:IsShown() then ns:GuideRedraw() end
+        if event == "PLAYER_ENTERING_WORLD" and a == true then       -- (an initial login: not a reload, not a loading screen)
+            sawLogin = true
+            Wait(20)
         end
     end))
 end

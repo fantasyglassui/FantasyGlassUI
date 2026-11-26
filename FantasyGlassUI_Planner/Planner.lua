@@ -129,37 +129,7 @@ end
 
 local UNKNOWN_COUNT = 8 -- Questie gives no kill counts; the quest log does, once a quest is taken
 
-------------------------------------------------------------------------------------------
--- Kill experience (the classic formula)
-------------------------------------------------------------------------------------------
-local function GrayLevel(p)
-    if p <= 5 then return 0 end
-    if p <= 39 then return p - floor(p / 10) - 5 end
-    if p <= 59 then return p - floor(p / 5) - 1 end
-    return p - 9
-end
-
-local ZD_STEPS = { { 8, 5 }, { 10, 6 }, { 12, 7 }, { 16, 8 }, { 20, 9 }, { 30, 11 }, { 40, 12 }, { 45, 13 }, { 50, 14 }, { 55, 15 }, { 60, 16 } }
-local function ZeroDifference(p)
-    for _, s in ipairs(ZD_STEPS) do if p < s[1] then return s[2] end end
-    return 17
-end
-
-function ns.PlannerKillXP(playerLevel, mobLevel, elite)
-    playerLevel, mobLevel = tonumber(playerLevel), tonumber(mobLevel)
-    if not (playerLevel and mobLevel) then return 0 end
-    local base = playerLevel * 5 + 45
-    local xp
-    if mobLevel >= playerLevel then
-        xp = base * (1 + 0.05 * min(mobLevel - playerLevel, 4))
-    elseif mobLevel <= GrayLevel(playerLevel) then
-        return 0
-    else
-        xp = base * (1 - (playerLevel - mobLevel) / ZeroDifference(playerLevel))
-    end
-    if elite then xp = xp * 2 end
-    return floor(xp)
-end
+-- (Kill experience, the classic formula ns.PlannerKillXP: in the main add-on, PlannerRecorders.lua.)
 
 ------------------------------------------------------------------------------------------
 -- Candidates
@@ -455,51 +425,11 @@ function ns.PlannerQuestTime(rec, ctx)
     return t
 end
 
--- A sample of how long a quest took from accept to hand-in (while following the plan); over 2 hours is away.
-local QUEST_TIME_MAX = 7200
--- At most this many quests are remembered (per account): past it, the one seen longest ago goes first (an
--- entry from before days were kept counts as oldest; the same day: the lower id).
-ns.PLANNER_QUEST_TIMES_CAP = 3000
-local questTimesN                    -- how many entries the table holds (counted once a session)
-function ns.PlannerRecordQuestTime(questID, seconds)
-    seconds = tonumber(seconds)
-    if type(questID) ~= "number" or not seconds or seconds <= 0 or seconds > QUEST_TIME_MAX or not ns.root then return end
-    local root = ns.root
-    if type(root.plannerQuestTimes) ~= "table" then root.plannerQuestTimes = {} end
-    local times = root.plannerQuestTimes
-    if not questTimesN or questTimesN.t ~= times then
-        local count = 0
-        for _ in pairs(times) do count = count + 1 end
-        questTimesN = { t = times, n = count }
-    end
-    local okT, now = pcall(time)
-    local day = okT and type(now) == "number" and not ns:IsSecret(now) and floor(now / 86400) or 0
-    local e = times[questID]
-    if type(e) ~= "table" or not tonumber(e.n) or not tonumber(e.avg) then
-        if times[questID] == nil then questTimesN.n = questTimesN.n + 1 end
-        e = { n = 0, avg = 0 }
-        times[questID] = e
-    end
-    e.avg = (e.avg * e.n + seconds) / (e.n + 1)
-    e.n = e.n + 1
-    e.seen = day
-    while questTimesN.n > ns.PLANNER_QUEST_TIMES_CAP do
-        local old, oldDay
-        for k, v in pairs(times) do
-            local d = type(v) == "table" and tonumber(v.seen) or 0
-            if k ~= questID and (not old or d < oldDay or (d == oldDay and tonumber(k) and tonumber(old) and k < old)) then old, oldDay = k, d end
-        end
-        if old == nil then break end
-        times[old] = nil
-        questTimesN.n = questTimesN.n - 1
-    end
-end
+-- (Quest times, ns.PlannerRecordQuestTime: in the main add-on, PlannerRecorders.lua.)
 
 ------------------------------------------------------------------------------------------
 -- Choices: the skip list, deaths and elites your class has soloed
 ------------------------------------------------------------------------------------------
-local DEATHS_MAX = 50
-
 -- Never suggest this quest (on), or suggest it again (off); plans again at once.
 -- `name`: the quest's name to keep with it (the skip list shows it once the quest is gone from your log);
 -- else the game's title for it, when it can read one. The entry is the name, or true.
@@ -538,33 +468,7 @@ function ns.PlannerSkipList()
     return rec and type(rec.skip) == "table" and rec.skip or {}
 end
 
--- Where you died: remembered per character (the last 50), with the level you were.
-function ns.PlannerRecordDeath()
-    local level = UnitLevel and UnitLevel("player")
-    if type(level) ~= "number" or ns:IsSecret(level) or not ns.GuideHere then return end
-    local map, x, y = ns.GuideHere()
-    if not (map and x and y and ns.PlannerWorldPos(map, x, y)) then return end        -- (no place in the outdoor world: a dungeon or a battleground)
-    local rec = ns.PlannerCharRecord(true)
-    if not rec then return end
-    if type(rec.deaths) ~= "table" then rec.deaths = {} end
-    rec.deaths[#rec.deaths + 1] = { level = level, map = map, x = x, y = y }
-    while #rec.deaths > DEATHS_MAX do table.remove(rec.deaths, 1) end
-end
-
--- The class token of this character ("WARRIOR"), or nil.
-function ns.PlannerClassToken()
-    local ok, c = pcall(function() return (UnitClassBase and UnitClassBase("player")) or select(2, UnitClass("player")) end)
-    if ok and type(c) == "string" and not ns:IsSecret(c) and c ~= "" then return c end
-end
-
--- An elite quest handed in alone: remember, per class, the biggest quest level over yours.
-function ns.PlannerRecordSoloElite(class, diff)
-    diff = tonumber(diff)
-    if type(class) ~= "string" or not diff or not ns.root then return end
-    if type(ns.root.plannerSoloElites) ~= "table" then ns.root.plannerSoloElites = {} end
-    local t = ns.root.plannerSoloElites
-    if type(t[class]) ~= "number" or t[class] < diff then t[class] = diff end
-end
+-- (Deaths, the class token and soloed elites are recorded in the main add-on, PlannerRecorders.lua.)
 
 -- Has this class soloed an elite quest that many levels above (or more)?
 function ns.PlannerSoloEliteOK(class, diff)
@@ -785,17 +689,7 @@ end
 ------------------------------------------------------------------------------------------
 local PACE_SAMPLES, PACE_MIN, PACE_MAX = 10, 0.5, 3
 
-local function PaceRecord(create)
-    local root = ns.root
-    if not root then return nil end
-    local key = ns:CharKey()
-    if create then
-        root.planner = root.planner or {}
-        root.planner[key] = root.planner[key] or {}
-        return root.planner[key]
-    end
-    return root.planner and root.planner[key]
-end
+local function PaceRecord(create) return ns.PlannerCharRecord(create) end   -- (the record: in the main add-on, PlannerRecorders.lua)
 
 function ns.PlannerPace()
     local rec = PaceRecord(false)
@@ -816,9 +710,6 @@ function ns.PlannerRecordPace(actualSeconds, estimatedSeconds)
     for _, v in ipairs(p.samples) do sum = sum + v end
     p.value = max(PACE_MIN, min(PACE_MAX, sum / #p.samples))
 end
-
--- The saved per-character planner record (PlannerRoute.lua keeps the bind place and the zone there).
-ns.PlannerCharRecord = PaceRecord
 
 ------------------------------------------------------------------------------------------
 -- Running it: a slice per frame (ns.PLANNER_BUDGET_MS), never in a fight or without a place in the
@@ -1118,94 +1009,11 @@ ns.GuideRegisterTitle("plannerBusy", function(st)
     if PlannedState(st) and (ns.plannerQueued or ns.plannerBusy) and type(st.summary) == "table" then return ns:Tr("planning…") end
 end)
 
--- The level of your last class trainer visit. The trainer whose window opened is yours when it is no
--- profession trainer and, where your class trainers are known, it is one of them (by its id, or
--- standing within 10 yards of one); with none known, any trainer but a profession one counts.
-local CLASS_TRAINER_YARDS = 10
-local classTrainer = false
-local ridingTrainer = false
-local function IsClassTrainer()
-    ridingTrainer = false
-    local ok, trade = pcall(IsTradeskillTrainer)
-    if ok and ns.Is(trade, true) then return false end
-    local src = ns.PlannerSource and ns.PlannerSource() or nil
-    local places = (src and ns.PlannerPlaces) and ns.PlannerPlaces({ source = src }, "classTrainer") or {}
-    local riding = (src and ns.PlannerPlaces) and ns.PlannerPlaces({ source = src }, "professionTrainer", ns.PLANNER_RIDING_LINE or 762) or {}
-    if #places == 0 and #riding == 0 then return true end
-    local okG, guid = pcall(UnitGUID, "npc")
-    local id = okG and type(guid) == "string" and not ns:IsSecret(guid) and tonumber(guid:match("^%a+%-%d+%-%d+%-%d+%-%d+%-(%d+)%-")) or nil
-    local c, x, y
-    if ns.GuideHere then
-        local map, px, py = ns.GuideHere()
-        c, x, y = ns.PlannerWorldPos(map, px, py)
-    end
-    local function At(list, byId)
-        for _, p in ipairs(list) do
-            if id and p.id == id then return true end
-            if not byId then
-                local pc, ppx, ppy = ns.PlannerWorldPos(p.map, p.x, p.y)
-                if c and pc == c and sqrt((ppx - x) ^ 2 + (ppy - y) ^ 2) <= CLASS_TRAINER_YARDS then return true end
-            end
-        end
-        return false
-    end
-    if At(places, true) then return true end          -- (a class trainer by its id, even next to the riding trainer)
-    if At(riding) then ridingTrainer = true; return false end   -- (the riding trainer is no class trainer)
-    if #places == 0 then return true end
-    return At(places)
-end
-local function TrainerClosed()
-    if ridingTrainer and ns:GuideUnlocked() then           -- (you were at the riding trainer: you ride from now on)
-        local r = PaceRecord(true)
-        if r then r.ridingKnown = true end
-    end
-    ridingTrainer = false                                  -- (once per visit: a second close sets nothing again)
-    if not classTrainer or not ns:GuideUnlocked() then return end
-    local level = UnitLevel and UnitLevel("player")
-    if type(level) ~= "number" or ns:IsSecret(level) then return end
-    local d = PaceRecord(true)
-    if d then d.trainerLevel = level end
-end
-
+-- (Trainer visits, being seen mounted, quest times, soloed elites and deaths are recorded in the main add-on,
+-- PlannerRecorders.lua, while this folder is not loaded too. Here: what they change in the plan.)
 do
     local ev = CreateFrame("Frame")
-    -- Quest times: each quest accepted while following gathers its share of the time that passes, the
-    -- time split evenly among the quests open at once (a hub's quests are done together). Memory only.
-    -- (a quest carried longer than a sample may be, 2 hours, gives none and stops taking a share)
-    -- Time passes for them only while you are present and out of town: not AFK and not resting (each
-    -- readable; a hidden flag counts as present). The state is read at login and at an unlock (you may
-    -- log in at an inn), then PLAYER_FLAGS_CHANGED and PLAYER_UPDATE_RESTING share out the time so far
-    -- and set the new state.
-    local open, openN, openAt, since = {}, 0, nil, {}  -- questID -> seconds so far; how many; the last time shared out; accepted at
-    local away = false
-    local function Flag(fn, ...)
-        if type(fn) ~= "function" then return false end
-        local ok, v = pcall(fn, ...)
-        return ok and not ns:IsSecret(v) and v == true
-    end
-    local function Away() return Flag(UnitIsAFK, "player") or Flag(IsResting) end
-    local function Share(now)
-        for id, t0 in pairs(since) do
-            if t0 > now or now - t0 > QUEST_TIME_MAX then
-                if open[id] then open[id], openN = nil, openN - 1 end
-                since[id] = nil
-            end
-        end
-        if openN == 0 then openAt = nil end
-        if openAt and openN > 0 and now > openAt and not away then
-            local part = (now - openAt) / openN
-            for id, t in pairs(open) do open[id] = t + part end
-        end
-        openAt = now
-    end
-    local function Close(id, now)
-        Share(now)
-        local t = open[id]
-        if t then open[id], openN = nil, openN - 1 end
-        since[id] = nil
-        if openN == 0 then openAt = nil end
-        return t
-    end
+    local deathCheck
     -- Forever can send QUEST_REMOVED before QUEST_TURNED_IN (or no QUEST_TURNED_IN at all); a quest handed in
     -- is flagged completed by then, an abandoned one is not.
     local function Completed(id)
@@ -1226,127 +1034,36 @@ do
         HandedIn(id, plan)
         return true
     end
-    local function Now()
-        local okT, now = pcall(GetTime)
-        if okT and type(now) == "number" and not ns:IsSecret(now) then return now end
-    end
-    ns.PlannerQuestClock = function() return { open = openN, away = away } end    -- (read only: the tests)
-    local function ReadAway()
-        local now = Now()
-        if now then Share(now) end
-        away = Away()
-    end
-    ns.GuideRegisterLock("questclock", function(unlocked) if unlocked then ReadAway() end end)
-    -- A QUEST_REMOVED of a quest not (yet) flagged completed: abandoned, unless QUEST_TURNED_IN for it follows
-    -- within a second (then it was a hand-in, counted once). questID -> { t, level = a soloed elite's, took = its time }.
-    local removed = {}
-    local function Removed(id, now)
-        for k, e in pairs(removed) do
-            if now and (e.t > now or now - e.t > 600) then removed[k] = nil end
+    deathCheck = ns:Guard("Planner", function()
+        if not ns:GuideUnlocked() then return end
+        local d = ns.PlannerCharRecord(false)
+        local level = UnitLevel and UnitLevel("player")
+        if type(d) == "table" and type(d.deaths) == "table" and type(level) == "number" and not ns:IsSecret(level) and ns.GuideHere and Following() then
+            local map, x, y = ns.GuideHere()
+            if map and x and y and ns.PlannerHubTooHard({ map = map, x = x, y = y }, { deaths = d.deaths, level = level }) then
+                ns:PlannerReplan("death")
+            end
         end
-        local e = removed[id] or {}
-        e.t = now or 0
-        removed[id] = e
-        return e
-    end
-    local function JustRemoved(id, now)
-        local e = removed[id]
-        removed[id] = nil
-        if e and now and now >= e.t and now - e.t <= 1 then return e end
-    end
-    -- elite questID -> its quest level, accepted while not in a group: kept per character, so a /reload
-    -- or a new session in between still counts (cleared at hand-in or when the quest leaves the log)
-    local function SoloAt(create)
-        local r = ns.PlannerCharRecord(create)
-        if type(r) ~= "table" then return nil end
-        if type(r.soloAt) ~= "table" then
-            if not create then return nil end
-            r.soloAt = {}
-        end
-        return r.soloAt
-    end
+    end)
     local closes = {}                                -- window-closed event -> the stop kind it ticks (Guide.lua)
     for kind, e in pairs(ns.GUIDE_WINDOW_KINDS or {}) do closes[e] = kind end
     for _, e in ipairs({ "QUEST_ACCEPTED", "QUEST_TURNED_IN", "QUEST_REMOVED", "PLAYER_LEVEL_UP", "HEARTHSTONE_BOUND",
                          "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED",
-                         "TRAINER_SHOW", "TRAINER_CLOSED", "MERCHANT_CLOSED", "MAIL_CLOSED", "PLAYER_MOUNT_DISPLAY_CHANGED", "PLAYER_DEAD",
-                         "PLAYER_FLAGS_CHANGED", "PLAYER_UPDATE_RESTING" }) do pcall(ev.RegisterEvent, ev, e) end
-    ns.FolderLate("planner", "questclock", function() if ns:GuideUnlocked() then ReadAway() end end)   -- (what the login did: the folder loads later)
+                         "TRAINER_CLOSED", "MERCHANT_CLOSED", "MAIL_CLOSED", "PLAYER_DEAD" }) do pcall(ev.RegisterEvent, ev, e) end
     ev:SetScript("OnEvent", ns:Guard("Planner", function(_, event, a, b)
-        if event == "PLAYER_FLAGS_CHANGED" or event == "PLAYER_UPDATE_RESTING" then   -- (away or in town: the quest clock stops)
-            if (event == "PLAYER_FLAGS_CHANGED" and a ~= "player") or not ns:GuideUnlocked() then return end
-            ReadAway()
-            return
-        end
         if event == "PLAYER_REGEN_DISABLED" then fighting = true; return end
         if event == "PLAYER_REGEN_ENABLED" then fighting = false; return end
-        if event == "TRAINER_SHOW" then               -- (a locked guide: nothing is looked up)
-            classTrainer, ridingTrainer = false, false
-            if ns:GuideUnlocked() then classTrainer = IsClassTrainer() == true end
+        if event == "PLAYER_DEAD" then                -- (the second death here: plan again now, once you are back on your feet, not at the next hand-in)
+            -- (a moment later: the main add-on's recorder has written the death down by then, whichever frame hears it first)
+            if ns:GuideUnlocked() and not (C_Timer and C_Timer.After and pcall(C_Timer.After, 0, deathCheck)) then deathCheck() end
             return
         end
-        if event == "TRAINER_CLOSED" then TrainerClosed() end
-        if event == "PLAYER_MOUNT_DISPLAY_CHANGED" then          -- (seen mounted: you have a mount and ride; kept for the character)
-            if ns:GuideUnlocked() and ns.PlannerMountSeen then ns.PlannerMountSeen() end
-            return
-        end
-        if event == "PLAYER_DEAD" then                -- (where you died: a hub that took you twice is left alone for two levels)
-            if ns:GuideUnlocked() then
-                ns.PlannerRecordDeath()
-                -- (the second death here: plan again now, once you are back on your feet, not at the next hand-in)
-                local d = ns.PlannerCharRecord(false)
-                local level = UnitLevel and UnitLevel("player")
-                if type(d) == "table" and type(d.deaths) == "table" and type(level) == "number" and not ns:IsSecret(level) and ns.GuideHere and Following() then
-                    local map, x, y = ns.GuideHere()
-                    if map and x and y and ns.PlannerHubTooHard({ map = map, x = x, y = y }, { deaths = d.deaths, level = level }) then
-                        ns:PlannerReplan("death")
-                    end
-                end
-            end
-            return
-        end
-        local recent = (event == "QUEST_TURNED_IN" and type(a) == "number") and JustRemoved(a, Now()) or nil   -- (removed a moment ago: a hand-in)
-        if (event == "QUEST_ACCEPTED" or event == "QUEST_TURNED_IN" or event == "QUEST_REMOVED") and ns:GuideUnlocked() then
-            local id = (event == "QUEST_ACCEPTED" and type(b) == "number") and b or a
-            if type(id) == "number" then
-                local okG, grouped = pcall(IsInGroup)
-                grouped = not okG or not ns.Is(grouped, false)      -- (hidden or unreadable: counted as grouped)
-                if event == "QUEST_ACCEPTED" then
-                    if ns.PlannerSessionRetaken then ns.PlannerSessionRetaken(id) end   -- (abandoned, then taken again: planned again)
-                    local list = SoloAt(false)
-                    if list then list[id] = nil end
-                    if not grouped then
-                        local okQ, q = pcall(function() return ns.PlannerLogSource().quest(id) end)
-                        if okQ and type(q) == "table" and q.elite == true and type(q.level) == "number" then
-                            list = SoloAt(true)
-                            if list then list[id] = q.level end
-                        end
-                    end
-                elseif event == "QUEST_REMOVED" and not Completed(id) then         -- (abandoned, unless QUEST_TURNED_IN follows at once)
-                    local list = SoloAt(false)
-                    local e = Removed(id, Now())
-                    if list then e.level = list[id]; list[id] = nil end
-                else                                                         -- (handed in: Forever may say so by QUEST_REMOVED first)
-                    local list = SoloAt(false)
-                    local questLevel = list and tonumber(list[id])
-                    if list then list[id] = nil end
-                    if not questLevel and recent then questLevel = tonumber(recent.level) end
-                    local level = UnitLevel and UnitLevel("player")
-                    local class = ns.PlannerClassToken()
-                    if questLevel and not grouped and class and type(level) == "number" and not ns:IsSecret(level) then
-                        ns.PlannerRecordSoloElite(class, questLevel - level)
-                    end
-                end
-            end
+        if event == "QUEST_ACCEPTED" and ns:GuideUnlocked() then
+            local id = (type(b) == "number") and b or a
+            if type(id) == "number" and ns.PlannerSessionRetaken then ns.PlannerSessionRetaken(id) end   -- (abandoned, then taken again: planned again)
         end
         local on, st = Following()
-        if not on then
-            if (event == "QUEST_TURNED_IN" or event == "QUEST_REMOVED") and type(a) == "number" and open[a] then   -- (not followed to the end: no sample)
-                local now = Now()
-                if now then Close(a, now) else open[a], openN, since[a] = nil, openN - 1, nil end
-            end
-            return
-        end
+        if not on then return end
         local plan = type(st.plan) == "table" and st.plan or {}
         if closes[event] then
             -- a stop's window closed: it ticks only while it is the step you are on (visited early, it stays)
@@ -1381,12 +1098,7 @@ do
         -- (an accept does not end a run of hand-ins: a chain's follow-up is offered at the hand-in)
         if event == "QUEST_ACCEPTED" then
             local id = (type(b) == "number") and b or a                -- (the quest id comes second or first, by client)
-            local now = Now()
             if type(id) == "number" then counted[id] = nil end          -- (taken again: a new hand-in to come)
-            if type(id) == "number" and now and not open[id] then
-                Share(now)
-                open[id], openN, since[id] = 0, openN + 1, now
-            end
             -- (a quest taken outside the plan, shared by a party member or picked up on the way: the plan takes it in)
             if type(id) == "number" then
                 local inPlan = false
@@ -1398,13 +1110,7 @@ do
             return
         end
         if event == "QUEST_TURNED_IN" then
-            if type(a) == "number" then
-                local now = Now()
-                local took = now and open[a] and Close(a, now)
-                if not took and recent then took = recent.took end
-                if took then ns.PlannerRecordQuestTime(a, took) end
-                CountHandIn(a, plan, now)
-            end
+            if type(a) == "number" then CountHandIn(a, plan, Now()) end
             ns:PlannerReplan("hand-in")
         elseif event == "HEARTHSTONE_BOUND" then
             local step = type(plan.steps) == "table" and plan.steps[st.at or 1]
@@ -1414,16 +1120,10 @@ do
             ns:PlannerReplan("loading screen")                       -- (every login, /reload and loading screen: a saved plan may be stale; the runner waits for a place and for Questie)
         elseif event == "PLAYER_LEVEL_UP" then
             ns:PlannerReplan("level")
-        else
-            if event == "QUEST_REMOVED" and type(a) == "number" then
-                local now, done = Now(), Completed(a)              -- (handed in, said by QUEST_REMOVED first: a sample and the pace; abandoned: none)
-                if open[a] then
-                    local took
-                    if now then took = Close(a, now) else open[a], openN, since[a] = nil, openN - 1, nil end
-                    if took and done then ns.PlannerRecordQuestTime(a, took) end
-                    if took and not done then Removed(a, now).took = took end    -- (kept a second, for a QUEST_TURNED_IN to come)
-                end
-                if done then CountHandIn(a, plan, now)
+        elseif event == "QUEST_REMOVED" then
+            if type(a) == "number" then
+                local done = Completed(a)
+                if done then CountHandIn(a, plan, Now())
                 elseif ns.PlannerWasFailed and ns.PlannerWasFailed(a) then  -- (a failed quest abandoned: to be taken again, F9)
                     if ns.PlannerFailedReset then ns.PlannerFailedReset(a) end
                 elseif ns.PlannerSessionSkip then ns.PlannerSessionSkip(a, true) end   -- (abandoned: not planned again this session, unless taken again)

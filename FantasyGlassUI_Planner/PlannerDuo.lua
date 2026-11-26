@@ -17,7 +17,8 @@ if type(ns) ~= "table" then return end
 -- and a new AT the unsent AT before it.
 -- The duo lives in memory only: a /reload or logout ends it.
 ------------------------------------------------------------------------------------------
-ns.PLANNER_DUO_PREFIX = "FGUIPlan"
+-- (ns.PLANNER_DUO_PREFIX and ns.PlannerDuoRegister, the prefix's registration, are in the main add-on, PlannerRecorders.lua,
+-- which also hands a friend's ask over to this folder while it is not loaded.)
 local PREFIX, WHISPER = ns.PLANNER_DUO_PREFIX, "WHISPER"
 local MAX_BYTES = 255                -- one message
 local RETRY_AFTER, TRIES = 2, 3      -- a throttled message: again after 2 s, 3 tries in all
@@ -32,6 +33,7 @@ local PIECES = { state = 20, plan = 60 }  -- the most pieces each may come in
 local format, floor, max, min, abs, sqrt = string.format, math.floor, math.max, math.min, math.abs, math.sqrt
 local ipairs, pairs, type, tonumber, tostring = ipairs, pairs, type, tonumber, tostring
 
+local Register                       -- (below: the prefix, and the add-on messages listened to)
 local function Num(v) if not ns:IsSecret(v) and type(v) == "number" then return v end end
 local function Str(v) if not ns:IsSecret(v) and type(v) == "string" then return v end end
 local function Word(v) v = Str(v); return v and v:match("^%a+$") or nil end
@@ -232,7 +234,7 @@ function ns:PlannerDuoStart(name)
     if me and Same(me, partner) then ns:Print("That is you."); return false end
     local level = MyLevel()
     if not level then ns:Print("Could not read your level: try again out of combat."); return false end
-    ns.PlannerDuoRegister()
+    Register()
     local now = Now() or 0
     local session = format("%06x", math.random(0, 16777215))
     ns.plannerDuo = { role = "lead", partner = partner, to = to, session = session, state = nil, heard = now, asked = now }
@@ -865,20 +867,17 @@ end
 ns.PlannerDuoTick = Tick
 ns:Every(0.25, "Planner duo", Tick)
 
--- The prefix, registered once, when the guide is unlocked; the add-on messages listened to from then on.
-local registered = false
-function ns.PlannerDuoRegister()
+-- The prefix (registered by the main add-on), and the add-on messages listened to from then on.
+Register = function()
     if not ns:GuideUnlocked() then return end
     if Listen then Listen(true) end
-    if registered then return end
-    local chat = C_ChatInfo
-    if type(chat) == "table" and chat.RegisterAddonMessagePrefix then registered = pcall(chat.RegisterAddonMessagePrefix, PREFIX) end
+    ns.PlannerDuoRegister()
 end
 
 do
     local ev = CreateFrame("Frame")
     pcall(ev.RegisterEvent, ev, "PLAYER_REGEN_ENABLED")
-    ns.FolderLate("planner", "duoPrefix", function() ns.PlannerDuoRegister() end)   -- (what the login did: the folder loads later)
+    ns.FolderLate("planner", "duoPrefix", function() Register() end)   -- (what the login did: the folder loads later)
     local listening = false
     Listen = function(on)                                -- (a locked player does not even hear add-on messages)
         on = on and true or false
@@ -904,10 +903,10 @@ do
     ns.PlannerDuoEvent = function(...) return OnEvent(ev, ...) end    -- (the same, called directly: the tests)
 end
 
--- Unlocking registers the prefix; locking ends the duo at once, sending nothing (and the next unlock registers
--- the prefix again: the game takes a second registration of the same prefix without harm).
+-- Locking ends the duo at once, sending nothing (the main add-on registers the prefix again at the next unlock;
+-- the game takes a second registration of the same prefix without harm).
 ns.GuideRegisterLock("duo", function(unlocked)
-    if unlocked and ns:GuideUnlocked() then ns.PlannerDuoRegister() else registered = false; Reset() end
+    if not (unlocked and ns:GuideUnlocked()) then Reset() end
 end)
 
 ns.GuideRegisterAction("panel", "duo", function() return ns.plannerDuo and "Stop planning together" or "Plan with a friend" end, function()
