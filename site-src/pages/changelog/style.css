@@ -26,3 +26,8 @@ nav.jump a.gone { opacity: .45; }
 .none { color: var(--dim); text-align: center; padding: 30px 0; }
 .top { text-align: center; margin-top: 30px; }
 @media (max-width: 560px) { .ver { padding: 18px 16px 8px; } .ver h2 { font-size: 1.6rem; } }
+.soon { font: 700 .75rem/1 var(--body); letter-spacing: .08em; text-transform: uppercase; padding: 5px 9px; border: 1px dashed var(--gold); color: var(--gold); }
+.ver.pending { --c: color-mix(in srgb, var(--gold) 40%, var(--line)); border-style: dashed; }
+.follow { margin: 10px 0 0; padding: 22px 26px 12px; }
+.follow h2 { font-size: 1.5rem; margin-bottom: 10px; }
+.follow p { color: var(--dim); }

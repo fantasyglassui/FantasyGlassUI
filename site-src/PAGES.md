@@ -6,7 +6,7 @@ belongs to the team that fills it. **One page is one folder, and nobody edits an
 
     python3 site-src/make_i18n.py     # the words in 9 languages (site/i18n/, from site_tr.py and the add-on)
     python3 site-src/build_site.py    # every page in every language into docs/
-    python3 tests/sitecheck.py        # every page, its cards and the sitemap; the plan page hidden (on a committed tree)
+    python3 tests/sitecheck.py        # every page, its cards and the sitemap, the plan page and the feed (on a committed tree)
     python3 tests/sitebrowser.py      # every page in Chromium at 390 and 1280 px: contrast, focus, width, old links
 
 ## The pages
@@ -21,6 +21,9 @@ belongs to the team that fills it. **One page is one folder, and nobody edits an
 | Changelog | `pages/changelog/` | `/changelog/` | `/de/changelog/` | W3 |
 | Roadmap | `pages/roadmap/` | `/roadmap/` | `/de/roadmap/` | W3 |
 | Accessibility | `pages/accessibility/` | `/accessibility/` | `/de/accessibility/` | W3 |
+| How-to pages (5) | `pages/guide-and-gold/<name>/` | `/guide-and-gold/<name>/` | `/de/guide-and-gold/<name>/` | W3 |
+| Press kit | `pages/press/` | `/press/` | `/de/press/` | W3 |
+| Plan page | `plan/` (`plan_page.py`) | `/plan/` (every language inside it) | | W3 |
 
 The languages are en, de, fr, es, ru, pt, it, ko and zh (`/de/`, `/fr/` ... `/zh/`). The list of pages, their
 names and descriptions are in `lang_meta.py` (`PAGES`); the top row shows them in that order (Accessibility is in
@@ -60,7 +63,12 @@ time and the files are served at `/video/`:
 
 - Changelog: built from the repository's `CHANGELOG.md` by `pages/changelog/body.py` (anchors `#v12-4-1` as before).
 - Accessibility: `pages/accessibility/body.py`, the text of the old page (anchors `#seeing-color` and so on as before).
-- Guide and Gold, Roadmap: a placeholder (the title, the description and "More here soon.").
+- Guide and Gold: the planner, Questie, gold, the hints, links to the five how-to pages and to the plan page (/plan/).
+- Roadmap: drawn from `pages/roadmap/roadmap.json`; change an idea's status there (no dates).
+- Changelog: also writes `/feed.xml` (RSS, linked in every head and footer). Until CHANGELOG.md has a `## 13.0.x`
+  heading, a marked 13.0 stand-in ("Coming soon") stands at the top and stays out of the feed.
+- A page can sit in a sub-folder (`pages/guide-and-gold/duo/` is `/guide-and-gold/duo/`); a data file with
+  `"_translate": ["title", "text"]` has those fields listed for translation by `keys_all.py`.
 
 Old links keep working: on Home, `/#features`, `/#themes`, `/#maker`, `/#commands`, `/#faq` and `/#start` (and the
 same under `/de/` and so on), `/?theme=...` and `/?code=...#maker` open the page that now has that part (a small

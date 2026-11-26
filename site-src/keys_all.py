@@ -7,8 +7,19 @@ keys = []
 def add(k):
     k = re.sub(r'\s+', ' ', k).strip()
     if k and k not in keys: keys.append(k)
-for f in sorted(glob.glob(S + 'pages/*/body.html') + glob.glob(S + 'pages/*/body.py')):
+for f in sorted(glob.glob(S + 'pages/**/body.html', recursive=True) + glob.glob(S + 'pages/**/body.py', recursive=True)):
     for k in re.findall(r'\[\[(.+?)\]\]', open(f, encoding='utf-8').read(), re.S): add(k)
+# a page's data file (pages/<slug>/*.json) names the fields its body.py translates: {"_translate": ["title", "text"], ...}
+def data_words(v, fields):
+    if isinstance(v, dict):
+        for k, x in v.items():
+            if k in fields and isinstance(x, str): add(x)
+            else: data_words(x, fields)
+    elif isinstance(v, list):
+        for x in v: data_words(x, fields)
+for f in sorted(glob.glob(S + 'pages/**/*.json', recursive=True)):
+    d = json.load(open(f, encoding='utf-8'))
+    if isinstance(d, dict) and isinstance(d.get('_translate'), list): data_words(d, set(d['_translate']))
 b = open(S + 'build_site.py', encoding='utf-8').read()
 for k in re.findall(r'\bt\("((?:[^"\\]|\\.)*)"\)|\bT\("((?:[^"\\]|\\.)*)", code\)|\bF\("((?:[^"\\]|\\.)*)", code', b):
     add(next(x for x in k if x))

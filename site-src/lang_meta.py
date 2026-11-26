@@ -28,6 +28,13 @@ PAGES = [
     {"slug": "changelog", "nav": "Changelog", "desc": "Every release of Fantasy Glass UI, the WoW Forever add-on: what is new, what was fixed and what changed."},
     {"slug": "roadmap", "nav": "Roadmap", "desc": "What is coming to Fantasy Glass UI after 13.0, and what is being thought about."},
     {"slug": "accessibility", "nav": "Accessibility", "top": False, "foot": True, "desc": "What Fantasy Glass UI, the WoW Forever add-on, does for color blindness, low vision, blind players, deaf players, photosensitivity, one-handed play and more."},
+    # (W3: the how-to pages of Guide and Gold, at /guide-and-gold/<name>/, and the press kit)
+    {"slug": "guide-and-gold/first-route", "nav": "Your first route", "top": False, "desc": "Open the route planner and follow your first planned route of quests, step by step."},
+    {"slug": "guide-and-gold/duo", "nav": "Planning with a friend", "top": False, "desc": "Plan one route for two: the same quests in the same order, for you and a friend."},
+    {"slug": "guide-and-gold/phone", "nav": "The plan page on a phone", "top": False, "desc": "Copy a plan code in the game and follow the route on your phone, ticking off the steps."},
+    {"slug": "guide-and-gold/first-scan", "nav": "Your first price scan", "top": False, "desc": "Read every auction at once with Scan prices, so tooltips, sell hints and gold ideas have prices to go on."},
+    {"slug": "guide-and-gold/sell-hints", "nav": "Reading the sell hints", "top": False, "desc": "What Sell now, Hold and Vendor it mean in tooltips and on the bags, and when they show."},
+    {"slug": "press", "nav": "Press kit", "top": False, "foot": True, "desc": "The Fantasy Glass UI logo, screenshots and a short description in nine languages, for writing about the add-on."},
 ]
 LANG_NAMES = {"en": "English", "de": "Deutsch", "fr": "Français", "es": "Español", "ru": "Русский", "pt": "Português", "it": "Italiano", "ko": "한국어", "zh": "中文"}
 # the structured data on Home (search engines read it); the theme count is filled in by the build

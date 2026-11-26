@@ -6,7 +6,7 @@
 #
 #   python3 site-src/build_site.py              -> docs/
 #   python3 site-src/build_site.py --out DIR    -> DIR (docs and site-src/site are left alone)
-#   python3 site-src/build_site.py --plan       -> also the plan page (plan_page.py); nothing links to it
+#   (the plan page, /plan/, is built every time by plan_page.py; --plan is still accepted and changes nothing)
 import glob, gzip, hashlib, html, importlib.util, json, os, re, shutil, subprocess, sys
 
 S = os.path.dirname(os.path.abspath(__file__))
@@ -20,7 +20,6 @@ if '--out' in _args:
     _i = _args.index('--out')
     if _i + 1 >= len(_args) or _args[_i + 1].startswith('--'): sys.exit('build_site.py: --out needs a folder: --out DIR')
     OUT = os.path.abspath(_args[_i + 1])
-WITH_PLAN = '--plan' in _args
 R = OUT or os.path.normpath(S + '/../docs')
 
 from lang_meta import META, OG_LOCALE, PAGES, LANG_NAMES, LD
@@ -267,6 +266,7 @@ def footer(slug, code):
         <li><a href="{GITHUB}/wiki">Wiki</a></li>
         <li><a href="{GITHUB}/issues/new/choose">{t("Report a bug")}</a></li>
 {foot_pages}
+        <li><a href="/feed.xml" type="application/rss+xml">RSS</a></li>
       </ul>
     </div>
     <div class="foot-row">
@@ -328,6 +328,7 @@ def head(slug, code, opts, css_url, page_css):
     return (f'<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
             f'<title>{e(title)}</title>\n<meta name="description" content="{e(desc)}">\n{robots}<link rel="canonical" href="{url}">\n{alts}'
             f'<link rel="icon" type="image/png" href="/icon.png">\n'
+            f'<link rel="alternate" type="application/rss+xml" title="Fantasy Glass UI releases" href="/feed.xml">\n'
             f'<meta property="og:type" content="website">\n<meta property="og:site_name" content="Fantasy Glass UI">\n'
             f'<meta property="og:locale" content="{OG_LOCALE[code]}">\n'
             + ''.join(f'<meta property="og:locale:alternate" content="{OG_LOCALE[c]}">\n' for c in CODES if c != code) +
@@ -406,6 +407,8 @@ for p in PAGES:
         xs += [f'    <xhtml:link rel="alternate" hreflang="{HREFLANG.get(o, o)}" href="{SITE_URL.rstrip("/") + page_url(p["slug"], o)}"/>' for o in CODES]
         xs.append(f'    <xhtml:link rel="alternate" hreflang="x-default" href="{SITE_URL.rstrip("/") + page_url(p["slug"], "en")}"/>')
         xs.append('  </url>')
+# the plan page: one address, every language inside it
+xs.append(f'  <url><loc>{SITE_URL}plan/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>')
 xs.append('</urlset>')
 open(R + '/sitemap.xml', 'w').write('\n'.join(xs) + '\n')
 
@@ -419,7 +422,6 @@ for f in glob.glob(D + '/i18n/*.json'): shutil.copy(f, R + '/i18n/')
 if OUT:                                   # (a build elsewhere carries the files docs/ keeps by hand)
     for f in ['404.html', 'CNAME', 'robots.txt', 'og.jpg', 'og.png']:
         if os.path.exists(REPO + '/docs/' + f): shutil.copy(REPO + '/docs/' + f, R)
-if WITH_PLAN:
-    import plan_page
-    plan_page.build(R)
+import plan_page                          # the plan page, /plan/: linked from Guide and Gold, in the sitemap
+plan_page.build(R)
 print(f'built {len(written)} pages ({len(PAGES)} in {len(CODES)} languages)')

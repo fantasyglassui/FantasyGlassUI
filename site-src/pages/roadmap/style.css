@@ -1,0 +1,22 @@
+/* Roadmap: the ideas after 13.0, by group, each with its status. */
+.page-head .nodates { margin: 14px 0 0; max-width: 70ch; }
+.rm { padding-block: 26px 8px; }
+ul.legend { list-style: none; margin: 0 0 22px; padding: 0; display: flex; flex-wrap: wrap; gap: 10px 28px; color: var(--dim); font-size: .95rem; }
+ul.legend li { display: flex; align-items: center; gap: 10px; }
+.tag { display: inline-flex; align-items: center; min-height: 24px; padding: 3px 9px; font: 700 .74rem/1.1 var(--body); letter-spacing: .07em; text-transform: uppercase; white-space: nowrap; border: 1px solid currentColor; }
+.tag.next { background: var(--gold); border-color: var(--gold); color: var(--on-gold); }
+.tag.planned { color: var(--gold); }
+.tag.thinking { color: var(--dim); border-style: dashed; }
+.rm-group { padding-block: 30px 6px; border-top: 1px solid var(--rule); }
+.rm-group[hidden] { display: none; }
+.rm-group header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 18px; margin-bottom: 18px; }
+.rm-group header p { margin: 0; }
+ul.ideas { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr)); gap: 16px; }
+.idea { padding: 18px 20px 16px; }
+.idea[hidden] { display: none; }
+.idea h3 { font-size: 1.2rem; margin: 12px 0 6px; }
+.idea p { margin: 0; font-size: .97rem; }
+.idea:has(.tag.next) { --c: color-mix(in srgb, var(--gold) 60%, var(--line)); }
+.welcome { margin-top: 34px; padding: 26px 28px; }
+.welcome h2 { margin-bottom: 8px; }
+.welcome p { margin: 0; font-size: 1.05rem; }

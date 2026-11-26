@@ -5,8 +5,9 @@ The site is built into a temporary folder and served from this computer. Every p
 in German, is checked for: a skip link that shows when it gets focus; a header, navigation, main part and footer, and
 one h1; a visible focus ring; AA contrast for every piece of text on a plain background (4.5:1, or 3:1 for large text;
 text over a screenshot is left to the eye); no page wider than the screen; no script from another site; and no
-script error. The other languages are checked at 390 px for width. --shots DIR saves Home and Get started, dark and
-light, at both widths. --quick checks English only. Needs Python's playwright with its Chromium; when that is
+script error. The other languages are checked at 390 px for width. The plan page (/plan/) is checked at 390 px: a
+plan code pasted shows its steps, in German too, with no script error and nothing wider than the screen. --shots DIR
+saves Home and Get started, dark and light, at both widths. --quick checks English only. Needs Python's playwright with its Chromium; when that is
 missing it says so and exits 0 (the other site checks still run)."""
 import functools
 import http.server
@@ -203,6 +204,25 @@ def main():
             page.goto(base + "/changelog/")
             if page.evaluate("document.getElementById('unwear').hidden"): problems.append("a worn theme is not kept on the other pages")
             page.click("#unwear")
+            ctx.close()
+            # the plan page on a phone: a code pasted draws its steps; the page's own language switch works
+            code = next(l.split("\t")[5] for l in open(os.path.join(ROOT, "tests", "plan_codes.txt"), encoding="utf-8").read().splitlines() if l.startswith("ok\t"))
+            ctx = browser.new_context(viewport={"width": 390, "height": 800}, locale="en-US")
+            ctx.route("**/*", lambda route: route.abort() if not route.request.url.startswith(base) else route.continue_())
+            page = ctx.new_page()
+            errors = []
+            page.on("pageerror", lambda e: errors.append(str(e)))
+            page.goto(base + "/plan/", wait_until="load")
+            page.fill("#code", code)
+            page.wait_for_timeout(200)
+            got = page.evaluate("[document.querySelectorAll('#steps li').length, document.getElementById('plan').hidden, document.documentElement.scrollWidth > document.documentElement.clientWidth + 1, document.getElementById('howto').textContent]")
+            if got[0] < 1 or got[1] or got[2] or not got[3]:
+                problems.append(f"/plan/ 390px: steps {got[0]}, hidden {got[1]}, too wide {got[2]}, how-to link {got[3]!r}")
+            page.select_option("#lang", "de")
+            if page.evaluate("document.getElementById('title').textContent") in ("", "Quest guide"):
+                problems.append("/plan/: the page's language switch does nothing")
+            problems += [f"/plan/: script error: {e}" for e in errors]
+            checked += 1
             ctx.close()
             browser.close()
         httpd.shutdown()

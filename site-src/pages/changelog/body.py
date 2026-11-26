@@ -1,7 +1,25 @@
-# The Changelog page's body (W3 adds 13.0 by adding it to CHANGELOG.md): every release in the repository's
-# CHANGELOG.md, newest first, with a search. The changes themselves are in English in every language.
-# The build calls body(ctx); see site-src/PAGES.md.
-import html, re
+# The Changelog page's body (W3): every release in the repository's CHANGELOG.md, newest first, with a search, and
+# the feed of releases (/feed.xml, written by extra() below). The changes themselves are in English in every language.
+# The build calls body(ctx) and extra(out_dir, values); see site-src/PAGES.md.
+import datetime, email.utils, html, os, re, subprocess, time
+
+REPO = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..'))
+SITE_URL = 'https://fantasyglassui.com'
+
+# ---- THE 13.0 ENTRY, FILLED FROM CHANGELOG.md ------------------------------------------------------------------
+# 13.0's notes are written into CHANGELOG.md with the release (under "## 13.0.0"). Until CHANGELOG.md has a 13.0
+# heading, the page shows this marked stand-in at the top, badged "Coming", with no "Current" badge and no place in the
+# feed. Once CHANGELOG.md has it, the stand-in goes by itself and the real notes are drawn like every other release.
+PENDING = {'v': '13.0.0', 'lines': [
+    '**Guide and Gold**',
+    '- A route planner that works out your quests as you level, and Ways to make gold, which lists what is worth your time.',
+    '- The full notes come with the release.',
+]}
+
+
+def has_release(versions, v):
+    major = '.'.join(v.split('.')[:2])                    # (13.0.0, 13.0 or 13.0.1 all count as 13.0)
+    return any(x['v'] == major or x['v'].startswith(major + '.') for x in versions)
 
 
 def inline(t):
@@ -49,8 +67,9 @@ def _safe(t):
     return t.replace('[', '&#91;').replace(']', '&#93;').replace('{', '&#123;').replace('}', '&#125;')
 
 
-def body(ctx):
-    lines = open(ctx.repo + '/CHANGELOG.md', encoding='utf-8').read().split('\n')
+def read_changelog(repo):
+    """The intro lines and the releases [{v, lines}] of repo/CHANGELOG.md, newest first."""
+    lines = open(repo + '/CHANGELOG.md', encoding='utf-8').read().split('\n')
     intro, versions, cur = [], [], None
     for ln in lines:
         if ln.startswith('# '): continue
@@ -58,14 +77,30 @@ def body(ctx):
         if m:
             cur = {'v': m.group(1), 'lines': []}; versions.append(cur); continue
         (cur['lines'] if cur else intro).append(ln)
-    anchor = lambda v: 'v' + v.replace('.', '-')
+    return intro, versions
+
+
+def anchor(v): return 'v' + v.replace('.', '-')
+
+
+FOLLOW = ('<aside class="follow card" aria-labelledby="h-follow"><h2 id="h-follow">[[Hear about new versions]]</h2>'
+          '<p>[[New versions come out on CurseForge, and the <a href="/feed.xml">release feed</a> lists each one for any feed reader.]]</p>'
+          '<p>[[For big updates only, by email: write to <a href="mailto:email-forwarding@fantasyglassui.com?subject=Big%20updates">email-forwarding@fantasyglassui.com</a> with the subject “Big updates”. Your address is used for nothing else, and you can write again to stop.]]</p></aside>')
+
+
+def body(ctx):
+    intro, versions = read_changelog(ctx.repo)
+    pending = not has_release(versions, PENDING['v'])
+    if pending: versions = [dict(PENDING, pending=True)] + versions
     en = '' if ctx.lang == 'en' else ' lang="en"'           # (the changes are written in English)
     chips = ''.join(f'<a href="#{anchor(x["v"])}">{x["v"]}</a>' for x in versions)
     secs = []
     for i, x in enumerate(versions):
-        badge = ' <span class="now">[[Current]]</span>' if i == 0 else ''
+        badge = ' <span class="now">[[Current]]</span>' if i == (1 if pending else 0) else ''
+        if x.get('pending'): badge = ' <span class="soon">[[Coming soon]]</span>'
         first = ' <span class="first">[[First release]]</span>' if i == len(versions) - 1 else ''
-        secs.append(f'<section class="ver card" id="{anchor(x["v"])}" data-v="{x["v"]}" aria-labelledby="h-{anchor(x["v"])}">\n'
+        cls = 'ver card pending' if x.get('pending') else 'ver card'
+        secs.append(f'<section class="{cls}" id="{anchor(x["v"])}" data-v="{x["v"]}" aria-labelledby="h-{anchor(x["v"])}">\n'
                     f'<h2 id="h-{anchor(x["v"])}"><a href="#{anchor(x["v"])}">{x["v"]}</a>{badge}{first}</h2>\n<div{en}>{_safe(_body(x["lines"]))}</div>\n</section>')
     note = '' if ctx.lang == 'en' else '<p class="faint">[[This page is in English for now.]]</p>'
     return f'''<!-- Changelog (W3). Built from CHANGELOG.md by pages/changelog/body.py; see site-src/PAGES.md. -->
@@ -82,6 +117,50 @@ def body(ctx):
 {chr(10).join(secs)}
   </div>
   <p class="none" id="none" role="status" hidden>[[Nothing in the changelog matches that.]]</p>
+  @@FOLLOW@@
   <p class="top"><a href="#main">[[Back to the top]]</a></p>
 </div>
-'''
+'''.replace('@@FOLLOW@@', FOLLOW)
+
+
+# ---- the feed of releases: /feed.xml (RSS 2.0), the newest 20, each linking its place on the Changelog --------------
+def release_days(repo):
+    """{version: 'YYYY-MM-DD'}: the day each "## <version>" line came into CHANGELOG.md (git blame); {} without git."""
+    try:
+        r = subprocess.run(['git', 'blame', '--line-porcelain', '--', 'CHANGELOG.md'], cwd=repo, capture_output=True, text=True, timeout=60)
+    except Exception:
+        return {}
+    days, when = {}, None
+    for ln in r.stdout.split('\n'):
+        if ln.startswith('committer-time '): when = int(ln.split()[1])
+        elif ln.startswith('\t'):
+            m = re.match(r'^## (\S+)\s*$', ln[1:])
+            if m and when and m.group(1) not in days:
+                days[m.group(1)] = time.strftime('%Y-%m-%d', time.gmtime(when))
+    return days
+
+
+def feed(repo, limit=20):
+    _, versions = read_changelog(repo)
+    days = release_days(repo)
+    items = []
+    for x in versions[:limit]:
+        link = f'{SITE_URL}/changelog/#{anchor(x["v"])}'
+        day = days.get(x['v'])
+        date = ''
+        if day:
+            d = datetime.datetime.strptime(day, '%Y-%m-%d').replace(tzinfo=datetime.timezone.utc)
+            date = f'<pubDate>{email.utils.format_datetime(d)}</pubDate>'
+        desc = html.escape(_body(x['lines']), quote=False)
+        items.append(f'<item><title>Fantasy Glass UI {html.escape(x["v"])}</title><link>{link}</link>'
+                     f'<guid isPermaLink="true">{link}</guid>{date}<description>{desc}</description></item>')
+    return ('<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">\n<channel>\n'
+            '<title>Fantasy Glass UI releases</title>\n'
+            f'<link>{SITE_URL}/changelog/</link>\n'
+            '<description>Every release of Fantasy Glass UI, the WoW Forever add-on.</description>\n<language>en</language>\n'
+            f'<atom:link href="{SITE_URL}/feed.xml" rel="self" type="application/rss+xml"/>\n'
+            + '\n'.join(items) + '\n</channel>\n</rss>\n')
+
+
+def extra(out_dir, values):
+    open(os.path.join(out_dir, 'feed.xml'), 'w', encoding='utf-8').write(feed(REPO))

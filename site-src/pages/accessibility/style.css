@@ -15,3 +15,5 @@ nav.jump a:hover { border-color: var(--frost); }
 .honest { border-left: 3px solid var(--gold); padding: 4px 0 4px 18px; margin: 34px 0 0; color: var(--dim); }
 .honest h2 { font-size: 1.5rem; margin-bottom: 8px; }
 @media (max-width: 560px) { .need { padding: 18px 16px 6px; } }
+.need.new { --c: color-mix(in srgb, var(--gold) 55%, var(--line)); }
+.need li code { font-size: .88em; }

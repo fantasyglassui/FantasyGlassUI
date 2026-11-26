@@ -1,14 +1,16 @@
-"""The website's pages, and the plan page that is built only on request and never shows up on the public site.
-usage: python3 tests/sitecheck.py   ->   "site: 72 pages in 9 languages; plan page hidden"   (exit 0)
+"""The website's pages, the plan page and the feed of releases.
+usage: python3 tests/sitecheck.py   ->   "site: 126 pages in 9 languages; plan page published; feed of 20 releases"   (exit 0)
 
-Builds the site twice into temporary folders (a plain build, and one with --plan) and checks:
+Builds the site into a temporary folder and checks:
 - every page in site-src/lang_meta.py's PAGES exists in all 9 languages at its address (English at /<slug>/, the
   others at /<code>/<slug>/), in its own language, with its own title, description, canonical address, link
   preview (OpenGraph and Twitter), all 9 languages as alternates, a skip link, the header and footer (with the
   contact address and the status line), and no script or tracker from another site;
-- the sitemap lists every page in every language, and nothing else;
-- the plain build knows nothing of the plan page, the two builds differ only by that page, and the page carries
-  no trace of the site."""
+- the sitemap lists every page in every language and the plan page, and nothing else;
+- the plan page (/plan/) is built, can be found (no noindex, in the sitemap, linked from Guide and Gold in every
+  language), and makes no request to any other site;
+- the feed of releases (/feed.xml) is RSS with every release's link pointing at its place on the Changelog, and
+  every page names it in its head and links it in its footer."""
 import html
 import json
 import os
@@ -16,13 +18,13 @@ import re
 import subprocess
 import sys
 import tempfile
+import xml.etree.ElementTree as ET
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "site-src"))
 from lang_meta import PAGES  # noqa: E402
 BUILD = os.path.join(ROOT, "site-src", "build_site.py")
 LANGS = ["en", "de", "fr", "es", "ru", "pt", "it", "ko", "zh"]
-WORD = "plan" + "ner"            # (never spelled out in a source file)
 
 
 def fail(msg):
@@ -56,10 +58,9 @@ def status():
 
 before = status()
 with tempfile.TemporaryDirectory() as tmp:
-    A, B = os.path.join(tmp, "A"), os.path.join(tmp, "B")
+    A = os.path.join(tmp, "A")
     build(A)
-    build(B, "--plan")
-    fa, fb = files(A), files(B)
+    fa = files(A)
 
     # ---- the pages
     SITE = "https://fantasyglassui.com"
@@ -94,7 +95,8 @@ with tempfile.TemporaryDirectory() as tmp:
             if any(u != SITE + addr(pg["slug"], {"zh-Hans": "zh"}.get(h, "en" if h == "x-default" else h)) for h, u in alts):
                 fail(where + "an alternate points at another page")
             for need in ('<a class="skip" href="#main">', '<header class="site-head">', '<main id="main"', '<footer class="site-foot">',
-                         'mailto:email-forwarding@fantasyglassui.com', 'class="status"', 'aria-current="page"' if pg.get("top", True) else "<nav"):
+                         'mailto:email-forwarding@fantasyglassui.com', 'class="status"', 'aria-current="page"' if pg.get("top", True) else "<nav",
+                         '<link rel="alternate" type="application/rss+xml" title="Fantasy Glass UI releases" href="/feed.xml">', '<a href="/feed.xml"'):
                 if need not in t:
                     fail(where + "lacks " + need)
             for src in re.findall(r'<script[^>]* src="([^"]+)"', t):
@@ -108,7 +110,7 @@ with tempfile.TemporaryDirectory() as tmp:
             fail(slug + ": the languages share one description (" + str(sorted(ts)) + ")")
     sm = text(fa["sitemap.xml"])
     locs = re.findall(r"<loc>([^<]+)</loc>", sm)
-    want = [SITE + addr(pg["slug"], c) for pg in PAGES for c in LANGS]
+    want = [SITE + addr(pg["slug"], c) for pg in PAGES for c in LANGS] + [SITE + "/plan/"]
     if sorted(locs) != sorted(want):
         fail("the sitemap lists " + str(sorted(set(locs) ^ set(want))[:6]))
     for name, p in fa.items():
@@ -119,61 +121,47 @@ with tempfile.TemporaryDirectory() as tmp:
     for phrase, tr in words.items():
         if sorted(tr) != sorted(LANGS) or any(not isinstance(v, str) or not v.strip() for v in tr.values()):
             fail("words.json: all 9 languages for " + phrase)
-    # a plain build: no plan folder, no code header, no link to it, none of the page's own words
-    if any(n.startswith("plan/") for n in fa):
-        fail("a plain build has a plan/ folder")
-    # The scan is of whole English phrases of words.json. Three are single everyday words that the public site already uses
-    # for its own reasons (so they prove nothing about the page); every other phrase must be absent from a plain build.
-    COMMON = {"Time", "Levels", "Language"}
-    english = [tr["en"] for tr in words.values() if tr["en"] not in COMMON]
-    for name, p in fa.items():
-        t = text(p)
-        for bad in ["SUIP1", "/plan/"] + english:
-            if bad in t:
-                fail("a plain build's " + name + " contains " + repr(bad))
-    # the docs folder's own files (the i18n tables among them) are checked the same way
-    docs = files(os.path.join(ROOT, "docs"))
-    for name, p in docs.items():
-        if name.lower().endswith((".webp", ".png", ".jpg", ".ico")):
-            continue
-        t = text(p)
-        for bad in ["SUIP1", "/plan/"] + english:
-            if bad in t:
-                fail("docs/" + name + " contains " + repr(bad))
-    # the two builds differ by the page alone
-    if sorted(set(fb) - set(fa)) != ["plan/index.html"] or set(fa) - set(fb):
-        fail("the --plan build adds only plan/index.html: " + str(sorted(set(fb) ^ set(fa))))
-    for name in fa:
-        if open(fa[name], "rb").read() != open(fb[name], "rb").read():
-            fail(name + " differs between the builds")
-    # the page
-    page = text(fb["plan/index.html"])
-    if not re.search(r'<meta name="robots" content="noindex, nofollow">', page):
-        fail("the page has no noindex meta")
-    for bad in ["ld+json", "hreflang", "canonical", "goatcounter", "zgo.at", "<script src", "<link", "sendBeacon", "fetch(", "XMLHttpRequest", "WebSocket"]:
+
+    # ---- the plan page: built, found, and private
+    if "plan/index.html" not in fa:
+        fail("no plan page (plan/index.html)")
+    page = text(fa["plan/index.html"])
+    if "noindex" in page:
+        fail("the plan page is hidden from search engines")
+    for bad in ["ld+json", "goatcounter", "zgo.at", "<script src", "<link", "sendBeacon", "fetch(", "XMLHttpRequest", "WebSocket"]:
         if bad in page:
-            fail("the page contains " + bad)
-    if "https://" in page.replace("fantasyglassui.com", ""):
-        fail("the page names an address")
-    # nothing links to it, and nothing lists it
-    for name, p in fb.items():
-        if name == "plan/index.html":
-            continue
-        t = text(p)
-        if re.search(r'["\'(=]/?plan/?["\')> ]|/plan/', t) and name.endswith((".html", ".xml", ".txt")):
-            fail(name + " links to the page")
-    for name in ("sitemap.xml",):
-        if "plan" in text(fb[name]):
-            fail(name + " lists the page")
+            fail("the plan page contains " + bad)
+    if "https://" in page.replace("fantasyglassui.com", "") or "http://" in page:
+        fail("the plan page names another site")
+    if '<meta name="referrer" content="no-referrer">' not in page:
+        fail("the plan page sends a referrer")
+    for c in LANGS:
+        g = text(fa[addr("guide-and-gold", c).lstrip("/") + "index.html"])
+        if 'href="/plan/"' not in g:
+            fail(addr("guide-and-gold", c) + " does not link the plan page")
     robots = os.path.join(ROOT, "docs", "robots.txt")
     if os.path.exists(robots) and "plan" in text(robots):
-        fail("robots.txt mentions the page")
-# the page's own source never says the other word
-for name, p in files(os.path.join(ROOT, "site-src", "plan")).items():
-    if WORD in text(p).lower():
-        fail("site-src/plan/" + name + " says " + WORD)
-if WORD in text(os.path.join(ROOT, "site-src", "plan_page.py")).lower():
-    fail("plan_page.py says " + WORD)
+        fail("robots.txt mentions the plan page")
+
+    # ---- the feed of releases
+    if "feed.xml" not in fa:
+        fail("no feed.xml")
+    try:
+        rss = ET.parse(fa["feed.xml"]).getroot()
+    except ET.ParseError as e:
+        fail("feed.xml is not XML: " + str(e))
+    items = rss.findall("./channel/item")
+    if rss.tag != "rss" or not items or rss.find("./channel/title") is None:
+        fail("feed.xml is not an RSS feed with releases")
+    log = text(fa["changelog/index.html"])
+    for it in items:
+        link = it.findtext("link") or ""
+        m = re.fullmatch(re.escape(SITE) + r"/changelog/#(v[\w-]+)", link)
+        if not m or f'id="{m.group(1)}"' not in log or it.findtext("guid") != link or not it.findtext("title"):
+            fail("feed.xml: an item does not point at its release on the Changelog: " + link)
+    pend = re.search(r'class="ver card pending" id="(v[\w-]+)"', log)       # (the 13.0 stand-in, until CHANGELOG.md has 13.0)
+    if pend and any((it.findtext("link") or "").endswith("#" + pend.group(1)) for it in items):
+        fail("feed.xml lists a release that is not out yet")
 if status() != before or before:
     fail("docs or site-src/site changed: " + (status() or before))
-print("site: %d pages in %d languages; plan page hidden" % (len(PAGES) * len(LANGS), len(LANGS)))
+print("site: %d pages in %d languages; plan page published; feed of %d releases" % (len(PAGES) * len(LANGS), len(LANGS), len(items)))
