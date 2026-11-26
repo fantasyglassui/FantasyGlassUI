@@ -1426,16 +1426,28 @@ function ns:GuideNextButton()
     return ns:GuideSkip(false)
 end
 
--- Key bindings (Bindings.xml): next step (tick it off, as the panel's ">"), skip step (ns:GuideSkipStep: passed over,
--- not done), refresh the route (plan again, as the panel's button). Each does
--- nothing while the guide is locked or off, and nothing in combat. The names stay plain ("Guide: ...").
-BINDING_NAME_FANTASYGLASSUI_GUIDENEXT = "Guide: next step"
-BINDING_NAME_FANTASYGLASSUI_GUIDESKIP = "Guide: skip step"
-BINDING_NAME_FANTASYGLASSUI_GUIDEAGAIN = "Guide: refresh the route"
-FantasyGlassUI_GuideBinding = ns:Guard("Guide keys", function(which)
+-- Key bindings (Bindings.xml): next step (tick it off), skip step (ns:GuideSkipStep: passed over, not done), plan
+-- again (as the panel's button). Each does nothing while the guide is locked or off, and nothing in combat. Their
+-- tokens in Bindings.xml are neutral (FANTASYGLASSUI_EXTRA1 to 3), and so are their names in the key bindings window
+-- while the guide is locked ("Fantasy Glass UI: extra 1"); they are named "Guide: ..." only once it is unlocked.
+local EXTRA_KEYS = { { "NEXT", "Guide: next step" }, { "SKIP", "Guide: skip step" }, { "AGAIN", "Guide: plan again" } }
+function ns.GuideBindingNames(unlocked)
+    for i, e in ipairs(EXTRA_KEYS) do
+        _G["BINDING_NAME_FANTASYGLASSUI_EXTRA" .. i] = unlocked and ns:Tr(e[2]) or format(ns:Tr("Fantasy Glass UI: extra %d"), i)
+    end
+end
+ns.GuideBindingNames(false)
+do
+    local names = CreateFrame("Frame")                         -- (the translations and the unlock are known at login)
+    names:RegisterEvent("PLAYER_LOGIN")
+    names:SetScript("OnEvent", ns:Guard("Guide keys", function() ns.GuideBindingNames(ns:GuideUnlocked()) end))
+end
+ns.GuideRegisterLock("keys", function(unlocked) ns.GuideBindingNames(unlocked) end)
+FantasyGlassUI_ExtraBinding = ns:Guard("Guide keys", function(which)
     if not (ns.db and ns:GuideOn()) or InCombatLockdown() then return end
     local st = State()
     if not st then return end
+    which = EXTRA_KEYS[tonumber(which) or 0] and EXTRA_KEYS[tonumber(which)][1] or which
     if which == "NEXT" then ns:GuideSkip(false)
     elseif which == "SKIP" then ns:GuideSkipStep()
     elseif which == "AGAIN" then ns:GuidePlanAgain("again") end

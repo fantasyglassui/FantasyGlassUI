@@ -19392,15 +19392,22 @@ try("13.6 leftovers C: the arrow and the guide's keys", function()
     end
     local ok, err = pcall(function()
         -- the guide's keys: names in the key bindings window, and nothing while locked or in combat
-        for _, k in ipairs({ "GUIDENEXT", "GUIDESKIP", "GUIDEAGAIN" }) do
-            local name = env["BINDING_NAME_FANTASYGLASSUI_" .. k]
-            if type(name) ~= "string" or not name:find("^Guide") then error("the " .. k .. " key's name: " .. tostring(name)) end
+        -- (polish P2: neutral names while locked, "Guide: ..." once unlocked)
+        ns.GuideBindingNames(false)
+        for i = 1, 3 do
+            local name = env["BINDING_NAME_FANTASYGLASSUI_EXTRA" .. i]
+            if name ~= "Fantasy Glass UI: extra " .. i then error("locked: the extra " .. i .. " key's neutral name: " .. tostring(name)) end
+        end
+        ns.GuideBindingNames(true)
+        for i = 1, 3 do
+            local name = env["BINDING_NAME_FANTASYGLASSUI_EXTRA" .. i]
+            if type(name) ~= "string" or not name:find("^Guide") then error("the extra " .. i .. " key's name: " .. tostring(name)) end
         end
         ns.db.plannerTomTom = false
         ns:GuideFollow("Far")
         local st = ns.GuideState()
         ns.GuideUnlocked = function() return false end
-        env.FantasyGlassUI_GuideBinding("NEXT"); env.FantasyGlassUI_GuideBinding("AGAIN")
+        env.FantasyGlassUI_ExtraBinding(1); env.FantasyGlassUI_ExtraBinding(3)
         ns.GuideUnlocked = function() return true end
         if st.at ~= 1 then error("locked: the keys do nothing") end
         -- another map: the arrow points where your way leaves this one (two maps away, toward Arathi)
@@ -19420,10 +19427,10 @@ try("13.6 leftovers C: the arrow and the guide's keys", function()
         if sets ~= 0 or edgePulses ~= 0 then error("at the edge: no re-point and no pulse: " .. sets .. ", " .. edgePulses) end
         pos = { 1426, 50, 50 }
         env.InCombatLockdown = function() return true end
-        env.FantasyGlassUI_GuideBinding("NEXT")
+        env.FantasyGlassUI_ExtraBinding(1)
         env.InCombatLockdown = saved.combat
         if st.at ~= 1 then error("in combat: the keys do nothing") end
-        env.FantasyGlassUI_GuideBinding("NEXT")
+        env.FantasyGlassUI_ExtraBinding(1)
         if st.at ~= 2 then error("next step: " .. tostring(st.at)) end
         -- over the sea: the dock on this map (you walk to Wetlands first)
         pos = { 1437, 50, 50 }
@@ -19447,8 +19454,8 @@ try("13.6 leftovers C: the arrow and the guide's keys", function()
         ns:GuideAdvance()
         -- skip step on a written guide: passed over, not done; plan again does nothing off the plan
         ns.plannerQueued, ns.plannerReason = false, nil
-        env.FantasyGlassUI_GuideBinding("SKIP")
-        env.FantasyGlassUI_GuideBinding("AGAIN")
+        env.FantasyGlassUI_ExtraBinding(2)
+        env.FantasyGlassUI_ExtraBinding(3)
         if st.at ~= 3 or ns.plannerQueued or st.ticked[2] or not (st.skipped and st.skipped[2]) then error("skip on a written guide: " .. tostring(st.at)) end
         -- TomTom: a waypoint of its own per step, the old one removed, and our arrow hidden
         local added, removed = {}, {}
@@ -19478,12 +19485,12 @@ try("13.6 leftovers C: the arrow and the guide's keys", function()
         ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = planSteps }, {})
         ns:PlannerStop()
         ns.plannerQueued, ns.plannerReason = false, nil
-        env.FantasyGlassUI_GuideBinding("AGAIN")
+        env.FantasyGlassUI_ExtraBinding(3)
         if not (ns.plannerQueued and ns.plannerReason == "again") then error("plan again: " .. tostring(ns.plannerReason)) end
         ns:PlannerStop()
         local movedSeen
         ns.GuideRegisterAdvance("test6c", function(_, _, _, _, moved) movedSeen = moved end)
-        env.FantasyGlassUI_GuideBinding("SKIP")
+        env.FantasyGlassUI_ExtraBinding(2)
         ns.GuideRegisterAdvance("test6c", nil)
         st = ns.GuideState()
         if not (st.at == 2 and st.skipped[1] and not st.ticked[1] and ns.plannerQueued and ns.plannerReason == "skip") then error("skip on the plan: " .. tostring(ns.plannerReason)) end

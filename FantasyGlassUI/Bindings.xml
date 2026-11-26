@@ -93,13 +93,13 @@
     <Binding name="FANTASYGLASSUI_READ" category="ADDONS">
         FantasyGlassUI_Binding("READ")
     </Binding>
-    <Binding name="FANTASYGLASSUI_GUIDENEXT" category="ADDONS">
-        FantasyGlassUI_GuideBinding("NEXT")
+    <Binding name="FANTASYGLASSUI_EXTRA1" category="ADDONS">
+        FantasyGlassUI_ExtraBinding(1)
     </Binding>
-    <Binding name="FANTASYGLASSUI_GUIDESKIP" category="ADDONS">
-        FantasyGlassUI_GuideBinding("SKIP")
+    <Binding name="FANTASYGLASSUI_EXTRA2" category="ADDONS">
+        FantasyGlassUI_ExtraBinding(2)
     </Binding>
-    <Binding name="FANTASYGLASSUI_GUIDEAGAIN" category="ADDONS">
-        FantasyGlassUI_GuideBinding("AGAIN")
+    <Binding name="FANTASYGLASSUI_EXTRA3" category="ADDONS">
+        FantasyGlassUI_ExtraBinding(3)
     </Binding>
 </Bindings>
