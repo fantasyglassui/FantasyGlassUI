@@ -1,10 +1,162 @@
 {
-  "item %d": ["Gegenstand %d", "objet %d", "objeto %d", "предмет %d", "item %d", "oggetto %d", "아이템 %d", "物品 %d"],
-  "auction": ["Auktion", "enchères", "subasta", "аукцион", "leilão", "asta", "경매", "拍卖"],
-  "%d to buy, %s each": ["%d zu kaufen, je %s", "%d à acheter, %s l'unité", "%d por comprar, %s cada uno", "купить %d, по %s", "%d para comprar, %s cada", "%d da comprare, %s l'uno", "%d개 구매, 개당 %s", "需购买 %d 个，每个 %s"],
-  "Buy %d × %s": ["%d × %s kaufen", "Acheter %d × %s", "Comprar %d × %s", "Купить %d × %s", "Comprar %d × %s", "Compra %d × %s", "%d × %s 구매", "购买 %d × %s"],
-  "Get %d × %s from your other characters": ["%d × %s von deinen anderen Charakteren holen", "Récupérer %d × %s sur vos autres personnages", "Recoge %d × %s de tus otros personajes", "Взять %d × %s у других персонажей", "Pegue %d × %s dos seus outros personagens", "Prendi %d × %s dagli altri personaggi", "다른 캐릭터에게서 %d × %s 가져오기", "从其他角色取来 %d × %s"],
-  "Make %d × %s": ["%d × %s herstellen", "Fabriquer %d × %s", "Fabrica %d × %s", "Изготовить %d × %s", "Fabrique %d × %s", "Crea %d × %s", "%d × %s 제작", "制作 %d × %s"],
-  "Sell them at the auction house": ["Im Auktionshaus verkaufen", "Les vendre à l'hôtel des ventes", "Véndelos en la casa de subastas", "Продать на аукционе", "Venda-os na casa de leilões", "Vendili alla casa d'aste", "경매장에서 판매", "在拍卖行出售"],
-  "Make %d × %s and sell them": ["%d × %s herstellen und verkaufen", "Fabriquer %d × %s et les vendre", "Fabrica %d × %s y véndelos", "Изготовить %d × %s и продать", "Fabrique %d × %s e venda", "Crea %d × %s e vendili", "%d × %s 제작 후 판매", "制作 %d × %s 并出售"]
+  "item %d": [
+    "Gegenstand %d",
+    "objet %d",
+    "objeto %d",
+    "предмет %d",
+    "item %d",
+    "oggetto %d",
+    "아이템 %d",
+    "物品 %d"
+  ],
+  "auction": [
+    "Auktion",
+    "enchères",
+    "subasta",
+    "аукцион",
+    "leilão",
+    "asta",
+    "경매",
+    "拍卖"
+  ],
+  "%d to buy, %s each": [
+    "%d zu kaufen, je %s",
+    "%d à acheter, %s l'unité",
+    "%d por comprar, %s cada uno",
+    "купить %d, по %s",
+    "%d para comprar, %s cada",
+    "%d da comprare, %s l'uno",
+    "%d개 구매, 개당 %s",
+    "需购买 %d 个，每个 %s"
+  ],
+  "Buy %d × %s": [
+    "%d × %s kaufen",
+    "Acheter %d × %s",
+    "Comprar %d × %s",
+    "Купить %d × %s",
+    "Comprar %d × %s",
+    "Compra %d × %s",
+    "%d × %s 구매",
+    "购买 %d × %s"
+  ],
+  "Get %d × %s from your other characters": [
+    "%d × %s von deinen anderen Charakteren holen",
+    "Récupérer %d × %s sur vos autres personnages",
+    "Recoge %d × %s de tus otros personajes",
+    "Взять %d × %s у других персонажей",
+    "Pegue %d × %s dos seus outros personagens",
+    "Prendi %d × %s dagli altri personaggi",
+    "다른 캐릭터에게서 %d × %s 가져오기",
+    "从其他角色取来 %d × %s"
+  ],
+  "Make %d × %s": [
+    "%d × %s herstellen",
+    "Fabriquer %d × %s",
+    "Fabrica %d × %s",
+    "Изготовить %d × %s",
+    "Fabrique %d × %s",
+    "Crea %d × %s",
+    "%d × %s 제작",
+    "制作 %d × %s"
+  ],
+  "Sell them at the auction house": [
+    "Im Auktionshaus verkaufen",
+    "Les vendre à l'hôtel des ventes",
+    "Véndelos en la casa de subastas",
+    "Продать на аукционе",
+    "Venda-os na casa de leilões",
+    "Vendili alla casa d'aste",
+    "경매장에서 판매",
+    "在拍卖行出售"
+  ],
+  "Make %d × %s and sell them": [
+    "%d × %s herstellen und verkaufen",
+    "Fabriquer %d × %s et les vendre",
+    "Fabrica %d × %s y véndelos",
+    "Изготовить %d × %s и продать",
+    "Fabrique %d × %s e venda",
+    "Crea %d × %s e vendili",
+    "%d × %s 제작 후 판매",
+    "制作 %d × %s 并出售"
+  ],
+  "Buy %s at %s and list it again near %s": [
+    "%s für %s kaufen und nahe %s neu einstellen",
+    "Acheter %s à %s et le remettre en vente vers %s",
+    "Compra %s a %s y vuelve a ponerlo cerca de %s",
+    "Купить %s за %s и выставить снова около %s",
+    "Compre %s por %s e anuncie de novo perto de %s",
+    "Compra %s a %s e rimettilo in vendita vicino a %s",
+    "%s 구매(%s), 다시 약 %s에 등록",
+    "购买 %s（%s），再以约 %s 上架"
+  ],
+  "Lowest listed today": [
+    "Heute am günstigsten angeboten",
+    "Le moins cher aujourd'hui",
+    "Lo más barato hoy",
+    "Дешевле всего сегодня",
+    "Mais barato hoje",
+    "Il più economico oggi",
+    "오늘 최저가",
+    "今日最低价"
+  ],
+  "Usual price (%d days)": [
+    "Üblicher Preis (%d Tage)",
+    "Prix habituel (%d jours)",
+    "Precio habitual (%d días)",
+    "Обычная цена (%d дн.)",
+    "Preço habitual (%d dias)",
+    "Prezzo abituale (%d giorni)",
+    "평소 가격 (%d일)",
+    "通常价格（%d 天）"
+  ],
+  "Listed in the last scan": [
+    "Beim letzten Scan angeboten",
+    "En vente au dernier scan",
+    "En venta en el último escaneo",
+    "Выставлено при последнем сканировании",
+    "Anunciados na última varredura",
+    "In vendita all'ultima scansione",
+    "마지막 검색 때 등록 수",
+    "上次扫描时在售"
+  ],
+  "Profit after the house's cut": [
+    "Gewinn nach der Gebühr des Auktionshauses",
+    "Bénéfice après la part de l'hôtel des ventes",
+    "Ganancia tras la comisión de la casa",
+    "Прибыль после комиссии аукциона",
+    "Lucro após a taxa da casa",
+    "Profitto dopo la commissione della casa",
+    "경매장 수수료 뒤 이익",
+    "扣除拍卖行抽成后的利润"
+  ],
+  "Only the cheapest one is known; buy one and look again.": [
+    "Nur das günstigste ist bekannt; kauf eins und sieh noch einmal nach.",
+    "Seul le moins cher est connu ; achetez-en un et regardez à nouveau.",
+    "Solo se conoce el más barato; compra uno y vuelve a mirar.",
+    "Известен только самый дешёвый; купите один и посмотрите снова.",
+    "Só o mais barato é conhecido; compre um e olhe de novo.",
+    "Si conosce solo il più economico; comprane uno e guarda di nuovo.",
+    "가장 싼 하나만 알 수 있습니다. 하나 사고 다시 보세요.",
+    "只知道最便宜的一个；买一个后再看一遍。"
+  ],
+  "Check before buying: this far under its usual price, it may be a seller's mistake, or the price may have fallen.": [
+    "Vor dem Kauf prüfen: So weit unter dem üblichen Preis kann es ein Fehler des Verkäufers sein, oder der Preis ist gefallen.",
+    "Vérifiez avant d'acheter : si loin sous son prix habituel, c'est peut-être une erreur du vendeur, ou le prix a chuté.",
+    "Comprueba antes de comprar: tan por debajo de su precio habitual, puede ser un error del vendedor, o el precio ha bajado.",
+    "Проверьте перед покупкой: так сильно ниже обычной цены — возможно, ошибка продавца, а возможно, цена упала.",
+    "Verifique antes de comprar: tão abaixo do preço habitual, pode ser um erro do vendedor, ou o preço caiu.",
+    "Controlla prima di comprare: così sotto il prezzo abituale può essere un errore del venditore, o il prezzo è sceso.",
+    "구매 전에 확인하세요. 평소 가격보다 이렇게 낮으면 판매자의 실수이거나 가격이 떨어졌을 수 있습니다.",
+    "购买前请确认：比通常价格低这么多，可能是卖家出错，也可能是价格下跌了。"
+  ],
+  "Nothing is bought for you: every purchase is your own click.": [
+    "Nichts wird für dich gekauft: Jeder Kauf ist dein eigener Klick.",
+    "Rien n'est acheté pour vous : chaque achat est votre propre clic.",
+    "No se compra nada por ti: cada compra es tu propio clic.",
+    "Ничего не покупается за вас: каждая покупка — ваш собственный щелчок.",
+    "Nada é comprado por você: cada compra é seu próprio clique.",
+    "Niente viene comprato per te: ogni acquisto è un tuo clic.",
+    "대신 사 주는 것은 없습니다. 모든 구매는 직접 클릭합니다.",
+    "不会替你购买任何东西：每次购买都是你自己点击。"
+  ]
 }

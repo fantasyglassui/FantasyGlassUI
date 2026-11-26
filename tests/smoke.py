@@ -11554,6 +11554,69 @@ try("gold D: crafting for profit", function()
     for key, fn in pairs(keep.sources or {}) do ns.GoldRegister(key, fn) end
     if not ok then error(err, 0) end
 end)
+try("gold D: auction flips", function()
+    local keep = { info = ns.GetItemInfo, clock = env.debugprofilestop, today = ns.Today, items = ns.PriceItems, unlocked = ns.GuideUnlocked }
+    local ok, err = pcall(function()
+        if type(ns.GoldFlipIdeas) ~= "function" then error("ns.GoldFlipIdeas is nil") end
+        keep.sources = ns.GoldSources()
+        if type(keep.sources.auction) ~= "function" then error("the auction source is registered") end
+        for key in pairs(keep.sources) do if key ~= "auction" then ns.GoldRegister(key, nil) end end
+        fireEvent("PLAYER_REGEN_ENABLED")
+        local function Settle() local n = 0; while ns.GoldBusy() and n < 400 do ns.GoldRunSlice(); n = n + 1 end end
+        Settle()
+        ns.GuideUnlocked = function() return true end
+        local today = 20261125
+        ns.Today = function() return today end
+        ns.GetItemInfo = function(self, id) return "Item " .. id, nil, (id == 9) and 0 or 2, nil, nil, nil, nil, nil, nil, nil, 1 end
+        -- a usual price of 10000 over `days` days, the lowest `p` on `day`, `listed` in the last scan
+        local function Entry(p, day, days, listed)
+            local hist = {}
+            for i = 1, days - 1 do hist[20261100 + i] = 10000 end
+            hist[day] = p
+            return { price = p, day = day, hist = hist, listed = listed, listedDay = today }
+        end
+        local ctx = ns.GoldContext("auction")
+        local function Flips(items) local got = {}; ns.GoldFlipIdeas(ctx, function(i) got[#got + 1] = i end, items, today); return got end
+        local got = Flips({ [8] = Entry(5000, today, 6, 4) })
+        local idea = got[1]
+        if #got ~= 1 or not ns.GoldIdeaValid(idea) then error("one flip: " .. #got .. " " .. tostring(idea and select(2, ns.GoldIdeaValid(idea)))) end
+        if idea.kind ~= "flip" or idea.oneOff ~= true or idea.where ~= "auction" or idea.basis ~= "prices" or idea.total ~= 4500 or idea.minutes ~= 3
+            or idea.ease ~= 60 or idea.safety ~= 40 or idea.priceDay ~= today then error("the flip: " .. tostring(idea.total) .. " " .. tostring(idea.where)) end
+        if not idea.title:find("Item 8", 1, true) or idea.title:sub(1, 4) ~= "Buy " then error("title: " .. idea.title) end
+        local tips = table.concat(idea.tip or {}, " | ")
+        if not tips:find("Only the cheapest one is known; buy one and look again.", 1, true) or not tips:lower():find("check before buying", 1, true) then error("the tips: " .. tips) end
+        if ns.GoldSafetyWord(40) ~= "A gamble" then error("a flip reads as a gamble") end
+        -- thin, not cheap enough, too little history, yesterday's price, poor quality: nothing
+        local cases = { { "listed 2", Entry(5000, today, 6, 2) }, { "p 7000", Entry(7000, today, 6, 4) }, { "4 days", Entry(5000, today, 4, 4) },
+            { "yesterday", Entry(5000, 20261124, 6, 4) } }
+        for _, c in ipairs(cases) do if #Flips({ [8] = c[2] }) ~= 0 then error("no flip: " .. c[1]) end end
+        local stale = Entry(5000, today, 6, 4); stale.listedDay = 20261115
+        if #Flips({ [8] = stale }) ~= 0 then error("no flip on an old count of listings") end
+        if #Flips({ [9] = Entry(5000, today, 6, 4) }) ~= 0 then error("no flip on a grey item") end
+        -- at most 10, by profit
+        local many = {}
+        for i = 1, 12 do many[100 + i] = Entry(5000 - i * 100, today, 6, 4) end
+        got = Flips(many)
+        if #got ~= 10 or got[1].total ~= 5700 or got[10].total ~= 4800 then error("at most 10, by profit: " .. #got) end
+        -- 3000 items, through the source, across several slices
+        local big = {}
+        for i = 1, 3000 do big[1000 + i] = Entry((i % 50 == 0) and 4000 or 9000, today, 6, 5) end
+        ns.PriceItems = function() return big end
+        local t = 0
+        env.debugprofilestop = function() t = t + 0.01; return t end
+        local done
+        if not ns.GoldCollect(ctx, function(list) done = list end) then error("collecting is queued") end
+        local slices = 0
+        while ns.GoldBusy() and slices < 2000 do ns.GoldRunSlice(); slices = slices + 1 end
+        if slices < 2 or type(done) ~= "table" or #done ~= 10 then error("3000 items in several slices: " .. slices .. " slices, " .. tostring(done and #done)) end
+        env.debugprofilestop = keep.clock
+        ns.PriceItems = function() return {} end
+        if #ns.GoldCollectNow(ctx) ~= 0 then error("no prices: no flips") end
+    end)
+    ns.GetItemInfo, env.debugprofilestop, ns.Today, ns.PriceItems, ns.GuideUnlocked = keep.info, keep.clock, keep.today, keep.items, keep.unlocked
+    for key, fn in pairs(keep.sources or {}) do ns.GoldRegister(key, fn) end
+    if not ok then error(err, 0) end
+end)
 -- gold tests D (craft): end
 -- gold tests together: begin
 -- gold tests together: end

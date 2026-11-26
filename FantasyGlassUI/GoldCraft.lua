@@ -290,3 +290,78 @@ ns.GoldRegister("craft", function(ctx, add)
     local rec = CharRecord(false, type(ctx) == "table" and ctx.charKey or nil)
     ns.GoldCraftIdeas(ctx, add, rec and rec.recipes)
 end)
+
+------------------------------------------------------------------------------------------
+-- Auction flips: an item listed today well under its usual price, bought to list again near it.
+-- Flips can lose gold, so only a sure-looking case counts: today's price, at least five days of
+-- history, at least three listed in a recent scan, and the tips say to check before buying.
+------------------------------------------------------------------------------------------
+local FLIP_MAX = 10
+
+local function Quality(id)
+    local ok, _, _, q = pcall(ns.GetItemInfo, ns, id)
+    return ok and Num(q) or nil
+end
+
+-- The flip for one price entry: profit, lowest price, usual price, days of history; nil when it is not one.
+local function Flip(id, e, today)
+    if not Num(id) or type(e) ~= "table" or e.day ~= today then return nil end
+    local p = Num(e.price)
+    if not p or p <= 0 then return nil end
+    local u, days = ns.AuctionUsual(e)
+    u, days = Num(u), Num(days)
+    if not u or not days or days < 5 then return nil end
+    -- a thin listing, or a count from an old scan, says nothing about whether it sells
+    local listed, listedDay = Num(e.listed), Num(e.listedDay)
+    if not listed or listed < 3 or not listedDay or ns.DaysBetween(listedDay, today) > 1 then return nil end
+    if p > 0.6 * u then return nil end
+    local profit = floor(u * 95 / 100) - p
+    if profit < 2000 then return nil end
+    local q = Quality(id)
+    if not q or q < 1 then return nil end
+    return profit, p, u, days, listed
+end
+
+local function ByProfit(a, b)
+    if a.profit ~= b.profit then return a.profit > b.profit end
+    return a.id < b.id
+end
+-- The flip ideas among these price entries ({ [itemID] = entry }): the best FLIP_MAX by profit.
+function ns.GoldFlipIdeas(ctx, add, items, today)
+    if type(items) ~= "table" or type(add) ~= "function" then return end
+    today = Num(today) or (type(ctx) == "table" and Num(ctx.today)) or ns.Today()
+    local ids = {}
+    for id in pairs(items) do if Num(id) then ids[#ids + 1] = id end end   -- (the keys first: a scan may add prices between slices)
+    local found = {}
+    for _, id in ipairs(ids) do
+        local profit, p, u, days, listed = Flip(id, items[id], today)
+        if profit then found[#found + 1] = { id = id, profit = profit, p = p, u = u, days = days, listed = listed } end
+        ns.GoldYield()
+    end
+    table.sort(found, ByProfit)
+    for i = 1, min(FLIP_MAX, #found) do
+        local f = found[i]
+        local name = NameOf(f.id)
+        add({
+            id = "flip:" .. tostring(f.id), kind = "flip", oneOff = true,
+            title = format(ns:Tr("Buy %s at %s and list it again near %s"), name, ns:Coins(f.p), ns:Coins(f.u)),
+            total = f.profit, minutes = 3,
+            ease = ns.GOLD_EASE.flip, safety = ns.GOLD_SAFETY.flip.prices, basis = "prices", priceDay = today, where = "auction",
+            detail = {
+                { left = ns:Tr("Lowest listed today"), right = ns:Coins(f.p) },
+                { left = format(ns:Tr("Usual price (%d days)"), f.days), right = ns:Coins(f.u) },
+                { left = ns:Tr("Listed in the last scan"), right = tostring(f.listed) },
+                { left = ns:Tr("Profit after the house's cut"), right = ns:Coins(f.profit) },
+            },
+            tip = {
+                ns:Tr("Only the cheapest one is known; buy one and look again."),
+                ns:Tr("Check before buying: this far under its usual price, it may be a seller's mistake, or the price may have fallen."),
+                ns:Tr("Nothing is bought for you: every purchase is your own click."),
+            },
+        })
+    end
+end
+
+ns.GoldRegister("auction", function(ctx, add)
+    ns.GoldFlipIdeas(ctx, add, ns.PriceItems(), type(ctx) == "table" and ctx.today or nil)
+end)
