@@ -55,7 +55,7 @@ end
 local function Build(idea)
     local ctx = ns.PlannerContext()
     local state = ns.PlannerTripState(ctx)
-    local steps, secs, lastMap = {}, 0, nil
+    local steps, secs, lastMap, middle = {}, 0, nil, false
     for _, s in ipairs(type(idea.steps) == "table" and idea.steps or {}) do
         ns.PlannerYield()
         if type(s) == "table" then
@@ -74,11 +74,16 @@ local function Build(idea)
                 end
                 lastMap = map
                 steps[#steps + 1] = { kind = "goto", text = text, map = map, x = x, y = y }
+                middle = not (Num(s.x) and Num(s.y))
             elseif text then
                 steps[#steps + 1] = { kind = "note", text = text }
+                middle = false
             end
         end
     end
+    -- (the last step only a zone to go to, as a farm's: the trip does not end on arrival, so the plan does not come back
+    -- while you farm; a note waits for you to stop it)
+    if middle then steps[#steps + 1] = { kind = "note", text = ns:Tr("Stay as long as you like, then Stop this trip.") } end
     return steps, secs
 end
 
@@ -102,11 +107,16 @@ local function Apply(r)
     local title = Text(idea.title) or ns:Tr("Go")
     return ns:GuideStartTrip({ name = ns.GUIDE_TRIP, steps = steps }, { title = title, id = idea.id, minutes = Num(idea.minutes) })
 end
+local building                                                  -- (the idea whose trip the job is laying, while it runs)
 ns:Every(0, "Planner go", function()
+    if building and ns.plannerJobKey ~= "goldTrip" then           -- (the job stopped with an error: said, and the steps listed)
+        ready, building = { idea = building, none = true }, nil
+    end
     if not ready or Fighting() then return end
     local r = ready
     ready = nil
-    if ns:GuideOn() then Apply(r) end
+    if ns:GuideOn() then Apply(r)
+    elseif ns:GuideUnlocked() and ns.GoldStepsList then ns.GoldStepsList(r.idea) end   -- (the guide switched off meanwhile: the steps in a list)
 end)
 
 -- Go for a gold idea: true when its trip is being laid (a planner job; the trip starts when it is done).
@@ -119,7 +129,9 @@ function ns.GoldTravel(idea)
     end
     if TimedRun() then ns:Print("Not now: a timed quest is under way. Go again once it is handed in."); return false end
     return ns.PlannerJob(function()
+        building = idea
         local steps, secs = Build(idea)
+        building = nil
         ready = steps and { idea = idea, steps = steps, secs = secs } or { idea = idea, none = true }
     end, "goldTrip")
 end

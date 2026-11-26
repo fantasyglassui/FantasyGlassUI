@@ -982,7 +982,7 @@ local function CatchUp(away, since)
     if InCombatLockdown() then
         ns:AfterFight("Catch me up", function()
             if Unlocked() and ns:LoadPlanner(true) then ns:PlannerCatchUp(away, since) end
-        end)
+        end, true)                                                   -- (automatic: it waits without a word)
     end
 end
 

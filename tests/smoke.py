@@ -9564,8 +9564,9 @@ try("folders unloaded A: the planner records while unloaded", function()
 end)
 try("folders unloaded A: a friend's ask loads the planner and is handed over once", function()
     local keep = { unlocked = ns.GuideUnlocked, load = rawget(env.C_AddOns, "LoadAddOn"), loadPlanner = ns.LoadPlanner, duoEvent = ns.PlannerDuoEvent,
-        ask = ns.db.plannerDuoAsk, combat = env.InCombatLockdown, time = env.GetTime }
+        ask = ns.db.plannerDuoAsk, combat = env.InCombatLockdown, time = env.GetTime, raw = ns.PrintRaw, guideKey = ns.root.guideKey }
     local loads, asked, handed, clock, fight, locked = 0, 0, {}, 5000, false, false
+    local said = {}
     local ok, err = pcall(function()
         if ns.folderReady.planner then error("the planner's folder is not loaded yet") end
         ns.GuideUnlocked = function() return not locked end
@@ -9594,8 +9595,11 @@ try("folders unloaded A: a friend's ask loads the planner and is handed over onc
         if asked ~= 1 or #handed ~= 1 then error("loaded: no second hand-over") end
         -- in a fight: kept until it ends, then once
         Fresh(); fight = true
+        ns.PrintRaw = function(_, t) said[#said + 1] = tostring(t) end
         Ask()
+        ns.PrintRaw = keep.raw
         if asked ~= 0 or #handed ~= 0 then error("in a fight: nothing yet") end
+        for _, l in ipairs(said) do if l:lower():find("fight", 1, true) then error("a held ask says nothing: " .. l) end end
         clock = clock + 20; fight = false
         fireEvent("PLAYER_REGEN_ENABLED")
         if asked ~= 1 or #handed ~= 1 then error("after the fight: handed over once: " .. asked .. " " .. #handed) end
@@ -9607,6 +9611,13 @@ try("folders unloaded A: a friend's ask loads the planner and is handed over onc
         clock = clock + 70; fight = false
         fireEvent("PLAYER_REGEN_ENABLED")
         if asked ~= 0 or #handed ~= 0 then error("70 s in a fight: never") end
+        -- locked during the fight: the held ask is dropped, even if the guide is unlocked again before it ends
+        Fresh(); fight = true
+        Ask()
+        locked = true; ns:GuideLock(); locked = false
+        clock = clock + 5; fight = false
+        fireEvent("PLAYER_REGEN_ENABLED")
+        if asked ~= 0 or #handed ~= 0 then error("locked in the fight: the held ask is dropped") end
         -- nothing for: locked, asking off, a party message, a hidden sender, another kind
         Fresh()
         locked = true; Ask(); locked = false
@@ -9621,7 +9632,7 @@ try("folders unloaded A: a friend's ask loads the planner and is handed over onc
     end)
     ns.folderReady.planner = nil
     ns.GuideUnlocked, ns.LoadPlanner, ns.PlannerDuoEvent, ns.db.plannerDuoAsk = keep.unlocked, keep.loadPlanner, keep.duoEvent, keep.ask
-    env.InCombatLockdown, env.GetTime = keep.combat, keep.time
+    env.InCombatLockdown, env.GetTime, ns.PrintRaw, ns.root.guideKey = keep.combat, keep.time, keep.raw, keep.guideKey
     rawset(env.C_AddOns, "LoadAddOn", keep.load)
     if not ok then error(err, 0) end
 end)
@@ -9953,6 +9964,117 @@ try("folders: following the plan loads the planner at login", function()
     env.InCombatLockdown = keep.combat
     ns.GuideUnlocked, ns.LoadFolder, ns.PlannerReplan, ns.root.guideState, ns.db.questGuide = keep.unlocked, keep.load, keep.replan, keep.state, keep.on
     env.IsResting, env.UnitIsAFK = keep.resting, keep.afk
+    if not ok then error(err, 0) end
+end)
+try("folders fix: the guide switched on, or unlocked, while following the plan loads the planner", function()
+    -- (F-I1: the login load is not the only way into "following the plan": the switch and the unlock lead there too)
+    local keep = { unlocked = ns.GuideUnlocked, load = ns.LoadFolder, replan = ns.PlannerReplan, state = ns.root.guideState, on = ns.db.questGuide,
+        combat = env.InCombatLockdown, resting = env.IsResting, afk = env.UnitIsAFK, ready = ns.folderReady.planner, raw = ns.PrintRaw,
+        guides = ns.root.guides, key = ns.root.guideKey, hash = ns.GuideHash }
+    local asked, replans, said, unlocked = {}, {}, {}, true
+    local ok, err = pcall(function()
+        local key = ns:CharKey()
+        ns.GuideUnlocked = function() return unlocked end
+        env.IsResting, env.UnitIsAFK = function() return false end, function() return false end
+        ns.LoadFolder = function(_, k, quiet) asked[#asked + 1] = { k, quiet }; if k == "planner" then ns.folderReady.planner = true end; return true end
+        ns.PlannerReplan = function(_, why) replans[#replans + 1] = why; return true end
+        ns.PrintRaw = function(_, t) said[#said + 1] = tostring(t) end
+        local function Planned() return { name = ns.GUIDE_PLANNED, at = 1, ticked = {}, plan = { name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "p1" }, { kind = "note", text = "p2" } } } } end
+        local function Loads() local n = 0; for _, a in ipairs(asked) do if a[1] == "planner" then n = n + 1; if a[2] ~= true then error("the load is quiet") end end end return n end
+        local function Replanned() for _, w in ipairs(replans) do if w == "loading screen" then return true end end return false end
+        local function Fresh(st) asked, replans, said = {}, {}, {}; ns.folderReady.planner = nil; ns.root.guideState = { [key] = st } end
+        -- switched off, a login: nothing; switched on again: one quiet load and the login's replan
+        Fresh(Planned())
+        ns.db.questGuide = false
+        fireEvent("PLAYER_LOGIN")
+        if Loads() ~= 0 then error("switched off at login: no load") end
+        ns.db.questGuide = true
+        ns:GuideApplySwitch()
+        if Loads() ~= 1 or not Replanned() then error("switched on while following the plan: the planner loads once and replans: " .. Loads()) end
+        ns:GuideApplySwitch()
+        if Loads() ~= 1 then error("loaded already: not again") end
+        -- on a trip: the same
+        Fresh({ name = ns.GUIDE_TRIP, at = 1, ticked = {}, resume = Planned(), trip = { name = ns.GUIDE_TRIP, title = "T", steps = { { kind = "note", text = "t1" } } } })
+        ns:GuideApplySwitch()
+        if Loads() ~= 1 then error("switched on during a trip: the planner loads") end
+        -- a written guide: nothing
+        ns.root.guides = { written = { name = "written", steps = { { kind = "note", text = "w1" } } } }
+        Fresh({ name = "written", at = 1, ticked = {} })
+        ns:GuideApplySwitch()
+        if Loads() ~= 0 then error("a written guide: no load") end
+        -- in a fight: it waits, saying nothing, then loads
+        Fresh(Planned())
+        env.InCombatLockdown = function() return true end
+        ns:GuideApplySwitch()
+        if Loads() ~= 0 or #said ~= 0 then error("in a fight: no load and nothing said: " .. tostring(said[1])) end
+        env.InCombatLockdown = keep.combat
+        fireEvent("PLAYER_REGEN_ENABLED")
+        if Loads() ~= 1 or not Replanned() then error("after the fight: loaded and replanned") end
+        -- unlocked mid-session with a saved plan: one quiet load
+        Fresh(Planned())
+        unlocked = false
+        ns:GuideApplySwitch()
+        if Loads() ~= 0 then error("locked: no load") end
+        unlocked = true
+        ns.GuideHash = function() return tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)")) end
+        if not ns:GuideUnlock("test") then error("the stand-in number unlocks") end
+        ns.GuideHash = keep.hash
+        if Loads() ~= 1 or not Replanned() then error("unlocked while following the plan: the planner loads: " .. Loads()) end
+    end)
+    env.InCombatLockdown = keep.combat
+    ns.GuideUnlocked, ns.LoadFolder, ns.PlannerReplan, ns.root.guideState, ns.db.questGuide = keep.unlocked, keep.load, keep.replan, keep.state, keep.on
+    env.IsResting, env.UnitIsAFK, ns.folderReady.planner, ns.PrintRaw = keep.resting, keep.afk, keep.ready, keep.raw
+    ns.root.guides, ns.root.guideKey, ns.GuideHash = keep.guides, keep.key, keep.hash
+    if ns.GuidePanelHide then ns.GuidePanelHide() elseif _G.FantasyGlassUIGuide then _G.FantasyGlassUIGuide:Hide() end
+    if ns.GuideForget then ns.GuideForget() end
+    if not ok then error(err, 0) end
+end)
+try("folders fix: the automatic loads say nothing in a fight", function()
+    -- (F-I3: the login load and the catch-up page wait for the fight's end without a word)
+    local keep = { unlocked = ns.GuideUnlocked, loadPlanner = ns.LoadPlanner, replan = ns.PlannerReplan, state = ns.root.guideState, on = ns.db.questGuide,
+        combat = env.InCombatLockdown, resting = env.IsResting, afk = env.UnitIsAFK, raw = ns.PrintRaw, catch = ns.PlannerCatchUp, time = env.time,
+        planner = ns.root.planner, guideOn = ns.GuideOn }
+    local said, fight, catches, loads, now = {}, false, 0, 0, 1800000000
+    local ok, err = pcall(function()
+        ns.GuideUnlocked = function() return true end
+        ns.GuideOn = function() return true end
+        env.IsResting, env.UnitIsAFK = function() return false end, function() return false end
+        env.InCombatLockdown = function() return fight end
+        env.time = function() return now end
+        ns.LoadPlanner = function() if fight then return false end loads = loads + 1; return true end
+        ns.PlannerReplan = function() return true end
+        ns.PlannerCatchUp = function() catches = catches + 1 end
+        ns.PrintRaw = function(_, t) said[#said + 1] = tostring(t) end
+        local function Spoke()
+            for _, l in ipairs(said) do if l:lower():find("not during a fight", 1, true) or l:find(ns:Tr("Not during a fight."), 1, true) then return l end end
+        end
+        -- the login load in a fight (a /reload in one)
+        ns.root.guideState = { [ns:CharKey()] = { name = ns.GUIDE_PLANNED, at = 1 } }
+        fight = true
+        fireEvent("PLAYER_LOGIN")
+        if Spoke() then error("the login load in a fight: nothing said: " .. Spoke()) end
+        fight = false
+        fireEvent("PLAYER_REGEN_ENABLED")
+        if loads ~= 1 then error("the login load after the fight: " .. loads) end
+        -- the catch-up page in a fight
+        said, loads = {}, 0
+        ns.root.planner = {}
+        local rec = ns.PlannerCharRecord(true)
+        rec.lastSeen = now - 20 * 86400
+        ns.PlannerSeenReset()
+        fight = true
+        local queued = ns.AfterFightCount()
+        fireEvent("PLAYER_ENTERING_WORLD", true, false)
+        if ns.AfterFightCount() ~= queued + 1 then error("the catch-up page waits for the fight's end: " .. queued .. " " .. ns.AfterFightCount()) end
+        if catches ~= 0 or Spoke() then error("the catch-up page in a fight: not yet, and nothing said: " .. tostring(Spoke())) end
+        fight = false
+        fireEvent("PLAYER_REGEN_ENABLED")
+        if catches ~= 1 then error("the catch-up page after the fight: " .. catches) end
+    end)
+    ns.GuideUnlocked, ns.LoadPlanner, ns.PlannerReplan, ns.root.guideState, ns.db.questGuide = keep.unlocked, keep.loadPlanner, keep.replan, keep.state, keep.on
+    env.InCombatLockdown, env.IsResting, env.UnitIsAFK, ns.PrintRaw, ns.PlannerCatchUp, env.time = keep.combat, keep.resting, keep.afk, keep.raw, keep.catch, keep.time
+    ns.root.planner, ns.GuideOn = keep.planner, keep.guideOn
+    ns.PlannerSeenReset()
     if not ok then error(err, 0) end
 end)
 try("folders: the auction house in a fight", function()
@@ -25392,21 +25514,63 @@ try("folders C: the planner window", function()
         In("skippedButton", "rewards"); In("zoneGoalButton", "time"); In("deathsBox", "time"); In("tomTomBox", "map"); In("whyBox", "records")
         In("speakBox", "speak"); In("sharePlanButton", "together")
         -- on a trip
+        -- (the real trip, as Go starts it: the levelling plan waits in resume)
         local tripSteps = {}
         for i = 1, 5 do tripSteps[i] = { kind = "note", text = "Node " .. i } end
-        ns.root.guideState[ns:CharKey()] = { name = ns.GUIDE_TRIP, at = 2, ticked = {}, plan = { name = ns.GUIDE_TRIP, steps = tripSteps },
-            trip = { title = "Gather Peacebloom in Elwynn Forest" }, resume = { name = ns.GUIDE_PLANNED, at = 3 } }
-        if not Same(ns.PlannerWindowSummary(), { string.format(ns:Tr("On a trip: %s, step %d of %d"), "Gather Peacebloom in Elwynn Forest", 2, 5), ns:Tr("Your levelling plan waits.") }) then
-            error("on a trip: " .. table.concat(ns.PlannerWindowSummary(), "|")) end
-        if ns.PlannerWindowSummary()[1] ~= "On a trip: Gather Peacebloom in Elwynn Forest, step 2 of 5" then error("in English") end
-        f.Refresh()
-        if f.drawn.stop ~= true or f.drawn.plan ~= ns:Tr("Plan my route") then error("on a trip: Stop, and Plan my route") end
-        local stops, realStop = 0, ns.GuideStop
+        local levelSteps = {}
+        for i = 1, 5 do levelSteps[i] = { kind = "note", text = "Level " .. i } end
+        local function OnPlan()
+            ns.root.guideState = { [ns:CharKey()] = { name = ns.GUIDE_PLANNED, at = 3, ticked = { true, true }, plan = { name = ns.GUIDE_PLANNED, steps = levelSteps },
+                summary = { logFits = false } } }
+        end
+        local tripSaid, tripReplans, realPrint, realReplan, realStop, realStart = {}, {}, ns.Print, ns.PlannerReplan, ns.GuideStop, ns.PlannerStart
+        local stops, starts = 0, 0
+        ns.Print = function(_, msg, ...) tripSaid[#tripSaid + 1] = (select("#", ...) > 0) and string.format(ns:Tr(msg), ...) or ns:Tr(msg) end
+        ns.PlannerReplan = function(_, why) tripReplans[#tripReplans + 1] = tostring(why); return true end
         ns.GuideStop = function() stops = stops + 1 end
-        Click(f.stopButton, nil, "stop")
-        ns.GuideStop = realStop
-        if stops ~= 1 then error("Stop: GuideStop") end
+        ns.PlannerStart = function() starts = starts + 1; return true end
+        local okTrip, errTrip = pcall(function()
+            OnPlan()
+            if ns:GuideStartTrip({ name = ns.GUIDE_TRIP, steps = tripSteps }, { title = "Gather Peacebloom in Elwynn Forest" }) ~= true then error("the trip starts") end
+            ns:GuideSkip(false)
+            local st = ns.GuideState()
+            if not (ns.GuideOnTrip() and st.at == 2) then error("on the trip, at step 2: " .. tostring(st.at)) end
+            if not Same(ns.PlannerWindowSummary(), { string.format(ns:Tr("On a trip: %s, step %d of %d"), "Gather Peacebloom in Elwynn Forest", 2, 5), ns:Tr("Your levelling plan waits.") }) then
+                error("on a trip: " .. table.concat(ns.PlannerWindowSummary(), "|")) end
+            if ns.PlannerWindowSummary()[1] ~= "On a trip: Gather Peacebloom in Elwynn Forest, step 2 of 5" then error("in English") end
+            f.Refresh()
+            if f.drawn.stop ~= true or f.drawn.plan ~= ns:Tr("Plan my route") then error("on a trip: Stop, and Plan my route") end
+            -- Stop on a trip: the trip ends and the plan comes back (not GuideStop)
+            Click(f.stopButton, nil, "stop")
+            st = ns.GuideState()
+            if stops ~= 0 then error("Stop on a trip: not GuideStop") end
+            if not (st and st.name == ns.GUIDE_PLANNED and st.at == 3 and not ns.GuideOnTrip()) then error("Stop on a trip: the plan back at step 3: " .. tostring(st and st.name)) end
+            local back = false
+            for _, t in ipairs(tripSaid) do if t == ns:Tr("Back to your levelling plan.") then back = true end end
+            if not back or tripReplans[#tripReplans] ~= "trip over" then error("Stop on a trip: back to the plan, and planned again: " .. table.concat(tripSaid, " | ")) end
+            -- off a trip: Stop is GuideStop
+            Click(f.stopButton, nil, "stop, following the plan")
+            if stops ~= 1 then error("Stop off a trip: GuideStop") end
+            -- a trip that paused a written guide: that guide waits; one that paused nothing: no waiting line
+            ns.root.guides = { written = { name = "written", steps = { { kind = "note", text = "w1" }, { kind = "note", text = "w2" } } } }
+            ns.root.guideState = { [ns:CharKey()] = { name = "written", at = 1, ticked = {} } }
+            ns:GuideStartTrip({ name = ns.GUIDE_TRIP, steps = tripSteps }, { title = "T" })
+            local sum = ns.PlannerWindowSummary()
+            if sum[2] ~= string.format(ns:Tr("\"%s\" waits."), "written") or sum[2] ~= "\"written\" waits." then error("a written guide waits: " .. tostring(sum[2])) end
+            ns.root.guideState = {}
+            ns:GuideStartTrip({ name = ns.GUIDE_TRIP, steps = tripSteps }, { title = "T" })
+            sum = ns.PlannerWindowSummary()
+            if #sum ~= 1 then error("nothing paused: no waiting line: " .. table.concat(sum, "|")) end
+            -- Plan my route on a trip: the trip ends and a plan is made
+            OnPlan()
+            ns:GuideStartTrip({ name = ns.GUIDE_TRIP, steps = tripSteps }, { title = "T" })
+            Click(f.planButton, nil, "plan, on a trip")
+            if ns.GuideOnTrip() or starts ~= 1 then error("Plan my route on a trip: the trip ends and the plan is made: " .. starts) end
+        end)
+        ns.Print, ns.PlannerReplan, ns.GuideStop, ns.PlannerStart = realPrint, realReplan, realStop, realStart
+        if not okTrip then error(errTrip, 0) end
         ns.root.guideState = {}
+        ns.root.guides = {}
         -- the riding line: a Warrior at level 40 with 30g
         env.UnitLevel = function() return 40 end
         env.GetMoney = function() return 30 * 10000 end
@@ -25473,6 +25637,30 @@ try("folders C: the planner window", function()
         if ns.db.plannerGroup ~= "all" then error("Left steps the choice back: " .. tostring(ns.db.plannerGroup)) end
         key(f, "RIGHT")
         if ns.db.plannerGroup ~= "solo" then error("Right steps it on") end
+        -- a fight: the keys go to the game, even after a key the window used (F-I4)
+        local kb, prop = true, true
+        rawset(f, "EnableKeyboard", function(_, on) kb = on and true or false end)
+        rawset(f, "SetPropagateKeyboardInput", function(_, on) prop = on and true or false end)
+        rawset(f, "IsKeyboardEnabled", function() return kb end)
+        local fightNow, realCombat = false, env.InCombatLockdown
+        env.InCombatLockdown = function() return fightNow end
+        local okKeys, errKeys = pcall(function()
+            key(f, "SPACE")
+            if prop ~= false then error("(a used key is not passed on)") end
+            fightNow = true
+            fireEvent("PLAYER_REGEN_DISABLED")
+            if kb and not prop then error("a fight starts after a used key: the window must not keep the keys") end
+            key(f, "TAB")
+            if kb and not prop then error("a key in a fight: the window must not keep the keys") end
+            fightNow = false
+            fireEvent("PLAYER_REGEN_ENABLED")
+            if not (kb and prop) then error("after the fight: the window takes keys again, passing on what it does not use: " .. tostring(kb) .. " " .. tostring(prop)) end
+            key(f, "TAB")
+            if prop ~= false then error("after the fight: the keys work again") end
+        end)
+        env.InCombatLockdown = realCombat
+        rawset(f, "EnableKeyboard", nil); rawset(f, "SetPropagateKeyboardInput", nil); rawset(f, "IsKeyboardEnabled", nil)
+        if not okKeys then error(errKeys, 0) end
         ns.db.keyNav = false
         key(f, "TAB")
         if rawget(f, "focusedKey") ~= nil then error("with the keyboard switch off, the keys go to the game") end
@@ -25854,6 +26042,32 @@ try("folders D: Go", function()
         for i = at.E2 + 1, at.A1 - 1 do if steps[i].kind == "sail" then sailed = true end end
         if not sailed then error("the trip between the maps sails: " .. Kinds(steps)) end
         ns:GuideEndTrip("other")
+        -- a zone to go to as the last step (a farm): a note after it, so the trip does not end on arrival
+        Following()
+        Go({ id = "farm", title = "Farm", steps = { { text = "Farm in Elwynn", map = 1429 } } })
+        steps = St().trip.steps
+        if not (steps[#steps].kind == "note" and steps[#steps].text == "Stay as long as you like, then Stop this trip." and steps[#steps - 1].kind == "goto") then
+            error("a zone as the last step: a note after it: " .. Kinds(steps)) end
+        ns:GuideEndTrip("other")
+        -- the guide switched off before the trip is laid: the steps in a list
+        Following()
+        lists = {}
+        ns.GoldTravel({ id = "off", title = "Off", steps = { { text = "Here", map = 1429, x = 20, y = 20 } } })
+        ns.db.questGuide = false
+        frames(40)
+        ns.db.questGuide = true
+        if ns.GuideOnTrip() or #lists ~= 1 or lists[1].title ~= "Off" then error("switched off meanwhile: the list") end
+        -- the job stops with an error: said, and the list
+        Following()
+        said, lists = {}, {}
+        ns.PlannerContext = function() error("broken") end
+        local errs = #ns.errors
+        ns.GoldTravel({ id = "err", title = "Err", steps = { { text = "Here", map = 1429, x = 20, y = 20 } } })
+        frames(40)
+        ns.PlannerContext = function() return ctxNow end
+        if #ns.errors ~= errs + 1 then error("a job error is kept for /fgui check") end
+        ns.errors[#ns.errors] = nil
+        if ns.GuideOnTrip() or not Said("No way there was found: here are the steps.") or #lists ~= 1 or lists[1].title ~= "Err" then error("a job error: said, and the list") end
         -- a duo: it ends before the trip starts
         Following()
         ns.plannerDuo = { role = "lead", partner = "Pal" }

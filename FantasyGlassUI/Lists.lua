@@ -254,14 +254,16 @@ function ns:Flash(text, r, g, b, arg)
 end
 
 -- Something the game does not allow during a fight: done when the fight ends instead (once, however
--- many times it was asked for). Returns true when it was put off.
+-- many times it was asked for). Returns true when it was put off. It says so, unless `quiet`: something
+-- you did not ask for (an automatic load) waits without a word.
 local afterFight, afterFrame = {}, nil
-function ns:AfterFight(label, fn)
+function ns:AfterFight(label, fn, quiet)
     if not InCombatLockdown() then return false end
     if not afterFrame then
         afterFrame = CreateFrame("Frame")
         pcall(afterFrame.RegisterEvent, afterFrame, "PLAYER_REGEN_ENABLED")
-        afterFrame:SetScript("OnEvent", ns:Guard("Lists events", function()
+        afterFrame:SetScript("OnEvent", ns:Guard("Lists events", function(_, event)
+            if event ~= "PLAYER_REGEN_ENABLED" then return end
             local list = afterFight
             afterFight = {}
             for _, job in ipairs(list) do pcall(job.fn) end
@@ -269,7 +271,7 @@ function ns:AfterFight(label, fn)
     end
     for _, job in ipairs(afterFight) do if job.label == label then return true end end
     afterFight[#afterFight + 1] = { label = label, fn = fn }
-    ns:Print("%s: not during a fight, so it happens as soon as the fight ends.", ns:Tr(label))
+    if not quiet then ns:Print("%s: not during a fight, so it happens as soon as the fight ends.", ns:Tr(label)) end
     return true
 end
 function ns.AfterFightCount() return #afterFight end

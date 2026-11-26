@@ -433,11 +433,11 @@ end
 function ns.GoldGo(idea)
     if type(idea) ~= "table" then return false end
     if ns.GoldInFight() then ns:Print("Not during a fight."); return false end
-    if type(ns.GoldTravel) ~= "function" and ns.LoadPlanner then pcall(ns.LoadPlanner, ns) end   -- (the travel is the planner's: its folder loads first)
-    if type(ns.GoldTravel) == "function" then ns.GoldTravel(idea); return "travel" end
+    local ok, ready = false, false                                     -- (the travel is the planner's: its folder loads first)
+    if ns.LoadPlanner then ok, ready = pcall(ns.LoadPlanner, ns) end
+    if ok and ready == true and type(ns.GoldTravel) == "function" then ns.GoldTravel(idea); return "travel" end
     if type(idea.go) == "function" then idea.go(idea); return "travel" end
-    ns:Print("Going there needs the planner's travel, which is not in yet. Here are the steps.")
-    ns.GoldStepsList(idea)
+    ns.GoldStepsList(idea)                                             -- (no planner: the folder's own message said why)
     return "list"
 end
 

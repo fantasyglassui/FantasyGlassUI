@@ -56,8 +56,7 @@ local type, pairs, ipairs, tostring, pcall = type, pairs, ipairs, tostring, pcal
 -- end of folder seams
 -- (Every ns.Planner* and ns.Gold* that a file of FantasyGlassUI/ or FantasyGlassUI_Options/ uses and that is not
 -- defined in FantasyGlassUI/ by name: each is defined in a folder file. A call site checks it is there first, or it
--- is one of the stand-ins below, which load the folder: GoldAuctionShow, GoldOpen, PlannerOpen, PlannerStart. A stand-in
--- whose folder function is still to come (PlannerOpen: the planner window, group C) hands back nil until then.
+-- is one of the stand-ins below, which load the folder: GoldAuctionShow, GoldOpen, PlannerCatchUp, PlannerOpen, PlannerStart.
 -- tests/test_addon.py::test_folder_seams_listed keeps this list true.)
 
 ns.FOLDERS = {
@@ -281,7 +280,9 @@ end
 
 ------------------------------------------------------------------------------------------
 -- The login load: following the planned guide (or a trip) means the planner is loaded, which every
--- "if ns.Planner... then" in Guide.lua relies on. It runs behind the loading screen.
+-- "if ns.Planner... then" in Guide.lua relies on. It runs behind the loading screen, and again, the same
+-- way, when the guide is switched on or unlocked later in the session while the saved state follows the
+-- plan or a trip. It is automatic, so it says nothing, in a fight too.
 ------------------------------------------------------------------------------------------
 local LoginLoad
 local function Following()
@@ -293,7 +294,7 @@ end
 -- In a fight (a /reload in one): when it ends, the same checks again, then the load.
 function LoginLoad()
     if ns.Yes(InCombatLockdown()) then
-        ns:AfterFight("Planner", function() if Following() then LoginLoad() end end)
+        ns:AfterFight("Planner", function() if Following() then LoginLoad() end end, true)
         return
     end
     if ns:LoadPlanner(true) and ns.PlannerReplan then ns:PlannerReplan("loading screen") end
@@ -309,6 +310,23 @@ do
         LoginLoad()
     end)
 end
+-- The guide switched on (ns:GuideApplySwitch) or unlocked mid-session: following the plan or a trip, the
+-- planner's folder loads as at login (once: a folder already loaded is left as it is). A load that failed is
+-- not tried again this way: ns:GuideApplySwitch also runs when other switches change, and each try would say why.
+local followFailed = false
+function ns.FolderFollowCheck()
+    if followFailed or ns.folderReady.planner or not Following() then return end
+    if type(IsLoggedIn) == "function" then                       -- (before the login: the login load does it)
+        local ok, v = pcall(IsLoggedIn)
+        if not (ok and ns.Yes(v)) then return end
+    end
+    local fight = ns.Yes(InCombatLockdown())
+    LoginLoad()
+    if not fight and not ns.folderReady.planner then followFailed = true end
+end
+ns.GuideRegisterLock("plannerFollow", function(unlocked)
+    if unlocked then ns.FolderFollowCheck() end
+end)
 
 ------------------------------------------------------------------------------------------
 -- The planner's own ways in: /fgui plan (in no help list: answered only while unlocked; locked, it is the

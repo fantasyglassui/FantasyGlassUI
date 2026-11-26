@@ -665,7 +665,13 @@ function ns.BuildGuidePage(page)
         recBtn.text:SetText(ns:Tr(ns.guideRecording and "Stop recording" or "Record"))
         local st = ns.GuideState and ns.GuideState()
         if ns.guideRecording then status:SetText(ns:SignalHex("bad") .. ns:Tr("Recording") .. ":|r " .. tostring(ns.guideRecording.name) .. "  (" .. #ns.guideRecording.steps .. ")")
-        elseif st then status:SetText(ns:Tr("Following") .. ": " .. AccentTextHex(status) .. tostring(st.name) .. "|r  -  " .. tostring(st.at))
+        elseif st then
+            local name = st.name                                         -- (the plan and a trip have hidden names: their words instead)
+            if ns.GUIDE_TRIP ~= nil and name == ns.GUIDE_TRIP then
+                local title = type(st.trip) == "table" and st.trip.title
+                name = format(ns:Tr("Gold trip: %s"), (type(title) == "string" and not ns:IsSecret(title)) and title or "")
+            elseif ns.GUIDE_PLANNED ~= nil and name == ns.GUIDE_PLANNED then name = ns:Tr("Route planner") end
+            status:SetText(ns:Tr("Following") .. ": " .. AccentTextHex(status) .. tostring(name) .. "|r  -  " .. tostring(st.at))
         else status:SetText(ns:Tr("You are not following a guide.")) end
         Layout(G.width)
         -- the first time the tab is opened after the guide was unlocked: the planner's short tour

@@ -1938,6 +1938,7 @@ end
 function ns:GuideApplySwitch()
     if ns:GuideOn() then
         if State() then ns:GuideShowPanel(); ns:GuideAdvance() end
+        if ns.FolderFollowCheck then ns.FolderFollowCheck() end   -- (following the plan or a trip: the planner's folder loads, as at login)
         return true
     end
     if rec then ns:GuideRecordStop() end                      -- (a recording is kept, and ends)

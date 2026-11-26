@@ -21,6 +21,8 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["\"%s\" waits."] = "„%s“ wartet.",
+    ["Stay as long as you like, then Stop this trip."] = "Bleib, so lange du magst, und beende dann diese Reise.",
     ["Gold trip: %s"] = "Goldreise: %s",
     ["Stop this trip"] = "Diese Reise beenden",
     ["Back to your levelling plan."] = "Zurück zu deinem Levelplan.",
@@ -3841,6 +3843,8 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["\"%s\" waits."] = "« %s » t'attend.",
+    ["Stay as long as you like, then Stop this trip."] = "Reste aussi longtemps que tu veux, puis arrête ce voyage.",
     ["Gold trip: %s"] = "Voyage pour l'or : %s",
     ["Stop this trip"] = "Arrêter ce voyage",
     ["Back to your levelling plan."] = "Retour à votre plan de montée de niveau.",
@@ -7661,6 +7665,8 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["\"%s\" waits."] = "«%s» te espera.",
+    ["Stay as long as you like, then Stop this trip."] = "Quédate todo lo que quieras y luego detén este viaje.",
     ["Gold trip: %s"] = "Viaje de oro: %s",
     ["Stop this trip"] = "Detener este viaje",
     ["Back to your levelling plan."] = "De vuelta a tu plan de subida de nivel.",
@@ -11484,6 +11490,8 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["\"%s\" waits."] = "«%s» ждёт.",
+    ["Stay as long as you like, then Stop this trip."] = "Оставайтесь сколько угодно, затем прервите поездку.",
     ["Gold trip: %s"] = "Поездка за золотом: %s",
     ["Stop this trip"] = "Прервать поездку",
     ["Back to your levelling plan."] = "Возвращаемся к вашему плану прокачки.",
@@ -15304,6 +15312,8 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["\"%s\" waits."] = "\"%s\" está esperando.",
+    ["Stay as long as you like, then Stop this trip."] = "Fique o quanto quiser e depois pare esta viagem.",
     ["Gold trip: %s"] = "Viagem pelo ouro: %s",
     ["Stop this trip"] = "Parar esta viagem",
     ["Back to your levelling plan."] = "De volta ao seu plano de evolução.",
@@ -19124,6 +19134,8 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["\"%s\" waits."] = "«%s» ti aspetta.",
+    ["Stay as long as you like, then Stop this trip."] = "Resta quanto vuoi, poi interrompi questo viaggio.",
     ["Gold trip: %s"] = "Viaggio per l'oro: %s",
     ["Stop this trip"] = "Interrompi questo viaggio",
     ["Back to your levelling plan."] = "Di nuovo al tuo piano di livellamento.",
@@ -22944,6 +22956,8 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["\"%s\" waits."] = "\"%s\"은(는) 기다리고 있습니다.",
+    ["Stay as long as you like, then Stop this trip."] = "원하는 만큼 머문 뒤 이 여정을 중지하세요.",
     ["Gold trip: %s"] = "골드 여정: %s",
     ["Stop this trip"] = "이 여정 중지",
     ["Back to your levelling plan."] = "레벨업 계획으로 돌아갑니다.",
@@ -26767,6 +26781,8 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["\"%s\" waits."] = "“%s”在等你。",
+    ["Stay as long as you like, then Stop this trip."] = "想待多久都行，然后停止这次旅程。",
     ["Gold trip: %s"] = "赚金之旅：%s",
     ["Stop this trip"] = "停止这次旅程",
     ["Back to your levelling plan."] = "回到你的升级计划。",

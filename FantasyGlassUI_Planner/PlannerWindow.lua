@@ -82,7 +82,9 @@ function ns.PlannerWindowSummary()
         local title = trip.title
         if type(title) ~= "string" or title == "" then title = type(guide) == "table" and type(guide.title) == "string" and guide.title or ns:Tr("Ways to make gold") end
         out[#out + 1] = format(ns:Tr("On a trip: %s, step %d of %d"), title, at, total)
-        out[#out + 1] = ns:Tr("Your levelling plan waits.")
+        local back = type(st.resume) == "table" and st.resume.name or nil      -- (what the trip paused: the plan, a written guide, or nothing)
+        if back ~= nil and back == ns.GUIDE_PLANNED then out[#out + 1] = ns:Tr("Your levelling plan waits.")
+        elseif type(back) == "string" and not ns:IsSecret(back) and back ~= "" then out[#out + 1] = format(ns:Tr("\"%s\" waits."), back) end
     else
         out[#out + 1] = ns:Tr("You are not following a plan.")
     end
@@ -523,6 +525,7 @@ local function Build()
     f.planButton = ns:CreateButton(f, "Plan my route", 130, 24, function()
         local st = ns.GuideState and ns.GuideState()
         if type(st) == "table" and st.name == ns.GUIDE_PLANNED then ns:PlannerReplan("again")
+        elseif ns.GuideOnTrip and ns.GuideOnTrip() then ns:GuideFollow(ns.GUIDE_PLANNED)   -- (a trip: it ends, and the plan is made, as the Guides list does)
         elseif ns.PlannerStart then ns:PlannerStart() end
         Refresh()
     end)
@@ -558,9 +561,25 @@ local function Build()
     if f.EnableKeyboard then f:EnableKeyboard(true) end
     if f.SetPropagateKeyboardInput and not InCombatLockdown() then pcall(f.SetPropagateKeyboardInput, f, true) end
     f:SetScript("OnKeyDown", function(self, key)
-        if InCombatLockdown() then return end                            -- (the game owns the keys in a fight)
+        if InCombatLockdown() then                                       -- (the game owns the keys in a fight: the window lets go of them,
+            pcall(self.SetPropagateKeyboardInput, self, true)            --  even when the key before the fight was one it used)
+            if self.EnableKeyboard then pcall(self.EnableKeyboard, self, false) end
+            return
+        end
         local used = KeyPress(self, key)
         pcall(self.SetPropagateKeyboardInput, self, not used)
+    end)
+    -- A fight: the window stops taking keys as it starts (as the window keys do), and takes them again after it.
+    f:RegisterEvent("PLAYER_REGEN_DISABLED")
+    f:RegisterEvent("PLAYER_REGEN_ENABLED")
+    f:SetScript("OnEvent", function(self, event)
+        if event == "PLAYER_REGEN_DISABLED" then
+            pcall(self.SetPropagateKeyboardInput, self, true)
+            if self.EnableKeyboard then pcall(self.EnableKeyboard, self, false) end
+        elseif event == "PLAYER_REGEN_ENABLED" then
+            if self.EnableKeyboard then pcall(self.EnableKeyboard, self, true) end
+            pcall(self.SetPropagateKeyboardInput, self, true)
+        end
     end)
     -- what you follow changes as you play: drawn again each second while the window shows
     local wait = 0
