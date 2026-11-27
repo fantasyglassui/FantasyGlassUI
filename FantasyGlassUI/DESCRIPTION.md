@@ -24,7 +24,7 @@ One add-on restyles everything you look at in WoW Forever: unit frames, action b
 - **Make your own theme.** Pick three colors on [the website](https://fantasyglassui.com), see it on a full screen, and paste the code into the game. Or give each place its own theme: one for cities, another for raids.
 - **Built for WoW Forever, and only for it.** Every function, event and frame it uses is checked against the Forever client itself, on every update. Where the game hides information in combat, it works around it instead of breaking.
 - **Made for everyone.** Colors for each kind of color vision, high contrast, lettering for low vision and dyslexia, captions for sounds, talk and quests read aloud, the game's windows by keyboard, and keys for one hand. See "Accessibility" below.
-- **295 switches, one window.** A settings window with a search that finds any setting and tells you where it lives, an undo for every change, and Simple or All options.
+- **295 switches.** A settings window with a search that finds any setting and tells you where it lives, an undo for every change, and Simple or All options.
 
 ## The look
 
