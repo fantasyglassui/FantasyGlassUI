@@ -90,6 +90,12 @@ empty cue list (`"cues": []`), and while it is empty no caption file and no `<tr
   `body.html`, run by `script.js`), and an example route (`#example`): the first `ok` plan code in
   `tests/plan_codes.txt`, read in the browser by the plan page's own reader (`plan/reader.js`, which `body.py`
   serves at `/assets/plan-reader.js`) and drawn zone by zone with its steps to tick.
+- The zone maps, on the plan page and in the example route: one drawer, `plan/map.js` (inline in the plan page,
+  `/assets/plan-map.js` for Guide and Gold). Each map is fitted to its zone's stops (one scale across and down, never
+  closer than about 8 units of the zone's 0-100 map on a phone), its height follows them (150-420 px), and markers that
+  would touch fan out around the spot or join into a run ("9–14"). A faint grid and N for north; no game map art.
+  Markers are buttons named by their steps, and a step's number in the list is a button to its marker. Its words are
+  in the Guide and Gold block of `site_tr.py`; `plan_page.py` copies them into the plan page (`MAP_WORDS`).
 - Roadmap: drawn from `pages/roadmap/roadmap.json`; change an idea's status there (no dates).
   An in-progress idea may carry a `preview` (what it will do, in a player's words), a `sketch` (a small text sketch:
   `{"kind": "steps" | "list", "title": ..., "lines": [{"text": ...}]}`) and an `after` line; those ideas then show in a

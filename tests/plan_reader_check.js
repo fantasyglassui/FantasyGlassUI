@@ -55,9 +55,41 @@ eq(FGPlan.read("SUIT1!{S4:nameS1:x}").other, true, "a theme code is told apart")
 eq(FGPlan.read("hello").other, false, "other text is not");
 eq(FGPlan.read(null).why, "empty", "nothing");
 
+// the zone map (map.js): fitted to the stops, one scale for x and y, and no two markers on top of each other
+var FGPlanMap = require(path.join(ROOT, "site-src", "plan", "map.js"));
+function stopsOf(list) { return list.map(function (p, i) { return { x: p[0], y: p[1], step: i, kind: p[2] || "do" }; }); }
+var hub = [46.2, 30.4], clump = stopsOf([hub, hub, [46.6, 30.1], [47.9, 31.8], [48.4, 32.6], [49.0, 31.2], [47.2, 33.4], hub, hub, [46.6, 30.1],
+  [46.6, 30.1], [45.7, 29.6], [45.5, 30.9], [48.8, 29.0], [49.3, 28.6], [46.6, 30.1], [46.0, 30.6], [46.0, 30.6, "hearth"]]);
+var spread = stopsOf([[79.5, 68.9], [79.8, 68.3], [69.0, 79.2], [52.4, 66.1], [41.9, 65.6], [41.9, 65.6], [61.0, 53.7], [79.5, 68.9], [24.2, 74.5], [34.6, 84.1]]);
+[[clump, "a clump"], [spread, "a spread route"], [stopsOf([[52, 47.5]]), "one stop"]].forEach(function (c) {
+  [358, 760, 200].forEach(function (w) {
+    var L = FGPlanMap.layout(c[0], w), what = c[1] + " at " + w + " px: ";
+    var seen = [];
+    L.marks.forEach(function (q) { seen = seen.concat(q.steps); });
+    eq(seen.sort(function (a, b) { return a - b; }), c[0].map(function (s) { return s.step; }), what + "every stop on one marker");
+    L.marks.forEach(function (q, i) {
+      if (q.mx - q.hw < 0 || q.mx + q.hw > L.width || q.my - 11 < 0 || q.my + 11 > L.height) fail(what + "a marker outside the map");
+      L.marks.forEach(function (r, j) {
+        if (j > i && FGPlanMap.touch(q, r, 0)) fail(what + "markers " + q.text + " and " + r.text + " overlap");
+      });
+    });
+    if (L.height < 150 || L.height > 420) fail(what + "a height of " + L.height);
+    if (Math.abs(L.view.w / L.view.h - L.width / L.height) > 1e-6) fail(what + "x and y at different scales");
+    L.points.forEach(function (p) {
+      if (Math.abs((p.x - L.view.x) * L.scale - p.px) > 1e-6 || Math.abs((p.y - L.view.y) * L.scale - p.py) > 1e-6) fail(what + "a stop not where it is");
+    });
+  });
+});
+var one = FGPlanMap.layout(stopsOf([[52, 47.5]]), 760);
+if (one.view.w < 10 || one.height > 200) fail("one stop is not zoomed in too far, in a low box: " + one.view.w + " units, " + one.height + " px");
+var far = FGPlanMap.layout(spread, 358);
+if (far.view.w < 55 || far.view.w > 100) fail("a spread route fits its stops: " + far.view.w + " units across");
+eq(FGPlanMap.rangeText([3, 4, 5, 6], true), "3\u20136", "a run of steps");
+eq(FGPlanMap.rangeText([2, 5], false), "2, 5", "two apart");
+
 // the page and the reader: nothing leaves the browser
 var banned = /fetch\(|XMLHttpRequest|sendBeacon|WebSocket|<script src|<link|https?:\/\//;
-["reader.js", "page.html"].forEach(function (name) {
+["reader.js", "map.js", "page.html"].forEach(function (name) {
   var text = fs.readFileSync(path.join(ROOT, "site-src", "plan", name), "utf8").replace(/fantasyglassui\.com/g, "");
   var m = banned.exec(text);
   if (m) fail(name + " contains " + m[0]);

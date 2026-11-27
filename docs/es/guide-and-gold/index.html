@@ -117,21 +117,19 @@ dl.ex-totals div { padding: 10px 14px; border: 1px solid var(--line); }
 dl.ex-totals dt { color: var(--dim); font-size: .85rem; }
 dl.ex-totals dd { margin: 0; font: 400 1.35rem/1.3 var(--display); }
 .ex-zones { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 20px; }
-.ex-zone { display: grid; grid-template-columns: minmax(0, 200px) minmax(0, 1fr); grid-template-areas: "h h" "map steps"; gap: 12px 20px; align-content: start; }
+.ex-zone { display: grid; grid-template-columns: minmax(0, 240px) minmax(0, 1fr); grid-template-areas: "h h" "map steps"; gap: 12px 20px; align-content: start; }
 .ex-zone h3 { grid-area: h; margin: 0; }
 .ex-zone .ex-steps { grid-area: steps; }
-.ex-map { grid-area: map; display: block; width: 100%; height: auto; background: var(--raised); border: 1px solid var(--line); color: var(--text); }
-.ex-map .grid { stroke: var(--rule); stroke-width: .4; }
-@media (max-width: 480px) { .ex-zone { grid-template-columns: minmax(0, 1fr); grid-template-areas: "h" "map" "steps"; } .ex-map { max-width: 240px; } }
-.ex-map .leg { stroke: var(--gold); stroke-width: .9; }
-.ex-map .leg.travel { stroke: var(--frost); stroke-dasharray: 2 2; }
-.ex-map .stop { fill: var(--raised); stroke: var(--gold); stroke-width: 1.1; }
-.ex-map .stop-n { fill: var(--text); font: 700 6.2px var(--body); }
-.ex-map .stop-k { fill: var(--frost); font: 700 6.2px var(--body); }
+.ex-map { grid-area: map; min-width: 0; --map-radius: 0; }                    /* the map itself: site-src/plan/map.js (.fgmap) */
+@media (max-width: 480px) { .ex-zone { grid-template-columns: minmax(0, 1fr); grid-template-areas: "h" "map" "steps"; } }
 ol.ex-steps { list-style: none; margin: 0; padding: 0; }
 ol.ex-steps li { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-top: 1px solid var(--rule); }
 ol.ex-steps li:first-child { border-top: 0; }
 ol.ex-steps .n { min-width: 1.6em; text-align: right; color: var(--faint); font-variant-numeric: tabular-nums; }
+ol.ex-steps button.n { flex: none; min-width: 2.2em; min-height: 26px; padding: 0 6px; font: 600 .9rem/1 var(--body); text-align: center; color: var(--text); background: var(--raised); border: 1px solid var(--line); border-radius: 13px; cursor: pointer; }
+ol.ex-steps button.n:hover { border-color: var(--gold); }
+ol.ex-steps li.now { box-shadow: inset 3px 0 0 var(--gold); padding-left: 8px; }
+ol.ex-steps li.now button.n { background: var(--gold); border-color: var(--gold); color: var(--on-gold); }
 ol.ex-steps input { flex: none; width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--gold); }
 ol.ex-steps label { cursor: pointer; }
 ol.ex-steps li.done label { text-decoration: line-through; color: var(--dim); }
@@ -159,7 +157,7 @@ ol.ex-steps li.done label { text-decoration: line-through; color: var(--dim); }
 <!-- Guide and Gold (W3): what the route planner and Ways to make gold do, Questie, the prices and sell hints, the
      how-to pages (pages/guide-and-gold/<name>/) and the plan page (/plan/, built by site-src/plan_page.py).
      Every claim here is true of the add-on's code (FantasyGlassUI_Planner/, FantasyGlassUI_Gold/, Guide.lua).
-     body.py fills in the example route's plan code (tests/plan_codes.txt) and the reader's address; script.js runs the
+     body.py fills in the example route's plan code (tests/plan_codes.txt) and the reader's and the map's addresses; script.js runs the
      short tour (#tour, its steps in #tour-steps) and draws the example route (#example). -->
 <div class="wrap page-head gg-head">
   <span class="eyebrow">Novedad en 13.0</span>
@@ -296,7 +294,7 @@ ol.ex-steps li.done label { text-decoration: line-through; color: var(--dim); }
       <h2 id="h-example">Una ruta, tal como la muestra la página del plan</h2>
       <p class="lede">Esto es un ejemplo: un código de plan para un tramo corto del Bosque de Elwynn, leído por el mismo lector que la página del plan. Tu propia ruta sale del planificador, en el juego.</p>
     </header>
-    <div class="ex" id="ex" data-code="SUIP1!&#123;S2:crN0;S2:flN1;S2:lv&#123;N1;N8;N2;N10;&#125;S1:sN1800;S2:st&#123;N1;&#123;S1:kS6:acceptS1:tS23:Accept: Red Linen GoodsS1:xN79.5;S1:yN68.9;S1:zN1;&#125;N2;&#123;S1:kS2:doS1:tS44:Collect 6 Red Linen Bandanas from the Defias&#125;N3;&#123;S1:kS6:turninS1:tS24:Turn in: Red Linen GoodsS1:xN79.5;S1:yN68.9;S1:zN1;&#125;N4;&#123;S1:kS3:flyS1:tS9:StormwindS1:xN70.9;S1:yN72.5;S1:zN2;&#125;N5;&#123;S1:kS4:noteS1:tS18:Good place to stop&#125;&#125;S1:vN1;S2:xpN4100;S1:z&#123;N1;&#123;S1:mN1429;S1:nS13:Elwynn Forest&#125;N2;&#123;S1:mN1453;S1:nS14:Stormwind City&#125;&#125;&#125;" data-min="%d min" data-hmin="%d h %d min" data-map="Mapa de las paradas en %s" hidden>
+    <div class="ex" id="ex" data-code="SUIP1!&#123;S2:crN0;S2:flN1;S2:lv&#123;N1;N8;N2;N10;&#125;S1:sN1800;S2:st&#123;N1;&#123;S1:kS6:acceptS1:tS23:Accept: Red Linen GoodsS1:xN79.5;S1:yN68.9;S1:zN1;&#125;N2;&#123;S1:kS2:doS1:tS44:Collect 6 Red Linen Bandanas from the Defias&#125;N3;&#123;S1:kS6:turninS1:tS24:Turn in: Red Linen GoodsS1:xN79.5;S1:yN68.9;S1:zN1;&#125;N4;&#123;S1:kS3:flyS1:tS9:StormwindS1:xN70.9;S1:yN72.5;S1:zN2;&#125;N5;&#123;S1:kS4:noteS1:tS18:Good place to stop&#125;&#125;S1:vN1;S2:xpN4100;S1:z&#123;N1;&#123;S1:mN1429;S1:nS13:Elwynn Forest&#125;N2;&#123;S1:mN1453;S1:nS14:Stormwind City&#125;&#125;&#125;" data-min="%d min" data-hmin="%d h %d min" data-map="Mapa de las paradas en %s" data-step="Paso %d: %s" data-steps="Pasos %s: %s" data-north="N" data-north-t="El norte está arriba" data-pin="Mostrar el paso %d en el mapa" hidden>
       <p class="ex-badge"><span class="tag">Ejemplo</span> <span class="faint">No es tu ruta: un código de plan de muestra.</span></p>
       <dl class="ex-totals">
         <div><dt>Experiencia</dt><dd data-t="xp"></dd></div>
@@ -312,6 +310,7 @@ ol.ex-steps li.done label { text-decoration: line-through; color: var(--dim); }
   </div>
 </section>
 <script src="/assets/plan-reader.js?v=9623b09d2c" defer></script>
+<script src="/assets/plan-map.js?v=c9fb341499" defer></script>
 
 <section class="block" id="private" aria-labelledby="h-private">
   <div class="wrap">
@@ -372,6 +371,6 @@ ol.ex-steps li.done label { text-decoration: line-through; color: var(--dim); }
   </div>
 </footer>
 <script src="/assets/site.js?v=2dd8abee61" defer></script>
-<script src="/assets/guide-and-gold.js?v=4524e6f017" defer></script>
+<script src="/assets/guide-and-gold.js?v=6528c8dc8b" defer></script>
 </body>
 </html>
