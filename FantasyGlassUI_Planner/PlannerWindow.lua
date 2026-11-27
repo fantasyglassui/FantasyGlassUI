@@ -27,7 +27,7 @@ local GROUPS = {
 ns.PLANNER_WINDOW_GROUPS = GROUPS
 -- What each group holds, top to bottom (the fields of the window's T).
 local ORDER = {
-    group = { "groupButton", "soloElitesBox", "classQuestsBox" },
+    group = { "groupButton", "soloElitesBox", "classQuestsBox", "dungeonsBox" },
     stops = { "flightsBox", "trainerBox", "holdBox", "vendorBox", "suppliesBox", "professionBox", "mountBox", "mailBox" },
     explore = { "exploreBox", "gatherBox" },
     rewards = { "pickBox", "rewardsBox", "logAdviceBox", "innBox", "restedBox", "dryBox", "reputationButton", "skippedButton" },
@@ -132,6 +132,7 @@ local function SwitchesSection(K, G, Replan, T)
     end
     T.soloElitesBox = Include("group", "plannerSoloElites", "Include elites my class has soloed", "Elite quests that one of your characters of this class has done alone count as Solo quests.")
     T.classQuestsBox = Include("group", "plannerClassQuests", "Plan class quests", "Your class quests go on the route at the right level, and the panel says when one is ready.")
+    T.dungeonsBox = Include("group", "plannerDungeons", "Dungeon runs in my route", "When a dungeon gives more experience an hour than the quests near you, the route picks up its quests, finds a group and runs it, solo players too.")
     T.flightsBox = Include("stops", "plannerLearnFlights", "Learn new flight points on the way", "A short way round to a flight master you do not know yet, when the route passes close.")
     T.trainerBox = Include("stops", "plannerTrainer", "Visit your trainer on the way", "A stop at your class trainer every two levels, for your new spells.")
     T.holdBox = Include("stops", "plannerHold", "Save hand-ins to level in town", "A hand-in that would take you up a level waits until the route reaches your trainer's town.")

@@ -50,7 +50,10 @@ function ns.PlannerPlanCode(guide, summary)
     for i, step in ipairs(steps) do
         if step.kind == "fly" then flights = flights + 1 elseif step.kind == "sail" then crossings = crossings + 1 end
         if i <= MAX_STEPS then
-            local e = { k = step.kind, t = Clean(ns.GuideStepBase(step), MAX_TEXT) }
+            -- (a dungeon run's group and run steps travel as notes with their words: the website's reader, frozen until
+            -- the release, refuses kinds it does not know, R8)
+            local kind = ns.GUIDE_RUN_KINDS and ns.GUIDE_RUN_KINDS[step.kind] and "note" or step.kind
+            local e = { k = kind, t = Clean(ns.GuideStepBase(step), MAX_TEXT) }
             local map = tonumber(step.map)
             if map then
                 if not index[map] then zones[#zones + 1] = { m = map, n = ZoneName(map) }; index[map] = #zones end

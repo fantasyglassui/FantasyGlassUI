@@ -26517,8 +26517,8 @@ try("13.5 seams: the run step", function()
         ok(ns.GuideState().inside == 36 and at() == 2, "inside: the group step done, the mark kept: " .. tostring(ns.GuideState().inside) .. " " .. tostring(at()))
         ns:GuideAdvance(); ok(at() == 2, "still inside: the run goes on")
         id = 48; ns:GuideAdvance(); ok(ns.GuideState().inside == 36, "another instance: the mark stays")
-        ok(at() == 3, "in another instance: out of this one, so the run is done")
-        ns.GuideState().at = 2                                    -- (back on the run, for the rest)
+        ok(at() == 2, "in another instance (a ghost through the wrong portal): not the open world, so the run goes on")
+        id = nil; ns:GuideAdvance(); ok(at() == 2, "inside, its id unreadable: the run goes on")
         id = 36; ns:GuideAdvance(); ok(at() == 2, "back inside: the run goes on")
         -- /reload inside: the mark is in the saved state, and a fresh read of it sees it
         ok(type(ns.root.guideState[key]) == "table" and ns.root.guideState[key].inside == 36, "saved with the guide state")
@@ -26616,6 +26616,366 @@ end
 -- 13.5 seams tests: end
 --
 -- 13.5 A dungeon tests: begin
+do
+local function ok(cond, msg) if not cond then error(msg, 2) end end
+local function Deadmines() return { name = "The Deadmines", minLevel = 17, maxLevel = 24, map = 1436, x = 43, y = 72, zone = 1581, instance = 36, bosses = 6 } end
+-- The shared fixture: a fake source (as in "13.3 choices: when quests run dry") with the Deadmines and its quests
+-- 901-904 (starting and ending in Westfall), one zone hub (quest 9851) whose experience the test sets, and
+-- ns.PlannerTravel as a straight line. body(f) runs in pcall; everything is put back after it.
+local function Fixture(body)
+    local key = ns:CharKey()
+    local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), travel = ns.PlannerTravel, members = rawget(env, "GetNumGroupMembers"),
+        raid = env.IsInRaid, on = ns.db.plannerDungeons, group = ns.db.plannerGroup, keep = ns.db.plannerKeepRoute, dry = ns.db.plannerDry,
+        find = ns.db.plannerFindGroup, guideOn = ns.db.questGuide, state = ns.root.guideState, runs = ns.root.runs, time = env.GetTime,
+        inst = env.IsInInstance, info = env.GetInstanceInfo, dead = env.UnitIsDeadOrGhost, queued = ns.plannerQueued, reason = ns.plannerReason,
+        runNow = ns.root.runNow and ns.root.runNow[key], errors = #ns.errors, questDone = ns.PlannerQuestDone }
+    local fine, err = pcall(function()
+        local cm = {}
+        for k, v in pairs(saved.map) do cm[k] = v end
+        cm.GetWorldPosFromMapPos = function(map, v) if map == 1436 then return 0, { x = v.x * 1000, y = v.y * 1000 } end end
+        cm.GetMapInfo = function(map) return { name = ({ [1436] = "Westfall" })[map] or "Somewhere", mapID = map } end
+        env.C_Map = cm
+        env.CreateVector2D = function(x, y) return { x = x, y = y } end
+        if ns.PlannerPosReset then ns.PlannerPosReset() end
+        ns.PlannerTravel = function(from, to)
+            if type(from) ~= "table" or type(to) ~= "table" then return 0, {} end
+            local secs = from.map == to.map and math.sqrt((from.x - to.x) ^ 2 + (from.y - to.y) ^ 2) * 10 or 300
+            return secs, { { kind = "run", to = to, seconds = secs } }
+        end
+        local f = { members = 0, inside = false, id = nil }
+        env.GetNumGroupMembers = function() return f.members end
+        env.IsInRaid = function() return false end
+        env.IsInInstance = function() return f.inside, f.inside and "party" or "none" end
+        env.GetInstanceInfo = function() return "Die Todesminen", f.inside and "party" or "none", 1, "Normal", 5, 0, false, f.id end
+        env.UnitIsDeadOrGhost = function() return false end
+        ns.PlannerQuestDone = function() return false end      -- (hand-ins kept by earlier tests: 901-904 are this fixture's own)
+        ns.db.plannerDungeons, ns.db.plannerKeepRoute, ns.db.plannerDry, ns.db.plannerFindGroup, ns.db.questGuide = nil, nil, nil, nil, true
+        ns.db.plannerGroup = "solo"
+        ns.root.runs = {}
+        ns.PlannerDungeonSessionReset()
+        local function dq(id)
+            return { id = id, name = "DQ" .. id, level = 20, minLevel = 15, xp = 3000, sort = 1581, starts = { { map = 1436, x = 50, y = 50 + id - 900 } },
+                ends = { { map = 1436, x = 52, y = 50 } }, objectives = {}, pre = {}, preAny = {}, exclusive = {},
+                elite = false, group = true, dungeon = true, repeatable = false, doable = true }
+        end
+        f.recs = { [901] = dq(901), [902] = dq(902), [903] = dq(903), [904] = dq(904),
+            [9851] = { id = 9851, name = "Quest 9851", level = 18, minLevel = 1, xp = 10, starts = { { map = 1436, x = 40, y = 40 } },
+                ends = { { map = 1436, x = 40, y = 90 } }, objectives = {}, pre = {}, preAny = {}, exclusive = {},
+                elite = false, group = false, dungeon = false, repeatable = false, doable = true } }
+        f.ids = { 9851, 901, 902, 903, 904 }
+        function f.source(noDungeons)
+            local s = { kind = "fake", ids = function() return f.ids end, quest = function(id) return f.recs[id] end,
+                zoneQuests = function(zone) return zone == 1581 and { 901, 902, 903, 904 } or {} end, grindSpots = function() return {} end }
+            if not noDungeons then s.dungeons = function() return { Deadmines() } end end
+            return s
+        end
+        function f.ctx(extra)
+            local c = { source = f.source(), level = 18, group = ns.db.plannerGroup, inGroup = false, speed = 7, faction = "Alliance",
+                done = function() return false end, onQuest = function() return false end, here = { map = 1436, x = 40, y = 40 },
+                crossings = {}, flights = {}, learnFlights = false, pace = 1, flightTime = function() return nil end }
+            for k, v in pairs(extra or {}) do c[k] = v end
+            return c
+        end
+        function f.plan(extra) return ns.PlannerRoute(f.ctx(extra)) end
+        function f.kinds(g)
+            local out = {}
+            for _, s in ipairs(g.steps) do out[#out + 1] = s.kind end
+            return table.concat(out, ",")
+        end
+        function f.find(g, kind, quest)
+            for i, s in ipairs(g.steps) do if s.kind == kind and (quest == nil or s.quest == quest) then return i, s end end
+        end
+        function f.count(g, kind, quest)
+            local n = 0
+            for _, s in ipairs(g.steps) do if (kind == nil or s.kind == kind) and (quest == nil or s.quest == quest) then n = n + 1 end end
+            return n
+        end
+        function f.runSteps(g)
+            local n = 0
+            for _, s in ipairs(g.steps) do if ns.GUIDE_RUN_KINDS[s.kind] then n = n + 1 end end
+            return n
+        end
+        function f.has(entries, label)
+            for _, e in ipairs(entries) do if e[1] == label then return e end end
+            return nil
+        end
+        body(f)
+    end)
+    if ns.PlannerStop then ns:PlannerStop() end
+    env.C_Map = saved.map; rawset(env, "CreateVector2D", saved.vec)
+    ns.PlannerTravel, ns.PlannerQuestDone = saved.travel, saved.questDone
+    rawset(env, "GetNumGroupMembers", saved.members)
+    env.IsInRaid, env.IsInInstance, env.GetInstanceInfo, env.UnitIsDeadOrGhost, env.GetTime = saved.raid, saved.inst, saved.info, saved.dead, saved.time
+    ns.db.plannerDungeons, ns.db.plannerGroup, ns.db.plannerKeepRoute, ns.db.plannerDry = saved.on, saved.group, saved.keep, saved.dry
+    ns.db.plannerFindGroup, ns.db.questGuide = saved.find, saved.guideOn
+    ns.root.guideState, ns.root.runs = saved.state, saved.runs
+    if ns.root.runNow then ns.root.runNow[key] = saved.runNow end
+    ns.plannerQueued, ns.plannerReason = saved.queued, saved.reason
+    if ns.PlannerPosReset then ns.PlannerPosReset() end
+    if ns.PlannerDungeonSessionReset then ns.PlannerDungeonSessionReset() end
+    if not fine then error(err, 0) end
+end
+try("13.5 A: a dungeon beats the quests near you", function()
+    Fixture(function(f)
+        local g = f.plan()
+        local kinds = f.kinds(g)
+        local want = "accept,accept,accept,accept,group,dungeon,turnin,turnin,turnin,turnin"
+        ok(kinds:sub(1, #want) == want, "the weak hub: the dungeon first: " .. kinds)
+        ok(f.runSteps(g) == 2, "one group step and one run step")
+        for i = 1, 4 do ok(g.steps[i].quest == 900 + i and g.steps[i].map == 1436, "the accepts: " .. tostring(g.steps[i].quest)) end
+        local gs, rs = g.steps[5], g.steps[6]
+        ok(gs.instance == 36 and gs.zone == 1581 and gs.stopKey == "dungeon:1581:group" and gs.text == "Find a group for The Deadmines", "the group step: " .. ns.GuideLine(gs))
+        ok(rs.instance == 36 and rs.zone == 1581 and rs.stopKey == "dungeon:1581:run" and rs.text == "Run The Deadmines", "the run step: " .. ns.GuideLine(rs))
+        ok(gs.map == 1436 and gs.x == 43 and gs.y == 72 and rs.map == 1436 and rs.x == 43 and rs.y == 72, "both at the entrance")
+        ok(gs.dungeon == "The Deadmines", "the group step names the dungeon")
+        for i = 7, 10 do ok(g.steps[i].kind == "turnin" and g.steps[i].quest >= 901 and g.steps[i].quest <= 904, "the hand-ins") end
+        for i = 11, #g.steps do ok(not ns.GUIDE_RUN_KINDS[g.steps[i].kind], "after: the hub's own steps") end
+        f.recs[9851].xp = 1000000
+        local strong = f.plan()
+        ok(f.runSteps(strong) == 0, "a strong hub: no run step: " .. f.kinds(strong))
+        for id = 901, 904 do ok(f.count(strong, nil, id) == 0, "a strong hub: the dungeon's quests are not in it (solo)") end
+        ns.db.plannerGroup = "all"
+        strong = f.plan()
+        ok(f.runSteps(strong) == 0, "everything, a strong hub: no run step")
+        for id = 901, 904 do ok(f.count(strong, nil, id) == 0, "everything: the dungeon's quests are never in a quest hub (R5)") end
+        f.recs[9851].xp = 10
+        g = f.plan()
+        for id = 901, 904 do ok(f.count(g, "accept", id) == 1 and f.count(g, "turnin", id) == 1, "everything, weak hub: each quest once, through its dungeon") end
+    end)
+end)
+try("13.5 A: for everyone, and the switch", function()
+    Fixture(function(f)
+        local g = f.plan({ group = "solo", inGroup = false })
+        ok(f.count(g, "dungeon") == 1, "solo, alone: the dungeon is planned")
+        g = f.plan({ level = 30 })
+        ok(f.runSteps(g) == 0, "level 30: out of range")
+        ns.db.plannerDungeons = false
+        g = f.plan()
+        ok(f.runSteps(g) == 0, "switch off: no run step")
+        f.ids = {}
+        ns.db.plannerGroup = "all"
+        local _, s = f.plan()
+        ok(s.empty, "switch off, nothing to plan: empty")
+        local lines = ns.PlannerAdviceLines({}, 1, s)
+        ok(#lines == 1 and lines[1] == "Try The Deadmines: 4 quests, start at Westfall", "switch off: the 13.0 dry line: " .. tostring(lines[1]))
+        ns.db.plannerGroup = "solo"
+        _, s = f.plan()
+        ok(s.dry == nil and #ns.PlannerAdviceLines({}, 1, s) == 0, "switch off, solo: no dungeon line, as in 13.0")
+        ns.db.plannerDungeons = nil
+        f.ids = { 9851, 901, 902, 903, 904 }
+        g = f.plan({ source = f.source(true) })
+        ok(f.runSteps(g) == 0, "a source with no dungeons: no run step")
+        g = f.plan({ source = ns.PlannerLogSource() })
+        ok(f.runSteps(g) == 0, "the log source: no run step")
+        -- a dungeon-tagged quest filed under a dungeon the list does not have: an ordinary quest, as in 13.0
+        f.recs[905] = { id = 905, name = "Far dungeon", level = 18, minLevel = 1, xp = 500, sort = 1584, starts = { { map = 1436, x = 41, y = 41 } },
+            ends = { { map = 1436, x = 41, y = 41 } }, objectives = {}, pre = {}, preAny = {}, exclusive = {},
+            elite = false, group = true, dungeon = true, repeatable = false, doable = true }
+        f.ids = { 9851, 905 }
+        ns.db.plannerGroup = "all"
+        g = f.plan()
+        ok(f.count(g, "accept", 905) == 1, "another dungeon's quest stays in the quest hubs: " .. f.kinds(g))
+    end)
+end)
+try("13.5 A: the run time", function()
+    Fixture(function()
+        local d = { name = "The Deadmines", minLevel = 17, bosses = 6, instance = 36 }
+        local def = (600 + 360 * 6) * (1 + 2 / 60)
+        local function near(a, b) return type(a) == "number" and math.abs(a - b) < 0.01 end
+        ok(near(ns.PlannerDungeonSeconds(d), def), "no runs: the default: " .. tostring(ns.PlannerDungeonSeconds(d)))
+        ok(near(ns.PlannerDungeonSeconds({ name = "Ragefire Chasm", minLevel = 13, bosses = 4, instance = 389 }), 600 + 360 * 4), "below 15: no level part")
+        local function run(id, name, length, kill)
+            local r = ns.RunNew(name, "Normal", 1000, "Me - Realm", id)
+            if kill then ns.RunEncounter(r, "Boss", true, 1000 + length) else r.left = 1000 + length end
+            return r
+        end
+        ns.root.runs = { run(36, "Die Todesminen", 1800, true) }
+        ok(near(ns.PlannerDungeonSeconds(d), (def + 1800) / 2), "one run by id, a localised name: the average with the default")
+        ns.root.runs = { run(36, "Die Todesminen", 1800, false), run(48, "The Deadmines", 1800, true) }
+        ok(near(ns.PlannerDungeonSeconds(d), def), "no kill, or another id: not counted")
+        ns.root.runs = { run(nil, "The Deadmines", 1800, true) }
+        ok(near(ns.PlannerDungeonSeconds(d), (def + 1800) / 2), "a run from before 13.5 (no id): by its name")
+        ns.root.runs = {}
+        for i = 1, 6 do ns.root.runs[i] = run(36, "Die Todesminen", i * 1000, true) end
+        ok(near(ns.PlannerDungeonSeconds(d), 4000), "six runs: the median of the last five: " .. tostring(ns.PlannerDungeonSeconds(d)))
+    end)
+end)
+try("13.5 A: finding a group", function()
+    Fixture(function(f)
+        ok(ns.PlannerDungeonWait({}) == 900 * 4 / 4, "alone: " .. tostring(ns.PlannerDungeonWait({})))
+        ok(ns.PlannerDungeonWait({ groupSize = 2 }) == 900 * 3 / 4, "two in the group")
+        ok(ns.PlannerDungeonWait({ duo = {} }) == 900 * 3 / 4, "a duo friend, alone")
+        ok(ns.PlannerDungeonWait({ groupSize = 3 }) == 0, "three: no wait")
+        f.members = 2
+        ok(ns.PlannerDungeonWait({}) == 900 * 3 / 4, "the group's size from the game")
+        f.members = 0
+        local c = f.ctx()
+        local alone = ns.PlannerDungeonHub(Deadmines(), c, ns.PlannerTripState(c))
+        c.duo = {}
+        local duo = ns.PlannerDungeonHub(Deadmines(), c, ns.PlannerTripState(c))
+        ok(alone and duo and math.abs(alone.seconds - 900 / 4 - duo.seconds) < 0.01, "the pseudo-hub with a duo friend: a quarter less wait")
+        ok(#alone.quests == 4 and alone.into.map == 1436 and alone.into.x == 50, "its quests, and in at the first giver")
+        local g, s = f.plan()
+        ns:GuideSetPlan(g, s)
+        local gi = f.find(g, "group")
+        local st = ns.GuideState()
+        ok(gi and ns.PlannerFindGroupStep(st, g.steps, gi) == g.steps[gi], "solo: the group step has Find a group")
+        ok(ns.PlannerLFGText(g.steps[gi]) == "LFG The Deadmines, Westfall", "the line: " .. tostring(ns.PlannerLFGText(g.steps[gi])))
+        ok(f.has(ns.GuideStepEntries(g.steps[gi]), "Find a group"), "in the step's menu too")
+        env.IsInRaid = function() return true end
+        ok(ns.PlannerFindGroupStep(st, g.steps, gi) == nil, "in a raid: none")
+    end)
+end)
+try("13.5 A: skip, keep, ran", function()
+    Fixture(function(f)
+        local now = 1000
+        env.GetTime = function() return now end
+        local g, s = f.plan()
+        ns:GuideSetPlan(g, s)
+        local gi, ri = f.find(g, "group"), f.find(g, "dungeon")
+        local st = ns.GuideState()
+        st.at = gi
+        ns:GuideAdvance()
+        ok(st.at == gi, "on the group step")
+        now = 1899
+        ok(not f.has(ns.GuidePanelEntries(g.steps[gi]), "Skip this dungeon") and ns.PlannerDungeonWaitLine(st, g.steps, gi) == nil, "899 s: not yet")
+        now = 1900
+        ok(f.has(ns.GuidePanelEntries(g.steps[gi]), "Skip this dungeon"), "900 s: the panel's menu has it")
+        ok(ns.PlannerDungeonWaitLine(st, g.steps, gi) == "No group yet? You can skip this dungeon in the ... menu.", "900 s: the line")
+        ok(f.has(ns.GuideStepEntries(g.steps[ri]), "Skip this dungeon") and f.has(ns.GuideStepEntries(g.steps[gi]), "Skip this dungeon"), "the step menus always have it")
+        ok(not f.has(ns.GuideStepEntries(g.steps[1]), "Skip this dungeon"), "not on a quest step")
+        ns.plannerQueued = false
+        f.has(ns.GuidePanelEntries(g.steps[gi]), "Skip this dungeon")[2]()
+        ok(ns.PlannerDungeonSkipped(1581) and ns.plannerQueued == true, "skipped for the session, and planned again")
+        ok(f.runSteps(f.plan()) == 0, "the next plan has no run step")
+        ns:PlannerStart()
+        ok(not ns.PlannerDungeonSkipped(1581), "Plan my route clears it")
+        ns:PlannerStop()
+        -- a kept route
+        ns.db.plannerKeepRoute = true
+        ns:GuideSetPlan(g, s)
+        st = ns.GuideState()
+        local r1, r2 = ns:PlannerReplan("level")
+        ok(r1 == false and r2 == "refused", "kept: a level replan is refused")
+        st.at = gi
+        f.members = 3
+        ns:GuideAdvance()
+        ok(st.at == ri, "kept: three in the group: the group step ticks: " .. tostring(st.at))
+        f.inside, f.id = true, 36
+        ns:GuideAdvance()
+        ok(st.at == ri and st.inside == 36, "inside: the run goes on")
+        ok(not ns.PlannerDungeonRan(1581), "not run yet")
+        f.inside, f.id = false, nil
+        ns:GuideAdvance()
+        ok(st.at == ri + 1, "out again: the run step ticks: at " .. tostring(st.at) .. " of " .. #g.steps .. ", run " .. ri .. ", inside " .. tostring(st.inside)
+            .. ", ran " .. tostring(ns:GuideWorld().ranDungeon(g.steps[ri])) .. ", in " .. tostring((ns:GuideWorld().inInstance())) .. ", dead " .. tostring(env.UnitIsDeadOrGhost("player")))
+        ok(ns.PlannerDungeonRan(1581), "the dungeon was run")
+        local after = f.plan({ onQuest = function(id) return id == 901 or id == 902 end, ready = function(id) return id == 901 end })
+        ok(f.runSteps(after) == 0, "run: the next plan has no run step")
+        ok(f.count(after, "turnin", 901) == 1, "a logged, complete quest of it: a hand-in: " .. f.kinds(after))
+        ok(f.count(after, nil, 902) == 0, "a logged, incomplete one: not planned")
+        -- Skip this dungeon on a kept route: its steps are skipped, nothing is planned again
+        ns.PlannerDungeonSessionReset()
+        f.members = 0
+        ns:GuideSetPlan(g, s)
+        st = ns.GuideState()
+        ns.plannerQueued = false
+        f.has(ns.GuideStepEntries(g.steps[gi]), "Skip this dungeon")[2]()
+        ok(type(st.skipped) == "table" and st.skipped[gi] and st.skipped[ri], "kept: the run steps are skipped")
+        for i, step in ipairs(g.steps) do
+            if step.quest and step.quest >= 901 and step.quest <= 904 then ok(st.skipped[i], "kept: the dungeon's quest steps are skipped") end
+        end
+        ok(not (st.skipped[f.find(g, "accept", 9851)]), "the hub's steps stay")
+        ok(ns.plannerQueued == false and ns.PlannerDungeonSkipped(1581), "kept: no replan, and skipped for the session")
+    end)
+end)
+try("13.5 A: data from Questie", function()
+    local saved = { loaded = env.C_AddOns.IsAddOnLoaded, meta = rawget(env.C_AddOns, "GetAddOnMetadata"), q = rawget(env, "Questie"), loader = rawget(env, "QuestieLoader") }
+    local fine, err = pcall(function()
+        local want = { ["Ragefire Chasm"] = { 389, 4 }, ["Wailing Caverns"] = { 43, 7 }, ["The Deadmines"] = { 36, 6 }, ["Shadowfang Keep"] = { 33, 7 },
+            ["Blackfathom Deeps"] = { 48, 7 }, ["The Stockade"] = { 34, 5 }, ["Gnomeregan"] = { 90, 6 }, ["Razorfen Kraul"] = { 47, 6 },
+            ["Scarlet Monastery"] = { 189, 4 }, ["Razorfen Downs"] = { 129, 5 }, ["Uldaman"] = { 70, 9 }, ["Zul'Farrak"] = { 209, 8 },
+            ["Maraudon"] = { 349, 7 }, ["The Temple of Atal'Hakkar"] = { 109, 8 } }
+        ok(#ns.PLANNER_DUNGEONS == 14, "fourteen dungeons")
+        for _, d in ipairs(ns.PLANNER_DUNGEONS) do
+            local w = want[d.name]
+            ok(w and d.instance == w[1] and d.bosses == w[2], "instance and bosses: " .. tostring(d.name))
+        end
+        local asked = 0
+        local fakes = {
+            QuestieDB = { QuestPointers = {}, GetQuest = function() end, IsDoable = function() return true end, QueryNPCSingle = function() end },
+            QuestXP = { GetQuestLogRewardXP = function() return 0 end },
+            ZoneDB = { GetUiMapIdByAreaId = function(_, area) return area == 40 and 1436 or nil end },
+        }
+        env.Questie = { API = { isReady = true, RegisterOnReady = function() end } }
+        env.QuestieLoader = { ImportModule = function(_, name) return fakes[name] end }
+        env.C_AddOns.IsAddOnLoaded = function() return true end
+        rawset(env.C_AddOns, "GetAddOnMetadata", function() return ns.PLANNER_CONTRACT end)
+        local function entry()
+            ns.PlannerSourceReset()
+            local src, why = ns.PlannerSource()
+            ok(src and type(src.dungeons) == "function", "the Questie source has dungeons: " .. tostring(why))
+            for _, d in ipairs(src.dungeons()) do if d.zone == 1581 then return d, src end end
+        end
+        local d, src = entry()
+        ok(d and d.map == 1436 and d.x == 43 and d.y == 72 and d.instance == 36 and d.bosses == 6 and d.minLevel == 17 and d.maxLevel == 24 and d.name == "The Deadmines", "no GetDungeonLocation: the table's entrance")
+        ok(#src.dungeons() == 14, "all fourteen")
+        for i, e in ipairs(src.dungeons()) do ok(e ~= ns.PLANNER_DUNGEONS[i], "copies") end
+        fakes.ZoneDB.GetDungeonLocation = function(_, area) asked = asked + 1; if area == 1581 then return { { 40, 42.6, 71.9 } } end end
+        d, src = entry()
+        ok(d.map == 1436 and d.x == 42.6 and d.y == 71.9, "Questie's entrance, through its area: " .. tostring(d.map) .. " " .. tostring(d.x))
+        local n = asked
+        ok(n > 0, "ZoneDB was asked")
+        src.dungeons()
+        ok(asked == n, "cached: not asked again")
+        ns.PlannerSourceReset()
+        src = ns.PlannerSource()
+        src.dungeons()
+        ok(asked > n, "a reset asks again")
+        local errors = #ns.errors
+        fakes.ZoneDB.GetDungeonLocation = function() error("broken") end
+        d = entry()
+        ok(d.map == 1436 and d.x == 43 and d.y == 72 and #ns.errors == errors, "an error: the table's, and nothing written")
+        ok(ns.PlannerLogSource().dungeons == nil, "the log source has none")
+    end)
+    ns.PlannerSourceReset()
+    env.C_AddOns.IsAddOnLoaded = saved.loaded; rawset(env.C_AddOns, "GetAddOnMetadata", saved.meta)
+    rawset(env, "Questie", saved.q); rawset(env, "QuestieLoader", saved.loader)
+    if not fine then error(err, 0) end
+end)
+try("13.5 A: plan codes", function()
+    Fixture(function(f)
+        local g, s = f.plan()
+        local code = ns.PlannerPlanCode(g, s)
+        local data = ns.ShareDecode(code, #ns.PLANNER_CODE_HEADER + 1)
+        local seen = 0
+        for i, step in ipairs(g.steps) do
+            if ns.GUIDE_RUN_KINDS[step.kind] then
+                seen = seen + 1
+                ok(data.st[i].k == "note" and data.st[i].t == step.text, "a run step travels as a note with its words: " .. tostring(data.st[i].k))
+            else
+                ok(data.st[i].k == step.kind, "other steps keep their kind")
+            end
+        end
+        ok(seen == 2, "both run steps")
+        local plan, why = ns.PlannerReadPlanCode(code)
+        ok(plan ~= nil, "the reader reads it: " .. tostring(why))
+    end)
+end)
+try("13.5 A: the run log keeps the id", function()
+    Fixture(function(f)
+        ok(ns.runLogTest and ns.runLogTest.Where, "the run log is running")
+        ns.root.runNow = type(ns.root.runNow) == "table" and ns.root.runNow or {}
+        ns.root.runNow[ns:CharKey()] = nil
+        f.inside, f.id = true, 36
+        ns.runLogTest.Where()
+        local r = ns.runLogTest.Mine()
+        ok(r and r.id == 36 and r.instance == "Die Todesminen", "the run keeps the id: " .. tostring(r and r.id))
+        ok(ns.RunNew("X", nil, 1, "c", 48).id == 48 and ns.RunNew("X", nil, 1, "c").id == nil, "RunNew keeps it")
+        ns.root.runNow[ns:CharKey()] = nil
+    end)
+end)
+end
 -- 13.5 A dungeon tests: end
 --
 -- 13.5 B class tests: begin

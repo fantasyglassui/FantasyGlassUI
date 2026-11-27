@@ -39,9 +39,10 @@ end
 local function Kills(r) local n = 0; for _ in pairs(type(r.kills) == "table" and r.kills or {}) do n = n + 1 end; return n end
 ns.RunKills = Kills
 
--- What happens in a run (the tests call these directly).
-function ns.RunNew(instance, difficulty, now, char)
-    return { instance = instance, difficulty = difficulty, start = now, char = char, kills = {}, wipes = {}, deaths = 0, loot = {}, fights = {} }
+-- What happens in a run (the tests call these directly). `id`: the game's instance id (GetInstanceInfo's 8th value; 13.5),
+-- which names the place in every language (the planner's dungeon run times match by it; a run from before has none).
+function ns.RunNew(instance, difficulty, now, char, id)
+    return { instance = instance, difficulty = difficulty, start = now, char = char, id = id, kills = {}, wipes = {}, deaths = 0, loot = {}, fights = {} }
 end
 -- A pull: when the fight began, so a kill can say how long it took.
 function ns.RunPull(r, boss, now)
@@ -195,9 +196,10 @@ end
 
 ns:NewModule("runLog", function()
     local function Instance()
-        local ok, name, kind, _, difficulty = pcall(GetInstanceInfo)
-        if ok and type(name) == "string" and not Secret(name) and (kind == "party" or kind == "raid") then
-            return name, (type(difficulty) == "string" and not Secret(difficulty)) and difficulty or nil
+        local ok, name, kind, _, difficulty, _, _, _, id = pcall(GetInstanceInfo)
+        if ok and type(name) == "string" and not Secret(name) and not Secret(kind) and (kind == "party" or kind == "raid") then
+            return name, (type(difficulty) == "string" and not Secret(difficulty)) and difficulty or nil,
+                (type(id) == "number" and not Secret(id)) and id or nil
         end
     end
     local function Mine()
@@ -212,11 +214,11 @@ ns:NewModule("runLog", function()
     end
     local function Where()
         local r = Mine()
-        local inst, diff = Instance()
+        local inst, diff, id = Instance()
         local now = Now()
         if inst then
             if r and (r.instance ~= inst or (r.left and now - r.left > AWAY)) then Finish(); r = nil end
-            if not r then SetMine(ns.RunNew(inst, diff, now, ns:CharKey())) else r.left = nil end
+            if not r then SetMine(ns.RunNew(inst, diff, now, ns:CharKey(), id)) else r.left = nil end
         elseif r then
             if not r.left then r.left = now
             elseif now - r.left > AWAY then Finish() end
