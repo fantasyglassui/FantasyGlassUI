@@ -9,14 +9,24 @@
     "Baganator가 가방을 표시하고 있어서 Fantasy Glass UI의 가방 창은 물러납니다. 가방 칸을 보려면 Baganator 창 위쪽의 버튼이나 설정을 사용하세요(/bgr 입력).",
     "Baganator 正在显示你的背包，所以 Fantasy Glass UI 的背包窗口让位于它。要查看背包栏位，请使用 Baganator 窗口顶部的按钮或它的设置（输入 /bgr）。"
   ],
-  "The bag window shows your bag slots when it opens (Slots hides them, and that is remembered), and new players get its ready-made sections, such as Upgrades and Recipes, switched on. With Baganator, a one-time tip says where to find your bag slots.": [
-    "Das Taschenfenster zeigt deine Taschenplätze gleich beim Öffnen (Plätze blendet sie aus, und das wird gemerkt), und für neue Spieler sind seine fertigen Bereiche wie Verbesserungen und Rezepte eingeschaltet. Mit Baganator sagt dir ein einmaliger Hinweis, wo du deine Taschenplätze findest.",
-    "La fenêtre des sacs montre vos emplacements de sacs dès son ouverture (Emplacements les masque, et c'est retenu), et les nouveaux joueurs ont ses sections toutes prêtes, comme Améliorations et Recettes, activées. Avec Baganator, un conseil affiché une seule fois dit où trouver vos emplacements de sacs.",
-    "La ventana de bolsas muestra las ranuras de bolsas al abrirse (Huecos las oculta, y se recuerda), y los jugadores nuevos tienen activadas sus secciones ya hechas, como Mejoras y Recetas. Con Baganator, un consejo que se muestra una sola vez dice dónde encontrar las ranuras de bolsas.",
-    "Окно сумок сразу показывает ячейки сумок (кнопка «Ячейки» скрывает их, и это запоминается), а у новых игроков включены готовые разделы, например «Улучшения» и «Рецепты». С Baganator одна подсказка, показанная один раз, говорит, где найти ячейки сумок.",
-    "A janela de bolsas mostra os espaços de bolsa ao abrir (Espaços os esconde, e isso é lembrado), e jogadores novos têm suas seções prontas, como Melhorias e Receitas, ligadas. Com o Baganator, uma dica mostrada uma única vez diz onde encontrar os espaços de bolsa.",
-    "La finestra delle borse mostra gli spazi per le borse appena si apre (Spazi li nasconde, e la scelta viene ricordata), e i nuovi giocatori hanno attive le sue sezioni già pronte, come Miglioramenti e Ricette. Con Baganator, un consiglio mostrato una sola volta dice dove trovare gli spazi per le borse.",
-    "가방 창을 열면 가방 칸이 바로 보입니다(칸 버튼으로 숨길 수 있고, 그 선택은 기억됩니다). 새 플레이어는 상향 아이템, 제조법 같은 기본 구역이 켜져 있습니다. Baganator를 쓰면 가방 칸을 찾는 곳을 한 번만 알려 줍니다.",
-    "背包窗口打开时就显示背包栏位（栏位按钮可以隐藏，并会记住），新玩家的现成分区（如提升和配方）默认开启。使用 Baganator 时，会有一次性提示告诉你在哪里找到背包栏位。"
+  "The bag window shows your bag slots when it opens (Slots hides them, and that is remembered), and its ready-made sections, such as Upgrades and Recipes, are switched on unless you already chose some. With Baganator, a one-time tip says where to find your bag slots.": [
+    "Das Taschenfenster zeigt deine Taschenplätze gleich beim Öffnen (Plätze blendet sie aus, und das wird gemerkt), und seine fertigen Bereiche wie Verbesserungen und Rezepte sind eingeschaltet, außer du hast schon selbst welche gewählt. Mit Baganator sagt dir ein einmaliger Hinweis, wo du deine Taschenplätze findest.",
+    "La fenêtre des sacs montre vos emplacements de sacs dès son ouverture (Emplacements les masque, et c'est retenu), et ses sections toutes prêtes, comme Améliorations et Recettes, sont activées, sauf si vous en aviez déjà choisi. Avec Baganator, un conseil affiché une seule fois dit où trouver vos emplacements de sacs.",
+    "La ventana de bolsas muestra las ranuras de bolsas al abrirse (Huecos las oculta, y se recuerda), y sus secciones ya hechas, como Mejoras y Recetas, quedan activadas salvo que ya hubieras elegido alguna. Con Baganator, un consejo que se muestra una sola vez dice dónde encontrar las ranuras de bolsas.",
+    "Окно сумок сразу показывает ячейки сумок (кнопка «Ячейки» скрывает их, и это запоминается), а его готовые разделы, например «Улучшения» и «Рецепты», включены, если вы ещё не выбрали их сами. С Baganator одна подсказка, показанная один раз, говорит, где найти ячейки сумок.",
+    "A janela de bolsas mostra os espaços de bolsa ao abrir (Espaços os esconde, e isso é lembrado), e suas seções prontas, como Melhorias e Receitas, ficam ligadas, a menos que você já tenha escolhido alguma. Com o Baganator, uma dica mostrada uma única vez diz onde encontrar os espaços de bolsa.",
+    "La finestra delle borse mostra gli spazi per le borse appena si apre (Spazi li nasconde, e la scelta viene ricordata), e le sue sezioni già pronte, come Miglioramenti e Ricette, sono attive, a meno che tu non ne avessi già scelte. Con Baganator, un consiglio mostrato una sola volta dice dove trovare gli spazi per le borse.",
+    "가방 창을 열면 가방 칸이 바로 보입니다(칸 버튼으로 숨길 수 있고, 그 선택은 기억됩니다). 상향 아이템, 제조법 같은 기본 구역은 직접 고른 적이 없다면 켜집니다. Baganator를 쓰면 가방 칸을 찾는 곳을 한 번만 알려 줍니다.",
+    "背包窗口打开时就显示背包栏位（栏位按钮可以隐藏，并会记住）；现成分区（如提升和配方）会开启，除非你已经自己选过。使用 Baganator 时，会有一次性提示告诉你在哪里找到背包栏位。"
+  ],
+  "Your bags now sort items into sections (upgrades, sets, materials and more). Turn them off in /fgui → Bags and items.": [
+    "Deine Taschen sortieren Gegenstände jetzt in Abschnitte (Verbesserungen, Sets, Materialien und mehr). Ausschalten kannst du sie in /fgui → Taschen und Gegenstände.",
+    "Vos sacs rangent maintenant les objets par sections (améliorations, ensembles, matériaux et plus). Désactivez-les dans /fgui → Sacs et objets.",
+    "Tus bolsas ahora ordenan los objetos en secciones (mejoras, conjuntos, materiales y más). Desactívalas en /fgui → Bolsas y objetos.",
+    "Ваши сумки теперь раскладывают предметы по разделам (улучшения, комплекты, материалы и другое). Отключить их можно в /fgui → Сумки и предметы.",
+    "Suas bolsas agora separam os itens em seções (melhorias, conjuntos, materiais e mais). Desligue-as em /fgui → Bolsas e itens.",
+    "Le tue borse ora dividono gli oggetti in sezioni (miglioramenti, set, materiali e altro). Disattivale in /fgui → Borse e oggetti.",
+    "이제 가방이 아이템을 구역별로 나눕니다(상향 아이템, 세트, 재료 등). /fgui → 가방 및 아이템에서 끌 수 있습니다.",
+    "你的背包现在会把物品分区整理（提升、套装、材料等）。可在 /fgui → 背包与物品 中关闭。"
   ]
 }

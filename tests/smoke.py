@@ -2389,6 +2389,75 @@ try("Bags 13.0.1: using items in combat stays off", function()
     if ns.defaults.bagCombatUse ~= false then error("bagCombatUse must ship switched off") end
     if ns:FillDefaults({}).bagCombatUse ~= false then error("a new profile must have bagCombatUse off") end
 end)
+-- 13.0.1: a profile saved before then with all six ready-made sections still off (the old defaults,
+-- never touched) has them switched on once, and is told so once after login, never in a fight.
+do
+    local SIX = { "bagSecUpgrades", "bagSecSets", "bagSecBoE", "bagSecMats", "bagSecConsumables", "bagSecRecipes" }
+    local LINE = "Your bags now sort items into sections"
+    local function Said(from) local n = 0; for i = from + 1, #printed do if tostring(printed[i]):find(LINE, 1, true) then n = n + 1 end end return n end
+    -- a "login" with this saved profile: InitDB, then what runs after the modules start
+    local function Login(root)
+        local keepRoot, keepDb, keepName = env.FantasyGlassUIDB, ns.db, ns.profile
+        local keepNsRoot, keepFresh = ns.root, ns.freshInstall
+        ns.db, env.FantasyGlassUIDB = nil, root
+        ns:InitDB()
+        local db = ns.db
+        if type(ns.BagSectionsNote) == "function" then ns:BagSectionsNote() end
+        ns.db, env.FantasyGlassUIDB, ns.profile, ns.root, ns.freshInstall = keepDb, keepRoot, keepName, keepNsRoot, keepFresh
+        return db
+    end
+    local function Old(over)
+        local p = { design = 4, role = "TANK" }
+        for _, k in ipairs(SIX) do p[k] = false end
+        for k, v in pairs(over or {}) do p[k] = v end
+        return { profiles = { Default = p }, chars = { [ns:CharKey()] = "Default" } }
+    end
+    try("Bags 13.0.1: all six sections off become on, and the line is said once", function()
+        local root = Old()
+        local mark = #printed
+        local db = Login(root)
+        for _, k in ipairs(SIX) do if db[k] ~= true then error(k .. " should be switched on, got " .. tostring(db[k])) end end
+        if Said(mark) ~= 1 then error("the line should be said once, got " .. Said(mark)) end
+        -- a second login: nothing happens again, even if the player then switched all six off themselves
+        for _, k in ipairs(SIX) do root.profiles.Default[k] = false end
+        mark = #printed
+        db = Login(root)
+        for _, k in ipairs(SIX) do if db[k] ~= false then error("a second login must leave " .. k .. " as the player set it") end end
+        if Said(mark) ~= 0 then error("the line must not be said again") end
+    end)
+    try("Bags 13.0.1: one section on means a choice, and nothing changes", function()
+        for _, on in ipairs(SIX) do
+            local mark = #printed
+            local db = Login(Old({ [on] = true }))
+            for _, k in ipairs(SIX) do
+                if db[k] ~= (k == on) then error("with " .. on .. " on, " .. k .. " should stay " .. tostring(k == on)) end
+            end
+            if Said(mark) ~= 0 then error("nothing changed, so nothing is said") end
+        end
+    end)
+    try("Bags 13.0.1: a new profile is not told about sections", function()
+        local mark = #printed
+        local db = Login({ profiles = { Default = { design = 4, role = "TANK" } }, chars = { [ns:CharKey()] = "Default" } })
+        for _, k in ipairs(SIX) do if db[k] ~= true then error("a new profile has " .. k .. " on by default") end end
+        if Said(mark) ~= 0 then error("a new profile changed nothing, so nothing is said") end
+    end)
+    try("Bags 13.0.1: the sections line waits for the fight to end", function()
+        local keepCombat = env.InCombatLockdown
+        local combat = true
+        env.InCombatLockdown = function() return combat end
+        local mark = #printed
+        Login(Old())
+        if Said(mark) ~= 0 then error("never said during a fight") end
+        fireEvent("PLAYER_REGEN_DISABLED")
+        if Said(mark) ~= 0 then error("still in the fight") end
+        combat = false
+        fireEvent("PLAYER_REGEN_ENABLED")
+        if Said(mark) ~= 1 then error("said once the fight ends, got " .. Said(mark)) end
+        fireEvent("PLAYER_REGEN_ENABLED")
+        if Said(mark) ~= 1 then error("and only once") end
+        env.InCombatLockdown = keepCombat
+    end)
+end
 -- 13.0.1: with Baganator showing the bags, one line says where the bag slots are: once per account,
 -- never in a fight.
 try("Bags 13.0.1: the Baganator tip appears once, never in a fight", function()

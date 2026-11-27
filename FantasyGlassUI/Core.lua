@@ -1523,6 +1523,40 @@ function ns:FillDefaults(profile)
     return profile
 end
 
+-- 13.0.1: the ready-made bag sections are on by default now. A profile saved before then holds the old
+-- default (all six off) as its own value, so once per profile: all six still off means they were never
+-- touched, and they are switched on; any one of them on means the player chose, and all six stay as they
+-- are. The mark (bagSections1301) keeps it to once, and a profile made since is only marked.
+local BAG_SECTION_KEYS = { "bagSecUpgrades", "bagSecSets", "bagSecBoE", "bagSecMats", "bagSecConsumables", "bagSecRecipes" }
+function ns.MigrateBagSections(profile)
+    if type(profile) ~= "table" or profile.bagSections1301 then return false end
+    profile.bagSections1301 = true
+    for _, k in ipairs(BAG_SECTION_KEYS) do
+        if profile[k] ~= false then return false end
+    end
+    for _, k in ipairs(BAG_SECTION_KEYS) do profile[k] = true end
+    return true
+end
+-- Said once after login when the sections were switched on, never during a fight (then after it).
+local sectionsWait
+function ns:BagSectionsNote()
+    if not ns.bagSectionsMoved then return end
+    if InCombatLockdown() then
+        if not sectionsWait then
+            sectionsWait = CreateFrame("Frame")
+            sectionsWait:SetScript("OnEvent", function(self, event)
+                if event ~= "PLAYER_REGEN_ENABLED" or InCombatLockdown() then return end
+                self:UnregisterEvent("PLAYER_REGEN_ENABLED")
+                ns:BagSectionsNote()
+            end)
+        end
+        sectionsWait:RegisterEvent("PLAYER_REGEN_ENABLED")
+        return
+    end
+    ns.bagSectionsMoved = nil
+    ns:Print("Your bags now sort items into sections (upgrades, sets, materials and more). Turn them off in /fgui → Bags and items.")
+end
+
 function ns:InitDB()
     if ns.db then return ns.db end
     if type(FantasyGlassUIDB) ~= "table" then FantasyGlassUIDB = {} end
@@ -1552,6 +1586,7 @@ function ns:InitDB()
     if ns.TakeBackups then pcall(ns.TakeBackups, ns, root) end       -- (Safety.lua: before anything of this session changes them)
     ns.root, ns.profile = root, name
     ns.db = ns:FillDefaults(root.profiles[name])
+    if ns.MigrateBagSections(ns.db) then ns.bagSectionsMoved = true end      -- (told after login: ns:BagSectionsNote)
     -- Does this client refuse add-ons any buff/debuff data during combat? Remembered once found out.
     if root.aurasLocked == nil then
         local ok, _, _, _, toc = pcall(GetBuildInfo)
@@ -1643,7 +1678,7 @@ end
 
 -- What's new: shown once after an update (never on a first install, where the setup opens instead).
 ns.whatsNew = {
-    { "13.0.1", { "The bag window shows your bag slots when it opens (Slots hides them, and that is remembered), and new players get its ready-made sections, such as Upgrades and Recipes, switched on. With Baganator, a one-time tip says where to find your bag slots." } },
+    { "13.0.1", { "The bag window shows your bag slots when it opens (Slots hides them, and that is remembered), and its ready-made sections, such as Upgrades and Recipes, are switched on unless you already chose some. With Baganator, a one-time tip says where to find your bag slots." } },
     { "13.0.0", { "Quest guides: follow a route one step at a time, with a panel for the step you are on and an arrow that points the way. They are under Guide in /fgui.",
                   "The route planner: Plan my route works out which quests to take for your level, in what order, and when to fly, train or hand in, and plans again as you play. It finds quests through Questie when Questie is loaded.",
                   "The planner window (/fgui plan, or Planner on the guide panel) holds every setting for what it plans. Keep my route there leaves your route as it is until you ask for a new one.",
@@ -2319,6 +2354,7 @@ f:SetScript("OnEvent", function(_, event, name)
             for _, name in ipairs(stepped) do if not seen[name] then seen[name] = true; names[#names + 1] = name end end
             ns:Print("Leaving some jobs to your other add-ons (%s). |cffffff00/fgui check|r lists which; |cffffff00/fgui conflicts off|r makes Fantasy Glass UI do them anyway.", table.concat(names, ", "))
         end
+        ns:BagSectionsNote()                                -- (once, if this profile's bag sections were just switched on)
         if ns.BaganatorTip then ns:BaganatorTip() end       -- (BagWindow.lua: once per account, where to find the bag slots)
         -- swing timers switched off again: give Blizzard's own swing bars back
         if not ns.db.swingTimer and ns.db.swingCVarWasOn then
