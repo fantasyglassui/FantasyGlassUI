@@ -3,7 +3,8 @@ if type(ns) ~= "table" then return end
 
 ------------------------------------------------------------------------------------------
 -- The planner's first-time tour: four short pages on what the route planner does, shown once for the
--- account the first time the Guide tab or the planner window is opened, and again whenever "How the planner works" is pressed in the planner window. It wears the settings window's look. It can be
+-- account the first time the planner window is opened (or the Guide tab, once this folder is loaded: the tab does not
+-- load it), and again whenever "How the planner works" is pressed in the planner window. It wears the settings window's look. It can be
 -- skipped at once, read aloud (with "Read talk and quests aloud" on), and used from the keyboard:
 -- Left and Right go between pages, Enter or Space goes on, Esc closes.
 ------------------------------------------------------------------------------------------

@@ -97,9 +97,15 @@ def F(s, code, *args):
     return re.sub(r'%[sd]', lambda m: str(next(it)), out)
 
 
+def quote_text(t):
+    # a " in a translation's words is written &quot; (the phrase may sit in an attribute); a " inside one of its own
+    # tags (<a href="...">) is left as it is, so the tag keeps its attributes
+    return re.sub(r'"(?![^<>]*>)', '&quot;', t)
+
+
 def translate(text, code):
-    # [[English words]] -> the words in this language; a " in a translation is written &quot; (it may sit in an attribute)
-    return re.sub(r'\[\[(.+?)\]\]', lambda m: T(m.group(1), code).replace('"', '&quot;'), text, flags=re.S)
+    # [[English words]] -> the words in this language (quote_text: the quotes of its words, not of its tags)
+    return re.sub(r'\[\[(.+?)\]\]', lambda m: quote_text(T(m.group(1), code)), text, flags=re.S)
 
 
 def page_url(slug, code):

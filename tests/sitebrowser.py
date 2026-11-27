@@ -219,7 +219,7 @@ def main():
             if got[0] < 1 or got[1] or got[2] or not got[3]:
                 problems.append(f"/plan/ 390px: steps {got[0]}, hidden {got[1]}, too wide {got[2]}, how-to link {got[3]!r}")
             page.select_option("#lang", "de")
-            if page.evaluate("document.getElementById('title').textContent") in ("", "Quest guide"):
+            if page.evaluate("document.getElementById('title').textContent") in ("", "Your route", "Quest guide"):
                 problems.append("/plan/: the page's language switch does nothing")
             problems += [f"/plan/: script error: {e}" for e in errors]
             checked += 1

@@ -17,8 +17,8 @@ Version 13.0.0
    The second folder is the options window, the setup and the self-check. The game loads it only
    the first time you open one of them, so it costs no memory until then. The third holds the
    translations, and loads only when the add-on is shown in a language other than English. The
-   fourth is the route planner and the fifth the ways to make gold: each loads the first time you
-   use it. In the game's add-on list they appear as "Fantasy Glass UI - options", "- translations",
+   fourth is the route planner, which loads the first time you use it, and the fifth the ways to make
+   gold, which load the first time you use them or open the auction house. In the game's add-on list they appear as "Fantasy Glass UI - options", "- translations",
    "- planner" and "- gold": leave them all enabled.
 2. Start the game, or type `/reload` if you are already logged in.
 3. On first login a setup opens, in four steps: how much of the interface to take over (the whole
@@ -77,7 +77,7 @@ get two of everything.
 | `/fgui sharepreview` | Look at a shared profile, layout or theme string before taking it |
 | `/fgui selftest` | Work through the add-on and list what passed and what did not |
 | `/fgui speak [text]` | Try the spoken alerts' voice |
-| `/fgui guide route <name>` | The route editor for a quest guide (where guides are unlocked) |
+| `/fgui guide route <name>` | The route editor for a quest guide |
 | `/fgui whatsthis` | Point at any panel to see which feature made it (also a key binding) |
 | `/fgui level` | The zones that suit your level; click one to open it on the map |
 | `/fgui profcd` | Once-a-day crafts on all your characters, and when each is ready |
@@ -657,7 +657,7 @@ Options, below). The list here is grouped a little differently. Point at a switc
 - **Live self-test**: `/fgui selftest` works through the add-on in the real game (every options tab,
   every window, the preview, move mode, What's this?, the gallery, the bars, the alerts) and lists
   what passed and what did not, with the error. Not during a fight.
-- **Route editor** for quest guides (where guides are unlocked): the steps in order, to move up or
+- **Route editor** for quest guides: the steps in order, to move up or
   down, change, delete or add after; Here writes a step for where you stand. While you follow a
   guide its next steps are numbered on the world map.
 - **API for other add-ons**: `FantasyGlassUI_API` lets other add-ons add info bar pieces, themes,

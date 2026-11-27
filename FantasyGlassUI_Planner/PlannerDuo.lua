@@ -772,6 +772,8 @@ local function Receive(from, msg, sender)
         if not session then return end
         if kind == "ASK" then
             if d or not more:match("^:%d+$") then return end
+            -- (only a friend, a guildmate or someone in your group, once in 5 minutes each: anyone else, nothing at all)
+            if not (ns.PlannerDuoAskAllowed and ns.PlannerDuoAskAllowed(Str(sender) or from)) then return end
             if ns.db.plannerDuoAsk == false or not ns:GuideOn() then     -- (asking switched off, or the guide: a plain no, said once)
                 if not told[session] then Tell(session); ns.PlannerDuoSend("D1:NO:" .. session, Str(sender) or from) end
                 return

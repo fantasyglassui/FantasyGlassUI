@@ -379,20 +379,42 @@ function ns:GuideGet(name)
     end
     return guides[name] or ns.builtinGuides[name]
 end
+-- A hidden name ("\1planned", "\1trip"): the plan's and a trip's, never a saved guide's.
+local function HiddenName(name) return type(name) == "string" and name:sub(1, 1) == "\1" end
+ns.GuideHiddenName = HiddenName
 function ns:GuideNames()
     local guides = Store()
     local names, seen = {}, {}
     for _, source in ipairs({ guides, ns.builtinGuides }) do
-        for name in pairs(source) do if not seen[name] then seen[name] = true; names[#names + 1] = name end end
+        for name, guide in pairs(source) do   -- (a hidden name, or a record with no steps, from before 13.0: not listed)
+            if not seen[name] and type(name) == "string" and not HiddenName(name) and type(guide) == "table" and type(guide.steps) == "table" then
+                seen[name] = true; names[#names + 1] = name
+            end
+        end
     end
     table.sort(names)
     return names
 end
 function ns:GuideSave(guide)
     if type(guide) ~= "table" or type(guide.name) ~= "string" or ns.Trim(guide.name) == "" then return false, "The guide needs a name (a first line such as \"guide: My route\")." end
+    if HiddenName(guide.name) then return false, "Give the guide a name of its own." end   -- (the plan's or a trip's: GuideGet never reads it from here)
     local guides = Store(true)
     guides[guide.name] = { name = guide.name, steps = guide.steps or {} }
     return true
+end
+-- Saved before 13.0.1: a guide stored under a hidden name by the route editor's Save. Removed at login.
+function ns.GuideForgetHidden()
+    local guides = Store()
+    local gone = 0
+    for name in pairs(guides) do                       -- (clearing a field while walking the table is allowed in Lua)
+        if HiddenName(name) then guides[name] = nil; gone = gone + 1 end
+    end
+    return gone
+end
+do
+    local ev = CreateFrame("Frame")
+    pcall(ev.RegisterEvent, ev, "PLAYER_LOGIN")
+    ev:SetScript("OnEvent", function(_, event) if event == "PLAYER_LOGIN" then pcall(ns.GuideForgetHidden) end end)
 end
 function ns:GuideDelete(name)
     local guides, state = Store()
@@ -1991,9 +2013,9 @@ function ns:GuideList()
     for _, name in ipairs(ns:GuideNames()) do
         local guide = ns:GuideGet(name)
         local mine = st and st.name == name
-        lines[#lines + 1] = { left = name .. (mine and ("  " .. ns:SignalHex("good") .. ns:Tr("following") .. "|r") or "") .. ((rec and rec.name == name) and ("  " .. ns:SignalHex("bad") .. ns:Tr("recording") .. "|r") or ""),
+        if type(guide) == "table" and type(guide.steps) == "table" then lines[#lines + 1] = { left = name .. (mine and ("  " .. ns:SignalHex("good") .. ns:Tr("following") .. "|r") or "") .. ((rec and rec.name == name) and ("  " .. ns:SignalHex("bad") .. ns:Tr("recording") .. "|r") or ""),
             right = format(ns:TrN(#guide.steps, "%d step", "%d steps"), #guide.steps), tone = mine and "@accent" or nil,
-            click = function(button) if button == "RightButton" then ns:GuideEdit(name) else ns:GuideFollow(name); ns:GuideList() end end }
+            click = function(button) if button == "RightButton" then ns:GuideEdit(name) else ns:GuideFollow(name); ns:GuideList() end end } end
     end
     lines[#lines + 1] = { left = "" }
     lines[#lines + 1] = { left = "+ " .. ns:Tr("Write or paste a guide"), action = true, click = function() ns:GuideEdit("") end }

@@ -1089,6 +1089,11 @@
      "desc": "At the auction house: a \"Lowest -1c\" button on the sell page, and \"Worth selling\" (or /fgui ah), what in your bags sells for more there than at a vendor. Uses the prices you have seen, so search once first."
     },
     {
+     "key": "goldAuctionPanel",
+     "label": "Gold ideas at the auction house",
+     "desc": "Beside the auction house, a panel of ways to make gold with what this character has. It loads the gold folder the first time you open the auction house; off, the auction house loads and shows nothing of it."
+    },
+    {
      "key": "tradeLog",
      "label": "Trade log",
      "desc": "After a trade, a line in chat says what changed hands and with whom. /fgui trades lists the last fifty."
@@ -1364,6 +1369,171 @@
      "desc": "Lets you place that box in move mode."
     }
    ]
+  },
+  {
+   "title": "Quest guides",
+   "items": [
+    {
+     "key": "questGuide",
+     "label": "Use quest guides",
+     "desc": "The step panel, and the arrow that points to your step. Off, nothing of the guide shows."
+    },
+    {
+     "key": "guideSound",
+     "label": "A sound when a step is done",
+     "desc": "A short sound each time a step ticks off."
+    },
+    {
+     "key": "plannerSoloElites",
+     "label": "Include elites my class has soloed",
+     "desc": "Elite quests that one of your characters of this class has done alone count as Solo quests."
+    },
+    {
+     "key": "plannerClassQuests",
+     "label": "Plan class quests",
+     "desc": "Your class quests go on the route at the right level, and the panel says when one is ready."
+    },
+    {
+     "key": "plannerLearnFlights",
+     "label": "Learn new flight points on the way",
+     "desc": "A short way round to a flight master you do not know yet, when the route passes close."
+    },
+    {
+     "key": "plannerTrainer",
+     "label": "Visit your trainer on the way",
+     "desc": "A stop at your class trainer every two levels, for your new spells."
+    },
+    {
+     "key": "plannerHold",
+     "label": "Save hand-ins to level in town",
+     "desc": "A hand-in that would take you up a level waits until the route reaches your trainer's town."
+    },
+    {
+     "key": "plannerVendor",
+     "label": "Sell and repair stops",
+     "desc": "A stop at a vendor when your bags are nearly full or your gear is worn."
+    },
+    {
+     "key": "plannerSupplies",
+     "label": "Buy supplies at the vendor stop",
+     "desc": "At that stop, ammunition, food and drink are bought too."
+    },
+    {
+     "key": "plannerProfession",
+     "label": "Profession training stops",
+     "desc": "A stop at a profession's trainer when your skill has reached what you can learn now."
+    },
+    {
+     "key": "plannerMount",
+     "label": "Mount reminder",
+     "desc": "From level 40: the riding trainer, your mount, and how much gold is still to find."
+    },
+    {
+     "key": "plannerMail",
+     "label": "Mail stops",
+     "desc": "A stop at a mailbox when mail is waiting and one is close."
+    },
+    {
+     "key": "plannerExplore",
+     "label": "Explore on the way",
+     "desc": "Places you have not discovered yet, when they are close to the route."
+    },
+    {
+     "key": "plannerGather",
+     "label": "Gather on the way",
+     "desc": "Herbs and ore you have gathered before, close to the route, and a note to skin what you kill."
+    },
+    {
+     "key": "plannerPickReward",
+     "label": "Show the best quest reward",
+     "desc": "At a hand-in, the reward that suits you best is marked and named in chat. You choose it yourself."
+    },
+    {
+     "key": "plannerRewards",
+     "label": "Count upgrades in rewards",
+     "desc": "A quest whose reward is better than what you wear counts for more."
+    },
+    {
+     "key": "plannerLogAdvice",
+     "label": "Quest log advice",
+     "desc": "When your quest log is nearly full, the panel says which quests are worth abandoning."
+    },
+    {
+     "key": "plannerInn",
+     "label": "Suggest an inn when you stop",
+     "desc": "After a long stretch of play, the panel points to an inn close by, to log out in for rested experience."
+    },
+    {
+     "key": "plannerRested",
+     "label": "Count rested experience",
+     "desc": "Kills are worth double while you are rested, and the route counts them so."
+    },
+    {
+     "key": "plannerDry",
+     "label": "Suggest what to do when quests run dry",
+     "desc": "When no quest is worth the trip, a dungeon or a place to grind is suggested instead."
+    },
+    {
+     "key": "plannerDeaths",
+     "label": "Learn from my deaths",
+     "desc": "A place where you died twice is left alone until you are two levels higher."
+    },
+    {
+     "key": "plannerWhy",
+     "label": "Show why each step is there",
+     "desc": "Each step on the panel says what it is worth: the experience, or the time it saves."
+    },
+    {
+     "key": "plannerBreaks",
+     "label": "Remind me to take a break at a stopping place",
+     "desc": "After a long stretch of play, the panel says so when you reach a good place to stop."
+    },
+    {
+     "key": "plannerKeepRoute",
+     "label": "Keep my route",
+     "desc": "Levelling up, hand-ins and loading screens leave the route as it is. Only Plan my route and Plan again make a new one."
+    },
+    {
+     "key": "plannerMapLine",
+     "label": "The route on the map",
+     "desc": "The route's stops, numbered, and the line between them on the world map."
+    },
+    {
+     "key": "plannerMapHubs",
+     "label": "Quest areas on the map",
+     "desc": "A mark on each area with quests the planner found, brighter where the experience comes faster."
+    },
+    {
+     "key": "plannerTomTom",
+     "label": "Use TomTom's arrow when TomTom is loaded",
+     "desc": "The step you are on goes to TomTom's arrow instead of this add-on's."
+    },
+    {
+     "key": "plannerRace",
+     "label": "Race your best",
+     "desc": "The panel says how far ahead or behind you are of your fastest character's time at this level."
+    },
+    {
+     "key": "plannerLeftOff",
+     "label": "Where you left off, at login",
+     "desc": "When you log in, a line says where you were on the route and what comes next."
+    },
+    {
+     "key": "plannerSpeak",
+     "label": "Read the route aloud",
+     "desc": "Each new step is read aloud as you reach it."
+    },
+    {
+     "key": "plannerFindGroup",
+     "label": "Find a group button",
+     "desc": "A group quest on the panel gets a button that writes a line asking for a group. It only fills your chat box: you send it."
+    },
+    {
+     "key": "plannerDuoAsk",
+     "label": "Let friends ask to plan with you",
+     "desc": "A friend with Fantasy Glass UI can ask to plan one route for you both. You are always asked first. Only your friends, your guild and your group can ask, once in 5 minutes each."
+    }
+   ]
   }
  ],
  "commands": [
@@ -1442,6 +1612,38 @@
   {
    "cmd": "/fgui new",
    "desc": "what changed in this version"
+  },
+  {
+   "cmd": "/fgui guide",
+   "desc": "your quest guides: follow one, write or paste one, or record one as you play (record <name>, stop, next, back, off)"
+  },
+  {
+   "cmd": "/fgui guide plan [minutes]",
+   "desc": "plan a route of quests for your level and follow it; with a number, a route that fits the time you can play"
+  },
+  {
+   "cmd": "/fgui plan",
+   "desc": "the planner window: the route you follow, Keep my route, and every setting for what the planner plans (or its own minimap button)"
+  },
+  {
+   "cmd": "/fgui guide route",
+   "desc": "change, move or take out the steps of the guide you are following"
+  },
+  {
+   "cmd": "/fgui guide duo [name]",
+   "desc": "plan one route with a friend who has the add-on (/fgui guide duo off to stop)"
+  },
+  {
+   "cmd": "/fgui guide share",
+   "desc": "your route as a plan code to copy, to read on the website's plan page"
+  },
+  {
+   "cmd": "/fgui guide keys",
+   "desc": "the guide panel's menu, to use with the keyboard"
+  },
+  {
+   "cmd": "/fgui guide gold",
+   "desc": "ways to make gold: ideas for this character, each with Go, which plans the trip (or its own minimap button, or Ctrl-click the options button)"
   },
   {
    "cmd": "/fgui ready",
@@ -1853,7 +2055,7 @@
   },
   {
    "cmd": "/fgui report",
-   "desc": "everything needed to report a problem, ready to copy"
+   "desc": "everything needed to report a problem, ready to copy (the Report a problem button in /fgui does the same)"
   },
   {
    "cmd": "/fgui blocked",

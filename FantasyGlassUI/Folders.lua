@@ -63,11 +63,13 @@ ns.FOLDERS = {
         "PlannerCode.lua", "PlannerIntro.lua", "PlannerWindow.lua", "PlannerGo.lua",
     },
         broken = "The planner could not start: /fgui check lists why.",
+        disabled = "The planner folder is switched off: tick \"Fantasy Glass UI - planner\" in the AddOns list, then try again.",
         missing = "The planner could not be opened (%s). It is in a folder, FantasyGlassUI_Planner, which must sit beside FantasyGlassUI in Interface/AddOns and be enabled." },
     gold = { addon = "FantasyGlassUI_Gold", files = {
         "Gold.lua", "GoldSell.lua", "GoldFarm.lua", "GoldGather.lua", "GoldCraft.lua",
     },
         broken = "Ways to make gold could not start: /fgui check lists why.",
+        disabled = "The gold folder is switched off: tick \"Fantasy Glass UI - gold\" in the AddOns list, then try again.",
         missing = "Ways to make gold could not be opened (%s). It is in a folder, FantasyGlassUI_Gold, which must sit beside FantasyGlassUI in Interface/AddOns and be enabled." },
 }
 ns.folderReady, ns.folderBroken = {}, {}
@@ -117,7 +119,10 @@ local function RunLate(key)
     end
 end
 
--- Load a folder ("planner" or "gold"). True when it is ready. Never before the login, or in a fight ("Not during a fight.", unless `quiet`: an automatic load says nothing).
+-- Load a folder ("planner" or "gold"). True when it is ready. Never before the login, or in a fight ("Not during a fight.").
+-- `quiet`: an automatic load (the auction house, the login, a friend's ask): it says nothing, ever. A folder switched
+-- off in the AddOns list is never switched on: the player chose that. Only a load the player asked for (a button,
+-- a command, a menu entry) says, in one line, that the folder is switched off or missing and what to do.
 function ns:LoadFolder(key, quiet)
     local f = ns.FOLDERS[key]
     if type(f) ~= "table" then return false end
@@ -130,25 +135,23 @@ function ns:LoadFolder(key, quiet)
         if not quiet then ns:Print("Not during a fight.") end
         return false
     end
-    if ns.folderBroken[key] then Say(key, f.broken or "It could not start: /fgui check lists why."); return false end
+    if ns.folderBroken[key] then
+        if not quiet then Say(key, f.broken or "It could not start: /fgui check lists why.") end
+        return false
+    end
     if loading[key] then return false end
     loading[key] = true
     local load = C_AddOns and C_AddOns.LoadAddOn
     local reason, loaded = "this game client cannot load an add-on on request", false
     if type(load) == "function" then
-        local ok, yes, why = pcall(load, f.addon)
-        if ok and not yes and why == "DISABLED" then          -- switched off in the add-on list: switch it on and try again
-            local enable = C_AddOns.EnableAddOn
-            if type(enable) == "function" then
-                pcall(enable, f.addon)
-                ok, yes, why = pcall(load, f.addon)
-            end
-        end
+        local ok, yes, why = pcall(load, f.addon)             -- (switched off in the AddOns list: "DISABLED", and it stays off)
         loaded = ok and yes and true or false
         reason = ok and (type(why) == "string" and why or "it did not finish loading") or tostring(yes)
     end
     loading[key] = nil
     if not loaded then
+        if quiet then return false end
+        if reason == "DISABLED" and f.disabled then Say(key, f.disabled); return false end
         Say(key, f.missing or ("It could not be opened (%s). It is in a folder, " .. tostring(f.addon) .. ", which must sit beside FantasyGlassUI in Interface/AddOns and be enabled."), reason)
         return false
     end
@@ -159,7 +162,7 @@ function ns:LoadFolder(key, quiet)
     if #stopped > 0 then                                       -- (a file stopped part way: the folder is not used, the guide works as before)
         ns.folderBroken[key] = stopped
         Note("Folder " .. key .. ": " .. table.concat(stopped, ", ") .. " did not load")
-        Say(key, f.broken or "It could not start: /fgui check lists why.")
+        if not quiet then Say(key, f.broken or "It could not start: /fgui check lists why.") end
         return false
     end
     ns.folderReady[key] = true
@@ -217,6 +220,10 @@ end
 -- auction house's panel.
 ------------------------------------------------------------------------------------------
 local ahWaiting = false                -- (the auction house opened in a fight, the gold folder not loaded yet)
+-- "Gold ideas at the auction house" (ns.db.goldAuctionPanel, on unless switched off): off, the auction house loads
+-- nothing and shows no panel.
+local function AuctionPanelOn() return not (ns.db and ns.db.goldAuctionPanel == false) end
+ns.GoldAuctionPanelOn = AuctionPanelOn
 do
     local prevTip, prevClick = ns.LauncherTipExtra, ns.LauncherClickExtra
     function ns.LauncherTipExtra(tooltip)
@@ -243,13 +250,14 @@ do
             pcall(ev.UnregisterEvent, ev, "PLAYER_REGEN_ENABLED")
             local was = ahWaiting
             ahWaiting = false
-            if was and ahOpen and ns:LoadGold(true) then ns:GoldAuctionShow() end
+            if was and ahOpen and AuctionPanelOn() and ns:LoadGold(true) then ns:GoldAuctionShow() end
             return
         end
         if event ~= "AUCTION_HOUSE_SHOW" and event ~= "AUCTION_HOUSE_CLOSED" then return end
         guarded = guarded or ns:Guard("Gold", function(e)
             local panelNow = ns.goldPanel
             if e == "AUCTION_HOUSE_SHOW" then
+                if not AuctionPanelOn() then return end
                 if ns.Yes(InCombatLockdown()) and not ns.folderReady.gold then   -- (an automatic load: after the fight, quietly)
                     ahWaiting = true
                     pcall(ev.RegisterEvent, ev, "PLAYER_REGEN_ENABLED")
@@ -260,6 +268,16 @@ do
         end)
         guarded(event)
     end)
+    -- The switch changed (ns:ApplyInstant): off, the panel goes; on, with the auction house open, it comes.
+    function ns:GoldAuctionApplySwitch()
+        local p = ns.goldPanel
+        if not AuctionPanelOn() then
+            if type(p) == "table" then p.suiGoldOn = false; p:Hide() end
+            return false
+        end
+        if ahOpen and not ns.Yes(InCombatLockdown()) and ns:LoadGold(true) then ns:GoldAuctionShow() end
+        return true
+    end
 end
 
 ------------------------------------------------------------------------------------------
