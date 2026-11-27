@@ -16536,8 +16536,8 @@ try("13.5 together: seams", function()
         -- the three new files are in the TOC, after PlannerRecords.lua, and empty until their groups fill them
         local pos = {}
         for i, f in ipairs(folderFiles.FantasyGlassUI_Planner) do pos[f:gsub("^planner/", "")] = i end   -- (in the planner's folder now)
-        if not (pos["PlannerRecords.lua"] and pos["PlannerGroup.lua"] == pos["PlannerRecords.lua"] + 1 and pos["PlannerDuo.lua"] == pos["PlannerRecords.lua"] + 2
-                and pos["PlannerCode.lua"] == pos["PlannerRecords.lua"] + 3) then error("the three new files, in order, after PlannerRecords.lua") end
+        if not (pos["PlannerRecords.lua"] and pos["PlannerGroup.lua"] and pos["PlannerGroup.lua"] > pos["PlannerRecords.lua"] and pos["PlannerDuo.lua"] == pos["PlannerGroup.lua"] + 1
+                and pos["PlannerCode.lua"] == pos["PlannerGroup.lua"] + 2) then error("the three new files, in order, after PlannerRecords.lua") end
         if not (sources["planner/PlannerDuo.lua"] or ""):find("PLANNER_DUO_PREFIX", 1, true) and ns.PLANNER_DUO_PREFIX ~= nil then error("nothing in the new files yet") end
         -- the fences: Core.lua's settings regions
         for _, g in ipairs({ "A (group)", "B (duo)", "C (code)" }) do
@@ -26628,7 +26628,7 @@ try("13.5 seams: extra hubs", function()
 end)
 try("13.5 seams: shared entries", function()
     ok(ns.defaults.plannerDungeons == true, "the switch is on by default")
-    ok(ns.whatsNew[1][1] == "13.5.0" and #ns.whatsNew[1][2] == 3, "what's new for 13.5")
+    ok(ns.whatsNew[1][1] == "13.5.0" and #ns.whatsNew[1][2] == 4, "what's new for 13.5")
     ok(type(ns.toolCommands.data) == "function", "/fgui data")
     ok(type(ns.DataCommand) == "function", "/fgui data is there")
     local help = false
@@ -27612,6 +27612,107 @@ try("13.5 D: tidy only after confirming", function()
 end)
 end
 -- 13.5 D data tests: end
+--
+-- 13.5 seams2 tests: begin
+do
+local function ok(cond, msg) if not cond then error(msg, 2) end end
+try("13.5 seams2: shared entries", function()
+    ok(ns.defaults.crashReports == false and ns.defaults.plannerLearnTimes == false, "both switches off by default")
+    ok(type(ns.toolCommands.health) == "function" and type(ns.toolCommands.crashes) == "function", "commands")
+    ok(#ns.whatsNew[1][2] == 4, "what's new for 13.5: four lines")
+    ok(type(ns.healthOff) == "table" and type(ns.HEALTH_NEEDS) == "table" and type(ns.PLANNER_SHARED_TIMES) == "table", "tables")
+    ok(sources["Crashes.lua"] and sources["Health.lua"] and sources["HealthNeeds.lua"] and sources["PlannerLearn.lua"]
+       and sources["planner/PlannerShare.lua"] and sources["planner/PlannerSharedTimes.lua"], "the new files load")
+end)
+try("13.5 seams2: report sections", function()
+    local fine, err = pcall(function()
+        ns.AddReportSection("zz", function() return { "ZZ HEADING", "  zz line" } end)
+        ns.AddReportSection("yy", function() error("broken on purpose") end)
+        ns.AddReportSection("zz", function() return { "ZZ2", "  zz2 line" } end)
+        local count = 0
+        for _, s in ipairs(ns.reportSections) do if s.key == "zz" then count = count + 1 end end
+        ok(count == 1, "one zz section")
+        ok(ns.reportSections[#ns.reportSections - 1].key == "zz" and ns.reportSections[#ns.reportSections].key == "yy", "zz keeps its place")
+        local lines = ns:ProblemReport()
+        ok(type(lines) == "table", "the report's lines")
+        local other, zz, zzLine, yy, old
+        for i, l in ipairs(lines) do
+            if l == "OTHER ADD-ONS RUNNING" then other = i end
+            if l == "ZZ2" then zz = i end
+            if l == "  zz2 line" then zzLine = i end
+            if l == "ZZ HEADING" then old = i end
+            if l:find("(yy could not be read:", 1, true) then yy = i end
+        end
+        ok(other and zz and zz > other, "ZZ2 after OTHER ADD-ONS RUNNING")
+        ok(lines[zz - 1] == "", "a blank line before the section")
+        ok(zzLine == zz + 1, "the section's lines in order")
+        ok(not old, "the replaced function is not used")
+        ok(yy and yy > zzLine, "the failing section says so")
+        ok(lines[yy]:sub(1, 2) == "  ", "indented")
+    end)
+    for i = #ns.reportSections, 1, -1 do
+        local k = ns.reportSections[i].key
+        if k == "zz" or k == "yy" then table.remove(ns.reportSections, i) end
+    end
+    if ns.HideLists then ns:HideLists() end
+    if not fine then error(err, 0) end
+end)
+try("13.5 seams2: click twice", function()
+    ok(ns.CONFIRM_SECONDS == 10, "ten seconds")
+    local n, drawn = 0, 0
+    local line = ns.ConfirmLine("Clear", "Again?", function() n = n + 1 end, function() drawn = drawn + 1 end)
+    ok(line.left == "Clear" and line.action == true and type(line.click) == "function", "a list line")
+    line.click(nil, 100)
+    ok(n == 0 and line.left == "Again?", "the first click arms it")
+    line.click(nil, 105)
+    ok(n == 1 and line.left == "Clear", "the second click runs it")
+    line.click(nil, 200)
+    line.click(nil, 211)
+    ok(n == 1 and line.left == "Clear", "too late: nothing runs")
+    ok(drawn == 4, "redrawn after each click")
+    local m = 0
+    local plain = ns.ConfirmLine("Go", "Sure?", function() m = m + 1 end)
+    plain.click(); plain.click()
+    ok(m == 1, "no redraw given, and the clock by itself")
+end)
+try("13.5 seams2: a part left off at login", function()
+    local started
+    local mod = { key = "zzPart", fn = function() started = true end }
+    ns.modules[#ns.modules + 1] = mod
+    local fine, err = pcall(function()
+        ns.db.zzPart = true; ns.healthOff.zzPart = true
+        fireEvent("PLAYER_LOGIN")
+        ok(started == nil, "not started")
+        ok(ns.loaded.zzPart == nil, "not loaded")
+        ok(ns.db.zzPart == true, "the saved setting is kept")
+    end)
+    for i = #ns.modules, 1, -1 do if ns.modules[i] == mod then table.remove(ns.modules, i) end end
+    ns.db.zzPart = nil; ns.healthOff.zzPart = nil; ns.loaded.zzPart = nil
+    runTimers()
+    if not fine then error(err, 0) end
+end)
+end
+-- 13.5 seams2 tests: end
+--
+-- 13.5 E beta tests: begin
+do
+end
+-- 13.5 E beta tests: end
+--
+-- 13.5 F health tests: begin
+do
+end
+-- 13.5 F health tests: end
+--
+-- 13.5 G crashes tests: begin
+do
+end
+-- 13.5 G crashes tests: end
+--
+-- 13.5 H learn tests: begin
+do
+end
+-- 13.5 H learn tests: end
 -- release 13 fix tests: end
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)

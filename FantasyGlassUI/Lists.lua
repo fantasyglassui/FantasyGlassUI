@@ -211,6 +211,31 @@ function ns:ShowList(key, title, lines, note, width, height, opts)
     return w
 end
 
+-- A list line that asks for a second click: the first click arms it (its text becomes `again`), a second within
+-- ns.CONFIRM_SECONDS runs fn(), and a later one only disarms it. redraw() after each click. `label` and `again`
+-- are shown as they are: callers pass them translated.
+ns.CONFIRM_SECONDS = 10
+function ns.ConfirmLine(label, again, fn, redraw)
+    local armedAt
+    local line = { left = label, action = true }
+    line.click = function(_, at)
+        at = at or GetTime()
+        if armedAt and at - armedAt <= ns.CONFIRM_SECONDS then
+            armedAt = nil
+            line.left = label
+            fn()
+        elseif armedAt then
+            armedAt = nil
+            line.left = label
+        else
+            armedAt = at
+            line.left = again
+        end
+        if redraw then redraw() end
+    end
+    return line
+end
+
 ------------------------------------------------------------------------------------------
 -- A line in the middle of the screen for a moment. `arg`, when given, is put into `text` by the
 -- game itself (so a value the game hides can still be shown).

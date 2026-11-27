@@ -23,6 +23,8 @@ PlannerMap.lua
 PlannerPages.lua
 PlannerPace.lua
 PlannerRecords.lua
+PlannerSharedTimes.lua
+PlannerShare.lua
 PlannerGroup.lua
 PlannerDuo.lua
 PlannerCode.lua

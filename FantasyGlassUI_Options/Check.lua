@@ -592,6 +592,16 @@ function ns:ProblemReport()
         end
         out[#out + 1] = row
     end
+    -- the sections other parts add (ns.AddReportSection, Core.lua), each after a blank line
+    for _, section in ipairs(ns.reportSections or {}) do
+        out[#out + 1] = ""
+        local ok, lines = pcall(section.fn)
+        if ok then
+            for _, line in ipairs(type(lines) == "table" and lines or {}) do out[#out + 1] = tostring(line) end
+        else
+            out[#out + 1] = "  (" .. tostring(section.key) .. " could not be read: " .. tostring(lines) .. ")"
+        end
+    end
     local alt = ns.discordInvite and { label = "Or attach the saved file in #bug-reports on Discord:", link = ns.discordInvite } or nil
     ns:ShowTextWindow("Report a problem", table.concat(out, "\n"), false, ns:ReportLink(), alt)
     return out

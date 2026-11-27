@@ -52,6 +52,8 @@ get two of everything.
 | `/fgui memory` | How much memory the add-on is using, and whether the options have been loaded |
 | `/fgui check` | Self-check: a copyable report of what the client supports and any errors |
 | `/fgui report` | Everything needed to report a problem, as text to copy (also the Report a problem button) |
+| `/fgui health` | Checks that everything this version uses is still in the game, and lists what the last check after a game update found |
+| `/fgui crashes` | The crash reports kept while Keep crash reports is on (Accessibility); /fgui crashes clear offers to empty the list |
 | `/fgui windows reset` | The game's windows open in their usual places again |
 | `/fgui sell [item]`, `/fgui keep [item]` | Always or never sell an item with your junk (shift-click the item in). `/fgui sell list` shows both lists |
 | `/fgui undo` | Put back the last panel move, nudge, resize or reset |

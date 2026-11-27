@@ -106,7 +106,7 @@ def test_folder_files():
             assert '"PLAYER_LOGIN"' not in "\n".join(lines), f"{folder}/{f} registers PLAYER_LOGIN (use ns.FolderLate)"
     main = os.listdir(os.path.join(ROOT, "FantasyGlassUI"))
     left = sorted(f for f in main if f.endswith(".lua") and f.startswith("Planner")
-                  and f not in ("PlannerTravel.lua", "PlannerKills.lua", "PlannerRecorders.lua"))
+                  and f not in ("PlannerTravel.lua", "PlannerKills.lua", "PlannerRecorders.lua", "PlannerLearn.lua"))
     assert not left, f"planner files left in the main add-on: {left}"
     left = sorted(f for f in main if f.endswith(".lua") and f.startswith("Gold") and f != "GoldRecorders.lua")
     assert not left, f"gold files left in the main add-on: {left}"

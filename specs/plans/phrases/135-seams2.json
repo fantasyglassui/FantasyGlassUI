@@ -1,0 +1,32 @@
+{
+  "Behind the scenes: after a game update, a quick check turns off any part the update broke until Fantasy Glass UI is updated (/fgui health). Two new switches, both off until you turn them on: Keep crash reports in Accessibility, and Help improve time estimates in the planner window. Nothing is ever sent by itself.": [
+    "Hinter den Kulissen: Nach einem Spiel-Update schaltet eine kurze Prüfung jeden Teil ab, den das Update kaputt gemacht hat, bis Fantasy Glass UI aktualisiert ist (/fgui health). Zwei neue Schalter, beide aus, bis du sie einschaltest: Absturzberichte behalten unter Barrierefreiheit und Hilf, die Zeitschätzungen zu verbessern im Planer-Fenster. Nichts wird jemals von selbst gesendet.",
+    "En coulisses : après une mise à jour du jeu, une vérification rapide désactive toute partie que la mise à jour a cassée, jusqu'à la mise à jour de Fantasy Glass UI (/fgui health). Deux nouveaux interrupteurs, désactivés tant que vous ne les activez pas : Conserver les rapports de plantage dans Accessibilité, et Aider à améliorer les estimations de temps dans la fenêtre du planificateur. Rien n'est jamais envoyé tout seul.",
+    "Entre bastidores: tras una actualización del juego, una comprobación rápida desactiva cualquier parte que la actualización haya roto hasta que Fantasy Glass UI se actualice (/fgui health). Dos interruptores nuevos, ambos apagados hasta que los actives: Guardar informes de fallos en Accesibilidad, y Ayudar a mejorar las estimaciones de tiempo en la ventana del planificador. Nunca se envía nada por sí solo.",
+    "За кулисами: после обновления игры быстрая проверка отключает каждую часть, которую сломало обновление, пока Fantasy Glass UI не обновится (/fgui health). Два новых переключателя, оба выключены, пока вы их не включите: «Сохранять отчёты о сбоях» в разделе «Доступность» и «Помочь улучшить оценки времени» в окне планировщика. Ничего никогда не отправляется само.",
+    "Nos bastidores: depois de uma atualização do jogo, uma verificação rápida desliga qualquer parte que a atualização quebrou até que o Fantasy Glass UI seja atualizado (/fgui health). Dois novos interruptores, ambos desligados até você ligá-los: Guardar relatórios de falhas em Acessibilidade, e Ajudar a melhorar as estimativas de tempo na janela do planejador. Nada é enviado sozinho, nunca.",
+    "Dietro le quinte: dopo un aggiornamento del gioco, un rapido controllo disattiva ogni parte che l'aggiornamento ha rotto finché Fantasy Glass UI non viene aggiornato (/fgui health). Due nuovi interruttori, entrambi spenti finché non li accendi: Conserva i rapporti sui crash in Accessibilità, e Aiuta a migliorare le stime dei tempi nella finestra del pianificatore. Niente viene mai inviato da solo.",
+    "보이지 않는 곳에서: 게임 업데이트 후 빠른 점검이 업데이트로 고장 난 부분을 Fantasy Glass UI가 업데이트될 때까지 끕니다(/fgui health). 직접 켜기 전까지 꺼져 있는 새 스위치 두 개: 접근성의 충돌 보고서 보관, 그리고 플래너 창의 시간 예측 개선 돕기. 어떤 것도 저절로 전송되지 않습니다.",
+    "幕后：游戏更新后，一次快速检查会关闭被更新弄坏的部分，直到 Fantasy Glass UI 更新为止（/fgui health）。两个新开关，在你打开之前都是关闭的：辅助功能中的“保留崩溃报告”，以及规划窗口中的“帮助改进时间估算”。任何内容都不会自动发送。"
+  ],
+  "checks that everything this version uses is still in the game, and lists what the last check after a game update found": [
+    "prüft, ob alles, was diese Version nutzt, noch im Spiel ist, und listet auf, was die letzte Prüfung nach einem Spiel-Update gefunden hat",
+    "vérifie que tout ce qu'utilise cette version est toujours dans le jeu, et liste ce qu'a trouvé la dernière vérification après une mise à jour du jeu",
+    "comprueba que todo lo que usa esta versión sigue en el juego, y muestra lo que encontró la última comprobación tras una actualización del juego",
+    "проверяет, что всё, чем пользуется эта версия, по-прежнему есть в игре, и показывает, что нашла последняя проверка после обновления игры",
+    "verifica se tudo o que esta versão usa ainda está no jogo, e lista o que a última verificação depois de uma atualização do jogo encontrou",
+    "controlla che tutto ciò che questa versione usa sia ancora nel gioco, ed elenca cosa ha trovato l'ultimo controllo dopo un aggiornamento del gioco",
+    "이 버전이 쓰는 모든 것이 아직 게임에 있는지 확인하고, 게임 업데이트 후 마지막 점검에서 찾은 것을 보여 줍니다",
+    "检查此版本用到的一切是否仍在游戏中，并列出游戏更新后上一次检查的结果"
+  ],
+  "the crash reports kept while Keep crash reports is on (Accessibility); /fgui crashes clear offers to empty the list": [
+    "die Absturzberichte, die behalten werden, solange Absturzberichte behalten an ist (Barrierefreiheit); /fgui crashes clear bietet an, die Liste zu leeren",
+    "les rapports de plantage conservés tant que Conserver les rapports de plantage est activé (Accessibilité) ; /fgui crashes clear propose de vider la liste",
+    "los informes de fallos guardados mientras Guardar informes de fallos está activado (Accesibilidad); /fgui crashes clear ofrece vaciar la lista",
+    "отчёты о сбоях, сохранённые, пока включено «Сохранять отчёты о сбоях» («Доступность»); /fgui crashes clear предлагает очистить список",
+    "os relatórios de falhas guardados enquanto Guardar relatórios de falhas está ligado (Acessibilidade); /fgui crashes clear oferece esvaziar a lista",
+    "i rapporti sui crash conservati mentre Conserva i rapporti sui crash è attivo (Accessibilità); /fgui crashes clear propone di svuotare l'elenco",
+    "충돌 보고서 보관이 켜져 있는 동안 보관된 충돌 보고서(접근성); /fgui crashes clear는 목록을 비우자고 제안합니다",
+    "在“保留崩溃报告”开启期间保存的崩溃报告（辅助功能）；/fgui crashes clear 会提出清空列表"
+  ]
+}

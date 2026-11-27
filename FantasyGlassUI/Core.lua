@@ -5,7 +5,18 @@ ns.author = "DustyMouse"
 
 ns.modules = {}
 ns.loaded = {}
+ns.healthOff = {}      -- [part key] = true: a part the check after a game update turned off for this session (Health.lua)
 ns.errors = {}          -- everything that went wrong this session, for /fgui check
+
+-- Report a problem's extra sections, after OTHER ADD-ONS RUNNING, in the order they were added. fn() gives the
+-- section's lines (its heading first). A key added again replaces its function and keeps its place.
+ns.reportSections = {}
+function ns.AddReportSection(key, fn)
+    for _, s in ipairs(ns.reportSections) do
+        if s.key == key then s.fn = fn; return end
+    end
+    ns.reportSections[#ns.reportSections + 1] = { key = key, fn = fn }
+end
 
 -- The options window, the guided setup and the self-check are about a seventh of the add-on's code,
 -- and most sessions never open any of them. They live in a second folder, FantasyGlassUI_Options,
@@ -199,6 +210,7 @@ ns.defaults = {
     plannerSoloElites = true,       -- elites your class has soloed count as Solo quests
     plannerClassQuests = true,      -- class quests are planned at the right time (and mentioned when they are ready)
     plannerDungeons  = true,        -- a dungeon run goes in the route when it gives more experience than the quests near you
+    plannerLearnTimes = false,      -- (13.5) Help improve time estimates: keep level, quest and flight times, class only, for Share my times
     plannerPickReward = true,       -- the best reward is picked for you at a hand-in (never handed in)
     plannerLogAdvice = true,        -- the panel says which quests are worth abandoning when the log is nearly full
     plannerInn       = true,        -- an inn is suggested after a long stretch of play
@@ -416,6 +428,7 @@ ns.defaults = {
     ufW = 240, ufH = 48,          -- player / target frame size
     partyW = 180, partyH = 36,
     raidW = 78, raidH = 38,
+    crashReports     = false,       -- (13.5) Keep crash reports (Accessibility): each distinct error kept, with no names, for Report a problem
 }
 
 -- Roles -----------------------------------------------------------------------
@@ -1644,7 +1657,8 @@ end
 ns.whatsNew = {
     { "13.5.0", { "Dungeon runs in your route: when a dungeon gives more experience than the quests near you, the route picks up its quests, finds a group and runs it. Switch it off in the planner window.",
                   "Class quests on time: a heads-up a level or two before, and the route stays where it can reach the start.",
-                  "Your guides, route planner and gold records are now in your backups too. /fgui data shows what each part keeps, and /fgui data tidy offers to remove old records, always asking first." } },
+                  "Your guides, route planner and gold records are now in your backups too. /fgui data shows what each part keeps, and /fgui data tidy offers to remove old records, always asking first.",
+                  "Behind the scenes: after a game update, a quick check turns off any part the update broke until Fantasy Glass UI is updated (/fgui health). Two new switches, both off until you turn them on: Keep crash reports in Accessibility, and Help improve time estimates in the planner window. Nothing is ever sent by itself." } },
     { "13.0.0", { "Quest guides: follow a route one step at a time, with a panel for the step you are on and an arrow that points the way. They are under Guide in /fgui.",
                   "The route planner: Plan my route works out which quests to take for your level, in what order, and when to fly, train or hand in, and plans again as you play. It finds quests through Questie when Questie is loaded.",
                   "The planner window (/fgui plan, or Planner on the guide panel) holds every setting for what it plans. Keep my route there leaves your route as it is until you ask for a new one.",
@@ -2289,6 +2303,7 @@ f:SetScript("OnEvent", function(_, event, name)
             ns:After(1, function() if ns.ShowSafeBanner then ns:ShowSafeBanner() end end)
             return
         end
+        if ns.HealthLogin then pcall(ns.HealthLogin, ns) end     -- (the check after a game update: may leave parts off, Health.lua)
         local count = 0
         local stepped = {}
         for _, m in ipairs(ns.modules) do
@@ -2296,6 +2311,8 @@ f:SetScript("OnEvent", function(_, event, name)
             if other then                                     -- another add-on does this job: leave it to that one
                 if not ns.steppedAside[m.key] then stepped[#stepped + 1] = other end
                 ns.steppedAside[m.key] = other
+            elseif ns.db[m.key] and ns.healthOff[m.key] then
+                -- left off: the game's update broke what this part needs (Health.lua). It neither starts nor counts.
             elseif ns.db[m.key] then
                 ns.startingModule = m.key                    -- (panels made now belong to this feature: see "What's this?")
                 local t0 = debugprofilestop and debugprofilestop()
@@ -2580,6 +2597,8 @@ ns.helpLines = {
     { "/fgui check new", "try each feature added since 11.6 and report what works, to copy and send" },
     { "/fgui selftest", "work through the add-on and list what passed and what did not" },
     { "/fgui report", "everything needed to report a problem, ready to copy (the Report a problem button in /fgui does the same)" },
+    { "/fgui health", "checks that everything this version uses is still in the game, and lists what the last check after a game update found" },
+    { "/fgui crashes", "the crash reports kept while Keep crash reports is on (Accessibility); /fgui crashes clear offers to empty the list" },
     { "/fgui blocked", "anything the game refused to let the add-on do, and where" },
     { "/fgui memory", "how much memory the add-on is using" },
     { "/fgui addons", "every add-on by the memory it uses" },
@@ -2619,6 +2638,8 @@ ns.toolCommands = {
     home = function() ns:HomeCommand() end,
     backup = function(t) ns:BackupCommand(t) end,
     data = function(t) ns:DataCommand(t) end,
+    health = function(t) ns:HealthCommand(t) end,
+    crashes = function(t) ns:CrashCommand(t) end,
     history = function() ns:ShowSettingHistory() end,
     pack = function() ns:ShowCopyBox(ns:ExportPack(), ns:Tr("Your whole UI in one string: Ctrl+C to copy. Anyone with Fantasy Glass UI can paste it in Profiles, Preview a shared string.")) end,
     equipbest = function() ns:EquipBest() end,

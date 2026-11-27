@@ -60,6 +60,7 @@ ns.FOLDERS = {
     planner = { addon = "FantasyGlassUI_Planner", files = {
         "PlannerSource.lua", "Planner.lua", "PlannerRoute.lua", "PlannerStops.lua", "PlannerPath.lua", "PlannerAdvice.lua",
         "PlannerDungeons.lua", "PlannerClass.lua", "PlannerMap.lua", "PlannerPages.lua", "PlannerPace.lua", "PlannerRecords.lua",
+        "PlannerSharedTimes.lua", "PlannerShare.lua",
         "PlannerGroup.lua", "PlannerDuo.lua", "PlannerCode.lua", "PlannerIntro.lua", "PlannerWindow.lua", "PlannerGo.lua",
     },
         broken = "The planner could not start: /fgui check lists why.",
