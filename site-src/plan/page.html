@@ -62,6 +62,53 @@ ol.steps .z { color: var(--dim); font-size: .85rem; }
 a { color: var(--frost); }
 .links a { display: inline-block; padding: 6px 0; }
 [hidden] { display: none !important; }
+/* the route on the world map (/map/'s tiles, drawn by Leaflet once a plan is shown). The map's own colours (its sea,
+   the pins and the line) are the same in light and dark, as the map art is; everything around it uses the tokens. */
+.route h2 { font-family: var(--display); font-weight: 400; font-size: 1.15rem; margin: 0 0 8px; }
+.views { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.views button { padding: 4px 12px; min-height: 34px; border-radius: 17px; font-size: .9rem; background: var(--raised); border-color: var(--line); }
+.views button[aria-pressed="true"] { background: var(--gold); border-color: var(--gold); color: var(--on-gold); font-weight: 600; }
+.mapframe { --sea: #2e3c44; position: relative; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--sea); }
+.routemap { width: 100%; height: clamp(320px, 62vh, 560px); background: var(--sea); }
+.mapframe .mapwait, .mapframe .maphint { position: absolute; left: 8px; right: auto; margin: 0; padding: 4px 10px; border-radius: 6px;
+  background: #12141a; color: #e7e9f4; font-size: .85rem; z-index: 1000; pointer-events: none; }
+.mapframe .mapwait { top: 8px; }
+.mapframe .maphint { bottom: 8px; max-width: calc(100% - 16px); }
+.routemap.leaflet-container { font: 400 .95rem/1.4 var(--body); background: var(--sea); }
+.routemap .leaflet-bar { border: 1px solid #2c313c; border-radius: 6px; box-shadow: none; overflow: hidden; }
+.routemap .leaflet-bar a, .routemap .leaflet-bar a:hover { width: 36px; height: 36px; font: 700 20px/34px var(--body); color: #f0c66b; background: #1e222b; border-bottom-color: #2c313c; }
+.routemap .leaflet-bar a.leaflet-disabled { color: #8a91b0; background: #1e222b; }
+.routemap .leaflet-bar a:focus-visible, .routemap.leaflet-container:focus-visible { outline: 2px solid #ffffff; outline-offset: -2px; }
+.routemap .leaflet-popup-content-wrapper, .routemap .leaflet-popup-tip { background: var(--card); color: var(--text); border-radius: 8px; box-shadow: 0 4px 16px rgba(0, 0, 0, .45); }
+.routemap .leaflet-popup-content-wrapper { border: 1px solid var(--gold); }
+.routemap .leaflet-popup-content { margin: 10px 14px; max-height: 260px; overflow-y: auto; }
+.routemap a.leaflet-popup-close-button { color: var(--dim); width: 30px; height: 30px; font: 400 22px/28px var(--body); }
+.rt-pop > div + div { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 8px; }
+.rt-pop strong { display: block; font-size: .8rem; color: var(--dim); font-weight: 600; }
+.rt-pop p { margin: 2px 0 4px; color: var(--text); font-size: .95rem; }
+.rt-pop .z { display: block; color: var(--dim); font-size: .8rem; }
+.rt-pop button { margin-top: 4px; padding: 3px 10px; font-size: .85rem; }
+/* a pin: its number, its kind by colour and shape (accept: gold circle; do: dark circle with a gold rim; turn in: green
+   square; travel: blue diamond corners; other: grey) */
+.rt-pin { display: flex; align-items: center; justify-content: center; box-sizing: border-box; border: 2px solid #14110a; border-radius: 13px;
+  font: 700 12px/1 var(--body); font-variant-numeric: tabular-nums; white-space: nowrap; box-shadow: 0 1px 4px rgba(0, 0, 0, .7); cursor: pointer; }
+.rt-pin.k-accept { background: #f0c66b; color: #14110a; }
+.rt-pin.k-do { background: #1e222b; color: #f0c66b; border-color: #f0c66b; }
+.rt-pin.k-turnin { background: #8fe0a0; color: #0e1a12; border-radius: 4px; }
+.rt-pin.k-travel { background: #8fd3ff; color: #0a1620; border-radius: 4px 13px; }
+.rt-pin.k-other, .rt-pin.k-mix { background: #e7e9f4; color: #15171e; }
+.rt-pin.done { opacity: .55; }
+.rt-pin.now { box-shadow: 0 0 0 3px #ffffff, 0 0 0 5px #14110a; }
+.rt-pin:focus-visible { outline: 3px solid #ffffff; outline-offset: 3px; }
+.rt-now { border-radius: 50%; border: 3px solid #ffffff; box-shadow: 0 0 0 2px #14110a, inset 0 0 0 2px #14110a; pointer-events: none; }
+@media (prefers-reduced-motion: no-preference) { .rt-now { animation: rt-beat 1.6s ease-out infinite; } }
+@keyframes rt-beat { 0% { opacity: 1; } 70% { opacity: .35; } 100% { opacity: 1; } }
+.rt-line { pointer-events: none; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; list-style: none; margin: 10px 0 0; padding: 0; color: var(--dim); font-size: .85rem; }
+.legend li { display: inline-flex; align-items: center; gap: 6px; }
+.legend .rt-pin { width: 18px; height: 18px; font-size: 0; box-shadow: none; cursor: default; }
+.route .credit { margin: 8px 0 0; }
+@media (max-width: 600px) { .routemap { height: clamp(320px, 58vh, 460px); } }
 .real h2 { font-family: var(--display); font-weight: 400; font-size: 1.15rem; margin: 0 0 8px; }
 .real .row { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; margin: 12px 0; }
 .real .row a.openbtn { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 18px; border: 1px solid var(--gold); border-radius: 8px;
@@ -83,7 +130,21 @@ a { color: var(--frost); }
   </section>
   <div id="plan" hidden>
     <section class="box"><dl class="totals" id="totals"></dl></section>
-    <section class="box"><div class="panels" id="panels"></div></section>
+    <section class="box route" id="routebox" aria-labelledby="maphead">
+      <h2 id="maphead"></h2>
+      <div class="views" id="views" role="group" hidden></div>
+      <div class="mapframe" id="mapframe">
+        <div id="routemap" class="routemap" role="region"></div>
+        <p class="mapwait" id="mapwait" hidden></p>
+        <p class="maphint" id="maphint" hidden></p>
+      </div>
+      <ul class="legend" id="legend"></ul>
+      <p class="note" id="unplaced" hidden></p>
+      <p class="note credit" id="mapcredit"></p>
+      <!-- only when the world map cannot be loaded: each zone's sketch (map.js) -->
+      <p class="note" id="sketchnote" hidden></p>
+      <div class="panels" id="panels" hidden></div>
+    </section>
     <section class="box">
       <h2 id="stepshead" style="font-family:var(--display);font-weight:400;margin:0 0 8px"></h2>
       <ol class="steps" id="steps"></ol>
@@ -142,7 +203,6 @@ var WORDS = /*@WORDS@*/;
       var d = el("div"); d.appendChild(el("dt", "", T(r[0]))); d.appendChild(el("dd", "", r[1])); box.appendChild(d);
     });
   }
-  // the map of each zone (map.js): markers numbered by step like the list below, and linked to it both ways
   var reduce = !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
   function current(plan) { for (var i = 0; i < plan.st.length; i++) if (!ticks[i]) return i; return -1; }
   function stepLabel(i) { return T("Step %d: %s").replace("%d", i + 1).replace("%s", result.plan.st[i].t); }
@@ -150,7 +210,7 @@ var WORDS = /*@WORDS@*/;
     var ns = steps.map(function (i) { return i + 1; });
     return T("Steps %s: %s").replace("%s", ns.join(", ")).replace("%s", steps.map(function (i) { return result.plan.st[i].t; }).join("; "));
   }
-  function toStep(i) {                                                 // a marker pressed: its step in the list
+  function toStep(i) {                                                 // a pin's "Show in the list": its step in the list
     var li = $("row" + i);
     if (!li) return;
     li.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
@@ -158,14 +218,258 @@ var WORDS = /*@WORDS@*/;
     setTimeout(function () { li.classList.remove("hit"); }, 1600);
     try { $("s" + i).focus({ preventScroll: true }); } catch (e) { $("s" + i).focus(); }
   }
+
+  // ---- the route on the world map: /map/'s Leaflet and tiles, asked for only once a plan is shown. Every step with a
+  // place is a numbered pin (its kind by colour and shape), joined in step order; pins that would touch at this zoom
+  // share one ("3–5"). A ring marks the current step (the first not ticked) and moves on with the ticks.
+  var TRAVEL = { fly: 1, sail: 1, hearth: 1 };
+  var KIND = { accept: "accept", "do": "do", turnin: "turnin", fly: "travel", sail: "travel", hearth: "travel" };
+  var KIND_WORDS = [["accept", "Accept a quest"], ["do", "Do a quest"], ["turnin", "Turn in a quest"], ["travel", "Travel"], ["other", "Other step"]];
+  var rt = { state: "idle" };                                          // idle, loading, ready or failed (then the sketches)
+  function get(path) {                                                 // this site's own files only, never another site
+    if (!/^\/(?:map|plan)\/[\w\/.-]+$/.test(path)) return Promise.reject(new Error(path));
+    return fetch(path, { credentials: "same-origin", referrerPolicy: "no-referrer" }).then(function (r) { if (!r.ok) throw new Error(path + ": " + r.status); return r.json(); });
+  }
+  function leaflet() {                                                 // /map/leaflet/, the world map's own copy
+    if (window.L) return Promise.resolve();
+    function add(e) { return new Promise(function (ok, no) { e.onload = ok; e.onerror = no; document.head.appendChild(e); }); }
+    var css = document.createElement("link"), js = document.createElement("script");
+    css.rel = "stylesheet"; css.href = "/map/leaflet/leaflet.css";
+    js.src = "/map/leaflet/leaflet.js";
+    return Promise.all([add(css), add(js)]);
+  }
+  function drawMap(plan, fresh) {
+    if (rt.state === "ready") return paint(plan, fresh || rt.code !== code);
+    if (rt.state === "failed") return drawPanels(plan);
+    if (rt.state === "loading") return;
+    rt.state = "loading";
+    $("mapwait").hidden = false;
+    Promise.all([leaflet(), get("/map/tiles/meta.json"), get("/map/tiles-have.json").catch(function () { return null; }), get("/plan/zones.json")])
+      .then(function (got) { start(got[1], got[2], got[3]); }, fallback);
+  }
+  function fallback() {                                                // the world map could not be loaded: the sketches
+    if (rt.state === "failed") return;
+    rt.state = "failed";
+    if (rt.map) { try { rt.map.remove(); } catch (e) {} rt.map = null; }
+    ["mapframe", "views", "legend", "unplaced", "mapcredit"].forEach(function (id) { $(id).hidden = true; });
+    $("sketchnote").hidden = false; $("panels").hidden = false;
+    if (result && result.ok) { drawPanels(result.plan); drawSteps(result.plan); }
+  }
+  function start(meta, haveList, zones) {
+    var box = $("routemap"), Z = +meta.maxZoom, W = +meta.width, H = +meta.height, TS = +meta.tileSize || 256;
+    if (meta.sea) $("mapframe").style.setProperty("--sea", meta.sea);
+    var have = null;
+    if (haveList) { have = {}; Object.keys(haveList).forEach(function (z) { haveList[z].forEach(function (k) { have[z + "/" + k] = 1; }); }); }
+    // a phone: one finger scrolls the page until the map is tapped (then it drags the map); two fingers always zoom it.
+    // The mouse wheel scrolls the page until the map is clicked.
+    var coarse = !!(window.matchMedia && matchMedia("(pointer: coarse)").matches);
+    var map = L.map(box, { crs: L.CRS.Simple, minZoom: 0, maxZoom: Z + 1, zoomSnap: 0.5, zoomDelta: 0.5, attributionControl: false,
+                           zoomControl: false, scrollWheelZoom: false, dragging: !coarse, maxBoundsViscosity: 0.8 });
+    rt.map = map; rt.Z = Z; rt.zones = zones; rt.coarse = coarse;
+    box._fgMap = map;                                                  // (for tests/sitebrowser.py)
+    rt.ll = function (p) { return map.unproject(p, Z); };
+    var all = L.latLngBounds(rt.ll([0, H]), rt.ll([W, 0]));
+    map.setMaxBounds(all.pad(0.05));
+    rt.zoom = L.control.zoom({ zoomInTitle: T("Zoom in"), zoomOutTitle: T("Zoom out") }).addTo(map);
+    var loaded = 0, failed = 0;
+    var Tiles = L.TileLayer.extend({
+      createTile: function (c, done) {                                 // (none is asked for where the list says there is only sea)
+        if (have && !have[c.z + "/" + c.y + "/" + c.x]) { var sea = document.createElement("div"); setTimeout(function () { done(null, sea); }, 0); return sea; }
+        return L.TileLayer.prototype.createTile.call(this, c, done);
+      }
+    });
+    new Tiles("/map/tiles/{z}/{y}/{x}.webp", { tileSize: TS, minZoom: 0, maxZoom: Z + 1, maxNativeZoom: Z, noWrap: true, bounds: all, keepBuffer: 2 })
+      .on("tileload", function () { loaded++; }).on("tileerror", function () { failed++; })
+      .on("load", function () { if (!loaded && failed) setTimeout(fallback, 0); })   // (after Leaflet is done with the tile)
+      .addTo(map);
+    map.setMinZoom(Math.max(0, Math.floor(map.getBoundsZoom(all, false) * 2) / 2));
+    rt.line = L.layerGroup().addTo(map); rt.pins = L.layerGroup().addTo(map);
+    function wake() {
+      map.scrollWheelZoom.enable();
+      if (coarse) { map.dragging.enable(); $("maphint").hidden = true; }
+    }
+    map.on("click", wake);
+    box.addEventListener("focus", function () { map.scrollWheelZoom.enable(); });
+    box.addEventListener("mouseleave", function () { map.scrollWheelZoom.disable(); });
+    if (coarse) {
+      $("maphint").hidden = false;
+      document.addEventListener("touchstart", function (e) {
+        if (rt.map && !box.contains(e.target) && map.dragging.enabled()) { map.dragging.disable(); $("maphint").hidden = false; }
+      }, { passive: true });
+    }
+    map.on("zoomend", function () { pins(false); });
+    map.on("popupopen", function (e) {
+      var x = e.popup.getElement() && e.popup.getElement().querySelector(".leaflet-popup-close-button");
+      if (x) x.setAttribute("aria-label", T("Close"));
+    });
+    rt.state = "ready";
+    $("mapwait").hidden = true;
+    if (result && result.ok) { paint(result.plan, true); drawSteps(result.plan); }
+  }
+
+  function zoneOf(plan, i) { var z = plan.st[i].z; return z === null ? null : z; }
+  // draw the plan on the map; fresh (a new code): fit the view again
+  function paint(plan, fresh) {
+    var map = rt.map, at = FGPlan.place(plan, rt.zones), now = current(plan), prevNow = rt.now;
+    rt.plan = plan; rt.code = code; rt.at = at; rt.now = now;
+    rt.placed = [];
+    at.forEach(function (p, i) { if (p) rt.placed.push({ i: i, ll: rt.ll(p), kind: KIND[plan.st[i].k] || "other" }); });
+    // the line: walking solid, a flight, a boat or the hearthstone dashed in blue; each over a dark edge to stand out
+    rt.line.clearLayers();
+    var walk = [], hop = [];
+    for (var k = 1; k < rt.placed.length; k++) (TRAVEL[plan.st[rt.placed[k].i].k] ? hop : walk).push([rt.placed[k - 1].ll, rt.placed[k].ll]);
+    [[walk, "#f0c66b", null], [hop, "#8fd3ff", "6 7"]].forEach(function (l) {
+      if (!l[0].length) return;
+      L.polyline(l[0], { color: "#14110a", weight: 6, opacity: 0.55, interactive: false, className: "rt-line" }).addTo(rt.line);
+      L.polyline(l[0], { color: l[1], weight: 3, opacity: 0.95, dashArray: l[2], interactive: false, className: "rt-line" }).addTo(rt.line);
+    });
+    var nowAt = at[now] ? rt.ll(at[now]) : null;
+    if (nowAt) L.marker(nowAt, { icon: L.divIcon({ className: "rt-now", iconSize: [40, 40], iconAnchor: [20, 20] }), interactive: false, keyboard: false, zIndexOffset: -500 }).addTo(rt.line);
+    // the views: the whole route, or one zone's steps
+    var zs = [];
+    rt.placed.forEach(function (p) { var z = zoneOf(plan, p.i); if (zs.indexOf(z) < 0) zs.push(z); });
+    rt.zs = zs;
+    if (fresh) {
+      var nz = nowZone(plan);
+      rt.view = zs.length > 1 && nz !== null ? nz : "all";
+    } else if (rt.view !== "all" && now !== prevNow) {                 // following a zone: on to the next one with the steps
+      var z2 = nowZone(plan);
+      if (z2 !== null && z2 !== rt.view) { rt.view = z2; fresh = true; }
+    }
+    if (zs.indexOf(rt.view) < 0) rt.view = "all";
+    views(plan);
+    // the steps with no place: listed, not pinned
+    var none = [];
+    at.forEach(function (p, i) { if (!p) none.push(i + 1); });
+    $("unplaced").hidden = !none.length;
+    $("unplaced").textContent = none.length ? T(none.length === 1 ? "Step %s has no place on the map." : "Steps %s have no place on the map.").replace("%s", none.join(", ")) : "";
+    map.invalidateSize();
+    if (fresh) fit(); else if (nowAt && now !== prevNow) map.panInside(nowAt, { padding: [40, 40], animate: !reduce });
+    pins(true);
+  }
+  function nowZone(plan) {                                             // the zone of the current step, or of the next one with a place
+    for (var i = Math.max(0, rt.now); i < plan.st.length; i++) if (rt.at[i]) return zoneOf(plan, i);
+    return null;
+  }
+  function fit() {
+    var map = rt.map, lls = rt.placed.filter(function (p) { return rt.view === "all" || zoneOf(rt.plan, p.i) === rt.view; }).map(function (p) { return p.ll; });
+    if (!lls.length) { map.fitBounds(map.options.maxBounds, { animate: false }); return; }
+    var b = L.latLngBounds(lls);
+    if (b.getNorthEast().equals(b.getSouthWest())) map.setView(lls[0], rt.Z - 1, { animate: false });
+    else map.fitBounds(b, { padding: [36, 36], maxZoom: rt.Z - 1, animate: false });
+  }
+  function views(plan) {
+    var row = $("views");
+    row.textContent = "";
+    row.setAttribute("aria-label", T("Map view"));
+    row.hidden = rt.zs.length < 2;
+    ["all"].concat(rt.zs).forEach(function (z) {
+      var b = el("button", "", z === "all" ? T("Whole route") : plan.z[z - 1].n);
+      b.type = "button";
+      b.setAttribute("aria-pressed", String(rt.view === z));
+      b.addEventListener("click", function () {
+        rt.view = z;
+        [].forEach.call(row.children, function (c) { c.setAttribute("aria-pressed", String(c === b)); });
+        fit(); pins(false);
+      });
+      row.appendChild(b);
+    });
+  }
+  // the pins at this zoom: those closer than a pin share one
+  function pins(force) {
+    var map = rt.map, P = rt.placed, z = map.getZoom(), pts = P.map(function (p) { return map.project(p.ll, z); });
+    var up = P.map(function (p, i) { return i; });
+    function top(i) { while (up[i] !== i) i = up[i] = up[up[i]]; return i; }
+    for (var a = 0; a < P.length; a++)
+      for (var b = a + 1; b < P.length; b++)
+        if (pts[a].distanceTo(pts[b]) < 26) { var ta = top(a), tb = top(b); if (ta !== tb) up[Math.max(ta, tb)] = Math.min(ta, tb); }
+    var groups = {}, order = [];
+    P.forEach(function (p, i) { var t = top(i); if (!groups[t]) { groups[t] = []; order.push(t); } groups[t].push(i); });
+    var sig = order.map(function (t) { return groups[t].join(","); }).join("|");
+    if (!force && sig === rt.sig) return;
+    rt.sig = sig;
+    rt.pins.clearLayers();
+    rt.byStep = {};
+    order.forEach(function (t) {
+      var g = groups[t], steps = g.map(function (k) { return P[k].i; });
+      var run = g.every(function (k, j) { return !j || k === g[j - 1] + 1; });
+      var text = steps.length === 1 ? String(steps[0] + 1) : FGPlanMap.rangeText(steps.map(function (i) { return i + 1; }), run);
+      var kinds = {}; g.forEach(function (k) { kinds[P[k].kind] = 1; });
+      var kind = Object.keys(kinds).length === 1 ? P[g[0]].kind : "mix";
+      var isNow = steps.indexOf(rt.now) >= 0, done = !isNow && steps.every(function (i) { return !!ticks[i]; });
+      var lat = 0, lng = 0;
+      g.forEach(function (k) { lat += P[k].ll.lat; lng += P[k].ll.lng; });
+      var w = Math.max(26, text.length * 7 + 12), num = el("span", "", text), label = steps.length === 1 ? stepLabel(steps[0]) : groupLabel(steps);
+      var m = L.marker([lat / g.length, lng / g.length], {
+        icon: L.divIcon({ className: "rt-pin k-" + kind + (done ? " done" : "") + (isNow ? " now" : ""), html: num, iconSize: [w, 26], iconAnchor: [w / 2, 13], popupAnchor: [0, -14] }),
+        title: label, keyboard: true, riseOnHover: true, zIndexOffset: isNow ? 1000 : 0 });
+      m.bindPopup(function () { return popup(steps); }, { maxWidth: 260, autoPanPadding: [24, 24] });
+      m.addTo(rt.pins);
+      var e = m.getElement();
+      if (e) { e.setAttribute("aria-label", label); e.setAttribute("data-steps", steps.join(" ")); if (isNow) e.setAttribute("aria-current", "step"); }
+      steps.forEach(function (i) { rt.byStep[i] = m; });
+    });
+  }
+  function popup(steps) {                                              // (every word in it is plain text)
+    var box = el("div", "rt-pop"), plan = rt.plan;
+    steps.forEach(function (i) {
+      var s = plan.st[i], row = el("div"), kind = KIND[s.k] || "other";
+      row.appendChild(el("strong", "", T("Step %d").replace("%d", i + 1) + " · " + T(KIND_WORDS.filter(function (k) { return k[0] === kind; })[0][1])));
+      row.appendChild(el("p", "", s.t));
+      if (s.z !== null) row.appendChild(el("span", "z", plan.z[s.z - 1].n));
+      var go = el("button", "", T("Show in the list"));
+      go.type = "button";
+      go.addEventListener("click", function () { rt.map.closePopup(); toStep(i); });
+      row.appendChild(go);
+      box.appendChild(row);
+    });
+    return box;
+  }
+  function showStep(i) {                                               // a step's number in the list: its pin, opened
+    if (rt.state === "failed") return FGPlanMap.show($("panels"), i, reduce);
+    if (rt.state !== "ready" || !rt.at[i]) return;
+    var ll = rt.ll(rt.at[i]);
+    $("routebox").scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
+    rt.map.setView(ll, Math.max(rt.map.getZoom(), rt.Z - 1), { animate: false });
+    pins(false);
+    var m = rt.byStep[i];
+    if (!m) return;
+    m.openPopup();
+    var e = m.getElement();
+    if (e) { try { e.focus({ preventScroll: true }); } catch (x) { e.focus(); } }
+  }
+  function mapWords() {
+    $("maphead").textContent = T("The route on the map");
+    $("routemap").setAttribute("aria-label", T("Map of the route"));
+    $("mapwait").textContent = T("Loading the map…");
+    $("maphint").textContent = T("Tap the map, then drag to move it.");
+    $("sketchnote").textContent = T("The world map could not be loaded, so each zone is drawn as a sketch.");
+    var cr = $("mapcredit"), a = el("a", "", T("Full credits on the world map"));
+    a.href = lang === "en" ? "/map/" : "/" + lang + "/map/";
+    cr.textContent = T("Map art © Blizzard Entertainment, map pieces from OpenMap.") + " ";
+    cr.appendChild(a);
+    var lg = $("legend");
+    lg.textContent = "";
+    KIND_WORDS.forEach(function (k) {
+      var li = el("li"), dot = el("span", "rt-pin k-" + k[0]);
+      dot.setAttribute("aria-hidden", "true");
+      li.appendChild(dot); li.appendChild(document.createTextNode(T(k[1])));
+      lg.appendChild(li);
+    });
+    if (rt.map) {
+      var c = $("routemap").querySelectorAll(".leaflet-control-zoom a");
+      [["Zoom in", 0], ["Zoom out", 1]].forEach(function (z) { if (c[z[1]]) { c[z[1]].title = T(z[0]); c[z[1]].setAttribute("aria-label", T(z[0])); } });
+    }
+  }
+
+  // the fallback, only when the world map cannot be loaded: each zone's sketch (map.js), linked to the list both ways
   function drawPanel(p, plan) {
     var wrap = el("div", "panel"), holder = el("div", "map");
     wrap.appendChild(el("h2", "", p.name));
     wrap.appendChild(holder);
     $("panels").appendChild(wrap);                                     // (in the page first: the map takes its width)
-    var now = current(plan);
     FGPlanMap.draw(holder, p, { name: T("Map of the stops in %s").replace("%s", p.name), north: T("N"), northTitle: T("North is up"),
-      label: stepLabel, group: groupLabel, current: now, done: function (i) { return !!ticks[i]; }, pick: toStep });
+      label: stepLabel, group: groupLabel, current: current(plan), done: function (i) { return !!ticks[i]; }, pick: toStep });
   }
   function drawPanels(plan) {
     var box = $("panels"), seen = {}, step = {};
@@ -179,6 +483,14 @@ var WORDS = /*@WORDS@*/;
       drawPanel(p, plan);
     });
   }
+  // which steps the list's numbers can show: those pinned on the world map (or, while it loads, every step with a
+  // place in its zone; in the fallback, those on a sketch)
+  function shown(plan) {
+    var ok = {};
+    if (rt.state === "ready" && rt.plan === plan) rt.at.forEach(function (p, i) { if (p) ok[i] = true; });
+    else FGPlan.panels(plan).forEach(function (p) { p.stops.forEach(function (st) { ok[st.step] = true; }); });
+    return ok;
+  }
 
   function storeKey() { return "fgui-plan-" + FGPlan.hash(code); }
   function loadTicks() {
@@ -189,9 +501,8 @@ var WORDS = /*@WORDS@*/;
     try { localStorage.setItem(storeKey(), JSON.stringify(Object.keys(ticks).map(Number))); } catch (e) {}
   }
   function drawSteps(plan) {
-    var list = $("steps"), placed = {}, now = current(plan);
+    var list = $("steps"), placed = shown(plan), now = current(plan);
     list.textContent = "";
-    FGPlan.panels(plan).forEach(function (p) { p.stops.forEach(function (st) { placed[st.step] = true; }); });
     plan.st.forEach(function (s, i) {
       var li = el("li", (ticks[i] ? "done" : "") + (i === now ? " now" : "")), box = el("input"), body = el("div", "t");
       li.id = "row" + i;
@@ -199,7 +510,7 @@ var WORDS = /*@WORDS@*/;
       box.addEventListener("change", function () {
         if (box.checked) ticks[i] = true; else delete ticks[i];
         saveTicks();
-        drawSteps(plan); drawPanels(plan);                             // (the next step moves on, on the map too)
+        drawSteps(plan); drawMap(plan, false);                         // (the next step moves on, on the map too)
         $("s" + i).focus();
       });
       var lab = el("label"); lab.htmlFor = box.id; lab.style.color = "inherit"; lab.style.fontSize = "1rem";
@@ -210,7 +521,7 @@ var WORDS = /*@WORDS@*/;
         var pin = el("button", "n", String(i + 1));
         pin.type = "button";
         pin.setAttribute("aria-label", T("Show step %d on the map").replace("%d", i + 1));
-        pin.addEventListener("click", function () { FGPlanMap.show($("panels"), i, reduce); });
+        pin.addEventListener("click", function () { showStep(i); });
         li.appendChild(pin);
       } else li.appendChild(el("span", "n", String(i + 1)));
       li.appendChild(box); li.appendChild(body);
@@ -239,6 +550,7 @@ var WORDS = /*@WORDS@*/;
     $("openmaptab").textContent = T("Open OpenMap in a new tab");
     $("worldmaptab").textContent = T("Open the world map");
     $("realcredit").textContent = T("Map art \u00a9 Blizzard Entertainment, shown by OpenMap (openmap.world). Not part of Fantasy Glass UI.");
+    mapWords();
     render();
   }
   function render() {
@@ -252,7 +564,7 @@ var WORDS = /*@WORDS@*/;
     }
     if (result && result.ok) {
       view.hidden = false;
-      drawTotals(result.plan); drawSteps(result.plan); drawPanels(result.plan);
+      drawTotals(result.plan); drawMap(result.plan, false); drawSteps(result.plan);
     } else {
       view.hidden = true;
     }
@@ -284,7 +596,7 @@ var WORDS = /*@WORDS@*/;
   });
   $("show").addEventListener("click", function () { load($("code").value); });
   $("code").addEventListener("input", function () { load($("code").value); });
-  $("clear").addEventListener("click", function () { ticks = {}; saveTicks(); if (result && result.ok) { drawSteps(result.plan); drawPanels(result.plan); } });
+  $("clear").addEventListener("click", function () { ticks = {}; saveTicks(); if (result && result.ok) { drawSteps(result.plan); drawMap(result.plan, false); } });
   window.addEventListener("hashchange", function () { var t = fromHash(); if (t && t !== code) { $("code").value = t; load(t, true); } });
   var first = fromHash();
   if (first) { $("code").value = first; load(first, true); }

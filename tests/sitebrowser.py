@@ -6,12 +6,15 @@ in German, is checked for: a skip link that shows when it gets focus; a header, 
 one h1; a visible focus ring; AA contrast for every piece of text on a plain background (4.5:1, or 3:1 for large text;
 text over a screenshot is left to the eye); no page wider than the screen; no script from another site; and no
 script error. The other languages are checked at 390 px for width. The plan page (/plan/) is checked at 390 px: a
-plan code pasted shows its steps, in German too, with no script error and nothing wider than the screen. The world map (/map/)
+plan code pasted shows its steps, in German too, with no script error and nothing wider than the screen; a sample plan's route
+is pinned on the world map at the expected pixels (390 and 1280 px, light and dark), asking only this site, and once a plan is
+shown; without tiles the zone sketches show instead. The world map (/map/)
 draws its tiles from this site, its places file is valid and ?pins shows the pin helper. On Guide and
 Gold (English and German, 390 px), the example route is drawn and the short tour opens, steps on and closes by keyboard. --shots DIR
-saves Home and Get started, dark and light, at both widths. --quick checks English only. Needs Python's playwright with its Chromium; when that is
+saves Home and Get started, dark and light, at both widths (and the plan page's route, plan-route-*.png). --quick checks English only. Needs Python's playwright with its Chromium; when that is
 missing it says so and exits 0 (the other site checks still run)."""
 import functools
+import json
 import http.server
 import os
 import socketserver
@@ -263,6 +266,103 @@ def main():
                 problems += [f"{where}: script error: {e}" for e in errors]
                 checked += 1
                 ctx.close()
+            # the route on the world map (/plan/): nothing of the map is asked for until a plan is shown; then a sample plan's
+            # steps are pinned where tests/plan_map_points.json says (pixels of /map/ at maxZoom), the steps with no place are
+            # listed in a note, the current step's pin moves on with a tick, the map is at least 300 px tall and never wider
+            # than the screen, it asks this site only and no tile that isn't there, with no script error; the map does not
+            # take the mouse wheel (or, on a phone, one finger) until it is clicked. Without tiles it falls back to the sketches.
+            sample = json.load(open(os.path.join(ROOT, "tests", "plan_map_points.json"), encoding="utf-8"))
+            for w, scheme in ((390, "dark"), (390, "light"), (1280, "dark"), (1280, "light")):
+                phone = w == 390
+                ctx = browser.new_context(viewport={"width": w, "height": 900}, locale="en-US", color_scheme=scheme, has_touch=phone, is_mobile=phone,
+                                          reduced_motion="reduce")
+                asked, mine, tiles, errors = [], [], [], []
+                ctx.route("**/*", lambda route: route.abort() if not route.request.url.startswith(base) else route.continue_())
+                page = ctx.new_page()
+                page.on("request", lambda r: asked.append(r.url) if not r.url.startswith(base) else mine.append(r.url[len(base):]))
+                page.on("response", lambda r: tiles.append((r.url, r.status)) if "/map/tiles/" in r.url and r.url.endswith(".webp") else None)
+                page.on("pageerror", lambda e: errors.append(str(e)))
+                page.on("console", lambda m: errors.append(m.text) if m.type in ("error", "warning") else None)
+                where = f"/plan/ route {w}px {scheme}"
+                page.goto(base + "/plan/", wait_until="load")
+                page.wait_for_timeout(300)
+                early = [u for u in mine if u.startswith(("/map/", "/plan/zones"))]
+                if early:
+                    problems.append(f"{where}: the map is asked for before a plan is shown: {early[:3]}")
+                page.fill("#code", sample["code"])
+                try:
+                    page.wait_for_selector("#routemap img.leaflet-tile-loaded", timeout=8000)
+                    page.wait_for_selector("#routemap .rt-pin[data-steps]", timeout=4000)
+                except Exception:
+                    problems.append(f"{where}: the route map was not drawn")
+                page.wait_for_timeout(400)
+                got = page.evaluate("""(pts) => {
+                  const box = document.getElementById('routemap'), m = box._fgMap, Z = m.getMaxZoom() - 1, out = [];
+                  const before = [m.scrollWheelZoom.enabled(), m.dragging.enabled()];
+                  for (const q of pts) {
+                    const ll = m.unproject(q.px, Z);
+                    m.setView(ll, Z, { animate: false });
+                    const pin = [...box.querySelectorAll('.rt-pin[data-steps]')].find(e => e.dataset.steps.split(' ').includes(String(q.step)));
+                    if (!pin) { out.push([q.step, null]); continue; }
+                    const r = pin.getBoundingClientRect(), c = box.getBoundingClientRect(), want = m.latLngToContainerPoint(ll);
+                    out.push([q.step, Math.round(Math.hypot(r.left + r.width / 2 - c.left - want.x, r.top + r.height / 2 - c.top - want.y))]);
+                  }
+                  return { off: out, before, height: box.offsetHeight, unplaced: document.getElementById('unplaced').textContent,
+                           credit: !!document.querySelector('#mapcredit a[href="/map/"]') && document.getElementById('mapcredit').textContent.includes('Blizzard'),
+                           sketch: !document.getElementById('panels').hidden, wide: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1 };
+                }""", sample["points"])
+                far = [o for o in got["off"] if o[1] is None or o[1] > 4]
+                if far:
+                    problems.append(f"{where}: pins not where their steps are (step, px off): {far}")
+                if got["before"] != [False, not phone]:
+                    problems.append(f"{where}: the map takes the wheel or one finger before it is clicked: {got['before']}")
+                if got["height"] < 300 or got["wide"] or got["sketch"] or not got["credit"]:
+                    problems.append(f"{where}: height {got['height']}, too wide {got['wide']}, sketch shown {got['sketch']}, credit {got['credit']}")
+                if got["unplaced"] != "Steps " + ", ".join(str(i + 1) for i in sample["unplaced"]) + " have no place on the map.":
+                    problems.append(f"{where}: the steps with no place: {got['unplaced']!r}")
+                page.locator("#views button").first.click()             # (the whole route again)
+                now1 = page.evaluate("document.querySelector('#routemap [aria-current=step]').dataset.steps")
+                page.check("#s0")
+                page.wait_for_timeout(200)
+                now2 = page.evaluate("document.querySelector('#routemap [aria-current=step]').dataset.steps")
+                if "0" not in now1.split() or "1" not in now2.split():
+                    problems.append(f"{where}: the current step's pin does not move on with a tick ({now1} -> {now2})")
+                page.uncheck("#s0")
+                page.locator("#steps button.n").nth(1).click()           # (a step's number: its pin, opened)
+                pop = page.evaluate("(document.querySelector('#routemap .leaflet-popup-content') || {}).textContent || ''")
+                if "Kill 8 Mottled Boars" not in pop:
+                    problems.append(f"{where}: a step's number does not open its pin ({pop[:60]!r})")
+                page.locator("#routemap a.leaflet-popup-close-button").click()
+                page.locator("#views button").first.click()
+                page.wait_for_timeout(300)
+                problems += [f"{where}: {x}" for x in page.evaluate(CHECK) if x.startswith(("contrast", "wider"))]
+                if SHOTS:
+                    os.makedirs(SHOTS, exist_ok=True)
+                    page.screenshot(path=os.path.join(SHOTS, f"plan-route-{scheme}-{w}.png"), full_page=True)
+                if any(st != 200 for _, st in tiles) or not tiles:
+                    problems.append(f"{where}: tiles asked for {[t for t in tiles if t[1] != 200][:3] or 'none'}")
+                if asked:
+                    problems.append(f"{where}: the page asks another site: {asked[:3]}")
+                problems += [f"{where}: script error or warning: {e}" for e in errors]
+                checked += 1
+                ctx.close()
+            # no tiles: the sketches instead, with no script error
+            ctx = browser.new_context(viewport={"width": 390, "height": 900}, locale="en-US")
+            ctx.route("**/*", lambda route: route.abort() if not route.request.url.startswith(base) or "/map/tiles/" in route.request.url and route.request.url.endswith(".webp") else route.continue_())
+            page = ctx.new_page()
+            errors = []
+            page.on("pageerror", lambda e: errors.append(str(e)))
+            page.goto(base + "/plan/#c=" + sample["code"], wait_until="load")
+            try:
+                page.wait_for_selector("#panels svg.fgmap", timeout=8000)
+            except Exception:
+                pass
+            fb = page.evaluate("[document.getElementById('panels').hidden, document.querySelectorAll('#panels svg.fgmap').length, document.getElementById('sketchnote').hidden, document.getElementById('mapframe').hidden]")
+            if fb != [False, 4, False, True]:              # (Durotar, Elwynn Forest, Stormwind City and Nowhere)
+                problems.append(f"/plan/ without tiles: the sketches do not show instead ({fb})")
+            problems += [f"/plan/ without tiles: script error: {e}" for e in errors]
+            checked += 1
+            ctx.close()
             # the world map (/map/): the tiles load from this site (and none that isn't there is asked for), the places file
             # is valid, nothing outside is asked, no script error, nothing wider than the screen; ?pins shows the helper
             for w, scheme, lang in ((390, "dark", "en"), (390, "light", "de"), (1280, "light", "en"), (1280, "dark", "en")):

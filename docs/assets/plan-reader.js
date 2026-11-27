@@ -124,6 +124,21 @@ var FGPlan = (function () {
     return order;
   }
 
+  // Where each step is on the world map (/map/): [x, y] in pixels of the whole map at its closest zoom, or null for a
+  // step with no place, or in a zone the map does not know. zones is /plan/zones.json (tools/plan_zones.py):
+  // { ids: { "<UiMapID>": [ax, bx, ay, by] }, names: { "<zone name>": UiMapID } }, x = ax + bx * x% / 100 and so on;
+  // a zone without its UiMapID in the code is found by its English name.
+  function place(plan, zones) {
+    var own = Object.prototype.hasOwnProperty;
+    return plan.st.map(function (s) {
+      if (!zones || s.z === null || s.x === null || s.y === null) return null;
+      var zn = plan.z[s.z - 1], id = zn.m;
+      if ((id === null || !own.call(zones.ids, String(id))) && zones.names && own.call(zones.names, zn.n)) id = zones.names[zn.n];
+      var a = id !== null && own.call(zones.ids, String(id)) ? zones.ids[String(id)] : null;
+      return a ? [a[0] + a[1] * s.x / 100, a[2] + a[3] * s.y / 100] : null;
+    });
+  }
+
   // A short key for the ticks kept in this browser (FNV-1a over the code's characters).
   function hash(code) {
     var h = 0x811c9dc5;
@@ -131,6 +146,6 @@ var FGPlan = (function () {
     return ("00000000" + h.toString(16)).slice(-8);
   }
 
-  return { read: read, totals: totals, panels: panels, hash: hash };
+  return { read: read, totals: totals, panels: panels, place: place, hash: hash };
 })();
 if (typeof module !== "undefined") module.exports = FGPlan;

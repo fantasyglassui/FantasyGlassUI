@@ -8,7 +8,8 @@ Builds the site into a temporary folder and checks:
   contact address and the status line), and no script or tracker from another site;
 - the sitemap lists every page in every language and the plan page, and nothing else;
 - the plan page (/plan/) is built, can be found (no noindex, in the sitemap, linked from Guide and Gold in every
-  language), and makes no request to any other site;
+  language), and makes no request to any other site; its /plan/zones.json places a sample plan's steps
+  (tests/plan_map_points.json) at the expected pixels of the world map, and its map has the credit line;
 - the world map (/map/) serves Leaflet and every tile it lists from this site, its markers.json is a valid list of
   places inside the map, it credits Blizzard, OpenMap (with its source and Ko-fi) and Santiago Reyes, and the plan page links it;
 - the feed of releases (/feed.xml) is RSS with every release's link pointing at its place on the Changelog, and
@@ -130,9 +131,29 @@ with tempfile.TemporaryDirectory() as tmp:
     page = text(fa["plan/index.html"])
     if "noindex" in page:
         fail("the plan page is hidden from search engines")
-    for bad in ["ld+json", "goatcounter", "zgo.at", "<script src", "<link", "<iframe", "sendBeacon", "fetch(", "XMLHttpRequest", "WebSocket"]:
+    for bad in ["ld+json", "goatcounter", "zgo.at", "<script src", "<link", "<iframe", "sendBeacon", "XMLHttpRequest", "WebSocket"]:
         if bad in page:
             fail("the plan page contains " + bad)
+    # once a plan is shown it asks this site only: one fetch() that refuses any path but /map/ and /plan/ ones
+    if page.count("fetch(") != 1 or 'if (!/^\\/(?:map|plan)\\/[\\w\\/.-]+$/.test(path)) return Promise.reject' not in page:
+        fail("the plan page fetches other than this site's /map/ and /plan/ files")
+    # the route on the world map: /plan/zones.json places a sample plan's steps at known pixels of /map/
+    if "plan/zones.json" not in fa:
+        fail("no plan/zones.json")
+    zones = json.load(open(fa["plan/zones.json"]))
+    sample = json.load(open(os.path.join(ROOT, "tests", "plan_map_points.json"), encoding="utf-8"))
+    names = {m["name"]: m["coords"] for m in json.load(open(fa["map/markers.json"], encoding="utf-8")) if m["category"] == "Zones"}
+    for q in sample["points"]:
+        a = zones["ids"].get(str(zones["names"].get(q["zone"])))           # (by name: the same numbers as by UiMapID)
+        step = re.findall(r"S1:xN([\d.]+);S1:yN([\d.]+);", sample["code"])[q["step"]]
+        x, y = float(step[0]), float(step[1])
+        got = [a[0] + a[1] * x / 100, a[2] + a[3] * y / 100] if a else None
+        if not got or abs(got[0] - q["px"][0]) > 1 or abs(got[1] - q["px"][1]) > 1:
+            fail(f"plan/zones.json puts {q['zone']} {x}, {y} at {got}, not {q['px']}")
+        if (x, y) == (50, 50) and (abs(names[q["zone"]][0] - got[0]) > 1 or abs(names[q["zone"]][1] - got[1]) > 1):
+            fail(f"plan/zones.json: {q['zone']}'s middle is not where /map/ names it")
+    if "Map art \u00a9 Blizzard Entertainment, map pieces from OpenMap." not in page or "Full credits on the world map" not in page:
+        fail("the plan page's map has no credit line")
     # The one outside address allowed is OpenMap's, as a plain link (nothing loads until it is followed). The page as
     # served has no <iframe>; plan/page.html makes it with createElement only when the player presses the button, and
     # tests/sitebrowser.py checks that (no request to openmap.world on load; the iframe and its attributes after the press).

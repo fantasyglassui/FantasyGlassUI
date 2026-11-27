@@ -87,7 +87,30 @@ if (far.view.w < 55 || far.view.w > 100) fail("a spread route fits its stops: " 
 eq(FGPlanMap.rangeText([3, 4, 5, 6], true), "3\u20136", "a run of steps");
 eq(FGPlanMap.rangeText([2, 5], false), "2, 5", "two apart");
 
-// the page and the reader: nothing leaves the browser
+// the world map (FGPlan.place with /plan/zones.json from tools/plan_zones.py): a sample plan's steps land at known pixels
+// (tests/plan_map_points.json), the same as the zone names on /map/ (markers.json puts each at its zone's 50, 50)
+var zones = JSON.parse(require("child_process").execFileSync("python3", [path.join(ROOT, "site-src", "tools", "plan_zones.py")], { stdio: ["ignore", "pipe", "ignore"] }).toString());
+var sample = JSON.parse(fs.readFileSync(path.join(ROOT, "tests", "plan_map_points.json"), "utf8"));
+var sp = FGPlan.read(sample.code);
+if (!sp.ok) fail("the map sample code does not read");
+var at = FGPlan.place(sp.plan, zones);
+var marks = JSON.parse(fs.readFileSync(path.join(ROOT, "site-src", "pages", "map", "files", "markers.json"), "utf8"));
+sample.points.forEach(function (q) {
+  var p = at[q.step];
+  if (!p || Math.abs(p[0] - q.px[0]) > 1 || Math.abs(p[1] - q.px[1]) > 1) fail("step " + (q.step + 1) + " in " + q.zone + " is at " + JSON.stringify(p) + ", not " + JSON.stringify(q.px));
+  var s = sp.plan.st[q.step];
+  if (s.x === 50 && s.y === 50) {
+    var m = marks.filter(function (x) { return x.category === "Zones" && x.name === q.zone; })[0];
+    if (!m || Math.abs(m.coords[0] - p[0]) > 1 || Math.abs(m.coords[1] - p[1]) > 1) fail(q.zone + " at 50, 50 is not where /map/ names the zone");
+  }
+});
+eq(at.map(function (p, i) { return p ? -1 : i; }).filter(function (i) { return i >= 0; }), sample.unplaced, "the steps with no place on the map");
+eq(at[0][0] < 7395 && at[4][0] > 7395, true, "Durotar on Kalimdor (left), Stormwind in the Eastern Kingdoms (right)");
+eq(FGPlan.place(sp.plan, null).every(function (p) { return p === null; }), true, "no zones: no place");
+eq(Object.keys(zones.ids).length > 40 && zones.names["Durotar"] === 1411, true, "zones.json has the zones and their names");
+
+// the page and the reader: nothing leaves the browser. The page asks only this site, once a plan is shown, through one
+// fetch() that refuses any other path (and for Leaflet's files and the tiles, by path; tests/sitebrowser.py watches it)
 var banned = /fetch\(|XMLHttpRequest|sendBeacon|WebSocket|<script src|<link|https?:\/\//;
 ["reader.js", "map.js", "page.html"].forEach(function (name) {
   var text = fs.readFileSync(path.join(ROOT, "site-src", "plan", name), "utf8").replace(/fantasyglassui\.com/g, "");
@@ -95,6 +118,9 @@ var banned = /fetch\(|XMLHttpRequest|sendBeacon|WebSocket|<script src|<link|http
   if (name === "page.html") {
     if (text.split("https://openmap.world/").length !== 2 || /<iframe/.test(text)) fail("page.html: OpenMap must be named once and have no <iframe> tag");
     text = text.replace("https://openmap.world/", "");
+    var guard = 'if (!/^\\/(?:map|plan)\\/[\\w\\/.-]+$/.test(path)) return Promise.reject(new Error(path));\n    return fetch(path, ';
+    if (text.split("fetch(").length !== 2 || text.indexOf(guard) < 0) fail("page.html: one fetch(), for this site's /map/ and /plan/ only");
+    text = text.replace(guard, "");
   }
   var m = banned.exec(text);
   if (m) fail(name + " contains " + m[0]);
