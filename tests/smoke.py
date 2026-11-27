@@ -27701,6 +27701,258 @@ end
 --
 -- 13.5 F health tests: begin
 do
+local function ok(cond, msg) if not cond then error(msg, 2) end end
+local function needs(key)                                   -- the first name of a part
+    local e = ns.HEALTH_NEEDS[key]
+    return e and e[1] and ns.HEALTH_NAMES[e[1]]
+end
+local function partsOf(name)                                -- every part that needs this name
+    local idx
+    for i, n in ipairs(ns.HEALTH_NAMES) do if n == name then idx = i end end
+    local out = {}
+    for key, e in pairs(ns.HEALTH_NEEDS) do
+        for _, i in ipairs(e) do if i == idx then out[#out + 1] = key end end
+    end
+    return out
+end
+-- A module part P with a name N no other part needs, and a name C only core needs.
+local P, N, C
+local function pick()
+    if P then return end
+    local isModule = {}
+    for _, m in ipairs(ns.modules) do isModule[m.key] = true end
+    local keys = {}
+    for key in pairs(ns.HEALTH_NEEDS) do keys[#keys + 1] = key end
+    table.sort(keys)
+    for _, key in ipairs(keys) do
+        if isModule[key] and not P then
+            for _, i in ipairs(ns.HEALTH_NEEDS[key]) do
+                local owners = partsOf(ns.HEALTH_NAMES[i])
+                if #owners == 1 then P, N = key, ns.HEALTH_NAMES[i]; break end
+            end
+        end
+    end
+    for _, i in ipairs(ns.HEALTH_NEEDS.core or {}) do
+        local owners = partsOf(ns.HEALTH_NAMES[i])
+        if #owners == 1 and not C then C = ns.HEALTH_NAMES[i] end
+    end
+end
+local function absentOnly(set) return function(name) return not set[name] end end
+-- Run body with a fresh root, a build, a has stub; everything put back after.
+local function with(build, has, body)
+    pick()
+    local saved = { root = ns.root, has = ns.HealthHas, gbi = env.GetBuildInfo, fight = env.InCombatLockdown }
+    local savedOff = {}
+    for k, v in pairs(ns.healthOff) do savedOff[k] = v end
+    for k in pairs(ns.healthOff) do ns.healthOff[k] = nil end
+    local root = {}
+    ns.root = root
+    if has then ns.HealthHas = has end
+    env.GetBuildInfo = function() return "1.60.1", build, "Nov 1 2026", 16001 end
+    local fine, err = pcall(body, root)
+    ns.root, ns.HealthHas, env.GetBuildInfo, env.InCombatLockdown = saved.root, saved.has, saved.gbi, saved.fight
+    for k in pairs(ns.healthOff) do ns.healthOff[k] = nil end
+    for k, v in pairs(savedOff) do ns.healthOff[k] = v end
+    if ns.HideLists then ns:HideLists() end
+    if not fine then error(err, 0) end
+end
+local function label(key) return ns.HEALTH_NEEDS[key].label end
+local function offCount() local n = 0 for _ in pairs(ns.healthOff) do n = n + 1 end return n end
+try("13.5 F: the needs list", function()
+    local names = ns.HEALTH_NAMES
+    ok(#names > 100, "names listed: " .. #names)
+    for i = 2, #names do ok(names[i - 1] < names[i], "sorted and unique at " .. i) end
+    ok(ns.HEALTH_NEEDS.core and ns.HEALTH_NEEDS.planner and ns.HEALTH_NEEDS.gold, "core, planner, gold")
+    local inCore
+    for _, i in ipairs(ns.HEALTH_NEEDS.core) do if names[i] == "GetBuildInfo" then inCore = true end end
+    ok(inCore, "GetBuildInfo in core")
+    local isModule = {}
+    for _, m in ipairs(ns.modules) do isModule[m.key] = true end
+    for key, e in pairs(ns.HEALTH_NEEDS) do
+        ok(type(e.label) == "string" and e.label ~= "", "a label for " .. key)
+        for j, i in ipairs(e) do
+            ok(type(i) == "number" and i >= 1 and i <= #names, "an index of " .. key)
+            ok(j == 1 or e[j - 1] < i, "ascending in " .. key)
+        end
+        ok(key == "core" or key == "planner" or key == "gold" or isModule[key], "a module: " .. key)
+    end
+    ok(ns.HEALTH_NEEDS.planner.label == "Route planner", "the planner's label")
+    ok(type(ns.HEALTH_BUILD) == "string" and ns.HEALTH_BUILD ~= "", "the build checked against")
+    pick()
+    ok(P and N and C, "a part and names to test with")
+end)
+try("13.5 F: the first login takes a baseline", function()
+    with("70888", nil, function(root)
+        ns.HealthHas = absentOnly({ [N] = true })
+        local n0 = #printed
+        ns:HealthLogin()
+        ok(root.lastBuild == "70888", "the build kept: " .. tostring(root.lastBuild))
+        ok(root.health and root.health.base and root.health.base.version == ns.version, "the base's version")
+        ok(root.health.base.absent[N] == true, "what was absent")
+        ok(root.health.result == nil, "no result")
+        ok(offCount() == 0, "nothing off")
+        ok(#printed == n0, "no line")
+    end)
+end)
+local function patched(root, absent)
+    root.lastBuild = "70888"
+    root.health = { base = { version = ns.version, absent = {} } }
+    ns.HealthHas = absentOnly(absent)
+    env.GetBuildInfo = function() return "1.60.1", "71000", "Nov 1 2026", 16001 end
+end
+try("13.5 F: after a patch", function()
+    with("71000", nil, function(root)
+        patched(root, { [N] = true })
+        local db = ns.db[P]
+        local n0 = #printed
+        ns:HealthLogin()
+        ok(ns.healthOff[P] == true, "the part is off")
+        ok(offCount() == 1, "only that part")
+        ok(ns.db[P] == db, "the saved setting is unchanged")
+        local r = root.health.result
+        ok(r and r.build == "71000" and r.version == ns.version, "the result kept")
+        ok(#r.off == 1 and r.off[1] == P, "result.off")
+        ok(r.missing[P] and r.missing[P][1] == N, "result.missing")
+        ok(root.lastBuild == "70888", "the baseline's build stays")
+        ok(#printed == n0 + 1, "one line")
+        ok(printed[#printed] == "After the game's update, these parts are off until Fantasy Glass UI is updated: " .. label(P) .. ".",
+           "the line: " .. tostring(printed[#printed]))
+        ok(r.told == true, "told")
+    end)
+    with("71000", nil, function(root)
+        patched(root, { [C] = true })
+        local n0 = #printed
+        ns:HealthLogin()
+        ok(offCount() == 0, "core is never off")
+        ok(#root.health.result.off == 0 and root.health.result.core[1] == C, "core's missing name kept")
+        ok(#printed == n0 + 1 and printed[#printed] == "After the game's update, some of what Fantasy Glass UI uses is missing: /fgui health lists it.",
+           "the core line: " .. tostring(printed[#printed]))
+    end)
+end)
+try("13.5 F: a name missing before the patch", function()
+    with("71000", nil, function(root)
+        patched(root, { [N] = true })
+        root.health.base.absent[N] = true                    -- (a frame not there at login)
+        local n0 = #printed
+        ns:HealthLogin()
+        ok(offCount() == 0, "nothing off")
+        ok(#printed == n0, "no line")
+    end)
+end)
+try("13.5 F: the next login, and an update", function()
+    with("71000", nil, function(root)
+        patched(root, { [N] = true })
+        ns:HealthLogin()
+        ok(ns.healthOff[P], "off after the patch")
+        for k in pairs(ns.healthOff) do ns.healthOff[k] = nil end
+        local n0 = #printed
+        ns:HealthLogin()
+        ok(ns.healthOff[P] == true and offCount() == 1, "off again at the next login")
+        ok(#printed == n0, "no line the second time")
+        -- an update: a new version and a new build
+        for k in pairs(ns.healthOff) do ns.healthOff[k] = nil end
+        local version = ns.version
+        ns.version = version .. "-test"
+        env.GetBuildInfo = function() return "1.60.1", "72000", "Nov 1 2026", 16001 end
+        local fine, err = pcall(function()
+            ns:HealthLogin()
+            ok(root.health.base.version == ns.version, "a new base")
+            ok(root.health.base.absent[N] == true, "the new base holds what is absent now")
+            ok(root.lastBuild == "72000", "the new build")
+            ok(root.health.result == nil, "no result")
+            ok(offCount() == 0, "nothing off")
+            ok(#printed == n0, "no line")
+        end)
+        ns.version = version
+        if not fine then error(err, 0) end
+    end)
+end)
+try("13.5 F: in a fight", function()
+    with("71000", nil, function(root)
+        patched(root, { [N] = true })
+        env.InCombatLockdown = function() return true end
+        local n0 = #printed
+        ns:HealthLogin()
+        ok(root.health.result == nil and offCount() == 0, "nothing happens in the fight")
+        ok(#printed == n0, "no line in the fight")
+        env.InCombatLockdown = function() return false end
+        fireEvent("PLAYER_REGEN_ENABLED")                    -- (other handlers may print too: only the check's lines are counted)
+        local r = root.health.result
+        ok(r and r.later == true and r.off[1] == P, "the result kept, for later")
+        ok(offCount() == 0, "nothing turned off now")
+        local function told()
+            local out = {}
+            for i = n0 + 1, #printed do if printed[i]:find("After the game's update", 1, true) then out[#out + 1] = printed[i] end end
+            return out
+        end
+        local lines = told()
+        ok(#lines == 1 and lines[1] == "After the game's update, these parts may not work. They are off from your next login until Fantasy Glass UI is updated: " .. label(P) .. ".",
+           "the later line: " .. tostring(lines[1]))
+        ns:HealthLogin()
+        ok(ns.healthOff[P] == true, "off from the next login")
+        ok(#told() == 1, "no second line")
+    end)
+end)
+try("13.5 F: folders", function()
+    with("70888", nil, function()
+        ns.healthOff.planner = true
+        local n0 = #printed
+        ok(ns:LoadFolder("planner", true) == false, "quiet: not loaded")
+        ok(#printed == n0, "quiet: no line")
+        ok(ns:LoadFolder("planner") == false, "not loaded")
+        ok(#printed == n0 + 1 and printed[#printed]:find("This part is off after the game's update, until Fantasy Glass UI is updated. /fgui health says why.", 1, true),
+           "the line: " .. tostring(printed[#printed]))
+        for i = #printed, n0 + 1, -1 do table.remove(printed, i) end      -- (a red line on purpose: not one the add-on would print by mistake)
+    end)
+end)
+try("13.5 F: /fgui health and the report", function()
+    with("71000", nil, function(root)
+        patched(root, { [N] = true })
+        ok(ns:HealthCommand("") >= 1, "lines")
+        local w = ns:ListWindow("Health")
+        local found
+        for _, l in ipairs(w.lines) do
+            if l.left == label(P) and tostring(l.right):find(N, 1, true) then found = true end
+        end
+        ok(found, "the part and its name")
+        ok(root.health.last and root.health.last.when, "kept as the last check")
+        ns.HealthHas = absentOnly({})
+        ok(ns:HealthCommand("") == 1, "one line")
+        w = ns:ListWindow("Health")
+        ok(w.lines[1].left == "Everything this version uses is in the game.", "the one line: " .. tostring(w.lines[1].left))
+        ns.HealthHas = absentOnly({ [N] = true })
+        ns:HealthLogin()
+        local lines = ns:ProblemReport()
+        local heading, named
+        for _, l in ipairs(lines) do
+            if l == "AFTER THE LAST GAME UPDATE" then heading = true end
+            if heading and l:find(label(P), 1, true) then named = true end
+        end
+        ok(heading and named, "the report holds the check")
+    end)
+end)
+try("13.5 F: light", function()
+    local n = 0
+    ns.HealthScan(function() n = n + 1; return true end)
+    ok(n == #ns.HEALTH_NAMES, "each name asked once: " .. n)
+    if speedTimed then
+        local t0 = os.clock()
+        ns.HealthScan()
+        local ms = (os.clock() - t0) * 1000
+        print(string.format("speed (%s): health check %.2f ms (limit %d)", speedMode, ms, ns.HEALTH_BUDGET_MS))
+        ok(ms <= ns.HEALTH_BUDGET_MS, "under the budget: " .. ms)
+    end
+    local builds = { function() error("no build") end, function() return nil end }
+    if secretMode then builds[3] = function() return "1.60.1", setmetatable({ __secret = true }, {}) end end
+    for _, gbi in ipairs(builds) do
+        with("0", nil, function(root)
+            env.GetBuildInfo = gbi
+            local fine, err = pcall(ns.HealthLogin, ns)
+            ok(fine, "no error: " .. tostring(err))
+            ok(root.lastBuild == nil and root.health == nil, "nothing done")
+        end)
+    end
+end)
 end
 -- 13.5 F health tests: end
 --

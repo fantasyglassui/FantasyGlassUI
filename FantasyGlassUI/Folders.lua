@@ -127,6 +127,10 @@ end
 function ns:LoadFolder(key, quiet)
     local f = ns.FOLDERS[key]
     if type(f) ~= "table" then return false end
+    if ns.healthOff[key] then                                 -- (the check after a game update left it off: Health.lua)
+        if not quiet then Say(key, "This part is off after the game's update, until Fantasy Glass UI is updated. /fgui health says why.") end
+        return false
+    end
     if ns.folderReady[key] then return true end
     if type(IsLoggedIn) == "function" then
         local ok, v = pcall(IsLoggedIn)

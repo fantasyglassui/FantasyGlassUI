@@ -1,0 +1,122 @@
+{
+  "After the game's update, these parts are off until Fantasy Glass UI is updated: %s.": [
+    "Nach dem Update des Spiels sind diese Teile aus, bis Fantasy Glass UI aktualisiert ist: %s.",
+    "Après la mise à jour du jeu, ces parties sont désactivées jusqu'à la mise à jour de Fantasy Glass UI : %s.",
+    "Tras la actualización del juego, estas partes están desactivadas hasta que Fantasy Glass UI se actualice: %s.",
+    "После обновления игры эти части отключены, пока не выйдет обновление Fantasy Glass UI: %s.",
+    "Após a atualização do jogo, estas partes ficam desligadas até o Fantasy Glass UI ser atualizado: %s.",
+    "Dopo l'aggiornamento del gioco, queste parti sono disattivate finché Fantasy Glass UI non viene aggiornato: %s.",
+    "게임 업데이트 이후, Fantasy Glass UI가 업데이트될 때까지 다음 기능이 꺼져 있습니다: %s.",
+    "游戏更新后，以下部分已关闭，直到 Fantasy Glass UI 更新：%s。"
+  ],
+  "After the game's update, these parts may not work. They are off from your next login until Fantasy Glass UI is updated: %s.": [
+    "Nach dem Update des Spiels funktionieren diese Teile vielleicht nicht. Ab deiner nächsten Anmeldung sind sie aus, bis Fantasy Glass UI aktualisiert ist: %s.",
+    "Après la mise à jour du jeu, ces parties risquent de ne pas fonctionner. Elles seront désactivées dès votre prochaine connexion jusqu'à la mise à jour de Fantasy Glass UI : %s.",
+    "Tras la actualización del juego, puede que estas partes no funcionen. Estarán desactivadas desde tu próximo inicio de sesión hasta que Fantasy Glass UI se actualice: %s.",
+    "После обновления игры эти части могут не работать. Со следующего входа они будут отключены, пока не выйдет обновление Fantasy Glass UI: %s.",
+    "Após a atualização do jogo, estas partes podem não funcionar. Elas ficam desligadas a partir do seu próximo login até o Fantasy Glass UI ser atualizado: %s.",
+    "Dopo l'aggiornamento del gioco, queste parti potrebbero non funzionare. Saranno disattivate dal tuo prossimo accesso finché Fantasy Glass UI non viene aggiornato: %s.",
+    "게임 업데이트 이후 다음 기능이 제대로 작동하지 않을 수 있습니다. 다음 접속부터 Fantasy Glass UI가 업데이트될 때까지 꺼집니다: %s.",
+    "游戏更新后，以下部分可能无法正常工作。从你下次登录起，它们将被关闭，直到 Fantasy Glass UI 更新：%s。"
+  ],
+  "After the game's update, some of what Fantasy Glass UI uses is missing: /fgui health lists it.": [
+    "Nach dem Update des Spiels fehlt einiges, was Fantasy Glass UI benutzt: /fgui health listet es auf.",
+    "Après la mise à jour du jeu, une partie de ce qu'utilise Fantasy Glass UI manque : /fgui health en donne la liste.",
+    "Tras la actualización del juego, falta parte de lo que usa Fantasy Glass UI: /fgui health lo muestra.",
+    "После обновления игры пропало кое-что из того, чем пользуется Fantasy Glass UI: список покажет /fgui health.",
+    "Após a atualização do jogo, falta parte do que o Fantasy Glass UI usa: /fgui health mostra a lista.",
+    "Dopo l'aggiornamento del gioco, manca qualcosa di ciò che Fantasy Glass UI usa: /fgui health lo elenca.",
+    "게임 업데이트 이후 Fantasy Glass UI가 사용하는 일부 항목이 없습니다: /fgui health에서 확인할 수 있습니다.",
+    "游戏更新后，Fantasy Glass UI 使用的部分内容缺失：/fgui health 会列出它们。"
+  ],
+  "This part is off after the game's update, until Fantasy Glass UI is updated. /fgui health says why.": [
+    "Dieser Teil ist seit dem Update des Spiels aus, bis Fantasy Glass UI aktualisiert ist. /fgui health sagt dir, warum.",
+    "Cette partie est désactivée depuis la mise à jour du jeu, jusqu'à la mise à jour de Fantasy Glass UI. /fgui health dit pourquoi.",
+    "Esta parte está desactivada tras la actualización del juego, hasta que Fantasy Glass UI se actualice. /fgui health explica por qué.",
+    "Эта часть отключена после обновления игры, пока не выйдет обновление Fantasy Glass UI. Причину покажет /fgui health.",
+    "Esta parte está desligada desde a atualização do jogo, até o Fantasy Glass UI ser atualizado. /fgui health diz o porquê.",
+    "Questa parte è disattivata dopo l'aggiornamento del gioco, finché Fantasy Glass UI non viene aggiornato. /fgui health spiega perché.",
+    "게임 업데이트 이후 Fantasy Glass UI가 업데이트될 때까지 이 기능은 꺼져 있습니다. 이유는 /fgui health에서 확인하세요.",
+    "游戏更新后，此部分已关闭，直到 Fantasy Glass UI 更新。/fgui health 会说明原因。"
+  ],
+  "%s: off this session": [
+    "%s: in dieser Sitzung aus",
+    "%s : désactivé pour cette session",
+    "%s: desactivado en esta sesión",
+    "%s: отключено в этом сеансе",
+    "%s: desligado nesta sessão",
+    "%s: disattivato in questa sessione",
+    "%s: 이번 세션 동안 꺼짐",
+    "%s：本次会话中已关闭"
+  ],
+  "Everything this version uses is in the game.": [
+    "Alles, was diese Version benutzt, ist im Spiel vorhanden.",
+    "Tout ce qu'utilise cette version est présent dans le jeu.",
+    "Todo lo que usa esta versión está en el juego.",
+    "Всё, чем пользуется эта версия, есть в игре.",
+    "Tudo o que esta versão usa está no jogo.",
+    "Tutto ciò che questa versione usa è presente nel gioco.",
+    "이 버전이 사용하는 모든 항목이 게임에 있습니다.",
+    "此版本使用的一切都在游戏中。"
+  ],
+  "Health check": [
+    "Zustandsprüfung",
+    "Vérification de l'état",
+    "Comprobación del estado",
+    "Проверка состояния",
+    "Verificação de estado",
+    "Controllo dello stato",
+    "상태 점검",
+    "状态检查"
+  ],
+  "What this version needs from the game, and what the last check after a game update turned off.": [
+    "Was diese Version vom Spiel braucht und was die letzte Prüfung nach einem Spiel-Update abgeschaltet hat.",
+    "Ce dont cette version a besoin du jeu, et ce que la dernière vérification après une mise à jour du jeu a désactivé.",
+    "Lo que esta versión necesita del juego y lo que la última comprobación tras una actualización del juego desactivó.",
+    "Что этой версии нужно от игры и что отключила последняя проверка после обновления игры.",
+    "O que esta versão precisa do jogo e o que a última verificação após uma atualização do jogo desligou.",
+    "Ciò di cui questa versione ha bisogno dal gioco e ciò che l'ultimo controllo dopo un aggiornamento del gioco ha disattivato.",
+    "이 버전이 게임에서 필요로 하는 것과, 마지막 게임 업데이트 후 점검에서 꺼진 기능입니다.",
+    "此版本需要游戏提供的内容，以及上次游戏更新后的检查关闭了什么。"
+  ],
+  "Blizzard's own frames, restyled": [
+    "Blizzards eigene Fenster, neu gestaltet",
+    "Les cadres de Blizzard, restylés",
+    "Los marcos propios de Blizzard, con nuevo estilo",
+    "Собственные рамки Blizzard в новом стиле",
+    "Os quadros da própria Blizzard, reestilizados",
+    "I riquadri di Blizzard, con nuovo stile",
+    "새로 꾸민 Blizzard 기본 프레임",
+    "重新美化的暴雪自带框体"
+  ],
+  "The game's menu buttons": [
+    "Die Menüknöpfe des Spiels",
+    "Les boutons du menu du jeu",
+    "Los botones del menú del juego",
+    "Кнопки меню игры",
+    "Os botões de menu do jogo",
+    "I pulsanti del menu del gioco",
+    "게임 메뉴 버튼",
+    "游戏的菜单按钮"
+  ],
+  "Who is in your group": [
+    "Wer in deiner Gruppe ist",
+    "Qui est dans votre groupe",
+    "Quién está en tu grupo",
+    "Кто в вашей группе",
+    "Quem está no seu grupo",
+    "Chi è nel tuo gruppo",
+    "파티에 있는 사람",
+    "你的队伍里有谁"
+  ],
+  "Fantasy Glass UI": [
+    "Fantasy Glass UI",
+    "Fantasy Glass UI",
+    "Fantasy Glass UI",
+    "Fantasy Glass UI",
+    "Fantasy Glass UI",
+    "Fantasy Glass UI",
+    "Fantasy Glass UI",
+    "Fantasy Glass UI"
+  ]
+}

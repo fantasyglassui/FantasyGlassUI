@@ -80,15 +80,10 @@ def blank(text):
 
 
 code = {f: blank(s) for f, s in src.items()}
-found = collections.OrderedDict()
 
 
 def where(f, pos):
     return f.replace(ROOT, "") + ":" + str(src[f].count("\n", 0, pos) + 1)
-
-
-def note(kind, name, loc):
-    found.setdefault(kind, collections.OrderedDict()).setdefault(name, []).append(loc)
 
 
 def field_ok(full):
@@ -100,112 +95,145 @@ def field_ok(full):
     return ".".join(parts[:2]) in FIELDS
 
 
-# 1. globals (luacheck lists every global read; the add-on's own come from .luacheckrc's "globals")
-rc = open(ROOT + ".luacheckrc", encoding="utf-8").read()
-own = set(re.findall(r'"([^"]+)"', rc[rc.index("globals = {"):rc.index("}", rc.index("globals = {"))]))
-cfg = ROOT + "tests/.cache/forever.luacheckrc"
-os.makedirs(os.path.dirname(cfg), exist_ok=True)
-open(cfg, "w").write('std = "lua51"\nmax_line_length = false\nignore = { "2", "4", "5", "6" }\nglobals = {'
-                     + ", ".join(f'"{g}"' for g in sorted(own)) + "}\n")
-lc = subprocess.run(["luacheck", *FOLDERS, "--config", cfg, "--formatter", "plain", "--codes", "--no-color", "-q"],
-                    cwd=ROOT, capture_output=True, text=True).stdout
-read = collections.defaultdict(list)
-for line in lc.splitlines():
-    m = re.match(r"(.+?):(\d+):\d+: \(W113\) accessing undefined variable '(.+)'", line)
-    if m:
-        read[m.group(3)].append(f"{m.group(1)}:{m.group(2)}")
-for g, locs in read.items():
-    if g not in LUA51 and g not in GLOBALS and g not in NOT_THE_GAMES:
-        for loc in locs:
-            note("Globals Forever does not have", g, loc)
-for g in own:
-    if not g.startswith(("FantasyGlassUI", "SLASH_", "BINDING_")) and g not in GLOBALS and g not in NOT_THE_GAMES:
-        note("Game globals the add-on writes that Forever does not have", g, ".luacheckrc")
-for f in files:
-    for m in re.finditer(r'_G\.([A-Za-z_]\w*)|_G\["([A-Za-z_]\w*)"\]', src[f]):
-        g = m.group(1) or m.group(2)
-        if g in LUA51 or g in GLOBALS or g in own or g in NOT_THE_GAMES or g.startswith(("FantasyGlassUI", "SLASH_", "BINDING_")):
-            continue
-        note("Globals read through _G that Forever does not have", g, where(f, m.start()))
+def scan():
+    """Everything the add-on reaches for: (found, uses). `found`: what Forever lacks, {kind: {name: [where, ...]}}.
+    `uses`: what it has, per file (its path from the repository root): {"globals": set, "fields": set, "templates": set}
+    (tests/health_needs.py makes the list of what each part of the add-on needs from these)."""
+    found = collections.OrderedDict()
+    uses = collections.defaultdict(lambda: {"globals": set(), "fields": set(), "templates": set()})
 
-# 2. the game's tables: Name.Field[.Field], directly and through a local name
-game_tables = {g for g in set(read) | own if g in GLOBALS and g not in LUA51}
-for f in files:
-    for m in re.finditer(r"(?<![\w.:])([A-Za-z_]\w*)\s*\.\s*([A-Za-z_]\w*)(?:\s*\.\s*([A-Za-z_]\w*))?", code[f]):
-        a, b, c = m.groups()
-        if a not in game_tables or not (a.startswith("C_") or a in ("Enum", "Settings", "Menu", "MenuUtil", "Constants", "ChatFrameUtil", "AuraUtil", "bit")):
-            continue
-        full = a + "." + b + ("." + c if c and a in ("Enum", "Constants") else "")
-        if not field_ok(full):
-            note("Game functions and fields Forever does not have", full, where(f, m.start()))
-    for m in re.finditer(r'local\s+(\w+)\s*=\s*(?:type\((?:C_\w+)\)\s*==\s*"table"\s*and\s*)?(C_\w+)\b(?=[ \t]*(?:\n|;|\)|or\b|--))', code[f]):
-        alias, table = m.group(1), m.group(2)
-        for k in re.finditer(r"(?<![\w.:])" + alias + r"\s*\.\s*([A-Za-z_]\w*)", code[f][m.end():m.end() + 6000]):
-            if not field_ok(table + "." + k.group(1)):
-                note("Game functions and fields Forever does not have", f"{table}.{k.group(1)} (as {alias})", where(f, m.end() + k.start()))
+    def note(kind, name, loc):
+        found.setdefault(kind, collections.OrderedDict()).setdefault(name, []).append(loc)
 
-# 3. events: registered, compared against, or listed for registering
-for f in files:
-    s = src[f]
-    used = [(m.group(1), m.start()) for m in re.finditer(r'(?:Register(?:Unit)?Event|UnregisterEvent|IsEventRegistered)\s*\(\s*[\w.]*\s*,?\s*"([A-Z0-9_]+)"', s)]
-    used += [(m.group(1), m.start()) for m in re.finditer(r'\bevent\s*==\s*"([A-Z0-9_]+)"', s)]
-    for m in re.finditer(r'\{((?:\s*"[A-Z][A-Z0-9_]+"\s*,?)+)\s*\}', s):
-        names = re.findall(r'"([A-Z][A-Z0-9_]+)"', m.group(1))
-        after = s[m.end():m.end() + 200]
-        if "RegisterEvent" in after or "RegisterUnitEvent" in after or (len(names) > 1 and sum(n in EVENTS for n in names) > len(names) // 2):
-            used += [(n, m.start()) for n in names]
-    for name, pos in used:
-        if name not in EVENTS:
-            note("Events Forever does not send", name, where(f, pos))
-        elif name in RESTRICTED:
-            note("Events Forever keeps from add-ons", name, where(f, pos))
+    def rel(f):
+        return f.replace(ROOT, "")
 
-# 4. settings, templates, art, sounds, frame methods
-own_methods = set()
-for f in files:
-    own_methods |= set(re.findall(r"function\s+[\w.]+[:.](\w+)\s*\(", code[f]))
-    own_methods |= set(re.findall(r"[.:](\w+)\s*=\s*function", code[f]))
-    own_methods |= set(re.findall(r"(?:^|[\s{,])(\w+)\s*=\s*function", code[f], re.M))
-    own_methods |= set(re.findall(r"(?:^|[\s{,])(\w+)\s*=\s*[\w.]+\s*[,}\n]", code[f], re.M))
-# Folders.lua's stand-ins (ns[name] = stub, for each name in one table): the add-on's own, before their folder defines them.
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from folder_stubs import stub_names
-for f in files:
-    if f.endswith("FantasyGlassUI/Folders.lua"):
-        own_methods |= stub_names(src[f])
-LIBRARY_METHODS = {"NewDataObject", "DataObjectIterator"}       # LibDataBroker's, when that add-on is there (anywhere in the add-on)
-FILE_METHODS = {                                                # other add-ons' methods, allowed only in the file that reads that add-on
-    "FantasyGlassUI_Planner/PlannerSource.lua": {"GetQuestLogRewardXP", "GetUiMapIdByAreaId"},   # Questie's modules (QuestXP, ZoneDB)
-}
-LUA_STRING = set("byte char find format gmatch gsub len lower match rep reverse sub upper".split())   # ("text":lower() and the like)
-for f in files:
-    s = src[f]
-    for m in re.finditer(r'(?:GetCVar|SetCVar|GetCVarBool|GetCVarDefault|CVarGet|C_CVar\.\w+)\s*\(\s*"([^"]+)"', s):
-        if m.group(1).lower() not in CVARS:
-            note("Game settings (CVars) Forever does not have", m.group(1), where(f, m.start()))
-    for m in re.finditer(r'CreateFrame\s*\(\s*"\w+"\s*,[^,()]*,[^,()]*,\s*"([^"]+)"', s):
-        for t in m.group(1).split(","):
-            if t.strip() and t.strip() not in TEMPLATES:
-                note("Templates Forever does not have", t.strip(), where(f, m.start()))
-    for m in re.finditer(r'(?:SetAtlas|CreateAtlasMarkup|GetAtlasInfo)\s*\(\s*"([^"]+)"', s):
-        if m.group(1).lower() not in ATLASES:
-            note("Built-in art (atlases) Forever does not have", m.group(1), where(f, m.start()))
-    for m in re.finditer(r"SOUNDKIT\.(\w+)", code[f]):
-        if "SOUNDKIT." + m.group(1) not in FIELDS:
-            note("Sounds Forever does not have", "SOUNDKIT." + m.group(1), where(f, m.start()))
-    for m in re.finditer(r":\s*([A-Za-z_]\w*)\s*\(", code[f]):
-        name = m.group(1)
-        if name in FILE_METHODS.get(f.replace(ROOT, ""), ()):
-            continue
-        if name not in METHODS and name not in own_methods and name not in LIBRARY_METHODS and name not in LUA_STRING:
-            note("Frame methods Forever does not have", name, where(f, m.start()))
+    # 1. globals (luacheck lists every global read; the add-on's own come from .luacheckrc's "globals")
+    rc = open(ROOT + ".luacheckrc", encoding="utf-8").read()
+    own = set(re.findall(r'"([^"]+)"', rc[rc.index("globals = {"):rc.index("}", rc.index("globals = {"))]))
+    cfg = ROOT + "tests/.cache/forever.luacheckrc"
+    os.makedirs(os.path.dirname(cfg), exist_ok=True)
+    open(cfg, "w").write('std = "lua51"\nmax_line_length = false\nignore = { "2", "4", "5", "6" }\nglobals = {'
+                         + ", ".join(f'"{g}"' for g in sorted(own)) + "}\n")
+    lc = subprocess.run(["luacheck", *FOLDERS, "--config", cfg, "--formatter", "plain", "--codes", "--no-color", "-q"],
+                        cwd=ROOT, capture_output=True, text=True).stdout
+    read = collections.defaultdict(list)
+    for line in lc.splitlines():
+        m = re.match(r"(.+?):(\d+):\d+: \(W113\) accessing undefined variable '(.+)'", line)
+        if m:
+            read[m.group(3)].append(f"{m.group(1)}:{m.group(2)}")
+    for g, locs in read.items():
+        if g not in LUA51 and g not in GLOBALS and g not in NOT_THE_GAMES:
+            for loc in locs:
+                note("Globals Forever does not have", g, loc)
+        elif g not in LUA51 and g not in NOT_THE_GAMES and g not in own:
+            for loc in locs:
+                uses[loc.rsplit(":", 1)[0]]["globals"].add(g)
+    for g in own:
+        if not g.startswith(("FantasyGlassUI", "SLASH_", "BINDING_")) and g not in GLOBALS and g not in NOT_THE_GAMES:
+            note("Game globals the add-on writes that Forever does not have", g, ".luacheckrc")
+    for f in files:
+        for m in re.finditer(r'_G\.([A-Za-z_]\w*)|_G\["([A-Za-z_]\w*)"\]', src[f]):
+            g = m.group(1) or m.group(2)
+            if g in LUA51 or g in own or g in NOT_THE_GAMES or g.startswith(("FantasyGlassUI", "SLASH_", "BINDING_")):
+                continue
+            if g in GLOBALS:
+                uses[rel(f)]["globals"].add(g)
+                continue
+            note("Globals read through _G that Forever does not have", g, where(f, m.start()))
 
-print(f"WoW: Forever {API['build']}: {len(files)} files checked")
-if not found:
-    print("Everything the add-on uses is in Forever.")
-    sys.exit(0)
-for kind, names in found.items():
-    print(f"\n{kind}: {len(names)}")
-    for name, locs in sorted(names.items()):
-        print(f"  {name}   " + ", ".join(locs[:4]) + (f" (+{len(locs) - 4} more)" if len(locs) > 4 else ""))
-sys.exit(1)
+    # 2. the game's tables: Name.Field[.Field], directly and through a local name
+    game_tables = {g for g in set(read) | own if g in GLOBALS and g not in LUA51}
+    for f in files:
+        for m in re.finditer(r"(?<![\w.:])([A-Za-z_]\w*)\s*\.\s*([A-Za-z_]\w*)(?:\s*\.\s*([A-Za-z_]\w*))?", code[f]):
+            a, b, c = m.groups()
+            if a not in game_tables or not (a.startswith("C_") or a in ("Enum", "Settings", "Menu", "MenuUtil", "Constants", "ChatFrameUtil", "AuraUtil", "bit")):
+                continue
+            full = a + "." + b + ("." + c if c and a in ("Enum", "Constants") else "")
+            if not field_ok(full):
+                note("Game functions and fields Forever does not have", full, where(f, m.start()))
+            else:
+                uses[rel(f)]["fields"].add(full)
+        for m in re.finditer(r'local\s+(\w+)\s*=\s*(?:type\((?:C_\w+)\)\s*==\s*"table"\s*and\s*)?(C_\w+)\b(?=[ \t]*(?:\n|;|\)|or\b|--))', code[f]):
+            alias, table = m.group(1), m.group(2)
+            for k in re.finditer(r"(?<![\w.:])" + alias + r"\s*\.\s*([A-Za-z_]\w*)", code[f][m.end():m.end() + 6000]):
+                if not field_ok(table + "." + k.group(1)):
+                    note("Game functions and fields Forever does not have", f"{table}.{k.group(1)} (as {alias})", where(f, m.end() + k.start()))
+                else:
+                    uses[rel(f)]["fields"].add(table + "." + k.group(1))
+
+    # 3. events: registered, compared against, or listed for registering
+    for f in files:
+        s = src[f]
+        used = [(m.group(1), m.start()) for m in re.finditer(r'(?:Register(?:Unit)?Event|UnregisterEvent|IsEventRegistered)\s*\(\s*[\w.]*\s*,?\s*"([A-Z0-9_]+)"', s)]
+        used += [(m.group(1), m.start()) for m in re.finditer(r'\bevent\s*==\s*"([A-Z0-9_]+)"', s)]
+        for m in re.finditer(r'\{((?:\s*"[A-Z][A-Z0-9_]+"\s*,?)+)\s*\}', s):
+            names = re.findall(r'"([A-Z][A-Z0-9_]+)"', m.group(1))
+            after = s[m.end():m.end() + 200]
+            if "RegisterEvent" in after or "RegisterUnitEvent" in after or (len(names) > 1 and sum(n in EVENTS for n in names) > len(names) // 2):
+                used += [(n, m.start()) for n in names]
+        for name, pos in used:
+            if name not in EVENTS:
+                note("Events Forever does not send", name, where(f, pos))
+            elif name in RESTRICTED:
+                note("Events Forever keeps from add-ons", name, where(f, pos))
+
+    # 4. settings, templates, art, sounds, frame methods
+    own_methods = set()
+    for f in files:
+        own_methods |= set(re.findall(r"function\s+[\w.]+[:.](\w+)\s*\(", code[f]))
+        own_methods |= set(re.findall(r"[.:](\w+)\s*=\s*function", code[f]))
+        own_methods |= set(re.findall(r"(?:^|[\s{,])(\w+)\s*=\s*function", code[f], re.M))
+        own_methods |= set(re.findall(r"(?:^|[\s{,])(\w+)\s*=\s*[\w.]+\s*[,}\n]", code[f], re.M))
+    # Folders.lua's stand-ins (ns[name] = stub, for each name in one table): the add-on's own, before their folder defines them.
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from folder_stubs import stub_names
+    for f in files:
+        if f.endswith("FantasyGlassUI/Folders.lua"):
+            own_methods |= stub_names(src[f])
+    LIBRARY_METHODS = {"NewDataObject", "DataObjectIterator"}       # LibDataBroker's, when that add-on is there (anywhere in the add-on)
+    FILE_METHODS = {                                                # other add-ons' methods, allowed only in the file that reads that add-on
+        "FantasyGlassUI_Planner/PlannerSource.lua": {"GetQuestLogRewardXP", "GetUiMapIdByAreaId"},   # Questie's modules (QuestXP, ZoneDB)
+    }
+    LUA_STRING = set("byte char find format gmatch gsub len lower match rep reverse sub upper".split())   # ("text":lower() and the like)
+    for f in files:
+        s = src[f]
+        for m in re.finditer(r'(?:GetCVar|SetCVar|GetCVarBool|GetCVarDefault|CVarGet|C_CVar\.\w+)\s*\(\s*"([^"]+)"', s):
+            if m.group(1).lower() not in CVARS:
+                note("Game settings (CVars) Forever does not have", m.group(1), where(f, m.start()))
+        for m in re.finditer(r'CreateFrame\s*\(\s*"\w+"\s*,[^,()]*,[^,()]*,\s*"([^"]+)"', s):
+            for t in m.group(1).split(","):
+                if t.strip() and t.strip() not in TEMPLATES:
+                    note("Templates Forever does not have", t.strip(), where(f, m.start()))
+                elif t.strip():
+                    uses[rel(f)]["templates"].add(t.strip())
+        for m in re.finditer(r'(?:SetAtlas|CreateAtlasMarkup|GetAtlasInfo)\s*\(\s*"([^"]+)"', s):
+            if m.group(1).lower() not in ATLASES:
+                note("Built-in art (atlases) Forever does not have", m.group(1), where(f, m.start()))
+        for m in re.finditer(r"SOUNDKIT\.(\w+)", code[f]):
+            if "SOUNDKIT." + m.group(1) not in FIELDS:
+                note("Sounds Forever does not have", "SOUNDKIT." + m.group(1), where(f, m.start()))
+        for m in re.finditer(r":\s*([A-Za-z_]\w*)\s*\(", code[f]):
+            name = m.group(1)
+            if name in FILE_METHODS.get(f.replace(ROOT, ""), ()):
+                continue
+            if name not in METHODS and name not in own_methods and name not in LIBRARY_METHODS and name not in LUA_STRING:
+                note("Frame methods Forever does not have", name, where(f, m.start()))
+    return found, {k: v for k, v in sorted(uses.items())}
+
+
+def main():
+    found, _ = scan()
+    print(f"WoW: Forever {API['build']}: {len(files)} files checked")
+    if not found:
+        print("Everything the add-on uses is in Forever.")
+        sys.exit(0)
+    for kind, names in found.items():
+        print(f"\n{kind}: {len(names)}")
+        for name, locs in sorted(names.items()):
+            print(f"  {name}   " + ", ".join(locs[:4]) + (f" (+{len(locs) - 4} more)" if len(locs) > 4 else ""))
+    sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

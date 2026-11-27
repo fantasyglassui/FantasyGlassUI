@@ -118,6 +118,7 @@ read_globals = {
     "C_UnitAuras",
     "C_VignetteInfo",
     "C_VoiceChat",
+    "C_XMLUtil",
     "CanGuildBankRepair",
     "CanInspect",
     "CanMerchantRepair",
