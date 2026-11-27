@@ -2394,6 +2394,7 @@ end)
 do
     local SIX = { "bagSecUpgrades", "bagSecSets", "bagSecBoE", "bagSecMats", "bagSecConsumables", "bagSecRecipes" }
     local LINE = "Your bags now sort items into sections"
+    local bagAddon                      -- another bag add-on loaded for a Login (nil: none)
     local function Said(from) local n = 0; for i = from + 1, #printed do if tostring(printed[i]):find(LINE, 1, true) then n = n + 1 end end return n end
     -- a "login" with this saved profile: InitDB, then what runs after the modules start
     local function Login(root)
@@ -2402,7 +2403,11 @@ do
         ns.db, env.FantasyGlassUIDB = nil, root
         ns:InitDB()
         local db = ns.db
+        -- (no other bag add-on unless the test says so: with one in charge the line isn't said)
+        local keepLoaded = env.C_AddOns.IsAddOnLoaded
+        env.C_AddOns.IsAddOnLoaded = function(name) return name == bagAddon end
         if type(ns.BagSectionsNote) == "function" then ns:BagSectionsNote() end
+        env.C_AddOns.IsAddOnLoaded = keepLoaded
         ns.db, env.FantasyGlassUIDB, ns.profile, ns.root, ns.freshInstall = keepDb, keepRoot, keepName, keepNsRoot, keepFresh
         return db
     end
@@ -2412,6 +2417,15 @@ do
         for k, v in pairs(over or {}) do p[k] = v end
         return { profiles = { Default = p }, chars = { [ns:CharKey()] = "Default" } }
     end
+    try("Bags 13.0.1: with Baganator showing the bags, the sections line isn't said", function()
+        local root = Old()
+        local mark = #printed
+        bagAddon = "Baganator"
+        local ok, err = pcall(Login, root)
+        bagAddon = nil
+        if not ok then error(err) end
+        if Said(mark) ~= 0 then error("the line should not be said with Baganator, got " .. Said(mark)) end
+    end)
     try("Bags 13.0.1: all six sections off become on, and the line is said once", function()
         local root = Old()
         local mark = #printed
