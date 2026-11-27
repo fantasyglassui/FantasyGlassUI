@@ -47,7 +47,7 @@ local function FolderUsable(key)
     return true
 end
 local function Wanted(def)
-    if ns.safeMode or type(ns.db) ~= "table" or ns.db[def.key] == false then return false end
+    if ns.safeMode or ns.oldCopy or type(ns.db) ~= "table" or ns.db[def.key] == false then return false end
     if def.needsGuide and not (ns.GuideOn and ns:GuideOn()) then return false end
     return FolderUsable(def.folder)
 end
@@ -179,15 +179,16 @@ ns.minimapExtras = {
     Default = function(key) for _, def in ipairs(DEFS) do if def.key == key then local h = Host(); if type(h) == "table" then return DefaultSpot(def, h) end end end end,
 }
 
--- Built after the minimap has been set up, as the launcher is: each switch is a module of its own, and
--- either starts both (Apply looks at both switches).
-local function Start()
-    ns:After(1, Apply)
-    if ns.minimapExtrasEvents then return end
+-- Built after the minimap has been set up, as the launcher is: a second after the login and each loading
+-- screen. Not modules: both switches take effect at once, so they cannot be features started at login
+-- (Apply looks at both, and at safe mode, which the login sets first).
+do
     local ev = CreateFrame("Frame")
+    ev:RegisterEvent("PLAYER_LOGIN")
     ev:RegisterEvent("PLAYER_ENTERING_WORLD")
-    ev:SetScript("OnEvent", ns:Guard("Minimap buttons events", function() ns:After(1, Apply) end))
-    ns.minimapExtrasEvents = ev
+    ev:SetScript("OnEvent", ns:Guard("Minimap buttons events", function()
+        if ns.oldCopy then return end                        -- (the old copy of the add-on is there: nothing starts)
+        ns:After(1, Apply)
+    end))
+    ns.minimapExtras.events = ev
 end
-ns:NewModule("minimapPlanner", Start)
-ns:NewModule("minimapGold", Start)

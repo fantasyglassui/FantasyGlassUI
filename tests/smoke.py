@@ -2360,9 +2360,11 @@ local function MinimapExtraHandler(btn, name)
 end
 try("Minimap buttons: made at login", function()
     local plannerReady, goldReady = ns.folderReady.planner, ns.folderReady.gold
-    runTimers()
     local mx = ns.minimapExtras
     if type(mx) ~= "table" then error("the minimap buttons file did not load") end
+    local login = MinimapExtraHandler(mx.events, "OnEvent")
+    if not login then error("the buttons wait for the login") end
+    login(mx.events, "PLAYER_LOGIN"); runTimers()
     if not mx.buttons.minimapPlanner or not mx.buttons.minimapGold then error("both buttons should be made at login") end
     if not (mx.shown.minimapPlanner and mx.shown.minimapGold) then error("both start shown") end
     if ns.defaults.minimapPlanner ~= true or ns.defaults.minimapGold ~= true then error("both switches start on") end
