@@ -503,6 +503,10 @@ function ns.PlannerQuestTime(rec, ctx)
     if type(times) == "table" and tonumber(times.n) and tonumber(times.avg) and times.n > 0 then
         local n = min(times.n, 3)
         t = (t + times.avg * n) / (1 + n)
+    else
+        -- none of yours: what players shared (13.5, PlannerShare.lua) weighs three times, as three of yours would
+        local shared = ns.PlannerSharedTime and ns.PlannerSharedTime("quest", rec.id)
+        if shared then t = (t + shared * 3) / 4 end
     end
     return t
 end

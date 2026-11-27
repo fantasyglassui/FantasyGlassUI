@@ -44,6 +44,7 @@ local type, pairs, ipairs, tostring, pcall = type, pairs, ipairs, tostring, pcal
 --   PlannerSailText
 --   PlannerSessionSkip
 --   PlannerSetRepGoal
+--   PlannerSharedTime
 --   PlannerSkip
 --   PlannerSkipList
 --   PlannerSource

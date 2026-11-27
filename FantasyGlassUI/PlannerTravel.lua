@@ -131,7 +131,11 @@ local function RecordTime(tableName, key, secs)
     local sum = 0
     for _, v in ipairs(list) do sum = sum + v end
     times[key] = sum / #list
+    -- (13.5: each trip kept for Share my times too, while that switch is on)
+    local kind = (tableName == "plannerFlightTimes" and "flight") or (tableName == "plannerCrossTimes" and "boat") or nil
+    if kind and ns.PlannerLearnNote then ns.PlannerLearnNote(kind, key, secs) end
 end
+ns.plannerTravelTest = { RecordTime = RecordTime }
 
 function ns.PlannerKnownFlight(node)
     local d = CharData()
@@ -385,7 +389,8 @@ function ns.PlannerTravel(from, to, ctx)
     for _, c in ipairs(ctx.crossings or {}) do
         if ns.PlannerYield then ns.PlannerYield() end    -- (nothing on the main thread: the arrow asks here too; the planner's folder may not be loaded)
         if c.faction == nil or c.faction == ctx.faction then
-            local secs = cross and tonumber(cross[c.id]) or c.seconds or 270
+            -- your own crossings first, then what players shared (the planner's folder, 13.5), then the crossing's own guess
+            local secs = cross and tonumber(cross[c.id]) or (ns.PlannerSharedTime and ns.PlannerSharedTime("boat", c.id)) or c.seconds or 270
             for dir = 1, 2 do
                 local p, q = c.a, c.b
                 if dir == 2 then p, q = c.b, c.a end

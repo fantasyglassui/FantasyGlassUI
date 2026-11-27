@@ -94,6 +94,7 @@ function ns.PlannerRecordQuestTime(questID, seconds)
     e.avg = (e.avg * e.n + seconds) / (e.n + 1)
     e.n = e.n + 1
     e.seen = day
+    if ns.PlannerLearnNote then ns.PlannerLearnNote("quest", questID, seconds) end   -- (13.5: kept for Share my times too, while that switch is on)
     while questTimesN.n > ns.PLANNER_QUEST_TIMES_CAP do
         local old, oldDay
         for k, v in pairs(times) do
@@ -1177,6 +1178,7 @@ function ns.PlannerRecordLevel(oldLevel)
         if type(ns.root.plannerLevels[key]) ~= "table" then ns.root.plannerLevels[key] = {} end
         local s = floor(seconds + 0.5)
         ns.root.plannerLevels[key][oldLevel] = { s = s, xph = floor(xpMax * 3600 / max(1, s) + 0.5), partial = c.partial and true or nil }
+        if not c.partial and ns.PlannerLearnNote then ns.PlannerLearnNote("level", oldLevel, s) end   -- (13.5: a whole level only)
     end
     rec.levelClock = { level = oldLevel + 1, seconds = 0, xpMax = Read(UnitXPMax, "player") or 0, partial = false }   -- (a level begun at the level-up is whole)
     return true

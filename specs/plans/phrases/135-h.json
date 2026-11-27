@@ -1,0 +1,102 @@
+{
+  "Help improve time estimates": [
+    "Hilf, die Zeitschätzungen zu verbessern",
+    "Aider à améliorer les estimations de temps",
+    "Ayudar a mejorar las estimaciones de tiempo",
+    "Помочь улучшить оценки времени",
+    "Ajudar a melhorar as estimativas de tempo",
+    "Aiuta a migliorare le stime dei tempi",
+    "시간 예측 개선 돕기",
+    "帮助改进时间估算"
+  ],
+  "Your level, quest, flight and boat times are kept in a list of their own, with no names, at most 500, for Share my times. Nothing is sent by itself.": [
+    "Deine Stufen-, Quest-, Flug- und Schiffszeiten werden in einer eigenen Liste behalten, ohne Namen, höchstens 500, für Meine Zeiten teilen. Nichts wird von selbst gesendet.",
+    "Vos temps de niveau, de quête, de vol et de bateau sont conservés dans une liste à part, sans aucun nom, 500 au plus, pour Partager mes temps. Rien n'est envoyé tout seul.",
+    "Tus tiempos de nivel, misiones, vuelos y barcos se guardan en una lista aparte, sin nombres, como máximo 500, para Compartir mis tiempos. Nada se envía por sí solo.",
+    "Ваше время на уровни, задания, полёты и корабли хранится в отдельном списке, без имён, не больше 500, для «Поделиться моим временем». Ничего не отправляется само.",
+    "Seus tempos de nível, missão, voo e barco são guardados numa lista à parte, sem nomes, no máximo 500, para Compartilhar meus tempos. Nada é enviado sozinho.",
+    "I tuoi tempi di livello, missione, volo e nave vengono conservati in un elenco a parte, senza nomi, al massimo 500, per Condividi i miei tempi. Niente viene inviato da solo.",
+    "레벨, 퀘스트, 비행, 배 시간을 이름 없이 별도 목록에 최대 500개까지 보관해 내 시간 공유에 씁니다. 어떤 것도 저절로 전송되지 않습니다.",
+    "你的升级、任务、飞行和乘船时间会单独保存在一个列表中，不含任何名字，最多 500 条，用于“分享我的时间”。任何内容都不会自动发送。"
+  ],
+  "Share my times": [
+    "Meine Zeiten teilen",
+    "Partager mes temps",
+    "Compartir mis tiempos",
+    "Поделиться моим временем",
+    "Compartilhar meus tempos",
+    "Condividi i miei tempi",
+    "내 시간 공유",
+    "分享我的时间"
+  ],
+  "A code of the times kept, to send in so later versions estimate better for everyone.": [
+    "Ein Code der behaltenen Zeiten zum Einsenden, damit spätere Versionen für alle besser schätzen.",
+    "Un code des temps conservés, à envoyer pour que les prochaines versions estiment mieux pour tout le monde.",
+    "Un código de los tiempos guardados, para enviarlo y que las próximas versiones estimen mejor para todos.",
+    "Код сохранённого времени: отправьте его, и следующие версии будут оценивать точнее для всех.",
+    "Um código dos tempos guardados, para enviar e as próximas versões estimarem melhor para todos.",
+    "Un codice dei tempi conservati, da inviare perché le versioni future stimino meglio per tutti.",
+    "보관된 시간의 코드입니다. 보내 주면 이후 버전이 모두를 위해 더 잘 예측합니다.",
+    "已保存时间的代码，发送出去，让以后的版本为所有人估算得更准。"
+  ],
+  "No times kept yet. Turn on Help improve time estimates in the planner window, then play.": [
+    "Noch keine Zeiten behalten. Schalte Hilf, die Zeitschätzungen zu verbessern im Planer-Fenster ein und spiel dann.",
+    "Aucun temps conservé pour l'instant. Activez Aider à améliorer les estimations de temps dans la fenêtre du planificateur, puis jouez.",
+    "Aún no hay tiempos guardados. Activa Ayudar a mejorar las estimaciones de tiempo en la ventana del planificador y luego juega.",
+    "Время пока не сохранено. Включите «Помочь улучшить оценки времени» в окне планировщика, затем играйте.",
+    "Nenhum tempo guardado ainda. Ligue Ajudar a melhorar as estimativas de tempo na janela do planejador e depois jogue.",
+    "Ancora nessun tempo conservato. Attiva Aiuta a migliorare le stime dei tempi nella finestra del pianificatore, poi gioca.",
+    "아직 보관된 시간이 없습니다. 플래너 창에서 시간 예측 개선 돕기를 켠 다음 플레이하세요.",
+    "还没有保存任何时间。请在规划窗口中打开“帮助改进时间估算”，然后开始游戏。"
+  ],
+  "What this code holds: the add-on's version, this character's class and faction, and %d times (%d levels, %d quests, %d flights, %d boat crossings). No names.": [
+    "Was dieser Code enthält: die Version des Add-ons, Klasse und Fraktion dieses Charakters und %d Zeiten (%d Stufen, %d Quests, %d Flüge, %d Schiffsüberfahrten). Keine Namen.",
+    "Ce que contient ce code : la version de l'add-on, la classe et la faction de ce personnage, et %d temps (%d niveaux, %d quêtes, %d vols, %d traversées en bateau). Aucun nom.",
+    "Lo que contiene este código: la versión del add-on, la clase y la facción de este personaje, y %d tiempos (%d niveles, %d misiones, %d vuelos, %d travesías en barco). Ningún nombre.",
+    "Что содержит этот код: версию модификации, класс и фракцию этого персонажа и записи времени: %d (уровней: %d, заданий: %d, полётов: %d, переправ на корабле: %d). Никаких имён.",
+    "O que este código contém: a versão do add-on, a classe e a facção deste personagem, e %d tempos (%d níveis, %d missões, %d voos, %d travessias de barco). Nenhum nome.",
+    "Cosa contiene questo codice: la versione dell'add-on, la classe e la fazione di questo personaggio, e %d tempi (%d livelli, %d missioni, %d voli, %d traversate in nave). Nessun nome.",
+    "이 코드에 담긴 것: 애드온 버전, 이 캐릭터의 직업과 진영, 시간 %d개(레벨 %d, 퀘스트 %d, 비행 %d, 배 이동 %d). 이름은 없습니다.",
+    "此代码包含：插件版本、此角色的职业和阵营，以及 %d 条时间（%d 个等级、%d 个任务、%d 次飞行、%d 次乘船）。不含任何名字。"
+  ],
+  "Nothing is sent by itself. To send it in, see %s": [
+    "Nichts wird von selbst gesendet. Wie du ihn einsendest, steht hier: %s",
+    "Rien n'est envoyé tout seul. Pour l'envoyer, voir %s",
+    "Nada se envía por sí solo. Para enviarlo, mira %s",
+    "Ничего не отправляется само. Как отправить: %s",
+    "Nada é enviado sozinho. Para enviar, veja %s",
+    "Niente viene inviato da solo. Per inviarlo, vedi %s",
+    "어떤 것도 저절로 전송되지 않습니다. 보내는 방법: %s",
+    "任何内容都不会自动发送。如何发送，请见 %s"
+  ],
+  "%d times are kept. Nothing new is kept now.": [
+    "%d Zeiten sind behalten. Ab jetzt wird nichts Neues behalten.",
+    "%d temps sont conservés. Plus rien de nouveau n'est conservé désormais.",
+    "Hay %d tiempos guardados. Ya no se guarda nada nuevo.",
+    "Сохранено записей времени: %d. Новое больше не сохраняется.",
+    "%d tempos estão guardados. Nada novo é guardado agora.",
+    "%d tempi sono conservati. Ora non viene conservato niente di nuovo.",
+    "시간 %d개가 보관되어 있습니다. 이제 새로 보관하지 않습니다.",
+    "已保存 %d 条时间。现在不再保存新的。"
+  ],
+  "Clear them (click twice)": [
+    "Löschen (zweimal klicken)",
+    "Les effacer (cliquer deux fois)",
+    "Borrarlos (haz clic dos veces)",
+    "Очистить (нажмите дважды)",
+    "Apagá-los (clique duas vezes)",
+    "Cancellali (fai clic due volte)",
+    "지우기(두 번 클릭)",
+    "清除（点击两次）"
+  ],
+  "Click again within 10 seconds to clear them": [
+    "Klicke innerhalb von 10 Sekunden noch einmal, um sie zu löschen",
+    "Cliquez encore dans les 10 secondes pour les effacer",
+    "Haz clic otra vez en 10 segundos para borrarlos",
+    "Нажмите ещё раз в течение 10 секунд, чтобы очистить их",
+    "Clique de novo em até 10 segundos para apagá-los",
+    "Fai clic di nuovo entro 10 secondi per cancellarli",
+    "지우려면 10초 안에 다시 클릭하세요",
+    "在 10 秒内再次点击以清除它们"
+  ]
+}

@@ -33,7 +33,7 @@ local ORDER = {
     rewards = { "pickBox", "rewardsBox", "logAdviceBox", "innBox", "restedBox", "dryBox", "reputationButton", "skippedButton" },
     time = { "keepRouteBox", "playTimeButton", "breaksBox", "breakButton", "styleButton", "speedSlider", "safetySlider", "storySlider", "zoneGoalButton", "deathsBox" },
     map = { "mapLineBox", "mapHubsBox", "tomTomBox" },
-    records = { "raceBox", "leftOffBox", "whyBox" },
+    records = { "raceBox", "leftOffBox", "whyBox", "learnBox", "shareTimesButton" },
     speak = { "speakBox" },
     together = { "findGroupBox", "findGroupChannel", "duoAskBox", "duoButton", "sharePlanButton" },
 }
@@ -306,9 +306,17 @@ local function RecordsSection(K, G, Replan, T)
     local SPEAK = "Each new step is read aloud as you reach it."
     local speak = K.SwitchRow(G, "speak", "plannerSpeak", "Read the route aloud", SPEAK,
         function() return ns.db.plannerSpeak ~= false end, function(v) ns.db.plannerSpeak = v end)
-    T.raceBox, T.leftOffBox, T.speakBox = race, leftOff, speak
+    -- 13.5: learning from many players (PlannerLearn.lua): off until you turn it on; off again offers to clear what was kept
+    local learn = K.SwitchRow(G, "records", "plannerLearnTimes", "Help improve time estimates", "Your level, quest, flight and boat times are kept in a list of their own, with no names, at most 500, for Share my times. Nothing is sent by itself.",
+        function() return ns.db.plannerLearnTimes == true end, function(v)
+        ns.db.plannerLearnTimes = v
+        if not v then ns:PlannerLearnSwitch(false) end
+    end)
+    local shareTimes = K.ButtonRow(G, "records", "Share my times", "A code of the times kept, to send in so later versions estimate better for everyone.", function() ns:PlannerShareTimes() end)
+    T.raceBox, T.leftOffBox, T.speakBox, T.learnBox, T.shareTimesButton = race, leftOff, speak, learn, shareTimes
     local function Refresh()
         race:SetChecked(ns.db.plannerRace == true)
+        learn:SetChecked(ns.db.plannerLearnTimes == true)
         leftOff:SetChecked(ns.db.plannerLeftOff ~= false)
         speak:SetChecked(ns.db.plannerSpeak ~= false)
         local on = ns.db.readDialog and true or false      -- (reading aloud is one switch in Accessibility; this one only narrows it)
