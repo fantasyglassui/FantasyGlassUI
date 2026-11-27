@@ -5745,6 +5745,28 @@ try("Gear sets follow the talent set", function()
     for k in pairs(T.memory) do T.memory[k] = nil end
     E.GetEquipmentSetIDs, E.GetEquipmentSetInfo, E.UseEquipmentSet = keepIDs, keepInfo, keepUse
 end)
+try("The whisper window can be resized, and keeps its size", function()
+    ns.root.listSize = nil
+    local w = ns:ShowWhispers()
+    if not (w and w.grip) then error("the whisper window should have a corner to drag") end
+    rawset(w, "GetWidth", function() return 612.6 end); rawset(w, "GetHeight", function() return 388.2 end)
+    local up
+    for _, h in ipairs(handlers) do if h.self == w.grip and h.name == "OnMouseUp" then up = h.fn end end
+    if not up then error("letting go of the corner should keep the size") end
+    up(w.grip)
+    local kept = ns.root.listSize and ns.root.listSize.Whispers
+    if not kept or kept[1] ~= 613 or kept[2] ~= 388 then error("the size should be kept, got " .. tostring(kept and kept[1])) end
+    -- a kept size comes back next time, never below the smallest that still fits
+    local f, got = env.CreateFrame("Frame"), nil
+    rawset(f, "SetSize", function(_, a, b) got = { a, b } end)
+    ns:KeepSize(f, "Whispers", 360, 220)
+    if not got or got[1] ~= 613 or got[2] ~= 388 then error("a kept size should be used when the window is made") end
+    ns.root.listSize.Whispers = { 100, 50 }
+    got = nil; ns:KeepSize(f, "Whispers", 360, 220)
+    if not got or got[1] ~= 360 or got[2] ~= 220 then error("a size too small should be raised to the smallest") end
+    ns.root.listSize = nil
+    w:Hide()
+end)
 try("Whisper invites and declined duels", function()
     local W = ns.WhisperAsksInvite
     if not W("inv", "inv") or not W("Inv", "inv") or not W("  INV!  ", "inv") or not W("inv.", "inv") then error("the word alone, in any case, with stray punctuation, asks for an invite") end
