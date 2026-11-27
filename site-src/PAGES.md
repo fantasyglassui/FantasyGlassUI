@@ -52,7 +52,7 @@ time and the files are served at `/video/`:
     video/trailer.webm     the loop, sound-free (VP9; offered first)
     video/trailer.mp4      the same loop for browsers without WebM (H.264)
     video/poster.jpg       its first frame: shown until the loop plays, and whenever it doesn't (sets the size)
-    video/captions-<lang>.vtt   optional: captions per language (en, de, ...), shown by default
+    video/captions.json    the captions: cue times and English lines (below); the build makes captions-<lang>.vtt
 
 - With a video: a muted, looping `<video>` that downloads nothing but the poster until it scrolls into view, plays by
   itself only when the reader has not asked for reduced motion, pauses when scrolled away, and has a visible
@@ -61,10 +61,42 @@ time and the files are served at `/video/`:
 - Keep the files small (a few MB); add them with `git add site-src/site/video/` and rebuild. No other change is
   needed.
 
+#### Captions, once the trailer is cut
+
+The captions come from one file, `site/video/captions.json`, like every other word on the site. It ships with an
+empty cue list (`"cues": []`), and while it is empty no caption file and no `<track>` is made. To fill it:
+
+1. Watch the cut and write one cue per line shown, in English, with its start and end in seconds from the start of
+   the trailer (decimals are fine; a cue may not start before the one above it ends; `\n` breaks a line):
+
+       {"_translate": ["text"], "cues": [
+         {"start": 0.0, "end": 2.8, "text": "Your whole interface in one look"},
+         {"start": 2.8, "end": 6.0, "text": "A route planner for levelling"}
+       ]}
+
+2. Run `python3 site-src/keys_all.py && python3 site-src/make_i18n.py`: the new lines are listed as missing. Add
+   them to the Home block of `site_tr.py` in all 8 other languages (German in "du"), and run `make_i18n.py` again.
+3. Run `python3 site-src/build_site.py`. It writes `/video/captions-<lang>.vtt` (WebVTT) for all 9 languages, and
+   the video gets a `<track kind="captions">` for each, labelled with the language's own name, with the page's
+   language on by default (a reader can pick another from the player's captions menu). The build stops on a cue
+   with no translation, or one whose times are wrong.
+
+`python3 -m pytest tests -q -k site_captions` checks that a sample file makes valid WebVTT in every language.
+
 - Changelog: built from the repository's `CHANGELOG.md` by `pages/changelog/body.py` (anchors `#v12-4-1` as before).
 - Accessibility: `pages/accessibility/body.py`, the text of the old page (anchors `#seeing-color` and so on as before).
 - Guide and Gold: the planner, Questie, gold, the hints, links to the five how-to pages and to the plan page (/plan/).
+  Also a short tour (six steps, each outlining a part of the page; `#tour` and its steps in `#tour-steps` in
+  `body.html`, run by `script.js`), and an example route (`#example`): the first `ok` plan code in
+  `tests/plan_codes.txt`, read in the browser by the plan page's own reader (`plan/reader.js`, which `body.py`
+  serves at `/assets/plan-reader.js`) and drawn zone by zone with its steps to tick.
 - Roadmap: drawn from `pages/roadmap/roadmap.json`; change an idea's status there (no dates).
+  An in-progress idea may carry a `preview` (what it will do, in a player's words), a `sketch` (a small text sketch:
+  `{"kind": "steps" | "list", "title": ..., "lines": [{"text": ...}]}`) and an `after` line; those ideas then show in a
+  "Coming in <version>" section under Ready (`/roadmap/#coming-13-5`), marked as not out yet, with no date. Home
+  (beside the latest version) and the Changelog (under its heading) link the first such section in one line, made by
+  `coming_link()` in `pages/roadmap/body.py`. For a later release, give its in-progress ideas a preview; once they
+  are out (status `ready`), the section and the links go by themselves.
 - Changelog: also writes `/feed.xml` (RSS, linked in every head and footer). Until CHANGELOG.md has a `## 13.0.x`
   heading, a marked 13.0 stand-in ("Coming soon") stands at the top and stays out of the feed.
 - A page can sit in a sub-folder (`pages/guide-and-gold/duo/` is `/guide-and-gold/duo/`); a data file with

@@ -91,6 +91,14 @@ FOLLOW = ('<aside class="follow card" aria-labelledby="h-follow"><h2 id="h-follo
           + EMAIL_LIST + '</aside>')
 
 
+def coming_link(ctx):
+    # the Roadmap's one-line link to "Coming in <version>" (pages/roadmap/roadmap.json), or '' when there is none
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('roadmap_body_for_changelog', os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'roadmap', 'body.py'))
+    mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
+    return mod.coming_link(ctx)
+
+
 def body(ctx):
     intro, versions = read_changelog(ctx.repo)
     pending = not has_release(versions, PENDING['v'])
@@ -111,6 +119,7 @@ def body(ctx):
   <h1>[[Changelog]]</h1>
   <div class="intro"{en}>{_safe(_body(intro))}</div>
   {note}
+  {coming_link(ctx) if hasattr(ctx, 'F') else ''}
   {{{{status}}}}
 </div>
 <div class="wrap narrow cl">

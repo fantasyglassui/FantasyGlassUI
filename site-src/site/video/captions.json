@@ -1,0 +1,5 @@
+{
+ "_about": "The trailer's captions (site-src/PAGES.md, \"The trailer\"): one cue per line shown, with its start and end in seconds from the start of the trailer, and its words in English. Every \"text\" is translated in site_tr.py's Home block like any other phrase (keys_all.py lists them); the build writes /video/captions-<lang>.vtt for all 9 languages and a <track> for each beside the video. While the list is empty, no captions are made.",
+ "_translate": ["text"],
+ "cues": []
+}

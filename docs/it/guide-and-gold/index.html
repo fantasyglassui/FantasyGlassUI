@@ -79,6 +79,63 @@ ol.howtos p { margin: 0; }
 .plan-card p { margin: 0; font-size: 1.05rem; }
 .plan-card .cta { margin: 0; flex-direction: column; align-items: stretch; }
 @media (max-width: 760px) { .plan-card { grid-template-columns: 1fr; padding: 24px 20px; } }
+/* The short tour: a start button in the page's head, a box at the foot of the screen, and the part of the page it
+   is about outlined in gold (a card's own outline; anything else, a ring around it). Nothing moves under reduced motion. */
+.tour-start { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 16px 0 0; }
+.tour-start[hidden], .tour[hidden] { display: none; }
+.tour {
+  --cut: 14px;
+  position: fixed; z-index: 30; left: 50%; bottom: 16px; transform: translateX(-50%);
+  width: min(600px, calc(100% - 32px)); max-height: calc(100vh - 120px); overflow-y: auto;
+  padding: 18px 22px 16px; --c: var(--gold); --fill: var(--card); color: var(--text);
+}
+.tour:focus-visible { outline: 2px solid var(--focus); outline-offset: -6px; }
+.tour .eyebrow { margin: 0 0 6px; }
+.tour h2 { font-size: 1.45rem; margin: 0 0 8px; padding-right: 40px; }
+.tour p { margin: 0 0 14px; color: var(--dim); }
+.tour-nav { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.tour-nav .btn[disabled] { opacity: .45; cursor: default; pointer-events: none; }
+.tour-x {
+  position: absolute; top: 10px; right: 10px; width: 40px; height: 40px; display: grid; place-items: center;
+  font: 400 1.6rem/1 var(--body); color: var(--text); background: transparent; border: 1px solid var(--line); cursor: pointer;
+}
+.tour-x:hover { border-color: var(--gold); color: var(--gold); }
+.tour-on { outline: 2px solid var(--gold); outline-offset: 8px; }
+.card.tour-on { outline: 0; --c: var(--gold); --fill: color-mix(in srgb, var(--gold) 8%, transparent); }
+.card.tour-on::after { content: ""; position: absolute; inset: 0; border: 2px solid var(--gold); pointer-events: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .tour { animation: tour-in .2s ease-out; }
+  @keyframes tour-in { from { opacity: 0; transform: translate(-50%, 10px); } }
+}
+@media (max-width: 600px) { .tour { bottom: 10px; padding: 14px 16px 12px; } .tour h2 { font-size: 1.25rem; } .tour-nav .btn { flex: 1 1 auto; } }
+
+/* The example route: a sample plan code read by the plan page's reader, zone by zone with its steps. */
+.ex-badge { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 16px; }
+.ex-badge .tag { display: inline-flex; align-items: center; min-height: 24px; padding: 3px 9px; font: 700 .74rem/1.1 var(--body); letter-spacing: .07em; text-transform: uppercase; color: var(--gold); border: 1px dashed currentColor; }
+dl.ex-totals { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin: 0 0 20px; }
+dl.ex-totals div { padding: 10px 14px; border: 1px solid var(--line); }
+dl.ex-totals dt { color: var(--dim); font-size: .85rem; }
+dl.ex-totals dd { margin: 0; font: 400 1.35rem/1.3 var(--display); }
+.ex-zones { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 20px; }
+.ex-zone { display: grid; grid-template-columns: minmax(0, 200px) minmax(0, 1fr); grid-template-areas: "h h" "map steps"; gap: 12px 20px; align-content: start; }
+.ex-zone h3 { grid-area: h; margin: 0; }
+.ex-zone .ex-steps { grid-area: steps; }
+.ex-map { grid-area: map; display: block; width: 100%; height: auto; background: var(--raised); border: 1px solid var(--line); color: var(--text); }
+.ex-map .grid { stroke: var(--rule); stroke-width: .4; }
+@media (max-width: 480px) { .ex-zone { grid-template-columns: minmax(0, 1fr); grid-template-areas: "h" "map" "steps"; } .ex-map { max-width: 240px; } }
+.ex-map .leg { stroke: var(--gold); stroke-width: .9; }
+.ex-map .leg.travel { stroke: var(--frost); stroke-dasharray: 2 2; }
+.ex-map .stop { fill: var(--raised); stroke: var(--gold); stroke-width: 1.1; }
+.ex-map .stop-n { fill: var(--text); font: 700 6.2px var(--body); }
+.ex-map .stop-k { fill: var(--frost); font: 700 6.2px var(--body); }
+ol.ex-steps { list-style: none; margin: 0; padding: 0; }
+ol.ex-steps li { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-top: 1px solid var(--rule); }
+ol.ex-steps li:first-child { border-top: 0; }
+ol.ex-steps .n { min-width: 1.6em; text-align: right; color: var(--faint); font-variant-numeric: tabular-nums; }
+ol.ex-steps input { flex: none; width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--gold); }
+ol.ex-steps label { cursor: pointer; }
+ol.ex-steps li.done label { text-decoration: line-through; color: var(--dim); }
+#example .how a { white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -101,7 +158,9 @@ ol.howtos p { margin: 0; }
 <main id="main" tabindex="-1">
 <!-- Guide and Gold (W3): what the route planner and Ways to make gold do, Questie, the prices and sell hints, the
      how-to pages (pages/guide-and-gold/<name>/) and the plan page (/plan/, built by site-src/plan_page.py).
-     Every claim here is true of the add-on's code (FantasyGlassUI_Planner/, FantasyGlassUI_Gold/, Guide.lua). -->
+     Every claim here is true of the add-on's code (FantasyGlassUI_Planner/, FantasyGlassUI_Gold/, Guide.lua).
+     body.py fills in the example route's plan code (tests/plan_codes.txt) and the reader's address; script.js runs the
+     short tour (#tour, its steps in #tour-steps) and draws the example route (#example). -->
 <div class="wrap page-head gg-head">
   <span class="eyebrow">Novità della 13.0</span>
   <h1>Guida e oro</h1>
@@ -110,6 +169,7 @@ ol.howtos p { margin: 0; }
     <a class="btn" href="/it/guide-and-gold/first-route/">Pianifica il tuo primo percorso</a>
     <a class="btn line" href="/plan/">Apri la pagina del piano</a>
   </div>
+  <p class="tour-start" id="tour-start" hidden><button class="btn line small" type="button" id="tour-go" aria-haspopup="dialog">Fai il breve tour</button> <span class="faint">Sei passi lungo questa pagina, con calma.</span></p>
   <p class="status"><span>Versione <b>13.0.0</b></span><span class="sep" aria-hidden="true">·</span><span>Aggiornato il <time datetime="2026-11-26">2026-11-26</time></span><span class="sep" aria-hidden="true">·</span><span>Verificato con WoW: Forever <b>1.60.1 (70938)</b></span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">Codice sorgente</a></span></p>
 </div>
 
@@ -121,14 +181,14 @@ ol.howtos p { margin: 0; }
       <p class="lede">Prepara un percorso di missioni per il tuo livello: quali prendere, in che ordine e quando volare, addestrarti o consegnare. Mentre giochi ripianifica, così il percorso ti segue.</p>
     </header>
     <div class="grid feats">
-      <div class="card"><h3>Un passo alla volta</h3><p>Un piccolo pannello mostra il passo in corso e una freccia indica la strada. I passi si spuntano da soli mentre li fai.</p></div>
-      <div class="card"><h3>Il tuo ritmo</h3><p>I cursori Velocità, Sicurezza e Storia decidono a cosa punta il percorso. Di' quanto puoi giocare, e il percorso prende solo ciò che ci sta e finisce in un buon punto per fermarsi.</p></div>
+      <div class="card" id="gg-panel"><h3>Un passo alla volta</h3><p>Un piccolo pannello mostra il passo in corso e una freccia indica la strada. I passi si spuntano da soli mentre li fai.</p></div>
+      <div class="card" id="gg-pace"><h3>Il tuo ritmo</h3><p>I cursori Velocità, Sicurezza e Storia decidono a cosa punta il percorso. Di' quanto puoi giocare, e il percorso prende solo ciò che ci sta e finisce in un buon punto per fermarsi.</p></div>
       <div class="card"><h3>Soste lungo la strada</h3><p>Nuovi punti di volo, il tuo istruttore di classe ogni due livelli, un mercante quando le borse sono quasi piene, la posta e un promemoria cavalcatura dal livello 40. Ogni tipo di sosta si può disattivare.</p></div>
       <div class="card"><h3>Sulla mappa</h3><p>Le soste del percorso, numerate e unite da una linea sulla mappa del mondo, e un segno su ogni zona con missioni, più luminoso dove l'esperienza arriva più in fretta.</p></div>
       <div class="card"><h3>Con un amico</h3><p>Un percorso per due: le stesse missioni, nello stesso ordine. Il pannello mostra quanto è indietro il tuo amico.</p></div>
       <div class="card"><h3>Sul telefono</h3><p>«Condividi il piano» trasforma il percorso in un codice. Incollalo nella pagina del piano per vedere il percorso e spuntare i passi sul telefono.</p></div>
     </div>
-    <p class="how">Aprilo con <code>/fgui plan</code>, con <b>Pianifica il mio percorso</b> nella scheda Guida delle impostazioni o con il pulsante «Piano» del pannello della guida. La prima volta lo spiega un breve tour di quattro pagine, e <b>Come funziona il pianificatore</b> nella sua finestra lo mostra di nuovo.</p>
+    <p class="how" id="gg-open">Aprilo con <code>/fgui plan</code>, con <b>Pianifica il mio percorso</b> nella scheda Guida delle impostazioni o con il pulsante «Piano» del pannello della guida. La prima volta lo spiega un breve tour di quattro pagine, e <b>Come funziona il pianificatore</b> nella sua finestra lo mostra di nuovo.</p>
   </div>
 </section>
 
@@ -164,7 +224,7 @@ ol.howtos p { margin: 0; }
 
 <section class="block" id="gold" aria-labelledby="h-gold">
   <div class="wrap">
-    <header>
+    <header id="gg-gold">
       <span class="eyebrow">Oro</span>
       <h2 id="h-gold">Modi per fare oro</h2>
       <p class="lede">Una finestra che elenca modi per fare oro, i migliori per primi, da ciò che hai visto: i prezzi della tua casa d'aste, quanto pagano i mercanti, i mostri che hai saccheggiato, le erbe e i minerali raccolti e le ricette che conosci.</p>
@@ -229,6 +289,30 @@ ol.howtos p { margin: 0; }
   </div>
 </section>
 
+<section class="block" id="example" aria-labelledby="h-example">
+  <div class="wrap">
+    <header>
+      <span class="eyebrow">Esempio</span>
+      <h2 id="h-example">Un percorso, come lo mostra la pagina del piano</h2>
+      <p class="lede">Questo è un esempio: un codice del piano per un breve tratto della Foresta di Elwynn, letto dallo stesso lettore della pagina del piano. Il tuo percorso viene dal pianificatore, nel gioco.</p>
+    </header>
+    <div class="ex" id="ex" data-code="SUIP1!&#123;S2:crN0;S2:flN1;S2:lv&#123;N1;N8;N2;N10;&#125;S1:sN1800;S2:st&#123;N1;&#123;S1:kS6:acceptS1:tS23:Accept: Red Linen GoodsS1:xN79.5;S1:yN68.9;S1:zN1;&#125;N2;&#123;S1:kS2:doS1:tS44:Collect 6 Red Linen Bandanas from the Defias&#125;N3;&#123;S1:kS6:turninS1:tS24:Turn in: Red Linen GoodsS1:xN79.5;S1:yN68.9;S1:zN1;&#125;N4;&#123;S1:kS3:flyS1:tS9:StormwindS1:xN70.9;S1:yN72.5;S1:zN2;&#125;N5;&#123;S1:kS4:noteS1:tS18:Good place to stop&#125;&#125;S1:vN1;S2:xpN4100;S1:z&#123;N1;&#123;S1:mN1429;S1:nS13:Elwynn Forest&#125;N2;&#123;S1:mN1453;S1:nS14:Stormwind City&#125;&#125;&#125;" data-min="%d min" data-hmin="%d h %d min" data-map="Mappa delle tappe in %s" hidden>
+      <p class="ex-badge"><span class="tag">Esempio</span> <span class="faint">Non è il tuo percorso: un codice del piano di esempio.</span></p>
+      <dl class="ex-totals">
+        <div><dt>Esperienza</dt><dd data-t="xp"></dd></div>
+        <div><dt>Tempo</dt><dd data-t="time"></dd></div>
+        <div><dt>Livelli</dt><dd data-t="levels"></dd></div>
+        <div><dt>Voli</dt><dd data-t="flights"></dd></div>
+        <div><dt>Passaggi</dt><dd data-t="steps"></dd></div>
+      </dl>
+      <div class="ex-zones" id="ex-zones"></div>
+      <p class="how">I passi usano le parole che il gioco ha dato loro, quindi qui restano in inglese. Spunta un passo per provare: nella pagina del piano, le tue spunte restano nel tuo browser. <a href="/plan/#c=SUIP1%21%7BS2%3AcrN0%3BS2%3AflN1%3BS2%3Alv%7BN1%3BN8%3BN2%3BN10%3B%7DS1%3AsN1800%3BS2%3Ast%7BN1%3B%7BS1%3AkS6%3AacceptS1%3AtS23%3AAccept%3A%20Red%20Linen%20GoodsS1%3AxN79.5%3BS1%3AyN68.9%3BS1%3AzN1%3B%7DN2%3B%7BS1%3AkS2%3AdoS1%3AtS44%3ACollect%206%20Red%20Linen%20Bandanas%20from%20the%20Defias%7DN3%3B%7BS1%3AkS6%3AturninS1%3AtS24%3ATurn%20in%3A%20Red%20Linen%20GoodsS1%3AxN79.5%3BS1%3AyN68.9%3BS1%3AzN1%3B%7DN4%3B%7BS1%3AkS3%3AflyS1%3AtS9%3AStormwindS1%3AxN70.9%3BS1%3AyN72.5%3BS1%3AzN2%3B%7DN5%3B%7BS1%3AkS4%3AnoteS1%3AtS18%3AGood%20place%20to%20stop%7D%7DS1%3AvN1%3BS2%3AxpN4100%3BS1%3Az%7BN1%3B%7BS1%3AmN1429%3BS1%3AnS13%3AElwynn%20Forest%7DN2%3B%7BS1%3AmN1453%3BS1%3AnS14%3AStormwind%20City%7D%7D%7D">Apri questo esempio nella pagina del piano</a></p>
+    </div>
+    <noscript><p class="how">Il percorso di esempio è disegnato da uno script nel tuo browser. Anche la pagina del piano ne ha bisogno.</p></noscript>
+  </div>
+</section>
+<script src="/assets/plan-reader.js?v=9623b09d2c" defer></script>
+
 <section class="block" id="private" aria-labelledby="h-private">
   <div class="wrap">
     <header>
@@ -243,6 +327,26 @@ ol.howtos p { margin: 0; }
     </ul>
   </div>
 </section>
+
+<div class="tour card filled" id="tour" role="dialog" aria-modal="false" aria-labelledby="tour-h" aria-describedby="tour-count tour-text" tabindex="-1" hidden data-of="Passo %d di %d">
+  <p class="eyebrow" id="tour-count"></p>
+  <h2 id="tour-h"></h2>
+  <p id="tour-text"></p>
+  <div class="tour-nav">
+    <button class="btn line small" type="button" id="tour-back">Indietro</button>
+    <button class="btn small" type="button" id="tour-next" data-next="Passo successivo" data-done="Termina il tour">Passo successivo</button>
+    <button class="tour-x" type="button" id="tour-x"><span aria-hidden="true">×</span><span class="sr-only">Chiudi il tour</span></button>
+  </div>
+  <p class="sr-only" id="tour-say" aria-live="polite"></p>
+</div>
+<ol id="tour-steps" hidden>
+  <li data-target="gg-panel"><h3>Cosa mostra il pannello</h3><p>Un piccolo pannello mostra il passo a cui sei e lo spunta da solo quando è fatto. Premi &gt; per saltare un passo, «Pianifica di nuovo» per ripianificare da dove sei ora, e fai clic destro su un passo per altre opzioni.</p></li>
+  <li data-target="gg-panel"><h3>La freccia</h3><p>Una freccia indica il luogo del tuo passo. Quando il passo è su un'altra mappa, indica il tratto successivo della strada, come il maestro di volo o il molo. Con TomTom caricato, può indicare invece la freccia di TomTom.</p></li>
+  <li data-target="gg-open"><h3>Pianifica il mio percorso</h3><p><b>Pianifica il mio percorso</b>, nella scheda Guida delle impostazioni, prepara un percorso di missioni per il tuo livello da dove sei e inizia a seguirlo.</p></li>
+  <li data-target="gg-pace"><h3>La finestra del pianificatore</h3><p><code>/fgui plan</code>, o «Piano» sul pannello della guida, apre la finestra del pianificatore: in alto, ciò che stai seguendo, poi ogni impostazione di ciò che pianifica, come i cursori Velocità, Sicurezza e Storia e quanto tempo puoi giocare.</p></li>
+  <li data-target="gg-gold"><h3>La finestra dell'oro</h3><p>«Modi per fare oro» elenca idee per questo personaggio, le migliori per prime. Ognuna ha «Vai», che pianifica il viaggio e lo mette sul pannello della guida.</p></li>
+  <li data-target="ex"><h3>Il tuo percorso su ogni schermo</h3><p><b>Condividi il piano</b>, nella finestra del pianificatore, trasforma il percorso in un codice. Nella pagina del piano, il codice diventa una mappa per ogni zona e un elenco di passi da spuntare. Ecco un esempio.</p></li>
+</ol>
 </main>
 <footer class="site-foot">
   <div class="wrap">
@@ -268,5 +372,6 @@ ol.howtos p { margin: 0; }
   </div>
 </footer>
 <script src="/assets/site.js?v=2dd8abee61" defer></script>
+<script src="/assets/guide-and-gold.js?v=4524e6f017" defer></script>
 </body>
 </html>

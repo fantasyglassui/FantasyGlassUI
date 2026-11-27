@@ -174,3 +174,6 @@
   .hero h1 { font-size: 2.35rem; }
 }
 @media (max-width: 600px) { .fams figure:not(:first-child) { display: none; } }
+/* The one-line link to the Roadmap's "Coming in <version>" preview (drawn from pages/roadmap/roadmap.json). */
+.coming-link, .latest .coming-link { margin: 10px 0 0; color: var(--frost); }
+.coming-link a { font-weight: 600; }
