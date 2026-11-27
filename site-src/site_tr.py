@@ -2189,6 +2189,9 @@ SITE.update({
 
 # -- Roadmap (W3)
 SITE.update({
+"In progress": ("In Arbeit", "En cours", "En curso", "В работе", "Em andamento", "In corso", "진행 중", "进行中"),
+"Being built now, for the version shown.": ("Wird gerade gebaut, für die angegebene Version.", "En cours de création, pour la version indiquée.", "Se está construyendo ahora, para la versión indicada.", "Сейчас в работе, для указанной версии.", "Sendo feito agora, para a versão indicada.", "In lavorazione ora, per la versione indicata.", "지금 만들고 있어요. 표시된 버전에 나올 예정입니다.", "正在制作，计划在所示版本推出。"),
+"Expected in": ("Erwartet in", "Prévu pour la", "Previsto para la", "Ожидается в", "Previsto para a", "Previsto per la", "예정 버전", "预计版本"),
 "Ready": ("Fertig", "Prêt", "Listo", "Готово", "Pronto", "Pronto", "완료", "已完成"),
 "Out now, in the version shown.": ("Jetzt da, in der angegebenen Version.", "Disponible maintenant, dans la version indiquée.", "Ya disponible, en la versión indicada.", "Уже вышло, в указанной версии.", "Já disponível, na versão indicada.", "Già disponibile, nella versione indicata.", "지금 사용할 수 있어요. 표시된 버전부터 들어 있습니다.", "现已推出，见所示版本。"),
 "Nothing here yet: ideas move here as they come out.": ("Noch nichts hier: Ideen landen hier, sobald sie erscheinen.", "Rien pour l'instant : les idées arrivent ici dès leur sortie.", "Aún no hay nada: las ideas llegan aquí cuando salen.", "Пока пусто: идеи появляются здесь, когда выходят.", "Nada aqui ainda: as ideias vêm para cá quando saem.", "Ancora niente: le idee arrivano qui quando escono.", "아직 없어요. 아이디어가 나오면 여기로 옮겨집니다.", "暂时还没有：想法推出后会移到这里。"),
