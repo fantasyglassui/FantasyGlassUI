@@ -1,7 +1,7 @@
 <!-- Guide and Gold (W3): what the route planner and Ways to make gold do, Questie, the prices and sell hints, the
      how-to pages (pages/guide-and-gold/<name>/) and the plan page (/plan/, built by site-src/plan_page.py).
      Every claim here is true of the add-on's code (FantasyGlassUI_Planner/, FantasyGlassUI_Gold/, Guide.lua).
-     body.py fills in the example route's plan code (tests/plan_codes.txt) and the reader's address; script.js runs the
+     body.py fills in the example route's plan code (tests/plan_codes.txt) and the reader's and the map's addresses; script.js runs the
      short tour (#tour, its steps in #tour-steps) and draws the example route (#example). -->
 <div class="wrap page-head gg-head">
   <span class="eyebrow">[[New in 13.0]]</span>
@@ -138,7 +138,7 @@
       <h2 id="h-example">[[A route, as the plan page shows it]]</h2>
       <p class="lede">[[This is an example plan code for a short stretch of Elwynn Forest, read by the same reader as the plan page. Your own route comes from the planner in the game.]]</p>
     </header>
-    <div class="ex" id="ex" data-code="@@EXAMPLE_CODE@@" data-min="[[%d min]]" data-hmin="[[%d h %d min]]" data-map="[[Map of the stops in %s]]" hidden>
+    <div class="ex" id="ex" data-code="@@EXAMPLE_CODE@@" data-min="[[%d min]]" data-hmin="[[%d h %d min]]" data-map="[[Map of the stops in %s]]" data-step="[[Step %d: %s]]" data-steps="[[Steps %s: %s]]" data-north="[[N]]" data-north-t="[[North is up]]" data-pin="[[Show step %d on the map]]" hidden>
       <p class="ex-badge"><span class="tag">[[Example]]</span> <span class="faint">[[Not your route: a sample plan code.]]</span></p>
       <dl class="ex-totals">
         <div><dt>[[Experience]]</dt><dd data-t="xp"></dd></div>
@@ -154,6 +154,7 @@
   </div>
 </section>
 <script src="@@READER@@" defer></script>
+<script src="@@MAP@@" defer></script>
 
 <section class="block" id="private" aria-labelledby="h-private">
   <div class="wrap">

@@ -1,10 +1,10 @@
 // Guide and Gold: the short tour (#tour, its steps in #tour-steps) and the example route (#ex), which the plan
-// page's own reader (window.FGPlan, /assets/plan-reader.js) reads from a sample plan code. The words are in the
+// page's own reader (window.FGPlan, /assets/plan-reader.js) reads from a sample plan code, and its map
+// (window.FGPlanMap, /assets/plan-map.js) draws. The words are in the
 // page already (the build translated them); the route's own steps are the game's words, in English.
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
-  var NS = "http://www.w3.org/2000/svg";
   var reduce = !!(window.FG && FG.reduce);
 
   // ---- the example route --------------------------------------------------------------------------------------
@@ -28,40 +28,28 @@
     [].forEach.call(ex.querySelectorAll("dd[data-t]"), function (dd) { dd.textContent = vals[dd.getAttribute("data-t")]; });
 
     function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
-    function sv(tag, attrs, text) {
-      var e = document.createElementNS(NS, tag);
-      for (var k in attrs) e.setAttribute(k, attrs[k]);
-      if (text !== undefined) e.textContent = text;
-      return e;
+    // a zone's small map (the plan page's own, /assets/plan-map.js): its stops numbered by step, fitted to where they
+    // are, joined in route order; a marker and its step in the list lead to each other
+    var A = function (name) { return ex.getAttribute(name) || ""; };
+    function stepLabel(i) { return A("data-step").replace("%d", i + 1).replace("%s", plan.st[i].t); }
+    function groupLabel(steps) {
+      return A("data-steps").replace("%s", steps.map(function (i) { return i + 1; }).join(", ")).replace("%s", steps.map(function (i) { return plan.st[i].t; }).join("; "));
     }
-    // a zone's small map: its stops, numbered by step, joined in route order (a flight, a boat or the hearthstone dashed)
-    var ICON = { fly: "F", sail: "S", hearth: "H" };
-    function map(p) {
-      var svg = sv("svg", { viewBox: "0 0 100 100", role: "img", "class": "ex-map", "aria-label": ex.getAttribute("data-map").replace("%s", p.name) });
-      var g = sv("g", { "aria-hidden": "true" });
-      for (var i = 1; i < p.stops.length; i++) {
-        var a = p.stops[i - 1], b = p.stops[i];
-        g.appendChild(sv("line", { x1: a.x, y1: a.y, x2: b.x, y2: b.y, "class": ICON[b.kind] ? "leg travel" : "leg" }));   // (under the marks)
-      }
-      for (var k = 25; k < 100; k += 25) {                        // (a faint grid, so the square reads as a map)
-        g.appendChild(sv("line", { x1: k, y1: 0, x2: k, y2: 100, "class": "grid" }));
-        g.appendChild(sv("line", { x1: 0, y1: k, x2: 100, y2: k, "class": "grid" }));
-      }
-      var spots = [];                                              // (stops at almost the same place share one mark: "1,3")
-      p.stops.forEach(function (s) {
-        var near = null;
-        spots.forEach(function (q) { if (Math.abs(q.x - s.x) < 4 && Math.abs(q.y - s.y) < 4) near = q; });
-        if (near) { near.n.push(s.step + 1); if (ICON[s.kind]) near.k = ICON[s.kind]; }
-        else spots.push({ x: s.x, y: s.y, n: [s.step + 1], k: ICON[s.kind] || "" });
+    function current() { for (var i = 0; i < plan.st.length; i++) { var b = $("ex-s" + i); if (b && !b.checked) return i; } return -1; }
+    var maps = [];
+    function drawMaps() {
+      var now = current();
+      maps.forEach(function (m) {
+        FGPlanMap.draw(m.holder, m.panel, { name: A("data-map").replace("%s", m.panel.name), north: A("data-north"), northTitle: A("data-north-t"),
+          label: stepLabel, group: groupLabel, current: now, done: function (i) { var b = $("ex-s" + i); return !!(b && b.checked); }, pick: toStep });
       });
-      spots.forEach(function (q) {
-        var label = q.n.join(","), r = label.length > 1 ? 3 + label.length * 1.9 : 6;
-        g.appendChild(sv("circle", { cx: q.x, cy: q.y, r: r, "class": "stop" }));
-        g.appendChild(sv("text", { x: q.x, y: q.y + 2.2, "text-anchor": "middle", "class": "stop-n" }, label));
-        if (q.k) g.appendChild(sv("text", { x: q.x + r + 1.2, y: q.y - r + 0.6, "class": "stop-k" }, q.k));
-      });
-      svg.appendChild(g);
-      return svg;
+      [].forEach.call(ex.querySelectorAll("ol.ex-steps li"), function (li) { li.classList.toggle("now", li.getAttribute("data-i") === String(now)); });
+    }
+    function toStep(i) {
+      var box = $("ex-s" + i);
+      if (!box) return;
+      box.closest("li").scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
+      try { box.focus({ preventScroll: true }); } catch (e) { box.focus(); }
     }
     // the steps, zone by zone in route order: a step with no place stays with the zone before it
     var panels = {}, groups = [], cur = null, early = [];
@@ -78,16 +66,29 @@
       var h = el("h3", "", name);
       if (english) h.lang = "en";
       if (name) card.appendChild(h);
-      if (gr.zone && panels[gr.zone] && panels[gr.zone].stops.length) card.appendChild(map(panels[gr.zone]));
+      var placed = {};
+      if (gr.zone && panels[gr.zone] && panels[gr.zone].stops.length && window.FGPlanMap) {
+        var holder = el("div", "ex-map");
+        card.appendChild(holder);
+        maps.push({ holder: holder, panel: panels[gr.zone] });
+        panels[gr.zone].stops.forEach(function (st) { placed[st.step] = true; });
+      }
       var ol = el("ol", "ex-steps");
       ol.start = gr.steps[0] + 1;
       gr.steps.forEach(function (i) {
         var s = plan.st[i], li = el("li"), box = el("input"), lab = el("label", "", s.t);
+        li.setAttribute("data-i", String(i));
         box.type = "checkbox"; box.id = "ex-s" + i;
         lab.htmlFor = box.id;
         if (english) lab.lang = "en";
-        box.addEventListener("change", function () { li.classList.toggle("done", box.checked); });
-        li.appendChild(el("span", "n", String(i + 1)));
+        box.addEventListener("change", function () { li.classList.toggle("done", box.checked); drawMaps(); });
+        if (placed[i]) {                                           // the number: a button to its marker on the map
+          var pin = el("button", "n", String(i + 1));
+          pin.type = "button";
+          pin.setAttribute("aria-label", A("data-pin").replace("%d", i + 1));
+          pin.addEventListener("click", function () { FGPlanMap.show(card.querySelector(".fgmap") ? card : ex, i, reduce); });
+          li.appendChild(pin);
+        } else li.appendChild(el("span", "n", String(i + 1)));
         li.appendChild(box); li.appendChild(lab);
         ol.appendChild(li);
       });
@@ -95,6 +96,7 @@
       box.appendChild(card);
     });
     ex.hidden = false;
+    drawMaps();                                                    // (once shown: a map takes its width from the page)
   }
 
   // ---- the short tour -----------------------------------------------------------------------------------------

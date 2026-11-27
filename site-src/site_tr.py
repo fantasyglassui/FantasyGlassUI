@@ -3688,6 +3688,13 @@ SITE.update({
  "<b>Condividi il piano</b>, nella finestra del pianificatore, trasforma il percorso in un codice. Nella pagina del piano, il codice diventa una mappa per ogni zona e un elenco di passi da spuntare. Ecco un esempio.",
  "플래너 창의 <b>계획 공유</b>는 경로를 코드로 바꿉니다. 계획 페이지에서 그 코드는 지역마다 지도와 체크할 단계 목록이 됩니다. 아래가 예시입니다.",
  "规划器窗口里的<b>分享计划</b>会把路线变成一段代码。在计划页面上，这段代码会变成每个区域的地图和可以勾选的步骤列表。下面就是一个示例。"),
+# the zone maps of a route (site-src/plan/map.js), on the plan page and in the example route: a marker's label, a
+# marker for several steps, the north mark and its title, and the step number in the list that shows its marker
+"Step %d: %s": ("Schritt %d: %s", "Étape %d : %s", "Paso %d: %s", "Шаг %d: %s", "Passo %d: %s", "Passo %d: %s", "%d단계: %s", "第 %d 步：%s"),
+"Steps %s: %s": ("Schritte %s: %s", "Étapes %s : %s", "Pasos %s: %s", "Шаги %s: %s", "Passos %s: %s", "Passi %s: %s", "%s단계: %s", "第 %s 步：%s"),
+"N": ("N", "N", "N", "С", "N", "N", "북", "北"),
+"North is up": ("Norden ist oben", "Le nord est en haut", "El norte está arriba", "Север сверху", "O norte fica em cima", "Il nord è in alto", "위쪽이 북쪽", "上方为北"),
+"Show step %d on the map": ("Schritt %d auf der Karte zeigen", "Afficher l'étape %d sur la carte", "Mostrar el paso %d en el mapa", "Показать шаг %d на карте", "Mostrar o passo %d no mapa", "Mostra il passo %d sulla mappa", "지도에서 %d단계 보기", "在地图上显示第 %d 步"),
 })
 
 # -- Roadmap: "Coming in 13.5", the in-progress ideas in plain words (W3; pages/roadmap/roadmap.json "preview",

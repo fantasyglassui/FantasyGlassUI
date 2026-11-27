@@ -235,7 +235,7 @@ def main():
                 path = ("/" if lang == "en" else f"/{lang}/") + "guide-and-gold/"
                 page.goto(base + path, wait_until="load")
                 page.wait_for_timeout(200)
-                ex = page.evaluate("[document.getElementById('ex').hidden, document.querySelectorAll('#ex-zones input[type=checkbox]').length, document.querySelectorAll('#ex-zones svg[role=img][aria-label]').length]")
+                ex = page.evaluate("[document.getElementById('ex').hidden, document.querySelectorAll('#ex-zones input[type=checkbox]').length, document.querySelectorAll('#ex-zones svg[aria-label] [role=button][aria-label]').length]")
                 if ex[0] or ex[1] < 1 or ex[2] < 1:
                     problems.append(f"{path} 390px: the example route is not drawn ({ex})")
                 page.focus("#tour-go")
