@@ -141,7 +141,6 @@ local function Mine(root, make)
     if type(c) ~= "table" and make then c = {}; health.chars[key] = c end
     return type(c) == "table" and c or nil
 end
-ns.HealthMine = function() return type(ns.root) == "table" and Mine(ns.root, false) or nil end
 
 local function Check(deferred)
     local build = Build()

@@ -27552,23 +27552,20 @@ end
 -- 13.5 B class tests: end
 --
 -- 13.5 C speed tests: begin
--- 13.5 C speed: every part is timed as CPU time (os.clock) with garbage collection held; a limit is 4 x the slowest of three measured runs, both modes, up to 10 ms (R14).
+-- 13.5 C speed: every part is timed as CPU time (os.clock) with garbage collection held. A limit is 4 x the median of five
+-- full runs, the larger of the two modes' medians, rounded up to 10 ms (13.5 part two review, P2-M6: the slowest run let
+-- one outlier set a limit six times what a part takes). A limit that fails is run again before it is loosened.
 local SPEED_LIMITS_MS = {
-    -- (ms of CPU time with garbage collection held; "readable" / "secret" per run, 27 Nov 2026, one measured run each of three)
-    plan = 80,            -- 16.9 / 16.9, 16.3 / 18.1, 16.8 / 16.4: 4 x the slowest 18.1, up to 10
-    questie = 70,         -- 14.0 / 14.4, 14.0 / 14.9, 12.8 / 13.4: 4 x 14.9 (was 60; part two merged: 4 x 15.8, below)
-    login = 760,          -- 87.3 / 103.2, 93.8 / 109.1, 92.3 / 100.2: 4 x 109.1 (was 440; part two merged, with the health baseline: 4 x 187.7, below)
-    plannerWindow = 90,   -- 18.5 / 17.3, 14.5 / 19.7, 18.6 / 10.8: 4 x 19.7 (was 80; part two merged: 4 x 20.1, below)
-    goldWindow = 70,      -- 9.2 / 8.1, 12.4 / 8.9, 9.1 / 8.8 (was 50, 4 x 12.4); merged: 8.6 / 15.2, 9.5 / 8.4, 8.9 / 8.3: 4 x 15.2, up to 10
-    settings = 550,       -- 116.3 / 111.5, 116.1 / 121.2, 119.3 / 110.6: 4 x 121.2 (was 490; part two merged: 4 x 135.5, below)
-    -- Measured again with all four 13.5 parts merged (27 Nov 2026, three runs): plan 17.7 / 17.9, 19.5 / 17.8, 18.5 / 17.4;
-    -- questie 12.5 / 14.2, 12.5 / 12.5, 12.9 / 12.7; login 92.2 / 99.7, 88.6 / 98.4, 89.5 / 102.6; plannerWindow 14.4 / 18.3,
-    -- 10.4 / 18.5, 15.9 / 17.3; settings 119.4 / 105.2, 112.9 / 106.8, 113.1 / 109.5. Only goldWindow's limit was too tight by the rule.
-    -- Measured again with 13.5 part two merged (the beta channel, the health check with its login baseline, crash reports, times;
-    -- 27 Nov 2026, three runs, readable / secret): plan 17.1 / 20.0, 17.1 / 18.4, 18.1 / 19.0 (4 x 20.0 = 80, kept);
-    -- questie 12.4 / 15.8, 12.1 / 14.4, 14.2 / 15.6 (4 x 15.8 = 63.2: 70); login 85.4 / 187.7, 92.3 / 123.9, 91.9 / 126.7
-    -- (4 x 187.7 = 750.8: 760); plannerWindow 10.7 / 20.1, 10.8 / 10.5, 17.8 / 17.7 (4 x 20.1 = 80.4: 90); goldWindow 12.9 / 8.2,
-    -- 9.0 / 9.1, 8.7 / 8.6 (4 x 12.9 = 51.6, 70 kept); settings 111.0 / 131.1, 119.3 / 119.5, 118.7 / 135.5 (4 x 135.5 = 542: 550).
+    -- (ms of CPU time with garbage collection held; "readable / secret" per run, 27 Nov 2026, five full runs after the
+    -- part two review's fixes)
+    plan = 80,            -- 18.0 / 18.4, 17.6 / 18.1, 17.8 / 17.9, 17.8 / 17.9, 17.4 / 18.5: medians 17.8 / 18.1, 4 x 18.1 = 72.4
+    questie = 60,         -- 15.5 / 14.2, 13.9 / 13.5, 13.7 / 17.2, 14.4 / 12.8, 12.5 / 13.5: medians 13.9 / 13.5, 4 x 13.9 = 55.6
+    login = 420,          -- 93.6 / 141.1, 121.3 / 106.6, 92.1 / 104.1, 87.7 / 103.5, 94.6 / 98.0: medians 93.6 / 104.1, 4 x 104.1 = 416.4
+    plannerWindow = 80,   -- 10.0 / 21.8, 16.6 / 16.4, 17.2 / 20.0, 19.5 / 18.0, 18.5 / 11.3: medians 17.2 / 18.0, 4 x 18.0 = 72.0
+    goldWindow = 60,      -- 23.2 / 14.8, 9.9 / 9.3, 13.4 / 8.8, 13.0 / 9.4, 9.6 / 8.7: medians 13.0 / 9.3, 4 x 13.0 = 52.0
+    settings = 480,       -- 119.8 / 121.9, 127.2 / 113.9, 118.0 / 111.0, 110.9 / 109.8, 119.1 / 110.0: medians 119.1 / 111.0, 4 x 119.1 = 476.4
+    -- (Before: 4 x the slowest of three runs, login 760 after one secret run of 187.7 ms. Secret-mode login was about
+    -- 124 ms then; with the needs cut to the game's own functions and globals it is about 104, near readable's 94.)
 }
 local speedMode = secretMode and "secret" or "readable"
 local speedTimed = true   -- (the audits, tests/secretaudit.py and lockaudit.py, set this false: their code is instrumented, so slower, and their first line is their own)
