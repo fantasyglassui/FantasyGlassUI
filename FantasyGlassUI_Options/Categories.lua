@@ -113,6 +113,8 @@ ns.settingRows = {
     crashReports  = { kind = "check", label = "Keep crash reports",
                       desc = "Each error in Fantasy Glass UI is kept on your computer, at most 30, so Report a problem can include them. Names are removed wherever the add-on can find them. Look over the report before you share it. Nothing is sent by itself. Turning it off clears them, after you confirm.",
                       apply = function(v)
+                          -- (Reset this page and Undo turn it off as asked, keeping the reports: only a click asks first)
+                          if not v and ns.optUI and ns.optUI.applying == "reset" then ns.db.crashReports = false; return end
                           if ns.CrashSwitch and not ns:CrashSwitch(v) and ns.optUI and ns.optUI.RefreshAll then ns.optUI.RefreshAll() end
                       end },
     crashShow     = { kind = "button", label = "Show crash reports", run = function() ns:CrashCommand("") end,

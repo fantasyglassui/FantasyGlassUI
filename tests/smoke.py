@@ -29016,6 +29016,37 @@ crashCase("13.5 P2-I3: other players' names", true, function(ctx)
     end
     ok(ns.locales.deDE[desc]:find("Sieh dir den Bericht an, bevor du ihn teilst.", 1, true), "German says du")
 end)
+crashCase("13.5 P2-M4: Reset this page and Undo turn crash reports off, keeping them", true, function(ctx)
+    ok(ns:LoadOptions(), "the options load")
+    local O = ns.optUI
+    local keep = {}
+    for k, v in pairs(ns.db) do if type(v) ~= "table" then keep[k] = v end end
+    ctx.realRefresh = O.RefreshAll; O.RefreshAll = function() end
+    local fine, err = pcall(function()
+        ns.CrashKeep("Bags", "one")
+        local access
+        for _, cat in ipairs(ns.settingsCategories) do if cat.id == "access" then access = cat end end
+        O.ResetCategory(access)
+        ok(ns.db.crashReports == false, "Reset this page: off")
+        ok(ctx.list == nil, "and no list opened")
+        ok(#list() == 1, "the reports kept")
+        ns.CrashKeep("Bags", "two")
+        ok(#list() == 1, "nothing new kept")
+        -- Undo of turning it on
+        O.NoteChange(true)
+        ns.db.crashReports = true
+        O.NoteChange()
+        local last = O.Undo()
+        ok(last and last.key == "crashReports", "undone: " .. tostring(last and last.key))
+        ok(ns.db.crashReports == false and ctx.list == nil and #list() == 1, "Undo: off, no list, kept")
+        -- a click still asks
+        ns.db.crashReports = true
+        ns.db.crashReports = false; ns.settingRows.crashReports.apply(false)
+        ok(ns.db.crashReports == true and ctx.list and ctx.list.key == "CrashesOff", "a click still asks first")
+    end)
+    for k, v in pairs(keep) do ns.db[k] = v end
+    if not fine then error(err, 0) end
+end)
 crashCase("13.5 P2-M10: an account folder, a guild not read yet, names that change", true, function(ctx)
     scrubIs("WTF/Account/MYACCT/SavedVariables/x.lua:3: y", "<path>:3: y")
     scrubIs("at WTF\\Account\\MYACCT\\x.lua", "at <path>")

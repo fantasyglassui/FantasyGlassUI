@@ -50,9 +50,12 @@ function O.CategoryHasSettings(cat)
 end
 
 -- Back to how it came: every switch and slider of a category (lists, rules, designs and places stay).
+-- (While it runs, O.applying is "reset": a row's apply can tell it from a click. Keep crash reports then goes off
+-- without asking and keeps its reports, as /fgui reset does: R14.)
 function O.ResetCategory(cat)
     if type(cat) ~= "table" then return 0 end
     local changed, reload = 0, false
+    O.applying = "reset"
     for _, sec in ipairs(cat.sections or {}) do
         for _, name in ipairs(sec.rows or {}) do
             local def = ns.settingRows[name]
@@ -68,6 +71,7 @@ function O.ResetCategory(cat)
             end
         end
     end
+    O.applying = nil
     if changed > 0 then
         if ns.ApplyInstant then pcall(ns.ApplyInstant, ns) end
         if ns.Retheme then pcall(ns.Retheme, ns) end
@@ -137,7 +141,9 @@ function O.Undo()
     ns.db[key] = last.old
     watch.snap[key] = last.old
     local def = ns.settingRows[key]
+    O.applying = "reset"                                         -- (an undo, like a reset: see O.ResetCategory)
     if def and def.apply then pcall(def.apply, last.old) end
+    O.applying = nil
     if ns.featureLabels[key] and not ns.featureInstant[key] then O.NeedReload(key) end
     if ns.ApplyInstant then pcall(ns.ApplyInstant, ns) end
     if not ns.featureLabels[key] and ns.Retheme then pcall(ns.Retheme, ns) end
