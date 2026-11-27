@@ -2456,9 +2456,10 @@ do
         if Said(mark) ~= 0 then error("a new profile changed nothing, so nothing is said") end
     end)
     try("Bags 13.0.1: the sections line waits for the fight to end", function()
-        local keepCombat = env.InCombatLockdown
+        local keepCombat, keepLoaded = env.InCombatLockdown, env.C_AddOns.IsAddOnLoaded
         local combat = true
         env.InCombatLockdown = function() return combat end
+        env.C_AddOns.IsAddOnLoaded = function() return false end   -- (no other bag add-on, here too when it's said)
         local mark = #printed
         Login(Old())
         if Said(mark) ~= 0 then error("never said during a fight") end
@@ -2469,7 +2470,7 @@ do
         if Said(mark) ~= 1 then error("said once the fight ends, got " .. Said(mark)) end
         fireEvent("PLAYER_REGEN_ENABLED")
         if Said(mark) ~= 1 then error("and only once") end
-        env.InCombatLockdown = keepCombat
+        env.InCombatLockdown, env.C_AddOns.IsAddOnLoaded = keepCombat, keepLoaded
     end)
 end
 -- 13.0.1: with Baganator showing the bags, one line says where the bag slots are: once per account,
