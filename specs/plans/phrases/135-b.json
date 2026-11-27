@@ -1,0 +1,12 @@
+{
+  "Your level %d class quest is coming: it starts in %s.": [
+    "Deine Klassenquest der Stufe %d steht bald an: Sie beginnt in %s.",
+    "Votre quête de classe du niveau %d approche : elle commence à %s.",
+    "Tu misión de clase de nivel %d se acerca: empieza en %s.",
+    "Скоро ваше классовое задание %d-го уровня: оно начинается в локации «%s».",
+    "Sua missão de classe do nível %d está chegando: ela começa em %s.",
+    "La tua missione di classe di livello %d è vicina: inizia a %s.",
+    "곧 %d레벨 직업 퀘스트를 할 수 있습니다: %s에서 시작합니다.",
+    "你的%d级职业任务快到了：它从%s开始。"
+  ]
+}

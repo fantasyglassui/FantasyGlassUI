@@ -26619,6 +26619,194 @@ end
 -- 13.5 A dungeon tests: end
 --
 -- 13.5 B class tests: begin
+do
+local function ok(cond, msg) if not cond then error(msg, 2) end end
+-- The world: 1436 and 1453 (Stormwind City) on continent 0, 1438 on continent 1, a boat from Stormwind to 1438;
+-- the warrior's level 10 class quest 1638 starts in Stormwind, 500 is a level 4 quest there.
+local function classWorld(body)
+    local rec0 = ns.PlannerCharRecord(true)
+    local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), print = ns.PrintRaw, cq = ns.db.plannerClassQuests, told = rec0.classTold }
+    local fine, err = pcall(function()
+        local cm = {}
+        for k, v in pairs(saved.map) do cm[k] = v end
+        cm.GetWorldPosFromMapPos = function(map, v)
+            if map == 1436 then return 0, { x = v.x * 1000, y = v.y * 1000 } end
+            if map == 1453 then return 0, { x = v.x * 1000 + 2000, y = v.y * 1000 } end
+            if map == 1438 then return 1, { x = v.x * 1000, y = v.y * 1000 } end
+        end
+        cm.GetMapInfo = function(map)
+            if map == 1453 then return { mapID = 1453, name = "Stormwind City", mapType = 3 } end
+            if map == 1436 then return { mapID = 1436, name = "Westfall", mapType = 3 } end
+            if map == 1438 then return { mapID = 1438, name = "Teldrassil", mapType = 3 } end
+        end
+        env.C_Map = cm
+        env.CreateVector2D = function(x, y) return { x = x, y = y } end
+        ns.db.plannerClassQuests = true
+        rec0.classTold = nil
+        local W = { recs = {}, order = {}, done = {}, logged = {}, printed = {} }
+        ns.PrintRaw = function(_, msg) W.printed[#W.printed + 1] = msg end
+        local function q(id, map, x, y, xp, level)
+            local r = { id = id, name = "Quest " .. id, level = level, minLevel = 1, xp = xp, starts = { { map = map, x = x, y = y } }, ends = { { map = map, x = x, y = y } },
+                objectives = { { kind = "kill", count = 4, countKnown = true, mobLevel = level, spots = { { map = map, x = x + 1, y = y + 1 } } } },
+                pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+            W.recs[id] = r; W.order[#W.order + 1] = id
+            return r
+        end
+        q(1638, 1453, 50, 50, 50, 10); q(500, 1453, 50, 53, 40, 4)
+        q(2001, 1436, 50, 50, 300, 9); q(2002, 1436, 52, 52, 300, 9)
+        q(3001, 1438, 60, 60, 5000, 9); q(3002, 1438, 62, 62, 5000, 9)
+        W.source = { kind = "test", ids = function() return W.order end, quest = function(id) return W.recs[id] end }
+        local boat = { id = "t135b", a = { map = 1453, x = 50, y = 50 }, b = { map = 1438, x = 50, y = 50 }, seconds = 120 }
+        function W.ctx(extra)
+            local c = { source = W.source, level = 8, group = "solo", inGroup = false, speed = 7, faction = "Alliance", xp = 0, xpMax = 10000,
+                done = function(id) return W.done[id] or false end, onQuest = function(id) return W.logged[id] or false end,
+                here = { map = 1438, x = 40, y = 40 }, crossings = { boat }, learnFlights = false, bind = "Elsewhere", bindSpot = { map = 9, x = 1, y = 1 },
+                pace = 1, flights = {}, flightTime = function() return nil end,
+                classQuests = { { id = 1638, level = 10, kind = "always", parts = 3 } } }
+            for k, v in pairs(extra or {}) do c[k] = v end
+            return c
+        end
+        function W.hooks(c)                          -- (the context hook, as ns.PlannerContext runs it)
+            for _, h in ipairs(ns.PlannerHookList("context")) do if h.key == "classSoon" then h.fn(c) end end
+            return c
+        end
+        function W.apply(guide, summary, c)
+            for _, h in ipairs(ns.PlannerHookList("applied")) do if h.key == "classSoon" then h.fn(guide, summary, c, "test") end end
+        end
+        function W.planned(guide) local o = {} for _, s in ipairs(guide.steps) do if s.quest then o[s.quest] = true end end return o end
+        function W.firstQuest(guide) for i, s in ipairs(guide.steps) do if s.quest then return i, s end end end
+        function W.seq(guide) local o = {} for _, st in ipairs(guide.steps) do o[#o + 1] = st.kind .. ":" .. tostring(st.quest) end return table.concat(o, " ") end
+        body(W)
+    end)
+    ns.PlannerHook("extra", "t135b", nil)
+    env.C_Map = saved.map; rawset(env, "CreateVector2D", saved.vec)
+    ns.PrintRaw, ns.db.plannerClassQuests, rec0.classTold = saved.print, saved.cq, saved.told
+    if not fine then error(err, 0) end
+end
+local LINE = "Your level 10 class quest is coming: it starts in Stormwind City."
+local function has(lines) for _, l in ipairs(lines or {}) do if l == LINE then return true end end return false end
+try("13.5 B: the heads-up", function()
+    classWorld(function(W)
+        ok(ns.PLANNER_CLASS_LEAD_NEAR == 1 and ns.PLANNER_CLASS_LEAD_FAR == 2 and ns.PLANNER_CLASS_FAR_SECONDS == 600, "the constants")
+        local c = W.ctx({ level = 8 })                                   -- (standing on continent 1)
+        local s = ns.PlannerClassSoon(c)
+        ok(s and s.id == 1638 and s.level == 10 and s.lead == 2 and s.start == "Stormwind City" and s.name == "Quest 1638"
+            and s.c == 0 and s.map == 1453 and s.x == 50 and s.y == 50, "level 8 on another continent: the heads-up, lead 2")
+        W.hooks(c)
+        ok(c.classSoon and c.classSoon.id == 1638 and c.classHold == nil, "the context: the heads-up, no hold on another continent")
+        local guide, summary = ns.PlannerRoute(c)
+        local cs = summary.classSoon
+        ok(cs and cs.id == 1638 and cs.level == 10 and cs.start == "Stormwind City", "the summary carries it")
+        local lines = ns.PlannerAdviceLines(guide.steps, 1, summary)
+        ok(has(lines), "the panel line: " .. table.concat(lines, " / "))
+        ns.db.plannerClassQuests = false
+        ok(not has(ns.PlannerAdviceLines(guide.steps, 1, summary)), "class quests off: no panel line")
+        ns.db.plannerClassQuests = true
+        W.apply(guide, summary, c)
+        ok(#W.printed == 1 and W.printed[1] == LINE, "said in chat: " .. tostring(W.printed[1]))
+        W.apply(guide, summary, c)
+        ok(#W.printed == 1, "said once")
+        ok(ns.PlannerCharRecord(false).classTold[1638] == true, "remembered for this character")
+        guide, summary = ns.PlannerRoute(W.hooks(W.ctx({ level = 9 })))
+        ok(has(ns.PlannerAdviceLines(guide.steps, 1, summary)), "the panel line stays while it applies")
+        W.apply(guide, summary, c)
+        ok(#W.printed == 1, "but chat is not said again")
+        -- on its own continent: 2,000 yards (about 300 s) away
+        local near = W.ctx({ level = 8, here = { map = 1436, x = 50, y = 50 } })
+        ok(ns.PlannerClassSoon(near) == nil, "level 8, about 300 s away: not yet (lead 1)")
+        near.level = 9
+        local s9 = ns.PlannerClassSoon(near)
+        ok(s9 and s9.id == 1638 and s9.lead == 1, "level 9 there: shown, lead 1")
+        near.level, near.speed = 8, 2
+        local slow = ns.PlannerClassSoon(near)
+        ok(slow and slow.lead == 2, "more than 600 s away: lead 2")
+        ok(ns.PlannerClassSoon(W.ctx({ level = 10 })) == nil, "level 10: due, no heads-up")
+        ok(ns.PlannerClassSoon(W.ctx({ level = 7 })) == nil, "level 7: none")
+        guide, summary = ns.PlannerRoute(W.hooks(W.ctx({ level = 10 })))
+        ok(summary.classSoon == nil and not has(ns.PlannerAdviceLines(guide.steps, 1, summary)), "level 10: no summary entry, no line")
+        ok(ns.PlannerClassSoon(W.ctx({ skip = { [1638] = true } })) == nil, "on the skip list: none")
+        W.done[1638] = true; ok(ns.PlannerClassSoon(W.ctx()) == nil, "done: none"); W.done[1638] = nil
+        W.logged[1638] = true; ok(ns.PlannerClassSoon(W.ctx()) == nil, "in your log: none"); W.logged[1638] = nil
+        local off = W.ctx(); off.classQuests = nil
+        ok(ns.PlannerClassSoon(off) == nil, "Plan class quests off: none")
+        W.hooks(off); ok(off.classSoon == nil and off.classHold == nil, "off: nothing in the context")
+        ok(ns.PlannerClassSoon(W.ctx({ classQuests = { { id = 1638, level = 10, kind = "fit", parts = 1 } } })) == nil, "a fit entry: never")
+        W.recs[1638].doable = false; ok(ns.PlannerClassSoon(W.ctx()) == nil, "not doable: none"); W.recs[1638].doable = true
+        local starts = W.recs[1638].starts
+        W.recs[1638].starts = { { map = 9999, x = 1, y = 1 } }; ok(ns.PlannerClassSoon(W.ctx()) == nil, "a start that can't be placed: none")
+        W.recs[1638].starts = nil; ok(ns.PlannerClassSoon(W.ctx()) == nil, "no start: none")
+        W.recs[1638].starts = starts
+        local rec = W.recs[1638]; W.recs[1638] = nil
+        ok(ns.PlannerClassSoon(W.ctx()) == nil, "no record: none"); W.recs[1638] = rec
+        ok(ns.PlannerClassSoon(W.ctx({ classQuests = { { id = 1638, level = 10, kind = "always" }, { id = 500, level = 9, kind = "always" } }, level = 8 })).id == 500,
+            "the lowest level first")
+    end)
+end)
+try("13.5 B: on time", function()
+    classWorld(function(W)
+        local c = W.ctx({ level = 10 })                                  -- (standing on continent 1)
+        local guide, summary = ns.PlannerRoute(c)
+        ok(summary.zone == 1438, "the best zone is 1438: " .. tostring(summary.zone))
+        local _, s1 = W.firstQuest(guide)
+        ok(s1 and s1.kind == "accept" and s1.quest == 1638, "the class quest's accept first, across the sea: " .. W.seq(guide))
+        ok(summary.taken[1] and summary.taken[1].lead == true, "as the lead-in")
+        ok(W.planned(guide)[3001] or W.planned(guide)[3002], "the zone's hubs follow")
+        guide = ns.PlannerRoute(W.ctx({ level = 10, crossings = {} }))
+        ok(not W.planned(guide)[1638], "no way across: it waits")
+        W.recs[1638].pre = { 500 }
+        c = W.ctx({ level = 10 })
+        guide = ns.PlannerRoute(c)
+        _, s1 = W.firstQuest(guide)
+        ok(s1 and s1.kind == "accept" and s1.quest == 500, "the level 4 quest it needs comes first: " .. W.seq(guide))
+        ok(type(c.classPre) == "table" and c.classPre[500] == 1638, "classPre")
+        ok(not W.planned(guide)[1638], "the class quest itself waits for that hand-in")
+        W.recs[500].doable = false
+        c = W.ctx({ level = 10 })
+        guide = ns.PlannerRoute(c)
+        ok(not W.planned(guide)[500] and not W.planned(guide)[1638], "500 not doable: neither")
+        W.recs[500].doable = true
+        W.done[500] = true
+        guide = ns.PlannerRoute(W.ctx({ level = 10 }))
+        _, s1 = W.firstQuest(guide)
+        ok(s1 and s1.quest == 1638, "500 done: the class quest first")
+        W.done[500] = nil
+        guide = ns.PlannerRoute(W.ctx({ level = 9 }))
+        ok(not W.planned(guide)[500], "below the class quest's level: no prerequisite")
+    end)
+end)
+try("13.5 B: no flying away in the level before", function()
+    classWorld(function(W)
+        local onC0 = { map = 1436, x = 50, y = 50 }
+        local free = W.ctx({ level = 9, here = onC0 })
+        ok(ns.PlannerPickZone(ns.PlannerCandidates(W.source, free), free) == 1438, "without the hold 1438 scores best")
+        local c = W.hooks(W.ctx({ level = 9, here = onC0 }))
+        local hold = c.classHold
+        ok(type(hold) == "table" and hold.c == 0 and hold.id == 1638 and hold.level == 10, "the hold")
+        ok(ns.PlannerPickZone(ns.PlannerCandidates(W.source, c), c) == 1436, "the hold: 1436")
+        c = W.hooks(W.ctx({ level = 9, here = onC0, lastZone = 1438, lastZoneLevel = 9 }))
+        ok(ns.PlannerPickZone(ns.PlannerCandidates(W.source, c), c) == 1436, "the last zone, on another continent, is not kept")
+        local guide, summary = ns.PlannerRoute(W.hooks(W.ctx({ level = 9, here = onC0 })))
+        ok(summary.zone == 1436 and not W.planned(guide)[3001] and not W.planned(guide)[3002], "the route stays: " .. W.seq(guide))
+        local function lay(state, hub, steps) steps[#steps + 1] = { kind = "note", text = "X135B" }; return hub.seconds, hub.xp end
+        local function hasX(g) for _, st in ipairs(g.steps) do if st.text == "X135B" then return true end end return false end
+        ns.PlannerHook("extra", "t135b", function() return { { xp = 1000000, seconds = 600, map = 1438, x = 50, y = 50, quests = {}, lay = lay } } end)
+        guide = ns.PlannerRoute(W.hooks(W.ctx({ level = 9, here = onC0 })))
+        ok(not hasX(guide), "an extra on another continent: never taken during the hold")
+        guide = ns.PlannerRoute(W.hooks(W.ctx({ level = 9 })))
+        ok(hasX(guide), "standing on continent 1: the extra is taken")
+        ns.PlannerHook("extra", "t135b", nil)
+        local away = W.hooks(W.ctx({ level = 9 }))
+        ok(away.classSoon and away.classHold == nil, "level 9 on continent 1: the heads-up, no hold")
+        ok(ns.PlannerPickZone(ns.PlannerCandidates(W.source, away), away) == 1438, "the 13.0 pick")
+        W.order = { 3001, 3002 }
+        c = W.hooks(W.ctx({ level = 9, here = onC0 }))
+        ok(c.classHold, "still held")
+        ok(ns.PlannerPickZone(ns.PlannerCandidates(W.source, c), c) == 1438, "no hub on continent 0: 1438 is allowed")
+        guide = ns.PlannerRoute(c)
+        ok(W.planned(guide)[3001] or W.planned(guide)[3002], "and planned: " .. W.seq(guide))
+    end)
+end)
+end
 -- 13.5 B class tests: end
 --
 -- 13.5 C speed tests: begin
