@@ -59,8 +59,8 @@ local type, pairs, ipairs, tostring, pcall = type, pairs, ipairs, tostring, pcal
 ns.FOLDERS = {
     planner = { addon = "FantasyGlassUI_Planner", files = {
         "PlannerSource.lua", "Planner.lua", "PlannerRoute.lua", "PlannerStops.lua", "PlannerPath.lua", "PlannerAdvice.lua",
-        "PlannerMap.lua", "PlannerPages.lua", "PlannerPace.lua", "PlannerRecords.lua", "PlannerGroup.lua", "PlannerDuo.lua",
-        "PlannerCode.lua", "PlannerIntro.lua", "PlannerWindow.lua", "PlannerGo.lua",
+        "PlannerDungeons.lua", "PlannerClass.lua", "PlannerMap.lua", "PlannerPages.lua", "PlannerPace.lua", "PlannerRecords.lua",
+        "PlannerGroup.lua", "PlannerDuo.lua", "PlannerCode.lua", "PlannerIntro.lua", "PlannerWindow.lua", "PlannerGo.lua",
     },
         broken = "The planner could not start: /fgui check lists why.",
         disabled = "The planner folder is switched off: tick \"Fantasy Glass UI - planner\" in the AddOns list, then try again.",

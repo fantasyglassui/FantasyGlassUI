@@ -21,6 +21,12 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["Dungeon runs in your route: when a dungeon gives more experience than the quests near you, the route picks up its quests, finds a group and runs it. Switch it off in the planner window."] = "Dungeonläufe in deiner Route: Wenn ein Dungeon mehr Erfahrung bringt als die Quests in deiner Nähe, nimmt die Route seine Quests mit, sucht eine Gruppe und läuft ihn. Schalte das im Fenster des Planers aus.",
+    ["Class quests on time: a heads-up a level or two before, and the route stays where it can reach the start."] = "Klassenquests rechtzeitig: ein Hinweis ein oder zwei Stufen vorher, und die Route bleibt dort, wo sie den Anfang erreichen kann.",
+    ["Your guides, route planner and gold records are now in your backups too. /fgui data shows what each part keeps, and /fgui data tidy offers to remove old records, always asking first."] = "Deine Anleitungen, der Routenplaner und die Gold-Aufzeichnungen sind jetzt auch in deinen Sicherungen. /fgui data zeigt, was jeder Teil speichert, und /fgui data tidy bietet an, alte Aufzeichnungen zu entfernen, und fragt immer vorher.",
+    ["what each part of the add-on keeps, roughly how big, and a tidy-up that asks before it removes anything"] = "was jeder Teil des Add-ons speichert, wie groß das ungefähr ist, und ein Aufräumen, das fragt, bevor es etwas entfernt",
+    ["Run the dungeon"] = "Lauf den Dungeon",
+    ["A step starts with accept, turnin, do, goto, note, level, hearth, fly, learnflight, sail, bind, train, vendor, mail, explore, gather, group or dungeon."] = "Ein Schritt beginnt mit accept, turnin, do, goto, note, level, hearth, fly, learnflight, sail, bind, train, vendor, mail, explore, gather, group oder dungeon.",
     ["Click: open the planner. Drag: move."] = "Klick: den Planer öffnen. Ziehen: verschieben.",
     ["Click: open the gold window. Drag: move."] = "Klick: das Gold-Fenster öffnen. Ziehen: verschieben.",
     ["Minimap button for the route planner"] = "Minikartenknopf für den Routenplaner",
@@ -3870,6 +3876,12 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["Dungeon runs in your route: when a dungeon gives more experience than the quests near you, the route picks up its quests, finds a group and runs it. Switch it off in the planner window."] = "Des donjons dans votre itinéraire : quand un donjon rapporte plus d'expérience que les quêtes près de vous, l'itinéraire prend ses quêtes, trouve un groupe et le fait. Désactivez-le dans la fenêtre du planificateur.",
+    ["Class quests on time: a heads-up a level or two before, and the route stays where it can reach the start."] = "Les quêtes de classe à temps : un avertissement un ou deux niveaux avant, et l'itinéraire reste là où il peut atteindre leur début.",
+    ["Your guides, route planner and gold records are now in your backups too. /fgui data shows what each part keeps, and /fgui data tidy offers to remove old records, always asking first."] = "Vos guides, le planificateur d'itinéraire et les relevés d'or sont désormais aussi dans vos sauvegardes. /fgui data montre ce que garde chaque partie, et /fgui data tidy propose de retirer les anciens relevés, en demandant toujours d'abord.",
+    ["what each part of the add-on keeps, roughly how big, and a tidy-up that asks before it removes anything"] = "ce que garde chaque partie de l'add-on, sa taille approximative, et un rangement qui demande avant de retirer quoi que ce soit",
+    ["Run the dungeon"] = "Faites le donjon",
+    ["A step starts with accept, turnin, do, goto, note, level, hearth, fly, learnflight, sail, bind, train, vendor, mail, explore, gather, group or dungeon."] = "Une étape commence par accept, turnin, do, goto, note, level, hearth, fly, learnflight, sail, bind, train, vendor, mail, explore, gather, group ou dungeon.",
     ["Click: open the planner. Drag: move."] = "Clic : ouvrir le planificateur. Glisser : déplacer.",
     ["Click: open the gold window. Drag: move."] = "Clic : ouvrir la fenêtre de l'or. Glisser : déplacer.",
     ["Minimap button for the route planner"] = "Bouton de minicarte pour le planificateur d'itinéraire",
@@ -7719,6 +7731,12 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["Dungeon runs in your route: when a dungeon gives more experience than the quests near you, the route picks up its quests, finds a group and runs it. Switch it off in the planner window."] = "Mazmorras en tu ruta: cuando una mazmorra da más experiencia que las misiones cercanas, la ruta recoge sus misiones, busca un grupo y la recorre. Desactívalo en la ventana del planificador.",
+    ["Class quests on time: a heads-up a level or two before, and the route stays where it can reach the start."] = "Misiones de clase a tiempo: un aviso uno o dos niveles antes, y la ruta se queda donde puede llegar a su inicio.",
+    ["Your guides, route planner and gold records are now in your backups too. /fgui data shows what each part keeps, and /fgui data tidy offers to remove old records, always asking first."] = "Tus guías, el planificador de rutas y los registros de oro ahora también están en tus copias de seguridad. /fgui data muestra lo que guarda cada parte, y /fgui data tidy ofrece quitar registros antiguos, siempre preguntando antes.",
+    ["what each part of the add-on keeps, roughly how big, and a tidy-up that asks before it removes anything"] = "lo que guarda cada parte del add-on, más o menos cuánto ocupa, y una limpieza que pregunta antes de quitar nada",
+    ["Run the dungeon"] = "Recorre la mazmorra",
+    ["A step starts with accept, turnin, do, goto, note, level, hearth, fly, learnflight, sail, bind, train, vendor, mail, explore, gather, group or dungeon."] = "Un paso empieza por accept, turnin, do, goto, note, level, hearth, fly, learnflight, sail, bind, train, vendor, mail, explore, gather, group o dungeon.",
     ["Click: open the planner. Drag: move."] = "Clic: abre el planificador. Arrastrar: mover.",
     ["Click: open the gold window. Drag: move."] = "Clic: abre la ventana del oro. Arrastrar: mover.",
     ["Minimap button for the route planner"] = "Botón del minimapa para el planificador de ruta",
@@ -11571,6 +11589,12 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["Dungeon runs in your route: when a dungeon gives more experience than the quests near you, the route picks up its quests, finds a group and runs it. Switch it off in the planner window."] = "Подземелья в вашем маршруте: когда подземелье даёт больше опыта, чем задания рядом с вами, маршрут берёт его задания, находит группу и проходит его. Это можно отключить в окне планировщика.",
+    ["Class quests on time: a heads-up a level or two before, and the route stays where it can reach the start."] = "Классовые задания вовремя: предупреждение за один-два уровня, и маршрут остаётся там, откуда можно добраться до их начала.",
+    ["Your guides, route planner and gold records are now in your backups too. /fgui data shows what each part keeps, and /fgui data tidy offers to remove old records, always asking first."] = "Ваши гайды, планировщик маршрута и записи о золоте теперь тоже входят в резервные копии. /fgui data показывает, что хранит каждая часть, а /fgui data tidy предлагает удалить старые записи, всегда спрашивая заранее.",
+    ["what each part of the add-on keeps, roughly how big, and a tidy-up that asks before it removes anything"] = "что хранит каждая часть модификации, примерно сколько это занимает, и уборка, которая спрашивает, прежде чем что-либо удалить",
+    ["Run the dungeon"] = "Пройдите подземелье",
+    ["A step starts with accept, turnin, do, goto, note, level, hearth, fly, learnflight, sail, bind, train, vendor, mail, explore, gather, group or dungeon."] = "Шаг начинается с accept, turnin, do, goto, note, level, hearth, fly, learnflight, sail, bind, train, vendor, mail, explore, gather, group или dungeon.",
     ["Click: open the planner. Drag: move."] = "Щелчок: открыть планировщик. Перетаскивание: переместить.",
     ["Click: open the gold window. Drag: move."] = "Щелчок: открыть окно золота. Перетаскивание: переместить.",
     ["Minimap button for the route planner"] = "Кнопка миникарты для планировщика маршрута",
@@ -15420,6 +15444,12 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["Dungeon runs in your route: when a dungeon gives more experience than the quests near you, the route picks up its quests, finds a group and runs it. Switch it off in the planner window."] = "Masmorras na sua rota: quando uma masmorra dá mais experiência que as missões perto de você, a rota pega as missões dela, encontra um grupo e a faz. Desative isso na janela do planejador.",
+    ["Class quests on time: a heads-up a level or two before, and the route stays where it can reach the start."] = "Missões de classe na hora certa: um aviso um ou dois níveis antes, e a rota fica onde consegue chegar ao início.",
+    ["Your guides, route planner and gold records are now in your backups too. /fgui data shows what each part keeps, and /fgui data tidy offers to remove old records, always asking first."] = "Seus guias, o planejador de rotas e os registros de ouro agora também estão nos seus backups. /fgui data mostra o que cada parte guarda, e /fgui data tidy oferece remover registros antigos, sempre perguntando antes.",
+    ["what each part of the add-on keeps, roughly how big, and a tidy-up that asks before it removes anything"] = "o que cada parte do add-on guarda, mais ou menos o tamanho, e uma limpeza que pergunta antes de remover qualquer coisa",
+    ["Run the dungeon"] = "Faça a masmorra",
+    ["A step starts with accept, turnin, do, goto, note, level, hearth, fly, learnflight, sail, bind, train, vendor, mail, explore, gather, group or dungeon."] = "Um passo começa com accept, turnin, do, goto, note, level, hearth, fly, learnflight, sail, bind, train, vendor, mail, explore, gather, group ou dungeon.",
     ["Click: open the planner. Drag: move."] = "Clique: abre o planejador. Arrastar: mover.",
     ["Click: open the gold window. Drag: move."] = "Clique: abre a janela do ouro. Arrastar: mover.",
     ["Minimap button for the route planner"] = "Botão do minimapa para o planejador de rota",
@@ -19269,6 +19299,12 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["Dungeon runs in your route: when a dungeon gives more experience than the quests near you, the route picks up its quests, finds a group and runs it. Switch it off in the planner window."] = "Spedizioni nelle istanze nel tuo percorso: quando un'istanza dà più esperienza delle missioni vicine, il percorso prende le sue missioni, trova un gruppo e la affronta. Disattivalo nella finestra del pianificatore.",
+    ["Class quests on time: a heads-up a level or two before, and the route stays where it can reach the start."] = "Missioni di classe al momento giusto: un avviso uno o due livelli prima, e il percorso resta dove può raggiungerne l'inizio.",
+    ["Your guides, route planner and gold records are now in your backups too. /fgui data shows what each part keeps, and /fgui data tidy offers to remove old records, always asking first."] = "Le tue guide, il pianificatore di percorsi e i registri dell'oro ora sono anche nei tuoi backup. /fgui data mostra cosa conserva ogni parte, e /fgui data tidy propone di rimuovere i vecchi registri, chiedendo sempre prima.",
+    ["what each part of the add-on keeps, roughly how big, and a tidy-up that asks before it removes anything"] = "cosa conserva ogni parte dell'add-on, quanto occupa all'incirca, e una pulizia che chiede prima di rimuovere qualsiasi cosa",
+    ["Run the dungeon"] = "Affronta l'istanza",
+    ["A step starts with accept, turnin, do, goto, note, level, hearth, fly, learnflight, sail, bind, train, vendor, mail, explore, gather, group or dungeon."] = "Un passo inizia con accept, turnin, do, goto, note, level, hearth, fly, learnflight, sail, bind, train, vendor, mail, explore, gather, group o dungeon.",
     ["Click: open the planner. Drag: move."] = "Clic: apre il pianificatore. Trascina: sposta.",
     ["Click: open the gold window. Drag: move."] = "Clic: apre la finestra dell'oro. Trascina: sposta.",
     ["Minimap button for the route planner"] = "Pulsante della minimappa per il pianificatore di percorso",
@@ -23118,6 +23154,12 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["Dungeon runs in your route: when a dungeon gives more experience than the quests near you, the route picks up its quests, finds a group and runs it. Switch it off in the planner window."] = "경로에 던전 공략: 던전이 주변 퀘스트보다 경험치를 더 주면, 경로가 던전 퀘스트를 받고 파티를 찾아 던전을 돕니다. 플래너 창에서 끌 수 있습니다.",
+    ["Class quests on time: a heads-up a level or two before, and the route stays where it can reach the start."] = "제때 하는 직업 퀘스트: 한두 레벨 전에 미리 알려 주고, 경로는 시작 지점에 닿을 수 있는 곳에 머뭅니다.",
+    ["Your guides, route planner and gold records are now in your backups too. /fgui data shows what each part keeps, and /fgui data tidy offers to remove old records, always asking first."] = "이제 가이드, 경로 플래너, 골드 기록도 백업에 들어갑니다. /fgui data는 각 부분이 무엇을 보관하는지 보여 주고, /fgui data tidy는 오래된 기록을 지우자고 제안하며 항상 먼저 묻습니다.",
+    ["what each part of the add-on keeps, roughly how big, and a tidy-up that asks before it removes anything"] = "애드온의 각 부분이 무엇을 보관하는지, 대략 얼마나 큰지, 그리고 무엇이든 지우기 전에 묻는 정리",
+    ["Run the dungeon"] = "던전을 도세요",
+    ["A step starts with accept, turnin, do, goto, note, level, hearth, fly, learnflight, sail, bind, train, vendor, mail, explore, gather, group or dungeon."] = "단계는 accept, turnin, do, goto, note, level, hearth, fly, learnflight, sail, bind, train, vendor, mail, explore, gather, group, dungeon 중 하나로 시작합니다.",
     ["Click: open the planner. Drag: move."] = "클릭: 플래너를 엽니다. 드래그: 옮깁니다.",
     ["Click: open the gold window. Drag: move."] = "클릭: 골드 창을 엽니다. 드래그: 옮깁니다.",
     ["Minimap button for the route planner"] = "경로 플래너용 미니맵 버튼",
@@ -26970,6 +27012,12 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["Dungeon runs in your route: when a dungeon gives more experience than the quests near you, the route picks up its quests, finds a group and runs it. Switch it off in the planner window."] = "路线中的地下城：当某个地下城给的经验比你附近的任务更多时，路线会接取它的任务、寻找队伍并完成它。可以在规划器窗口中关闭。",
+    ["Class quests on time: a heads-up a level or two before, and the route stays where it can reach the start."] = "按时完成职业任务：提前一两级提醒你，路线也会留在能到达任务起点的地方。",
+    ["Your guides, route planner and gold records are now in your backups too. /fgui data shows what each part keeps, and /fgui data tidy offers to remove old records, always asking first."] = "你的指南、路线规划器和金币记录现在也会包含在备份中。/fgui data 显示每个部分保存了什么，/fgui data tidy 会提出删除旧记录，并且总是先询问你。",
+    ["what each part of the add-on keeps, roughly how big, and a tidy-up that asks before it removes anything"] = "插件每个部分保存了什么、大约多大，以及在删除任何内容之前都会询问的清理",
+    ["Run the dungeon"] = "完成地下城",
+    ["A step starts with accept, turnin, do, goto, note, level, hearth, fly, learnflight, sail, bind, train, vendor, mail, explore, gather, group or dungeon."] = "步骤以 accept、turnin、do、goto、note、level、hearth、fly、learnflight、sail、bind、train、vendor、mail、explore、gather、group 或 dungeon 开头。",
     ["Click: open the planner. Drag: move."] = "点击：打开规划器。拖动：移动。",
     ["Click: open the gold window. Drag: move."] = "点击：打开赚金窗口。拖动：移动。",
     ["Minimap button for the route planner"] = "路线规划器的小地图按钮",

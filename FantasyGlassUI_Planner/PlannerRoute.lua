@@ -864,7 +864,8 @@ local function Build(ctx, candidates, skipped)
     end
     local guide = { name = ns.GUIDE_PLANNED, steps = {} }
     local summary = { fromLevel = ctx.level, toLevel = ctx.level, xp = 0, seconds = 0, skipped = skipped, empty = true, hubs = {}, taken = {} }
-    if #candidates == 0 then return Finish(hooks, guide, summary, ctx, ctx) end
+    local extraHooks = hooks.extra or {}
+    if #candidates == 0 and #extraHooks == 0 then return Finish(hooks, guide, summary, ctx, ctx) end
     local c = WithCandidates(ctx, candidates)
     c.hooks = hooks
     c.restedLeft = tonumber(ctx.rested)              -- the route uses this pool up as it lays hubs out (hub scoring before that deliberately sees all of it)
@@ -872,19 +873,33 @@ local function Build(ctx, candidates, skipped)
     c.repCache = {}                                  -- faction id -> reputation still needed, read once per plan
     local zone, newly, hubs = ns.PlannerPickZone(candidates, c)
     local here = Here(ctx)
+    local state = TripState(ctx, c, here)
+    local tctx = state.tctx
+    -- The "extra" hooks: pseudo-hubs (a dungeon run) ranked with the zone's hubs. One without lay, a number xp
+    -- and a number seconds is left out.
+    local extras = {}
+    for _, hk in ipairs(extraHooks) do
+        local list = hk.fn(c, state, zone)
+        for _, e in ipairs(type(list) == "table" and list or {}) do
+            if type(e) == "table" and type(e.lay) == "function" and type(e.xp) == "number" and type(e.seconds) == "number" then extras[#extras + 1] = e end
+        end
+    end
     if not zone then                                 -- (nothing left to plan: what was left out where you are, "here" on the panel)
         if here and c.movedByMap then                -- (a city or cave map you stand on: its zone's)
             for _, m in ipairs(ns.PlannerZoneMaps(here.map)) do
                 if c.movedByMap[m] then summary.moved = c.movedByMap[m]; break end
             end
         end
-        summary.hubs = HubList(hubs)
-        return Finish(hooks, guide, summary, ctx, c)
+        if #extras == 0 then
+            summary.hubs = HubList(hubs)
+            return Finish(hooks, guide, summary, ctx, c)
+        end
+    else
+        summary.moved = c.movedByMap and c.movedByMap[zone] or nil     -- the level a hub (in this zone) where you died twice is planned again at
     end
-    summary.moved = c.movedByMap and c.movedByMap[zone] or nil     -- the level a hub (in this zone) where you died twice is planned again at
     local left, zc = {}, nil
     for _, h in ipairs(hubs) do
-        if h.map == zone then
+        if zone and h.map == zone then
             left[#left + 1] = h
             zc = zc or Pos(h)
         end
@@ -901,12 +916,15 @@ local function Build(ctx, candidates, skipped)
             lead, leadFirst, leadRate = h, h.first, Rate(h)
         end
     end
-    local state = TripState(ctx, c, here)
-    local tctx = state.tctx
     local xp, seconds, taken = 0, 0, {}
     local bound = false                              -- (the hearthstone is set at the zone's first hub, when the zone is new)
-    local function Lay(hub, n)
+    local function Lay(hub, n, extra)
         taken[#taken + 1] = hub
+        if extra then                                -- (a pseudo-hub lays its own steps; never binds the hearthstone)
+            local t, gained = hub.lay(state, hub, guide.steps, n)
+            seconds, xp = seconds + (tonumber(t) or 0), xp + (tonumber(gained) or 0)
+            return
+        end
         local inn
         if newly and not bound and hub.map == zone then
             bound = true
@@ -919,7 +937,8 @@ local function Build(ctx, candidates, skipped)
     local function Into(h) return h.accepts[1] and h.accepts[1].spot or h end
     -- Each round n = 1 .. horizon (a lead-in hub counts): every hub left as { hub, index, travel, rate, score,
     -- first }, plus, until it is taken, the lead-in as { hub, travel, rate, score, first = PLANNER_LEAD_FIRST,
-    -- lead = true } (no index). The "rank" hooks may change score and first (a negative score leaves the entry
+    -- lead = true } (no index), and each extra (a pseudo-hub from the "extra" hooks) as { hub, travel, rate, score,
+    -- first = 0, extra = true } while zone hubs or the lead-in are left, or there is no zone (R6). The "rank" hooks may change score and first (a negative score leaves the entry
     -- out of that round); the highest first, then score, is taken. info = { n, round, seconds, xp, horizon, lead }.
     local rankHooks = hooks.rank or {}
     local function Better(e, than)
@@ -934,7 +953,8 @@ local function Build(ctx, candidates, skipped)
     if lead and not c.horizonSet and horizon == ns.PLANNER_HORIZON then horizon, leadRound = horizon + 1, true end
     local zoneTaken = 0
     for n = 1, horizon do
-        if #left == 0 and not lead then break end
+        local withExtras = #extras > 0 and (#left > 0 or lead ~= nil or not zone)   -- (R6: never a round for the extras alone in a zone)
+        if #left == 0 and not lead and not withExtras then break end
         if leadRound and lead and zoneTaken >= horizon - 1 then break end   -- (the extra round is the lead-in's alone: one a hook kept out, "plan from here", takes no third zone hub)
         local ranked = {}
         for i, h in ipairs(left) do
@@ -947,6 +967,15 @@ local function Build(ctx, candidates, skipped)
             local travel = state.pos and ns.PlannerTravel(state.pos, Into(lead), tctx) or 0
             local rate = travel < huge and lead.xp / (lead.seconds + travel) or -1
             ranked[#ranked + 1] = { hub = lead, travel = travel, rate = rate, score = rate, first = travel < huge and ns.PLANNER_LEAD_FIRST or 0, lead = true }
+        end
+        if withExtras then
+            for _, e in ipairs(extras) do
+                ns.PlannerYield()
+                local travel = state.pos and ns.PlannerTravel(state.pos, e.into or e, tctx) or 0
+                local total = e.seconds + travel
+                local rate = (travel < huge and total > 0) and e.xp / total or -1
+                ranked[#ranked + 1] = { hub = e, travel = travel, rate = rate, score = rate, first = 0, extra = true }
+            end
         end
         local info = { n = n, round = n, seconds = seconds, xp = xp, horizon = horizon, lead = lead ~= nil }
         for _, hk in ipairs(rankHooks) do hk.fn(ranked, c, info) end
@@ -964,14 +993,16 @@ local function Build(ctx, candidates, skipped)
         end
         summary.taken[n] = { xp = h.xp, seconds = h.seconds, travel = best.travel, rate = best.rate, score = best.score, beat = beat,
                              map = h.map, x = Round(h.x, 10), y = Round(h.y, 10), lead = best.lead and true or nil, quests = #(h.quests or {}),
-                             first = (tonumber(best.first) or 0) > 0 and best.first or nil, parts = best.parts }
+                             first = (tonumber(best.first) or 0) > 0 and best.first or nil, parts = best.parts, extra = best.extra and true or nil }
         if best.lead then
             lead = nil
+        elseif best.extra then                       -- (not a zone hub: it never counts as one)
+            for i, e in ipairs(extras) do if e == h then table.remove(extras, i); break end end
         else
             zoneTaken = zoneTaken + 1
             for i, e in ipairs(left) do if e == h then table.remove(left, i); break end end
         end
-        Lay(h, n)
+        Lay(h, n, best.extra)
     end
     summary.zone, summary.newZone = zone, newly
     summary.reputation = state.rep                   -- wanted reputation the plan gives: { [factionID] = amount }

@@ -198,6 +198,7 @@ ns.defaults = {
     plannerDeaths    = true,        -- a hub where you died twice is left alone for two levels
     plannerSoloElites = true,       -- elites your class has soloed count as Solo quests
     plannerClassQuests = true,      -- class quests are planned at the right time (and mentioned when they are ready)
+    plannerDungeons  = true,        -- a dungeon run goes in the route when it gives more experience than the quests near you
     plannerPickReward = true,       -- the best reward is picked for you at a hand-in (never handed in)
     plannerLogAdvice = true,        -- the panel says which quests are worth abandoning when the log is nearly full
     plannerInn       = true,        -- an inn is suggested after a long stretch of play
@@ -1641,6 +1642,9 @@ end
 
 -- What's new: shown once after an update (never on a first install, where the setup opens instead).
 ns.whatsNew = {
+    { "13.5.0", { "Dungeon runs in your route: when a dungeon gives more experience than the quests near you, the route picks up its quests, finds a group and runs it. Switch it off in the planner window.",
+                  "Class quests on time: a heads-up a level or two before, and the route stays where it can reach the start.",
+                  "Your guides, route planner and gold records are now in your backups too. /fgui data shows what each part keeps, and /fgui data tidy offers to remove old records, always asking first." } },
     { "13.0.0", { "Quest guides: follow a route one step at a time, with a panel for the step you are on and an arrow that points the way. They are under Guide in /fgui.",
                   "The route planner: Plan my route works out which quests to take for your level, in what order, and when to fly, train or hand in, and plans again as you play. It finds quests through Questie when Questie is loaded.",
                   "The planner window (/fgui plan, or Planner on the guide panel) holds every setting for what it plans. Keep my route there leaves your route as it is until you ask for a new one.",
@@ -2565,6 +2569,7 @@ ns.helpLines = {
     { "/fgui textsize 120", "all the add-on's lettering at that size, in percent (70 to 150; \"reset\" is as it came)" },
     { "/fgui uisize 90", "the whole interface at that size, in percent of the game's (50 to 150; \"reset\" is as it came)" },
     { "/fgui backup", "the backups of your settings, made before each update, once a day and before a reset; click one to see how to put it back" },
+    { "/fgui data", "what each part of the add-on keeps, roughly how big, and a tidy-up that asks before it removes anything" },
     { "/fgui history", "what you changed in this profile, and when; click a change to undo it" },
     { "/fgui reset", "put this profile back to how it came (type it twice; a backup is kept)" },
     { "/fgui safe", "safe mode: reload with every feature off (again to leave it)" },
@@ -2613,6 +2618,7 @@ ns.toolCommands = {
     ah = function() ns:ShowWorthSelling() end,
     home = function() ns:HomeCommand() end,
     backup = function(t) ns:BackupCommand(t) end,
+    data = function(t) ns:DataCommand(t) end,
     history = function() ns:ShowSettingHistory() end,
     pack = function() ns:ShowCopyBox(ns:ExportPack(), ns:Tr("Your whole UI in one string: Ctrl+C to copy. Anyone with Fantasy Glass UI can paste it in Profiles, Preview a shared string.")) end,
     equipbest = function() ns:EquipBest() end,

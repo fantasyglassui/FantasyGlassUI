@@ -44,6 +44,12 @@ local floor, min, max, sqrt = math.floor, math.min, math.max, math.sqrt
 --   "zone"     fn(maps, order, ctx) -> map|nil   ns.PlannerPickZone: the first map with hubs wins
 --   "rank"     fn(ranked, c, info)         each round of the route's hubs (may change score and first)
 --   "route"    fn(guide, summary, ctx, c)  end of the route's Build
+--   "extra"    fn(c, state, zone) -> { pseudoHub, ... } | nil   the route's Build, once, after the zone pick: places
+--              ranked with the zone's hubs (a dungeon run). pseudoHub = { xp = number, seconds = number, map, x, y,
+--              into = spot|nil, quests = { rec, ... }, lay = function(state, hub, steps, n) -> seconds, xp, kept };
+--              one without lay, a number xp and a number seconds is ignored. Its rank entry is { hub, travel, rate,
+--              score = rate, first = 0, extra = true }, ranked only while zone hubs or the lead-in are left, or there
+--              is no zone; taken, it is summary.taken[n].extra = true and lays its own steps (ns.PlannerTrip helps)
 --   "applied"  fn(guide, summary, ctx, reason)   after a plan became the guide you follow
 --   "candidate" fn(rec, ctx, logged) -> false|other   ns.PlannerCandidates, each record about to be kept (a logged
 --              quest, a new quest that passed every test, before the group check, a class quest, a quest from an
@@ -78,7 +84,7 @@ function ns.PlannerHookCopy(point)
     return out
 end
 -- The hooks a plan uses: the copies ns.PlannerContext took (ctx.hooks), else the lists as they are now.
-ns.PLANNER_HOOK_POINTS = { "context", "window", "xp", "zone", "rank", "route", "candidate" }
+ns.PLANNER_HOOK_POINTS = { "context", "window", "xp", "zone", "rank", "route", "candidate", "extra" }
 function ns.PlannerHooksFor(ctx, point)
     local own = type(ctx) == "table" and type(ctx.hooks) == "table" and ctx.hooks[point]
     return type(own) == "table" and own or hooks[point] or NONE

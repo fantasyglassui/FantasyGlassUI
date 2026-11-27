@@ -149,6 +149,7 @@ get two of everything.
 | `/fgui home` | Which way home the home key would use |
 | `/fgui pet` | A random favorite pet (/fgui mount for a mount) |
 | `/fgui backup` | The backups of your settings, made before each update, once a day and before a reset; click one to see how to put it back |
+| `/fgui data` | What each part of the add-on keeps, roughly how big, and a tidy-up that asks before it removes anything |
 | `/fgui history` | What you changed in this profile, and when; click a change to undo it |
 | `/fgui blocked` | Anything the game refused to let the add-on do, and where |
 | `/fgui recap` | Your last week on every character: gold, time played, levels, raids and dungeons, best loot ("this": this week so far) |

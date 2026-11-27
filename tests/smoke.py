@@ -26465,6 +26465,167 @@ try("13.0 fix M3: /fgui check names the plan and a trip in words", function()
     ns.root.guideState = keep
     if not ok then error(err, 0) end
 end)
+-- 13.5 seams tests: begin
+do
+local function ok(cond, msg) if not cond then error(msg, 2) end end
+try("13.5 seams: the run kinds", function()
+    local d = ns.GuideParseLine("dungeon 36 | Run The Deadmines @ 1436:43,72")
+    ok(d and d.kind == "dungeon" and d.instance == 36 and d.text == "Run The Deadmines" and d.map == 1436, "dungeon line")
+    ok(ns.GuideLine(d) == "dungeon 36 | Run The Deadmines @ 1436:43.0,72.0", "written back")
+    local g = ns.GuideParseLine("group 36 | Find a group for The Deadmines @ 1436:43,72")
+    ok(g.kind == "group" and g.instance == 36, "group line")
+    ok(ns.GuideParseLine("group | Find a group").kind == "group", "the number is optional")
+    ok(ns.GuideLine(ns.GuideParseLine("group | Find a group")) == "group | Find a group", "no number: none written")
+    local _, why = ns.GuideParseLine("raid 5 | x")
+    ok(type(why) == "string" and why:find("explore, gather, group or dungeon.", 1, true), "the parse sentence names the run kinds")
+    ok(ns.GuideStepBase({ kind = "dungeon" }) == ns:Tr("Run the dungeon") and ns.GuideStepBase(g) == "Find a group for The Deadmines", "the step's words")
+    local n = 2
+    local w = { groupSize = function() return n end, ranDungeon = function() return false end }
+    ok(not ns.GuideStepDone(g, w), "two in the group: not yet")
+    n = 3; ok(ns.GuideStepDone(g, w), "three: done")
+    ok(not ns.GuideStepDone(d, w), "the run: not yet")
+    w.ranDungeon = function() return true end; ok(ns.GuideStepDone(d, w), "the run: done")
+    ok(ns.GUIDE_RUN_KINDS.group and ns.GUIDE_RUN_KINDS.dungeon, "run kinds")
+    ok(ns.guideKinds.group[1] == "P" and ns.guideKinds.group[3] == "Find a group" and ns.guideKinds.dungeon[1] == "D" and ns.guideKinds.dungeon[3] == "Run the dungeon", "the kinds")
+end)
+try("13.5 seams: the run step", function()
+    local key = ns:CharKey()
+    local keep = { state = ns.root.guideState, inst = env.IsInInstance, info = env.GetInstanceInfo, members = env.GetNumGroupMembers,
+                   dead = env.UnitIsDeadOrGhost, on = ns.db.questGuide, keepRoute = ns.db.plannerKeepRoute }
+    local fine, err = pcall(function()
+        local inside, id, members, dead = false, nil, 1, false
+        env.IsInInstance = function() return inside, inside and "party" or "none" end
+        env.GetInstanceInfo = function() return "Die Todesminen", inside and "party" or "none", 1, "Normal", 5, 0, false, id end
+        env.GetNumGroupMembers = function() return members end
+        env.UnitIsDeadOrGhost = function() return dead end
+        ns.db.questGuide, ns.db.plannerKeepRoute = true, true
+        ns.root.guideState = {}
+        local function run(kind, text) return { kind = kind, instance = 36, zone = 1581, dungeon = "The Deadmines", stopKey = "dungeon:1581:" .. kind, text = text, map = 1436, x = 43, y = 72 } end
+        local plan = { name = ns.GUIDE_PLANNED, steps = { run("group", "Find a group"), run("dungeon", "Run it"), { kind = "note", text = "after" } } }
+        plan.steps[2].stopKey = "dungeon:1581:run"
+        ns:GuideSetPlan(plan, {})
+        local function at() return ns.GuideState().at end
+        ok(at() == 1, "outside, alone: the group step: " .. tostring(at()))
+        local w = ns:GuideWorld()
+        ok(w.groupSize() == 1, "the group's size")
+        local a, b, c = w.inInstance()
+        ok(a == false and b == nil and c == nil, "outside: not in an instance")
+        inside, id = true, 36
+        a, b, c = w.inInstance()
+        ok(a == true and b == 36 and c == "Die Todesminen", "inside: the id and the name")
+        ns:GuideAdvance()
+        ok(ns.GuideState().inside == 36 and at() == 2, "inside: the group step done, the mark kept: " .. tostring(ns.GuideState().inside) .. " " .. tostring(at()))
+        ns:GuideAdvance(); ok(at() == 2, "still inside: the run goes on")
+        id = 48; ns:GuideAdvance(); ok(ns.GuideState().inside == 36, "another instance: the mark stays")
+        ok(at() == 3, "in another instance: out of this one, so the run is done")
+        ns.GuideState().at = 2                                    -- (back on the run, for the rest)
+        id = 36; ns:GuideAdvance(); ok(at() == 2, "back inside: the run goes on")
+        -- /reload inside: the mark is in the saved state, and a fresh read of it sees it
+        ok(type(ns.root.guideState[key]) == "table" and ns.root.guideState[key].inside == 36, "saved with the guide state")
+        local copy = {}
+        for k, v in pairs(ns.root.guideState[key]) do copy[k] = v end
+        ns.root.guideState[key] = copy
+        inside = false
+        ok(ns:GuideWorld().ranDungeon(plan.steps[2]) == true, "after a reload: the mark is read")
+        copy.inside = nil
+        ok(ns:GuideWorld().ranDungeon(plan.steps[2]) == false, "no mark: not run")
+        copy.inside = 36
+        dead = true; ns:GuideAdvance(); ok(at() == 2, "outside, a ghost: not left yet")
+        dead = false; ns:GuideAdvance(); ok(at() == 3, "outside, alive: the run is done: " .. tostring(at()))
+        ns.GuideState().inside = nil
+        ok(ns.GuideStepDone(run("group"), { groupSize = function() return 0 end }) == false, "no mark, alone: not done")
+    end)
+    if ns.PlannerStop then ns:PlannerStop() end
+    ns.root.guideState = keep.state
+    env.IsInInstance, env.GetInstanceInfo, env.GetNumGroupMembers, env.UnitIsDeadOrGhost = keep.inst, keep.info, keep.members, keep.dead
+    ns.db.questGuide, ns.db.plannerKeepRoute = keep.on, keep.keepRoute
+    if not fine then error(err, 0) end
+end)
+try("13.5 seams: extra hubs", function()
+    local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D") }
+    local fine, err = pcall(function()
+        local cm = {}
+        for k, v in pairs(saved.map) do cm[k] = v end
+        cm.GetWorldPosFromMapPos = function(map, v) if map == 1436 then return 0, { x = v.x * 1000, y = v.y * 1000 } end end
+        env.C_Map = cm
+        env.CreateVector2D = function(x, y) return { x = x, y = y } end
+        if ns.PlannerPosReset then ns.PlannerPosReset() end
+        local recs = { [9851] = { id = 9851, name = "Quest 9851", level = 10, minLevel = 1, xp = 900,
+            starts = { { map = 1436, x = 40, y = 40 } }, ends = { { map = 1436, x = 40, y = 40 } },
+            objectives = { { kind = "kill", count = 4, countKnown = true, mobLevel = 10, spots = { { map = 1436, x = 42, y = 42 } } } },
+            pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true } }
+        local function plan(ids)
+            return ns.PlannerRoute({ source = { kind = "test", ids = function() return ids end, quest = function(id) return recs[id] end },
+                level = 10, group = "solo", inGroup = false, speed = 7, faction = "Alliance", done = function() return false end, onQuest = function() return false end,
+                here = { map = 1436, x = 40, y = 40 }, crossings = {}, flights = {}, learnFlights = false, pace = 1, flightTime = function() return nil end })
+        end
+        local function lay(state, hub, steps, n) steps[#steps + 1] = { kind = "note", text = "X", hub = n }; return hub.seconds, hub.xp, 0 end
+        local function extra(xp, seconds, noLay) return { xp = xp, seconds = seconds, map = 1436, x = 45, y = 45, quests = {}, lay = (not noLay) and lay or nil } end
+        local function hasX(g) for _, s in ipairs(g.steps) do if s.text == "X" then return true end end return false end
+        local function same(g1, s1, g2, s2)
+            return ns.GuideText(g1) == ns.GuideText(g2) and s1.xp == s2.xp and s1.seconds == s2.seconds and #s1.taken == #s2.taken and s1.zone == s2.zone and s1.empty == s2.empty
+        end
+        local g0, s0 = plan({ 9851 })
+        ok(#g0.steps > 0 and s0.taken[1] and s0.zone == 1436, "the plan without extras")
+        local R = s0.taken[1].rate
+        local sawExtra = false
+        ns.PlannerHook("rank", "t135", function(ranked) for _, e in ipairs(ranked) do if e.extra and e.first == 0 and e.score == e.rate then sawExtra = true end end end)
+        local give
+        ns.PlannerHook("extra", "t135", function(c, state, zone) return give end)
+        give = { extra(R * 3600 * 10, 3600) }
+        local g, s = plan({ 9851 })
+        ok(g.steps[1].text == "X" and s.taken[1].extra == true, "a better extra: taken first")
+        ok(sawExtra, "the rank hooks see it")
+        give = { extra(1, 36000) }
+        g, s = plan({ 9851 })
+        ok(g.steps[1].text ~= "X" and not hasX(g) and s.taken[1] and not s.taken[1].extra and not s.taken[2], "a worse extra: the hub's steps, and no round for the extra alone")
+        give = { extra(1000, 600) }
+        g, s = plan({})
+        ok(#g.steps == 1 and g.steps[1].text == "X" and s.empty == false and s.zone == nil and s.taken[1] and s.taken[1].extra == true, "no candidates: the plan is the extra")
+        give = { extra(R * 3600 * 10, 3600, true), { xp = "a lot", seconds = 60, lay = lay }, "junk" }
+        g, s = plan({ 9851 })
+        ok(same(g, s, g0, s0) and not hasX(g), "an entry with no lay, or no numbers: ignored")
+        give = nil
+        g, s = plan({ 9851 })
+        ok(same(g, s, g0, s0), "a hook giving nothing: the same plan")
+        ns.PlannerHook("extra", "t135", nil)
+        g, s = plan({ 9851 })
+        ok(same(g, s, g0, s0), "no extra hook: the same plan")
+        local _, e = plan({})
+        ok(e.empty == true, "no candidates, no extras: empty")
+        local found = false
+        for _, point in ipairs(ns.PLANNER_HOOK_POINTS) do if point == "extra" then found = true end end
+        ok(found, "hook point")
+    end)
+    ns.PlannerHook("extra", "t135", nil); ns.PlannerHook("rank", "t135", nil)
+    env.C_Map = saved.map; rawset(env, "CreateVector2D", saved.vec)
+    if ns.PlannerPosReset then ns.PlannerPosReset() end
+    if not fine then error(err, 0) end
+end)
+try("13.5 seams: shared entries", function()
+    ok(ns.defaults.plannerDungeons == true, "the switch is on by default")
+    ok(ns.whatsNew[1][1] == "13.5.0" and #ns.whatsNew[1][2] == 3, "what's new for 13.5")
+    ok(type(ns.toolCommands.data) == "function", "/fgui data")
+    ok(ns:DataCommand("") == 0, "the stand-in")
+    local help = false
+    for _, l in ipairs(ns.helpLines) do if l[1] == "/fgui data" then help = true end end
+    ok(help, "the help line")
+    ok(sources["Data.lua"] and sources["planner/PlannerDungeons.lua"] and sources["planner/PlannerClass.lua"], "the new files load")
+end)
+end
+-- 13.5 seams tests: end
+--
+-- 13.5 A dungeon tests: begin
+-- 13.5 A dungeon tests: end
+--
+-- 13.5 B class tests: begin
+-- 13.5 B class tests: end
+--
+-- 13.5 C speed tests: begin
+-- 13.5 C speed tests: end
+--
+-- 13.5 D data tests: begin
+-- 13.5 D data tests: end
 -- release 13 fix tests: end
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)

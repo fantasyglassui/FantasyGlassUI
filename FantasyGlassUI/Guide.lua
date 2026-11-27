@@ -29,10 +29,15 @@ ns.guideKinds = {
     train = { "T", { 0.85, 0.7, 1 }, "Learn from your trainer" },     vendor = { "V", { 0.85, 0.7, 1 }, "Visit the vendor" },
     mail = { "M", { 0.85, 0.7, 1 }, "Check your mail" },
     explore = { "E", { 0.5, 1, 0.7 }, "Explore" },  gather = { "G", { 0.5, 1, 0.7 }, "Gather" },
+    -- a dungeon run (PlannerDungeons.lua): find a group, then run it. step.instance (the instance id), step.zone (the
+    -- dungeon's area id), step.dungeon (its name), step.stopKey ("dungeon:<zone>:group" / "dungeon:<zone>:run")
+    group = { "P", { 0.85, 0.7, 1 }, "Find a group" },
+    dungeon = { "D", { 0.85, 0.7, 1 }, "Run the dungeon" },
 }
 -- Stops done when their window closes while they are the step you are on (Planner.lua ticks them).
 ns.GUIDE_WINDOW_KINDS = { train = "TRAINER_CLOSED", vendor = "MERCHANT_CLOSED", mail = "MAIL_CLOSED" }
 ns.GUIDE_STOP_KINDS = { train = true, vendor = true, mail = true, explore = true, gather = true }   -- (the kinds a planner stop may be)
+ns.GUIDE_RUN_KINDS = { group = true, dungeon = true }   -- (a dungeon run's two steps: the inside mark, st.inside, is kept while one is up)
 ns.GUIDE_PLANNED = "\1planned"          -- the planned route's name: one no saved guide can have (guide names come from a line of text)
 ns.GUIDE_TRIP = "\1trip"                -- a trip followed for a while (a gold idea's Go): the plan waits, and comes back after it
 local QUEST_KIND = { accept = true, turnin = true, ["do"] = true }
@@ -62,7 +67,7 @@ function ns.GuideParseLine(line)
     if text and ns.Trim(text) ~= "" then step.text = ns.Trim(text) end
     local kind, rest = left:match("^(%S+)%s*(.*)$")
     kind = kind and kind:lower()
-    if not kind or not ns.guideKinds[kind] then return nil, "A step starts with accept, turnin, do, goto, note, level, hearth, fly, learnflight, sail, bind, train, vendor, mail, explore or gather." end
+    if not kind or not ns.guideKinds[kind] then return nil, "A step starts with accept, turnin, do, goto, note, level, hearth, fly, learnflight, sail, bind, train, vendor, mail, explore, gather, group or dungeon." end
     step.kind = kind
     rest = ns.Trim(rest)
     if QUEST_KIND[kind] then
@@ -87,6 +92,10 @@ function ns.GuideParseLine(line)
         if not crossing then return nil, "Sail needs the crossing's name." end
         step.crossing = crossing
         if more ~= "" and not step.text then step.text = more end
+    elseif ns.GUIDE_RUN_KINDS[kind] then                    -- (the instance's number is optional)
+        local id, more = rest:match("^(%d+)%s*(.*)$")
+        if id then step.instance = tonumber(id); rest = more end
+        if rest ~= "" and not step.text then step.text = rest end
     elseif rest ~= "" and not step.text then
         step.text = rest
     end
@@ -115,6 +124,7 @@ function ns.GuideLine(step)
     if step.level then out = out .. " " .. step.level end
     if step.node then out = out .. " " .. step.node end
     if step.crossing then out = out .. " " .. step.crossing end
+    if step.instance and ns.GUIDE_RUN_KINDS[step.kind] then out = out .. " " .. step.instance end
     if step.text then out = out .. " | " .. step.text end
     if step.x and step.y then
         out = out .. " @ " .. (step.map and (step.map .. ":") or "") .. format("%.1f,%.1f", step.x, step.y)
@@ -217,7 +227,7 @@ function ns.GuideStepBase(step)
     if k == "learnflight" then return step.text or ns:Tr("Learn the flight point") end
     if k == "sail" then return step.text or ns:Tr("Take the boat") end
     if k == "bind" then return step.text or ns:Tr("Set your hearthstone here") end
-    if ns.GUIDE_STOP_KINDS[k] then return step.text or ns:Tr(ns.guideKinds[k][3]) end   -- (a stop's words say what it is)
+    if ns.GUIDE_STOP_KINDS[k] or ns.GUIDE_RUN_KINDS[k] then return step.text or ns:Tr(ns.guideKinds[k][3]) end   -- (a stop's words say what it is)
     return step.text or ""
 end
 
@@ -257,6 +267,13 @@ function ns.GuideStepDone(step, world, ticked)
     if k == "sail" then return Ask1(world.crossed, step.crossing) or Landed(ns.GuideFarDock(step)) end   -- (or at the far dock: a crossing with no loading screen, after a /reload on board)
     if k == "bind" then return world.bind ~= nil and world.bind == step.text end
     if k == "explore" or k == "gather" then return step.x ~= nil and Ask1(world.near, step) end   -- (passing it is enough)
+    if k == "group" then                                      -- (three in your group, or already inside the dungeon)
+        local n = type(world.groupSize) == "function" and tonumber(world.groupSize()) or 0
+        if n and n >= 3 then return true end
+        local st = ns.GuideState and ns.GuideState()
+        return step.instance ~= nil and type(st) == "table" and st.inside == step.instance
+    end
+    if k == "dungeon" then return Ask1(world.ranDungeon, step) end   -- (been inside, and out again alive)
     return false                                              -- (train, vendor, mail: ticked when the window closes)
 end
 -- The first step from `from` on that is not done (one past the end when all are).
@@ -291,6 +308,27 @@ local function Planner(fn, arg)
     return ok and v == true
 end
 local function QL() return C_QuestLog or {} end
+local State                                         -- (below, with the guide's state)
+-- How many are in your group (0 when it can't be read).
+local function GroupSize()
+    if type(GetNumGroupMembers) ~= "function" then return 0 end
+    local ok, n = pcall(GetNumGroupMembers)
+    if not ok or type(n) ~= "number" or Secret(n) then return 0 end
+    return n
+end
+-- Are you in a dungeon or raid instance: true, its instance id and its name (GetInstanceInfo's name and 8th value).
+local function InInstance()
+    if type(IsInInstance) ~= "function" then return false, nil, nil end
+    local ok, inside, kind = pcall(IsInInstance)
+    if not ok or Secret(inside) or Secret(kind) or inside ~= true or not (kind == "party" or kind == "raid") then return false, nil, nil end
+    if type(GetInstanceInfo) ~= "function" then return true, nil, nil end
+    local got = { pcall(GetInstanceInfo) }
+    if not got[1] then return true, nil, nil end
+    local name, id = got[2], got[9]
+    if Secret(name) or type(name) ~= "string" then name = nil end
+    if Secret(id) or type(id) ~= "number" then id = nil end
+    return true, id, name
+end
 function ns:GuideWorld()
     local level = UnitLevel and UnitLevel("player")
     local bind
@@ -317,6 +355,15 @@ function ns:GuideWorld()
         end,
         level = (type(level) == "number" and not Secret(level)) and level or 0,
         hearthed = function(step) return ns.GuideHearthed(step, theWorld.bind) end,
+        groupSize = function() return GroupSize() end,
+        inInstance = function() return InInstance() end,
+        ranDungeon = function(step)                           -- (inside it once, out of it now, and not a ghost: a release at
+            local st = State()                                --  the graveyard is not leaving)
+            if type(step) ~= "table" or step.instance == nil or not (type(st) == "table" and st.inside == step.instance) then return false end
+            local inside, id = InInstance()
+            if inside and id == step.instance then return false end
+            return not ns.Yes(UnitIsDeadOrGhost and UnitIsDeadOrGhost("player"))
+        end,
         near = function(step, radius)
             if not (step.x and step.y and ns.MapPosition and ns.WayArrow) then return false end
             if ns.Yes(UnitIsDeadOrGhost and UnitIsDeadOrGhost("player")) then return false end   -- (a ghost running to its body passes places, never reaches them)
@@ -424,7 +471,7 @@ function ns:GuideDelete(name)
     if mine and mine.name == name and not ns.builtinGuides[name] then state[ns:CharKey()] = nil end
     return true
 end
-local function State()
+State = function()
     local _, state = Store()
     return state[ns:CharKey()]
 end
@@ -456,6 +503,7 @@ local FailedCheck, NotHere                          -- (the guide's events and i
 
 -- Seams (what the planner uses of the guide):
 --   GUIDE_PLANNED
+--   GUIDE_RUN_KINDS
 --   GUIDE_STOP_KINDS
 --   GUIDE_TRIP
 --   GUIDE_WINDOW_KINDS
@@ -464,6 +512,7 @@ local FailedCheck, NotHere                          -- (the guide's events and i
 --   GuideFollow
 --   GuideGet
 --   GuideHere
+--   GuideKeepRoute
 --   GuideLine
 --   GuideList
 --   GuideMenu
@@ -488,6 +537,7 @@ local FailedCheck, NotHere                          -- (the guide's events and i
 --   GuideSetPlan
 --   GuideShowPanel
 --   GuideSkip
+--   GuideSkipQuest
 --   GuideSkipped
 --   GuideSkippedText
 --   GuideStartTrip
@@ -753,7 +803,13 @@ function ns:GuideAdvance(quiet)
     st.ticked = type(st.ticked) == "table" and st.ticked or {}
     local skipped = type(st.skipped) == "table" and st.skipped or nil
     local before = st.at or 1
-    st.at = ns.GuideNext(guide.steps, before, ns:GuideWorld(), st.ticked, skipped)
+    local world = ns:GuideWorld()
+    local cur = guide.steps[before]
+    if st.name == ns.GUIDE_PLANNED and type(cur) == "table" and ns.GUIDE_RUN_KINDS[cur.kind] and cur.instance ~= nil then
+        local inside, id = world.inInstance()             -- (inside the step's dungeon: marked, saved with the guide state)
+        if inside == true and id == cur.instance then st.inside = id end
+    end
+    st.at = ns.GuideNext(guide.steps, before, world, st.ticked, skipped)
     local done = false                                        -- (passed a step that was done, not only skipped ones)
     for i = before, st.at - 1 do
         if not (skipped and skipped[i]) then done = true end

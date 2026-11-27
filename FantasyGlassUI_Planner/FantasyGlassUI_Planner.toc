@@ -17,6 +17,8 @@ PlannerRoute.lua
 PlannerStops.lua
 PlannerPath.lua
 PlannerAdvice.lua
+PlannerDungeons.lua
+PlannerClass.lua
 PlannerMap.lua
 PlannerPages.lua
 PlannerPace.lua
