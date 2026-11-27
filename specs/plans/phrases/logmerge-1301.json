@@ -1,0 +1,42 @@
+{
+  "Planned: %s, level %s to %s": [
+    "Geplant: %s, Stufe %s bis %s",
+    "Prévu : %s, niveau %s à %s",
+    "Planificado: %s, nivel %s a %s",
+    "План: %s, уровень с %s до %s",
+    "Planejado: %s, nível %s a %s",
+    "Pianificato: %s, livello da %s a %s",
+    "계획: %s, 레벨 %s에서 %s까지",
+    "规划：%s，等级 %s 到 %s"
+  ],
+  "Level %s to %s": [
+    "Stufe %s bis %s",
+    "Niveau %s à %s",
+    "Nivel %s a %s",
+    "Уровень с %s до %s",
+    "Nível %s a %s",
+    "Livello da %s a %s",
+    "레벨 %s에서 %s까지",
+    "等级 %s 到 %s"
+  ],
+  "Zone: %d of %d quests handed in": [
+    "Zone: %d von %d Quests abgegeben",
+    "Zone : %d quêtes rendues sur %d",
+    "Zona: %d de %d misiones entregadas",
+    "Зона: сдано %d из %d заданий",
+    "Zona: %d de %d missões entregues",
+    "Zona: %d missioni consegnate su %d",
+    "지역: 퀘스트 %d/%d개 완료 보고",
+    "区域：已交 %d/%d 个任务"
+  ],
+  "(no place known: follow the game's quest marker)": [
+    "(kein Ort bekannt: folge der Questmarkierung des Spiels)",
+    "(lieu inconnu : suivez le marqueur de quête du jeu)",
+    "(lugar desconocido: sigue el marcador de misión del juego)",
+    "(место неизвестно: следуйте метке задания в игре)",
+    "(local desconhecido: siga o marcador de missão do jogo)",
+    "(luogo sconosciuto: segui l'indicatore di missione del gioco)",
+    "(위치를 알 수 없음: 게임의 퀘스트 표시를 따라가세요)",
+    "（位置未知：请跟随游戏的任务标记）"
+  ]
+}

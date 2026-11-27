@@ -16,6 +16,7 @@ local format = string.format
 -- line; the full travel (flights, the hearthstone, boats) is only worked out between hubs.
 ------------------------------------------------------------------------------------------
 ns.PLANNER_HUB_YARDS = 150
+ns.PLANNER_ON_WAY_YARDS = 20             -- a new quest's giver this far off the way to a hand-in is taken on the way
 ns.PLANNER_HORIZON = 2
 ns.PLANNER_LEARN_SECONDS = 120
 ns.PLANNER_REPICK_LEVELS = 3
@@ -87,16 +88,6 @@ local function Walk(a, b, ctx)
     return d < huge and d / Speed(ctx) or 0
 end
 
--- Where the quest's place in a hub is: its giver (when it is still to be picked up), else its hand-in.
-local function Anchor(rec, ctx)
-    local onQuest = ctx.onQuest and ctx.onQuest(rec.id)
-    if not onQuest then
-        local s = Nearest(rec.starts)
-        if s then return s, true end
-    end
-    return Nearest(rec.ends), false
-end
-
 -- The objective spot to go to for a quest: the one nearest `from`.
 local function DoSpot(rec, from)
     local spots = {}
@@ -104,6 +95,26 @@ local function DoSpot(rec, from)
         for _, s in ipairs(o.spots or {}) do spots[#spots + 1] = s end
     end
     return Nearest(spots, from)
+end
+
+-- Is this quest in your log and ready to hand in (its objectives done)? A record from the log says so itself
+-- (rec.complete); else the game, through ctx.ready. Such a quest has nothing left to do: only its hand-in.
+local function Ready(ctx, q)
+    if q.complete == true then return true end
+    return type(ctx.ready) == "function" and ctx.onQuest and ctx.onQuest(q.id) and ctx.ready(q.id) == true or false
+end
+
+-- Where the quest's place in a hub is: its giver (when it is still to be picked up), else its hand-in; a quest from
+-- the log with no hand-in known yet: where the game says its objectives are.
+local function Anchor(rec, ctx)
+    local onQuest = ctx.onQuest and ctx.onQuest(rec.id)
+    if not onQuest then
+        local s = Nearest(rec.starts)
+        if s then return s, true end
+    end
+    local fin = Nearest(rec.ends)
+    if not fin and rec.fromLog and onQuest then return DoSpot(rec), false end
+    return fin, false
 end
 
 -- Is this quest one with a clock on it? In your log: the game gives it a time limit. Not yet taken: a time
@@ -159,14 +170,15 @@ local function HubLoop(hub, ctx)
         for k, v in pairs(type(before) == "table" and before or {}) do copy[k] = v end
         ctx.repLeft = copy
     end
-    local away = {}
+    local away, ready = {}, {}
     for _, q in ipairs(hub.quests) do
         ns.PlannerYield()
         if HandedInAway(q, hub) then away[q.id] = true end
+        if Ready(ctx, q) then ready[q.id] = true end
         if not away[q.id] then
             xp = xp + ns.PlannerQuestXP(q, ctx)
             if wanted then DrawRep(ctx, q) end
-            t = t + ns.PlannerQuestTime(q, ctx)
+            if not ready[q.id] then t = t + ns.PlannerQuestTime(q, ctx) end   -- (ready to hand in: nothing left to do)
         end
         if IsTimed(ctx, q) then
             if away[q.id] and hub.take[q.id] then
@@ -204,13 +216,45 @@ local function HubLoop(hub, ctx)
             if q.haveItem then held[#held + 1] = e else accepts[#accepts + 1] = e end
         end
     end
-    accepts = Sweep(accepts, base)
+    -- quests ready to hand in: their hand-ins first, nearest next from the hub, each after the new quests whose giver is
+    -- on the way to it (a detour of at most PLANNER_ON_WAY_YARDS); the rest of the hub after them (hub.lead)
+    local lead, from = {}, base
+    do
+        local first = {}
+        for _, q in ipairs(rest) do
+            if ready[q.id] and not away[q.id] then
+                local spot = Nearest(q.ends, from)
+                first[#first + 1] = { rec = q, spot = spot }
+            end
+        end
+        for _, e in ipairs(Sweep(first, from)) do
+            if e.spot then
+                local direct = Yards(from, e.spot)
+                local onWay = {}
+                for i = #accepts, 1, -1 do
+                    local a = accepts[i]
+                    if a.spot and direct < huge and Yards(from, a.spot) + Yards(a.spot, e.spot) - direct <= ns.PLANNER_ON_WAY_YARDS then
+                        onWay[#onWay + 1] = a
+                        table.remove(accepts, i)
+                    end
+                end
+                for _, a in ipairs(Sweep(onWay, from)) do
+                    lead[#lead + 1] = { kind = "accept", rec = a.rec, spot = a.spot }
+                    t = t + Walk(from, a.spot, ctx) + HANDLE; from = a.spot
+                end
+                t = t + Walk(from, e.spot, ctx); from = e.spot
+            end
+            t = t + HANDLE
+            lead[#lead + 1] = { kind = "turnin", rec = e.rec, spot = e.spot }
+        end
+    end
+    accepts = Sweep(accepts, from)
     for i = #held, 1, -1 do table.insert(accepts, 1, held[i]) end
-    local at = accepts[1] and accepts[1].spot or base
+    local at = accepts[1] and accepts[1].spot or from
     for _, a in ipairs(accepts) do t = t + Walk(at, a.spot, ctx) + HANDLE; at = a.spot end
     for _, q in ipairs(rest) do
         ns.PlannerYield()
-        if #(q.objectives or {}) > 0 then dos[#dos + 1] = { rec = q, spot = DoSpot(q, hub) } end
+        if #(q.objectives or {}) > 0 and not ready[q.id] then dos[#dos + 1] = { rec = q, spot = DoSpot(q, hub) } end
     end
     dos = Sweep(dos, at)
     for _, d in ipairs(dos) do
@@ -218,7 +262,7 @@ local function HubLoop(hub, ctx)
     end
     for _, q in ipairs(rest) do
         ns.PlannerYield()
-        if not away[q.id] then turnins[#turnins + 1] = { rec = q, spot = Nearest(q.ends, at) } end
+        if not away[q.id] and not ready[q.id] then turnins[#turnins + 1] = { rec = q, spot = Nearest(q.ends, at) } end
     end
     turnins = Sweep(turnins, at)
     for _, e in ipairs(turnins) do
@@ -226,6 +270,7 @@ local function HubLoop(hub, ctx)
         t = t + HANDLE
     end
     hub.accepts, hub.dos, hub.turnins, hub.timed, hub.last, hub.away = accepts, dos, turnins, runs, at, away
+    hub.lead, hub.ready = lead, ready
     hub.xp, hub.seconds = xp, max(t, 1)
 end
 
@@ -733,6 +778,22 @@ local function HubSteps(state, hub, steps, inn, n)
         end
     end
     if #runs > 0 then Held() end
+    for _, e in ipairs(hub.lead or {}) do                     -- (hand-ins ready now, and the givers on the way to them)
+        if gone[e.rec.id] or started[e.rec.id] then
+            -- (left out above)
+        elseif Go(e.spot) then
+            if e.kind == "accept" then
+                Accept(e.rec, e.spot)
+            else
+                local s = QuestStep("turnin", e.rec, e.spot)
+                s.hub = n
+                steps[#steps + 1] = s
+                t = t + HANDLE
+            end
+        else
+            gone[e.rec.id] = true
+        end
+    end
     for _, a in ipairs(hub.accepts) do
         if started[a.rec.id] then
             -- (done above)
@@ -773,7 +834,7 @@ local function HubSteps(state, hub, steps, inn, n)
     for _, q in ipairs(hub.quests) do
         if not gone[q.id] and not (hub.away and hub.away[q.id]) then
             kept = kept + 1
-            t = t + ns.PlannerQuestTime(q, state.ctx)
+            if not (hub.ready and hub.ready[q.id]) then t = t + ns.PlannerQuestTime(q, state.ctx) end
             local _, extra, real = ns.PlannerQuestXP(q, state.ctx)
             xp = xp + real                                   -- (the forecast is real experience: the bonus only scored the hubs)
             local left = tonumber(state.ctx.restedLeft)
@@ -856,6 +917,55 @@ end
 function ns.PlannerTripState(ctx) return TripState(ctx, ctx, Here(ctx)) end
 function ns.PlannerTrip(state, dest, steps, between) return Trip(state, dest, steps, between) end
 
+-- Quests from your log the game gives no place for (WoW: Forever's own content, often): kept in the plan rather than
+-- left out, as steps with no place (the game's own quest marks and the panel's count of the log guide you there).
+-- Ruling: one still being done is a Do step (the panel shows the log's progress under it) and then its hand-in, after
+-- every step that has a place, so it never pulls the route off its way; one ready to hand in is a Turn in step at the
+-- start of the zone's steps (after the way into the zone), since it only needs a visit to its giver.
+local function Placeless(ctx, candidates)
+    local out = {}
+    if type(ctx.onQuest) ~= "function" then return out end
+    for _, rec in ipairs(candidates) do
+        ns.PlannerYield()
+        if rec.fromLog and ctx.onQuest(rec.id) then
+            local spot = Anchor(rec, ctx)
+            if not (spot and Pos(spot)) then out[#out + 1] = rec end
+        end
+    end
+    return out
+end
+local function LayPlaceless(guide, summary, ctx, c, list, zone)
+    if #list == 0 then return end
+    local late, early, xp, t = {}, {}, 0, 0
+    for _, rec in ipairs(list) do
+        if Ready(c, rec) then
+            local s = QuestStep("turnin", rec, nil)
+            s.why = { noPlace = true }
+            early[#early + 1] = s
+        else
+            local d = QuestStep("do", rec, nil)
+            d.why = { noPlace = true }
+            late[#late + 1] = d
+            local s = QuestStep("turnin", rec, nil)
+            s.why = { noPlace = true }
+            late[#late + 1] = s
+            t = t + ns.PlannerQuestTime(rec, c)
+        end
+        local _, _, real = ns.PlannerQuestXP(rec, c)
+        xp = xp + real
+    end
+    local at = #guide.steps + 1                      -- (the start of the zone's steps: the first step of a hub on the zone's map)
+    for i, st in ipairs(guide.steps) do
+        local taken = st.hub and summary.taken and summary.taken[st.hub]
+        if taken and (zone == nil or taken.map == zone) then at = i; break end
+    end
+    if not zone then at = 1 end
+    for i, st in ipairs(early) do table.insert(guide.steps, at + i - 1, st) end
+    for _, st in ipairs(late) do guide.steps[#guide.steps + 1] = st end
+    summary.xp, summary.seconds = (summary.xp or 0) + floor(xp + 0.5), (summary.seconds or 0) + floor(t + 0.5)
+    summary.toLevel = ToLevel(ctx, summary.xp)
+end
+
 local function Build(ctx, candidates, skipped)
     local hooks = type(ctx.hooks) == "table" and ctx.hooks or nil    -- (ns.PlannerContext's copies; else the hooks as they are now, kept for this Build:
     if not hooks then                                                --  a hook added or removed meanwhile waits for the next plan)
@@ -879,6 +989,7 @@ local function Build(ctx, candidates, skipped)
             end
         end
         summary.hubs = HubList(hubs)
+        LayPlaceless(guide, summary, ctx, c, Placeless(c, candidates), nil)
         return Finish(hooks, guide, summary, ctx, c)
     end
     summary.moved = c.movedByMap and c.movedByMap[zone] or nil     -- the level a hub (in this zone) where you died twice is planned again at
@@ -981,6 +1092,7 @@ local function Build(ctx, candidates, skipped)
     if ns.PlannerHoldTurnins then ns.PlannerHoldTurnins(guide, summary, ctx) end   -- (hand-ins held for the trainer's town)
     if ns.PlannerPathExtras then ns.PlannerPathExtras(guide, summary, ctx) end     -- (unexplored spots and nodes on the way: PlannerPath.lua)
     summary.hubs = HubList(hubs)                     -- (every hub worked out, on every map: the world map's marks)
+    LayPlaceless(guide, summary, ctx, c, Placeless(c, candidates), zone)   -- (quests from your log with no place: see Placeless)
     return Finish(hooks, guide, summary, ctx, c, taken, tctx)
 end
 
@@ -1344,6 +1456,12 @@ function ns.PlannerContext()
             return ns.PlannerServerId ~= nil and type(rec) == "table" and ns.PlannerServerId(rec.id, rec.name, rec.level, rivals) ~= nil
         end,
         mappedId = ns.PlannerMappedId,   -- (a quest in the log with a clock on it)
+        -- (in your log and ready to hand in: the route hands it in before nearby new quests)
+        ready = function(id)
+            local sid = ServerId(id)
+            if not sid then return false end
+            return ns.Is(Call(QL.ReadyForTurnIn, sid), true) or ns.Is(Call(QL.IsComplete, sid), true)
+        end,
         itemCount = function(id) return Num(Call(C_Item and C_Item.GetItemCount, id)) or 0 end,
         deaths = db.plannerDeaths ~= false and d and type(d.deaths) == "table" and #d.deaths > 0 and d.deaths or nil,
         repGoals = next(ns.PlannerRepGoals()) and ns.PlannerRepGoals() or nil,
