@@ -27201,11 +27201,16 @@ local SPEED_LIMITS_MS = {
     questie = 60,         -- 14.0 / 14.4, 14.0 / 14.9, 12.8 / 13.4: 4 x 14.9
     login = 440,          -- 87.3 / 103.2, 93.8 / 109.1, 92.3 / 100.2: 4 x 109.1
     plannerWindow = 80,   -- 18.5 / 17.3, 14.5 / 19.7, 18.6 / 10.8: 4 x 19.7
-    goldWindow = 50,      -- 9.2 / 8.1, 12.4 / 8.9, 9.1 / 8.8: 4 x 12.4
+    goldWindow = 70,      -- 9.2 / 8.1, 12.4 / 8.9, 9.1 / 8.8 (was 50, 4 x 12.4); merged: 8.6 / 15.2, 9.5 / 8.4, 8.9 / 8.3: 4 x 15.2, up to 10
     settings = 490,       -- 116.3 / 111.5, 116.1 / 121.2, 119.3 / 110.6: 4 x 121.2
+    -- Measured again with all four 13.5 parts merged (27 Nov 2026, three runs): plan 17.7 / 17.9, 19.5 / 17.8, 18.5 / 17.4;
+    -- questie 12.5 / 14.2, 12.5 / 12.5, 12.9 / 12.7; login 92.2 / 99.7, 88.6 / 98.4, 89.5 / 102.6; plannerWindow 14.4 / 18.3,
+    -- 10.4 / 18.5, 15.9 / 17.3; settings 119.4 / 105.2, 112.9 / 106.8, 113.1 / 109.5. Only goldWindow's limit was too tight by the rule.
 }
 local speedMode = secretMode and "secret" or "readable"
+local speedTimed = true   -- (the audits, tests/secretaudit.py and lockaudit.py, set this false: their code is instrumented, so slower, and their first line is their own)
 local function speedReport(name, ms)
+    if not speedTimed then return end
     print(string.format("speed (%s): %s %.1f ms (limit %s)", speedMode, name, ms, tostring(SPEED_LIMITS_MS[name])))
     if not (ms <= SPEED_LIMITS_MS[name]) then
         error(string.format("%s took %.1f ms, over its limit of %s ms", name, ms, tostring(SPEED_LIMITS_MS[name])), 0)
@@ -27331,7 +27336,7 @@ try("13.5 C speed: slices keep to their budget", function()
         local n = 0
         while (ns.plannerBusy or ns.plannerQueued) and n < 5000 do frame(); n = n + 1 end
         if ns.plannerBusy or ns.plannerQueued then error("the planner never finished") end
-        print(string.format("speed (%s): plannerSliceMax %.2f ms in %d frames (budget %s)", speedMode, tonumber(ns.plannerSliceMax) or -1, n, tostring(ns.PLANNER_BUDGET_MS)))
+        if speedTimed then print(string.format("speed (%s): plannerSliceMax %.2f ms in %d frames (budget %s)", speedMode, tonumber(ns.plannerSliceMax) or -1, n, tostring(ns.PLANNER_BUDGET_MS))) end
         if not (type(ns.plannerSliceMax) == "number" and ns.plannerSliceMax > 0 and ns.plannerSliceMax <= 3 * ns.PLANNER_BUDGET_MS) then
             error("the longest planner slice was " .. tostring(ns.plannerSliceMax) .. " ms; the budget is " .. ns.PLANNER_BUDGET_MS)
         end
@@ -27345,7 +27350,7 @@ try("13.5 C speed: slices keep to their budget", function()
             n = n + 1
         end
         if not finished then error("the gold collect never finished") end
-        print(string.format("speed (%s): goldSliceMax %.2f ms in %d slices (budget %s)", speedMode, tonumber(ns.goldSliceMax) or -1, n, tostring(ns.GOLD_BUDGET_MS)))
+        if speedTimed then print(string.format("speed (%s): goldSliceMax %.2f ms in %d slices (budget %s)", speedMode, tonumber(ns.goldSliceMax) or -1, n, tostring(ns.GOLD_BUDGET_MS))) end
         if not (type(ns.goldSliceMax) == "number" and ns.goldSliceMax > 0 and ns.goldSliceMax <= 3 * ns.GOLD_BUDGET_MS) then
             error("the longest gold slice was " .. tostring(ns.goldSliceMax) .. " ms; the budget is " .. ns.GOLD_BUDGET_MS)
         end

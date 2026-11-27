@@ -253,3 +253,63 @@ before 13.0, Questie loaded (and once without it), TomTom for one check, and a s
       flight point, then "Good place to stop", and the deadline clears when it is ticked.
 - [ ] "Why this?" on a planned step's menu, and its page.
 - [ ] Read aloud: `ns:Speak` timing against step changes, written guides too, only with reading aloud on.
+
+## 18. 13.5: dungeon runs, class quests on time, speed, saved data
+Gathered from the 13.5 reports (`.superpowers/sdd/2026-11-26-13.5/task-2` to `task-5`) and the `-- check in game`
+notes in PlannerSource.lua and PlannerClass.lua. Have ready: Questie loaded, a character at 15-25 near the Deadmines
+or Wailing Caverns, a character a level below a class quest, and a copy of a real saved file with an old alt in it.
+
+Dungeon runs ("Dungeon runs in my route", on by default):
+- [ ] Questie's real `ZoneDB:GetDungeonLocation(area)`: what it returns for 1581 (Deadmines) and 718 (Wailing
+      Caverns). The code expects `[1] = { area, x, y }`, all numbers, with `GetUiMapIdByAreaId(area)` giving a map.
+      If the shape differs, the table's entrance is used silently: check the run step's arrow points at the
+      real entrance either way.
+- [ ] Every row of `ns.PLANNER_DUNGEONS` (written from memory): inside each dungeon, `select(8, GetInstanceInfo())`
+      equals its `instance`, and the boss count matches `bosses`. Expected: Ragefire Chasm 389 / 4, Wailing Caverns
+      43 / 7, The Deadmines 36 / 6, Shadowfang Keep 33 / 7, Blackfathom Deeps 48 / 7, The Stockade 34 / 5,
+      Gnomeregan 90 / 6, Razorfen Kraul 47 / 6, Scarlet Monastery 189 / 4, Razorfen Downs 129 / 5, Uldaman 70 / 9,
+      Zul'Farrak 209 / 8, Maraudon 349 / 7, The Temple of Atal'Hakkar 109 / 8. Also the levels, entrances and
+      Questie area ids (`zone`).
+- [ ] A planned run: the pick-ups, then "Find a group for <dungeon>" ticks when you join a group, the wait line
+      counts up, "Skip this dungeon" shows on the group step only from 15 minutes on and replans without it.
+- [ ] "Run <dungeon>" ticks only once you are back in the open world, alive, after being inside; then the
+      hand-ins follow. A run with a kill and a length goes into the run log with the instance id.
+- [ ] Wiping and releasing at the graveyard: the run step does not tick while you are a ghost.
+- [ ] The wrong-portal ghost case: release, run the ghost into a different portal (Blackrock Mountain or the wrong
+      Scarlet Monastery wing) and come back to life inside it. The run step must not tick there; it ticks once you
+      leave to the open world.
+- [ ] Find a group's text for a dungeon group step names the dungeon, with no "#nil".
+- [ ] A new session (logout, or `/fgui plan` start) clears the dungeon skips with the other session skips.
+- [ ] A dungeon quest of a dungeon not in the table (Blackrock Depths) still shows up in its quest hub.
+
+Class quests on time:
+- [ ] Questie's `IsDoable` for a class quest one or two levels above you (below its level): the heads-up needs the
+      record to count as doable then. If it says no, there is no heads-up at all.
+- [ ] The heads-up: chat prints "Your level %d class quest is coming: it starts in %s." once per quest per
+      character (not again after /reload), and the planner panel line stays on every plan while it applies, in
+      German too ("du"). Neither shows with "Plan class quests" off.
+- [ ] The hold on its continent: a level before the class quest, standing on its continent, the route stays on that
+      continent (no boat or zeppelin away). Standing on another continent, the hold is lifted and the route still plans.
+- [ ] A due "always" class quest across the sea is planned as a lead-in when a crossing reaches it, and its missing
+      prerequisite you could take now goes into the route.
+
+Speed:
+- [ ] Planning in game: `/fgui plan` on a full Questie install at 20 and at 50, with dungeon runs on: no visible
+      stutter, the plan arrives in a second or two, and the frame rate holds during it (planner slices stay near 4 ms).
+- [ ] The first open of the planner window, the gold window and the settings after a login: no hitch you can feel.
+      The login itself is no slower than 13.0.
+
+Saved data:
+- [ ] The settings' "Saved data" button and `/fgui data`: one line per part with a size, then "Tidy up old records".
+- [ ] The tidy-up on a copy of a real saved file: characters unseen 180 days are listed with every record (planner,
+      gold, guides, character list, bags and bank, everything else) and sizes. The character you are on is never
+      offered, even when its own times are old.
+- [ ] The tidy-up confirmation: nothing goes on one click; "Remove these %d (click twice)" needs a second click
+      within 10 seconds, a late second click resets it. Then "Removed %d old records (about %s).", and after a
+      /reload the records are really gone and nothing else is.
+- [ ] Nothing is removed by a login, a /reload or a timer with old records in place.
+- [ ] The backup restore on a copy of real saved data: after an update and a day's play, `/fgui backup` shows
+      ", with guides, routes and gold"; `/fgui backup restore daily` brings back the guide state, the planner and
+      gold records as well as the settings; "before restore" puts them back again. Check the saved file's size
+      with the records in the backups, and a large gold store left out past 4 MB is named.
+- [ ] A logout mid-copy (right after login on a big file): that backup is never restored with half its records.

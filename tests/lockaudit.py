@@ -14,6 +14,7 @@ def sub(old, new, count=1):
 
 sub('''if not ns.featureGroups or not ns.configFrame then out[#out+1] = "the options did not come up after loading" end''', '''if not ns.featureGroups or not ns.configFrame then out[#out+1] = "the options did not come up after loading" end
 for name in pairs(folderFiles or {}) do LoadFolderFiles(name) end       -- (the audit: both folders' handlers are in from the start)''')
+sub('''local speedTimed = true''', '''local speedTimed = false''')     # (13.5 C's speed tests: no timing or speed lines in an instrumented run)
 sub("local function newmock() return setmetatable({}, mockmt) end", r"""local function newmock() return setmetatable({}, mockmt) end
 -- Protection, as the game works it out: a frame is protected if it was made so (a secure template, or one of the
 -- game's own frames here), or if a protected frame is parented to it or anchored to it, and so on up the chain.

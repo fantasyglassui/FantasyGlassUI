@@ -22,7 +22,7 @@ local function Snapshot(root, label)
 end
 
 -- 13.5: the update and daily backups also hold the guide, route planner and gold records (every root key
--- "guides", "guideState", "planner..." and "gold..."; never the auction prices, which the next scan rebuilds).
+-- "guides", "guideState", and every planner* and gold* key; never the auction prices, which the next scan rebuilds).
 -- They are copied by a gold job (4 ms slices, never in a fight) into the backup's `records`; `recordsDone`
 -- marks a finished copy, so a copy cut short by a logout is never put back. Past BACKUP_RECORDS_MAX_KB, the
 -- largest stores are left out (named in `recordsLeftOut`) so the saved file doesn't balloon.

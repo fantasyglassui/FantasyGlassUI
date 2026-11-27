@@ -69,6 +69,7 @@ sub('''if not ns.featureGroups or not ns.configFrame then out[#out+1] = "the opt
 for name in pairs(folderFiles or {}) do LoadFolderFiles(name) end       -- (the audit: both folders' handlers are in from the start)''')
 sub('''local function SV(n) if secretMode then return setmetatable({ __secret = true }, secretmt) end return n end''',
     '''local function SV(n) if secretMode then return setmetatable({ __secret = true, __type = type(n) }, secretmt) end return n end''')
+sub('''local speedTimed = true''', '''local speedTimed = false''')     # (13.5 C's speed tests: no timing or speed lines in an instrumented run)
 sub('''-- resurrections and summons: what the game would answer, changed by the tests''', r'''-- ===== hidden-value audit =====
 local secretHits, secretOrder = {}, {}
 local function isSecret(v) return type(v) == "table" and rawget(v, "__secret") == true end
