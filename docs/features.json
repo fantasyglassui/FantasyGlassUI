@@ -414,6 +414,16 @@
      "desc": "A small button on the minimap with the add-on's icon. Left-click opens these options, right-click starts moving panels, and it can be dragged along the minimap."
     },
     {
+     "key": "minimapPlanner",
+     "label": "Minimap button for the route planner",
+     "desc": "A small button on the minimap, beside the options button, that opens the route planner. It can be dragged along the minimap. It hides while quest guides are off."
+    },
+    {
+     "key": "minimapGold",
+     "label": "Minimap button for ways to make gold",
+     "desc": "A small button on the minimap, beside the options button, that opens ways to make gold. It can be dragged along the minimap."
+    },
+    {
      "key": "mapCoords",
      "label": "Coordinates on the world map",
      "desc": "Shows where you are, and where the mouse is pointing, in the bottom left corner of the world map."

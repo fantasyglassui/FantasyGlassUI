@@ -2353,6 +2353,172 @@ try("Minimap button for the options", function()
     ns.ToggleConfig, ns.ToggleMove, env.IsControlKeyDown = realConfig, realMove, realCtrl
     if opened ~= 1 or moving ~= 1 then error("left-click should open the options and right-click start moving panels") end
 end)
+-- minimap buttons tests: begin
+-- The planner's and gold's own minimap buttons (13.0, MinimapExtras.lua).
+local function MinimapExtraHandler(btn, name)
+    for i = #handlers, 1, -1 do local h = handlers[i]; if h.self == btn and h.name == name then return h.fn end end
+end
+try("Minimap buttons: made at login", function()
+    local plannerReady, goldReady = ns.folderReady.planner, ns.folderReady.gold
+    runTimers()
+    local mx = ns.minimapExtras
+    if type(mx) ~= "table" then error("the minimap buttons file did not load") end
+    if not mx.buttons.minimapPlanner or not mx.buttons.minimapGold then error("both buttons should be made at login") end
+    if not (mx.shown.minimapPlanner and mx.shown.minimapGold) then error("both start shown") end
+    if ns.defaults.minimapPlanner ~= true or ns.defaults.minimapGold ~= true then error("both switches start on") end
+    if not plannerReady and ns.folderReady.planner then error("the planner button loaded the planner's folder") end
+    if not goldReady and ns.folderReady.gold then error("the gold button loaded the gold folder") end
+    -- the collector leaves them where they are, as it does the launcher
+    local name1, name2 = mx.buttons.minimapPlanner:GetName(), mx.buttons.minimapGold:GetName()
+    for _, n in ipairs({ name1, name2, "FantasyGlassUILauncher" }) do
+        if type(n) == "string" and (n:find("^LibDBIcon10_") or n:find("MinimapButton$")) then error(n .. " would be gathered by the collector") end
+    end
+    for _, f in ipairs(ns.buttonBagTest and ns.buttonBagTest.order or {}) do
+        if f == mx.buttons.minimapPlanner or f == mx.buttons.minimapGold then error("the collector took one of our buttons") end
+    end
+end)
+try("Minimap buttons: clicks call the stand-ins", function()
+    local mx = ns.minimapExtras
+    local realPlanner, realGold = ns.PlannerOpen, ns.GoldOpen
+    local planner, gold = 0, 0
+    ns.PlannerOpen = function(self) if self ~= ns then error("PlannerOpen called without ns") end planner = planner + 1 end
+    ns.GoldOpen = function(self) if self ~= ns then error("GoldOpen called without ns") end gold = gold + 1 end
+    local ok, err = pcall(function()
+        local click1 = MinimapExtraHandler(mx.buttons.minimapPlanner, "OnClick")
+        local click2 = MinimapExtraHandler(mx.buttons.minimapGold, "OnClick")
+        if not click1 or not click2 then error("each button needs a click") end
+        click1(mx.buttons.minimapPlanner, "LeftButton")
+        if planner ~= 1 or gold ~= 0 then error("the planner button should open the planner: " .. planner .. ", " .. gold) end
+        click2(mx.buttons.minimapGold, "LeftButton")
+        if planner ~= 1 or gold ~= 1 then error("the gold button should open the gold window: " .. planner .. ", " .. gold) end
+    end)
+    ns.PlannerOpen, ns.GoldOpen = realPlanner, realGold
+    if not ok then error(err, 0) end
+    -- the real stand-ins are what the buttons reach before a folder loads
+    if not ns.folderStubs.PlannerOpen or not ns.folderStubs.GoldOpen then error("the stand-ins are missing") end
+    -- the tooltips: a title and the line, each through the translations
+    local lines = {}
+    local tip = env.GameTooltip
+    local keepAdd = rawget(tip, "AddLine")
+    rawset(tip, "AddLine", function(_, text) lines[#lines + 1] = text end)
+    local enter = MinimapExtraHandler(mx.buttons.minimapPlanner, "OnEnter")
+    pcall(enter, mx.buttons.minimapPlanner)
+    enter = MinimapExtraHandler(mx.buttons.minimapGold, "OnEnter")
+    pcall(enter, mx.buttons.minimapGold)
+    rawset(tip, "AddLine", keepAdd)
+    local want = { "Route planner", "Click: open the planner. Drag: move.", "Ways to make gold", "Click: open the gold window. Drag: move." }
+    for i, w in ipairs(want) do if lines[i] ~= ns:Tr(w) then error("tooltip line " .. i .. ": " .. tostring(lines[i])) end end
+end)
+try("Minimap buttons: the switches hide and show them", function()
+    local mx = ns.minimapExtras
+    local seen = {}
+    for key, b in pairs(mx.buttons) do
+        rawset(b, "Show", function() seen[key] = true end)
+        rawset(b, "Hide", function() seen[key] = false end)
+    end
+    local keep = { p = ns.db.minimapPlanner, g = ns.db.minimapGold, guide = ns.db.questGuide, safe = ns.safeMode }
+    local ok, err = pcall(function()
+        ns.db.minimapGold = false; ns:ApplyMinimapExtras()
+        if seen.minimapGold ~= false or mx.shown.minimapGold then error("the gold switch off should hide its button") end
+        if seen.minimapPlanner ~= true then error("the planner button should stay") end
+        ns.db.minimapGold = true; ns.db.minimapPlanner = false; ns:ApplyMinimapExtras()
+        if seen.minimapGold ~= true or seen.minimapPlanner ~= false then error("each switch works on its own button") end
+        ns.db.minimapPlanner = true
+        -- the options: both are instant switches next to the launcher's
+        if not (ns.featureInstant and ns.featureInstant.minimapPlanner and ns.featureInstant.minimapGold) then error("both switches take effect at once") end
+        ns.db.minimapGold = false; ns:ApplyInstant()
+        if seen.minimapGold ~= false then error("switching it in the options should hide it at once") end
+        ns.db.minimapGold = true; ns:ApplyInstant()
+        if seen.minimapGold ~= true then error("switching it back on should show it at once") end
+        local placed
+        for _, cat in ipairs(ns.settingsCategories) do for _, sec in ipairs(cat.sections or {}) do
+            for i, key in ipairs(sec.keys) do if key == "launcher" then placed = sec.keys[i + 1] == "minimapPlanner" and sec.keys[i + 2] == "minimapGold" end end
+        end end
+        if not placed then error("the switches should sit next to the launcher's") end
+        if type(ns.featureDesc.minimapPlanner) ~= "string" or type(ns.featureDesc.minimapGold) ~= "string" then error("each switch has a description") end
+        -- safe mode: neither
+        ns.safeMode = true; ns:ApplyMinimapExtras()
+        if seen.minimapGold ~= false or seen.minimapPlanner ~= false then error("safe mode shows neither") end
+        ns.safeMode = keep.safe; ns:ApplyMinimapExtras()
+        -- a folder that could not start: its button goes
+        ns.folderBroken.gold = { "Gold.lua" }; ns:ApplyMinimapExtras()
+        if seen.minimapGold ~= false then error("a gold folder that could not start: no gold button") end
+        ns.folderBroken.gold = nil; ns:ApplyMinimapExtras()
+        if seen.minimapGold ~= true then error("the gold button comes back") end
+    end)
+    ns.db.minimapPlanner, ns.db.minimapGold, ns.db.questGuide, ns.safeMode = keep.p, keep.g, keep.guide, keep.safe
+    ns.folderBroken.gold = nil
+    for _, b in pairs(mx.buttons) do rawset(b, "Show", nil); rawset(b, "Hide", nil) end
+    ns:ApplyMinimapExtras()
+    if not ok then error(err, 0) end
+end)
+try("Minimap buttons: Quest guides off hides the planner's", function()
+    local mx = ns.minimapExtras
+    local keep = ns.db.questGuide
+    ns.db.questGuide = false; ns:GuideApplySwitch()
+    local plannerShown, goldShown = mx.shown.minimapPlanner, mx.shown.minimapGold
+    ns.db.questGuide = true; ns:GuideApplySwitch()
+    local back = mx.shown.minimapPlanner
+    ns.db.questGuide = keep; ns:GuideApplySwitch()
+    if plannerShown then error("with quest guides off, the planner button should hide") end
+    if not goldShown then error("the gold button does not need quest guides") end
+    if not back then error("quest guides on again: the planner button comes back") end
+end)
+try("Minimap buttons: drag positions are saved", function()
+    local mx = ns.minimapExtras
+    local host = env.FantasyGlassUIMinimap
+    local keepCursor = env.GetCursorPosition
+    rawset(host, "GetEffectiveScale", function() return 1 end)
+    rawset(host, "GetLeft", function() return 100 end)
+    rawset(host, "GetBottom", function() return 200 end)
+    env.GetCursorPosition = function() return 140, 300 end
+    local keep = { p = ns.db.minimapPlannerPos, g = ns.db.minimapGoldPos }
+    local ok, err = pcall(function()
+        for key, want in pairs({ minimapPlanner = { 40, 100 }, minimapGold = { 40, 100 } }) do
+            local b = mx.buttons[key]
+            MinimapExtraHandler(b, "OnDragStart")(b)
+            MinimapExtraHandler(b, "OnUpdate")(b, 0.1)
+            MinimapExtraHandler(b, "OnDragStop")(b)
+            local pos = ns.db[key .. "Pos"]
+            if type(pos) ~= "table" or pos[1] ~= want[1] or pos[2] ~= want[2] then error(key .. ": the dragged spot was not kept: " .. tostring(pos and pos[1]) .. ", " .. tostring(pos and pos[2])) end
+            if ns.root.profiles[ns.profile][key .. "Pos"] ~= pos then error(key .. ": the spot belongs in the profile") end
+        end
+        -- it can't be dragged away from the minimap and lost
+        local x, y = mx.Place("minimapGold", 5000, -5000)
+        if not (x <= 188 and y >= -8) then error("the button escaped the minimap: " .. x .. ", " .. y) end
+    end)
+    rawset(host, "GetEffectiveScale", nil); rawset(host, "GetLeft", nil); rawset(host, "GetBottom", nil)
+    env.GetCursorPosition = keepCursor
+    ns.db.minimapPlannerPos, ns.db.minimapGoldPos = keep.p, keep.g
+    if not ok then error(err, 0) end
+end)
+try("Minimap buttons: no overlap with the launcher at the defaults", function()
+    local mx = ns.minimapExtras
+    local keep = ns.db.launcherPos
+    local ok, err = pcall(function()
+        for _, lpos in ipairs({ false, { 6, 180 }, { 170, 90 }, { 100, -8 } }) do
+            ns.db.launcherPos = lpos or nil
+            local spots = { { lpos and lpos[1] or 6, lpos and lpos[2] or 6 } }
+            for _, key in ipairs({ "minimapPlanner", "minimapGold" }) do
+                local x, y = mx.Default(key)
+                if type(x) ~= "number" or type(y) ~= "number" then error(key .. " has no default spot") end
+                if x < -8 or x > 188 or y < -8 or y > 236 then error(key .. ": the default is off the minimap: " .. x .. ", " .. y) end
+                spots[#spots + 1] = { x, y }
+            end
+            for i = 1, #spots do for j = i + 1, #spots do
+                if math.abs(spots[i][1] - spots[j][1]) < 22 and math.abs(spots[i][2] - spots[j][2]) < 22 then
+                    error("buttons " .. i .. " and " .. j .. " overlap (launcher at " .. spots[1][1] .. ", " .. spots[1][2] .. ")")
+                end
+            end end
+            -- beside the launcher: the nearest is one button and a gap away
+            local d = math.abs(spots[2][1] - spots[1][1]) + math.abs(spots[2][2] - spots[1][2])
+            if d > 30 then error("the planner button should sit just beside the launcher: " .. d) end
+        end
+    end)
+    ns.db.launcherPos = keep
+    if not ok then error(err, 0) end
+end)
+-- minimap buttons tests: end
 try("Boss frames", function()
     if type(ns.bossFrames) ~= "table" or #ns.bossFrames ~= 5 then error("expected five boss frames") end
     local found = 0

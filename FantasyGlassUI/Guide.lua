@@ -2006,6 +2006,7 @@ end
 function ns:GuideOn() return not (ns.db and ns.db.questGuide == false) end
 -- The switch (on the Guide tab, and in the setup) was changed: put that into effect.
 function ns:GuideApplySwitch()
+    if ns.ApplyMinimapExtras then pcall(ns.ApplyMinimapExtras, ns) end   -- (the planner's minimap button shows only with guides on)
     if ns:GuideOn() then
         if State() then ns:GuideShowPanel(); ns:GuideAdvance() end
         if ns.FolderFollowCheck then ns.FolderFollowCheck() end   -- (following the plan or a trip: the planner's folder loads, as at login)
