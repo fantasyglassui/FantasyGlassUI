@@ -2,6 +2,15 @@
 
 The releases published on CurseForge. Each lists what changed since the release before it.
 
+## 13.0.1
+
+**Bags**
+- The bag window shows your bag slots when it opens, and the bank window its tabs. Slots (Tabs at the
+  bank) still hides them, and that choice is remembered. The ready-made bag sections (Upgrades, Gear
+  sets, Bind on equip, materials, consumables and Recipes) are switched on, once, if you had all of them
+  off; if you had switched any of them on, they stay as you set them. With Baganator showing your bags,
+  a one-time tip in chat says where to find your bag slots.
+
 ## 13.0.0
 
 Guide and Gold: quest guides, a route planner and ways to make gold, for everyone.

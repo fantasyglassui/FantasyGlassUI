@@ -21,6 +21,9 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["The bag window shows your bag slots when it opens (Slots hides them, and that is remembered), and its ready-made sections, such as Upgrades and Recipes, are switched on unless you already chose some. With Baganator, a one-time tip says where to find your bag slots."] = "Das Taschenfenster zeigt deine Taschenplätze gleich beim Öffnen (Plätze blendet sie aus, und das wird gemerkt), und seine fertigen Bereiche wie Verbesserungen und Rezepte sind eingeschaltet, außer du hast schon selbst welche gewählt. Mit Baganator sagt dir ein einmaliger Hinweis, wo du deine Taschenplätze findest.",
+    ["Your bags now sort items into sections (upgrades, sets, materials and more). Turn them off in /fgui → Bags and items."] = "Deine Taschen sortieren Gegenstände jetzt in Abschnitte (Verbesserungen, Sets, Materialien und mehr). Ausschalten kannst du sie in /fgui → Taschen und Gegenstände.",
+    ["Baganator is showing your bags, so Fantasy Glass UI's bag window steps aside. To see your bag slots, use the buttons at the top of Baganator's window or its settings (type /bgr)."] = "Baganator zeigt deine Taschen, darum tritt das Taschenfenster von Fantasy Glass UI zur Seite. Deine Taschenplätze findest du über die Knöpfe oben in Baganators Fenster oder in seinen Einstellungen (tippe /bgr).",
     ["Click: open the planner. Drag: move."] = "Klick: den Planer öffnen. Ziehen: verschieben.",
     ["Click: open the gold window. Drag: move."] = "Klick: das Gold-Fenster öffnen. Ziehen: verschieben.",
     ["Minimap button for the route planner"] = "Minikartenknopf für den Routenplaner",
@@ -3870,6 +3873,9 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["The bag window shows your bag slots when it opens (Slots hides them, and that is remembered), and its ready-made sections, such as Upgrades and Recipes, are switched on unless you already chose some. With Baganator, a one-time tip says where to find your bag slots."] = "La fenêtre des sacs montre vos emplacements de sacs dès son ouverture (Emplacements les masque, et c'est retenu), et ses sections toutes prêtes, comme Améliorations et Recettes, sont activées, sauf si vous en aviez déjà choisi. Avec Baganator, un conseil affiché une seule fois dit où trouver vos emplacements de sacs.",
+    ["Your bags now sort items into sections (upgrades, sets, materials and more). Turn them off in /fgui → Bags and items."] = "Vos sacs rangent maintenant les objets par sections (améliorations, ensembles, matériaux et plus). Désactivez-les dans /fgui → Sacs et objets.",
+    ["Baganator is showing your bags, so Fantasy Glass UI's bag window steps aside. To see your bag slots, use the buttons at the top of Baganator's window or its settings (type /bgr)."] = "Baganator affiche vos sacs, donc la fenêtre des sacs de Fantasy Glass UI s'efface. Pour voir vos emplacements de sacs, utilisez les boutons en haut de la fenêtre de Baganator ou ses réglages (tapez /bgr).",
     ["Click: open the planner. Drag: move."] = "Clic : ouvrir le planificateur. Glisser : déplacer.",
     ["Click: open the gold window. Drag: move."] = "Clic : ouvrir la fenêtre de l'or. Glisser : déplacer.",
     ["Minimap button for the route planner"] = "Bouton de minicarte pour le planificateur d'itinéraire",
@@ -7719,6 +7725,9 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["The bag window shows your bag slots when it opens (Slots hides them, and that is remembered), and its ready-made sections, such as Upgrades and Recipes, are switched on unless you already chose some. With Baganator, a one-time tip says where to find your bag slots."] = "La ventana de bolsas muestra las ranuras de bolsas al abrirse (Huecos las oculta, y se recuerda), y sus secciones ya hechas, como Mejoras y Recetas, quedan activadas salvo que ya hubieras elegido alguna. Con Baganator, un consejo que se muestra una sola vez dice dónde encontrar las ranuras de bolsas.",
+    ["Your bags now sort items into sections (upgrades, sets, materials and more). Turn them off in /fgui → Bags and items."] = "Tus bolsas ahora ordenan los objetos en secciones (mejoras, conjuntos, materiales y más). Desactívalas en /fgui → Bolsas y objetos.",
+    ["Baganator is showing your bags, so Fantasy Glass UI's bag window steps aside. To see your bag slots, use the buttons at the top of Baganator's window or its settings (type /bgr)."] = "Baganator está mostrando tus bolsas, así que la ventana de bolsas de Fantasy Glass UI se hace a un lado. Para ver las ranuras de bolsas, usa los botones de la parte superior de la ventana de Baganator o sus ajustes (escribe /bgr).",
     ["Click: open the planner. Drag: move."] = "Clic: abre el planificador. Arrastrar: mover.",
     ["Click: open the gold window. Drag: move."] = "Clic: abre la ventana del oro. Arrastrar: mover.",
     ["Minimap button for the route planner"] = "Botón del minimapa para el planificador de ruta",
@@ -11571,6 +11580,9 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["The bag window shows your bag slots when it opens (Slots hides them, and that is remembered), and its ready-made sections, such as Upgrades and Recipes, are switched on unless you already chose some. With Baganator, a one-time tip says where to find your bag slots."] = "Окно сумок сразу показывает ячейки сумок (кнопка «Ячейки» скрывает их, и это запоминается), а его готовые разделы, например «Улучшения» и «Рецепты», включены, если вы ещё не выбрали их сами. С Baganator одна подсказка, показанная один раз, говорит, где найти ячейки сумок.",
+    ["Your bags now sort items into sections (upgrades, sets, materials and more). Turn them off in /fgui → Bags and items."] = "Ваши сумки теперь раскладывают предметы по разделам (улучшения, комплекты, материалы и другое). Отключить их можно в /fgui → Сумки и предметы.",
+    ["Baganator is showing your bags, so Fantasy Glass UI's bag window steps aside. To see your bag slots, use the buttons at the top of Baganator's window or its settings (type /bgr)."] = "Baganator показывает ваши сумки, поэтому окно сумок Fantasy Glass UI уступает ему место. Чтобы увидеть ячейки сумок, используйте кнопки вверху окна Baganator или его настройки (введите /bgr).",
     ["Click: open the planner. Drag: move."] = "Щелчок: открыть планировщик. Перетаскивание: переместить.",
     ["Click: open the gold window. Drag: move."] = "Щелчок: открыть окно золота. Перетаскивание: переместить.",
     ["Minimap button for the route planner"] = "Кнопка миникарты для планировщика маршрута",
@@ -15420,6 +15432,9 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["The bag window shows your bag slots when it opens (Slots hides them, and that is remembered), and its ready-made sections, such as Upgrades and Recipes, are switched on unless you already chose some. With Baganator, a one-time tip says where to find your bag slots."] = "A janela de bolsas mostra os espaços de bolsa ao abrir (Espaços os esconde, e isso é lembrado), e suas seções prontas, como Melhorias e Receitas, ficam ligadas, a menos que você já tenha escolhido alguma. Com o Baganator, uma dica mostrada uma única vez diz onde encontrar os espaços de bolsa.",
+    ["Your bags now sort items into sections (upgrades, sets, materials and more). Turn them off in /fgui → Bags and items."] = "Suas bolsas agora separam os itens em seções (melhorias, conjuntos, materiais e mais). Desligue-as em /fgui → Bolsas e itens.",
+    ["Baganator is showing your bags, so Fantasy Glass UI's bag window steps aside. To see your bag slots, use the buttons at the top of Baganator's window or its settings (type /bgr)."] = "O Baganator está mostrando suas bolsas, então a janela de bolsas do Fantasy Glass UI sai do caminho. Para ver os espaços de bolsa, use os botões no topo da janela do Baganator ou as configurações dele (digite /bgr).",
     ["Click: open the planner. Drag: move."] = "Clique: abre o planejador. Arrastar: mover.",
     ["Click: open the gold window. Drag: move."] = "Clique: abre a janela do ouro. Arrastar: mover.",
     ["Minimap button for the route planner"] = "Botão do minimapa para o planejador de rota",
@@ -19269,6 +19284,9 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["The bag window shows your bag slots when it opens (Slots hides them, and that is remembered), and its ready-made sections, such as Upgrades and Recipes, are switched on unless you already chose some. With Baganator, a one-time tip says where to find your bag slots."] = "La finestra delle borse mostra gli spazi per le borse appena si apre (Spazi li nasconde, e la scelta viene ricordata), e le sue sezioni già pronte, come Miglioramenti e Ricette, sono attive, a meno che tu non ne avessi già scelte. Con Baganator, un consiglio mostrato una sola volta dice dove trovare gli spazi per le borse.",
+    ["Your bags now sort items into sections (upgrades, sets, materials and more). Turn them off in /fgui → Bags and items."] = "Le tue borse ora dividono gli oggetti in sezioni (miglioramenti, set, materiali e altro). Disattivale in /fgui → Borse e oggetti.",
+    ["Baganator is showing your bags, so Fantasy Glass UI's bag window steps aside. To see your bag slots, use the buttons at the top of Baganator's window or its settings (type /bgr)."] = "Baganator mostra le tue borse, quindi la finestra delle borse di Fantasy Glass UI si fa da parte. Per vedere gli spazi per le borse, usa i pulsanti in cima alla finestra di Baganator o le sue impostazioni (scrivi /bgr).",
     ["Click: open the planner. Drag: move."] = "Clic: apre il pianificatore. Trascina: sposta.",
     ["Click: open the gold window. Drag: move."] = "Clic: apre la finestra dell'oro. Trascina: sposta.",
     ["Minimap button for the route planner"] = "Pulsante della minimappa per il pianificatore di percorso",
@@ -23118,6 +23136,9 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["The bag window shows your bag slots when it opens (Slots hides them, and that is remembered), and its ready-made sections, such as Upgrades and Recipes, are switched on unless you already chose some. With Baganator, a one-time tip says where to find your bag slots."] = "가방 창을 열면 가방 칸이 바로 보입니다(칸 버튼으로 숨길 수 있고, 그 선택은 기억됩니다). 상향 아이템, 제조법 같은 기본 구역은 직접 고른 적이 없다면 켜집니다. Baganator를 쓰면 가방 칸을 찾는 곳을 한 번만 알려 줍니다.",
+    ["Your bags now sort items into sections (upgrades, sets, materials and more). Turn them off in /fgui → Bags and items."] = "이제 가방이 아이템을 구역별로 나눕니다(상향 아이템, 세트, 재료 등). /fgui → 가방 및 아이템에서 끌 수 있습니다.",
+    ["Baganator is showing your bags, so Fantasy Glass UI's bag window steps aside. To see your bag slots, use the buttons at the top of Baganator's window or its settings (type /bgr)."] = "Baganator가 가방을 표시하고 있어서 Fantasy Glass UI의 가방 창은 물러납니다. 가방 칸을 보려면 Baganator 창 위쪽의 버튼이나 설정을 사용하세요(/bgr 입력).",
     ["Click: open the planner. Drag: move."] = "클릭: 플래너를 엽니다. 드래그: 옮깁니다.",
     ["Click: open the gold window. Drag: move."] = "클릭: 골드 창을 엽니다. 드래그: 옮깁니다.",
     ["Minimap button for the route planner"] = "경로 플래너용 미니맵 버튼",
@@ -26970,6 +26991,9 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["The bag window shows your bag slots when it opens (Slots hides them, and that is remembered), and its ready-made sections, such as Upgrades and Recipes, are switched on unless you already chose some. With Baganator, a one-time tip says where to find your bag slots."] = "背包窗口打开时就显示背包栏位（栏位按钮可以隐藏，并会记住）；现成分区（如提升和配方）会开启，除非你已经自己选过。使用 Baganator 时，会有一次性提示告诉你在哪里找到背包栏位。",
+    ["Your bags now sort items into sections (upgrades, sets, materials and more). Turn them off in /fgui → Bags and items."] = "你的背包现在会把物品分区整理（提升、套装、材料等）。可在 /fgui → 背包与物品 中关闭。",
+    ["Baganator is showing your bags, so Fantasy Glass UI's bag window steps aside. To see your bag slots, use the buttons at the top of Baganator's window or its settings (type /bgr)."] = "Baganator 正在显示你的背包，所以 Fantasy Glass UI 的背包窗口让位于它。要查看背包栏位，请使用 Baganator 窗口顶部的按钮或它的设置（输入 /bgr）。",
     ["Click: open the planner. Drag: move."] = "点击：打开规划器。拖动：移动。",
     ["Click: open the gold window. Drag: move."] = "点击：打开赚金窗口。拖动：移动。",
     ["Minimap button for the route planner"] = "路线规划器的小地图按钮",
