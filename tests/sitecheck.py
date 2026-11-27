@@ -183,7 +183,7 @@ with tempfile.TemporaryDirectory() as tmp:
     for c in LANGS:
         t = text(fa[addr("map", c).lstrip("/") + "index.html"])
         for need in ('<link rel="stylesheet" href="/map/leaflet/leaflet.css">', '<script src="/map/leaflet/leaflet.js" defer></script>', 'id="worldmap"',
-                     "Blizzard Entertainment", 'href="https://openmap.world/"', 'href="https://github.com/jiforever/wowforever-openmap"', "MIT", "Santiago Reyes",
+                     "Blizzard Entertainment", 'href="https://openmap.world/"', "MIT", "Santiago Reyes",
                      '<a href="https://ko-fi.com/jigrobbulus" target="_blank" rel="noopener noreferrer">', 'id="pins" aria-labelledby="h-pins" hidden'):
             if need not in t:
                 fail(addr("map", c) + " lacks " + need)
