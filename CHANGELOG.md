@@ -2,6 +2,10 @@
 
 The releases published on CurseForge. Each lists what changed since the release before it.
 
+## 13.0.1
+
+- The class emblem fills the whole diamond portrait and takes its place every time it shows, including in a fight: on a new target, a shapeshift or after combat. It no longer shrinks to a small disc inside the diamond.
+
 ## 13.0.0
 
 Guide and Gold: quest guides, a route planner and ways to make gold, for everyone.
