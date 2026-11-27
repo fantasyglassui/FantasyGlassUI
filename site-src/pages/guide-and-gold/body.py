@@ -13,6 +13,8 @@ READER = SRC + '/plan/reader.js'
 
 
 def example_code():
+    own = os.path.join(HERE, 'example_code.txt')       # (a hand-picked example from a real zone, when there is one)
+    if os.path.exists(own): return open(own, encoding='utf-8').read().strip()
     for line in open(REPO + '/tests/plan_codes.txt', encoding='utf-8').read().splitlines():
         f = line.split('\t')
         if f[0] == 'ok' and len(f) > 5: return f[5]
