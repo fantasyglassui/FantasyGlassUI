@@ -139,7 +139,7 @@ function ns.PlannerPreviewLines(guide, summary)
     end
     lines[#lines + 1] = { left = "" }                                           -- (the totals stand apart from the steps)
     lines[#lines + 1] = { left = format(ns:Tr("Experience: %s"), Big(summary.xp)), tone = "dim" }
-    lines[#lines + 1] = { left = format(ns:Tr("Level %s → %s"), LevelText(summary.fromLevel), LevelText(summary.toLevel)), tone = "dim" }
+    lines[#lines + 1] = { left = format(ns:Tr("Level %s to %s"), LevelText(summary.fromLevel), LevelText(summary.toLevel)), tone = "dim" }
     lines[#lines + 1] = { left = format(ns:Tr("Flights: %d, crossings: %d"), flights, crossings), tone = "dim" }
     local skipped = ns.GuideSkippedText and ns.GuideSkippedText(summary)       -- (the panel's own lines, Guide.lua)
     if skipped then lines[#lines + 1] = { left = skipped, tone = "dim" } end
@@ -227,7 +227,7 @@ function ns.PlannerMapName(map)
     return tostring(map)
 end
 
--- How far the goal map is done: { done, total } over its non-repeatable quests that are doable or done.
+-- How far the goal map is done: { done, total } over its non-repeatable quests that are doable or done (done: handed in).
 local progressCtx, progress
 local function GoalProgress(goal, ctx)
     if progressCtx == ctx and progress and progress.map == goal then return progress end
@@ -235,13 +235,29 @@ local function GoalProgress(goal, ctx)
     if type(src) ~= "table" or type(src.mapQuests) ~= "function" then return nil end
     local done, total = 0, 0
     local isDone = type(ctx.done) == "function" and ctx.done or function() return false end
+    local counted = {}
     for _, id in ipairs(src.mapQuests(goal) or {}) do
         ns.PlannerYield()
+        counted[id] = true
         local rec = src.quest(id)
         if isDone(id) then
             if not (type(rec) == "table" and rec.repeatable) then done, total = done + 1, total + 1 end
         elseif type(rec) == "table" and rec.doable and not rec.repeatable then
             total = total + 1
+        end
+    end
+    -- Quests in your log that Questie does not know (WoW: Forever's own): Questie files none of them under a zone, so the
+    -- ones the game places in this zone are counted too, as quests still to hand in.
+    if src.kind == "questie" and ns.PlannerLogSource then
+        for _, id in ipairs(ns.PlannerLogSource().ids()) do
+            ns.PlannerYield()
+            local rec = not counted[id] and src.quest(id) or nil
+            if type(rec) == "table" and rec.fromLog and not rec.repeatable then
+                local spot = (rec.ends or {})[1]
+                for _, o in ipairs(not spot and rec.objectives or {}) do spot = spot or (o.spots or {})[1] end
+                local chain = type(spot) == "table" and ns.PlannerZoneMaps and ns.PlannerZoneMaps(spot.map) or {}
+                for _, m in ipairs(chain) do if m == goal then total = total + 1; break end end
+            end
         end
     end
     progressCtx, progress = ctx, { map = goal, done = done, total = total }
@@ -319,6 +335,6 @@ ns.GuideRegisterLine("zoneGoal", function(st)
     if ns.PlannerZoneGoal() and type(st.summary) == "table" and st.summary.source == "log" then return ns:Tr("Zone goal needs Questie") end   -- (the quest log alone cannot count a zone)
     local zg = type(st.summary) == "table" and st.summary.zoneGoal
     if type(zg) ~= "table" or not (tonumber(zg.done) and tonumber(zg.total)) then return nil end
-    return format(ns:Tr("Zone: %d of %d quests"), zg.done, zg.total)
+    return format(ns:Tr("Zone: %d of %d quests handed in"), zg.done, zg.total)
 end)
 ns.FolderFileDone("planner", "PlannerPages.lua")

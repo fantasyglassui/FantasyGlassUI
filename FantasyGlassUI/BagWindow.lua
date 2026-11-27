@@ -109,7 +109,10 @@ local function NewWindow(cfg)
 
     local dirty = true
     local query = ""
-    local showSlots = false            -- the row of equipped bags, toggled by the Slots button
+    -- The row of equipped bags (the bank's tabs), shown unless the Slots button hid it: the choice is
+    -- the profile's (bagSlotsShown / bankSlotsShown, on by default since 13.0.1), so it is kept.
+    local slotsKey = cfg.slotsKey
+    local function SlotsShown() return not (slotsKey and ns.db[slotsKey] == false) end
     local gridKey = cfg.key .. "Grid"
 
     local close = ns:CreateButton(win, "X", 22, 22, function() win:Hide() end)
@@ -612,10 +615,13 @@ local function NewWindow(cfg)
         slotRow:Show()
     end
     function win.ToggleSlots()
-        showSlots = not showSlots
-        if not showSlots and slotRow then slotRow:Hide() end
+        local show = not SlotsShown()
+        if slotsKey then ns.db[slotsKey] = show end
+        if not show and slotRow then slotRow:Hide() end
         dirty = true
     end
+    ns.bagTest[cfg.name].slotsShown = SlotsShown
+    ns.bagTest[cfg.name].slotRow = function() return slotRow end
 
     local function Refresh(b)
         local info = C.GetContainerItemInfo(b.bag, b.slot)
@@ -769,7 +775,8 @@ local function NewWindow(cfg)
         end
 
         for _, h in ipairs(headers) do h:Hide() end
-        if showSlots then RefreshSlotRow() end
+        local showSlots = SlotsShown()
+        if showSlots then RefreshSlotRow() elseif slotRow then slotRow:Hide() end
         local y, hi = -TOP - (showSlots and 42 or 0), 0
         if total == 0 and cfg.emptyNote then
             note:SetText(ns:Tr(cfg.emptyNote))
@@ -1029,7 +1036,7 @@ ns:NewModule("bagWindow", function()
     end
     local win
     win = NewWindow({
-        name = "FantasyGlassUIBags", title = "Bags", key = "bags", bags = bags, reagent = reagent, money = true, combatUse = true,
+        name = "FantasyGlassUIBags", title = "Bags", key = "bags", slotsKey = "bagSlotsShown", bags = bags, reagent = reagent, money = true, combatUse = true,
         buttons = {
             { "Slots", 50, function() win.ToggleSlots() end, "Show or hide your bag slots, to swap or buy bags." },
             { "Bank",  48, function() Storage("bank") end, "Your bank, as it was when you last opened it." },
@@ -1066,7 +1073,7 @@ ns:NewModule("bankWindow", function()
     local managing = false       -- true while Blizzard's own bank window is shown as well
     local win
     win = NewWindow({
-        name = "FantasyGlassUIBank", title = "Bank", key = "bank", bags = BankBags(),
+        name = "FantasyGlassUIBank", title = "Bank", key = "bank", slotsKey = "bankSlotsShown", bags = BankBags(),
         sockets = { container = BagIndex("Characterbanktab", -2) },
         buttons = { { "Tabs", 50, function() win.ToggleSlots() end, "Show or hide your bank tabs: buy a tab with +, then drop a bag onto it." },
                     { "Deposit", 64, function() if ns.DepositMaterials then ns:DepositMaterials() end end, "Put every crafting material in your bags into the bank." } },
@@ -1086,3 +1093,31 @@ ns:NewModule("bankWindow", function()
     })
     ns:Silence(bank)
 end)
+
+-- With Baganator showing the bags, this add-on's bag window steps aside (CONFLICTS in Core.lua). The first
+-- time that happens on an account, one line says where the bag slots are now (13.0.1). The mark is
+-- account-wide (ns.root.baganatorTip); never during a fight: then it waits for the fight to end.
+-- Baganator's own settings are never touched.
+local tipWait
+local function BaganatorAside()
+    local aside = ns.steppedAside or {}
+    return aside.bagWindow == "Baganator" or aside.bankWindow == "Baganator"
+end
+function ns:BaganatorTip()
+    local root = ns.root
+    if type(root) ~= "table" or root.baganatorTip or not BaganatorAside() then return end
+    if InCombatLockdown() then
+        if not tipWait then
+            tipWait = CreateFrame("Frame")
+            tipWait:SetScript("OnEvent", ns:Guard("Baganator tip", function(self, event)
+                if event ~= "PLAYER_REGEN_ENABLED" or InCombatLockdown() then return end
+                self:UnregisterEvent("PLAYER_REGEN_ENABLED")
+                ns:BaganatorTip()
+            end))
+        end
+        tipWait:RegisterEvent("PLAYER_REGEN_ENABLED")
+        return
+    end
+    root.baganatorTip = true
+    ns:Print("Baganator is showing your bags, so Fantasy Glass UI's bag window steps aside. To see your bag slots, use the buttons at the top of Baganator's window or its settings (type /bgr).")
+end

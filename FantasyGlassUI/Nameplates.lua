@@ -16,6 +16,21 @@ function ns.PlateDesign()
     clamp("auraSize", 10, 32); clamp("auraMax", 0, 8)
     return out
 end
+-- (13.0.1) Where things sit round an enemy's bar, so none covers another:
+--   the name over the bar, clear of the ring round your target;
+--   the debuffs over the name;
+--   at the bar's left, the level first, then the quest marks further out.
+function ns.PlateNameGap()
+    return 3 + math.max(0, math.min(8, tonumber(ns.db and ns.db.targetOutline) or 0))
+end
+function ns.PlateAuraLift()
+    local pd = ns.PlateDesign()
+    if not pd.nameShow then return 16 end
+    return math.max(16, ns.PlateNameGap() + math.ceil(pd.nameSize * 1.25) + 2)
+end
+function ns.PlateLevelSlot()                                  -- room for "60" or "??", and the gap before the bar
+    return 3 + math.ceil(ns.PlateDesign().nameSize * 1.3)
+end
 
 ns:NewModule("nameplates", function()
     if not (C_NamePlate and C_NamePlate.GetNamePlateForUnit) then return end
@@ -141,16 +156,37 @@ ns:NewModule("nameplates", function()
         end
         return own
     end
-    -- Our level, in the game's difficulty color, just left of the name ("??" for a boss).
+    -- (13.0.1) An enemy or a neutral unit: one you could attack, or one that is not friendly to you.
+    -- Its plate carries our own name over the bar; a friendly plate keeps the game's name.
+    local function Foe(unit)
+        if type(unit) ~= "string" then return false end
+        local okA, can = pcall(UnitCanAttack, "player", unit)
+        if okA and ns.Yes(can) then return true end
+        local okR, reaction = pcall(UnitReaction, unit, "player")
+        return okR and type(reaction) == "number" and not Secret(reaction) and reaction <= 4 or false
+    end
+    -- The game's own name on the plate: out of sight on an enemy's plate (ours is drawn instead), and
+    -- on a friendly one as the designer's "Names on nameplates" says.
+    local function GameName(uf)
+        if not (uf and uf.name and uf.name.SetAlpha) then return end
+        local on = ns.PlateDesign().nameShow and not rawget(uf, "suiFoe")
+        uf.name:SetAlpha(on and 1 or 0)
+    end
+    -- Our level, in the game's difficulty color ("??" for a boss): on an enemy's plate just left of the
+    -- bar, at its middle (the name is over the bar); on a friendly plate just left of the game's name.
     local function PlateLevel(uf, unit)
         if not (uf.name and uf.name.GetParent) then return end
         local t = rawget(uf, "suiLevel")
         if not t then
             t = ns:NewText(uf, ns.PlateDesign().nameSize, "RIGHT", true)
-            t:SetPoint("RIGHT", uf.name, "LEFT", -3, 0)
             if t.SetShadowOffset then t:SetShadowOffset(1, -1); t:SetShadowColor(0, 0, 0, 1) end
             uf.suiLevel = t
         end
+        local bar = HealthBar(uf)
+        bar = bar and (rawget(bar, "suiOwn") or bar)
+        t:ClearAllPoints()
+        if bar and rawget(uf, "suiFoe") then t:SetPoint("RIGHT", bar, "LEFT", -3, 0)
+        else t:SetPoint("RIGHT", uf.name, "LEFT", -3, 0) end
         local ok, lvl = pcall(UnitLevel, unit)
         if not ok or type(lvl) ~= "number" or Secret(lvl) or not ns.PlateDesign().nameShow then t:SetText(""); return end
         if lvl < 0 then t:SetText("??"); t:SetTextColor(1, 0.25, 0.2); return end
@@ -176,7 +212,7 @@ ns:NewModule("nameplates", function()
         if uf.name and uf.name.SetFont then
             local pd = ns.PlateDesign()
             ns:Font(uf.name, pd.nameSize)
-            uf.name:SetAlpha(pd.nameShow and 1 or 0)
+            GameName(uf)
             -- our rim makes the bar a little taller than Blizzard's, which put the name's lower edge
             -- behind it: lift the name by that much, once, keeping whatever anchor the game chose
             if not uf.name.suiLifted then
@@ -386,7 +422,7 @@ ns:NewModule("nameplates", function()
 
         x.auraRow = CreateFrame("Frame", nil, x)
         x.auraRow:SetSize(105, 18)
-        x.auraRow:SetPoint("BOTTOMLEFT", hb, "TOPLEFT", 0, 16)
+        x.auraRow:SetPoint("BOTTOMLEFT", hb, "TOPLEFT", 0, ns.PlateAuraLift())
 
         x:SetScript("OnEvent", ns:Guard("Nameplate extras", function(self, event)
             if event == "UNIT_AURA" then PlateAuras(self) else PlateCast(self) end
@@ -540,7 +576,7 @@ ns:NewModule("nameplates", function()
             if not hb then return end
             q = CreateFrame("Frame", nil, plate)
             q:SetSize(30, 14)
-            q:SetPoint("RIGHT", hb, "LEFT", -3, 0)
+            q.suiBar = hb
             q:SetFrameLevel((hb:GetFrameLevel() or 1) + 4)
             q.icon = q:CreateTexture(nil, "OVERLAY")
             q.icon:SetSize(12, 12)
@@ -552,6 +588,9 @@ ns:NewModule("nameplates", function()
             if q.text.SetShadowOffset then q.text:SetShadowOffset(1, -1); q.text:SetShadowColor(0, 0, 0, 1) end
             questMarks[plate] = q
         end
+        -- (13.0.1) out past the level and the quest "!" (QuestMarks.lua), so the three stand side by side
+        q:ClearAllPoints()
+        q:SetPoint("RIGHT", q.suiBar, "LEFT", -(ns.PlateLevelSlot() + 16), 0)
         q.text:SetText(tostring(left))
         q.left = left
         q:Show()
@@ -610,6 +649,62 @@ ns:NewModule("nameplates", function()
         return h
     end
     ns.PlateHealth = PlateHealth
+
+    -- (13.0.1) The name over an enemy's or a neutral unit's bar, in the designer's name size, whenever
+    -- its plate is up (the game shows a plate once you are near). The game's own name could not do it:
+    -- in its Modern and Block styles the name sits inside the bar, under ours, and its "NPC names"
+    -- setting hides it (in the Classic preset, until you target the unit). The name may be hidden from
+    -- add-ons in a fight: it is then handed to the game to draw, never looked at.
+    local plateNames = setmetatable({}, { __mode = "k" })
+    local function WriteName(n)
+        local fs, unit = n.text, n.suiUnit
+        if not unit or not ns.PlateDesign().nameShow then fs:SetText(""); fs:Hide(); return end
+        local ok, name = pcall(UnitName, unit)
+        if ok and Secret(name) then fs:SetText(name)
+        elseif ok and type(name) == "string" then fs:SetText(name)
+        else fs:SetText("") end
+        fs:Show()
+    end
+    local function PlaceName(n)
+        local pd = ns.PlateDesign()
+        local gap = ns.PlateNameGap()
+        ns:Font(n.text, pd.nameSize)
+        n.text:ClearAllPoints()
+        n.text:SetPoint("BOTTOMLEFT", n, "TOPLEFT", 0, gap)       -- (as wide as the bar: a long name is cut short)
+        n.text:SetPoint("BOTTOMRIGHT", n, "TOPRIGHT", 0, gap)
+    end
+    local function PlateName(plate, uf, unit)
+        if not Usable(plate) then return end
+        local foe = unit ~= nil and Foe(unit)
+        if Usable(uf) then uf.suiFoe = foe or nil; GameName(uf) end
+        local n = plateNames[plate]
+        if not n then
+            if not foe then return end
+            local hb = HealthBar(uf)
+            if not hb then return end
+            n = CreateFrame("Frame", nil, plate)
+            n:SetAllPoints(hb)
+            n:SetFrameLevel((hb:GetFrameLevel() or 1) + 4)
+            n.text = ns:NewText(n, ns.PlateDesign().nameSize, "CENTER")
+            n.text:SetTextColor(1, 1, 1)
+            n:SetScript("OnEvent", ns:Guard("Nameplate names", function(self) WriteName(self) end))
+            plateNames[plate] = n
+        end
+        PlaceName(n)
+        if n.text.SetShadowOffset then n.text:SetShadowOffset(1, -1); n.text:SetShadowColor(0, 0, 0, 1) end
+        n:UnregisterAllEvents()
+        n.suiUnit = foe and unit or nil
+        if n.suiUnit then
+            pcall(n.RegisterUnitEvent, n, "UNIT_NAME_UPDATE", unit)
+            n:Show()
+        else
+            n:Hide()
+        end
+        WriteName(n)
+        return n
+    end
+    ns.PlateName = PlateName
+
     function ns:RefreshPlateHealth()                        -- the option changed: rewrite every plate showing
         for _, h in pairs(healthTexts) do pcall(WriteHealth, h); pcall(WritePower, h) end
     end
@@ -618,9 +713,12 @@ ns:NewModule("nameplates", function()
         local pd = ns.PlateDesign()
         local n = 0
         for _, h in pairs(healthTexts) do ns.PlaceHealthText(h); n = n + 1 end
+        for _, nm in pairs(plateNames) do PlaceName(nm); WriteName(nm) end
         for _, x in pairs(extras) do
             x.cast:SetHeight(pd.castHeight)
             ns:Font(x.cast.text, pd.castTextSize)
+            x.auraRow:ClearAllPoints()
+            x.auraRow:SetPoint("BOTTOMLEFT", x, "TOPLEFT", 0, ns.PlateAuraLift())
             for i, b in ipairs(x.auras) do
                 b:SetSize(pd.auraSize, pd.auraSize)
                 b:ClearAllPoints()
@@ -631,8 +729,10 @@ ns:NewModule("nameplates", function()
         for uf in pairs(plates) do
             if Usable(uf) and uf.name and uf.name.SetFont then
                 ns:Font(uf.name, pd.nameSize)
-                uf.name:SetAlpha(pd.nameShow and 1 or 0)
+                GameName(uf)
             end
+            local lv = Usable(uf) and rawget(uf, "suiLevel")
+            if lv then ns:Font(lv, pd.nameSize, true) end
             plates[uf] = "again"                             -- (selection looked at afresh; kept in the list so it is still watched)
         end
         if ns.RefreshPlateAuras then pcall(ns.RefreshPlateAuras, ns) end     -- (more or fewer debuffs allowed: shown at once)
@@ -685,16 +785,19 @@ ns:NewModule("nameplates", function()
             local plate = C_NamePlate.GetNamePlateForUnit(unit)
             local uf = plate and plate.UnitFrame
             if uf then
+                if Usable(uf) then uf.suiFoe = Foe(unit) or nil end     -- (first: the name and the level go by it)
                 Skin(uf); Color(uf)
                 pcall(PlateLevel, uf, unit)
                 if extrasOn then Attach(plate, uf, unit) end
                 PlateHealth(plate, uf, unit)
+                pcall(PlateName, plate, uf, unit)
                 pcall(PlateQuest, plate, uf, unit)
             end
         elseif event == "NAME_PLATE_UNIT_REMOVED" then
             local plate = C_NamePlate.GetNamePlateForUnit(unit)
             Detach(plate)
             if plate and healthTexts[plate] then PlateHealth(plate, plate.UnitFrame, nil) end
+            if plate and plateNames[plate] then pcall(PlateName, plate, plate.UnitFrame, nil) end
             if plate and questMarks[plate] then questMarks[plate]:Hide() end
         elseif C_NamePlate.GetNamePlates then
             for _, plate in ipairs(C_NamePlate.GetNamePlates()) do
