@@ -155,6 +155,45 @@ The search box at the top of the options finds any of them, and pointing at a sw
 | Quest sounds | on | A chime when one of a quest's objectives is finished, and the quest-complete sound when the whole quest is ready to hand in. |
 | Auto accept/turn in quests | off | Accepts and turns in quests for you without asking. |
 
+## Quest guides and the route planner (new in 13.0)
+
+The quest guide's two switches are on the Guide tab of `/fgui`. Every setting for what the planner plans is in its own window: `/fgui plan`, or the Planner button on the guide panel. Ways to make gold (Ctrl-click the minimap button, or `/fgui guide gold`) has no switch: it is there when you open it.
+
+| Switch | Starts | What it does |
+|---|---|---|
+| Use quest guides | on | The step panel, and the arrow that points to your step. Off, nothing of the guide shows. On the Guide tab, and in the setup. |
+| A sound when a step is done | on | A short sound each time a step ticks off. On the Guide tab. |
+| Include elites my class has soloed | on | Elite quests that one of your characters of this class has done alone count as Solo quests. |
+| Plan class quests | on | Your class quests go on the route at the right level, and the panel says when one is ready. |
+| Learn new flight points on the way | on | A short way round to a flight master you do not know yet, when the route passes close. |
+| Visit your trainer on the way | on | A stop at your class trainer every two levels, for your new spells. |
+| Save hand-ins to level in town | on | A hand-in that would take you up a level waits until the route reaches your trainer's town. |
+| Sell and repair stops | on | A stop at a vendor when your bags are nearly full or your gear is worn. |
+| Buy supplies at the vendor stop | on | At that stop, ammunition, food and drink are bought too. |
+| Profession training stops | on | A stop at a profession's trainer when your skill has reached what you can learn now. |
+| Mount reminder | on | From level 40: the riding trainer, your mount, and how much gold is still to find. |
+| Mail stops | on | A stop at a mailbox when mail is waiting and one is close. |
+| Explore on the way | on | Places you have not discovered yet, when they are close to the route. |
+| Gather on the way | on | Herbs and ore you have gathered before, close to the route, and a note to skin what you kill. |
+| Show the best quest reward | on | At a hand-in, the reward that suits you best is marked and named in chat. You choose it yourself. |
+| Count upgrades in rewards | on | A quest whose reward is better than what you wear counts for more. |
+| Quest log advice | on | When your quest log is nearly full, the panel says which quests are worth abandoning. |
+| Suggest an inn when you stop | on | After a long stretch of play, the panel points to an inn close by, to log out in for rested experience. |
+| Count rested experience | on | Kills are worth double while you are rested, and the route counts them so. |
+| Suggest what to do when quests run dry | on | When no quest is worth the trip, a dungeon or a place to grind is suggested instead. |
+| Learn from my deaths | on | A place where you died twice is left alone until you are two levels higher. |
+| Show why each step is there | on | Each step on the panel says what it is worth: the experience, or the time it saves. |
+| Remind me to take a break at a stopping place | off | After a long stretch of play, the panel says so when you reach a good place to stop. |
+| Keep my route | off | Levelling up, hand-ins and loading screens leave the route as it is. Only Plan my route and Plan again make a new one. |
+| The route on the map | on | The route's stops, numbered, and the line between them on the world map. |
+| Quest areas on the map | on | A mark on each area with quests the planner found, brighter where the experience comes faster. |
+| Use TomTom's arrow when TomTom is loaded | on | The step you are on goes to TomTom's arrow instead of this add-on's. |
+| Race your best | off | The panel says how far ahead or behind you are of your fastest character's time at this level. |
+| Where you left off, at login | on | When you log in, a line says where you were on the route and what comes next. |
+| Find a group button | on | A group quest on the panel gets a button that writes a line asking for a group. It only fills your chat box: you send it. |
+| Let friends ask to plan with you | on | A friend with Fantasy Glass UI can ask to plan one route for you both. You are always asked first. |
+| Read the route aloud | on | Each new step is read aloud as you reach it. |
+
 ## Look, sounds and notifications
 
 | Switch | Starts | What it does |

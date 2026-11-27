@@ -135,6 +135,9 @@ function ns.RunLines(state)
             lines[#lines + 1] = { left = p.instance .. "  |cff9aa4b4" .. format(ns:TrN(p.runs, "%d run", "%d runs"), p.runs) .. "|r", right = best,
                                   click = function() view.level, view.instance = 1, p.instance; ns:ShowRuns() end }
         end
+        if ns.PlannerLevelRunLines then                  -- (level times)
+            for _, l in ipairs(ns.PlannerLevelRunLines()) do lines[#lines + 1] = l end
+        end
         return lines
     end
     if state.level == 1 then

@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="es" data-lang="es" data-page="guide-and-gold">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Guía y oro · Fantasy Glass UI</title>
+<meta name="description" content="Qué hacen la guía de misiones y el asesor de oro, y cómo usarlos.">
+<link rel="canonical" href="https://fantasyglassui.com/es/guide-and-gold/">
+<link rel="alternate" hreflang="en" href="https://fantasyglassui.com/guide-and-gold/">
+<link rel="alternate" hreflang="de" href="https://fantasyglassui.com/de/guide-and-gold/">
+<link rel="alternate" hreflang="fr" href="https://fantasyglassui.com/fr/guide-and-gold/">
+<link rel="alternate" hreflang="es" href="https://fantasyglassui.com/es/guide-and-gold/">
+<link rel="alternate" hreflang="ru" href="https://fantasyglassui.com/ru/guide-and-gold/">
+<link rel="alternate" hreflang="pt" href="https://fantasyglassui.com/pt/guide-and-gold/">
+<link rel="alternate" hreflang="it" href="https://fantasyglassui.com/it/guide-and-gold/">
+<link rel="alternate" hreflang="ko" href="https://fantasyglassui.com/ko/guide-and-gold/">
+<link rel="alternate" hreflang="zh-Hans" href="https://fantasyglassui.com/zh/guide-and-gold/">
+<link rel="alternate" hreflang="x-default" href="https://fantasyglassui.com/guide-and-gold/">
+<link rel="icon" type="image/png" href="/icon.png">
+<link rel="alternate" type="application/rss+xml" title="Fantasy Glass UI releases" href="/feed.xml">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Fantasy Glass UI">
+<meta property="og:locale" content="es_ES">
+<meta property="og:locale:alternate" content="en_US">
+<meta property="og:locale:alternate" content="de_DE">
+<meta property="og:locale:alternate" content="fr_FR">
+<meta property="og:locale:alternate" content="ru_RU">
+<meta property="og:locale:alternate" content="pt_BR">
+<meta property="og:locale:alternate" content="it_IT">
+<meta property="og:locale:alternate" content="ko_KR">
+<meta property="og:locale:alternate" content="zh_CN">
+<meta property="og:title" content="Guía y oro · Fantasy Glass UI">
+<meta property="og:description" content="Qué hacen la guía de misiones y el asesor de oro, y cómo usarlos.">
+<meta property="og:url" content="https://fantasyglassui.com/es/guide-and-gold/">
+<meta property="og:image" content="https://fantasyglassui.com/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Fantasy Glass UI">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Guía y oro · Fantasy Glass UI">
+<meta name="twitter:description" content="Qué hacen la guía de misiones y el asesor de oro, y cómo usarlos.">
+<meta name="twitter:image" content="https://fantasyglassui.com/og.jpg">
+<meta name="theme-color" content="#12141a" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4f5f8" media="(prefers-color-scheme: light)">
+<script>(function(){var d=document.documentElement;d.classList.add("js");try{var t=localStorage.getItem("fg-theme");if(t==="light"||t==="dark")d.setAttribute("data-theme",t)}catch(e){}var here="es",page="guide-and-gold/",to=here,q=location.search,h=location.hash;var m=/[?&]lang=([a-z]{2})\b/.exec(q);if(m){to=m[1];q=q.replace(/([?&])lang=[a-z]{2}&?/,"$1").replace(/[?&]$/,"")}else if(here==="en"){var c=null;try{c=localStorage.getItem("fg-lang")}catch(e){}if(!c)c=String(navigator.language||"en").slice(0,2).toLowerCase();to=c}if(["en", "de", "fr", "es", "ru", "pt", "it", "ko", "zh"].indexOf(to)<0)to=here;var u=(to==="en"?"/":"/"+to+"/")+page;if(u!==location.pathname||q!==location.search)location.replace(u+q+h)})();</script>
+<link rel="preload" href="/fonts/marcellus-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/source-sans-3-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/site.css?v=9495293704">
+<style>
+/* Guide and Gold: the route planner, Questie, Ways to make gold, the hints, the how-to pages and the plan page. */
+.gg-head .lede { font-size: 1.2rem; }
+.gg-head .cta { margin-top: 22px; }
+.grid.feats { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+.feats .card h3 { font-size: 1.3rem; }
+.feats .card p { margin: 0; }
+.how { color: var(--dim); margin: 26px 0 0; max-width: 78ch; }
+.grid.two { grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); }
+.card.with { --c: color-mix(in srgb, var(--gold) 55%, var(--line)); }
+ul.ticks { list-style: none; margin: 0; padding: 0; }
+ul.ticks li { position: relative; padding: 0 0 10px 26px; color: var(--dim); }
+ul.ticks li::before { content: ""; position: absolute; left: 2px; top: .5em; width: 9px; height: 9px; background: var(--gold); clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+ul.ticks.plain { max-width: 820px; }
+ul.ticks.plain li { padding-bottom: 14px; font-size: 1.05rem; }
+ul.hints { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; max-width: 720px; }
+ul.hints li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; padding: 14px 18px; border: 1px solid var(--line); }
+ul.hints b { font-size: 1.1rem; min-width: 7em; }
+ul.hints span:last-child { color: var(--dim); }
+.sq { display: inline-block; width: 14px; height: 14px; flex: none; align-self: center; }
+.sq.sell { background: rgb(77, 217, 102); }
+.sq.hold { background: rgb(255, 179, 51); }
+.sq.vendor { background: rgb(153, 153, 153); }
+ol.howtos { list-style: none; margin: 0; padding: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 196px), 1fr)); }
+ol.howtos li { display: flex; }
+ol.howtos .card { flex: 1; padding-top: 20px; }
+ol.howtos .n { display: block; font: 400 2rem/1 var(--display); color: var(--gold); margin-bottom: 10px; }
+ol.howtos p { margin: 0; }
+.plan-card { display: grid; grid-template-columns: 1.6fr 1fr; gap: 24px 40px; align-items: center; padding: 34px 36px; }
+.plan-card h2 { margin-bottom: 12px; }
+.plan-card p { margin: 0; font-size: 1.05rem; }
+.plan-card .cta { margin: 0; flex-direction: column; align-items: stretch; }
+@media (max-width: 760px) { .plan-card { grid-template-columns: 1fr; padding: 24px 20px; } }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Saltar al contenido</a>
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="/es/"><img src="/logo-64.webp" alt="" width="32" height="32">Fantasy Glass UI</a>
+    <nav class="site-nav" id="site-nav" aria-label="Páginas">
+      <ul><li><a href="/es/">Inicio</a></li><li><a href="/es/features/">Funciones</a></li><li><a href="/es/themes/">Temas</a></li><li><a href="/es/guide-and-gold/" aria-current="page">Guía y oro</a></li><li><a href="/es/get-started/">Empezar</a></li><li><a href="/es/changelog/">Historial</a></li><li><a href="/es/roadmap/">Hoja de ruta</a></li></ul>
+      <div class="head-tools">
+        <label class="lang"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span class="sr-only">Idioma</span><select id="lang"><option value="/guide-and-gold/" data-code="en" lang="en">English</option><option value="/de/guide-and-gold/" data-code="de" lang="de">Deutsch</option><option value="/fr/guide-and-gold/" data-code="fr" lang="fr">Français</option><option value="/es/guide-and-gold/" data-code="es" lang="es" selected>Español</option><option value="/ru/guide-and-gold/" data-code="ru" lang="ru">Русский</option><option value="/pt/guide-and-gold/" data-code="pt" lang="pt">Português</option><option value="/it/guide-and-gold/" data-code="it" lang="it">Italiano</option><option value="/ko/guide-and-gold/" data-code="ko" lang="ko">한국어</option><option value="/zh/guide-and-gold/" data-code="zh" lang="zh-Hans">中文</option></select></label>
+        <button class="icon-btn mode" id="mode" type="button" aria-pressed="true" title="Modo oscuro"><span class="sr-only">Modo oscuro</span><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M5.3 18.7 7 17M17 7l1.7-1.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      </div>
+    </nav>
+    <a class="btn small head-dl" href="https://www.curseforge.com/wow/addons/fantasy-glass-ui">Descargar</a>
+    <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav"><span class="sr-only">Menú</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    <button class="chip wearing" id="unwear" type="button" hidden>Llevas <b id="wearname"></b>: volver a los colores del sitio</button>
+  </div>
+</header>
+<main id="main" tabindex="-1">
+<!-- Guide and Gold (W3): what the route planner and Ways to make gold do, Questie, the prices and sell hints, the
+     how-to pages (pages/guide-and-gold/<name>/) and the plan page (/plan/, built by site-src/plan_page.py).
+     Every claim here is true of the add-on's code (FantasyGlassUI_Planner/, FantasyGlassUI_Gold/, Guide.lua). -->
+<div class="wrap page-head gg-head">
+  <span class="eyebrow">Novedad en 13.0</span>
+  <h1>Guía y oro</h1>
+  <p class="lede">Dos ayudantes dentro de Fantasy Glass UI: un planificador de ruta que organiza tus misiones mientras subes de nivel, y «Formas de ganar oro», que muestra lo que vale tu tiempo. Ambos son gratis. El planificador se carga cuando lo usas, y las ideas de oro cuando las usas o abres la casa de subastas.</p>
+  <div class="cta">
+    <a class="btn" href="/es/guide-and-gold/first-route/">Planifica tu primera ruta</a>
+    <a class="btn line" href="/plan/">Abrir la página del plan</a>
+  </div>
+  <p class="status"><span>Versión <b>13.0.0</b></span><span class="sep" aria-hidden="true">·</span><span>Actualizado el <time datetime="2026-11-26">2026-11-26</time></span><span class="sep" aria-hidden="true">·</span><span>Comprobado con WoW: Forever <b>1.60.1 (70938)</b></span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">Código fuente</a></span></p>
+</div>
+
+<section class="block" id="planner" aria-labelledby="h-planner">
+  <div class="wrap">
+    <header>
+      <span class="eyebrow">Subir de nivel</span>
+      <h2 id="h-planner">El planificador de ruta</h2>
+      <p class="lede">Prepara una ruta de misiones para tu nivel: cuáles coger, en qué orden y cuándo volar, entrenar o entregar. Mientras juegas, vuelve a planificar, así la ruta va a tu paso.</p>
+    </header>
+    <div class="grid feats">
+      <div class="card"><h3>Paso a paso</h3><p>Un pequeño panel muestra el paso en el que estás y una flecha señala el camino. Los pasos se marcan solos cuando los haces.</p></div>
+      <div class="card"><h3>Tu ritmo</h3><p>Los controles Rapidez, Seguridad e Historia fijan lo que busca la ruta. Di cuánto tiempo puedes jugar y la ruta toma solo lo que cabe y termina en un buen sitio para parar.</p></div>
+      <div class="card"><h3>Paradas por el camino</h3><p>Nuevos puntos de vuelo, tu instructor de clase cada dos niveles, un vendedor cuando tus bolsas están casi llenas, el correo y un recordatorio de montura desde el nivel 40. Cada tipo de parada se puede desactivar.</p></div>
+      <div class="card"><h3>En el mapa</h3><p>Las paradas de la ruta, numeradas y unidas por una línea en el mapa del mundo, y una marca en cada zona con misiones, más brillante donde la experiencia llega más rápido.</p></div>
+      <div class="card"><h3>Con un amigo</h3><p>Una ruta para dos: las mismas misiones, en el mismo orden. El panel muestra cuánto va por detrás tu amigo.</p></div>
+      <div class="card"><h3>En tu móvil</h3><p>«Compartir el plan» convierte tu ruta en un código. Pégalo en la página del plan para ver la ruta y marcar los pasos en el móvil.</p></div>
+    </div>
+    <p class="how">Ábrelo con <code>/fgui plan</code>, con <b>Planificar mi ruta</b> en la pestaña Guía de los ajustes o con el botón «Plan» del panel de la guía. La primera vez, un recorrido corto de cuatro páginas lo explica, y <b>Cómo funciona el planificador</b> en su ventana lo vuelve a mostrar.</p>
+  </div>
+</section>
+
+<section class="block" id="questie" aria-labelledby="h-questie">
+  <div class="wrap">
+    <header>
+      <span class="eyebrow">Opcional</span>
+      <h2 id="h-questie">Questie es opcional</h2>
+      <p class="lede">El planificador funciona por sí solo. Con el accesorio Questie cargado también, conoce mucho más del mundo.</p>
+    </header>
+    <div class="grid two">
+      <div class="card">
+        <h3>Sin Questie</h3>
+        <ul class="ticks">
+          <li>Planifica las misiones que ya están en tu registro.</li>
+          <li>Los vendedores y buzones son los que ya has visitado.</li>
+          <li>Las hierbas y menas son las que tú mismo has recogido.</li>
+        </ul>
+      </div>
+      <div class="card with">
+        <h3>Con Questie</h3>
+        <ul class="ticks">
+          <li>Todas las misiones de tu nivel, no solo las de tu registro, con quién las da y dónde.</li>
+          <li>Posadas, instructores, vendedores y buzones, también los que aún no has encontrado.</li>
+          <li>Lugares para farmear cuando se acaban las misiones, y el objetivo de terminar una zona, que planifica todas las misiones que quedan en ella.</li>
+          <li>En «Formas de ganar oro»: qué monstruos sueltan los objetos que piden tus misiones.</li>
+        </ul>
+      </div>
+    </div>
+    <p class="how">Mientras Questie carga, el planificador lo espera, y tras medio minuto planifica a partir de tu registro. Si Questie cambia de una forma que no sabe leer, lo dice y planifica a partir de tu registro.</p>
+  </div>
+</section>
+
+<section class="block" id="gold" aria-labelledby="h-gold">
+  <div class="wrap">
+    <header>
+      <span class="eyebrow">Oro</span>
+      <h2 id="h-gold">Formas de ganar oro</h2>
+      <p class="lede">Una ventana que enumera formas de ganar oro, las mejores primero, a partir de lo que has visto: los precios de tu casa de subastas, lo que pagan los vendedores, los monstruos que has despojado, las hierbas y menas recogidas y las recetas que conoces.</p>
+    </header>
+    <div class="grid feats">
+      <div class="card"><h3>Ahora mismo</h3><p>Arriba, algunas cosas que puedes hacer ya, como vender lo que hay en tus bolsas.</p></div>
+      <div class="card"><h3>Ideas de todo tipo</h3><p>Vender tus bolsas, y tu banco tal como lo viste por última vez, vender la chatarra, comprar a un vendedor lo que se vende más caro en subasta, fabricar con beneficio, rutas de recolección, monstruos rentables y botín de mazmorras.</p></div>
+      <div class="card"><h3>Ordenadas a tu manera</h3><p>Cada idea dice cuánto da, lo fácil y segura que es y lo recientes que son sus precios. «Más oro», «Dinero fácil» y «Seguro» ordenan la lista, o ajusta tú los controles Oro por hora, Facilidad y Seguridad.</p></div>
+      <div class="card"><h3>Ahorrar para algo</h3><p>Escribe una cantidad o elige «Equitación a nivel 40» o «Equitación épica a nivel 60», y cada idea muestra cuánto tardaría en llevarte hasta ahí.</p></div>
+      <div class="card"><h3>Ir</h3><p>«Ir» te lleva allí con las indicaciones del planificador. Tu ruta de subida de nivel espera y vuelve cuando termina el viaje.</p></div>
+      <div class="card"><h3>En la casa de subastas</h3><p>Junto a la casa de subastas, «Ideas de oro aquí» muestra lo que vale la pena hacer allí mismo. Abrir la casa de subastas lo carga; <b>Ideas de oro en la casa de subastas</b>, en Bolsas y objetos › Oro y farmeo de los ajustes, lo desactiva.</p></div>
+    </div>
+    <p class="how">Ábrela con <b>Formas de ganar oro</b> en la ventana del planificador o en el menú del panel de la guía, con <code>/fgui guide gold</code> o con Ctrl-clic en el botón del minimapa. Nunca se compra, se pone a la venta ni se fabrica nada por ti: cada clic es tuyo.</p>
+  </div>
+</section>
+
+<section class="block" id="prices" aria-labelledby="h-prices">
+  <div class="wrap">
+    <header>
+      <span class="eyebrow">En la casa de subastas</span>
+      <h2 id="h-prices">Precios y consejos de venta</h2>
+      <p class="lede">Las ideas de oro son tan buenas como sus precios. Un toque en «Escanear precios» lee toda la casa de subastas, y luego las descripciones dicen qué hacer con cada objeto.</p>
+    </header>
+    <ul class="hints">
+      <li><span class="sq sell" aria-hidden="true"></span><b>Vender ya</b> <span>hoy muy por encima de su precio habitual</span></li>
+      <li><span class="sq hold" aria-hidden="true"></span><b>Guardar</b> <span>barato hoy: espera un precio mejor</span></li>
+      <li><span class="sq vendor" aria-hidden="true"></span><b>Al vendedor</b> <span>un vendedor paga más o menos lo mismo, o nadie lo vende</span></li>
+    </ul>
+    <p class="how"><a href="/es/guide-and-gold/first-scan/">Tu primer escaneo de precios</a> · <a href="/es/guide-and-gold/sell-hints/">Leer los consejos de venta</a></p>
+  </div>
+</section>
+
+<section class="block" id="how-to" aria-labelledby="h-howto">
+  <div class="wrap">
+    <header>
+      <span class="eyebrow">Paso a paso</span>
+      <h2 id="h-howto">Guías paso a paso</h2>
+    </header>
+    <ol class="grid howtos">
+      <li><a class="card" href="/es/guide-and-gold/first-route/"><span class="n" aria-hidden="true">1</span><h3>Tu primera ruta</h3><p>Abre el planificador de ruta y sigue paso a paso tu primera ruta de misiones.</p></a></li>
+      <li><a class="card" href="/es/guide-and-gold/duo/"><span class="n" aria-hidden="true">2</span><h3>Planificar con un amigo</h3><p>Una ruta para dos: las mismas misiones en el mismo orden, para ti y un amigo.</p></a></li>
+      <li><a class="card" href="/es/guide-and-gold/phone/"><span class="n" aria-hidden="true">3</span><h3>La página del plan en el móvil</h3><p>Copia un código de plan en el juego y sigue la ruta en tu móvil, marcando los pasos.</p></a></li>
+      <li><a class="card" href="/es/guide-and-gold/first-scan/"><span class="n" aria-hidden="true">4</span><h3>Tu primer escaneo de precios</h3><p>Lee todas las subastas a la vez con «Escanear precios», para que las descripciones, los consejos de venta y las ideas de oro tengan precios.</p></a></li>
+      <li><a class="card" href="/es/guide-and-gold/sell-hints/"><span class="n" aria-hidden="true">5</span><h3>Leer los consejos de venta</h3><p>Qué significan «Vender ya», «Guardar» y «Al vendedor» en las descripciones y en las bolsas, y cuándo aparecen.</p></a></li>
+    </ol>
+  </div>
+</section>
+
+<section class="block" id="plan-page" aria-labelledby="h-plan">
+  <div class="wrap">
+    <div class="card filled plan-card">
+      <div>
+        <span class="eyebrow">En cualquier pantalla</span>
+        <h2 id="h-plan">La página del plan</h2>
+        <p>Pega un código de plan del juego y la ruta aparece en cualquier pantalla: la experiencia y el tiempo que debería llevar, un pequeño mapa por zona con las paradas numeradas y cada paso para marcar. Funciona en el móvil, y nada de lo que pegas sale de tu navegador.</p>
+      </div>
+      <div class="cta">
+        <a class="btn" href="/plan/">Abrir la página del plan</a>
+        <a class="btn line" href="/es/guide-and-gold/phone/">Cómo usarla en el móvil</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="private" aria-labelledby="h-private">
+  <div class="wrap">
+    <header>
+      <span class="eyebrow">Privacidad</span>
+      <h2 id="h-private">Lo que sigue siendo privado</h2>
+    </header>
+    <ul class="ticks plain">
+      <li>Planificar con un amigo solo habla con el accesorio de tu amigo, por susurro, y siempre se le pregunta antes. Nada va al chat público.</li>
+      <li>Un código de plan contiene los pasos, las zonas, los niveles y el tiempo. No lleva ningún nombre de personaje ni de reino.</li>
+      <li>La página del plan lee el código en tu navegador y no envía nada a ningún sitio. Tus marcas se quedan en ese navegador.</li>
+      <li>«Formas de ganar oro» trabaja con lo que han visto tus propios personajes. No comparte nada.</li>
+    </ul>
+  </div>
+</section>
+</main>
+<footer class="site-foot">
+  <div class="wrap">
+    <div class="foot-row">
+      <span>Fantasy Glass UI de DustyMouse. Gratis, para WoW Forever.</span>
+      <ul>
+        <li><a href="https://www.curseforge.com/wow/addons/fantasy-glass-ui">CurseForge</a></li>
+        <li><a href="https://discord.gg/qeSMwQWyPR">Discord</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI">GitHub</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/wiki">Wiki</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/issues/new/choose">Informar de un error</a></li>
+        <li><a href="/es/accessibility/">Accesibilidad</a></li>
+        <li><a href="/es/press/">Kit de prensa</a></li>
+        <li><a href="/feed.xml" type="application/rss+xml">RSS</a></li>
+      </ul>
+    </div>
+    <div class="foot-row">
+      <span>Contacto: <a href="mailto:email-forwarding@fantasyglassui.com">email-forwarding@fantasyglassui.com</a></span>
+      <p class="status"><span>Versión <b>13.0.0</b></span><span class="sep" aria-hidden="true">·</span><span>Actualizado el <time datetime="2026-11-26">2026-11-26</time></span><span class="sep" aria-hidden="true">·</span><span>Comprobado con WoW: Forever <b>1.60.1 (70938)</b></span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">Código fuente</a></span></p>
+    </div>
+    <nav class="foot-row foot-langs" aria-label="Idioma"><ul><li><a href="/guide-and-gold/" hreflang="en" lang="en" data-code="en">English</a></li><li><a href="/de/guide-and-gold/" hreflang="de" lang="de" data-code="de">Deutsch</a></li><li><a href="/fr/guide-and-gold/" hreflang="fr" lang="fr" data-code="fr">Français</a></li><li><a href="/es/guide-and-gold/" hreflang="es" lang="es" data-code="es" aria-current="true">Español</a></li><li><a href="/ru/guide-and-gold/" hreflang="ru" lang="ru" data-code="ru">Русский</a></li><li><a href="/pt/guide-and-gold/" hreflang="pt" lang="pt" data-code="pt">Português</a></li><li><a href="/it/guide-and-gold/" hreflang="it" lang="it" data-code="it">Italiano</a></li><li><a href="/ko/guide-and-gold/" hreflang="ko" lang="ko" data-code="ko">한국어</a></li><li><a href="/zh/guide-and-gold/" hreflang="zh-Hans" lang="zh-Hans" data-code="zh">中文</a></li></ul></nav>
+    <p class="trnote">Esta página se tradujo sin revisión de un hablante nativo. Las correcciones son bienvenidas.</p>
+  </div>
+</footer>
+<script src="/assets/site.js?v=2dd8abee61" defer></script>
+</body>
+</html>

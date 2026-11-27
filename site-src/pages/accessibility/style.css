@@ -1,0 +1,19 @@
+/* Accessibility: what the add-on does, need by need. */
+.page-head .lede { color: var(--text); font-size: 1.2rem; margin: 0 0 12px; }
+.page-head .start { color: var(--dim); margin: 0; }
+.acc { padding-block: 28px 24px; }
+nav.jump { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 30px; }
+nav.jump a { display: inline-flex; align-items: center; min-height: 36px; padding: 4px 12px; border: 1px solid var(--line); color: var(--frost); text-decoration: none; }
+nav.jump a:hover { border-color: var(--frost); }
+.need { padding: 22px 26px 10px; margin: 0 0 20px; }
+.need h2 { font-size: 1.8rem; margin: 0 0 4px; }
+.need .who { color: var(--dim); margin: 0 0 12px; }
+.need ul { margin: 0 0 12px; padding-left: 1.2em; }
+.need li { margin: 0 0 10px; color: var(--dim); }
+.need li::marker { color: var(--gold); }
+.need li b { color: var(--text); }
+.honest { border-left: 3px solid var(--gold); padding: 4px 0 4px 18px; margin: 34px 0 0; color: var(--dim); }
+.honest h2 { font-size: 1.5rem; margin-bottom: 8px; }
+@media (max-width: 560px) { .need { padding: 18px 16px 6px; } }
+.need.new { --c: color-mix(in srgb, var(--gold) 55%, var(--line)); }
+.need li code { font-size: .88em; }

@@ -1,0 +1,29 @@
+## Interface: 16001
+## Title: |cff33ccffFantasy Glass|r UI - planner
+## Notes: The route planner for Fantasy Glass UI's quest guides. The game loads this by itself the first time the planner is used, so it uses no memory until then. Leave it enabled.
+## Author: DustyMouse
+## Version: 13.0.0
+## LoadOnDemand: 1
+## RequiredDeps: FantasyGlassUI
+## OptionalDeps: Questie
+## Category: User Interface
+## X-License: All Rights Reserved
+## X-Curse-Project-ID: 1798626
+## IconTexture: Interface\AddOns\FantasyGlassUI\Media\icon.tga
+
+PlannerSource.lua
+Planner.lua
+PlannerRoute.lua
+PlannerStops.lua
+PlannerPath.lua
+PlannerAdvice.lua
+PlannerMap.lua
+PlannerPages.lua
+PlannerPace.lua
+PlannerRecords.lua
+PlannerGroup.lua
+PlannerDuo.lua
+PlannerCode.lua
+PlannerIntro.lua
+PlannerWindow.lua
+PlannerGo.lua

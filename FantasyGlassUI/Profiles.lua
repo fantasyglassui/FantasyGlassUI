@@ -74,6 +74,20 @@ local function Decode(s, i, depth)
     error("unexpected character")
 end
 
+-- Exported for the plan code (PlannerCode.lua): the same encoding, a string in and out.
+function ns.ShareEncode(value)
+    local out = {}
+    Encode(value, out, 0)
+    return table.concat(out)
+end
+-- value, the index after it; nil when the text is not a well-formed value (never raises).
+function ns.ShareDecode(text, start)
+    if type(text) ~= "string" then return nil end
+    local ok, value, stop = pcall(Decode, text, start or 1, 0)
+    if ok then return value, stop end
+    return nil
+end
+
 local HEADER = "SUI1!"
 ns.DeepCopy = function(v) return DeepCopy(v) end
 ns.PACK_HEADER = "FGP1!"
@@ -433,7 +447,9 @@ function ns.CleanPackProfile(p)
     end
     if type(clean.pos) == "table" then
         for k, at in pairs(clean.pos) do
-            if not (type(k) == "string" and type(at) == "table" and type(at[1]) == "string" and type(at[2]) == "string" and type(at[3]) == "number" and type(at[4]) == "number") then clean.pos[k] = nil end
+            if not (type(k) == "string" and type(at) == "table" and type(at[1]) == "string" and type(at[2]) == "string" and type(at[3]) == "number" and type(at[4]) == "number") then
+                clean.pos[k] = nil
+            end
         end
     else clean.pos = {} end
     if type(clean.scale) == "table" then

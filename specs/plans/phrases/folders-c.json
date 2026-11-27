@@ -1,0 +1,30 @@
+{
+ "Route planner": ["Routenplaner", "Planificateur d'itinéraire", "Planificador de ruta", "Планировщик маршрута", "Planejador de rota", "Pianificatore di percorso", "경로 플래너", "路线规划器"],
+ "You are not following a plan.": ["Du folgst keinem Plan.", "Tu ne suis aucun plan.", "No estás siguiendo ningún plan.", "Вы не следуете плану.", "Você não está seguindo um plano.", "Non stai seguendo un piano.", "따르고 있는 계획이 없습니다.", "你没有在跟随计划。"],
+ "Step %d of %d: %s": ["Schritt %d von %d: %s", "Étape %d sur %d : %s", "Paso %d de %d: %s", "Шаг %d из %d: %s", "Etapa %d de %d: %s", "Passo %d di %d: %s", "%d/%d단계: %s", "第 %d 步，共 %d 步：%s"],
+ "On a trip: %s, step %d of %d": ["Auf einer Reise: %s, Schritt %d von %d", "En voyage : %s, étape %d sur %d", "De viaje: %s, paso %d de %d", "В пути: %s, шаг %d из %d", "Em viagem: %s, etapa %d de %d", "In viaggio: %s, passo %d di %d", "여정 중: %s, %d/%d단계", "旅途中：%s，第 %d 步，共 %d 步"],
+ "Your levelling plan waits.": ["Dein Levelplan wartet.", "Ton plan de montée en niveau t'attend.", "Tu plan para subir de nivel te espera.", "Ваш план прокачки ждёт.", "Seu plano de evolução está esperando.", "Il tuo piano per salire di livello ti aspetta.", "레벨업 계획은 기다리고 있습니다.", "你的升级计划在等你。"],
+ "Plan again": ["Neu planen", "Replanifier", "Planear de nuevo", "Спланировать заново", "Planear de novo", "Pianifica di nuovo", "다시 계획", "重新规划"],
+ "Stop": ["Stopp", "Arrêter", "Detener", "Стоп", "Parar", "Ferma", "중지", "停止"],
+ "Save for riding": ["Für das Reiten sparen", "Économiser pour la monte", "Ahorrar para la equitación", "Накопить на верховую езду", "Economizar para montaria", "Risparmia per la cavalcatura", "탈것 타기를 위해 모으기", "为骑术攒钱"],
+ "Planner settings": ["Planer-Einstellungen", "Réglages du planificateur", "Ajustes del planificador", "Настройки планировщика", "Configurações do planejador", "Impostazioni del pianificatore", "플래너 설정", "规划器设置"],
+ "The planner's own window: the route you follow, and every setting for what it plans.": [
+  "Das eigene Fenster des Planers: die Route, der du folgst, und jede Einstellung dafür, was er plant.",
+  "La fenêtre du planificateur : l'itinéraire que tu suis, et tous les réglages de ce qu'il planifie.",
+  "La ventana propia del planificador: la ruta que sigues y todos los ajustes de lo que planifica.",
+  "Собственное окно планировщика: маршрут, которому вы следуете, и все настройки того, что он планирует.",
+  "A janela do planejador: a rota que você segue e todas as configurações do que ele planeja.",
+  "La finestra del pianificatore: il percorso che segui e ogni impostazione di ciò che pianifica.",
+  "플래너 전용 창: 따르고 있는 경로와 계획 내용에 관한 모든 설정.",
+  "规划器自己的窗口：你跟随的路线，以及它规划内容的所有设置。"
+ ],
+ "Group quests": ["Gruppenquests", "Quêtes de groupe", "Misiones de grupo", "Групповые задания", "Missões de grupo", "Missioni di gruppo", "그룹 퀘스트", "组队任务"],
+ "Stops on the way": ["Halte unterwegs", "Arrêts en chemin", "Paradas en el camino", "Остановки в пути", "Paradas no caminho", "Soste lungo la strada", "가는 길의 들를 곳", "途中停靠"],
+ "Exploring and gathering": ["Erkunden und Sammeln", "Exploration et récolte", "Explorar y recolectar", "Исследование и сбор", "Explorar e coletar", "Esplorazione e raccolta", "탐험과 채집", "探索与采集"],
+ "Rewards, the log and the inn": ["Belohnungen, das Questlog und das Gasthaus", "Récompenses, le journal et l'auberge", "Recompensas, el registro y la posada", "Награды, журнал и таверна", "Recompensas, o registro e a estalagem", "Ricompense, il registro e la locanda", "보상, 퀘스트 목록과 여관", "奖励、任务日志与旅店"],
+ "Time, style and sliders": ["Zeit, Stil und Regler", "Temps, style et curseurs", "Tiempo, estilo y controles", "Время, стиль и ползунки", "Tempo, estilo e controles", "Tempo, stile e cursori", "시간, 스타일과 슬라이더", "时间、风格与滑块"],
+ "Map": ["Karte", "Carte", "Mapa", "Карта", "Mapa", "Mappa", "지도", "地图"],
+ "Records": ["Rekorde", "Records", "Récords", "Рекорды", "Recordes", "Record", "기록", "记录"],
+ "Reading aloud": ["Vorlesen", "Lecture à voix haute", "Leer en voz alta", "Чтение вслух", "Leitura em voz alta", "Lettura ad alta voce", "소리 내어 읽기", "朗读"],
+ "With others": ["Mit anderen", "Avec d'autres", "Con otros", "С другими", "Com outros", "Con altri", "다른 플레이어와", "与他人一起"]
+}

@@ -9,22 +9,35 @@ local Secret = function(v) return ns:IsSecret(v) end
 -- A key (or /fgui read) says what is under the mouse with the game's text-to-speech voice: the
 -- tooltip if one is showing, otherwise the quest being read, otherwise the last whisper.
 -- /fgui read tooltip | quest | whisper picks one.
+-- (the ready-check tick a finished objective ends in, Guide.lua: said as a word, since a texture is not read)
+local TICK = "|T[Ii]nterface\\[Rr]aid[Ff]rame\\[Rr]eady[Cc]heck%-[Rr]eady[^|]*|t"
 local function Plain(text)
     if type(text) ~= "string" or Secret(text) then return nil end
+    if text:find(TICK) then
+        local word = tostring(ns:Tr("done")):gsub("%%", "%%%%")
+        text = text:gsub(TICK, " " .. word)
+    end
     text = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|T.-|t", ""):gsub("|A.-|a", ""):gsub("|H.-|h(.-)|h", "%1"):gsub("|n", " ")
     text = text:gsub("%s+", " "):gsub("^ ", ""):gsub(" $", "")
     return text ~= "" and text or nil
 end
-local lastWhisper
+local lastWhisper, whisperNew                -- (whisperNew: a whisper not yet read aloud)
+local Join                                  -- (parts joined into sentences: below)
 do
     local ev = CreateFrame("Frame")
     for _, e in ipairs({ "CHAT_MSG_WHISPER", "CHAT_MSG_BN_WHISPER" }) do pcall(ev.RegisterEvent, ev, e) end
     ev:SetScript("OnEvent", function(_, _, msg, sender)
         local text, who = Plain(msg), (type(sender) == "string" and not Secret(sender)) and sender:gsub("%-.*$", "") or nil
-        if text then lastWhisper = (who and (who .. ": ") or "") .. text end
+        if text then lastWhisper, whisperNew = (who and (who .. ": ") or "") .. text, true end
     end)
 end
-function ns.ReadSetLastWhisper(text) lastWhisper = text end      -- (for the tests)
+function ns.ReadSetLastWhisper(text) lastWhisper, whisperNew = text, text ~= nil end      -- (for the tests)
+-- Has the list window in front the keyboard (the game-window keys are on and it is the window they work)?
+local function ListFocused(w)
+    if not (w and ns.db and ns.db.windowKeys and ns.WindowKeysFront) then return false end
+    local ok, f = pcall(ns.WindowKeysFront)
+    return ok and f == w
+end
 -- What would be read: the text and which kind it was.
 function ns:ReadText(what)
     what = (type(what) == "string" and what ~= "") and what:lower() or nil
@@ -52,6 +65,28 @@ function ns:ReadText(what)
         end
         if #parts > 0 then return table.concat(parts, ". "), "quest" end
     end
+    -- the quest guide's panel (while the mouse is on it, or asked for by name), then the list window in front
+    if (what == "guide" or (not what and ns.GuidePanelUnderMouse and ns.GuidePanelUnderMouse())) and ns.GuideReadText then
+        local t = Plain(ns.GuideReadText())
+        if t then return t, "guide" end
+    end
+    if not what or what == "list" then
+        local w = ns.FrontList and ns:FrontList()
+        -- (the key reads a whisper not yet read first, as it always did: the list only when none is waiting, or when it has the keyboard)
+        if not what and w and lastWhisper and whisperNew and not ListFocused(w) then return lastWhisper, "whisper" end
+        if w then
+            local parts = {}
+            parts[1] = Plain(w.titleText)
+            for _, line in ipairs(type(w.lines) == "table" and w.lines or {}) do
+                if type(line) == "table" then
+                    local l, r = Plain(line.left or line[1]), (not line.hasSecret) and Plain(line.right or line[2]) or nil
+                    if l and r then parts[#parts + 1] = l .. ": " .. r elseif l or r then parts[#parts + 1] = l or r end
+                end
+                if #parts >= 40 then break end
+            end
+            if #parts > 0 then return Join(parts), "list" end
+        end
+    end
     if (not what or what == "whisper") and lastWhisper then return lastWhisper, "whisper" end
     return nil
 end
@@ -66,6 +101,7 @@ function ns:ReadAloud(what)
         return false
     end
     ns.readLast = kind
+    if kind == "whisper" then whisperNew = false end          -- (read: the list in front is read next time)
     return kind
 end
 
@@ -234,7 +270,7 @@ end
 -- "Read talk and quests aloud": what an NPC says, a quest's text and a book or letter are read as their
 -- window opens, and the reading stops when it closes. "Read what I point at": a tooltip is read once the
 -- mouse rests on something. (The game's own screen narrator works only before you log in.)
-local function Join(parts)
+Join = function(parts)
     local out = ""
     for _, t in ipairs(parts) do
         t = Plain(t)

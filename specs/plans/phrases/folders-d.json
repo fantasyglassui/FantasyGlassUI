@@ -1,0 +1,72 @@
+{
+  "Gold trip: %s": [
+    "Goldreise: %s",
+    "Voyage pour l'or : %s",
+    "Viaje de oro: %s",
+    "Поездка за золотом: %s",
+    "Viagem pelo ouro: %s",
+    "Viaggio per l'oro: %s",
+    "골드 여정: %s",
+    "赚金之旅：%s"
+  ],
+  "Stop this trip": [
+    "Diese Reise beenden",
+    "Arrêter ce voyage",
+    "Detener este viaje",
+    "Прервать поездку",
+    "Parar esta viagem",
+    "Interrompi questo viaggio",
+    "이 여정 중지",
+    "停止这次旅程"
+  ],
+  "Back to your levelling plan.": [
+    "Zurück zu deinem Levelplan.",
+    "Retour à votre plan de montée de niveau.",
+    "De vuelta a tu plan de subida de nivel.",
+    "Возвращаемся к вашему плану прокачки.",
+    "De volta ao seu plano de evolução.",
+    "Di nuovo al tuo piano di livellamento.",
+    "레벨업 계획으로 돌아갑니다.",
+    "回到你的升级计划。"
+  ],
+  "Back to \"%s\".": [
+    "Zurück zu „%s“.",
+    "Retour à « %s ».",
+    "De vuelta a «%s».",
+    "Возвращаемся к «%s».",
+    "De volta a \"%s\".",
+    "Di nuovo a «%s».",
+    "\"%s\"(으)로 돌아갑니다.",
+    "回到“%s”。"
+  ],
+  "No way there was found: here are the steps.": [
+    "Kein Weg dorthin gefunden: hier sind die Schritte.",
+    "Aucun chemin trouvé : voici les étapes.",
+    "No se encontró ningún camino: estos son los pasos.",
+    "Путь туда не найден: вот шаги.",
+    "Nenhum caminho foi encontrado: aqui estão os passos.",
+    "Nessuna strada trovata: ecco i passi.",
+    "그곳으로 가는 길을 찾지 못했습니다: 단계는 다음과 같습니다.",
+    "未找到前往的路线：以下是步骤。"
+  ],
+  "This trip takes about %s; you have %s left.": [
+    "Diese Reise dauert etwa %s; du hast noch %s.",
+    "Ce voyage prend environ %s ; il vous reste %s.",
+    "Este viaje lleva unos %s; te quedan %s.",
+    "Эта поездка займёт около %s; у вас осталось %s.",
+    "Esta viagem leva cerca de %s; restam %s.",
+    "Questo viaggio richiede circa %s; ti restano %s.",
+    "이 여정은 약 %s 걸립니다. 남은 시간은 %s입니다.",
+    "这次旅程大约需要%s；你还剩%s。"
+  ],
+  "Not now: a timed quest is under way. Go again once it is handed in.": [
+    "Nicht jetzt: eine Quest mit Zeitlimit läuft. Versuch es noch einmal, wenn du sie abgegeben hast.",
+    "Pas maintenant : une quête chronométrée est en cours. Réessayez une fois qu'elle est rendue.",
+    "Ahora no: hay una misión con tiempo en curso. Vuelve a intentarlo cuando la entregues.",
+    "Не сейчас: идёт задание на время. Попробуйте снова, когда сдадите его.",
+    "Agora não: uma missão com tempo está em andamento. Tente de novo depois de entregá-la.",
+    "Non ora: è in corso una missione a tempo. Riprova dopo averla consegnata.",
+    "지금은 안 됩니다: 시간제한 퀘스트가 진행 중입니다. 완료 보고 후 다시 시도하세요.",
+    "现在不行：一个限时任务正在进行。交付后再试。"
+  ]
+}

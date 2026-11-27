@@ -1,0 +1,32 @@
+{
+  "Keep my route": [
+    "Meine Route behalten",
+    "Garder mon itinéraire",
+    "Mantener mi ruta",
+    "Сохранять мой маршрут",
+    "Manter minha rota",
+    "Mantieni il mio percorso",
+    "내 경로 유지",
+    "保留我的路线"
+  ],
+  "Levelling up, hand-ins and loading screens leave the route as it is. Only Plan my route and Plan again make a new one.": [
+    "Stufenaufstiege, Abgaben und Ladebildschirme lassen deine Route, wie sie ist. Nur „Route planen“ und „Neu planen“ machen eine neue.",
+    "Les montées de niveau, les rendus de quête et les écrans de chargement laissent l'itinéraire tel quel. Seuls « Planifier mon itinéraire » et « Replanifier » en créent un nouveau.",
+    "Subir de nivel, entregar misiones y las pantallas de carga dejan la ruta como está. Solo «Planificar mi ruta» y «Planear de nuevo» crean una nueva.",
+    "Новые уровни, сдача заданий и экраны загрузки не меняют маршрут. Новый строят только «Спланировать маршрут» и «Спланировать заново».",
+    "Subir de nível, entregar missões e telas de carregamento deixam a rota como está. Só \"Planejar minha rota\" e \"Planear de novo\" criam uma nova.",
+    "Salire di livello, consegnare missioni e le schermate di caricamento lasciano il percorso com'è. Solo «Pianifica il mio percorso» e «Pianifica di nuovo» ne creano uno nuovo.",
+    "레벨 업, 퀘스트 완료 보고, 로딩 화면은 경로를 그대로 둡니다. '내 경로 계획'과 '다시 계획'만 새 경로를 만듭니다.",
+    "升级、交任务和载入画面都不会改动路线。只有“规划我的路线”和“重新规划”会生成新路线。"
+  ],
+  "Your route is done. Press Plan again for a new one.": [
+    "Deine Route ist fertig. Drück „Neu planen“ für eine neue.",
+    "Ton itinéraire est terminé. Appuie sur « Replanifier » pour en avoir un nouveau.",
+    "Tu ruta ha terminado. Pulsa «Planear de nuevo» para tener una nueva.",
+    "Маршрут пройден. Нажмите «Спланировать заново», чтобы получить новый.",
+    "Sua rota terminou. Clique em \"Planear de novo\" para ter uma nova.",
+    "Il tuo percorso è finito. Premi «Pianifica di nuovo» per averne uno nuovo.",
+    "경로를 모두 마쳤습니다. 새 경로는 '다시 계획'을 누르세요.",
+    "路线已完成。按“重新规划”获取新路线。"
+  ]
+}

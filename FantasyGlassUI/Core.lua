@@ -1,6 +1,6 @@
 local ADDON, ns = ...
 _G.FantasyGlassUI = ns
-ns.version = "12.4.1"
+ns.version = "13.0.0"
 ns.author = "DustyMouse"
 
 ns.modules = {}
@@ -75,6 +75,7 @@ ns.defaults = {
     groupLoot        = true,        -- in a group: whose upgrade a boss drop is, among players with the add-on (11.14)
     runLog           = true,        -- dungeon and raid runs: times, kills, wipes, deaths, loot; /fgui runs (11.14)
     farming          = true,        -- farming sessions: /fgui farm, gold and item value an hour (11.13)
+    goldAuctionPanel = true,        -- gold ideas beside the auction house (the gold folder loads when it opens: Folders.lua)
     threatMeter      = true,        -- who has how much threat on your target, in a group (11.13)
     accent           = "AZURE",
     theme            = "SMOKE",
@@ -95,6 +96,8 @@ ns.defaults = {
     homeKey          = true,        -- one key for the best way home (QuickKeys.lua)
     auctionHelper    = true,        -- auction house: lowest -1c and worth selling (Auction.lua)
     launcher         = true,        -- a minimap button that opens the options
+    minimapPlanner   = true,        -- a minimap button that opens the route planner (13.0, MinimapExtras.lua)
+    minimapGold      = true,        -- a minimap button that opens ways to make gold (13.0)
     versionNotice    = true,        -- say once when someone in your guild or group has a newer version
     autoInvite       = false,       -- accept group invitations from friends and guildmates
     autoStand        = false,       -- stand up when an action fails because you are sitting
@@ -190,7 +193,51 @@ ns.defaults = {
     guideSound       = true,
     plannerGroup     = "solo",      -- which quests the route planner may pick: solo, grouped or all
     plannerLearnFlights = true,
+    plannerRested    = true,        -- kills count double while you are rested
+    plannerRewards   = true,        -- a better item among a quest's rewards adds to its worth
+    plannerDeaths    = true,        -- a hub where you died twice is left alone for two levels
+    plannerSoloElites = true,       -- elites your class has soloed count as Solo quests
+    plannerClassQuests = true,      -- class quests are planned at the right time (and mentioned when they are ready)
+    plannerPickReward = true,       -- the best reward is picked for you at a hand-in (never handed in)
+    plannerLogAdvice = true,        -- the panel says which quests are worth abandoning when the log is nearly full
+    plannerInn       = true,        -- an inn is suggested after a long stretch of play
+    plannerDry       = true,        -- when no quest is worth the trip, a dungeon or a place to grind is suggested
     plannerWhy       = true,
+    plannerTrainer   = true,        -- a stop at your class trainer every 2 levels
+    plannerHold      = true,        -- a hand-in that would level you waits for the trainer's town
+    plannerVendor    = true,        -- a stop to sell and repair when bags are nearly full or gear is worn
+    plannerSupplies  = true,        -- ... and to buy ammunition, drink and food there
+    plannerProfession = true,       -- a stop at the trainer of a profession that has reached its cap
+    plannerMail      = true,        -- a stop at a mailbox when mail is waiting and it is close
+    plannerExplore   = true,        -- unexplored spots close to the route
+    plannerGather    = true,        -- herbs and ore you have gathered before, close to the route (and a note to skin kills)
+    plannerMount     = true,        -- riding at level 40: the riding trainer, your mount, and what is still to find
+    plannerTomTom    = true,        -- the guide's waypoint goes to TomTom's arrow when TomTom is loaded
+    plannerKeepRoute = false,       -- keep the route you planned: only Plan my route and Plan again make a new one
+    -- batch 4 A (map): begin
+    plannerMapLine   = true,        -- the route's dots and line on the world map
+    plannerMapHubs   = true,        -- a mark on each hub the planner worked out, brighter for a better rate
+    -- batch 4 A (map): end
+    -- batch 4 B (panel): begin
+    -- batch 4 B (panel): end
+    -- batch 4 C (pace): begin
+    plannerBreaks       = false,    -- a line when you reach a stopping place after a long stretch of play
+    plannerBreakMinutes = 120,      -- ... and how long a stretch that is, in minutes
+    -- batch 4 C (pace): end
+    -- batch 4 D (records): begin
+    plannerRace      = false,       -- race your best: ahead or behind your fastest character's time at this level
+    plannerLeftOff   = true,        -- where you left off, at login
+    plannerSpeak     = true,        -- read the route aloud (only while reading aloud is on in Accessibility)
+    -- batch 4 D (records): end
+    -- batch 5 A (group): begin
+    plannerFindGroup = true,        -- the "Find a group" button on a group quest (it only fills your chat box)
+    plannerLFGChannel = "",         -- the channel it uses: "" is your chat box's current one, else a channel you have joined
+    -- batch 5 A (group): end
+    -- batch 5 B (duo): begin
+    plannerDuoAsk    = true,        -- let friends ask to plan your route together (the duo)
+    -- batch 5 B (duo): end
+    -- batch 5 C (code): begin
+    -- batch 5 C (code): end
     groupWatch       = true,        -- (internal: watches who is in your group for the three below)
     playerNotes      = true,        -- your own note on a player, in their tooltip
     recentMates      = true,        -- the people you grouped with lately
@@ -1460,7 +1507,7 @@ function ns:FillDefaults(profile)
     for _, def in pairs(profile.customThemes) do if type(def) == "table" and def.style == "RUNIC" then def.style = "CELESTIAL" end end
     if type(profile.alertBuffs) ~= "table" then profile.alertBuffs = {} end
     for k, v in pairs(ns.defaults) do
-        if profile[k] == nil then
+        if rawget(profile, k) == nil then
             if type(v) == "table" then                       -- (a table of its own: never the defaults' table, shared by every profile)
                 local copy = {}
                 for kk, vv in pairs(v) do copy[kk] = vv end
@@ -1594,6 +1641,14 @@ end
 
 -- What's new: shown once after an update (never on a first install, where the setup opens instead).
 ns.whatsNew = {
+    { "13.0.0", { "Quest guides: follow a route one step at a time, with a panel for the step you are on and an arrow that points the way. They are under Guide in /fgui.",
+                  "The route planner: Plan my route works out which quests to take for your level, in what order, and when to fly, train or hand in, and plans again as you play. It finds quests through Questie when Questie is loaded.",
+                  "The planner window (/fgui plan, or Planner on the guide panel) holds every setting for what it plans. Keep my route there leaves your route as it is until you ask for a new one.",
+                  "Plan with a friend for one route that suits you both, or share your route as a plan code to read on the website.",
+                  "Ways to make gold (Ctrl-click the minimap button): ideas for this character from selling, farming, gathering, crafting and the auction house. Go plans the trip and puts it on the guide panel.",
+                  "Two new minimap buttons open the route planner and ways to make gold (each can be hidden).",
+                  "The planner and the gold ideas are in two new folders. The planner loads when you first use it, and the gold ideas when you first use them or open the auction house (Gold ideas at the auction house, under Bags and items, switches that off). Leave both folders enabled.",
+                  "Fixed: quests that WoW: Forever numbers differently from Questie are found in your quest log and tick off." } },
     { "12.4.1", { "Another add-on's full scan of the auction house, such as Auctionator's, is read for your prices too, the same way as Scan prices, and the button counts down from it.",
                   "Where this add-on has no price for an item, the tooltip shows Auctionator's or TSM's, with its name. Those prices are never kept, and give only Vendor it, never Sell now or Hold.",
                   "The Sell now, Hold and Vendor it description now says that every Vendor it hint is for common and uncommon items only." } },
@@ -2400,6 +2455,15 @@ ns.helpLines = {
     { "/fgui quiet", "quiet mode: no chat, names or info bar, for screenshots and streaming (again to undo)" },
     { "/fgui language", "choose the add-on's language" },
     { "/fgui new", "what changed in this version" },
+    { "Quest guides and gold" },
+    { "/fgui guide", "your quest guides: follow one, write or paste one, or record one as you play (record <name>, stop, next, back, off)" },
+    { "/fgui guide plan [minutes]", "plan a route of quests for your level and follow it; with a number, a route that fits the time you can play" },
+    { "/fgui plan", "the planner window: the route you follow, Keep my route, and every setting for what the planner plans (or its own minimap button)" },
+    { "/fgui guide route", "change, move or take out the steps of the guide you are following" },
+    { "/fgui guide duo [name]", "plan one route with a friend who has the add-on (/fgui guide duo off to stop)" },
+    { "/fgui guide share", "your route as a plan code to copy, to read on the website's plan page" },
+    { "/fgui guide keys", "the guide panel's menu, to use with the keyboard" },
+    { "/fgui guide gold", "ways to make gold: ideas for this character, each with Go, which plans the trip (or its own minimap button, or Ctrl-click the options button)" },
     { "Groups and raids" },
     { "/fgui ready", "who in your group is missing food, a flask or a class buff" },
     { "/fgui ready me", "are you ready for the raid: food, flask, weapon, repairs, reagents, bag space, talents and gear" },
@@ -2510,7 +2574,7 @@ ns.helpLines = {
     { "/fgui check", "a report on what is running and what the game allows" },
     { "/fgui check new", "try each feature added since 11.6 and report what works, to copy and send" },
     { "/fgui selftest", "work through the add-on and list what passed and what did not" },
-    { "/fgui report", "everything needed to report a problem, ready to copy" },
+    { "/fgui report", "everything needed to report a problem, ready to copy (the Report a problem button in /fgui does the same)" },
     { "/fgui blocked", "anything the game refused to let the add-on do, and where" },
     { "/fgui memory", "how much memory the add-on is using" },
     { "/fgui addons", "every add-on by the memory it uses" },
@@ -2641,11 +2705,6 @@ ns.toolCommands = {
         if not ns.ButtonBagLines then ns:Print("The minimap button collector is switched off."); return end
         ns:ShowTextWindow("Minimap buttons", table.concat(ns:ButtonBagLines(), "\n"))
     end,
-    unlock = function(t)
-        if ns:GuideUnlock(t) then ns:Print("Quest guides are unlocked on this account. They are under Guide in /fgui.")
-        else ns:Print("That is not the phrase.") end
-    end,
-    lock = function() ns:GuideLock(); ns:Print("Quest guides are locked again.") end,
     ask = function(t) if ns:LoadOptions() and ns.GuidePrint then ns:GuidePrint(t) end end,
 }
 -- Runs one of them if `msg` starts with its word. Returns true when it did.
@@ -2814,6 +2873,7 @@ SlashCmdList["FANTASYGLASSUI"] = function(msg)
     elseif msg == "" or msg == "options" or msg == "config" or msg == "show" then
         ns:ToggleConfig()
     else
+        if ns.HiddenCommand and ns.HiddenCommand(msg, raw) then return end   -- (Folders.lua's /fgui plan)
         local near = ns.ClosestCommand(msg)
         if near then
             ns:Print("\"%s\" is not a command. Did you mean |cffffff00/fgui %s|r?", raw, near)

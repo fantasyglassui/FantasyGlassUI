@@ -36,13 +36,14 @@ NOT_THE_GAMES = {
     "GetMinimapShape": "a function other add-ons ask the minimap for; this add-on sets it",
     "Questie": "the optional quest add-on the planner reads, when it is loaded",
     "QuestieLoader": "Questie's module loader, read only when Questie is loaded",
+    "TomTom": "the optional waypoint add-on, used when it is loaded",
     "StylishUIDB": "the add-on's settings under its former name, read once to bring them over",
     "Auctionator": "the auction add-on whose prices are read when this house has none, only when it is loaded",
     "TSM_API": "TradeSkillMaster's public functions, its prices read the same way, only when it is loaded",
 }
 LAYERS = {"BACKGROUND", "BORDER", "ARTWORK", "OVERLAY", "HIGHLIGHT"}
 
-FOLDERS = ["FantasyGlassUI", "FantasyGlassUI_Options", "FantasyGlassUI_Locales"]
+FOLDERS = ["FantasyGlassUI", "FantasyGlassUI_Options", "FantasyGlassUI_Locales", "FantasyGlassUI_Planner", "FantasyGlassUI_Gold"]
 files = sorted(f for d in FOLDERS for f in glob.glob(ROOT + d + "/**/*.lua", recursive=True))
 src = {f: open(f, encoding="utf-8").read() for f in files}
 
@@ -166,7 +167,16 @@ for f in files:
     own_methods |= set(re.findall(r"[.:](\w+)\s*=\s*function", code[f]))
     own_methods |= set(re.findall(r"(?:^|[\s{,])(\w+)\s*=\s*function", code[f], re.M))
     own_methods |= set(re.findall(r"(?:^|[\s{,])(\w+)\s*=\s*[\w.]+\s*[,}\n]", code[f], re.M))
-LIBRARY_METHODS = {"NewDataObject", "DataObjectIterator", "GetQuestLogRewardXP", "GetUiMapIdByAreaId"}       # LibDataBroker's and Questie's, when those add-ons are there
+# Folders.lua's stand-ins (ns[name] = stub, for each name in one table): the add-on's own, before their folder defines them.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from folder_stubs import stub_names
+for f in files:
+    if f.endswith("FantasyGlassUI/Folders.lua"):
+        own_methods |= stub_names(src[f])
+LIBRARY_METHODS = {"NewDataObject", "DataObjectIterator"}       # LibDataBroker's, when that add-on is there (anywhere in the add-on)
+FILE_METHODS = {                                                # other add-ons' methods, allowed only in the file that reads that add-on
+    "FantasyGlassUI_Planner/PlannerSource.lua": {"GetQuestLogRewardXP", "GetUiMapIdByAreaId"},   # Questie's modules (QuestXP, ZoneDB)
+}
 LUA_STRING = set("byte char find format gmatch gsub len lower match rep reverse sub upper".split())   # ("text":lower() and the like)
 for f in files:
     s = src[f]
@@ -185,6 +195,8 @@ for f in files:
             note("Sounds Forever does not have", "SOUNDKIT." + m.group(1), where(f, m.start()))
     for m in re.finditer(r":\s*([A-Za-z_]\w*)\s*\(", code[f]):
         name = m.group(1)
+        if name in FILE_METHODS.get(f.replace(ROOT, ""), ()):
+            continue
         if name not in METHODS and name not in own_methods and name not in LIBRARY_METHODS and name not in LUA_STRING:
             note("Frame methods Forever does not have", name, where(f, m.start()))
 

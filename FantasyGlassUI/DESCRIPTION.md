@@ -2,9 +2,20 @@
 
 **Your whole interface, cut like a gem.**
 
-One add-on restyles everything you look at in WoW Forever: unit frames, action bars, raid frames, nameplates, bags, quests, the minimap, chat, tooltips and every one of the game's own windows. Pick a look from 116 themes, answer a two-minute setup, and play. Every part has its own switch, so you keep only what you want.
+One add-on restyles everything you look at in WoW Forever: unit frames, action bars, raid frames, nameplates, bags, quests, the minimap, chat, tooltips and every one of the game's own windows. Pick a look from 116 themes, answer a two-minute setup, and play. New in 13.0: **Guide and Gold**, a quest route planner and a gold advisor built in. Every part has its own switch, so you keep only what you want.
 
-**[Website](https://fantasyglassui.com)**: try every theme, make your own, and search every switch and command · **[Discord](https://discord.gg/qeSMwQWyPR)**: help, screenshots and theme codes · **[Wiki](https://github.com/fantasyglassui/FantasyGlassUI/wiki)**: the full guide
+**[Website](https://fantasyglassui.com)**: try every theme, make your own, and search every switch and command · **[Discord](https://discord.gg/qeSMwQWyPR)**: help, screenshots and theme codes · **[Wiki](https://github.com/fantasyglassui/FantasyGlassUI/wiki)**: the full guide · **[Roadmap](https://fantasyglassui.com/roadmap/)**: what's coming next
+
+## New in 13.0: Guide and Gold
+
+- **A quest route planner.** Press **Plan my route** and it works out which quests to take, in what order, and when to fly, take the boat, use your hearthstone, train or hand in. A panel shows the step you're on, an arrow points the way, and kill and item counts show as you go. It plans again as you play.
+- **It fits how you play.** Tell it how long you can play and it ends at a good place to stop. **Speed**, **Safety** and **Story** sliders, reputation and zone goals, and **Keep my route** if you'd rather it never changes your plan.
+- **Its own window and minimap button.** Every planner setting in one place, with a short tour the first time.
+- **Plan with a friend.** Two players get one route that suits you both, and each panel says where the other one is.
+- **Plan codes.** Share your route as a code, and follow it on your phone on [the plan page](https://fantasyglassui.com/plan/).
+- **Ways to make gold.** Ideas for this character from selling, farming, gathering, crafting and the auction house, with **Sell now**, **Hold** and **Vendor it** hints on your items. **Go** plans the trip and puts it on the guide panel, then gives your levelling route back.
+- **Works with Questie.** With Questie installed it plans from Questie's quests; without it, it plans the quests in your log. Prices can come from Auctionator or TSM too.
+- **Write your own guides**, record one as you play, or paste one a friend gave you.
 
 ## What makes it different
 
@@ -13,7 +24,7 @@ One add-on restyles everything you look at in WoW Forever: unit frames, action b
 - **Make your own theme.** Pick three colors on [the website](https://fantasyglassui.com), see it on a full screen, and paste the code into the game. Or give each place its own theme: one for cities, another for raids.
 - **Built for WoW Forever, and only for it.** Every function, event and frame it uses is checked against the Forever client itself, on every update. Where the game hides information in combat, it works around it instead of breaking.
 - **Made for everyone.** Colors for each kind of color vision, high contrast, lettering for low vision and dyslexia, captions for sounds, talk and quests read aloud, the game's windows by keyboard, and keys for one hand. See "Accessibility" below.
-- **257 switches, one window.** A settings window with a search that finds any setting and tells you where it lives, an undo for every change, and Simple or All options.
+- **295 switches.** A settings window with a search that finds any setting and tells you where it lives, an undo for every change, and Simple or All options.
 
 ## The look
 
@@ -77,9 +88,9 @@ A whole category of its own, and a [page on the website](https://fantasyglassui.
 
 ## Getting started
 
-1. **Install** with the CurseForge app, or put the zip's **three folders** side by side in `Interface/AddOns`.
+1. **Install** with the CurseForge app, or put the zip's **five folders** side by side in `Interface/AddOns`.
 2. **Log in:** the setup opens by itself. Choose your role, your look and your layout.
-3. **Make it yours:** `/fgui` opens the settings, `/fgui move` arranges your panels, and `/fgui help` lists all 129 commands.
+3. **Make it yours:** `/fgui` opens the settings, `/fgui move` arranges your panels, and `/fgui help` lists all 137 commands.
 
 Coming from ElvUI, Tukui, RealUI or GW2 UI? One click in the setup puts your frames where you're used to them.
 

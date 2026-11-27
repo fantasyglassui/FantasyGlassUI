@@ -31,6 +31,9 @@ Set these in the game's key bindings: **Esc → Key Bindings → AddOns → Fant
 | Weekly recap | your last week on every character |
 | Skill-ups (profession window open) | the recipes that still give skill points |
 | Gear set 1 to Gear set 5 (A to Z) | put on your first five gear sets, in the order the buttons under the character window show them |
+| Guide: next step | tick off the step you are on and go on to the next |
+| Guide: skip step | pass over the step you are on, without ticking it off |
+| Guide: plan again | plan your route again from where you are, as the panel's Plan again |
 
 ## The minimap button
 
@@ -38,6 +41,7 @@ Set these in the game's key bindings: **Esc → Key Bindings → AddOns → Fant
 |---|---|
 | Left-click | the options |
 | Right-click | move your panels |
+| Ctrl-click | ways to make gold |
 | Shift-click | the Tools menu |
 | Drag | move the button around the minimap |
 
@@ -53,6 +57,7 @@ The **Tools** button on the menu bar (or Shift-click the minimap button) opens a
 - **People and notes**
 - **The world**
 - **The add-on itself**
+- **Guide**: the Planner window and Ways to make gold
 
 Point at a button to see what it does and the command you could type instead.
 

@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="ko" data-lang="ko" data-page="guide-and-gold">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>안내서와 골드 · Fantasy Glass UI</title>
+<meta name="description" content="퀘스트 안내서와 골드 도우미가 하는 일과 사용법.">
+<link rel="canonical" href="https://fantasyglassui.com/ko/guide-and-gold/">
+<link rel="alternate" hreflang="en" href="https://fantasyglassui.com/guide-and-gold/">
+<link rel="alternate" hreflang="de" href="https://fantasyglassui.com/de/guide-and-gold/">
+<link rel="alternate" hreflang="fr" href="https://fantasyglassui.com/fr/guide-and-gold/">
+<link rel="alternate" hreflang="es" href="https://fantasyglassui.com/es/guide-and-gold/">
+<link rel="alternate" hreflang="ru" href="https://fantasyglassui.com/ru/guide-and-gold/">
+<link rel="alternate" hreflang="pt" href="https://fantasyglassui.com/pt/guide-and-gold/">
+<link rel="alternate" hreflang="it" href="https://fantasyglassui.com/it/guide-and-gold/">
+<link rel="alternate" hreflang="ko" href="https://fantasyglassui.com/ko/guide-and-gold/">
+<link rel="alternate" hreflang="zh-Hans" href="https://fantasyglassui.com/zh/guide-and-gold/">
+<link rel="alternate" hreflang="x-default" href="https://fantasyglassui.com/guide-and-gold/">
+<link rel="icon" type="image/png" href="/icon.png">
+<link rel="alternate" type="application/rss+xml" title="Fantasy Glass UI releases" href="/feed.xml">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Fantasy Glass UI">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:locale:alternate" content="en_US">
+<meta property="og:locale:alternate" content="de_DE">
+<meta property="og:locale:alternate" content="fr_FR">
+<meta property="og:locale:alternate" content="es_ES">
+<meta property="og:locale:alternate" content="ru_RU">
+<meta property="og:locale:alternate" content="pt_BR">
+<meta property="og:locale:alternate" content="it_IT">
+<meta property="og:locale:alternate" content="zh_CN">
+<meta property="og:title" content="안내서와 골드 · Fantasy Glass UI">
+<meta property="og:description" content="퀘스트 안내서와 골드 도우미가 하는 일과 사용법.">
+<meta property="og:url" content="https://fantasyglassui.com/ko/guide-and-gold/">
+<meta property="og:image" content="https://fantasyglassui.com/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Fantasy Glass UI">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="안내서와 골드 · Fantasy Glass UI">
+<meta name="twitter:description" content="퀘스트 안내서와 골드 도우미가 하는 일과 사용법.">
+<meta name="twitter:image" content="https://fantasyglassui.com/og.jpg">
+<meta name="theme-color" content="#12141a" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4f5f8" media="(prefers-color-scheme: light)">
+<script>(function(){var d=document.documentElement;d.classList.add("js");try{var t=localStorage.getItem("fg-theme");if(t==="light"||t==="dark")d.setAttribute("data-theme",t)}catch(e){}var here="ko",page="guide-and-gold/",to=here,q=location.search,h=location.hash;var m=/[?&]lang=([a-z]{2})\b/.exec(q);if(m){to=m[1];q=q.replace(/([?&])lang=[a-z]{2}&?/,"$1").replace(/[?&]$/,"")}else if(here==="en"){var c=null;try{c=localStorage.getItem("fg-lang")}catch(e){}if(!c)c=String(navigator.language||"en").slice(0,2).toLowerCase();to=c}if(["en", "de", "fr", "es", "ru", "pt", "it", "ko", "zh"].indexOf(to)<0)to=here;var u=(to==="en"?"/":"/"+to+"/")+page;if(u!==location.pathname||q!==location.search)location.replace(u+q+h)})();</script>
+<link rel="stylesheet" href="/assets/site.css?v=9495293704">
+<style>
+/* Guide and Gold: the route planner, Questie, Ways to make gold, the hints, the how-to pages and the plan page. */
+.gg-head .lede { font-size: 1.2rem; }
+.gg-head .cta { margin-top: 22px; }
+.grid.feats { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+.feats .card h3 { font-size: 1.3rem; }
+.feats .card p { margin: 0; }
+.how { color: var(--dim); margin: 26px 0 0; max-width: 78ch; }
+.grid.two { grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); }
+.card.with { --c: color-mix(in srgb, var(--gold) 55%, var(--line)); }
+ul.ticks { list-style: none; margin: 0; padding: 0; }
+ul.ticks li { position: relative; padding: 0 0 10px 26px; color: var(--dim); }
+ul.ticks li::before { content: ""; position: absolute; left: 2px; top: .5em; width: 9px; height: 9px; background: var(--gold); clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+ul.ticks.plain { max-width: 820px; }
+ul.ticks.plain li { padding-bottom: 14px; font-size: 1.05rem; }
+ul.hints { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; max-width: 720px; }
+ul.hints li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; padding: 14px 18px; border: 1px solid var(--line); }
+ul.hints b { font-size: 1.1rem; min-width: 7em; }
+ul.hints span:last-child { color: var(--dim); }
+.sq { display: inline-block; width: 14px; height: 14px; flex: none; align-self: center; }
+.sq.sell { background: rgb(77, 217, 102); }
+.sq.hold { background: rgb(255, 179, 51); }
+.sq.vendor { background: rgb(153, 153, 153); }
+ol.howtos { list-style: none; margin: 0; padding: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 196px), 1fr)); }
+ol.howtos li { display: flex; }
+ol.howtos .card { flex: 1; padding-top: 20px; }
+ol.howtos .n { display: block; font: 400 2rem/1 var(--display); color: var(--gold); margin-bottom: 10px; }
+ol.howtos p { margin: 0; }
+.plan-card { display: grid; grid-template-columns: 1.6fr 1fr; gap: 24px 40px; align-items: center; padding: 34px 36px; }
+.plan-card h2 { margin-bottom: 12px; }
+.plan-card p { margin: 0; font-size: 1.05rem; }
+.plan-card .cta { margin: 0; flex-direction: column; align-items: stretch; }
+@media (max-width: 760px) { .plan-card { grid-template-columns: 1fr; padding: 24px 20px; } }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="/ko/"><img src="/logo-64.webp" alt="" width="32" height="32">Fantasy Glass UI</a>
+    <nav class="site-nav" id="site-nav" aria-label="페이지">
+      <ul><li><a href="/ko/">홈</a></li><li><a href="/ko/features/">기능</a></li><li><a href="/ko/themes/">테마</a></li><li><a href="/ko/guide-and-gold/" aria-current="page">안내서와 골드</a></li><li><a href="/ko/get-started/">시작하기</a></li><li><a href="/ko/changelog/">변경 내역</a></li><li><a href="/ko/roadmap/">로드맵</a></li></ul>
+      <div class="head-tools">
+        <label class="lang"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span class="sr-only">언어</span><select id="lang"><option value="/guide-and-gold/" data-code="en" lang="en">English</option><option value="/de/guide-and-gold/" data-code="de" lang="de">Deutsch</option><option value="/fr/guide-and-gold/" data-code="fr" lang="fr">Français</option><option value="/es/guide-and-gold/" data-code="es" lang="es">Español</option><option value="/ru/guide-and-gold/" data-code="ru" lang="ru">Русский</option><option value="/pt/guide-and-gold/" data-code="pt" lang="pt">Português</option><option value="/it/guide-and-gold/" data-code="it" lang="it">Italiano</option><option value="/ko/guide-and-gold/" data-code="ko" lang="ko" selected>한국어</option><option value="/zh/guide-and-gold/" data-code="zh" lang="zh-Hans">中文</option></select></label>
+        <button class="icon-btn mode" id="mode" type="button" aria-pressed="true" title="어두운 모드"><span class="sr-only">어두운 모드</span><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M5.3 18.7 7 17M17 7l1.7-1.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      </div>
+    </nav>
+    <a class="btn small head-dl" href="https://www.curseforge.com/wow/addons/fantasy-glass-ui">다운로드</a>
+    <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav"><span class="sr-only">메뉴</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    <button class="chip wearing" id="unwear" type="button" hidden><b id="wearname"></b> 적용 중: 사이트 색으로 돌아가기</button>
+  </div>
+</header>
+<main id="main" tabindex="-1">
+<!-- Guide and Gold (W3): what the route planner and Ways to make gold do, Questie, the prices and sell hints, the
+     how-to pages (pages/guide-and-gold/<name>/) and the plan page (/plan/, built by site-src/plan_page.py).
+     Every claim here is true of the add-on's code (FantasyGlassUI_Planner/, FantasyGlassUI_Gold/, Guide.lua). -->
+<div class="wrap page-head gg-head">
+  <span class="eyebrow">13.0의 새 기능</span>
+  <h1>안내서와 골드</h1>
+  <p class="lede">Fantasy Glass UI 안의 두 도우미: 레벨업하는 동안 퀘스트를 짜 주는 경로 플래너, 그리고 시간을 들일 만한 일을 알려 주는 ‘골드 버는 방법’. 둘 다 무료입니다. 플래너는 사용할 때, 골드 아이디어는 사용하거나 경매장을 열 때 불러옵니다.</p>
+  <div class="cta">
+    <a class="btn" href="/ko/guide-and-gold/first-route/">첫 경로 계획하기</a>
+    <a class="btn line" href="/plan/">계획 페이지 열기</a>
+  </div>
+  <p class="status"><span>버전 <b>13.0.0</b></span><span class="sep" aria-hidden="true">·</span><span><time datetime="2026-11-26">2026-11-26</time> 업데이트</span><span class="sep" aria-hidden="true">·</span><span>WoW: Forever <b>1.60.1 (70938)</b> 기준으로 확인</span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">소스 코드</a></span></p>
+</div>
+
+<section class="block" id="planner" aria-labelledby="h-planner">
+  <div class="wrap">
+    <header>
+      <span class="eyebrow">레벨업</span>
+      <h2 id="h-planner">경로 플래너</h2>
+      <p class="lede">레벨에 맞는 퀘스트 경로를 짭니다: 무엇을 받을지, 어떤 순서로 할지, 언제 날아가고 훈련하고 완료할지. 플레이하는 동안 다시 계획하므로 경로가 늘 나를 따라옵니다.</p>
+    </header>
+    <div class="grid feats">
+      <div class="card"><h3>한 단계씩</h3><p>작은 패널이 현재 단계를 보여 주고 화살표가 길을 가리킵니다. 단계는 하는 대로 저절로 체크됩니다.</p></div>
+      <div class="card"><h3>나만의 속도</h3><p>속도, 안전, 이야기 슬라이더로 경로가 무엇을 우선할지 정합니다. 플레이할 수 있는 시간을 정하면 그 안에 맞는 것만 넣고 멈추기 좋은 곳에서 끝납니다.</p></div>
+      <div class="card"><h3>가는 길의 들를 곳</h3><p>새 비행 지점, 2레벨마다 직업 상급자, 가방이 거의 찼을 때 상인, 우편, 40레벨부터 탈것 알림. 들를 곳은 종류별로 끌 수 있습니다.</p></div>
+      <div class="card"><h3>지도 위에</h3><p>세계 지도에 번호가 매겨진 경로의 들를 곳과 그 사이의 선, 그리고 퀘스트가 있는 지역마다 표시. 경험치를 빨리 얻는 곳일수록 더 밝습니다.</p></div>
+      <div class="card"><h3>친구와 함께</h3><p>둘을 위한 하나의 경로: 같은 퀘스트를 같은 순서로. 패널에 친구가 얼마나 뒤처졌는지 나옵니다.</p></div>
+      <div class="card"><h3>휴대폰에서</h3><p>‘계획 공유’는 경로를 코드로 바꿉니다. 계획 페이지에 붙여 넣으면 휴대폰에서 경로를 보고 단계를 체크할 수 있습니다.</p></div>
+    </div>
+    <p class="how"><code>/fgui plan</code>을 입력하거나, 설정의 안내서 탭에서 <b>내 경로 계획</b>을 누르거나, 안내서 패널의 ‘계획’ 버튼으로 엽니다. 처음에는 네 쪽짜리 짧은 둘러보기가 설명해 주고, 플래너 창의 <b>플래너 사용법</b>으로 다시 볼 수 있습니다.</p>
+  </div>
+</section>
+
+<section class="block" id="questie" aria-labelledby="h-questie">
+  <div class="wrap">
+    <header>
+      <span class="eyebrow">선택 사항</span>
+      <h2 id="h-questie">Questie는 선택 사항입니다</h2>
+      <p class="lede">플래너는 혼자서도 작동합니다. Questie 애드온도 함께 켜 두면 세상을 훨씬 더 많이 압니다.</p>
+    </header>
+    <div class="grid two">
+      <div class="card">
+        <h3>Questie 없이</h3>
+        <ul class="ticks">
+          <li>퀘스트 목록에 이미 있는 퀘스트를 계획합니다.</li>
+          <li>상인과 우체통은 가 본 곳만 압니다.</li>
+          <li>약초와 광석은 직접 채집해 본 것만 압니다.</li>
+        </ul>
+      </div>
+      <div class="card with">
+        <h3>Questie와 함께</h3>
+        <ul class="ticks">
+          <li>목록에 있는 것만이 아니라 내 레벨의 모든 퀘스트와, 누가 어디서 주는지.</li>
+          <li>아직 찾지 못한 곳까지 포함한 여관, 상급자, 상인, 우체통.</li>
+          <li>퀘스트가 떨어졌을 때 사냥할 곳, 그리고 지역에 남은 모든 퀘스트를 계획하는 ‘지역 완료’ 목표.</li>
+          <li>‘골드 버는 방법’에서: 퀘스트에 필요한 아이템을 떨어뜨리는 몬스터.</li>
+        </ul>
+      </div>
+    </div>
+    <p class="how">Questie가 아직 불러오는 중이면 플래너는 기다리다가 30초 뒤 퀘스트 목록으로 계획합니다. Questie가 플래너가 읽을 수 없게 바뀌면 그렇다고 알리고 퀘스트 목록으로 계획합니다.</p>
+  </div>
+</section>
+
+<section class="block" id="gold" aria-labelledby="h-gold">
+  <div class="wrap">
+    <header>
+      <span class="eyebrow">골드</span>
+      <h2 id="h-gold">골드 버는 방법</h2>
+      <p class="lede">내가 본 것을 바탕으로 골드 버는 방법을 좋은 순서대로 보여 주는 창: 내 경매장의 가격, 상인이 주는 값, 전리품을 얻은 몬스터, 채집한 약초와 광석, 아는 제조법.</p>
+    </header>
+    <div class="grid feats">
+      <div class="card"><h3>지금 바로</h3><p>맨 위에는 가방 속 물건 팔기처럼 바로 할 수 있는 몇 가지가 있습니다.</p></div>
+      <div class="card"><h3>온갖 종류의 아이디어</h3><p>가방과 마지막으로 본 은행 물건 팔기, 잡동사니 상인에게 팔기, 상인에게 사서 경매장에 더 비싸게 팔기, 이익 나는 제작, 채집 순회, 잡을 만한 몬스터, 던전 전리품.</p></div>
+      <div class="card"><h3>내 방식대로 순위</h3><p>아이디어마다 얼마를 버는지, 얼마나 쉽고 확실한지, 가격이 얼마나 최신인지 알려 줍니다. ‘최대 골드’, ‘쉬운 돈’, ‘안전’으로 목록을 정렬하거나 시간당 골드, 쉬움, 안전 슬라이더를 직접 맞추세요.</p></div>
+      <div class="card"><h3>목표 금액 모으기</h3><p>금액을 입력하거나 ‘40레벨 탈것 타기’, ‘60레벨 고급 탈것 타기’를 고르면 아이디어마다 목표까지 얼마나 걸릴지 보여 줍니다.</p></div>
+      <div class="card"><h3>가기</h3><p>‘가기’를 누르면 플래너의 길 안내로 그곳에 데려갑니다. 레벨업 경로는 기다렸다가 여정이 끝나면 돌아옵니다.</p></div>
+      <div class="card"><h3>경매장에서</h3><p>경매장 옆의 ‘여기서 골드 벌기’가 그 자리에서 할 만한 일을 보여 줍니다. 경매장을 열면 불러오며, 설정의 가방 및 아이템 › 골드 및 사냥에 있는 <b>경매장에서 골드 벌기</b>로 끌 수 있습니다.</p></div>
+    </div>
+    <p class="how">플래너 창이나 안내서 패널 메뉴의 <b>골드 버는 방법</b>, <code>/fgui guide gold</code>, 또는 미니맵 버튼을 Ctrl-클릭해 엽니다. 무엇도 대신 사거나 등록하거나 만들지 않습니다: 모든 클릭은 내가 합니다.</p>
+  </div>
+</section>
+
+<section class="block" id="prices" aria-labelledby="h-prices">
+  <div class="wrap">
+    <header>
+      <span class="eyebrow">경매장에서</span>
+      <h2 id="h-prices">가격과 판매 힌트</h2>
+      <p class="lede">골드 아이디어는 가격만큼만 정확합니다. ‘가격 검색’을 한 번 누르면 경매장 전체를 읽고, 그다음부터 아이템 툴팁이 어떻게 할지 알려 줍니다.</p>
+    </header>
+    <ul class="hints">
+      <li><span class="sq sell" aria-hidden="true"></span><b>지금 판매</b> <span>오늘 평소 가격보다 훨씬 높음</span></li>
+      <li><span class="sq hold" aria-hidden="true"></span><b>보관</b> <span>오늘은 쌈: 더 좋은 값을 기다리세요</span></li>
+      <li><span class="sq vendor" aria-hidden="true"></span><b>상인에게 판매</b> <span>상인이 비슷하게 지불하거나 아무도 등록하지 않음</span></li>
+    </ul>
+    <p class="how"><a href="/ko/guide-and-gold/first-scan/">첫 가격 검색</a> · <a href="/ko/guide-and-gold/sell-hints/">판매 힌트 읽기</a></p>
+  </div>
+</section>
+
+<section class="block" id="how-to" aria-labelledby="h-howto">
+  <div class="wrap">
+    <header>
+      <span class="eyebrow">단계별로</span>
+      <h2 id="h-howto">사용법 안내</h2>
+    </header>
+    <ol class="grid howtos">
+      <li><a class="card" href="/ko/guide-and-gold/first-route/"><span class="n" aria-hidden="true">1</span><h3>첫 경로 만들기</h3><p>경로 플래너를 열고 처음으로 계획된 퀘스트 경로를 한 단계씩 따라가세요.</p></a></li>
+      <li><a class="card" href="/ko/guide-and-gold/duo/"><span class="n" aria-hidden="true">2</span><h3>친구와 함께 계획하기</h3><p>둘을 위한 하나의 경로: 나와 친구가 같은 퀘스트를 같은 순서로.</p></a></li>
+      <li><a class="card" href="/ko/guide-and-gold/phone/"><span class="n" aria-hidden="true">3</span><h3>휴대폰에서 계획 페이지 보기</h3><p>게임에서 계획 코드를 복사해 휴대폰에서 경로를 따라가며 단계를 체크하세요.</p></a></li>
+      <li><a class="card" href="/ko/guide-and-gold/first-scan/"><span class="n" aria-hidden="true">4</span><h3>첫 가격 검색</h3><p>‘가격 검색’으로 모든 경매를 한 번에 읽어 툴팁, 판매 힌트, 골드 아이디어에 가격을 채우세요.</p></a></li>
+      <li><a class="card" href="/ko/guide-and-gold/sell-hints/"><span class="n" aria-hidden="true">5</span><h3>판매 힌트 읽기</h3><p>툴팁과 가방에 나오는 ‘지금 판매’, ‘보관’, ‘상인에게 판매’의 뜻과 표시되는 때.</p></a></li>
+    </ol>
+  </div>
+</section>
+
+<section class="block" id="plan-page" aria-labelledby="h-plan">
+  <div class="wrap">
+    <div class="card filled plan-card">
+      <div>
+        <span class="eyebrow">어떤 화면에서든</span>
+        <h2 id="h-plan">계획 페이지</h2>
+        <p>게임에서 받은 계획 코드를 붙여 넣으면 어떤 화면에서든 경로가 나타납니다: 예상 경험치와 시간, 번호 매긴 들를 곳이 있는 지역별 작은 지도, 체크할 수 있는 모든 단계. 휴대폰에서도 되고, 붙여 넣은 내용은 브라우저 밖으로 나가지 않습니다.</p>
+      </div>
+      <div class="cta">
+        <a class="btn" href="/plan/">계획 페이지 열기</a>
+        <a class="btn line" href="/ko/guide-and-gold/phone/">휴대폰에서 쓰는 법</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="private" aria-labelledby="h-private">
+  <div class="wrap">
+    <header>
+      <span class="eyebrow">개인 정보</span>
+      <h2 id="h-private">공개되지 않는 것</h2>
+    </header>
+    <ul class="ticks plain">
+      <li>친구와 함께 계획하기는 귓속말로 친구의 애드온과만 대화하며, 친구에게 항상 먼저 묻습니다. 공개 대화에는 아무것도 올라가지 않습니다.</li>
+      <li>계획 코드에는 단계, 지역, 레벨, 시간만 담깁니다. 캐릭터나 서버 이름은 들어 있지 않습니다.</li>
+      <li>계획 페이지는 브라우저 안에서 코드를 읽고 아무 데도 보내지 않습니다. 체크 표시는 그 브라우저에만 남습니다.</li>
+      <li>‘골드 버는 방법’은 내 캐릭터들이 본 것만으로 작동하며, 아무것도 공유하지 않습니다.</li>
+    </ul>
+  </div>
+</section>
+</main>
+<footer class="site-foot">
+  <div class="wrap">
+    <div class="foot-row">
+      <span>DustyMouse의 Fantasy Glass UI. WoW Forever용 무료 애드온.</span>
+      <ul>
+        <li><a href="https://www.curseforge.com/wow/addons/fantasy-glass-ui">CurseForge</a></li>
+        <li><a href="https://discord.gg/qeSMwQWyPR">Discord</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI">GitHub</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/wiki">Wiki</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/issues/new/choose">버그 신고</a></li>
+        <li><a href="/ko/accessibility/">접근성</a></li>
+        <li><a href="/ko/press/">보도 자료</a></li>
+        <li><a href="/feed.xml" type="application/rss+xml">RSS</a></li>
+      </ul>
+    </div>
+    <div class="foot-row">
+      <span>연락처: <a href="mailto:email-forwarding@fantasyglassui.com">email-forwarding@fantasyglassui.com</a></span>
+      <p class="status"><span>버전 <b>13.0.0</b></span><span class="sep" aria-hidden="true">·</span><span><time datetime="2026-11-26">2026-11-26</time> 업데이트</span><span class="sep" aria-hidden="true">·</span><span>WoW: Forever <b>1.60.1 (70938)</b> 기준으로 확인</span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">소스 코드</a></span></p>
+    </div>
+    <nav class="foot-row foot-langs" aria-label="언어"><ul><li><a href="/guide-and-gold/" hreflang="en" lang="en" data-code="en">English</a></li><li><a href="/de/guide-and-gold/" hreflang="de" lang="de" data-code="de">Deutsch</a></li><li><a href="/fr/guide-and-gold/" hreflang="fr" lang="fr" data-code="fr">Français</a></li><li><a href="/es/guide-and-gold/" hreflang="es" lang="es" data-code="es">Español</a></li><li><a href="/ru/guide-and-gold/" hreflang="ru" lang="ru" data-code="ru">Русский</a></li><li><a href="/pt/guide-and-gold/" hreflang="pt" lang="pt" data-code="pt">Português</a></li><li><a href="/it/guide-and-gold/" hreflang="it" lang="it" data-code="it">Italiano</a></li><li><a href="/ko/guide-and-gold/" hreflang="ko" lang="ko" data-code="ko" aria-current="true">한국어</a></li><li><a href="/zh/guide-and-gold/" hreflang="zh-Hans" lang="zh-Hans" data-code="zh">中文</a></li></ul></nav>
+    <p class="trnote">이 페이지는 원어민 검토 없이 번역되었습니다. 수정 제안을 환영합니다.</p>
+  </div>
+</footer>
+<script src="/assets/site.js?v=2dd8abee61" defer></script>
+</body>
+</html>

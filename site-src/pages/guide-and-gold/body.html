@@ -1,0 +1,144 @@
+<!-- Guide and Gold (W3): what the route planner and Ways to make gold do, Questie, the prices and sell hints, the
+     how-to pages (pages/guide-and-gold/<name>/) and the plan page (/plan/, built by site-src/plan_page.py).
+     Every claim here is true of the add-on's code (FantasyGlassUI_Planner/, FantasyGlassUI_Gold/, Guide.lua). -->
+<div class="wrap page-head gg-head">
+  <span class="eyebrow">[[New in 13.0]]</span>
+  <h1>[[Guide and Gold]]</h1>
+  <p class="lede">[[Two helpers inside Fantasy Glass UI: a route planner that works out your quests as you level, and Ways to make gold, which lists what is worth your time. Both are free. The planner loads when you use it, and the gold ideas when you use them or open the auction house.]]</p>
+  <div class="cta">
+    <a class="btn" href="/guide-and-gold/first-route/">[[Plan your first route]]</a>
+    <a class="btn line" href="/plan/">[[Open the plan page]]</a>
+  </div>
+  {{status}}
+</div>
+
+<section class="block" id="planner" aria-labelledby="h-planner">
+  <div class="wrap">
+    <header>
+      <span class="eyebrow">[[Levelling]]</span>
+      <h2 id="h-planner">[[The route planner]]</h2>
+      <p class="lede">[[It works out a route of quests for your level: which to take, in what order, and when to fly, train or hand in. As you play, it plans again, so the route keeps up with you.]]</p>
+    </header>
+    <div class="grid feats">
+      <div class="card"><h3>[[A step at a time]]</h3><p>[[A small panel shows the step you are on, and an arrow points the way. Steps tick off by themselves as you do them.]]</p></div>
+      <div class="card"><h3>[[Your pace]]</h3><p>[[The Speed, Safety and Story sliders set what the route goes for. Say how long you can play, and the route takes only what fits and ends at a good place to stop.]]</p></div>
+      <div class="card"><h3>[[Stops on the way]]</h3><p>[[New flight points, your class trainer every two levels, a vendor when your bags are nearly full, mail, and a mount reminder from level 40. Each kind of stop can be switched off.]]</p></div>
+      <div class="card"><h3>[[On the map]]</h3><p>[[The route's stops, numbered, with a line between them on the world map, and a mark on each area with quests, brighter where the experience comes faster.]]</p></div>
+      <div class="card"><h3>[[With a friend]]</h3><p>[[Plan one route for two: the same quests, in the same order. The panel shows how far behind your friend is.]]</p></div>
+      <div class="card"><h3>[[On your phone]]</h3><p>[[Share plan turns your route into a code. Paste it on the plan page to see the route and tick off the steps on a phone.]]</p></div>
+    </div>
+    <p class="how">[[Open it with <code>/fgui plan</code>, with <b>Plan my route</b> on the Guide tab of the settings, or with the Planner button on the guide panel. The first time, a short tour of four pages explains it, and <b>How the planner works</b> in the planner window shows it again.]]</p>
+  </div>
+</section>
+
+<section class="block" id="questie" aria-labelledby="h-questie">
+  <div class="wrap">
+    <header>
+      <span class="eyebrow">[[Optional]]</span>
+      <h2 id="h-questie">[[Questie is optional]]</h2>
+      <p class="lede">[[The planner works on its own. With the Questie add-on loaded as well, it knows far more of the world.]]</p>
+    </header>
+    <div class="grid two">
+      <div class="card">
+        <h3>[[Without Questie]]</h3>
+        <ul class="ticks">
+          <li>[[It plans the quests already in your quest log.]]</li>
+          <li>[[Vendors and mailboxes are the ones you have visited.]]</li>
+          <li>[[Herbs and ore are the ones you have gathered yourself.]]</li>
+        </ul>
+      </div>
+      <div class="card with">
+        <h3>[[With Questie]]</h3>
+        <ul class="ticks">
+          <li>[[Every quest at your level, not only the ones in your log, with who gives it and where.]]</li>
+          <li>[[Inns, trainers, vendors and mailboxes, also the ones you have not found yet.]]</li>
+          <li>[[Places to grind when quests run dry, and the goal of finishing a zone, which plans every quest left in it.]]</li>
+          <li>[[In Ways to make gold: which monsters drop the items your quests need.]]</li>
+        </ul>
+      </div>
+    </div>
+    <p class="how">[[While Questie is still loading, the planner waits for it, and after half a minute it plans from your quest log. If Questie changes in a way the planner can't read, it says so and plans from your quest log.]]</p>
+  </div>
+</section>
+
+<section class="block" id="gold" aria-labelledby="h-gold">
+  <div class="wrap">
+    <header>
+      <span class="eyebrow">[[Gold]]</span>
+      <h2 id="h-gold">[[Ways to make gold]]</h2>
+      <p class="lede">[[One window that lists ways to make gold, best first, from what you have seen: the prices at your auction house, what vendors pay, the monsters you have looted, the herbs and ore you have gathered and the recipes you know.]]</p>
+    </header>
+    <div class="grid feats">
+      <div class="card"><h3>[[Right now]]</h3><p>[[At the top, a few things you can do at once, such as selling what is in your bags.]]</p></div>
+      <div class="card"><h3>[[Every kind of idea]]</h3><p>[[Selling your bags, and your bank as you last saw it, vendoring junk, buying from a vendor what sells for more at auction, crafting for profit, gathering loops, monsters worth killing and dungeon drops.]]</p></div>
+      <div class="card"><h3>[[Ranked your way]]</h3><p>[[Each idea says how much it brings, how easy and how sure it is, and how fresh its prices are. Most gold, Easy money and Safe sort the list, or set the Gold an hour, Ease and Safety sliders yourself.]]</p></div>
+      <div class="card"><h3>[[Save for something]]</h3><p>[[Type an amount, or pick Riding at 40 or Epic riding at 60, and every idea shows how long it would take to get you there.]]</p></div>
+      <div class="card"><h3>[[Go]]</h3><p>[[Go takes you there with the planner's directions. Your levelling route waits, and comes back when the trip ends.]]</p></div>
+      <div class="card"><h3>[[At the auction house]]</h3><p>[[Beside the auction house, Gold ideas here lists what is worth doing there and then. Opening the auction house loads it; <b>Gold ideas at the auction house</b>, under Bags and items › Gold and farming in the settings, switches it off.]]</p></div>
+    </div>
+    <p class="how">[[Open it with <b>Ways to make gold</b> in the planner window or the guide panel's menu, with <code>/fgui guide gold</code>, or by Ctrl-clicking the minimap button. Nothing is ever bought, posted or crafted for you: every click is yours.]]</p>
+  </div>
+</section>
+
+<section class="block" id="prices" aria-labelledby="h-prices">
+  <div class="wrap">
+    <header>
+      <span class="eyebrow">[[At the auction house]]</span>
+      <h2 id="h-prices">[[Prices and sell hints]]</h2>
+      <p class="lede">[[Gold ideas are only as good as their prices. One press of Scan prices reads the whole auction house, and item tooltips then say what to do with an item.]]</p>
+    </header>
+    <ul class="hints">
+      <li><span class="sq sell" aria-hidden="true"></span><b>[[Sell now]]</b> <span>[[well above its usual price today]]</span></li>
+      <li><span class="sq hold" aria-hidden="true"></span><b>[[Hold]]</b> <span>[[cheap today: wait for a better price]]</span></li>
+      <li><span class="sq vendor" aria-hidden="true"></span><b>[[Vendor it]]</b> <span>[[a vendor pays about as much, or nobody lists it]]</span></li>
+    </ul>
+    <p class="how"><a href="/guide-and-gold/first-scan/">[[Your first price scan]]</a> · <a href="/guide-and-gold/sell-hints/">[[Reading the sell hints]]</a></p>
+  </div>
+</section>
+
+<section class="block" id="how-to" aria-labelledby="h-howto">
+  <div class="wrap">
+    <header>
+      <span class="eyebrow">[[Step by step]]</span>
+      <h2 id="h-howto">[[How-to pages]]</h2>
+    </header>
+    <ol class="grid howtos">
+      <li><a class="card" href="/guide-and-gold/first-route/"><span class="n" aria-hidden="true">1</span><h3>[[Your first route]]</h3><p>[[Open the route planner and follow your first planned route of quests, step by step.]]</p></a></li>
+      <li><a class="card" href="/guide-and-gold/duo/"><span class="n" aria-hidden="true">2</span><h3>[[Planning with a friend]]</h3><p>[[Plan one route for two: the same quests in the same order, for you and a friend.]]</p></a></li>
+      <li><a class="card" href="/guide-and-gold/phone/"><span class="n" aria-hidden="true">3</span><h3>[[The plan page on a phone]]</h3><p>[[Copy a plan code in the game and follow the route on your phone, ticking off the steps.]]</p></a></li>
+      <li><a class="card" href="/guide-and-gold/first-scan/"><span class="n" aria-hidden="true">4</span><h3>[[Your first price scan]]</h3><p>[[Read every auction at once with Scan prices, so tooltips, sell hints and gold ideas have prices to go on.]]</p></a></li>
+      <li><a class="card" href="/guide-and-gold/sell-hints/"><span class="n" aria-hidden="true">5</span><h3>[[Reading the sell hints]]</h3><p>[[What Sell now, Hold and Vendor it mean in tooltips and on the bags, and when they show.]]</p></a></li>
+    </ol>
+  </div>
+</section>
+
+<section class="block" id="plan-page" aria-labelledby="h-plan">
+  <div class="wrap">
+    <div class="card filled plan-card">
+      <div>
+        <span class="eyebrow">[[On any screen]]</span>
+        <h2 id="h-plan">[[The plan page]]</h2>
+        <p>[[Paste a plan code from the game, and the route shows on any screen: the experience and time it should take, a small map for each zone with numbered stops, and every step to tick off. It works on a phone, and nothing you paste leaves your browser.]]</p>
+      </div>
+      <div class="cta">
+        <a class="btn" href="/plan/">[[Open the plan page]]</a>
+        <a class="btn line" href="/guide-and-gold/phone/">[[How to use it on a phone]]</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="private" aria-labelledby="h-private">
+  <div class="wrap">
+    <header>
+      <span class="eyebrow">[[Privacy]]</span>
+      <h2 id="h-private">[[What stays private]]</h2>
+    </header>
+    <ul class="ticks plain">
+      <li>[[Planning with a friend talks only to your friend's add-on, by whisper, and they are always asked first. Nothing goes to public chat.]]</li>
+      <li>[[A plan code holds the steps, the zones, the levels and the time. It has no character or realm name in it.]]</li>
+      <li>[[The plan page reads the code in your browser and sends nothing anywhere. Your ticks stay in that browser.]]</li>
+      <li>[[Ways to make gold works from what your own characters have seen. It shares nothing.]]</li>
+    </ul>
+  </div>
+</section>

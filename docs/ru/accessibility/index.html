@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="ru" data-lang="ru" data-page="accessibility">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Доступность · Fantasy Glass UI</title>
+<meta name="description" content="Что Fantasy Glass UI, аддон для WoW Forever, делает при дальтонизме, слабом зрении, для незрячих и глухих игроков, при светочувствительности, для игры одной рукой и не только.">
+<link rel="canonical" href="https://fantasyglassui.com/ru/accessibility/">
+<link rel="alternate" hreflang="en" href="https://fantasyglassui.com/accessibility/">
+<link rel="alternate" hreflang="de" href="https://fantasyglassui.com/de/accessibility/">
+<link rel="alternate" hreflang="fr" href="https://fantasyglassui.com/fr/accessibility/">
+<link rel="alternate" hreflang="es" href="https://fantasyglassui.com/es/accessibility/">
+<link rel="alternate" hreflang="ru" href="https://fantasyglassui.com/ru/accessibility/">
+<link rel="alternate" hreflang="pt" href="https://fantasyglassui.com/pt/accessibility/">
+<link rel="alternate" hreflang="it" href="https://fantasyglassui.com/it/accessibility/">
+<link rel="alternate" hreflang="ko" href="https://fantasyglassui.com/ko/accessibility/">
+<link rel="alternate" hreflang="zh-Hans" href="https://fantasyglassui.com/zh/accessibility/">
+<link rel="alternate" hreflang="x-default" href="https://fantasyglassui.com/accessibility/">
+<link rel="icon" type="image/png" href="/icon.png">
+<link rel="alternate" type="application/rss+xml" title="Fantasy Glass UI releases" href="/feed.xml">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Fantasy Glass UI">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:locale:alternate" content="en_US">
+<meta property="og:locale:alternate" content="de_DE">
+<meta property="og:locale:alternate" content="fr_FR">
+<meta property="og:locale:alternate" content="es_ES">
+<meta property="og:locale:alternate" content="pt_BR">
+<meta property="og:locale:alternate" content="it_IT">
+<meta property="og:locale:alternate" content="ko_KR">
+<meta property="og:locale:alternate" content="zh_CN">
+<meta property="og:title" content="Доступность · Fantasy Glass UI">
+<meta property="og:description" content="Что Fantasy Glass UI, аддон для WoW Forever, делает при дальтонизме, слабом зрении, для незрячих и глухих игроков, при светочувствительности, для игры одной рукой и не только.">
+<meta property="og:url" content="https://fantasyglassui.com/ru/accessibility/">
+<meta property="og:image" content="https://fantasyglassui.com/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Fantasy Glass UI">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Доступность · Fantasy Glass UI">
+<meta name="twitter:description" content="Что Fantasy Glass UI, аддон для WoW Forever, делает при дальтонизме, слабом зрении, для незрячих и глухих игроков, при светочувствительности, для игры одной рукой и не только.">
+<meta name="twitter:image" content="https://fantasyglassui.com/og.jpg">
+<meta name="theme-color" content="#12141a" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4f5f8" media="(prefers-color-scheme: light)">
+<script>(function(){var d=document.documentElement;d.classList.add("js");try{var t=localStorage.getItem("fg-theme");if(t==="light"||t==="dark")d.setAttribute("data-theme",t)}catch(e){}var here="ru",page="accessibility/",to=here,q=location.search,h=location.hash;var m=/[?&]lang=([a-z]{2})\b/.exec(q);if(m){to=m[1];q=q.replace(/([?&])lang=[a-z]{2}&?/,"$1").replace(/[?&]$/,"")}else if(here==="en"){var c=null;try{c=localStorage.getItem("fg-lang")}catch(e){}if(!c)c=String(navigator.language||"en").slice(0,2).toLowerCase();to=c}if(["en", "de", "fr", "es", "ru", "pt", "it", "ko", "zh"].indexOf(to)<0)to=here;var u=(to==="en"?"/":"/"+to+"/")+page;if(u!==location.pathname||q!==location.search)location.replace(u+q+h)})();</script>
+<link rel="preload" href="/fonts/source-sans-3-cyrillic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/site.css?v=9495293704">
+<style>
+/* Accessibility: what the add-on does, need by need. */
+.page-head .lede { color: var(--text); font-size: 1.2rem; margin: 0 0 12px; }
+.page-head .start { color: var(--dim); margin: 0; }
+.acc { padding-block: 28px 24px; }
+nav.jump { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 30px; }
+nav.jump a { display: inline-flex; align-items: center; min-height: 36px; padding: 4px 12px; border: 1px solid var(--line); color: var(--frost); text-decoration: none; }
+nav.jump a:hover { border-color: var(--frost); }
+.need { padding: 22px 26px 10px; margin: 0 0 20px; }
+.need h2 { font-size: 1.8rem; margin: 0 0 4px; }
+.need .who { color: var(--dim); margin: 0 0 12px; }
+.need ul { margin: 0 0 12px; padding-left: 1.2em; }
+.need li { margin: 0 0 10px; color: var(--dim); }
+.need li::marker { color: var(--gold); }
+.need li b { color: var(--text); }
+.honest { border-left: 3px solid var(--gold); padding: 4px 0 4px 18px; margin: 34px 0 0; color: var(--dim); }
+.honest h2 { font-size: 1.5rem; margin-bottom: 8px; }
+@media (max-width: 560px) { .need { padding: 18px 16px 6px; } }
+.need.new { --c: color-mix(in srgb, var(--gold) 55%, var(--line)); }
+.need li code { font-size: .88em; }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Перейти к содержимому</a>
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="/ru/"><img src="/logo-64.webp" alt="" width="32" height="32">Fantasy Glass UI</a>
+    <nav class="site-nav" id="site-nav" aria-label="Страницы">
+      <ul><li><a href="/ru/">Главная</a></li><li><a href="/ru/features/">Функции</a></li><li><a href="/ru/themes/">Темы</a></li><li><a href="/ru/guide-and-gold/">Гайд и золото</a></li><li><a href="/ru/get-started/">Начать</a></li><li><a href="/ru/changelog/">История</a></li><li><a href="/ru/roadmap/">Планы</a></li></ul>
+      <div class="head-tools">
+        <label class="lang"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span class="sr-only">Язык</span><select id="lang"><option value="/accessibility/" data-code="en" lang="en">English</option><option value="/de/accessibility/" data-code="de" lang="de">Deutsch</option><option value="/fr/accessibility/" data-code="fr" lang="fr">Français</option><option value="/es/accessibility/" data-code="es" lang="es">Español</option><option value="/ru/accessibility/" data-code="ru" lang="ru" selected>Русский</option><option value="/pt/accessibility/" data-code="pt" lang="pt">Português</option><option value="/it/accessibility/" data-code="it" lang="it">Italiano</option><option value="/ko/accessibility/" data-code="ko" lang="ko">한국어</option><option value="/zh/accessibility/" data-code="zh" lang="zh-Hans">中文</option></select></label>
+        <button class="icon-btn mode" id="mode" type="button" aria-pressed="true" title="Тёмная тема"><span class="sr-only">Тёмная тема</span><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M5.3 18.7 7 17M17 7l1.7-1.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      </div>
+    </nav>
+    <a class="btn small head-dl" href="https://www.curseforge.com/wow/addons/fantasy-glass-ui">Скачать</a>
+    <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav"><span class="sr-only">Меню</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    <button class="chip wearing" id="unwear" type="button" hidden>Тема <b id="wearname"></b>: вернуть цвета сайта</button>
+  </div>
+</header>
+<main id="main" tabindex="-1">
+<!-- Accessibility (W3). pages/accessibility/body.py; see site-src/PAGES.md. -->
+<div class="wrap narrow page-head">
+  <h1>Доступность</h1>
+  <p class="lede">В Fantasy Glass UI доступность встроена в каждую часть интерфейса: цвета для любого типа цветового зрения, контрастные темы, удобочитаемые шрифты, субтитры, чтение вслух, безопасные вспышки и клавиши для одной руки. Всё это бесплатно, и любую часть можно включить или выключить.</p>
+  <p class="start">В игре: <code>/fgui access</code> открывает настройки доступности, а в первоначальной настройке есть шаг «Комфорт». Версия 13.0.0.</p>
+</div>
+<div class="wrap narrow acc">
+  <nav class="jump" aria-label="Потребности"><a href="#seeing-color">Цветовое зрение</a><a href="#seeing-low">Слабое зрение</a><a href="#reading">Чтение вслух</a><a href="#hearing">Слух</a><a href="#motion">Вспышки и движение</a><a href="#hands">Руки и клавиши</a><a href="#guide">Планировщик маршрута и золото</a><a href="#calm">Фокус и спокойствие</a><a href="#share">Поделитесь</a></nav>
+  <div id="needs">
+<section class="need card" id="seeing-color" aria-labelledby="h-seeing-color"><h2 id="h-seeing-color">Цветовое зрение</h2><p class="who">При красно-зелёной или сине-жёлтой цветовой слепоте или если цвета не видны совсем.</p><ul><li><b>Цвета под ваш тип цветового зрения.</b> Красно-зелёная (синий и оранжевый), сине-жёлтая (бирюзовый, розовый и красный) или вовсе без цвета — тогда смысл передают яркость и метки.</li><li><b>Метки в дополнение к цветам.</b> У дебаффов есть буква, у качества предметов — точки, а у угрозы на индикаторах — метка («!», когда она уходит, «!!», когда потеряна).</li></ul></section>
+<section class="need card" id="seeing-low" aria-labelledby="h-seeing-low"><h2 id="h-seeing-low">Слабое зрение</h2><p class="who">Чтобы легче видеть экран.</p><ul><li><b>Контрастные темы.</b> Чёрные панели, белые буквы и самые яркие рамки во всех трёх семействах: «Стекло», «Фэнтези» и «Небо». Одна кнопка выбирает тему для вашего семейства.</li><li><b>Шрифты, которые легко читать.</b> Удобочитаемый (Atkinson Hyperlegible, создан для слабого зрения) и подходящий при дислексии (OpenDyslexic). Более толстый контур у каждой буквы и тёмная полоса под сообщениями в центре экрана.</li><li><b>Крупнее текст и сам интерфейс.</b> Собственный размер текста и масштаб интерфейса, отдельно от игровых.</li><li><b>Обводка вокруг цели.</b> Толстая обводка от 1 до 8 пикселей вокруг индикатора цели, чтобы она выделялась в толпе. И кольцо вокруг указателя мыши.</li></ul></section>
+<section class="need card" id="reading" aria-labelledby="h-reading"><h2 id="h-reading">Чтение вслух</h2><p class="who">Для незрячих и слабовидящих игроков и для всех, кто предпочитает слушать. Голосом самой игры.</p><ul><li><b>Разговоры и задания читаются при открытии.</b> Что говорит НПС и какие варианты предлагает, текст задания, его прогресс и награда, книги и письма. Чтение останавливается, когда вы закрываете окно.</li><li><b>То, на что вы наводите.</b> Когда мышь задерживается на чём-то, его подсказка читается вслух. (Собственный экранный диктор игры работает только до входа в мир.)</li><li><b>Клавиша для чтения.</b> Одна клавиша читает подсказку под мышью, открытое задание или последний шёпот.</li><li><b>Голосовые оповещения.</b> Проверки готовности, шёпот, недостающие баффы, потеря контроля и ваши собственные оповещения — вслух.</li></ul></section>
+<section class="need card" id="hearing" aria-labelledby="h-hearing"><h2 id="h-hearing">Слух</h2><p class="who">Для глухих и слабослышащих игроков и для игры без звука.</p><ul><li><b>Субтитры для звуков.</b> Строка на экране с меткой вида для проверок готовности, шёпота, очередей, приглашений, дуэлей, воскрешений, призывов, реплик боссов, рейдовых предупреждений, бросков за добычу, предупреждения об агро и ваших собственных оповещений.</li></ul></section>
+<section class="need card" id="motion" aria-labelledby="h-motion"><h2 id="h-motion">Вспышки и движение</h2><p class="who">Для игроков, чувствительных к вспышкам или движению.</p><ul><li><b>Безопасные вспышки.</b> Ничто не мигает чаще трёх раз в секунду, вспышки мягкие, пульсирующие предупреждения неподвижны, а красная вспышка игры при низком здоровье отключена.</li><li><b>Меньше движения.</b> Без затуханий, пульсации, скользящих полос и дрейфа камеры: всё появляется и меняется сразу.</li><li><b>Неподвижное небо.</b> Темы «Небо» сохраняют звёзды, но они неподвижны: без мерцания и падающих звёзд, а всё остальное движется как обычно.</li></ul></section>
+<section class="need card" id="hands" aria-labelledby="h-hands"><h2 id="h-hands">Руки и клавиши</h2><p class="who">Для игры одной рукой или только с клавиатуры.</p><ul><li><b>Клавиши для одной руки.</b> Одна кнопка переносит движение, прыжок, выбор цели, взаимодействие и первые кнопки действий к W, A, S и D для левой руки или всё на цифровую клавиатуру для правой. Другая возвращает все клавиши как было.</li><li><b>Окна игры с клавиатуры.</b> Когда открыт разговор с НПС, задание, торговец, почтовый ящик, добыча, учитель, распорядитель полётов или окно вопроса, Tab переходит от кнопки к кнопке, а Enter нажимает её; кольцо показывает, где вы, и по желанию каждый вариант читается вслух.</li><li><b>Настройки с клавиатуры.</b> Tab и стрелки переходят от настройки к настройке, Пробел переключает её, Влево и Вправо двигают ползунок.</li><li><b>Крупные элементы.</b> Крупнее переключатели в настройках, а кнопки «нажать дважды» ждут второго нажатия десять секунд.</li></ul></section>
+<section class="need card new" id="guide" aria-labelledby="h-guide"><h2 id="h-guide">Планировщик маршрута и золото</h2><p class="who">Новое в 13.0: следовать маршруту и зарабатывать золото так, как удобно вам.</p><ul><li><b>Планировщик с клавиатуры.</b> Если включено <b>Перемещаться по настройкам с клавиатуры</b>, Tab и стрелки ходят по окну планировщика, Пробел или Enter нажимают кнопку или переключатель, а Влево и Вправо меняют выбор или ползунок. В бою все клавиши возвращаются игре.</li><li><b>Клавиши для маршрута.</b> «Следующий шаг», «пропустить шаг» и «спланировать заново» можно назначить на клавиши в настройках игры, чтобы идти по маршруту без мыши.</li><li><b>Маршрут вслух.</b> Если включено <b>Читать вслух разговоры и задания</b>, каждый новый шаг читается, когда вы до него доходите. Вводный тур и вопрос друга о совместном плане тоже читаются вслух.</li><li><b>Цвета для ваших глаз.</b> Списки планировщика берут цвета из вашей темы и настройки цветового зрения. Советы о продаже называют «Продать сейчас», «Придержать» или «Продать торговцу» словами, так что цвет никогда не единственный признак.</li><li><b>Крупнее кнопки.</b> Если включено <b>Крупные элементы в настройках</b>, кнопки окна планировщика, панели гайда и её меню тоже становятся выше.</li><li><b>Тур, который можно пропустить.</b> В первый раз планировщик объясняют четыре короткие страницы. «Пропустить» сразу закрывает их, Влево, Вправо, Enter и Esc тоже работают, а <b>Как работает планировщик</b> открывает их снова.</li><li><b>Стрелка — как вам удобно.</b> <b>Стоп</b> в окне планировщика убирает маршрут и его стрелку до нового плана. <code>/fgui move</code> перемещает стрелку, её может заменить стрелка TomTom, а с <b>Меньше движения</b> она не пульсирует по прибытии.</li><li><b>Перерывы.</b> Если включено <b>Напоминать об отдыхе в подходящем месте</b>, маршрут после долгой игры — от 1 до 3 часов, на ваш выбор — подскажет, когда вы дойдёте до удобного места для остановки.</li></ul></section>
+<section class="need card" id="calm" aria-labelledby="h-calm"><h2 id="h-calm">Фокус и спокойствие</h2><p class="who">Для более спокойного экрана.</p><ul><li><b>Спокойный режим.</b> Одно уведомление за раз, держится пятнадцать секунд и убирается щелчком, а сообщения остаются дольше.</li><li><b>Задержка перед подсказками.</b> Подсказки появляются, только когда мышь задержится на миг, чтобы при движении по экрану они не всплывали одна за другой.</li></ul></section>
+<section class="need card" id="share" aria-labelledby="h-share"><h2 id="h-share">Поделитесь</h2><p class="who">Чтобы помочь другу или настроить нового персонажа.</p><ul><li><b>Одна строка текста.</b> Все ваши настройки доступности одной строкой — скопировать, сохранить или отдать другому; вставьте её обратно, и все они применятся разом.</li><li><b>Шаг «Комфорт» в настройке.</b> В первоначальной настройке есть шаг для зрения, слуха и спокойствия, чтобы всё было готово до игры.</li></ul></section>
+  </div>
+  <section class="honest" aria-labelledby="h-honest">
+    <h2 id="h-honest">Чего он (пока) не умеет</h2>
+    <p>Это не экранный диктор: чтение вслух охватывает разговоры, задания, книги, подсказки, шёпот и кнопки основных окон игры, но не каждую часть каждого окна. У окна золота пока нет своих клавиш, и оно не читается вслух. Два удобочитаемых шрифта поддерживают только западноевропейские буквы. Чтение вслух использует голоса, которые ваш компьютер даёт игре. Идеи и проблемы ждём в <a href="https://discord.gg/qeSMwQWyPR">Discord</a>.</p>
+  </section>
+</div>
+</main>
+<footer class="site-foot">
+  <div class="wrap">
+    <div class="foot-row">
+      <span>Fantasy Glass UI от DustyMouse. Бесплатно, для WoW Forever.</span>
+      <ul>
+        <li><a href="https://www.curseforge.com/wow/addons/fantasy-glass-ui">CurseForge</a></li>
+        <li><a href="https://discord.gg/qeSMwQWyPR">Discord</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI">GitHub</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/wiki">Wiki</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/issues/new/choose">Сообщить об ошибке</a></li>
+        <li><a href="/ru/accessibility/">Доступность</a></li>
+        <li><a href="/ru/press/">Пресс-кит</a></li>
+        <li><a href="/feed.xml" type="application/rss+xml">RSS</a></li>
+      </ul>
+    </div>
+    <div class="foot-row">
+      <span>Связь: <a href="mailto:email-forwarding@fantasyglassui.com">email-forwarding@fantasyglassui.com</a></span>
+      <p class="status"><span>Версия <b>13.0.0</b></span><span class="sep" aria-hidden="true">·</span><span>Обновлено <time datetime="2026-11-26">2026-11-26</time></span><span class="sep" aria-hidden="true">·</span><span>Проверено на WoW: Forever <b>1.60.1 (70938)</b></span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">Исходный код</a></span></p>
+    </div>
+    <nav class="foot-row foot-langs" aria-label="Язык"><ul><li><a href="/accessibility/" hreflang="en" lang="en" data-code="en">English</a></li><li><a href="/de/accessibility/" hreflang="de" lang="de" data-code="de">Deutsch</a></li><li><a href="/fr/accessibility/" hreflang="fr" lang="fr" data-code="fr">Français</a></li><li><a href="/es/accessibility/" hreflang="es" lang="es" data-code="es">Español</a></li><li><a href="/ru/accessibility/" hreflang="ru" lang="ru" data-code="ru" aria-current="true">Русский</a></li><li><a href="/pt/accessibility/" hreflang="pt" lang="pt" data-code="pt">Português</a></li><li><a href="/it/accessibility/" hreflang="it" lang="it" data-code="it">Italiano</a></li><li><a href="/ko/accessibility/" hreflang="ko" lang="ko" data-code="ko">한국어</a></li><li><a href="/zh/accessibility/" hreflang="zh-Hans" lang="zh-Hans" data-code="zh">中文</a></li></ul></nav>
+    <p class="trnote">Эта страница переведена без проверки носителем языка. Исправления приветствуются.</p>
+  </div>
+</footer>
+<script src="/assets/site.js?v=2dd8abee61" defer></script>
+</body>
+</html>

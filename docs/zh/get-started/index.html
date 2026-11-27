@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="zh-Hans" data-lang="zh" data-page="get-started">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>开始使用 · Fantasy Glass UI</title>
+<meta name="description" content="安装 Fantasy Glass UI，几分钟完成设置，并附常见问题解答和全部命令。">
+<link rel="canonical" href="https://fantasyglassui.com/zh/get-started/">
+<link rel="alternate" hreflang="en" href="https://fantasyglassui.com/get-started/">
+<link rel="alternate" hreflang="de" href="https://fantasyglassui.com/de/get-started/">
+<link rel="alternate" hreflang="fr" href="https://fantasyglassui.com/fr/get-started/">
+<link rel="alternate" hreflang="es" href="https://fantasyglassui.com/es/get-started/">
+<link rel="alternate" hreflang="ru" href="https://fantasyglassui.com/ru/get-started/">
+<link rel="alternate" hreflang="pt" href="https://fantasyglassui.com/pt/get-started/">
+<link rel="alternate" hreflang="it" href="https://fantasyglassui.com/it/get-started/">
+<link rel="alternate" hreflang="ko" href="https://fantasyglassui.com/ko/get-started/">
+<link rel="alternate" hreflang="zh-Hans" href="https://fantasyglassui.com/zh/get-started/">
+<link rel="alternate" hreflang="x-default" href="https://fantasyglassui.com/get-started/">
+<link rel="icon" type="image/png" href="/icon.png">
+<link rel="alternate" type="application/rss+xml" title="Fantasy Glass UI releases" href="/feed.xml">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Fantasy Glass UI">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:locale:alternate" content="en_US">
+<meta property="og:locale:alternate" content="de_DE">
+<meta property="og:locale:alternate" content="fr_FR">
+<meta property="og:locale:alternate" content="es_ES">
+<meta property="og:locale:alternate" content="ru_RU">
+<meta property="og:locale:alternate" content="pt_BR">
+<meta property="og:locale:alternate" content="it_IT">
+<meta property="og:locale:alternate" content="ko_KR">
+<meta property="og:title" content="开始使用 · Fantasy Glass UI">
+<meta property="og:description" content="安装 Fantasy Glass UI，几分钟完成设置，并附常见问题解答和全部命令。">
+<meta property="og:url" content="https://fantasyglassui.com/zh/get-started/">
+<meta property="og:image" content="https://fantasyglassui.com/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Fantasy Glass UI">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="开始使用 · Fantasy Glass UI">
+<meta name="twitter:description" content="安装 Fantasy Glass UI，几分钟完成设置，并附常见问题解答和全部命令。">
+<meta name="twitter:image" content="https://fantasyglassui.com/og.jpg">
+<meta name="theme-color" content="#12141a" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4f5f8" media="(prefers-color-scheme: light)">
+<script>(function(){var d=document.documentElement;d.classList.add("js");try{var t=localStorage.getItem("fg-theme");if(t==="light"||t==="dark")d.setAttribute("data-theme",t)}catch(e){}var here="zh",page="get-started/",to=here,q=location.search,h=location.hash;var m=/[?&]lang=([a-z]{2})\b/.exec(q);if(m){to=m[1];q=q.replace(/([?&])lang=[a-z]{2}&?/,"$1").replace(/[?&]$/,"")}else if(here==="en"){var c=null;try{c=localStorage.getItem("fg-lang")}catch(e){}if(!c)c=String(navigator.language||"en").slice(0,2).toLowerCase();to=c}if(["en", "de", "fr", "es", "ru", "pt", "it", "ko", "zh"].indexOf(to)<0)to=here;var u=(to==="en"?"/":"/"+to+"/")+page;if(u!==location.pathname||q!==location.search)location.replace(u+q+h)})();</script>
+<link rel="stylesheet" href="/assets/site.css?v=9495293704">
+<style>
+/* Get started (W2): the tour, help, the questions and commands with one search, and the common problems. */
+.page-head .status { margin-top: 16px; }
+
+/* the tour: four numbered steps */
+.tour { padding-block: 32px 8px; }
+.tour-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 18px; }
+.tour-list > li { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 22px; padding: 26px; }
+.tour-list .num { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--gold); color: var(--on-gold); font: 700 1.2rem/1 var(--body); }
+.tour-list .next .num { background: transparent; color: var(--gold); box-shadow: inset 0 0 0 1.5px var(--gold); }
+.tour-list h2 { font-size: 1.45rem; margin: 6px 0 8px; }
+.tour-list p { color: var(--dim); }
+.tour-list p b { color: var(--text); }
+.tour-list .faint { color: var(--faint); font-size: 0.95rem; }
+.tour-list .cta { margin-top: 6px; }
+.tour-shot { display: block; margin-top: 6px; border: 1px solid var(--line); background: var(--shot); }
+.try3 { margin: 0; padding-left: 20px; display: grid; gap: 8px; color: var(--dim); }
+.try3 b { color: var(--text); }
+
+/* help */
+.help-wrap { padding-top: 26px; }
+.help { padding: 24px; display: grid; gap: 18px; }
+.help .h3 { font-size: 1.25rem; }
+.help p { margin: 6px 0 0; color: var(--dim); max-width: 75ch; }
+.help .cta { margin: 0; }
+
+/* questions and commands */
+#ask h2 { margin-bottom: 16px; }
+.ask-search { margin-bottom: 28px; }
+.ask-search label { display: block; margin-bottom: 6px; color: var(--dim); font-size: 0.92rem; font-weight: 600; }
+.ask-search .tools { margin: 0; }
+.sub { font: 700 0.85rem/1.3 var(--body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--eyebrow); margin: 0 0 12px; }
+.sub .faint { color: var(--faint); letter-spacing: 0; text-transform: none; font-weight: 600; }
+#commands { margin-top: 36px; }
+.cmd-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin-bottom: 4px; }
+.cmd-head .sub { margin: 0; }
+#commands > .dim { margin: 0 0 10px; font-size: 0.95rem; }
+.faq { display: block; padding: 0; }
+.q + .q { border-top: 1px solid var(--rule); }
+.q[hidden] + .q, .q:first-child { border-top: 0; }
+.q summary { cursor: pointer; list-style: none; padding: 16px 48px 16px 22px; position: relative; font: 600 1.05rem/1.35 var(--body); min-height: 44px; }
+.q summary::-webkit-details-marker { display: none; }
+.q summary::after { content: ""; position: absolute; right: 22px; top: 50%; width: 9px; height: 9px; margin-top: -6px; border: solid var(--gold); border-width: 0 2px 2px 0; transform: rotate(45deg); transition: transform .2s ease; }
+.q[open] summary::after { transform: rotate(-135deg); margin-top: -2px; }
+.q summary:hover { color: var(--gold); }
+.q summary:focus-visible { outline-offset: -3px; }
+.q p { margin: 0; padding: 0 22px 18px; color: var(--dim); }
+.ctable { width: 100%; border-collapse: collapse; }
+.ctable td, .ctable th { padding: 10px 10px; text-align: left; font-weight: 400; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.ctable th { white-space: nowrap; }
+.ctable code { font: 600 0.9rem/1.4 var(--mono); color: var(--gold); }
+.ctable td:nth-child(2) { color: var(--dim); }
+.ctable td:last-child { text-align: right; }
+.copy { min-height: 36px; padding: 6px 12px; font-size: 0.85rem; --cut: 8px; }
+.tablewrap { overflow-x: auto; }
+#anone { margin-top: 12px; }
+
+/* common problems */
+#problems h2 { margin-bottom: 18px; }
+
+@media (max-width: 600px) {
+  .tour-list > li { grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 20px; }
+  .tour-list .num { width: 38px; height: 38px; font-size: 1.05rem; }
+  .ctable th { white-space: normal; }
+  .ctable tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+  .ctable th { grid-column: 1; border-bottom: 0; padding-bottom: 0; }
+  .ctable td:nth-child(2) { grid-column: 1 / -1; grid-row: 2; padding-top: 2px; }
+  .ctable td:last-child { grid-column: 2; grid-row: 1; border-bottom: 0; padding-bottom: 0; }
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">跳到正文</a>
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="/zh/"><img src="/logo-64.webp" alt="" width="32" height="32">Fantasy Glass UI</a>
+    <nav class="site-nav" id="site-nav" aria-label="页面">
+      <ul><li><a href="/zh/">首页</a></li><li><a href="/zh/features/">功能</a></li><li><a href="/zh/themes/">主题</a></li><li><a href="/zh/guide-and-gold/">指南与金币</a></li><li><a href="/zh/get-started/" aria-current="page">开始使用</a></li><li><a href="/zh/changelog/">更新日志</a></li><li><a href="/zh/roadmap/">路线图</a></li></ul>
+      <div class="head-tools">
+        <label class="lang"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span class="sr-only">语言</span><select id="lang"><option value="/get-started/" data-code="en" lang="en">English</option><option value="/de/get-started/" data-code="de" lang="de">Deutsch</option><option value="/fr/get-started/" data-code="fr" lang="fr">Français</option><option value="/es/get-started/" data-code="es" lang="es">Español</option><option value="/ru/get-started/" data-code="ru" lang="ru">Русский</option><option value="/pt/get-started/" data-code="pt" lang="pt">Português</option><option value="/it/get-started/" data-code="it" lang="it">Italiano</option><option value="/ko/get-started/" data-code="ko" lang="ko">한국어</option><option value="/zh/get-started/" data-code="zh" lang="zh-Hans" selected>中文</option></select></label>
+        <button class="icon-btn mode" id="mode" type="button" aria-pressed="true" title="深色模式"><span class="sr-only">深色模式</span><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M5.3 18.7 7 17M17 7l1.7-1.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      </div>
+    </nav>
+    <a class="btn small head-dl" href="https://www.curseforge.com/wow/addons/fantasy-glass-ui">下载</a>
+    <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav"><span class="sr-only">菜单</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    <button class="chip wearing" id="unwear" type="button" hidden>正在使用 <b id="wearname"></b>：恢复网站配色</button>
+  </div>
+</header>
+<main id="main" tabindex="-1">
+<!-- Get started (W2). The guided tour, help, one search across the questions and the commands, and the common
+     problems; see site-src/PAGES.md. Keeps the ids start, setup, faq and commands. -->
+  <div class="wrap narrow page-head" id="start">
+    <h1>开始使用</h1>
+    <p class="lede">从下载到拥有自己的外观，大约五分钟。</p>
+    <p class="status"><span>版本 <b>13.0.0</b></span><span class="sep" aria-hidden="true">·</span><span>更新于 <time datetime="2026-11-26">2026-11-26</time></span><span class="sep" aria-hidden="true">·</span><span>已对照 WoW: Forever <b>1.60.1 (70938)</b> 检查</span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">源代码</a></span></p>
+  </div>
+
+  <section class="wrap narrow tour" aria-label="上手导览">
+    <ol class="tour-list">
+      <li class="card filled">
+        <span class="num" aria-hidden="true">1</span>
+        <div>
+          <h2>安装</h2>
+          <p>用 CurseForge 应用安装，或下载 zip，把里面的每个文件夹并排放进 <code>World of Warcraft/_forever_/Interface/AddOns</code>。</p>
+          <p class="faint">手动安装时：每个文件夹的 <code>.toc</code> 文件要直接位于该文件夹内，而不是再深一层。在游戏的插件列表中全部保持启用；有些只在需要时才加载。</p>
+          <div class="cta"><a class="btn small" href="https://www.curseforge.com/wow/addons/fantasy-glass-ui" target="_blank" rel="noopener">在 CurseForge 下载</a></div>
+        </div>
+      </li>
+      <li class="card filled" id="setup">
+        <span class="num" aria-hidden="true">2</span>
+        <div>
+          <h2>登录并跟着设置向导走</h2>
+          <p>第一次登录时，设置向导会自动打开。它用四个简短步骤问你要它接管多少、你怎么玩、喜欢哪种外观，然后给你一个起步的布局。</p>
+          <p><b>从其他界面转过来的？</b> 在最后一步，点一下就能把框体排成类似 ElvUI 或 Tukui、RealUI、GW2 UI、游戏自带界面的布局。 <a href="/zh/features/#compare">它们如何比较</a></p>
+          <p class="faint"><code>/fgui setup</code> 随时可以重新运行。新角色会沿用你主角色的设置，并按其职业调整。</p>
+          <img src="/shots/glass-settings.webp" srcset="/shots/glass-settings-480.webp 480w, /shots/glass-settings-800.webp 800w, /shots/glass-settings.webp 1070w" sizes="(max-width: 900px) 100vw, 760px" width="1070" height="730" alt="选项窗口：所有主题集中一处，每项功能都可以关闭。" class="cut tour-shot" loading="lazy" decoding="async">
+        </div>
+      </li>
+      <li class="card filled">
+        <span class="num" aria-hidden="true">3</span>
+        <div>
+          <h2>选一款主题</h2>
+          <p>输入 <code>/fgui</code>，打开<b>外观与主题</b>。选一个系列（玻璃、奇幻或星空），再选其中一款主题：整个屏幕都会跟着变。换到另一个系列要在 <code>/reload</code> 之后才完成。</p>
+          <p><a href="/zh/themes/">先在本站试试</a></p>
+        </div>
+      </li>
+      <li class="card filled next">
+        <span class="num" aria-hidden="true">4</span>
+        <div>
+          <h2>接下来试试这三件事</h2>
+          <ul class="try3">
+            <li><b>规划路线：</b>在 <code>/fgui</code> 中打开“指南”标签页，按<b>规划我的路线</b>。</li>
+            <li><b>了解东西值多少：</b>在拍卖行按<b>扫描价格</b>，然后把鼠标指向背包里的任何物品。</li>
+            <li><b>随意移动：</b>输入 <code>/fgui move</code>，拖动把手即可。<code>/fgui undo</code> 可撤销一次移动。</li>
+          </ul>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <section class="wrap narrow help-wrap" aria-labelledby="help-h">
+    <div class="help card">
+      <div><h2 id="help-h" class="h3">发现问题，或者有想法？</h2><p>来 Discord 聊聊，或在 GitHub 告诉我们。报告问题时最有用的是插件自带的报告：在游戏中打开 <code>/fgui</code>，点击 <b>Report a Problem</b> 并粘贴文字。其他事宜：<a href="mailto:email-forwarding@fantasyglassui.com">email-forwarding@fantasyglassui.com</a>。</p></div>
+      <div class="cta">
+        <a class="btn" href="https://discord.gg/qeSMwQWyPR" target="_blank" rel="noopener">加入 Discord</a>
+        <a class="btn line" href="https://github.com/fantasyglassui/FantasyGlassUI/issues/new?template=bug_report.yml" target="_blank" rel="noopener">报告问题</a>
+        <a class="btn line" href="https://github.com/fantasyglassui/FantasyGlassUI/issues/new?template=idea.yml" target="_blank" rel="noopener">提出建议</a>
+        <a class="btn line" href="https://github.com/fantasyglassui/FantasyGlassUI/wiki" target="_blank" rel="noopener">阅读 Wiki</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="ask" aria-labelledby="ask-h">
+    <div class="wrap narrow">
+      <h2 id="ask-h">问题与命令</h2>
+      <div class="ask-search">
+        <label for="asearch">搜索问题和命令</label>
+        <div class="tools">
+          <input class="search" id="asearch" type="search" placeholder="试试“move”或“reset”" autocomplete="off">
+          <span class="count" id="acount" aria-live="polite"></span>
+        </div>
+      </div>
+
+      <div id="faq">
+        <h3 class="sub">常见问题</h3>
+        <div class="faq card"><details class="q"><summary>适用于哪个游戏？</summary><p><b>WoW Forever</b>（界面版本 16001）。把压缩包里的所有文件夹并排放进 <code>World of Warcraft/_forever_/Interface/AddOns</code> 即可。</p></details><details class="q"><summary>能和其他插件一起用吗？</summary><p>可以。如果你已经在用做同样事情的插件，比如姓名板用 Plater，背包用 Bagnon 或 Baganator，团队框体用 Grid2、VuhDo 或 Cell，Fantasy Glass UI 会让出那一部分，其余照常。输入 <code>/fgui conflicts off</code> 则改用它自己的。</p></details><details class="q"><summary>可以只用一部分吗？</summary><p>可以。<code>/fgui</code> 里每个部分都有自己的开关，比如只保留背包和姓名板，其余交给游戏。</p></details><details class="q"><summary>我喜欢方形框体，能用经典外观吗？</summary><p>可以。在 <code>/fgui</code> 的“框体与动作条”中选择 Classic 代替 Starcut，所有框体、条和按钮都会变回方框形状，任何主题都适用。</p></details><details class="q"><summary>对色盲、低视力或听力有帮助吗？</summary><p>是的，有一整个类别。<code>/fgui access</code> 提供按色觉类型调整的颜色、高对比度主题、适合低视力和阅读障碍的字体、声音字幕、朗读对话、任务和提示、用键盘操作游戏窗口、单手按键、安全闪烁、静止星空和平静模式。它按需求分类的全部功能见<a href="/zh/accessibility/">辅助功能页面</a>。</p></details><details class="q"><summary>会让游戏变卡吗？</summary><p>关闭的部分完全不会运行。想亲自确认的话，<code>/fgui perf</code> 显示每个部分花费的时间，<code>/fgui perf fight</code> 测量你的下一场战斗，<code>/fgui memory</code> 显示内存占用。</p></details><details class="q"><summary>有地方不对劲，怎么恢复？</summary><p><code>/fgui undo</code> 撤销上一次移动或缩放，<code>/fgui history</code> 列出你改过的内容，任何一项都能撤销。<code>/fgui reset</code>（输入两次）把配置恢复为初始状态，之前会先备份：<code>/fgui backup</code> 可查看。<code>/fgui safe</code> 会关闭所有功能后重载，用来判断问题是否出在插件。</p></details><details class="q"><summary>能把我的设置分享给朋友吗？</summary><p>可以。<code>/fgui pack</code> 把整个界面（配置、布局、主题、动作条和邮件规则）打包成一段可粘贴的文字，<code>/fgui send &lt;name&gt; layout</code> 则直接发送给装有本插件的其他玩家。</p></details><details class="q"><summary>去哪里求助，或者展示我的界面？</summary><p>在<a href="https://discord.gg/qeSMwQWyPR" target="_blank" rel="noopener">我们的 Discord</a>：到 <b>#fgui-help</b> 提问，在 <b>#show-your-ui</b> 发截图，在 <b>#themes</b> 分享主题代码。那里也有专门报告问题和提建议的频道。</p></details><details class="q"><summary>支持哪些语言？</summary><p>英语、德语、法语、西班牙语、俄语、葡萄牙语、意大利语、韩语和中文。会跟随你的游戏语言。</p></details><details class="q"><summary>免费吗？</summary><p>是的，免费，没有广告，也没有任何需要购买的东西。</p></details></div>
+      </div>
+
+      <div id="commands">
+        <div class="cmd-head">
+          <h3 class="sub">命令 <span class="faint">· 在聊天框输入，以 /fgui 开头</span></h3>
+          <button class="btn line small" id="copyall" type="button">复制整个列表</button>
+        </div>
+        <p class="dim">在游戏中，<code>/fgui help</code> 会在可搜索的窗口中列出全部命令。</p>
+        <div class="tablewrap"><table class="ctable"><caption class="sr-only">命令</caption><tbody id="clist"></tbody></table></div>
+        <button class="btn line small more" type="button" id="cmore">Show all 137 commands</button>
+      </div>
+      <p class="count" id="anone" hidden>没有匹配项。试试更短的词，或到 Discord 提问。</p>
+    </div>
+  </section>
+
+  <section class="section band" id="problems" aria-labelledby="prob-h">
+    <div class="wrap narrow">
+      <h2 id="prob-h">常见问题与解决</h2>
+      <div class="faq card">
+        <details class="q"><summary>看起来不对劲，或出现错误</summary><p>输入 <code>/fgui check</code> 查看正在运行的内容报告。然后打开 <code>/fgui</code>，按<b>报告问题</b>，把得到的文字粘贴到错误报告或 Discord 里。</p></details>
+        <details class="q"><summary>打不开选项，或界面乱了</summary><p><code>/fgui safe</code> 会关闭所有功能并重新加载。在 <code>/fgui</code> 里改好需要的设置，再输入一次 <code>/fgui safe</code> 退出安全模式。</p></details>
+        <details class="q"><summary>想要找回以前的设置</summary><p><code>/fgui backup</code> 列出每次更新前、每天一次以及重置前做的备份。点一个查看如何恢复。<code>/fgui history</code> 逐条列出改动，任何一条都能撤销。</p></details>
+        <details class="q"><summary>战斗中面板无法移动</summary><p>游戏不允许任何插件在战斗中移动框体或改变其大小。等战斗结束；战斗中要求的一键穿最佳装备和整理背包，会在结束后自动完成。</p></details>
+        <details class="q"><summary>在地下城里发送给其他玩家没反应</summary><p>在地下城和团队副本里，WoW Forever 不允许插件给其他玩家发送消息。在那里发送布局、主题或天赋方案时会提示这一点；到外面再试。</p></details>
+        <details class="q"><summary>战斗中增益效果看起来不一样</summary><p>在 WoW Forever 中，战斗时增益和减益效果对插件不可见，所以改为使用重新设计过的游戏自带增益框体。</p></details>
+        <details class="q"><summary>命令没反应，或者想不起命令</summary><p><code>/fgui help</code> 会在可搜索的窗口里列出所有命令。打错时，插件会提示最接近的那条。</p></details>
+        <details class="q"><summary>“Interface action failed”</summary><p>输入 <code>/fgui blocked</code>，把它显示的内容附到错误报告里。</p></details>
+      </div>
+    </div>
+  </section>
+</main>
+<footer class="site-foot">
+  <div class="wrap">
+    <div class="foot-row">
+      <span>Fantasy Glass UI，作者 DustyMouse。免费，适用于 WoW Forever。</span>
+      <ul>
+        <li><a href="https://www.curseforge.com/wow/addons/fantasy-glass-ui">CurseForge</a></li>
+        <li><a href="https://discord.gg/qeSMwQWyPR">Discord</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI">GitHub</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/wiki">Wiki</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/issues/new/choose">报告问题</a></li>
+        <li><a href="/zh/accessibility/">辅助功能</a></li>
+        <li><a href="/zh/press/">媒体资料包</a></li>
+        <li><a href="/feed.xml" type="application/rss+xml">RSS</a></li>
+      </ul>
+    </div>
+    <div class="foot-row">
+      <span>联系: <a href="mailto:email-forwarding@fantasyglassui.com">email-forwarding@fantasyglassui.com</a></span>
+      <p class="status"><span>版本 <b>13.0.0</b></span><span class="sep" aria-hidden="true">·</span><span>更新于 <time datetime="2026-11-26">2026-11-26</time></span><span class="sep" aria-hidden="true">·</span><span>已对照 WoW: Forever <b>1.60.1 (70938)</b> 检查</span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">源代码</a></span></p>
+    </div>
+    <nav class="foot-row foot-langs" aria-label="语言"><ul><li><a href="/get-started/" hreflang="en" lang="en" data-code="en">English</a></li><li><a href="/de/get-started/" hreflang="de" lang="de" data-code="de">Deutsch</a></li><li><a href="/fr/get-started/" hreflang="fr" lang="fr" data-code="fr">Français</a></li><li><a href="/es/get-started/" hreflang="es" lang="es" data-code="es">Español</a></li><li><a href="/ru/get-started/" hreflang="ru" lang="ru" data-code="ru">Русский</a></li><li><a href="/pt/get-started/" hreflang="pt" lang="pt" data-code="pt">Português</a></li><li><a href="/it/get-started/" hreflang="it" lang="it" data-code="it">Italiano</a></li><li><a href="/ko/get-started/" hreflang="ko" lang="ko" data-code="ko">한국어</a></li><li><a href="/zh/get-started/" hreflang="zh-Hans" lang="zh-Hans" data-code="zh" aria-current="true">中文</a></li></ul></nav>
+    <p class="trnote">本页翻译未经母语者校对，欢迎指正。</p>
+  </div>
+</footer>
+<script src="/assets/site.js?v=2dd8abee61" defer></script>
+<script src="/assets/get-started.js?v=03b50b18b5" defer></script>
+</body>
+</html>

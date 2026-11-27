@@ -96,6 +96,8 @@ local groups = {
         { "pixelPerfect",   "Pixel-perfect scale" },
         { "buttonBag",      "Minimap button collector" },
         { "launcher",       "Minimap button for these options" },
+        { "minimapPlanner", "Minimap button for the route planner" },
+        { "minimapGold",    "Minimap button for ways to make gold" },
         { "mapCoords",      "Coordinates on the world map" },
         { "rareAlert",      "Rare spawn alert" },
         { "rareMemory", "Rare spawn memory on the map" },
@@ -234,6 +236,7 @@ local groups = {
         { "sellHints",      "Sell now, Hold and Vendor it hints" },
         { "otherAddonPrices", "Prices from Auctionator and TSM" },
         { "auctionHelper",  "Auction house helper" },
+        { "goldAuctionPanel", "Gold ideas at the auction house" },
         { "tradeLog",       "Trade log" },
         { "mailButton",     "Mail: Send by my rules button" },
         { "mailRulesOn",    "Mail: my own rules" },
@@ -357,6 +360,8 @@ local DESC = {
     infobarPlugins = "Shows the data other add-ons publish (through LibDataBroker) in a strip under the info bar.",
     buttonBag     = "Gathers other add-ons' minimap buttons into one fold-out panel.",
     launcher      = "A small button on the minimap with the add-on's icon. Left-click opens these options, right-click starts moving panels, and it can be dragged along the minimap.",
+    minimapPlanner = "A small button on the minimap, beside the options button, that opens the route planner. It can be dragged along the minimap. It hides while quest guides are off.",
+    minimapGold   = "A small button on the minimap, beside the options button, that opens ways to make gold. It can be dragged along the minimap.",
     powerText     = "Shows mana, rage, energy or whatever the resource is as a percentage: on every unit frame that has a power bar, and beside the bar on nameplates of units that have a resource.",
     plateHealth   = "Shows health on each nameplate's bar: a percentage, or the amount if \"Health as numbers, not %\" is switched on, beside it.",
     ufFocusTarget = "A small frame for whatever your focus is targeting, like the target's target frame. It appears only while your focus has a target.",
@@ -474,6 +479,7 @@ local DESC = {
     gearCheck     = "/fgui gear lists everyone in your party or raid with their item level, the lowest first, and the group's average. The game sends another player's gear one player at a time and only within reach, so the list fills in while it is open; it never asks during a fight or while your own inspect window is open.",
     groupLoot     = "When a boss drops something rare or better, the players in your group who use Fantasy Glass UI each work out whether it is an upgrade for them and quietly tell the others. A small panel says whose upgrade it is and by how many item levels, before anyone rolls. Nothing is said in chat. Move it with /fgui move.",
     runLog        = "Each dungeon and raid you go into is a run: how long it took, the bosses killed and when, the wipes on each, your deaths and your rare and better loot. /fgui runs lists them place by place, each with its best time (the quickest of the runs that killed the most bosses). Stepping out to repair is still the same run.",
+    goldAuctionPanel = "Beside the auction house, a panel of ways to make gold with what this character has. It loads the gold folder the first time you open the auction house; off, the auction house loads and shows nothing of it.",
     farming       = "/fgui farm starts a session: a small panel shows the time and what you make an hour, in gold and in the items you loot (the auction price you have seen, or the vendor's). /fgui farm again lists every item; /fgui farm stop ends it, and the session counts in your weekly recap.",
     threatMeter   = "A small panel of its own: in a group, with a hostile target, who has how much threat on it, most first, up to five of you. Your row turns the warning color near the top and the danger color when you would pull the target. Works without the damage meter. Move it with /fgui move.",
     lootBossTip   = "Point at a boss and its tooltip lists what it drops that is on your wishlist or would be an upgrade for you, with how often you have seen it drop. From the loot browser's book (and the dungeon journal where the game has one).",
@@ -596,7 +602,7 @@ local NO_PRESET = { tipTitle = true, tipRealm = true, tipGuild = true, tipGuildR
                     tweakCamera = true, tweakErrorVoice = true, tweakBgSound = true, tweakScreenshot = true,
                     tweakAutoLoot = true, tweakLootMouse = true, tweakSelfCast = true, tweakPlateRange = true, tweakPlateStack = true, tweakCameraFollow = true, tweakWeather = true, tweakBgFps = true, tweakTutorials = true, tweakProfanity = true, tweakMusic = true, tweakAmbience = true, tweakDeathGrey = true, tweakGlow = true }
 local MINIMAL = {
-    unitFrames = true, ufParty = true, ufBoss = true, launcher = true, mirrorBars = true, raidFrames = true, playerCast = true, auraBars = true, xpBar = true, nameplates = true,
+    unitFrames = true, ufParty = true, ufBoss = true, launcher = true, minimapPlanner = true, minimapGold = true, mirrorBars = true, raidFrames = true, playerCast = true, auraBars = true, xpBar = true, nameplates = true,
     actionBars = true, cooldownText = true, minimap = true, infobar = true, questTracker = true, questLog = true, windows = true,
     tooltip = true, bagWindow = true, bankWindow = true, storage = true, chat = true, chatSkin = true,
 }
@@ -705,10 +711,10 @@ local INSTANT = { tipTitle = true, tipRealm = true, tipGuild = true, tipGuildRan
                   powerText = true, infobarExtras = true, autoSell = true, autoRepair = true,
                   tweakCamera = true, tweakErrorVoice = true, tweakBgSound = true, tweakScreenshot = true,
                   tweakAutoLoot = true, tweakLootMouse = true, tweakSelfCast = true, tweakPlateRange = true, tweakPlateStack = true, tweakCameraFollow = true, tweakWeather = true, tweakBgFps = true, tweakTutorials = true, tweakProfanity = true, tweakMusic = true, tweakAmbience = true, tweakDeathGrey = true, tweakGlow = true,
-                  meterAuto = true, whisperInviteAll = true }
+                  meterAuto = true, whisperInviteAll = true, minimapPlanner = true, minimapGold = true, goldAuctionPanel = true }
 ns.featureInstant = INSTANT
 function ns:ApplyInstant()                                   -- redraw whatever those switches show
-    for _, fn in ipairs({ "ApplyBarText", "RefreshHealthText", "RefreshInfoBar", "ApplyTweaks", "GuideApplySwitch", "ApplyPlaceTheme", "ApplyPixelScale", "ApplyMinimapShape", "RefreshBagWindow", "RefreshXPBar", "ApplyRaidManager" }) do
+    for _, fn in ipairs({ "ApplyBarText", "RefreshHealthText", "RefreshInfoBar", "ApplyTweaks", "GuideApplySwitch", "ApplyPlaceTheme", "ApplyPixelScale", "ApplyMinimapShape", "ApplyMinimapExtras", "RefreshBagWindow", "RefreshXPBar", "ApplyRaidManager", "GoldAuctionApplySwitch" }) do
         if ns[fn] then pcall(ns[fn], ns) end
     end
 end

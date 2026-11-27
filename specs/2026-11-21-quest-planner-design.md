@@ -435,6 +435,35 @@ is settled. What is known:
 
 ### Settings (Guide tab)
 
+**Later (the player, 25 Nov):** once the planner is finished it gets its own button and its own
+settings window, and these switches move there, out of the add-on's settings window. Until then
+they stay on the Guide tab.
+
+**Final step after batch 5 (the player, 25 Nov: "we are trying to make it run great"):** the planner
+moves into its own folder, `FantasyGlassUI_Planner`, shipped in the same package like
+`FantasyGlassUI_Options`: `## LoadOnDemand: 1`, `## RequiredDeps: FantasyGlassUI`, `## OptionalDeps:
+Questie`. The game loads it only when the planner is first used (its button, the guide panel's plan
+button or `/fgui plan`), so players who never use it pay no memory and no Questie reading. It brings
+its own button and its own settings window (in the settings window's look); its switches leave the
+Guide tab. The quest guide panel itself stays in the main add-on; the planner reaches it, the theme
+painting, translations and settings through the shared namespace or a small documented API. A
+failure inside the planner never breaks the rest of the UI. Its own plan and a full re-test (both
+smoke modes, every audit, pytest) come with it.
+
+Decided with the player (25 Nov, 15:50–15:54):
+- **Still hidden.** The folder ships in the package but stays behind the guide's unlock: no button,
+  no settings, nothing loaded and nothing on the site until someone unlocks it.
+- **Its button in two places:** a small "Planner" button on the quest guide panel, and one more entry
+  in the add-on's minimap launcher menu. No separate floating button.
+- **Its window** wears the settings window's look: the current plan's summary at the top, then the
+  planner's switches grouped (group setting; stops on the way; exploring and gathering; rewards, the
+  log and the inn; time, style and sliders; map; records; reading aloud). The switches leave the
+  Guide tab.
+- **Going public later, in its own release (13.0):** after the player and a few trusted testers have
+  played it and the in-game checklists of all five batch notes are worked through and fixed. That
+  release takes the unlock off and adds the changelog, a site section, CurseForge screenshots and an
+  announcement.
+
 - Group quests: Solo / When grouped / Everything.
 - Learn new flight points on the way: on (default) / off.
 - Show why each step is there: on (default) / off.

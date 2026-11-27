@@ -12,18 +12,24 @@ local pcall, type, pairs, ipairs, tonumber = pcall, type, pairs, ipairs, tonumbe
 local sqrt, huge = math.sqrt, math.huge
 
 ------------------------------------------------------------------------------------------
--- Crossings. Boats and zeppelins between the towns. The map ids and coordinates below are from
--- memory and MUST be checked in the game before release; the seconds are a ride plus an average
--- wait (270 boats, 240 zeppelins) until a real crossing has been recorded.
+-- Crossings. Boats and zeppelins between the towns. The map ids, coordinates and dock areas below are
+-- from memory and MUST be checked in the game before release; the seconds are a ride plus an average
+-- wait (270 boats, 240 zeppelins) until a real crossing has been recorded. `area`: the dock's area
+-- (its name, from C_Map.GetAreaInfo, on the step); `ship`: what you take.
 ------------------------------------------------------------------------------------------
+local MENETHIL, THERAMORE = { map = 1437, x = 4.9, y = 62.0, area = 150 }, { map = 1445, x = 71.5, y = 56.5, area = 513 }
+local AUBERDINE, RUTHERAN = { map = 1439, x = 33.0, y = 40.0, area = 442 }, { map = 1438, x = 55.0, y = 93.5, area = 702 }
+local BOOTYBAY, RATCHET = { map = 1434, x = 26.0, y = 73.0, area = 35 }, { map = 1413, x = 63.5, y = 38.5, area = 392 }
+local ORGRIMMAR, UNDERCITY = { map = 1411, x = 50.9, y = 13.8, area = 1637 }, { map = 1458, x = 60.5, y = 58.5, area = 1497 }
+local GROMGOL = { map = 1434, x = 31.5, y = 29.5, area = 117 }
 ns.PLANNER_CROSSINGS = {
-    { id = "menethil-theramore", a = { map = 1437, x = 4.9, y = 62.0 }, b = { map = 1445, x = 71.5, y = 56.5 }, faction = "Alliance", seconds = 270 },
-    { id = "menethil-auberdine", a = { map = 1437, x = 4.9, y = 62.0 }, b = { map = 1439, x = 33.0, y = 40.0 }, faction = "Alliance", seconds = 270 },
-    { id = "auberdine-rutheran", a = { map = 1439, x = 33.0, y = 40.0 }, b = { map = 1438, x = 55.0, y = 93.5 }, faction = "Alliance", seconds = 270 },
-    { id = "bootybay-ratchet", a = { map = 1434, x = 26.0, y = 73.0 }, b = { map = 1413, x = 63.5, y = 38.5 }, seconds = 270 },
-    { id = "orgrimmar-undercity", a = { map = 1411, x = 50.9, y = 13.8 }, b = { map = 1458, x = 60.5, y = 58.5 }, faction = "Horde", seconds = 240 },
-    { id = "orgrimmar-gromgol", a = { map = 1411, x = 50.9, y = 13.8 }, b = { map = 1434, x = 31.5, y = 29.5 }, faction = "Horde", seconds = 240 },
-    { id = "undercity-gromgol", a = { map = 1458, x = 60.5, y = 58.5 }, b = { map = 1434, x = 31.5, y = 29.5 }, faction = "Horde", seconds = 240 },
+    { id = "menethil-theramore", a = MENETHIL, b = THERAMORE, faction = "Alliance", seconds = 270, ship = "boat" },
+    { id = "menethil-auberdine", a = MENETHIL, b = AUBERDINE, faction = "Alliance", seconds = 270, ship = "boat" },
+    { id = "auberdine-rutheran", a = AUBERDINE, b = RUTHERAN, faction = "Alliance", seconds = 270, ship = "boat" },
+    { id = "bootybay-ratchet", a = BOOTYBAY, b = RATCHET, seconds = 270, ship = "boat" },
+    { id = "orgrimmar-undercity", a = ORGRIMMAR, b = UNDERCITY, faction = "Horde", seconds = 240, ship = "zeppelin" },
+    { id = "orgrimmar-gromgol", a = ORGRIMMAR, b = GROMGOL, faction = "Horde", seconds = 240, ship = "zeppelin" },
+    { id = "undercity-gromgol", a = UNDERCITY, b = GROMGOL, faction = "Horde", seconds = 240, ship = "zeppelin" },
 }
 
 ------------------------------------------------------------------------------------------
@@ -47,6 +53,32 @@ function ns.PlannerWorldPos(map, x, y)
 end
 local WorldPos = ns.PlannerWorldPos
 
+-- The world position of a spot table ({ map, x, y }), kept beside it (a weak table: nothing is written into the
+-- spot, which may be saved) for as long as the spot lives and its map, x and y stay the same. Flight points,
+-- docks, records' spots and saved deaths are worked out once, not on every distance. A new C_Map or
+-- CreateVector2D (the tests swap them) starts afresh.
+local spotPos = setmetatable({}, { __mode = "k" })
+local posApi, posVec
+local function SpotPos(s)
+    if type(s) ~= "table" then return nil end
+    local api, vec = C_Map and C_Map.GetWorldPosFromMapPos, CreateVector2D
+    if api ~= posApi or vec ~= posVec then spotPos, posApi, posVec = setmetatable({}, { __mode = "k" }), api, vec end
+    local e = spotPos[s]
+    if not e or e[1] ~= s.map or e[2] ~= s.x or e[3] ~= s.y then
+        local c, wx, wy = WorldPos(s.map, s.x, s.y)
+        e = { s.map, s.x, s.y, c or false, wx, wy }
+        spotPos[s] = e
+    end
+    if e[4] then return e[4], e[5], e[6] end
+end
+ns.PlannerSpotPos = SpotPos
+-- (a copy of a spot shares its original's position: the same map, x and y)
+local function SamePos(copy, of)
+    SpotPos(of)
+    local e = spotPos[of]
+    if e then spotPos[copy] = e end
+end
+
 -- Where the player stands: map, x, y in percent; nil when it can't be told.
 local function PlayerSpot()
     if not (C_Map and C_Map.GetBestMapForUnit and C_Map.GetPlayerMapPosition) then return nil end
@@ -69,19 +101,13 @@ end
 ------------------------------------------------------------------------------------------
 -- Saved data (created when first needed; ns.root may be absent early)
 ------------------------------------------------------------------------------------------
--- Saved tables: read without creating (nil when absent); create = true only when writing.
+-- Saved tables: read without creating (nil when absent); create = true only when writing. Your own record is
+-- the planner's (ns.PlannerCharRecord, Planner.lua: loaded after this file, so looked up when called).
 local function CharData(create)
-    if type(ns.root) ~= "table" then return nil end
-    local key = ns:CharKey()
-    if type(ns.root.planner) ~= "table" then
-        if not create then return nil end
-        ns.root.planner = {}
-    end
-    if type(ns.root.planner[key]) ~= "table" then
-        if not create then return nil end
-        ns.root.planner[key] = {}
-    end
-    return ns.root.planner[key]
+    local rec = ns.PlannerCharRecord
+    if type(rec) ~= "function" then return nil end
+    local ok, d = pcall(rec, create)
+    return (ok and type(d) == "table") and d or nil
 end
 
 local function Account(name, create)
@@ -122,7 +148,11 @@ function ns.PlannerFlightPoints()
     local out, nodes = {}, Account("plannerNodes")
     if not nodes then return out end
     for node, n in pairs(nodes) do
-        if type(n) == "table" and n.map then out[#out + 1] = { node = node, map = n.map, x = n.x, y = n.y, known = ns.PlannerKnownFlight(node), name = n.name } end
+        if type(n) == "table" and n.map then
+            local f = { node = node, map = n.map, x = n.x, y = n.y, known = ns.PlannerKnownFlight(node), name = n.name }
+            SamePos(f, n)
+            out[#out + 1] = f
+        end
     end
     return out
 end
@@ -131,13 +161,14 @@ end
 local NEAR = 300   -- yards
 local function NearestKnown(map, x, y)
     local c, wx, wy = WorldPos(map, x, y)
-    if not c then return nil end
+    local nodes = Account("plannerNodes")
+    if not (c and nodes) then return nil end
     local best, bestD
-    for _, f in ipairs(ns.PlannerFlightPoints()) do
-        if f.known then
-            local c2, x2, y2 = WorldPos(f.map, f.x, f.y)
+    for node, n in pairs(nodes) do
+        if type(n) == "table" and n.map and ns.PlannerKnownFlight(node) then
+            local c2, x2, y2 = SpotPos(n)
             local d = c2 and Dist(c, wx, wy, c2, x2, y2) or huge
-            if d <= NEAR and (not bestD or d < bestD) then best, bestD = f.node, d end
+            if d <= NEAR and (not bestD or d < bestD or (d == bestD and tostring(node) < tostring(best))) then best, bestD = node, d end
         end
     end
     return best
@@ -153,15 +184,21 @@ local function LearnFlights()
     if not data or not nodes then return end
     data.flights = type(data.flights) == "table" and data.flights or {}
     local learned = false
+    local function Plain(v, kind) if type(v) == kind and not ns:IsSecret(v) then return v end end
+    map = Plain(map, "number")
     for i, n in ipairs(list) do
-        if type(n) == "table" and n.nodeID then
-            local pos = n.position
-            if type(pos) == "table" and map and tonumber(pos.x) and tonumber(pos.y) then
-                nodes[n.nodeID] = { map = map, x = pos.x * 100, y = pos.y * 100, name = n.name }
+        local id = type(n) == "table" and Plain(n.nodeID, "number")
+        if id then                                               -- (every value is checked before it is saved)
+            local pos = Plain(n.position, "table")
+            local px, py = pos and Plain(pos.x, "number"), pos and Plain(pos.y, "number")
+            if map and px and py then
+                local name = Plain(n.name, "string")
+                nodes[id] = { map = map, x = px * 100, y = py * 100, name = name and name ~= "" and name or nil }
             end
-            local t = TaxiNodeGetType(n.slotIndex or i)
-            if (t == "REACHABLE" or t == "CURRENT") and not data.flights[n.nodeID] then
-                data.flights[n.nodeID] = true
+            local okT, t = pcall(TaxiNodeGetType, Plain(n.slotIndex, "number") or i)
+            t = okT and Plain(t, "string") or nil
+            if (t == "REACHABLE" or t == "CURRENT") and not data.flights[id] then
+                data.flights[id] = true
                 learned = true
             end
         end
@@ -174,14 +211,13 @@ end
 ------------------------------------------------------------------------------------------
 local takeoff, dock
 
-local function NearDock(spot, d, radius)
-    local c, wx, wy = WorldPos(spot.map, spot.x, spot.y)
-    local c2, x2, y2 = WorldPos(d.map, d.x, d.y)
+local function NearDock(c, wx, wy, d, radius)
+    local c2, x2, y2 = SpotPos(d)                        -- (the docks never move: worked out once)
     return c ~= nil and c2 ~= nil and Dist(c, wx, wy, c2, x2, y2) <= radius
 end
 
 local function ControlLost()
-    if not (UnitOnTaxi and UnitOnTaxi("player")) then return end
+    if not (UnitOnTaxi and UnitOnTaxi("player")) then takeoff = nil; return end   -- (a stun or a fear: no flight from here)
     local map, x, y = PlayerSpot()
     takeoff = { node = map and NearestKnown(map, x, y) or nil, time = GetTime() }
 end
@@ -200,61 +236,84 @@ local function ControlGained()
     end
 end
 
--- Every couple of seconds: which dock are we standing at, and since when?
+-- Every couple of seconds (and when a loading screen ends): which docks are we standing at? A crossing is timed
+-- from the FIRST look within NEAR of one of its docks (of one stay there: a look away from every dock and back
+-- starts the stay again) to the first look within NEAR of its other dock, when that is at least a minute and at
+-- most PLANNER_CROSS_MOST seconds (reaching the far dock counts as crossed either way). So the time holds the wait at the dock, as the defaults in PLANNER_CROSSINGS
+-- do. A loading screen on the way is allowed, never needed (Auberdine to Rut'theran has none), and a dock that
+-- several crossings share keeps all of them in mind.
+ns.PLANNER_CROSS_MOST = 900
 local function DockTick()
-    if not ns:GuideUnlocked() then return end
+    if InCombatLockdown and InCombatLockdown() then return end   -- (no crossing starts in a fight)
     local map, x, y = PlayerSpot()
     if not map then return end
-    local here = { map = map, x = x, y = y }
+    local hc, hx, hy = WorldPos(map, x, y)
+    if not hc then return end
+    local at, now = nil, GetTime()
     for _, c in ipairs(ns.PLANNER_CROSSINGS) do
         for side = 1, 2 do
-            if NearDock(here, side == 1 and c.a or c.b, NEAR) then
-                if dock and dock.id == c.id and dock.side == side then
-                    if not dock.inside then dock.since, dock.inside = GetTime(), true end
-                else
-                    dock = { id = c.id, side = side, since = GetTime(), inside = true }
-                end
-                return
+            if NearDock(hc, hx, hy, side == 1 and c.a or c.b, NEAR) then
+                at = at or {}
+                at[c.id] = side
             end
         end
     end
-    if dock then dock.inside = false end
+    if not at then                                       -- (away from every dock: the stay at the last one is kept)
+        if dock then dock.left = true end
+        return
+    end
+    if dock and not dock.left then                       -- (still at the same docks: the stay goes on)
+        local same = true
+        for id, side in pairs(at) do if dock.ids[id] ~= side then same = false end end
+        for id, side in pairs(dock.ids) do if at[id] ~= side then same = false end end
+        if same then return end
+    end
+    if dock then
+        local secs = now - dock.time
+        for id, side in pairs(at) do
+            if dock.ids[id] and dock.ids[id] ~= side then
+                crossed = id                                     -- (the far dock reached: crossed, however long it took)
+                if secs >= 60 and secs <= ns.PLANNER_CROSS_MOST then RecordTime("plannerCrossTimes", id, secs) end
+            end
+        end
+    end
+    dock = { ids = at, time = now }
 end
 ns.PlannerDockTick = DockTick
-
--- Back from a loading screen: are we at the other end of the crossing we waited for?
-local function EnteringWorld()
-    local from = dock
-    if not from then return end
-    local map, x, y = PlayerSpot()
-    if not map then return end
-    for _, c in ipairs(ns.PLANNER_CROSSINGS) do
-        if c.id == from.id then
-            if NearDock({ map = map, x = x, y = y }, from.side == 1 and c.b or c.a, NEAR) then
-                local secs = GetTime() - from.since
-                dock = nil
-                if secs >= 60 then
-                    crossed = c.id
-                    RecordTime("plannerCrossTimes", c.id, secs)
-                end
-            end
-            return
-        end
-    end
-end
 
 do
     local ev = CreateFrame("Frame")
     for _, e in ipairs({ "TAXIMAP_OPENED", "PLAYER_CONTROL_LOST", "PLAYER_CONTROL_GAINED", "PLAYER_ENTERING_WORLD" }) do pcall(ev.RegisterEvent, ev, e) end
     ev:SetScript("OnEvent", ns:Guard("Planner travel", function(_, event)
-        if not ns:GuideUnlocked() then return end
         if event == "TAXIMAP_OPENED" then LearnFlights()
         elseif event == "PLAYER_CONTROL_LOST" then ControlLost()
         elseif event == "PLAYER_CONTROL_GAINED" then ControlGained()
-        elseif event == "PLAYER_ENTERING_WORLD" then EnteringWorld() end
+        elseif event == "PLAYER_ENTERING_WORLD" then DockTick() end
     end))
     if ns.Every then ns:Every(2, "Planner docks", DockTick) end
 end
+
+-- A new character knows no flight point and no bind place until the game shows them:
+-- a plan made while it did not know says how to teach it (summary.noFlights, summary.noBind: Planner.lua),
+-- until it knows.
+local function Summary(st)
+    if not (type(st) == "table" and st.name == ns.GUIDE_PLANNED) then return nil end
+    return type(st.summary) == "table" and st.summary or nil
+end
+ns.GuideRegisterLine("travelFlights", function(st)
+    local s = Summary(st)
+    if not (s and s.noFlights) then return nil end
+    local d = CharData(false)
+    if d and type(d.flights) == "table" then return nil end
+    return ns:Tr("Open any flight master's map once so the planner knows your flight paths")
+end)
+ns.GuideRegisterLine("travelBind", function(st)
+    local s = Summary(st)
+    if not (s and s.noBind) then return nil end
+    local d = CharData(false)
+    if d and type(d.bindAt) == "table" then return nil end
+    return ns:Tr("Set your hearthstone once so the planner can use it")
+end)
 
 ------------------------------------------------------------------------------------------
 -- Travel time
@@ -269,8 +328,8 @@ end
 
 -- The cheapest way on one continent: running, run-fly-run, or the hearthstone and a run.
 local function Local(from, to, ctx, hearth)
-    local c1, x1, y1 = WorldPos(from.map, from.x, from.y)
-    local c2, x2, y2 = WorldPos(to.map, to.x, to.y)
+    local c1, x1, y1 = SpotPos(from)
+    local c2, x2, y2 = SpotPos(to)
     if not c2 then return huge end
     local speed = ctx.speed or ns.PLANNER_SPEED.run
     local best, legs = huge, {}
@@ -281,7 +340,7 @@ local function Local(from, to, ctx, hearth)
     end
     for _, f in ipairs(ctx.flights or {}) do
         if f.known and c1 == c2 then
-            local c, x, y = WorldPos(f.map, f.x, f.y)
+            local c, x, y = SpotPos(f)
             if c == c1 then pts[#pts + 1] = { f = f, x = x, y = y } end
         end
     end
@@ -304,7 +363,7 @@ local function Local(from, to, ctx, hearth)
         end
     end
     if hearth then
-        local c, hx, hy = WorldPos(hearth.map, hearth.x, hearth.y)
+        local c, hx, hy = SpotPos(hearth)
         if c == c2 then
             local run = Dist(c, hx, hy, c2, x2, y2) / speed
             local total = ns.PLANNER_HEARTH_SECONDS + run
@@ -324,6 +383,7 @@ function ns.PlannerTravel(from, to, ctx)
     local best, legs = Local(from, to, ctx, ctx.hearth)
     local cross = Account("plannerCrossTimes")
     for _, c in ipairs(ctx.crossings or {}) do
+        if ns.PlannerYield then ns.PlannerYield() end    -- (nothing on the main thread: the arrow asks here too; the planner's folder may not be loaded)
         if c.faction == nil or c.faction == ctx.faction then
             local secs = cross and tonumber(cross[c.id]) or c.seconds or 270
             for dir = 1, 2 do
@@ -337,7 +397,7 @@ function ns.PlannerTravel(from, to, ctx)
                         best = t1 + secs + t2
                         legs = {}
                         for _, l in ipairs(l1) do legs[#legs + 1] = l end
-                        legs[#legs + 1] = { kind = "sail", to = Spot(q), crossing = c.id, seconds = secs }
+                        legs[#legs + 1] = { kind = "sail", to = Spot(q), crossing = c.id, seconds = secs, from = p, at = q, ship = c.ship }   -- (from, at: the two docks)
                         for _, l in ipairs(l2) do legs[#legs + 1] = l end
                     end
                 end

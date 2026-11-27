@@ -3082,7 +3082,9 @@ function ns:ShowCopyBox(text, caption)
         copyBox.label = copyBox:CreateFontString(nil, "OVERLAY")
         ns:Font(copyBox.label, 11)
         copyBox.label:SetPoint("TOPLEFT", 12, -10)
-        copyBox.label:SetWidth(436)                              -- (a long caption takes two lines, never runs out of the box)
+        copyBox.label:SetWidth(404)                              -- (a long caption takes two lines, never runs out of the box nor under the X)
+        copyBox.close = ns:CreateButton(copyBox, "X", 24, 22, function() copyBox:Hide() end)   -- (a real way out for the mouse, as well as Esc and Enter)
+        copyBox.close:SetPoint("TOPRIGHT", -6, -6)
         copyBox.label:SetWordWrap(true)
         if copyBox.label.SetMaxLines then copyBox.label:SetMaxLines(2) end
         copyBox.label:SetJustifyH("LEFT")
@@ -3096,10 +3098,20 @@ function ns:ShowCopyBox(text, caption)
         tinsert(UISpecialFrames, "FantasyGlassUICopyBox")
     end
     copyBox.label:SetText(caption or "Press Ctrl+C to copy, Esc to close")
+    -- (the box grows with the font scale: the caption's measured height, else two lines of it, above a field as tall as its text)
+    local scale = tonumber(ns.fontScale) or 1
+    local field = math.max(24, math.ceil(18 * scale) + 6)
+    local cap = tonumber(copyBox.label.GetStringHeight and copyBox.label:GetStringHeight())
+    if not cap or cap <= 0 or ns:IsSecret(cap) then cap = 2 * math.ceil(13 * scale) end
+    cap = math.min(cap, 2 * math.ceil(14 * scale))         -- (two lines at most: SetMaxLines)
+    copyBox.eb:SetHeight(field)
+    copyBox.fitHeight = math.max(74, math.ceil(10 + cap + 8 + field + 12))
+    copyBox:SetHeight(copyBox.fitHeight)
     copyBox.eb:SetText(text or "")
     copyBox:Show()
     copyBox.eb:SetFocus()
     copyBox.eb:HighlightText()
+    return copyBox
 end
 
 -- A status bar in the Fantasy Glass UI look: dark trough, flat fill, glassy sheen.

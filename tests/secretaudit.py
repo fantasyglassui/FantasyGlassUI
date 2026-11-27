@@ -65,6 +65,8 @@ def sub(old, new):
     assert h.count(old) == 1, (old[:60], h.count(old))
     h = h.replace(old, new)
 
+sub('''if not ns.featureGroups or not ns.configFrame then out[#out+1] = "the options did not come up after loading" end''', '''if not ns.featureGroups or not ns.configFrame then out[#out+1] = "the options did not come up after loading" end
+for name in pairs(folderFiles or {}) do LoadFolderFiles(name) end       -- (the audit: both folders' handlers are in from the start)''')
 sub('''local function SV(n) if secretMode then return setmetatable({ __secret = true }, secretmt) end return n end''',
     '''local function SV(n) if secretMode then return setmetatable({ __secret = true, __type = type(n) }, secretmt) end return n end''')
 sub('''-- resurrections and summons: what the game would answer, changed by the tests''', r'''-- ===== hidden-value audit =====
@@ -182,9 +184,14 @@ opt_toc = [l.strip() for l in open(OPT + 'FantasyGlassUI_Options.toc') if l.stri
 srcs = {}
 for f in toc: srcs[f] = instrument(open(f).read(), f)
 for f in opt_toc: srcs['options/' + f] = instrument(open(OPT + f).read(), f)
+FOLDERS = [('planner/', '../FantasyGlassUI_Planner/', 'FantasyGlassUI_Planner'), ('gold/', '../FantasyGlassUI_Gold/', 'FantasyGlassUI_Gold')]
+folder_toc = {name: [l.strip() for l in open(d + name + '.toc') if l.strip().endswith('.lua')] for _, d, name in FOLDERS}
+for pre, d, name in FOLDERS:
+    for f in folder_toc[name]: srcs[pre + f] = instrument(open(d + f).read(), f)
 srcs['locales/Locales.lua'] = open('../FantasyGlassUI_Locales/Locales.lua').read()     # (the translations folder: only tables)
 lua = LuaRuntime(unpack_returned_tuples=True)
 run = lua.eval('function(code, ...) return load(code)(...) end')
-report, n, nh, nm = run(h, lua.table_from(toc), lua.table_from(srcs), lua.table(), True, lua.table_from(['options/' + f for f in opt_toc]))
+folder_files = lua.table_from({name: lua.table_from([pre + f for f in folder_toc[name]]) for pre, d, name in FOLDERS})
+report, n, nh, nm = run(h, lua.table_from(toc), lua.table_from(srcs), lua.table(), True, lua.table_from(['options/' + f for f in opt_toc]), None, folder_files)
 print(f"hidden-value audit: {nm} modules, {nh} scripts and hooks; {n} lines compared a hidden value")
 if report: print(report)

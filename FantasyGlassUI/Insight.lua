@@ -426,7 +426,9 @@ end
 function ns.PerfRows(data, seconds)
     local out = {}
     seconds = math.max(0.001, seconds or 1)
-    for label, p in pairs(data) do out[#out + 1] = { label = label, perSec = p.ms / seconds, calls = p.calls, worst = p.worst } end
+    for label, p in pairs(data) do
+        out[#out + 1] = { label = label, perSec = p.ms / seconds, calls = p.calls, worst = p.worst }
+    end
     table.sort(out, function(a, b) return a.perSec > b.perSec end)
     return out
 end

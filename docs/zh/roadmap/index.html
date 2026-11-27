@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="zh-Hans" data-lang="zh" data-page="roadmap">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>路线图 · Fantasy Glass UI</title>
+<meta name="description" content="13.0 之后 Fantasy Glass UI 将推出的内容，以及正在考虑的想法。">
+<link rel="canonical" href="https://fantasyglassui.com/zh/roadmap/">
+<link rel="alternate" hreflang="en" href="https://fantasyglassui.com/roadmap/">
+<link rel="alternate" hreflang="de" href="https://fantasyglassui.com/de/roadmap/">
+<link rel="alternate" hreflang="fr" href="https://fantasyglassui.com/fr/roadmap/">
+<link rel="alternate" hreflang="es" href="https://fantasyglassui.com/es/roadmap/">
+<link rel="alternate" hreflang="ru" href="https://fantasyglassui.com/ru/roadmap/">
+<link rel="alternate" hreflang="pt" href="https://fantasyglassui.com/pt/roadmap/">
+<link rel="alternate" hreflang="it" href="https://fantasyglassui.com/it/roadmap/">
+<link rel="alternate" hreflang="ko" href="https://fantasyglassui.com/ko/roadmap/">
+<link rel="alternate" hreflang="zh-Hans" href="https://fantasyglassui.com/zh/roadmap/">
+<link rel="alternate" hreflang="x-default" href="https://fantasyglassui.com/roadmap/">
+<link rel="icon" type="image/png" href="/icon.png">
+<link rel="alternate" type="application/rss+xml" title="Fantasy Glass UI releases" href="/feed.xml">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Fantasy Glass UI">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:locale:alternate" content="en_US">
+<meta property="og:locale:alternate" content="de_DE">
+<meta property="og:locale:alternate" content="fr_FR">
+<meta property="og:locale:alternate" content="es_ES">
+<meta property="og:locale:alternate" content="ru_RU">
+<meta property="og:locale:alternate" content="pt_BR">
+<meta property="og:locale:alternate" content="it_IT">
+<meta property="og:locale:alternate" content="ko_KR">
+<meta property="og:title" content="路线图 · Fantasy Glass UI">
+<meta property="og:description" content="13.0 之后 Fantasy Glass UI 将推出的内容，以及正在考虑的想法。">
+<meta property="og:url" content="https://fantasyglassui.com/zh/roadmap/">
+<meta property="og:image" content="https://fantasyglassui.com/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Fantasy Glass UI">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="路线图 · Fantasy Glass UI">
+<meta name="twitter:description" content="13.0 之后 Fantasy Glass UI 将推出的内容，以及正在考虑的想法。">
+<meta name="twitter:image" content="https://fantasyglassui.com/og.jpg">
+<meta name="theme-color" content="#12141a" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4f5f8" media="(prefers-color-scheme: light)">
+<script>(function(){var d=document.documentElement;d.classList.add("js");try{var t=localStorage.getItem("fg-theme");if(t==="light"||t==="dark")d.setAttribute("data-theme",t)}catch(e){}var here="zh",page="roadmap/",to=here,q=location.search,h=location.hash;var m=/[?&]lang=([a-z]{2})\b/.exec(q);if(m){to=m[1];q=q.replace(/([?&])lang=[a-z]{2}&?/,"$1").replace(/[?&]$/,"")}else if(here==="en"){var c=null;try{c=localStorage.getItem("fg-lang")}catch(e){}if(!c)c=String(navigator.language||"en").slice(0,2).toLowerCase();to=c}if(["en", "de", "fr", "es", "ru", "pt", "it", "ko", "zh"].indexOf(to)<0)to=here;var u=(to==="en"?"/":"/"+to+"/")+page;if(u!==location.pathname||q!==location.search)location.replace(u+q+h)})();</script>
+<link rel="stylesheet" href="/assets/site.css?v=9495293704">
+<style>
+/* Roadmap: the ideas after 13.0, by group, each with its status. */
+.page-head .nodates { margin: 14px 0 0; max-width: 70ch; }
+.rm { padding-block: 26px 8px; }
+ul.legend { list-style: none; margin: 0 0 22px; padding: 0; display: flex; flex-wrap: wrap; gap: 10px 28px; color: var(--dim); font-size: .95rem; }
+ul.legend li { display: flex; align-items: center; gap: 10px; }
+.tag { display: inline-flex; align-items: center; min-height: 24px; padding: 3px 9px; font: 700 .74rem/1.1 var(--body); letter-spacing: .07em; text-transform: uppercase; white-space: nowrap; border: 1px solid currentColor; }
+.tag.next { background: var(--gold); border-color: var(--gold); color: var(--on-gold); }
+.tag.planned { color: var(--gold); }
+.tag.thinking { color: var(--dim); border-style: dashed; }
+.rm-group { padding-block: 30px 6px; border-top: 1px solid var(--rule); }
+.rm-group[hidden] { display: none; }
+.rm-group header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 18px; margin-bottom: 18px; }
+.rm-group header p { margin: 0; }
+ul.ideas { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr)); gap: 16px; }
+.idea { padding: 18px 20px 16px; }
+.idea[hidden] { display: none; }
+.idea h3 { font-size: 1.2rem; margin: 12px 0 6px; }
+.idea p { margin: 0; font-size: .97rem; }
+.idea:has(.tag.next) { --c: color-mix(in srgb, var(--gold) 60%, var(--line)); }
+.welcome { margin-top: 34px; padding: 26px 28px; }
+.welcome h2 { margin-bottom: 8px; }
+.welcome p { margin: 0; font-size: 1.05rem; }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">跳到正文</a>
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="/zh/"><img src="/logo-64.webp" alt="" width="32" height="32">Fantasy Glass UI</a>
+    <nav class="site-nav" id="site-nav" aria-label="页面">
+      <ul><li><a href="/zh/">首页</a></li><li><a href="/zh/features/">功能</a></li><li><a href="/zh/themes/">主题</a></li><li><a href="/zh/guide-and-gold/">指南与金币</a></li><li><a href="/zh/get-started/">开始使用</a></li><li><a href="/zh/changelog/">更新日志</a></li><li><a href="/zh/roadmap/" aria-current="page">路线图</a></li></ul>
+      <div class="head-tools">
+        <label class="lang"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span class="sr-only">语言</span><select id="lang"><option value="/roadmap/" data-code="en" lang="en">English</option><option value="/de/roadmap/" data-code="de" lang="de">Deutsch</option><option value="/fr/roadmap/" data-code="fr" lang="fr">Français</option><option value="/es/roadmap/" data-code="es" lang="es">Español</option><option value="/ru/roadmap/" data-code="ru" lang="ru">Русский</option><option value="/pt/roadmap/" data-code="pt" lang="pt">Português</option><option value="/it/roadmap/" data-code="it" lang="it">Italiano</option><option value="/ko/roadmap/" data-code="ko" lang="ko">한국어</option><option value="/zh/roadmap/" data-code="zh" lang="zh-Hans" selected>中文</option></select></label>
+        <button class="icon-btn mode" id="mode" type="button" aria-pressed="true" title="深色模式"><span class="sr-only">深色模式</span><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M5.3 18.7 7 17M17 7l1.7-1.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      </div>
+    </nav>
+    <a class="btn small head-dl" href="https://www.curseforge.com/wow/addons/fantasy-glass-ui">下载</a>
+    <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav"><span class="sr-only">菜单</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    <button class="chip wearing" id="unwear" type="button" hidden>正在使用 <b id="wearname"></b>：恢复网站配色</button>
+  </div>
+</header>
+<main id="main" tabindex="-1">
+<!-- Roadmap (W3). Drawn from pages/roadmap/roadmap.json by pages/roadmap/body.py; see site-src/PAGES.md. -->
+<div class="wrap page-head">
+  <span class="eyebrow">13.0 之后</span>
+  <h1>路线图</h1>
+  <p class="lede">13.0 之后 Fantasy Glass UI 将推出的内容，以及正在考虑的想法。</p>
+  <p class="dim nodates">没有日期：点子准备好了就往前排，列表也会随时调整。13.0 刚推出：<a href="/zh/guide-and-gold/">指南与金币</a>。</p>
+</div>
+<div class="wrap rm">
+  <ul class="legend"><li><span class="tag next">下一步</span> 小而受欢迎，排在最前。</li><li><span class="tag planned">已计划</span> 已列入清单，待开发。</li><li><span class="tag thinking">考虑中</span> 我们喜欢的点子，尚未决定。</li></ul>
+  <div class="filters" role="group" aria-label="显示"><button class="chip" type="button" data-show="all" aria-pressed="true">全部 <span>42</span></button><button class="chip" type="button" data-show="next" aria-pressed="false">下一步 <span>6</span></button><button class="chip" type="button" data-show="planned" aria-pressed="false">已计划 <span>19</span></button><button class="chip" type="button" data-show="thinking" aria-pressed="false">考虑中 <span>17</span></button></div>
+  <p class="sr-only" id="rm-count" role="status"></p>
+<section class="rm-group" id="levelling" aria-labelledby="h-levelling"><header><h2 id="h-levelling">升级</h2><p class="dim">路线规划器、任务和你的角色。</p></header><ul class="ideas"><li class="idea card" data-status="next"><span class="tag next">下一步</span><h3>路线中的专业技能</h3><p>把专业技能的训练、采集和制造安排进路线。</p></li><li class="idea card" data-status="next"><span class="tag next">下一步</span><h3>休息经验规划</h3><p>在哪里、何时下线，让你下次上线时拥有最多的休息经验。</p></li><li class="idea card" data-status="planned"><span class="tag planned">已计划</span><h3>计划中的地下城</h3><p>在合适等级把地下城及其任务纳入路线。</p></li><li class="idea card" data-status="planned"><span class="tag planned">已计划</span><h3>为队伍规划</h3><p>三到五名玩家共用一条路线，就像现在与好友一起规划那样。</p></li><li class="idea card" data-status="planned"><span class="tag planned">已计划</span><h3>路线上的危险</h3><p>提醒路线上的危险地点，也可以选择避开它们的路线。</p></li><li class="idea card" data-status="planned"><span class="tag planned">已计划</span><h3>声望目标</h3><p>选择某个阵营的声望等级，查看最快的达成路线。</p></li><li class="idea card" data-status="planned"><span class="tag planned">已计划</span><h3>人人都能写的指南</h3><p>其他玩家也能编写的指南格式，使用前会检查，且绝不运行代码。</p></li><li class="idea card" data-status="planned"><span class="tag planned">已计划</span><h3>回归玩家快速上手</h3><p>休息后回来了？告诉你之前到了哪里、先做什么。</p></li><li class="idea card" data-status="planned"><span class="tag planned">已计划</span><h3>按时完成职业任务</h3><p>每个职业任务之前提醒你，让你在合适的等级做好准备。</p></li><li class="idea card" data-status="thinking"><span class="tag thinking">考虑中</span><h3>公会共享计划</h3><p>公会可以共享的路线，让大家按同样的方式升级。</p></li><li class="idea card" data-status="thinking"><span class="tag thinking">考虑中</span><h3>赛季开局模式</h3><p>为新赛季人多拥挤的头几天准备的路线。</p></li><li class="idea card" data-status="thinking"><span class="tag thinking">考虑中</span><h3>装备规划</h3><p>把对你有提升的任务奖励和掉落纳入规划。</p></li><li class="idea card" data-status="thinking"><span class="tag thinking">考虑中</span><h3>按等级的天赋规划</h3><p>告诉你每一级该点什么的天赋方案。</p></li><li class="idea card" data-status="thinking"><span class="tag thinking">考虑中</span><h3>今天玩哪个角色？</h3><p>纵览你所有的角色，看看今天哪个角色收获最大。</p></li><li class="idea card" data-status="thinking"><span class="tag thinking">考虑中</span><h3>收藏规划器</h3><p>稀有怪物、宠物和坐骑，以及去获取它们的路线。</p></li><li class="idea card" data-status="thinking"><span class="tag thinking">考虑中</span><h3>猎人宠物与术士恶魔助手</h3><p>帮你驯服宠物、教它们技能，以及完成术士的恶魔任务。</p></li><li class="idea card" data-status="thinking"><span class="tag thinking">考虑中</span><h3>在聊天中询问指南</h3><p>在聊天中向指南提问，比如某个任务从哪里开始，并得到答案。</p></li></ul></section>
+<section class="rm-group" id="gold" aria-labelledby="h-gold"><header><h2 id="h-gold">金币</h2><p class="dim">赚金方法、价格和拍卖行。</p></header><ul class="ideas"><li class="idea card" data-status="next"><span class="tag next">下一步</span><h3>金币都去哪了</h3><p>按类别记录你在几天、几周里赚了多少、花了多少。</p></li><li class="idea card" data-status="next"><span class="tag next">下一步</span><h3>上架助手</h3><p>上架拍卖时给出建议价格和堆叠数量。上架按钮仍由你自己按。</p></li><li class="idea card" data-status="planned"><span class="tag planned">已计划</span><h3>邮件与过期拍卖</h3><p>把拍卖邮件（已售、已购、过期）整理成一份清楚的列表。</p></li><li class="idea card" data-status="planned"><span class="tag planned">已计划</span><h3>价格提醒</h3><p>你想要的东西在拍卖行便宜出现时提醒你。</p></li><li class="idea card" data-status="planned"><span class="tag planned">已计划</span><h3>按价值排序</h3><p>按物品价值整理背包和银行。</p></li><li class="idea card" data-status="thinking"><span class="tag thinking">考虑中</span><h3>共享价格扫描</h3><p>与好友和公会共享拍卖价格，让大家都有最新的数据。</p></li><li class="idea card" data-status="thinking"><span class="tag thinking">考虑中</span><h3>制造队列</h3><p>要制造的物品清单，以及还缺哪些材料。</p></li></ul></section>
+<section class="rm-group" id="everyone" aria-labelledby="h-everyone"><header><h2 id="h-everyone">面向所有人</h2><p class="dim">整个界面、辅助功能和网站。</p></header><ul class="ideas"><li class="idea card" data-status="next"><span class="tag next">下一步</span><h3>处处更大的文字</h3><p>一个开关让插件的所有文字都变大。</p></li><li class="idea card" data-status="next"><span class="tag next">下一步</span><h3>游戏内更新说明</h3><p>更新后第一次登录时，在游戏里显示新内容。</p></li><li class="idea card" data-status="planned"><span class="tag planned">已计划</span><h3>规划器与金币设置放入设置包和代码</h3><p>规划器和金币窗口的设置，像其他设置一样保存进设置包和配置代码。</p></li><li class="idea card" data-status="planned"><span class="tag planned">已计划</span><h3>辅助功能第二轮</h3><p>语音指路，以及高对比度的箭头和路线。</p></li><li class="idea card" data-status="planned"><span class="tag planned">已计划</span><h3>网站上的更多内容</h3><p>交互式导览、路线预览，以及各语言的视频字幕。</p></li><li class="idea card" data-status="planned"><span class="tag planned">已计划</span><h3>季节主题</h3><p>应季主题。</p></li><li class="idea card" data-status="planned"><span class="tag planned">已计划</span><h3>协助翻译</h3><p>网站上为愿意帮忙翻译的玩家准备的页面。</p></li><li class="idea card" data-status="thinking"><span class="tag thinking">考虑中</span><h3>手柄与 Steam Deck</h3><p>用手柄玩，Steam Deck 上也行。</p></li><li class="idea card" data-status="thinking"><span class="tag thinking">考虑中</span><h3>玩家主题画廊</h3><p>网站上的玩家自制主题画廊，可以试用和分享。</p></li><li class="idea card" data-status="thinking"><span class="tag thinking">考虑中</span><h3>主播模式</h3><p>一个开关就能隐藏你不想在直播中出现的名字和聊天。</p></li><li class="idea card" data-status="thinking"><span class="tag thinking">考虑中</span><h3>公会进度看板</h3><p>显示公会进展的看板，只对开启它的公会生效。</p></li><li class="idea card" data-status="thinking"><span class="tag thinking">考虑中</span><h3>音效包</h3><p>为界面制作的音效，喜欢就打开。</p></li></ul></section>
+<section class="rm-group" id="behind" aria-labelledby="h-behind"><header><h2 id="h-behind">幕后</h2><p class="dim">让插件保持快速、安全、经过测试的工作。</p></header><ul class="ideas"><li class="idea card" data-status="planned"><span class="tag planned">已计划</span><h3>速度预算</h3><p>防止插件变慢的测试。</p></li><li class="idea card" data-status="planned"><span class="tag planned">已计划</span><h3>每次游戏补丁后的检查</h3><p>游戏补丁后登录时检查一遍，如果有功能失效就告诉你。</p></li><li class="idea card" data-status="planned"><span class="tag planned">已计划</span><h3>存档数据整理与备份</h3><p>清理旧的存档数据，并保留一份设置备份。</p></li><li class="idea card" data-status="planned"><span class="tag planned">已计划</span><h3>测试版渠道</h3><p>CurseForge 上的早期测试版，给喜欢抢先尝鲜的玩家。</p></li><li class="idea card" data-status="thinking"><span class="tag thinking">考虑中</span><h3>向众多玩家学习</h3><p>从众多玩家的升级方式中得出更好的路线，只采用自愿分享者的数据。隐私优先。</p></li><li class="idea card" data-status="thinking"><span class="tag thinking">考虑中</span><h3>崩溃报告，你愿意才发</h3><p>出问题时可以发送的报告，只在你愿意时发送。</p></li></ul></section>
+  <aside class="card filled welcome" aria-labelledby="h-welcome">
+    <h2 id="h-welcome">欢迎提出点子</h2>
+    <p>有想看到的功能，或希望清单上某个点子早点实现？在 <a href="https://discord.gg/qeSMwQWyPR">Discord</a> 告诉我们，或写信到 <a href="mailto:email-forwarding@fantasyglassui.com">email-forwarding@fantasyglassui.com</a>。</p>
+  </aside>
+</div>
+</main>
+<footer class="site-foot">
+  <div class="wrap">
+    <div class="foot-row">
+      <span>Fantasy Glass UI，作者 DustyMouse。免费，适用于 WoW Forever。</span>
+      <ul>
+        <li><a href="https://www.curseforge.com/wow/addons/fantasy-glass-ui">CurseForge</a></li>
+        <li><a href="https://discord.gg/qeSMwQWyPR">Discord</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI">GitHub</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/wiki">Wiki</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/issues/new/choose">报告问题</a></li>
+        <li><a href="/zh/accessibility/">辅助功能</a></li>
+        <li><a href="/zh/press/">媒体资料包</a></li>
+        <li><a href="/feed.xml" type="application/rss+xml">RSS</a></li>
+      </ul>
+    </div>
+    <div class="foot-row">
+      <span>联系: <a href="mailto:email-forwarding@fantasyglassui.com">email-forwarding@fantasyglassui.com</a></span>
+      <p class="status"><span>版本 <b>13.0.0</b></span><span class="sep" aria-hidden="true">·</span><span>更新于 <time datetime="2026-11-26">2026-11-26</time></span><span class="sep" aria-hidden="true">·</span><span>已对照 WoW: Forever <b>1.60.1 (70938)</b> 检查</span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">源代码</a></span></p>
+    </div>
+    <nav class="foot-row foot-langs" aria-label="语言"><ul><li><a href="/roadmap/" hreflang="en" lang="en" data-code="en">English</a></li><li><a href="/de/roadmap/" hreflang="de" lang="de" data-code="de">Deutsch</a></li><li><a href="/fr/roadmap/" hreflang="fr" lang="fr" data-code="fr">Français</a></li><li><a href="/es/roadmap/" hreflang="es" lang="es" data-code="es">Español</a></li><li><a href="/ru/roadmap/" hreflang="ru" lang="ru" data-code="ru">Русский</a></li><li><a href="/pt/roadmap/" hreflang="pt" lang="pt" data-code="pt">Português</a></li><li><a href="/it/roadmap/" hreflang="it" lang="it" data-code="it">Italiano</a></li><li><a href="/ko/roadmap/" hreflang="ko" lang="ko" data-code="ko">한국어</a></li><li><a href="/zh/roadmap/" hreflang="zh-Hans" lang="zh-Hans" data-code="zh" aria-current="true">中文</a></li></ul></nav>
+    <p class="trnote">本页翻译未经母语者校对，欢迎指正。</p>
+  </div>
+</footer>
+<script src="/assets/site.js?v=2dd8abee61" defer></script>
+<script src="/assets/roadmap.js?v=95ea9c529f" defer></script>
+</body>
+</html>

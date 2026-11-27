@@ -1,0 +1,63 @@
+{
+ "_about": "The Roadmap page's data (pages/roadmap/body.py draws it). To change the page, change this file: an idea's status is one of the statuses below, its group one of the groups. Every title and text is English, translated in site_tr.py's Roadmap block; the build stops on one without a translation. No dates. The numbers are the roadmap's own (32 is left out at the player's wish). Every \"name\", \"title\" and \"text\" is listed for translation by keys_all.py (\"_translate\").",
+ "_translate": [
+  "name",
+  "title",
+  "text"
+ ],
+ "statuses": [
+  {"id": "next", "name": "Next", "text": "Small, wanted, and first in line."},
+  {"id": "planned", "name": "Planned", "text": "On the list, to be built."},
+  {"id": "thinking", "name": "Thinking about it", "text": "An idea we like, not decided yet."}
+ ],
+ "groups": [
+  {"id": "levelling", "name": "Levelling", "text": "The route planner, quests and your characters."},
+  {"id": "gold", "name": "Gold", "text": "Ways to make gold, prices and the auction house."},
+  {"id": "everyone", "name": "For everyone", "text": "The whole interface, accessibility and the website."},
+  {"id": "behind", "name": "Behind the scenes", "text": "What keeps the add-on fast, safe and tested."}
+ ],
+ "ideas": [
+  {"n": 1, "group": "levelling", "status": "next", "title": "Professions on the route", "text": "Training, gathering and crafting for your professions, fitted into the route."},
+  {"n": 2, "group": "levelling", "status": "planned", "title": "Dungeon runs in the plan", "text": "Dungeons at the right level, with their quests, as part of the route."},
+  {"n": 3, "group": "levelling", "status": "thinking", "title": "Shared plans for guilds", "text": "A route your guild can share, so everyone levels the same way."},
+  {"n": 4, "group": "behind", "status": "thinking", "title": "Learning from many players", "text": "Better routes from how many players level, only from those who choose to share. Privacy first."},
+  {"n": 5, "group": "levelling", "status": "planned", "title": "Planning for a group", "text": "One route for three to five players, the way planning with a friend works today."},
+  {"n": 6, "group": "gold", "status": "next", "title": "Where your gold went", "text": "A history of what you earned and spent, by kind, over days and weeks."},
+  {"n": 7, "group": "gold", "status": "thinking", "title": "Sharing price scans", "text": "Share your auction prices with friends and your guild, so everyone has fresh ones."},
+  {"n": 8, "group": "gold", "status": "next", "title": "Posting helper", "text": "A suggested price and stack size when you post an auction. You still press Post yourself."},
+  {"n": 9, "group": "gold", "status": "planned", "title": "Mail and expired auctions", "text": "Your auction mail, sold, bought and expired, in one clear list."},
+  {"n": 10, "group": "levelling", "status": "thinking", "title": "Season-start mode", "text": "A route made for the busy first days of a new season."},
+  {"n": 11, "group": "everyone", "status": "planned", "title": "Planner and gold settings in packs and codes", "text": "The planner's and the gold window's settings saved in packs and profile codes, like the rest of your setup."},
+  {"n": 12, "group": "everyone", "status": "thinking", "title": "Controller and Steam Deck", "text": "Playing with a controller, on a Steam Deck too."},
+  {"n": 13, "group": "everyone", "status": "planned", "title": "Accessibility, round two", "text": "Directions spoken aloud, and a high-contrast arrow and route."},
+  {"n": 14, "group": "everyone", "status": "planned", "title": "More on the website", "text": "An interactive tour, a preview of a route, and video captions in every language."},
+  {"n": 15, "group": "behind", "status": "planned", "title": "A speed budget", "text": "Tests that stop the add-on from getting any slower."},
+  {"n": 16, "group": "behind", "status": "thinking", "title": "Crash reports, if you want", "text": "A report to send when something breaks, only if you choose to."},
+  {"n": 17, "group": "levelling", "status": "next", "title": "Rested experience planner", "text": "Where and when to log out, so you start your next session with the most rested experience."},
+  {"n": 18, "group": "levelling", "status": "planned", "title": "Danger on the route", "text": "Warnings about dangerous places on the route, and routes that keep away from them if you want."},
+  {"n": 19, "group": "levelling", "status": "thinking", "title": "Gear plan", "text": "The quest rewards and drops that would be upgrades for you, planned in."},
+  {"n": 20, "group": "levelling", "status": "planned", "title": "Reputation goals", "text": "Pick a standing with a faction, and see the quickest way there."},
+  {"n": 21, "group": "levelling", "status": "thinking", "title": "Talent plan by level", "text": "A talent build that says what to pick at each level."},
+  {"n": 22, "group": "levelling", "status": "thinking", "title": "Which character today?", "text": "A look across all your characters, and which one has the most to gain from today's session."},
+  {"n": 23, "group": "levelling", "status": "thinking", "title": "Collector's planner", "text": "Rare monsters, pets and mounts, and a route to go after them."},
+  {"n": 24, "group": "levelling", "status": "planned", "title": "Guides anyone can write", "text": "A guide format other players can write for, checked before it is used, and never running code."},
+  {"n": 25, "group": "everyone", "status": "thinking", "title": "Players' theme gallery", "text": "A gallery on the website of themes that players made, to try and to share."},
+  {"n": 26, "group": "everyone", "status": "thinking", "title": "Streamer mode", "text": "One switch that hides the names and chat you don't want on stream."},
+  {"n": 27, "group": "behind", "status": "planned", "title": "A check after each game patch", "text": "A look at login after a game patch, which tells you if something no longer works."},
+  {"n": 28, "group": "behind", "status": "planned", "title": "Saved-data tidy and backup", "text": "Old saved data tidied away, and a backup of your settings kept."},
+  {"n": 29, "group": "levelling", "status": "planned", "title": "Catch-up for returning players", "text": "Back after a break? Where you were, and what to do first."},
+  {"n": 30, "group": "levelling", "status": "thinking", "title": "Hunter pet and warlock demon helper", "text": "Help with taming pets, teaching them their skills, and the warlock's demon quests."},
+  {"n": 31, "group": "levelling", "status": "planned", "title": "Class quests on time", "text": "A heads-up before each class quest, so you are ready for it at the right level."},
+  {"n": 33, "group": "gold", "status": "planned", "title": "Price alerts", "text": "A note when something you want shows up cheap at the auction house."},
+  {"n": 34, "group": "gold", "status": "planned", "title": "Sorting by value", "text": "Sort your bags and bank by what things are worth."},
+  {"n": 35, "group": "gold", "status": "thinking", "title": "Crafting queue", "text": "A list of what to craft, with what you still need for it."},
+  {"n": 36, "group": "everyone", "status": "thinking", "title": "Guild progress board", "text": "A board that shows how your guild is getting on, for guilds that turn it on."},
+  {"n": 37, "group": "levelling", "status": "thinking", "title": "Ask the guide in chat", "text": "Ask the guide a question in chat, such as where a quest starts, and get an answer."},
+  {"n": 38, "group": "everyone", "status": "planned", "title": "Seasonal themes", "text": "Themes for the time of year."},
+  {"n": 39, "group": "everyone", "status": "thinking", "title": "Sound pack", "text": "Sounds made for the interface, to switch on if you like."},
+  {"n": 40, "group": "everyone", "status": "next", "title": "Larger text everywhere", "text": "One switch that makes all of the add-on's text larger."},
+  {"n": 41, "group": "everyone", "status": "planned", "title": "Help with translations", "text": "A page on the website for players who would like to help translate."},
+  {"n": 42, "group": "everyone", "status": "next", "title": "Patch notes in the game", "text": "What's new, shown in the game the first time you log in after an update."},
+  {"n": 43, "group": "behind", "status": "planned", "title": "A beta channel", "text": "Early test versions on CurseForge, for players who like to try new things first."}
+ ]
+}

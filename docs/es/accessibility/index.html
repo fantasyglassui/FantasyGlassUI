@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="es" data-lang="es" data-page="accessibility">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Accesibilidad · Fantasy Glass UI</title>
+<meta name="description" content="Lo que hace Fantasy Glass UI, el accesorio para WoW Forever, para el daltonismo, la baja visión, jugadores ciegos y sordos, la fotosensibilidad, jugar con una mano y más.">
+<link rel="canonical" href="https://fantasyglassui.com/es/accessibility/">
+<link rel="alternate" hreflang="en" href="https://fantasyglassui.com/accessibility/">
+<link rel="alternate" hreflang="de" href="https://fantasyglassui.com/de/accessibility/">
+<link rel="alternate" hreflang="fr" href="https://fantasyglassui.com/fr/accessibility/">
+<link rel="alternate" hreflang="es" href="https://fantasyglassui.com/es/accessibility/">
+<link rel="alternate" hreflang="ru" href="https://fantasyglassui.com/ru/accessibility/">
+<link rel="alternate" hreflang="pt" href="https://fantasyglassui.com/pt/accessibility/">
+<link rel="alternate" hreflang="it" href="https://fantasyglassui.com/it/accessibility/">
+<link rel="alternate" hreflang="ko" href="https://fantasyglassui.com/ko/accessibility/">
+<link rel="alternate" hreflang="zh-Hans" href="https://fantasyglassui.com/zh/accessibility/">
+<link rel="alternate" hreflang="x-default" href="https://fantasyglassui.com/accessibility/">
+<link rel="icon" type="image/png" href="/icon.png">
+<link rel="alternate" type="application/rss+xml" title="Fantasy Glass UI releases" href="/feed.xml">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Fantasy Glass UI">
+<meta property="og:locale" content="es_ES">
+<meta property="og:locale:alternate" content="en_US">
+<meta property="og:locale:alternate" content="de_DE">
+<meta property="og:locale:alternate" content="fr_FR">
+<meta property="og:locale:alternate" content="ru_RU">
+<meta property="og:locale:alternate" content="pt_BR">
+<meta property="og:locale:alternate" content="it_IT">
+<meta property="og:locale:alternate" content="ko_KR">
+<meta property="og:locale:alternate" content="zh_CN">
+<meta property="og:title" content="Accesibilidad · Fantasy Glass UI">
+<meta property="og:description" content="Lo que hace Fantasy Glass UI, el accesorio para WoW Forever, para el daltonismo, la baja visión, jugadores ciegos y sordos, la fotosensibilidad, jugar con una mano y más.">
+<meta property="og:url" content="https://fantasyglassui.com/es/accessibility/">
+<meta property="og:image" content="https://fantasyglassui.com/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Fantasy Glass UI">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Accesibilidad · Fantasy Glass UI">
+<meta name="twitter:description" content="Lo que hace Fantasy Glass UI, el accesorio para WoW Forever, para el daltonismo, la baja visión, jugadores ciegos y sordos, la fotosensibilidad, jugar con una mano y más.">
+<meta name="twitter:image" content="https://fantasyglassui.com/og.jpg">
+<meta name="theme-color" content="#12141a" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4f5f8" media="(prefers-color-scheme: light)">
+<script>(function(){var d=document.documentElement;d.classList.add("js");try{var t=localStorage.getItem("fg-theme");if(t==="light"||t==="dark")d.setAttribute("data-theme",t)}catch(e){}var here="es",page="accessibility/",to=here,q=location.search,h=location.hash;var m=/[?&]lang=([a-z]{2})\b/.exec(q);if(m){to=m[1];q=q.replace(/([?&])lang=[a-z]{2}&?/,"$1").replace(/[?&]$/,"")}else if(here==="en"){var c=null;try{c=localStorage.getItem("fg-lang")}catch(e){}if(!c)c=String(navigator.language||"en").slice(0,2).toLowerCase();to=c}if(["en", "de", "fr", "es", "ru", "pt", "it", "ko", "zh"].indexOf(to)<0)to=here;var u=(to==="en"?"/":"/"+to+"/")+page;if(u!==location.pathname||q!==location.search)location.replace(u+q+h)})();</script>
+<link rel="preload" href="/fonts/marcellus-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/source-sans-3-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/site.css?v=9495293704">
+<style>
+/* Accessibility: what the add-on does, need by need. */
+.page-head .lede { color: var(--text); font-size: 1.2rem; margin: 0 0 12px; }
+.page-head .start { color: var(--dim); margin: 0; }
+.acc { padding-block: 28px 24px; }
+nav.jump { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 30px; }
+nav.jump a { display: inline-flex; align-items: center; min-height: 36px; padding: 4px 12px; border: 1px solid var(--line); color: var(--frost); text-decoration: none; }
+nav.jump a:hover { border-color: var(--frost); }
+.need { padding: 22px 26px 10px; margin: 0 0 20px; }
+.need h2 { font-size: 1.8rem; margin: 0 0 4px; }
+.need .who { color: var(--dim); margin: 0 0 12px; }
+.need ul { margin: 0 0 12px; padding-left: 1.2em; }
+.need li { margin: 0 0 10px; color: var(--dim); }
+.need li::marker { color: var(--gold); }
+.need li b { color: var(--text); }
+.honest { border-left: 3px solid var(--gold); padding: 4px 0 4px 18px; margin: 34px 0 0; color: var(--dim); }
+.honest h2 { font-size: 1.5rem; margin-bottom: 8px; }
+@media (max-width: 560px) { .need { padding: 18px 16px 6px; } }
+.need.new { --c: color-mix(in srgb, var(--gold) 55%, var(--line)); }
+.need li code { font-size: .88em; }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Saltar al contenido</a>
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="/es/"><img src="/logo-64.webp" alt="" width="32" height="32">Fantasy Glass UI</a>
+    <nav class="site-nav" id="site-nav" aria-label="Páginas">
+      <ul><li><a href="/es/">Inicio</a></li><li><a href="/es/features/">Funciones</a></li><li><a href="/es/themes/">Temas</a></li><li><a href="/es/guide-and-gold/">Guía y oro</a></li><li><a href="/es/get-started/">Empezar</a></li><li><a href="/es/changelog/">Historial</a></li><li><a href="/es/roadmap/">Hoja de ruta</a></li></ul>
+      <div class="head-tools">
+        <label class="lang"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span class="sr-only">Idioma</span><select id="lang"><option value="/accessibility/" data-code="en" lang="en">English</option><option value="/de/accessibility/" data-code="de" lang="de">Deutsch</option><option value="/fr/accessibility/" data-code="fr" lang="fr">Français</option><option value="/es/accessibility/" data-code="es" lang="es" selected>Español</option><option value="/ru/accessibility/" data-code="ru" lang="ru">Русский</option><option value="/pt/accessibility/" data-code="pt" lang="pt">Português</option><option value="/it/accessibility/" data-code="it" lang="it">Italiano</option><option value="/ko/accessibility/" data-code="ko" lang="ko">한국어</option><option value="/zh/accessibility/" data-code="zh" lang="zh-Hans">中文</option></select></label>
+        <button class="icon-btn mode" id="mode" type="button" aria-pressed="true" title="Modo oscuro"><span class="sr-only">Modo oscuro</span><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M5.3 18.7 7 17M17 7l1.7-1.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      </div>
+    </nav>
+    <a class="btn small head-dl" href="https://www.curseforge.com/wow/addons/fantasy-glass-ui">Descargar</a>
+    <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav"><span class="sr-only">Menú</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    <button class="chip wearing" id="unwear" type="button" hidden>Llevas <b id="wearname"></b>: volver a los colores del sitio</button>
+  </div>
+</header>
+<main id="main" tabindex="-1">
+<!-- Accessibility (W3). pages/accessibility/body.py; see site-src/PAGES.md. -->
+<div class="wrap narrow page-head">
+  <h1>Accesibilidad</h1>
+  <p class="lede">Fantasy Glass UI lleva la accesibilidad en cada parte de la interfaz: colores para cada tipo de visión del color, temas de alto contraste, letras hechas para leerse, subtítulos, lectura en voz alta, destellos seguros y teclas para una mano. Todo es gratis, y cada parte se puede activar o desactivar.</p>
+  <p class="start">En el juego: <code>/fgui access</code> abre los ajustes de accesibilidad, y la configuración inicial tiene un paso de Comodidad. Versión 13.0.0.</p>
+</div>
+<div class="wrap narrow acc">
+  <nav class="jump" aria-label="Necesidades"><a href="#seeing-color">Visión del color</a><a href="#seeing-low">Baja visión</a><a href="#reading">Leer en voz alta</a><a href="#hearing">Oído</a><a href="#motion">Destellos y movimiento</a><a href="#hands">Manos y teclas</a><a href="#guide">El planificador de ruta y el oro</a><a href="#calm">Concentración y calma</a><a href="#share">Compártelo</a></nav>
+  <div id="needs">
+<section class="need card" id="seeing-color" aria-labelledby="h-seeing-color"><h2 id="h-seeing-color">Visión del color</h2><p class="who">Para el daltonismo rojo-verde o azul-amarillo, o si no ves ningún color.</p><ul><li><b>Colores para tu tipo de visión del color.</b> Rojo-verde (azul y naranja), azul-amarillo (verde azulado, rosa y rojo) o sin color, donde el brillo y las marcas dan el significado.</li><li><b>Marcas además de colores.</b> Los perjuicios llevan una letra, la calidad de los objetos puntos, y la amenaza en las placas de nombre una marca («!» cuando se escapa, «!!» cuando se pierde).</li></ul></section>
+<section class="need card" id="seeing-low" aria-labelledby="h-seeing-low"><h2 id="h-seeing-low">Baja visión</h2><p class="who">Para ver la pantalla con más facilidad.</p><ul><li><b>Temas de alto contraste.</b> Paneles negros, letras blancas y los bordes más marcados, en las tres familias: cristal, fantasía y celeste. Un botón elige el de la familia que usas.</li><li><b>Letras hechas para leerse.</b> Legible (Atkinson Hyperlegible, hecha para baja visión) y apta para dislexia (OpenDyslexic). Un contorno más grueso en cada letra y una franja oscura tras los mensajes en el centro de la pantalla.</li><li><b>Texto más grande y una interfaz más grande.</b> Tamaño de texto y escala de interfaz propios, aparte de los del juego.</li><li><b>Un anillo alrededor de tu objetivo.</b> Un contorno grueso, de 1 a 8 píxeles, en la placa de nombre de tu objetivo, para que destaque entre la multitud. También un anillo alrededor del puntero.</li></ul></section>
+<section class="need card" id="reading" aria-labelledby="h-reading"><h2 id="h-reading">Leer en voz alta</h2><p class="who">Para jugadores ciegos y con baja visión, y para quien prefiera escuchar. Con la propia voz del juego.</p><ul><li><b>Diálogos y misiones leídos al abrirse.</b> Lo que dice un PNJ y las opciones que ofrece, el texto de una misión, su progreso y su recompensa, y libros y cartas. La lectura se detiene al cerrar la ventana.</li><li><b>Lo que señalas.</b> Cuando el ratón se detiene sobre algo, se lee su descripción. (El narrador propio del juego solo funciona antes de entrar.)</li><li><b>Una tecla que lee.</b> Una tecla lee la descripción bajo el ratón, la misión que estás leyendo o el último susurro.</li><li><b>Avisos hablados.</b> Comprobaciones de listos, susurros, beneficios que faltan, pérdida de control y tus propios avisos, dichos en voz alta.</li></ul></section>
+<section class="need card" id="hearing" aria-labelledby="h-hearing"><h2 id="h-hearing">Oído</h2><p class="who">Para jugadores sordos y con pérdida auditiva, y para jugar sin sonido.</p><ul><li><b>Subtítulos para sonidos.</b> Una línea en pantalla, con una marca según su tipo, para comprobaciones de listos, susurros, colas, invitaciones, duelos, resurrecciones, invocaciones, emociones de jefes, avisos de banda, tiradas de botín, el aviso de amenaza y tus propios avisos.</li></ul></section>
+<section class="need card" id="motion" aria-labelledby="h-motion"><h2 id="h-motion">Destellos y movimiento</h2><p class="who">Para jugadores sensibles a destellos o al movimiento.</p><ul><li><b>Destellos seguros.</b> Nada destella más de tres veces por segundo, los destellos son suaves, los avisos que laten se quedan quietos y el destello rojo de poca salud del juego se apaga.</li><li><b>Reducir movimiento.</b> Sin fundidos, latidos, barras que se deslizan ni deriva de cámara: todo aparece y cambia al instante.</li><li><b>Un cielo quieto.</b> Los temas celestes conservan sus estrellas pero quietas: sin centelleo ni estrellas fugaces, mientras todo lo demás se mueve como siempre.</li></ul></section>
+<section class="need card" id="hands" aria-labelledby="h-hands"><h2 id="h-hands">Manos y teclas</h2><p class="who">Para jugar con una mano o solo con el teclado.</p><ul><li><b>Teclas para una mano.</b> Un botón pone moverse, saltar, seleccionar objetivo, interactuar y los primeros botones de acción alrededor de W, A, S y D para la mano izquierda, o todo en el teclado numérico para la derecha. Otro devuelve cada tecla a como estaba.</li><li><b>Las ventanas del juego con el teclado.</b> Con la charla de un PNJ, una misión, un vendedor, el buzón, el botín, un instructor, un maestro de vuelo o una pregunta abierta, Tab pasa de botón en botón y Intro lo pulsa, con un anillo que muestra dónde estás y cada opción dicha en voz alta si quieres.</li><li><b>Los ajustes con el teclado.</b> Tab y las flechas pasan de un ajuste a otro, Espacio activa uno, Izquierda y Derecha mueven un control.</li><li><b>Controles más grandes.</b> Interruptores más grandes en los ajustes, y los botones de «pulsar dos veces» esperan diez segundos al segundo clic.</li></ul></section>
+<section class="need card new" id="guide" aria-labelledby="h-guide"><h2 id="h-guide">El planificador de ruta y el oro</h2><p class="who">Novedad en 13.0: seguir una ruta y ganar oro de la manera que mejor te va.</p><ul><li><b>El planificador con el teclado.</b> Con <b>Moverse por los ajustes con el teclado</b> activado, Tab y las flechas recorren la ventana del planificador, Espacio o Intro pulsan un botón o interruptor, e Izquierda y Derecha cambian una opción o un control. En combate, todas las teclas vuelven al juego.</li><li><b>Teclas para la ruta.</b> Paso siguiente, saltar paso y planear de nuevo pueden asignarse cada uno a una tecla en las asignaciones del juego, para seguir una ruta sin ratón.</li><li><b>La ruta en voz alta.</b> Con <b>Leer en voz alta diálogos y misiones</b> activado, cada paso nuevo se lee al llegar a él. El recorrido inicial y la pregunta de un amigo para planificar juntos también se leen.</li><li><b>Colores para tus ojos.</b> Las listas del planificador toman sus colores de tu tema y de tu ajuste de visión del color. Los consejos de venta dicen Vender ya, Guardar o Al vendedor con palabras, así que el color nunca es la única señal.</li><li><b>Botones más grandes.</b> Con <b>Controles más grandes en los ajustes</b> activado, los botones de la ventana del planificador, del panel de la guía y de sus menús también son más altos.</li><li><b>Un recorrido que puedes saltar.</b> La primera vez, cuatro páginas cortas explican el planificador. «Saltar» las cierra al momento, Izquierda, Derecha, Intro y Esc también sirven, y <b>Cómo funciona el planificador</b> las vuelve a abrir.</li><li><b>La flecha, a tu manera.</b> <b>Detener</b> en la ventana del planificador quita la ruta y su flecha hasta que vuelvas a planificar. <code>/fgui move</code> mueve la flecha, la de TomTom puede ocupar su lugar, y con <b>Reducir movimiento</b> no late al llegar.</li><li><b>Descansos.</b> Con <b>Recordarme que descanse en un lugar donde parar</b> activado, la ruta te avisa al llegar a un buen sitio para parar tras mucho rato de juego, de 1 a 3 horas según elijas.</li></ul></section>
+<section class="need card" id="calm" aria-labelledby="h-calm"><h2 id="h-calm">Concentración y calma</h2><p class="who">Para una pantalla más tranquila.</p><ul><li><b>Modo calmado.</b> Una notificación cada vez, que dura quince segundos y se quita con un clic, y mensajes que se quedan más tiempo.</li><li><b>Una espera antes de las descripciones.</b> Las descripciones solo aparecen cuando el ratón se detiene un momento, así al pasar por la pantalla no salen una tras otra.</li></ul></section>
+<section class="need card" id="share" aria-labelledby="h-share"><h2 id="h-share">Compártelo</h2><p class="who">Para ayudar a un amigo o preparar un personaje nuevo.</p><ul><li><b>Una línea de texto.</b> Todos tus ajustes de accesibilidad en una línea para copiar, guardar o dar a alguien; al pegarla de nuevo se aplican todos a la vez.</li><li><b>Un paso de Comodidad en la configuración.</b> La configuración inicial tiene un paso para la vista, el oído y la calma, así está listo antes de jugar.</li></ul></section>
+  </div>
+  <section class="honest" aria-labelledby="h-honest">
+    <h2 id="h-honest">Lo que (aún) no hace</h2>
+    <p>No es un lector de pantalla: la lectura en voz alta cubre diálogos, misiones, libros, descripciones, susurros y los botones de las ventanas principales del juego, pero no cada parte de cada ventana. La ventana de oro aún no tiene teclas propias y no se lee en voz alta. Las dos letras legibles solo tienen caracteres de Europa occidental. La lectura en voz alta usa las voces que tu ordenador da al juego. Las ideas y los problemas son bienvenidos en <a href="https://discord.gg/qeSMwQWyPR">Discord</a>.</p>
+  </section>
+</div>
+</main>
+<footer class="site-foot">
+  <div class="wrap">
+    <div class="foot-row">
+      <span>Fantasy Glass UI de DustyMouse. Gratis, para WoW Forever.</span>
+      <ul>
+        <li><a href="https://www.curseforge.com/wow/addons/fantasy-glass-ui">CurseForge</a></li>
+        <li><a href="https://discord.gg/qeSMwQWyPR">Discord</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI">GitHub</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/wiki">Wiki</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/issues/new/choose">Informar de un error</a></li>
+        <li><a href="/es/accessibility/">Accesibilidad</a></li>
+        <li><a href="/es/press/">Kit de prensa</a></li>
+        <li><a href="/feed.xml" type="application/rss+xml">RSS</a></li>
+      </ul>
+    </div>
+    <div class="foot-row">
+      <span>Contacto: <a href="mailto:email-forwarding@fantasyglassui.com">email-forwarding@fantasyglassui.com</a></span>
+      <p class="status"><span>Versión <b>13.0.0</b></span><span class="sep" aria-hidden="true">·</span><span>Actualizado el <time datetime="2026-11-26">2026-11-26</time></span><span class="sep" aria-hidden="true">·</span><span>Comprobado con WoW: Forever <b>1.60.1 (70938)</b></span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">Código fuente</a></span></p>
+    </div>
+    <nav class="foot-row foot-langs" aria-label="Idioma"><ul><li><a href="/accessibility/" hreflang="en" lang="en" data-code="en">English</a></li><li><a href="/de/accessibility/" hreflang="de" lang="de" data-code="de">Deutsch</a></li><li><a href="/fr/accessibility/" hreflang="fr" lang="fr" data-code="fr">Français</a></li><li><a href="/es/accessibility/" hreflang="es" lang="es" data-code="es" aria-current="true">Español</a></li><li><a href="/ru/accessibility/" hreflang="ru" lang="ru" data-code="ru">Русский</a></li><li><a href="/pt/accessibility/" hreflang="pt" lang="pt" data-code="pt">Português</a></li><li><a href="/it/accessibility/" hreflang="it" lang="it" data-code="it">Italiano</a></li><li><a href="/ko/accessibility/" hreflang="ko" lang="ko" data-code="ko">한국어</a></li><li><a href="/zh/accessibility/" hreflang="zh-Hans" lang="zh-Hans" data-code="zh">中文</a></li></ul></nav>
+    <p class="trnote">Esta página se tradujo sin revisión de un hablante nativo. Las correcciones son bienvenidas.</p>
+  </div>
+</footer>
+<script src="/assets/site.js?v=2dd8abee61" defer></script>
+</body>
+</html>

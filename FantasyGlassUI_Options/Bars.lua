@@ -17,6 +17,215 @@ local function Heading(parent, text, x, y, width)
     ns:Paint(line, "SetVertexColor", "@border", 0.8)
     return fs
 end
+-- (12.3, polish) The Guide tab is laid out as the other sections are (FeaturesPage.lua): section labels
+-- (O.Header: 13, secondary, upper-case in English only), and under each a group of rows, one setting
+-- to a row with its name, what it does in 13 secondary lettering, and its switch at the right (or its
+-- button or slider at the left, with what it does beside it). Rows grow with their text, so nothing
+-- runs into what comes next at any text size.
+local function GuideHeading(parent, text, x, y)
+    local O = ns.optUI
+    if O and O.Header then return O.Header(parent, text, x, y) end
+    local fs = parent:CreateFontString(nil, "OVERLAY")
+    ns:Font(fs, 13, true)
+    fs:SetPoint("TOPLEFT", x, y)
+    fs:SetText(ns:Tr(text))
+    ns:Paint(fs, "SetTextColor", "dim")
+    ns:IndexOption(text, fs)
+    return fs
+end
+-- A row's switch: the settings window's switch, its own label hidden (the row's title is the label).
+local function GuideSwitch(parent, label, checked, onChange)
+    local c = ns:CreateCheckbox(parent, label, checked, onChange)
+    c:SetWidth(c.suiSwitch and 38 or 36)
+    c.label:Hide()
+    return c
+end
+local ROW_PAD, ROW_MIN, ROW_BUTTON, ROW_SLIDER = 16, 58, 58, 66
+-- the height a text takes: what the game says, or an estimate where it cannot yet (before it is drawn)
+local function TextH(fs, size, width)
+    local h = fs.GetStringHeight and fs:GetStringHeight()
+    if type(h) == "number" and h > 0 and not ns:IsSecret(h) then return h end
+    local scale = ns.fontScale or 1
+    local text = fs.GetText and fs:GetText()
+    local chars = (type(text) == "string") and #text or 0
+    local lines = math.max(1, math.ceil(chars * 0.5 * size * scale / math.max(80, width)))
+    return lines * size * scale * 1.25
+end
+-- The accent as lettering on the settings window's card: lighter where the accent is too dark to read
+-- (4.5:1 at the least).
+local function Lum(r, g, b)
+    local function c(v) return (v <= 0.03928) and (v / 12.92) or (((v + 0.055) / 1.055) ^ 2.4) end
+    return 0.2126 * c(r) + 0.7152 * c(g) + 0.0722 * c(b)
+end
+local function AccentTextHex(obj)
+    local r, g, b = ns:Role("@accent", nil, obj)
+    local br, bg, bb = ns:Role("card", nil, obj)
+    r, g, b, br, bg, bb = tonumber(r) or 1, tonumber(g) or 1, tonumber(b) or 1, tonumber(br) or 0, tonumber(bg) or 0, tonumber(bb) or 0
+    local back = Lum(br, bg, bb)
+    for _ = 1, 20 do
+        local l = Lum(r, g, b)
+        if (math.max(l, back) + 0.05) / (math.min(l, back) + 0.05) >= 4.5 then break end
+        r, g, b = r + (1 - r) * 0.15, g + (1 - g) * 0.15, b + (1 - b) * 0.15
+    end
+    return format("|cff%02x%02x%02x", math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b * 255 + 0.5))
+end
+
+-- The rows. G is the tab's list of them (T.rows): each row is in one of the sections below, and the
+-- tab lays them out section by section in this order, whichever function made them. (The planner's
+-- settings are in the planner's own window, FantasyGlassUI_Planner/PlannerWindow.lua, built with the
+-- same rows: ns.GuideRowKit, below.)
+local GUIDE_SECTIONS = {
+    { "guides", "Quest guides" }, { "record", "Record a guide as you play" }, { "plan", "Plan my route" },
+}
+local function RowTip(row)
+    if not row.tipTitle then return end
+    GameTooltip:SetOwner(row, "ANCHOR_NONE")
+    GameTooltip:SetPoint("BOTTOMLEFT", row, "TOPLEFT", 0, 4)
+    GameTooltip:AddLine(ns:Tr(row.tipTitle))
+    local desc = row.desc and row.desc:GetText()
+    if type(desc) == "string" and desc ~= "" then GameTooltip:AddLine(desc, 1, 1, 1, true) end
+    GameTooltip:Show()
+end
+local function Hover(row, control)                         -- (a control in a row lights the row, and explains it unless it has its own tip)
+    control:HookScript("OnEnter", function(self)
+        row.wash:Show()
+        if not rawget(self, "suiTipShown") then RowTip(row) end
+    end)
+    control:HookScript("OnLeave", function() row.wash:Hide(); GameTooltip:Hide() end)
+end
+local function NewRow(G, sec, h, title)
+    local row = CreateFrame("Button", nil, G.live)
+    row:SetHeight(h)
+    row.sec, row.tipTitle = sec, title or false
+    -- (what a row may have, none yet: the settings window's keys look for these on a row)
+    row.switch, row.button, row.slider, row.scaled, row.navKey, row.desc, row.title, row.text, row.Sync = false, false, false, false, false, false, false, false, false
+    row.wash = row:CreateTexture(nil, "BACKGROUND")
+    row.wash:SetAllPoints()
+    row.wash:SetTexture(ns.FLAT)
+    ns:Paint(row.wash, "SetVertexColor", "select", 1)
+    row.wash:Hide()
+    row.line = row:CreateTexture(nil, "BORDER")            -- (a rule between rows)
+    row.line:SetTexture(ns.FLAT)
+    row.line:SetHeight(1)
+    row.line:SetPoint("TOPLEFT", ROW_PAD, 0)
+    row.line:SetPoint("TOPRIGHT", -ROW_PAD, 0)
+    ns:Paint(row.line, "SetVertexColor", "rule", 1)
+    row:SetScript("OnEnter", function(self) self.wash:Show(); RowTip(self) end)
+    row:SetScript("OnLeave", function(self) self.wash:Hide(); GameTooltip:Hide() end)
+    row.Layout = function() return h end
+    G.list[#G.list + 1] = row
+    row.seq = #G.list                                      -- (its place within its section)
+    return row
+end
+local function Desc(row, text)
+    local fs = row:CreateFontString(nil, "OVERLAY")
+    ns:Font(fs, 13)
+    fs:SetJustifyH("LEFT")
+    fs:SetJustifyV("TOP")
+    if fs.SetWordWrap then fs:SetWordWrap(true) end
+    ns:Paint(fs, "SetTextColor", "dim")
+    fs:SetText(ns:Tr(text or ""))
+    row.desc = fs
+    return fs
+end
+local function Words(control, title, desc)
+    control.words = strlower(ns:Tr(title or "") .. " " .. ns:Tr(desc or ""))
+end
+-- A switch: its name and what it does, the switch at the right; a click anywhere on the row switches it.
+local function SwitchRow(G, sec, key, label, desc, get, onChange)
+    local row = NewRow(G, sec, ROW_MIN, label)
+    row.title = row:CreateFontString(nil, "OVERLAY")
+    ns:Font(row.title, 14)
+    row.title:SetPoint("TOPLEFT", ROW_PAD, -14)
+    row.title:SetJustifyH("LEFT")
+    if row.title.SetWordWrap then row.title:SetWordWrap(false) end
+    ns:Paint(row.title, "SetTextColor", "text")
+    row.title:SetText(ns:Tr(label))
+    Desc(row, desc)
+    local c = GuideSwitch(row, label, get(), onChange)
+    c:ClearAllPoints()
+    c:SetPoint("RIGHT", row, "RIGHT", -ROW_PAD, 0)
+    c.row, c.key = row, key
+    row.switch, row.navKey = c, key
+    row:SetScript("OnClick", function() c:Click() end)
+    Hover(row, c)
+    row.Sync = function() c:SetChecked(get()) end
+    row.Layout = function(w)
+        local tw = math.max(120, w - ROW_PAD - (ROW_PAD + 38 + ROW_PAD))
+        row.title:SetWidth(tw)
+        row.desc:SetWidth(tw)
+        local th = TextH(row.title, 14, tw)
+        local text = row.desc:GetText()
+        local dh = (type(text) == "string" and text ~= "") and TextH(row.desc, 13, tw) or 0
+        row.desc:ClearAllPoints()
+        row.desc:SetPoint("TOPLEFT", row, "TOPLEFT", ROW_PAD, -(14 + th + 4))
+        return math.max(ROW_MIN, math.ceil(14 + th + ((dh > 0) and (4 + dh) or 0) + 14))
+    end
+    Words(c, label, desc)
+    return c
+end
+-- A button (one that does something, or steps through choices): the button at the left, what it does at its right.
+local function ButtonRow(G, sec, label, desc, onClick, cycle)
+    local row = NewRow(G, sec, ROW_BUTTON, label)
+    local b = ns:CreateButton(row, label:find("%s", 1, true) and "" or label, 290, 24, onClick)   -- (a label with a value in it is set when drawn)
+    b:SetPoint("TOPLEFT", ROW_PAD, -17)
+    if cycle then b:RegisterForClicks("LeftButtonUp", "RightButtonUp") end      -- (a right-click steps back)
+    b.row = row
+    row.button, row.navKey = b, "guide:" .. label
+    row.suiNoStep = not cycle or nil                         -- (an action row: Left and Right do nothing, only Space and Enter press it)
+    Hover(row, b)
+    local fs = Desc(row, desc)
+    fs:SetPoint("TOPLEFT", 332, -19)
+    row.Layout = function(w)
+        local dw = math.max(120, w - 332 - ROW_PAD)
+        fs:SetWidth(dw)
+        return math.max(ROW_BUTTON, math.ceil(19 + TextH(fs, 13, dw) + 14))
+    end
+    Words(b, label, desc)
+    return b
+end
+-- A slider at the left, what it does at its right. Left and Right (with the keyboard) move it a step.
+local function SliderRow(G, sec, label, desc, minV, maxV, step, value, onChange)
+    local row = NewRow(G, sec, ROW_SLIDER, label)
+    local s = ns:CreateSlider(row, label, minV, maxV, step, value, "%d", onChange, 300)
+    s:SetPoint("TOPLEFT", ROW_PAD, -12)
+    s.row = row
+    if s.slider then Hover(row, s.slider) end
+    row.scaled, row.navKey = s.slider, "guide:" .. label
+    row.button = { GetScript = function()                    -- (what the settings window's keys press on a row)
+        return function(_, button)
+            local v = tonumber(s.slider and s.slider.GetValue and s.slider:GetValue()) or minV
+            s:SetValue(math.max(minV, math.min(maxV, v + ((button == "RightButton") and -step or step))))
+        end
+    end }
+    local fs = Desc(row, desc)
+    fs:SetPoint("TOPLEFT", 352, -14)
+    row.Layout = function(w)
+        local dw = math.max(120, w - 352 - ROW_PAD)
+        fs:SetWidth(dw)
+        return math.max(ROW_SLIDER, math.ceil(14 + TextH(fs, 13, dw) + 14))
+    end
+    Words(s, label, desc)
+    return s
+end
+-- A line of text alone (what the guide is doing now).
+local function TextRow(G, sec, size)
+    local row = NewRow(G, sec, 40)
+    local fs = row:CreateFontString(nil, "OVERLAY")
+    ns:Font(fs, size or 13)
+    fs:SetJustifyH("LEFT")
+    if fs.SetWordWrap then fs:SetWordWrap(true) end
+    ns:Paint(fs, "SetTextColor", "text")
+    fs:SetPoint("TOPLEFT", ROW_PAD, -12)
+    row:EnableMouse(false)
+    row.Layout = function(w)
+        local tw = math.max(120, w - 2 * ROW_PAD)
+        fs:SetWidth(tw)
+        return math.max(40, math.ceil(12 + TextH(fs, size or 13, tw) + 12))
+    end
+    row.text = fs
+    return fs, row
+end
 local function Small(parent, size, width)
     local fs = parent:CreateFontString(nil, "OVERLAY")
     ns:Font(fs, size or 11)
@@ -25,6 +234,73 @@ local function Small(parent, size, width)
     if fs.SetWordWrap then fs:SetWordWrap(true) end
     return fs
 end
+-- A page's rows: the frame they sit on, and for each section (in `sections`, { id, heading }) its
+-- heading and the thin rim its rows sit in.
+local function NewRows(live, sections, width)
+    local G = { live = live, list = {}, heads = {}, groups = {}, width = width, sections = sections }
+    for _, s in ipairs(sections) do
+        local group = CreateFrame("Frame", nil, live, ns.template)   -- (each section's rows sit together, in a thin rim)
+        group:SetBackdrop(ns.BACKDROP)
+        ns:Paint(group, "SetBackdropColor", "card", 0)
+        ns:Paint(group, "SetBackdropBorderColor", "rule", 1)
+        group:Hide()
+        G.groups[s[1]] = group
+        G.heads[s[1]] = GuideHeading(live, s[2], 0, 0)
+    end
+    return G
+end
+-- Laying the rows out: section by section, each row as tall as its text needs at this width and text
+-- size, a little taller with "Bigger controls" (its control larger too). G.shown is then the rows in
+-- the order shown. Returns the height they take, `least` at the least.
+local function LayRows(G, w, least)
+    w = tonumber(w)
+    if not w or w < 300 then w = G.width end
+    G.width = w
+    local live = G.live
+    local big = ns.db.bigControls and true or false
+    local at, shown = 0, {}
+    for _, s in ipairs(G.sections) do
+        local mine = {}
+        for _, row in ipairs(G.list) do if row.sec == s[1] then mine[#mine + 1] = row end end
+        table.sort(mine, function(a, b) return a.seq < b.seq end)
+        local head, box = G.heads[s[1]], G.groups[s[1]]
+        if #mine > 0 then
+            head:ClearAllPoints()
+            head:SetPoint("TOPLEFT", live, "TOPLEFT", 0, at)
+            head:Show()
+            at = at - (math.ceil(TextH(head, 13, w)) + 10)
+            local top = at
+            for i, row in ipairs(mine) do
+                row:ClearAllPoints()
+                row:SetPoint("TOPLEFT", live, "TOPLEFT", 0, at)
+                row:SetWidth(w)
+                row.line:SetShown(i > 1)
+                local h = (tonumber(row.Layout(w)) or ROW_MIN) + (big and 12 or 0)
+                row:SetHeight(h)
+                local control = row.switch or row.scaled or (row.button and row.button.SetScale and row.button)
+                if control and control.SetScale then control:SetScale(big and 1.35 or 1) end
+                row:Show()
+                shown[#shown + 1] = row
+                at = at - h
+            end
+            box:ClearAllPoints()
+            box:SetPoint("TOPLEFT", live, "TOPLEFT", 0, top)
+            box:SetSize(w, top - at)
+            box:Show()
+            at = at - 22
+        else
+            head:Hide()
+            box:Hide()
+        end
+    end
+    G.shown = shown
+    local height = math.max(tonumber(least) or 0, math.ceil(-at + 4))
+    live:SetSize(w, height)
+    return height
+end
+-- (the planner window builds its settings with these same rows: FantasyGlassUI_Planner/PlannerWindow.lua)
+ns.GuideRowKit = { Heading = GuideHeading, NewRows = NewRows, LayRows = LayRows, NewRow = NewRow, Desc = Desc, Hover = Hover,
+                   SwitchRow = SwitchRow, ButtonRow = ButtonRow, SliderRow = SliderRow, TextRow = TextRow, TextH = TextH, ROW_PAD = ROW_PAD }
 
 ------------------------------------------------------------------------------------------
 -- Bars: every action bar has its own settings. The bars are listed down the left; the chosen one's
@@ -246,118 +522,146 @@ function ns.BuildBarsPage(page)
     return T
 end
 
+
 ------------------------------------------------------------------------------------------
--- Guide: quest guides are not released yet. Everyone sees "coming soon"; where they have been
--- unlocked (see Guide.lua) this tab holds their switch and controls instead.
+-- Guide: the quest guide's switch and controls, and the route planner's buttons.
 ------------------------------------------------------------------------------------------
+-- (polish) While this tab is the section on show, its rows join the settings window's keys: Tab and
+-- the arrows reach them, Space and Enter use them, Left and Right step a choice or a slider
+-- (FeaturesPage.lua's page.Focus and page.Use, which go by page.shownKeys and page.rows).
+local function GuideShowing()
+    local O = ns.optUI
+    local host, fp = O and O.pages and O.pages.guide, O and O.sections
+    if type(host) == "table" and type(fp) == "table" and type(host.area) == "table" and rawget(host.area, "lentTo") == fp then return host, fp end
+    return nil
+end
+local function JoinKeys(T, fp)
+    if type(fp.rows) ~= "table" or type(fp.shownKeys) ~= "table" then return end
+    local mine = T.navKeys or {}
+    for i = #fp.shownKeys, 1, -1 do if mine[fp.shownKeys[i]] then table.remove(fp.shownKeys, i) end end
+    T.navKeys = {}
+    for _, row in ipairs(T.rows.shown or {}) do
+        local key = row.navKey
+        if key and (row.switch or row.button) and not T.navKeys[key] then
+            T.navKeys[key] = true
+            fp.rows[key] = row
+            fp.shownKeys[#fp.shownKeys + 1] = key
+        end
+    end
+end
+
+
 function ns.BuildGuidePage(page)
     local T = {}
     ns.guidePage = T
-    local soon = CreateFrame("Frame", nil, page)
-    soon:SetPoint("TOPLEFT", 0, 0)
-    soon:SetSize(736, 400)
-    local big = soon:CreateFontString(nil, "OVERLAY")
-    ns:Font(big, 30, true)
-    big:SetPoint("TOP", 0, -120)
-    big:SetText(ns:Tr("Coming soon"))
-    ns:Paint(big, "SetTextColor", "@accent")
-    local what = Small(soon, 13, 520)
-    what:SetPoint("TOP", big, "BOTTOM", 0, -16)
-    what:SetJustifyH("CENTER")
-    ns:Paint(what, "SetTextColor", "dim")
-    what:SetText(ns:Tr("A quest guide is on its way: routes you follow one step at a time, with a panel for the step you are on and an arrow that points to it."))
-    T.soon = soon
     page.navItems = { { title = "Quest guide" } }            -- (one section: no list to choose from)
     page.NavSelect = function() end
 
     local live = CreateFrame("Frame", nil, page)
     live:SetPoint("TOPLEFT", 0, 0)
-    live:SetSize(736, 400)
+    live:SetSize(736, 896)
     T.live = live
-    Heading(live, "Quest guides", 0, 0, 736)
-    local status = Small(live, 12, 700)
-    status:SetPoint("TOPLEFT", 0, -30)
-    local on = ns:CreateCheckbox(live, "Quest guides", ns.db.questGuide ~= false, function(v)
+    local G = NewRows(live, GUIDE_SECTIONS, 736)
+    T.rows = G
+
+    -- Quest guides: what the guide is doing, its switches, and the windows it has
+    local status = TextRow(G, "guides", 13)
+    local on = SwitchRow(G, "guides", "questGuide", "Use quest guides", "The step panel, and the arrow that points to your step. Off, nothing of the guide shows.",
+        function() return ns.db.questGuide ~= false end, function(v)
         ns.db.questGuide = v
         if ns.GuideApplySwitch then ns:GuideApplySwitch() end
         page.Refresh()
     end)
-    on:SetPoint("TOPLEFT", 0, -62)
-    local sound = ns:CreateCheckbox(live, "A sound when a step is done", ns.db.guideSound ~= false, function(v) ns.db.guideSound = v end)
-    sound:SetPoint("TOPLEFT", 0, -88)
-    local list = ns:CreateButton(live, "Your guides", 170, 24, function() if ns.HideConfig then ns.HideConfig() end; ns:GuideList() end)
-    list:SetPoint("TOPLEFT", 0, -126)
-    local write = ns:CreateButton(live, "Write or paste a guide", 170, 24, function() if ns.HideConfig then ns.HideConfig() end; ns:GuideEdit("") end)
-    write:SetPoint("LEFT", list, "RIGHT", 8, 0)
-    local route = ns:CreateButton(live, "Edit the route", 170, 24, function()
+    local sound = SwitchRow(G, "guides", "guideSound", "A sound when a step is done", "A short sound each time a step ticks off.",
+        function() return ns.db.guideSound ~= false end, function(v) ns.db.guideSound = v end)
+    ButtonRow(G, "guides", "Your guides", "The guides you have: follow one, or open it to change it.", function() if ns.HideConfig then ns.HideConfig() end; ns:GuideList() end)
+    ButtonRow(G, "guides", "Write or paste a guide", "The guide editor: write the steps yourself, or paste a guide someone gave you.", function() if ns.HideConfig then ns.HideConfig() end; ns:GuideEdit("") end)
+    local route = ButtonRow(G, "guides", "Edit the route", "The steps of the guide you are following, to change, move or take out.", function()
         if ns.HideConfig then ns.HideConfig() end
         if ns.GuideRouteEditor then ns:GuideRouteEditor() end
     end)
-    route:SetPoint("LEFT", write, "RIGHT", 8, 0)
     T.routeButton = route
-    Heading(live, "Record a guide as you play", 0, -170, 736)
-    local name = ns:CreateEditBox(live, 240, 24, "a name for the guide")
-    name:SetPoint("TOPLEFT", 0, -200)
+
+    -- Record a guide as you play: a name, the button, and what recording does
+    local recRow = NewRow(G, "record", 90, "Record a guide as you play")
+    local name = ns:CreateEditBox(recRow, 240, 24, "a name for the guide")
+    name:SetPoint("TOPLEFT", ROW_PAD, -14)
     local recBtn
-    recBtn = ns:CreateButton(live, "", 170, 24, function()
+    recBtn = ns:CreateButton(recRow, "", 170, 24, function()
         if ns.guideRecording then ns:GuideRecordStop() else ns:GuideRecord(name:GetText()) end
         page.Refresh()
     end)
     recBtn:SetPoint("LEFT", name, "RIGHT", 8, 0)
-    local how = Small(live, 11, 700)
-    how:SetPoint("TOPLEFT", 0, -236)
-    ns:Paint(how, "SetTextColor", "faint")
-    how:SetText(ns:Tr("While recording, every quest you accept, finish and hand in becomes a step, with where you stood and who you spoke to. In chat: /fgui guide (your guides), /fgui guide record <name>, stop, edit <name>, next, back, off."))
-    T.onBox, T.recordButton, T.nameBox = on, recBtn, name
-
-    -- The route planner: a button, and what it takes into account. Changing a setting plans again, if it is running.
-    Heading(live, "Plan my route", 0, -270, 736)
-    local function Replan() if ns.PlannerReplan then ns:PlannerReplan("settings") end end
-    local plan = ns:CreateButton(live, "Plan my route", 170, 24, function() if ns.PlannerStart then ns:PlannerStart() end; page.Refresh() end)
-    plan:SetPoint("TOPLEFT", 0, -300)
-    local groups = { { "solo", "Solo" }, { "grouped", "When grouped" }, { "all", "Everything" } }
-    local function DrawGroup(b)
-        local now, name = ns.db.plannerGroup or "solo", nil
-        for _, g in ipairs(groups) do if g[1] == now then name = g[2] end end
-        b.text:SetText(ns:Tr("Group quests") .. ":  " .. ns:Tr(name or "Solo"))
+    Hover(recRow, recBtn)
+    recRow.button, recRow.navKey = recBtn, "guide:record"
+    local how = Desc(recRow, "While recording, every quest you accept, finish and hand in becomes a step, with where you stood and who you spoke to. In chat: /fgui guide (your guides), /fgui guide record <name>, stop, edit <name>, next, back, off.")
+    how:SetPoint("TOPLEFT", ROW_PAD, -(14 + 24 + 10))
+    recRow.Layout = function(w)
+        local dw = math.max(120, w - 2 * ROW_PAD)
+        how:SetWidth(dw)
+        return math.ceil(14 + 24 + 10 + TextH(how, 13, dw) + 14)
     end
-    local group = ns:CreateButton(live, "", 250, 24, function(b)
-        local now, at = ns.db.plannerGroup or "solo", 1
-        for i, g in ipairs(groups) do if g[1] == now then at = i end end
-        ns.db.plannerGroup = groups[at % #groups + 1][1]
-        DrawGroup(b)
-        Replan()
+    T.onBox, T.soundBox, T.recordButton, T.nameBox = on, sound, recBtn, name
+
+    -- The route planner: a button that plans, and one to its own window (the plan you follow and every
+    -- setting for what it plans: FantasyGlassUI_Planner/PlannerWindow.lua)
+    local plan = ButtonRow(G, "plan", "Plan my route", "Works out a route of quests for your level from where you are, and starts following it.", function()
+        if ns.GuideOn and not ns:GuideOn() then
+            ns:Print("Quest guides are switched off. Switch them on under Guide in /fgui, or in the setup.")
+        elseif ns.PlannerPlanCommand then ns.PlannerPlanCommand("")      -- (with the time you can play, set in the planner window)
+        elseif ns.PlannerStart then ns:PlannerStart() end
+        page.Refresh()
     end)
-    group:SetPoint("LEFT", plan, "RIGHT", 8, 0)
-    local flights = ns:CreateCheckbox(live, "Learn new flight points on the way", ns.db.plannerLearnFlights ~= false, function(v)
-        ns.db.plannerLearnFlights = v
-        Replan()
+    local settings = ButtonRow(G, "plan", "Planner settings", "The planner's own window: the route you follow, and every setting for what it plans.", function()
+        if ns.HideConfig then ns.HideConfig() end
+        if ns.PlannerOpen then ns:PlannerOpen() end
     end)
-    flights:SetPoint("TOPLEFT", 0, -334)
-    local why = ns:CreateCheckbox(live, "Show why each step is there", ns.db.plannerWhy ~= false, function(v)
-        ns.db.plannerWhy = v
-        Replan()
-    end)
-    why:SetPoint("TOPLEFT", 0, -360)
-    T.planButton, T.groupButton, T.flightsBox, T.whyBox = plan, group, flights, why
+    T.planButton, T.plannerSettingsButton = plan, settings
+
+    -- Laying the rows out (Bigger controls and the text size included), and joining the settings
+    -- window's keys. Run again on every refresh and for a new width.
+    local function Layout(w)
+        local height = LayRows(G, w, 896)
+        local was = rawget(page, "contentHeight")
+        page.contentHeight = height
+        if page.area then page.area:SetContentHeight(height) end
+        local host, fp = GuideShowing()
+        if host and host.sheet == page then
+            JoinKeys(T, fp)
+            -- the card it is shown on was sized before this: once the height has changed, show the section again
+            local now = GetTime and GetTime() or 0
+            if was ~= height and (now - (T.reshownAt or -10)) > 1 and fp.section and fp.Show then
+                T.reshownAt = now
+                ns:After(0, function()
+                    if GuideShowing() and fp.section then pcall(fp.Show, fp.section, true) end
+                end)
+            end
+        end
+        return height
+    end
+    T.Layout = Layout
+    page.FollowWidth = function(w) Layout(w) end              -- (shown on a section's card: as wide as the card)
 
     page.Refresh = function()
-        local open = ns.GuideUnlocked and ns:GuideUnlocked()
-        T.unlocked = open and true or false
-        if open then soon:Hide(); live:Show() else live:Hide(); soon:Show() return end
-        on:SetChecked(ns.db.questGuide ~= false)
-        sound:SetChecked(ns.db.guideSound ~= false)
-        flights:SetChecked(ns.db.plannerLearnFlights ~= false)
-        why:SetChecked(ns.db.plannerWhy ~= false)
-        DrawGroup(group)
+        live:Show()
+        for _, row in ipairs(G.list) do if row.Sync then row.Sync() end end
         recBtn.text:SetText(ns:Tr(ns.guideRecording and "Stop recording" or "Record"))
         local st = ns.GuideState and ns.GuideState()
         if ns.guideRecording then status:SetText(ns:SignalHex("bad") .. ns:Tr("Recording") .. ":|r " .. tostring(ns.guideRecording.name) .. "  (" .. #ns.guideRecording.steps .. ")")
-        elseif st then status:SetText(ns:Tr("Following") .. ": " .. ns:AccentHex() .. tostring(st.name) .. "|r  -  " .. tostring(st.at))
+        elseif st then
+            local name = st.name                                         -- (the plan and a trip have hidden names: their words instead)
+            if ns.GUIDE_TRIP ~= nil and name == ns.GUIDE_TRIP then
+                local title = type(st.trip) == "table" and st.trip.title
+                name = format(ns:Tr("Gold trip: %s"), (type(title) == "string" and not ns:IsSecret(title)) and title or "")
+            elseif ns.GUIDE_PLANNED ~= nil and name == ns.GUIDE_PLANNED then name = ns:Tr("Route planner") end
+            status:SetText(ns:Tr("Following") .. ": " .. AccentTextHex(status) .. tostring(name) .. "|r  -  " .. tostring(st.at))
         else status:SetText(ns:Tr("You are not following a guide.")) end
+        Layout(G.width)
+        -- the planner's short tour, once, when the tab is opened with the planner's folder loaded (otherwise it comes
+        -- with the planner window: the tab does not load the folder)
+        local host = GuideShowing()
+        if host and host.sheet == page and ns.PlannerIntroDue and ns:PlannerIntroDue() then ns:PlannerIntro(1) end
     end
     page.Refresh()
-    page.contentHeight = 420
-    if page.area then page.area:SetContentHeight(page.contentHeight) end
     return T
 end

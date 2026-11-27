@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="zh-Hans" data-lang="zh" data-page="accessibility">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>辅助功能 · Fantasy Glass UI</title>
+<meta name="description" content="WoW Forever 插件 Fantasy Glass UI 为色觉障碍、低视力、视障和听障玩家、光敏感、单手游玩等提供的帮助。">
+<link rel="canonical" href="https://fantasyglassui.com/zh/accessibility/">
+<link rel="alternate" hreflang="en" href="https://fantasyglassui.com/accessibility/">
+<link rel="alternate" hreflang="de" href="https://fantasyglassui.com/de/accessibility/">
+<link rel="alternate" hreflang="fr" href="https://fantasyglassui.com/fr/accessibility/">
+<link rel="alternate" hreflang="es" href="https://fantasyglassui.com/es/accessibility/">
+<link rel="alternate" hreflang="ru" href="https://fantasyglassui.com/ru/accessibility/">
+<link rel="alternate" hreflang="pt" href="https://fantasyglassui.com/pt/accessibility/">
+<link rel="alternate" hreflang="it" href="https://fantasyglassui.com/it/accessibility/">
+<link rel="alternate" hreflang="ko" href="https://fantasyglassui.com/ko/accessibility/">
+<link rel="alternate" hreflang="zh-Hans" href="https://fantasyglassui.com/zh/accessibility/">
+<link rel="alternate" hreflang="x-default" href="https://fantasyglassui.com/accessibility/">
+<link rel="icon" type="image/png" href="/icon.png">
+<link rel="alternate" type="application/rss+xml" title="Fantasy Glass UI releases" href="/feed.xml">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Fantasy Glass UI">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:locale:alternate" content="en_US">
+<meta property="og:locale:alternate" content="de_DE">
+<meta property="og:locale:alternate" content="fr_FR">
+<meta property="og:locale:alternate" content="es_ES">
+<meta property="og:locale:alternate" content="ru_RU">
+<meta property="og:locale:alternate" content="pt_BR">
+<meta property="og:locale:alternate" content="it_IT">
+<meta property="og:locale:alternate" content="ko_KR">
+<meta property="og:title" content="辅助功能 · Fantasy Glass UI">
+<meta property="og:description" content="WoW Forever 插件 Fantasy Glass UI 为色觉障碍、低视力、视障和听障玩家、光敏感、单手游玩等提供的帮助。">
+<meta property="og:url" content="https://fantasyglassui.com/zh/accessibility/">
+<meta property="og:image" content="https://fantasyglassui.com/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Fantasy Glass UI">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="辅助功能 · Fantasy Glass UI">
+<meta name="twitter:description" content="WoW Forever 插件 Fantasy Glass UI 为色觉障碍、低视力、视障和听障玩家、光敏感、单手游玩等提供的帮助。">
+<meta name="twitter:image" content="https://fantasyglassui.com/og.jpg">
+<meta name="theme-color" content="#12141a" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4f5f8" media="(prefers-color-scheme: light)">
+<script>(function(){var d=document.documentElement;d.classList.add("js");try{var t=localStorage.getItem("fg-theme");if(t==="light"||t==="dark")d.setAttribute("data-theme",t)}catch(e){}var here="zh",page="accessibility/",to=here,q=location.search,h=location.hash;var m=/[?&]lang=([a-z]{2})\b/.exec(q);if(m){to=m[1];q=q.replace(/([?&])lang=[a-z]{2}&?/,"$1").replace(/[?&]$/,"")}else if(here==="en"){var c=null;try{c=localStorage.getItem("fg-lang")}catch(e){}if(!c)c=String(navigator.language||"en").slice(0,2).toLowerCase();to=c}if(["en", "de", "fr", "es", "ru", "pt", "it", "ko", "zh"].indexOf(to)<0)to=here;var u=(to==="en"?"/":"/"+to+"/")+page;if(u!==location.pathname||q!==location.search)location.replace(u+q+h)})();</script>
+<link rel="stylesheet" href="/assets/site.css?v=9495293704">
+<style>
+/* Accessibility: what the add-on does, need by need. */
+.page-head .lede { color: var(--text); font-size: 1.2rem; margin: 0 0 12px; }
+.page-head .start { color: var(--dim); margin: 0; }
+.acc { padding-block: 28px 24px; }
+nav.jump { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 30px; }
+nav.jump a { display: inline-flex; align-items: center; min-height: 36px; padding: 4px 12px; border: 1px solid var(--line); color: var(--frost); text-decoration: none; }
+nav.jump a:hover { border-color: var(--frost); }
+.need { padding: 22px 26px 10px; margin: 0 0 20px; }
+.need h2 { font-size: 1.8rem; margin: 0 0 4px; }
+.need .who { color: var(--dim); margin: 0 0 12px; }
+.need ul { margin: 0 0 12px; padding-left: 1.2em; }
+.need li { margin: 0 0 10px; color: var(--dim); }
+.need li::marker { color: var(--gold); }
+.need li b { color: var(--text); }
+.honest { border-left: 3px solid var(--gold); padding: 4px 0 4px 18px; margin: 34px 0 0; color: var(--dim); }
+.honest h2 { font-size: 1.5rem; margin-bottom: 8px; }
+@media (max-width: 560px) { .need { padding: 18px 16px 6px; } }
+.need.new { --c: color-mix(in srgb, var(--gold) 55%, var(--line)); }
+.need li code { font-size: .88em; }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">跳到正文</a>
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="/zh/"><img src="/logo-64.webp" alt="" width="32" height="32">Fantasy Glass UI</a>
+    <nav class="site-nav" id="site-nav" aria-label="页面">
+      <ul><li><a href="/zh/">首页</a></li><li><a href="/zh/features/">功能</a></li><li><a href="/zh/themes/">主题</a></li><li><a href="/zh/guide-and-gold/">指南与金币</a></li><li><a href="/zh/get-started/">开始使用</a></li><li><a href="/zh/changelog/">更新日志</a></li><li><a href="/zh/roadmap/">路线图</a></li></ul>
+      <div class="head-tools">
+        <label class="lang"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span class="sr-only">语言</span><select id="lang"><option value="/accessibility/" data-code="en" lang="en">English</option><option value="/de/accessibility/" data-code="de" lang="de">Deutsch</option><option value="/fr/accessibility/" data-code="fr" lang="fr">Français</option><option value="/es/accessibility/" data-code="es" lang="es">Español</option><option value="/ru/accessibility/" data-code="ru" lang="ru">Русский</option><option value="/pt/accessibility/" data-code="pt" lang="pt">Português</option><option value="/it/accessibility/" data-code="it" lang="it">Italiano</option><option value="/ko/accessibility/" data-code="ko" lang="ko">한국어</option><option value="/zh/accessibility/" data-code="zh" lang="zh-Hans" selected>中文</option></select></label>
+        <button class="icon-btn mode" id="mode" type="button" aria-pressed="true" title="深色模式"><span class="sr-only">深色模式</span><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M5.3 18.7 7 17M17 7l1.7-1.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      </div>
+    </nav>
+    <a class="btn small head-dl" href="https://www.curseforge.com/wow/addons/fantasy-glass-ui">下载</a>
+    <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav"><span class="sr-only">菜单</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    <button class="chip wearing" id="unwear" type="button" hidden>正在使用 <b id="wearname"></b>：恢复网站配色</button>
+  </div>
+</header>
+<main id="main" tabindex="-1">
+<!-- Accessibility (W3). pages/accessibility/body.py; see site-src/PAGES.md. -->
+<div class="wrap narrow page-head">
+  <h1>辅助功能</h1>
+  <p class="lede">Fantasy Glass UI 在界面的每个部分都内置了辅助功能：适合各类色觉的配色、高对比度主题、易读字体、字幕、朗读、安全闪烁和单手按键。全部免费，每一项都可以开关。</p>
+  <p class="start">游戏中：<code>/fgui access</code> 打开辅助功能设置，首次设置里也有“舒适”这一步。 版本 13.0.0.</p>
+</div>
+<div class="wrap narrow acc">
+  <nav class="jump" aria-label="需求"><a href="#seeing-color">色觉</a><a href="#seeing-low">低视力</a><a href="#reading">朗读</a><a href="#hearing">听觉</a><a href="#motion">闪烁与动态</a><a href="#hands">手与按键</a><a href="#guide">路线规划器与金币</a><a href="#calm">专注与平静</a><a href="#share">分享</a></nav>
+  <div id="needs">
+<section class="need card" id="seeing-color" aria-labelledby="h-seeing-color"><h2 id="h-seeing-color">色觉</h2><p class="who">适用于红绿或蓝黄色盲，或完全看不到颜色的情况。</p><ul><li><b>适合你色觉的配色.</b> 红绿（蓝和橙）、蓝黄（青、粉和红），或完全不用颜色，由亮度和标记表达含义。</li><li><b>颜色之外还有标记.</b> 减益效果带字母，物品品质带圆点，姓名板上的仇恨带标记（快丢失时是“!”，丢失时是“!!”）。</li></ul></section>
+<section class="need card" id="seeing-low" aria-labelledby="h-seeing-low"><h2 id="h-seeing-low">低视力</h2><p class="who">让屏幕更容易看清。</p><ul><li><b>高对比度主题.</b> 纯黑面板、白色文字和最醒目的边框，玻璃、奇幻、星空三个系列都有。一个按钮就能选出你所用系列的那一款。</li><li><b>为阅读而生的字体.</b> 易读字体（为低视力设计的 Atkinson Hyperlegible）和阅读障碍友好字体（OpenDyslexic）。每个字母更粗的描边，以及屏幕中央消息后的深色衬底。</li><li><b>更大的文字和界面.</b> 独立于游戏的文字大小和界面缩放。</li><li><b>目标周围的光环.</b> 在目标的姓名板外加 1 到 8 像素的粗描边，让它在人群中一眼可见。鼠标指针周围也可以加光环。</li></ul></section>
+<section class="need card" id="reading" aria-labelledby="h-reading"><h2 id="h-reading">朗读</h2><p class="who">为盲人和低视力玩家，以及更喜欢听的人。使用游戏自带的语音。</p><ul><li><b>对话和任务打开时朗读.</b> NPC 说的话和提供的选项、任务的文本、进度和奖励，以及书籍和信件。关闭窗口时朗读停止。</li><li><b>你指着的东西.</b> 鼠标停在某处时，会朗读它的提示。（游戏自带的屏幕旁白只在登录前有效。）</li><li><b>一键朗读.</b> 一个键可朗读鼠标下的提示、正在看的任务或最近一条密语。</li><li><b>语音提醒.</b> 就位确认、密语、缺少的增益、失控和你自己的提醒，都会读出来。</li></ul></section>
+<section class="need card" id="hearing" aria-labelledby="h-hearing"><h2 id="h-hearing">听觉</h2><p class="who">为聋人和听障玩家，以及关掉声音玩的人。</p><ul><li><b>声音字幕.</b> 就位确认、密语、排队、邀请、决斗、复活、召唤、首领表情、团队警报、拾取掷骰、仇恨警告和你自己的提醒，都会在屏幕上以带类型标记的一行文字显示。</li></ul></section>
+<section class="need card" id="motion" aria-labelledby="h-motion"><h2 id="h-motion">闪烁与动态</h2><p class="who">为对闪光或动态敏感的玩家。</p><ul><li><b>安全闪烁.</b> 任何东西每秒闪烁不超过三次，闪光柔和，脉动的警告保持静止，游戏的低生命红色闪屏也会关闭。</li><li><b>减少动画.</b> 没有淡入淡出、脉动、滑动的条或镜头漂移：一切即时出现和变化。</li><li><b>静止的星空.</b> 星空主题保留星星但保持静止：没有闪烁也没有流星，其他部分照常动。</li></ul></section>
+<section class="need card" id="hands" aria-labelledby="h-hands"><h2 id="h-hands">手与按键</h2><p class="who">为单手游戏或只用键盘的玩家。</p><ul><li><b>单手按键.</b> 一个按钮把移动、跳跃、选目标、互动和前几个动作键放到 W、A、S、D 周围供左手使用，或全部放到数字小键盘供右手使用。另一个按钮把所有按键恢复原样。</li><li><b>用键盘操作游戏窗口.</b> 打开 NPC 对话、任务、商人、邮箱、拾取、训练师、飞行管理员或询问框时，Tab 在按钮之间移动，Enter 按下，用光环显示当前位置，愿意的话每个选项都会读出来。</li><li><b>用键盘操作设置.</b> Tab 和方向键在设置之间移动，空格键切换，左右键移动滑块。</li><li><b>更大的控件.</b> 设置中的开关更大，“点两次”的按钮会等第二次点击十秒钟。</li></ul></section>
+<section class="need card new" id="guide" aria-labelledby="h-guide"><h2 id="h-guide">路线规划器与金币</h2><p class="who">13.0 新功能：用适合你的方式跟随路线、赚取金币。</p><ul><li><b>用键盘操作规划器.</b> 打开<b>用键盘浏览设置</b>后，Tab 和方向键可以在规划器窗口中移动，空格或 Enter 按下按钮或开关，左右键切换选项或调节滑块。战斗中所有按键都交还给游戏。</li><li><b>路线快捷键.</b> 下一步、跳过步骤和重新规划都可以在游戏的按键设置中各绑定一个键，不用鼠标也能跟随路线。</li><li><b>朗读路线.</b> 打开<b>朗读对话和任务</b>后，每到一个新步骤都会读出来。首次导览和好友发来的一起规划邀请也会朗读。</li><li><b>适合你眼睛的颜色.</b> 规划器的列表颜色取自你的主题和色觉设置。出售建议会用文字写出现在出售、暂留或卖给商人，颜色从来不是唯一的提示。</li><li><b>更大的按钮.</b> 打开<b>设置中使用更大的控件</b>后，规划器窗口、指南面板及其菜单的按钮也会更高。</li><li><b>可跳过的导览.</b> 第一次会有四页简短说明介绍规划器。“跳过”立即关闭，左、右、Enter 和 Esc 键也能用，<b>规划器如何工作</b>可以再次打开。</li><li><b>按你的方式使用箭头.</b> 规划器窗口里的<b>停止</b>会收起路线和箭头，直到你再次规划。<code>/fgui move</code> 可以移动箭头，也可以改用 TomTom 的箭头，打开<b>减少动画</b>后到达时箭头不会脉动。</li><li><b>休息.</b> 打开<b>在适合停下的地方提醒我休息</b>后，连续游戏一段时间（1 到 3 小时，由你选择）后到达适合停下的地方时，路线会提醒你。</li></ul></section>
+<section class="need card" id="calm" aria-labelledby="h-calm"><h2 id="h-calm">专注与平静</h2><p class="who">让屏幕更安静。</p><ul><li><b>平静模式.</b> 一次只显示一条通知，停留十五秒，点击即可收起，消息也会停留更久。</li><li><b>提示前稍等.</b> 鼠标停留片刻才显示提示，扫过屏幕时不会一个接一个地弹出。</li></ul></section>
+<section class="need card" id="share" aria-labelledby="h-share"><h2 id="h-share">分享</h2><p class="who">帮朋友设置，或设置新角色时用。</p><ul><li><b>一行文字.</b> 把所有辅助功能设置变成一行文字，可以复制、保存或给别人；粘贴回来即可一次全部应用。</li><li><b>设置中的“舒适”步骤.</b> 首次设置中有视觉、听觉和平静这一步，开始游戏前就准备好。</li></ul></section>
+  </div>
+  <section class="honest" aria-labelledby="h-honest">
+    <h2 id="h-honest">（暂时）做不到的事</h2>
+    <p>它不是屏幕阅读器：朗读涵盖对话、任务、书籍、提示、密语和游戏主要窗口的按钮，但不是每个窗口的每个部分。 金币窗口还没有自己的快捷键，也不会朗读。 两种易读字体只含西欧字母。朗读使用你的电脑提供给游戏的语音。 欢迎到 <a href="https://discord.gg/qeSMwQWyPR">Discord</a> 提出想法和问题。</p>
+  </section>
+</div>
+</main>
+<footer class="site-foot">
+  <div class="wrap">
+    <div class="foot-row">
+      <span>Fantasy Glass UI，作者 DustyMouse。免费，适用于 WoW Forever。</span>
+      <ul>
+        <li><a href="https://www.curseforge.com/wow/addons/fantasy-glass-ui">CurseForge</a></li>
+        <li><a href="https://discord.gg/qeSMwQWyPR">Discord</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI">GitHub</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/wiki">Wiki</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/issues/new/choose">报告问题</a></li>
+        <li><a href="/zh/accessibility/">辅助功能</a></li>
+        <li><a href="/zh/press/">媒体资料包</a></li>
+        <li><a href="/feed.xml" type="application/rss+xml">RSS</a></li>
+      </ul>
+    </div>
+    <div class="foot-row">
+      <span>联系: <a href="mailto:email-forwarding@fantasyglassui.com">email-forwarding@fantasyglassui.com</a></span>
+      <p class="status"><span>版本 <b>13.0.0</b></span><span class="sep" aria-hidden="true">·</span><span>更新于 <time datetime="2026-11-26">2026-11-26</time></span><span class="sep" aria-hidden="true">·</span><span>已对照 WoW: Forever <b>1.60.1 (70938)</b> 检查</span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">源代码</a></span></p>
+    </div>
+    <nav class="foot-row foot-langs" aria-label="语言"><ul><li><a href="/accessibility/" hreflang="en" lang="en" data-code="en">English</a></li><li><a href="/de/accessibility/" hreflang="de" lang="de" data-code="de">Deutsch</a></li><li><a href="/fr/accessibility/" hreflang="fr" lang="fr" data-code="fr">Français</a></li><li><a href="/es/accessibility/" hreflang="es" lang="es" data-code="es">Español</a></li><li><a href="/ru/accessibility/" hreflang="ru" lang="ru" data-code="ru">Русский</a></li><li><a href="/pt/accessibility/" hreflang="pt" lang="pt" data-code="pt">Português</a></li><li><a href="/it/accessibility/" hreflang="it" lang="it" data-code="it">Italiano</a></li><li><a href="/ko/accessibility/" hreflang="ko" lang="ko" data-code="ko">한국어</a></li><li><a href="/zh/accessibility/" hreflang="zh-Hans" lang="zh-Hans" data-code="zh" aria-current="true">中文</a></li></ul></nav>
+    <p class="trnote">本页翻译未经母语者校对，欢迎指正。</p>
+  </div>
+</footer>
+<script src="/assets/site.js?v=2dd8abee61" defer></script>
+</body>
+</html>

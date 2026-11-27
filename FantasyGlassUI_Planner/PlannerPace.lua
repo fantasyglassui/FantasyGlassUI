@@ -1,0 +1,608 @@
+local ns = _G.FantasyGlassUI
+if type(ns) ~= "table" then return end
+
+------------------------------------------------------------------------------------------
+-- Planner, batch 4 group C: the time you have, break reminders, catch me up, speed or story (Tasks 5 and 6).
+-- Built on the seams: ns.PlannerHook (Planner.lua), the panel's registries (Guide.lua) and its
+-- section of the Guide tab (Bars.lua). A planner hook is only registered while its feature is in use
+-- (ns.PlannerPaceSync), so a plan that uses neither is unchanged.
+------------------------------------------------------------------------------------------
+local format, floor, min, max = string.format, math.floor, math.min, math.max
+local ipairs, type, tonumber, tostring = ipairs, type, tonumber, tostring
+
+local function On() return ns.GuideOn ~= nil and ns:GuideOn() == true end
+local function Rec(create) return ns.PlannerCharRecord and ns.PlannerCharRecord(create) or nil end
+local function Num(v) if type(v) == "number" and not ns:IsSecret(v) then return v end end
+local function Now()
+    local ok, t = pcall(time)
+    return ok and Num(t) or 0
+end
+local function Uptime()
+    local ok, t = pcall(GetTime)
+    return ok and Num(t) or nil
+end
+local function Fighting() return InCombatLockdown ~= nil and InCombatLockdown() == true end
+local function Replan(why) if ns.PlannerReplan then ns:PlannerReplan(why) end end
+local function R1(v) return floor(v * 10 + 0.5) / 10 end
+local function Plain(s)
+    if type(s) ~= "string" or ns:IsSecret(s) then return nil end
+    s = s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("^%s+", ""):gsub("%s+$", "")
+    return s ~= "" and s or nil
+end
+
+ns.PLANNER_PLAY_HORIZON = 6                 -- hubs a plan may take while you have a time limit (the lead-in counts)
+ns.PLANNER_PLAY_MAX = 600                  -- the most minutes a limit can be set to
+ns.PLANNER_STALE_SECONDS = 3600             -- a limit this long past is forgotten (it was never ticked off)
+ns.PLANNER_STOP_SECONDS = 300               -- the stop place is at most this far (or what time is left, if less)
+ns.PLANNER_BREAK_REPEAT = 3600              -- a break reminder at most once in this many seconds
+ns.PLANNER_BREAK_SHOWN = 600                -- and its panel line for this long
+ns.PLANNER_CATCHUP_NEW = 3                  -- at most this many "New:" lines
+ns.PLANNER_PLAY_TIMES = { { 0, "No limit" }, { 30, "30 min" }, { 60, "1 hour" }, { 90, "1 h 30 min" }, { 120, "2 hours" } }
+local STOP_KEY = "pace:stop"
+local Sync                                  -- (below: what is registered)
+
+------------------------------------------------------------------------------------------
+-- The time you have
+------------------------------------------------------------------------------------------
+-- Minutes you can play (0 clears): a deadline per character, in time() seconds.
+function ns.PlannerSetPlayTime(minutes)
+    minutes = tonumber(minutes)
+    local cleared = false
+    if not minutes or minutes <= 0 then
+        local rec = Rec(false)
+        cleared = rec ~= nil and rec.playUntil ~= nil
+        if rec then rec.playUntil = nil end
+    else
+        local rec = Rec(true)
+        if rec then rec.playUntil = Now() + min(minutes, ns.PLANNER_PLAY_MAX) * 60 end
+    end
+    Sync()
+    if cleared then Replan("time") end           -- (a plan being made with the limit is stale: the next one has none)
+end
+
+-- Seconds left of the time you can play, 0 when it is up; nil with no limit (or one that ran out long ago).
+function ns.PlannerTimeLeft()
+    local rec = Rec(false)
+    local deadline = rec and tonumber(rec.playUntil)
+    if not deadline or Now() - deadline > ns.PLANNER_STALE_SECONDS then return nil end
+    return max(0, deadline - Now())
+end
+
+-- "context": with a deadline the plan has the time left and a horizon of 6 hubs.
+local function ContextTime(ctx)
+    local left = ns.PlannerTimeLeft()
+    if left then
+        ctx.timeLeft = left
+        ctx.horizon, ctx.horizonSet = max(tonumber(ctx.horizon) or 0, ns.PLANNER_PLAY_HORIZON), true   -- (another hook may have raised it more)
+    end
+end
+
+-- "rank": a hub (the lead-in too) that does not fit in what is left is out. A cut, or the horizon, ends the plan with a stop.
+local function RankTime(ranked, c, info)
+    local left = tonumber(c.timeLeft)
+    if not left then return end
+    if info.round == info.horizon then c.timeCut = true end
+    for _, e in ipairs(ranked) do
+        ns.PlannerYield()
+        if (tonumber(e.score) or -1) >= 0 and (tonumber(e.rate) or -1) >= 0 then
+            local hub = e.hub
+            local need = (tonumber(info.seconds) or 0) + (tonumber(e.travel) or 0) + (type(hub) == "table" and tonumber(hub.seconds) or 0)
+            if need > left then e.score, c.timeCut = -1, true end
+        end
+    end
+end
+
+-- Where you stand when the plan ends: its last step with a place, else where you are.
+local function PlanEnd(guide, ctx)
+    for i = #guide.steps, 1, -1 do
+        local s = guide.steps[i]
+        if type(s) == "table" and s.map and s.x and s.y then return { map = s.map, x = s.x, y = s.y } end
+    end
+    local h = ctx.here
+    if type(h) == "table" and h.map and h.x and h.y then return h end
+    return nil
+end
+
+-- The nearest innkeeper or known flight point reachable within `limit` seconds, or nil.
+local function StopPlace(c, from, limit)
+    if not from or limit <= 0 or not (ns.PlannerWorldPos and ns.PlannerTravel) then return nil end
+    local fc, fx, fy = ns.PlannerWorldPos(from.map, from.x, from.y)
+    local list = {}
+    local function Add(p, name, kind)
+        local pc, px, py = ns.PlannerWorldPos(p.map, p.x, p.y)
+        if pc and (not fc or pc == fc) then
+            local dx, dy = (px or 0) - (fx or 0), (py or 0) - (fy or 0)
+            list[#list + 1] = { place = p, name = name or ns:Tr(kind), d = dx * dx + dy * dy }
+        end
+    end
+    if ns.PlannerPlaces then
+        for _, p in ipairs(ns.PlannerPlaces(c, "innkeeper")) do ns.PlannerYield(); Add(p, Plain(p.name), "Inn") end
+    end
+    for _, f in ipairs(type(c.flights) == "table" and c.flights or {}) do
+        ns.PlannerYield()
+        if type(f) == "table" and f.known and tonumber(f.map) and tonumber(f.x) and tonumber(f.y) then Add(f, Plain(f.name), "Flight point") end
+    end
+    table.sort(list, function(a, b) return a.d < b.d end)
+    local best, bestT
+    for i = 1, min(8, #list) do
+        ns.PlannerYield()
+        local t = ns.PlannerTravel(from, list[i].place, c)
+        if type(t) == "number" and t <= limit and (not bestT or t < bestT) then best, bestT = list[i], t end
+    end
+    return best
+end
+
+-- "route": a plan cut by the time (or one with no time left) ends at the nearest place to stop, and a note.
+local function RouteTime(guide, summary, ctx, c)
+    local left = tonumber(c.timeLeft or ctx.timeLeft)
+    if not left or not (c.timeCut or left <= 0) then return end
+    for _, s in ipairs(guide.steps) do if s.stopKey == STOP_KEY then return end end
+    local limit = left <= 0 and ns.PLANNER_STOP_SECONDS or min(ns.PLANNER_STOP_SECONDS, left - (tonumber(summary.seconds) or 0))
+    local at = StopPlace(c, PlanEnd(guide, ctx), limit)
+    if at then
+        local p = at.place
+        guide.steps[#guide.steps + 1] = { kind = "goto", text = at.name, map = p.map, x = R1(p.x), y = R1(p.y), stopKey = STOP_KEY }
+    end
+    guide.steps[#guide.steps + 1] = { kind = "note", text = ns:Tr("Good place to take a break (press > to keep playing)"), stopKey = STOP_KEY }
+    summary.stop = true
+end
+
+-- Advance: the note "Good place to stop" done: the time limit is over.
+local function AdvanceStop(st, guide, _, at, moved)
+    if not moved or type(st) ~= "table" or st.name ~= ns.GUIDE_PLANNED or type(guide) ~= "table" then return end
+    for i, s in ipairs(guide.steps or {}) do
+        if type(s) == "table" and s.kind == "note" and s.stopKey == STOP_KEY then
+            if (tonumber(at) or 0) > i then ns.PlannerSetPlayTime(0) end
+            return
+        end
+    end
+end
+
+-- "Plan my route" (ns:PlannerStart): with no limit running, the Guide tab's default starts one; a limit that ran
+-- out is cleared first (you asked for a new route, not for the stop again).
+function ns.PlannerApplyPlayDefault()
+    local left = ns.PlannerTimeLeft()
+    if left and left > 0 then return end
+    local rec = Rec(false)
+    local d = rec and tonumber(rec.playDefault)
+    if d and d > 0 then ns.PlannerSetPlayTime(d)
+    elseif left == 0 then ns.PlannerSetPlayTime(0) end
+end
+
+-- The panel's "Keep playing": shown once the time is up, it clears the limit and plans on.
+local function KeepPlaying() ns.PlannerSetPlayTime(0); Replan("time") end
+local function TimeUp() return ns.PlannerTimeLeft() == 0 end
+
+-- /fgui guide plan [minutes]: a number sets the time (0 clears it); with none, the default from the Guide tab
+-- (none, 30, 60, 90 or 120) starts a fresh limit, and with no default a limit you already have is kept; then plan.
+function ns.PlannerPlanCommand(rest)
+    local n = tonumber(tostring(rest or ""):match("^%s*(%d+)"))
+    if n then
+        ns.PlannerSetPlayTime(n)
+    else
+        local rec = Rec(false)
+        local d = rec and tonumber(rec.playDefault)
+        if d and d > 0 then ns.PlannerSetPlayTime(d) end
+    end
+    return ns.PlannerStart ~= nil and ns:PlannerStart()
+end
+
+-- The panel's "How long can you play?": a list to pick from.
+local function OpenTimeList()
+    local w
+    local lines = {}
+    for _, t in ipairs(ns.PLANNER_PLAY_TIMES) do
+        lines[#lines + 1] = { left = ns:Tr(t[2]), click = function()
+            ns.PlannerSetPlayTime(t[1])
+            Replan("time")
+            if w and w.Hide then w:Hide() end
+        end }
+    end
+    w = ns:ShowList("PlanTime", "How long can you play?", lines, nil, 300, 200)
+    return w
+end
+
+------------------------------------------------------------------------------------------
+-- A stopping place, and break reminders
+------------------------------------------------------------------------------------------
+-- Is `at` a good place to stop: the first step of a new hub after a hand-in, right after a flight, boat,
+-- hearthstone or bind, or the end of the plan.
+function ns.PlannerStoppingPlace(steps, at)
+    if type(steps) ~= "table" then return false end
+    at = tonumber(at) or 1
+    if at > #steps then return true end
+    if at <= 1 then return false end
+    local prev, cur = steps[at - 1], steps[at]
+    if type(prev) ~= "table" or type(cur) ~= "table" then return false end
+    local k = prev.kind
+    if k == "fly" or k == "sail" or k == "hearth" or k == "bind" then return true end
+    return k == "turnin" and prev.hub ~= cur.hub
+end
+
+local lastBreak, breakLine                   -- (uptime of the last reminder; its text, for the panel)
+local function PlayedText(seconds)
+    local h, m = floor(seconds / 3600), floor(seconds % 3600 / 60)
+    if h > 0 then return format(ns:Tr("%d h %d min"), h, m) end
+    return format(ns:Tr("%d min"), m)
+end
+
+local function AdvanceBreak(st, guide, _, at, moved)
+    if not moved or type(st) ~= "table" or st.name ~= ns.GUIDE_PLANNED or not On() then return end
+    if not (ns.db and ns.db.plannerBreaks == true) or Fighting() then return end
+    local now = Uptime()
+    if not now then return end
+    local played = now - (tonumber(ns.plannerSessionStart) or now)
+    if played < (tonumber(ns.db.plannerBreakMinutes) or 120) * 60 then return end
+    if lastBreak and now >= lastBreak and now - lastBreak < ns.PLANNER_BREAK_REPEAT then return end
+    if not ns.PlannerStoppingPlace(type(guide) == "table" and guide.steps or nil, at) then return end
+    lastBreak = now
+    local text = PlayedText(played)
+    breakLine = { t = now, text = text }
+    ns:Print("You've been playing %s; this is a good place to stop", text)
+    if ns.GuideRedraw then ns:GuideRedraw() end
+end
+
+local function BreakLine()
+    local b = breakLine
+    if not b or not On() then return nil end
+    local now = Uptime()
+    if not now or now < b.t or now - b.t > ns.PLANNER_BREAK_SHOWN then breakLine = nil; return nil end
+    return format(ns:Tr("You've been playing %s; this is a good place to stop"), b.text)
+end
+function ns.PlannerBreakReset() lastBreak, breakLine = nil, nil end
+
+------------------------------------------------------------------------------------------
+-- Catch me up
+------------------------------------------------------------------------------------------
+-- (When you were last here, ns.PlannerSeenSave, and the login's catch-up check: in the main add-on, PlannerRecorders.lua,
+-- which loads this folder for the page; ns.PLANNER_CATCHUP_DAYS is there too.)
+-- Forget what this session knows (the tests start each case from here): the last reminder, and that the login was handled.
+function ns.PlannerPaceReset()
+    lastBreak, breakLine = nil, nil
+    if ns.PlannerSeenReset then ns.PlannerSeenReset() end
+end
+
+local function VersionNumber(v)
+    local a, b, c = tostring(v or ""):match("^(%d+)%.?(%d*)%.?(%d*)")
+    return (tonumber(a) or 0) * 10000 + (tonumber(b) or 0) * 100 + (tonumber(c) or 0)
+end
+
+local function ZoneName(map)
+    local get = C_Map and C_Map.GetMapInfo
+    if type(get) ~= "function" or type(map) ~= "number" then return nil end
+    local ok, info = pcall(get, map)
+    return ok and type(info) == "table" and Plain(info.name) or nil
+end
+
+-- The page: how long you were away, where you were, what is in your log, how you play, what is new.
+function ns:PlannerCatchUp(away, since)
+    local rec = Rec(false)
+    away = tonumber(away) or (rec and tonumber(rec.lastSeen) and Now() - rec.lastSeen) or 0
+    since = since or (rec and rec.lastVersion)
+    local lines = {}
+    local days, hours = floor(away / 86400), floor(away / 3600)
+    if days >= 1 then lines[#lines + 1] = { left = format(ns:TrN(days, "Away for 1 day", "Away for %d days"), days) }
+    elseif hours >= 1 then lines[#lines + 1] = { left = format(ns:TrN(hours, "Away for 1 hour", "Away for %d hours"), hours) } end   -- (under an hour: no line)
+    local st = ns.GuideState and ns.GuideState()
+    local steps = type(st) == "table" and st.name == ns.GUIDE_PLANNED and type(st.plan) == "table" and st.plan.steps or nil
+    if steps then
+        local step = steps[tonumber(st.at) or 1]
+        local where = {}
+        local zone = ZoneName(type(st.summary) == "table" and st.summary.zone or nil)
+        if zone then where[#where + 1] = zone end
+        if type(step) == "table" and ns.GuideStepBase then
+            local ok, text = pcall(ns.GuideStepBase, step)
+            if ok and Plain(text) then where[#where + 1] = Plain(text) end
+        end
+        if #where > 0 then lines[#lines + 1] = { left = format(ns:Tr("You were at: %s"), table.concat(where, ", ")) } end
+    end
+    local QL = C_QuestLog or {}
+    local okN, _, inLog = pcall(QL.GetNumQuestLogEntries or function() return 0, 0 end)
+    inLog = okN and Num(inLog) or 0
+    local inPlan, seen = 0, {}
+    for _, s in ipairs(steps or {}) do
+        local id = type(s) == "table" and s.quest
+        if id and not seen[id] then
+            seen[id] = true
+            local okQ, on = pcall(ns.PlannerServerId and function(q) return ns.PlannerServerId(q) ~= nil end   -- (its own id, or the one it was matched to)
+                or QL.IsOnQuest or function() return false end, id)
+            if okQ and on == true then inPlan = inPlan + 1 end
+        end
+    end
+    lines[#lines + 1] = { left = format(ns:TrN(inLog, "1 quest in your log, %d of them in the plan", "%d quests in your log, %d of them in the plan"), inLog == 1 and inPlan or inLog, inPlan) }
+    local okL, level = pcall(UnitLevel, "player")
+    level = okL and Num(level) or 1
+    local pace = ns.PlannerPace and ns.PlannerPace() or 1
+    lines[#lines + 1] = { left = format(ns:Tr("Level %d, pace %.1f× the estimate"), level, pace) }
+    local before, shown = VersionNumber(since), 0
+    for i, entry in ipairs(type(ns.whatsNew) == "table" and ns.whatsNew or {}) do
+        local newer = since == nil and i == 1 or (since ~= nil and VersionNumber(entry[1]) > before)
+        if newer and shown < ns.PLANNER_CATCHUP_NEW and type(entry[2]) == "table" and entry[2][1] then
+            shown = shown + 1
+            lines[#lines + 1] = { left = format(ns:Tr("New: %s"), ns:Tr(entry[2][1])) }
+        end
+    end
+    local w
+    lines[#lines + 1] = { left = ns:Tr("Plan my route"), action = true, click = function()   -- (the theme's action style, as every list's)
+        if w and w.Hide then w:Hide() end
+        if ns.PlannerStart then ns:PlannerStart() end
+    end }
+    w = ns:ShowList("PlanCatchUp", "Catch me up", lines, nil, 460, 240)
+    if ns.db and ns.db.readDialog and ns.db.plannerSpeak ~= false and lines[1] then   -- (read aloud as it opens: the page and its first line)
+        ns:Speak(ns:Tr("Catch me up") .. ". " .. tostring(lines[1].left))
+    end
+    return w
+end
+
+-- The minute's check of what is registered (the clock itself is saved by the main add-on).
+do
+    ns.FolderLate("planner", "paceSync", function() Sync() end)   -- (what the login did: the folder loads later)
+    ns:Every(60, "Planner pace", function()
+        if type(ns.root) == "table" then Sync() end
+    end)
+end
+
+------------------------------------------------------------------------------------------
+-- Speed or story, and the three sliders (Task 6)
+------------------------------------------------------------------------------------------
+local FULL = 100
+ns.PLANNER_STYLE_PRESETS = { speed = { 100, 0 }, story = { 40, 100 } }       -- speed, story (the preset keeps your safety)
+ns.PLANNER_DANGER_LEVELS = 3                                                 -- a kill objective this many levels above you is a danger
+ns.PLANNER_DEATH_LEVELS = 1                                                  -- deaths at your level or this many before it count
+
+local function Clamp(v, d)
+    v = Num(tonumber(v))
+    if not v then return d end
+    return max(0, min(FULL, floor(v + 0.5)))
+end
+
+-- speed, safety, story (0 to 100): 100, 0, 0 until you change them.
+function ns.PlannerWeights()
+    local rec = Rec(false)
+    local w = rec and type(rec.weights) == "table" and rec.weights or nil
+    return Clamp(w and w.speed, 100), Clamp(w and w.safety, 0), Clamp(w and w.story, 0)
+end
+
+function ns.PlannerStyle()
+    local rec = Rec(false)
+    local s = rec and rec.style
+    return (s == "story" or s == "custom") and s or "speed"
+end
+
+-- The presets: speed 100/0/0, story 40/0/100 (your safety stays); custom keeps the numbers.
+function ns.PlannerSetStyle(style)
+    if style ~= "speed" and style ~= "story" and style ~= "custom" then return false end
+    local rec = Rec(true)
+    if not rec then return false end
+    local speed, safety, story = ns.PlannerWeights()
+    local p = ns.PLANNER_STYLE_PRESETS[style]
+    if p then speed, story = p[1], p[2] end
+    rec.style, rec.weights = style, { speed = speed, safety = safety, story = story }
+    Sync()
+    Replan("settings")
+    return true
+end
+
+-- The style a set of weights is: a preset is named by speed and story alone (100/x/0 Speed, 40/x/100 Story;
+-- safety is yours to choose, from the picker or a slider alike), anything else is "custom".
+function ns.PlannerStyleOf(speed, safety, story)
+    for _, name in ipairs({ "speed", "story" }) do
+        local p = ns.PLANNER_STYLE_PRESETS[name]
+        if speed == p[1] and story == p[2] then return name end
+    end
+    return "custom"
+end
+
+-- One slider moved: "speed", "safety" or "story"; the style becomes custom, or the preset's name when the
+-- sliders are back on one.
+function ns.PlannerSetWeight(name, value)
+    if name ~= "speed" and name ~= "safety" and name ~= "story" then return false end
+    local rec = Rec(true)
+    if not rec then return false end
+    local speed, safety, story = ns.PlannerWeights()
+    local w = { speed = speed, safety = safety, story = story }
+    w[name] = Clamp(value, w[name])
+    rec.style, rec.weights = ns.PlannerStyleOf(w.speed, w.safety, w.story), w
+    Sync()
+    Replan("settings")
+    return true
+end
+
+-- Which quests are in a chain: { main = { [id] = true }, any = { [id] = true } }. `any` holds every quest
+-- that leads on to another or follows one (nextQuest, or a pre); `main` the largest set of these quests
+-- linked to each other by nextQuest / pre (two or more).
+function ns.PlannerChains(candidates)
+    local out = { main = {}, any = {} }
+    local byId, parent = {}, {}
+    local function Find(i)
+        while parent[i] ~= i do parent[i] = parent[parent[i]]; i = parent[i] end
+        return i
+    end
+    for _, r in ipairs(candidates or {}) do
+        ns.PlannerYield()
+        if type(r) == "table" and r.id then
+            byId[r.id], parent[r.id] = r, r.id
+            if r.nextQuest or (type(r.pre) == "table" and #r.pre > 0) then out.any[r.id] = true end
+        end
+    end
+    local function Link(a, b)
+        if byId[a] and byId[b] then
+            local ra, rb = Find(a), Find(b)
+            if ra ~= rb then parent[rb] = ra end
+        end
+    end
+    for id, r in pairs(byId) do
+        ns.PlannerYield()
+        if r.nextQuest then Link(id, r.nextQuest) end
+        for _, p in ipairs(type(r.pre) == "table" and r.pre or {}) do Link(id, p) end
+        for _, p in ipairs(type(r.preAny) == "table" and r.preAny or {}) do Link(id, p) end
+    end
+    local size, best, bestSize = {}, nil, 1
+    local ids = {}
+    for id in pairs(byId) do ids[#ids + 1] = id end
+    table.sort(ids)                                   -- (the same answer each time: the smallest root wins a tie)
+    for _, id in ipairs(ids) do
+        local root = Find(id)
+        size[root] = (size[root] or 0) + 1
+        if size[root] > bestSize then best, bestSize = root, size[root] end
+    end
+    if best then
+        for _, id in ipairs(ids) do
+            if Find(id) == best then out.main[id], out.any[id] = true, true end
+        end
+    end
+    return out
+end
+
+-- 0 to 1: the mean over a hub's quests of 1 (the zone's main chain), 0.5 (another chain), 0 (none).
+function ns.PlannerStoryScore(hub, chains)
+    local quests = type(hub) == "table" and hub.quests or nil
+    if type(quests) ~= "table" or #quests == 0 or type(chains) ~= "table" then return 0 end
+    local sum = 0
+    for _, q in ipairs(quests) do
+        if chains.main and chains.main[q.id] then sum = sum + 1
+        elseif chains.any and chains.any[q.id] then sum = sum + 0.5 end
+    end
+    return sum / #quests
+end
+
+-- 0 to 1: elite quests, kill objectives well above your level (half each), escorts (half each) and the deaths
+-- you had within a hub's reach at this level or the one before, over two.
+function ns.PlannerDanger(hub, ctx)
+    if type(hub) ~= "table" or type(ctx) ~= "table" then return 0 end
+    local level = tonumber(ctx.level) or 1
+    local sum = 0
+    for _, q in ipairs(hub.quests or {}) do
+        ns.PlannerYield()
+        if q.elite then sum = sum + 1 end
+        if ns.PlannerIsEscort(q) then sum = sum + 0.5 end
+        for _, o in ipairs(q.objectives or {}) do
+            if o.kind == "kill" and (tonumber(o.mobLevel) or 0) >= level + ns.PLANNER_DANGER_LEVELS then sum = sum + 0.5 end
+        end
+    end
+    if type(ctx.deaths) == "table" and ns.PlannerSpotPos then
+        local hc, hx, hy = ns.PlannerSpotPos(hub)
+        for _, d in ipairs(ctx.deaths) do
+            ns.PlannerYield()
+            if type(d) == "table" and (tonumber(d.level) or 0) >= level - ns.PLANNER_DEATH_LEVELS and (tonumber(d.level) or 0) <= level then
+                local dc, dx, dy = ns.PlannerSpotPos(d)          -- (a death's place is worked out once, not per hub per round)
+                if hc and dc == hc then
+                    local ddx, ddy = dx - hx, dy - hy
+                    if ddx * ddx + ddy * ddy <= (ns.PLANNER_HUB_YARDS or 150) ^ 2 then sum = sum + 1 end
+                end
+            end
+        end
+    end
+    return min(1, sum / 2)
+end
+
+-- "context": the weights, and with story at 100 a lower end of the window for chains.
+local function ContextStyle(ctx)
+    local speed, safety, story = ns.PlannerWeights()
+    ctx.weights = { speed = speed, safety = safety, story = story }
+    local level = tonumber(ctx.level) or 1
+    if story >= FULL then ctx.windowLo = min(tonumber(ctx.windowLo) or (level - 4), level - 10) end
+end
+
+-- "window": with story at 100, a quest of a chain may be up to 10 levels below you.
+local function WindowStyle(rec, ctx, lo, hi)
+    local w = type(ctx) == "table" and ctx.weights
+    if type(w) == "table" and (tonumber(w.story) or 0) >= FULL and type(rec) == "table"
+        and (rec.nextQuest or (type(rec.pre) == "table" and #rec.pre > 0)) then
+        return min(lo, (tonumber(ctx.level) or 1) - 10), hi
+    end
+    return lo, hi
+end
+
+-- "rank": score = S x rate / best rate + T x story - F x danger, never below 0 (an unreachable hub stays out);
+-- hubs at 0 keep the order of their rates (a millionth of rate / best rate).
+local chainCache = setmetatable({}, { __mode = "k" })
+local function RankStyle(ranked, c, info)
+    local w = c.weights
+    if type(w) ~= "table" then return end
+    local S, F, T = (tonumber(w.speed) or 100) / 100, (tonumber(w.safety) or 0) / 100, (tonumber(w.story) or 0) / 100
+    if S == 1 and F == 0 and T == 0 then return end
+    local chains = chainCache[c]
+    if not chains then
+        local seen, quests = {}, {}
+        for _, e in ipairs(ranked) do
+            if not e.lead and type(e.hub) == "table" then
+                for _, q in ipairs(e.hub.quests or {}) do
+                    if not seen[q.id] then seen[q.id] = true; quests[#quests + 1] = q end
+                end
+            end
+        end
+        chains = ns.PlannerChains(quests)
+        chainCache[c] = chains
+    end
+    local best = 0
+    for _, e in ipairs(ranked) do
+        if (tonumber(e.score) or -1) >= 0 and (tonumber(e.rate) or -1) >= 0 and e.rate > best then best = e.rate end
+    end
+    for _, e in ipairs(ranked) do
+        ns.PlannerYield()
+        if (tonumber(e.score) or -1) >= 0 and (tonumber(e.rate) or -1) >= 0 then
+            local story, safety = T * ns.PlannerStoryScore(e.hub, chains), F * ns.PlannerDanger(e.hub, c)
+            local score = (best > 0 and S * e.rate / best or 0) + story - safety
+            e.score = score > 0 and score or 1e-6 * (best > 0 and e.rate / best or 0)
+            e.parts = { story = floor(story * 1000 + 0.5) / 1000, safety = floor(safety * 1000 + 0.5) / 1000 }   -- (for "Why this?")
+        end
+    end
+end
+
+-- The panel says which style is on whenever the weights change the route (anything but 100/0/0): "Style:
+-- Speed" too, with a safety above 0. The name is the Guide tab's (ns.PlannerStyle: the sliders name it by
+-- ns.PlannerStyleOf; the picker's own choice, Custom too, stands until a slider moves).
+local function StyleLine()
+    if not On() then return nil end
+    local speed, safety, story = ns.PlannerWeights()
+    local style = ns.PlannerStyle()
+    if speed == FULL and safety == 0 and story == 0 and style == "speed" then return nil end   -- ("Custom" picked at 100/0/0 still says so)
+    return format(ns:Tr("Style: %s"), ns:Tr((style == "story" and "Story") or (style == "speed" and "Speed") or "Custom"))
+end
+
+------------------------------------------------------------------------------------------
+-- What is registered: the panel's entries; a planner hook only while its feature is in use.
+-- The time limit and the style share one "context" and one "rank" hook ("pace"), so the order is always the
+-- same whatever was turned on first: the time cut, then the style (which works out its best rate over the hubs
+-- the time left in).
+------------------------------------------------------------------------------------------
+-- The two flags are frozen into the plan's context when it starts (ctx.paceTimed, ctx.paceStyled): a time
+-- limit set or cleared, or a slider moved, mid-run changes the next plan, never the one running.
+local paceTimed, paceStyled = false, false
+local function ContextPace(ctx)
+    ctx.paceTimed, ctx.paceStyled = paceTimed, paceStyled
+    if ctx.paceTimed then ContextTime(ctx) end
+    if ctx.paceStyled then ContextStyle(ctx) end
+end
+local function RankPace(ranked, c, info)
+    local timed, styled = paceTimed, paceStyled
+    if type(c) == "table" and c.paceTimed ~= nil then timed, styled = c.paceTimed, c.paceStyled end
+    if timed then RankTime(ranked, c, info) end
+    if styled then RankStyle(ranked, c, info) end
+end
+ns.PlannerPaceHooks = { time = { context = ContextTime, rank = RankTime, route = RouteTime },
+                          style = { context = ContextStyle, window = WindowStyle, rank = RankStyle },
+                          pace = { context = ContextPace, rank = RankPace } }
+Sync = function()
+    ns.GuideRegisterCommand("plan", ns.PlannerPlanCommand)
+    ns.GuideRegisterAdvance("paceStop", AdvanceStop)
+    ns.GuideRegisterAdvance("paceBreak", AdvanceBreak)
+    ns.GuideRegisterLine("paceBreak", BreakLine)
+    ns.GuideRegisterLine("paceStyle", StyleLine)
+    ns.GuideRegisterAction("panel", "paceTime", "How long can you play?", OpenTimeList)
+    ns.GuideRegisterAction("panel", "paceKeep", "Keep playing (no time limit)", KeepPlaying, TimeUp)
+    local rec = Rec(false)
+    if rec and tonumber(rec.playUntil) and not ns.PlannerTimeLeft() then rec.playUntil = nil end   -- (ran out long ago: forgotten)
+    local timed = rec and tonumber(rec.playUntil) and true or false
+    local speed, safety, story = ns.PlannerWeights()
+    local styled = not (speed == FULL and safety == 0 and story == 0)
+    paceTimed, paceStyled = timed, styled                -- (a hook already there only gets its fn again: nothing is made)
+    local on = timed or styled
+    ns.PlannerHook("context", "pace", on and ContextPace or nil)
+    ns.PlannerHook("rank", "pace", on and RankPace or nil)
+    ns.PlannerHook("route", "paceTime", timed and RouteTime or nil)
+    ns.PlannerHook("window", "paceStyle", styled and WindowStyle or nil)
+end
+ns.PlannerPaceSync = function() Sync() end
+ns.FolderFileDone("planner", "PlannerPace.lua")

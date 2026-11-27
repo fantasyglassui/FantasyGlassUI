@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="de" data-lang="de" data-page="guide-and-gold/first-scan">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dein erster Preisscan · Fantasy Glass UI</title>
+<meta name="description" content="Lies mit „Preise scannen“ alle Auktionen auf einmal, damit Tooltips, Verkaufstipps und Gold-Ideen Preise haben.">
+<link rel="canonical" href="https://fantasyglassui.com/de/guide-and-gold/first-scan/">
+<link rel="alternate" hreflang="en" href="https://fantasyglassui.com/guide-and-gold/first-scan/">
+<link rel="alternate" hreflang="de" href="https://fantasyglassui.com/de/guide-and-gold/first-scan/">
+<link rel="alternate" hreflang="fr" href="https://fantasyglassui.com/fr/guide-and-gold/first-scan/">
+<link rel="alternate" hreflang="es" href="https://fantasyglassui.com/es/guide-and-gold/first-scan/">
+<link rel="alternate" hreflang="ru" href="https://fantasyglassui.com/ru/guide-and-gold/first-scan/">
+<link rel="alternate" hreflang="pt" href="https://fantasyglassui.com/pt/guide-and-gold/first-scan/">
+<link rel="alternate" hreflang="it" href="https://fantasyglassui.com/it/guide-and-gold/first-scan/">
+<link rel="alternate" hreflang="ko" href="https://fantasyglassui.com/ko/guide-and-gold/first-scan/">
+<link rel="alternate" hreflang="zh-Hans" href="https://fantasyglassui.com/zh/guide-and-gold/first-scan/">
+<link rel="alternate" hreflang="x-default" href="https://fantasyglassui.com/guide-and-gold/first-scan/">
+<link rel="icon" type="image/png" href="/icon.png">
+<link rel="alternate" type="application/rss+xml" title="Fantasy Glass UI releases" href="/feed.xml">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Fantasy Glass UI">
+<meta property="og:locale" content="de_DE">
+<meta property="og:locale:alternate" content="en_US">
+<meta property="og:locale:alternate" content="fr_FR">
+<meta property="og:locale:alternate" content="es_ES">
+<meta property="og:locale:alternate" content="ru_RU">
+<meta property="og:locale:alternate" content="pt_BR">
+<meta property="og:locale:alternate" content="it_IT">
+<meta property="og:locale:alternate" content="ko_KR">
+<meta property="og:locale:alternate" content="zh_CN">
+<meta property="og:title" content="Dein erster Preisscan · Fantasy Glass UI">
+<meta property="og:description" content="Lies mit „Preise scannen“ alle Auktionen auf einmal, damit Tooltips, Verkaufstipps und Gold-Ideen Preise haben.">
+<meta property="og:url" content="https://fantasyglassui.com/de/guide-and-gold/first-scan/">
+<meta property="og:image" content="https://fantasyglassui.com/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Fantasy Glass UI">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Dein erster Preisscan · Fantasy Glass UI">
+<meta name="twitter:description" content="Lies mit „Preise scannen“ alle Auktionen auf einmal, damit Tooltips, Verkaufstipps und Gold-Ideen Preise haben.">
+<meta name="twitter:image" content="https://fantasyglassui.com/og.jpg">
+<meta name="theme-color" content="#12141a" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4f5f8" media="(prefers-color-scheme: light)">
+<script>(function(){var d=document.documentElement;d.classList.add("js");try{var t=localStorage.getItem("fg-theme");if(t==="light"||t==="dark")d.setAttribute("data-theme",t)}catch(e){}var here="de",page="guide-and-gold/first-scan/",to=here,q=location.search,h=location.hash;var m=/[?&]lang=([a-z]{2})\b/.exec(q);if(m){to=m[1];q=q.replace(/([?&])lang=[a-z]{2}&?/,"$1").replace(/[?&]$/,"")}else if(here==="en"){var c=null;try{c=localStorage.getItem("fg-lang")}catch(e){}if(!c)c=String(navigator.language||"en").slice(0,2).toLowerCase();to=c}if(["en", "de", "fr", "es", "ru", "pt", "it", "ko", "zh"].indexOf(to)<0)to=here;var u=(to==="en"?"/":"/"+to+"/")+page;if(u!==location.pathname||q!==location.search)location.replace(u+q+h)})();</script>
+<link rel="preload" href="/fonts/marcellus-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/source-sans-3-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/site.css?v=9495293704">
+<style>
+/* A how-to page of Guide and Gold (the same file in each of the five how-to folders). */
+.crumbs { padding-top: 28px; font-size: .95rem; color: var(--faint); }
+.crumbs a { color: var(--frost); }
+.crumbs + .page-head { padding-top: 14px; }
+.howto { padding-block: 24px 8px; }
+ol.steps { list-style: none; counter-reset: step; margin: 0; padding: 0; }
+ol.steps > li { counter-increment: step; position: relative; padding: 0 0 26px 64px; }
+ol.steps > li::before { content: counter(step); position: absolute; left: 0; top: -2px; width: 44px; height: 44px; display: grid; place-items: center;
+  font: 400 1.35rem/1 var(--display); color: var(--gold); border: 1px solid var(--gold);
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); }
+ol.steps > li:not(:last-child)::after { content: ""; position: absolute; left: 22px; top: 50px; bottom: 8px; width: 1px; background: var(--rule); }
+ol.steps h2 { font-size: 1.45rem; margin: 6px 0 8px; }
+ol.steps p { color: var(--dim); margin: 0; max-width: 68ch; }
+dl.terms { margin: 0; display: grid; gap: 16px; }
+dl.terms > div { padding: 18px 22px; border: 1px solid var(--line); }
+dl.terms dt { display: flex; align-items: center; gap: 12px; font: 400 1.45rem/1.2 var(--display); margin-bottom: 6px; }
+dl.terms dd { margin: 0; color: var(--dim); }
+dl.terms .eg { display: block; margin-top: 8px; color: var(--text); font-size: .95rem; }
+.sq { display: inline-block; width: 16px; height: 16px; flex: none; }
+.sq.sell { background: rgb(77, 217, 102); }
+.sq.hold { background: rgb(255, 179, 51); }
+.sq.vendor { background: rgb(153, 153, 153); }
+.tips { margin: 20px 0 0; }
+.tips h2 { font-size: 1.45rem; margin-bottom: 12px; }
+.tips ul { margin: 0; padding-left: 1.2em; }
+.tips li { color: var(--dim); margin: 0 0 10px; }
+.tips li::marker { color: var(--gold); }
+.next-howto { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; margin: 34px 0 0; padding-top: 20px; border-top: 1px solid var(--rule); }
+.next-howto a { display: inline-flex; flex-direction: column; gap: 2px; min-height: 44px; text-decoration: none; }
+.next-howto a span { color: var(--faint); font-size: .85rem; }
+.next-howto a b { font-weight: 600; }
+.next-howto a:last-child { text-align: right; margin-left: auto; }
+@media (max-width: 560px) { ol.steps > li { padding-left: 56px; } ol.steps > li::before { width: 40px; height: 40px; } ol.steps > li:not(:last-child)::after { left: 20px; } }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Zum Inhalt springen</a>
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="/de/"><img src="/logo-64.webp" alt="" width="32" height="32">Fantasy Glass UI</a>
+    <nav class="site-nav" id="site-nav" aria-label="Seiten">
+      <ul><li><a href="/de/">Start</a></li><li><a href="/de/features/">Funktionen</a></li><li><a href="/de/themes/">Themen</a></li><li><a href="/de/guide-and-gold/">Anleitung und Gold</a></li><li><a href="/de/get-started/">Loslegen</a></li><li><a href="/de/changelog/">Änderungen</a></li><li><a href="/de/roadmap/">Roadmap</a></li></ul>
+      <div class="head-tools">
+        <label class="lang"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span class="sr-only">Sprache</span><select id="lang"><option value="/guide-and-gold/first-scan/" data-code="en" lang="en">English</option><option value="/de/guide-and-gold/first-scan/" data-code="de" lang="de" selected>Deutsch</option><option value="/fr/guide-and-gold/first-scan/" data-code="fr" lang="fr">Français</option><option value="/es/guide-and-gold/first-scan/" data-code="es" lang="es">Español</option><option value="/ru/guide-and-gold/first-scan/" data-code="ru" lang="ru">Русский</option><option value="/pt/guide-and-gold/first-scan/" data-code="pt" lang="pt">Português</option><option value="/it/guide-and-gold/first-scan/" data-code="it" lang="it">Italiano</option><option value="/ko/guide-and-gold/first-scan/" data-code="ko" lang="ko">한국어</option><option value="/zh/guide-and-gold/first-scan/" data-code="zh" lang="zh-Hans">中文</option></select></label>
+        <button class="icon-btn mode" id="mode" type="button" aria-pressed="true" title="Dunkler Modus"><span class="sr-only">Dunkler Modus</span><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M5.3 18.7 7 17M17 7l1.7-1.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      </div>
+    </nav>
+    <a class="btn small head-dl" href="https://www.curseforge.com/wow/addons/fantasy-glass-ui">Download</a>
+    <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav"><span class="sr-only">Menü</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    <button class="chip wearing" id="unwear" type="button" hidden>Du trägst <b id="wearname"></b>: zurück zu den Farben der Seite</button>
+  </div>
+</header>
+<main id="main" tabindex="-1">
+<!-- Guide and Gold, how-to 4 (W3): your first price scan (FantasyGlassUI/PriceScan.lua, Prices.lua). -->
+<nav class="wrap narrow crumbs" aria-label="Du bist hier"><a href="/de/guide-and-gold/">Anleitung und Gold</a> › Anleitungen</nav>
+<div class="wrap narrow page-head">
+  <span class="eyebrow">Anleitung 4</span>
+  <h1>Dein erster Preisscan</h1>
+  <p class="lede">Lies mit „Preise scannen“ alle Auktionen auf einmal, damit Tooltips, Verkaufstipps und Gold-Ideen Preise haben.</p>
+</div>
+<div class="wrap narrow howto">
+  <ol class="steps">
+    <li><h2>Öffne das Auktionshaus</h2><p>Sprich mit einem Auktionator.</p></li>
+    <li><h2>Drück „Preise scannen“</h2><p>Der Knopf sitzt neben „Lohnt den Verkauf“ im Auktionshaus. Er liest alle Auktionen dort auf einmal.</p></li>
+    <li><h2>Lass es lesen</h2><p>Der Knopf zeigt, wie weit er ist. Er liest in kleinen Stücken, damit das Spiel flüssig bleibt, und pausiert im Kampf und macht danach weiter.</p></li>
+    <li><h2>Sieh dir die Preise an</h2><p>Die Tooltips der Gegenstände zeigen jetzt den Auktionspreis und wie frisch er ist. Nach ein paar Tagen mit Preisen kommen auch die Verkaufstipps.</p></li>
+    <li><h2>Schau dir die Gold-Ideen an</h2><p>Neben dem Auktionshaus zeigt „Gold-Ideen hier“, was sich dort lohnt, nach den gerade gelesenen Preisen.</p></li>
+  </ol>
+  <aside class="card filled tips" aria-labelledby="h-tips">
+    <h2 id="h-tips">Gut zu wissen</h2>
+    <ul>
+      <li>Das Auktionshaus erlaubt etwa alle 15 Minuten einen vollen Scan, geteilt von allen Add-ons. Der Knopf zählt bis zum nächsten herunter.</li>
+      <li>Preise werden für jeden Realm und jede Fraktion getrennt gespeichert.</li>
+      <li>Auch einen vollen Scan, den ein anderes Add-on wie Auctionator startet, liest es mit. Hat Fantasy Glass UI für einen Gegenstand keinen Preis, kann der Tooltip den von Auctionator oder TSM zeigen.</li>
+      <li>„Preise scannen“ stellt nie ein, kauft nie und bietet nie.</li>
+      <li>Die Einstellungen findest du unter Taschen und Gegenstände › Auktion und Handel.</li>
+    </ul>
+  </aside>
+  <nav class="next-howto" aria-label="Weitere Anleitungen">
+    <a href="/de/guide-and-gold/phone/"><span>Vorige Seite</span><b>Die Planseite auf dem Handy</b></a>
+    <a href="/de/guide-and-gold/sell-hints/"><span>Nächste Seite</span><b>Die Verkaufstipps lesen</b></a>
+  </nav>
+</div>
+</main>
+<footer class="site-foot">
+  <div class="wrap">
+    <div class="foot-row">
+      <span>Fantasy Glass UI von DustyMouse. Kostenlos, für WoW Forever.</span>
+      <ul>
+        <li><a href="https://www.curseforge.com/wow/addons/fantasy-glass-ui">CurseForge</a></li>
+        <li><a href="https://discord.gg/qeSMwQWyPR">Discord</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI">GitHub</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/wiki">Wiki</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/issues/new/choose">Fehler melden</a></li>
+        <li><a href="/de/accessibility/">Barrierefreiheit</a></li>
+        <li><a href="/de/press/">Pressemappe</a></li>
+        <li><a href="/feed.xml" type="application/rss+xml">RSS</a></li>
+      </ul>
+    </div>
+    <div class="foot-row">
+      <span>Kontakt: <a href="mailto:email-forwarding@fantasyglassui.com">email-forwarding@fantasyglassui.com</a></span>
+      <p class="status"><span>Version <b>13.0.0</b></span><span class="sep" aria-hidden="true">·</span><span>Aktualisiert am <time datetime="2026-11-26">2026-11-26</time></span><span class="sep" aria-hidden="true">·</span><span>Geprüft mit WoW: Forever <b>1.60.1 (70938)</b></span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">Quellcode</a></span></p>
+    </div>
+    <nav class="foot-row foot-langs" aria-label="Sprache"><ul><li><a href="/guide-and-gold/first-scan/" hreflang="en" lang="en" data-code="en">English</a></li><li><a href="/de/guide-and-gold/first-scan/" hreflang="de" lang="de" data-code="de" aria-current="true">Deutsch</a></li><li><a href="/fr/guide-and-gold/first-scan/" hreflang="fr" lang="fr" data-code="fr">Français</a></li><li><a href="/es/guide-and-gold/first-scan/" hreflang="es" lang="es" data-code="es">Español</a></li><li><a href="/ru/guide-and-gold/first-scan/" hreflang="ru" lang="ru" data-code="ru">Русский</a></li><li><a href="/pt/guide-and-gold/first-scan/" hreflang="pt" lang="pt" data-code="pt">Português</a></li><li><a href="/it/guide-and-gold/first-scan/" hreflang="it" lang="it" data-code="it">Italiano</a></li><li><a href="/ko/guide-and-gold/first-scan/" hreflang="ko" lang="ko" data-code="ko">한국어</a></li><li><a href="/zh/guide-and-gold/first-scan/" hreflang="zh-Hans" lang="zh-Hans" data-code="zh">中文</a></li></ul></nav>
+    <p class="trnote">Diese Seite wurde ohne Prüfung durch Muttersprachler übersetzt. Korrekturen sind willkommen.</p>
+  </div>
+</footer>
+<script src="/assets/site.js?v=2dd8abee61" defer></script>
+</body>
+</html>

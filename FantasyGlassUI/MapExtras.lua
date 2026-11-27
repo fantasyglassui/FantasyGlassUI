@@ -23,6 +23,7 @@ function ns.WayArrow(px, py, wx, wy, width, height, facing)
 end
 
 local arrow
+local WAY_NEAR, WAY_ARRIVED, ARRIVED_PULSE = 30, 10, 0.3     -- yards: brighter within, there within; the pulse's seconds
 local function Position(map, unit)
     if not (C_Map and C_Map.GetPlayerMapPosition) then return nil end
     local ok, pos = pcall(C_Map.GetPlayerMapPosition, map, unit)
@@ -36,7 +37,7 @@ ns.MapPosition = Position
 local function MapSize(map)
     if C_Map and C_Map.GetMapWorldSize then
         local ok, w, h = pcall(C_Map.GetMapWorldSize, map)
-        if ok and type(w) == "number" and type(h) == "number" and w > 0 and h > 0 then return w, h end
+        if ok and type(w) == "number" and type(h) == "number" and not Secret(w) and not Secret(h) and w > 0 and h > 0 then return w, h end
     end
     return 1000, 667                                          -- (no size known: the distance is then a rough one)
 end
@@ -64,17 +65,27 @@ function ns:SetWaypoint(x, y, label, onMap, quiet)
     end
     if not arrow then
         arrow = CreateFrame("Frame", "FantasyGlassUIWaypoint", UIParent)
-        arrow:SetSize(120, 62)
-        arrow:SetPoint("TOP", UIParent, "TOP", 0, -210)
+        arrow:SetSize(240, 66)
+        arrow:SetPoint("TOP", UIParent, "TOP", 0, -345)           -- (under the stack of toasts, which reaches down to 330)
         arrow.tex = arrow:CreateTexture(nil, "ARTWORK")
         arrow.tex:SetSize(36, 36)
         arrow.tex:SetPoint("TOP")
         arrow.tex:SetTexture("Interface\\Minimap\\MinimapArrow")
+        local pulse = arrow:CreateAnimationGroup()                -- (one short pulse when you arrive)
+        local grow = pulse:CreateAnimation("Scale")
+        if grow.SetScaleFrom then grow:SetScaleFrom(1.35, 1.35); grow:SetScaleTo(1, 1) end
+        grow:SetDuration(ARRIVED_PULSE)
+        if grow.SetSmoothing then grow:SetSmoothing("OUT") end
+        arrow.pulse = pulse
+        -- under the arrow, top to bottom: the distance, then the label, on a dark band so both read over snow or sand
         arrow.text = ns:NewText(arrow, 12, "CENTER")
-        arrow.text:SetPoint("BOTTOM", 0, 12)
+        arrow.text:SetPoint("TOP", arrow.tex, "BOTTOM", 0, -2)
         arrow.name = ns:NewText(arrow, 10, "CENTER")
-        arrow.name:SetPoint("BOTTOM", 0, 0)
-        arrow.name:SetTextColor(0.75, 0.75, 0.75)
+        arrow.name:SetPoint("TOP", arrow.text, "BOTTOM", 0, -1)
+        ns:Paint(arrow.name, "SetTextColor", "dim")
+        arrow.band = arrow:CreateTexture(nil, "BACKGROUND")
+        arrow.band:SetTexture(ns.FLAT)
+        arrow.band:SetPoint("TOP", arrow.text, "TOP", 0, 3)
         arrow:SetScript("OnUpdate", ns:Guard("Waypoint", function(self, elapsed)
             self.wait = (self.wait or 0) + (elapsed or 0)
             if self.wait < 0.05 then return end
@@ -82,23 +93,85 @@ function ns:SetWaypoint(x, y, label, onMap, quiet)
             local w = ns.waypoint
             if not w then self:Hide() return end
             local px, py = Position(w.map, "player")
-            if not px then self.tex:Hide(); self.text:SetText(ns:Tr("another map")); return end
-            local width, height = MapSize(w.map)
+            if not px then                                        -- (on another map: said once, with the map's name)
+                if not w.offMap then
+                    w.offMap, w.shownYards = true, nil
+                    self.tex:Hide()
+                    local name = ns.MapName and ns.MapName(w.map)
+                    self.text:SetText(name and format(ns:Tr("On another map: %s"), name) or ns:Tr("another map"))
+                    pcall(ns.WaypointFit)                         -- (the longer line: the band made wide enough for it)
+                end
+                return
+            end
+            local back = w.offMap                                 -- (back on the map: the band fitted to the yards again)
+            w.offMap = nil
+            if not w.width then w.width, w.height = MapSize(w.map) end   -- (asked once per waypoint)
             local facing = GetPlayerFacing and GetPlayerFacing()
             if type(facing) ~= "number" or Secret(facing) then facing = 0 end
-            local turn, distance = ns.WayArrow(px, py, w.x, w.y, width, height, facing)
-            if distance < 10 and not w.quiet then ns:Print("You have arrived."); ns:ClearWaypoint(true); return end
+            local turn, distance = ns.WayArrow(px, py, w.x, w.y, w.width, w.height, facing)
+            local near = distance <= WAY_NEAR                     -- (the theme's accent, brighter once you are close)
+            if near ~= w.near then w.near = near; ns:Paint(self.tex, "SetVertexColor", "@accent", near and 1 or 0.85) end
+            local now = GetTime and GetTime() or 0
+            -- arrived: one pulse (the guide's waypoint where it counts you there; none at a spot you only pass through)
+            if distance < (w.quiet and ns.GUIDE_NEAR or WAY_ARRIVED) and not w.arrived and not w.passing then
+                w.arrived = true
+                local motion = ns:Motion()
+                if motion and self.pulse then self.pulse:Stop(); self.pulse:Play() end
+                if not w.quiet then ns:Print("You have arrived."); w.leaveAt = now + (motion and ARRIVED_PULSE or 0) end
+            end
+            if w.leaveAt and now >= w.leaveAt then ns:ClearWaypoint(true); return end
             self.tex:Show()
             if self.tex.SetRotation then self.tex:SetRotation(turn) end
-            self.text:SetText(format("%d %s", math.floor((tonumber(distance) or 0) + 0.5), ns:Tr("yd")))
+            local yards = math.floor((tonumber(distance) or 0) + 0.5)
+            if yards ~= w.shownYards then                         -- (only when the number changes)
+                w.shownYards = yards
+                self.text:SetText(format("%d %s", yards, ns:Tr("yd")))
+            end
+            if back then pcall(ns.WaypointFit) end
         end))
+        ns.waypointArrow = arrow
         local entry = ns:RegisterMovable(arrow, "waypoint", "Waypoint")
         if type(entry) == "table" then entry.offPage = true end        -- (scaled from its own right-click menu in move mode)
+        ns:OnTheme(function() if ns.waypoint and arrow:IsShown() then pcall(ns.WaypointFit) end end)
+    end
+    if not arrow.tex.suiPlain then                            -- (the gold arrow made grey once, so the accent tint reads true)
+        arrow.tex.suiPlain = true
+        if arrow.tex.SetDesaturated then pcall(arrow.tex.SetDesaturated, arrow.tex, true) end
     end
     arrow.name:SetText(ns.waypoint.label)
+    arrow.text:SetText("")
+    ns.WaypointFit()
     arrow:Show()
     if not quiet then ns:Print("Waypoint set at %s, %s.", tostring(x), tostring(y)) end
     return true
+end
+-- A text's size on screen, or what `size` points take when the game can't say.
+local function Measure(fs, method, fallback)
+    local ok, v = pcall(fs[method], fs)
+    v = (ok and not Secret(v)) and tonumber(v) or nil
+    return (v and v > 0) and math.ceil(v) or fallback
+end
+-- The label at most 240 wide (cut short with "..."), the band behind both lines, the frame as tall as they are.
+function ns.WaypointFit()
+    if not arrow then return end
+    local scale = tonumber(ns.fontScale) or 1
+    pcall(arrow.name.SetWidth, arrow.name, 0)
+    local nw = Measure(arrow.name, "GetStringWidth", 0)
+    if nw > 240 then arrow.name:SetWidth(240); nw = 240 end
+    local th, nh = Measure(arrow.text, "GetStringHeight", math.ceil(12 * scale)), Measure(arrow.name, "GetStringHeight", math.ceil(10 * scale))
+    local tw = Measure(arrow.text, "GetStringWidth", 0)     -- (the top line: the yards, or "On another map: …", which is longer)
+    if nw == 0 then nh = 0 end
+    arrow.band:SetSize(math.max(nw, tw, math.ceil(70 * scale)) + 16, th + 1 + nh + 6)
+    arrow.band:SetVertexColor(0, 0, 0, (ns.db and ns.db.textBands) and 0.72 or 0.55)   -- (stronger with "Dark band behind messages")
+    arrow:SetHeight(36 + 2 + th + 1 + nh + 4)
+end
+-- A map's name, or nil.
+function ns.MapName(map)
+    if type(map) ~= "number" or not (C_Map and C_Map.GetMapInfo) then return nil end
+    local ok, info = pcall(C_Map.GetMapInfo, map)
+    local name = ok and type(info) == "table" and info.name
+    if type(name) == "string" and not Secret(name) and name ~= "" then return name end
+    return nil
 end
 function ns:WayCommand(text)
     if ns.Trim(text) == "" then
@@ -133,7 +206,9 @@ ns:NewModule("flightTimer", function()
     local function Chosen(index)
         if type(index) ~= "number" or not (TaxiNodeName and NumTaxiNodes and TaxiNodeGetType) then return end
         local from
-        for i = 1, tonumber(NumTaxiNodes()) or 0 do if ns.Is(TaxiNodeGetType(i), "CURRENT") then from = TaxiNodeName(i) end end
+        local count = NumTaxiNodes()
+        count = (type(count) == "number" and not Secret(count)) and count or 0
+        for i = 1, count do if ns.Is(TaxiNodeGetType(i), "CURRENT") then from = TaxiNodeName(i) end end
         local to = TaxiNodeName(index)
         if type(to) ~= "string" or Secret(to) then return end
         if type(from) ~= "string" or Secret(from) then from = "?" end
@@ -324,11 +399,13 @@ end)
 ------------------------------------------------------------------------------------------
 -- Minimap: right-click for the tracking menu, and the name of whoever pinged it.
 ------------------------------------------------------------------------------------------
+-- The game's newer menu (a tracking button with OpenMenu, as WoW Forever's has: MiniMapTrackingButtonMixin with its
+-- menu descriptions) is opened when it is there. A client without it keeps what this did before: its button is clicked.
 function ns:OpenTrackingMenu()
     local cluster = _G.MinimapCluster
     local button = cluster and ((cluster.Tracking and cluster.Tracking.Button) or (cluster.TrackingFrame and cluster.TrackingFrame.Button))
-    if type(button) == "table" and button.OpenMenu then return pcall(button.OpenMenu, button) and "menu" or false end
-    if type(button) == "table" and button.Click then return pcall(button.Click, button) and "click" or false end
+    if type(button) == "table" and type(button.OpenMenu) == "function" then return pcall(button.OpenMenu, button) and "menu" or false end
+    if type(button) == "table" and type(button.Click) == "function" then return pcall(button.Click, button) and "click" or false end
     return false
 end
 ns:NewModule("mapTracking", function()
