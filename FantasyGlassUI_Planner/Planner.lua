@@ -18,6 +18,11 @@ local function Clock()
     local v = debugprofilestop and debugprofilestop()
     return type(v) == "number" and v or 0
 end
+ns.plannerSliceMax = 0                -- the longest slice (ms) since it was last set back to 0: the speed tests read it
+local function SliceDone()
+    local took = Clock() - sliceStart
+    if took > ns.plannerSliceMax then ns.plannerSliceMax = took end
+end
 
 -- Called in the planner's loops: inside the planning coroutine it hands the frame back once this
 -- slice has used its time; anywhere else it does nothing.
@@ -918,6 +923,7 @@ local function RunJob()
     end
     sliceStart = Clock()
     local ok, err = coroutine.resume(job)
+    SliceDone()
     if not ok then
         if #ns.errors < 60 then ns.errors[#ns.errors + 1] = "Planner job: " .. tostring(err) end
         job, ns.plannerJobKey = nil, nil
@@ -978,6 +984,7 @@ local function Tick()
     sliceStart = Clock()
     ns.plannerSteps = ns.plannerSteps + 1
     local ok, guide, summary, ctx = coroutine.resume(running)
+    SliceDone()
     if ok and coroutine.status(running) ~= "dead" then return end
     running, ns.plannerBusy, planToken = nil, false, nil
     if ns.plannerQueued then return end                      -- queued meanwhile: never apply a stale result

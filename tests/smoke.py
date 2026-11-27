@@ -705,6 +705,7 @@ end
 LoadLocalesFolder()                                        -- (the tests use every language; the on-demand load has a test of its own)
 -- The planner's and the gold advisor's folders: loaded once each, on request, in their TOC order, each file with
 -- a private table as in the game (they reach the add-on through _G.FantasyGlassUI).
+local speed = {}                                              -- (13.5 C: times in ms, read by the speed tests at the end)
 local folderLoads, folderLoaded = {}, {}
 local function LoadFolderFiles(name)
     if folderLoaded[name] then return true end
@@ -715,6 +716,20 @@ local function LoadFolderFiles(name)
         if not fn then error(err) end
         local ok, e = pcall(fn, name, {})
         if not ok then out[#out+1] = "LOAD ERROR " .. f .. ": " .. tostring(e) end
+    end
+    -- 13.5 C: the first open of the planner's or the gold window builds it: that one call is timed, then the real function is back.
+    local key = ({ FantasyGlassUI_Planner = "PlannerOpen", FantasyGlassUI_Gold = "GoldOpen" })[name]
+    local fnOpen = key and ns[key]
+    if fnOpen and fnOpen ~= (ns.folderStubs or {})[key] then
+        ns[key] = function(...)
+            ns[key] = fnOpen
+            collectgarbage("stop")
+            local at = os.clock()
+            local r = fnOpen(...)
+            speed[key == "PlannerOpen" and "plannerWindow" or "goldWindow"] = (os.clock() - at) * 1000
+            collectgarbage("restart")
+            return r
+        end
     end
     return true
 end
@@ -739,6 +754,8 @@ local printed = {}
 function ns:PrintRaw(msg) printed[#printed+1] = tostring(msg) end       -- every message ends up here, errors included
 
 if secretMode then env.FantasyGlassUIDB = { profiles = { Default = { actionBars = true, accent = "VIOLET", role = "TANK", pos = { minimap = { "TOPRIGHT", "TOPRIGHT", -30, -30 } } } }, chars = {} } end
+collectgarbage("stop")                                        -- (13.5 C: the timed parts run with no garbage collection: a collection pause is not the add-on's time)
+local speedAt = os.clock()
 ns:InitDB(); ns:ApplyTheme()
 if secretMode then
     local okMig = ns.profile == "Default" and ns.db.accent == "AZURE" and ns.db.theme == "SMOKE" and ns.db.pos.minimap[3] == -30
@@ -751,6 +768,8 @@ for _, m in ipairs(ns.modules) do
     ns.startingModule = nil
     if not ok then out[#out+1] = "MODULE ERROR " .. m.key .. " -> " .. tostring(err) end
 end
+speed.login = (os.clock() - speedAt) * 1000
+collectgarbage("restart")
 -- Everything above ran without the options folder: it must not have been needed, or loaded.
 if ns.optionsLoaded or optionLoads ~= 0 then out[#out+1] = "the options folder was loaded before anything asked for it" end
 if ns.featureGroups or ns.CheckFunctionLine then out[#out+1] = "something from the options folder is in memory at login" end
@@ -758,7 +777,12 @@ for name, stub in pairs(ns.optionsStubs) do
     if ns[name] ~= stub then out[#out+1] = "ns:" .. name .. " should be a stand-in until the options load" end
 end
 -- The first request loads it, once, and the real functions take over.
-ns:ToggleConfig(); ns:ToggleConfig()
+collectgarbage("stop")
+speedAt = os.clock()
+ns:ToggleConfig()
+speed.settings = (os.clock() - speedAt) * 1000
+collectgarbage("restart")                -- (the first open alone: it loads and builds the window)
+ns:ToggleConfig()
 if not ns.optionsLoaded or optionLoads ~= 1 then out[#out+1] = "opening the options should load their folder exactly once (loads: " .. optionLoads .. ")" end
 for name, stub in pairs(ns.optionsStubs) do
     if ns[name] == stub then out[#out+1] = "ns:" .. name .. " was not replaced when the options loaded" end
@@ -26622,6 +26646,168 @@ end
 -- 13.5 B class tests: end
 --
 -- 13.5 C speed tests: begin
+-- 13.5 C speed: every part is timed as CPU time (os.clock) with garbage collection held; a limit is 4 x the slowest of three measured runs, both modes, up to 10 ms (R14).
+local SPEED_LIMITS_MS = {
+    -- (ms of CPU time with garbage collection held; "readable" / "secret" per run, 27 Nov 2026, one measured run each of three)
+    plan = 80,            -- 16.9 / 16.9, 16.3 / 18.1, 16.8 / 16.4: 4 x the slowest 18.1, up to 10
+    questie = 60,         -- 14.0 / 14.4, 14.0 / 14.9, 12.8 / 13.4: 4 x 14.9
+    login = 440,          -- 87.3 / 103.2, 93.8 / 109.1, 92.3 / 100.2: 4 x 109.1
+    plannerWindow = 80,   -- 18.5 / 17.3, 14.5 / 19.7, 18.6 / 10.8: 4 x 19.7
+    goldWindow = 50,      -- 9.2 / 8.1, 12.4 / 8.9, 9.1 / 8.8: 4 x 12.4
+    settings = 490,       -- 116.3 / 111.5, 116.1 / 121.2, 119.3 / 110.6: 4 x 121.2
+}
+local speedMode = secretMode and "secret" or "readable"
+local function speedReport(name, ms)
+    print(string.format("speed (%s): %s %.1f ms (limit %s)", speedMode, name, ms, tostring(SPEED_LIMITS_MS[name])))
+    if not (ms <= SPEED_LIMITS_MS[name]) then
+        error(string.format("%s took %.1f ms, over its limit of %s ms", name, ms, tostring(SPEED_LIMITS_MS[name])), 0)
+    end
+end
+-- A fake Questie of n quests: levels 1 to 60, six maps on two continents (1 to 3 and 4 to 6), a giver and an ender NPC each, one kill objective. No random.
+local function speedQuestie(n)
+    local npcs, quests, pointers = {}, {}, {}
+    for m = 1, 6 do npcs[90000 + m] = { name = "Mob " .. m, minLevel = 1, maxLevel = 60, rank = 0, spawns = { [100 + m] = { { 20, 30 }, { 60, 70 }, { 40, 50 } } } } end
+    for i = 1, n do
+        local map = (i - 1) % 6 + 1
+        local level = 1 + math.floor((i - 1) * 59 / (n - 1))
+        local g, e = 10000 + i * 2, 10001 + i * 2
+        npcs[g] = { name = "Giver " .. i, minLevel = level, maxLevel = level, rank = 0, spawns = { [100 + map] = { { 10 + (i * 7) % 80, 10 + (i * 13) % 80 } } } }
+        npcs[e] = { name = "Ender " .. i, minLevel = level, maxLevel = level, rank = 0, spawns = { [100 + map] = { { 10 + (i * 11) % 80, 10 + (i * 17) % 80 } } } }
+        quests[i] = { name = "Quest " .. i, questLevel = level, level = level, requiredLevel = math.max(1, level - 3), zoneOrSort = 100 + map, specialFlags = 0,
+            startedBy = { { g } }, finishedBy = { { e } }, objectives = { { { 90000 + map, "Mob slain", 0 } } } }
+        pointers[i] = true
+    end
+    return {
+        QuestieDB = { QuestPointers = pointers, NPCPointers = {}, npcFlags = { INNKEEPER = 65536 },
+            IsGroupQuest = function() return false end, GetQuest = function(id) return quests[id] end, IsDoable = function() return true end,
+            QueryQuestSingle = function(id, key) return quests[id] and quests[id][key] end,
+            QueryNPCSingle = function(id, key) return npcs[id] and npcs[id][key] end },
+        QuestXP = { GetQuestLogRewardXP = function() return 300 end },
+        ZoneDB = { GetUiMapIdByAreaId = function(_, area) return area > 100 and area <= 106 and area - 100 or nil end },
+    }
+end
+-- Installs it (and a place to stand on map 1) and hands back what puts everything as it was.
+local function speedWorld(level)
+    local real = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), ql = env.C_QuestLog, level = env.UnitLevel, loaded = env.C_AddOns.IsAddOnLoaded,
+                   meta = rawget(env.C_AddOns, "GetAddOnMetadata"), q = rawget(env, "Questie"), loader = rawget(env, "QuestieLoader"), source = ns.PlannerSource,
+                   here = ns.GuideHere, combat = env.InCombatLockdown }
+    local fakes = speedQuestie(1500)
+    local cm = {}
+    for k, v in pairs(real.map) do cm[k] = v end
+    cm.GetWorldPosFromMapPos = function(map, v) return map <= 3 and 0 or 1, { x = v.x * 1000 + map * 5000, y = v.y * 1000 } end
+    cm.GetBestMapForUnit = function() return 1 end
+    cm.GetPlayerMapPosition = function() return { GetXY = function() return 0.3, 0.4 end } end
+    cm.GetMapInfo = function(map) return { name = "Map " .. tostring(map) } end
+    env.C_Map = cm
+    env.CreateVector2D = function(x, y) return { x = x, y = y } end
+    env.UnitLevel = function() return level end
+    local ql = {}
+    for k, v in pairs(real.ql) do ql[k] = v end
+    ql.IsOnQuest = function() return false end
+    ql.IsQuestFlaggedCompleted = function() return false end
+    ql.GetNumQuestLogEntries = function() return 0 end
+    ql.GetNextWaypoint = function() return 1, 0.31, 0.41 end
+    env.C_QuestLog = ql
+    env.Questie = { API = { isReady = true, RegisterOnReady = function() end } }
+    env.QuestieLoader = { ImportModule = function(_, name) return fakes[name] end }
+    env.C_AddOns.IsAddOnLoaded = function() return true end
+    rawset(env.C_AddOns, "GetAddOnMetadata", function() return ns.PLANNER_CONTRACT end)
+    ns.PlannerSourceReset()
+    return function()
+        collectgarbage("restart")
+        env.C_Map = real.map; rawset(env, "CreateVector2D", real.vec); env.C_QuestLog = real.ql; env.UnitLevel = real.level
+        env.C_AddOns.IsAddOnLoaded = real.loaded; rawset(env.C_AddOns, "GetAddOnMetadata", real.meta)
+        rawset(env, "Questie", real.q); rawset(env, "QuestieLoader", real.loader)
+        ns.PlannerSource = real.source; ns.GuideHere = real.here; env.InCombatLockdown = real.combat
+        ns.PlannerSourceReset()
+    end
+end
+try("13.5 C speed: planning a route", function()
+    local back = speedWorld(20)
+    local ok, err = pcall(function()
+        local ctx = ns.PlannerContext()
+        if type(ctx) ~= "table" or not ctx.source or ctx.source.kind ~= "questie" then error("the context has no Questie source") end
+        collectgarbage("stop")
+        local t = os.clock()
+        local guide, summary = ns.PlannerRoute(ctx)
+        local ms = (os.clock() - t) * 1000
+        collectgarbage("restart")
+        speedReport("plan", ms)
+        if not guide or #guide.steps == 0 or not summary or summary.empty then error("the 1500-quest fixture gave no route") end
+    end)
+    back()
+    if not ok then error(err, 0) end
+end)
+try("13.5 C speed: reading Questie", function()
+    local back = speedWorld(20)
+    local ok, err = pcall(function()
+        ns.PlannerSourceReset()
+        collectgarbage("stop")
+        local t = os.clock()
+        local src = ns.PlannerSource()
+        if not src or src.kind ~= "questie" then error("the Questie source did not come up") end
+        local ids = src.ids()
+        if #ids < 1500 then error("ids: " .. #ids) end
+        local got = 0
+        for _, id in ipairs(ids) do if src.quest(id) then got = got + 1 end end
+        local mapped = 0
+        for map = 1, 6 do mapped = mapped + #src.mapQuests(map) end
+        local ms = (os.clock() - t) * 1000
+        collectgarbage("restart")
+        speedReport("questie", ms)
+        if got < 1400 or mapped ~= 1500 then error("read " .. got .. " records, " .. mapped .. " filed by map") end
+    end)
+    back()
+    if not ok then error(err, 0) end
+end)
+try("13.5 C speed: login with every part on", function() speedReport("login", speed.login) end)
+try("13.5 C speed: the planner window", function() speedReport("plannerWindow", speed.plannerWindow) end)
+try("13.5 C speed: the gold window", function() speedReport("goldWindow", speed.goldWindow) end)
+try("13.5 C speed: the settings window", function() speedReport("settings", speed.settings) end)
+try("13.5 C speed: slices keep to their budget", function()
+    local realClock, realCombat = env.debugprofilestop, env.InCombatLockdown
+    env.debugprofilestop = function() return os.clock() * 1000 end
+    local back = speedWorld(20)
+    local savedRoot = { guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner }
+    collectgarbage("stop")
+    local ok, err = pcall(function()
+        ns.root.guides, ns.root.guideState, ns.root.planner = nil, nil, nil
+        fireEvent("PLAYER_REGEN_ENABLED")
+        local function frame()
+            for i = 1, #handlers do local h = handlers[i]; if h.name == "OnUpdate" then pcall(h.fn, h.self, 0.02) end end
+            runTimers()
+        end
+        -- the planner: following the planned route over the 1500 quests, a frame at a time
+        ns.plannerSliceMax = 0
+        if ns:PlannerStart() ~= true then error("PlannerStart") end
+        local n = 0
+        while (ns.plannerBusy or ns.plannerQueued) and n < 5000 do frame(); n = n + 1 end
+        if ns.plannerBusy or ns.plannerQueued then error("the planner never finished") end
+        print(string.format("speed (%s): plannerSliceMax %.2f ms in %d frames (budget %s)", speedMode, tonumber(ns.plannerSliceMax) or -1, n, tostring(ns.PLANNER_BUDGET_MS)))
+        if not (type(ns.plannerSliceMax) == "number" and ns.plannerSliceMax > 0 and ns.plannerSliceMax <= 3 * ns.PLANNER_BUDGET_MS) then
+            error("the longest planner slice was " .. tostring(ns.plannerSliceMax) .. " ms; the budget is " .. ns.PLANNER_BUDGET_MS)
+        end
+        -- gold: one collect, a slice at a time
+        ns.goldSliceMax = 0
+        local finished = false
+        ns.GoldCollect(nil, function() finished = true end)
+        n = 0
+        while not finished and n < 5000 do
+            if not ns.GoldRunSlice() then break end
+            n = n + 1
+        end
+        if not finished then error("the gold collect never finished") end
+        print(string.format("speed (%s): goldSliceMax %.2f ms in %d slices (budget %s)", speedMode, tonumber(ns.goldSliceMax) or -1, n, tostring(ns.GOLD_BUDGET_MS)))
+        if not (type(ns.goldSliceMax) == "number" and ns.goldSliceMax > 0 and ns.goldSliceMax <= 3 * ns.GOLD_BUDGET_MS) then
+            error("the longest gold slice was " .. tostring(ns.goldSliceMax) .. " ms; the budget is " .. ns.GOLD_BUDGET_MS)
+        end
+    end)
+    collectgarbage("restart")
+    env.debugprofilestop = realClock
+    back()
+    ns.root.guides, ns.root.guideState, ns.root.planner = savedRoot.guides, savedRoot.state, savedRoot.planner
+    if not ok then error(err, 0) end
+end)
 -- 13.5 C speed tests: end
 --
 -- 13.5 D data tests: begin
