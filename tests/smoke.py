@@ -28527,8 +28527,14 @@ local function crashCase(name, on, body)
         local keep = { unit = rawget(env, "UnitName"), realm = rawget(env, "GetRealmName"), guild = rawget(env, "GetGuildInfo"),
                        stack = rawget(env, "debugstack"), time = rawget(env, "time"), chars = ns.root.chars, crashes = ns.root.crashes,
                        switch = ns.db.crashReports, raw = ns.PrintRaw, show = ns.ShowList, text = ns.ShowTextWindow,
-                       scrub = ns.CrashScrub, nerr = #ns.errors }
+                       scrub = ns.CrashScrub, nerr = #ns.errors,
+                       members = rawget(env, "GetNumGroupMembers"), friends = rawget(env, "C_FriendList"), duo = ns.PlannerDuoPartner,
+                       inventory = ns.root.inventory }
         local ctx = { printed = {}, texts = {}, now = 1000 }
+        env.GetNumGroupMembers = function() return 0 end         -- (no group, no friends, no duo partner, no guild bank saved)
+        env.C_FriendList = { GetNumFriends = function() return 0 end }
+        ns.PlannerDuoPartner = nil
+        ns.root.inventory = nil
         env.UnitName = function() return "Mychar" end
         env.GetRealmName = function() return "Mal'Ganis" end
         env.GetGuildInfo = function() return "Night (Watch)", "Member", 3 end
@@ -28550,6 +28556,8 @@ local function crashCase(name, on, body)
         env.UnitName, env.GetRealmName, env.GetGuildInfo, env.debugstack, env.time = keep.unit, keep.realm, keep.guild, keep.stack, keep.time
         ns.root.chars, ns.root.crashes, ns.db.crashReports = keep.chars, keep.crashes, keep.switch
         ns.PrintRaw, ns.ShowList, ns.ShowTextWindow, ns.CrashScrub = keep.raw, keep.show, keep.text, keep.scrub
+        rawset(env, "GetNumGroupMembers", keep.members); rawset(env, "C_FriendList", keep.friends)
+        ns.PlannerDuoPartner, ns.root.inventory = keep.duo, keep.inventory
         if ctx.realRefresh then ns.optUI.RefreshAll = ctx.realRefresh end
         for i = #ns.errors, keep.nerr + 1, -1 do table.remove(ns.errors, i) end
         if not fine then error(err, 0) end
@@ -28653,12 +28661,14 @@ crashCase("13.5 G: the scrub", true, function(ctx)
     local odd = ns.CrashScrub("a" .. string.rep("é", 200))
     ok(#odd == 299 and odd == "a" .. string.rep("é", 149), "cut before a half character: " .. #odd)
     local names = ns.CrashNames()
-    ok(type(names) == "table" and #names == 5, "five names: " .. #names)
+    local listed = {}
+    for _, e in ipairs(names) do listed[#listed + 1] = e[1] end
+    ok(type(names) == "table" and #names == 7, "seven names (each realm also without spaces and apostrophes): " .. table.concat(listed, ", "))
     for i = 2, #names do ok(#names[i - 1][1] >= #names[i][1], "longest first") end
     local seen = {}
     for _, e in ipairs(names) do seen[e[1]] = e[2] end
     ok(seen["Mychar"] == "<name>" and seen["Alt"] == "<name>" and seen["Mal'Ganis"] == "<realm>" and seen["Argent Dawn"] == "<realm>"
-       and seen["Night (Watch)"] == "<guild>", "each name, realm and the guild")
+       and seen["Night (Watch)"] == "<guild>" and seen["MalGanis"] == "<realm>" and seen["ArgentDawn"] == "<realm>", "each name, realm and the guild")
     ok(ns.CrashScrub("Mychar and X", { { "X", "<x>" } }) == "Mychar and <x>", "names given")
     env.GetGuildInfo = function() return nil end
     env.UnitName = function() return "A" end
@@ -28720,7 +28730,7 @@ crashCase("13.5 G: the code and the report", true, function(ctx)
     local text = table.concat(ns:ProblemReport(), "\n")
     ok(text:find("CRASH REPORTS (2)", 1, true), "the heading")
     ok(text:find("  " .. ns.CrashIncluded(), 1, true) and text:find("  " .. code, 1, true), "what is included, and the code")
-    ok(ns.CrashIncluded() == ns:Tr("Each report holds the error's message with paths cut to the add-on's own files, the top lines of where it happened, the add-on's version, the game's build, the part it was in, how often it happened, and when it was first and last seen. No player, character, realm or guild names."), "the sentence")
+    ok(ns.CrashIncluded() == ns:Tr("Each report holds the error's message with paths cut to the add-on's own files, the top lines of where it happened, the add-on's version, the game's build, the part it was in, how often it happened, and when it was first and last seen. Names are removed wherever the add-on can find them. Look over the report before you share it."), "the sentence")
     ns.root.crashes = nil
     text = table.concat(ns:ProblemReport(), "\n")
     ok(text:find("CRASH REPORTS (0)\n  none kept", 1, true), "none and on")
@@ -28817,6 +28827,92 @@ crashCase("13.5 G: the setting", true, function(ctx)
     ns.root.crashes = nil
     ns.db.crashReports = false; row.apply(false)
     ok(ns.db.crashReports == false and refreshed == 1, "none kept: off")
+end)
+
+-- (13.5 part two fixes) The game's other spellings of your names, other players' Name-Realm, and the honest wording.
+local function scrubIs(input, want)
+    local got = ns.CrashScrub(input)
+    ok(got == want, "scrub " .. input .. " -> " .. tostring(got) .. ", wanted " .. want)
+end
+local function withEnv(set, body)                            -- set env values for body, put back after
+    local keep = {}
+    for k, v in pairs(set) do keep[k] = { rawget(env, k) }; env[k] = v end
+    local fine, err = pcall(body)
+    for k, v in pairs(keep) do rawset(env, k, v[1]) end
+    if not fine then error(err, 0) end
+end
+crashCase("13.5 P2-I2: your names in every form the game writes", true, function(ctx)
+    withEnv({ GetNormalizedRealmName = function() return "MalGanis" end }, function()
+        scrubIs("Planner: no route for Mychar-ArgentDawn", "Planner: no route for <name>-<realm>")
+        scrubIs("Mychar-MalGanis and Mychar-Mal'Ganis and Alt-Argent Dawn", "<name>-<realm> and <name>-<realm> and <name>-<realm>")
+        scrubIs("mychar's bags, MYCHAR, mYcHaR", "<name>'s bags, <name>, <name>")
+        scrubIs("argent dawn, ARGENTDAWN, mal'ganis, malganis", "<realm>, <realm>, <realm>, <realm>")
+        scrubIs("night (watch) and NIGHT (WATCH)", "<guild> and <guild>")
+        scrubIs("Mychar-Mal'Ganis of <Night (Watch)>", "<name>-<realm> of <<guild>>")
+        local seen = {}
+        for _, e in ipairs(ns.CrashNames()) do seen[e[1]] = e[2] end
+        ok(seen.MalGanis == "<realm>" and seen.ArgentDawn == "<realm>", "the realms without spaces and apostrophes")
+    end)
+end)
+crashCase("13.5 P2-I3: other players' names", true, function(ctx)
+    withEnv({ C_AutoComplete = { GetAutoCompleteRealms = function() return { "Stormrage", "Area52" } end } }, function()
+        scrubIs("whisper from Bob-Stormrage: bad", "whisper from <name>-<realm>: bad")
+        scrubIs("Duo: bad message from Zoë-Area52", "Duo: bad message from <name>-<realm>")
+        scrubIs("bob-stormrage, Bob-Nowhere", "bob-stormrage, Bob-Nowhere")          -- (not a name the game writes; not a realm it knows)
+        scrubIs("FantasyGlassUI/Bags.lua:3: Player-? and Pet-?", "FantasyGlassUI/Bags.lua:3: Player-? and Pet-?")
+    end)
+    -- no list of realms from the game: any capitalised Word-Word that is not a known token
+    withEnv({ C_AutoComplete = false }, function()
+        scrubIs("from Bob-Nowhere: x", "from <name>-<realm>: x")
+        scrubIs("Skin-Old.lua:3: Player-? Pet-? in-game Mychar", "Skin-Old.lua:3: Player-? Pet-? in-game <name>")
+        scrubIs("Blizzard-Frame, FantasyGlassUI-Beta", "Blizzard-Frame, FantasyGlassUI-Beta")
+    end)
+    -- the group's names, plain
+    withEnv({ UnitName = function(u)
+                  if u == "party1" then return "Kaladin", "Stormrage" end
+                  if u == "player" then return "Mychar" end
+                  return nil
+              end,
+              IsInRaid = function() return false end, GetNumGroupMembers = function() return 2 end }, function()
+        scrubIs("Kaladin pulled", "<name> pulled")
+    end)
+    -- the wording, everywhere it is promised
+    local honest = "Names are removed wherever the add-on can find them. Look over the report before you share it."
+    ok(ns.CrashIncluded():find(ns:Tr(honest), 1, true) and not ns.CrashIncluded():find("No player", 1, true), "the report's sentence: " .. ns.CrashIncluded())
+    ns:LoadOptions()
+    local desc = ns.settingRows.crashReports.desc
+    ok(desc:find(honest, 1, true) and not desc:find("no names", 1, true), "the switch's description: " .. desc)
+    ns.CrashKeep("Bags", "one")
+    ns:CrashCommand("")
+    ctx.list.lines[2].click()
+    ok(ctx.texts[1].text:sub(1, #ns.CrashIncluded()) == ns.CrashIncluded(), "the copied code's header")
+    for _, code in ipairs({ "deDE", "frFR", "esES", "ruRU", "ptBR", "itIT", "koKR", "zhCN" }) do
+        local t = ns.locales[code]
+        ok(t[desc] and t["Each report holds the error's message with paths cut to the add-on's own files, the top lines of where it happened, the add-on's version, the game's build, the part it was in, how often it happened, and when it was first and last seen. " .. honest], "translated in " .. code)
+    end
+    ok(ns.locales.deDE[desc]:find("Sieh dir den Bericht an, bevor du ihn teilst.", 1, true), "German says du")
+end)
+crashCase("13.5 P2-M10: an account folder, a guild not read yet, names that change", true, function(ctx)
+    scrubIs("WTF/Account/MYACCT/SavedVariables/x.lua:3: y", "<path>:3: y")
+    scrubIs("at WTF\\Account\\MYACCT\\x.lua", "at <path>")
+    local inv = ns.root.inventory
+    local fine, err = pcall(function()
+        ns.root.inventory = { guilds = { ["Old Guild - Mal'Ganis"] = { tabs = {} } } }
+        env.GetGuildInfo = function() return nil end
+        scrubIs("Old Guild bank", "<guild> bank")
+        -- a record kept before a name was known is scrubbed again when the names change
+        local r = ns.CrashKeep("Group", "pulled by Kaladin")
+        ok(r and r.msg == "pulled by Kaladin", "kept before the group")
+        withEnv({ UnitName = function(u) if u == "party1" then return "Kaladin" end if u == "player" then return "Mychar" end return nil end,
+                  IsInRaid = function() return false end, GetNumGroupMembers = function() return 2 end }, function()
+            ns.CrashRescrub()                                    -- (what GROUP_ROSTER_UPDATE and the guild and friends events call)
+            ok(list()[1].msg == "pulled by <name>", "scrubbed again: " .. tostring(list()[1].msg))
+            ns.CrashKeep("Group", "pulled by Kaladin")
+            ok(#list() == 1 and list()[1].n == 2, "the same report counted: " .. #list())
+        end)
+    end)
+    ns.root.inventory = inv
+    if not fine then error(err, 0) end
 end)
 end
 -- 13.5 G crashes tests: end

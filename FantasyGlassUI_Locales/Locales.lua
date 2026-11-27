@@ -21,6 +21,8 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["Each error in Fantasy Glass UI is kept on your computer, at most 30, so Report a problem can include them. Names are removed wherever the add-on can find them. Look over the report before you share it. Nothing is sent by itself. Turning it off clears them, after you confirm."] = "Jeder Fehler in Fantasy Glass UI wird auf deinem Computer behalten, höchstens 30, damit Problem melden sie mitschicken kann. Namen werden entfernt, wo immer das Add-on sie finden kann. Sieh dir den Bericht an, bevor du ihn teilst. Nichts wird von selbst gesendet. Wenn du es ausschaltest, werden sie gelöscht, nachdem du bestätigt hast.",
+    ["Each report holds the error's message with paths cut to the add-on's own files, the top lines of where it happened, the add-on's version, the game's build, the part it was in, how often it happened, and when it was first and last seen. Names are removed wherever the add-on can find them. Look over the report before you share it."] = "Jeder Bericht enthält die Meldung des Fehlers, mit Pfaden gekürzt auf die eigenen Dateien des Add-ons, die obersten Zeilen der Stelle, an der er passiert ist, die Version des Add-ons, den Build des Spiels, den Teil, in dem er war, wie oft er passiert ist und wann er zuerst und zuletzt gesehen wurde. Namen werden entfernt, wo immer das Add-on sie finden kann. Sieh dir den Bericht an, bevor du ihn teilst.",
     ["Help improve time estimates"] = "Hilf, die Zeitschätzungen zu verbessern",
     ["Your level, quest, flight and boat times are kept in a list of their own, with no names, at most 500, for Share my times. Nothing is sent by itself."] = "Deine Stufen-, Quest-, Flug- und Schiffszeiten werden in einer eigenen Liste behalten, ohne Namen, höchstens 500, für Meine Zeiten teilen. Nichts wird von selbst gesendet.",
     ["Share my times"] = "Meine Zeiten teilen",
@@ -31,11 +33,9 @@ ns.locales.deDE = {
     ["%d times are kept. Nothing new is kept now."] = "%d Zeiten sind behalten. Ab jetzt wird nichts Neues behalten.",
     ["Clear them (click twice)"] = "Löschen (zweimal klicken)",
     ["Keep crash reports"] = "Absturzberichte behalten",
-    ["Each error in Fantasy Glass UI is kept on your computer, at most 30, with no names, so Report a problem can include them. Nothing is sent by itself. Turning it off clears them, after you confirm."] = "Jeder Fehler in Fantasy Glass UI wird auf deinem Computer behalten, höchstens 30, ohne Namen, damit Problem melden sie mitschicken kann. Nichts wird von selbst gesendet. Wenn du es ausschaltest, werden sie gelöscht, nachdem du bestätigt hast.",
     ["Show crash reports"] = "Absturzberichte zeigen",
     ["The crash reports kept, a code to copy them all, and a way to clear them. Also /fgui crashes."] = "Die behaltenen Absturzberichte, ein Code, um sie alle zu kopieren, und eine Möglichkeit, sie zu löschen. Auch /fgui crashes.",
     ["Help and problems"] = "Hilfe und Probleme",
-    ["Each report holds the error's message with paths cut to the add-on's own files, the top lines of where it happened, the add-on's version, the game's build, the part it was in, how often it happened, and when it was first and last seen. No player, character, realm or guild names."] = "Jeder Bericht enthält die Meldung des Fehlers, mit Pfaden gekürzt auf die eigenen Dateien des Add-ons, die obersten Zeilen der Stelle, an der er passiert ist, die Version des Add-ons, den Build des Spiels, den Teil, in dem er war, wie oft er passiert ist und wann er zuerst und zuletzt gesehen wurde. Keine Namen von Spielern, Charakteren, Realms oder Gilden.",
     ["Keep crash reports is off (Accessibility, Help and problems)."] = "Absturzberichte behalten ist aus (Barrierefreiheit, Hilfe und Probleme).",
     ["Crash reports"] = "Absturzberichte",
     ["Copy them as one code"] = "Alle als einen Code kopieren",
@@ -3952,6 +3952,8 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["Each error in Fantasy Glass UI is kept on your computer, at most 30, so Report a problem can include them. Names are removed wherever the add-on can find them. Look over the report before you share it. Nothing is sent by itself. Turning it off clears them, after you confirm."] = "Chaque erreur de Fantasy Glass UI est conservée sur votre ordinateur, 30 au plus, pour que Signaler un problème puisse les inclure. Les noms sont retirés partout où l'add-on peut les trouver. Relisez le rapport avant de le partager. Rien n'est envoyé tout seul. Le désactiver les efface, après votre confirmation.",
+    ["Each report holds the error's message with paths cut to the add-on's own files, the top lines of where it happened, the add-on's version, the game's build, the part it was in, how often it happened, and when it was first and last seen. Names are removed wherever the add-on can find them. Look over the report before you share it."] = "Chaque rapport contient le message de l'erreur, avec les chemins réduits aux propres fichiers de l'add-on, les premières lignes de l'endroit où elle s'est produite, la version de l'add-on, le build du jeu, la partie concernée, sa fréquence, et quand elle a été vue pour la première et la dernière fois. Les noms sont retirés partout où l'add-on peut les trouver. Relisez le rapport avant de le partager.",
     ["Help improve time estimates"] = "Aider à améliorer les estimations de temps",
     ["Your level, quest, flight and boat times are kept in a list of their own, with no names, at most 500, for Share my times. Nothing is sent by itself."] = "Vos temps de niveau, de quête, de vol et de bateau sont conservés dans une liste à part, sans aucun nom, 500 au plus, pour Partager mes temps. Rien n'est envoyé tout seul.",
     ["Share my times"] = "Partager mes temps",
@@ -3962,11 +3964,9 @@ ns.locales.frFR = {
     ["%d times are kept. Nothing new is kept now."] = "%d temps sont conservés. Plus rien de nouveau n'est conservé désormais.",
     ["Clear them (click twice)"] = "Les effacer (cliquer deux fois)",
     ["Keep crash reports"] = "Conserver les rapports de plantage",
-    ["Each error in Fantasy Glass UI is kept on your computer, at most 30, with no names, so Report a problem can include them. Nothing is sent by itself. Turning it off clears them, after you confirm."] = "Chaque erreur de Fantasy Glass UI est conservée sur votre ordinateur, 30 au plus, sans aucun nom, pour que Signaler un problème puisse les inclure. Rien n'est envoyé tout seul. Le désactiver les efface, après votre confirmation.",
     ["Show crash reports"] = "Afficher les rapports de plantage",
     ["The crash reports kept, a code to copy them all, and a way to clear them. Also /fgui crashes."] = "Les rapports de plantage conservés, un code pour tous les copier, et un moyen de les effacer. Aussi /fgui crashes.",
     ["Help and problems"] = "Aide et problèmes",
-    ["Each report holds the error's message with paths cut to the add-on's own files, the top lines of where it happened, the add-on's version, the game's build, the part it was in, how often it happened, and when it was first and last seen. No player, character, realm or guild names."] = "Chaque rapport contient le message de l'erreur, avec les chemins réduits aux propres fichiers de l'add-on, les premières lignes de l'endroit où elle s'est produite, la version de l'add-on, le build du jeu, la partie concernée, sa fréquence, et quand elle a été vue pour la première et la dernière fois. Aucun nom de joueur, de personnage, de royaume ou de guilde.",
     ["Keep crash reports is off (Accessibility, Help and problems)."] = "Conserver les rapports de plantage est désactivé (Accessibilité, Aide et problèmes).",
     ["Crash reports"] = "Rapports de plantage",
     ["Copy them as one code"] = "Les copier en un seul code",
@@ -7883,6 +7883,8 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["Each error in Fantasy Glass UI is kept on your computer, at most 30, so Report a problem can include them. Names are removed wherever the add-on can find them. Look over the report before you share it. Nothing is sent by itself. Turning it off clears them, after you confirm."] = "Cada error de Fantasy Glass UI se guarda en tu ordenador, como mucho 30, para que Informar de un problema pueda incluirlos. Los nombres se quitan allí donde el accesorio puede encontrarlos. Revisa el informe antes de compartirlo. No se envía nada por sí solo. Al desactivarlo se borran, después de que lo confirmes.",
+    ["Each report holds the error's message with paths cut to the add-on's own files, the top lines of where it happened, the add-on's version, the game's build, the part it was in, how often it happened, and when it was first and last seen. Names are removed wherever the add-on can find them. Look over the report before you share it."] = "Cada informe contiene el mensaje del error, con las rutas recortadas a los propios archivos del accesorio, las primeras líneas de dónde ocurrió, la versión del accesorio, la compilación del juego, la parte en la que estaba, cuántas veces ocurrió y cuándo se vio por primera y última vez. Los nombres se quitan allí donde el accesorio puede encontrarlos. Revisa el informe antes de compartirlo.",
     ["Help improve time estimates"] = "Ayudar a mejorar las estimaciones de tiempo",
     ["Your level, quest, flight and boat times are kept in a list of their own, with no names, at most 500, for Share my times. Nothing is sent by itself."] = "Tus tiempos de nivel, misiones, vuelos y barcos se guardan en una lista aparte, sin nombres, como máximo 500, para Compartir mis tiempos. Nada se envía por sí solo.",
     ["Share my times"] = "Compartir mis tiempos",
@@ -7893,11 +7895,9 @@ ns.locales.esES = {
     ["%d times are kept. Nothing new is kept now."] = "Hay %d tiempos guardados. Ya no se guarda nada nuevo.",
     ["Clear them (click twice)"] = "Borrarlos (haz clic dos veces)",
     ["Keep crash reports"] = "Guardar informes de fallos",
-    ["Each error in Fantasy Glass UI is kept on your computer, at most 30, with no names, so Report a problem can include them. Nothing is sent by itself. Turning it off clears them, after you confirm."] = "Cada error de Fantasy Glass UI se guarda en tu ordenador, como mucho 30, sin nombres, para que Informar de un problema pueda incluirlos. No se envía nada por sí solo. Al desactivarlo se borran, después de que lo confirmes.",
     ["Show crash reports"] = "Mostrar informes de fallos",
     ["The crash reports kept, a code to copy them all, and a way to clear them. Also /fgui crashes."] = "Los informes de fallos guardados, un código para copiarlos todos y una forma de borrarlos. También /fgui crashes.",
     ["Help and problems"] = "Ayuda y problemas",
-    ["Each report holds the error's message with paths cut to the add-on's own files, the top lines of where it happened, the add-on's version, the game's build, the part it was in, how often it happened, and when it was first and last seen. No player, character, realm or guild names."] = "Cada informe contiene el mensaje del error, con las rutas recortadas a los propios archivos del accesorio, las primeras líneas de dónde ocurrió, la versión del accesorio, la compilación del juego, la parte en la que estaba, cuántas veces ocurrió y cuándo se vio por primera y última vez. Ningún nombre de jugador, personaje, reino o hermandad.",
     ["Keep crash reports is off (Accessibility, Help and problems)."] = "Guardar informes de fallos está desactivado (Accesibilidad, Ayuda y problemas).",
     ["Crash reports"] = "Informes de fallos",
     ["Copy them as one code"] = "Copiarlos como un solo código",
@@ -11817,6 +11817,8 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["Each error in Fantasy Glass UI is kept on your computer, at most 30, so Report a problem can include them. Names are removed wherever the add-on can find them. Look over the report before you share it. Nothing is sent by itself. Turning it off clears them, after you confirm."] = "Каждая ошибка Fantasy Glass UI сохраняется на вашем компьютере, не больше 30, чтобы «Сообщить о проблеме» могло их включить. Имена удаляются везде, где аддон может их найти. Просмотрите отчёт, прежде чем делиться им. Ничего не отправляется само. Если выключить, они удаляются после подтверждения.",
+    ["Each report holds the error's message with paths cut to the add-on's own files, the top lines of where it happened, the add-on's version, the game's build, the part it was in, how often it happened, and when it was first and last seen. Names are removed wherever the add-on can find them. Look over the report before you share it."] = "Каждый отчёт содержит сообщение об ошибке с путями, сокращёнными до собственных файлов аддона, верхние строки того места, где она произошла, версию аддона, сборку игры, часть, в которой она была, как часто она случалась и когда её видели впервые и в последний раз. Имена удаляются везде, где аддон может их найти. Просмотрите отчёт, прежде чем делиться им.",
     ["Help improve time estimates"] = "Помочь улучшить оценки времени",
     ["Your level, quest, flight and boat times are kept in a list of their own, with no names, at most 500, for Share my times. Nothing is sent by itself."] = "Ваше время на уровни, задания, полёты и корабли хранится в отдельном списке, без имён, не больше 500, для «Поделиться моим временем». Ничего не отправляется само.",
     ["Share my times"] = "Поделиться моим временем",
@@ -11827,11 +11829,9 @@ ns.locales.ruRU = {
     ["%d times are kept. Nothing new is kept now."] = "Сохранено записей времени: %d. Новое больше не сохраняется.",
     ["Clear them (click twice)"] = "Очистить (нажмите дважды)",
     ["Keep crash reports"] = "Сохранять отчёты о сбоях",
-    ["Each error in Fantasy Glass UI is kept on your computer, at most 30, with no names, so Report a problem can include them. Nothing is sent by itself. Turning it off clears them, after you confirm."] = "Каждая ошибка Fantasy Glass UI сохраняется на вашем компьютере, не больше 30, без имён, чтобы «Сообщить о проблеме» могло их включить. Ничего не отправляется само. Если выключить, они удаляются после подтверждения.",
     ["Show crash reports"] = "Показать отчёты о сбоях",
     ["The crash reports kept, a code to copy them all, and a way to clear them. Also /fgui crashes."] = "Сохранённые отчёты о сбоях, код, чтобы скопировать их все, и способ их удалить. Также /fgui crashes.",
     ["Help and problems"] = "Помощь и проблемы",
-    ["Each report holds the error's message with paths cut to the add-on's own files, the top lines of where it happened, the add-on's version, the game's build, the part it was in, how often it happened, and when it was first and last seen. No player, character, realm or guild names."] = "Каждый отчёт содержит сообщение об ошибке с путями, сокращёнными до собственных файлов аддона, верхние строки того места, где она произошла, версию аддона, сборку игры, часть, в которой она была, как часто она случалась и когда её видели впервые и в последний раз. Никаких имён игроков, персонажей, миров или гильдий.",
     ["Keep crash reports is off (Accessibility, Help and problems)."] = "«Сохранять отчёты о сбоях» выключено («Доступность», «Помощь и проблемы»).",
     ["Crash reports"] = "Отчёты о сбоях",
     ["Copy them as one code"] = "Скопировать их одним кодом",
@@ -15748,6 +15748,8 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["Each error in Fantasy Glass UI is kept on your computer, at most 30, so Report a problem can include them. Names are removed wherever the add-on can find them. Look over the report before you share it. Nothing is sent by itself. Turning it off clears them, after you confirm."] = "Cada erro do Fantasy Glass UI é guardado no seu computador, no máximo 30, para que Relatar um problema possa incluí-los. Os nomes são removidos onde quer que o add-on consiga encontrá-los. Revise o relatório antes de compartilhá-lo. Nada é enviado sozinho. Desligar apaga-os, depois que você confirmar.",
+    ["Each report holds the error's message with paths cut to the add-on's own files, the top lines of where it happened, the add-on's version, the game's build, the part it was in, how often it happened, and when it was first and last seen. Names are removed wherever the add-on can find them. Look over the report before you share it."] = "Cada relatório traz a mensagem do erro, com os caminhos cortados para os próprios arquivos do add-on, as primeiras linhas de onde aconteceu, a versão do add-on, a build do jogo, a parte em que estava, quantas vezes aconteceu e quando foi visto pela primeira e pela última vez. Os nomes são removidos onde quer que o add-on consiga encontrá-los. Revise o relatório antes de compartilhá-lo.",
     ["Help improve time estimates"] = "Ajudar a melhorar as estimativas de tempo",
     ["Your level, quest, flight and boat times are kept in a list of their own, with no names, at most 500, for Share my times. Nothing is sent by itself."] = "Seus tempos de nível, missão, voo e barco são guardados numa lista à parte, sem nomes, no máximo 500, para Compartilhar meus tempos. Nada é enviado sozinho.",
     ["Share my times"] = "Compartilhar meus tempos",
@@ -15758,11 +15760,9 @@ ns.locales.ptBR = {
     ["%d times are kept. Nothing new is kept now."] = "%d tempos estão guardados. Nada novo é guardado agora.",
     ["Clear them (click twice)"] = "Apagá-los (clique duas vezes)",
     ["Keep crash reports"] = "Guardar relatórios de falhas",
-    ["Each error in Fantasy Glass UI is kept on your computer, at most 30, with no names, so Report a problem can include them. Nothing is sent by itself. Turning it off clears them, after you confirm."] = "Cada erro do Fantasy Glass UI é guardado no seu computador, no máximo 30, sem nomes, para que Relatar um problema possa incluí-los. Nada é enviado sozinho. Desligar apaga-os, depois que você confirmar.",
     ["Show crash reports"] = "Mostrar relatórios de falhas",
     ["The crash reports kept, a code to copy them all, and a way to clear them. Also /fgui crashes."] = "Os relatórios de falhas guardados, um código para copiar todos e um jeito de apagá-los. Também /fgui crashes.",
     ["Help and problems"] = "Ajuda e problemas",
-    ["Each report holds the error's message with paths cut to the add-on's own files, the top lines of where it happened, the add-on's version, the game's build, the part it was in, how often it happened, and when it was first and last seen. No player, character, realm or guild names."] = "Cada relatório traz a mensagem do erro, com os caminhos cortados para os próprios arquivos do add-on, as primeiras linhas de onde aconteceu, a versão do add-on, a build do jogo, a parte em que estava, quantas vezes aconteceu e quando foi visto pela primeira e pela última vez. Nenhum nome de jogador, personagem, reino ou guilda.",
     ["Keep crash reports is off (Accessibility, Help and problems)."] = "Guardar relatórios de falhas está desligado (Acessibilidade, Ajuda e problemas).",
     ["Crash reports"] = "Relatórios de falhas",
     ["Copy them as one code"] = "Copiar todos como um código",
@@ -19679,6 +19679,8 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["Each error in Fantasy Glass UI is kept on your computer, at most 30, so Report a problem can include them. Names are removed wherever the add-on can find them. Look over the report before you share it. Nothing is sent by itself. Turning it off clears them, after you confirm."] = "Ogni errore di Fantasy Glass UI viene conservato sul tuo computer, al massimo 30, così Segnala un problema può includerli. I nomi vengono tolti ovunque l'add-on riesca a trovarli. Controlla il rapporto prima di condividerlo. Niente viene inviato da solo. Spegnerlo li cancella, dopo che hai confermato.",
+    ["Each report holds the error's message with paths cut to the add-on's own files, the top lines of where it happened, the add-on's version, the game's build, the part it was in, how often it happened, and when it was first and last seen. Names are removed wherever the add-on can find them. Look over the report before you share it."] = "Ogni rapporto contiene il messaggio dell'errore, con i percorsi ridotti ai file dell'add-on stesso, le prime righe del punto in cui è successo, la versione dell'add-on, la build del gioco, la parte in cui era, quante volte è successo e quando è stato visto la prima e l'ultima volta. I nomi vengono tolti ovunque l'add-on riesca a trovarli. Controlla il rapporto prima di condividerlo.",
     ["Help improve time estimates"] = "Aiuta a migliorare le stime dei tempi",
     ["Your level, quest, flight and boat times are kept in a list of their own, with no names, at most 500, for Share my times. Nothing is sent by itself."] = "I tuoi tempi di livello, missione, volo e nave vengono conservati in un elenco a parte, senza nomi, al massimo 500, per Condividi i miei tempi. Niente viene inviato da solo.",
     ["Share my times"] = "Condividi i miei tempi",
@@ -19689,11 +19691,9 @@ ns.locales.itIT = {
     ["%d times are kept. Nothing new is kept now."] = "%d tempi sono conservati. Ora non viene conservato niente di nuovo.",
     ["Clear them (click twice)"] = "Cancellali (fai clic due volte)",
     ["Keep crash reports"] = "Conserva i rapporti sui crash",
-    ["Each error in Fantasy Glass UI is kept on your computer, at most 30, with no names, so Report a problem can include them. Nothing is sent by itself. Turning it off clears them, after you confirm."] = "Ogni errore di Fantasy Glass UI viene conservato sul tuo computer, al massimo 30, senza nomi, così Segnala un problema può includerli. Niente viene inviato da solo. Spegnerlo li cancella, dopo che hai confermato.",
     ["Show crash reports"] = "Mostra i rapporti sui crash",
     ["The crash reports kept, a code to copy them all, and a way to clear them. Also /fgui crashes."] = "I rapporti sui crash conservati, un codice per copiarli tutti e un modo per cancellarli. Anche /fgui crashes.",
     ["Help and problems"] = "Aiuto e problemi",
-    ["Each report holds the error's message with paths cut to the add-on's own files, the top lines of where it happened, the add-on's version, the game's build, the part it was in, how often it happened, and when it was first and last seen. No player, character, realm or guild names."] = "Ogni rapporto contiene il messaggio dell'errore, con i percorsi ridotti ai file dell'add-on stesso, le prime righe del punto in cui è successo, la versione dell'add-on, la build del gioco, la parte in cui era, quante volte è successo e quando è stato visto la prima e l'ultima volta. Nessun nome di giocatori, personaggi, reami o gilde.",
     ["Keep crash reports is off (Accessibility, Help and problems)."] = "Conserva i rapporti sui crash è spento (Accessibilità, Aiuto e problemi).",
     ["Crash reports"] = "Rapporti sui crash",
     ["Copy them as one code"] = "Copiali come un unico codice",
@@ -23610,6 +23610,8 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["Each error in Fantasy Glass UI is kept on your computer, at most 30, so Report a problem can include them. Names are removed wherever the add-on can find them. Look over the report before you share it. Nothing is sent by itself. Turning it off clears them, after you confirm."] = "Fantasy Glass UI의 각 오류가 최대 30개까지 내 컴퓨터에 보관되어 문제 신고에 포함될 수 있습니다. 애드온이 찾을 수 있는 곳에서는 이름을 지웁니다. 공유하기 전에 보고서를 살펴보세요. 어떤 것도 저절로 전송되지 않습니다. 끄면 확인한 뒤에 지워집니다.",
+    ["Each report holds the error's message with paths cut to the add-on's own files, the top lines of where it happened, the add-on's version, the game's build, the part it was in, how often it happened, and when it was first and last seen. Names are removed wherever the add-on can find them. Look over the report before you share it."] = "각 보고서에는 애드온 자체 파일까지만 남긴 경로가 담긴 오류 메시지, 오류가 난 위치의 맨 위 몇 줄, 애드온 버전, 게임 빌드, 오류가 난 부분, 발생 횟수, 처음과 마지막으로 본 시간이 들어 있습니다. 애드온이 찾을 수 있는 곳에서는 이름을 지웁니다. 공유하기 전에 보고서를 살펴보세요.",
     ["Help improve time estimates"] = "시간 예측 개선 돕기",
     ["Your level, quest, flight and boat times are kept in a list of their own, with no names, at most 500, for Share my times. Nothing is sent by itself."] = "레벨, 퀘스트, 비행, 배 시간을 이름 없이 별도 목록에 최대 500개까지 보관해 내 시간 공유에 씁니다. 어떤 것도 저절로 전송되지 않습니다.",
     ["Share my times"] = "내 시간 공유",
@@ -23620,11 +23622,9 @@ ns.locales.koKR = {
     ["%d times are kept. Nothing new is kept now."] = "시간 %d개가 보관되어 있습니다. 이제 새로 보관하지 않습니다.",
     ["Clear them (click twice)"] = "지우기(두 번 클릭)",
     ["Keep crash reports"] = "충돌 보고서 보관",
-    ["Each error in Fantasy Glass UI is kept on your computer, at most 30, with no names, so Report a problem can include them. Nothing is sent by itself. Turning it off clears them, after you confirm."] = "Fantasy Glass UI의 각 오류가 이름 없이 최대 30개까지 내 컴퓨터에 보관되어 문제 신고에 포함될 수 있습니다. 어떤 것도 저절로 전송되지 않습니다. 끄면 확인한 뒤에 지워집니다.",
     ["Show crash reports"] = "충돌 보고서 보기",
     ["The crash reports kept, a code to copy them all, and a way to clear them. Also /fgui crashes."] = "보관된 충돌 보고서, 모두 복사할 코드, 그리고 지우는 방법. /fgui crashes로도 됩니다.",
     ["Help and problems"] = "도움말과 문제",
-    ["Each report holds the error's message with paths cut to the add-on's own files, the top lines of where it happened, the add-on's version, the game's build, the part it was in, how often it happened, and when it was first and last seen. No player, character, realm or guild names."] = "각 보고서에는 애드온 자체 파일까지만 남긴 경로가 담긴 오류 메시지, 오류가 난 위치의 맨 위 몇 줄, 애드온 버전, 게임 빌드, 오류가 난 부분, 발생 횟수, 처음과 마지막으로 본 시간이 들어 있습니다. 플레이어, 캐릭터, 서버, 길드 이름은 없습니다.",
     ["Keep crash reports is off (Accessibility, Help and problems)."] = "충돌 보고서 보관이 꺼져 있습니다(접근성, 도움말과 문제).",
     ["Crash reports"] = "충돌 보고서",
     ["Copy them as one code"] = "하나의 코드로 복사",
@@ -27544,6 +27544,8 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["Each error in Fantasy Glass UI is kept on your computer, at most 30, so Report a problem can include them. Names are removed wherever the add-on can find them. Look over the report before you share it. Nothing is sent by itself. Turning it off clears them, after you confirm."] = "Fantasy Glass UI 的每个错误都会保存在你的电脑上，最多 30 个，以便“报告问题”可以附上它们。插件能找到的名字都会被删除。分享之前请先检查一遍报告。任何内容都不会自动发送。关闭它会在你确认后清除它们。",
+    ["Each report holds the error's message with paths cut to the add-on's own files, the top lines of where it happened, the add-on's version, the game's build, the part it was in, how often it happened, and when it was first and last seen. Names are removed wherever the add-on can find them. Look over the report before you share it."] = "每份报告包含错误信息（路径只保留到插件自己的文件）、出错位置的前几行、插件版本、游戏版本号、出错的部分、发生的次数，以及首次和最后一次出现的时间。插件能找到的名字都会被删除。分享之前请先检查一遍报告。",
     ["Help improve time estimates"] = "帮助改进时间估算",
     ["Your level, quest, flight and boat times are kept in a list of their own, with no names, at most 500, for Share my times. Nothing is sent by itself."] = "你的升级、任务、飞行和乘船时间会单独保存在一个列表中，不含任何名字，最多 500 条，用于“分享我的时间”。任何内容都不会自动发送。",
     ["Share my times"] = "分享我的时间",
@@ -27554,11 +27556,9 @@ ns.locales.zhCN = {
     ["%d times are kept. Nothing new is kept now."] = "已保存 %d 条时间。现在不再保存新的。",
     ["Clear them (click twice)"] = "清除（点击两次）",
     ["Keep crash reports"] = "保留崩溃报告",
-    ["Each error in Fantasy Glass UI is kept on your computer, at most 30, with no names, so Report a problem can include them. Nothing is sent by itself. Turning it off clears them, after you confirm."] = "Fantasy Glass UI 的每个错误都会保存在你的电脑上，最多 30 个，不含任何名字，以便“报告问题”可以附上它们。任何内容都不会自动发送。关闭它会在你确认后清除它们。",
     ["Show crash reports"] = "显示崩溃报告",
     ["The crash reports kept, a code to copy them all, and a way to clear them. Also /fgui crashes."] = "已保存的崩溃报告、一个可复制全部报告的代码，以及清除它们的方法。也可用 /fgui crashes。",
     ["Help and problems"] = "帮助与问题",
-    ["Each report holds the error's message with paths cut to the add-on's own files, the top lines of where it happened, the add-on's version, the game's build, the part it was in, how often it happened, and when it was first and last seen. No player, character, realm or guild names."] = "每份报告包含错误信息（路径只保留到插件自己的文件）、出错位置的前几行、插件版本、游戏版本号、出错的部分、发生的次数，以及首次和最后一次出现的时间。不含任何玩家、角色、服务器或公会的名字。",
     ["Keep crash reports is off (Accessibility, Help and problems)."] = "“保留崩溃报告”已关闭（辅助功能，帮助与问题）。",
     ["Crash reports"] = "崩溃报告",
     ["Copy them as one code"] = "复制为一个代码",

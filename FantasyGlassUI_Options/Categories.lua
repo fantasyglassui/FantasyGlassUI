@@ -111,7 +111,7 @@ ns.settingRows = {
                       desc = "Takes a line someone gave you and sets everything in it at once." },
     -- crash reports (13.5, Crashes.lua): turning the switch off with reports kept asks first, so the switch reads on until then
     crashReports  = { kind = "check", label = "Keep crash reports",
-                      desc = "Each error in Fantasy Glass UI is kept on your computer, at most 30, with no names, so Report a problem can include them. Nothing is sent by itself. Turning it off clears them, after you confirm.",
+                      desc = "Each error in Fantasy Glass UI is kept on your computer, at most 30, so Report a problem can include them. Names are removed wherever the add-on can find them. Look over the report before you share it. Nothing is sent by itself. Turning it off clears them, after you confirm.",
                       apply = function(v)
                           if ns.CrashSwitch and not ns:CrashSwitch(v) and ns.optUI and ns.optUI.RefreshAll then ns.optUI.RefreshAll() end
                       end },

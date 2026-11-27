@@ -428,7 +428,7 @@ ns.defaults = {
     ufW = 240, ufH = 48,          -- player / target frame size
     partyW = 180, partyH = 36,
     raidW = 78, raidH = 38,
-    crashReports     = false,       -- (13.5) Keep crash reports (Accessibility): each distinct error kept, with no names, for Report a problem
+    crashReports     = false,       -- (13.5) Keep crash reports (Accessibility): each distinct error kept, names removed where found, for Report a problem
 }
 
 -- Roles -----------------------------------------------------------------------
