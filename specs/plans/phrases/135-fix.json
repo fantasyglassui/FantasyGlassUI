@@ -1,0 +1,22 @@
+{
+  "Its profile choice": [
+    "Seine Profilwahl",
+    "Son choix de profil",
+    "Su elección de perfil",
+    "Выбранный профиль",
+    "A escolha de perfil",
+    "La scelta del profilo",
+    "프로필 선택",
+    "所选配置"
+  ],
+  "Your computer's clock is more than a day off the server's, so nothing is offered. Set the clock right and look again.": [
+    "Die Uhr deines Computers weicht mehr als einen Tag von der des Servers ab, daher wird nichts angeboten. Stell die Uhr richtig und schau noch einmal nach.",
+    "L'horloge de ton ordinateur a plus d'un jour d'écart avec celle du serveur, donc rien n'est proposé. Règle l'horloge et regarde à nouveau.",
+    "El reloj de tu ordenador se desvía más de un día del del servidor, así que no se ofrece nada. Ajusta el reloj y vuelve a mirar.",
+    "Часы вашего компьютера расходятся с часами сервера больше чем на сутки, поэтому ничего не предлагается. Поставьте часы правильно и посмотрите снова.",
+    "O relógio do seu computador está mais de um dia diferente do do servidor, então nada é oferecido. Acerte o relógio e veja de novo.",
+    "L'orologio del tuo computer differisce di oltre un giorno da quello del server, quindi non viene proposto nulla. Regola l'orologio e guarda di nuovo.",
+    "컴퓨터 시계가 서버 시계와 하루 넘게 차이 나서 아무것도 제안하지 않습니다. 시계를 맞춘 뒤 다시 확인하세요.",
+    "你的电脑时钟与服务器相差超过一天，因此不提供任何内容。请校准时钟后再看一次。"
+  ]
+}

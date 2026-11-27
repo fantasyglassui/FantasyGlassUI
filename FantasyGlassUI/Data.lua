@@ -22,12 +22,30 @@ ns.DATA_CHAR_DAYS = 180
 ns.DATA_PRICE_DAYS = 30
 ns.DATA_CONFIRM_SECONDS = 10
 
--- A table's keys, read in one pass: a job that waits between slices then walks this list, never the table
--- itself, so a table changed meanwhile (a recorder adding to it) is read as it is.
+-- A table's keys: a job that waits between slices then walks this list, never the table itself, so a table changed
+-- meanwhile (a recorder adding to it) is read as it is. The pass itself hands the frame back every KEY_STEP keys (a
+-- gold store or a price house can hold tens of thousands): it walks with next() one key at a time, and when the table
+-- changed under it so that its place is gone, it starts again from the first key, keeping each key once.
+local KEY_STEP = 512
 local function Keys(t)
-    local list = {}
-    for k in pairs(t) do list[#list + 1] = k end
-    return list
+    local list, seen, k, n, again = {}, {}, nil, 0, 0
+    while true do
+        local ok, nk = pcall(next, t, k)
+        if not ok then                                         -- (its place is gone: from the start, what it has is kept)
+            again = again + 1
+            if again > 3 then                                  -- (a table changing all the time: the rest in one go)
+                for x in pairs(t) do if not seen[x] then seen[x] = true; list[#list + 1] = x end end
+                return list
+            end
+            k = nil
+        elseif nk == nil then
+            return list
+        else
+            if not seen[nk] then seen[nk] = true; list[#list + 1] = nk end
+            k, n = nk, n + 1
+            if n % KEY_STEP == 0 then Yield() end
+        end
+    end
 end
 ns.DataKeys = Keys
 
@@ -89,14 +107,15 @@ end
 -- (stores never searched for a character's records: settings, their own backups, and the prices)
 local NOT_CHAR_STORES = { profiles = true, backups = true, history = true, prices = true }
 local CHAR_GROUPS = {
-    { id = "planner", label = "Route planner" }, { id = "gold", label = "Ways to make gold" }, { id = "guides", label = "Guides" },
+    { id = "profile", label = "Its profile choice" }, { id = "planner", label = "Route planner" }, { id = "gold", label = "Ways to make gold" }, { id = "guides", label = "Guides" },
     { id = "alts", label = "Character list" }, { id = "inventory", label = "Bags and bank" }, { id = "other", label = "Everything else" },
 }
 local function GroupOf(store)
+    if store == "chars" then return "profile" end
     if store:sub(1, 7) == "planner" then return "planner" end
     if store:sub(1, 4) == "gold" then return "gold" end
     if store == "guideState" or store == "guides" then return "guides" end
-    if store == "alts" then return "alts" end
+    if store == "alts" or store == "charSeen" then return "alts" end
     if store == "inventory" then return "inventory" end
     return "other"
 end
@@ -111,12 +130,13 @@ local function LastPlayed(root, key)
     if type(alt) == "table" then Take(alt.at) end
     local rec = type(root.planner) == "table" and root.planner[key]
     if type(rec) == "table" then Take(rec.lastSeen) end
+    if type(root.charSeen) == "table" then Take(root.charSeen[key]) end   -- (the server's time at each login: a wrong clock then can't make it old)
     return best
 end
 -- Every character the saved data knows.
 local function Characters(root)
     local seen, list = {}, {}
-    for _, store in ipairs({ "chars", "charInfo", "alts", "planner", "guideState", "goldChars" }) do
+    for _, store in ipairs({ "chars", "charInfo", "alts", "planner", "guideState", "goldChars", "charSeen" }) do
         if type(root[store]) == "table" then
             for _, k in ipairs(Keys(root[store])) do
                 if type(k) == "string" and k:find(" - ", 1, true) and not seen[k] then seen[k] = true; list[#list + 1] = k end
@@ -164,15 +184,17 @@ local function HouseName(key)
     return realm .. " (" .. faction .. ")"
 end
 
-function ns.DataTidyFind(root, now, today, me)
+-- `opts.clockWrong`: the computer's clock and the server's are more than a day apart; nothing is offered then.
+function ns.DataTidyFind(root, now, today, me, opts)
     local finds = {}
     if type(root) ~= "table" then return finds end
+    if type(opts) == "table" and opts.clockWrong then finds.clockWrong = true; return finds end
     now, today = Num(now) or 0, Num(today) or 0
     local list, isChar = Characters(root)
     local old = {}
     -- characters not played for a long while
     for _, key in ipairs(list) do
-        local last = key ~= me and LastPlayed(root, key)
+        local last = key ~= me and key ~= root.mainChar and LastPlayed(root, key)   -- (never you, never your main)
         local days = last and floor((now - last) / 86400) or 0
         if last and days > ns.DATA_CHAR_DAYS then
             local records = CharRecords(root, key, isChar)
@@ -324,6 +346,11 @@ function ns:DataTidyShow(finds, now)
             lines[#lines + 1] = { left = ns:Tr(g.label), right = Grey(ns.DataSizeText(g.bytes)), indent = 16, tone = "dim" }
         end
     end
+    if finds.clockWrong then
+        lines[1] = { left = ns:Tr("Your computer's clock is more than a day off the server's, so nothing is offered. Set the clock right and look again.") }
+        ns:ShowList("DataTidy", "Tidy up saved data", lines, "Nothing is removed until you click the last line twice.", 520, 120)
+        return #lines
+    end
     if #finds == 0 then
         lines[1] = { left = ns:Tr("Nothing to tidy up.") }
         ns:ShowList("DataTidy", "Tidy up saved data", lines, "Nothing is removed until you click the last line twice.", 520, 120)
@@ -364,12 +391,37 @@ local function SizeLines(sizes)
         tip = { ns:Tr("Tidy up old records"), ns:Tr("Lists characters not played in 180 days, old auction prices and what deleted guides left behind. Nothing is removed until you confirm.") } }
     return lines
 end
+-- The time "not played for" counts from: the server's (GetServerTime) when the game gives it, else the computer's;
+-- and whether the two are more than a day apart (then the tidy-up offers nothing).
+local function Clock(f)
+    if type(f) ~= "function" then return nil end
+    local ok, v = pcall(f)
+    if ok and type(v) == "number" and not ns:IsSecret(v) and v > 0 then return v end
+end
+function ns.DataClock()
+    local here, server = Clock(time), Clock(GetServerTime)
+    if not server then return here or 0, false end
+    return server, here ~= nil and math.abs(here - server) > 86400
+end
+-- Each login: the server's time, kept for this character (charSeen), so a computer clock that was wrong then never
+-- makes it look long gone.
+do
+    local ev = CreateFrame("Frame")
+    pcall(ev.RegisterEvent, ev, "PLAYER_ENTERING_WORLD")
+    ev:SetScript("OnEvent", ns:Guard("Saved data", function()
+        local server = Clock(GetServerTime)
+        if not (server and type(ns.root) == "table") then return end
+        ns.root.charSeen = type(ns.root.charSeen) == "table" and ns.root.charSeen or {}
+        ns.root.charSeen[ns:CharKey()] = server
+    end))
+end
 function ns:DataCommand(text)
     local what = ns.Trim(text or ""):lower()
     if what == "tidy" then
         ns.GoldJob(function()
             local root = ns.root
-            local finds = ns.DataTidyFind(root, time and time() or 0, ns.Today(), ns:CharKey())
+            local now, wrong = ns.DataClock()
+            local finds = ns.DataTidyFind(root, now, ns.Today(), ns:CharKey(), { clockWrong = wrong })
             ns:DataTidyShow(finds, GetTime and GetTime() or 0)
         end, "data tidy")
         local lines = { { left = ns:Tr("Looking for old records..."), tone = "dim" } }

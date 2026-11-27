@@ -41,8 +41,9 @@ ns.RunKills = Kills
 
 -- What happens in a run (the tests call these directly). `id`: the game's instance id (GetInstanceInfo's 8th value; 13.5),
 -- which names the place in every language (the planner's dungeon run times match by it; a run from before has none).
-function ns.RunNew(instance, difficulty, now, char, id)
-    return { instance = instance, difficulty = difficulty, start = now, char = char, id = id, kills = {}, wipes = {}, deaths = 0, loot = {}, fights = {} }
+-- `level`: the character's level when the run began (13.5: the planner learns a dungeon's time only from runs at its levels).
+function ns.RunNew(instance, difficulty, now, char, id, level)
+    return { instance = instance, difficulty = difficulty, start = now, char = char, id = id, level = level, kills = {}, wipes = {}, deaths = 0, loot = {}, fights = {} }
 end
 -- A pull: when the fight began, so a kill can say how long it took.
 function ns.RunPull(r, boss, now)
@@ -218,7 +219,11 @@ ns:NewModule("runLog", function()
         local now = Now()
         if inst then
             if r and (r.instance ~= inst or (r.left and now - r.left > AWAY)) then Finish(); r = nil end
-            if not r then SetMine(ns.RunNew(inst, diff, now, ns:CharKey(), id)) else r.left = nil end
+            if not r then
+                local level = UnitLevel and UnitLevel("player")
+                level = (type(level) == "number" and not Secret(level) and level > 0) and level or nil
+                SetMine(ns.RunNew(inst, diff, now, ns:CharKey(), id, level))
+            else r.left = nil end
         elseif r then
             if not r.left then r.left = now
             elseif now - r.left > AWAY then Finish() end

@@ -38,6 +38,13 @@ ns.guideKinds = {
 ns.GUIDE_WINDOW_KINDS = { train = "TRAINER_CLOSED", vendor = "MERCHANT_CLOSED", mail = "MAIL_CLOSED" }
 ns.GUIDE_STOP_KINDS = { train = true, vendor = true, mail = true, explore = true, gather = true }   -- (the kinds a planner stop may be)
 ns.GUIDE_RUN_KINDS = { group = true, dungeon = true }   -- (a dungeon run's two steps: the inside mark, st.inside, is kept while one is up)
+-- Does the inside mark (st.inside: the instance you went into while a run step was ahead) belong to this run step?
+-- Its instance's, or for a written step with no number, any dungeon's. (Planned route and written guides alike.)
+function ns.GuideInsideMatches(step, st)
+    if type(step) ~= "table" or not ns.GUIDE_RUN_KINDS[step.kind] or type(st) ~= "table" or st.inside == nil then return false end
+    if step.instance == nil then return true end
+    return st.inside == step.instance
+end
 ns.GUIDE_PLANNED = "\1planned"          -- the planned route's name: one no saved guide can have (guide names come from a line of text)
 ns.GUIDE_TRIP = "\1trip"                -- a trip followed for a while (a gold idea's Go): the plan waits, and comes back after it
 local QUEST_KIND = { accept = true, turnin = true, ["do"] = true }
@@ -92,9 +99,19 @@ function ns.GuideParseLine(line)
         if not crossing then return nil, "Sail needs the crossing's name." end
         step.crossing = crossing
         if more ~= "" and not step.text then step.text = more end
-    elseif ns.GUIDE_RUN_KINDS[kind] then                    -- (the instance's number is optional)
+    elseif ns.GUIDE_RUN_KINDS[kind] then                    -- (the instance's number is optional; then the dungeon's area id, the planner's)
         local id, more = rest:match("^(%d+)%s*(.*)$")
-        if id then step.instance = tonumber(id); rest = more end
+        if id then
+            step.instance = tonumber(id); rest = more
+            local zone, after = rest:match("^(%d+)%s*(.*)$")
+            if zone then
+                step.zone, rest = tonumber(zone), after
+                step.stopKey = "dungeon:" .. step.zone .. ":" .. (kind == "group" and "group" or "run")   -- (as the planner names them)
+                for _, d in ipairs(type(ns.PLANNER_DUNGEONS) == "table" and ns.PLANNER_DUNGEONS or {}) do
+                    if type(d) == "table" and d.zone == step.zone and type(d.name) == "string" then step.dungeon = d.name end
+                end
+            end
+        end
         if rest ~= "" and not step.text then step.text = rest end
     elseif rest ~= "" and not step.text then
         step.text = rest
@@ -124,7 +141,10 @@ function ns.GuideLine(step)
     if step.level then out = out .. " " .. step.level end
     if step.node then out = out .. " " .. step.node end
     if step.crossing then out = out .. " " .. step.crossing end
-    if step.instance and ns.GUIDE_RUN_KINDS[step.kind] then out = out .. " " .. step.instance end
+    if step.instance and ns.GUIDE_RUN_KINDS[step.kind] then
+        out = out .. " " .. step.instance
+        if type(step.zone) == "number" then out = out .. " " .. step.zone end   -- (the dungeon's area id: a friend's copy keeps it)
+    end
     if step.text then out = out .. " | " .. step.text end
     if step.x and step.y then
         out = out .. " @ " .. (step.map and (step.map .. ":") or "") .. format("%.1f,%.1f", step.x, step.y)
@@ -271,7 +291,7 @@ function ns.GuideStepDone(step, world, ticked)
         local n = type(world.groupSize) == "function" and tonumber(world.groupSize()) or 0
         if n and n >= 3 then return true end
         local st = ns.GuideState and ns.GuideState()
-        return step.instance ~= nil and type(st) == "table" and st.inside == step.instance
+        return ns.GuideInsideMatches(step, st)
     end
     if k == "dungeon" then return Ask1(world.ranDungeon, step) end   -- (been inside, and out again alive)
     return false                                              -- (train, vendor, mail: ticked when the window closes)
@@ -329,6 +349,22 @@ local function InInstance()
     if Secret(id) or type(id) ~= "number" then id = nil end
     return true, id, name
 end
+-- Out in the open world and alive (a release at the graveyard is not leaving; nor is another instance, a ghost
+-- through the wrong portal, or this one with its id unread).
+local function OutAlive()
+    if InInstance() then return false end
+    return not ns.Yes(UnitIsDeadOrGhost and UnitIsDeadOrGhost("player"))
+end
+-- The dungeon you have run: the inside mark's instance once you are out again, alive; nil otherwise. `st`: the guide
+-- state (else yours; on a trip, the plan that waits keeps the mark).
+function ns.GuideLeftDungeon(st)
+    st = st or (State and State())
+    if type(st) ~= "table" then return nil end
+    local mark = st.inside
+    if mark == nil and type(st.resume) == "table" then mark = st.resume.inside end
+    if type(mark) ~= "number" then return nil end
+    return OutAlive() and mark or nil
+end
 function ns:GuideWorld()
     local level = UnitLevel and UnitLevel("player")
     local bind
@@ -357,11 +393,9 @@ function ns:GuideWorld()
         hearthed = function(step) return ns.GuideHearthed(step, theWorld.bind) end,
         groupSize = function() return GroupSize() end,
         inInstance = function() return InInstance() end,
-        ranDungeon = function(step)                           -- (inside it once, out in the open world now, and not a ghost: a
-            local st = State()                                --  release at the graveyard is not leaving; nor is another instance,
-            if type(step) ~= "table" or step.instance == nil or not (type(st) == "table" and st.inside == step.instance) then return false end
-            if InInstance() then return false end             --  a ghost through the wrong portal, or this one with its id unread)
-            return not ns.Yes(UnitIsDeadOrGhost and UnitIsDeadOrGhost("player"))
+        ranDungeon = function(step)                           -- (inside it once, out in the open world now, and not a ghost)
+            if not ns.GuideInsideMatches(step, State()) then return false end
+            return OutAlive()
         end,
         near = function(step, radius)
             if not (step.x and step.y and ns.MapPosition and ns.WayArrow) then return false end
@@ -512,6 +546,7 @@ local FailedCheck, NotHere                          -- (the guide's events and i
 --   GuideGet
 --   GuideHere
 --   GuideKeepRoute
+--   GuideLeftDungeon
 --   GuideLine
 --   GuideList
 --   GuideMenu
@@ -544,6 +579,7 @@ local FailedCheck, NotHere                          -- (the guide's events and i
 --   GuideStepBase
 --   GuideStop
 --   GuideText
+--   GuideWorld
 -- end of seams
 -- (Every ns.Guide* and ns.GUIDE_* a Planner*.lua file uses is listed here and defined in this file: the small API the
 -- planner may lean on; tests/test_addon.py::test_guide_seams_listed keeps it true. No file wraps a ns.Guide* function.)
@@ -803,12 +839,40 @@ function ns:GuideAdvance(quiet)
     local skipped = type(st.skipped) == "table" and st.skipped or nil
     local before = st.at or 1
     local world = ns:GuideWorld()
-    local cur = guide.steps[before]
-    if st.name == ns.GUIDE_PLANNED and type(cur) == "table" and ns.GUIDE_RUN_KINDS[cur.kind] and cur.instance ~= nil then
-        local inside, id = world.inInstance()             -- (inside the step's dungeon: marked, saved with the guide state)
-        if inside == true and id == cur.instance then st.inside = id end
+    -- The inside mark (saved with the guide state): inside the dungeon of a run step that is still ahead, whichever
+    -- step you are on (an open pick-up too). Out in the open world again, alive, with the mark: the run is done, and
+    -- the planner hears it at once (ns.PlannerDungeonLeft), whatever the steps or a replan do next.
+    local inside, id = false, nil
+    if type(world.inInstance) == "function" then inside, id = world.inInstance() end
+    if inside == true then
+        for i = before, #guide.steps do
+            local s = guide.steps[i]
+            if type(s) == "table" and ns.GUIDE_RUN_KINDS[s.kind] and not (skipped and skipped[i]) and (s.instance == nil or (id ~= nil and s.instance == id)) then
+                if id ~= nil or st.inside == nil then st.inside = id or true end   -- (an unread id: only a step with no number takes it)
+                break
+            end
+        end
     end
+    local left = ns.GuideLeftDungeon(st)
+    if left and ns.PlannerDungeonLeft then pcall(ns.PlannerDungeonLeft, left, guide.steps) end
     st.at = ns.GuideNext(guide.steps, before, world, st.ticked, skipped)
+    if st.inside ~= nil then
+        for i = before, st.at - 1 do                          -- (a run step done by the mark spends it: the walk goes on without it)
+            local s = guide.steps[i]
+            if type(s) == "table" and s.kind == "dungeon" and not (skipped and skipped[i]) and not st.ticked[i] then
+                st.inside = nil
+                st.at = ns.GuideNext(guide.steps, i + 1, world, st.ticked, skipped)
+                break
+            end
+        end
+    end
+    if st.inside ~= nil then                                  -- (no run step ahead it belongs to: it goes)
+        local wanted = false
+        for i = st.at, #guide.steps do
+            if not (skipped and skipped[i]) and ns.GuideInsideMatches(guide.steps[i], st) then wanted = true; break end
+        end
+        if not wanted then st.inside = nil end
+    end
     local done = false                                        -- (passed a step that was done, not only skipped ones)
     for i = before, st.at - 1 do
         if not (skipped and skipped[i]) then done = true end
@@ -911,6 +975,9 @@ function ns:GuideSetPlan(guide, summary)
         written = { [old.name] = { at = old.at, ticked = old.ticked } }
     end
     local new = { name = ns.GUIDE_PLANNED, at = 1, ticked = ticked, summary = summary, plan = plan, written = written }
+    if type(old) == "table" then                              -- (the inside mark and the wait for a group are the world's, not the plan's:
+        new.inside, new.dungeonWait = old.inside, old.dungeonWait   --  a replan on the way out of a dungeon keeps them)
+    end
     if trip then cur.resume = new; return end
     state[ns:CharKey()] = new
     pointed, freshPlan = nil, true
@@ -1908,7 +1975,9 @@ NotHere = function(st, step)
 end
 do
     local ev = CreateFrame("Frame")
-    for _, e in ipairs({ "QUEST_ACCEPTED", "QUEST_TURNED_IN", "QUEST_REMOVED", "QUEST_LOG_UPDATE", "PLAYER_LEVEL_UP", "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA" }) do pcall(ev.RegisterEvent, ev, e) end
+    ns.GUIDE_EVENTS = { "QUEST_ACCEPTED", "QUEST_TURNED_IN", "QUEST_REMOVED", "QUEST_LOG_UPDATE", "PLAYER_LEVEL_UP", "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA",
+                        "GROUP_ROSTER_UPDATE" }               -- (13.5: a group step ticks once three are in your group)
+    for _, e in ipairs(ns.GUIDE_EVENTS) do pcall(ev.RegisterEvent, ev, e) end
     -- every event in a burst (QUEST_LOG_UPDATE comes several times a kill) asks for one advance, 0.3 s on
     local advancePending = false
     local function AdvanceSoon()
@@ -1918,10 +1987,17 @@ do
     end
     local function Id(v) return (type(v) == "number" and not Secret(v)) and v or nil end
     ev:SetScript("OnEvent", ns:Guard("Guide events", function(_, event, a, b)
+        if event == "PLAYER_LEVEL_UP" and Id(a) then ns.guideLevelUp = Id(a) end   -- (the new level, before UnitLevel says it: the panel's lines)
         if not ns:GuideOn() then return end
+        if event == "GROUP_ROSTER_UPDATE" then                -- (only while a group step is up: a raid's roster changes often)
+            local cs = State()
+            local g = cs and ns:GuideGet(cs.name)
+            local cur = g and type(g.steps) == "table" and g.steps[cs.at or 1]
+            if not (type(cur) == "table" and cur.kind == "group") then return end
+        end
         if event == "QUEST_ACCEPTED" then ns.GuideFailedForget(Id(b) or Id(a))
         elseif event == "QUEST_REMOVED" or event == "QUEST_TURNED_IN" then ns.GuideFailedForget(Id(a)) end
-        if event ~= "QUEST_LOG_UPDATE" and event ~= "ZONE_CHANGED_NEW_AREA" then cached = {} end   -- (a level, a quest: the talent and riding lines again)
+        if event ~= "QUEST_LOG_UPDATE" and event ~= "ZONE_CHANGED_NEW_AREA" and event ~= "GROUP_ROSTER_UPDATE" then cached = {} end   -- (a level, a quest: the talent and riding lines again)
         if rec then
             if event == "QUEST_ACCEPTED" then ns:GuideRecordEvent("accept", Id(b) or Id(a))
             elseif event == "QUEST_TURNED_IN" then ns:GuideRecordEvent("turnin", Id(a))

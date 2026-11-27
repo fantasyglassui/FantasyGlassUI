@@ -1279,7 +1279,8 @@ function ns.PlannerSessionSkipReset() sessionSkip, fromAbandon = {}, {} end
 ns.PlannerHook("candidate", "sessionSkip", function(rec)
     if type(rec) == "table" and sessionSkip[rec.id] then return false end
 end)
-do                                                  -- (a new session starts with none, a /reload keeps them; so does a fresh plan, ns:PlannerStart)
+do                                                  -- (a new session starts with none, and so does a fresh plan, ns:PlannerStart; they live in memory,
+                                                    --  so a /reload loses them too: 13.0's, kept. The dungeon skips are saved: PlannerDungeons.lua)
     local ev = CreateFrame("Frame")
     pcall(ev.RegisterEvent, ev, "PLAYER_ENTERING_WORLD")
     ev:SetScript("OnEvent", ns:Guard("Planner session skips", function(_, _, isInitial, isReload)

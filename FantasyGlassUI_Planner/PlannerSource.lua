@@ -192,25 +192,27 @@ ns.PLANNER_CLASS_QUESTS = {
 }
 
 -- Classic dungeons: { name, minLevel, maxLevel, map, x, y, zone = Questie's area id, instance = the game's instance id
--- (GetInstanceInfo's 8th value), bosses }. The dry-spell advice (PlannerAdvice.lua) and the dungeon runs (PlannerDungeons.lua,
--- through src.dungeons, which takes Questie's entrance when it has one). A starter set from memory: CHECK IN GAME (levels,
--- entrances, area ids, instance ids, boss counts).
+-- (GetInstanceInfo's 8th value), bosses, stone = its meeting stone's object id }. The dry-spell advice (PlannerAdvice.lua)
+-- and the dungeon runs (PlannerDungeons.lua, through src.dungeons, which takes Questie's entrance and Questie's level
+-- range, from its meeting stones, when it has them). The levels are the Classic-era recommended ranges (13.5 fix I3);
+-- the boss counts the main bosses. CHECK IN GAME: entrances, area ids, instance ids, boss counts.
 ns.PLANNER_DUNGEONS = {
-    -- check in game
-    { name = "Ragefire Chasm", minLevel = 13, maxLevel = 18, map = 1411, x = 52, y = 11, zone = 2437, instance = 389, bosses = 4 },
-    { name = "Wailing Caverns", minLevel = 15, maxLevel = 25, map = 1413, x = 46, y = 36, zone = 718, instance = 43, bosses = 7 },
-    { name = "The Deadmines", minLevel = 17, maxLevel = 24, map = 1436, x = 43, y = 72, zone = 1581, instance = 36, bosses = 6 },
-    { name = "Shadowfang Keep", minLevel = 18, maxLevel = 25, map = 1421, x = 44, y = 67, zone = 209, instance = 33, bosses = 7 },
-    { name = "Blackfathom Deeps", minLevel = 20, maxLevel = 30, map = 1440, x = 14, y = 14, zone = 719, instance = 48, bosses = 7 },
-    { name = "The Stockade", minLevel = 22, maxLevel = 30, map = 1453, x = 41, y = 57, zone = 717, instance = 34, bosses = 5 },
-    { name = "Gnomeregan", minLevel = 24, maxLevel = 33, map = 1426, x = 24, y = 38, zone = 721, instance = 90, bosses = 6 },
-    { name = "Razorfen Kraul", minLevel = 25, maxLevel = 35, map = 1413, x = 42, y = 90, zone = 491, instance = 47, bosses = 6 },
-    { name = "Scarlet Monastery", minLevel = 28, maxLevel = 38, map = 1420, x = 84, y = 35, zone = 796, instance = 189, bosses = 4 },
-    { name = "Razorfen Downs", minLevel = 35, maxLevel = 45, map = 1413, x = 50, y = 93, zone = 722, instance = 129, bosses = 5 },
-    { name = "Uldaman", minLevel = 35, maxLevel = 45, map = 1418, x = 42, y = 12, zone = 1337, instance = 70, bosses = 9 },
-    { name = "Zul'Farrak", minLevel = 42, maxLevel = 50, map = 1446, x = 39, y = 21, zone = 1176, instance = 209, bosses = 8 },
-    { name = "Maraudon", minLevel = 45, maxLevel = 55, map = 1443, x = 29, y = 62, zone = 2100, instance = 349, bosses = 7 },
-    { name = "The Temple of Atal'Hakkar", minLevel = 50, maxLevel = 60, map = 1435, x = 70, y = 54, zone = 1477, instance = 109, bosses = 8 },
+    -- check in game (the entrance: inside Orgrimmar, the Cleft of Shadow, map 1454; Questie's entrance corrects it)
+    { name = "Ragefire Chasm", minLevel = 13, maxLevel = 18, map = 1411, x = 52, y = 11, zone = 2437, instance = 389, bosses = 4, stone = 179596 },
+    { name = "Wailing Caverns", minLevel = 17, maxLevel = 24, map = 1413, x = 46, y = 36, zone = 718, instance = 43, bosses = 8, stone = 178884 },
+    { name = "The Deadmines", minLevel = 17, maxLevel = 26, map = 1436, x = 43, y = 72, zone = 1581, instance = 36, bosses = 6, stone = 178834 },
+    { name = "Shadowfang Keep", minLevel = 22, maxLevel = 30, map = 1421, x = 44, y = 67, zone = 209, instance = 33, bosses = 8, stone = 178845 },
+    { name = "Blackfathom Deeps", minLevel = 24, maxLevel = 32, map = 1440, x = 14, y = 14, zone = 719, instance = 48, bosses = 8, stone = 178828 },
+    { name = "The Stockade", minLevel = 24, maxLevel = 32, map = 1453, x = 41, y = 57, zone = 717, instance = 34, bosses = 5, stone = 179595 },
+    { name = "Gnomeregan", minLevel = 29, maxLevel = 38, map = 1426, x = 24, y = 38, zone = 721, instance = 90, bosses = 6, stone = 179555 },
+    { name = "Razorfen Kraul", minLevel = 29, maxLevel = 38, map = 1413, x = 42, y = 90, zone = 491, instance = 47, bosses = 6, stone = 178825 },
+    -- (four wings under one area id and one instance id: a run is one wing, its quests may span more)
+    { name = "Scarlet Monastery", minLevel = 26, maxLevel = 45, map = 1420, x = 84, y = 35, zone = 796, instance = 189, bosses = 4, stone = 178844 },
+    { name = "Razorfen Downs", minLevel = 37, maxLevel = 46, map = 1413, x = 50, y = 93, zone = 722, instance = 129, bosses = 5, stone = 178824 },
+    { name = "Uldaman", minLevel = 41, maxLevel = 51, map = 1418, x = 42, y = 12, zone = 1337, instance = 70, bosses = 9, stone = 178833 },
+    { name = "Zul'Farrak", minLevel = 44, maxLevel = 54, map = 1446, x = 39, y = 21, zone = 1176, instance = 209, bosses = 8, stone = 178829 },
+    { name = "Maraudon", minLevel = 46, maxLevel = 55, map = 1443, x = 29, y = 62, zone = 2100, instance = 349, bosses = 7, stone = 178827 },
+    { name = "The Temple of Atal'Hakkar", minLevel = 50, maxLevel = 60, map = 1435, x = 70, y = 54, zone = 1477, instance = 109, bosses = 8, stone = 179554 },
 }
 
 -- The id the game knows a quest by in your log: its own, or the one it was matched to (PlannerRecorders.lua); nil when
@@ -771,15 +773,26 @@ function ns.PlannerSource()
     end
     -- The dungeons as { name, minLevel, maxLevel, map, x, y, zone, instance, bosses } (copies of ns.PLANNER_DUNGEONS):
     -- the entrance is Questie's (ZoneDB:GetDungeonLocation(area)[1] = { area, x, y }, its area through
-    -- GetUiMapIdByAreaId) when Questie has that function and an entry, else the table's. Made once a session.
-    -- (Questie has no level ranges or boss counts: those are the table's. The contract stays "4": the function is probed.)
+    -- GetUiMapIdByAreaId) when Questie has that function and an entry, else the table's; the level range is Questie's
+    -- (its meeting stone's, MeetingStones:GetLocalizedDungeonNameAndLevelRangeByObjectId(stone) = name, "(lo-hi)") when
+    -- it has one that reads, else the table's. Made once a session. (Boss counts are the table's. The contract stays
+    -- "4": the functions are probed.)
     function src.dungeons()
         if dungeonCache then return dungeonCache end
         local list = {}
         local where = env.zones.GetDungeonLocation
+        local stones = Import("MeetingStones")
+        local range = type(stones) == "table" and stones.GetLocalizedDungeonNameAndLevelRangeByObjectId or nil
         for _, d in ipairs(ns.PLANNER_DUNGEONS) do
             local e = {}
             for k, v in pairs(d) do e[k] = v end
+            if type(range) == "function" and type(d.stone) == "number" then
+                local ok, _, text = Try(range, stones, d.stone)
+                local lo, hi
+                if ok and type(text) == "string" and not ns:IsSecret(text) then lo, hi = text:match("^%((%d+)%-(%d+)%)$") end
+                lo, hi = tonumber(lo), tonumber(hi)
+                if lo and hi and lo >= 1 and lo <= hi and hi <= 100 then e.minLevel, e.maxLevel = lo, hi end
+            end
             if type(where) == "function" and type(d.zone) == "number" then
                 local ok, at = Try(where, env.zones, d.zone)
                 local first = ok and type(at) == "table" and at[1] or nil

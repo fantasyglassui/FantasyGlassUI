@@ -81,6 +81,19 @@ local function RecordSnapshot(root, label, kind)
     ns.GoldJob(function() CopyRecords(root, snap) end, "backup records " .. kind)
     return snap
 end
+-- The finished records a backup holds (nil when it has none): its own copy, or, for a daily taken in the same login
+-- as the update backup, the update's (recordsFrom: one copy made, and kept once in the saved file).
+function ns.BackupRecords(backups, kind)
+    local b = type(backups) == "table" and backups[kind]
+    if type(b) ~= "table" then return nil end
+    if b.recordsDone == true and type(b.records) == "table" then return b.records end
+    local from = b.recordsFrom ~= nil and backups[b.recordsFrom] or nil
+    if type(from) == "table" and from ~= b and from.when == b.recordsFromWhen and from.label == b.recordsFromLabel
+        and from.recordsDone == true and type(from.records) == "table" then
+        return from.records
+    end
+    return nil
+end
 -- Called while the saved settings are read, once a session. Returns which backups were taken.
 function ns:TakeBackups(root, today)
     if ns.backupsTaken then return {} end
@@ -94,9 +107,22 @@ function ns:TakeBackups(root, today)
     end
     today = today or (ns.Today and ns.Today()) or 0
     if b.dailyDay ~= today and type(root.profiles) == "table" then
-        b.daily = RecordSnapshot(root, nil, "daily")
+        if took[1] == "update" then                            -- (the update's copy, made this login, serves the daily too)
+            b.daily = Snapshot(root, nil)
+            b.daily.recordsFrom, b.daily.recordsFromWhen, b.daily.recordsFromLabel = "update", b.update.when, b.update.label
+        else
+            b.daily = RecordSnapshot(root, nil, "daily")
+        end
         b.dailyDay = today
         took[#took + 1] = "daily"
+    elseif b.dailyDay == today and type(b.daily) == "table" and (type(b.daily.records) == "table" or b.daily.recordsFrom ~= nil)
+        and not ns.BackupRecords(b, "daily") then
+        -- today's copy never finished (a quick logout, the whole login in a fight, or the update's copy it shared):
+        -- copied again now, into the daily itself
+        local d = b.daily
+        d.records, d.recordsDone, d.recordsLeftOut = {}, nil, nil
+        d.recordsFrom, d.recordsFromWhen, d.recordsFromLabel = nil, nil, nil
+        ns.GoldJob(function() CopyRecords(root, d) end, "backup records daily")
     end
     return took
 end
@@ -105,6 +131,7 @@ function ns:RestoreBackup(kind)
     local b = type(root) == "table" and type(root.backups) == "table" and root.backups[kind]
     if type(b) ~= "table" or type(b.profiles) ~= "table" then return false, "There is no backup of that kind yet." end
     if InCombatLockdown() then return false, "Not during a fight." end
+    local records = ns.BackupRecords(root.backups, kind)      -- (before "before restore" replaces anything)
     local restore = Snapshot(root, nil)
     root.backups.restore = restore
     root.profiles = Copy(b.profiles)
@@ -115,9 +142,9 @@ function ns:RestoreBackup(kind)
     if type(root.profiles.Default) ~= "table" then root.profiles.Default = {} end
     -- the records (13.5): only from a finished copy. The backup's tables move into place (no copy: the reload
     -- that follows writes them out as tables of their own), and what was there goes into "before restore".
-    if b.recordsDone == true and type(b.records) == "table" then
+    if records then
         restore.records = {}
-        for k, v in pairs(b.records) do
+        for k, v in pairs(records) do
             restore.records[k] = root[k]
             root[k] = v
         end
@@ -156,7 +183,7 @@ function ns.BackupLines(backups, now)
             for _ in pairs(b.profiles or {}) do n = n + 1 end
             local when = ns.Ago((now or 0) - (b.when or 0))
             out[#out + 1] = { kind = kind, label = ns.BACKUP_LABELS[kind], when = when, profiles = n, version = b.label or b.version,
-                              records = (b.recordsDone == true) }
+                              records = ns.BackupRecords(backups, kind) ~= nil }
         end
     end
     return out

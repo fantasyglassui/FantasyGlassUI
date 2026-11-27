@@ -21,6 +21,7 @@ local type, pairs, ipairs, tostring, pcall = type, pairs, ipairs, tostring, pcal
 --   GoldOpen
 --   PlannerAdviceLines
 --   PlannerCatchUp
+--   PlannerDungeonLeft
 --   PlannerDuoEvent
 --   PlannerDuoPartner
 --   PlannerDuoRole

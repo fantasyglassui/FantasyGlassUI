@@ -12,6 +12,8 @@ if type(ns) ~= "table" then return end
 -- every text is read by patterns. A friend who switched asking off sends nothing at all.
 -- Messages ("D1:" lines, fields split by ":"; <s> is the session, 4 to 8 hex digits):
 --   ASK:<s>:<level>   YES:<s>   NO:<s>   AT:<s>:<planId>:<at>:<n>   HI:<s>   END:<s>
+-- (13.5: YES and HI end in ":<text>", the plan text the sender reads, ns.PLANNER_DUO_TEXT; 13.0 sends none, and reads
+-- past it. The leader sends a friend that said less than 2 its run steps as plain notes: 13.0 knows no group or dungeon.)
 -- and the friend's state and the leader's plan as pieces, "SS:<s>z<count>:<i>:<n>:<state|plan>:<piece>".
 -- The "D1:" messages go ahead of waiting pieces; a new state or plan drops the unsent pieces of the one before,
 -- and a new AT the unsent AT before it.
@@ -20,6 +22,7 @@ if type(ns) ~= "table" then return end
 -- (ns.PLANNER_DUO_PREFIX and ns.PlannerDuoRegister, the prefix's registration, are in the main add-on, PlannerRecorders.lua,
 -- which also hands a friend's ask over to this folder while it is not loaded.)
 local PREFIX, WHISPER = ns.PLANNER_DUO_PREFIX, "WHISPER"
+ns.PLANNER_DUO_TEXT = 2              -- the plan text this version reads: 2, the run steps with their dungeon (13.5); 13.0 is 1
 local MAX_BYTES = 255                -- one message
 local RETRY_AFTER, TRIES = 2, 3      -- a throttled message: again after 2 s, 3 tries in all
 local ASK_WAIT = 30                  -- seconds the leader waits for YES (once the question has gone)
@@ -480,7 +483,7 @@ local function Accept()
     if a.held or (Now() or 0) - a.at > ANSWER_WAIT then return end   -- (too late: the leader has given up)
     local now = Now() or 0
     ns.plannerDuo = { role = "friend", partner = a.from, to = a.to, session = a.session, heard = now, asked = now }
-    ns.PlannerDuoSend("D1:YES:" .. a.session)
+    ns.PlannerDuoSend("D1:YES:" .. a.session .. ":" .. ns.PLANNER_DUO_TEXT)
     Sync()
     ns:Print("Planning together with %s: they plan the route, you follow it.", a.from)
     QueueState()
@@ -585,7 +588,14 @@ function ns.PlannerDuoPlanText(guide, summary, planId)
     if not (d and type(guide) == "table" and type(guide.steps) == "table") then return nil end
     local s = type(summary) == "table" and summary or {}
     local steps = {}
-    for i = 1, min(#guide.steps, PLAN_STEPS) do steps[i] = guide.steps[i] end
+    local plain = (tonumber(d.partnerText) or 1) < 2          -- (a friend on 13.0: a run step as a plain "go there" note)
+    for i = 1, min(#guide.steps, PLAN_STEPS) do
+        local step = guide.steps[i]
+        if plain and type(step) == "table" and ns.GUIDE_RUN_KINDS[step.kind] then
+            step = { kind = "note", text = ns.GuideStepBase and ns.GuideStepBase(step) or step.text, map = step.map, x = step.x, y = step.y }
+        end
+        steps[i] = step
+    end
     local head = format("# duo %s %d %d %s %s", d.session, floor(Num(tonumber(planId)) or 0), floor(Num(tonumber(s.zone)) or 0), LevelWord(s.fromLevel), LevelWord(s.toLevel))
     local xp, secs = Num(tonumber(s.xp)), Num(tonumber(s.seconds))
     if xp and secs and xp >= 0 and secs >= 0 then head = head .. format(" %d %d", floor(xp + 0.5), floor(secs + 0.5)) end
@@ -734,7 +744,7 @@ local function StayInTouch(d, now)
         d.hiAt = d.hiAt or now
         if now - d.hiAt >= HI_EVERY and not InCombatLockdown() then
             d.hiAt = now
-            ns.PlannerDuoSend("D1:HI:" .. d.session)
+            ns.PlannerDuoSend("D1:HI:" .. d.session .. ":" .. ns.PLANNER_DUO_TEXT)
         end
     end
     if d.planId and now >= (d.guideAt or 0) then           -- (once a second: still following the plan?)
@@ -797,6 +807,10 @@ local function Receive(from, msg, sender)
             return
         end
         d.heard, d.silent = Now() or d.heard, 0
+        if kind == "YES" or kind == "HI" then                 -- (the plan text the partner reads: none said is 13.0's)
+            local text = tonumber(more:match("^:(%d+)$") or "")
+            if text then d.partnerText = text end
+        end
         if kind == "YES" and d.role == "lead" and not d.accepted then
             d.accepted, d.yesAt = true, Now() or 0
             d.partner = from                                  -- (their name as the game spells it, from now on)
