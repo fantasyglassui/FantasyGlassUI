@@ -148,9 +148,18 @@ def trailer(lang):
             f'      </figure>')
 
 
+def _roadmap():
+    # the Roadmap's body.py, for its one-line link to "Coming in <version>" (pages/roadmap/roadmap.json)
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('roadmap_body_for_home', os.path.normpath(HERE + '/../roadmap/body.py'))
+    mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
+    return mod
+
+
 def body(ctx):
     # (the build translates the marked words in what this returns, the slot's among them)
-    return open(HERE + '/body.html', encoding='utf-8').read().replace('<!--TRAILER-->', trailer(ctx.lang))
+    return (open(HERE + '/body.html', encoding='utf-8').read().replace('<!--TRAILER-->', trailer(ctx.lang))
+            .replace('<!--COMING-->', _roadmap().coming_link(ctx)))
 
 
 def extra(out_dir, values):

@@ -223,6 +223,9 @@
   .hero h1 { font-size: 2.35rem; }
 }
 @media (max-width: 600px) { .fams figure:not(:first-child) { display: none; } }
+/* The one-line link to the Roadmap's "Coming in <version>" preview (drawn from pages/roadmap/roadmap.json). */
+.coming-link, .latest .coming-link { margin: 10px 0 0; color: var(--frost); }
+.coming-link a { font-weight: 600; }
 </style>
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "SoftwareApplication", "name": "Fantasy Glass UI", "applicationCategory": "GameApplication", "applicationSubCategory": "World of Warcraft add-on", "operatingSystem": "Windows, macOS", "description": "A complete interface for WoW Forever: unit frames, action bars, raid frames, nameplates, bags and every window in one Starcut look, with 116 themes.", "url": "https://fantasyglassui.com/", "image": "https://fantasyglassui.com/og.jpg", "downloadUrl": "https://www.curseforge.com/wow/addons/fantasy-glass-ui", "author": {"@type": "Person", "name": "DustyMouse"}, "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "sameAs": ["https://discord.gg/qeSMwQWyPR", "https://www.curseforge.com/wow/addons/fantasy-glass-ui", "https://github.com/fantasyglassui/FantasyGlassUI"], "inLanguage": ["en", "de", "fr", "es", "ru", "pt", "it", "ko", "zh"]}</script>
 </head>
@@ -394,6 +397,7 @@
         <div>
           <h2 id="new-h">Dernière version</h2>
           <p class="dim"><b id="newv">13.0.0</b> · <a href="/fr/changelog/">Journal complet</a> · <a href="/fr/roadmap/">Feuille de route</a></p>
+          <p class="coming-link"><a href="/fr/roadmap/#coming-13-5">Un premier aperçu de la 13.5 : ce qui est en préparation</a> <span aria-hidden="true">→</span></p>
         </div>
         <ul id="news"></ul>
       </div>

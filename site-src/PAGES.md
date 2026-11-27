@@ -91,6 +91,12 @@ empty cue list (`"cues": []`), and while it is empty no caption file and no `<tr
   `tests/plan_codes.txt`, read in the browser by the plan page's own reader (`plan/reader.js`, which `body.py`
   serves at `/assets/plan-reader.js`) and drawn zone by zone with its steps to tick.
 - Roadmap: drawn from `pages/roadmap/roadmap.json`; change an idea's status there (no dates).
+  An in-progress idea may carry a `preview` (what it will do, in a player's words), a `sketch` (a small text sketch:
+  `{"kind": "steps" | "list", "title": ..., "lines": [{"text": ...}]}`) and an `after` line; those ideas then show in a
+  "Coming in <version>" section under Ready (`/roadmap/#coming-13-5`), marked as not out yet, with no date. Home
+  (beside the latest version) and the Changelog (under its heading) link the first such section in one line, made by
+  `coming_link()` in `pages/roadmap/body.py`. For a later release, give its in-progress ideas a preview; once they
+  are out (status `ready`), the section and the links go by themselves.
 - Changelog: also writes `/feed.xml` (RSS, linked in every head and footer). Until CHANGELOG.md has a `## 13.0.x`
   heading, a marked 13.0 stand-in ("Coming soon") stands at the top and stays out of the feed.
 - A page can sit in a sub-folder (`pages/guide-and-gold/duo/` is `/guide-and-gold/duo/`); a data file with
