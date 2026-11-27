@@ -29081,6 +29081,49 @@ Learn("13.5 H: the planner window", function()
 end)
 end
 -- 13.5 H learn tests: end
+--
+-- 13.5 part two fix tests: begin
+do
+local function ok(cond, msg) if not cond then error(msg, 2) end end
+try("13.5 P2-I1: a shared profile or pack never carries the two opt-in switches", function()
+    local keep = { cr = ns.db.crashReports, lt = ns.db.plannerLearnTimes, ns = ns.NOT_SHARED, profiles = {} }
+    for k in pairs(ns.root.profiles) do keep.profiles[k] = true end
+    local fine, err = pcall(function()
+        ns.db.crashReports, ns.db.plannerLearnTimes = true, true
+        local kind, data = ns:DecodeShared(ns:ExportProfile())
+        ok(kind == "profile" and data.crashReports == nil and data.plannerLearnTimes == nil, "a profile code never holds them")
+        local pk, pack = ns:DecodeShared(ns:ExportPack())
+        ok(pk == "pack" and pack.profile.crashReports == nil and pack.profile.plannerLearnTimes == nil, "a pack never holds them")
+        ok(ns.db.crashReports == true and ns.db.plannerLearnTimes == true, "exporting changes nothing of yours")
+        -- codes made by a build that did carry them (the list emptied while exporting)
+        ns.NOT_SHARED = {}
+        local profileCode, packCode = ns:ExportProfile(), ns:ExportPack()
+        ns.NOT_SHARED = keep.ns
+        local _, d2 = ns:DecodeShared(profileCode)
+        ok(d2.crashReports == true, "(the test's code does carry them)")
+        for _, mine in ipairs({ false, true }) do
+            ns.db.crashReports, ns.db.plannerLearnTimes = mine, mine
+            local a, b = "zzShared " .. tostring(mine), "zzPack " .. tostring(mine)
+            ok(ns:ImportProfile(a, profileCode), "imported")
+            ok(ns:ImportPack(b, packCode, false), "pack imported")
+            for _, name in ipairs({ a, b }) do
+                local p = ns.root.profiles[name]
+                ok(p.crashReports == mine and p.plannerLearnTimes == mine, name .. ": your own values stay: " .. tostring(p.crashReports) .. " " .. tostring(p.plannerLearnTimes))
+            end
+        end
+        -- a line of accessibility settings that names them changes neither
+        ns.db.crashReports, ns.db.plannerLearnTimes = false, false
+        local set = ns:AccessParse("FGUI-ACCESS:1;crashReports=1;plannerLearnTimes=1;reduceMotion=1")
+        ok(set and set.crashReports == nil and set.plannerLearnTimes == nil, "an accessibility line never holds them")
+        ok(type(ns.NOT_SHARED) == "table" and ns.NOT_SHARED.crashReports and ns.NOT_SHARED.plannerLearnTimes, "the list")
+    end)
+    ns.NOT_SHARED = keep.ns
+    ns.db.crashReports, ns.db.plannerLearnTimes = keep.cr, keep.lt
+    for k in pairs(ns.root.profiles) do if not keep.profiles[k] then ns.root.profiles[k] = nil end end
+    if not fine then error(err, 0) end
+end)
+end
+-- 13.5 part two fix tests: end
 -- release 13 fix tests: end
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)

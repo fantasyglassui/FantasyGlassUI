@@ -157,7 +157,7 @@ function ns:AccessParse(text)
     text = type(text) == "string" and text:gsub("^%s+", ""):gsub("%s+$", "") or ""
     if text:sub(1, #HEAD) ~= HEAD then return nil, "That is not a line of accessibility settings." end
     local allowed = {}
-    for _, k in ipairs(ns.ACCESS_KEYS) do allowed[k] = true end
+    for _, k in ipairs(ns.ACCESS_KEYS) do allowed[k] = not (ns.NotShared and ns.NotShared(k)) end
     local out, n = {}, 0
     for k, v in text:sub(#HEAD + 1):gmatch("([%w_]+)=([%w_]+)") do
         if allowed[k] then

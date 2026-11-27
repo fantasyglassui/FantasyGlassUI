@@ -134,9 +134,35 @@ function ns:DeleteProfile(name)
     return true, format(ns:Tr("Profile \"%s\" deleted."), name)
 end
 
+-- (13.5) Settings that are only ever the player's own choice: a profile, pack or line from someone else never
+-- carries them, and what is taken in keeps the receiving player's own values (both are opt-in switches).
+ns.NOT_SHARED = { crashReports = true, plannerLearnTimes = true }
+local function NotShared(k) return type(ns.NOT_SHARED) == "table" and ns.NOT_SHARED[k] == true end
+ns.NotShared = NotShared
+-- A profile as it is shared: the same table less the keys that are never shared (a shallow copy only when needed).
+local function Shareable(db)
+    if type(db) ~= "table" then return db end
+    local any
+    for k in pairs(ns.NOT_SHARED or {}) do if db[k] ~= nil then any = true end end
+    if not any then return db end
+    local out = {}
+    for k, v in pairs(db) do if not NotShared(k) then out[k] = v end end
+    return out
+end
+-- Into a profile made from someone else's: the receiving player's own values of the keys never shared.
+local function KeepOwn(clean)
+    for k in pairs(ns.NOT_SHARED or {}) do
+        clean[k] = nil
+        local mine
+        if type(ns.db) == "table" then mine = ns.db[k] end
+        if ns.defaults[k] ~= nil and type(mine) == type(ns.defaults[k]) then clean[k] = mine end
+    end
+    return clean
+end
+
 function ns:ExportProfile()
     local out = {}
-    Encode(ns.db, out, 0)
+    Encode(Shareable(ns.db), out, 0)
     return HEADER .. table.concat(out)
 end
 
@@ -154,8 +180,9 @@ function ns:ImportProfile(name, text)
     -- keep only settings this version knows, with the type it expects
     local clean = {}
     for k, default in pairs(ns.defaults) do
-        if type(data[k]) == type(default) then clean[k] = data[k] end
+        if type(data[k]) == type(default) and not NotShared(k) then clean[k] = data[k] end
     end
+    KeepOwn(clean)
     if type(data.role) == "string" then clean.role = data.role end
     clean.pos, clean.scale = {}, {}
     if type(data.pos) == "table" then
@@ -424,7 +451,7 @@ local function EditModeString()
     return nil
 end
 function ns:ExportPack()
-    local data = { v = 1, profile = ns.db, from = UnitName("player") }
+    local data = { v = 1, profile = Shareable(ns.db), from = UnitName("player") }
     if type(ns.root.mailRules) == "table" then data.mailRules = ns.root.mailRules end
     if type(ns.root.mailTo) == "table" then data.mailTo = ns.root.mailTo end
     data.editMode = EditModeString()
@@ -438,10 +465,11 @@ function ns.CleanPackProfile(p)
     local clean = {}
     if type(p) ~= "table" then return clean end
     for k, default in pairs(ns.defaults) do
-        if type(p[k]) == type(default) then clean[k] = DeepCopy(p[k]) end
+        if type(p[k]) == type(default) and not NotShared(k) then clean[k] = DeepCopy(p[k]) end
     end
+    KeepOwn(clean)
     for k, v in pairs(p) do
-        if type(k) == "string" and clean[k] == nil and ns.defaults[k] == nil and (type(v) == "table" or type(v) == "string" or type(v) == "number" or type(v) == "boolean") then
+        if type(k) == "string" and clean[k] == nil and ns.defaults[k] == nil and not NotShared(k) and (type(v) == "table" or type(v) == "string" or type(v) == "number" or type(v) == "boolean") then
             clean[k] = DeepCopy(v)
         end
     end
