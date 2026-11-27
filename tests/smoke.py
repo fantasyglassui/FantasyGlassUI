@@ -26731,6 +26731,127 @@ try("13.0 fix M3: /fgui check names the plan and a trip in words", function()
     if not ok then error(err, 0) end
 end)
 -- release 13 fix tests: end
+-- 13.0.1 emblem tests: begin
+try("13.0.1: the class emblem fills the diamond portrait, out of a fight and in one", function()
+    local frames = {}
+    for _, f in ipairs(ns.unitFrameList or {}) do
+        if f.designKey == "Player" or f.designKey == "Target" or f.designKey == "Party1" then frames[f.designKey] = f end
+    end
+    for _, k in ipairs({ "Player", "Target", "Party1" }) do if not frames[k] then error("no " .. k .. " frame") end end
+    local keep = { style = ns.db.ufStyle, portrait = ns.db.ufPortrait, lock = env.InCombatLockdown, class = env.UnitClass,
+                   isPlayer = env.UnitIsPlayer, make = env.CreateFrame, auraLock = ns.auraLock }
+    local secureCalls = {}                                   -- what was asked of the secure frames during a fight
+    local fighting = false
+    -- the frames get real sizes, and each diamond remembers the size it is given
+    local portraits = {}
+    for k, f in pairs(frames) do
+        local h = (k == "Party1") and 30 or 40
+        rawset(f, "GetHeight", function() return h end); rawset(f, "GetWidth", function() return 200 end)
+        for _, name in ipairs({ "SetSize", "SetPoint", "ClearAllPoints", "SetHitRectInsets", "SetAllPoints" }) do
+            rawset(f, name, function() if fighting then secureCalls[#secureCalls + 1] = k .. ":" .. name end end)
+        end
+        local p = f.portrait
+        portraits[p] = k
+        rawset(p, "SetSize", function(self, w, hh) rawset(self, "testW", w); rawset(self, "testH", hh) end)
+        rawset(p, "GetWidth", function(self) return rawget(self, "testW") or 0 end)
+        rawset(p, "GetHeight", function(self) return rawget(self, "testH") or 0 end)
+        rawset(p, "IsShown", function() return true end)
+    end
+    -- a medallion made on a diamond records its anchors, its sigil's size and its masks
+    local function Record(m, parent)
+        rawset(m, "geo", { parent = parent })
+        rawset(m, "ClearAllPoints", function(self) self.geo = { parent = parent } end)
+        rawset(m, "SetAllPoints", function(self, rel) self.geo.all = rel or parent end)
+        rawset(m, "SetPoint", function(self, point, a, b, c, d)
+            local rel, rp, x, y
+            if type(a) == "number" or a == nil then rel, rp, x, y = parent, point, a or 0, b or 0 else rel, rp, x, y = a, b or point, c or 0, d or 0 end
+            self.geo[point] = { rel = rel, rp = rp, x = x, y = y }
+        end)
+        rawset(m, "CreateTexture", function()
+            local t = newmock()
+            rawset(t, "SetSize", function(self, w, hh) rawset(self, "testW", w); rawset(self, "testH", hh) end)
+            return t
+        end)
+    end
+    env.CreateFrame = function(kind, name, parent, ...)
+        local f = keep.make(kind, name, parent, ...)
+        if portraits[parent] then Record(f, parent) end
+        return f
+    end
+    local function Size(m)                                    -- the medallion's width and height, from its anchors
+        local g, p = rawget(m, "geo"), m.geo and m.geo.parent
+        if not g then return nil, nil, "made before its anchors could be seen" end
+        local pw, ph = rawget(p, "testW"), rawget(p, "testH")
+        if g.all then if g.all ~= p then return nil, nil, "filling something other than the diamond" end; return pw, ph end
+        local tl, br = g.TOPLEFT, g.BOTTOMRIGHT
+        if not (tl and br) or tl.rel ~= p or br.rel ~= p or tl.rp ~= "TOPLEFT" or br.rp ~= "BOTTOMRIGHT" then return nil, nil, "anchored some other way" end
+        return pw - tl.x + br.x, ph + tl.y - br.y
+    end
+    local function Check(when)
+        for _, k in ipairs({ "Player", "Target", "Party1" }) do
+            local p = frames[k].portrait
+            local m = rawget(p, "emblem")
+            local S = rawget(p, "testW")
+            if type(S) ~= "number" or S <= 0 then error(when .. ", " .. k .. ": the diamond was not given a size") end
+            if not m then error(when .. ", " .. k .. ": no class emblem") end
+            local w, h, why = Size(m)
+            if w ~= S or h ~= S then error(when .. ", " .. k .. ": the medallion is " .. tostring(w) .. " x " .. tostring(h) .. " in a diamond " .. S .. " across" .. (why and (" (" .. why .. ")") or "")) end
+            if m.size ~= S then error(when .. ", " .. k .. ": the medallion fits itself to " .. tostring(m.size) .. ", not " .. S) end
+            local sw = rawget(m.sigil, "testW")
+            if not sw or math.abs(sw - S * 0.74) > 0.01 then error(when .. ", " .. k .. ": the sigil is " .. tostring(sw) .. " across, not " .. S * 0.74) end
+            if not rawget(m.disc, "scMasked") or not rawget(m.sigil, "scMasked") then error(when .. ", " .. k .. ": the medallion is not cut to the diamond") end
+        end
+    end
+    local function Send(f, event, ...)
+        for i = 1, #handlers do local h = handlers[i]; if h.self == f and h.name == "OnEvent" then h.fn(f, event, ...) end end
+    end
+    local ok, err = pcall(function()
+        ns.db.ufStyle, ns.db.ufPortrait = "STARCUT", "CLASS"
+        env.UnitIsPlayer = function() return true end
+        env.UnitClass = function() return "Druid", "DRUID" end
+        env.InCombatLockdown = function() return false end
+        for _, f in pairs(frames) do rawset(f.portrait, "emblem", false) end      -- (none yet: false, since a stand-in frame makes up any key it is asked for)
+        -- out of a fight: laid out, then laid out again (as a theme change or the end of a fight does)
+        ns:RefreshUnitFrames(); ns:RefreshUnitFrames()
+        Check("out of a fight")
+        -- a fight: a new target, a party change and a shapeshift
+        env.InCombatLockdown = function() return true end
+        fighting = true
+        env.UnitClass = function() return "Warrior", "WARRIOR" end
+        Send(frames.Target, "PLAYER_TARGET_CHANGED")
+        Send(frames.Party1, "GROUP_ROSTER_UPDATE")
+        Send(frames.Player, "UNIT_MODEL_CHANGED", "player")
+        Check("a target change in a fight")
+        if frames.Target.portrait.emblem.class ~= "WARRIOR" then error("the new target's emblem was not shown") end
+        -- a portrait update in the fight
+        env.UnitClass = function() return "Druid", "DRUID" end
+        for _, k in ipairs({ "Player", "Target", "Party1" }) do Send(frames[k], "UNIT_PORTRAIT_UPDATE", frames[k].unit) end
+        Check("a portrait update in a fight")
+        fighting = false
+        if #secureCalls > 0 then error("the secure frames were changed in a fight: " .. table.concat(secureCalls, ", ")) end
+        -- the fight ends and the frames catch up on their auras (they are laid out again)
+        env.InCombatLockdown = function() return false end
+        ns.auraLock = true
+        fireEvent("PLAYER_REGEN_ENABLED")
+        Check("the end of a fight")
+        -- Classic: back in the box, round and uncut
+        ns.db.ufStyle = "CLASSIC"; ns:RefreshUnitFrames()
+        local m = frames.Player.portrait.emblem
+        if rawget(m.disc, "scMasked") then error("Classic: the medallion is still cut to a diamond") end
+        if not (m.geo.TOPLEFT and m.geo.TOPLEFT.x == 1) then error("Classic: the medallion does not fill the box") end
+    end)
+    fighting = false
+    env.InCombatLockdown, env.UnitClass, env.UnitIsPlayer, env.CreateFrame = keep.lock, keep.class, keep.isPlayer, keep.make
+    ns.auraLock = keep.auraLock
+    ns.db.ufStyle, ns.db.ufPortrait = keep.style, keep.portrait
+    for k, f in pairs(frames) do
+        for _, name in ipairs({ "GetHeight", "GetWidth", "SetSize", "SetPoint", "ClearAllPoints", "SetHitRectInsets", "SetAllPoints" }) do rawset(f, name, nil) end
+        for _, name in ipairs({ "SetSize", "GetWidth", "GetHeight", "IsShown" }) do rawset(f.portrait, name, nil) end
+    end
+    ns:RefreshUnitFrames()
+    if not ok then error(err, 0) end
+end)
+-- 13.0.1 emblem tests: end
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()

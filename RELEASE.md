@@ -9,6 +9,7 @@
 
 **Fixed**
 - Enemy and neutral nameplates show the mob's name above the bar, in the designer's name size.
+- The class emblem fills the whole diamond portrait and takes its place every time it shows, including in a fight: on a new target, a shapeshift or after combat. It no longer shrinks to a small disc inside the diamond.
 
 ## 13.0.0
 

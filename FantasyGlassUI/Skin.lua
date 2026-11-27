@@ -2788,11 +2788,52 @@ function ns:CreateEmblem(parent, inset)
             if a.SetOrigin then a:SetOrigin("CENTER", 0, 0) end
         end }))
 
-    function m:Fit()                                         -- sizes that follow the medallion's own size
-        local w = self:GetWidth()
-        if type(w) ~= "number" or ns:IsSecret(w) or w <= 0 then w = 40 end
+    local function Good(w) return type(w) == "number" and not ns:IsSecret(w) and w > 0 end
+    local function Pad(t, pad)
+        t:ClearAllPoints()
+        t:SetPoint("TOPLEFT", pad, -pad)
+        t:SetPoint("BOTTOMRIGHT", -pad, pad)
+    end
+    -- Sizes that follow the medallion's own size. `w` is the size when the caller knows it (OnSizeChanged
+    -- hands the new width; a shape hands its own); otherwise the size the shape was given, then the width.
+    -- Every piece here is a plain texture, so this works in a fight as well as out of one.
+    function m:Fit(w)
+        if not Good(w) then w = self.shapeSize end
+        if not Good(w) then w = self:GetWidth() end
+        if not Good(w) then w = 40 end
         self.sigil:SetSize(w * 0.74, w * 0.74)
+        if self.shape then
+            -- in a shape (Starcut's diamond portrait): the disc and glow reach past the shape's points so
+            -- the cut leaves the whole shape filled; the ring and the motes turn on the circle that fits inside it
+            Pad(self.disc, -w * 0.1); Pad(self.glow, -w * 0.1)
+            Pad(self.ring, w * 0.146); Pad(self.sparks, w * 0.146)
+            self.padded = true
+        elseif self.padded then
+            for _, t in ipairs({ self.disc, self.glow, self.ring, self.sparks }) do Pad(t, 0) end
+            self.padded = nil
+        end
         self.size = w
+    end
+    -- The medallion takes `region`'s whole size and is cut to its shape (`file`: a Starcut mask, such as
+    -- "diamond"), so it stands in for the portrait instead of sitting inside it as a small disc. `size`
+    -- is the region's size when known. No region: back to the round medallion, `inset` inside its parent.
+    -- Only this frame's own anchors and textures change, never the region's, so a fight makes no difference.
+    function m:FillShape(region, file, size, inset)
+        self:ClearAllPoints()
+        if region then
+            self:SetAllPoints(region)
+            if not self.shapeMask and ns.StarcutMask then self.shapeMask = ns.StarcutMask(self, file or "diamond", region, -2) end
+            self.shape, self.shapeSize = file or "diamond", Good(size) and size or nil
+        else
+            inset = inset or 0
+            self:SetPoint("TOPLEFT", inset, -inset)
+            self:SetPoint("BOTTOMRIGHT", -inset, inset)
+            self.shape, self.shapeSize = nil, nil
+        end
+        if self.shapeMask and ns.StarcutMasked then
+            for _, t in ipairs({ self.disc, self.glow, self.sigil, self.ring, self.sparks }) do ns.StarcutMasked(t, self.shapeMask, region ~= nil) end
+        end
+        self:Fit(self.shapeSize)
     end
     function m:Restyle()                                     -- the ring of this theme's family
         local rune = (ns.style ~= "GLASS")
