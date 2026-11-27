@@ -167,11 +167,14 @@ def test_packaging():
     pkg = open(os.path.join(ROOT, ".pkgmeta"), encoding="utf-8").read()
     for folder in FOLDER_KEYS.values():
         assert re.search(r"^\s+FantasyGlassUI/%s: %s$" % (folder, folder), pkg, re.M), f".pkgmeta does not move {folder}"
+    # (13.5 part two E: the version checks moved from release.yml into .github/release-version.sh, which release.yml calls)
     rel = open(os.path.join(ROOT, ".github", "workflows", "release.yml"), encoding="utf-8").read()
-    loop = re.search(r"^\s*for f in (.*?); do$", rel, re.M)
-    assert loop, "release.yml has no version loop"
+    assert "bash .github/release-version.sh" in rel, "release.yml does not call release-version.sh"
+    script = open(os.path.join(ROOT, ".github", "release-version.sh"), encoding="utf-8").read()
+    loop = re.search(r"^\s*for f in (.*?); do$", script, re.M)
+    assert loop, "release-version.sh has no version loop"
     for folder in FOLDER_KEYS.values():
-        assert f"{folder}/{folder}.toc" in loop.group(1).split(), f"release.yml's version loop does not check {folder}"
+        assert f"{folder}/{folder}.toc" in loop.group(1).split(), f"release-version.sh's version loop does not check {folder}"
 
 
 SEAMS = "36be49a"     # the folders plan's seams commit: the Guide tab before group C moved its planner switches

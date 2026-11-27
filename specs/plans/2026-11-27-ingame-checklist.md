@@ -274,9 +274,10 @@ Dungeon runs ("Dungeon runs in my route", on by default):
 - [ ] The level ranges (13.5 fix I3). The table holds the Classic-era recommended ranges: Ragefire Chasm 13-18,
       Wailing Caverns 17-24, The Deadmines 17-26, Shadowfang Keep 22-30, Blackfathom Deeps 24-32, The Stockade
       24-32, Gnomeregan 29-38, Razorfen Kraul 29-38, Scarlet Monastery 26-45, Razorfen Downs 37-46, Uldaman 41-51,
-      Zul'Farrak 44-54, Maraudon 46-55, The Temple of Atal'Hakkar 50-60. With Questie loaded its meeting stones' ranges
-      are used instead (`/dump QuestieLoader:ImportModule("MeetingStones"):GetLocalizedDungeonNameAndLevelRangeByObjectId(178834)`
-      should give the Deadmines and "(16-24)"). Check that a character below a dungeon's lowest level is never sent there.
+      Zul'Farrak 44-54, Maraudon 46-55, The Temple of Atal'Hakkar 50-60. These win with Questie loaded too: its meeting
+      stones' lower ranges (`/dump QuestieLoader:ImportModule("MeetingStones"):GetLocalizedDungeonNameAndLevelRangeByObjectId(179555)`
+      gives Gnomeregan and "(24-32)") only fill in a dungeon the table has no range for. Check that a character below a
+      dungeon's lowest level in this table is never sent there: a level 24 character is not planned into Gnomeregan.
 - [ ] A run's time is learnt only from runs by a character within the dungeon's range: run a dungeon on a level 60
       alt, and the low character's plan keeps the default time.
 - [ ] A planned run: the pick-ups, then "Find a group for <dungeon>" ticks when you join a group, the wait line
@@ -332,3 +333,41 @@ Saved data:
       gold records as well as the settings; "before restore" puts them back again. Check the saved file's size
       with the records in the backups, and a large gold store left out past 4 MB is named.
 - [ ] A logout mid-copy (right after login on a big file): that backup is never restored with half its records.
+
+## 19. 13.5 part two: beta, the check after a patch, crash reports, times
+Gathered from the 13.5 part two reports (`.superpowers/sdd/2026-11-27-13.5-behind/task-1` to `task-5`). Have ready:
+the GitHub repository with push rights to a `beta/test` branch, the CurseForge app, a copy of a real saved file, and
+a character who can finish a quest, gain a level, fly and take a boat in one session.
+
+Beta:
+- [ ] A `[beta]` commit on a `beta/test` branch makes a CurseForge Beta file and a GitHub prerelease, and a
+      `[release]` commit (on main) still makes a release.
+- [ ] The CurseForge app, set to Beta for Fantasy Glass UI, installs the beta file.
+- [ ] The beta line shows once at login (not again after a /reload), and Report a problem names the beta.
+
+The check after a patch:
+- [ ] `/fgui health` on a normal login lists nothing missing.
+- [ ] At the first login after a real Forever patch (or with `root.lastBuild` edited in the saved file), no part is
+      turned off that works, and the line names only real losses.
+- [ ] The talent, auction and guild windows' frames (loaded on demand) are not reported missing.
+- [ ] A /reload in a fight waits: the check runs after the fight.
+- [ ] `C_XMLUtil.GetTemplateInfo` answers on Forever (`/dump C_XMLUtil.GetTemplateInfo("BackdropTemplate")`). If it
+      does not, templates are never judged.
+
+Crash reports ("Keep crash reports", off by default):
+- [ ] Switch on, cause an error (`/run FantasyGlassUI:Guard("Test", function() error("x") end)()`): `/fgui crashes`
+      lists it, with no character, realm, guild or alt names and no path above AddOns.
+- [ ] Report a problem has the crash code.
+- [ ] Switching off asks first (one click clears nothing; the second click within 10 seconds clears and switches off).
+- [ ] A profile switch keeps the old reports.
+
+Times ("Help improve time estimates", off by default):
+- [ ] Switch on, finish a quest, gain a level, take a flight and take a boat: Share my times shows four entries and a
+      code.
+- [ ] Switching off offers to clear (closing the list keeps them).
+
+At the 13.5 release (website and CurseForge, not before):
+- [ ] The Get started line on switching to Beta in the CurseForge app.
+- [ ] The "send it in" note at `https://fantasyglassui.com/get-started/#share-times`, naming the Discord channel or the
+      contact address.
+- [ ] Run `tools/shared_times.py` on the codes sent in, and ship the data file it writes.

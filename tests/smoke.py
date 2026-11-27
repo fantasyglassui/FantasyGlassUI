@@ -91,7 +91,7 @@ local env = {}
 local reloadCount = 0                -- the game's ReloadUI: counts, so a test can see a reload
 local known = {
   ReloadUI = function() reloadCount = reloadCount + 1 end,
-  ipairs=ipairs, pairs=pairs, pcall=pcall, select=select, type=type, tostring=tostring, tonumber=tonumber,
+  ipairs=ipairs, pairs=pairs, pcall=pcall, xpcall=xpcall, select=select, type=type, tostring=tostring, tonumber=tonumber,
   table=table, math=math, string=string, setmetatable=setmetatable, getmetatable=getmetatable, rawset=rawset, rawget=rawget,
   next=next, error=error, assert=assert, coroutine=coroutine,
   unpack = table.unpack, floor = math.floor, max = math.max, min = math.min,
@@ -27124,10 +27124,11 @@ try("13.5 fix I3: the level ranges and boss counts", function()
         ok(w and d.minLevel == w[1] and d.maxLevel == w[2] and d.bosses == w[3], "the Classic range and bosses: " .. tostring(d.name) .. " " .. tostring(d.minLevel) .. "-" .. tostring(d.maxLevel) .. " " .. tostring(d.bosses))
         ok(type(d.stone) == "number", "its meeting stone, for Questie's range: " .. tostring(d.name))
     end
-    -- Questie's range at runtime (its meeting stones), the table's when Questie has none or a broken one
-    local saved = { loaded = env.C_AddOns.IsAddOnLoaded, meta = rawget(env.C_AddOns, "GetAddOnMetadata"), q = rawget(env, "Questie"), loader = rawget(env, "QuestieLoader") }
+    -- The table's ranges win over Questie's lower meeting-stone ranges (ruling I3); Questie's fills in only a row with no
+    -- range of its own, never below the table's minimum, and the table's when Questie has none or a broken one
+    local saved = { loaded = env.C_AddOns.IsAddOnLoaded, meta = rawget(env.C_AddOns, "GetAddOnMetadata"), q = rawget(env, "Questie"), loader = rawget(env, "QuestieLoader"), list = ns.PLANNER_DUNGEONS }
     local fine, err = pcall(function()
-        local ranges = { [178834] = "(16-25)", [178884] = "(x)", [178845] = "(30-20)" }
+        local ranges = { [178834] = "(16-25)", [178884] = "(x)", [178845] = "(30-20)", [179555] = "(24-32)", [1] = "(20-28)", [2] = "(24-32)", [3] = "(x)" }
         local fakes = {
             QuestieDB = { QuestPointers = {}, GetQuest = function() end, IsDoable = function() return true end, QueryNPCSingle = function() end },
             QuestXP = { GetQuestLogRewardXP = function() return 0 end },
@@ -27138,20 +27139,32 @@ try("13.5 fix I3: the level ranges and boss counts", function()
         env.QuestieLoader = { ImportModule = function(_, name) return fakes[name] end }
         env.C_AddOns.IsAddOnLoaded = function() return true end
         rawset(env.C_AddOns, "GetAddOnMetadata", function() return ns.PLANNER_CONTRACT end)
+        local list = {}
+        for i, d in ipairs(saved.list) do list[i] = d end
+        list[#list + 1] = { name = "T135 no range", map = 1436, x = 1, y = 1, zone = 99001, instance = 9901, bosses = 1, stone = 1 }
+        list[#list + 1] = { name = "T135 a minimum only", minLevel = 30, map = 1436, x = 1, y = 1, zone = 99002, instance = 9902, bosses = 1, stone = 2 }
+        list[#list + 1] = { name = "T135 no range, none that reads", map = 1436, x = 1, y = 1, zone = 99003, instance = 9903, bosses = 1, stone = 3 }
+        ns.PLANNER_DUNGEONS = list
         ns.PlannerSourceReset()
         local src = ns.PlannerSource()
         local by = {}
         for _, d in ipairs(src.dungeons()) do by[d.zone] = d end
-        ok(by[1581].minLevel == 16 and by[1581].maxLevel == 25, "Questie's range: " .. by[1581].minLevel .. "-" .. by[1581].maxLevel)
+        ok(by[1581].minLevel == 17 and by[1581].maxLevel == 26, "Questie's lower range: the table's: " .. by[1581].minLevel .. "-" .. by[1581].maxLevel)
+        ok(by[721].minLevel == 29 and by[721].maxLevel == 38, "Gnomeregan at 24 from Questie: the table's 29-38")
         ok(by[718].minLevel == 17 and by[718].maxLevel == 24, "a range that does not read: the table's")
         ok(by[209].minLevel == 22 and by[209].maxLevel == 30, "a range upside down: the table's")
         ok(by[491].minLevel == 29, "an error: the table's")
         ok(by[717].minLevel == 24, "no range: the table's")
+        ok(by[99001].minLevel == 20 and by[99001].maxLevel == 28, "a row with no range: Questie's")
+        ok(by[99002].minLevel == 30 and by[99002].maxLevel == 32, "never below the table's minimum: " .. by[99002].minLevel .. "-" .. by[99002].maxLevel)
+        ok(by[99003].minLevel == nil, "no range anywhere: none")
         fakes.MeetingStones = nil
         ns.PlannerSourceReset()
         for _, d in ipairs(ns.PlannerSource().dungeons()) do by[d.zone] = d end
         ok(by[1581].minLevel == 17 and by[1581].maxLevel == 26, "no meeting stones: the table's")
+        ok(by[99001].minLevel == nil, "no meeting stones, a row with no range: none")
     end)
+    ns.PLANNER_DUNGEONS = saved.list
     ns.PlannerSourceReset()
     env.C_AddOns.IsAddOnLoaded = saved.loaded; rawset(env.C_AddOns, "GetAddOnMetadata", saved.meta)
     rawset(env, "Questie", saved.q); rawset(env, "QuestieLoader", saved.loader)
@@ -27160,6 +27173,45 @@ try("13.5 fix I3: the level ranges and boss counts", function()
     Fixture(function(f)
         ok(f.runSteps(f.plan({ level = 16 })) == 0, "level 16, the Deadmines from 17: not planned")
         ok(f.runSteps(f.plan({ level = 17 })) == 2, "level 17: planned")
+    end)
+end)
+try("13.5 fix I3 ruling: Questie offering Gnomeregan at 24 does not plan a level 24 player into it", function()
+    local saved = { loaded = env.C_AddOns.IsAddOnLoaded, meta = rawget(env.C_AddOns, "GetAddOnMetadata"), q = rawget(env, "Questie"), loader = rawget(env, "QuestieLoader") }
+    local gnome
+    local fine, err = pcall(function()
+        local fakes = {
+            QuestieDB = { QuestPointers = {}, GetQuest = function() end, IsDoable = function() return true end, QueryNPCSingle = function() end },
+            QuestXP = { GetQuestLogRewardXP = function() return 0 end },
+            ZoneDB = { GetUiMapIdByAreaId = function() return nil end },
+            MeetingStones = { GetLocalizedDungeonNameAndLevelRangeByObjectId = function(_, id) if id == 179555 then return "Gnomeregan", "(24-32)" end end },
+        }
+        env.Questie = { API = { isReady = true, RegisterOnReady = function() end } }
+        env.QuestieLoader = { ImportModule = function(_, name) return fakes[name] end }
+        env.C_AddOns.IsAddOnLoaded = function() return true end
+        rawset(env.C_AddOns, "GetAddOnMetadata", function() return ns.PLANNER_CONTRACT end)
+        ns.PlannerSourceReset()
+        for _, d in ipairs(ns.PlannerSource().dungeons()) do if d.zone == 721 then gnome = d end end
+    end)
+    ns.PlannerSourceReset()
+    env.C_AddOns.IsAddOnLoaded = saved.loaded; rawset(env.C_AddOns, "GetAddOnMetadata", saved.meta)
+    rawset(env, "Questie", saved.q); rawset(env, "QuestieLoader", saved.loader)
+    if not fine then error(err, 0) end
+    ok(gnome and gnome.minLevel == 29, "the Questie source's Gnomeregan starts at the table's 29: " .. tostring(gnome and gnome.minLevel))
+    -- the planner, given that very row (its entrance moved to the fixture's map, its quests the fixture's)
+    Fixture(function(f)
+        local row = {}
+        for k, v in pairs(gnome) do row[k] = v end
+        row.map, row.x, row.y = 1436, 43, 72
+        local base = f.source
+        f.source = function(noDungeons)
+            local s = base(noDungeons)
+            s.zoneQuests = function(zone) return zone == 721 and { 901, 902, 903, 904 } or {} end
+            if not noDungeons then s.dungeons = function() return { row } end end
+            return s
+        end
+        for id = 901, 904 do f.recs[id].sort, f.recs[id].level, f.recs[id].minLevel = 721, 30, 20 end
+        ok(f.runSteps(f.plan({ level = 24 })) == 0, "level 24: not planned into Gnomeregan")
+        ok(f.runSteps(f.plan({ level = 29 })) == 2, "level 29: planned")
     end)
 end)
 try("13.5 fix I4: run times only from runs in the dungeon's level range", function()
@@ -27504,14 +27556,19 @@ end
 local SPEED_LIMITS_MS = {
     -- (ms of CPU time with garbage collection held; "readable" / "secret" per run, 27 Nov 2026, one measured run each of three)
     plan = 80,            -- 16.9 / 16.9, 16.3 / 18.1, 16.8 / 16.4: 4 x the slowest 18.1, up to 10
-    questie = 60,         -- 14.0 / 14.4, 14.0 / 14.9, 12.8 / 13.4: 4 x 14.9
-    login = 440,          -- 87.3 / 103.2, 93.8 / 109.1, 92.3 / 100.2: 4 x 109.1
-    plannerWindow = 80,   -- 18.5 / 17.3, 14.5 / 19.7, 18.6 / 10.8: 4 x 19.7
+    questie = 70,         -- 14.0 / 14.4, 14.0 / 14.9, 12.8 / 13.4: 4 x 14.9 (was 60; part two merged: 4 x 15.8, below)
+    login = 760,          -- 87.3 / 103.2, 93.8 / 109.1, 92.3 / 100.2: 4 x 109.1 (was 440; part two merged, with the health baseline: 4 x 187.7, below)
+    plannerWindow = 90,   -- 18.5 / 17.3, 14.5 / 19.7, 18.6 / 10.8: 4 x 19.7 (was 80; part two merged: 4 x 20.1, below)
     goldWindow = 70,      -- 9.2 / 8.1, 12.4 / 8.9, 9.1 / 8.8 (was 50, 4 x 12.4); merged: 8.6 / 15.2, 9.5 / 8.4, 8.9 / 8.3: 4 x 15.2, up to 10
-    settings = 490,       -- 116.3 / 111.5, 116.1 / 121.2, 119.3 / 110.6: 4 x 121.2
+    settings = 550,       -- 116.3 / 111.5, 116.1 / 121.2, 119.3 / 110.6: 4 x 121.2 (was 490; part two merged: 4 x 135.5, below)
     -- Measured again with all four 13.5 parts merged (27 Nov 2026, three runs): plan 17.7 / 17.9, 19.5 / 17.8, 18.5 / 17.4;
     -- questie 12.5 / 14.2, 12.5 / 12.5, 12.9 / 12.7; login 92.2 / 99.7, 88.6 / 98.4, 89.5 / 102.6; plannerWindow 14.4 / 18.3,
     -- 10.4 / 18.5, 15.9 / 17.3; settings 119.4 / 105.2, 112.9 / 106.8, 113.1 / 109.5. Only goldWindow's limit was too tight by the rule.
+    -- Measured again with 13.5 part two merged (the beta channel, the health check with its login baseline, crash reports, times;
+    -- 27 Nov 2026, three runs, readable / secret): plan 17.1 / 20.0, 17.1 / 18.4, 18.1 / 19.0 (4 x 20.0 = 80, kept);
+    -- questie 12.4 / 15.8, 12.1 / 14.4, 14.2 / 15.6 (4 x 15.8 = 63.2: 70); login 85.4 / 187.7, 92.3 / 123.9, 91.9 / 126.7
+    -- (4 x 187.7 = 750.8: 760); plannerWindow 10.7 / 20.1, 10.8 / 10.5, 17.8 / 17.7 (4 x 20.1 = 80.4: 90); goldWindow 12.9 / 8.2,
+    -- 9.0 / 9.1, 8.7 / 8.6 (4 x 12.9 = 51.6, 70 kept); settings 111.0 / 131.1, 119.3 / 119.5, 118.7 / 135.5 (4 x 135.5 = 542: 550).
 }
 local speedMode = secretMode and "secret" or "readable"
 local speedTimed = true   -- (the audits, tests/secretaudit.py and lockaudit.py, set this false: their code is instrumented, so slower, and their first line is their own)
@@ -27628,7 +27685,7 @@ try("13.5 C speed: slices keep to their budget", function()
     env.debugprofilestop = function() return os.clock() * 1000 end
     local back = speedWorld(20)
     local savedRoot = { guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner }
-    collectgarbage("stop")
+    if speedTimed then collectgarbage("stop") end   -- (not in the audits: their instrumented code runs many more slices, and with collection held their garbage reached 6 GB)
     local ok, err = pcall(function()
         ns.root.guides, ns.root.guideState, ns.root.planner = nil, nil, nil
         fireEvent("PLAYER_REGEN_ENABLED")
@@ -28453,7 +28510,6 @@ end
 --
 -- 13.5 G crashes tests: begin
 do
-env.xpcall = xpcall                                          -- (the game's own, as Guard and Safe use it while crash reports are kept)
 local function ok(cond, msg) if not cond then error(msg, 2) end end
 -- Each test runs as "Mychar" of "Mal'Ganis" in the guild "Night (Watch)", with an alt "Alt" of "Argent Dawn",
 -- its own crash list and switch, a clock it moves, a call stack that names the character and a path, and the

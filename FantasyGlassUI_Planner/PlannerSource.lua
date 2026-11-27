@@ -193,9 +193,9 @@ ns.PLANNER_CLASS_QUESTS = {
 
 -- Classic dungeons: { name, minLevel, maxLevel, map, x, y, zone = Questie's area id, instance = the game's instance id
 -- (GetInstanceInfo's 8th value), bosses, stone = its meeting stone's object id }. The dry-spell advice (PlannerAdvice.lua)
--- and the dungeon runs (PlannerDungeons.lua, through src.dungeons, which takes Questie's entrance and Questie's level
--- range, from its meeting stones, when it has them). The levels are the Classic-era recommended ranges (13.5 fix I3);
--- the boss counts the main bosses. CHECK IN GAME: entrances, area ids, instance ids, boss counts.
+-- and the dungeon runs (PlannerDungeons.lua, through src.dungeons, which takes Questie's entrance when it has one).
+-- The levels are the Classic-era recommended ranges (13.5 fix I3, as ruled): they win over Questie's lower meeting-stone
+-- ranges, which only fill in a row with no range of its own. The boss counts are the main bosses. CHECK IN GAME: entrances, area ids, instance ids, boss counts.
 ns.PLANNER_DUNGEONS = {
     -- check in game (the entrance: inside Orgrimmar, the Cleft of Shadow, map 1454; Questie's entrance corrects it)
     { name = "Ragefire Chasm", minLevel = 13, maxLevel = 18, map = 1411, x = 52, y = 11, zone = 2437, instance = 389, bosses = 4, stone = 179596 },
@@ -773,10 +773,11 @@ function ns.PlannerSource()
     end
     -- The dungeons as { name, minLevel, maxLevel, map, x, y, zone, instance, bosses } (copies of ns.PLANNER_DUNGEONS):
     -- the entrance is Questie's (ZoneDB:GetDungeonLocation(area)[1] = { area, x, y }, its area through
-    -- GetUiMapIdByAreaId) when Questie has that function and an entry, else the table's; the level range is Questie's
-    -- (its meeting stone's, MeetingStones:GetLocalizedDungeonNameAndLevelRangeByObjectId(stone) = name, "(lo-hi)") when
-    -- it has one that reads, else the table's. Made once a session. (Boss counts are the table's. The contract stays
-    -- "4": the functions are probed.)
+    -- GetUiMapIdByAreaId) when Questie has that function and an entry, else the table's. The level range is the
+    -- table's (the Classic-era recommended ranges: ruling I3). Questie's meeting-stone caption
+    -- (MeetingStones:GetLocalizedDungeonNameAndLevelRangeByObjectId(stone) = name, "(lo-hi)", lower LFG-style ranges)
+    -- fills in only a row whose range the table does not give, and never below the table's minimum when it has one.
+    -- Made once a session. (Boss counts are the table's. The contract stays "4": the functions are probed.)
     function src.dungeons()
         if dungeonCache then return dungeonCache end
         local list = {}
@@ -786,12 +787,17 @@ function ns.PlannerSource()
         for _, d in ipairs(ns.PLANNER_DUNGEONS) do
             local e = {}
             for k, v in pairs(d) do e[k] = v end
-            if type(range) == "function" and type(d.stone) == "number" then
+            local tableMin, tableMax = tonumber(d.minLevel), tonumber(d.maxLevel)
+            if not (tableMin and tableMax) and type(range) == "function" and type(d.stone) == "number" then
                 local ok, _, text = Try(range, stones, d.stone)
                 local lo, hi
                 if ok and type(text) == "string" and not ns:IsSecret(text) then lo, hi = text:match("^%((%d+)%-(%d+)%)$") end
                 lo, hi = tonumber(lo), tonumber(hi)
-                if lo and hi and lo >= 1 and lo <= hi and hi <= 100 then e.minLevel, e.maxLevel = lo, hi end
+                if lo and hi and lo >= 1 and lo <= hi and hi <= 100 then
+                    if tableMin and lo < tableMin then lo = tableMin end     -- (never below the table's minimum)
+                    if hi < lo then hi = lo end
+                    e.minLevel, e.maxLevel = lo, hi
+                end
             end
             if type(where) == "function" and type(d.zone) == "number" then
                 local ok, at = Try(where, env.zones, d.zone)
