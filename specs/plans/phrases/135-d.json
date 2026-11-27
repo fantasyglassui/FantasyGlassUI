@@ -1,0 +1,332 @@
+{
+  "with guides, routes and gold": [
+    "mit Anleitungen, Routen und Gold",
+    "avec guides, itinéraires et or",
+    "con guías, rutas y oro",
+    "с гайдами, маршрутами и золотом",
+    "com guias, rotas e ouro",
+    "con guide, percorsi e oro",
+    "안내서, 경로, 골드 포함",
+    "含指南、路线和金币"
+  ],
+  "Saved data": [
+    "Gespeicherte Daten",
+    "Données enregistrées",
+    "Datos guardados",
+    "Сохранённые данные",
+    "Dados salvos",
+    "Dati salvati",
+    "저장된 데이터",
+    "已保存的数据"
+  ],
+  "What each part of the add-on keeps, and a tidy-up that asks before it removes anything.": [
+    "Was jeder Teil des Add-ons speichert, und ein Aufräumen, das fragt, bevor es etwas entfernt.",
+    "Ce que garde chaque partie de l'add-on, et un rangement qui demande avant de retirer quoi que ce soit.",
+    "Lo que guarda cada parte del add-on, y una limpieza que pregunta antes de quitar nada.",
+    "Что хранит каждая часть модификации, и уборка, которая спрашивает, прежде чем что-либо удалить.",
+    "O que cada parte do add-on guarda, e uma limpeza que pergunta antes de remover qualquer coisa.",
+    "Cosa conserva ogni parte dell'add-on, e una pulizia che chiede prima di rimuovere qualsiasi cosa.",
+    "애드온의 각 부분이 무엇을 보관하는지, 그리고 무엇이든 지우기 전에 묻는 정리.",
+    "插件每个部分保存了什么，以及在删除任何内容之前都会询问的清理。"
+  ],
+  "Roughly what each part keeps in the saved file, for every character.": [
+    "Ungefähr, was jeder Teil in der Speicherdatei behält, für alle Charaktere.",
+    "Ce que chaque partie garde à peu près dans le fichier de sauvegarde, pour tous les personnages.",
+    "Más o menos lo que guarda cada parte en el archivo guardado, para todos los personajes.",
+    "Примерно то, что каждая часть хранит в файле сохранения, для всех персонажей.",
+    "Mais ou menos o que cada parte guarda no arquivo salvo, para todos os personagens.",
+    "All'incirca cosa conserva ogni parte nel file salvato, per tutti i personaggi.",
+    "각 부분이 저장 파일에 대략 무엇을 보관하는지 (모든 캐릭터).",
+    "每个部分在存档文件中大约保存了什么（所有角色）。"
+  ],
+  "Settings and profiles": [
+    "Einstellungen und Profile",
+    "Réglages et profils",
+    "Ajustes y perfiles",
+    "Настройки и профили",
+    "Configurações e perfis",
+    "Impostazioni e profili",
+    "설정 및 프로필",
+    "设置与配置文件"
+  ],
+  "Guides": [
+    "Anleitungen",
+    "Guides",
+    "Guías",
+    "Гайды",
+    "Guias",
+    "Guide",
+    "안내서",
+    "指南"
+  ],
+  "Route planner": [
+    "Routenplaner",
+    "Planificateur d'itinéraire",
+    "Planificador de ruta",
+    "Планировщик маршрута",
+    "Planejador de rota",
+    "Pianificatore di percorso",
+    "경로 플래너",
+    "路线规划器"
+  ],
+  "Ways to make gold": [
+    "Wege zu Gold",
+    "Gagner de l'or",
+    "Formas de ganar oro",
+    "Как заработать золото",
+    "Formas de ganhar ouro",
+    "Modi per fare oro",
+    "골드 버는 방법",
+    "赚金方法"
+  ],
+  "Auction prices": [
+    "Auktionspreise",
+    "Prix aux enchères",
+    "Precios de subasta",
+    "Цены аукциона",
+    "Preços do leilão",
+    "Prezzi d'asta",
+    "경매장 가격",
+    "拍卖价格"
+  ],
+  "Backups": [
+    "Sicherungen",
+    "Sauvegardes",
+    "Copias de seguridad",
+    "Резервные копии",
+    "Cópias de segurança",
+    "Backup",
+    "백업",
+    "备份"
+  ],
+  "Everything else": [
+    "Alles andere",
+    "Tout le reste",
+    "Todo lo demás",
+    "Всё остальное",
+    "Todo o resto",
+    "Tutto il resto",
+    "그 밖의 모든 것",
+    "其他所有内容"
+  ],
+  "Character list": [
+    "Charakterliste",
+    "Liste des personnages",
+    "Lista de personajes",
+    "Список персонажей",
+    "Lista de personagens",
+    "Elenco dei personaggi",
+    "캐릭터 목록",
+    "角色列表"
+  ],
+  "Bags and bank": [
+    "Taschen und Bank",
+    "Sacs et banque",
+    "Bolsas y banco",
+    "Сумки и банк",
+    "Bolsas e banco",
+    "Borse e banca",
+    "가방 및 은행",
+    "背包与银行"
+  ],
+  "Alliance": [
+    "Allianz",
+    "Alliance",
+    "Alianza",
+    "Альянс",
+    "Aliança",
+    "Alleanza",
+    "얼라이언스",
+    "联盟"
+  ],
+  "Horde": [
+    "Horde",
+    "Horde",
+    "Horda",
+    "Орда",
+    "Horda",
+    "Orda",
+    "호드",
+    "部落"
+  ],
+  "under 1 KB": [
+    "unter 1 KB",
+    "moins de 1 Ko",
+    "menos de 1 KB",
+    "меньше 1 КБ",
+    "menos de 1 KB",
+    "meno di 1 KB",
+    "1 KB 미만",
+    "不到 1 KB"
+  ],
+  "about %d KB": [
+    "etwa %d KB",
+    "environ %d Ko",
+    "unos %d KB",
+    "около %d КБ",
+    "cerca de %d KB",
+    "circa %d KB",
+    "약 %d KB",
+    "约 %d KB"
+  ],
+  "about %.1f MB": [
+    "etwa %.1f MB",
+    "environ %.1f Mo",
+    "unos %.1f MB",
+    "около %.1f МБ",
+    "cerca de %.1f MB",
+    "circa %.1f MB",
+    "약 %.1f MB",
+    "约 %.1f MB"
+  ],
+  "Counting...": [
+    "Wird gezählt...",
+    "Calcul en cours...",
+    "Contando...",
+    "Подсчёт...",
+    "Contando...",
+    "Conteggio...",
+    "계산 중...",
+    "正在统计..."
+  ],
+  "Tidy up old records": [
+    "Alte Aufzeichnungen aufräumen",
+    "Ranger les anciens relevés",
+    "Limpiar registros antiguos",
+    "Убрать старые записи",
+    "Limpar registros antigos",
+    "Riordina i vecchi registri",
+    "오래된 기록 정리",
+    "清理旧记录"
+  ],
+  "Lists characters not played in 180 days, old auction prices and what deleted guides left behind. Nothing is removed until you confirm.": [
+    "Listet Charaktere, die du seit 180 Tagen nicht gespielt hast, alte Auktionspreise und was gelöschte Anleitungen hinterlassen haben. Nichts wird entfernt, bis du es bestätigst.",
+    "Liste les personnages non joués depuis 180 jours, les anciens prix aux enchères et ce que les guides supprimés ont laissé. Rien n'est retiré avant que vous confirmiez.",
+    "Muestra los personajes que no has jugado en 180 días, los precios de subasta antiguos y lo que dejaron las guías borradas. No se quita nada hasta que lo confirmes.",
+    "Показывает персонажей, в которых вы не играли 180 дней, старые цены аукциона и то, что осталось от удалённых гайдов. Ничего не удаляется, пока вы не подтвердите.",
+    "Lista personagens não jogados há 180 dias, preços antigos do leilão e o que guias apagados deixaram para trás. Nada é removido até você confirmar.",
+    "Elenca i personaggi non giocati da 180 giorni, i vecchi prezzi d'asta e ciò che le guide eliminate hanno lasciato. Non viene rimosso nulla finché non confermi.",
+    "180일 동안 플레이하지 않은 캐릭터, 오래된 경매장 가격, 삭제된 안내서가 남긴 것을 보여 줍니다. 확인하기 전에는 아무것도 지우지 않습니다.",
+    "列出 180 天未玩的角色、旧的拍卖价格以及已删除指南留下的内容。在你确认之前不会删除任何内容。"
+  ],
+  "Looking for old records...": [
+    "Suche nach alten Aufzeichnungen...",
+    "Recherche des anciens relevés...",
+    "Buscando registros antiguos...",
+    "Поиск старых записей...",
+    "Procurando registros antigos...",
+    "Ricerca dei vecchi registri...",
+    "오래된 기록을 찾는 중...",
+    "正在查找旧记录..."
+  ],
+  "Tidy up saved data": [
+    "Gespeicherte Daten aufräumen",
+    "Ranger les données enregistrées",
+    "Limpiar datos guardados",
+    "Уборка сохранённых данных",
+    "Limpar dados salvos",
+    "Riordina i dati salvati",
+    "저장된 데이터 정리",
+    "清理已保存的数据"
+  ],
+  "Nothing is removed until you click the last line twice.": [
+    "Nichts wird entfernt, bis du zweimal auf die letzte Zeile klickst.",
+    "Rien n'est retiré tant que vous n'avez pas cliqué deux fois sur la dernière ligne.",
+    "No se quita nada hasta que hagas clic dos veces en la última línea.",
+    "Ничего не удаляется, пока вы дважды не нажмёте на последнюю строку.",
+    "Nada é removido até você clicar duas vezes na última linha.",
+    "Non viene rimosso nulla finché non fai clic due volte sull'ultima riga.",
+    "마지막 줄을 두 번 클릭하기 전에는 아무것도 지우지 않습니다.",
+    "在你点击最后一行两次之前，不会删除任何内容。"
+  ],
+  "Nothing to tidy up.": [
+    "Nichts aufzuräumen.",
+    "Rien à ranger.",
+    "No hay nada que limpiar.",
+    "Убирать нечего.",
+    "Nada para limpar.",
+    "Niente da riordinare.",
+    "정리할 것이 없습니다.",
+    "没有需要清理的内容。"
+  ],
+  "Remove these %d (click twice)": [
+    "Diese %d entfernen (zweimal klicken)",
+    "Retirer ces %d (cliquer deux fois)",
+    "Quitar estos %d (dos clics)",
+    "Удалить эти %d (нажмите дважды)",
+    "Remover estes %d (clique duas vezes)",
+    "Rimuovi questi %d (fai clic due volte)",
+    "이 %d개 지우기 (두 번 클릭)",
+    "删除这 %d 项（点击两次）"
+  ],
+  "Click again within 10 seconds to remove them": [
+    "Klicke innerhalb von 10 Sekunden noch einmal, um sie zu entfernen",
+    "Cliquez encore dans les 10 secondes pour les retirer",
+    "Haz clic otra vez en 10 segundos para quitarlos",
+    "Нажмите ещё раз в течение 10 секунд, чтобы удалить их",
+    "Clique de novo em até 10 segundos para removê-los",
+    "Fai clic di nuovo entro 10 secondi per rimuoverli",
+    "지우려면 10초 안에 다시 클릭하세요",
+    "在 10 秒内再次点击以删除它们"
+  ],
+  "Removed %d old records (about %s).": [
+    "%d alte Aufzeichnungen entfernt (%s).",
+    "%d anciens relevés retirés (%s).",
+    "Se quitaron %d registros antiguos (%s).",
+    "Удалено старых записей: %d (%s).",
+    "%d registros antigos removidos (%s).",
+    "Rimossi %d vecchi registri (%s).",
+    "오래된 기록 %d개를 지웠습니다 (%s).",
+    "已删除 %d 条旧记录（%s）。"
+  ],
+  "%s, not played for %d days": [
+    "%s, seit %d Tagen nicht gespielt",
+    "%s, pas joué depuis %d jours",
+    "%s, sin jugar desde hace %d días",
+    "%s, не в игре %d дн.",
+    "%s, sem jogar há %d dias",
+    "%s, non giocato da %d giorni",
+    "%s, %d일 동안 플레이하지 않음",
+    "%s，已 %d 天未玩"
+  ],
+  "Auction prices at %s older than %d days: %d": [
+    "Auktionspreise bei %s, älter als %d Tage: %d",
+    "Prix aux enchères à %s de plus de %d jours : %d",
+    "Precios de subasta en %s de más de %d días: %d",
+    "Цены аукциона (%s) старше %d дн.: %d",
+    "Preços do leilão em %s com mais de %d dias: %d",
+    "Prezzi d'asta a %s più vecchi di %d giorni: %d",
+    "%s의 %d일 지난 경매장 가격: %d개",
+    "%s 超过 %d 天的拍卖价格：%d 条"
+  ],
+  "%s: a finished trip": [
+    "%s: eine beendete Reise",
+    "%s : un voyage terminé",
+    "%s: un viaje terminado",
+    "%s: завершённая поездка",
+    "%s: uma viagem terminada",
+    "%s: un viaggio finito",
+    "%s: 끝난 여정",
+    "%s：已完成的行程"
+  ],
+  "%s: follows a guide that no longer exists (%s)": [
+    "%s: folgt einer Anleitung, die es nicht mehr gibt (%s)",
+    "%s : suit un guide qui n'existe plus (%s)",
+    "%s: sigue una guía que ya no existe (%s)",
+    "%s: следует гайду, которого больше нет (%s)",
+    "%s: segue um guia que não existe mais (%s)",
+    "%s: segue una guida che non esiste più (%s)",
+    "%s: 더 이상 없는 안내서를 따라가는 중 (%s)",
+    "%s：正在跟随一个已不存在的指南（%s）"
+  ],
+  "%s: places kept in deleted guides (%s)": [
+    "%s: gemerkte Stellen in gelöschten Anleitungen (%s)",
+    "%s : positions gardées dans des guides supprimés (%s)",
+    "%s: posiciones guardadas en guías borradas (%s)",
+    "%s: сохранённые места в удалённых гайдах (%s)",
+    "%s: posições guardadas em guias apagados (%s)",
+    "%s: posizioni salvate in guide eliminate (%s)",
+    "%s: 삭제된 안내서에 저장된 위치 (%s)",
+    "%s：已删除指南中保存的位置（%s）"
+  ]
+}
