@@ -21,6 +21,15 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["Click: open the planner. Drag: move."] = "Klick: den Planer öffnen. Ziehen: verschieben.",
+    ["Click: open the gold window. Drag: move."] = "Klick: das Gold-Fenster öffnen. Ziehen: verschieben.",
+    ["Minimap button for the route planner"] = "Minikartenknopf für den Routenplaner",
+    ["Minimap button for ways to make gold"] = "Minikartenknopf für Wege zu Gold",
+    ["A small button on the minimap, beside the options button, that opens the route planner. It can be dragged along the minimap. It hides while quest guides are off."] = "Ein kleiner Knopf auf der Minikarte, neben dem Knopf für die Optionen, der den Routenplaner öffnet. Du kannst ihn an der Minikarte entlangziehen. Solange die Questführer aus sind, ist er verborgen.",
+    ["A small button on the minimap, beside the options button, that opens ways to make gold. It can be dragged along the minimap."] = "Ein kleiner Knopf auf der Minikarte, neben dem Knopf für die Optionen, der „Wege zu Gold“ öffnet. Du kannst ihn an der Minikarte entlangziehen.",
+    ["Two new minimap buttons open the route planner and ways to make gold (each can be hidden)."] = "Zwei neue Minikartenknöpfe öffnen den Routenplaner und „Wege zu Gold“ (du kannst jeden ausblenden).",
+    ["the planner window: the route you follow, Keep my route, and every setting for what the planner plans (or its own minimap button)"] = "das Fenster des Planers: die Route, der du folgst, „Meine Route behalten“ und jede Einstellung dafür, was der Planer plant (oder sein eigener Minikartenknopf)",
+    ["ways to make gold: ideas for this character, each with Go, which plans the trip (or its own minimap button, or Ctrl-click the options button)"] = "Wege zu Gold: Ideen für diesen Charakter, jede mit „Los“, das die Reise plant (oder sein eigener Minikartenknopf, oder Strg-Klick auf den Knopf für die Optionen)",
     ["Copy this plan code and paste it on fantasyglassui.com/plan/"] = "Kopiere diesen Plancode und füge ihn auf fantasyglassui.com/plan/ ein",
     ["Quest guides and gold"] = "Questanleitungen und Gold",
     ["your quest guides: follow one, write or paste one, or record one as you play (record <name>, stop, next, back, off)"] = "deine Questanleitungen: einer folgen, eine schreiben oder einfügen, oder beim Spielen eine aufzeichnen (record <Name>, stop, next, back, off)",
@@ -3854,6 +3863,15 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["Click: open the planner. Drag: move."] = "Clic : ouvrir le planificateur. Glisser : déplacer.",
+    ["Click: open the gold window. Drag: move."] = "Clic : ouvrir la fenêtre de l'or. Glisser : déplacer.",
+    ["Minimap button for the route planner"] = "Bouton de minicarte pour le planificateur d'itinéraire",
+    ["Minimap button for ways to make gold"] = "Bouton de minicarte pour gagner de l'or",
+    ["A small button on the minimap, beside the options button, that opens the route planner. It can be dragged along the minimap. It hides while quest guides are off."] = "Un petit bouton sur la minicarte, à côté du bouton des options, qui ouvre le planificateur d'itinéraire. Tu peux le faire glisser le long de la minicarte. Il se cache tant que les guides de quêtes sont désactivés.",
+    ["A small button on the minimap, beside the options button, that opens ways to make gold. It can be dragged along the minimap."] = "Un petit bouton sur la minicarte, à côté du bouton des options, qui ouvre « Gagner de l'or ». Tu peux le faire glisser le long de la minicarte.",
+    ["Two new minimap buttons open the route planner and ways to make gold (each can be hidden)."] = "Deux nouveaux boutons de minicarte ouvrent le planificateur d'itinéraire et « Gagner de l'or » (tu peux masquer chacun).",
+    ["the planner window: the route you follow, Keep my route, and every setting for what the planner plans (or its own minimap button)"] = "la fenêtre du planificateur : l'itinéraire que tu suis, « Garder mon itinéraire » et tous les réglages de ce que planifie le planificateur (ou son propre bouton de minicarte)",
+    ["ways to make gold: ideas for this character, each with Go, which plans the trip (or its own minimap button, or Ctrl-click the options button)"] = "gagner de l'or : des idées pour ce personnage, chacune avec « Aller », qui planifie le voyage (ou son propre bouton de minicarte, ou Ctrl-clic sur le bouton des options)",
     ["Copy this plan code and paste it on fantasyglassui.com/plan/"] = "Copiez ce code de plan et collez-le sur fantasyglassui.com/plan/",
     ["Quest guides and gold"] = "Guides de quêtes et or",
     ["your quest guides: follow one, write or paste one, or record one as you play (record <name>, stop, next, back, off)"] = "vos guides de quêtes : en suivre un, en écrire ou en coller un, ou en enregistrer un en jouant (record <nom>, stop, next, back, off)",
@@ -7687,6 +7705,15 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["Click: open the planner. Drag: move."] = "Clic: abre el planificador. Arrastrar: mover.",
+    ["Click: open the gold window. Drag: move."] = "Clic: abre la ventana del oro. Arrastrar: mover.",
+    ["Minimap button for the route planner"] = "Botón del minimapa para el planificador de ruta",
+    ["Minimap button for ways to make gold"] = "Botón del minimapa para formas de ganar oro",
+    ["A small button on the minimap, beside the options button, that opens the route planner. It can be dragged along the minimap. It hides while quest guides are off."] = "Un pequeño botón en el minimapa, junto al botón de las opciones, que abre el planificador de ruta. Puedes arrastrarlo a lo largo del minimapa. Se oculta mientras las guías de misiones están desactivadas.",
+    ["A small button on the minimap, beside the options button, that opens ways to make gold. It can be dragged along the minimap."] = "Un pequeño botón en el minimapa, junto al botón de las opciones, que abre las formas de ganar oro. Puedes arrastrarlo a lo largo del minimapa.",
+    ["Two new minimap buttons open the route planner and ways to make gold (each can be hidden)."] = "Dos nuevos botones del minimapa abren el planificador de ruta y las formas de ganar oro (puedes ocultar cada uno).",
+    ["the planner window: the route you follow, Keep my route, and every setting for what the planner plans (or its own minimap button)"] = "la ventana del planificador: la ruta que sigues, «Mantener mi ruta» y todos los ajustes de lo que planifica (o su propio botón del minimapa)",
+    ["ways to make gold: ideas for this character, each with Go, which plans the trip (or its own minimap button, or Ctrl-click the options button)"] = "formas de ganar oro: ideas para este personaje, cada una con «Ir», que planifica el viaje (o su propio botón del minimapa, o Ctrl-clic en el botón de las opciones)",
     ["Copy this plan code and paste it on fantasyglassui.com/plan/"] = "Copia este código del plan y pégalo en fantasyglassui.com/plan/",
     ["Quest guides and gold"] = "Guías de misiones y oro",
     ["your quest guides: follow one, write or paste one, or record one as you play (record <name>, stop, next, back, off)"] = "tus guías de misiones: sigue una, escribe o pega una, o graba una mientras juegas (record <nombre>, stop, next, back, off)",
@@ -11523,6 +11550,15 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["Click: open the planner. Drag: move."] = "Щелчок: открыть планировщик. Перетаскивание: переместить.",
+    ["Click: open the gold window. Drag: move."] = "Щелчок: открыть окно золота. Перетаскивание: переместить.",
+    ["Minimap button for the route planner"] = "Кнопка миникарты для планировщика маршрута",
+    ["Minimap button for ways to make gold"] = "Кнопка миникарты для способов заработать золото",
+    ["A small button on the minimap, beside the options button, that opens the route planner. It can be dragged along the minimap. It hides while quest guides are off."] = "Маленькая кнопка на миникарте, рядом с кнопкой настроек, открывает планировщик маршрута. Её можно перетаскивать вдоль миникарты. Пока гиды по заданиям выключены, она скрыта.",
+    ["A small button on the minimap, beside the options button, that opens ways to make gold. It can be dragged along the minimap."] = "Маленькая кнопка на миникарте, рядом с кнопкой настроек, открывает способы заработать золото. Её можно перетаскивать вдоль миникарты.",
+    ["Two new minimap buttons open the route planner and ways to make gold (each can be hidden)."] = "Две новые кнопки миникарты открывают планировщик маршрута и способы заработать золото (каждую можно скрыть).",
+    ["the planner window: the route you follow, Keep my route, and every setting for what the planner plans (or its own minimap button)"] = "окно планировщика: маршрут, которому вы следуете, «Сохранять мой маршрут» и все настройки того, что планирует планировщик (или его собственная кнопка у миникарты)",
+    ["ways to make gold: ideas for this character, each with Go, which plans the trip (or its own minimap button, or Ctrl-click the options button)"] = "как заработать золото: идеи для этого персонажа, у каждой кнопка «Вперёд», которая планирует поездку (или её собственная кнопка у миникарты, или Ctrl-клик по кнопке настроек)",
     ["Copy this plan code and paste it on fantasyglassui.com/plan/"] = "Скопируйте этот код плана и вставьте его на fantasyglassui.com/plan/",
     ["Quest guides and gold"] = "Гайды по заданиям и золото",
     ["your quest guides: follow one, write or paste one, or record one as you play (record <name>, stop, next, back, off)"] = "ваши гайды по заданиям: следовать гайду, написать или вставить гайд или записать его во время игры (record <имя>, stop, next, back, off)",
@@ -15356,6 +15392,15 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["Click: open the planner. Drag: move."] = "Clique: abre o planejador. Arrastar: mover.",
+    ["Click: open the gold window. Drag: move."] = "Clique: abre a janela do ouro. Arrastar: mover.",
+    ["Minimap button for the route planner"] = "Botão do minimapa para o planejador de rota",
+    ["Minimap button for ways to make gold"] = "Botão do minimapa para formas de ganhar ouro",
+    ["A small button on the minimap, beside the options button, that opens the route planner. It can be dragged along the minimap. It hides while quest guides are off."] = "Um botãozinho no minimapa, ao lado do botão das opções, que abre o planejador de rota. Você pode arrastá-lo ao longo do minimapa. Fica oculto enquanto os guias de missões estão desligados.",
+    ["A small button on the minimap, beside the options button, that opens ways to make gold. It can be dragged along the minimap."] = "Um botãozinho no minimapa, ao lado do botão das opções, que abre as formas de ganhar ouro. Você pode arrastá-lo ao longo do minimapa.",
+    ["Two new minimap buttons open the route planner and ways to make gold (each can be hidden)."] = "Dois novos botões do minimapa abrem o planejador de rota e as formas de ganhar ouro (cada um pode ser ocultado).",
+    ["the planner window: the route you follow, Keep my route, and every setting for what the planner plans (or its own minimap button)"] = "a janela do planejador: a rota que você segue, \"Manter minha rota\" e todas as configurações do que o planejador planeja (ou o próprio botão do minimapa)",
+    ["ways to make gold: ideas for this character, each with Go, which plans the trip (or its own minimap button, or Ctrl-click the options button)"] = "formas de ganhar ouro: ideias para este personagem, cada uma com \"Ir\", que planeja a viagem (ou o próprio botão do minimapa, ou Ctrl-clique no botão das opções)",
     ["Copy this plan code and paste it on fantasyglassui.com/plan/"] = "Copie este código do plano e cole-o em fantasyglassui.com/plan/",
     ["Quest guides and gold"] = "Guias de missões e ouro",
     ["your quest guides: follow one, write or paste one, or record one as you play (record <name>, stop, next, back, off)"] = "seus guias de missões: siga um, escreva ou cole um, ou grave um enquanto joga (record <nome>, stop, next, back, off)",
@@ -19189,6 +19234,15 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["Click: open the planner. Drag: move."] = "Clic: apre il pianificatore. Trascina: sposta.",
+    ["Click: open the gold window. Drag: move."] = "Clic: apre la finestra dell'oro. Trascina: sposta.",
+    ["Minimap button for the route planner"] = "Pulsante della minimappa per il pianificatore di percorso",
+    ["Minimap button for ways to make gold"] = "Pulsante della minimappa per i modi di fare oro",
+    ["A small button on the minimap, beside the options button, that opens the route planner. It can be dragged along the minimap. It hides while quest guides are off."] = "Un piccolo pulsante sulla minimappa, accanto al pulsante delle opzioni, che apre il pianificatore di percorso. Puoi trascinarlo lungo la minimappa. Resta nascosto finché le guide alle missioni sono spente.",
+    ["A small button on the minimap, beside the options button, that opens ways to make gold. It can be dragged along the minimap."] = "Un piccolo pulsante sulla minimappa, accanto al pulsante delle opzioni, che apre i modi per fare oro. Puoi trascinarlo lungo la minimappa.",
+    ["Two new minimap buttons open the route planner and ways to make gold (each can be hidden)."] = "Due nuovi pulsanti della minimappa aprono il pianificatore di percorso e i modi per fare oro (ognuno si può nascondere).",
+    ["the planner window: the route you follow, Keep my route, and every setting for what the planner plans (or its own minimap button)"] = "la finestra del pianificatore: il percorso che segui, «Mantieni il mio percorso» e ogni impostazione di ciò che pianifica (o il suo pulsante della minimappa)",
+    ["ways to make gold: ideas for this character, each with Go, which plans the trip (or its own minimap button, or Ctrl-click the options button)"] = "modi per fare oro: idee per questo personaggio, ognuna con «Vai», che pianifica il viaggio (o il suo pulsante della minimappa, o Ctrl-clic sul pulsante delle opzioni)",
     ["Copy this plan code and paste it on fantasyglassui.com/plan/"] = "Copia questo codice del piano e incollalo su fantasyglassui.com/plan/",
     ["Quest guides and gold"] = "Guide delle missioni e oro",
     ["your quest guides: follow one, write or paste one, or record one as you play (record <name>, stop, next, back, off)"] = "le tue guide delle missioni: seguine una, scrivine o incollane una, o registrane una mentre giochi (record <nome>, stop, next, back, off)",
@@ -23022,6 +23076,15 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["Click: open the planner. Drag: move."] = "클릭: 플래너를 엽니다. 드래그: 옮깁니다.",
+    ["Click: open the gold window. Drag: move."] = "클릭: 골드 창을 엽니다. 드래그: 옮깁니다.",
+    ["Minimap button for the route planner"] = "경로 플래너용 미니맵 버튼",
+    ["Minimap button for ways to make gold"] = "골드 버는 방법용 미니맵 버튼",
+    ["A small button on the minimap, beside the options button, that opens the route planner. It can be dragged along the minimap. It hides while quest guides are off."] = "옵션 버튼 옆, 미니맵에 있는 작은 버튼으로 경로 플래너를 엽니다. 미니맵 가장자리를 따라 끌어 옮길 수 있습니다. 퀘스트 가이드가 꺼져 있는 동안에는 숨겨집니다.",
+    ["A small button on the minimap, beside the options button, that opens ways to make gold. It can be dragged along the minimap."] = "옵션 버튼 옆, 미니맵에 있는 작은 버튼으로 골드 버는 방법을 엽니다. 미니맵 가장자리를 따라 끌어 옮길 수 있습니다.",
+    ["Two new minimap buttons open the route planner and ways to make gold (each can be hidden)."] = "새 미니맵 버튼 두 개로 경로 플래너와 골드 버는 방법을 엽니다 (각각 숨길 수 있습니다).",
+    ["the planner window: the route you follow, Keep my route, and every setting for what the planner plans (or its own minimap button)"] = "플래너 창: 따르고 있는 경로, '내 경로 유지', 플래너가 계획하는 내용의 모든 설정 (또는 전용 미니맵 버튼)",
+    ["ways to make gold: ideas for this character, each with Go, which plans the trip (or its own minimap button, or Ctrl-click the options button)"] = "골드 버는 방법: 이 캐릭터를 위한 아이디어마다 '가기'가 있어 여정을 계획합니다 (또는 전용 미니맵 버튼, 또는 옵션 버튼을 Ctrl-클릭)",
     ["Copy this plan code and paste it on fantasyglassui.com/plan/"] = "이 계획 코드를 복사해 fantasyglassui.com/plan/ 에 붙여넣으세요",
     ["Quest guides and gold"] = "퀘스트 안내서와 골드",
     ["your quest guides: follow one, write or paste one, or record one as you play (record <name>, stop, next, back, off)"] = "내 퀘스트 안내서: 하나를 따라가거나, 직접 쓰거나 붙여 넣거나, 플레이하며 기록합니다 (record <이름>, stop, next, back, off)",
@@ -26858,6 +26921,15 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["Click: open the planner. Drag: move."] = "点击：打开规划器。拖动：移动。",
+    ["Click: open the gold window. Drag: move."] = "点击：打开赚金窗口。拖动：移动。",
+    ["Minimap button for the route planner"] = "路线规划器的小地图按钮",
+    ["Minimap button for ways to make gold"] = "赚金方法的小地图按钮",
+    ["A small button on the minimap, beside the options button, that opens the route planner. It can be dragged along the minimap. It hides while quest guides are off."] = "小地图上选项按钮旁边的小按钮，用来打开路线规划器。可以沿小地图边缘拖动。任务指南关闭时它会隐藏。",
+    ["A small button on the minimap, beside the options button, that opens ways to make gold. It can be dragged along the minimap."] = "小地图上选项按钮旁边的小按钮，用来打开赚金方法。可以沿小地图边缘拖动。",
+    ["Two new minimap buttons open the route planner and ways to make gold (each can be hidden)."] = "两个新的小地图按钮分别打开路线规划器和赚金方法（每个都可以隐藏）。",
+    ["the planner window: the route you follow, Keep my route, and every setting for what the planner plans (or its own minimap button)"] = "规划器窗口：你跟随的路线、“保留我的路线”，以及规划器规划内容的所有设置（或它自己的小地图按钮）",
+    ["ways to make gold: ideas for this character, each with Go, which plans the trip (or its own minimap button, or Ctrl-click the options button)"] = "赚金方法：适合这个角色的点子，每个都有“前往”，会规划行程（或它自己的小地图按钮，或 Ctrl-点击选项按钮）",
     ["Copy this plan code and paste it on fantasyglassui.com/plan/"] = "复制此计划代码，并粘贴到 fantasyglassui.com/plan/",
     ["Quest guides and gold"] = "任务指南与金币",
     ["your quest guides: follow one, write or paste one, or record one as you play (record <name>, stop, next, back, off)"] = "你的任务指南：跟随一份、编写或粘贴一份，或在游玩时录制一份（record <名称>、stop、next、back、off）",

@@ -96,6 +96,8 @@ local groups = {
         { "pixelPerfect",   "Pixel-perfect scale" },
         { "buttonBag",      "Minimap button collector" },
         { "launcher",       "Minimap button for these options" },
+        { "minimapPlanner", "Minimap button for the route planner" },
+        { "minimapGold",    "Minimap button for ways to make gold" },
         { "mapCoords",      "Coordinates on the world map" },
         { "rareAlert",      "Rare spawn alert" },
         { "rareMemory", "Rare spawn memory on the map" },
@@ -357,6 +359,8 @@ local DESC = {
     infobarPlugins = "Shows the data other add-ons publish (through LibDataBroker) in a strip under the info bar.",
     buttonBag     = "Gathers other add-ons' minimap buttons into one fold-out panel.",
     launcher      = "A small button on the minimap with the add-on's icon. Left-click opens these options, right-click starts moving panels, and it can be dragged along the minimap.",
+    minimapPlanner = "A small button on the minimap, beside the options button, that opens the route planner. It can be dragged along the minimap. It hides while quest guides are off.",
+    minimapGold   = "A small button on the minimap, beside the options button, that opens ways to make gold. It can be dragged along the minimap.",
     powerText     = "Shows mana, rage, energy or whatever the resource is as a percentage: on every unit frame that has a power bar, and beside the bar on nameplates of units that have a resource.",
     plateHealth   = "Shows health on each nameplate's bar: a percentage, or the amount if \"Health as numbers, not %\" is switched on, beside it.",
     ufFocusTarget = "A small frame for whatever your focus is targeting, like the target's target frame. It appears only while your focus has a target.",
@@ -596,7 +600,7 @@ local NO_PRESET = { tipTitle = true, tipRealm = true, tipGuild = true, tipGuildR
                     tweakCamera = true, tweakErrorVoice = true, tweakBgSound = true, tweakScreenshot = true,
                     tweakAutoLoot = true, tweakLootMouse = true, tweakSelfCast = true, tweakPlateRange = true, tweakPlateStack = true, tweakCameraFollow = true, tweakWeather = true, tweakBgFps = true, tweakTutorials = true, tweakProfanity = true, tweakMusic = true, tweakAmbience = true, tweakDeathGrey = true, tweakGlow = true }
 local MINIMAL = {
-    unitFrames = true, ufParty = true, ufBoss = true, launcher = true, mirrorBars = true, raidFrames = true, playerCast = true, auraBars = true, xpBar = true, nameplates = true,
+    unitFrames = true, ufParty = true, ufBoss = true, launcher = true, minimapPlanner = true, minimapGold = true, mirrorBars = true, raidFrames = true, playerCast = true, auraBars = true, xpBar = true, nameplates = true,
     actionBars = true, cooldownText = true, minimap = true, infobar = true, questTracker = true, questLog = true, windows = true,
     tooltip = true, bagWindow = true, bankWindow = true, storage = true, chat = true, chatSkin = true,
 }
@@ -705,10 +709,10 @@ local INSTANT = { tipTitle = true, tipRealm = true, tipGuild = true, tipGuildRan
                   powerText = true, infobarExtras = true, autoSell = true, autoRepair = true,
                   tweakCamera = true, tweakErrorVoice = true, tweakBgSound = true, tweakScreenshot = true,
                   tweakAutoLoot = true, tweakLootMouse = true, tweakSelfCast = true, tweakPlateRange = true, tweakPlateStack = true, tweakCameraFollow = true, tweakWeather = true, tweakBgFps = true, tweakTutorials = true, tweakProfanity = true, tweakMusic = true, tweakAmbience = true, tweakDeathGrey = true, tweakGlow = true,
-                  meterAuto = true, whisperInviteAll = true }
+                  meterAuto = true, whisperInviteAll = true, minimapPlanner = true, minimapGold = true }
 ns.featureInstant = INSTANT
 function ns:ApplyInstant()                                   -- redraw whatever those switches show
-    for _, fn in ipairs({ "ApplyBarText", "RefreshHealthText", "RefreshInfoBar", "ApplyTweaks", "GuideApplySwitch", "ApplyPlaceTheme", "ApplyPixelScale", "ApplyMinimapShape", "RefreshBagWindow", "RefreshXPBar", "ApplyRaidManager" }) do
+    for _, fn in ipairs({ "ApplyBarText", "RefreshHealthText", "RefreshInfoBar", "ApplyTweaks", "GuideApplySwitch", "ApplyPlaceTheme", "ApplyPixelScale", "ApplyMinimapShape", "ApplyMinimapExtras", "RefreshBagWindow", "RefreshXPBar", "ApplyRaidManager" }) do
         if ns[fn] then pcall(ns[fn], ns) end
     end
 end

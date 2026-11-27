@@ -91,6 +91,9 @@ Guide and Gold: quest guides, a route planner and ways to make gold, for everyon
   levelling route waits and comes back when the trip ends. **Stop this trip** is in the panel's "..."
   menu.
 
+**New: two minimap buttons**
+- Two new minimap buttons open the route planner and ways to make gold (each can be hidden).
+
 **Changed: the add-on is five folders**
 - The planner and the gold ideas are in two new folders, `FantasyGlassUI_Planner` and
   `FantasyGlassUI_Gold`. The game loads each one only the first time you use it, so they cost no

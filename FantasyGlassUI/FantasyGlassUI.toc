@@ -85,6 +85,7 @@ LootRoll.lua
 Mail.lua
 MinimapButtons.lua
 Launcher.lua
+MinimapExtras.lua
 Helpers.lua
 Extras.lua
 Inspect.lua

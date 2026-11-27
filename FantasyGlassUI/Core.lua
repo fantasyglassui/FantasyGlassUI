@@ -95,6 +95,8 @@ ns.defaults = {
     homeKey          = true,        -- one key for the best way home (QuickKeys.lua)
     auctionHelper    = true,        -- auction house: lowest -1c and worth selling (Auction.lua)
     launcher         = true,        -- a minimap button that opens the options
+    minimapPlanner   = true,        -- a minimap button that opens the route planner (13.0, MinimapExtras.lua)
+    minimapGold      = true,        -- a minimap button that opens ways to make gold (13.0)
     versionNotice    = true,        -- say once when someone in your guild or group has a newer version
     autoInvite       = false,       -- accept group invitations from friends and guildmates
     autoStand        = false,       -- stand up when an action fails because you are sitting
@@ -1643,6 +1645,7 @@ ns.whatsNew = {
                   "The planner window (/fgui plan, or Planner on the guide panel) holds every setting for what it plans. Keep my route there leaves your route as it is until you ask for a new one.",
                   "Plan with a friend for one route that suits you both, or share your route as a plan code to read on the website.",
                   "Ways to make gold (Ctrl-click the minimap button): ideas for this character from selling, farming, gathering, crafting and the auction house. Go plans the trip and puts it on the guide panel.",
+                  "Two new minimap buttons open the route planner and ways to make gold (each can be hidden).",
                   "The planner and the gold ideas are in two new folders, which the game loads only when you first use them. Leave them enabled.",
                   "Fixed: quests that WoW: Forever numbers differently from Questie are found in your quest log and tick off." } },
     { "12.4.1", { "Another add-on's full scan of the auction house, such as Auctionator's, is read for your prices too, the same way as Scan prices, and the button counts down from it.",
@@ -2454,12 +2457,12 @@ ns.helpLines = {
     { "Quest guides and gold" },
     { "/fgui guide", "your quest guides: follow one, write or paste one, or record one as you play (record <name>, stop, next, back, off)" },
     { "/fgui guide plan [minutes]", "plan a route of quests for your level and follow it; with a number, a route that fits the time you can play" },
-    { "/fgui plan", "the planner window: the route you follow, Keep my route, and every setting for what the planner plans" },
+    { "/fgui plan", "the planner window: the route you follow, Keep my route, and every setting for what the planner plans (or its own minimap button)" },
     { "/fgui guide route", "change, move or take out the steps of the guide you are following" },
     { "/fgui guide duo [name]", "plan one route with a friend who has the add-on (/fgui guide duo off to stop)" },
     { "/fgui guide share", "your route as a plan code to copy, to read on the website's plan page" },
     { "/fgui guide keys", "the guide panel's menu, to use with the keyboard" },
-    { "/fgui guide gold", "ways to make gold: ideas for this character, each with Go, which plans the trip (or Ctrl-click the minimap button)" },
+    { "/fgui guide gold", "ways to make gold: ideas for this character, each with Go, which plans the trip (or its own minimap button, or Ctrl-click the options button)" },
     { "Groups and raids" },
     { "/fgui ready", "who in your group is missing food, a flask or a class buff" },
     { "/fgui ready me", "are you ready for the raid: food, flask, weapon, repairs, reagents, bag space, talents and gear" },
