@@ -17,7 +17,8 @@ def data_words(v, fields):
             else: data_words(x, fields)
     elif isinstance(v, list):
         for x in v: data_words(x, fields)
-for f in sorted(glob.glob(S + 'pages/**/*.json', recursive=True)):
+# (and the trailer's captions, site/video/captions.json, made the same way)
+for f in sorted(glob.glob(S + 'pages/**/*.json', recursive=True)) + sorted(glob.glob(S + 'site/video/*.json')):
     d = json.load(open(f, encoding='utf-8'))
     if isinstance(d, dict) and isinstance(d.get('_translate'), list): data_words(d, set(d['_translate']))
 b = open(S + 'build_site.py', encoding='utf-8').read()

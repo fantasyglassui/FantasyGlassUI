@@ -6,7 +6,8 @@ in German, is checked for: a skip link that shows when it gets focus; a header, 
 one h1; a visible focus ring; AA contrast for every piece of text on a plain background (4.5:1, or 3:1 for large text;
 text over a screenshot is left to the eye); no page wider than the screen; no script from another site; and no
 script error. The other languages are checked at 390 px for width. The plan page (/plan/) is checked at 390 px: a
-plan code pasted shows its steps, in German too, with no script error and nothing wider than the screen. --shots DIR
+plan code pasted shows its steps, in German too, with no script error and nothing wider than the screen. On Guide and
+Gold (English and German, 390 px), the example route is drawn and the short tour opens, steps on and closes by keyboard. --shots DIR
 saves Home and Get started, dark and light, at both widths. --quick checks English only. Needs Python's playwright with its Chromium; when that is
 missing it says so and exits 0 (the other site checks still run)."""
 import functools
@@ -224,6 +225,34 @@ def main():
             problems += [f"/plan/: script error: {e}" for e in errors]
             checked += 1
             ctx.close()
+            # Guide and Gold: the example route is drawn from its sample code, and the short tour works by keyboard
+            for lang in ("en", "de"):
+                ctx = browser.new_context(viewport={"width": 390, "height": 800}, locale="en-US", reduced_motion="reduce")
+                ctx.route("**/*", lambda route: route.abort() if not route.request.url.startswith(base) else route.continue_())
+                page = ctx.new_page()
+                errors = []
+                page.on("pageerror", lambda e: errors.append(str(e)))
+                path = ("/" if lang == "en" else f"/{lang}/") + "guide-and-gold/"
+                page.goto(base + path, wait_until="load")
+                page.wait_for_timeout(200)
+                ex = page.evaluate("[document.getElementById('ex').hidden, document.querySelectorAll('#ex-zones input[type=checkbox]').length, document.querySelectorAll('#ex-zones svg[role=img][aria-label]').length]")
+                if ex[0] or ex[1] < 1 or ex[2] < 1:
+                    problems.append(f"{path} 390px: the example route is not drawn ({ex})")
+                page.focus("#tour-go")
+                page.keyboard.press("Enter")
+                t1 = page.evaluate("[document.getElementById('tour').hidden, document.activeElement.id, document.querySelectorAll('.tour-on').length, document.getElementById('tour-count').textContent]")
+                page.keyboard.press("ArrowRight")
+                t2 = page.evaluate("[document.getElementById('tour-say').textContent, document.getElementById('tour-count').textContent]")
+                for _ in range(6):
+                    page.keyboard.press("ArrowRight")
+                last = page.evaluate("document.querySelector('.tour-on') && document.querySelector('.tour-on').id")
+                page.keyboard.press("Escape")
+                t3 = page.evaluate("[document.getElementById('tour').hidden, document.activeElement.id, document.querySelectorAll('.tour-on').length]")
+                if t1[0] or t1[1] != "tour" or t1[2] != 1 or not t1[3] or not t2[0] or t2[1] == t1[3] or last != "ex" or t3 != [True, "tour-go", 0]:
+                    problems.append(f"{path}: the tour by keyboard: open {t1}, next {t2}, last {last}, closed {t3}")
+                problems += [f"{path}: script error: {e}" for e in errors]
+                checked += 1
+                ctx.close()
             browser.close()
         httpd.shutdown()
     if problems:
