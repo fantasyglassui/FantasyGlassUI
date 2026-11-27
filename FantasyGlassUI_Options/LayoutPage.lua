@@ -315,8 +315,11 @@ local function BuildProfiles(page)
     backups:SetPoint("TOPLEFT", 0, y - 232)
     local history = ns:CreateButton(page, "Changes to this profile", 190, 22, function() if ns.HideConfig then ns.HideConfig() end; ns:ShowSettingHistory() end)
     history:SetPoint("LEFT", backups, "RIGHT", 8, 0)
-    page.backupButton, page.historyButton = backups, history
+    local dataButton = ns:CreateButton(page, "Saved data", 120, 22, function() if ns.HideConfig then ns.HideConfig() end; ns:DataCommand("") end)
+    dataButton:SetPoint("LEFT", history, "RIGHT", 8, 0)
+    page.backupButton, page.historyButton, page.dataButton = backups, history, dataButton
     O.Tip(backups, "Backups", "Your settings are copied before each update and at your first login each day. Pick one to see how to put it back.")
     O.Tip(history, "Changes to this profile", "What you changed and when, newest first. Click one to undo it.")
+    O.Tip(dataButton, "Saved data", "What each part of the add-on keeps, and a tidy-up that asks before it removes anything.")
 end
 O.BuildLayout, O.BuildProfiles = BuildLayout, BuildProfiles

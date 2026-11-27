@@ -26606,7 +26606,7 @@ try("13.5 seams: shared entries", function()
     ok(ns.defaults.plannerDungeons == true, "the switch is on by default")
     ok(ns.whatsNew[1][1] == "13.5.0" and #ns.whatsNew[1][2] == 3, "what's new for 13.5")
     ok(type(ns.toolCommands.data) == "function", "/fgui data")
-    ok(ns:DataCommand("") == 0, "the stand-in")
+    ok(type(ns.DataCommand) == "function", "/fgui data is there")
     local help = false
     for _, l in ipairs(ns.helpLines) do if l[1] == "/fgui data" then help = true end end
     ok(help, "the help line")
@@ -26625,6 +26625,253 @@ end
 -- 13.5 C speed tests: end
 --
 -- 13.5 D data tests: begin
+do
+local function ok(cond, msg) if not cond then error(msg, 2) end end
+local function drain() local n = 0; while ns.GoldBusy() and n < 100000 do ns.GoldRunSlice(); n = n + 1 end end
+local function deq(a, b)
+    if type(a) ~= "table" or type(b) ~= "table" then return a == b end
+    for k, v in pairs(a) do if not deq(v, b[k]) then return false end end
+    for k in pairs(b) do if a[k] == nil then return false end end
+    return true
+end
+local DAY, NOW, TODAY = 86400, 1800000000, 20261126
+local function Fixture()
+    local mobs = {}
+    for i = 1, 400 do mobs[i] = { name = string.rep("m", 40), loot = { [i] = 3 } } end
+    return {
+        profiles = { Default = { a = 1 } }, chars = { ["Me - R"] = "Default", ["Old - R"] = "Default" }, seenVersion = "12.4.1",
+        guides = { G = { name = "G", steps = { { kind = "note", text = "hi" } } } },
+        guideState = { ["Me - R"] = { name = "G", at = 1, ticked = {} }, ["Old - R"] = { name = "G", at = 1, ticked = {} } },
+        planner = { ["Me - R"] = { handedIn = { [100] = true }, lastSeen = NOW }, ["Old - R"] = { handedIn = { [200] = true } },
+                    ["Mid - R"] = { handedIn = {} }, ["NoTime - R"] = { handedIn = {} }, ["Gone - R"] = { lastSeen = NOW - 200 * DAY } },
+        plannerQuestIds = { [1] = 2 }, plannerLevels = { ["Old - R"] = { [10] = { s = 100 } } },
+        goldChars = { ["Old - R"] = { recipes = {} }, ["Me - R"] = {} }, goldMobs = mobs,
+        prices = { v = 1, houses = {
+            ["R|Alliance"] = { items = { [1] = { price = 5, day = 20261026 }, [2] = { price = 6, day = 20261027 },
+                                         [3] = { price = 7, day = 20261001, seenDay = TODAY } }, scanAt = NOW },
+            ["S|Horde"] = { items = { [4] = { price = 8, day = 20261020 } }, scanAt = NOW - 40 * DAY } } },
+        charInfo = { ["Me - R"] = { last = NOW - 400 * DAY }, ["Old - R"] = { last = NOW - 200 * DAY }, ["Mid - R"] = { last = NOW - 100 * DAY } },
+        alts = { ["Old - R"] = { name = "Old", at = NOW - 200 * DAY } }, inventory = { chars = { ["Old - R"] = { bags = {} } } },
+        lifetime = { ["Old - R"] = { kills = 3 } },
+    }
+end
+local function FindsOf(finds, kind, key)
+    local list = {}
+    for _, f in ipairs(finds) do if f.kind == kind and (key == nil or f.key == key) then list[#list + 1] = f end end
+    return list
+end
+try("13.5 D: backups hold the records", function()
+    drain()
+    local keepMax = ns.BACKUP_RECORDS_MAX_KB
+    local fine, err = pcall(function()
+        ok(keepMax == 4096, "the cap")
+        local root = Fixture()
+        local keys = ns.BackupRecordKeys(root)
+        ok(table.concat(keys, ",") == "goldChars,goldMobs,guideState,guides,planner,plannerLevels,plannerQuestIds", "the record keys: " .. table.concat(keys, ","))
+        ns.backupsTaken = nil
+        local took = ns:TakeBackups(root, TODAY)
+        ok(#took == 2, "update and daily")
+        local d, u = root.backups.daily, root.backups.update
+        ok(type(d.records) == "table" and not d.recordsDone, "the records wait for the job")
+        drain()
+        for _, k in ipairs(keys) do ok(d.records[k] ~= nil and u.records[k] ~= nil, "a record in the backups: " .. k) end
+        ok(d.records.prices == nil, "never the prices")
+        ok(d.records.planner ~= root.planner and deq(d.records.planner, root.planner), "a copy")
+        ok(d.recordsDone == true and u.recordsDone == true and d.recordsLeftOut == nil, "done, nothing left out")
+        ok(d.profiles.Default.a == 1, "the settings as before")
+        local lines = ns.BackupLines(root.backups, NOW)
+        ok(lines[1].records == true and lines[2].records == true, "the list says so")
+        local realRoot, keepProfile = ns.root, ns.profile
+        ns.root, ns.profile = root, "Default"
+        ns:ResetProfileCommand(500); ns:ResetProfileCommand(501)
+        ns.root, ns.profile = realRoot, keepProfile
+        ok(type(root.backups.reset) == "table" and root.backups.reset.records == nil, "a reset's backup has no records")
+        ok(ns.BackupLines({ reset = root.backups.reset }, NOW)[1].records == false, "and says so")
+        ns.BACKUP_RECORDS_MAX_KB = 1
+        local root2 = Fixture()
+        ns.backupsTaken = nil
+        ns:TakeBackups(root2, TODAY); drain()
+        local left = root2.backups.daily.recordsLeftOut
+        ok(type(left) == "table" and left[1] == "goldMobs", "the largest left out first")
+        ok(root2.backups.daily.records.goldMobs == nil and root2.backups.daily.recordsDone == true, "and not copied")
+    end)
+    ns.BACKUP_RECORDS_MAX_KB = keepMax
+    ns.backupsTaken = true
+    if not fine then error(err, 0) end
+end)
+try("13.5 D: restore", function()
+    drain()
+    local realRoot, reloads = ns.root, reloadCount
+    local fine, err = pcall(function()
+        local root = Fixture()
+        ns.backupsTaken = nil
+        ns:TakeBackups(root, TODAY); drain()
+        local before = root.backups.daily.records.planner
+        root.planner["Me - R"].handedIn[300] = true
+        local changed = root.planner
+        root.profiles.Default.a = 2
+        ns.root = root
+        ok(ns:RestoreBackup("daily") == true, "restored")
+        ok(root.profiles.Default.a == 1, "the settings back")
+        ok(deq(root.planner, before) and root.planner["Me - R"].handedIn[300] == nil, "the planner back")
+        ok(root.backups.restore.records.planner == changed and root.backups.restore.recordsDone == true, "what was there kept")
+        -- a backup whose copy never finished: the settings only
+        local root3 = Fixture()
+        root3.backups = { daily = { profiles = { Default = { a = 7 } }, chars = {}, records = { planner = { x = 1 } } } }
+        local plannerNow = root3.planner
+        ns.root = root3
+        ok(ns:RestoreBackup("daily") == true and root3.profiles.Default.a == 7, "settings back")
+        ok(root3.planner == plannerNow, "the records untouched")
+        ok(root3.backups.restore.records == nil, "and nothing moved")
+        ok(reloadCount == reloads, "no reload from the restore itself")
+    end)
+    ns.root = realRoot
+    ns.backupsTaken = true
+    if not fine then error(err, 0) end
+end)
+try("13.5 D: /fgui data", function()
+    drain()
+    local realRoot = ns.root
+    local fine, err = pcall(function()
+        local root = Fixture()
+        root.backups = { daily = { profiles = {} } }
+        root.someNewThing = { 1, 2, 3 }
+        local sizes = ns.DataSizes(root)
+        for _, p in ipairs(ns.DATA_PARTS) do ok((sizes[p.id] or 0) > 0, "a size for " .. p.id) end
+        local noNew = Fixture(); noNew.backups = root.backups
+        ok(sizes.other > ns.DataSizes(noNew).other, "everything else counts a key no part names")
+        ok(sizes.gold > sizes.planner, "the gold records are the big ones here")
+        ok(ns.DataSize("abc") == 5 and ns.DataSize(1) == 8 and ns.DataSize(true) == 4 and ns.DataSize({}) == 16, "the estimate")
+        ok(ns.DataSize({ a = 1 }) == 16 + 3 + 8, "a table: its keys and values")
+        ok(ns.DataSizeText(500) == "under 1 KB" and ns.DataSizeText(2048) == "about 2 KB" and ns.DataSizeText(3 * 1048576) == "about 3.0 MB", "size words")
+        ns.root = root
+        local n = ns:DataCommand("")
+        ok(n == #ns.DATA_PARTS + 1, "a line a part, and the tidy-up: " .. tostring(n))
+        local w = ns:ListWindow("SavedData")
+        ok(w.lines[1].right == ns:Tr("Counting..."), "counting first")
+        drain()
+        w = ns:ListWindow("SavedData")
+        ok(w.lines[1].left == ns:Tr("Settings and profiles") and w.lines[1].right:find("about %d+ KB") or w.lines[1].right == "under 1 KB", "a part's line: " .. tostring(w.lines[1].right))
+        ok(w.lines[4].left == ns:Tr("Ways to make gold") and w.lines[4].right:find("about %d+ KB"), "gold's line: " .. tostring(w.lines[4].right))
+        ok(type(w.lines[#w.lines].click) == "function", "the tidy-up line")
+        w.lines[#w.lines].click("LeftButton")
+        ok(ns.GoldBusy("data tidy"), "it looks")
+        drain()
+        local t = ns:ListWindow("DataTidy")
+        ok(#t.lines >= 1 and t.lines[1].left ~= ns:Tr("Looking for old records..."), "the tidy-up list")
+        ok(ns:DataCommand("tidy") == 1, "/fgui data tidy: looking")
+        drain()
+    end)
+    ns.root = realRoot
+    if not fine then error(err, 0) end
+    -- the Profiles page
+    ns:ToggleConfig("profiles"); ns:ToggleConfig("profiles")
+    local page = ns.optUI.pages.profiles.sheet
+    ok(page.dataButton ~= nil, "the Saved data button")
+    local fn
+    for i = 1, #handlers do local h = handlers[i]; if h.self == page.dataButton and h.name == "OnClick" then fn = h.fn end end
+    ok(type(fn) == "function", "it can be clicked")
+    local w = ns:ListWindow("SavedData"); w:SetLines({ { left = "x" } })
+    fn(page.dataButton)
+    ok(#ns:ListWindow("SavedData").lines == #ns.DATA_PARTS + 1, "it opens the saved-data list")
+    drain()
+end)
+try("13.5 D: what the tidy-up finds", function()
+    drain()
+    local root = Fixture()
+    local function find() return ns.DataTidyFind(root, NOW, TODAY, "Me - R") end
+    local copy = ns.DeepCopy(root)
+    local finds = find()
+    ok(deq(root, copy), "finding changes nothing")
+    local old = FindsOf(finds, "char", "Old - R")[1]
+    ok(old and old.bytes > 0, "a character not played for 200 days")
+    ok(old.count == 9, "all its records: " .. tostring(old.count))
+    local groups = {}
+    for _, g in ipairs(old.groups) do groups[g.id] = g end
+    ok(groups.planner.count == 2 and groups.gold.count == 1 and groups.guides.count == 1 and groups.alts.count == 1
+       and groups.inventory.count == 1 and groups.other.count == 3, "in groups")
+    ok(#FindsOf(finds, "char", "Mid - R") == 0, "100 days: kept")
+    ok(#FindsOf(finds, "char", "Me - R") == 0, "never me")
+    ok(#FindsOf(finds, "char", "NoTime - R") == 0, "no time: kept")
+    ok(#FindsOf(finds, "char", "Gone - R") == 1, "the planner's last seen, when there is no other time")
+    local pr = FindsOf(finds, "prices", "R|Alliance")[1]
+    ok(pr and pr.count == 1, "31 days old: found; 30 days and a fresh sighting: not")
+    local ph = FindsOf(finds, "prices", "S|Horde")[1]
+    ok(ph and ph.count == 2, "an empty house with an old scan: the price and the house")
+    ok(#FindsOf(finds, "trip") == 0 and #FindsOf(finds, "guide") == 0 and #FindsOf(finds, "written") == 0, "none of the rest yet")
+    local trip = { name = ns.GUIDE_TRIP, at = 3, ticked = {}, resume = { name = "G", at = 2 }, trip = { name = ns.GUIDE_TRIP, steps = { { kind = "note" }, { kind = "note" } } } }
+    root.guideState["Trip - R"] = trip
+    root.guideState["Me - R"] = ns.DeepCopy(trip)
+    root.guideState["Lost - R"] = { name = "Gone", at = 1 }
+    root.guideState["Writ - R"] = { name = "G", at = 1, written = { Gone = { at = 3 }, G = { at = 1 } } }
+    root.charInfo["Trip - R"], root.charInfo["Lost - R"], root.charInfo["Writ - R"] = { last = NOW - DAY }, { last = NOW - DAY }, { last = NOW - DAY }
+    finds = find()
+    ok(#FindsOf(finds, "trip") == 1 and FindsOf(finds, "trip")[1].key == "Trip - R", "another's finished trip; not mine")
+    ok(#FindsOf(finds, "guide") == 1 and FindsOf(finds, "guide")[1].key == "Lost - R", "a guide that is gone")
+    local wr = FindsOf(finds, "written")
+    ok(#wr == 1 and wr[1].key == "Writ - R" and wr[1].count == 1, "a deleted guide's place")
+    root.guideState["Trip - R"].at = 2
+    ok(#FindsOf(find(), "trip") == 0, "a trip still going: kept")
+    for _, f in ipairs(finds) do ok(type(f.label) == "string" and f.label ~= "", "a label") end
+end)
+try("13.5 D: tidy only after confirming", function()
+    drain()
+    local realRoot = ns.root
+    local fine, err = pcall(function()
+        local root = Fixture()
+        root.guideState["Trip - R"] = { name = ns.GUIDE_TRIP, at = 3, resume = { name = "G", at = 2 }, trip = { name = ns.GUIDE_TRIP, steps = { { kind = "note" } } } }
+        root.guideState["Lost - R"] = { name = "Gone", at = 1 }
+        root.guideState["Writ - R"] = { name = "G", at = 1, written = { Gone = { at = 3 }, G = { at = 1 } } }
+        ns.root = root
+        local finds = ns.DataTidyFind(root, NOW, TODAY, "Me - R")
+        local copy = ns.DeepCopy(root)
+        ns:DataTidyShow(finds, 1000)
+        local w = ns:ListWindow("DataTidy")
+        local function last() return w.lines[#w.lines] end
+        ok(last().left == string.format(ns:Tr("Remove these %d (click twice)"), #finds), "the remove line: " .. tostring(last().left))
+        last().click("LeftButton", 1000)
+        ok(last().left == ns:Tr("Click again within 10 seconds to remove them"), "asks again")
+        ok(not ns.GoldBusy() and deq(root, copy), "nothing removed yet")
+        last().click("LeftButton", 1011); drain()
+        ok(deq(root, copy), "too late: nothing removed")
+        ok(last().left == string.format(ns:Tr("Remove these %d (click twice)"), #finds), "and it starts over")
+        last().click("LeftButton", 1020); drain()
+        ok(deq(root, copy), "one click: nothing")
+        local printedBefore = #printed
+        last().click("LeftButton", 1025); drain()
+        for _, store in ipairs({ "planner", "plannerLevels", "guideState", "goldChars", "alts", "lifetime", "charInfo", "chars" }) do
+            ok(root[store]["Old - R"] == nil, "gone from " .. store)
+        end
+        ok(root.inventory.chars["Old - R"] == nil, "its bags too")
+        ok(root.planner["Me - R"] and root.goldChars["Me - R"] and root.guideState["Me - R"] and root.charInfo["Me - R"], "mine kept")
+        ok(root.planner["Mid - R"] and root.planner["Gone - R"] == nil, "only the old ones")
+        local items = root.prices.houses["R|Alliance"].items
+        ok(items[1] == nil and items[2] and items[3], "the old price gone, the fresh kept")
+        ok(root.prices.houses["S|Horde"] == nil, "the empty house gone")
+        ok(root.guideState["Trip - R"].name == "G" and root.guideState["Trip - R"].at == 2, "the trip: what it paused")
+        ok(root.guideState["Lost - R"] == nil, "the lost guide's state")
+        ok(root.guideState["Writ - R"].written.Gone == nil and root.guideState["Writ - R"].written.G, "the deleted guide's place")
+        local said = table.concat(printed, "\n", printedBefore + 1)
+        ok(said:find("Removed %d+ old records %(about"), "said: " .. said)
+        ns:DataTidyShow({}, 2000)
+        w = ns:ListWindow("DataTidy")
+        ok(#w.lines == 1 and w.lines[1].left == ns:Tr("Nothing to tidy up.") and not w.lines[1].click, "nothing found")
+    end)
+    ns.root = realRoot
+    if not fine then error(err, 0) end
+    -- logging in: nothing removed by itself
+    local keep = {}
+    for _, k in ipairs({ "planner", "goldChars", "charInfo", "guideState" }) do keep[k] = ns.root[k] end
+    ns.root.planner = { ["Old - R"] = { handedIn = { [1] = true }, lastSeen = 1 } }
+    ns.root.goldChars = { ["Old - R"] = { recipes = {} } }
+    ns.root.charInfo = ns.DeepCopy(keep.charInfo or {}); ns.root.charInfo["Old - R"] = { last = 1 }
+    ns.root.guideState = { ["Lost - R"] = { name = "Gone", at = 1 } }
+    fireEvent("PLAYER_LOGIN"); fireEvent("PLAYER_ENTERING_WORLD"); runTimers(); drain()
+    local still = ns.root.planner["Old - R"] and ns.root.goldChars["Old - R"] and ns.root.charInfo["Old - R"] and ns.root.guideState["Lost - R"]
+    for k, v in pairs(keep) do ns.root[k] = v end
+    ok(still, "nothing removed at login")
+end)
+end
 -- 13.5 D data tests: end
 -- release 13 fix tests: end
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)

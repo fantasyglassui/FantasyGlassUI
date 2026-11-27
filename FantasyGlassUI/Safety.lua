@@ -20,6 +20,67 @@ local function Snapshot(root, label)
              profiles = Copy(root.profiles), chars = Copy(root.chars), mainChar = root.mainChar,
              mailRules = Copy(root.mailRules), mailTo = Copy(root.mailTo), altCopy = root.altCopy }
 end
+
+-- 13.5: the update and daily backups also hold the guide, route planner and gold records (every root key
+-- "guides", "guideState", "planner..." and "gold..."; never the auction prices, which the next scan rebuilds).
+-- They are copied by a gold job (4 ms slices, never in a fight) into the backup's `records`; `recordsDone`
+-- marks a finished copy, so a copy cut short by a logout is never put back. Past BACKUP_RECORDS_MAX_KB, the
+-- largest stores are left out (named in `recordsLeftOut`) so the saved file doesn't balloon.
+ns.BACKUP_RECORDS_MAX_KB = 4096
+function ns.BackupRecordKeys(root)
+    local keys = {}
+    for k in pairs(type(root) == "table" and root or {}) do
+        if type(k) == "string" and k ~= "prices"
+           and (k == "guides" or k == "guideState" or k:sub(1, 7) == "planner" or k:sub(1, 4) == "gold") then
+            keys[#keys + 1] = k
+        end
+    end
+    table.sort(keys)
+    return keys
+end
+-- A copy that hands the frame back as it goes (in a job; outside one it is a plain copy).
+local function SlicedCopy(v, depth)
+    if type(v) ~= "table" or depth > 40 then return v end
+    local out = {}
+    local keys = ns.DataKeys and ns.DataKeys(v) or {}
+    for _, k in ipairs(keys) do
+        local x = v[k]
+        if x ~= nil then out[k] = SlicedCopy(x, depth + 1) end
+        ns.GoldYield()
+    end
+    return out
+end
+local function CopyRecords(root, snap)
+    local keys = ns.BackupRecordKeys(root)
+    local sizes, total = {}, 0
+    for _, k in ipairs(keys) do
+        sizes[k] = ns.DataSize and ns.DataSize(root[k]) or 0
+        total = total + sizes[k]
+    end
+    local bySize = {}
+    for i, k in ipairs(keys) do bySize[i] = k end
+    table.sort(bySize, function(a, b) if sizes[a] ~= sizes[b] then return sizes[a] > sizes[b] end return a < b end)
+    local cap, out, left = (tonumber(ns.BACKUP_RECORDS_MAX_KB) or 4096) * 1024, {}, {}
+    for _, k in ipairs(bySize) do
+        if total <= cap then break end
+        out[#out + 1] = k
+        left[k] = true
+        total = total - sizes[k]
+    end
+    local staged = {}
+    for _, k in ipairs(keys) do
+        if not left[k] and root[k] ~= nil then staged[k] = SlicedCopy(root[k], 0) end
+    end
+    for k, v in pairs(staged) do snap.records[k] = v end           -- (all at once at the end: a copy cut short leaves none)
+    snap.recordsLeftOut = (#out > 0) and out or nil
+    snap.recordsDone = true
+end
+local function RecordSnapshot(root, label, kind)
+    local snap = Snapshot(root, label)
+    snap.records = {}
+    ns.GoldJob(function() CopyRecords(root, snap) end, "backup records " .. kind)
+    return snap
+end
 -- Called while the saved settings are read, once a session. Returns which backups were taken.
 function ns:TakeBackups(root, today)
     if ns.backupsTaken then return {} end
@@ -28,12 +89,12 @@ function ns:TakeBackups(root, today)
     local b, took = root.backups, {}
     local seen = root.seenVersion
     if type(seen) == "string" and seen ~= ns.version and type(root.profiles) == "table" then
-        b.update = Snapshot(root, seen)                              -- (as it was under the version before)
+        b.update = RecordSnapshot(root, seen, "update")             -- (as it was under the version before)
         took[#took + 1] = "update"
     end
     today = today or (ns.Today and ns.Today()) or 0
     if b.dailyDay ~= today and type(root.profiles) == "table" then
-        b.daily = Snapshot(root, nil)
+        b.daily = RecordSnapshot(root, nil, "daily")
         b.dailyDay = today
         took[#took + 1] = "daily"
     end
@@ -44,13 +105,24 @@ function ns:RestoreBackup(kind)
     local b = type(root) == "table" and type(root.backups) == "table" and root.backups[kind]
     if type(b) ~= "table" or type(b.profiles) ~= "table" then return false, "There is no backup of that kind yet." end
     if InCombatLockdown() then return false, "Not during a fight." end
-    root.backups.restore = Snapshot(root, nil)
+    local restore = Snapshot(root, nil)
+    root.backups.restore = restore
     root.profiles = Copy(b.profiles)
     root.chars = Copy(b.chars) or root.chars
     root.mainChar = b.mainChar
     root.mailRules, root.mailTo = Copy(b.mailRules), Copy(b.mailTo)
     root.altCopy = b.altCopy
     if type(root.profiles.Default) ~= "table" then root.profiles.Default = {} end
+    -- the records (13.5): only from a finished copy. The backup's tables move into place (no copy: the reload
+    -- that follows writes them out as tables of their own), and what was there goes into "before restore".
+    if b.recordsDone == true and type(b.records) == "table" then
+        restore.records = {}
+        for k, v in pairs(b.records) do
+            restore.records[k] = root[k]
+            root[k] = v
+        end
+        restore.recordsDone = true
+    end
     return true, "Settings put back. The interface reloads now."
 end
 -- /fgui reset: this profile back to how it came. Typed twice within ten seconds, so it is never an
@@ -83,7 +155,8 @@ function ns.BackupLines(backups, now)
             local n = 0
             for _ in pairs(b.profiles or {}) do n = n + 1 end
             local when = ns.Ago((now or 0) - (b.when or 0))
-            out[#out + 1] = { kind = kind, label = ns.BACKUP_LABELS[kind], when = when, profiles = n, version = b.label or b.version }
+            out[#out + 1] = { kind = kind, label = ns.BACKUP_LABELS[kind], when = when, profiles = n, version = b.label or b.version,
+                              records = (b.recordsDone == true) }
         end
     end
     return out
@@ -101,7 +174,7 @@ function ns:BackupCommand(text)
     for _, l in ipairs(ns.BackupLines(ns.root.backups, time and time() or 0)) do
         lines[#lines + 1] = {
             left = ns:Tr(l.label) .. (l.version and ("  |cff9aa4b4" .. ns:Tr("version") .. " " .. tostring(l.version) .. "|r") or ""),
-            right = "|cff9aa4b4" .. l.when .. ", " .. format(ns:Tr("%d profiles"), l.profiles) .. "|r",
+            right = "|cff9aa4b4" .. l.when .. ", " .. format(ns:Tr("%d profiles"), l.profiles) .. (l.records and (", " .. ns:Tr("with guides, routes and gold")) or "") .. "|r",
             click = function()
                 ns:Print("To put these settings back (the interface reloads), type: |cffffff00/fgui backup restore %s|r", l.kind)
             end,
