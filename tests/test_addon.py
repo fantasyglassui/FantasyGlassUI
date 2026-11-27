@@ -231,6 +231,12 @@ def test_forever_api():
     assert p.returncode == 0, p.stdout + p.stderr
 
 
+def test_health_needs_current():
+    """FantasyGlassUI/HealthNeeds.lua is what tests/health_needs.py makes from the WoW: Forever audit's data."""
+    p = subprocess.run([sys.executable, os.path.join(TESTS, "health_needs.py"), "--check"], cwd=ROOT, capture_output=True, text=True, timeout=300)
+    assert p.returncode == 0, p.stdout + p.stderr
+
+
 def test_plan_page_published():
     """From 13.0 the website's plan page is published with the rest of the site; tests/sitecheck.py checks the build."""
     if not glob.glob(os.path.join(ROOT, "site-src", "site", "i18n", "*.json")):   # (git-ignored: a fresh clone, as on CI, makes them first)
