@@ -1,5 +1,5 @@
 {
- "_about": "The Roadmap page's data (pages/roadmap/body.py draws it). To change the page, change this file: an idea's status is one of the statuses below (a ready idea also gets version, the add-on version it came out in, and shows in the Ready section at the top), its group one of the groups. Every title and text is English, translated in site_tr.py's Roadmap block; the build stops on one without a translation. No dates. The numbers are the roadmap's own (32 is left out at the player's wish). Every \"name\", \"title\" and \"text\" is listed for translation by keys_all.py (\"_translate\").",
+ "_about": "The Roadmap page's data (pages/roadmap/body.py draws it). To change the page, change this file: an idea's status is one of the statuses below (a ready idea also gets version, the add-on version it came out in, and shows in the Ready section at the top; an in-progress idea also gets version, the version it is expected in), its group one of the groups. Every title and text is English, translated in site_tr.py's Roadmap block; the build stops on one without a translation. No dates. The numbers are the roadmap's own (32 is left out at the player's wish). Every \"name\", \"title\" and \"text\" is listed for translation by keys_all.py (\"_translate\").",
  "_translate": [
   "name",
   "title",
@@ -7,6 +7,7 @@
  ],
  "statuses": [
   {"id": "ready", "name": "Ready", "text": "Out now, in the version shown."},
+  {"id": "progress", "name": "In progress", "text": "Being built now, for the version shown."},
   {"id": "next", "name": "Next", "text": "Small, wanted, and first in line."},
   {"id": "planned", "name": "Planned", "text": "On the list, to be built."},
   {"id": "thinking", "name": "Thinking about it", "text": "An idea we like, not decided yet."}
@@ -19,7 +20,7 @@
  ],
  "ideas": [
   {"n": 1, "group": "levelling", "status": "next", "title": "Professions on the route", "text": "Training, gathering and crafting for your professions, fitted into the route."},
-  {"n": 2, "group": "levelling", "status": "next", "title": "Dungeon runs in the plan", "text": "Dungeons at the right level, with their quests, as part of the route."},
+  {"n": 2, "group": "levelling", "status": "progress", "version": "13.5", "title": "Dungeon runs in the plan", "text": "Dungeons at the right level, with their quests, as part of the route."},
   {"n": 3, "group": "levelling", "status": "thinking", "title": "Shared plans for guilds", "text": "A route your guild can share, so everyone levels the same way."},
   {"n": 4, "group": "behind", "status": "thinking", "title": "Learning from many players", "text": "Better routes from how many players level, only from those who choose to share. Privacy first."},
   {"n": 5, "group": "levelling", "status": "planned", "title": "Planning for a group", "text": "One route for three to five players, the way planning with a friend works today."},
@@ -32,7 +33,7 @@
   {"n": 12, "group": "everyone", "status": "thinking", "title": "Controller and Steam Deck", "text": "Playing with a controller, on a Steam Deck too."},
   {"n": 13, "group": "everyone", "status": "next", "title": "Accessibility, round two", "text": "Directions spoken aloud, and a high-contrast arrow and route."},
   {"n": 14, "group": "everyone", "status": "next", "title": "More on the website", "text": "An interactive tour, a preview of a route, and video captions in every language."},
-  {"n": 15, "group": "behind", "status": "next", "title": "A speed budget", "text": "Tests that stop the add-on from getting any slower."},
+  {"n": 15, "group": "behind", "status": "progress", "version": "13.5", "title": "A speed budget", "text": "Tests that stop the add-on from getting any slower."},
   {"n": 16, "group": "behind", "status": "thinking", "title": "Crash reports, if you want", "text": "A report to send when something breaks, only if you choose to."},
   {"n": 17, "group": "levelling", "status": "next", "title": "Rested experience planner", "text": "Where and when to log out, so you start your next session with the most rested experience."},
   {"n": 18, "group": "levelling", "status": "planned", "title": "Danger on the route", "text": "Warnings about dangerous places on the route, and routes that keep away from them if you want."},
@@ -45,10 +46,10 @@
   {"n": 25, "group": "everyone", "status": "thinking", "title": "Players' theme gallery", "text": "A gallery on the website of themes that players made, to try and to share."},
   {"n": 26, "group": "everyone", "status": "thinking", "title": "Streamer mode", "text": "One switch that hides the names and chat you don't want on stream."},
   {"n": 27, "group": "behind", "status": "planned", "title": "A check after each game patch", "text": "A look at login after a game patch, which tells you if something no longer works."},
-  {"n": 28, "group": "behind", "status": "next", "title": "Saved-data tidy and backup", "text": "Old saved data tidied away, and a backup of your settings kept."},
+  {"n": 28, "group": "behind", "status": "progress", "version": "13.5", "title": "Saved-data tidy and backup", "text": "Old saved data tidied away, and a backup of your settings kept."},
   {"n": 29, "group": "levelling", "status": "planned", "title": "Catch-up for returning players", "text": "Back after a break? Where you were, and what to do first."},
   {"n": 30, "group": "levelling", "status": "thinking", "title": "Hunter pet and warlock demon helper", "text": "Help with taming pets, teaching them their skills, and the warlock's demon quests."},
-  {"n": 31, "group": "levelling", "status": "next", "title": "Class quests on time", "text": "A heads-up before each class quest, so you are ready for it at the right level."},
+  {"n": 31, "group": "levelling", "status": "progress", "version": "13.5", "title": "Class quests on time", "text": "A heads-up before each class quest, so you are ready for it at the right level."},
   {"n": 33, "group": "gold", "status": "planned", "title": "Price alerts", "text": "A note when something you want shows up cheap at the auction house."},
   {"n": 34, "group": "gold", "status": "planned", "title": "Sorting by value", "text": "Sort your bags and bank by what things are worth."},
   {"n": 35, "group": "gold", "status": "thinking", "title": "Crafting queue", "text": "A list of what to craft, with what you still need for it."},

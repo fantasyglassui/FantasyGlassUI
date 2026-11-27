@@ -27,3 +27,6 @@ ul.ideas { list-style: none; margin: 0; padding: 0; display: grid; grid-template
 .idea .ver { display: inline-block; margin-left: 10px; color: var(--dim); font-size: .85rem; }
 .rm-ready { border-top: 0; padding-top: 6px; }
 .rm-ready .empty { padding: 14px 0; list-style: none; }
+/* In progress: being built now, for the version shown. A solid frost tag, so it reads apart from Ready's outline and Next's gold. */
+.tag.progress { background: var(--frost); border-color: var(--frost); color: var(--ground); }
+.idea:has(.tag.progress) { --c: color-mix(in srgb, var(--frost) 55%, var(--line)); }

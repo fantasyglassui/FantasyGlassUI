@@ -15,7 +15,7 @@ def load():
         if i['status'] not in statuses: raise SystemExit(f'roadmap.json: idea {i["n"]} has the status {i["status"]!r}')
         if i['group'] not in groups: raise SystemExit(f'roadmap.json: idea {i["n"]} has the group {i["group"]!r}')
         if i['n'] in seen: raise SystemExit(f'roadmap.json: two ideas numbered {i["n"]}')
-        if i['status'] == 'ready' and not i.get('version'): raise SystemExit(f'roadmap.json: ready idea {i["n"]} has no "version"')
+        if i['status'] in ('ready', 'progress') and not i.get('version'): raise SystemExit(f'roadmap.json: {i["status"]} idea {i["n"]} has no "version"')
         seen.add(i['n'])
     return d
 
@@ -49,7 +49,8 @@ def body(ctx):
     for g in d['groups']:
         ideas = sorted((i for i in d['ideas'] if i['group'] == g['id'] and i['status'] != 'ready'), key=lambda i: (order.index(i['status']), i['n']))
         items = ''.join(f'<li class="idea card" data-status="{i["status"]}"><span class="tag {i["status"]}">{w(next(s["name"] for s in d["statuses"] if s["id"] == i["status"]))}</span>'
-                        f'<h3>{w(i["title"])}</h3><p>{w(i["text"])}</p></li>' for i in ideas)
+                        + (f'<span class="ver">[[Expected in]] {html.escape(str(i["version"]))}</span>' if i['status'] == 'progress' else '')
+                        + f'<h3>{w(i["title"])}</h3><p>{w(i["text"])}</p></li>' for i in ideas)
         secs.append(f'<section class="rm-group" id="{g["id"]}" aria-labelledby="h-{g["id"]}"><header><h2 id="h-{g["id"]}">{w(g["name"])}</h2>'
                     f'<p class="dim">{w(g["text"])}</p></header><ul class="ideas">{items}</ul></section>')
     return f'''<!-- Roadmap (W3). Drawn from pages/roadmap/roadmap.json by pages/roadmap/body.py; see site-src/PAGES.md. -->
