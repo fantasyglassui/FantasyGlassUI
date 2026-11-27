@@ -3934,3 +3934,39 @@ SITE.update({
  "‘직업 퀘스트 계획’ 설정을 따르며, ‘이 퀘스트를 다시는 추천하지 않기’ 목록에 있는 퀘스트는 알리지 않습니다.",
  "它遵循你的“规划职业任务”设置；在你“不再推荐此任务”列表里的任务不会提醒。"),
 })
+
+# -- OpenMap (W3): "The real map" on the plan page (site-src/plan_page.py OPENMAP_WORDS; the iframe is only inserted when the
+# -- player presses the button), and its one-line link in Guide and Gold's example route
+SITE.update({
+"The real map": ("Die echte Karte", "La vraie carte", "El mapa real", "Настоящая карта", "O mapa real", "La mappa vera", "실제 지도", "真实地图"),
+"OpenMap shows WoW Forever's own zone maps. It's a separate site, made by other players.": (
+ "OpenMap zeigt die eigenen Zonenkarten von WoW Forever. Es ist eine eigene Seite, gemacht von anderen Spielern.",
+ "OpenMap affiche les cartes de zone propres à WoW Forever. C'est un site à part, fait par d'autres joueurs.",
+ "OpenMap muestra los mapas de zona propios de WoW Forever. Es un sitio aparte, hecho por otros jugadores.",
+ "OpenMap показывает собственные карты зон WoW Forever. Это отдельный сайт, его сделали другие игроки.",
+ "O OpenMap mostra os mapas de zona do próprio WoW Forever. É um site à parte, feito por outros jogadores.",
+ "OpenMap mostra le mappe delle zone di WoW Forever. È un sito a parte, fatto da altri giocatori.",
+ "OpenMap은 WoW Forever의 지역 지도를 그대로 보여 줍니다. 다른 플레이어들이 만든 별개의 사이트입니다.",
+ "OpenMap 显示 WoW Forever 自带的区域地图。它是一个独立的网站，由其他玩家制作。"),
+"Show OpenMap here": ("OpenMap hier zeigen", "Afficher OpenMap ici", "Mostrar OpenMap aquí", "Показать OpenMap здесь", "Mostrar o OpenMap aqui", "Mostra OpenMap qui", "여기에 OpenMap 보기", "在此显示 OpenMap"),
+"Open OpenMap in a new tab": ("OpenMap in einem neuen Tab öffnen", "Ouvrir OpenMap dans un nouvel onglet", "Abrir OpenMap en una pestaña nueva", "Открыть OpenMap в новой вкладке", "Abrir o OpenMap numa nova aba", "Apri OpenMap in una nuova scheda", "새 탭에서 OpenMap 열기", "在新标签页中打开 OpenMap"),
+"Map art © Blizzard Entertainment, shown by OpenMap (openmap.world). Not part of Fantasy Glass UI.": (
+ "Kartengrafik © Blizzard Entertainment, gezeigt von OpenMap (openmap.world). Kein Teil von Fantasy Glass UI.",
+ "Illustrations des cartes © Blizzard Entertainment, affichées par OpenMap (openmap.world). Ne fait pas partie de Fantasy Glass UI.",
+ "Arte de los mapas © Blizzard Entertainment, mostrado por OpenMap (openmap.world). No forma parte de Fantasy Glass UI.",
+ "Графика карт © Blizzard Entertainment, показана через OpenMap (openmap.world). Не является частью Fantasy Glass UI.",
+ "Arte dos mapas © Blizzard Entertainment, mostrada pelo OpenMap (openmap.world). Não faz parte do Fantasy Glass UI.",
+ "Grafica delle mappe © Blizzard Entertainment, mostrata da OpenMap (openmap.world). Non fa parte di Fantasy Glass UI.",
+ "지도 그림 © Blizzard Entertainment, OpenMap(openmap.world)이 보여 줍니다. Fantasy Glass UI의 일부가 아닙니다.",
+ "地图美术 © Blizzard Entertainment，由 OpenMap（openmap.world）显示。不属于 Fantasy Glass UI。"),
+"OpenMap: the world map of WoW Forever": ("OpenMap: die Weltkarte von WoW Forever", "OpenMap : la carte du monde de WoW Forever", "OpenMap: el mapa del mundo de WoW Forever", "OpenMap: карта мира WoW Forever", "OpenMap: o mapa do mundo de WoW Forever", "OpenMap: la mappa del mondo di WoW Forever", "OpenMap: WoW Forever의 세계 지도", "OpenMap：WoW Forever 的世界地图"),
+"For the real zone maps, <a href=\"https://openmap.world/\" target=\"_blank\" rel=\"noopener noreferrer\">open OpenMap in a new tab</a>. It's a separate site, made by other players.": (
+ "Für die echten Zonenkarten <a href=\"https://openmap.world/\" target=\"_blank\" rel=\"noopener noreferrer\">öffne OpenMap in einem neuen Tab</a>. Es ist eine eigene Seite, gemacht von anderen Spielern.",
+ "Pour les vraies cartes de zone, <a href=\"https://openmap.world/\" target=\"_blank\" rel=\"noopener noreferrer\">ouvrez OpenMap dans un nouvel onglet</a>. C'est un site à part, fait par d'autres joueurs.",
+ "Para ver los mapas de zona reales, <a href=\"https://openmap.world/\" target=\"_blank\" rel=\"noopener noreferrer\">abre OpenMap en una pestaña nueva</a>. Es un sitio aparte, hecho por otros jugadores.",
+ "Настоящие карты зон есть в OpenMap: <a href=\"https://openmap.world/\" target=\"_blank\" rel=\"noopener noreferrer\">откройте его в новой вкладке</a>. Это отдельный сайт, его сделали другие игроки.",
+ "Para ver os mapas de zona reais, <a href=\"https://openmap.world/\" target=\"_blank\" rel=\"noopener noreferrer\">abra o OpenMap numa nova aba</a>. É um site à parte, feito por outros jogadores.",
+ "Per le mappe delle zone vere, <a href=\"https://openmap.world/\" target=\"_blank\" rel=\"noopener noreferrer\">apri OpenMap in una nuova scheda</a>. È un sito a parte, fatto da altri giocatori.",
+ "실제 지역 지도는 <a href=\"https://openmap.world/\" target=\"_blank\" rel=\"noopener noreferrer\">새 탭에서 OpenMap을 열어</a> 보세요. 다른 플레이어들이 만든 별개의 사이트입니다.",
+ "想看真实的区域地图，请<a href=\"https://openmap.world/\" target=\"_blank\" rel=\"noopener noreferrer\">在新标签页中打开 OpenMap</a>。它是一个独立的网站，由其他玩家制作。"),
+})
