@@ -13,7 +13,7 @@ MAP_WORDS = ['Map of the stops in %s', 'Step %d: %s', 'Steps %s: %s', 'N', 'Nort
 # OpenMap (the plan page's "The real map"): its words come from site_tr.py too. The iframe is NOT in the page; plan/page.html
 # inserts it only when the player presses the button.
 OPENMAP_WORDS = ['The real map', "OpenMap shows WoW Forever's own zone maps. It's a separate site, made by other players.",
-                 'Show OpenMap here', 'Open OpenMap in a new tab', 'OpenMap: the world map of WoW Forever',
+                 'Open OpenMap in a new tab',
                  'Map art \u00a9 Blizzard Entertainment, shown by OpenMap (openmap.world). Not part of Fantasy Glass UI.']
 THEME = ('<script>try{var t=localStorage.getItem("fg-theme");'
          'if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>\n')
