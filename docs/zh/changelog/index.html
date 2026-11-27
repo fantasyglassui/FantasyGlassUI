@@ -17,6 +17,7 @@
 <link rel="alternate" hreflang="zh-Hans" href="https://fantasyglassui.com/zh/changelog/">
 <link rel="alternate" hreflang="x-default" href="https://fantasyglassui.com/changelog/">
 <link rel="icon" type="image/png" href="/icon.png">
+<link rel="alternate" type="application/rss+xml" title="Fantasy Glass UI releases" href="/feed.xml">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Fantasy Glass UI">
 <meta property="og:locale" content="zh_CN">
@@ -42,11 +43,7 @@
 <meta name="theme-color" content="#12141a" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f4f5f8" media="(prefers-color-scheme: light)">
 <script>(function(){var d=document.documentElement;d.classList.add("js");try{var t=localStorage.getItem("fg-theme");if(t==="light"||t==="dark")d.setAttribute("data-theme",t)}catch(e){}var here="zh",page="changelog/",to=here,q=location.search,h=location.hash;var m=/[?&]lang=([a-z]{2})\b/.exec(q);if(m){to=m[1];q=q.replace(/([?&])lang=[a-z]{2}&?/,"$1").replace(/[?&]$/,"")}else if(here==="en"){var c=null;try{c=localStorage.getItem("fg-lang")}catch(e){}if(!c)c=String(navigator.language||"en").slice(0,2).toLowerCase();to=c}if(["en", "de", "fr", "es", "ru", "pt", "it", "ko", "zh"].indexOf(to)<0)to=here;var u=(to==="en"?"/":"/"+to+"/")+page;if(u!==location.pathname||q!==location.search)location.replace(u+q+h)})();</script>
-<link rel="preload" href="/assets/marcellus.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap">
-<link rel="stylesheet" href="/assets/site.css?v=0338b00d2b">
+<link rel="stylesheet" href="/assets/site.css?v=9495293704">
 <style>
 /* Changelog: every release, newest first. */
 .page-head .intro { color: var(--dim); margin-top: 8px; }
@@ -76,6 +73,11 @@ nav.jump a.gone { opacity: .45; }
 .none { color: var(--dim); text-align: center; padding: 30px 0; }
 .top { text-align: center; margin-top: 30px; }
 @media (max-width: 560px) { .ver { padding: 18px 16px 8px; } .ver h2 { font-size: 1.6rem; } }
+.soon { font: 700 .75rem/1 var(--body); letter-spacing: .08em; text-transform: uppercase; padding: 5px 9px; border: 1px dashed var(--gold); color: var(--gold); }
+.ver.pending { --c: color-mix(in srgb, var(--gold) 40%, var(--line)); border-style: dashed; }
+.follow { margin: 10px 0 0; padding: 22px 26px 12px; }
+.follow h2 { font-size: 1.5rem; margin-bottom: 10px; }
+.follow p { color: var(--dim); }
 </style>
 </head>
 <body>
@@ -101,14 +103,34 @@ nav.jump a.gone { opacity: .45; }
   <h1>更新日志</h1>
   <div class="intro" lang="en"><p>The releases published on CurseForge. Each lists what changed since the release before it.</p></div>
   <p class="faint">本页目前只有英文版。</p>
-  <p class="status"><span>版本 <b>12.4.1</b></span><span class="sep" aria-hidden="true">·</span><span>更新于 <time datetime="2026-11-25">2026-11-25</time></span><span class="sep" aria-hidden="true">·</span><span>已对照 WoW: Forever <b>1.60.1 (70938)</b> 检查</span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">源代码</a></span></p>
+  <p class="status"><span>版本 <b>13.0.0</b></span><span class="sep" aria-hidden="true">·</span><span>更新于 <time datetime="2026-11-26">2026-11-26</time></span><span class="sep" aria-hidden="true">·</span><span>已对照 WoW: Forever <b>1.60.1 (70938)</b> 检查</span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">源代码</a></span></p>
 </div>
 <div class="wrap narrow cl">
   <div class="tools"><input class="search" id="q" type="search" placeholder="搜索更新内容" aria-label="搜索更新内容" autocomplete="off"></div>
-  <nav class="jump" aria-label="版本"><a href="#v12-4-1">12.4.1</a><a href="#v12-4-0">12.4.0</a><a href="#v12-3-0">12.3.0</a><a href="#v12-2-0">12.2.0</a><a href="#v12-1-0">12.1.0</a><a href="#v12-0-0">12.0.0</a><a href="#v11-18-0">11.18.0</a><a href="#v11-17-4">11.17.4</a><a href="#v11-17-3">11.17.3</a><a href="#v11-17-2">11.17.2</a><a href="#v11-17-1">11.17.1</a><a href="#v11-17-0">11.17.0</a><a href="#v11-16-0">11.16.0</a><a href="#v11-15-0">11.15.0</a><a href="#v11-14-1">11.14.1</a><a href="#v11-14-0">11.14.0</a><a href="#v11-13-0">11.13.0</a><a href="#v11-12-0">11.12.0</a><a href="#v11-11-0">11.11.0</a><a href="#v11-10-0">11.10.0</a><a href="#v11-9-1">11.9.1</a><a href="#v11-9-0">11.9.0</a><a href="#v11-8-1">11.8.1</a><a href="#v11-8-0">11.8.0</a><a href="#v11-7-0">11.7.0</a><a href="#v11-6-0">11.6.0</a><a href="#v11-5-0">11.5.0</a><a href="#v10-0-0">10.0.0</a><a href="#v9-8-0">9.8.0</a><a href="#v9-7-0">9.7.0</a><a href="#v9-6-0">9.6.0</a><a href="#v9-5-6">9.5.6</a><a href="#v9-0-0">9.0.0</a><a href="#v8-7-1">8.7.1</a><a href="#v8-4-7">8.4.7</a><a href="#v8-2-1">8.2.1</a></nav>
+  <nav class="jump" aria-label="版本"><a href="#v13-0-0">13.0.0</a><a href="#v12-4-1">12.4.1</a><a href="#v12-4-0">12.4.0</a><a href="#v12-3-0">12.3.0</a><a href="#v12-2-0">12.2.0</a><a href="#v12-1-0">12.1.0</a><a href="#v12-0-0">12.0.0</a><a href="#v11-18-0">11.18.0</a><a href="#v11-17-4">11.17.4</a><a href="#v11-17-3">11.17.3</a><a href="#v11-17-2">11.17.2</a><a href="#v11-17-1">11.17.1</a><a href="#v11-17-0">11.17.0</a><a href="#v11-16-0">11.16.0</a><a href="#v11-15-0">11.15.0</a><a href="#v11-14-1">11.14.1</a><a href="#v11-14-0">11.14.0</a><a href="#v11-13-0">11.13.0</a><a href="#v11-12-0">11.12.0</a><a href="#v11-11-0">11.11.0</a><a href="#v11-10-0">11.10.0</a><a href="#v11-9-1">11.9.1</a><a href="#v11-9-0">11.9.0</a><a href="#v11-8-1">11.8.1</a><a href="#v11-8-0">11.8.0</a><a href="#v11-7-0">11.7.0</a><a href="#v11-6-0">11.6.0</a><a href="#v11-5-0">11.5.0</a><a href="#v10-0-0">10.0.0</a><a href="#v9-8-0">9.8.0</a><a href="#v9-7-0">9.7.0</a><a href="#v9-6-0">9.6.0</a><a href="#v9-5-6">9.5.6</a><a href="#v9-0-0">9.0.0</a><a href="#v8-7-1">8.7.1</a><a href="#v8-4-7">8.4.7</a><a href="#v8-2-1">8.2.1</a></nav>
   <div id="log">
+<section class="ver card" id="v13-0-0" data-v="13.0.0" aria-labelledby="h-v13-0-0">
+<h2 id="h-v13-0-0"><a href="#v13-0-0">13.0.0</a> <span class="now">当前</span></h2>
+<div lang="en"><p>Guide and Gold: quest guides, a route planner and ways to make gold, for everyone.</p>
+<h3>New: quest guides</h3>
+<ul><li>Follow a quest route one step at a time. A panel shows the step you are on, and an arrow points the way. Each step ticks off by itself as you take a quest, finish it, hand it in, reach a place or gain a level. <code>&lt;</code> and <code>&gt;</code> move between steps, and a soft sound plays as each one is done.</li><li>Everything is on the Guide tab in <code>/fgui</code>: the switch, your guides, and buttons to write one, edit the route you follow, or record a guide as you play (<code>/fgui guide record My route</code>).</li><li>Paste a guide someone gave you, or copy yours out to share it.</li><li>Three keys in the game's Key Bindings: Guide: next step, Guide: skip step and Guide: plan again.</li><li>With "Read talk and quests aloud" on, each new step is read aloud. <code>/fgui guide keys</code> opens the panel's menu, for the keyboard.</li></ul>
+<h3>New: the route planner</h3>
+<ul><li><b>Plan my route</b>, on the Guide tab, in the guide list or with <code>/fgui guide plan</code>, works out a route of quests for your level. It picks which quests to take, in what order, and when to fly, take the boat, use your hearthstone, train or hand in. It plans again as you play, so the route keeps up with you.</li><li>It finds quests through Questie when Questie is loaded. Without Questie it plans the quests in your quest log.</li><li>Stops on the way, each with its own switch: your class trainer every two levels, selling and repairing when your bags are nearly full, ammunition, food and drink, a profession trainer when a skill reaches its cap, the mailbox when mail is waiting, riding at level 40, and unexplored places, herbs and ore close to the route.</li><li>Choices it makes for you:<ul><li>At a hand-in, the reward that is best for you is marked. It never hands in for you.</li><li>When your quest log is nearly full, the panel says which quests are worth dropping.</li><li>After a long stretch of play it suggests an inn.</li><li>When no quest is worth the trip, it suggests a dungeon or a place to grind.</li></ul></li><li>It also plans class quests at the right level, timed and escort quests, and quests that start from loot. It counts rested experience and quest rewards that are upgrades for you.</li><li>It learns as you play. A hub where you died twice is left alone for two levels, and elites you have soloed count as solo quests. Your other characters' quest times sharpen the estimates.</li><li>Right-click a quest step for <b>Never suggest this quest</b>, and <b>Why this?</b> for the numbers behind it.</li><li>The panel shows the time to your next level and talent points to spend. <b>Preview</b> shows the next hour of the plan. <b>Save as guide</b> turns the plan into a written guide.</li><li>How long can you play? Pick a time, and the route ends at a good place to stop.</li><li>Reputation goals, and a goal to finish the zone you are in.</li><li><b>Speed</b>, <b>Safety</b> and <b>Story</b> sliders set what the route goes for.</li><li>On the world map, a line shows the next stops, and quest areas are marked by how good they are. Click a mark for <b>Plan from here</b>. With TomTom loaded, the guide can use TomTom's arrow.</li><li>Where you left off, in one line at login, and a short catch-up page after 14 days away.</li><li>Break reminders at a stopping place (off by default).</li><li><b>Race your best</b>, against your fastest character at the same level (off by default). Level times are in <code>/fgui stats</code> and the run log.</li><li>A <b>Find a group</b> button on group quests. It only fills your chat box, and never sends anything.</li></ul>
+<h3>New: the planner window</h3>
+<ul><li><code>/fgui plan</code>, the <b>Planner</b> button on the guide panel, or Planner in the Tools menu opens it. It shows the route you follow, with every setting for what the planner plans, in groups.</li><li><b>How the planner works</b>: a short tour in four pages. It shows once for your account, and again whenever you press it.</li><li><b>Keep my route</b> (off by default): levelling up, hand-ins and loading screens leave your route as it is. Only Plan my route and Plan again make a new one. A quest you abandon, fail or skip has its steps skipped, and the end of the route is said once.</li></ul>
+<h3>New: plan with a friend</h3>
+<ul><li><b>Plan with a friend</b>, in the panel's "..." menu or with <code>/fgui guide duo</code>: two players with Fantasy Glass UI get one route that suits you both, with the same quests in the same order.</li><li>Your friend is asked first, and can say no. Turn off "Let friends ask to plan with you" if you would rather not be asked.</li><li>Each panel says where the other player is: on this step, some steps behind, or done. On a hand-in or a flight, it says to wait for them.</li><li>Inside an instance, planning together pauses, and it carries on when you leave.</li></ul>
+<h3>New: plan codes</h3>
+<ul><li><b>Share plan</b> (or <code>/fgui guide share</code>) turns your route into a plan code to copy. On the website's plan page, the code shows the route zone by zone, with a checklist you can tick, on a phone too.</li></ul>
+<h3>New: ways to make gold</h3>
+<ul><li>Ctrl-click the minimap button, pick Ways to make gold in the guide panel's "..." menu or the Tools menu, or type <code>/fgui guide gold</code>. Its window gives ideas for this character:<ul><li>selling what is in your bags and bank</li><li>items a vendor sells for less than the auction house pays, and the other way round</li><li>monsters worth killing, and dungeon drops</li><li>where to gather herbs and ore</li><li>what to craft for a profit</li></ul></li><li>Each idea says how much gold an hour it makes, how sure that is, and how much effort it takes.</li><li>The <b>Gold</b>, <b>Ease</b> and <b>Safety</b> sliders, or the Most gold, Easy money and Safe choices, set how the ideas are ranked.</li><li><b>Save for</b> a goal (Riding at 40, Epic riding at 60, or an amount of your own), and the window says how long it will take.</li><li>At the auction house, <b>Gold ideas here</b> sits beside it, with auction flips. A risky flip says "A gamble".</li><li>It learns as you play: what merchants sell, what monsters drop, what gathering gives and the recipes you know.</li><li><b>Go</b> plans the trip, with flights, the hearthstone and boats, and puts it on the guide panel. Your levelling route waits and comes back when the trip ends. <b>Stop this trip</b> is in the panel's "..." menu.</li></ul>
+<h3>Changed: the add-on is five folders</h3>
+<ul><li>The planner and the gold ideas are in two new folders, <code>FantasyGlassUI_Planner</code> and <code>FantasyGlassUI_Gold</code>. The game loads each one only the first time you use it, so they cost no memory until then.</li><li>Keep all five folders side by side in <code>Interface/AddOns</code>, and leave them enabled. The CurseForge app does this for you.</li></ul>
+<h3>Fixed</h3>
+<ul><li>Some of WoW: Forever's own quests have numbers that Questie does not know. They are now matched to your quest log by name and level. Their steps tick off, and the panel shows the log's own words and counts, such as "3/8". A quest you have handed in is never planned again.</li></ul></div>
+</section>
 <section class="ver card" id="v12-4-1" data-v="12.4.1" aria-labelledby="h-v12-4-1">
-<h2 id="h-v12-4-1"><a href="#v12-4-1">12.4.1</a> <span class="now">当前</span></h2>
+<h2 id="h-v12-4-1"><a href="#v12-4-1">12.4.1</a></h2>
 <div lang="en"><h3>New: another add-on's scan is read too</h3>
 <ul><li>When another add-on, such as Auctionator, scans the whole auction house, Fantasy Glass UI reads the same list for its own prices. It is read the same way as with Scan prices: in small pieces, and never in a fight.</li><li>The auction house allows one such scan about every 15 minutes, shared by every add-on, so the Scan prices button counts down from that scan.</li><li>If you press the button while that list is being read, it shows how far the reading has got, and the chat says "Another add-on scanned just now: its prices are being read."</li></ul>
 <h3>New: prices from Auctionator and TSM</h3>
@@ -432,6 +454,7 @@ nav.jump a.gone { opacity: .45; }
 </section>
   </div>
   <p class="none" id="none" role="status" hidden>更新记录中没有匹配的内容。</p>
+  <aside class="follow card" aria-labelledby="h-follow"><h2 id="h-follow">获取新版本消息</h2><p>新版本在 CurseForge 发布，<a href=&quot;/feed.xml&quot;>版本订阅源</a>会列出每个版本，任何订阅阅读器都能读。</p><p>只接收重大更新的邮件：发信到 <a href=&quot;mailto:email-forwarding@fantasyglassui.com?subject=Big%20updates&quot;>email-forwarding@fantasyglassui.com</a>，主题写“Big updates”。你的地址不会用于其他用途，想停止时再来信说明即可。</p></aside>
   <p class="top"><a href="#main">回到顶部</a></p>
 </div>
 </main>
@@ -446,11 +469,13 @@ nav.jump a.gone { opacity: .45; }
         <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/wiki">Wiki</a></li>
         <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/issues/new/choose">报告问题</a></li>
         <li><a href="/zh/accessibility/">辅助功能</a></li>
+        <li><a href="/zh/press/">媒体资料包</a></li>
+        <li><a href="/feed.xml" type="application/rss+xml">RSS</a></li>
       </ul>
     </div>
     <div class="foot-row">
       <span>联系: <a href="mailto:email-forwarding@fantasyglassui.com">email-forwarding@fantasyglassui.com</a></span>
-      <p class="status"><span>版本 <b>12.4.1</b></span><span class="sep" aria-hidden="true">·</span><span>更新于 <time datetime="2026-11-25">2026-11-25</time></span><span class="sep" aria-hidden="true">·</span><span>已对照 WoW: Forever <b>1.60.1 (70938)</b> 检查</span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">源代码</a></span></p>
+      <p class="status"><span>版本 <b>13.0.0</b></span><span class="sep" aria-hidden="true">·</span><span>更新于 <time datetime="2026-11-26">2026-11-26</time></span><span class="sep" aria-hidden="true">·</span><span>已对照 WoW: Forever <b>1.60.1 (70938)</b> 检查</span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">源代码</a></span></p>
     </div>
     <nav class="foot-row foot-langs" aria-label="语言"><ul><li><a href="/changelog/" hreflang="en" lang="en" data-code="en">English</a></li><li><a href="/de/changelog/" hreflang="de" lang="de" data-code="de">Deutsch</a></li><li><a href="/fr/changelog/" hreflang="fr" lang="fr" data-code="fr">Français</a></li><li><a href="/es/changelog/" hreflang="es" lang="es" data-code="es">Español</a></li><li><a href="/ru/changelog/" hreflang="ru" lang="ru" data-code="ru">Русский</a></li><li><a href="/pt/changelog/" hreflang="pt" lang="pt" data-code="pt">Português</a></li><li><a href="/it/changelog/" hreflang="it" lang="it" data-code="it">Italiano</a></li><li><a href="/ko/changelog/" hreflang="ko" lang="ko" data-code="ko">한국어</a></li><li><a href="/zh/changelog/" hreflang="zh-Hans" lang="zh-Hans" data-code="zh" aria-current="true">中文</a></li></ul></nav>
     <p class="trnote">本页翻译未经母语者校对，欢迎指正。</p>

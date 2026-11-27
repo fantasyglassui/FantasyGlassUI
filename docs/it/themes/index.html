@@ -17,6 +17,7 @@
 <link rel="alternate" hreflang="zh-Hans" href="https://fantasyglassui.com/zh/themes/">
 <link rel="alternate" hreflang="x-default" href="https://fantasyglassui.com/themes/">
 <link rel="icon" type="image/png" href="/icon.png">
+<link rel="alternate" type="application/rss+xml" title="Fantasy Glass UI releases" href="/feed.xml">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Fantasy Glass UI">
 <meta property="og:locale" content="it_IT">
@@ -42,11 +43,9 @@
 <meta name="theme-color" content="#12141a" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f4f5f8" media="(prefers-color-scheme: light)">
 <script>(function(){var d=document.documentElement;d.classList.add("js");try{var t=localStorage.getItem("fg-theme");if(t==="light"||t==="dark")d.setAttribute("data-theme",t)}catch(e){}var here="it",page="themes/",to=here,q=location.search,h=location.hash;var m=/[?&]lang=([a-z]{2})\b/.exec(q);if(m){to=m[1];q=q.replace(/([?&])lang=[a-z]{2}&?/,"$1").replace(/[?&]$/,"")}else if(here==="en"){var c=null;try{c=localStorage.getItem("fg-lang")}catch(e){}if(!c)c=String(navigator.language||"en").slice(0,2).toLowerCase();to=c}if(["en", "de", "fr", "es", "ru", "pt", "it", "ko", "zh"].indexOf(to)<0)to=here;var u=(to==="en"?"/":"/"+to+"/")+page;if(u!==location.pathname||q!==location.search)location.replace(u+q+h)})();</script>
-<link rel="preload" href="/assets/marcellus.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap">
-<link rel="stylesheet" href="/assets/site.css?v=0338b00d2b">
+<link rel="preload" href="/fonts/marcellus-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/source-sans-3-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/site.css?v=9495293704">
 <style>
 /* Themes: the gallery, the chosen theme and the maker (moved from the old long page). */
 /* themes */
@@ -97,6 +96,7 @@
 .mk-paste .code { margin-top: 10px; }
 @media (max-width: 900px) { .maker { grid-template-columns: minmax(0, 1fr); } .mk-view .mini { height: 200px; } }
 @media (max-width: 520px) { .mk-colors { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 600px) { .chosen { grid-template-columns: minmax(0, 1fr); gap: 16px; } .chosen .mini { height: 140px; } }
 </style>
 </head>
 <body>
@@ -178,11 +178,13 @@
         <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/wiki">Wiki</a></li>
         <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/issues/new/choose">Segnala un bug</a></li>
         <li><a href="/it/accessibility/">Accessibilità</a></li>
+        <li><a href="/it/press/">Cartella stampa</a></li>
+        <li><a href="/feed.xml" type="application/rss+xml">RSS</a></li>
       </ul>
     </div>
     <div class="foot-row">
       <span>Contatti: <a href="mailto:email-forwarding@fantasyglassui.com">email-forwarding@fantasyglassui.com</a></span>
-      <p class="status"><span>Versione <b>12.4.1</b></span><span class="sep" aria-hidden="true">·</span><span>Aggiornato il <time datetime="2026-11-25">2026-11-25</time></span><span class="sep" aria-hidden="true">·</span><span>Verificato con WoW: Forever <b>1.60.1 (70938)</b></span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">Codice sorgente</a></span></p>
+      <p class="status"><span>Versione <b>13.0.0</b></span><span class="sep" aria-hidden="true">·</span><span>Aggiornato il <time datetime="2026-11-26">2026-11-26</time></span><span class="sep" aria-hidden="true">·</span><span>Verificato con WoW: Forever <b>1.60.1 (70938)</b></span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">Codice sorgente</a></span></p>
     </div>
     <nav class="foot-row foot-langs" aria-label="Lingua"><ul><li><a href="/themes/" hreflang="en" lang="en" data-code="en">English</a></li><li><a href="/de/themes/" hreflang="de" lang="de" data-code="de">Deutsch</a></li><li><a href="/fr/themes/" hreflang="fr" lang="fr" data-code="fr">Français</a></li><li><a href="/es/themes/" hreflang="es" lang="es" data-code="es">Español</a></li><li><a href="/ru/themes/" hreflang="ru" lang="ru" data-code="ru">Русский</a></li><li><a href="/pt/themes/" hreflang="pt" lang="pt" data-code="pt">Português</a></li><li><a href="/it/themes/" hreflang="it" lang="it" data-code="it" aria-current="true">Italiano</a></li><li><a href="/ko/themes/" hreflang="ko" lang="ko" data-code="ko">한국어</a></li><li><a href="/zh/themes/" hreflang="zh-Hans" lang="zh-Hans" data-code="zh">中文</a></li></ul></nav>
     <p class="trnote">Questa pagina è stata tradotta senza la revisione di un madrelingua. Le correzioni sono benvenute.</p>

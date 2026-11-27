@@ -17,6 +17,7 @@
 <link rel="alternate" hreflang="zh-Hans" href="https://fantasyglassui.com/zh/features/">
 <link rel="alternate" hreflang="x-default" href="https://fantasyglassui.com/features/">
 <link rel="icon" type="image/png" href="/icon.png">
+<link rel="alternate" type="application/rss+xml" title="Fantasy Glass UI releases" href="/feed.xml">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Fantasy Glass UI">
 <meta property="og:locale" content="ko_KR">
@@ -42,21 +43,69 @@
 <meta name="theme-color" content="#12141a" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f4f5f8" media="(prefers-color-scheme: light)">
 <script>(function(){var d=document.documentElement;d.classList.add("js");try{var t=localStorage.getItem("fg-theme");if(t==="light"||t==="dark")d.setAttribute("data-theme",t)}catch(e){}var here="ko",page="features/",to=here,q=location.search,h=location.hash;var m=/[?&]lang=([a-z]{2})\b/.exec(q);if(m){to=m[1];q=q.replace(/([?&])lang=[a-z]{2}&?/,"$1").replace(/[?&]$/,"")}else if(here==="en"){var c=null;try{c=localStorage.getItem("fg-lang")}catch(e){}if(!c)c=String(navigator.language||"en").slice(0,2).toLowerCase();to=c}if(["en", "de", "fr", "es", "ru", "pt", "it", "ko", "zh"].indexOf(to)<0)to=here;var u=(to==="en"?"/":"/"+to+"/")+page;if(u!==location.pathname||q!==location.search)location.replace(u+q+h)})();</script>
-<link rel="preload" href="/assets/marcellus.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap">
-<link rel="stylesheet" href="/assets/site.css?v=0338b00d2b">
+<link rel="stylesheet" href="/assets/site.css?v=9495293704">
 <style>
-/* Features: every switch (moved from the old long page). */
-.fsec { margin-bottom: 26px; }
-.fsec h3 { font-size: 1.05rem; margin-bottom: 10px; display: flex; gap: 10px; align-items: baseline; }
-.fsec h3 small { font: 600 0.8rem/1 var(--body); color: var(--faint); }
-.flist { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.fitem { padding: 12px 14px; min-width: 0; border-bottom: 1px solid var(--rule); }
-.fitem b { display: block; font-weight: 600; }
-.fitem span { display: block; color: var(--dim); font-size: 0.92rem; line-height: 1.45; margin-top: 3px; }
-@media (max-width: 620px) { .flist { grid-template-columns: minmax(0, 1fr); } }
+/* Features (W2): every switch, a section at a time with the list of sections on the left, and the comparison. */
+.page-head .jump { margin: 14px 0 0; font-weight: 600; }
+#features { padding-top: 32px; }
+.fsearch { max-width: 620px; margin-bottom: 30px; }
+.fsearch label { display: block; margin-bottom: 6px; color: var(--dim); font-size: 0.92rem; font-weight: 600; }
+.fsearch .tools { margin: 0; }
+.fx { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 40px; align-items: start; }
+.fnav { position: sticky; top: 92px; }
+.fnav ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.fnav button { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; padding: 9px 14px; border: 0; border-left: 2px solid transparent; background: none; color: var(--nav); font: 600 0.98rem/1.25 var(--body); text-align: left; cursor: pointer; }
+.fnav button:hover { color: var(--text); background: var(--raised); }
+.fnav button[aria-current="true"] { color: var(--gold); border-left-color: var(--gold); background: var(--raised); }
+.fnav .n { color: var(--faint); font-size: 0.82rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.fnav button:focus-visible { outline-offset: -3px; }
+.fbody { min-width: 0; }
+.fsec + .fsec { margin-top: 34px; }
+.fh { font-size: clamp(1.6rem, 3vw, 2.1rem); margin-bottom: 8px; }
+.fh:focus { outline: none; }
+.fh small { font: 600 0.9rem/1 var(--body); color: var(--faint); margin-left: 6px; }
+.fsec .lede { margin: 0 0 22px; }
+.fshot { margin: 0 0 22px; }
+.fshot img { display: block; width: auto; max-width: 100%; max-height: 520px; border: 1px solid var(--line); background: var(--shot); }
+.frows { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--rule); }
+.frows li { padding: 14px 4px; border-bottom: 1px solid var(--rule); }
+.frows b { display: block; font-weight: 600; }
+.frows span { display: block; margin-top: 2px; color: var(--dim); font-size: 0.95rem; line-height: 1.5; }
+.fnext { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 28px; margin-top: 36px; padding: 20px 24px; }
+.fnext p { flex: 1 1 260px; margin: 0; color: var(--dim); }
+.fnext b { color: var(--text); }
+
+/* the comparison */
+#compare h2 { margin-bottom: 10px; }
+#compare .lede { margin-bottom: 26px; }
+.cmp { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+.cmp th, .cmp td { padding: 12px 14px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--rule); }
+.cmp thead th { font: 400 1.15rem/1.2 var(--display); border-bottom: 1px solid var(--line); }
+.cmp thead th.us { color: var(--gold); }
+.cmp tbody th { font-weight: 600; width: 26%; }
+.cmp td { color: var(--dim); }
+.cmp td:nth-child(2) { color: var(--text); }
+.cmp-cards .card { display: flex; flex-direction: column; }
+.cmp-cards .card p { margin-bottom: 12px; }
+.cmp-cards .card p:last-child { margin-bottom: 0; }
+.cmp-cards .more-link { margin-top: auto; }
+.cmp-note { margin: 26px 0 0; max-width: 80ch; font-size: 0.92rem; }
+
+@media (max-width: 900px) {
+  .fx { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .fnav { position: static; margin: 0 calc(-1 * var(--gutter)); overflow-x: auto; scrollbar-width: thin; }
+  .fnav ul { display: flex; gap: 8px; padding: 2px var(--gutter) 8px; width: max-content; }
+  .fnav button { width: auto; white-space: nowrap; border: 1px solid var(--line); border-left-width: 1px; background: var(--raised); color: var(--text); }
+  .fnav button[aria-current="true"] { border-color: var(--gold); }
+}
+@media (max-width: 700px) {
+  .cmp, .cmp tbody, .cmp tr, .cmp th, .cmp td { display: block; width: auto; }
+  .cmp thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .cmp tr { padding: 14px 0; border-bottom: 1px solid var(--rule); }
+  .cmp tbody th { width: auto; padding: 0 0 6px; border: 0; font-size: 1.05rem; }
+  .cmp td { padding: 3px 0; border: 0; }
+  .cmp td::before { content: attr(data-label) ": "; color: var(--faint); font-weight: 600; }
+}
 </style>
 </head>
 <body>
@@ -77,20 +126,61 @@
   </div>
 </header>
 <main id="main" tabindex="-1">
-<!-- Features (W2). Every switch, from features.json; see site-src/PAGES.md. -->
-  <section class="block" id="features">
+<!-- Features (W2). Every switch from features.json, a section at a time with one search across all, and the fair
+     comparison with ElvUI and the game's own interface (#compare); see site-src/PAGES.md. -->
+  <div class="wrap page-head">
+    <h1>기능</h1>
+    <p class="lede">Fantasy Glass UI가 하는 모든 일을 게임에서 하는 일별로 묶었습니다. 모든 스위치는 옵션 창에 같은 이름으로 있고, 하나하나 따로 켜고 끌 수 있습니다.</p>
+    <p class="jump"><a href="#compare">ElvUI, 게임 기본 인터페이스와의 비교</a></p>
+  </div>
+
+  <section class="section" id="features" aria-label="모든 스위치">
     <div class="wrap">
-      <header>
-        <div class="eyebrow">기능</div>
-        <h1>모든 스위치와 그 역할</h1>
-        <p class="lede">애드온의 모든 스위치를 열한 개 항목으로 나눴습니다. 모두 하나씩 켜고 끌 수 있습니다. 항목을 고르거나 전체를 검색하세요.</p>
-      </header>
-      <div class="tools">
-        <input class="search" id="fsearch" type="search" placeholder="스위치 검색, 예: 전리품, 이름표, 위협" aria-label="스위치 검색, 예: 전리품, 이름표, 위협" autocomplete="off">
-        <span class="count" id="fcount"></span>
+      <div class="fsearch">
+        <label for="fsearch">모든 스위치 검색</label>
+        <div class="tools">
+          <input class="search" id="fsearch" type="search" placeholder="“경매”나 “주시”를 입력해 보세요" autocomplete="off">
+          <span class="count" id="fcount" aria-live="polite"></span>
+        </div>
       </div>
-      <div class="filters" id="ffilters" role="group" aria-label="섹션"></div>
-      <div id="flist"><p class="count" role="status">…</p></div>
+      <div class="fx">
+        <nav class="fnav" aria-label="기능 묶음"><ul id="fnav"></ul></nav>
+        <div class="fbody" id="fbody"><p class="count">…</p></div>
+      </div>
+      <div hidden id="fshots">
+        <figure class="fshot" data-s="Frames, bars and nameplates"><img src="/shots/celestial-frames.webp" srcset="/shots/celestial-frames-480.webp 480w, /shots/celestial-frames-800.webp 800w, /shots/celestial-frames.webp 1500w" sizes="(max-width: 900px) 100vw, 860px" width="1500" height="729" alt="가까이서 본 플레이어와 대상 프레임: 소환수, 시전 바, 강화 효과, 대상의 대상." class="cut" loading="lazy" decoding="async"></figure>
+        <figure class="fshot" data-s="Bags and bag rules"><img src="/shots/glass-bags.webp" srcset="/shots/glass-bags-480.webp 480w, /shots/glass-bags.webp 540w" sizes="(max-width: 600px) 100vw, 540px" width="540" height="700" alt="하나의 가방 창: 깎은 칸마다 아이템 등급, 위쪽에는 검색, 정렬, 최고 장비 착용." class="cut" loading="lazy" decoding="async"></figure>
+        <figure class="fshot" data-s="Look, sounds and notifications"><img src="/shots/glass-overview.webp" srcset="/shots/glass-overview-480.webp 480w, /shots/glass-overview-800.webp 800w, /shots/glass-overview-1600.webp 1600w, /shots/glass-overview.webp 2400w" sizes="(max-width: 900px) 100vw, 860px" width="2400" height="955" alt="유리 테마의 같은 화면." class="cut" loading="lazy" decoding="async"></figure>
+        <figure class="fshot" data-s="Windows, tooltips and quests"><img src="/shots/glass-settings.webp" srcset="/shots/glass-settings-480.webp 480w, /shots/glass-settings-800.webp 800w, /shots/glass-settings.webp 1070w" sizes="(max-width: 900px) 100vw, 860px" width="1070" height="730" alt="옵션 창: 모든 테마가 한곳에, 모든 기능은 끌 수 있습니다." class="cut" loading="lazy" decoding="async"></figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="section band" id="compare" aria-labelledby="cmp-h">
+    <div class="wrap">
+      <div class="eyebrow">공정한 비교</div>
+      <h2 id="cmp-h">Fantasy Glass UI, ElvUI, 아니면 게임 기본?</h2>
+      <p class="lede">셋 다 좋은 선택입니다. 여기에는 각각이 무엇인지, 그리고 확인할 수 있는 것만 적었습니다. Fantasy Glass UI는 자체 코드와 안내서로, 나머지 둘은 누구나 직접 볼 수 있는 것으로요.</p>
+      <table class="cmp">
+        <caption class="sr-only">Fantasy Glass UI, ElvUI, 게임 기본 인터페이스 나란히 보기</caption>
+        <thead><tr><td></td><th scope="col" class="us">Fantasy Glass UI</th><th scope="col">ElvUI</th><th scope="col">게임 기본</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">무엇인가</th><td data-label="Fantasy Glass UI">인터페이스 전체를 새로 그리는 애드온</td><td data-label="ElvUI">인터페이스 전체를 새로 그리는 애드온</td><td data-label="게임 기본">게임에 들어 있는 인터페이스</td></tr>
+          <tr><th scope="row">가격</th><td data-label="Fantasy Glass UI">무료</td><td data-label="ElvUI">무료</td><td data-label="게임 기본">게임에 포함</td></tr>
+          <tr><th scope="row">설치</th><td data-label="Fantasy Glass UI">CurseForge 또는 직접 설치</td><td data-label="ElvUI">설치하는 애드온</td><td data-label="게임 기본">설치할 것 없음</td></tr>
+          <tr><th scope="row">프레임, 바, 가방, 이름표, 채팅</th><td data-label="Fantasy Glass UI">자체 디자인, 고른 테마로</td><td data-label="ElvUI">자체 디자인</td><td data-label="게임 기본">게임 기본</td></tr>
+          <tr><th scope="row">외형</th><td data-label="Fantasy Glass UI">세 계열 116가지 테마 또는 직접 만든 테마</td><td data-label="ElvUI">자체 색상·텍스처 설정</td><td data-label="게임 기본">게임 기본 모양</td></tr>
+          <tr><th scope="row">퀘스트 경로 계획기</th><td data-label="Fantasy Glass UI">있음, 안내서 탭에서</td><td data-label="ElvUI">없음</td><td data-label="게임 기본">없음</td></tr>
+          <tr><th scope="row">툴팁의 경매 가격과 판매 힌트</th><td data-label="Fantasy Glass UI">있음</td><td data-label="ElvUI">없음</td><td data-label="게임 기본">없음</td></tr>
+          <tr><th scope="row">언어</th><td data-label="Fantasy Glass UI">9개, 게임 언어를 따름</td><td data-label="ElvUI">여러 개</td><td data-label="게임 기본">게임의 모든 언어</td></tr>
+        </tbody>
+      </table>
+      <div class="grid cmp-cards">
+        <div class="card"><h3>옮겨 오기</h3><p>ElvUI, Tukui, RealUI, GW2 UI 또는 게임 기본 인터페이스를 쓰다 오셨나요? 설정의 마지막 단계에서 한 번만 누르면 프레임이 그 인터페이스의 자리로 갑니다.</p><a class="more-link" href="/ko/get-started/#setup">설정 단계별 안내</a></div>
+        <div class="card"><h3>ElvUI를 계속 쓴다면</h3><p>ElvUI가 켜져 있으면 Fantasy Glass UI는 ElvUI가 그리는 부분을 양보합니다: 유닛·공격대 프레임, 행동 단축바, 가방과 은행, 이름표, 미니맵, 채팅, 툴팁과 몇몇 바. 퀘스트 안내서와 골드 도우미를 비롯한 나머지는 그대로 작동합니다. <code>/fgui conflicts off</code>를 쓰면 자체 부분을 유지합니다.</p></div>
+        <div class="card"><h3>게임 기본을 계속 쓴다면</h3><p>모든 부분에 따로 스위치가 있습니다. 설정에서 게임 기본 프레임의 모양만 바꿀 수도 있고, 게임 프레임은 그대로 두고 가방과 이름표만 쓸 수도 있습니다.</p></div>
+      </div>
+      <p class="faint cmp-note">ElvUI는 별도의 제작자가 만들며 Fantasy Glass UI와는 관계가 없습니다. ElvUI와 게임 기본 인터페이스에 대해서는 누구나 볼 수 있는 것만 적었습니다. 오래된 내용이 있으면 Discord로 알려 주세요. 바로잡겠습니다.</p>
     </div>
   </section>
 </main>
@@ -105,17 +195,19 @@
         <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/wiki">Wiki</a></li>
         <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/issues/new/choose">버그 신고</a></li>
         <li><a href="/ko/accessibility/">접근성</a></li>
+        <li><a href="/ko/press/">보도 자료</a></li>
+        <li><a href="/feed.xml" type="application/rss+xml">RSS</a></li>
       </ul>
     </div>
     <div class="foot-row">
       <span>연락처: <a href="mailto:email-forwarding@fantasyglassui.com">email-forwarding@fantasyglassui.com</a></span>
-      <p class="status"><span>버전 <b>12.4.1</b></span><span class="sep" aria-hidden="true">·</span><span><time datetime="2026-11-25">2026-11-25</time> 업데이트</span><span class="sep" aria-hidden="true">·</span><span>WoW: Forever <b>1.60.1 (70938)</b> 기준으로 확인</span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">소스 코드</a></span></p>
+      <p class="status"><span>버전 <b>13.0.0</b></span><span class="sep" aria-hidden="true">·</span><span><time datetime="2026-11-26">2026-11-26</time> 업데이트</span><span class="sep" aria-hidden="true">·</span><span>WoW: Forever <b>1.60.1 (70938)</b> 기준으로 확인</span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">소스 코드</a></span></p>
     </div>
     <nav class="foot-row foot-langs" aria-label="언어"><ul><li><a href="/features/" hreflang="en" lang="en" data-code="en">English</a></li><li><a href="/de/features/" hreflang="de" lang="de" data-code="de">Deutsch</a></li><li><a href="/fr/features/" hreflang="fr" lang="fr" data-code="fr">Français</a></li><li><a href="/es/features/" hreflang="es" lang="es" data-code="es">Español</a></li><li><a href="/ru/features/" hreflang="ru" lang="ru" data-code="ru">Русский</a></li><li><a href="/pt/features/" hreflang="pt" lang="pt" data-code="pt">Português</a></li><li><a href="/it/features/" hreflang="it" lang="it" data-code="it">Italiano</a></li><li><a href="/ko/features/" hreflang="ko" lang="ko" data-code="ko" aria-current="true">한국어</a></li><li><a href="/zh/features/" hreflang="zh-Hans" lang="zh-Hans" data-code="zh">中文</a></li></ul></nav>
     <p class="trnote">이 페이지는 원어민 검토 없이 번역되었습니다. 수정 제안을 환영합니다.</p>
   </div>
 </footer>
 <script src="/assets/site.js?v=2dd8abee61" defer></script>
-<script src="/assets/features.js?v=ec92f4e3d0" defer></script>
+<script src="/assets/features.js?v=111d81dcd0" defer></script>
 </body>
 </html>

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Fantasy Glass UI</title>
-<meta name="description" content="适用于 WoW Forever 的魔兽世界插件：单位框体、动作条、团队框体、姓名板、背包和每一个窗口统一为 Starcut 外观，共 115 款主题。">
+<meta name="description" content="适用于 WoW Forever 的魔兽世界插件：单位框体、动作条、团队框体、姓名板、背包和每一个窗口统一为 Starcut 外观，共 116 款主题。">
 <link rel="canonical" href="https://fantasyglassui.com/zh/">
 <link rel="alternate" hreflang="en" href="https://fantasyglassui.com/">
 <link rel="alternate" hreflang="de" href="https://fantasyglassui.com/de/">
@@ -17,6 +17,7 @@
 <link rel="alternate" hreflang="zh-Hans" href="https://fantasyglassui.com/zh/">
 <link rel="alternate" hreflang="x-default" href="https://fantasyglassui.com/">
 <link rel="icon" type="image/png" href="/icon.png">
+<link rel="alternate" type="application/rss+xml" title="Fantasy Glass UI releases" href="/feed.xml">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Fantasy Glass UI">
 <meta property="og:locale" content="zh_CN">
@@ -29,7 +30,7 @@
 <meta property="og:locale:alternate" content="it_IT">
 <meta property="og:locale:alternate" content="ko_KR">
 <meta property="og:title" content="Fantasy Glass UI：整个界面，如宝石般切琢">
-<meta property="og:description" content="框体、动作条、姓名板、背包和每个窗口统一外观，115 款主题任选。免费，适用于 WoW Forever。">
+<meta property="og:description" content="框体、动作条、姓名板、背包和每个窗口统一外观，116 款主题任选。免费，适用于 WoW Forever。">
 <meta property="og:url" content="https://fantasyglassui.com/zh/">
 <meta property="og:image" content="https://fantasyglassui.com/og.jpg">
 <meta property="og:image:width" content="1200">
@@ -37,18 +38,15 @@
 <meta property="og:image:alt" content="Fantasy Glass UI">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Fantasy Glass UI：整个界面，如宝石般切琢">
-<meta name="twitter:description" content="框体、动作条、姓名板、背包和每个窗口统一外观，115 款主题任选。免费，适用于 WoW Forever。">
+<meta name="twitter:description" content="框体、动作条、姓名板、背包和每个窗口统一外观，116 款主题任选。免费，适用于 WoW Forever。">
 <meta name="twitter:image" content="https://fantasyglassui.com/og.jpg">
 <meta name="theme-color" content="#12141a" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f4f5f8" media="(prefers-color-scheme: light)">
 <script>(function(){var d=document.documentElement;d.classList.add("js");try{var t=localStorage.getItem("fg-theme");if(t==="light"||t==="dark")d.setAttribute("data-theme",t)}catch(e){}var here="zh",page="",to=here,q=location.search,h=location.hash;var m=/[?&]lang=([a-z]{2})\b/.exec(q);if(m){to=m[1];q=q.replace(/([?&])lang=[a-z]{2}&?/,"$1").replace(/[?&]$/,"")}else if(here==="en"){var c=null;try{c=localStorage.getItem("fg-lang")}catch(e){}if(!c)c=String(navigator.language||"en").slice(0,2).toLowerCase();to=c}if(["en", "de", "fr", "es", "ru", "pt", "it", "ko", "zh"].indexOf(to)<0)to=here;var O={"themes": "themes/", "maker": "themes/#maker", "features": "features/", "commands": "get-started/#commands", "faq": "get-started/#faq", "start": "get-started/"},k=h.slice(1);if(/[?&](theme|code)=/.test(q)){page="themes/";if(k!=="maker")h=""}else if(O[k]){var p=O[k].split("#");page=p[0];h=p[1]?"#"+p[1]:""}var u=(to==="en"?"/":"/"+to+"/")+page;if(u!==location.pathname||q!==location.search)location.replace(u+q+h)})();</script>
-<link rel="preload" href="/assets/marcellus.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap">
-<link rel="stylesheet" href="/assets/site.css?v=0338b00d2b">
+<link rel="stylesheet" href="/assets/site.css?v=9495293704">
 <style>
-/* Home: the hero, the drawn frames, the before-and-after, the screenshots and the newest versions (moved from the old long page). */
+/* Home (W2): the hero with the trailer (or the drawn frames), Try a theme, what sets it apart, the before-and-after,
+   Guide and Gold, the three families and the newest version. */
 /* hero: always the game's night, whatever the page's theme */
 .hero-band { position: relative; overflow: hidden; background: #0c0d12; border-bottom: 1px solid var(--rule); }
 .hero-band .shot-bg { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; object-fit: cover; object-position: 60% 50%; opacity: .62; }
@@ -83,22 +81,6 @@
 .cast .num { font-size: 0.7rem; justify-content: start; padding-left: 16px; display: flex; align-items: center; }
 .load .bar .fill { width: 0; }
 
-/* the look: four pieces */
-.pieces { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
-.piece { padding: 18px; display: grid; gap: 12px; align-content: start; min-width: 0; }   /* (a .card: line only) */
-.piece h3 { font-size: 1.02rem; }
-.piece p { margin: 0; color: var(--dim); font-size: 0.93rem; }
-.piece .demo { height: 74px; display: grid; place-items: center; background: #0c0d12; }
-.facet { width: 46px; height: 46px; background: linear-gradient(135deg, #6a3db8, #26124c); clip-path: polygon(12px 0, 34px 0, 46px 12px, 46px 34px, 34px 46px, 12px 46px, 0 34px, 0 12px); position: relative; }
-.facet::after { content: ""; position: absolute; inset: 0; background: conic-gradient(from 0deg, rgba(0,0,0,.65) 0 120deg, transparent 120deg); }
-.dmap { width: 54px; height: 54px; transform: rotate(45deg); background: radial-gradient(circle at 40% 40%, #3d6b4a, #1d3324 70%); box-shadow: 0 0 0 1px #c8d2ff; }
-.plate { width: 82%; }
-.plate .bar { height: 12px; --c: var(--danger); }
-.plate .bar::before { content: ""; position: absolute; inset: 0; background: #05060c; }
-.plate small { display: block; text-align: center; font: 600 0.72rem/1.4 var(--body); color: #e7e9f4; }
-.plate small b { color: #f2c94c; margin-right: 4px; }
-
-
 /* screenshots */
 .feature { position: relative; margin: 0 0 14px; background: #0c0d12; }
 .feature img { display: block; width: 100%; height: auto; max-width: 100%; max-height: 72vh; object-fit: contain; }
@@ -110,13 +92,6 @@
 .thumb[aria-pressed="true"] img, .thumb:hover img { opacity: 1; }
 .thumb[aria-pressed="true"] span { color: var(--gold); }
 .thumb:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
-
-/* news */
-.news { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
-.ver { padding: 18px 20px; min-width: 0; }   /* (a .card: line only) */
-.ver h3 { font: 700 1rem/1 var(--mono); color: var(--gold); margin-bottom: 10px; }
-.ver ul { margin: 0; padding-left: 18px; color: var(--dim); }
-.ver li { margin-bottom: 6px; }
 
 /* ---- before and after ---- */
 .compare { position: relative; overflow: hidden; background: #0c0d12; aspect-ratio: 2400 / 989; user-select: none; touch-action: pan-y; }
@@ -136,28 +111,116 @@
 .stage { transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); transition: transform .25s ease-out; will-change: transform; }
 .stage::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,.10) 48%, transparent 60%); background-size: 260% 100%; animation: glint 6s ease-in-out infinite; }
 @keyframes glint { 0%, 60% { background-position: 120% 0; } 100% { background-position: -40% 0; } }
-.ribbon { overflow: hidden; border-bottom: 1px solid var(--rule); background: var(--band); -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
-.ribbon .track { display: flex; gap: 34px; width: max-content; padding-block: 14px; animation: drift 60s linear infinite; }
-.ribbon:hover .track { animation-play-state: paused; }
-.ribbon span { display: inline-flex; align-items: center; gap: 34px; white-space: nowrap; color: var(--dim); font: 400 1rem/1 var(--display); letter-spacing: .04em; }
-.ribbon span::after { content: ""; width: 7px; height: 7px; transform: rotate(45deg); background: var(--gold); box-shadow: 0 0 10px var(--gold); }
-@keyframes drift { to { transform: translateX(-50%); } }
-section.block { position: relative; }
-section.block + section.block::before { content: ""; position: absolute; top: -6px; left: 50%; width: 11px; height: 11px; margin-left: -5.5px; transform: rotate(45deg); background: var(--ground); border: 1px solid var(--gold); box-shadow: 0 0 14px color-mix(in srgb, var(--gold) 60%, transparent); }
 .reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s ease, transform .7s cubic-bezier(.2,.7,.2,1); }
 .reveal.in { opacity: 1; transform: none; }
-.piece { transition: transform .2s ease; }
-.piece:hover { transform: translateY(-3px); }
 @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; } .stage { transform: none; } }
 #look .compare, #look .feature, #look .thumbs { margin-bottom: 18px; }
+#look .lede { margin: 10px 0 24px; }
 @media (max-width: 900px) {
   .stage { justify-self: stretch; max-width: none; }
   .hero { grid-template-columns: minmax(0, 1fr); padding-block: 40px 32px; }
-  .pieces { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-@media (max-width: 620px) {
-  .news, .pieces { grid-template-columns: minmax(0, 1fr); }
+
+
+.portrait.foe { background: linear-gradient(135deg, #5a1d1a, #1d0a09); box-shadow: 0 0 0 1px #e9a49b, 0 0 18px rgba(226,87,76,.4); }
+.hero .cta { margin-top: 28px; }
+
+/* ---- the trailer: a muted loop with its poster and a pause button (body.py) ---- */
+.trailer { margin: 0; min-width: 0; }
+.tv { position: relative; background: #0c0d12; border: 1px solid var(--line); box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+.tv video, .tv img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.tv-btn { position: absolute; right: 14px; bottom: 14px; display: grid; place-items: center; width: 48px; height: 48px; padding: 0; border-radius: 50%; border: 1px solid rgba(255,255,255,.35); background: rgba(12,13,18,.82); color: #fff; cursor: pointer; }
+.tv-btn:hover { border-color: var(--gold); color: var(--gold); }
+.tv-btn:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.tv-btn svg { width: 18px; height: 18px; }
+.tv-btn .i-pause, .tv-btn.playing .i-play { display: none; }
+.tv-btn.playing .i-pause { display: block; }
+.trailer figcaption { margin-top: 10px; color: var(--faint); font-size: 0.92rem; }
+
+/* ---- try a theme ---- */
+.try { padding-block: 64px; }
+.try-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 40px; align-items: center; }
+.try-text .lede { margin: 10px 0 22px; }
+.try-pick fieldset { border: 0; margin: 0 0 14px; padding: 0; min-width: 0; }
+.try-pick legend { padding: 0; margin-bottom: 8px; color: var(--faint); font: 700 0.8rem/1.2 var(--body); letter-spacing: 0.08em; text-transform: uppercase; }
+.try-pick .filters { margin: 0; }
+.try-pick .chip { gap: 8px; min-height: 44px; }
+.try-pick .chip i { width: 16px; height: 16px; flex: none; border-radius: 50%; }
+.try-more { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 22px; margin-top: 8px; }
+.try-more a { font-weight: 600; }
+.try-view { margin: 0; min-width: 0; }
+.try-stage { --bg: #0e0f13; --bd: #5f6672; --ac: #80c7ff; --tx: #e3e7eb; --pl: #272933;
+  position: relative; min-height: 270px; padding: 32px; background: var(--bg); border: 1px solid var(--bd); transition: background .3s, border-color .3s; }
+.try-stage.sky { background-image: radial-gradient(1px 1px at 20% 30%, #fff9, transparent), radial-gradient(1px 1px at 70% 20%, #fffa, transparent), radial-gradient(1.5px 1.5px at 85% 70%, #fff8, transparent), radial-gradient(1px 1px at 40% 80%, #fff7, transparent), radial-gradient(1px 1px at 58% 46%, #fff6, transparent); }
+.try-stage.pane::before { content: ""; position: absolute; inset: 0; background: linear-gradient(160deg, color-mix(in srgb, var(--ac) 16%, transparent), transparent 55%); pointer-events: none; }
+.try-frame { position: relative; max-width: 330px; padding: 16px 18px; background: var(--pl); border: 1px solid var(--bd); --cut: 10px; }
+.try-stage.pane .try-frame { box-shadow: inset 0 1px 0 rgba(255,255,255,.35); }
+.try-stage.gilt .try-frame { box-shadow: inset 0 0 0 1px #000, inset 3px 3px 0 -1px var(--ac); }
+.try-who { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.try-who b { color: var(--tx); font: 400 1.1rem/1.2 var(--display); }
+.try-who span { color: var(--ac); font-size: 0.85rem; font-weight: 700; }
+.try-bar { height: 14px; margin-top: 10px; background: var(--bg); border: 1px solid var(--bd); }
+.try-bar i { display: block; height: 100%; }
+.try-bar .hp { width: 78%; background: #3fcf7a; }
+.try-bar .mana { width: 55%; background: #4f8dff; }
+.try-slots { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.try-slots i { width: 44px; height: 44px; --cut: 8px; background: var(--pl); box-shadow: inset 0 0 0 1px var(--bd); }
+.try-slots i:first-child { box-shadow: inset 0 0 0 1px var(--ac), 0 0 0 0 transparent; }
+.try-title { position: relative; margin: 18px 0 0; color: var(--ac); font: 400 1.3rem/1.2 var(--display); }
+.try-view figcaption { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-top: 12px; font-size: 0.95rem; }
+.try-view figcaption .faint { flex: 1 1 260px; }
+.try-view figcaption > span:first-child { flex: 1 1 100%; font-weight: 600; }
+
+/* ---- what sets it apart ---- */
+#why h2 { margin-bottom: 24px; }
+.why .card { display: flex; flex-direction: column; }
+.why .card p { margin-bottom: 12px; }
+.why .card p:last-child { margin-bottom: 0; }
+.why .more-link { margin-top: auto; }
+
+/* ---- guide and gold ---- */
+#guide-gold h2 { margin-bottom: 28px; max-width: 30ch; }
+.gg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.gg-card { padding: 0 0 24px; }
+.gg-card > :not(svg) { margin-left: 24px; margin-right: 24px; }
+.gg-card h3 { margin-top: 22px; color: var(--text); }
+.gg-card p.faint { color: var(--faint); font-size: 0.95rem; }
+.gg-art { display: block; width: 100%; height: auto; aspect-ratio: 320 / 120; background: var(--shot); border-bottom: 1px solid var(--line); }
+.gg-path { fill: none; stroke: var(--gold); stroke-width: 2.5; stroke-dasharray: 2 8; stroke-linecap: round; }
+.gg-stops rect { fill: var(--ground); stroke: var(--gold); stroke-width: 2; }
+.gg-star { fill: var(--gold); }
+.gg-bars rect { fill: none; stroke: var(--frost); stroke-width: 2; }
+.gg-bars rect:last-child { fill: color-mix(in srgb, var(--gold) 30%, transparent); stroke: var(--gold); }
+.gg-coins ellipse { fill: var(--shot); stroke: var(--gold); stroke-width: 2; }
+
+/* ---- three families ---- */
+.head-row { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; margin-bottom: 22px; }
+.head-row a { font-weight: 600; }
+.fams { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.fams figure { margin: 0; min-width: 0; }
+.fams img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: var(--shot); }
+.fams figcaption { margin-top: 10px; }
+
+/* ---- the newest version ---- */
+#new { padding-top: 0; }
+.latest { display: flex; flex-wrap: wrap; gap: 18px 48px; padding: 30px; }
+.latest > div { flex: 1 1 240px; }
+.latest h2 { margin-bottom: 6px; font-size: 1.75rem; }
+.latest p { margin: 0; }
+.latest ul { flex: 2 1 420px; margin: 0; padding-left: 20px; color: var(--dim); }
+.latest li + li { margin-top: 6px; }
+
+@media (max-width: 900px) {
+  .try-grid, .gg { grid-template-columns: minmax(0, 1fr); }
+  .fams { grid-template-columns: minmax(0, 1fr); }
+  .try-stage { min-height: 0; padding: 22px; }
 }
+@media (max-width: 600px) {
+  .try { padding-block: 44px; }
+  .latest { padding: 22px; }
+  .hero h1 { font-size: 2.35rem; }
+}
+@media (max-width: 600px) { .fams figure:not(:first-child) { display: none; } }
 </style>
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "SoftwareApplication", "name": "Fantasy Glass UI", "applicationCategory": "GameApplication", "applicationSubCategory": "World of Warcraft add-on", "operatingSystem": "Windows, macOS", "description": "A complete interface for WoW Forever: unit frames, action bars, raid frames, nameplates, bags and every window in one Starcut look, with 116 themes.", "url": "https://fantasyglassui.com/", "image": "https://fantasyglassui.com/og.jpg", "downloadUrl": "https://www.curseforge.com/wow/addons/fantasy-glass-ui", "author": {"@type": "Person", "name": "DustyMouse"}, "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "sameAs": ["https://discord.gg/qeSMwQWyPR", "https://www.curseforge.com/wow/addons/fantasy-glass-ui", "https://github.com/fantasyglassui/FantasyGlassUI"], "inLanguage": ["en", "de", "fr", "es", "ru", "pt", "it", "ko", "zh"]}</script>
 </head>
@@ -179,29 +242,29 @@ section.block + section.block::before { content: ""; position: absolute; top: -6
   </div>
 </header>
 <main id="main" tabindex="-1">
-<!-- Home (W2). The hero, the before-and-after, and the newest versions; see site-src/PAGES.md. -->
+<!-- Home (W2). The hero with the trailer, Try a theme, what sets it apart, the before-and-after, Guide and Gold, the themes
+     and the newest version; see site-src/PAGES.md. body.py puts the trailer (or, until there is one, the drawn frames)
+     where the TRAILER comment stands. -->
   <div class="hero-band night">
   <img src="/shots/celestial-screen.webp" srcset="/shots/celestial-screen-480.webp 480w, /shots/celestial-screen-800.webp 800w, /shots/celestial-screen-1600.webp 1600w, /shots/celestial-screen.webp 2400w" sizes="100vw" width="2400" height="955" alt="" class="shot-bg" fetchpriority="high">
   <div class="wrap">
     <div class="hero load" id="hero">
       <div>
-        <div class="eyebrow">WoW Forever 插件</div>
+        <div class="eyebrow">适用于 WoW Forever · 免费</div>
         <h1>整个界面，<span>如宝石般切琢。</span></h1>
-        <p class="lede">单位框体、动作条、团队框体、姓名板、背包、任务、小地图以及游戏自带的每一个窗口，统一为你从 116 款主题中选择的外观。一个插件，一分钟完成设置，每个部分都可以单独关闭。</p>
+        <p class="lede">框体、动作条、背包、聊天和每个窗口统一外观，还有为你规划路线的任务指南，以及知道何时出售的金币顾问。</p>
         <div class="cta">
-          <a class="btn primary cut" href="https://www.curseforge.com/wow/addons/fantasy-glass-ui" target="_blank" rel="noopener">在 CurseForge 下载</a>
-          <a class="btn ghost cut" href="/zh/themes/">查看主题</a>
-          <a class="btn ghost cut" href="https://discord.gg/qeSMwQWyPR" target="_blank" rel="noopener">加入 Discord</a>
+          <a class="btn" href="https://www.curseforge.com/wow/addons/fantasy-glass-ui" target="_blank" rel="noopener">在 CurseForge 下载</a>
+          <a class="btn line" href="/zh/features/">查看全部功能</a>
         </div>
         <div class="facts" id="facts">
           <span><b>116</b> <span class="w">款主题</span></span>
-          <span><b id="f-switches">260</b> <span class="w">个开关</span></span>
-          <span><b id="f-commands">129</b> <span class="w">条命令</span></span>
+          <span><b>260</b> <span class="w">个开关</span></span>
+          <span><b>129</b> <span class="w">条命令</span></span>
           <span><b>9</b> <span class="w">种语言</span></span>
-          <span><span class="w">版本</span> <b id="f-version">12.4</b></span>
+          <span><span class="w">版本</span> <b>13.0</b></span>
         </div>
       </div>
-
       <div class="stage cut" role="img" aria-label="绘制的 Starcut 单位框体">
         <span class="label">Starcut 框体</span>
         <div class="uf">
@@ -213,7 +276,7 @@ section.block + section.block::before { content: ""; position: absolute; top: -6
           </div>
         </div>
         <div class="uf">
-          <div class="portrait" aria-hidden="true" style="background:linear-gradient(135deg,#5a1d1a,#1d0a09);box-shadow:0 0 0 1px #e9a49b,0 0 18px rgba(226,87,76,.4)"><i>O</i></div>
+          <div class="portrait foe" aria-hidden="true"><i>O</i></div>
           <div>
             <div class="who"><span>Onyxia</span><span>??</span></div>
             <div class="glow" style="--c:#e2574c"><div class="bar" style="--c:#e2574c;--v:72%"><div class="fill"></div><div class="num">72%</div></div></div>
@@ -225,15 +288,53 @@ section.block + section.block::before { content: ""; position: absolute; top: -6
   </div>
   </div>
 
-  <div class="ribbon" aria-hidden="true"><div class="track"><span>116 款主题</span><span>Starcut 框体</span><span>仇恨表</span><span>掉落心愿单</span><span>掷骰建议</span><span>首领指南</span><span>小队装备检查</span><span>刷怪记录</span><span>副本记录</span><span>装备方案</span><span>菱形小地图</span><span>终身统计</span><span>里程碑</span><span>截图模式</span><span>内置辅助功能</span><span>9 种语言</span><span>姓名板标记任务怪</span><span>116 款主题</span><span>Starcut 框体</span><span>仇恨表</span><span>掉落心愿单</span><span>掷骰建议</span><span>首领指南</span><span>小队装备检查</span><span>刷怪记录</span><span>副本记录</span><span>装备方案</span><span>菱形小地图</span><span>终身统计</span><span>里程碑</span><span>截图模式</span><span>内置辅助功能</span><span>9 种语言</span><span>姓名板标记任务怪</span></div></div>
+  <section class="band try" id="try" aria-labelledby="try-h">
+    <div class="wrap try-grid">
+      <div class="try-text">
+        <div class="eyebrow">在这里试试</div>
+        <h2 id="try-h">选一个主题，看它变化</h2>
+        <p class="lede">从 116 款中选出九款，按它们自己的颜色绘制。在游戏中，整个屏幕都会跟随你选的那一款。</p>
+        <div class="try-pick" id="trypick"></div>
+        <div class="try-more">
+          <button class="btn line small" type="button" id="tryany">换一个</button>
+          <a href="/zh/themes/">查看全部 116 款主题</a>
+        </div>
+      </div>
+      <figure class="try-view">
+        <div class="try-stage cut" id="trystage" aria-hidden="true">
+          <div class="try-frame cut">
+            <div class="try-who"><b>Aerin</b><span>42 级</span></div>
+            <div class="try-bar"><i class="hp"></i></div>
+            <div class="try-bar"><i class="mana"></i></div>
+          </div>
+          <div class="try-slots"><i class="cut"></i><i class="cut"></i><i class="cut"></i><i class="cut"></i><i class="cut"></i><i class="cut"></i></div>
+          <p class="try-title" id="trytitle">Polaris</p>
+        </div>
+        <figcaption>
+          <span aria-live="polite"><b id="tryname">Polaris</b> · <span id="tryfam">星空</span></span>
+          <span class="faint">示例单位框体和动作条，用该主题自己的颜色绘制。</span>
+          <button class="btn small" type="button" id="trywear">在本站换上</button>
+        </figcaption>
+      </figure>
+    </div>
+  </section>
 
-  <section class="block" id="look">
+  <section class="section" id="why" aria-labelledby="why-h">
     <div class="wrap">
-      <header>
-        <div class="eyebrow">前后对比</div>
-        <h2>同一画面，如宝石般切琢</h2>
-        <p class="lede">拖动这条线。左边是普通界面，右边是同一画面套用星空主题的 Fantasy Glass UI。</p>
-      </header>
+      <h2 id="why-h">与众不同之处</h2>
+      <div class="grid why">
+        <div class="card"><h3>一种外观，每个窗口</h3><p>116 款主题，分玻璃、奇幻和星空三大系列。选一款，整个屏幕都会跟随，连游戏自带的窗口也一样。</p></div>
+        <div class="card"><h3>为 WoW Forever 打造</h3><p>每次改动，它的测试都会把它用到的每个游戏函数、事件和设置与从 WoW Forever 客户端取得的列表逐一核对。</p></div>
+        <div class="card"><h3>人人都易读</h3><p>朗读、用键盘操作游戏窗口、高对比度、更大的文字和平缓的动效，全部内置。</p><a class="more-link" href="/zh/accessibility/">它在无障碍方面做了什么</a></div>
+        <div class="card"><h3>从 ElvUI 转过来？</h3><p>设置向导可以把你的框体放到 ElvUI、Tukui、RealUI、GW2 UI 或游戏自带界面原来的位置。</p><a class="more-link" href="/zh/features/#compare">它们如何比较</a></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band section" id="look" aria-labelledby="look-h">
+    <div class="wrap">
+      <h2 id="look-h">同一画面，前后对比</h2>
+      <p class="lede">拖动这条线。左边是普通界面，右边是同一画面套用星空主题的 Fantasy Glass UI。</p>
       <div class="compare cut" id="cmp" style="--x:50%">
         <img src="/shots/celestial-live.webp" srcset="/shots/celestial-live-480.webp 480w, /shots/celestial-live-800.webp 800w, /shots/celestial-live-1600.webp 1600w, /shots/celestial-live.webp 2400w" sizes="(max-width: 1208px) 100vw, 1160px" width="2400" height="989" alt="使用 Fantasy Glass UI 的画面" draggable="false" loading="lazy" decoding="async">
         <img src="/shots/plain-before.webp" srcset="/shots/plain-before-480.webp 480w, /shots/plain-before-800.webp 800w, /shots/plain-before-1600.webp 1600w, /shots/plain-before.webp 2400w" sizes="(max-width: 1208px) 100vw, 1160px" width="2400" height="989" alt="同一画面的普通界面" class="before" draggable="false" loading="lazy" decoding="async">
@@ -246,39 +347,54 @@ section.block + section.block::before { content: ""; position: absolute; top: -6
         <figcaption id="shot-cap">星空主题的完整画面：队伍、玩家与目标、施法条、动作条和小地图。</figcaption>
       </figure>
       <div class="thumbs" id="thumbs" role="group" aria-label="选择截图"></div>
-      <div class="pieces">
-        <div class="piece card">
-          <div class="demo"><div class="plate"><small><b>52</b>Angerclaw Grizzly</small><div class="bar" style="--v:64%"><div class="fill"></div></div></div></div>
-          <h3>自有姓名板</h3>
-          <p>黑色底板上的自有血条、按颜色显示的等级，以及在边缘发光的仇恨提示。</p>
-        </div>
-        <div class="piece card">
-          <div class="demo"><div class="facet" aria-hidden="true"></div></div>
-          <h3>宝石般切琢的按钮</h3>
-          <p>动作按钮和背包格去掉了直角，冷却转圈也沿着切角走。</p>
-        </div>
-        <div class="piece card">
-          <div class="demo"><div class="dmap" aria-hidden="true"></div></div>
-          <h3>菱形小地图</h3>
-          <p>细边框，每个尖角一颗星，区域、坐标和时钟依然都在。</p>
-        </div>
-        <div class="piece card">
-          <div class="demo"><div style="width:84%" class="glow"><div class="bar cast" style="--v:58%"><div class="fill"></div><div class="num">Greater Heal</div></div></div></div>
-          <h3>每一条</h3>
-          <p>施法条与制作条、呼吸与疲劳、计时器、经验、声望和图腾。</p>
-        </div>
+    </div>
+  </section>
+
+  <section class="section" id="guide-gold" aria-labelledby="gg-h">
+    <div class="wrap">
+      <div class="eyebrow">13.0 新功能</div>
+      <h2 id="gg-h">规划路线的指南，以及知道何时出售的金币</h2>
+      <div class="gg">
+        <a class="card gg-card" href="/zh/guide-and-gold/">
+          <svg class="gg-art" viewBox="0 0 320 120" aria-hidden="true"><path class="gg-path" d="M24 92 C70 92 70 40 116 44 S170 96 214 74 S262 22 296 30"/><g class="gg-stops"><rect x="18" y="86" width="12" height="12" transform="rotate(45 24 92)"/><rect x="110" y="38" width="12" height="12" transform="rotate(45 116 44)"/><rect x="208" y="68" width="12" height="12" transform="rotate(45 214 74)"/></g><path class="gg-star" d="M296 18 l4 9 9 3 -9 3 -4 9 -4 -9 -9 -3 9 -3z"/></svg>
+          <h3>任务规划器</h3>
+          <p>从你所在的位置出发，一个任务接一个任务地规划路线，用上飞行、船只和炉石。独自或与朋友一起跟着走。</p>
+          <p class="faint">装了 Questie 时，它也会读取 Questie 的任务。</p>
+          <span class="more-link">如何使用 <span aria-hidden="true">→</span></span>
+        </a>
+        <a class="card gg-card" href="/zh/guide-and-gold/">
+          <svg class="gg-art" viewBox="0 0 320 120" aria-hidden="true"><g class="gg-bars"><rect x="40" y="70" width="44" height="34"/><rect x="104" y="48" width="44" height="56"/><rect x="168" y="26" width="44" height="78"/></g><g class="gg-coins"><ellipse cx="262" cy="96" rx="26" ry="8"/><ellipse cx="262" cy="84" rx="26" ry="8"/><ellipse cx="262" cy="72" rx="26" ry="8"/></g></svg>
+          <h3>金币顾问</h3>
+          <p>通过刷怪、采集、制造和出售赚金的方法，按每小时金币、轻松度和安全排序。每个数字都会说明它是估算、来自价格，还是你实测的。</p>
+          <span class="more-link">如何使用 <span aria-hidden="true">→</span></span>
+        </a>
       </div>
     </div>
   </section>
 
-  <section class="block" id="new">
+  <section class="section" id="families" aria-labelledby="fam-h">
     <div class="wrap">
-      <header>
-        <div class="eyebrow">更新内容</div>
-        <h2>最近版本</h2>
-        <p class="lede">从第一个版本到现在的每个版本，都在<a href=&quot;/changelog/&quot;>更新日志页面</a>。</p>
-      </header>
-      <div class="news" id="news"></div>
+      <div class="head-row">
+        <h2 id="fam-h">三大系列，116 款主题</h2>
+        <a href="/zh/themes/">浏览全部主题 <span aria-hidden="true">→</span></a>
+      </div>
+      <div class="fams">
+        <figure><img src="/shots/glass-overview.webp" srcset="/shots/glass-overview-480.webp 480w, /shots/glass-overview-800.webp 800w, /shots/glass-overview-1600.webp 1600w, /shots/glass-overview.webp 2400w" sizes="(max-width: 700px) 100vw, 380px" width="2400" height="955" alt="玻璃主题下的同一画面。" class="cut" loading="lazy" decoding="async"><figcaption><b>玻璃</b> <span class="faint">· 清透明亮</span></figcaption></figure>
+        <figure><img src="/shots/fantasy-overview.webp" srcset="/shots/fantasy-overview-480.webp 480w, /shots/fantasy-overview-800.webp 800w, /shots/fantasy-overview-1600.webp 1600w, /shots/fantasy-overview.webp 2400w" sizes="(max-width: 700px) 100vw, 380px" width="2400" height="955" alt="奇幻主题下的同一画面。" class="cut" loading="lazy" decoding="async"><figcaption><b>奇幻</b> <span class="faint">· 雕刻鎏金</span></figcaption></figure>
+        <figure><img src="/shots/celestial-screen.webp" srcset="/shots/celestial-screen-480.webp 480w, /shots/celestial-screen-800.webp 800w, /shots/celestial-screen-1600.webp 1600w, /shots/celestial-screen.webp 2400w" sizes="(max-width: 700px) 100vw, 380px" width="2400" height="955" alt="星空主题的完整画面：队伍、玩家与目标、施法条、动作条和小地图。" class="cut" loading="lazy" decoding="async"><figcaption><b>星空</b> <span class="faint">· 玻璃后的夜空</span></figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="new" aria-labelledby="new-h">
+    <div class="wrap">
+      <div class="latest card">
+        <div>
+          <h2 id="new-h">最新版本</h2>
+          <p class="dim"><b id="newv">13.0.0</b> · <a href="/zh/changelog/">完整更新日志</a> · <a href="/zh/roadmap/">路线图</a></p>
+        </div>
+        <ul id="news"></ul>
+      </div>
     </div>
   </section>
 </main>
@@ -293,11 +409,13 @@ section.block + section.block::before { content: ""; position: absolute; top: -6
         <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/wiki">Wiki</a></li>
         <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/issues/new/choose">报告问题</a></li>
         <li><a href="/zh/accessibility/">辅助功能</a></li>
+        <li><a href="/zh/press/">媒体资料包</a></li>
+        <li><a href="/feed.xml" type="application/rss+xml">RSS</a></li>
       </ul>
     </div>
     <div class="foot-row">
       <span>联系: <a href="mailto:email-forwarding@fantasyglassui.com">email-forwarding@fantasyglassui.com</a></span>
-      <p class="status"><span>版本 <b>12.4.1</b></span><span class="sep" aria-hidden="true">·</span><span>更新于 <time datetime="2026-11-25">2026-11-25</time></span><span class="sep" aria-hidden="true">·</span><span>已对照 WoW: Forever <b>1.60.1 (70938)</b> 检查</span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">源代码</a></span></p>
+      <p class="status"><span>版本 <b>13.0.0</b></span><span class="sep" aria-hidden="true">·</span><span>更新于 <time datetime="2026-11-26">2026-11-26</time></span><span class="sep" aria-hidden="true">·</span><span>已对照 WoW: Forever <b>1.60.1 (70938)</b> 检查</span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">源代码</a></span></p>
     </div>
     <nav class="foot-row foot-langs" aria-label="语言"><ul><li><a href="/" hreflang="en" lang="en" data-code="en">English</a></li><li><a href="/de/" hreflang="de" lang="de" data-code="de">Deutsch</a></li><li><a href="/fr/" hreflang="fr" lang="fr" data-code="fr">Français</a></li><li><a href="/es/" hreflang="es" lang="es" data-code="es">Español</a></li><li><a href="/ru/" hreflang="ru" lang="ru" data-code="ru">Русский</a></li><li><a href="/pt/" hreflang="pt" lang="pt" data-code="pt">Português</a></li><li><a href="/it/" hreflang="it" lang="it" data-code="it">Italiano</a></li><li><a href="/ko/" hreflang="ko" lang="ko" data-code="ko">한국어</a></li><li><a href="/zh/" hreflang="zh-Hans" lang="zh-Hans" data-code="zh" aria-current="true">中文</a></li></ul></nav>
     <p class="trnote">本页翻译未经母语者校对，欢迎指正。</p>
@@ -305,6 +423,6 @@ section.block + section.block::before { content: ""; position: absolute; top: -6
 </footer>
 <script src="/assets/site.js?v=2dd8abee61" defer></script>
 <script src="/assets/data.js?v=69c0402527" defer></script>
-<script src="/assets/home.js?v=4a1b39573d" defer></script>
+<script src="/assets/home.js?v=d5c6f14bff" defer></script>
 </body>
 </html>

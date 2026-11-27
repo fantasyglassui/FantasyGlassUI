@@ -17,6 +17,7 @@
 <link rel="alternate" hreflang="zh-Hans" href="https://fantasyglassui.com/zh/features/">
 <link rel="alternate" hreflang="x-default" href="https://fantasyglassui.com/features/">
 <link rel="icon" type="image/png" href="/icon.png">
+<link rel="alternate" type="application/rss+xml" title="Fantasy Glass UI releases" href="/feed.xml">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Fantasy Glass UI">
 <meta property="og:locale" content="es_ES">
@@ -42,21 +43,71 @@
 <meta name="theme-color" content="#12141a" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f4f5f8" media="(prefers-color-scheme: light)">
 <script>(function(){var d=document.documentElement;d.classList.add("js");try{var t=localStorage.getItem("fg-theme");if(t==="light"||t==="dark")d.setAttribute("data-theme",t)}catch(e){}var here="es",page="features/",to=here,q=location.search,h=location.hash;var m=/[?&]lang=([a-z]{2})\b/.exec(q);if(m){to=m[1];q=q.replace(/([?&])lang=[a-z]{2}&?/,"$1").replace(/[?&]$/,"")}else if(here==="en"){var c=null;try{c=localStorage.getItem("fg-lang")}catch(e){}if(!c)c=String(navigator.language||"en").slice(0,2).toLowerCase();to=c}if(["en", "de", "fr", "es", "ru", "pt", "it", "ko", "zh"].indexOf(to)<0)to=here;var u=(to==="en"?"/":"/"+to+"/")+page;if(u!==location.pathname||q!==location.search)location.replace(u+q+h)})();</script>
-<link rel="preload" href="/assets/marcellus.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap">
-<link rel="stylesheet" href="/assets/site.css?v=0338b00d2b">
+<link rel="preload" href="/fonts/marcellus-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/source-sans-3-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/site.css?v=9495293704">
 <style>
-/* Features: every switch (moved from the old long page). */
-.fsec { margin-bottom: 26px; }
-.fsec h3 { font-size: 1.05rem; margin-bottom: 10px; display: flex; gap: 10px; align-items: baseline; }
-.fsec h3 small { font: 600 0.8rem/1 var(--body); color: var(--faint); }
-.flist { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.fitem { padding: 12px 14px; min-width: 0; border-bottom: 1px solid var(--rule); }
-.fitem b { display: block; font-weight: 600; }
-.fitem span { display: block; color: var(--dim); font-size: 0.92rem; line-height: 1.45; margin-top: 3px; }
-@media (max-width: 620px) { .flist { grid-template-columns: minmax(0, 1fr); } }
+/* Features (W2): every switch, a section at a time with the list of sections on the left, and the comparison. */
+.page-head .jump { margin: 14px 0 0; font-weight: 600; }
+#features { padding-top: 32px; }
+.fsearch { max-width: 620px; margin-bottom: 30px; }
+.fsearch label { display: block; margin-bottom: 6px; color: var(--dim); font-size: 0.92rem; font-weight: 600; }
+.fsearch .tools { margin: 0; }
+.fx { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 40px; align-items: start; }
+.fnav { position: sticky; top: 92px; }
+.fnav ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.fnav button { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; padding: 9px 14px; border: 0; border-left: 2px solid transparent; background: none; color: var(--nav); font: 600 0.98rem/1.25 var(--body); text-align: left; cursor: pointer; }
+.fnav button:hover { color: var(--text); background: var(--raised); }
+.fnav button[aria-current="true"] { color: var(--gold); border-left-color: var(--gold); background: var(--raised); }
+.fnav .n { color: var(--faint); font-size: 0.82rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.fnav button:focus-visible { outline-offset: -3px; }
+.fbody { min-width: 0; }
+.fsec + .fsec { margin-top: 34px; }
+.fh { font-size: clamp(1.6rem, 3vw, 2.1rem); margin-bottom: 8px; }
+.fh:focus { outline: none; }
+.fh small { font: 600 0.9rem/1 var(--body); color: var(--faint); margin-left: 6px; }
+.fsec .lede { margin: 0 0 22px; }
+.fshot { margin: 0 0 22px; }
+.fshot img { display: block; width: auto; max-width: 100%; max-height: 520px; border: 1px solid var(--line); background: var(--shot); }
+.frows { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--rule); }
+.frows li { padding: 14px 4px; border-bottom: 1px solid var(--rule); }
+.frows b { display: block; font-weight: 600; }
+.frows span { display: block; margin-top: 2px; color: var(--dim); font-size: 0.95rem; line-height: 1.5; }
+.fnext { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 28px; margin-top: 36px; padding: 20px 24px; }
+.fnext p { flex: 1 1 260px; margin: 0; color: var(--dim); }
+.fnext b { color: var(--text); }
+
+/* the comparison */
+#compare h2 { margin-bottom: 10px; }
+#compare .lede { margin-bottom: 26px; }
+.cmp { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+.cmp th, .cmp td { padding: 12px 14px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--rule); }
+.cmp thead th { font: 400 1.15rem/1.2 var(--display); border-bottom: 1px solid var(--line); }
+.cmp thead th.us { color: var(--gold); }
+.cmp tbody th { font-weight: 600; width: 26%; }
+.cmp td { color: var(--dim); }
+.cmp td:nth-child(2) { color: var(--text); }
+.cmp-cards .card { display: flex; flex-direction: column; }
+.cmp-cards .card p { margin-bottom: 12px; }
+.cmp-cards .card p:last-child { margin-bottom: 0; }
+.cmp-cards .more-link { margin-top: auto; }
+.cmp-note { margin: 26px 0 0; max-width: 80ch; font-size: 0.92rem; }
+
+@media (max-width: 900px) {
+  .fx { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .fnav { position: static; margin: 0 calc(-1 * var(--gutter)); overflow-x: auto; scrollbar-width: thin; }
+  .fnav ul { display: flex; gap: 8px; padding: 2px var(--gutter) 8px; width: max-content; }
+  .fnav button { width: auto; white-space: nowrap; border: 1px solid var(--line); border-left-width: 1px; background: var(--raised); color: var(--text); }
+  .fnav button[aria-current="true"] { border-color: var(--gold); }
+}
+@media (max-width: 700px) {
+  .cmp, .cmp tbody, .cmp tr, .cmp th, .cmp td { display: block; width: auto; }
+  .cmp thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .cmp tr { padding: 14px 0; border-bottom: 1px solid var(--rule); }
+  .cmp tbody th { width: auto; padding: 0 0 6px; border: 0; font-size: 1.05rem; }
+  .cmp td { padding: 3px 0; border: 0; }
+  .cmp td::before { content: attr(data-label) ": "; color: var(--faint); font-weight: 600; }
+}
 </style>
 </head>
 <body>
@@ -77,20 +128,61 @@
   </div>
 </header>
 <main id="main" tabindex="-1">
-<!-- Features (W2). Every switch, from features.json; see site-src/PAGES.md. -->
-  <section class="block" id="features">
+<!-- Features (W2). Every switch from features.json, a section at a time with one search across all, and the fair
+     comparison with ElvUI and the game's own interface (#compare); see site-src/PAGES.md. -->
+  <div class="wrap page-head">
+    <h1>Funciones</h1>
+    <p class="lede">Todo lo que hace Fantasy Glass UI, agrupado según lo que estás haciendo en el juego. Cada interruptor está en la ventana de opciones con el mismo nombre, y cada uno se enciende o se apaga por separado.</p>
+    <p class="jump"><a href="#compare">Cómo se compara con ElvUI y con la interfaz del juego</a></p>
+  </div>
+
+  <section class="section" id="features" aria-label="Todos los interruptores">
     <div class="wrap">
-      <header>
-        <div class="eyebrow">Funciones</div>
-        <h1>Cada interruptor y lo que hace</h1>
-        <p class="lede">Cada interruptor del accesorio, en once secciones. Todo se puede activar o desactivar por separado. Elige una sección o busca en todas.</p>
-      </header>
-      <div class="tools">
-        <input class="search" id="fsearch" type="search" placeholder="Buscar interruptores, por ejemplo: botín, placa, amenaza" aria-label="Buscar interruptores, por ejemplo: botín, placa, amenaza" autocomplete="off">
-        <span class="count" id="fcount"></span>
+      <div class="fsearch">
+        <label for="fsearch">Buscar en todos los interruptores</label>
+        <div class="tools">
+          <input class="search" id="fsearch" type="search" placeholder="Prueba «subasta» o «foco»" autocomplete="off">
+          <span class="count" id="fcount" aria-live="polite"></span>
+        </div>
       </div>
-      <div class="filters" id="ffilters" role="group" aria-label="Sección"></div>
-      <div id="flist"><p class="count" role="status">…</p></div>
+      <div class="fx">
+        <nav class="fnav" aria-label="Grupos de funciones"><ul id="fnav"></ul></nav>
+        <div class="fbody" id="fbody"><p class="count">…</p></div>
+      </div>
+      <div hidden id="fshots">
+        <figure class="fshot" data-s="Frames, bars and nameplates"><img src="/shots/celestial-frames.webp" srcset="/shots/celestial-frames-480.webp 480w, /shots/celestial-frames-800.webp 800w, /shots/celestial-frames.webp 1500w" sizes="(max-width: 900px) 100vw, 860px" width="1500" height="729" alt="Los marcos del jugador y del objetivo de cerca, con la mascota, la barra de lanzamiento, los beneficios y el objetivo del objetivo." class="cut" loading="lazy" decoding="async"></figure>
+        <figure class="fshot" data-s="Bags and bag rules"><img src="/shots/glass-bags.webp" srcset="/shots/glass-bags-480.webp 480w, /shots/glass-bags.webp 540w" sizes="(max-width: 600px) 100vw, 540px" width="540" height="700" alt="Las bolsas en una sola ventana, con la calidad en cada casilla tallada, y arriba buscar, ordenar y equipar lo mejor." class="cut" loading="lazy" decoding="async"></figure>
+        <figure class="fshot" data-s="Look, sounds and notifications"><img src="/shots/glass-overview.webp" srcset="/shots/glass-overview-480.webp 480w, /shots/glass-overview-800.webp 800w, /shots/glass-overview-1600.webp 1600w, /shots/glass-overview.webp 2400w" sizes="(max-width: 900px) 100vw, 860px" width="2400" height="955" alt="La misma pantalla con un tema Cristal." class="cut" loading="lazy" decoding="async"></figure>
+        <figure class="fshot" data-s="Windows, tooltips and quests"><img src="/shots/glass-settings.webp" srcset="/shots/glass-settings-480.webp 480w, /shots/glass-settings-800.webp 800w, /shots/glass-settings.webp 1070w" sizes="(max-width: 900px) 100vw, 860px" width="1070" height="730" alt="La ventana de opciones: todos los temas en un solo lugar, y cada función se puede desactivar." class="cut" loading="lazy" decoding="async"></figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="section band" id="compare" aria-labelledby="cmp-h">
+    <div class="wrap">
+      <div class="eyebrow">Una comparación justa</div>
+      <h2 id="cmp-h">¿Fantasy Glass UI, ElvUI o la del juego?</h2>
+      <p class="lede">Las tres son buenas formas de jugar. Aquí se dice qué es cada una, y solo lo que se puede comprobar: de Fantasy Glass UI, en su propio código y su guía; de las otras dos, lo que cualquiera puede ver por sí mismo.</p>
+      <table class="cmp">
+        <caption class="sr-only">Fantasy Glass UI, ElvUI y la interfaz del juego, lado a lado</caption>
+        <thead><tr><td></td><th scope="col" class="us">Fantasy Glass UI</th><th scope="col">ElvUI</th><th scope="col">La del juego</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Qué es</th><td data-label="Fantasy Glass UI">Un accesorio que redibuja toda la interfaz</td><td data-label="ElvUI">Un accesorio que redibuja toda la interfaz</td><td data-label="La del juego">La interfaz que trae el juego</td></tr>
+          <tr><th scope="row">Precio</th><td data-label="Fantasy Glass UI">Gratis</td><td data-label="ElvUI">Gratis</td><td data-label="La del juego">Viene con el juego</td></tr>
+          <tr><th scope="row">Instalación</th><td data-label="Fantasy Glass UI">Desde CurseForge, o a mano</td><td data-label="ElvUI">Un accesorio que instalar</td><td data-label="La del juego">Nada que instalar</td></tr>
+          <tr><th scope="row">Marcos, barras, bolsas, placas de nombre y chat</th><td data-label="Fantasy Glass UI">Propios, con el tema que elijas</td><td data-label="ElvUI">Propios</td><td data-label="La del juego">Los del juego</td></tr>
+          <tr><th scope="row">El aspecto</th><td data-label="Fantasy Glass UI">116 temas en tres familias, o uno tuyo</td><td data-label="ElvUI">Sus propios ajustes de colores y texturas</td><td data-label="La del juego">El aspecto del juego</td></tr>
+          <tr><th scope="row">Un planificador de rutas de misiones</th><td data-label="Fantasy Glass UI">Sí, en la pestaña Guía</td><td data-label="ElvUI">No lo incluye</td><td data-label="La del juego">No lo incluye</td></tr>
+          <tr><th scope="row">Precios de subasta y consejos de venta en las descripciones</th><td data-label="Fantasy Glass UI">Sí</td><td data-label="ElvUI">No lo incluye</td><td data-label="La del juego">No lo incluye</td></tr>
+          <tr><th scope="row">Idiomas</th><td data-label="Fantasy Glass UI">9, sigue el idioma de tu juego</td><td data-label="ElvUI">Varios</td><td data-label="La del juego">Todos los idiomas del juego</td></tr>
+        </tbody>
+      </table>
+      <div class="grid cmp-cards">
+        <div class="card"><h3>Cambiarse</h3><p>¿Vienes de ElvUI, Tukui, RealUI, GW2 UI o de la interfaz del juego? En el último paso de la configuración, un clic pone tus marcos donde los tenía esa interfaz.</p><a class="more-link" href="/es/get-started/#setup">La configuración, paso a paso</a></div>
+        <div class="card"><h3>Quedarte con ElvUI</h3><p>Con ElvUI cargado, Fantasy Glass UI le deja las partes que dibuja ElvUI: marcos de unidad y de banda, barras de acción, bolsas y banco, placas de nombre, el minimapa, el chat, las descripciones y algunas barras. Todo lo demás, incluidos la guía de misiones y el asesor de oro, sigue funcionando. <code>/fgui conflicts off</code> hace que conserve sus propias partes.</p></div>
+        <div class="card"><h3>Quedarte con la del juego</h3><p>Cada parte tiene su propio interruptor. La configuración también puede dar un aspecto nuevo solo a los marcos del juego, o puedes quedarte con los marcos del juego y tomar, por ejemplo, solo las bolsas y las placas de nombre.</p></div>
+      </div>
+      <p class="faint cmp-note">ElvUI lo hacen sus propios autores y no tiene nada que ver con Fantasy Glass UI. Lo que se dice de él y de la interfaz del juego es solo lo que cualquiera puede ver; si algo está desactualizado, dínoslo en Discord y se corregirá.</p>
     </div>
   </section>
 </main>
@@ -105,17 +197,19 @@
         <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/wiki">Wiki</a></li>
         <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/issues/new/choose">Informar de un error</a></li>
         <li><a href="/es/accessibility/">Accesibilidad</a></li>
+        <li><a href="/es/press/">Kit de prensa</a></li>
+        <li><a href="/feed.xml" type="application/rss+xml">RSS</a></li>
       </ul>
     </div>
     <div class="foot-row">
       <span>Contacto: <a href="mailto:email-forwarding@fantasyglassui.com">email-forwarding@fantasyglassui.com</a></span>
-      <p class="status"><span>Versión <b>12.4.1</b></span><span class="sep" aria-hidden="true">·</span><span>Actualizado el <time datetime="2026-11-25">2026-11-25</time></span><span class="sep" aria-hidden="true">·</span><span>Comprobado con WoW: Forever <b>1.60.1 (70938)</b></span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">Código fuente</a></span></p>
+      <p class="status"><span>Versión <b>13.0.0</b></span><span class="sep" aria-hidden="true">·</span><span>Actualizado el <time datetime="2026-11-26">2026-11-26</time></span><span class="sep" aria-hidden="true">·</span><span>Comprobado con WoW: Forever <b>1.60.1 (70938)</b></span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">Código fuente</a></span></p>
     </div>
     <nav class="foot-row foot-langs" aria-label="Idioma"><ul><li><a href="/features/" hreflang="en" lang="en" data-code="en">English</a></li><li><a href="/de/features/" hreflang="de" lang="de" data-code="de">Deutsch</a></li><li><a href="/fr/features/" hreflang="fr" lang="fr" data-code="fr">Français</a></li><li><a href="/es/features/" hreflang="es" lang="es" data-code="es" aria-current="true">Español</a></li><li><a href="/ru/features/" hreflang="ru" lang="ru" data-code="ru">Русский</a></li><li><a href="/pt/features/" hreflang="pt" lang="pt" data-code="pt">Português</a></li><li><a href="/it/features/" hreflang="it" lang="it" data-code="it">Italiano</a></li><li><a href="/ko/features/" hreflang="ko" lang="ko" data-code="ko">한국어</a></li><li><a href="/zh/features/" hreflang="zh-Hans" lang="zh-Hans" data-code="zh">中文</a></li></ul></nav>
     <p class="trnote">Esta página se tradujo sin revisión de un hablante nativo. Las correcciones son bienvenidas.</p>
   </div>
 </footer>
 <script src="/assets/site.js?v=2dd8abee61" defer></script>
-<script src="/assets/features.js?v=ec92f4e3d0" defer></script>
+<script src="/assets/features.js?v=111d81dcd0" defer></script>
 </body>
 </html>

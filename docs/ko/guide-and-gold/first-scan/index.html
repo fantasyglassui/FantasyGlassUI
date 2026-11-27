@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="ko" data-lang="ko" data-page="guide-and-gold/first-scan">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>첫 가격 검색 · Fantasy Glass UI</title>
+<meta name="description" content="‘가격 검색’으로 모든 경매를 한 번에 읽어 툴팁, 판매 힌트, 골드 아이디어에 가격을 채우세요.">
+<link rel="canonical" href="https://fantasyglassui.com/ko/guide-and-gold/first-scan/">
+<link rel="alternate" hreflang="en" href="https://fantasyglassui.com/guide-and-gold/first-scan/">
+<link rel="alternate" hreflang="de" href="https://fantasyglassui.com/de/guide-and-gold/first-scan/">
+<link rel="alternate" hreflang="fr" href="https://fantasyglassui.com/fr/guide-and-gold/first-scan/">
+<link rel="alternate" hreflang="es" href="https://fantasyglassui.com/es/guide-and-gold/first-scan/">
+<link rel="alternate" hreflang="ru" href="https://fantasyglassui.com/ru/guide-and-gold/first-scan/">
+<link rel="alternate" hreflang="pt" href="https://fantasyglassui.com/pt/guide-and-gold/first-scan/">
+<link rel="alternate" hreflang="it" href="https://fantasyglassui.com/it/guide-and-gold/first-scan/">
+<link rel="alternate" hreflang="ko" href="https://fantasyglassui.com/ko/guide-and-gold/first-scan/">
+<link rel="alternate" hreflang="zh-Hans" href="https://fantasyglassui.com/zh/guide-and-gold/first-scan/">
+<link rel="alternate" hreflang="x-default" href="https://fantasyglassui.com/guide-and-gold/first-scan/">
+<link rel="icon" type="image/png" href="/icon.png">
+<link rel="alternate" type="application/rss+xml" title="Fantasy Glass UI releases" href="/feed.xml">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Fantasy Glass UI">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:locale:alternate" content="en_US">
+<meta property="og:locale:alternate" content="de_DE">
+<meta property="og:locale:alternate" content="fr_FR">
+<meta property="og:locale:alternate" content="es_ES">
+<meta property="og:locale:alternate" content="ru_RU">
+<meta property="og:locale:alternate" content="pt_BR">
+<meta property="og:locale:alternate" content="it_IT">
+<meta property="og:locale:alternate" content="zh_CN">
+<meta property="og:title" content="첫 가격 검색 · Fantasy Glass UI">
+<meta property="og:description" content="‘가격 검색’으로 모든 경매를 한 번에 읽어 툴팁, 판매 힌트, 골드 아이디어에 가격을 채우세요.">
+<meta property="og:url" content="https://fantasyglassui.com/ko/guide-and-gold/first-scan/">
+<meta property="og:image" content="https://fantasyglassui.com/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Fantasy Glass UI">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="첫 가격 검색 · Fantasy Glass UI">
+<meta name="twitter:description" content="‘가격 검색’으로 모든 경매를 한 번에 읽어 툴팁, 판매 힌트, 골드 아이디어에 가격을 채우세요.">
+<meta name="twitter:image" content="https://fantasyglassui.com/og.jpg">
+<meta name="theme-color" content="#12141a" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4f5f8" media="(prefers-color-scheme: light)">
+<script>(function(){var d=document.documentElement;d.classList.add("js");try{var t=localStorage.getItem("fg-theme");if(t==="light"||t==="dark")d.setAttribute("data-theme",t)}catch(e){}var here="ko",page="guide-and-gold/first-scan/",to=here,q=location.search,h=location.hash;var m=/[?&]lang=([a-z]{2})\b/.exec(q);if(m){to=m[1];q=q.replace(/([?&])lang=[a-z]{2}&?/,"$1").replace(/[?&]$/,"")}else if(here==="en"){var c=null;try{c=localStorage.getItem("fg-lang")}catch(e){}if(!c)c=String(navigator.language||"en").slice(0,2).toLowerCase();to=c}if(["en", "de", "fr", "es", "ru", "pt", "it", "ko", "zh"].indexOf(to)<0)to=here;var u=(to==="en"?"/":"/"+to+"/")+page;if(u!==location.pathname||q!==location.search)location.replace(u+q+h)})();</script>
+<link rel="stylesheet" href="/assets/site.css?v=9495293704">
+<style>
+/* A how-to page of Guide and Gold (the same file in each of the five how-to folders). */
+.crumbs { padding-top: 28px; font-size: .95rem; color: var(--faint); }
+.crumbs a { color: var(--frost); }
+.crumbs + .page-head { padding-top: 14px; }
+.howto { padding-block: 24px 8px; }
+ol.steps { list-style: none; counter-reset: step; margin: 0; padding: 0; }
+ol.steps > li { counter-increment: step; position: relative; padding: 0 0 26px 64px; }
+ol.steps > li::before { content: counter(step); position: absolute; left: 0; top: -2px; width: 44px; height: 44px; display: grid; place-items: center;
+  font: 400 1.35rem/1 var(--display); color: var(--gold); border: 1px solid var(--gold);
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); }
+ol.steps > li:not(:last-child)::after { content: ""; position: absolute; left: 22px; top: 50px; bottom: 8px; width: 1px; background: var(--rule); }
+ol.steps h2 { font-size: 1.45rem; margin: 6px 0 8px; }
+ol.steps p { color: var(--dim); margin: 0; max-width: 68ch; }
+dl.terms { margin: 0; display: grid; gap: 16px; }
+dl.terms > div { padding: 18px 22px; border: 1px solid var(--line); }
+dl.terms dt { display: flex; align-items: center; gap: 12px; font: 400 1.45rem/1.2 var(--display); margin-bottom: 6px; }
+dl.terms dd { margin: 0; color: var(--dim); }
+dl.terms .eg { display: block; margin-top: 8px; color: var(--text); font-size: .95rem; }
+.sq { display: inline-block; width: 16px; height: 16px; flex: none; }
+.sq.sell { background: rgb(77, 217, 102); }
+.sq.hold { background: rgb(255, 179, 51); }
+.sq.vendor { background: rgb(153, 153, 153); }
+.tips { margin: 20px 0 0; }
+.tips h2 { font-size: 1.45rem; margin-bottom: 12px; }
+.tips ul { margin: 0; padding-left: 1.2em; }
+.tips li { color: var(--dim); margin: 0 0 10px; }
+.tips li::marker { color: var(--gold); }
+.next-howto { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; margin: 34px 0 0; padding-top: 20px; border-top: 1px solid var(--rule); }
+.next-howto a { display: inline-flex; flex-direction: column; gap: 2px; min-height: 44px; text-decoration: none; }
+.next-howto a span { color: var(--faint); font-size: .85rem; }
+.next-howto a b { font-weight: 600; }
+.next-howto a:last-child { text-align: right; margin-left: auto; }
+@media (max-width: 560px) { ol.steps > li { padding-left: 56px; } ol.steps > li::before { width: 40px; height: 40px; } ol.steps > li:not(:last-child)::after { left: 20px; } }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="/ko/"><img src="/logo-64.webp" alt="" width="32" height="32">Fantasy Glass UI</a>
+    <nav class="site-nav" id="site-nav" aria-label="페이지">
+      <ul><li><a href="/ko/">홈</a></li><li><a href="/ko/features/">기능</a></li><li><a href="/ko/themes/">테마</a></li><li><a href="/ko/guide-and-gold/">안내서와 골드</a></li><li><a href="/ko/get-started/">시작하기</a></li><li><a href="/ko/changelog/">변경 내역</a></li><li><a href="/ko/roadmap/">로드맵</a></li></ul>
+      <div class="head-tools">
+        <label class="lang"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span class="sr-only">언어</span><select id="lang"><option value="/guide-and-gold/first-scan/" data-code="en" lang="en">English</option><option value="/de/guide-and-gold/first-scan/" data-code="de" lang="de">Deutsch</option><option value="/fr/guide-and-gold/first-scan/" data-code="fr" lang="fr">Français</option><option value="/es/guide-and-gold/first-scan/" data-code="es" lang="es">Español</option><option value="/ru/guide-and-gold/first-scan/" data-code="ru" lang="ru">Русский</option><option value="/pt/guide-and-gold/first-scan/" data-code="pt" lang="pt">Português</option><option value="/it/guide-and-gold/first-scan/" data-code="it" lang="it">Italiano</option><option value="/ko/guide-and-gold/first-scan/" data-code="ko" lang="ko" selected>한국어</option><option value="/zh/guide-and-gold/first-scan/" data-code="zh" lang="zh-Hans">中文</option></select></label>
+        <button class="icon-btn mode" id="mode" type="button" aria-pressed="true" title="어두운 모드"><span class="sr-only">어두운 모드</span><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M5.3 18.7 7 17M17 7l1.7-1.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      </div>
+    </nav>
+    <a class="btn small head-dl" href="https://www.curseforge.com/wow/addons/fantasy-glass-ui">다운로드</a>
+    <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav"><span class="sr-only">메뉴</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    <button class="chip wearing" id="unwear" type="button" hidden><b id="wearname"></b> 적용 중: 사이트 색으로 돌아가기</button>
+  </div>
+</header>
+<main id="main" tabindex="-1">
+<!-- Guide and Gold, how-to 4 (W3): your first price scan (FantasyGlassUI/PriceScan.lua, Prices.lua). -->
+<nav class="wrap narrow crumbs" aria-label="현재 위치"><a href="/ko/guide-and-gold/">안내서와 골드</a> › 사용법 안내</nav>
+<div class="wrap narrow page-head">
+  <span class="eyebrow">사용법 4</span>
+  <h1>첫 가격 검색</h1>
+  <p class="lede">‘가격 검색’으로 모든 경매를 한 번에 읽어 툴팁, 판매 힌트, 골드 아이디어에 가격을 채우세요.</p>
+</div>
+<div class="wrap narrow howto">
+  <ol class="steps">
+    <li><h2>경매장 열기</h2><p>경매인에게 말을 거세요.</p></li>
+    <li><h2>‘가격 검색’ 누르기</h2><p>버튼은 경매장의 ‘팔 만한 것’ 옆에 있습니다. 그곳의 모든 경매를 한 번에 읽습니다.</p></li>
+    <li><h2>읽을 때까지 두기</h2><p>버튼에 진행 정도가 나옵니다. 게임이 멈추지 않도록 조금씩 읽고, 전투 중에는 멈췄다가 끝나면 이어 읽습니다.</p></li>
+    <li><h2>가격 보기</h2><p>이제 아이템 툴팁에 경매장 가격과 그 가격이 얼마나 최신인지 나옵니다. 며칠 치 가격이 모이면 판매 힌트도 나오기 시작합니다.</p></li>
+    <li><h2>골드 아이디어 보기</h2><p>경매장 옆의 ‘여기서 골드 벌기’가 방금 읽은 가격으로 그곳에서 할 만한 일을 보여 줍니다.</p></li>
+  </ol>
+  <aside class="card filled tips" aria-labelledby="h-tips">
+    <h2 id="h-tips">알아 두면 좋은 점</h2>
+    <ul>
+      <li>경매장은 전체 검색을 약 15분에 한 번 허용하며, 이 한도는 모든 애드온이 함께 씁니다. 버튼이 다음 검색까지 남은 시간을 셉니다.</li>
+      <li>가격은 서버와 진영별로 따로 저장됩니다.</li>
+      <li>Auctionator 같은 다른 애드온이 시작한 전체 검색도 함께 읽습니다. Fantasy Glass UI에 아이템 가격이 없으면 툴팁에 Auctionator나 TSM의 가격을 보여 줄 수 있습니다.</li>
+      <li>‘가격 검색’은 절대 등록하거나 구매하거나 입찰하지 않습니다.</li>
+      <li>설정은 가방 및 아이템 › 경매 및 거래에 있습니다.</li>
+    </ul>
+  </aside>
+  <nav class="next-howto" aria-label="다른 사용법">
+    <a href="/ko/guide-and-gold/phone/"><span>이전 페이지</span><b>휴대폰에서 계획 페이지 보기</b></a>
+    <a href="/ko/guide-and-gold/sell-hints/"><span>다음 페이지</span><b>판매 힌트 읽기</b></a>
+  </nav>
+</div>
+</main>
+<footer class="site-foot">
+  <div class="wrap">
+    <div class="foot-row">
+      <span>DustyMouse의 Fantasy Glass UI. WoW Forever용 무료 애드온.</span>
+      <ul>
+        <li><a href="https://www.curseforge.com/wow/addons/fantasy-glass-ui">CurseForge</a></li>
+        <li><a href="https://discord.gg/qeSMwQWyPR">Discord</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI">GitHub</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/wiki">Wiki</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/issues/new/choose">버그 신고</a></li>
+        <li><a href="/ko/accessibility/">접근성</a></li>
+        <li><a href="/ko/press/">보도 자료</a></li>
+        <li><a href="/feed.xml" type="application/rss+xml">RSS</a></li>
+      </ul>
+    </div>
+    <div class="foot-row">
+      <span>연락처: <a href="mailto:email-forwarding@fantasyglassui.com">email-forwarding@fantasyglassui.com</a></span>
+      <p class="status"><span>버전 <b>13.0.0</b></span><span class="sep" aria-hidden="true">·</span><span><time datetime="2026-11-26">2026-11-26</time> 업데이트</span><span class="sep" aria-hidden="true">·</span><span>WoW: Forever <b>1.60.1 (70938)</b> 기준으로 확인</span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">소스 코드</a></span></p>
+    </div>
+    <nav class="foot-row foot-langs" aria-label="언어"><ul><li><a href="/guide-and-gold/first-scan/" hreflang="en" lang="en" data-code="en">English</a></li><li><a href="/de/guide-and-gold/first-scan/" hreflang="de" lang="de" data-code="de">Deutsch</a></li><li><a href="/fr/guide-and-gold/first-scan/" hreflang="fr" lang="fr" data-code="fr">Français</a></li><li><a href="/es/guide-and-gold/first-scan/" hreflang="es" lang="es" data-code="es">Español</a></li><li><a href="/ru/guide-and-gold/first-scan/" hreflang="ru" lang="ru" data-code="ru">Русский</a></li><li><a href="/pt/guide-and-gold/first-scan/" hreflang="pt" lang="pt" data-code="pt">Português</a></li><li><a href="/it/guide-and-gold/first-scan/" hreflang="it" lang="it" data-code="it">Italiano</a></li><li><a href="/ko/guide-and-gold/first-scan/" hreflang="ko" lang="ko" data-code="ko" aria-current="true">한국어</a></li><li><a href="/zh/guide-and-gold/first-scan/" hreflang="zh-Hans" lang="zh-Hans" data-code="zh">中文</a></li></ul></nav>
+    <p class="trnote">이 페이지는 원어민 검토 없이 번역되었습니다. 수정 제안을 환영합니다.</p>
+  </div>
+</footer>
+<script src="/assets/site.js?v=2dd8abee61" defer></script>
+</body>
+</html>

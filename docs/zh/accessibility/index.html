@@ -17,6 +17,7 @@
 <link rel="alternate" hreflang="zh-Hans" href="https://fantasyglassui.com/zh/accessibility/">
 <link rel="alternate" hreflang="x-default" href="https://fantasyglassui.com/accessibility/">
 <link rel="icon" type="image/png" href="/icon.png">
+<link rel="alternate" type="application/rss+xml" title="Fantasy Glass UI releases" href="/feed.xml">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Fantasy Glass UI">
 <meta property="og:locale" content="zh_CN">
@@ -42,11 +43,7 @@
 <meta name="theme-color" content="#12141a" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f4f5f8" media="(prefers-color-scheme: light)">
 <script>(function(){var d=document.documentElement;d.classList.add("js");try{var t=localStorage.getItem("fg-theme");if(t==="light"||t==="dark")d.setAttribute("data-theme",t)}catch(e){}var here="zh",page="accessibility/",to=here,q=location.search,h=location.hash;var m=/[?&]lang=([a-z]{2})\b/.exec(q);if(m){to=m[1];q=q.replace(/([?&])lang=[a-z]{2}&?/,"$1").replace(/[?&]$/,"")}else if(here==="en"){var c=null;try{c=localStorage.getItem("fg-lang")}catch(e){}if(!c)c=String(navigator.language||"en").slice(0,2).toLowerCase();to=c}if(["en", "de", "fr", "es", "ru", "pt", "it", "ko", "zh"].indexOf(to)<0)to=here;var u=(to==="en"?"/":"/"+to+"/")+page;if(u!==location.pathname||q!==location.search)location.replace(u+q+h)})();</script>
-<link rel="preload" href="/assets/marcellus.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap">
-<link rel="stylesheet" href="/assets/site.css?v=0338b00d2b">
+<link rel="stylesheet" href="/assets/site.css?v=9495293704">
 <style>
 /* Accessibility: what the add-on does, need by need. */
 .page-head .lede { color: var(--text); font-size: 1.2rem; margin: 0 0 12px; }
@@ -65,6 +62,8 @@ nav.jump a:hover { border-color: var(--frost); }
 .honest { border-left: 3px solid var(--gold); padding: 4px 0 4px 18px; margin: 34px 0 0; color: var(--dim); }
 .honest h2 { font-size: 1.5rem; margin-bottom: 8px; }
 @media (max-width: 560px) { .need { padding: 18px 16px 6px; } }
+.need.new { --c: color-mix(in srgb, var(--gold) 55%, var(--line)); }
+.need li code { font-size: .88em; }
 </style>
 </head>
 <body>
@@ -88,27 +87,25 @@ nav.jump a:hover { border-color: var(--frost); }
 <!-- Accessibility (W3). pages/accessibility/body.py; see site-src/PAGES.md. -->
 <div class="wrap narrow page-head">
   <h1>辅助功能</h1>
-  <p class="faint">本页目前只有英文版。</p>
-  <div lang="en">
-  <p class="lede">Fantasy Glass UI has accessibility built into every part of the interface: colors for each kind of color vision, high-contrast themes, lettering made to be read, captions, reading aloud, safe flashing, and keys for one hand. All of it is free, and every part can be switched on or off.</p>
-  <p class="start">In the game: <code>/fgui access</code> opens the Accessibility settings, and the first-time setup has a Comfort step. Version 12.4.1.</p>
-  </div>
+  <p class="lede">Fantasy Glass UI 在界面的每个部分都内置了辅助功能：适合各类色觉的配色、高对比度主题、易读字体、字幕、朗读、安全闪烁和单手按键。全部免费，每一项都可以开关。</p>
+  <p class="start">游戏中：<code>/fgui access</code> 打开辅助功能设置，首次设置里也有“舒适”这一步。 版本 13.0.0.</p>
 </div>
-<div class="wrap narrow acc" lang="en">
-  <nav class="jump" aria-label="Needs"><a href="#seeing-color">Color vision</a><a href="#seeing-low">Low vision</a><a href="#reading">Reading aloud</a><a href="#hearing">Hearing</a><a href="#motion">Flashing and motion</a><a href="#hands">Hands and keys</a><a href="#calm">Focus and calm</a><a href="#share">Share it</a></nav>
+<div class="wrap narrow acc">
+  <nav class="jump" aria-label="需求"><a href="#seeing-color">色觉</a><a href="#seeing-low">低视力</a><a href="#reading">朗读</a><a href="#hearing">听觉</a><a href="#motion">闪烁与动态</a><a href="#hands">手与按键</a><a href="#guide">路线规划器与金币</a><a href="#calm">专注与平静</a><a href="#share">分享</a></nav>
   <div id="needs">
-<section class="need card" id="seeing-color" aria-labelledby="h-seeing-color"><h2 id="h-seeing-color">Color vision</h2><p class="who">For red-green or blue-yellow color blindness, or seeing no color at all.</p><ul><li><b>Colors for your kind of color vision.</b> Red-green (blue and orange), blue-yellow (teal, pink and red), or no color at all, where brightness and marks carry the meaning.</li><li><b>Marks as well as colors.</b> Debuffs get a letter, item quality gets dots, and threat on nameplates gets a mark ("!" when it is slipping, "!!" when it is lost).</li></ul></section>
-<section class="need card" id="seeing-low" aria-labelledby="h-seeing-low"><h2 id="h-seeing-low">Low vision</h2><p class="who">For seeing the screen more easily.</p><ul><li><b>High-contrast themes.</b> Pure black panels, white lettering and the strongest rims, in all three families: glass, fantasy and celestial. One button picks the one for the family you use.</li><li><b>Lettering made to be read.</b> Readable (Atkinson Hyperlegible, made for low vision) and Dyslexia-friendly (OpenDyslexic). A thicker outline round every letter, and a dark band behind messages in the middle of the screen.</li><li><b>Bigger text and a bigger interface.</b> Text size and interface scale of their own, separate from the game's.</li><li><b>A ring round your target.</b> A thick outline, 1 to 8 pixels, round your target's nameplate, so it stands out in a crowd. A ring round the mouse pointer too.</li></ul></section>
-<section class="need card" id="reading" aria-labelledby="h-reading"><h2 id="h-reading">Reading aloud</h2><p class="who">For blind and low-vision players, and for anyone who would rather listen. In the game's own voice.</p><ul><li><b>Talk and quests read as they open.</b> What an NPC says and the choices it offers, a quest's text, its progress and its reward, and books and letters. The reading stops when you close the window.</li><li><b>What you point at.</b> When the mouse rests on something, its tooltip is read aloud. (The game's own screen narrator only works before you log in.)</li><li><b>A key that reads.</b> One key reads the tooltip under the mouse, the quest you are reading, or the last whisper.</li><li><b>Spoken alerts.</b> Ready checks, whispers, missing buffs, loss of control and your own alerts, said aloud.</li></ul></section>
-<section class="need card" id="hearing" aria-labelledby="h-hearing"><h2 id="h-hearing">Hearing</h2><p class="who">For deaf and hard-of-hearing players, and for playing with the sound off.</p><ul><li><b>Captions for sounds.</b> A line on screen, with a mark for its kind, for ready checks, whispers, queues, invites, duels, resurrections, summons, boss emotes, raid warnings, loot rolls, the aggro warning and your own alerts.</li></ul></section>
-<section class="need card" id="motion" aria-labelledby="h-motion"><h2 id="h-motion">Flashing and motion</h2><p class="who">For players sensitive to flashing light or movement.</p><ul><li><b>Safe flashing.</b> Nothing flashes more than three times a second, flashes are gentle, pulsing warnings hold still, and the game's red low-health flash is off.</li><li><b>Reduce motion.</b> No fades, pulses, gliding bars or camera drift: things appear and change at once.</li><li><b>A still sky.</b> The celestial themes keep their stars but hold still: no twinkling and no shooting stars, while everything else moves as usual.</li></ul></section>
-<section class="need card" id="hands" aria-labelledby="h-hands"><h2 id="h-hands">Hands and keys</h2><p class="who">For playing with one hand, or with the keyboard alone.</p><ul><li><b>Keys for one hand.</b> One button puts moving, jumping, targeting, interacting and the first action buttons round W, A, S and D for the left hand, or all on the number pad for the right. Another puts every key back as it was.</li><li><b>The game's windows by keyboard.</b> With an NPC's talk, a quest, a vendor, the mailbox, loot, a trainer, a flight master or a question box open, Tab moves from button to button and Enter presses it, with a ring to show where you are and each choice said aloud if you like.</li><li><b>The settings by keyboard.</b> Tab and the arrow keys go from setting to setting, Space switches one, Left and Right move a slider.</li><li><b>Bigger controls.</b> Larger switches in the settings, and "click twice" buttons wait ten seconds for the second click.</li></ul></section>
-<section class="need card" id="calm" aria-labelledby="h-calm"><h2 id="h-calm">Focus and calm</h2><p class="who">For a quieter screen.</p><ul><li><b>Calm mode.</b> One notification at a time, held for fifteen seconds and put away with a click, and messages that stay up longer.</li><li><b>A wait before tooltips.</b> Tooltips show only when the mouse rests a moment, so sweeping across the screen does not throw one up after another.</li></ul></section>
-<section class="need card" id="share" aria-labelledby="h-share"><h2 id="h-share">Share it</h2><p class="who">For helping a friend, or setting up a new character.</p><ul><li><b>One line of text.</b> All your accessibility settings as one line to copy, keep or give to someone; pasting it back sets them all at once.</li><li><b>A Comfort step in the setup.</b> The first-time setup has a step for seeing, hearing and calm, so it is ready before you play.</li></ul></section>
+<section class="need card" id="seeing-color" aria-labelledby="h-seeing-color"><h2 id="h-seeing-color">色觉</h2><p class="who">适用于红绿或蓝黄色盲，或完全看不到颜色的情况。</p><ul><li><b>适合你色觉的配色.</b> 红绿（蓝和橙）、蓝黄（青、粉和红），或完全不用颜色，由亮度和标记表达含义。</li><li><b>颜色之外还有标记.</b> 减益效果带字母，物品品质带圆点，姓名板上的仇恨带标记（快丢失时是“!”，丢失时是“!!”）。</li></ul></section>
+<section class="need card" id="seeing-low" aria-labelledby="h-seeing-low"><h2 id="h-seeing-low">低视力</h2><p class="who">让屏幕更容易看清。</p><ul><li><b>高对比度主题.</b> 纯黑面板、白色文字和最醒目的边框，玻璃、奇幻、星空三个系列都有。一个按钮就能选出你所用系列的那一款。</li><li><b>为阅读而生的字体.</b> 易读字体（为低视力设计的 Atkinson Hyperlegible）和阅读障碍友好字体（OpenDyslexic）。每个字母更粗的描边，以及屏幕中央消息后的深色衬底。</li><li><b>更大的文字和界面.</b> 独立于游戏的文字大小和界面缩放。</li><li><b>目标周围的光环.</b> 在目标的姓名板外加 1 到 8 像素的粗描边，让它在人群中一眼可见。鼠标指针周围也可以加光环。</li></ul></section>
+<section class="need card" id="reading" aria-labelledby="h-reading"><h2 id="h-reading">朗读</h2><p class="who">为盲人和低视力玩家，以及更喜欢听的人。使用游戏自带的语音。</p><ul><li><b>对话和任务打开时朗读.</b> NPC 说的话和提供的选项、任务的文本、进度和奖励，以及书籍和信件。关闭窗口时朗读停止。</li><li><b>你指着的东西.</b> 鼠标停在某处时，会朗读它的提示。（游戏自带的屏幕旁白只在登录前有效。）</li><li><b>一键朗读.</b> 一个键可朗读鼠标下的提示、正在看的任务或最近一条密语。</li><li><b>语音提醒.</b> 就位确认、密语、缺少的增益、失控和你自己的提醒，都会读出来。</li></ul></section>
+<section class="need card" id="hearing" aria-labelledby="h-hearing"><h2 id="h-hearing">听觉</h2><p class="who">为聋人和听障玩家，以及关掉声音玩的人。</p><ul><li><b>声音字幕.</b> 就位确认、密语、排队、邀请、决斗、复活、召唤、首领表情、团队警报、拾取掷骰、仇恨警告和你自己的提醒，都会在屏幕上以带类型标记的一行文字显示。</li></ul></section>
+<section class="need card" id="motion" aria-labelledby="h-motion"><h2 id="h-motion">闪烁与动态</h2><p class="who">为对闪光或动态敏感的玩家。</p><ul><li><b>安全闪烁.</b> 任何东西每秒闪烁不超过三次，闪光柔和，脉动的警告保持静止，游戏的低生命红色闪屏也会关闭。</li><li><b>减少动画.</b> 没有淡入淡出、脉动、滑动的条或镜头漂移：一切即时出现和变化。</li><li><b>静止的星空.</b> 星空主题保留星星但保持静止：没有闪烁也没有流星，其他部分照常动。</li></ul></section>
+<section class="need card" id="hands" aria-labelledby="h-hands"><h2 id="h-hands">手与按键</h2><p class="who">为单手游戏或只用键盘的玩家。</p><ul><li><b>单手按键.</b> 一个按钮把移动、跳跃、选目标、互动和前几个动作键放到 W、A、S、D 周围供左手使用，或全部放到数字小键盘供右手使用。另一个按钮把所有按键恢复原样。</li><li><b>用键盘操作游戏窗口.</b> 打开 NPC 对话、任务、商人、邮箱、拾取、训练师、飞行管理员或询问框时，Tab 在按钮之间移动，Enter 按下，用光环显示当前位置，愿意的话每个选项都会读出来。</li><li><b>用键盘操作设置.</b> Tab 和方向键在设置之间移动，空格键切换，左右键移动滑块。</li><li><b>更大的控件.</b> 设置中的开关更大，“点两次”的按钮会等第二次点击十秒钟。</li></ul></section>
+<section class="need card new" id="guide" aria-labelledby="h-guide"><h2 id="h-guide">路线规划器与金币</h2><p class="who">13.0 新功能：用适合你的方式跟随路线、赚取金币。</p><ul><li><b>用键盘操作规划器.</b> 打开<b>用键盘浏览设置</b>后，Tab 和方向键可以在规划器窗口中移动，空格或 Enter 按下按钮或开关，左右键切换选项或调节滑块。战斗中所有按键都交还给游戏。</li><li><b>路线快捷键.</b> 下一步、跳过步骤和重新规划都可以在游戏的按键设置中各绑定一个键，不用鼠标也能跟随路线。</li><li><b>朗读路线.</b> 打开<b>朗读对话和任务</b>后，每到一个新步骤都会读出来。首次导览和好友发来的一起规划邀请也会朗读。</li><li><b>适合你眼睛的颜色.</b> 规划器的列表颜色取自你的主题和色觉设置。出售建议会用文字写出现在出售、暂留或卖给商人，颜色从来不是唯一的提示。</li><li><b>更大的按钮.</b> 打开<b>设置中使用更大的控件</b>后，规划器窗口、指南面板及其菜单的按钮也会更高。</li><li><b>可跳过的导览.</b> 第一次会有四页简短说明介绍规划器。“跳过”立即关闭，左、右、Enter 和 Esc 键也能用，<b>规划器如何工作</b>可以再次打开。</li><li><b>按你的方式使用箭头.</b> 规划器窗口里的<b>停止</b>会收起路线和箭头，直到你再次规划。<code>/fgui move</code> 可以移动箭头，也可以改用 TomTom 的箭头，打开<b>减少动画</b>后到达时箭头不会脉动。</li><li><b>休息.</b> 打开<b>在适合停下的地方提醒我休息</b>后，连续游戏一段时间（1 到 3 小时，由你选择）后到达适合停下的地方时，路线会提醒你。</li></ul></section>
+<section class="need card" id="calm" aria-labelledby="h-calm"><h2 id="h-calm">专注与平静</h2><p class="who">让屏幕更安静。</p><ul><li><b>平静模式.</b> 一次只显示一条通知，停留十五秒，点击即可收起，消息也会停留更久。</li><li><b>提示前稍等.</b> 鼠标停留片刻才显示提示，扫过屏幕时不会一个接一个地弹出。</li></ul></section>
+<section class="need card" id="share" aria-labelledby="h-share"><h2 id="h-share">分享</h2><p class="who">帮朋友设置，或设置新角色时用。</p><ul><li><b>一行文字.</b> 把所有辅助功能设置变成一行文字，可以复制、保存或给别人；粘贴回来即可一次全部应用。</li><li><b>设置中的“舒适”步骤.</b> 首次设置中有视觉、听觉和平静这一步，开始游戏前就准备好。</li></ul></section>
   </div>
-  <section class="honest">
-    <h2>What it does not do (yet)</h2>
-    <p>It is not a screen reader: reading aloud covers talk, quests, books, tooltips, whispers and the buttons of the game's main windows, but not every part of every window. The two readable lettering styles have Western European letters only. Reading aloud uses the voices your computer gives the game. Ideas and problems are welcome on <a href="https://discord.gg/qeSMwQWyPR">Discord</a>.</p>
+  <section class="honest" aria-labelledby="h-honest">
+    <h2 id="h-honest">（暂时）做不到的事</h2>
+    <p>它不是屏幕阅读器：朗读涵盖对话、任务、书籍、提示、密语和游戏主要窗口的按钮，但不是每个窗口的每个部分。 金币窗口还没有自己的快捷键，也不会朗读。 两种易读字体只含西欧字母。朗读使用你的电脑提供给游戏的语音。 欢迎到 <a href=&quot;https://discord.gg/qeSMwQWyPR&quot;>Discord</a> 提出想法和问题。</p>
   </section>
 </div>
 </main>
@@ -123,11 +120,13 @@ nav.jump a:hover { border-color: var(--frost); }
         <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/wiki">Wiki</a></li>
         <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/issues/new/choose">报告问题</a></li>
         <li><a href="/zh/accessibility/">辅助功能</a></li>
+        <li><a href="/zh/press/">媒体资料包</a></li>
+        <li><a href="/feed.xml" type="application/rss+xml">RSS</a></li>
       </ul>
     </div>
     <div class="foot-row">
       <span>联系: <a href="mailto:email-forwarding@fantasyglassui.com">email-forwarding@fantasyglassui.com</a></span>
-      <p class="status"><span>版本 <b>12.4.1</b></span><span class="sep" aria-hidden="true">·</span><span>更新于 <time datetime="2026-11-25">2026-11-25</time></span><span class="sep" aria-hidden="true">·</span><span>已对照 WoW: Forever <b>1.60.1 (70938)</b> 检查</span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">源代码</a></span></p>
+      <p class="status"><span>版本 <b>13.0.0</b></span><span class="sep" aria-hidden="true">·</span><span>更新于 <time datetime="2026-11-26">2026-11-26</time></span><span class="sep" aria-hidden="true">·</span><span>已对照 WoW: Forever <b>1.60.1 (70938)</b> 检查</span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">源代码</a></span></p>
     </div>
     <nav class="foot-row foot-langs" aria-label="语言"><ul><li><a href="/accessibility/" hreflang="en" lang="en" data-code="en">English</a></li><li><a href="/de/accessibility/" hreflang="de" lang="de" data-code="de">Deutsch</a></li><li><a href="/fr/accessibility/" hreflang="fr" lang="fr" data-code="fr">Français</a></li><li><a href="/es/accessibility/" hreflang="es" lang="es" data-code="es">Español</a></li><li><a href="/ru/accessibility/" hreflang="ru" lang="ru" data-code="ru">Русский</a></li><li><a href="/pt/accessibility/" hreflang="pt" lang="pt" data-code="pt">Português</a></li><li><a href="/it/accessibility/" hreflang="it" lang="it" data-code="it">Italiano</a></li><li><a href="/ko/accessibility/" hreflang="ko" lang="ko" data-code="ko">한국어</a></li><li><a href="/zh/accessibility/" hreflang="zh-Hans" lang="zh-Hans" data-code="zh" aria-current="true">中文</a></li></ul></nav>
     <p class="trnote">本页翻译未经母语者校对，欢迎指正。</p>

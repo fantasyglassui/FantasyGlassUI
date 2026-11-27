@@ -17,6 +17,7 @@
 <link rel="alternate" hreflang="zh-Hans" href="https://fantasyglassui.com/zh/guide-and-gold/">
 <link rel="alternate" hreflang="x-default" href="https://fantasyglassui.com/guide-and-gold/">
 <link rel="icon" type="image/png" href="/icon.png">
+<link rel="alternate" type="application/rss+xml" title="Fantasy Glass UI releases" href="/feed.xml">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Fantasy Glass UI">
 <meta property="og:locale" content="zh_CN">
@@ -42,11 +43,41 @@
 <meta name="theme-color" content="#12141a" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f4f5f8" media="(prefers-color-scheme: light)">
 <script>(function(){var d=document.documentElement;d.classList.add("js");try{var t=localStorage.getItem("fg-theme");if(t==="light"||t==="dark")d.setAttribute("data-theme",t)}catch(e){}var here="zh",page="guide-and-gold/",to=here,q=location.search,h=location.hash;var m=/[?&]lang=([a-z]{2})\b/.exec(q);if(m){to=m[1];q=q.replace(/([?&])lang=[a-z]{2}&?/,"$1").replace(/[?&]$/,"")}else if(here==="en"){var c=null;try{c=localStorage.getItem("fg-lang")}catch(e){}if(!c)c=String(navigator.language||"en").slice(0,2).toLowerCase();to=c}if(["en", "de", "fr", "es", "ru", "pt", "it", "ko", "zh"].indexOf(to)<0)to=here;var u=(to==="en"?"/":"/"+to+"/")+page;if(u!==location.pathname||q!==location.search)location.replace(u+q+h)})();</script>
-<link rel="preload" href="/assets/marcellus.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap">
-<link rel="stylesheet" href="/assets/site.css?v=0338b00d2b">
+<link rel="stylesheet" href="/assets/site.css?v=9495293704">
+<style>
+/* Guide and Gold: the route planner, Questie, Ways to make gold, the hints, the how-to pages and the plan page. */
+.gg-head .lede { font-size: 1.2rem; }
+.gg-head .cta { margin-top: 22px; }
+.grid.feats { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+.feats .card h3 { font-size: 1.3rem; }
+.feats .card p { margin: 0; }
+.how { color: var(--dim); margin: 26px 0 0; max-width: 78ch; }
+.grid.two { grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); }
+.card.with { --c: color-mix(in srgb, var(--gold) 55%, var(--line)); }
+ul.ticks { list-style: none; margin: 0; padding: 0; }
+ul.ticks li { position: relative; padding: 0 0 10px 26px; color: var(--dim); }
+ul.ticks li::before { content: ""; position: absolute; left: 2px; top: .5em; width: 9px; height: 9px; background: var(--gold); clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+ul.ticks.plain { max-width: 820px; }
+ul.ticks.plain li { padding-bottom: 14px; font-size: 1.05rem; }
+ul.hints { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; max-width: 720px; }
+ul.hints li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; padding: 14px 18px; border: 1px solid var(--line); }
+ul.hints b { font-size: 1.1rem; min-width: 7em; }
+ul.hints span:last-child { color: var(--dim); }
+.sq { display: inline-block; width: 14px; height: 14px; flex: none; align-self: center; }
+.sq.sell { background: rgb(77, 217, 102); }
+.sq.hold { background: rgb(255, 179, 51); }
+.sq.vendor { background: rgb(153, 153, 153); }
+ol.howtos { list-style: none; margin: 0; padding: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 196px), 1fr)); }
+ol.howtos li { display: flex; }
+ol.howtos .card { flex: 1; padding-top: 20px; }
+ol.howtos .n { display: block; font: 400 2rem/1 var(--display); color: var(--gold); margin-bottom: 10px; }
+ol.howtos p { margin: 0; }
+.plan-card { display: grid; grid-template-columns: 1.6fr 1fr; gap: 24px 40px; align-items: center; padding: 34px 36px; }
+.plan-card h2 { margin-bottom: 12px; }
+.plan-card p { margin: 0; font-size: 1.05rem; }
+.plan-card .cta { margin: 0; flex-direction: column; align-items: stretch; }
+@media (max-width: 760px) { .plan-card { grid-template-columns: 1fr; padding: 24px 20px; } }
+</style>
 </head>
 <body>
 <a class="skip" href="#main">跳到正文</a>
@@ -66,15 +97,149 @@
   </div>
 </header>
 <main id="main" tabindex="-1">
-<!-- Guide and Gold (W3): what the quest guide and the gold advisor do, and the how-to pages. A placeholder until then;
-     see site-src/PAGES.md. -->
-<div class="wrap page-head">
+<!-- Guide and Gold (W3): what the route planner and Ways to make gold do, Questie, the prices and sell hints, the
+     how-to pages (pages/guide-and-gold/<name>/) and the plan page (/plan/, built by site-src/plan_page.py).
+     Every claim here is true of the add-on's code (FantasyGlassUI_Planner/, FantasyGlassUI_Gold/, Guide.lua). -->
+<div class="wrap page-head gg-head">
+  <span class="eyebrow">13.0 新功能</span>
   <h1>指南与金币</h1>
-  <p class="lede">任务指南和金币顾问能做什么，以及怎么用。</p>
-  <p class="status"><span>版本 <b>12.4.1</b></span><span class="sep" aria-hidden="true">·</span><span>更新于 <time datetime="2026-11-25">2026-11-25</time></span><span class="sep" aria-hidden="true">·</span><span>已对照 WoW: Forever <b>1.60.1 (70938)</b> 检查</span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">源代码</a></span></p>
+  <p class="lede">Fantasy Glass UI 内置的两个助手：在你升级时安排任务的路线规划器，以及列出值得花时间去做的事的“赚金方法”。两者都免费，只在使用时才加载。</p>
+  <div class="cta">
+    <a class="btn" href="/zh/guide-and-gold/first-route/">规划你的第一条路线</a>
+    <a class="btn line" href="/plan/">打开计划页面</a>
+  </div>
+  <p class="status"><span>版本 <b>13.0.0</b></span><span class="sep" aria-hidden="true">·</span><span>更新于 <time datetime="2026-11-26">2026-11-26</time></span><span class="sep" aria-hidden="true">·</span><span>已对照 WoW: Forever <b>1.60.1 (70938)</b> 检查</span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">源代码</a></span></p>
 </div>
-<section class="section wrap">
-  <p class="placeholder">更多内容即将推出。</p>
+
+<section class="block" id="planner" aria-labelledby="h-planner">
+  <div class="wrap">
+    <header>
+      <span class="eyebrow">升级</span>
+      <h2 id="h-planner">路线规划器</h2>
+      <p class="lede">它为你的等级规划任务路线：接哪些、按什么顺序，以及何时飞行、训练或交任务。你玩的时候它会重新规划，路线始终跟得上你。</p>
+    </header>
+    <div class="grid feats">
+      <div class="card"><h3>一步一步</h3><p>一个小面板显示当前步骤，箭头指明方向。完成步骤时会自动勾选。</p></div>
+      <div class="card"><h3>你的节奏</h3><p>速度、安全和剧情三个滑块决定路线的侧重。说出你能玩多久，路线就只安排能完成的内容，并在适合停下的地方结束。</p></div>
+      <div class="card"><h3>沿途停靠</h3><p>新的飞行点、每两级一次的职业训练师、背包快满时的商人、邮件，以及 40 级起的坐骑提醒。每种停靠都可以关闭。</p></div>
+      <div class="card"><h3>地图上</h3><p>世界地图上标出带编号的路线停靠点及连线，并在每个有任务的区域做标记，经验来得越快的地方越亮。</p></div>
+      <div class="card"><h3>与好友一起</h3><p>两人一条路线：同样的任务，同样的顺序。面板会显示好友落后多少。</p></div>
+      <div class="card"><h3>在手机上</h3><p>“分享计划”会把路线变成一段代码。把它粘贴到计划页面，就能在手机上查看路线并勾选步骤。</p></div>
+    </div>
+    <p class="how">用 <code>/fgui plan</code>、设置中“指南”标签页里的<b>规划我的路线</b>，或指南面板上的“规划”按钮打开。第一次会有四页的简短导览加以说明，规划器窗口里的<b>规划器如何工作</b>可以再次打开它。</p>
+  </div>
+</section>
+
+<section class="block" id="questie" aria-labelledby="h-questie">
+  <div class="wrap">
+    <header>
+      <span class="eyebrow">可选</span>
+      <h2 id="h-questie">Questie 是可选的</h2>
+      <p class="lede">规划器可以独立工作。同时加载 Questie 插件时，它对世界了解得多得多。</p>
+    </header>
+    <div class="grid two">
+      <div class="card">
+        <h3>没有 Questie 时</h3>
+        <ul class="ticks">
+          <li>它规划你任务日志里已有的任务。</li>
+          <li>商人和邮箱只限你去过的。</li>
+          <li>草药和矿石只限你亲自采集过的。</li>
+        </ul>
+      </div>
+      <div class="card with">
+        <h3>有 Questie 时</h3>
+        <ul class="ticks">
+          <li>你等级的所有任务，不只日志里的，还有谁在哪里发布。</li>
+          <li>旅店、训练师、商人和邮箱，包括你还没找到的。</li>
+          <li>任务用完时可以刷怪的地点，以及“完成区域”目标，它会规划该区域剩下的每个任务。</li>
+          <li>在“赚金方法”中：哪些怪物会掉落你任务所需的物品。</li>
+        </ul>
+      </div>
+    </div>
+    <p class="how">Questie 仍在加载时，规划器会等待，半分钟后改用你的任务日志规划。如果 Questie 的变化让规划器无法读取，它会说明，并按任务日志规划。</p>
+  </div>
+</section>
+
+<section class="block" id="gold" aria-labelledby="h-gold">
+  <div class="wrap">
+    <header>
+      <span class="eyebrow">金币</span>
+      <h2 id="h-gold">赚金方法</h2>
+      <p class="lede">一个窗口按优劣列出赚金方法，依据你见过的一切：你所在拍卖行的价格、商人的收购价、你拾取过的怪物、采集过的草药和矿石，以及你会的配方。</p>
+    </header>
+    <div class="grid feats">
+      <div class="card"><h3>立即可做</h3><p>顶部是几件马上能做的事，比如卖掉背包里的东西。</p></div>
+      <div class="card"><h3>各种点子</h3><p>卖掉背包里的东西，以及你上次看到的银行物品；把垃圾卖给商人；从商人处买进在拍卖行能卖更高价的东西；有利可图的制造；采集路线；值得击杀的怪物；以及地下城掉落。</p></div>
+      <div class="card"><h3>按你的方式排序</h3><p>每个点子都会说明能赚多少、有多轻松、有多稳妥，以及价格有多新。“最多金币”“轻松赚钱”“稳妥”可以给列表排序，也可以自己调整每小时金币、轻松度和安全三个滑块。</p></div>
+      <div class="card"><h3>为目标攒钱</h3><p>输入一个金额，或选择“40级骑术”或“60级史诗骑术”，每个点子都会显示达成目标需要多久。</p></div>
+      <div class="card"><h3>前往</h3><p>“前往”会用规划器的指引带你过去。你的升级路线会暂停，旅程结束后恢复。</p></div>
+      <div class="card"><h3>在拍卖行</h3><p>在拍卖行旁边，“此处赚金点子”会列出当场值得做的事。</p></div>
+    </div>
+    <p class="how">可以在规划器窗口或指南面板菜单中点<b>赚金方法</b>，输入 <code>/fgui guide gold</code>，或按住 Ctrl 点击小地图按钮打开。它从不替你购买、上架或制造：每一次点击都由你自己来。</p>
+  </div>
+</section>
+
+<section class="block" id="prices" aria-labelledby="h-prices">
+  <div class="wrap">
+    <header>
+      <span class="eyebrow">在拍卖行</span>
+      <h2 id="h-prices">价格与出售建议</h2>
+      <p class="lede">赚金点子的好坏取决于价格。按一下“扫描价格”就能读取整个拍卖行，之后物品提示会告诉你该怎么处理它。</p>
+    </header>
+    <ul class="hints">
+      <li><span class="sq sell" aria-hidden="true"></span><b>现在出售</b> <span>今天明显高于平常价格</span></li>
+      <li><span class="sq hold" aria-hidden="true"></span><b>暂留</b> <span>今天便宜：等更好的价格</span></li>
+      <li><span class="sq vendor" aria-hidden="true"></span><b>卖给商人</b> <span>商人给价差不多，或者没人出售</span></li>
+    </ul>
+    <p class="how"><a href="/zh/guide-and-gold/first-scan/">你的第一次价格扫描</a> · <a href="/zh/guide-and-gold/sell-hints/">看懂出售建议</a></p>
+  </div>
+</section>
+
+<section class="block" id="how-to" aria-labelledby="h-howto">
+  <div class="wrap">
+    <header>
+      <span class="eyebrow">分步说明</span>
+      <h2 id="h-howto">使用教程</h2>
+    </header>
+    <ol class="grid howtos">
+      <li><a class="card" href="/zh/guide-and-gold/first-route/"><span class="n" aria-hidden="true">1</span><h3>你的第一条路线</h3><p>打开路线规划器，一步步跟随你的第一条任务路线。</p></a></li>
+      <li><a class="card" href="/zh/guide-and-gold/duo/"><span class="n" aria-hidden="true">2</span><h3>与好友一起规划</h3><p>两人一条路线：你和好友按同样的顺序做同样的任务。</p></a></li>
+      <li><a class="card" href="/zh/guide-and-gold/phone/"><span class="n" aria-hidden="true">3</span><h3>在手机上使用计划页面</h3><p>在游戏中复制计划代码，在手机上跟随路线并勾选步骤。</p></a></li>
+      <li><a class="card" href="/zh/guide-and-gold/first-scan/"><span class="n" aria-hidden="true">4</span><h3>你的第一次价格扫描</h3><p>用“扫描价格”一次读取所有拍卖，让提示、出售建议和赚金点子都有价格可依。</p></a></li>
+      <li><a class="card" href="/zh/guide-and-gold/sell-hints/"><span class="n" aria-hidden="true">5</span><h3>看懂出售建议</h3><p>提示和背包上的“现在出售”“暂留”“卖给商人”是什么意思，以及何时出现。</p></a></li>
+    </ol>
+  </div>
+</section>
+
+<section class="block" id="plan-page" aria-labelledby="h-plan">
+  <div class="wrap">
+    <div class="card filled plan-card">
+      <div>
+        <span class="eyebrow">任何屏幕</span>
+        <h2 id="h-plan">计划页面</h2>
+        <p>粘贴游戏里的计划代码，路线就会显示在任何屏幕上：预计的经验和时间、每个区域带编号停靠点的小地图，以及可以勾选的每一步。手机也能用，你粘贴的内容不会离开浏览器。</p>
+      </div>
+      <div class="cta">
+        <a class="btn" href="/plan/">打开计划页面</a>
+        <a class="btn line" href="/zh/guide-and-gold/phone/">如何在手机上使用</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="private" aria-labelledby="h-private">
+  <div class="wrap">
+    <header>
+      <span class="eyebrow">隐私</span>
+      <h2 id="h-private">哪些内容保持私密</h2>
+    </header>
+    <ul class="ticks plain">
+      <li>与好友一起规划只通过密语和好友的插件通信，并且总会先征求对方同意。不会在公共频道发送任何内容。</li>
+      <li>计划代码包含步骤、区域、等级和时间，不含角色名或服务器名。</li>
+      <li>计划页面在你的浏览器里读取代码，不向任何地方发送内容。你的勾选只保存在该浏览器中。</li>
+      <li>“赚金方法”只依据你自己角色见过的内容，不分享任何东西。</li>
+    </ul>
+  </div>
 </section>
 </main>
 <footer class="site-foot">
@@ -88,11 +253,13 @@
         <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/wiki">Wiki</a></li>
         <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/issues/new/choose">报告问题</a></li>
         <li><a href="/zh/accessibility/">辅助功能</a></li>
+        <li><a href="/zh/press/">媒体资料包</a></li>
+        <li><a href="/feed.xml" type="application/rss+xml">RSS</a></li>
       </ul>
     </div>
     <div class="foot-row">
       <span>联系: <a href="mailto:email-forwarding@fantasyglassui.com">email-forwarding@fantasyglassui.com</a></span>
-      <p class="status"><span>版本 <b>12.4.1</b></span><span class="sep" aria-hidden="true">·</span><span>更新于 <time datetime="2026-11-25">2026-11-25</time></span><span class="sep" aria-hidden="true">·</span><span>已对照 WoW: Forever <b>1.60.1 (70938)</b> 检查</span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">源代码</a></span></p>
+      <p class="status"><span>版本 <b>13.0.0</b></span><span class="sep" aria-hidden="true">·</span><span>更新于 <time datetime="2026-11-26">2026-11-26</time></span><span class="sep" aria-hidden="true">·</span><span>已对照 WoW: Forever <b>1.60.1 (70938)</b> 检查</span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">源代码</a></span></p>
     </div>
     <nav class="foot-row foot-langs" aria-label="语言"><ul><li><a href="/guide-and-gold/" hreflang="en" lang="en" data-code="en">English</a></li><li><a href="/de/guide-and-gold/" hreflang="de" lang="de" data-code="de">Deutsch</a></li><li><a href="/fr/guide-and-gold/" hreflang="fr" lang="fr" data-code="fr">Français</a></li><li><a href="/es/guide-and-gold/" hreflang="es" lang="es" data-code="es">Español</a></li><li><a href="/ru/guide-and-gold/" hreflang="ru" lang="ru" data-code="ru">Русский</a></li><li><a href="/pt/guide-and-gold/" hreflang="pt" lang="pt" data-code="pt">Português</a></li><li><a href="/it/guide-and-gold/" hreflang="it" lang="it" data-code="it">Italiano</a></li><li><a href="/ko/guide-and-gold/" hreflang="ko" lang="ko" data-code="ko">한국어</a></li><li><a href="/zh/guide-and-gold/" hreflang="zh-Hans" lang="zh-Hans" data-code="zh" aria-current="true">中文</a></li></ul></nav>
     <p class="trnote">本页翻译未经母语者校对，欢迎指正。</p>

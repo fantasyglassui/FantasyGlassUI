@@ -17,6 +17,7 @@
 <link rel="alternate" hreflang="zh-Hans" href="https://fantasyglassui.com/zh/roadmap/">
 <link rel="alternate" hreflang="x-default" href="https://fantasyglassui.com/roadmap/">
 <link rel="icon" type="image/png" href="/icon.png">
+<link rel="alternate" type="application/rss+xml" title="Fantasy Glass UI releases" href="/feed.xml">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Fantasy Glass UI">
 <meta property="og:locale" content="en_US">
@@ -42,11 +43,33 @@
 <meta name="theme-color" content="#12141a" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f4f5f8" media="(prefers-color-scheme: light)">
 <script>(function(){var d=document.documentElement;d.classList.add("js");try{var t=localStorage.getItem("fg-theme");if(t==="light"||t==="dark")d.setAttribute("data-theme",t)}catch(e){}var here="en",page="roadmap/",to=here,q=location.search,h=location.hash;var m=/[?&]lang=([a-z]{2})\b/.exec(q);if(m){to=m[1];q=q.replace(/([?&])lang=[a-z]{2}&?/,"$1").replace(/[?&]$/,"")}else if(here==="en"){var c=null;try{c=localStorage.getItem("fg-lang")}catch(e){}if(!c)c=String(navigator.language||"en").slice(0,2).toLowerCase();to=c}if(["en", "de", "fr", "es", "ru", "pt", "it", "ko", "zh"].indexOf(to)<0)to=here;var u=(to==="en"?"/":"/"+to+"/")+page;if(u!==location.pathname||q!==location.search)location.replace(u+q+h)})();</script>
-<link rel="preload" href="/assets/marcellus.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap">
-<link rel="stylesheet" href="/assets/site.css?v=0338b00d2b">
+<link rel="preload" href="/fonts/marcellus-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/source-sans-3-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/site.css?v=9495293704">
+<style>
+/* Roadmap: the ideas after 13.0, by group, each with its status. */
+.page-head .nodates { margin: 14px 0 0; max-width: 70ch; }
+.rm { padding-block: 26px 8px; }
+ul.legend { list-style: none; margin: 0 0 22px; padding: 0; display: flex; flex-wrap: wrap; gap: 10px 28px; color: var(--dim); font-size: .95rem; }
+ul.legend li { display: flex; align-items: center; gap: 10px; }
+.tag { display: inline-flex; align-items: center; min-height: 24px; padding: 3px 9px; font: 700 .74rem/1.1 var(--body); letter-spacing: .07em; text-transform: uppercase; white-space: nowrap; border: 1px solid currentColor; }
+.tag.next { background: var(--gold); border-color: var(--gold); color: var(--on-gold); }
+.tag.planned { color: var(--gold); }
+.tag.thinking { color: var(--dim); border-style: dashed; }
+.rm-group { padding-block: 30px 6px; border-top: 1px solid var(--rule); }
+.rm-group[hidden] { display: none; }
+.rm-group header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 18px; margin-bottom: 18px; }
+.rm-group header p { margin: 0; }
+ul.ideas { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr)); gap: 16px; }
+.idea { padding: 18px 20px 16px; }
+.idea[hidden] { display: none; }
+.idea h3 { font-size: 1.2rem; margin: 12px 0 6px; }
+.idea p { margin: 0; font-size: .97rem; }
+.idea:has(.tag.next) { --c: color-mix(in srgb, var(--gold) 60%, var(--line)); }
+.welcome { margin-top: 34px; padding: 26px 28px; }
+.welcome h2 { margin-bottom: 8px; }
+.welcome p { margin: 0; font-size: 1.05rem; }
+</style>
 </head>
 <body>
 <a class="skip" href="#main">Skip to the content</a>
@@ -66,15 +89,26 @@
   </div>
 </header>
 <main id="main" tabindex="-1">
-<!-- Roadmap (W3): the ideas after 13.0, from one data file, grouped, each with its status. A placeholder until then;
-     see site-src/PAGES.md. -->
+<!-- Roadmap (W3). Drawn from pages/roadmap/roadmap.json by pages/roadmap/body.py; see site-src/PAGES.md. -->
 <div class="wrap page-head">
+  <span class="eyebrow">After 13.0</span>
   <h1>Roadmap</h1>
   <p class="lede">What is coming to Fantasy Glass UI after 13.0, and what is being thought about.</p>
+  <p class="dim nodates">There are no dates: an idea moves up when it is ready, and the list changes as we go. Just out in 13.0: <a href=&quot;/guide-and-gold/&quot;>Guide and Gold</a>.</p>
 </div>
-<section class="section wrap">
-  <p class="placeholder">More here soon.</p>
-</section>
+<div class="wrap rm">
+  <ul class="legend"><li><span class="tag next">Next</span> Small, wanted, and first in line.</li><li><span class="tag planned">Planned</span> On the list, to be built.</li><li><span class="tag thinking">Thinking about it</span> An idea we like, not decided yet.</li></ul>
+  <div class="filters" role="group" aria-label="Show"><button class="chip" type="button" data-show="all" aria-pressed="true">All <span>42</span></button><button class="chip" type="button" data-show="next" aria-pressed="false">Next <span>6</span></button><button class="chip" type="button" data-show="planned" aria-pressed="false">Planned <span>19</span></button><button class="chip" type="button" data-show="thinking" aria-pressed="false">Thinking about it <span>17</span></button></div>
+  <p class="sr-only" id="rm-count" role="status"></p>
+<section class="rm-group" id="levelling" aria-labelledby="h-levelling"><header><h2 id="h-levelling">Levelling</h2><p class="dim">The route planner, quests and your characters.</p></header><ul class="ideas"><li class="idea card" data-status="next"><span class="tag next">Next</span><h3>Professions on the route</h3><p>Training, gathering and crafting for your professions, fitted into the route.</p></li><li class="idea card" data-status="next"><span class="tag next">Next</span><h3>Rested experience planner</h3><p>Where and when to log out, so you start your next session with the most rested experience.</p></li><li class="idea card" data-status="planned"><span class="tag planned">Planned</span><h3>Dungeon runs in the plan</h3><p>Dungeons at the right level, with their quests, as part of the route.</p></li><li class="idea card" data-status="planned"><span class="tag planned">Planned</span><h3>Planning for a group</h3><p>One route for three to five players, the way planning with a friend works today.</p></li><li class="idea card" data-status="planned"><span class="tag planned">Planned</span><h3>Danger on the route</h3><p>Warnings about dangerous places on the route, and routes that keep away from them if you want.</p></li><li class="idea card" data-status="planned"><span class="tag planned">Planned</span><h3>Reputation goals</h3><p>Pick a standing with a faction, and see the quickest way there.</p></li><li class="idea card" data-status="planned"><span class="tag planned">Planned</span><h3>Guides anyone can write</h3><p>A guide format other players can write for, checked before it is used, and never running code.</p></li><li class="idea card" data-status="planned"><span class="tag planned">Planned</span><h3>Catch-up for returning players</h3><p>Back after a break? Where you were, and what to do first.</p></li><li class="idea card" data-status="planned"><span class="tag planned">Planned</span><h3>Class quests on time</h3><p>A heads-up before each class quest, so you are ready for it at the right level.</p></li><li class="idea card" data-status="thinking"><span class="tag thinking">Thinking about it</span><h3>Shared plans for guilds</h3><p>A route your guild can share, so everyone levels the same way.</p></li><li class="idea card" data-status="thinking"><span class="tag thinking">Thinking about it</span><h3>Season-start mode</h3><p>A route made for the busy first days of a new season.</p></li><li class="idea card" data-status="thinking"><span class="tag thinking">Thinking about it</span><h3>Gear plan</h3><p>The quest rewards and drops that would be upgrades for you, planned in.</p></li><li class="idea card" data-status="thinking"><span class="tag thinking">Thinking about it</span><h3>Talent plan by level</h3><p>A talent build that says what to pick at each level.</p></li><li class="idea card" data-status="thinking"><span class="tag thinking">Thinking about it</span><h3>Which character today?</h3><p>A look across all your characters, and which one has the most to gain from today's session.</p></li><li class="idea card" data-status="thinking"><span class="tag thinking">Thinking about it</span><h3>Collector's planner</h3><p>Rare monsters, pets and mounts, and a route to go after them.</p></li><li class="idea card" data-status="thinking"><span class="tag thinking">Thinking about it</span><h3>Hunter pet and warlock demon helper</h3><p>Help with taming pets, teaching them their skills, and the warlock's demon quests.</p></li><li class="idea card" data-status="thinking"><span class="tag thinking">Thinking about it</span><h3>Ask the guide in chat</h3><p>Ask the guide a question in chat, such as where a quest starts, and get an answer.</p></li></ul></section>
+<section class="rm-group" id="gold" aria-labelledby="h-gold"><header><h2 id="h-gold">Gold</h2><p class="dim">Ways to make gold, prices and the auction house.</p></header><ul class="ideas"><li class="idea card" data-status="next"><span class="tag next">Next</span><h3>Where your gold went</h3><p>A history of what you earned and spent, by kind, over days and weeks.</p></li><li class="idea card" data-status="next"><span class="tag next">Next</span><h3>Posting helper</h3><p>A suggested price and stack size when you post an auction. You still press Post yourself.</p></li><li class="idea card" data-status="planned"><span class="tag planned">Planned</span><h3>Mail and expired auctions</h3><p>Your auction mail, sold, bought and expired, in one clear list.</p></li><li class="idea card" data-status="planned"><span class="tag planned">Planned</span><h3>Price alerts</h3><p>A note when something you want shows up cheap at the auction house.</p></li><li class="idea card" data-status="planned"><span class="tag planned">Planned</span><h3>Sorting by value</h3><p>Sort your bags and bank by what things are worth.</p></li><li class="idea card" data-status="thinking"><span class="tag thinking">Thinking about it</span><h3>Sharing price scans</h3><p>Share your auction prices with friends and your guild, so everyone has fresh ones.</p></li><li class="idea card" data-status="thinking"><span class="tag thinking">Thinking about it</span><h3>Crafting queue</h3><p>A list of what to craft, with what you still need for it.</p></li></ul></section>
+<section class="rm-group" id="everyone" aria-labelledby="h-everyone"><header><h2 id="h-everyone">For everyone</h2><p class="dim">The whole interface, accessibility and the website.</p></header><ul class="ideas"><li class="idea card" data-status="next"><span class="tag next">Next</span><h3>Larger text everywhere</h3><p>One switch that makes all of the add-on's text larger.</p></li><li class="idea card" data-status="next"><span class="tag next">Next</span><h3>Patch notes in the game</h3><p>What's new, shown in the game the first time you log in after an update.</p></li><li class="idea card" data-status="planned"><span class="tag planned">Planned</span><h3>Planner and gold settings in packs and codes</h3><p>The planner's and the gold window's settings saved in packs and profile codes, like the rest of your setup.</p></li><li class="idea card" data-status="planned"><span class="tag planned">Planned</span><h3>Accessibility, round two</h3><p>Directions spoken aloud, and a high-contrast arrow and route.</p></li><li class="idea card" data-status="planned"><span class="tag planned">Planned</span><h3>More on the website</h3><p>An interactive tour, a preview of a route, and video captions in every language.</p></li><li class="idea card" data-status="planned"><span class="tag planned">Planned</span><h3>Seasonal themes</h3><p>Themes for the time of year.</p></li><li class="idea card" data-status="planned"><span class="tag planned">Planned</span><h3>Help with translations</h3><p>A page on the website for players who would like to help translate.</p></li><li class="idea card" data-status="thinking"><span class="tag thinking">Thinking about it</span><h3>Controller and Steam Deck</h3><p>Playing with a controller, on a Steam Deck too.</p></li><li class="idea card" data-status="thinking"><span class="tag thinking">Thinking about it</span><h3>Players' theme gallery</h3><p>A gallery on the website of themes that players made, to try and to share.</p></li><li class="idea card" data-status="thinking"><span class="tag thinking">Thinking about it</span><h3>Streamer mode</h3><p>One switch that hides the names and chat you don't want on stream.</p></li><li class="idea card" data-status="thinking"><span class="tag thinking">Thinking about it</span><h3>Guild progress board</h3><p>A board that shows how your guild is getting on, for guilds that turn it on.</p></li><li class="idea card" data-status="thinking"><span class="tag thinking">Thinking about it</span><h3>Sound pack</h3><p>Sounds made for the interface, to switch on if you like.</p></li></ul></section>
+<section class="rm-group" id="behind" aria-labelledby="h-behind"><header><h2 id="h-behind">Behind the scenes</h2><p class="dim">What keeps the add-on fast, safe and tested.</p></header><ul class="ideas"><li class="idea card" data-status="planned"><span class="tag planned">Planned</span><h3>A speed budget</h3><p>Tests that stop the add-on from getting any slower.</p></li><li class="idea card" data-status="planned"><span class="tag planned">Planned</span><h3>A check after each game patch</h3><p>A look at login after a game patch, which tells you if something no longer works.</p></li><li class="idea card" data-status="planned"><span class="tag planned">Planned</span><h3>Saved-data tidy and backup</h3><p>Old saved data tidied away, and a backup of your settings kept.</p></li><li class="idea card" data-status="planned"><span class="tag planned">Planned</span><h3>A beta channel</h3><p>Early test versions on CurseForge, for players who like to try new things first.</p></li><li class="idea card" data-status="thinking"><span class="tag thinking">Thinking about it</span><h3>Learning from many players</h3><p>Better routes from how many players level, only from those who choose to share. Privacy first.</p></li><li class="idea card" data-status="thinking"><span class="tag thinking">Thinking about it</span><h3>Crash reports, if you want</h3><p>A report to send when something breaks, only if you choose to.</p></li></ul></section>
+  <aside class="card filled welcome" aria-labelledby="h-welcome">
+    <h2 id="h-welcome">Ideas welcome</h2>
+    <p>Something you would like to see, or an idea on this list you want sooner? Tell us on <a href=&quot;https://discord.gg/qeSMwQWyPR&quot;>Discord</a> or write to <a href=&quot;mailto:email-forwarding@fantasyglassui.com&quot;>email-forwarding@fantasyglassui.com</a>.</p>
+  </aside>
+</div>
 </main>
 <footer class="site-foot">
   <div class="wrap">
@@ -87,16 +121,19 @@
         <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/wiki">Wiki</a></li>
         <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/issues/new/choose">Report a bug</a></li>
         <li><a href="/accessibility/">Accessibility</a></li>
+        <li><a href="/press/">Press kit</a></li>
+        <li><a href="/feed.xml" type="application/rss+xml">RSS</a></li>
       </ul>
     </div>
     <div class="foot-row">
       <span>Contact: <a href="mailto:email-forwarding@fantasyglassui.com">email-forwarding@fantasyglassui.com</a></span>
-      <p class="status"><span>Version <b>12.4.1</b></span><span class="sep" aria-hidden="true">·</span><span>Updated <time datetime="2026-11-25">2026-11-25</time></span><span class="sep" aria-hidden="true">·</span><span>Checked against WoW: Forever <b>1.60.1 (70938)</b></span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">Source code</a></span></p>
+      <p class="status"><span>Version <b>13.0.0</b></span><span class="sep" aria-hidden="true">·</span><span>Updated <time datetime="2026-11-26">2026-11-26</time></span><span class="sep" aria-hidden="true">·</span><span>Checked against WoW: Forever <b>1.60.1 (70938)</b></span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">Source code</a></span></p>
     </div>
     <nav class="foot-row foot-langs" aria-label="Language"><ul><li><a href="/roadmap/" hreflang="en" lang="en" data-code="en" aria-current="true">English</a></li><li><a href="/de/roadmap/" hreflang="de" lang="de" data-code="de">Deutsch</a></li><li><a href="/fr/roadmap/" hreflang="fr" lang="fr" data-code="fr">Français</a></li><li><a href="/es/roadmap/" hreflang="es" lang="es" data-code="es">Español</a></li><li><a href="/ru/roadmap/" hreflang="ru" lang="ru" data-code="ru">Русский</a></li><li><a href="/pt/roadmap/" hreflang="pt" lang="pt" data-code="pt">Português</a></li><li><a href="/it/roadmap/" hreflang="it" lang="it" data-code="it">Italiano</a></li><li><a href="/ko/roadmap/" hreflang="ko" lang="ko" data-code="ko">한국어</a></li><li><a href="/zh/roadmap/" hreflang="zh-Hans" lang="zh-Hans" data-code="zh">中文</a></li></ul></nav>
     
   </div>
 </footer>
 <script src="/assets/site.js?v=2dd8abee61" defer></script>
+<script src="/assets/roadmap.js?v=95ea9c529f" defer></script>
 </body>
 </html>

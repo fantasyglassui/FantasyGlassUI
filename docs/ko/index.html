@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Fantasy Glass UI</title>
-<meta name="description" content="WoW Forever용 월드 오브 워크래프트 애드온: 유닛 프레임, 행동 단축바, 공격대 프레임, 이름표, 가방과 모든 창을 하나의 Starcut 외형으로, 115가지 테마.">
+<meta name="description" content="WoW Forever용 월드 오브 워크래프트 애드온: 유닛 프레임, 행동 단축바, 공격대 프레임, 이름표, 가방과 모든 창을 하나의 Starcut 외형으로, 116가지 테마.">
 <link rel="canonical" href="https://fantasyglassui.com/ko/">
 <link rel="alternate" hreflang="en" href="https://fantasyglassui.com/">
 <link rel="alternate" hreflang="de" href="https://fantasyglassui.com/de/">
@@ -17,6 +17,7 @@
 <link rel="alternate" hreflang="zh-Hans" href="https://fantasyglassui.com/zh/">
 <link rel="alternate" hreflang="x-default" href="https://fantasyglassui.com/">
 <link rel="icon" type="image/png" href="/icon.png">
+<link rel="alternate" type="application/rss+xml" title="Fantasy Glass UI releases" href="/feed.xml">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Fantasy Glass UI">
 <meta property="og:locale" content="ko_KR">
@@ -29,7 +30,7 @@
 <meta property="og:locale:alternate" content="it_IT">
 <meta property="og:locale:alternate" content="zh_CN">
 <meta property="og:title" content="Fantasy Glass UI: 인터페이스 전체를 보석처럼">
-<meta property="og:description" content="프레임, 단축바, 이름표, 가방과 모든 창을 115가지 테마 중 하나의 모습으로. WoW Forever용 무료 애드온.">
+<meta property="og:description" content="프레임, 단축바, 이름표, 가방과 모든 창을 116가지 테마 중 하나의 모습으로. WoW Forever용 무료 애드온.">
 <meta property="og:url" content="https://fantasyglassui.com/ko/">
 <meta property="og:image" content="https://fantasyglassui.com/og.jpg">
 <meta property="og:image:width" content="1200">
@@ -37,18 +38,15 @@
 <meta property="og:image:alt" content="Fantasy Glass UI">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Fantasy Glass UI: 인터페이스 전체를 보석처럼">
-<meta name="twitter:description" content="프레임, 단축바, 이름표, 가방과 모든 창을 115가지 테마 중 하나의 모습으로. WoW Forever용 무료 애드온.">
+<meta name="twitter:description" content="프레임, 단축바, 이름표, 가방과 모든 창을 116가지 테마 중 하나의 모습으로. WoW Forever용 무료 애드온.">
 <meta name="twitter:image" content="https://fantasyglassui.com/og.jpg">
 <meta name="theme-color" content="#12141a" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f4f5f8" media="(prefers-color-scheme: light)">
 <script>(function(){var d=document.documentElement;d.classList.add("js");try{var t=localStorage.getItem("fg-theme");if(t==="light"||t==="dark")d.setAttribute("data-theme",t)}catch(e){}var here="ko",page="",to=here,q=location.search,h=location.hash;var m=/[?&]lang=([a-z]{2})\b/.exec(q);if(m){to=m[1];q=q.replace(/([?&])lang=[a-z]{2}&?/,"$1").replace(/[?&]$/,"")}else if(here==="en"){var c=null;try{c=localStorage.getItem("fg-lang")}catch(e){}if(!c)c=String(navigator.language||"en").slice(0,2).toLowerCase();to=c}if(["en", "de", "fr", "es", "ru", "pt", "it", "ko", "zh"].indexOf(to)<0)to=here;var O={"themes": "themes/", "maker": "themes/#maker", "features": "features/", "commands": "get-started/#commands", "faq": "get-started/#faq", "start": "get-started/"},k=h.slice(1);if(/[?&](theme|code)=/.test(q)){page="themes/";if(k!=="maker")h=""}else if(O[k]){var p=O[k].split("#");page=p[0];h=p[1]?"#"+p[1]:""}var u=(to==="en"?"/":"/"+to+"/")+page;if(u!==location.pathname||q!==location.search)location.replace(u+q+h)})();</script>
-<link rel="preload" href="/assets/marcellus.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap">
-<link rel="stylesheet" href="/assets/site.css?v=0338b00d2b">
+<link rel="stylesheet" href="/assets/site.css?v=9495293704">
 <style>
-/* Home: the hero, the drawn frames, the before-and-after, the screenshots and the newest versions (moved from the old long page). */
+/* Home (W2): the hero with the trailer (or the drawn frames), Try a theme, what sets it apart, the before-and-after,
+   Guide and Gold, the three families and the newest version. */
 /* hero: always the game's night, whatever the page's theme */
 .hero-band { position: relative; overflow: hidden; background: #0c0d12; border-bottom: 1px solid var(--rule); }
 .hero-band .shot-bg { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; object-fit: cover; object-position: 60% 50%; opacity: .62; }
@@ -83,22 +81,6 @@
 .cast .num { font-size: 0.7rem; justify-content: start; padding-left: 16px; display: flex; align-items: center; }
 .load .bar .fill { width: 0; }
 
-/* the look: four pieces */
-.pieces { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
-.piece { padding: 18px; display: grid; gap: 12px; align-content: start; min-width: 0; }   /* (a .card: line only) */
-.piece h3 { font-size: 1.02rem; }
-.piece p { margin: 0; color: var(--dim); font-size: 0.93rem; }
-.piece .demo { height: 74px; display: grid; place-items: center; background: #0c0d12; }
-.facet { width: 46px; height: 46px; background: linear-gradient(135deg, #6a3db8, #26124c); clip-path: polygon(12px 0, 34px 0, 46px 12px, 46px 34px, 34px 46px, 12px 46px, 0 34px, 0 12px); position: relative; }
-.facet::after { content: ""; position: absolute; inset: 0; background: conic-gradient(from 0deg, rgba(0,0,0,.65) 0 120deg, transparent 120deg); }
-.dmap { width: 54px; height: 54px; transform: rotate(45deg); background: radial-gradient(circle at 40% 40%, #3d6b4a, #1d3324 70%); box-shadow: 0 0 0 1px #c8d2ff; }
-.plate { width: 82%; }
-.plate .bar { height: 12px; --c: var(--danger); }
-.plate .bar::before { content: ""; position: absolute; inset: 0; background: #05060c; }
-.plate small { display: block; text-align: center; font: 600 0.72rem/1.4 var(--body); color: #e7e9f4; }
-.plate small b { color: #f2c94c; margin-right: 4px; }
-
-
 /* screenshots */
 .feature { position: relative; margin: 0 0 14px; background: #0c0d12; }
 .feature img { display: block; width: 100%; height: auto; max-width: 100%; max-height: 72vh; object-fit: contain; }
@@ -110,13 +92,6 @@
 .thumb[aria-pressed="true"] img, .thumb:hover img { opacity: 1; }
 .thumb[aria-pressed="true"] span { color: var(--gold); }
 .thumb:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
-
-/* news */
-.news { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
-.ver { padding: 18px 20px; min-width: 0; }   /* (a .card: line only) */
-.ver h3 { font: 700 1rem/1 var(--mono); color: var(--gold); margin-bottom: 10px; }
-.ver ul { margin: 0; padding-left: 18px; color: var(--dim); }
-.ver li { margin-bottom: 6px; }
 
 /* ---- before and after ---- */
 .compare { position: relative; overflow: hidden; background: #0c0d12; aspect-ratio: 2400 / 989; user-select: none; touch-action: pan-y; }
@@ -136,28 +111,116 @@
 .stage { transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); transition: transform .25s ease-out; will-change: transform; }
 .stage::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,.10) 48%, transparent 60%); background-size: 260% 100%; animation: glint 6s ease-in-out infinite; }
 @keyframes glint { 0%, 60% { background-position: 120% 0; } 100% { background-position: -40% 0; } }
-.ribbon { overflow: hidden; border-bottom: 1px solid var(--rule); background: var(--band); -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
-.ribbon .track { display: flex; gap: 34px; width: max-content; padding-block: 14px; animation: drift 60s linear infinite; }
-.ribbon:hover .track { animation-play-state: paused; }
-.ribbon span { display: inline-flex; align-items: center; gap: 34px; white-space: nowrap; color: var(--dim); font: 400 1rem/1 var(--display); letter-spacing: .04em; }
-.ribbon span::after { content: ""; width: 7px; height: 7px; transform: rotate(45deg); background: var(--gold); box-shadow: 0 0 10px var(--gold); }
-@keyframes drift { to { transform: translateX(-50%); } }
-section.block { position: relative; }
-section.block + section.block::before { content: ""; position: absolute; top: -6px; left: 50%; width: 11px; height: 11px; margin-left: -5.5px; transform: rotate(45deg); background: var(--ground); border: 1px solid var(--gold); box-shadow: 0 0 14px color-mix(in srgb, var(--gold) 60%, transparent); }
 .reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s ease, transform .7s cubic-bezier(.2,.7,.2,1); }
 .reveal.in { opacity: 1; transform: none; }
-.piece { transition: transform .2s ease; }
-.piece:hover { transform: translateY(-3px); }
 @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; } .stage { transform: none; } }
 #look .compare, #look .feature, #look .thumbs { margin-bottom: 18px; }
+#look .lede { margin: 10px 0 24px; }
 @media (max-width: 900px) {
   .stage { justify-self: stretch; max-width: none; }
   .hero { grid-template-columns: minmax(0, 1fr); padding-block: 40px 32px; }
-  .pieces { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-@media (max-width: 620px) {
-  .news, .pieces { grid-template-columns: minmax(0, 1fr); }
+
+
+.portrait.foe { background: linear-gradient(135deg, #5a1d1a, #1d0a09); box-shadow: 0 0 0 1px #e9a49b, 0 0 18px rgba(226,87,76,.4); }
+.hero .cta { margin-top: 28px; }
+
+/* ---- the trailer: a muted loop with its poster and a pause button (body.py) ---- */
+.trailer { margin: 0; min-width: 0; }
+.tv { position: relative; background: #0c0d12; border: 1px solid var(--line); box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+.tv video, .tv img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.tv-btn { position: absolute; right: 14px; bottom: 14px; display: grid; place-items: center; width: 48px; height: 48px; padding: 0; border-radius: 50%; border: 1px solid rgba(255,255,255,.35); background: rgba(12,13,18,.82); color: #fff; cursor: pointer; }
+.tv-btn:hover { border-color: var(--gold); color: var(--gold); }
+.tv-btn:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.tv-btn svg { width: 18px; height: 18px; }
+.tv-btn .i-pause, .tv-btn.playing .i-play { display: none; }
+.tv-btn.playing .i-pause { display: block; }
+.trailer figcaption { margin-top: 10px; color: var(--faint); font-size: 0.92rem; }
+
+/* ---- try a theme ---- */
+.try { padding-block: 64px; }
+.try-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 40px; align-items: center; }
+.try-text .lede { margin: 10px 0 22px; }
+.try-pick fieldset { border: 0; margin: 0 0 14px; padding: 0; min-width: 0; }
+.try-pick legend { padding: 0; margin-bottom: 8px; color: var(--faint); font: 700 0.8rem/1.2 var(--body); letter-spacing: 0.08em; text-transform: uppercase; }
+.try-pick .filters { margin: 0; }
+.try-pick .chip { gap: 8px; min-height: 44px; }
+.try-pick .chip i { width: 16px; height: 16px; flex: none; border-radius: 50%; }
+.try-more { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 22px; margin-top: 8px; }
+.try-more a { font-weight: 600; }
+.try-view { margin: 0; min-width: 0; }
+.try-stage { --bg: #0e0f13; --bd: #5f6672; --ac: #80c7ff; --tx: #e3e7eb; --pl: #272933;
+  position: relative; min-height: 270px; padding: 32px; background: var(--bg); border: 1px solid var(--bd); transition: background .3s, border-color .3s; }
+.try-stage.sky { background-image: radial-gradient(1px 1px at 20% 30%, #fff9, transparent), radial-gradient(1px 1px at 70% 20%, #fffa, transparent), radial-gradient(1.5px 1.5px at 85% 70%, #fff8, transparent), radial-gradient(1px 1px at 40% 80%, #fff7, transparent), radial-gradient(1px 1px at 58% 46%, #fff6, transparent); }
+.try-stage.pane::before { content: ""; position: absolute; inset: 0; background: linear-gradient(160deg, color-mix(in srgb, var(--ac) 16%, transparent), transparent 55%); pointer-events: none; }
+.try-frame { position: relative; max-width: 330px; padding: 16px 18px; background: var(--pl); border: 1px solid var(--bd); --cut: 10px; }
+.try-stage.pane .try-frame { box-shadow: inset 0 1px 0 rgba(255,255,255,.35); }
+.try-stage.gilt .try-frame { box-shadow: inset 0 0 0 1px #000, inset 3px 3px 0 -1px var(--ac); }
+.try-who { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.try-who b { color: var(--tx); font: 400 1.1rem/1.2 var(--display); }
+.try-who span { color: var(--ac); font-size: 0.85rem; font-weight: 700; }
+.try-bar { height: 14px; margin-top: 10px; background: var(--bg); border: 1px solid var(--bd); }
+.try-bar i { display: block; height: 100%; }
+.try-bar .hp { width: 78%; background: #3fcf7a; }
+.try-bar .mana { width: 55%; background: #4f8dff; }
+.try-slots { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.try-slots i { width: 44px; height: 44px; --cut: 8px; background: var(--pl); box-shadow: inset 0 0 0 1px var(--bd); }
+.try-slots i:first-child { box-shadow: inset 0 0 0 1px var(--ac), 0 0 0 0 transparent; }
+.try-title { position: relative; margin: 18px 0 0; color: var(--ac); font: 400 1.3rem/1.2 var(--display); }
+.try-view figcaption { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-top: 12px; font-size: 0.95rem; }
+.try-view figcaption .faint { flex: 1 1 260px; }
+.try-view figcaption > span:first-child { flex: 1 1 100%; font-weight: 600; }
+
+/* ---- what sets it apart ---- */
+#why h2 { margin-bottom: 24px; }
+.why .card { display: flex; flex-direction: column; }
+.why .card p { margin-bottom: 12px; }
+.why .card p:last-child { margin-bottom: 0; }
+.why .more-link { margin-top: auto; }
+
+/* ---- guide and gold ---- */
+#guide-gold h2 { margin-bottom: 28px; max-width: 30ch; }
+.gg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.gg-card { padding: 0 0 24px; }
+.gg-card > :not(svg) { margin-left: 24px; margin-right: 24px; }
+.gg-card h3 { margin-top: 22px; color: var(--text); }
+.gg-card p.faint { color: var(--faint); font-size: 0.95rem; }
+.gg-art { display: block; width: 100%; height: auto; aspect-ratio: 320 / 120; background: var(--shot); border-bottom: 1px solid var(--line); }
+.gg-path { fill: none; stroke: var(--gold); stroke-width: 2.5; stroke-dasharray: 2 8; stroke-linecap: round; }
+.gg-stops rect { fill: var(--ground); stroke: var(--gold); stroke-width: 2; }
+.gg-star { fill: var(--gold); }
+.gg-bars rect { fill: none; stroke: var(--frost); stroke-width: 2; }
+.gg-bars rect:last-child { fill: color-mix(in srgb, var(--gold) 30%, transparent); stroke: var(--gold); }
+.gg-coins ellipse { fill: var(--shot); stroke: var(--gold); stroke-width: 2; }
+
+/* ---- three families ---- */
+.head-row { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; margin-bottom: 22px; }
+.head-row a { font-weight: 600; }
+.fams { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.fams figure { margin: 0; min-width: 0; }
+.fams img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: var(--shot); }
+.fams figcaption { margin-top: 10px; }
+
+/* ---- the newest version ---- */
+#new { padding-top: 0; }
+.latest { display: flex; flex-wrap: wrap; gap: 18px 48px; padding: 30px; }
+.latest > div { flex: 1 1 240px; }
+.latest h2 { margin-bottom: 6px; font-size: 1.75rem; }
+.latest p { margin: 0; }
+.latest ul { flex: 2 1 420px; margin: 0; padding-left: 20px; color: var(--dim); }
+.latest li + li { margin-top: 6px; }
+
+@media (max-width: 900px) {
+  .try-grid, .gg { grid-template-columns: minmax(0, 1fr); }
+  .fams { grid-template-columns: minmax(0, 1fr); }
+  .try-stage { min-height: 0; padding: 22px; }
 }
+@media (max-width: 600px) {
+  .try { padding-block: 44px; }
+  .latest { padding: 22px; }
+  .hero h1 { font-size: 2.35rem; }
+}
+@media (max-width: 600px) { .fams figure:not(:first-child) { display: none; } }
 </style>
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "SoftwareApplication", "name": "Fantasy Glass UI", "applicationCategory": "GameApplication", "applicationSubCategory": "World of Warcraft add-on", "operatingSystem": "Windows, macOS", "description": "A complete interface for WoW Forever: unit frames, action bars, raid frames, nameplates, bags and every window in one Starcut look, with 116 themes.", "url": "https://fantasyglassui.com/", "image": "https://fantasyglassui.com/og.jpg", "downloadUrl": "https://www.curseforge.com/wow/addons/fantasy-glass-ui", "author": {"@type": "Person", "name": "DustyMouse"}, "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "sameAs": ["https://discord.gg/qeSMwQWyPR", "https://www.curseforge.com/wow/addons/fantasy-glass-ui", "https://github.com/fantasyglassui/FantasyGlassUI"], "inLanguage": ["en", "de", "fr", "es", "ru", "pt", "it", "ko", "zh"]}</script>
 </head>
@@ -179,29 +242,29 @@ section.block + section.block::before { content: ""; position: absolute; top: -6
   </div>
 </header>
 <main id="main" tabindex="-1">
-<!-- Home (W2). The hero, the before-and-after, and the newest versions; see site-src/PAGES.md. -->
+<!-- Home (W2). The hero with the trailer, Try a theme, what sets it apart, the before-and-after, Guide and Gold, the themes
+     and the newest version; see site-src/PAGES.md. body.py puts the trailer (or, until there is one, the drawn frames)
+     where the TRAILER comment stands. -->
   <div class="hero-band night">
   <img src="/shots/celestial-screen.webp" srcset="/shots/celestial-screen-480.webp 480w, /shots/celestial-screen-800.webp 800w, /shots/celestial-screen-1600.webp 1600w, /shots/celestial-screen.webp 2400w" sizes="100vw" width="2400" height="955" alt="" class="shot-bg" fetchpriority="high">
   <div class="wrap">
     <div class="hero load" id="hero">
       <div>
-        <div class="eyebrow">WoW Forever용 애드온</div>
+        <div class="eyebrow">WoW Forever용 · 무료</div>
         <h1>인터페이스 전체를 <span>보석처럼 세공하세요.</span></h1>
-        <p class="lede">유닛 프레임, 행동 단축바, 공격대 프레임, 이름표, 가방, 퀘스트, 미니맵과 게임의 모든 창을 116가지 테마 중 고른 하나의 모습으로. 애드온 하나로 1분이면 설정되고, 모든 부분을 따로 끌 수 있습니다.</p>
+        <p class="lede">프레임, 바, 가방, 채팅과 모든 창을 하나의 모습으로. 경로를 계획하는 퀘스트 안내서와 팔 때를 아는 골드 도우미까지.</p>
         <div class="cta">
-          <a class="btn primary cut" href="https://www.curseforge.com/wow/addons/fantasy-glass-ui" target="_blank" rel="noopener">CurseForge에서 받기</a>
-          <a class="btn ghost cut" href="/ko/themes/">테마 보기</a>
-          <a class="btn ghost cut" href="https://discord.gg/qeSMwQWyPR" target="_blank" rel="noopener">Discord 참여하기</a>
+          <a class="btn" href="https://www.curseforge.com/wow/addons/fantasy-glass-ui" target="_blank" rel="noopener">CurseForge에서 받기</a>
+          <a class="btn line" href="/ko/features/">모든 기능 보기</a>
         </div>
         <div class="facts" id="facts">
           <span><b>116</b> <span class="w">테마</span></span>
-          <span><b id="f-switches">260</b> <span class="w">스위치</span></span>
-          <span><b id="f-commands">129</b> <span class="w">명령어</span></span>
+          <span><b>260</b> <span class="w">스위치</span></span>
+          <span><b>129</b> <span class="w">명령어</span></span>
           <span><b>9</b> <span class="w">개 언어</span></span>
-          <span><span class="w">버전</span> <b id="f-version">12.4</b></span>
+          <span><span class="w">버전</span> <b>13.0</b></span>
         </div>
       </div>
-
       <div class="stage cut" role="img" aria-label="그림으로 그린 Starcut 유닛 프레임">
         <span class="label">Starcut 프레임</span>
         <div class="uf">
@@ -213,7 +276,7 @@ section.block + section.block::before { content: ""; position: absolute; top: -6
           </div>
         </div>
         <div class="uf">
-          <div class="portrait" aria-hidden="true" style="background:linear-gradient(135deg,#5a1d1a,#1d0a09);box-shadow:0 0 0 1px #e9a49b,0 0 18px rgba(226,87,76,.4)"><i>O</i></div>
+          <div class="portrait foe" aria-hidden="true"><i>O</i></div>
           <div>
             <div class="who"><span>Onyxia</span><span>??</span></div>
             <div class="glow" style="--c:#e2574c"><div class="bar" style="--c:#e2574c;--v:72%"><div class="fill"></div><div class="num">72%</div></div></div>
@@ -225,15 +288,53 @@ section.block + section.block::before { content: ""; position: absolute; top: -6
   </div>
   </div>
 
-  <div class="ribbon" aria-hidden="true"><div class="track"><span>116가지 테마</span><span>Starcut 프레임</span><span>위협 수준 측정기</span><span>전리품 위시리스트</span><span>주사위 조언</span><span>우두머리 안내</span><span>파티 장비 확인</span><span>파밍 기록</span><span>던전 기록</span><span>장비 세트</span><span>다이아몬드 미니맵</span><span>누적 통계</span><span>이정표</span><span>스크린샷 모드</span><span>기본 탑재된 접근성</span><span>9개 언어</span><span>이름표에 퀘스트 몹 표시</span><span>116가지 테마</span><span>Starcut 프레임</span><span>위협 수준 측정기</span><span>전리품 위시리스트</span><span>주사위 조언</span><span>우두머리 안내</span><span>파티 장비 확인</span><span>파밍 기록</span><span>던전 기록</span><span>장비 세트</span><span>다이아몬드 미니맵</span><span>누적 통계</span><span>이정표</span><span>스크린샷 모드</span><span>기본 탑재된 접근성</span><span>9개 언어</span><span>이름표에 퀘스트 몹 표시</span></div></div>
+  <section class="band try" id="try" aria-labelledby="try-h">
+    <div class="wrap try-grid">
+      <div class="try-text">
+        <div class="eyebrow">여기서 해 보기</div>
+        <h2 id="try-h">테마를 골라 바뀌는 모습을 보세요</h2>
+        <p class="lede">116가지 중 아홉 가지를 실제 색으로 그렸습니다. 게임에서는 고른 테마를 화면 전체가 따릅니다.</p>
+        <div class="try-pick" id="trypick"></div>
+        <div class="try-more">
+          <button class="btn line small" type="button" id="tryany">다른 것</button>
+          <a href="/ko/themes/">116가지 테마 모두 보기</a>
+        </div>
+      </div>
+      <figure class="try-view">
+        <div class="try-stage cut" id="trystage" aria-hidden="true">
+          <div class="try-frame cut">
+            <div class="try-who"><b>Aerin</b><span>레벨 42</span></div>
+            <div class="try-bar"><i class="hp"></i></div>
+            <div class="try-bar"><i class="mana"></i></div>
+          </div>
+          <div class="try-slots"><i class="cut"></i><i class="cut"></i><i class="cut"></i><i class="cut"></i><i class="cut"></i><i class="cut"></i></div>
+          <p class="try-title" id="trytitle">Polaris</p>
+        </div>
+        <figcaption>
+          <span aria-live="polite"><b id="tryname">Polaris</b> · <span id="tryfam">천상</span></span>
+          <span class="faint">테마 고유의 색으로 칠한 예시 유닛 프레임과 행동 단축바입니다.</span>
+          <button class="btn small" type="button" id="trywear">이 사이트에 입혀 보기</button>
+        </figcaption>
+      </figure>
+    </div>
+  </section>
 
-  <section class="block" id="look">
+  <section class="section" id="why" aria-labelledby="why-h">
     <div class="wrap">
-      <header>
-        <div class="eyebrow">전과 후</div>
-        <h2>같은 화면, 보석처럼</h2>
-        <p class="lede">선을 끌어 보세요. 왼쪽은 평범한 인터페이스, 오른쪽은 천상 테마를 입힌 Fantasy Glass UI의 같은 화면입니다.</p>
-      </header>
+      <h2 id="why-h">무엇이 다른가</h2>
+      <div class="grid why">
+        <div class="card"><h3>하나의 모습, 모든 창</h3><p>유리, 판타지, 천상 세 계열의 116가지 테마. 하나를 고르면 게임 자체 창까지 화면 전체가 따라갑니다.</p></div>
+        <div class="card"><h3>WoW Forever를 위해</h3><p>바뀔 때마다 테스트가 애드온이 쓰는 모든 게임 함수, 이벤트, 설정을 WoW Forever 클라이언트에서 뽑은 목록과 대조합니다.</p></div>
+        <div class="card"><h3>누구나 읽기 쉽게</h3><p>소리 내어 읽기, 키보드로 쓰는 게임 창, 고대비, 큰 글자, 차분한 움직임이 모두 들어 있습니다.</p><a class="more-link" href="/ko/accessibility/">접근성을 위해 하는 일</a></div>
+        <div class="card"><h3>ElvUI를 쓰다 오셨나요?</h3><p>설정에서 프레임을 ElvUI, Tukui, RealUI, GW2 UI 또는 게임 기본 인터페이스의 자리로 옮길 수 있습니다.</p><a class="more-link" href="/ko/features/#compare">어떻게 다른가</a></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band section" id="look" aria-labelledby="look-h">
+    <div class="wrap">
+      <h2 id="look-h">같은 화면, 전과 후</h2>
+      <p class="lede">선을 끌어 보세요. 왼쪽은 평범한 인터페이스, 오른쪽은 천상 테마를 입힌 Fantasy Glass UI의 같은 화면입니다.</p>
       <div class="compare cut" id="cmp" style="--x:50%">
         <img src="/shots/celestial-live.webp" srcset="/shots/celestial-live-480.webp 480w, /shots/celestial-live-800.webp 800w, /shots/celestial-live-1600.webp 1600w, /shots/celestial-live.webp 2400w" sizes="(max-width: 1208px) 100vw, 1160px" width="2400" height="989" alt="Fantasy Glass UI를 적용한 화면" draggable="false" loading="lazy" decoding="async">
         <img src="/shots/plain-before.webp" srcset="/shots/plain-before-480.webp 480w, /shots/plain-before-800.webp 800w, /shots/plain-before-1600.webp 1600w, /shots/plain-before.webp 2400w" sizes="(max-width: 1208px) 100vw, 1160px" width="2400" height="989" alt="기본 인터페이스의 같은 화면" class="before" draggable="false" loading="lazy" decoding="async">
@@ -246,39 +347,54 @@ section.block + section.block::before { content: ""; position: absolute; top: -6
         <figcaption id="shot-cap">천상 테마의 전체 화면: 파티, 플레이어와 대상, 시전 바, 행동 단축바, 미니맵.</figcaption>
       </figure>
       <div class="thumbs" id="thumbs" role="group" aria-label="스크린샷 선택"></div>
-      <div class="pieces">
-        <div class="piece card">
-          <div class="demo"><div class="plate"><small><b>52</b>Angerclaw Grizzly</small><div class="bar" style="--v:64%"><div class="fill"></div></div></div></div>
-          <h3>자체 이름표</h3>
-          <p>검은 바탕 위의 자체 생명력 바, 색으로 구분한 레벨, 테두리에 빛나는 위협 수준.</p>
-        </div>
-        <div class="piece card">
-          <div class="demo"><div class="facet" aria-hidden="true"></div></div>
-          <h3>보석처럼 깎은 버튼</h3>
-          <p>행동 버튼과 가방 칸은 모서리가 깎이고, 재사용 대기시간 표시도 그 모양을 따릅니다.</p>
-        </div>
-        <div class="piece card">
-          <div class="demo"><div class="dmap" aria-hidden="true"></div></div>
-          <h3>다이아몬드 미니맵</h3>
-          <p>가는 테두리와 꼭짓점마다 별, 지역 이름과 좌표, 시계는 그대로.</p>
-        </div>
-        <div class="piece card">
-          <div class="demo"><div style="width:84%" class="glow"><div class="bar cast" style="--v:58%"><div class="fill"></div><div class="num">Greater Heal</div></div></div></div>
-          <h3>모든 바</h3>
-          <p>시전 바와 제작 바, 숨쉬기와 피로도, 타이머, 경험치, 평판, 토템.</p>
-        </div>
+    </div>
+  </section>
+
+  <section class="section" id="guide-gold" aria-labelledby="gg-h">
+    <div class="wrap">
+      <div class="eyebrow">13.0의 새 기능</div>
+      <h2 id="gg-h">경로를 계획하는 안내서, 그리고 팔 때를 아는 골드</h2>
+      <div class="gg">
+        <a class="card gg-card" href="/ko/guide-and-gold/">
+          <svg class="gg-art" viewBox="0 0 320 120" aria-hidden="true"><path class="gg-path" d="M24 92 C70 92 70 40 116 44 S170 96 214 74 S262 22 296 30"/><g class="gg-stops"><rect x="18" y="86" width="12" height="12" transform="rotate(45 24 92)"/><rect x="110" y="38" width="12" height="12" transform="rotate(45 116 44)"/><rect x="208" y="68" width="12" height="12" transform="rotate(45 214 74)"/></g><path class="gg-star" d="M296 18 l4 9 9 3 -9 3 -4 9 -4 -9 -9 -3 9 -3z"/></svg>
+          <h3>퀘스트 계획기</h3>
+          <p>지금 있는 곳에서부터 퀘스트 하나하나 경로를 계획합니다. 비행, 배, 귀환석까지 씁니다. 혼자 또는 친구와 함께 따라가세요.</p>
+          <p class="faint">Questie가 설치되어 있으면 Questie의 퀘스트도 읽습니다.</p>
+          <span class="more-link">작동 방식 <span aria-hidden="true">→</span></span>
+        </a>
+        <a class="card gg-card" href="/ko/guide-and-gold/">
+          <svg class="gg-art" viewBox="0 0 320 120" aria-hidden="true"><g class="gg-bars"><rect x="40" y="70" width="44" height="34"/><rect x="104" y="48" width="44" height="56"/><rect x="168" y="26" width="44" height="78"/></g><g class="gg-coins"><ellipse cx="262" cy="96" rx="26" ry="8"/><ellipse cx="262" cy="84" rx="26" ry="8"/><ellipse cx="262" cy="72" rx="26" ry="8"/></g></svg>
+          <h3>골드 도우미</h3>
+          <p>파밍, 채집, 제작, 판매로 골드를 버는 방법을 시간당 골드, 쉬움, 안전 순으로 보여 줍니다. 숫자마다 추정인지, 가격에서 나온 것인지, 직접 측정한 것인지 밝힙니다.</p>
+          <span class="more-link">작동 방식 <span aria-hidden="true">→</span></span>
+        </a>
       </div>
     </div>
   </section>
 
-  <section class="block" id="new">
+  <section class="section" id="families" aria-labelledby="fam-h">
     <div class="wrap">
-      <header>
-        <div class="eyebrow">새 소식</div>
-        <h2>최근 버전</h2>
-        <p class="lede">첫 버전부터 지금까지 모든 버전은 <a href=&quot;/changelog/&quot;>변경 내역 페이지</a>에 있습니다.</p>
-      </header>
-      <div class="news" id="news"></div>
+      <div class="head-row">
+        <h2 id="fam-h">세 계열, 116가지 테마</h2>
+        <a href="/ko/themes/">모든 테마 둘러보기 <span aria-hidden="true">→</span></a>
+      </div>
+      <div class="fams">
+        <figure><img src="/shots/glass-overview.webp" srcset="/shots/glass-overview-480.webp 480w, /shots/glass-overview-800.webp 800w, /shots/glass-overview-1600.webp 1600w, /shots/glass-overview.webp 2400w" sizes="(max-width: 700px) 100vw, 380px" width="2400" height="955" alt="유리 테마의 같은 화면." class="cut" loading="lazy" decoding="async"><figcaption><b>유리</b> <span class="faint">· 맑고 밝게</span></figcaption></figure>
+        <figure><img src="/shots/fantasy-overview.webp" srcset="/shots/fantasy-overview-480.webp 480w, /shots/fantasy-overview-800.webp 800w, /shots/fantasy-overview-1600.webp 1600w, /shots/fantasy-overview.webp 2400w" sizes="(max-width: 700px) 100vw, 380px" width="2400" height="955" alt="판타지 테마의 같은 화면." class="cut" loading="lazy" decoding="async"><figcaption><b>판타지</b> <span class="faint">· 조각과 금장</span></figcaption></figure>
+        <figure><img src="/shots/celestial-screen.webp" srcset="/shots/celestial-screen-480.webp 480w, /shots/celestial-screen-800.webp 800w, /shots/celestial-screen-1600.webp 1600w, /shots/celestial-screen.webp 2400w" sizes="(max-width: 700px) 100vw, 380px" width="2400" height="955" alt="천상 테마의 전체 화면: 파티, 플레이어와 대상, 시전 바, 행동 단축바, 미니맵." class="cut" loading="lazy" decoding="async"><figcaption><b>천상</b> <span class="faint">· 유리 너머의 밤하늘</span></figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="new" aria-labelledby="new-h">
+    <div class="wrap">
+      <div class="latest card">
+        <div>
+          <h2 id="new-h">최신 버전</h2>
+          <p class="dim"><b id="newv">13.0.0</b> · <a href="/ko/changelog/">전체 변경 기록</a> · <a href="/ko/roadmap/">로드맵</a></p>
+        </div>
+        <ul id="news"></ul>
+      </div>
     </div>
   </section>
 </main>
@@ -293,11 +409,13 @@ section.block + section.block::before { content: ""; position: absolute; top: -6
         <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/wiki">Wiki</a></li>
         <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/issues/new/choose">버그 신고</a></li>
         <li><a href="/ko/accessibility/">접근성</a></li>
+        <li><a href="/ko/press/">보도 자료</a></li>
+        <li><a href="/feed.xml" type="application/rss+xml">RSS</a></li>
       </ul>
     </div>
     <div class="foot-row">
       <span>연락처: <a href="mailto:email-forwarding@fantasyglassui.com">email-forwarding@fantasyglassui.com</a></span>
-      <p class="status"><span>버전 <b>12.4.1</b></span><span class="sep" aria-hidden="true">·</span><span><time datetime="2026-11-25">2026-11-25</time> 업데이트</span><span class="sep" aria-hidden="true">·</span><span>WoW: Forever <b>1.60.1 (70938)</b> 기준으로 확인</span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">소스 코드</a></span></p>
+      <p class="status"><span>버전 <b>13.0.0</b></span><span class="sep" aria-hidden="true">·</span><span><time datetime="2026-11-26">2026-11-26</time> 업데이트</span><span class="sep" aria-hidden="true">·</span><span>WoW: Forever <b>1.60.1 (70938)</b> 기준으로 확인</span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">소스 코드</a></span></p>
     </div>
     <nav class="foot-row foot-langs" aria-label="언어"><ul><li><a href="/" hreflang="en" lang="en" data-code="en">English</a></li><li><a href="/de/" hreflang="de" lang="de" data-code="de">Deutsch</a></li><li><a href="/fr/" hreflang="fr" lang="fr" data-code="fr">Français</a></li><li><a href="/es/" hreflang="es" lang="es" data-code="es">Español</a></li><li><a href="/ru/" hreflang="ru" lang="ru" data-code="ru">Русский</a></li><li><a href="/pt/" hreflang="pt" lang="pt" data-code="pt">Português</a></li><li><a href="/it/" hreflang="it" lang="it" data-code="it">Italiano</a></li><li><a href="/ko/" hreflang="ko" lang="ko" data-code="ko" aria-current="true">한국어</a></li><li><a href="/zh/" hreflang="zh-Hans" lang="zh-Hans" data-code="zh">中文</a></li></ul></nav>
     <p class="trnote">이 페이지는 원어민 검토 없이 번역되었습니다. 수정 제안을 환영합니다.</p>
@@ -305,6 +423,6 @@ section.block + section.block::before { content: ""; position: absolute; top: -6
 </footer>
 <script src="/assets/site.js?v=2dd8abee61" defer></script>
 <script src="/assets/data.js?v=69c0402527" defer></script>
-<script src="/assets/home.js?v=4a1b39573d" defer></script>
+<script src="/assets/home.js?v=d5c6f14bff" defer></script>
 </body>
 </html>

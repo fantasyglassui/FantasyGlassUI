@@ -17,6 +17,7 @@
 <link rel="alternate" hreflang="zh-Hans" href="https://fantasyglassui.com/zh/accessibility/">
 <link rel="alternate" hreflang="x-default" href="https://fantasyglassui.com/accessibility/">
 <link rel="icon" type="image/png" href="/icon.png">
+<link rel="alternate" type="application/rss+xml" title="Fantasy Glass UI releases" href="/feed.xml">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Fantasy Glass UI">
 <meta property="og:locale" content="ko_KR">
@@ -42,11 +43,7 @@
 <meta name="theme-color" content="#12141a" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f4f5f8" media="(prefers-color-scheme: light)">
 <script>(function(){var d=document.documentElement;d.classList.add("js");try{var t=localStorage.getItem("fg-theme");if(t==="light"||t==="dark")d.setAttribute("data-theme",t)}catch(e){}var here="ko",page="accessibility/",to=here,q=location.search,h=location.hash;var m=/[?&]lang=([a-z]{2})\b/.exec(q);if(m){to=m[1];q=q.replace(/([?&])lang=[a-z]{2}&?/,"$1").replace(/[?&]$/,"")}else if(here==="en"){var c=null;try{c=localStorage.getItem("fg-lang")}catch(e){}if(!c)c=String(navigator.language||"en").slice(0,2).toLowerCase();to=c}if(["en", "de", "fr", "es", "ru", "pt", "it", "ko", "zh"].indexOf(to)<0)to=here;var u=(to==="en"?"/":"/"+to+"/")+page;if(u!==location.pathname||q!==location.search)location.replace(u+q+h)})();</script>
-<link rel="preload" href="/assets/marcellus.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap">
-<link rel="stylesheet" href="/assets/site.css?v=0338b00d2b">
+<link rel="stylesheet" href="/assets/site.css?v=9495293704">
 <style>
 /* Accessibility: what the add-on does, need by need. */
 .page-head .lede { color: var(--text); font-size: 1.2rem; margin: 0 0 12px; }
@@ -65,6 +62,8 @@ nav.jump a:hover { border-color: var(--frost); }
 .honest { border-left: 3px solid var(--gold); padding: 4px 0 4px 18px; margin: 34px 0 0; color: var(--dim); }
 .honest h2 { font-size: 1.5rem; margin-bottom: 8px; }
 @media (max-width: 560px) { .need { padding: 18px 16px 6px; } }
+.need.new { --c: color-mix(in srgb, var(--gold) 55%, var(--line)); }
+.need li code { font-size: .88em; }
 </style>
 </head>
 <body>
@@ -88,27 +87,25 @@ nav.jump a:hover { border-color: var(--frost); }
 <!-- Accessibility (W3). pages/accessibility/body.py; see site-src/PAGES.md. -->
 <div class="wrap narrow page-head">
   <h1>접근성</h1>
-  <p class="faint">이 페이지는 아직 영어로만 제공됩니다.</p>
-  <div lang="en">
-  <p class="lede">Fantasy Glass UI has accessibility built into every part of the interface: colors for each kind of color vision, high-contrast themes, lettering made to be read, captions, reading aloud, safe flashing, and keys for one hand. All of it is free, and every part can be switched on or off.</p>
-  <p class="start">In the game: <code>/fgui access</code> opens the Accessibility settings, and the first-time setup has a Comfort step. Version 12.4.1.</p>
-  </div>
+  <p class="lede">Fantasy Glass UI는 인터페이스 곳곳에 접근성을 담았습니다: 색각 유형별 색상, 고대비 테마, 읽기 쉬운 글꼴, 자막, 소리 내어 읽기, 안전한 깜빡임, 한 손 키 배치. 모두 무료이며 하나하나 켜고 끌 수 있습니다.</p>
+  <p class="start">게임 안에서: <code>/fgui access</code>로 접근성 설정을 열 수 있고, 첫 설정에는 ‘편안함’ 단계가 있습니다. 버전 13.0.0.</p>
 </div>
-<div class="wrap narrow acc" lang="en">
-  <nav class="jump" aria-label="Needs"><a href="#seeing-color">Color vision</a><a href="#seeing-low">Low vision</a><a href="#reading">Reading aloud</a><a href="#hearing">Hearing</a><a href="#motion">Flashing and motion</a><a href="#hands">Hands and keys</a><a href="#calm">Focus and calm</a><a href="#share">Share it</a></nav>
+<div class="wrap narrow acc">
+  <nav class="jump" aria-label="필요별 안내"><a href="#seeing-color">색각</a><a href="#seeing-low">저시력</a><a href="#reading">소리 내어 읽기</a><a href="#hearing">청각</a><a href="#motion">깜빡임과 움직임</a><a href="#hands">손과 키</a><a href="#guide">경로 플래너와 골드</a><a href="#calm">집중과 차분함</a><a href="#share">공유하기</a></nav>
   <div id="needs">
-<section class="need card" id="seeing-color" aria-labelledby="h-seeing-color"><h2 id="h-seeing-color">Color vision</h2><p class="who">For red-green or blue-yellow color blindness, or seeing no color at all.</p><ul><li><b>Colors for your kind of color vision.</b> Red-green (blue and orange), blue-yellow (teal, pink and red), or no color at all, where brightness and marks carry the meaning.</li><li><b>Marks as well as colors.</b> Debuffs get a letter, item quality gets dots, and threat on nameplates gets a mark ("!" when it is slipping, "!!" when it is lost).</li></ul></section>
-<section class="need card" id="seeing-low" aria-labelledby="h-seeing-low"><h2 id="h-seeing-low">Low vision</h2><p class="who">For seeing the screen more easily.</p><ul><li><b>High-contrast themes.</b> Pure black panels, white lettering and the strongest rims, in all three families: glass, fantasy and celestial. One button picks the one for the family you use.</li><li><b>Lettering made to be read.</b> Readable (Atkinson Hyperlegible, made for low vision) and Dyslexia-friendly (OpenDyslexic). A thicker outline round every letter, and a dark band behind messages in the middle of the screen.</li><li><b>Bigger text and a bigger interface.</b> Text size and interface scale of their own, separate from the game's.</li><li><b>A ring round your target.</b> A thick outline, 1 to 8 pixels, round your target's nameplate, so it stands out in a crowd. A ring round the mouse pointer too.</li></ul></section>
-<section class="need card" id="reading" aria-labelledby="h-reading"><h2 id="h-reading">Reading aloud</h2><p class="who">For blind and low-vision players, and for anyone who would rather listen. In the game's own voice.</p><ul><li><b>Talk and quests read as they open.</b> What an NPC says and the choices it offers, a quest's text, its progress and its reward, and books and letters. The reading stops when you close the window.</li><li><b>What you point at.</b> When the mouse rests on something, its tooltip is read aloud. (The game's own screen narrator only works before you log in.)</li><li><b>A key that reads.</b> One key reads the tooltip under the mouse, the quest you are reading, or the last whisper.</li><li><b>Spoken alerts.</b> Ready checks, whispers, missing buffs, loss of control and your own alerts, said aloud.</li></ul></section>
-<section class="need card" id="hearing" aria-labelledby="h-hearing"><h2 id="h-hearing">Hearing</h2><p class="who">For deaf and hard-of-hearing players, and for playing with the sound off.</p><ul><li><b>Captions for sounds.</b> A line on screen, with a mark for its kind, for ready checks, whispers, queues, invites, duels, resurrections, summons, boss emotes, raid warnings, loot rolls, the aggro warning and your own alerts.</li></ul></section>
-<section class="need card" id="motion" aria-labelledby="h-motion"><h2 id="h-motion">Flashing and motion</h2><p class="who">For players sensitive to flashing light or movement.</p><ul><li><b>Safe flashing.</b> Nothing flashes more than three times a second, flashes are gentle, pulsing warnings hold still, and the game's red low-health flash is off.</li><li><b>Reduce motion.</b> No fades, pulses, gliding bars or camera drift: things appear and change at once.</li><li><b>A still sky.</b> The celestial themes keep their stars but hold still: no twinkling and no shooting stars, while everything else moves as usual.</li></ul></section>
-<section class="need card" id="hands" aria-labelledby="h-hands"><h2 id="h-hands">Hands and keys</h2><p class="who">For playing with one hand, or with the keyboard alone.</p><ul><li><b>Keys for one hand.</b> One button puts moving, jumping, targeting, interacting and the first action buttons round W, A, S and D for the left hand, or all on the number pad for the right. Another puts every key back as it was.</li><li><b>The game's windows by keyboard.</b> With an NPC's talk, a quest, a vendor, the mailbox, loot, a trainer, a flight master or a question box open, Tab moves from button to button and Enter presses it, with a ring to show where you are and each choice said aloud if you like.</li><li><b>The settings by keyboard.</b> Tab and the arrow keys go from setting to setting, Space switches one, Left and Right move a slider.</li><li><b>Bigger controls.</b> Larger switches in the settings, and "click twice" buttons wait ten seconds for the second click.</li></ul></section>
-<section class="need card" id="calm" aria-labelledby="h-calm"><h2 id="h-calm">Focus and calm</h2><p class="who">For a quieter screen.</p><ul><li><b>Calm mode.</b> One notification at a time, held for fifteen seconds and put away with a click, and messages that stay up longer.</li><li><b>A wait before tooltips.</b> Tooltips show only when the mouse rests a moment, so sweeping across the screen does not throw one up after another.</li></ul></section>
-<section class="need card" id="share" aria-labelledby="h-share"><h2 id="h-share">Share it</h2><p class="who">For helping a friend, or setting up a new character.</p><ul><li><b>One line of text.</b> All your accessibility settings as one line to copy, keep or give to someone; pasting it back sets them all at once.</li><li><b>A Comfort step in the setup.</b> The first-time setup has a step for seeing, hearing and calm, so it is ready before you play.</li></ul></section>
+<section class="need card" id="seeing-color" aria-labelledby="h-seeing-color"><h2 id="h-seeing-color">색각</h2><p class="who">적록 색맹, 청황 색맹, 또는 색을 전혀 보지 못하는 경우.</p><ul><li><b>내 색각에 맞는 색상.</b> 적록(파랑과 주황), 청황(청록, 분홍, 빨강), 또는 색 없이 밝기와 표시로 뜻을 전하는 방식.</li><li><b>색과 함께 표시도.</b> 약화 효과에는 글자, 아이템 등급에는 점, 이름표의 위협 수준에는 표시가 붙습니다(빼앗기는 중이면 ‘!’, 잃으면 ‘!!’).</li></ul></section>
+<section class="need card" id="seeing-low" aria-labelledby="h-seeing-low"><h2 id="h-seeing-low">저시력</h2><p class="who">화면을 더 쉽게 보기 위해.</p><ul><li><b>고대비 테마.</b> 새까만 패널, 흰 글씨, 가장 진한 테두리를 유리, 판타지, 천상 세 계열 모두에. 버튼 하나로 쓰는 계열에 맞는 것을 고릅니다.</li><li><b>읽기 쉽게 만든 글꼴.</b> 읽기 쉬운 글꼴(저시력을 위해 만든 Atkinson Hyperlegible)과 난독증 친화 글꼴(OpenDyslexic). 글자마다 더 두꺼운 외곽선, 화면 가운데 메시지 뒤의 어두운 띠.</li><li><b>더 큰 글씨, 더 큰 인터페이스.</b> 게임과 별도로 정하는 글씨 크기와 인터페이스 배율.</li><li><b>대상 둘레의 고리.</b> 대상 이름표 둘레에 1~8픽셀 두께의 외곽선을 둘러 사람들 속에서도 눈에 띄게. 마우스 포인터 둘레의 고리도.</li></ul></section>
+<section class="need card" id="reading" aria-labelledby="h-reading"><h2 id="h-reading">소리 내어 읽기</h2><p class="who">시각 장애인과 저시력 플레이어, 듣는 편이 좋은 누구에게나. 게임 자체의 음성으로.</p><ul><li><b>대화와 퀘스트를 열 때 읽어 주기.</b> NPC가 하는 말과 고를 수 있는 선택지, 퀘스트 내용과 진행 상황, 보상, 책과 편지. 창을 닫으면 읽기를 멈춥니다.</li><li><b>가리키는 것.</b> 마우스를 무언가에 올려 두면 툴팁을 읽어 줍니다. (게임 자체의 화면 낭독기는 접속 전에만 작동합니다.)</li><li><b>읽어 주는 키.</b> 키 하나로 마우스 아래 툴팁, 읽고 있는 퀘스트, 마지막 귓속말을 읽습니다.</li><li><b>음성 알림.</b> 준비 확인, 귓속말, 빠진 강화 효과, 제어 불가, 내가 만든 알림을 소리로.</li></ul></section>
+<section class="need card" id="hearing" aria-labelledby="h-hearing"><h2 id="h-hearing">청각</h2><p class="who">청각 장애인과 난청 플레이어, 소리를 끄고 하는 플레이를 위해.</p><ul><li><b>소리 자막.</b> 준비 확인, 귓속말, 대기열, 초대, 결투, 부활, 소환, 우두머리 감정 표현, 공격대 경보, 전리품 주사위, 어그로 경고, 내가 만든 알림을 종류 표시와 함께 화면에 한 줄로.</li></ul></section>
+<section class="need card" id="motion" aria-labelledby="h-motion"><h2 id="h-motion">깜빡임과 움직임</h2><p class="who">깜빡이는 빛이나 움직임에 민감한 플레이어를 위해.</p><ul><li><b>안전한 깜빡임.</b> 초당 세 번 넘게 깜빡이는 것이 없고, 번쩍임은 부드럽고, 고동치는 경고는 멈춰 있으며, 생명력이 낮을 때의 게임 붉은 번쩍임은 꺼집니다.</li><li><b>움직임 줄이기.</b> 서서히 사라짐, 고동침, 미끄러지는 바, 카메라 흔들림 없이 모든 것이 즉시 나타나고 바뀝니다.</li><li><b>멈춰 있는 하늘.</b> 천상 테마는 별을 그대로 두되 멈춰 둡니다: 반짝임도 별똥별도 없고, 나머지는 평소처럼 움직입니다.</li></ul></section>
+<section class="need card" id="hands" aria-labelledby="h-hands"><h2 id="h-hands">손과 키</h2><p class="who">한 손으로, 또는 키보드만으로 플레이하기 위해.</p><ul><li><b>한 손 키 배치.</b> 버튼 하나로 이동, 점프, 대상 선택, 상호작용, 첫 행동 버튼을 왼손용 W, A, S, D 주변에, 또는 오른손용 숫자 키패드에 모두 배치합니다. 다른 버튼으로 모든 키를 원래대로 돌립니다.</li><li><b>키보드로 게임 창 다루기.</b> NPC 대화, 퀘스트, 상인, 우체통, 전리품, 상급자, 비행 조련사, 질문 창이 열려 있으면 Tab으로 버튼 사이를 옮기고 Enter로 누릅니다. 고리가 현재 위치를 보여 주고, 원하면 선택지마다 읽어 줍니다.</li><li><b>키보드로 설정 다루기.</b> Tab과 화살표 키로 설정 사이를 옮기고, Space로 켜고 끄며, 왼쪽과 오른쪽으로 슬라이더를 움직입니다.</li><li><b>큰 컨트롤.</b> 설정의 스위치가 더 커지고, ‘두 번 클릭’ 버튼은 두 번째 클릭을 10초 동안 기다립니다.</li></ul></section>
+<section class="need card new" id="guide" aria-labelledby="h-guide"><h2 id="h-guide">경로 플래너와 골드</h2><p class="who">13.0의 새 기능: 나에게 맞는 방식으로 경로를 따라가고 골드 벌기.</p><ul><li><b>키보드로 플래너 다루기.</b> <b>키보드로 설정 이동</b>을 켜면 Tab과 화살표 키로 플래너 창을 돌아다니고, Space나 Enter로 버튼이나 스위치를 누르며, 왼쪽과 오른쪽으로 선택지나 슬라이더를 바꿉니다. 전투 중에는 모든 키가 게임으로 돌아갑니다.</li><li><b>경로용 키.</b> 다음 단계, 단계 건너뛰기, 다시 계획을 게임의 단축키 설정에서 각각 키로 지정할 수 있어 마우스 없이도 경로를 따라갈 수 있습니다.</li><li><b>경로를 소리로.</b> <b>대화와 퀘스트 소리 내어 읽기</b>를 켜면 새 단계에 닿을 때마다 읽어 줍니다. 처음 둘러보기와 함께 계획하자는 친구의 질문도 읽어 줍니다.</li><li><b>내 눈에 맞는 색.</b> 플래너의 목록은 테마와 색각 설정에서 색을 가져옵니다. 판매 힌트는 지금 판매, 보관, 상인에게 판매를 글로도 알려 주므로 색이 유일한 신호가 되지 않습니다.</li><li><b>더 큰 버튼.</b> <b>설정 창의 큰 컨트롤</b>을 켜면 플래너 창, 안내서 패널과 그 메뉴의 버튼도 더 커집니다.</li><li><b>건너뛸 수 있는 둘러보기.</b> 처음에는 짧은 네 쪽이 플래너를 설명합니다. ‘건너뛰기’로 바로 닫을 수 있고, 왼쪽, 오른쪽, Enter, Esc도 쓸 수 있으며, <b>플래너 사용법</b>으로 다시 엽니다.</li><li><b>화살표를 내 방식대로.</b> 플래너 창의 <b>중지</b>는 다시 계획할 때까지 경로와 화살표를 치웁니다. <code>/fgui move</code>로 화살표를 옮길 수 있고, TomTom의 화살표로 바꿀 수도 있으며, <b>움직임 줄이기</b>를 켜면 도착할 때 고동치지 않습니다.</li><li><b>휴식.</b> <b>멈추기 좋은 곳에서 휴식을 알려 주기</b>를 켜면, 1~3시간 중 고른 만큼 오래 플레이한 뒤 멈추기 좋은 곳에 닿았을 때 경로가 알려 줍니다.</li></ul></section>
+<section class="need card" id="calm" aria-labelledby="h-calm"><h2 id="h-calm">집중과 차분함</h2><p class="who">더 차분한 화면을 위해.</p><ul><li><b>차분한 모드.</b> 알림은 한 번에 하나씩, 15초 동안 머물고 클릭하면 사라지며, 메시지는 더 오래 남습니다.</li><li><b>툴팁 전 잠깐 기다리기.</b> 마우스가 잠시 멈춰야 툴팁이 나오므로, 화면을 훑어도 툴팁이 줄줄이 뜨지 않습니다.</li></ul></section>
+<section class="need card" id="share" aria-labelledby="h-share"><h2 id="h-share">공유하기</h2><p class="who">친구를 돕거나 새 캐릭터를 설정할 때.</p><ul><li><b>한 줄의 텍스트.</b> 모든 접근성 설정을 복사하고 보관하고 남에게 줄 수 있는 한 줄로. 다시 붙여 넣으면 한 번에 모두 적용됩니다.</li><li><b>설정의 ‘편안함’ 단계.</b> 첫 설정에 보기, 듣기, 차분함 단계가 있어 플레이 전에 준비를 마칠 수 있습니다.</li></ul></section>
   </div>
-  <section class="honest">
-    <h2>What it does not do (yet)</h2>
-    <p>It is not a screen reader: reading aloud covers talk, quests, books, tooltips, whispers and the buttons of the game's main windows, but not every part of every window. The two readable lettering styles have Western European letters only. Reading aloud uses the voices your computer gives the game. Ideas and problems are welcome on <a href="https://discord.gg/qeSMwQWyPR">Discord</a>.</p>
+  <section class="honest" aria-labelledby="h-honest">
+    <h2 id="h-honest">(아직) 하지 못하는 것</h2>
+    <p>화면 낭독기는 아닙니다: 소리 내어 읽기는 대화, 퀘스트, 책, 툴팁, 귓속말, 게임 주요 창의 버튼을 다루지만 모든 창의 모든 부분은 아닙니다. 골드 창에는 아직 전용 키가 없고, 소리 내어 읽어 주지 않습니다. 읽기 쉬운 두 글꼴은 서유럽 문자만 지원합니다. 소리 내어 읽기는 컴퓨터가 게임에 제공하는 음성을 씁니다. 아이디어와 문제는 <a href=&quot;https://discord.gg/qeSMwQWyPR&quot;>Discord</a>에 알려 주세요.</p>
   </section>
 </div>
 </main>
@@ -123,11 +120,13 @@ nav.jump a:hover { border-color: var(--frost); }
         <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/wiki">Wiki</a></li>
         <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/issues/new/choose">버그 신고</a></li>
         <li><a href="/ko/accessibility/">접근성</a></li>
+        <li><a href="/ko/press/">보도 자료</a></li>
+        <li><a href="/feed.xml" type="application/rss+xml">RSS</a></li>
       </ul>
     </div>
     <div class="foot-row">
       <span>연락처: <a href="mailto:email-forwarding@fantasyglassui.com">email-forwarding@fantasyglassui.com</a></span>
-      <p class="status"><span>버전 <b>12.4.1</b></span><span class="sep" aria-hidden="true">·</span><span><time datetime="2026-11-25">2026-11-25</time> 업데이트</span><span class="sep" aria-hidden="true">·</span><span>WoW: Forever <b>1.60.1 (70938)</b> 기준으로 확인</span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">소스 코드</a></span></p>
+      <p class="status"><span>버전 <b>13.0.0</b></span><span class="sep" aria-hidden="true">·</span><span><time datetime="2026-11-26">2026-11-26</time> 업데이트</span><span class="sep" aria-hidden="true">·</span><span>WoW: Forever <b>1.60.1 (70938)</b> 기준으로 확인</span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">소스 코드</a></span></p>
     </div>
     <nav class="foot-row foot-langs" aria-label="언어"><ul><li><a href="/accessibility/" hreflang="en" lang="en" data-code="en">English</a></li><li><a href="/de/accessibility/" hreflang="de" lang="de" data-code="de">Deutsch</a></li><li><a href="/fr/accessibility/" hreflang="fr" lang="fr" data-code="fr">Français</a></li><li><a href="/es/accessibility/" hreflang="es" lang="es" data-code="es">Español</a></li><li><a href="/ru/accessibility/" hreflang="ru" lang="ru" data-code="ru">Русский</a></li><li><a href="/pt/accessibility/" hreflang="pt" lang="pt" data-code="pt">Português</a></li><li><a href="/it/accessibility/" hreflang="it" lang="it" data-code="it">Italiano</a></li><li><a href="/ko/accessibility/" hreflang="ko" lang="ko" data-code="ko" aria-current="true">한국어</a></li><li><a href="/zh/accessibility/" hreflang="zh-Hans" lang="zh-Hans" data-code="zh">中文</a></li></ul></nav>
     <p class="trnote">이 페이지는 원어민 검토 없이 번역되었습니다. 수정 제안을 환영합니다.</p>
