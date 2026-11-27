@@ -65,7 +65,8 @@ Guide and Gold: quest guides, a route planner and ways to make gold, for everyon
 - **Plan with a friend**, in the panel's "..." menu or with `/fgui guide duo`: two players with Fantasy
   Glass UI get one route that suits you both, with the same quests in the same order.
 - Your friend is asked first, and can say no. Turn off "Let friends ask to plan with you" if you would
-  rather not be asked.
+  rather not be asked. Only your friends (in the game or on Battle.net), your guild and your group can
+  ask you, each at most once in 5 minutes.
 - Each panel says where the other player is: on this step, some steps behind, or done. On a hand-in
   or a flight, it says to wait for them.
 - Inside an instance, planning together pauses, and it carries on when you leave.
@@ -83,12 +84,13 @@ Guide and Gold: quest guides, a route planner and ways to make gold, for everyon
   - where to gather herbs and ore
   - what to craft for a profit
 - Each idea says how much gold an hour it makes, how sure that is, and how much effort it takes.
-- The **Gold**, **Ease** and **Safety** sliders, or the Most gold, Easy money and Safe choices, set
-  how the ideas are ranked.
+- The **Gold an hour**, **Ease** and **Safety** sliders, or the **Most gold**, **Easy money** and
+  **Safe** presets, set how the ideas are ranked.
 - **Save for** a goal (Riding at 40, Epic riding at 60, or an amount of your own), and the window
   says how long it will take.
 - At the auction house, **Gold ideas here** sits beside it, with auction flips. A risky flip says "A
-  gamble".
+  gamble". Opening the auction house loads the gold folder for it; **Gold ideas at the auction house**
+  (Bags and items › Gold and farming in the settings) switches the panel off.
 - It learns as you play: what merchants sell, what monsters drop, what gathering gives and the
   recipes you know.
 - **Go** plans the trip, with flights, the hearthstone and boats, and puts it on the guide panel. Your
@@ -97,8 +99,9 @@ Guide and Gold: quest guides, a route planner and ways to make gold, for everyon
 
 **Changed: the add-on is five folders**
 - The planner and the gold ideas are in two new folders, `FantasyGlassUI_Planner` and
-  `FantasyGlassUI_Gold`. The game loads each one only the first time you use it, so they cost no
-  memory until then.
+  `FantasyGlassUI_Gold`. The planner loads the first time you use it. The gold folder loads the
+  first time you use it or open the auction house (switch off **Gold ideas at the auction house** and
+  only using it loads it). Until then, neither costs any memory.
 - Keep all five folders side by side in `Interface/AddOns`, and leave them enabled. The CurseForge app
   does this for you.
 

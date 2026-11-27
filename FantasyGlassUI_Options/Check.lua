@@ -210,7 +210,13 @@ function ns:SelfCheck(quiet)
     end
     do
         local gs = ns.GuideState and ns.GuideState()
-        add("Quest guide: " .. (ns.db.questGuide == false and "off" or (gs and ("following \"" .. tostring(gs.name) .. "\", step " .. tostring(gs.at)) or "on, not following one"))
+        local following = gs and gs.name                       -- (the plan and a trip have hidden names: their words instead)
+        if gs and following == ns.GUIDE_PLANNED then following = "Plan my route"
+        elseif gs and following == ns.GUIDE_TRIP then
+            local title = type(gs.trip) == "table" and gs.trip.title
+            following = "trip: " .. ((type(title) == "string" and not ns:IsSecret(title)) and title or "?")
+        end
+        add("Quest guide: " .. (ns.db.questGuide == false and "off" or (gs and ("following \"" .. tostring(following) .. "\", step " .. tostring(gs.at)) or "on, not following one"))
             .. "; guides saved: " .. (ns.GuideNames and #ns:GuideNames() or 0) .. (ns.guideRecording and "; recording" or ""))
     end
     -- 10.0.0

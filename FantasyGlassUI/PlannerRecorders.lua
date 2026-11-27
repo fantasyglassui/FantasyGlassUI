@@ -1345,6 +1345,79 @@ end
 ns.PLANNER_DUO_PREFIX = "FGUIPlan"
 local DUO_PREFIX, DUO_MAX_BYTES, ASK_HELD = ns.PLANNER_DUO_PREFIX, 255, 60
 
+-- Who may ask you to plan together: a friend (your friends list, or a Battle.net friend playing that character),
+-- a guildmate, or someone in your group. Anyone else's ask is dropped without a word.
+do
+    local function Short(name) return (type(name) == "string" and name:match("^([^%-]+)")) or name end
+    local function SameName(a, b)
+        if type(a) ~= "string" or type(b) ~= "string" or ns:IsSecret(a) or ns:IsSecret(b) or a == "" or b == "" then return false end
+        a, b = a:lower(), b:lower()
+        if a == b then return true end
+        if a:find("-", 1, true) and b:find("-", 1, true) then return false end   -- (both with a realm, and not the same)
+        return Short(a) == Short(b)
+    end
+    local function Call(f, ...)
+        if type(f) ~= "function" then return nil end
+        local ok, a, b = pcall(f, ...)
+        if ok then return a, b end
+    end
+    local function InMyGroup(sender)
+        local n = Call(GetNumGroupMembers)
+        if ns:IsSecret(n) or type(n) ~= "number" or n < 1 then return false end
+        local raid = ns.Yes(Call(IsInRaid))
+        for i = 1, math.min(n, 40) do
+            local unit = raid and ("raid" .. i) or ("party" .. i)
+            local name, realm = Call(UnitName, unit)
+            if type(name) == "string" and not ns:IsSecret(name) and not ns:IsSecret(realm) then
+                local full = (type(realm) == "string" and realm ~= "") and (name .. "-" .. realm) or name
+                if SameName(full, sender) or SameName(name, sender) then return true end
+            end
+        end
+        return false
+    end
+    local function BattleNetFriend(sender)
+        local bn = C_BattleNet
+        if type(bn) ~= "table" or type(bn.GetFriendAccountInfo) ~= "function" or type(BNGetNumFriends) ~= "function" then return false end
+        local n = Call(BNGetNumFriends)
+        if ns:IsSecret(n) or type(n) ~= "number" then return false end
+        for i = 1, math.min(n, 200) do
+            local info = Call(bn.GetFriendAccountInfo, i)
+            local game = type(info) == "table" and info.gameAccountInfo
+            local name = type(game) == "table" and game.characterName
+            if type(name) == "string" and not ns:IsSecret(name) then
+                local realm = game.realmName
+                local full = (type(realm) == "string" and not ns:IsSecret(realm) and realm ~= "") and (name .. "-" .. realm:gsub("%s", "")) or name
+                if SameName(full, sender) then return true end
+            end
+        end
+        return false
+    end
+    function ns.PlannerDuoKnown(sender)
+        if type(sender) ~= "string" or ns:IsSecret(sender) or sender == "" then return false end
+        if InMyGroup(sender) then return true end
+        if ns.IsKnownPerson and ns:IsKnownPerson(sender) then return true end   -- (the friends list and the guild, by name)
+        return BattleNetFriend(sender)
+    end
+    -- One ask per sender every 5 minutes; the rest are dropped without a word. `peek`: only look (the main add-on,
+    -- before the folder is loaded, which then counts the ask itself).
+    ns.PLANNER_DUO_ASK_EVERY = 300
+    local askedAt, askedCount = {}, 0
+    function ns.PlannerDuoAskAllowed(sender, peek)
+        if not ns.PlannerDuoKnown(sender) then return false end
+        local ok, now = pcall(GetTime)
+        now = (ok and type(now) == "number" and not ns:IsSecret(now)) and now or 0
+        local who = sender:lower()
+        local last = askedAt[who]
+        if last and now >= last and now - last < ns.PLANNER_DUO_ASK_EVERY then return false end
+        if not peek then
+            if askedCount >= 100 then askedAt, askedCount = {}, 0 end
+            askedAt[who], askedCount = now, askedCount + 1
+        end
+        return true
+    end
+    function ns.PlannerDuoAskReset() askedAt, askedCount = {}, 0 end   -- (the tests)
+end
+
 local registered = false
 local AskListen                                  -- (below: CHAT_MSG_ADDON, only while the folder is not loaded)
 -- The prefix, registered once, at login.
@@ -1388,11 +1461,13 @@ do
         if event ~= "CHAT_MSG_ADDON" then return end
         if ns.folderReady.planner then AskListen(false); return end     -- (the folder hears its own)
         if ns.db and ns.db.plannerDuoAsk == false then return end
+        if not ns:GuideOn() then return end                          -- (quest guides off: the ask is not heard, and nothing loads)
         if ns:IsSecret(prefix) or ns:IsSecret(msg) or ns:IsSecret(channel) or ns:IsSecret(sender) then return end
         if type(prefix) ~= "string" or type(msg) ~= "string" or type(channel) ~= "string" or type(sender) ~= "string" or sender == "" then return end
         if prefix ~= DUO_PREFIX or channel ~= "WHISPER" or #msg > DUO_MAX_BYTES then return end
         local session = msg:match("^D1:ASK:(%x+):%d+$")
         if not (session and #session >= 4 and #session <= 8) then return end
+        if not ns.PlannerDuoAskAllowed(sender, true) then return end  -- (not a friend, guildmate or group member, or asked lately)
         if InCombatLockdown() then
             local now = Now()
             if now then held = { prefix, msg, channel, sender, at = now } end

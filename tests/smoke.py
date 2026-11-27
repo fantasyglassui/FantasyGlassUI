@@ -881,6 +881,10 @@ end
 --  them would, as a player's clicks do. "folders: nothing loads until it is asked for" puts the loader back.)
 local realLoadFolder = ns.LoadFolder
 ns.LoadFolder = function() return false end
+-- (The duo tests ask from players the harness does not know as friends, guildmates or group members: the real
+--  check, ns.PlannerDuoAskAllowed, has its own test, "13.0 fix I4 and M4".)
+local realDuoAskAllowed = ns.PlannerDuoAskAllowed
+ns.PlannerDuoAskAllowed = function() return true end
 for _, role in ipairs({ "DAMAGE", "TANK", "HEALER" }) do
     ns:SetRole(role)
     fire()
@@ -10088,10 +10092,10 @@ try("folders: a folder that will not load", function()
         clock = clock + 5
         ns:LoadFolder("test")
         if #said ~= 1 then error("a second try within 10 s is silent") end
-        -- disabled: switched on, then loaded
+        -- disabled: the player's choice, left as it is (13.0 fix I1): not switched on, not loaded
         Fresh(); loads, enabled = 0, 0
         answer = function(n) if n == 1 then return false, "DISABLED" end ns.FolderFileDone("test", "A.lua"); ns.FolderFileDone("test", "B.lua"); return true end
-        if not ns:LoadFolder("test") or enabled ~= 1 or loads ~= 2 or ns.folderReady.test ~= true then error("disabled: switched on and loaded") end
+        if ns:LoadFolder("test") or enabled ~= 0 or loads ~= 1 or ns.folderReady.test then error("disabled: left switched off, and not loaded") end
         -- one file stopped part way
         Fresh({ "A.lua", "C.lua" }); loads = 0
         answer = function() ns.FolderFileDone("test", "A.lua"); return true end
@@ -26059,6 +26063,241 @@ end)
 -- keep and ids tests C (settings keys): end
 -- folders tests together: begin
 -- folders tests together: end
+-- release 13 fix tests: begin
+try("13.0 fix C1: the route editor on the plan or a trip saves a guide of its own, and hidden names heal", function()
+    local key = ns:CharKey()
+    local keep = { guides = ns.root.guides, state = ns.root.guideState }
+    local ok, err = pcall(function()
+        local function Handler(obj, name) for i = #handlers, 1, -1 do local h = handlers[i]; if h.self == obj and h.name == name then return h.fn end end end
+        local function Click(b) local f = Handler(b, "OnClick"); if not f then error("nothing to click") end; f(b, "LeftButton") end
+        local function NoHidden() for name in pairs(ns.root.guides or {}) do if type(name) == "string" and name:sub(1, 1) == "\1" then error("a guide saved under a hidden name") end end end
+        -- GuideSave refuses a hidden name, whoever asks (the route editor, the text editor, the recorder)
+        ns.root.guides, ns.root.guideState = {}, {}
+        local saved, why = ns:GuideSave({ name = ns.GUIDE_PLANNED, steps = {} })
+        if saved or why ~= "Give the guide a name of its own." then error("GuideSave refuses the plan's name, saying why: " .. tostring(why)) end
+        if ns:GuideSave({ name = ns.GUIDE_TRIP, steps = {} }) or ns:GuideSave({ name = "\1other", steps = {} }) then error("any name starting with \\1 is refused") end
+        NoHidden()
+        -- following the plan: Edit the route, delete a step, Save
+        local plan = { name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "one" }, { kind = "note", text = "two" }, { kind = "note", text = "three" } } }
+        ns.root.guideState = { [key] = { name = ns.GUIDE_PLANNED, at = 1, ticked = {}, plan = plan } }
+        local win = ns:GuideRouteEditor()
+        if not win then error("the editor opens on the plan") end
+        local said = {}
+        rawset(win.msg, "SetText", function(_, t) said[#said + 1] = tostring(t) end)
+        if not win.saveAs then error("on the plan the editor offers Save as guide") end
+        ns.routeEditorTest.pick(2)
+        Click(win.buttons.del)
+        Click(win.buttons.follow); Click(win.buttons.text)        -- (hidden on the plan; and a click does nothing)
+        NoHidden()
+        Click(win.buttons.save)
+        NoHidden()
+        local copy = ns.root.guides["Planned route"]
+        if not (copy and #copy.steps == 2 and copy.steps[2].text == "three") then error("the edit is kept as a guide of its own, \"Planned route\"") end
+        if #plan.steps ~= 3 or ns.root.guideState[key].name ~= ns.GUIDE_PLANNED then error("the route you follow is left as it is") end
+        local last = said[#said] or ""
+        if last:find("Saved: ", 1, true) or not last:find("Planned route", 1, true) then error("the message names the new guide, not a plain Saved: " .. last) end
+        if win.saveAs then error("saved: the editor now edits that guide") end
+        -- once more on the plan: a second name, the first is not overwritten
+        win = ns:GuideRouteEditor()
+        rawset(win.msg, "SetText", function(_, t) said[#said + 1] = tostring(t) end)
+        Click(win.buttons.save)
+        if not (ns.root.guides["Planned route (2)"] and #ns.root.guides["Planned route"].steps == 2) then error("a second copy: Planned route (2)") end
+        -- a trip: named after the trip
+        ns.root.guideState = { [key] = { name = ns.GUIDE_TRIP, at = 1, ticked = {}, trip = { name = ns.GUIDE_TRIP, title = "Gather Peacebloom", steps = { { kind = "note", text = "go" } } } } }
+        win = ns:GuideRouteEditor()
+        rawset(win.msg, "SetText", function(_, t) said[#said + 1] = tostring(t) end)
+        Click(win.buttons.save)
+        NoHidden()
+        if not ns.root.guides["Gather Peacebloom"] then error("a trip's edit is saved under the trip's title") end
+        -- records from before: listed nowhere, the list opens, and the login clears them
+        ns.root.guideState = {}
+        ns.root.guides = { ["\1planned"] = { name = "\1planned", steps = { { kind = "note", text = "x" } } }, ["\1trip"] = { name = "\1trip", steps = {} },
+                           Good = { name = "Good", steps = {} }, Odd = true }
+        for _, name in ipairs(ns:GuideNames()) do
+            if name:sub(1, 1) == "\1" or name == "Odd" then error("GuideNames skips hidden names and broken records: " .. name) end
+        end
+        local okList, errList = pcall(ns.GuideList, ns)
+        if not okList then error("the Guides list opens: " .. tostring(errList)) end
+        fireEvent("PLAYER_LOGIN")
+        if ns.root.guides["\1planned"] or ns.root.guides["\1trip"] or not ns.root.guides.Good then error("the login clears the hidden records, and only those") end
+        if ns.GuideForgetHidden() ~= 0 then error("nothing left to clear") end
+        win:Hide()
+    end)
+    ns.root.guides, ns.root.guideState = keep.guides, keep.state
+    if not ok then error(err, 0) end
+end)
+try("13.0 fix I1: an automatic load never switches a folder on, and says nothing", function()
+    local keep = { load = rawget(env.C_AddOns, "LoadAddOn"), enable = rawget(env.C_AddOns, "EnableAddOn"), time = env.GetTime, raw = ns.PrintRaw }
+    local said, loads, enabled, answer, clock = {}, 0, 0, nil, 9000
+    local ok, err = pcall(function()
+        env.GetTime = function() return clock end
+        ns.PrintRaw = function(_, t) said[#said + 1] = tostring(t) end
+        local function Fresh()
+            ns.FOLDERS.test = { addon = "FantasyGlassUI_Test", files = { "Z13.lua" }, broken = "Test could not start.",
+                missing = "Test could not be opened (%s): FantasyGlassUI_Test.", disabled = "Test is switched off: tick it in the AddOns list." }
+            ns.folderReady.test, ns.folderBroken.test = nil, nil
+            said, loads, enabled = {}, 0, 0
+            clock = clock + 60
+        end
+        rawset(env.C_AddOns, "LoadAddOn", function(name) if name ~= "FantasyGlassUI_Test" then return keep.load(name) end; loads = loads + 1; return answer(loads) end)
+        rawset(env.C_AddOns, "EnableAddOn", function(name) if name == "FantasyGlassUI_Test" then enabled = enabled + 1 end end)
+        answer = function() return false, "DISABLED" end
+        Fresh()
+        if ns:LoadFolder("test", true) or enabled ~= 0 or #said ~= 0 then error("disabled, automatic: not switched on, not loaded, nothing said") end
+        Fresh()
+        if ns:LoadFolder("test") or enabled ~= 0 then error("disabled, asked for: still not switched on") end
+        if #said ~= 1 or not said[1]:find("Test is switched off", 1, true) then error("asked for: one line saying it is switched off: " .. tostring(said[1])) end
+        answer = function() return false, "MISSING" end
+        Fresh()
+        if ns:LoadFolder("test", true) or #said ~= 0 then error("missing, automatic: nothing said") end
+        Fresh()
+        if ns:LoadFolder("test") or #said ~= 1 or not said[1]:find("FantasyGlassUI_Test", 1, true) then error("missing, asked for: one line: " .. tostring(said[1])) end
+        answer = function() return true end                        -- (Z13.lua never finished: broken)
+        Fresh()
+        if ns:LoadFolder("test", true) or #said ~= 0 then error("broken, automatic: nothing said") end
+        for _, k in ipairs({ "planner", "gold" }) do
+            local f = ns.FOLDERS[k]
+            if type(f.disabled) ~= "string" or not f.disabled:find(f.addon == "FantasyGlassUI_Gold" and "Fantasy Glass UI - gold" or "Fantasy Glass UI - planner", 1, true) then
+                error(k .. ": a line for a folder switched off, naming it as the AddOns list does") end
+            if ns:Tr(f.disabled) == f.disabled and ns.locales and ns.locales.deDE and not ns.locales.deDE[f.disabled] then error(k .. ": that line in every language") end
+        end
+    end)
+    ns.FOLDERS.test, ns.folderReady.test, ns.folderBroken.test = nil, nil, nil
+    env.GetTime, ns.PrintRaw = keep.time, keep.raw
+    rawset(env.C_AddOns, "LoadAddOn", keep.load); rawset(env.C_AddOns, "EnableAddOn", keep.enable)
+    if not ok then error(err, 0) end
+end)
+try("13.0 fix I2: Gold ideas at the auction house, a switch", function()
+    local keep = { show = ns.GoldAuctionShow, ready = ns.folderReady.gold, on = ns.db.goldAuctionPanel, combat = env.InCombatLockdown, panel = ns.goldPanel,
+        load = rawget(env.C_AddOns, "LoadAddOn") }
+    local shows, loads = 0, 0
+    local ok, err = pcall(function()
+        if ns.defaults.goldAuctionPanel ~= true then error("on by default") end
+        local found
+        for _, group in ipairs(ns.featureGroups) do for _, opt in ipairs(group[2]) do if opt[1] == "goldAuctionPanel" then found = opt[2] end end end
+        if found ~= "Gold ideas at the auction house" or not ns.featureDesc.goldAuctionPanel then error("a feature switch with its words: " .. tostring(found)) end
+        local placed = false
+        for _, k in ipairs(ns.featurePlace["Bags and items › Gold and farming"] or {}) do if k == "goldAuctionPanel" then placed = true end end
+        if not placed or not ns.featureInstant.goldAuctionPanel then error("beside farming in Gold and farming, and at once") end
+        ns.GoldAuctionShow = function() shows = shows + 1; return true end
+        rawset(env.C_AddOns, "LoadAddOn", function(name, ...) if name == "FantasyGlassUI_Gold" then loads = loads + 1 end; return keep.load(name, ...) end)
+        env.InCombatLockdown = function() return false end
+        ns.folderReady.gold = nil
+        ns.db.goldAuctionPanel = false
+        fireEvent("AUCTION_HOUSE_SHOW")
+        if shows ~= 0 or loads ~= 0 or ns.folderReady.gold then error("off: the auction house loads nothing and shows nothing") end
+        env.InCombatLockdown = function() return true end
+        fireEvent("AUCTION_HOUSE_CLOSED"); fireEvent("AUCTION_HOUSE_SHOW")
+        env.InCombatLockdown = function() return false end
+        fireEvent("PLAYER_REGEN_ENABLED")
+        if shows ~= 0 or loads ~= 0 then error("off: not after a fight either") end
+        local hidden = false
+        ns.goldPanel = { Hide = function() hidden = true end }
+        ns:GoldAuctionApplySwitch()
+        if not hidden then error("switched off: the panel goes") end
+        ns.db.goldAuctionPanel = true
+        ns:GoldAuctionApplySwitch()                                   -- (the auction house is still open)
+        if shows ~= 1 then error("switched on with the auction house open: the panel comes") end
+        fireEvent("AUCTION_HOUSE_CLOSED")
+        fireEvent("AUCTION_HOUSE_SHOW")
+        if shows ~= 2 then error("on: the panel at the auction house") end
+        fireEvent("AUCTION_HOUSE_CLOSED")
+    end)
+    ns.GoldAuctionShow, ns.folderReady.gold, ns.db.goldAuctionPanel, env.InCombatLockdown, ns.goldPanel = keep.show, keep.ready, keep.on, keep.combat, keep.panel
+    rawset(env.C_AddOns, "LoadAddOn", keep.load)
+    if not ok then error(err, 0) end
+end)
+try("13.0 fix I4 and M4: only friends, guildmates and your group may ask, once in 5 minutes", function()
+    local keep = { allowed = ns.PlannerDuoAskAllowed, members = env.GetNumGroupMembers, raid = env.IsInRaid, name = env.UnitName, friends = env.C_FriendList,
+        guildN = env.GetNumGuildMembers, guildR = env.GetGuildRosterInfo, bn = env.C_BattleNet, bnN = env.BNGetNumFriends, time = env.GetTime,
+        loadPlanner = ns.LoadPlanner, ready = ns.folderReady.planner, duoEvent = ns.PlannerDuoEvent, guide = ns.db.questGuide, ask = ns.db.plannerDuoAsk,
+        combat = env.InCombatLockdown, duo = ns.plannerDuo, send = ns.PlannerDuoSend }
+    local clock = 20000
+    local ok, err = pcall(function()
+        if type(realDuoAskAllowed) ~= "function" then error("ns.PlannerDuoAskAllowed is missing") end
+        ns.PlannerDuoAskAllowed = realDuoAskAllowed
+        ns.PlannerDuoAskReset()
+        env.GetTime = function() return clock end
+        env.InCombatLockdown = function() return false end
+        env.GetNumGroupMembers = function() return 0 end
+        env.IsInRaid = function() return false end
+        env.UnitName = function(u) if u == "player" then return "Me" end end
+        env.C_FriendList = { GetNumFriends = function() return 1 end, GetFriendInfoByIndex = function(i) if i == 1 then return { name = "Leo" } end end }
+        env.GetNumGuildMembers = function() return 1 end
+        env.GetGuildRosterInfo = function(i) if i == 1 then return "Kara-Realm" end end
+        env.BNGetNumFriends = function() return 1 end
+        env.C_BattleNet = { GetFriendAccountInfo = function(i) if i == 1 then return { gameAccountInfo = { characterName = "Bo", realmName = "Some Realm" } } end end }
+        local A = ns.PlannerDuoAskAllowed
+        if A("Stranger-Realm") then error("a stranger may not ask") end
+        if not A("Leo-Realm") then error("a friend may ask") end
+        if A("Leo-Realm") then error("but not again within 5 minutes") end
+        clock = clock + 299
+        if A("Leo-Realm") then error("not at 299 s") end
+        clock = clock + 2
+        if not A("Leo-Realm") then error("after 5 minutes: again") end
+        if not A("Kara-Realm") then error("a guildmate may ask") end
+        if not A("Bo-SomeRealm") then error("a Battle.net friend on that character may ask") end
+        if not A("Mira-Realm", true) or not A("Mira-Realm", true) then
+            env.GetNumGroupMembers = function() return 1 end
+            env.UnitName = function(u) if u == "party1" then return "Mira", "Realm" end if u == "player" then return "Me" end end
+            if not A("Mira-Realm", true) or not A("Mira-Realm", true) then error("someone in your group may ask; a peek does not count") end
+        else error("Mira is not in the group yet") end
+        if not A("Mira-Realm") or A("Mira-Realm") then error("the ask that counts, once") end
+        if A(setmetatable({ __secret = true }, secretmt)) or A("") or A(nil) then error("a hidden or empty sender: no") end
+        -- the main add-on's listener: a stranger's ask loads nothing; nor does any ask with quest guides off
+        local asked, handed = 0, 0
+        ns.folderReady.planner = nil
+        ns.LoadPlanner = function() asked = asked + 1; return false end
+        ns.db.plannerDuoAsk = nil
+        ns.PlannerDuoAskReset()
+        fireEvent("CHAT_MSG_ADDON", "FGUIPlan", "D1:ASK:ab12cd:14", "WHISPER", "Stranger-Realm")
+        if asked ~= 0 then error("a stranger's ask loads nothing") end
+        ns.db.questGuide = false
+        fireEvent("CHAT_MSG_ADDON", "FGUIPlan", "D1:ASK:ab12cd:14", "WHISPER", "Leo-Realm")
+        if asked ~= 0 then error("quest guides off: a friend's ask loads nothing") end
+        ns.db.questGuide = true
+        ns.PlannerDuoAskReset()                                       -- (the harness hands the event to the loaded folder's listener too, which counted it)
+        fireEvent("CHAT_MSG_ADDON", "FGUIPlan", "D1:ASK:ab12cd:14", "WHISPER", "Leo-Realm")
+        if asked ~= 1 then error("a friend's ask loads the planner: " .. asked) end
+        -- the folder's own listener: a stranger is not answered at all, a friend with asking off gets a plain no
+        ns.folderReady.planner = keep.ready
+        if keep.ready and keep.duoEvent then
+            local sends = {}
+            ns.plannerDuo = nil
+            ns.PlannerDuoSend = function(text, to) sends[#sends + 1] = tostring(text) .. " > " .. tostring(to); return true end
+            ns.db.plannerDuoAsk = false
+            ns.PlannerDuoAskReset()
+            keep.duoEvent("CHAT_MSG_ADDON", "FGUIPlan", "D1:ASK:fe01:20", "WHISPER", "Stranger-Realm")
+            if #sends ~= 0 then error("a stranger: nothing at all, not even a no: " .. table.concat(sends, ", ")) end
+            keep.duoEvent("CHAT_MSG_ADDON", "FGUIPlan", "D1:ASK:fe02:20", "WHISPER", "Leo-Realm")
+            if #sends ~= 1 or not sends[1]:find("D1:NO:fe02", 1, true) then error("a friend, asking off: a plain no: " .. table.concat(sends, ", ")) end
+            keep.duoEvent("CHAT_MSG_ADDON", "FGUIPlan", "D1:ASK:fe03:20", "WHISPER", "Leo-Realm")
+            if #sends ~= 1 then error("the same friend again within 5 minutes: dropped without a word") end
+        elseif not (sources["planner/PlannerDuo.lua"] or ""):find("PlannerDuoAskAllowed", 1, true) then error("the folder's listener checks who asks") end
+    end)
+    ns.PlannerDuoAskAllowed, env.GetNumGroupMembers, env.IsInRaid, env.UnitName, env.C_FriendList = keep.allowed, keep.members, keep.raid, keep.name, keep.friends
+    env.GetNumGuildMembers, env.GetGuildRosterInfo, env.C_BattleNet, env.BNGetNumFriends, env.GetTime = keep.guildN, keep.guildR, keep.bn, keep.bnN, keep.time
+    ns.LoadPlanner, ns.folderReady.planner, ns.db.questGuide, ns.db.plannerDuoAsk, env.InCombatLockdown = keep.loadPlanner, keep.ready, keep.guide, keep.ask, keep.combat
+    ns.plannerDuo, ns.PlannerDuoSend = keep.duo, keep.send
+    if ns.PlannerDuoAskReset then ns.PlannerDuoAskReset() end
+    if not ok then error(err, 0) end
+end)
+try("13.0 fix M3: /fgui check names the plan and a trip in words", function()
+    local key = ns:CharKey()
+    local keep = ns.root.guideState
+    local ok, err = pcall(function()
+        if not ns.SelfCheck then error("the self-check is not loaded") end
+        for _, case in ipairs({ { { name = ns.GUIDE_PLANNED, at = 2, ticked = {}, plan = { name = ns.GUIDE_PLANNED, steps = {} } }, "following \"Plan my route\"" },
+                                { { name = ns.GUIDE_TRIP, at = 1, ticked = {}, trip = { name = ns.GUIDE_TRIP, title = "Gather Peacebloom", steps = {} } }, "following \"trip: Gather Peacebloom\"" } }) do
+            ns.root.guideState = { [key] = case[1] }
+            local text = table.concat(ns:SelfCheck(true), "\n")
+            if text:find("\1", 1, true) or not text:find(case[2], 1, true) then error("the check says " .. case[2]) end
+        end
+    end)
+    ns.root.guideState = keep
+    if not ok then error(err, 0) end
+end)
+-- release 13 fix tests: end
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()

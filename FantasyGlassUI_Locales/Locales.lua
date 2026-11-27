@@ -21,6 +21,13 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["Give the guide a name of its own."] = "Gib der Anleitung einen eigenen Namen.",
+    ["The planner folder is switched off: tick \"Fantasy Glass UI - planner\" in the AddOns list, then try again."] = "Der Ordner des Planers ist ausgeschaltet: Hake „Fantasy Glass UI - planner“ in der AddOn-Liste an und versuche es dann noch einmal.",
+    ["The gold folder is switched off: tick \"Fantasy Glass UI - gold\" in the AddOns list, then try again."] = "Der Gold-Ordner ist ausgeschaltet: Hake „Fantasy Glass UI - gold“ in der AddOn-Liste an und versuche es dann noch einmal.",
+    ["Gold ideas at the auction house"] = "Gold-Ideen im Auktionshaus",
+    ["Beside the auction house, a panel of ways to make gold with what this character has. It loads the gold folder the first time you open the auction house; off, the auction house loads and shows nothing of it."] = "Neben dem Auktionshaus eine Leiste mit Wegen zu Gold für das, was dieser Charakter hat. Sie lädt den Gold-Ordner, wenn du das Auktionshaus zum ersten Mal öffnest; ausgeschaltet lädt und zeigt das Auktionshaus nichts davon.",
+    ["The planner and the gold ideas are in two new folders. The planner loads when you first use it, and the gold ideas when you first use them or open the auction house (Gold ideas at the auction house, under Bags and items, switches that off). Leave both folders enabled."] = "Der Planer und die Gold-Ideen liegen in zwei neuen Ordnern. Der Planer lädt, wenn du ihn zum ersten Mal nutzt, die Gold-Ideen, wenn du sie zum ersten Mal nutzt oder das Auktionshaus öffnest („Gold-Ideen im Auktionshaus“ unter „Taschen und Gegenstände“ schaltet das aus). Lass beide Ordner aktiviert.",
+    ["A friend with Fantasy Glass UI can ask to plan one route for you both. You are always asked first. Only your friends, your guild and your group can ask, once in 5 minutes each."] = "Ein Freund mit Fantasy Glass UI kann fragen, ob ihr eine gemeinsame Route plant. Du wirst immer zuerst gefragt. Fragen können nur deine Freunde, deine Gilde und deine Gruppe, jeder einmal in 5 Minuten.",
     ["Copy this plan code and paste it on fantasyglassui.com/plan/"] = "Kopiere diesen Plancode und füge ihn auf fantasyglassui.com/plan/ ein",
     ["Quest guides and gold"] = "Questanleitungen und Gold",
     ["your quest guides: follow one, write or paste one, or record one as you play (record <name>, stop, next, back, off)"] = "deine Questanleitungen: einer folgen, eine schreiben oder einfügen, oder beim Spielen eine aufzeichnen (record <Name>, stop, next, back, off)",
@@ -3854,6 +3861,13 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["Give the guide a name of its own."] = "Donnez au guide un nom à lui.",
+    ["The planner folder is switched off: tick \"Fantasy Glass UI - planner\" in the AddOns list, then try again."] = "Le dossier du planificateur est désactivé : cochez « Fantasy Glass UI - planner » dans la liste des AddOns, puis réessayez.",
+    ["The gold folder is switched off: tick \"Fantasy Glass UI - gold\" in the AddOns list, then try again."] = "Le dossier de l'or est désactivé : cochez « Fantasy Glass UI - gold » dans la liste des AddOns, puis réessayez.",
+    ["Gold ideas at the auction house"] = "Idées d'or à l'hôtel des ventes",
+    ["Beside the auction house, a panel of ways to make gold with what this character has. It loads the gold folder the first time you open the auction house; off, the auction house loads and shows nothing of it."] = "À côté de l'hôtel des ventes, un panneau de moyens de gagner de l'or avec ce que ce personnage possède. Il charge le dossier de l'or la première fois que vous ouvrez l'hôtel des ventes ; désactivé, l'hôtel des ventes n'en charge ni n'en montre rien.",
+    ["The planner and the gold ideas are in two new folders. The planner loads when you first use it, and the gold ideas when you first use them or open the auction house (Gold ideas at the auction house, under Bags and items, switches that off). Leave both folders enabled."] = "Le planificateur et les idées d'or sont dans deux nouveaux dossiers. Le planificateur se charge à sa première utilisation, et les idées d'or à leur première utilisation ou à l'ouverture de l'hôtel des ventes (« Idées d'or à l'hôtel des ventes », dans Sacs et objets, le désactive). Laissez les deux dossiers activés.",
+    ["A friend with Fantasy Glass UI can ask to plan one route for you both. You are always asked first. Only your friends, your guild and your group can ask, once in 5 minutes each."] = "Un ami qui a Fantasy Glass UI peut demander à planifier un seul itinéraire pour vous deux. On vous demande toujours d'abord. Seuls vos amis, votre guilde et votre groupe peuvent demander, une fois toutes les 5 minutes chacun.",
     ["Copy this plan code and paste it on fantasyglassui.com/plan/"] = "Copiez ce code de plan et collez-le sur fantasyglassui.com/plan/",
     ["Quest guides and gold"] = "Guides de quêtes et or",
     ["your quest guides: follow one, write or paste one, or record one as you play (record <name>, stop, next, back, off)"] = "vos guides de quêtes : en suivre un, en écrire ou en coller un, ou en enregistrer un en jouant (record <nom>, stop, next, back, off)",
@@ -7687,6 +7701,13 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["Give the guide a name of its own."] = "Ponle a la guía un nombre propio.",
+    ["The planner folder is switched off: tick \"Fantasy Glass UI - planner\" in the AddOns list, then try again."] = "La carpeta del planificador está desactivada: marca «Fantasy Glass UI - planner» en la lista de AddOns y vuelve a intentarlo.",
+    ["The gold folder is switched off: tick \"Fantasy Glass UI - gold\" in the AddOns list, then try again."] = "La carpeta del oro está desactivada: marca «Fantasy Glass UI - gold» en la lista de AddOns y vuelve a intentarlo.",
+    ["Gold ideas at the auction house"] = "Ideas de oro en la casa de subastas",
+    ["Beside the auction house, a panel of ways to make gold with what this character has. It loads the gold folder the first time you open the auction house; off, the auction house loads and shows nothing of it."] = "Junto a la casa de subastas, un panel con formas de ganar oro con lo que tiene este personaje. Carga la carpeta del oro la primera vez que abres la casa de subastas; desactivado, la casa de subastas no carga ni muestra nada de esto.",
+    ["The planner and the gold ideas are in two new folders. The planner loads when you first use it, and the gold ideas when you first use them or open the auction house (Gold ideas at the auction house, under Bags and items, switches that off). Leave both folders enabled."] = "El planificador y las ideas de oro están en dos carpetas nuevas. El planificador se carga la primera vez que lo usas, y las ideas de oro la primera vez que las usas o abres la casa de subastas («Ideas de oro en la casa de subastas», en Bolsas y objetos, lo desactiva). Deja las dos carpetas activadas.",
+    ["A friend with Fantasy Glass UI can ask to plan one route for you both. You are always asked first. Only your friends, your guild and your group can ask, once in 5 minutes each."] = "Un amigo con Fantasy Glass UI puede pedir planificar una sola ruta para los dos. Siempre se te pregunta antes. Solo pueden pedirlo tus amigos, tu hermandad y tu grupo, cada uno una vez cada 5 minutos.",
     ["Copy this plan code and paste it on fantasyglassui.com/plan/"] = "Copia este código del plan y pégalo en fantasyglassui.com/plan/",
     ["Quest guides and gold"] = "Guías de misiones y oro",
     ["your quest guides: follow one, write or paste one, or record one as you play (record <name>, stop, next, back, off)"] = "tus guías de misiones: sigue una, escribe o pega una, o graba una mientras juegas (record <nombre>, stop, next, back, off)",
@@ -11523,6 +11544,13 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["Give the guide a name of its own."] = "Дайте гайду собственное имя.",
+    ["The planner folder is switched off: tick \"Fantasy Glass UI - planner\" in the AddOns list, then try again."] = "Папка планировщика отключена: отметьте «Fantasy Glass UI - planner» в списке модификаций и попробуйте снова.",
+    ["The gold folder is switched off: tick \"Fantasy Glass UI - gold\" in the AddOns list, then try again."] = "Папка золота отключена: отметьте «Fantasy Glass UI - gold» в списке модификаций и попробуйте снова.",
+    ["Gold ideas at the auction house"] = "Идеи для золота на аукционе",
+    ["Beside the auction house, a panel of ways to make gold with what this character has. It loads the gold folder the first time you open the auction house; off, the auction house loads and shows nothing of it."] = "Рядом с аукционом — панель со способами заработать золото с тем, что есть у этого персонажа. Она загружает папку золота, когда вы впервые открываете аукцион; если выключить, аукцион ничего из этого не загружает и не показывает.",
+    ["The planner and the gold ideas are in two new folders. The planner loads when you first use it, and the gold ideas when you first use them or open the auction house (Gold ideas at the auction house, under Bags and items, switches that off). Leave both folders enabled."] = "Планировщик и идеи для золота лежат в двух новых папках. Планировщик загружается, когда вы впервые им пользуетесь, а идеи для золота — когда вы впервые ими пользуетесь или открываете аукцион (отключить это можно переключателем «Идеи для золота на аукционе» в разделе «Сумки и предметы»). Оставьте обе папки включёнными.",
+    ["A friend with Fantasy Glass UI can ask to plan one route for you both. You are always asked first. Only your friends, your guild and your group can ask, once in 5 minutes each."] = "Друг с Fantasy Glass UI может предложить спланировать один маршрут на двоих. Вас всегда спросят сначала. Предлагать могут только ваши друзья, ваша гильдия и ваша группа, каждый не чаще раза в 5 минут.",
     ["Copy this plan code and paste it on fantasyglassui.com/plan/"] = "Скопируйте этот код плана и вставьте его на fantasyglassui.com/plan/",
     ["Quest guides and gold"] = "Гайды по заданиям и золото",
     ["your quest guides: follow one, write or paste one, or record one as you play (record <name>, stop, next, back, off)"] = "ваши гайды по заданиям: следовать гайду, написать или вставить гайд или записать его во время игры (record <имя>, stop, next, back, off)",
@@ -15356,6 +15384,13 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["Give the guide a name of its own."] = "Dê ao guia um nome próprio.",
+    ["The planner folder is switched off: tick \"Fantasy Glass UI - planner\" in the AddOns list, then try again."] = "A pasta do planejador está desativada: marque \"Fantasy Glass UI - planner\" na lista de AddOns e tente de novo.",
+    ["The gold folder is switched off: tick \"Fantasy Glass UI - gold\" in the AddOns list, then try again."] = "A pasta do ouro está desativada: marque \"Fantasy Glass UI - gold\" na lista de AddOns e tente de novo.",
+    ["Gold ideas at the auction house"] = "Ideias de ouro na casa de leilões",
+    ["Beside the auction house, a panel of ways to make gold with what this character has. It loads the gold folder the first time you open the auction house; off, the auction house loads and shows nothing of it."] = "Ao lado da casa de leilões, um painel de formas de ganhar ouro com o que este personagem tem. Ele carrega a pasta do ouro na primeira vez que você abre a casa de leilões; desligado, a casa de leilões não carrega nem mostra nada disso.",
+    ["The planner and the gold ideas are in two new folders. The planner loads when you first use it, and the gold ideas when you first use them or open the auction house (Gold ideas at the auction house, under Bags and items, switches that off). Leave both folders enabled."] = "O planejador e as ideias de ouro ficam em duas pastas novas. O planejador carrega quando você o usa pela primeira vez, e as ideias de ouro quando você as usa pela primeira vez ou abre a casa de leilões (\"Ideias de ouro na casa de leilões\", em Bolsas e itens, desliga isso). Deixe as duas pastas ativadas.",
+    ["A friend with Fantasy Glass UI can ask to plan one route for you both. You are always asked first. Only your friends, your guild and your group can ask, once in 5 minutes each."] = "Um amigo com Fantasy Glass UI pode pedir para planejar uma rota só para vocês dois. Você sempre é consultado antes. Só seus amigos, sua guilda e seu grupo podem pedir, cada um uma vez a cada 5 minutos.",
     ["Copy this plan code and paste it on fantasyglassui.com/plan/"] = "Copie este código do plano e cole-o em fantasyglassui.com/plan/",
     ["Quest guides and gold"] = "Guias de missões e ouro",
     ["your quest guides: follow one, write or paste one, or record one as you play (record <name>, stop, next, back, off)"] = "seus guias de missões: siga um, escreva ou cole um, ou grave um enquanto joga (record <nome>, stop, next, back, off)",
@@ -19189,6 +19224,13 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["Give the guide a name of its own."] = "Dai alla guida un nome tutto suo.",
+    ["The planner folder is switched off: tick \"Fantasy Glass UI - planner\" in the AddOns list, then try again."] = "La cartella del pianificatore è disattivata: spunta «Fantasy Glass UI - planner» nell'elenco degli AddOn, poi riprova.",
+    ["The gold folder is switched off: tick \"Fantasy Glass UI - gold\" in the AddOns list, then try again."] = "La cartella dell'oro è disattivata: spunta «Fantasy Glass UI - gold» nell'elenco degli AddOn, poi riprova.",
+    ["Gold ideas at the auction house"] = "Idee per l'oro alla casa d'aste",
+    ["Beside the auction house, a panel of ways to make gold with what this character has. It loads the gold folder the first time you open the auction house; off, the auction house loads and shows nothing of it."] = "Accanto alla casa d'aste, un pannello con i modi per fare oro con ciò che ha questo personaggio. Carica la cartella dell'oro la prima volta che apri la casa d'aste; se è spento, la casa d'aste non ne carica né mostra nulla.",
+    ["The planner and the gold ideas are in two new folders. The planner loads when you first use it, and the gold ideas when you first use them or open the auction house (Gold ideas at the auction house, under Bags and items, switches that off). Leave both folders enabled."] = "Il pianificatore e le idee per l'oro sono in due nuove cartelle. Il pianificatore si carica la prima volta che lo usi, le idee per l'oro la prima volta che le usi o apri la casa d'aste («Idee per l'oro alla casa d'aste», in Borse e oggetti, lo spegne). Lascia attive entrambe le cartelle.",
+    ["A friend with Fantasy Glass UI can ask to plan one route for you both. You are always asked first. Only your friends, your guild and your group can ask, once in 5 minutes each."] = "Un amico con Fantasy Glass UI può chiedere di pianificare un unico percorso per entrambi. Ti viene sempre chiesto prima. Possono chiederlo solo i tuoi amici, la tua gilda e il tuo gruppo, ciascuno una volta ogni 5 minuti.",
     ["Copy this plan code and paste it on fantasyglassui.com/plan/"] = "Copia questo codice del piano e incollalo su fantasyglassui.com/plan/",
     ["Quest guides and gold"] = "Guide delle missioni e oro",
     ["your quest guides: follow one, write or paste one, or record one as you play (record <name>, stop, next, back, off)"] = "le tue guide delle missioni: seguine una, scrivine o incollane una, o registrane una mentre giochi (record <nome>, stop, next, back, off)",
@@ -23022,6 +23064,13 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["Give the guide a name of its own."] = "가이드에 고유한 이름을 붙이세요.",
+    ["The planner folder is switched off: tick \"Fantasy Glass UI - planner\" in the AddOns list, then try again."] = "플래너 폴더가 꺼져 있습니다: 애드온 목록에서 \"Fantasy Glass UI - planner\"를 체크한 다음 다시 시도하세요.",
+    ["The gold folder is switched off: tick \"Fantasy Glass UI - gold\" in the AddOns list, then try again."] = "골드 폴더가 꺼져 있습니다: 애드온 목록에서 \"Fantasy Glass UI - gold\"를 체크한 다음 다시 시도하세요.",
+    ["Gold ideas at the auction house"] = "경매장에서 골드 벌기",
+    ["Beside the auction house, a panel of ways to make gold with what this character has. It loads the gold folder the first time you open the auction house; off, the auction house loads and shows nothing of it."] = "경매장 옆에 이 캐릭터가 가진 것으로 골드를 버는 방법을 보여 주는 패널입니다. 경매장을 처음 열 때 골드 폴더를 불러옵니다. 끄면 경매장은 아무것도 불러오거나 보여 주지 않습니다.",
+    ["The planner and the gold ideas are in two new folders. The planner loads when you first use it, and the gold ideas when you first use them or open the auction house (Gold ideas at the auction house, under Bags and items, switches that off). Leave both folders enabled."] = "플래너와 골드 아이디어는 새 폴더 두 개에 들어 있습니다. 플래너는 처음 쓸 때, 골드 아이디어는 처음 쓰거나 경매장을 열 때 불러옵니다(가방 및 아이템의 \"경매장에서 골드 벌기\"로 끌 수 있습니다). 두 폴더 모두 켜 둔 채로 두세요.",
+    ["A friend with Fantasy Glass UI can ask to plan one route for you both. You are always asked first. Only your friends, your guild and your group can ask, once in 5 minutes each."] = "Fantasy Glass UI를 쓰는 친구가 둘이 함께할 경로를 계획하자고 요청할 수 있습니다. 언제나 먼저 묻습니다. 친구, 길드원, 파티원만 요청할 수 있으며 각자 5분에 한 번입니다.",
     ["Copy this plan code and paste it on fantasyglassui.com/plan/"] = "이 계획 코드를 복사해 fantasyglassui.com/plan/ 에 붙여넣으세요",
     ["Quest guides and gold"] = "퀘스트 안내서와 골드",
     ["your quest guides: follow one, write or paste one, or record one as you play (record <name>, stop, next, back, off)"] = "내 퀘스트 안내서: 하나를 따라가거나, 직접 쓰거나 붙여 넣거나, 플레이하며 기록합니다 (record <이름>, stop, next, back, off)",
@@ -26858,6 +26907,13 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["Give the guide a name of its own."] = "请给指南起一个自己的名字。",
+    ["The planner folder is switched off: tick \"Fantasy Glass UI - planner\" in the AddOns list, then try again."] = "规划器文件夹已关闭：请在插件列表中勾选“Fantasy Glass UI - planner”，然后再试一次。",
+    ["The gold folder is switched off: tick \"Fantasy Glass UI - gold\" in the AddOns list, then try again."] = "金币文件夹已关闭：请在插件列表中勾选“Fantasy Glass UI - gold”，然后再试一次。",
+    ["Gold ideas at the auction house"] = "拍卖行旁的赚金点子",
+    ["Beside the auction house, a panel of ways to make gold with what this character has. It loads the gold folder the first time you open the auction house; off, the auction house loads and shows nothing of it."] = "在拍卖行旁显示一个面板，列出用这个角色现有的东西赚金的方法。第一次打开拍卖行时会加载金币文件夹；关闭后，拍卖行不会加载也不会显示其中任何内容。",
+    ["The planner and the gold ideas are in two new folders. The planner loads when you first use it, and the gold ideas when you first use them or open the auction house (Gold ideas at the auction house, under Bags and items, switches that off). Leave both folders enabled."] = "规划器和赚金点子在两个新文件夹中。规划器在你第一次使用时加载，赚金点子在你第一次使用或打开拍卖行时加载（可在“背包与物品”下的“拍卖行旁的赚金点子”关闭）。请保持两个文件夹都启用。",
+    ["A friend with Fantasy Glass UI can ask to plan one route for you both. You are always asked first. Only your friends, your guild and your group can ask, once in 5 minutes each."] = "使用 Fantasy Glass UI 的好友可以请求为你们俩规划同一条路线。总会先征得你的同意。只有你的好友、公会成员和队伍成员可以请求，每人每 5 分钟一次。",
     ["Copy this plan code and paste it on fantasyglassui.com/plan/"] = "复制此计划代码，并粘贴到 fantasyglassui.com/plan/",
     ["Quest guides and gold"] = "任务指南与金币",
     ["your quest guides: follow one, write or paste one, or record one as you play (record <name>, stop, next, back, off)"] = "你的任务指南：跟随一份、编写或粘贴一份，或在游玩时录制一份（record <名称>、stop、next、back、off）",

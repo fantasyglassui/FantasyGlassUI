@@ -657,7 +657,8 @@ function ns.BuildGuidePage(page)
             status:SetText(ns:Tr("Following") .. ": " .. AccentTextHex(status) .. tostring(name) .. "|r  -  " .. tostring(st.at))
         else status:SetText(ns:Tr("You are not following a guide.")) end
         Layout(G.width)
-        -- the first time the tab is opened: the planner's short tour
+        -- the planner's short tour, once, when the tab is opened with the planner's folder loaded (otherwise it comes
+        -- with the planner window: the tab does not load the folder)
         local host = GuideShowing()
         if host and host.sheet == page and ns.PlannerIntroDue and ns:PlannerIntroDue() then ns:PlannerIntro(1) end
     end

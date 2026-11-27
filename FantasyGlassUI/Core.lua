@@ -75,6 +75,7 @@ ns.defaults = {
     groupLoot        = true,        -- in a group: whose upgrade a boss drop is, among players with the add-on (11.14)
     runLog           = true,        -- dungeon and raid runs: times, kills, wipes, deaths, loot; /fgui runs (11.14)
     farming          = true,        -- farming sessions: /fgui farm, gold and item value an hour (11.13)
+    goldAuctionPanel = true,        -- gold ideas beside the auction house (the gold folder loads when it opens: Folders.lua)
     threatMeter      = true,        -- who has how much threat on your target, in a group (11.13)
     accent           = "AZURE",
     theme            = "SMOKE",
@@ -1643,7 +1644,7 @@ ns.whatsNew = {
                   "The planner window (/fgui plan, or Planner on the guide panel) holds every setting for what it plans. Keep my route there leaves your route as it is until you ask for a new one.",
                   "Plan with a friend for one route that suits you both, or share your route as a plan code to read on the website.",
                   "Ways to make gold (Ctrl-click the minimap button): ideas for this character from selling, farming, gathering, crafting and the auction house. Go plans the trip and puts it on the guide panel.",
-                  "The planner and the gold ideas are in two new folders, which the game loads only when you first use them. Leave them enabled.",
+                  "The planner and the gold ideas are in two new folders. The planner loads when you first use it, and the gold ideas when you first use them or open the auction house (Gold ideas at the auction house, under Bags and items, switches that off). Leave both folders enabled.",
                   "Fixed: quests that WoW: Forever numbers differently from Questie are found in your quest log and tick off." } },
     { "12.4.1", { "Another add-on's full scan of the auction house, such as Auctionator's, is read for your prices too, the same way as Scan prices, and the button counts down from it.",
                   "Where this add-on has no price for an item, the tooltip shows Auctionator's or TSM's, with its name. Those prices are never kept, and give only Vendor it, never Sell now or Hold.",

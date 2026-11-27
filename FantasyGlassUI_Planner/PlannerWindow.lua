@@ -340,7 +340,7 @@ local function TogetherSection(K, G, Replan, T)
         DrawChannel(b)
     end, true)
     channel.row.tipTitle = "Find a group button"
-    local ask = K.SwitchRow(G, "together", "plannerDuoAsk", "Let friends ask to plan with you", "A friend with Fantasy Glass UI can ask to plan one route for you both. You are always asked first.",
+    local ask = K.SwitchRow(G, "together", "plannerDuoAsk", "Let friends ask to plan with you", "A friend with Fantasy Glass UI can ask to plan one route for you both. You are always asked first. Only your friends, your guild and your group can ask, once in 5 minutes each.",
         function() return ns.db.plannerDuoAsk ~= false end, function(v) ns.db.plannerDuoAsk = v end)
     local start = K.ButtonRow(G, "together", "Plan with a friend", "One route for you and your target or the one other player in your party: the same quests, in the same order.", function()
         if ns.PlannerDuoStart then ns:PlannerDuoStart() end         -- (your target, your one party member, or it says how)

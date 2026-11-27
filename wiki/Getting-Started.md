@@ -18,7 +18,7 @@ The setup opens by itself the first time you log in. It takes four short steps:
 - **Your look:** pick a family, Glass, Fantasy or Celestial, then one of its themes, an accent and a text size.
 - **Ready:** a summary of what you chose, and a layout to start from.
 
-**Coming from another UI?** On the last step, one click puts your frames where ElvUI or Tukui, RealUI, GW2 UI or the game's own interface had them.
+**Coming from another UI?** On the last step, one click puts your frames in a layout like that of ElvUI or Tukui, RealUI, GW2 UI or the game's own interface.
 
 Press **Finish and reload** at the end. You can run the setup again any time with `/fgui setup`.
 

@@ -47,6 +47,15 @@ function ns:GuideRouteEditor(name)
     end
     if not source then ns:Print("Which guide? /fgui guide route <name> (/fgui guide lists them)."); return false end
     local work = Copy(source)
+    local tripTitle = type(source.title) == "string" and not Secret(source.title) and source.title or nil
+    -- The plan and a trip are not saved guides (their names are hidden): Save keeps the edit as a new guide of its
+    -- own ("Save as guide"), and the route you follow stays as it is.
+    local function Hidden() return ns.GuideHiddenName and ns.GuideHiddenName(work.name) end
+    local function Shown()
+        if work.name == ns.GUIDE_TRIP then return format(ns:Tr("Gold trip: %s"), tripTitle or "") end
+        if Hidden() then return ns:Tr("Plan my route") end
+        return tostring(work.name)
+    end
     local at = 1
     if not win then
         win = CreateFrame("Frame", "FantasyGlassUIRouteEditor", UIParent, ns.template)
@@ -80,11 +89,11 @@ function ns:GuideRouteEditor(name)
         local function B(label, w, x, y, fn) local b = ns:CreateButton(win, label, w, 22, fn); b:SetPoint("TOPLEFT", x, y); return b end
         win.B = B
     end
-    local Draw
+    local Draw, Sync
     local function Pick(i) at = math.max(1, math.min(#work.steps, i)); Draw() end
     local rowH = math.max(20, math.ceil(11 * (tonumber(ns.fontScale) or 1)) + 6)   -- (a row as tall as its lettering needs)
     Draw = function()
-        win.title:SetText(ns:Tr("Route") .. ": " .. tostring(work.name) .. "  " .. ns:ToneHex("dim") .. "(" .. #work.steps .. ")|r")
+        win.title:SetText(ns:Tr("Route") .. ": " .. Shown() .. "  " .. ns:ToneHex("dim") .. "(" .. #work.steps .. ")|r")
         for i, step in ipairs(work.steps) do
             local r = win.rows[i]
             if not r then
@@ -161,14 +170,37 @@ function ns:GuideRouteEditor(name)
             if not step then Say(why or "Not a step.", false, arg); return end
             work.steps, at = ns.RouteInsert(work.steps, at, step); Say("Added.", true); Draw()
         end)
+        local function SaveAs()                              -- (the plan or a trip: a new guide, named as the planner's Save as guide does)
+            local base = (work.name == ns.GUIDE_TRIP and tripTitle) or ns:Tr("Planned route")
+            local name, n = base, 1
+            while ns:GuideGet(name) and n < 99 do n = n + 1; name = format("%s (%d)", base, n) end
+            if ns:GuideGet(name) then Say("Too many guides called \"%s\": rename or delete one first.", false, base); return end
+            local ok, why = ns:GuideSave({ name = name, steps = work.steps })
+            if not ok then Say(why or "Not saved."); return end
+            work.name = name
+            Sync()
+            Draw()
+            Say(format(ns:TrN(#work.steps, "Saved as guide \"%s\": %d step.", "Saved as guide \"%s\": %d steps."), name, #work.steps), true)
+        end
         win.buttons.save:SetScript("OnClick", function()
+            if Hidden() then SaveAs(); return end
             local ok, why = ns:GuideSave(work)
             if ok then Say(format(ns:TrN(#work.steps, "Saved: %d step.", "Saved: %d steps."), #work.steps), true) else Say(why or "Not saved.") end
         end)
-        win.buttons.follow:SetScript("OnClick", function() if ns:GuideSave(work) then win:Hide(); ns:GuideFollow(work.name) end end)
-        win.buttons.text:SetScript("OnClick", function() ns:GuideEdit(work.name) end)
+        win.buttons.follow:SetScript("OnClick", function() if not Hidden() and ns:GuideSave(work) then win:Hide(); ns:GuideFollow(work.name) end end)
+        win.buttons.text:SetScript("OnClick", function() if not Hidden() then ns:GuideEdit(work.name) end end)
+    end
+    -- The plan or a trip: one button, Save as guide; a saved guide: Save, Save and follow, As text.
+    function Sync()
+        local hidden = Hidden() and true or false
+        local b = win.buttons
+        if b.save.text then b.save.text:SetText(ns:Tr(hidden and "Save as guide" or "Save")) end
+        if ns.GuideFitButton then ns.GuideFitButton(b.save, hidden and 140 or 100) end
+        if hidden then b.follow:Hide(); b.text:Hide() else b.follow:Show(); b.text:Show() end
+        win.saveAs = hidden
     end
     Rebind()
+    Sync()
     win.msg:SetText("")
     Draw()
     win:Show()
