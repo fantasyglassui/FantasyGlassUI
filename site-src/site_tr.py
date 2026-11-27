@@ -1794,7 +1794,7 @@ SITE.update({
  "둘 다 가능한지 확인하기",
  "确认你们都能用"),
 "You both need Fantasy Glass UI 13.0 or newer, and there can be no more than 6 levels between you. You need to be friends in the game or on Battle.net, in the same guild, or in the same group: no one else can ask you.": (
- "Beide braucht ihr Fantasy Glass UI 13.0 oder neuer, und zwischen euch dürfen höchstens 6 Stufen liegen. Ihr müsst im Spiel oder bei Battle.net befreundet sein, in derselben Gilde oder in derselben Gruppe: Niemand sonst kann dich fragen.",
+ "Beide braucht ihr Fantasy Glass UI 13.0 oder neuer, und zwischen euch dürfen höchstens 6 Stufen liegen. Außerdem müsst ihr im Spiel oder bei Battle.net befreundet sein, in derselben Gilde oder in derselben Gruppe: Niemand sonst kann dich fragen.",
  "Il vous faut tous les deux Fantasy Glass UI 13.0 ou plus récent, et pas plus de 6 niveaux d'écart. Vous devez être amis dans le jeu ou sur Battle.net, dans la même guilde ou dans le même groupe : personne d'autre ne peut vous le demander.",
  "Los dos necesitáis Fantasy Glass UI 13.0 o posterior, y no puede haber más de 6 niveles entre vosotros. Tenéis que ser amigos en el juego o en Battle.net, de la misma hermandad o del mismo grupo: nadie más puede pedírtelo.",
  "Вам обоим нужен Fantasy Glass UI 13.0 или новее, и разница в уровнях — не больше 6. Вы должны быть друзьями в игре или в Battle.net, в одной гильдии или в одной группе: больше никто не может вам это предложить.",
