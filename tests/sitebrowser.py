@@ -226,7 +226,7 @@ def main():
             checked += 1
             ctx.close()
             # OpenMap on the plan page: nothing asks openmap.world on load (with a plan or without, and not on Guide and Gold);
-            # pressing "Show OpenMap here" inserts the iframe with its attributes, and the plain link stays
+            # OpenMap refuses to be framed, so it is only a link, opened in a new tab
             for w, scheme in ((390, "dark"), (390, "light"), (1280, "dark"), (1280, "light")):
                 ctx = browser.new_context(viewport={"width": w, "height": 900}, locale="en-US", color_scheme=scheme)
                 asked = []
@@ -249,25 +249,16 @@ def main():
                 link = page.evaluate("(() => { const a = document.getElementById('openmaptab'); return [a.href, a.target, a.rel, a.textContent, getComputedStyle(a).display]; })()")
                 if link[:4] != ["https://openmap.world/", "_blank", "noopener noreferrer", "Open OpenMap in a new tab"]:
                     problems.append(f"{where}: the fallback link is wrong: {link}")
-                page.focus("#openmap")
+                page.focus("#openmaptab")
                 f = page.evaluate(FOCUS).split("|")
-                if f[1] != "true": problems.append(f"{where}: no focus ring on the OpenMap button")
+                if f[1] != "true": problems.append(f"{where}: no focus ring on the OpenMap link")
                 bad = [x for x in page.evaluate(CHECK) if x.startswith(("contrast", "wider"))]
                 problems += [f"{where}: {x}" for x in bad]
                 if SHOTS:
                     os.makedirs(SHOTS, exist_ok=True)
-                    page.locator("section.real").screenshot(path=os.path.join(SHOTS, f"openmap-before-{scheme}-{w}.png"))
-                page.keyboard.press("Enter")                                   # (by keyboard)
-                page.wait_for_timeout(200)
-                got = page.evaluate("""(() => { const f = document.querySelector('#openmapframe iframe');
-                  return f && [f.getAttribute('src'), f.getAttribute('title'), f.getAttribute('loading'), f.getAttribute('referrerpolicy'), f.getAttribute('sandbox'),
-                    [f.style.width, f.style.height, f.style.borderStyle].join(' '), Math.round(f.getBoundingClientRect().width), Math.round(f.getBoundingClientRect().height), document.querySelectorAll('iframe').length, document.activeElement === f]; })()""")
-                want_h = round(900 * 0.7) if w == 390 else 600
-                if not got or got[:6] != ["https://openmap.world/", "OpenMap: the world map of WoW Forever", "lazy", "no-referrer", "allow-scripts allow-same-origin allow-popups", "100% 600px none"] \
-                        or got[8] != 1 or abs(got[7] - want_h) > 1 or not got[9] or got[6] < min(w, 860) - 80:
-                    problems.append(f"{where}: the iframe after the button is wrong: {got} (height should be {want_h})")
-                if not page.evaluate("!document.getElementById('openmaptab').hidden"):
-                    problems.append(f"{where}: the fallback link is gone after the button")
+                    page.locator("section.real").screenshot(path=os.path.join(SHOTS, f"openmap-{scheme}-{w}.png"))
+                if page.evaluate("document.querySelectorAll('iframe').length"):
+                    problems.append(f"{where}: OpenMap refuses frames, so the page must only link it")
                 problems += [f"{where}: script error: {e}" for e in errors]
                 checked += 1
                 ctx.close()
