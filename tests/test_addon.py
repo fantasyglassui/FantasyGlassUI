@@ -8,10 +8,12 @@ These are the same checks run before each build:
   * the WoW: Forever audit: every function, event, frame and setting the add-on uses is one Forever has;
   * the version numbers of the five folders agree, and the README is up to date.
 """
+import glob
 import os
 import re
 import subprocess
 import sys
+import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TESTS = os.path.join(ROOT, "tests")
@@ -181,6 +183,8 @@ def test_planner_switches_moved():
     bars = open(os.path.join(ROOT, "FantasyGlassUI_Options", "Bars.lua"), encoding="utf-8").read()
     assert bars.count("ns.db.planner") == 0, "the Guide tab still reads a planner setting"
     old = subprocess.run(["git", "show", SEAMS + ":FantasyGlassUI_Options/Bars.lua"], cwd=ROOT, capture_output=True, text=True).stdout
+    if not old:
+        pytest.skip(f"{SEAMS} is not in this clone (a shallow checkout, as on CI)")
     keys = set(re.findall(r"ns\.db\.(planner\w+)", old)) | set(re.findall(r'"(planner[A-Z]\w*)"', old))
     assert len(keys) >= 30, f"the Guide tab at {SEAMS} read only {sorted(keys)}"
     window = open(os.path.join(ROOT, "FantasyGlassUI_Planner", "PlannerWindow.lua"), encoding="utf-8").read()
@@ -229,6 +233,9 @@ def test_forever_api():
 
 def test_plan_page_published():
     """From 13.0 the website's plan page is published with the rest of the site; tests/sitecheck.py checks the build."""
+    if not glob.glob(os.path.join(ROOT, "site-src", "site", "i18n", "*.json")):   # (git-ignored: a fresh clone, as on CI, makes them first)
+        m = subprocess.run([sys.executable, os.path.join(ROOT, "site-src", "make_i18n.py")], cwd=ROOT, capture_output=True, text=True, timeout=600)
+        assert m.returncode == 0, m.stdout + m.stderr
     p = subprocess.run([sys.executable, os.path.join(TESTS, "sitecheck.py")], cwd=ROOT, capture_output=True, text=True, timeout=600)
     assert p.returncode == 0, p.stdout + p.stderr
 
