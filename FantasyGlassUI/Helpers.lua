@@ -164,14 +164,18 @@ end)
 -- which version they have. If someone has a newer one than you, you are told once that an update
 -- is out. Nothing else is sent, and nothing at all during combat.
 ------------------------------------------------------------------------------------------
--- "8.4.10" -> { 8, 4, 10 }; nil for anything that is not three numbers
+-- "8.4.10" -> { 8, 4, 10 }; "13.5.0-beta.1" -> { 13, 5, 0, 1 }; nil for anything else
 function ns:ParseVersion(text)
     if type(text) ~= "string" then return nil end
     local a, b, c = text:match("^(%d+)%.(%d+)%.(%d+)$")
+    if a then return { tonumber(a), tonumber(b), tonumber(c) } end
+    local d
+    a, b, c, d = text:match("^(%d+)%.(%d+)%.(%d+)%-beta%.(%d+)$")
     if not a then return nil end
-    return { tonumber(a), tonumber(b), tonumber(c) }
+    return { tonumber(a), tonumber(b), tonumber(c), tonumber(d) }
 end
--- true if `theirs` is newer than `mine` (compared number by number, so 8.4.10 is newer than 8.4.9)
+-- true if `theirs` is newer than `mine` (compared number by number, so 8.4.10 is newer than 8.4.9).
+-- At the same three numbers a release is newer than any beta of it, and beta 2 is newer than beta 1.
 function ns:IsNewerVersion(theirs, mine)
     local t, m = ns:ParseVersion(theirs), ns:ParseVersion(mine)
     if not t or not m then return false end
@@ -179,7 +183,27 @@ function ns:IsNewerVersion(theirs, mine)
     for i = 1, 3 do
         if t[i] ~= m[i] then return t[i] > m[i] end
     end
-    return false
+    if t[4] == m[4] then return false end
+    if t[4] == nil then return true end                      -- (a release beats its betas)
+    if m[4] == nil then return false end
+    return t[4] > m[4]
+end
+-- Is this version a beta?
+function ns.IsBeta(version)
+    return tostring(version):lower():find("beta", 1, true) ~= nil
+end
+
+-- The first login on each beta says so once (a new beta is a new first login).
+function ns:BetaLogin()
+    if not ns.root and ns.InitDB then pcall(ns.InitDB, ns) end
+    if not ns.root or not ns.IsBeta(ns.version) or ns.root.betaTold == ns.version then return end
+    ns:Print("You are on a beta of Fantasy Glass UI. Thank you for testing! Report a problem includes it.")
+    ns.root.betaTold = ns.version
+end
+do
+    local f = CreateFrame("Frame")
+    pcall(f.RegisterEvent, f, "PLAYER_LOGIN")
+    f:SetScript("OnEvent", ns:Guard("Beta login", function() ns:BetaLogin() end))
 end
 
 ns:NewModule("versionNotice", function()

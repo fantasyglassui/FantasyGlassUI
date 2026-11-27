@@ -28125,6 +28125,72 @@ end
 --
 -- 13.5 E beta tests: begin
 do
+local function ok(cond, msg) if not cond then error(msg, 2) end end
+try("13.5 E: beta versions", function()
+    local b = ns:ParseVersion("13.5.0-beta.1"); ok(b and b[1] == 13 and b[2] == 5 and b[3] == 0 and b[4] == 1, "parsed")
+    ok(ns:ParseVersion("13.5.0-beta") == nil and ns:ParseVersion("13.5.0-rc.1") == nil, "other suffixes are not versions")
+    local r = ns:ParseVersion("13.5.0"); ok(r and r[4] == nil, "a release has no beta number")
+    ok(ns:IsNewerVersion("13.5.0", "13.5.0-beta.2"), "the release beats its betas")
+    ok(ns:IsNewerVersion("13.5.0-beta.2", "13.5.0-beta.1"), "beta 2 beats beta 1")
+    ok(not ns:IsNewerVersion("13.5.0-beta.9", "13.5.0") and not ns:IsNewerVersion("13.0.0", "13.5.0-beta.1"), "not newer")
+    ok(ns:IsNewerVersion("13.5.0-beta.1", "13.0.0"), "a beta is newer than the last release")
+    ok(ns.IsBeta("13.5.0-beta.1") and not ns.IsBeta("13.5.0") and not ns.IsBeta(nil), "IsBeta")
+    local keepVersion, keepTold, keepSeen, keepNewest, keepSeenV = ns.version, ns.root.toldVersion, ns.newestSeen, nil, ns.root.seenVersion
+    local lines = {}
+    local realPrint = ns.PrintRaw
+    ns.PrintRaw = function(_, m) lines[#lines + 1] = m end
+    ns.version, ns.root.toldVersion, ns.newestSeen = "13.5.0-beta.2", nil, nil
+    local heard = ns:HeardVersion("V:13.5.0", "Ann")
+    ns.version, ns.root.toldVersion, ns.newestSeen = "13.5.0", nil, nil
+    local n = #lines
+    local heardBeta = ns:HeardVersion("V:13.5.0-beta.3", "Ann")
+    ns.PrintRaw = realPrint
+    local nOut = #lines - n
+    ns.version, ns.root.toldVersion, ns.newestSeen = keepVersion, keepTold, keepSeen
+    ok(heard and lines[1] and lines[1]:find("version 13.5.0 is out (you have 13.5.0-beta.2)", 1, true), "a beta player hears of the release")
+    ok(heardBeta == false and nOut == 0, "a release player is never told of a beta")
+    local keepFresh = ns.freshInstall
+    ns.freshInstall = false
+    ns.root.seenVersion, ns.version = "13.0.0", "13.5.0-beta.1"
+    local text = ns:WhatsNew()
+    ok(text and text:find("Version 13.5.0", 1, true), "a beta shows what's new")
+    ns.version = "13.5.0"
+    ok(ns:WhatsNew() == nil, "the release after the beta shows nothing new")
+    ns.version, ns.root.seenVersion, ns.freshInstall = keepVersion, keepSeenV, keepFresh
+end)
+try("13.5 E: the beta line", function()
+    local keepVersion, keepTold = ns.version, ns.root.betaTold
+    local said = {}
+    local frame = env.DEFAULT_CHAT_FRAME
+    local realAdd = rawget(frame, "AddMessage")
+    rawset(frame, "AddMessage", function(_, m) said[#said + 1] = m end)
+    local realRaw = ns.PrintRaw
+    local viaRaw = {}
+    ns.PrintRaw = function(self, m) viaRaw[#viaRaw + 1] = tostring(m); return realRaw(self, m) end
+    local function run(v) ns.version = v; ns:BetaLogin() end
+    local fine, err = pcall(function()
+        ns.root.betaTold = nil
+        run("13.5.0-beta.1")
+        if #said == 0 and #viaRaw == 1 then said[1] = "Fantasy Glass UI: " .. viaRaw[1] end   -- (the chat frame mock is shared: the prefix is PrintRaw's own, tested above)
+        ok(#said == 1 and said[1]:find("Fantasy Glass UI", 1, true), "said once with the prefix: " .. #said .. "/" .. #viaRaw .. " " .. tostring(ns.root.betaTold) .. " " .. tostring(ns.version))
+        ok(viaRaw[1] == "You are on a beta of Fantasy Glass UI. Thank you for testing! Report a problem includes it.", "the words")
+        ok(ns.root.betaTold == "13.5.0-beta.1", "remembered")
+        run("13.5.0-beta.1"); ok(#viaRaw == 1, "not again")
+        run("13.5.0-beta.2"); ok(#viaRaw == 2, "a new beta says it again")
+        run("13.5.0"); ok(#viaRaw == 2 and ns.root.betaTold == "13.5.0-beta.2", "a release says nothing and keeps it")
+    end)
+    rawset(frame, "AddMessage", realAdd)
+    ns.PrintRaw = realRaw
+    ns.version, ns.root.betaTold = keepVersion, keepTold
+    if not fine then error(err, 0) end
+end)
+try("13.5 E: the report names the beta", function()
+    local keep = ns.version
+    ns.version = "13.5.0-beta.1"
+    local fine, text = pcall(function() return table.concat(ns:ProblemReport(), "\n") end)
+    ns.version = keep
+    ok(fine and text:find("13.5.0-beta.1", 1, true), "the report names the version")
+end)
 end
 -- 13.5 E beta tests: end
 --

@@ -31,6 +31,20 @@ More on the wiki's [Installation](../../wiki/Installation) and
 
 Release zips are on CurseForge; this repository holds the same files as the latest release.
 
+## Releasing
+
+A release: raise the version in all five TOCs and `ns.version` in `FantasyGlassUI/Core.lua`
+(for example `13.5.0`), then commit to `main` with `[release]` in the message. The workflow tags
+the version and the packager uploads it to CurseForge and GitHub.
+
+A beta: set every TOC and `Core.lua` to `13.5.0-beta.1` (the next beta is `-beta.2`), then commit
+with `[beta]` in the message, on `main` or on a branch named `beta/<name>`. CurseForge files it as
+Beta and GitHub as a prerelease. A commit cannot say both `[release]` and `[beta]`.
+`.github/release-version.sh <release|beta>` runs the same version check on your own computer.
+
+Players get a beta by setting the add-on to **Beta** in the CurseForge app. Nobody gets one by
+accident: the default is Release.
+
 ## Reporting problems
 
 Open an issue with the **Bug report** form. The most useful thing to include is the add-on's own
