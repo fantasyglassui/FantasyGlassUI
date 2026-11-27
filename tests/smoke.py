@@ -27711,6 +27711,262 @@ end
 --
 -- 13.5 H learn tests: begin
 do
+local function ok(cond, msg) if not cond then error(msg, 2) end end
+local GOLDEN = "FGT1!{S1:cS4:MAGES1:e{N1;{N1;S5:questN2;N901;N3;N600;N4;S4:MAGEN5;S5:Horde}N2;{N1;S5:levelN2;N20;N3;N3600;N4;S4:MAGEN5;S5:Horde}N3;{N1;S6:flightN2;S5:12-34N3;N95;N4;S4:MAGEN5;S5:Horde}}S1:fS5:HordeS1:vS6:13.5.0}"
+-- Everything the region changes, put back after each test.
+local function Learn(name, fn)
+    try(name, function()
+        local rec = ns.PlannerCharRecord(true)
+        local keep = { learn = ns.root.learnTimes, shared = ns.PLANNER_SHARED_TIMES, on = ns.db.plannerLearnTimes, version = ns.version,
+            qt = ns.root.plannerQuestTimes, levels = ns.root.plannerLevels, flights = ns.root.plannerFlightTimes, cross = ns.root.plannerCrossTimes,
+            samples = ns.root.plannerTimeSamples, clock = rec.levelClock, pace = rec.pace, showText = ns.ShowTextWindow, print = ns.PrintRaw, showList = ns.ShowList }
+        local envKeep = {}
+        for _, k in ipairs({ "UnitClass", "UnitClassBase", "UnitFactionGroup", "UnitLevel", "UnitXP", "UnitXPMax", "time", "C_Map", "CreateVector2D" }) do envKeep[k] = rawget(env, k) end
+        env.UnitClass = function() return "Mage", "MAGE" end
+        env.UnitClassBase = function() return "MAGE" end
+        env.UnitFactionGroup = function() return "Horde", "Horde" end
+        env.time = function() return 1800000000 end
+        ns.root.learnTimes = nil
+        ns.PLANNER_SHARED_TIMES = { made = "", codes = 0, quests = {}, levels = {}, flights = {}, crossings = {} }
+        local fine, err = pcall(fn, rec)
+        ns.root.learnTimes, ns.PLANNER_SHARED_TIMES, ns.db.plannerLearnTimes, ns.version = keep.learn, keep.shared, keep.on, keep.version
+        ns.root.plannerQuestTimes, ns.root.plannerLevels, ns.root.plannerFlightTimes, ns.root.plannerCrossTimes = keep.qt, keep.levels, keep.flights, keep.cross
+        ns.root.plannerTimeSamples, rec.levelClock, rec.pace, ns.ShowTextWindow, ns.PrintRaw = keep.samples, keep.clock, keep.pace, keep.showText, keep.print
+        ns.ShowList = keep.showList
+        for k, v in pairs(envKeep) do rawset(env, k, v) end
+        for _, k in ipairs({ "UnitClass", "UnitClassBase", "UnitFactionGroup", "UnitLevel", "UnitXP", "UnitXPMax", "time", "C_Map", "CreateVector2D" }) do if envKeep[k] == nil then rawset(env, k, nil) end end
+        if ns.HideLists then ns:HideLists() end
+        if not fine then error(err, 0) end
+    end)
+end
+local function Three()
+    ns.db.plannerLearnTimes = true
+    ns.PlannerLearnNote("quest", 901, 600); ns.PlannerLearnNote("level", 20, 3600); ns.PlannerLearnNote("flight", "12-34", 95)
+end
+local function Today() return math.floor(1800000000 / 86400) end
+Learn("13.5 H: off by default, nothing kept", function()
+    ok(ns.defaults.plannerLearnTimes == false, "off by default")
+    ns.db.plannerLearnTimes = false
+    ns.root.plannerQuestTimes = {}
+    ns.PlannerRecordQuestTime(901, 300)
+    ok(ns.root.plannerQuestTimes[901] and ns.root.plannerQuestTimes[901].n == 1 and ns.root.plannerQuestTimes[901].avg == 300, "the planner's own record, as in 13.0")
+    ok(ns.root.learnTimes == nil, "nothing kept for sharing")
+    ns.PlannerLearnNote("level", 20, 3600)
+    ok(ns.root.learnTimes == nil, "a direct note: nothing either")
+    ok(ns.PlannerTimesCode() == nil, "no code")
+end)
+Learn("13.5 H: what is kept", function(rec)
+    ns.db.plannerLearnTimes = true
+    ns.root.plannerQuestTimes = {}
+    ns.PlannerRecordQuestTime(901, 300.4)
+    local list = ns.root.learnTimes and ns.root.learnTimes.list
+    ok(type(list) == "table" and #list == 1, "one entry")
+    local e = list[1]
+    ok(e.k == "quest" and e.id == 901 and e.s == 300 and e.c == "MAGE" and e.f == "Horde" and e.d == Today(), "the quest entry")
+    ns.PlannerRecordQuestTime(902, 3 * 3600)
+    ok(#list == 1, "a sample the planner refuses is not kept either")
+    rec.levelClock = { level = 20, seconds = 3600, xpMax = 1000, partial = false }
+    ns.PlannerRecordLevel(20)
+    ok(#list == 2 and list[2].k == "level" and list[2].id == 20 and list[2].s == 3600, "a whole level")
+    rec.levelClock = { level = 21, seconds = 500, xpMax = 1000, partial = true }
+    ns.PlannerRecordLevel(21)
+    ok(#list == 2, "a partial level: none")
+    ns.plannerTravelTest.RecordTime("plannerFlightTimes", "12-34", 95)
+    ok(#list == 3 and list[3].k == "flight" and list[3].id == "12-34" and list[3].s == 95, "a flight")
+    ns.plannerTravelTest.RecordTime("plannerCrossTimes", "menethil-theramore", 200)
+    ok(#list == 4 and list[4].k == "boat" and list[4].id == "menethil-theramore" and list[4].s == 200, "a boat")
+    local fields = { k = true, id = true, s = true, c = true, f = true, d = true }
+    local name, realm = env.UnitName("player"), env.GetRealmName()
+    for _, x in ipairs(list) do
+        for k, v in pairs(x) do
+            ok(fields[k], "a field that is not allowed: " .. tostring(k))
+            if type(v) == "string" then
+                ok(not v:find(name, 1, true) and not v:find(realm, 1, true) and not v:find(ns:CharKey(), 1, true), "a name in an entry: " .. v)
+            end
+        end
+    end
+    -- what is not a time is not kept
+    local secret = setmetatable({ __secret = true }, secretmt)
+    for _, bad in ipairs({ { "quest", 1, secret }, { "quest", secret, 10 }, { "quest", 1, 0 }, { "quest", 1, -5 }, { "quest", 1, "ten" },
+                           { "name", 1, 10 }, { "flight", "Someone-Realm's flight", 10 }, { "quest", {}, 10 }, { "quest", 1, 0 / 0 } }) do
+        ns.PlannerLearnNote(bad[1], bad[2], bad[3])
+    end
+    ok(#list == 4, "nothing odd is kept: " .. #list)
+    -- the class and faction unreadable (hidden): the entry has neither, never something else
+    env.UnitClassBase = function() return secret end
+    env.UnitClass = function() return secret, secret end
+    env.UnitFactionGroup = function() return secret, secret end
+    ns.PlannerLearnNote("quest", 903, 60)
+    ok(#list == 5 and list[5].c == nil and list[5].f == nil, "hidden class and faction: left out")
+    local total, by = ns.PlannerLearnCount()
+    ok(total == 5 and by.quest == 2 and by.level == 1 and by.flight == 1 and by.boat == 1, "the count")
+end)
+Learn("13.5 H: at most 500", function()
+    ok(ns.PLANNER_LEARN_MAX == 500, "500")
+    ns.db.plannerLearnTimes = true
+    for i = 1, 501 do ns.PlannerLearnNote("quest", i, 60) end
+    local list = ns.root.learnTimes.list
+    ok(#list == 500 and list[1].id == 2 and list[500].id == 501, "the oldest goes first")
+end)
+Learn("13.5 H: the code", function()
+    ok(ns.PLANNER_TIMES_HEADER == "FGT1!", "the header")
+    ns.version = "13.5.0"
+    ns.db.plannerLearnTimes = true
+    ok(ns.PlannerTimesCode() == nil, "none: no code")
+    Three()
+    local code = ns.PlannerTimesCode()
+    ok(code == GOLDEN, "the golden code: " .. tostring(code))
+    ok(ns.ShareDecode(GOLDEN, 6).e[2][1] == "level", "it reads back")
+    ok(not code:find(env.UnitName("player"), 1, true) and not code:find(env.GetRealmName(), 1, true), "no name, no realm")
+    ok(not code:find("N" .. Today() .. ";", 1, true), "no day")
+end)
+Learn("13.5 H: Share my times", function()
+    local title, text, n = nil, nil, 0
+    ns.ShowTextWindow = function(_, t, x) n = n + 1; title, text = t, x end
+    local said = {}
+    ns.PrintRaw = function(_, m) said[#said + 1] = m end
+    ns:PlannerShareTimes()
+    ok(n == 0, "none: no window")
+    ok(table.concat(said, "\n"):find(ns:Tr("No times kept yet."), 1, true), "none: said so")
+    ns.version = "13.5.0"
+    Three()
+    ns:PlannerShareTimes()
+    ok(n == 1 and title == "Share my times", "the window: " .. tostring(title))
+    ok(text:find("and 3 times (1 levels, 1 quests, 1 flights, 0 boat crossings). No names.", 1, true), "what it holds:\n" .. tostring(text))
+    ok(ns.PLANNER_SHARE_LINK == "https://fantasyglassui.com/get-started/#share-times" and text:find(ns.PLANNER_SHARE_LINK, 1, true), "the link")
+    ok(text:find(GOLDEN, 1, true), "the code")
+    ok(not text:find(env.UnitName("player"), 1, true), "no name")
+end)
+Learn("13.5 H: turning it off", function()
+    local realList, shown = ns.ShowList, 0
+    ns.ShowList = function(self, key, ...) if key == "PlannerLearnClear" then shown = shown + 1 end; return realList(self, key, ...) end
+    Three()
+    ns:PlannerLearnSwitch(false)
+    local w = ns:ListWindow("PlannerLearnClear")
+    ok(shown == 1 and #w.lines == 2, "the clear list")
+    ok(w.lines[1].left == string.format(ns:Tr("%d times are kept. Nothing new is kept now."), 3), "how many: " .. tostring(w.lines[1].left))
+    local clear = w.lines[2]
+    ok(clear.left == ns:Tr("Clear them (click twice)"), "the button line")
+    clear.click(nil, 100)
+    ok(#ns.root.learnTimes.list == 3, "one click: kept")
+    clear.click(nil, 105)
+    ok(ns.root.learnTimes == nil or #ns.root.learnTimes.list == 0, "two within 10 s: cleared")
+    ok(select(1, ns.PlannerLearnCount()) == 0, "nothing counted")
+    -- closing without clicking keeps them
+    if ns.HideLists then ns:HideLists() end
+    Three()
+    ns:PlannerLearnSwitch(false)
+    ns:ListWindow("PlannerLearnClear"):Hide()
+    ok(#ns.root.learnTimes.list == 3, "closed: kept")
+    -- a late second click: kept
+    ns:PlannerLearnSwitch(false)
+    local late = ns:ListWindow("PlannerLearnClear").lines[2]
+    late.click(nil, 100); late.click(nil, 120)
+    ok(#ns.root.learnTimes.list == 3, "too late: kept")
+    ns.db.plannerLearnTimes = false
+    ns.root.plannerQuestTimes = {}
+    ns.PlannerRecordQuestTime(950, 120)
+    ok(#ns.root.learnTimes.list == 3 and ns.root.plannerQuestTimes[950], "off: a new quest time keeps nothing")
+    -- off with nothing kept: no list
+    ns:HideLists()
+    ns.root.learnTimes = nil
+    shown = 0
+    ns:PlannerLearnSwitch(false)
+    ns.ShowList = realList
+    ok(shown == 0, "nothing kept: no list")
+end)
+Learn("13.5 H: shared averages", function(rec)
+    local S = ns.PLANNER_SHARED_TIMES
+    ok(ns.PlannerSharedTime("quest", 901) == nil, "an empty table: nothing")
+    local rec901 = { id = 901, objectives = { { kind = "kill", count = 8 } } }
+    ns.root.plannerQuestTimes = {}
+    local formula = ns.PlannerQuestTime(rec901, { noAlts = true })
+    ok(ns.PlannerQuestTime(rec901, {}) == formula, "nothing shared: the formula")
+    S.quests[901] = 600
+    ok(ns.PlannerSharedTime("quest", 901) == 600, "the shared time")
+    ok(math.abs(ns.PlannerQuestTime(rec901, {}) - (formula + 600 * 3) / 4) < 1e-6, "the shared time weighs three times")
+    ok(ns.PlannerQuestTime(rec901, { noAlts = true }) == formula, "the formula alone: not used")
+    ns.root.plannerQuestTimes = { [901] = { n = 2, avg = 300 } }
+    ok(math.abs(ns.PlannerQuestTime(rec901, {}) - (formula + 300 * 2) / 3) < 1e-6, "your own times: the shared one is ignored")
+    S.quests[901] = -1
+    ns.root.plannerQuestTimes = {}
+    ok(ns.PlannerSharedTime("quest", 901) == nil and ns.PlannerQuestTime(rec901, {}) == formula, "not a positive number: nothing")
+    -- flights
+    ns.root.plannerFlightTimes = {}
+    S.flights["12-34"] = 95
+    ok(ns.PlannerContext().flightTime(12, 34) == 95, "a shared flight")
+    ns.root.plannerFlightTimes = { ["12-34"] = 80 }
+    ok(ns.PlannerContext().flightTime(12, 34) == 80, "your own flight first")
+    -- crossings
+    ns.root.plannerCrossTimes = nil
+    S.crossings["menethil-theramore"] = 200
+    local realMap = env.C_Map
+    env.C_Map = setmetatable({ GetWorldPosFromMapPos = function(map, v)
+        if map == 1437 then return 0, { x = v.x * 1000, y = v.y * 1000 } end
+        if map == 1445 then return 1, { x = v.x * 1000, y = v.y * 1000 } end
+    end }, { __index = realMap })
+    env.CreateVector2D = function(x, y) return { x = x, y = y } end
+    local from, to = { map = 1437, x = 4.9, y = 62.0 }, { map = 1445, x = 71.5, y = 56.5 }
+    local ctx = { speed = 7, faction = "Alliance", crossings = ns.PLANNER_CROSSINGS, flights = {}, flightTime = function() return nil end }
+    local function Sail()
+        local _, legs = ns.PlannerTravel(from, to, ctx)
+        for _, l in ipairs(legs) do if l.kind == "sail" then return l.seconds end end
+    end
+    ok(Sail() == 200, "a shared crossing: " .. tostring(Sail()))
+    ns.root.plannerCrossTimes = { ["menethil-theramore"] = 250 }
+    ok(Sail() == 250, "your own crossing first")
+    ns.root.plannerCrossTimes, S.crossings["menethil-theramore"] = nil, nil
+    ok(Sail() == 270, "neither: the crossing's own time")
+    -- the time to your next level
+    env.UnitLevel = function() return 20 end
+    env.UnitXP = function() return 250 end
+    env.UnitXPMax = function() return 1000 end
+    rec.pace = { samples = { 1, 1 }, value = 1 }
+    ok(ns.PlannerTimeToLevel({ xp = 100, seconds = 60 }) == nil, "two samples, nothing shared: nothing")
+    S.levels.MAGE = { [20] = 3600 }
+    ok(ns.PlannerTimeToLevel({ xp = 100, seconds = 60 }) == 45, "the shared level: " .. tostring(ns.PlannerTimeToLevel({ xp = 100, seconds = 60 })))
+    S.levels = { WARRIOR = { [20] = 3600 } }
+    ok(ns.PlannerTimeToLevel({ xp = 100, seconds = 60 }) == nil, "another class's level: not used")
+    S.levels.MAGE = { [20] = 3600 }
+    rec.pace = { samples = { 1, 1, 1 }, value = 1 }
+    ok(ns.PlannerTimeToLevel({ xp = 100, seconds = 60 }) == 8, "three samples: your own pace, as in 13.0 (" .. tostring(ns.PlannerTimeToLevel({ xp = 100, seconds = 60 })) .. ")")
+end)
+Learn("13.5 H: the planner window", function()
+    local function Click(b)
+        local n = 0
+        for i = 1, #handlers do local h = handlers[i]; if h.self == b and h.name == "OnClick" then n = n + 1; h.fn(b, "LeftButton") end end
+        ok(n > 0, "nothing to click")
+    end
+    ns.db.plannerLearnTimes = nil
+    local f = ns:PlannerOpen()
+    local T = f and f.T
+    ok(T and T.learnBox and T.shareTimesButton, "the two rows")
+    ok(T.learnBox.row.sec == "records" and T.learnBox.row.seq == 4 and T.shareTimesButton.row.sec == "records" and T.shareTimesButton.row.seq == 5, "under Records, after Why")
+    ok(T.learnBox.key == "plannerLearnTimes", "the key")
+    local checked
+    local realSet = T.learnBox.SetChecked
+    rawset(T.learnBox, "SetChecked", function(_, v) checked = v end)
+    T.Refresh()
+    rawset(T.learnBox, "SetChecked", realSet)
+    ok(checked == false, "reads off by default: " .. tostring(checked))
+    ns.db.plannerLearnTimes = false
+    Click(T.learnBox)
+    ok(ns.db.plannerLearnTimes == true, "switched on")
+    Three()
+    local realList, shown = ns.ShowList, 0
+    ns.ShowList = function(self, key, ...) if key == "PlannerLearnClear" then shown = shown + 1 end; return realList(self, key, ...) end
+    Click(T.learnBox)
+    ns.ShowList = realList
+    ok(ns.db.plannerLearnTimes == false, "switched off")
+    ok(shown == 1, "off with entries: the clear list")
+    ok(#ns.root.learnTimes.list == 3, "and still kept")
+    ns:HideLists()
+    local n = 0
+    ns.ShowTextWindow = function() n = n + 1 end
+    Click(T.shareTimesButton)
+    ok(n == 1, "Share my times opens the code")
+    if f.Hide then f:Hide() end
+end)
 end
 -- 13.5 H learn tests: end
 -- release 13 fix tests: end

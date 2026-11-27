@@ -1387,7 +1387,9 @@ function ns.PlannerContext()
         speed = RunSpeed(),
         faction = (function() local f = Call(UnitFactionGroup, "player"); return type(f) == "string" and not ns:IsSecret(f) and f or nil end)(),
         flights = ns.PlannerFlightPoints(),
-        flightTime = function(a, b) return times and tonumber(times[a .. "-" .. b]) or nil end,
+        flightTime = function(a, b)       -- (yours, else what players shared: 13.5, PlannerShare.lua)
+            return times and tonumber(times[a .. "-" .. b]) or ns.PlannerSharedTime("flight", a .. "-" .. b)
+        end,
         hearth = HearthSpot(), bind = BindName(), bindSpot = BindSpot(),
         crossings = ns.PLANNER_CROSSINGS,
         learnFlights = db.plannerLearnFlights ~= false,

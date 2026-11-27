@@ -49,10 +49,16 @@ function ns.PlannerTimeToLevel(summary)
     if not (gained and seconds and gained > 0 and seconds > 0) then return nil end
     local rec = ns.PlannerCharRecord and ns.PlannerCharRecord(false)
     local samples = type(rec) == "table" and type(rec.pace) == "table" and rec.pace.samples
-    if type(samples) ~= "table" or #samples < 3 then return nil end
     local have, need = Read(UnitXP, "player"), Read(UnitXPMax, "player")
     if not (have and need and need > 0) then return nil end
-    return max(1, floor(max(0, need - have) / (gained / seconds) / 60 + 0.5))
+    if type(samples) == "table" and #samples >= 3 then
+        return max(1, floor(max(0, need - have) / (gained / seconds) / 60 + 0.5))
+    end
+    -- (13.5: not enough of your own pace yet: what players of your class shared for this level, PlannerShare.lua)
+    local level = Read(UnitLevel, "player")
+    local shared = level and ns.PlannerSharedTime and ns.PlannerSharedTime("level", level, ns.PlannerClassToken())
+    if not shared then return nil end
+    return max(1, floor(shared * max(0, need - have) / need / 60 + 0.5))
 end
 
 ns.GuideRegisterTitle("planB", function(st)
