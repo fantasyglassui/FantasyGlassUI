@@ -67,6 +67,7 @@ a { color: var(--frost); }
 .real .row a.openbtn { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 18px; border: 1px solid var(--gold); border-radius: 8px;
   background: var(--gold); color: var(--on-gold); font-weight: 600; text-decoration: none; }
 .real .row a.openbtn:hover, .real .row a.openbtn:focus-visible { border-color: var(--text); }
+.real .row a.openbtn.line { background: transparent; color: var(--gold); }
 </style>
 <main>
   <header>
@@ -98,6 +99,8 @@ a { color: var(--frost); }
       <!-- OpenMap refuses to be shown inside another site (it answers a frame with "refused to connect"), so it is a link:
            the page never contacts openmap.world itself; only following the link does -->
       <a id="openmaptab" class="openbtn" href="https://openmap.world/" target="_blank" rel="noopener noreferrer"></a>
+      <!-- the world map on this site (/map/): the same art, with nothing asked of another site -->
+      <a id="worldmaptab" class="openbtn line" href="/map/"></a>
     </div>
     <p class="note" id="realcredit"></p>
   </section>
@@ -234,6 +237,7 @@ var WORDS = /*@WORDS@*/;
     $("realhead").textContent = T("The real map");
     $("realtext").textContent = T("OpenMap shows WoW Forever's own zone maps. It's a separate site, made by other players.");
     $("openmaptab").textContent = T("Open OpenMap in a new tab");
+    $("worldmaptab").textContent = T("Open the world map");
     $("realcredit").textContent = T("Map art \u00a9 Blizzard Entertainment, shown by OpenMap (openmap.world). Not part of Fantasy Glass UI.");
     render();
   }

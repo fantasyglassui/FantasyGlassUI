@@ -35,6 +35,7 @@ PAGES = [
     {"slug": "guide-and-gold/first-scan", "nav": "Your first price scan", "top": False, "desc": "Read every auction at once with Scan prices, so tooltips, sell hints and gold ideas have prices to go on."},
     {"slug": "guide-and-gold/sell-hints", "nav": "Reading the sell hints", "top": False, "desc": "What Sell now, Hold and Vendor it mean in tooltips and on the bags, and when they show."},
     {"slug": "press", "nav": "Press kit", "top": False, "foot": True, "desc": "The Fantasy Glass UI logo, screenshots and a short description in nine languages, for writing about the add-on."},
+    {"slug": "map", "nav": "World map", "desc": "Kalimdor and the Eastern Kingdoms of WoW Forever in one map to drag and zoom, from the game's own zone maps."},
 ]
 LANG_NAMES = {"en": "English", "de": "Deutsch", "fr": "Français", "es": "Español", "ru": "Русский", "pt": "Português", "it": "Italiano", "ko": "한국어", "zh": "中文"}
 # the structured data on Home (search engines read it); the theme count is filled in by the build

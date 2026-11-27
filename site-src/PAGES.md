@@ -23,6 +23,7 @@ belongs to the team that fills it. **One page is one folder, and nobody edits an
 | Accessibility | `pages/accessibility/` | `/accessibility/` | `/de/accessibility/` | W3 |
 | How-to pages (5) | `pages/guide-and-gold/<name>/` | `/guide-and-gold/<name>/` | `/de/guide-and-gold/<name>/` | W3 |
 | Press kit | `pages/press/` | `/press/` | `/de/press/` | W3 |
+| World map | `pages/map/` | `/map/` | `/de/map/` | W3 |
 | Plan page | `plan/` (`plan_page.py`) | `/plan/` (every language inside it) | | W3 |
 
 The languages are en, de, fr, es, ru, pt, it, ko and zh (`/de/`, `/fr/` ... `/zh/`). The list of pages, their
@@ -107,6 +108,22 @@ empty cue list (`"cues": []`), and while it is empty no caption file and no `<tr
   heading, a marked 13.0 stand-in ("Coming soon") stands at the top and stays out of the feed.
 - A page can sit in a sub-folder (`pages/guide-and-gold/duo/` is `/guide-and-gold/duo/`); a data file with
   `"_translate": ["title", "text"]` has those fields listed for translation by `keys_all.py`.
+
+- World map (W3, `pages/map/`): Kalimdor and the Eastern Kingdoms in one map to drag and zoom, drawn with Leaflet 1.9.4
+  (from npm, served from `/map/leaflet/` with its licence; nothing comes from another site), on `L.CRS.Simple`. Its
+  files are in `pages/map/files/` and served at `/map/`:
+  - `tiles/{z}/{y}/{x}.webp` and `tiles/meta.json` (`width`, `height` of the whole map at `maxZoom`, `tileSize`, `sea`):
+    the map art (Blizzard's, from OpenMap's MapZones textures, with Santiago Reyes' painted gap fills). The page reads
+    meta.json when it loads, so a new tile set only needs the folder replaced (delete the old one first). The build
+    writes `/map/tiles-have.json`, the tiles there are, so open sea (no tile) is never asked for.
+  - `markers.json`: the places, `[{"name": "...", "category": "...", "coords": [x, y], "description": "..."}]`, with
+    `x, y` in pixels from the top left of the whole map at `maxZoom`. Made by `tools/map_markers.py` from OpenMap's
+    data and the game's map table in `tools/mapdata/` (run it again after changing those). Each kind (category) gets a
+    button to show or hide it; Zones and Dungeons show at first (`ON` in `script.js`). A place's name and description
+    are plain text (never HTML) and stay in English; a new kind's name goes in `kindName` in `script.js` and in the
+    World map block of `site_tr.py`.
+  - To add a place by hand: open `/map/?pins`, click the spot, and copy the line the pin helper shows into
+    `markers.json` with its name, category and description. Then build; `tests/sitecheck.py` checks every place.
 
 Old links keep working: on Home, `/#features`, `/#themes`, `/#maker`, `/#commands`, `/#faq` and `/#start` (and the
 same under `/de/` and so on), `/?theme=...` and `/?code=...#maker` open the page that now has that part (a small

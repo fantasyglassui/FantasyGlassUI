@@ -14,6 +14,7 @@ MAP_WORDS = ['Map of the stops in %s', 'Step %d: %s', 'Steps %s: %s', 'N', 'Nort
 # inserts it only when the player presses the button.
 OPENMAP_WORDS = ['The real map', "OpenMap shows WoW Forever's own zone maps. It's a separate site, made by other players.",
                  'Open OpenMap in a new tab',
+                 'Open the world map',
                  'Map art \u00a9 Blizzard Entertainment, shown by OpenMap (openmap.world). Not part of Fantasy Glass UI.']
 THEME = ('<script>try{var t=localStorage.getItem("fg-theme");'
          'if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>\n')

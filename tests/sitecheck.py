@@ -9,6 +9,8 @@ Builds the site into a temporary folder and checks:
 - the sitemap lists every page in every language and the plan page, and nothing else;
 - the plan page (/plan/) is built, can be found (no noindex, in the sitemap, linked from Guide and Gold in every
   language), and makes no request to any other site;
+- the world map (/map/) serves Leaflet and every tile it lists from this site, its markers.json is a valid list of
+  places inside the map, it credits Blizzard, OpenMap (with its source and Ko-fi) and Santiago Reyes, and the plan page links it;
 - the feed of releases (/feed.xml) is RSS with every release's link pointing at its place on the Changelog, and
   every page names it in its head and links it in its footer."""
 import html
@@ -148,6 +150,47 @@ with tempfile.TemporaryDirectory() as tmp:
     robots = os.path.join(ROOT, "docs", "robots.txt")
     if os.path.exists(robots) and "plan" in text(robots):
         fail("robots.txt mentions the plan page")
+
+    # ---- the world map (/map/): Leaflet and the tiles served from this site, a valid places file, the credits
+    for need in ("map/leaflet/leaflet.js", "map/leaflet/leaflet.css", "map/leaflet/LICENSE.txt", "map/tiles/meta.json", "map/markers.json", "map/tiles-have.json"):
+        if need not in fa:
+            fail("the world map lacks " + need)
+    if "Leaflet 1.9.4" not in text(fa["map/leaflet/leaflet.js"])[:200]:
+        fail("map/leaflet/leaflet.js is not Leaflet 1.9.4")
+    meta = json.load(open(fa["map/tiles/meta.json"]))
+    if not all(isinstance(meta.get(k), int) and meta[k] > 0 for k in ("width", "height", "tileSize")) or not isinstance(meta.get("maxZoom"), int) \
+            or not re.fullmatch(r"#[0-9a-fA-F]{6}", str(meta.get("sea"))) or meta["width"] > meta["tileSize"] << meta["maxZoom"] or meta["height"] > meta["tileSize"] << meta["maxZoom"]:
+        fail("map/tiles/meta.json: width, height, maxZoom, tileSize and sea do not fit together: " + str(meta))
+    have = json.load(open(fa["map/tiles-have.json"]))
+    listed = {f"map/tiles/{z}/{k}.webp" for z, ks in have.items() for k in ks}
+    there = {n for n in fa if n.startswith("map/tiles/") and n.endswith(".webp")}
+    if not listed or listed != there or "map/tiles/0/0/0.webp" not in there:
+        fail("map/tiles-have.json does not list the tiles there are: " + str(sorted(listed ^ there)[:4]))
+    try:
+        places = json.load(open(fa["map/markers.json"], encoding="utf-8"))
+    except ValueError as e:
+        fail("map/markers.json is not JSON: " + str(e))
+    if not isinstance(places, list):
+        fail("map/markers.json is not a list of places")
+    for m in places:
+        if not (isinstance(m, dict) and isinstance(m.get("name"), str) and m["name"].strip() and isinstance(m.get("category"), str) and m["category"].strip()
+                and isinstance(m.get("coords"), list) and len(m["coords"]) == 2 and all(isinstance(v, (int, float)) for v in m["coords"])
+                and 0 <= m["coords"][0] <= meta["width"] and 0 <= m["coords"][1] <= meta["height"] and isinstance(m.get("description", ""), str)):
+            fail("map/markers.json: a place needs a name, a category, coords [x, y] inside the map and a text description: " + json.dumps(m)[:120])
+    mapjs = next((p for n, p in fa.items() if n == "assets/map.js"), None)
+    if not mapjs or re.search(r"https?://|innerHTML|insertAdjacentHTML|document\.write", text(mapjs)):
+        fail("assets/map.js names another site or writes HTML")
+    for c in LANGS:
+        t = text(fa[addr("map", c).lstrip("/") + "index.html"])
+        for need in ('<link rel="stylesheet" href="/map/leaflet/leaflet.css">', '<script src="/map/leaflet/leaflet.js" defer></script>', 'id="worldmap"',
+                     "Blizzard Entertainment", 'href="https://openmap.world/"', 'href="https://github.com/jiforever/wowforever-openmap"', "MIT", "Santiago Reyes",
+                     '<a href="https://ko-fi.com/jigrobbulus" target="_blank" rel="noopener noreferrer">', 'id="pins" aria-labelledby="h-pins" hidden'):
+            if need not in t:
+                fail(addr("map", c) + " lacks " + need)
+        if re.search(r'<(?:img|iframe|source|script|video|audio|embed|object)\b[^>]+(?:src|data)="https?://|<link rel="(?:stylesheet|preload|modulepreload|icon|prefetch)"[^>]+href="https?://', t):
+            fail(addr("map", c) + " loads something from another site")
+    if 'href="/map/"' not in page or 'id="worldmaptab"' not in page:
+        fail("the plan page does not link the world map")
 
     # ---- the feed of releases
     if "feed.xml" not in fa:
