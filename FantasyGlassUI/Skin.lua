@@ -270,10 +270,25 @@ function ns:LanguageFont(fs, code)
     ns:Font(fs, e and e[1] or 12, e and e[2])
 end
 -- One error disables the wrapped function (prints once) instead of spamming.
+-- (13.5) While Keep crash reports is on (Crashes.lua), Safe and Guard call through xpcall instead, so
+-- the handler can note where it happened, and every failure is kept, not only the first. The closure
+-- for that is made on the wrapper's own line, so a call stack shows the two as one place (ns.guardAt,
+-- which Blocked.lua steps over). While it is off, the call is the plain pcall it always was.
 function ns:Safe(label, fn)
     local failed = false
-    return function(...)
+    return function(...) local call; if ns.CrashOn and ns.CrashOn() then local args, n = { ... }, select("#", ...); call = function() return fn(unpack(args, 1, n)) end end
         if failed then return end
+        if call then
+            local ok, err = xpcall(call, ns.CrashHandler)
+            if not ok then
+                failed = true
+                pcall(ns.CrashKeep, label, err, ns.crashStack)
+                ns.crashStack = nil
+                if #ns.errors < 60 then rawset(ns.errors, #ns.errors + 1, label .. " (switched off): " .. tostring(err)) end
+                ns:PrintRaw("|cffff4444" .. label .. " disabled after an error:|r " .. tostring(err))
+            end
+            return
+        end
         local ok, err = pcall(fn, ...)
         if not ok then
             failed = true
@@ -299,8 +314,27 @@ end
 -- Like Safe, but keeps running: reports the first error only.
 function ns:Guard(label, fn)
     local told = false
-    return function(...)
+    return function(...) local call; if ns.CrashOn and ns.CrashOn() then local args, n = { ... }, select("#", ...); call = function() return fn(unpack(args, 1, n)) end end
         local ok, err
+        if call then                                         -- (13.5: Keep crash reports is on; see ns:Safe)
+            if ns.perfOn then
+                local t0 = debugprofilestop()
+                ok, err = xpcall(call, ns.CrashHandler)
+                ns:PerfAdd(label, debugprofilestop() - t0)
+            else
+                ok, err = xpcall(call, ns.CrashHandler)
+            end
+            if not ok then
+                pcall(ns.CrashKeep, label, err, ns.crashStack)
+                ns.crashStack = nil
+                if not told then
+                    told = true
+                    if #ns.errors < 60 then rawset(ns.errors, #ns.errors + 1, label .. ": " .. tostring(err)) end
+                    ns:PrintRaw("|cffff4444" .. label .. ":|r " .. tostring(err))
+                end
+            end
+            return
+        end
         if ns.perfOn then                                    -- /fgui perf is measuring: time this call
             local t0 = debugprofilestop()
             ok, err = pcall(fn, ...)
