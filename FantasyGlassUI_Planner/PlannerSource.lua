@@ -191,24 +191,26 @@ ns.PLANNER_CLASS_QUESTS = {
     DRUID = { { id = 5921, level = 10, kind = "always", parts = 2 }, { id = 5061, level = 16, kind = "fit", parts = 1 } },
 }
 
--- Classic dungeons: { name, minLevel, maxLevel, map, x, y, zone = Questie's area id }. "Try the Deadmines" advice
--- when quests run dry (PlannerAdvice.lua). A starter set from memory: CHECK IN GAME (levels, entrances, area ids).
+-- Classic dungeons: { name, minLevel, maxLevel, map, x, y, zone = Questie's area id, instance = the game's instance id
+-- (GetInstanceInfo's 8th value), bosses }. The dry-spell advice (PlannerAdvice.lua) and the dungeon runs (PlannerDungeons.lua,
+-- through src.dungeons, which takes Questie's entrance when it has one). A starter set from memory: CHECK IN GAME (levels,
+-- entrances, area ids, instance ids, boss counts).
 ns.PLANNER_DUNGEONS = {
     -- check in game
-    { name = "Ragefire Chasm", minLevel = 13, maxLevel = 18, map = 1411, x = 52, y = 11, zone = 2437 },
-    { name = "Wailing Caverns", minLevel = 15, maxLevel = 25, map = 1413, x = 46, y = 36, zone = 718 },
-    { name = "The Deadmines", minLevel = 17, maxLevel = 24, map = 1436, x = 43, y = 72, zone = 1581 },
-    { name = "Shadowfang Keep", minLevel = 18, maxLevel = 25, map = 1421, x = 44, y = 67, zone = 209 },
-    { name = "Blackfathom Deeps", minLevel = 20, maxLevel = 30, map = 1440, x = 14, y = 14, zone = 719 },
-    { name = "The Stockade", minLevel = 22, maxLevel = 30, map = 1453, x = 41, y = 57, zone = 717 },
-    { name = "Gnomeregan", minLevel = 24, maxLevel = 33, map = 1426, x = 24, y = 38, zone = 721 },
-    { name = "Razorfen Kraul", minLevel = 25, maxLevel = 35, map = 1413, x = 42, y = 90, zone = 491 },
-    { name = "Scarlet Monastery", minLevel = 28, maxLevel = 38, map = 1420, x = 84, y = 35, zone = 796 },
-    { name = "Razorfen Downs", minLevel = 35, maxLevel = 45, map = 1413, x = 50, y = 93, zone = 722 },
-    { name = "Uldaman", minLevel = 35, maxLevel = 45, map = 1418, x = 42, y = 12, zone = 1337 },
-    { name = "Zul'Farrak", minLevel = 42, maxLevel = 50, map = 1446, x = 39, y = 21, zone = 1176 },
-    { name = "Maraudon", minLevel = 45, maxLevel = 55, map = 1443, x = 29, y = 62, zone = 2100 },
-    { name = "The Temple of Atal'Hakkar", minLevel = 50, maxLevel = 60, map = 1435, x = 70, y = 54, zone = 1477 },
+    { name = "Ragefire Chasm", minLevel = 13, maxLevel = 18, map = 1411, x = 52, y = 11, zone = 2437, instance = 389, bosses = 4 },
+    { name = "Wailing Caverns", minLevel = 15, maxLevel = 25, map = 1413, x = 46, y = 36, zone = 718, instance = 43, bosses = 7 },
+    { name = "The Deadmines", minLevel = 17, maxLevel = 24, map = 1436, x = 43, y = 72, zone = 1581, instance = 36, bosses = 6 },
+    { name = "Shadowfang Keep", minLevel = 18, maxLevel = 25, map = 1421, x = 44, y = 67, zone = 209, instance = 33, bosses = 7 },
+    { name = "Blackfathom Deeps", minLevel = 20, maxLevel = 30, map = 1440, x = 14, y = 14, zone = 719, instance = 48, bosses = 7 },
+    { name = "The Stockade", minLevel = 22, maxLevel = 30, map = 1453, x = 41, y = 57, zone = 717, instance = 34, bosses = 5 },
+    { name = "Gnomeregan", minLevel = 24, maxLevel = 33, map = 1426, x = 24, y = 38, zone = 721, instance = 90, bosses = 6 },
+    { name = "Razorfen Kraul", minLevel = 25, maxLevel = 35, map = 1413, x = 42, y = 90, zone = 491, instance = 47, bosses = 6 },
+    { name = "Scarlet Monastery", minLevel = 28, maxLevel = 38, map = 1420, x = 84, y = 35, zone = 796, instance = 189, bosses = 4 },
+    { name = "Razorfen Downs", minLevel = 35, maxLevel = 45, map = 1413, x = 50, y = 93, zone = 722, instance = 129, bosses = 5 },
+    { name = "Uldaman", minLevel = 35, maxLevel = 45, map = 1418, x = 42, y = 12, zone = 1337, instance = 70, bosses = 9 },
+    { name = "Zul'Farrak", minLevel = 42, maxLevel = 50, map = 1446, x = 39, y = 21, zone = 1176, instance = 209, bosses = 8 },
+    { name = "Maraudon", minLevel = 45, maxLevel = 55, map = 1443, x = 29, y = 62, zone = 2100, instance = 349, bosses = 7 },
+    { name = "The Temple of Atal'Hakkar", minLevel = 50, maxLevel = 60, map = 1435, x = 70, y = 54, zone = 1477, instance = 109, bosses = 8 },
 }
 
 -- The id the game knows a quest by in your log: its own, or the one it was matched to (PlannerRecorders.lua); nil when
@@ -273,6 +275,7 @@ local mapCache = nil              -- quest ids by zone map (one scan of every qu
 ns.PLANNER_GATHER_MAPS = 6       -- maps whose Questie gathering nodes are kept at once (the least recently asked go first)
 local gatherCache, gatherOrder, gatherAreas = {}, {}, {}   -- nodes by map, the maps kept (oldest first), area -> map (a reset empties them)
 local zoneCache, grindCache = {}, {}   -- dungeon quest ids by area, grinding spots by level and continent (static data: a reset empties them)
+local dungeonCache = nil               -- src.dungeons(): the list, made once a session (a reset empties it)
 local recCache, cacheLevel = {}, nil   -- built records by quest id (not those in the log); emptied on a new level and by a reset
 local logToken, logRecs = nil, {}      -- the records of logged quests, for the one plan being made (ns.PlannerPlanToken)
 local failed = {}                      -- quests whose record failed: told once a session (ns.errors)
@@ -766,6 +769,33 @@ function ns.PlannerSource()
         zoneCache[zone] = hit
         return hit
     end
+    -- The dungeons as { name, minLevel, maxLevel, map, x, y, zone, instance, bosses } (copies of ns.PLANNER_DUNGEONS):
+    -- the entrance is Questie's (ZoneDB:GetDungeonLocation(area)[1] = { area, x, y }, its area through
+    -- GetUiMapIdByAreaId) when Questie has that function and an entry, else the table's. Made once a session.
+    -- (Questie has no level ranges or boss counts: those are the table's. The contract stays "4": the function is probed.)
+    function src.dungeons()
+        if dungeonCache then return dungeonCache end
+        local list = {}
+        local where = env.zones.GetDungeonLocation
+        for _, d in ipairs(ns.PLANNER_DUNGEONS) do
+            local e = {}
+            for k, v in pairs(d) do e[k] = v end
+            if type(where) == "function" and type(d.zone) == "number" then
+                local ok, at = Try(where, env.zones, d.zone)
+                local first = ok and type(at) == "table" and at[1] or nil
+                local area, x, y
+                if type(first) == "table" then area, x, y = tonumber(first[1]), tonumber(first[2]), tonumber(first[3]) end
+                if area and x and y then
+                    local okM, map = Try(env.zones.GetUiMapIdByAreaId, env.zones, area)
+                    map = okM and tonumber(map) or nil
+                    if map then e.map, e.x, e.y = map, x, y end
+                end
+            end
+            list[#list + 1] = e
+        end
+        dungeonCache = list
+        return list
+    end
     -- The ids of the quests Questie files under an area that maps to this zone map (zoneOrSort, through the
     -- zone database): one scan of every quest per session, then read from the cache.
     function src.mapQuests(map)
@@ -979,6 +1009,7 @@ function ns.PlannerSourceReset()
     logToken, logRecs, failed, builtSource = nil, {}, {}, nil
     ns.plannerInns = nil                        -- (PlannerAdvice.lua: the innkeepers, read again from the new source)
     zoneCache, grindCache, mapCache, idLists = {}, {}, nil, {}
+    dungeonCache = nil                          -- (src.dungeons: Questie's entrances read again)
     gatherCache, gatherOrder, gatherAreas = {}, {}, {}
     ns.plannerExploreMaps = {}                  -- (PlannerPath.lua: the maps known to report exploration)
 end

@@ -357,11 +357,10 @@ function ns:GuideWorld()
         hearthed = function(step) return ns.GuideHearthed(step, theWorld.bind) end,
         groupSize = function() return GroupSize() end,
         inInstance = function() return InInstance() end,
-        ranDungeon = function(step)                           -- (inside it once, out of it now, and not a ghost: a release at
-            local st = State()                                --  the graveyard is not leaving)
+        ranDungeon = function(step)                           -- (inside it once, out in the open world now, and not a ghost: a
+            local st = State()                                --  release at the graveyard is not leaving; nor is another instance,
             if type(step) ~= "table" or step.instance == nil or not (type(st) == "table" and st.inside == step.instance) then return false end
-            local inside, id = InInstance()
-            if inside and id == step.instance then return false end
+            if InInstance() then return false end             --  a ghost through the wrong portal, or this one with its id unread)
             return not ns.Yes(UnitIsDeadOrGhost and UnitIsDeadOrGhost("player"))
         end,
         near = function(step, radius)

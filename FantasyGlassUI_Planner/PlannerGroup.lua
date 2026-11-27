@@ -45,33 +45,42 @@ local function RecordName(questID)
 end
 
 -- Does the button apply now, apart from which step you are on: the switch, the planned guide, the group setting
--- (not Solo, unless you are the duo friend), and no full party or raid.
-local function Allowed(st)
+-- (not Solo, unless you are the duo friend; `anySetting`: a dungeon run's group step, planned for everyone), and no
+-- full party or raid.
+local function Allowed(st, anySetting)
     if not (ns.GuideOn and ns:GuideOn()) then return false end
     if type(st) ~= "table" or st.name == nil or st.name ~= ns.GUIDE_PLANNED then return false end
     if not ns.db or ns.db.plannerFindGroup == false then return false end
-    if (ns.db.plannerGroup or "solo") == "solo" then
+    if not anySetting and (ns.db.plannerGroup or "solo") == "solo" then
         local friend = ns.PlannerDuoRole and ns.PlannerDuoRole() == "friend"
         if not friend then return false end
     end
     if type(IsInRaid) == "function" and IsInRaid() then return false end
-    if type(GetNumGroupMembers) == "function" and (tonumber(GetNumGroupMembers()) or 0) >= 5 then return false end
+    if type(GetNumGroupMembers) == "function" then
+        local n = GetNumGroupMembers()
+        if type(n) == "number" and not ns:IsSecret(n) and n >= 5 then return false end
+    end
     return true
 end
+-- A dungeon run's "Find a group for ..." step (PlannerDungeons.lua): its title is the dungeon's name.
+local function GroupStep(step) return type(step) == "table" and step.kind == "group" and Clean(step.dungeon) ~= nil end
 local function Qualifies(step)
+    if GroupStep(step) then return true end
     return type(step) == "table" and (step.kind == "accept" or step.kind == "do" or step.kind == "turnin")
         and type(step.quest) == "number" and ns.PlannerNeedsGroup(step.quest) ~= nil
 end
 
 -- The step you are on, when the button applies to it.
 function ns.PlannerFindGroupStep(st, steps, at)
-    if not Allowed(st) or type(steps) ~= "table" then return nil end
+    if type(steps) ~= "table" then return nil end
     local step = steps[tonumber(at) or 1]
+    if not Allowed(st, GroupStep(step)) then return nil end
     if Qualifies(step) then return step end
     return nil
 end
 
 local function Title(step)
+    if GroupStep(step) then return Clean(step.dungeon) end
     return Clean(step.title) or RecordName(step.quest) or (type(step.quest) == "number" and ("#" .. step.quest)) or nil
 end
 local function Cut(s, n)                                 -- (at most n bytes, cut before a whole character)
@@ -95,14 +104,14 @@ end
 -- (a "/4 " channel): the title is cut short, on a whole character, to fit. Never "LFG , <zone>": a title cut to
 -- nothing gives way to the record's name (cut too), then "#<id>" (whole, never cut).
 function ns.PlannerLFGText(step, reserve)
-    if type(step) ~= "table" or type(step.quest) ~= "number" then return "" end   -- (no quest: no line at all, never "#nil")
+    if type(step) ~= "table" or (type(step.quest) ~= "number" and not GroupStep(step)) then return "" end   -- (no quest: no line at all, never "#nil")
     local title, zone = Title(step), ZoneName(step.map)
     local pattern = ns:Tr(zone and "LFG %s, %s" or "LFG %s")
     local fixed = #(zone and format(pattern, "", zone) or format(pattern, ""))
-    local room, id = MAX_LINE - (tonumber(reserve) or 0) - fixed, "#" .. step.quest
+    local room, id = MAX_LINE - (tonumber(reserve) or 0) - fixed, type(step.quest) == "number" and ("#" .. step.quest) or nil
     title = Cut(title, room)
-    if title == "" then title = Cut(RecordName(step.quest) or "", room) end
-    if title == "" then title = id end                 -- (a few bytes over the 200 only when nothing fits at all)
+    if title == "" and type(step.quest) == "number" then title = Cut(RecordName(step.quest) or "", room) end
+    if title == "" then title = id or Cut(Clean(step.dungeon) or "", MAX_LINE) end   -- (a few bytes over the 200 only when nothing fits at all)
     return zone and format(pattern, title, zone) or format(pattern, title)
 end
 
@@ -152,7 +161,7 @@ end
 
 local function GroupLine(st, steps, at)
     local step = ns.PlannerFindGroupStep(st, steps, at)
-    if not step then return nil end
+    if not step or GroupStep(step) then return nil end    -- (a dungeon's group step says "Find a group for ..." itself)
     return format(ns:Tr("Group quest: %s"), Title(step))
 end
 ns.PlannerGroupLine = GroupLine
@@ -165,6 +174,6 @@ ns.GuideRegisterAction("panel", "findGroup", "Find a group", function(step) ns.P
 end)
 ns.GuideRegisterAction("step", "findGroup", "Find a group", function(step) ns.PlannerFindGroup(step) end, function(step)
     local st = Current()
-    return Allowed(st) and Qualifies(step)
+    return Allowed(st, GroupStep(step)) and Qualifies(step)
 end)
 ns.FolderFileDone("planner", "PlannerGroup.lua")
