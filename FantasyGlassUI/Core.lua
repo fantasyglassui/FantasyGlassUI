@@ -1,6 +1,6 @@
 local ADDON, ns = ...
 _G.FantasyGlassUI = ns
-ns.version = "13.0.0"
+ns.version = "13.0.1"
 ns.author = "DustyMouse"
 
 ns.modules = {}
