@@ -351,10 +351,18 @@ function ns.PlannerHubs(candidates, ctx)
         hubs = kept
     end
     local classMap = ns.PlannerClassMap(ctx)          -- (an "always" class quest, or a quest whose item you hold: its hub is planned first, never choosing the zone)
+    local level = tonumber(ctx.level) or 1
+    local classPre = type(ctx.classPre) == "table" and ctx.classPre or nil
     for _, hub in ipairs(hubs) do
+        ns.PlannerYield()
         for _, q in ipairs(hub.quests) do
             local e = classMap[q.id]
             if q.haveItem then hub.first = 2 elseif e and e.kind == "always" and not hub.first then hub.first = 1 end
+            -- (due: an "always" class quest at or below your level, or a quest one needs first, R13: its lead-in may cross the sea)
+            if (e and e.kind == "always" and tonumber(e.level) and e.level <= level) or (classPre and classPre[q.id]) then
+                hub.classDue = true
+                if not hub.first then hub.first = 1 end
+            end
         end
     end
     return hubs
@@ -390,33 +398,53 @@ local function Here(ctx)
 end
 
 -- map, newlyPicked, hubs. The best map by (xp of its best hubs) / (their seconds + travel there).
+-- ctx.classHold (PlannerClass.lua, R12): only maps on its continent are scored when any of them has a hub (the last
+-- zone is kept only when it is on it too); a zone picked elsewhere lifts the hold for this plan (c.classHold = nil).
 function ns.PlannerPickZone(candidates, ctx)
     ctx = ctx or {}
     local c = ctx.candidate and ctx or WithCandidates(ctx, candidates or {})
     local hubs = ns.PlannerHubs(candidates, c)
     local maps, order = ByMap(hubs)
     local last, here = ctx.lastZone, Here(ctx)       -- (a hub planned first never chooses the zone: Build takes it as a lead-in)
+    local hold = type(c.classHold) == "table" and c.classHold or nil
+    local held                                       -- (the maps with hubs on the hold's continent, or nil)
+    if hold then
+        for _, m in ipairs(order) do
+            local hc = Pos(maps[m][1])
+            if hc ~= nil and not ns:IsSecret(hc) and hc == hold.c then held = held or {}; held[m] = true end
+        end
+    end
+    local function Picked(m, newly)
+        if hold and not (held and held[m]) then c.classHold = nil end
+        return m, newly, hubs
+    end
     for _, h in ipairs(ns.PlannerHooksFor(c, "zone")) do  -- (another file's choice: the first map it names that has hubs)
         local m = h.fn(maps, order, c)
-        if m ~= nil and maps[m] and #maps[m] > 0 then return m, m ~= last, hubs end
+        if m ~= nil and maps[m] and #maps[m] > 0 then return Picked(m, m ~= last) end
     end
-    if last and maps[last] and not (ctx.lastZoneLevel and (ctx.level or 0) >= ctx.lastZoneLevel + ns.PLANNER_REPICK_LEVELS)
+    if last and maps[last] and (not held or held[last]) and not (ctx.lastZoneLevel and (ctx.level or 0) >= ctx.lastZoneLevel + ns.PLANNER_REPICK_LEVELS)
         and (not here or ns.PlannerTravel(here, maps[last][1], c) < huge) then
-        return last, false, hubs
+        return Picked(last, false)
     end
     local best, bestScore = nil, -1
     for _, m in ipairs(order) do
         ns.PlannerYield()
         local list, xp, t = maps[m], 0, 0
-        for i = 1, min(ns.PLANNER_HORIZON, #list) do xp, t = xp + list[i].xp, t + list[i].seconds end
-        local travel = 0
-        if here then travel = ns.PlannerTravel(here, list[1], c) end
-        if travel < huge then
-            local score = xp / (t + travel)
-            if score > bestScore then best, bestScore = m, score end
+        if not held or held[m] then
+            for i = 1, min(ns.PLANNER_HORIZON, #list) do xp, t = xp + list[i].xp, t + list[i].seconds end
+            local travel = 0
+            if here then travel = ns.PlannerTravel(here, list[1], c) end
+            if travel < huge then
+                local score = xp / (t + travel)
+                if score > bestScore then best, bestScore = m, score end
+            end
         end
     end
-    return best, best ~= nil and best ~= last, hubs
+    if best == nil then                              -- (no zone: the hold stays only while its continent has hubs)
+        if hold and not held then c.classHold = nil end
+        return nil, false, hubs
+    end
+    return Picked(best, best ~= last)
 end
 
 ------------------------------------------------------------------------------------------
@@ -905,12 +933,13 @@ local function Build(ctx, candidates, skipped)
         end
     end
     -- A hub planned first on another map (an "always" class quest, an item in your bags) is a lead-in: taken
-    -- first, on top of the zone's hubs, when it is on the zone's continent and can be reached. It never
-    -- chooses the zone, binds the hearthstone or is remembered as the zone.
+    -- first, on top of the zone's hubs, when it is on the zone's continent (or anywhere, for a class quest that is
+    -- due or a quest it needs: h.classDue) and can be reached. It never chooses the zone, binds the hearthstone or is
+    -- remembered as the zone.
     local lead, leadFirst, leadRate
     for _, h in ipairs(hubs) do
         ns.PlannerYield()
-        if h.first and h.map ~= zone and zc and Pos(h) == zc
+        if h.first and h.map ~= zone and zc and (h.classDue or Pos(h) == zc)
             and (not here or ns.PlannerTravel(here, h, c) < huge)
             and (not lead or h.first > leadFirst or (h.first == leadFirst and Rate(h) > leadRate)) then
             lead, leadFirst, leadRate = h, h.first, Rate(h)

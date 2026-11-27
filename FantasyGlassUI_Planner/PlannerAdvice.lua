@@ -208,7 +208,7 @@ local function DryLines(summary)
     return out
 end
 
--- The panel's lines: the quest log advice, then the inn, then what to do when quests run dry.
+-- The panel's lines: the quest log advice, then the inn, then a class quest coming soon, then what to do when quests run dry.
 function ns.PlannerAdviceLines(steps, at, summary)
     local lines = {}
     for _, a in ipairs(ns.PlannerLogAdvice(steps, at, summary)) do
@@ -219,6 +219,10 @@ function ns.PlannerAdviceLines(steps, at, summary)
         local okT, now = pcall(GetTime)
         now = okT and Num(now) or nil
         if now and inn.t and now >= inn.t and now - inn.t <= ns.PLANNER_INN_SHOWN then lines[#lines + 1] = inn.text else ns.plannerInnLine = nil end
+    end
+    local soon = type(summary) == "table" and summary.classSoon or nil   -- (a class quest a level or two ahead: PlannerClass.lua)
+    if type(soon) == "table" and tonumber(soon.level) and type(soon.start) == "string" and not (ns.db and ns.db.plannerClassQuests == false) then
+        lines[#lines + 1] = format(ns:Tr("Your level %d class quest is coming: it starts in %s."), soon.level, soon.start)
     end
     for _, l in ipairs(DryLines(summary)) do lines[#lines + 1] = l end
     return lines

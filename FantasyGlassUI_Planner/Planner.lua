@@ -344,15 +344,51 @@ function ns.PlannerCandidates(source, ctx)
     end
     local have = {}
     for _, r in ipairs(list) do have[r.id] = true end
+    -- A quest an "always" class quest at or below your level still needs (R13, one level deep): one you could take
+    -- now is a candidate whatever the level window, and ctx.classPre[preId] = classId (its hub is planned first).
+    -- Of a preAny list none of which is done, the first such quest; one already a candidate is only marked.
+    ctx.classPre = {}
+    local function Pre(pid, classId)
+        if have[pid] then ctx.classPre[pid] = classId; return true end
+        if done(pid) or onQuest(pid) or (never and never[pid]) then return false end
+        local p = source.quest(pid)
+        if p and p.doable and not p.repeatable and not p.fromItem and GroupOK(p, ctx, level)
+            and AllDone(p.pre, done) and AnyDone(p.preAny, done) and Keep(p, ctx, false) then
+            have[pid] = true
+            list[#list + 1] = p
+            ctx.classPre[pid] = classId
+            return true
+        end
+        return false
+    end
     for _, e in ipairs(type(ctx.classQuests) == "table" and ctx.classQuests or {}) do
         ns.PlannerYield()
         local id = type(e) == "table" and e.id
         if type(id) == "number" and not have[id] and tonumber(e.level) and e.level <= level and not done(id) and not (never and never[id]) then
             local rec = source.quest(id)
-            if rec and not onQuest(id) and rec.doable and not rec.repeatable and GroupOK(rec, ctx, level)
-                and AllDone(rec.pre, done) and AnyDone(rec.preAny, done) and Keep(rec, ctx, false) then
-                have[id] = true
-                list[#list + 1] = rec
+            if rec and not onQuest(id) and rec.doable and not rec.repeatable and GroupOK(rec, ctx, level) then
+                local allPre, anyPre = AllDone(rec.pre, done), AnyDone(rec.preAny, done)
+                if allPre and anyPre then
+                    if Keep(rec, ctx, false) then
+                        have[id] = true
+                        list[#list + 1] = rec
+                    end
+                elseif e.kind == "always" and Keep(rec, ctx, false) then
+                    if not allPre then
+                        for _, p in ipairs(rec.pre) do
+                            ns.PlannerYield()
+                            local pid = PreId(p)
+                            if type(pid) == "number" and not done(pid) then Pre(pid, id) end
+                        end
+                    end
+                    if not anyPre then
+                        for _, p in ipairs(rec.preAny) do
+                            ns.PlannerYield()
+                            local pid = PreId(p)
+                            if type(pid) == "number" and Pre(pid, id) then break end
+                        end
+                    end
+                end
             end
         end
     end
