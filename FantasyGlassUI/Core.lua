@@ -153,6 +153,8 @@ ns.defaults = {
     infobarBg        = 0,           -- info bar background strength, percent (0 = text only)
     barTexture       = true,
     bankWindow       = true,
+    bagSlotsShown    = true,        -- the bag window's row of equipped bags (its Slots button hides it; 13.0.1)
+    bankSlotsShown   = true,        -- the bank window's row of tabs (its Tabs button hides it; 13.0.1)
     storage          = true,
     itemCounts       = true,
     craftBar         = true,        -- the crafting bar in our style, with the profession's icon
@@ -339,12 +341,12 @@ ns.defaults = {
     acceptShared     = true,        -- setups other players send you open in the preview
     hideRaidManager  = false,       -- the game's raid manager on the left edge, hidden (Companion.lua)
     bagSecMine       = true,        -- bag rules: your own (Tools tab)            (Companion.lua)
-    bagSecUpgrades   = false,       -- bag rules: ready-made sections
-    bagSecSets       = false,
-    bagSecBoE        = false,
-    bagSecMats       = false,
-    bagSecConsumables = false,
-    bagSecRecipes    = false,
+    bagSecUpgrades   = true,        -- bag rules: ready-made sections (on for new profiles since 13.0.1; a profile
+    bagSecSets       = true,        -- saved before then holds its own value, so a section switched off stays off)
+    bagSecBoE        = true,
+    bagSecMats       = true,
+    bagSecConsumables = true,
+    bagSecRecipes    = true,
     mailButton       = true,        -- mail rules: the "Send by my rules" button
     mailRulesOn      = true,        -- mail rules: your own (Tools tab)
     mailCloth        = false,       -- mail rules: materials, each to the character typed beside it
@@ -1641,6 +1643,7 @@ end
 
 -- What's new: shown once after an update (never on a first install, where the setup opens instead).
 ns.whatsNew = {
+    { "13.0.1", { "The bag window shows your bag slots when it opens (Slots hides them, and that is remembered), and new players get its ready-made sections, such as Upgrades and Recipes, switched on. With Baganator, a one-time tip says where to find your bag slots." } },
     { "13.0.0", { "Quest guides: follow a route one step at a time, with a panel for the step you are on and an arrow that points the way. They are under Guide in /fgui.",
                   "The route planner: Plan my route works out which quests to take for your level, in what order, and when to fly, train or hand in, and plans again as you play. It finds quests through Questie when Questie is loaded.",
                   "The planner window (/fgui plan, or Planner on the guide panel) holds every setting for what it plans. Keep my route there leaves your route as it is until you ask for a new one.",
@@ -2316,6 +2319,7 @@ f:SetScript("OnEvent", function(_, event, name)
             for _, name in ipairs(stepped) do if not seen[name] then seen[name] = true; names[#names + 1] = name end end
             ns:Print("Leaving some jobs to your other add-ons (%s). |cffffff00/fgui check|r lists which; |cffffff00/fgui conflicts off|r makes Fantasy Glass UI do them anyway.", table.concat(names, ", "))
         end
+        if ns.BaganatorTip then ns:BaganatorTip() end       -- (BagWindow.lua: once per account, where to find the bag slots)
         -- swing timers switched off again: give Blizzard's own swing bars back
         if not ns.db.swingTimer and ns.db.swingCVarWasOn then
             ns.db.swingCVarWasOn = nil

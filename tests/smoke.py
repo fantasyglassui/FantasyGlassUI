@@ -2339,6 +2339,108 @@ try("Bags: using items in combat", function()
     env.InCombatLockdown = function() return false end
     rawset(bag.overlay(), "target", nil)
 end)
+-- 13.0.1: the row of equipped bags (and the bank's tabs) shows when the window first opens, and the
+-- Slots button's choice is kept in the profile.
+for _, case in ipairs({ { "FantasyGlassUIBags", "bagSlotsShown" }, { "FantasyGlassUIBank", "bankSlotsShown" } }) do
+    local name, key = case[1], case[2]
+    try("Bags 13.0.1: " .. name .. "'s slots row shows at first open", function()
+        local T = ns.bagTest and ns.bagTest[name]
+        if not T then error("the window's test hooks are missing") end
+        if ns.defaults[key] ~= true then error(key .. " should ship switched on, got " .. tostring(ns.defaults[key])) end
+        if ns:FillDefaults({})[key] ~= true then error("a new profile should show the slots row") end
+        local keep = ns.db[key]
+        ns.db[key] = true
+        if not T.slotsShown or T.slotsShown() ~= true then error("a new profile's window should show the slots row at first open") end
+        local ok, e = pcall(T.Layout); if not ok then error("the window could not be arranged: " .. tostring(e)) end
+        if T.slotRow() == nil then error("the slots row was not made when the window opened") end
+        ns.db[key] = keep
+    end)
+    try("Bags 13.0.1: " .. name .. "'s Slots choice is kept", function()
+        local T = ns.bagTest[name]
+        local keep = ns.db[key]
+        ns.db[key] = true
+        T.win.ToggleSlots()
+        if ns.db[key] ~= false then error("hiding the row should be saved in the profile, got " .. tostring(ns.db[key])) end
+        if T.slotsShown() ~= false then error("the row should be hidden") end
+        -- the next session: the saved choice is read, and FillDefaults leaves it as it is
+        if ns:FillDefaults({ [key] = false })[key] ~= false then error("a hidden row must stay hidden next session") end
+        local other = ns.db
+        ns.db = ns:FillDefaults({})                  -- another profile has its own choice
+        if T.slotsShown() ~= true then error("the row is chosen per profile") end
+        ns.db = other
+        T.win.ToggleSlots()
+        if ns.db[key] ~= true or T.slotsShown() ~= true then error("showing it again should be saved too") end
+        ns.db[key] = keep
+    end)
+end
+-- 13.0.1: the ready-made bag sections ship switched on; a player who has them off keeps them off, and
+-- using items in combat stays off until tried.
+for _, key in ipairs({ "bagSecUpgrades", "bagSecSets", "bagSecBoE", "bagSecMats", "bagSecConsumables", "bagSecRecipes" }) do
+    try("Bags 13.0.1: " .. key .. " is on for new players", function()
+        if ns.defaults[key] ~= true then error(key .. " should ship switched on, got " .. tostring(ns.defaults[key])) end
+        if ns:FillDefaults({})[key] ~= true then error("a new profile should have " .. key .. " on") end
+    end)
+    try("Bags 13.0.1: " .. key .. " stays off for a player who has it off", function()
+        local p = ns:FillDefaults({ [key] = false, design = 4 })
+        if p[key] ~= false then error("an existing player's " .. key .. " = false must stay off") end
+    end)
+end
+try("Bags 13.0.1: using items in combat stays off", function()
+    if ns.defaults.bagCombatUse ~= false then error("bagCombatUse must ship switched off") end
+    if ns:FillDefaults({}).bagCombatUse ~= false then error("a new profile must have bagCombatUse off") end
+end)
+-- 13.0.1: with Baganator showing the bags, one line says where the bag slots are: once per account,
+-- never in a fight.
+try("Bags 13.0.1: the Baganator tip appears once, never in a fight", function()
+    if type(ns.BaganatorTip) ~= "function" then error("ns.BaganatorTip is missing") end
+    local keepRoot, keepAside = ns.root, ns.steppedAside.bagWindow
+    local keepCombat = env.InCombatLockdown
+    ns.root = {}
+    local function Said(from) local n = 0; for i = from + 1, #printed do if tostring(printed[i]):find("Baganator is showing your bags", 1, true) then n = n + 1 end end return n end
+    -- no Baganator: nothing
+    ns.steppedAside.bagWindow = nil
+    local mark = #printed
+    ns:BaganatorTip()
+    if Said(mark) ~= 0 or ns.root.baganatorTip then error("without Baganator there is no tip") end
+    -- another bag add-on: nothing either
+    ns.steppedAside.bagWindow = "Bagnon"
+    ns:BaganatorTip()
+    if Said(mark) ~= 0 then error("the tip is about Baganator only") end
+    -- Baganator, in a fight: nothing until the fight ends
+    ns.steppedAside.bagWindow = "Baganator"
+    local combat = true
+    env.InCombatLockdown = function() return combat end
+    ns:BaganatorTip()
+    if Said(mark) ~= 0 then error("the tip must never show during a fight") end
+    if ns.root.baganatorTip then error("the tip is not marked shown before it is shown") end
+    fireEvent("PLAYER_REGEN_DISABLED")
+    if Said(mark) ~= 0 then error("still in the fight: no tip") end
+    combat = false
+    fireEvent("PLAYER_REGEN_ENABLED")
+    if Said(mark) ~= 1 then error("the tip should show once the fight ends, got " .. Said(mark)) end
+    if ns.root.baganatorTip ~= true then error("the tip should be marked shown in the account-wide ns.root") end
+    -- and never again: not after another fight, not next session
+    combat = true; fireEvent("PLAYER_REGEN_DISABLED"); combat = false; fireEvent("PLAYER_REGEN_ENABLED")
+    ns:BaganatorTip()
+    if Said(mark) ~= 1 then error("the tip should show only once, got " .. Said(mark)) end
+    -- out of a fight on a fresh account: straight away
+    ns.root = {}
+    mark = #printed
+    ns:BaganatorTip()
+    if Said(mark) ~= 1 or ns.root.baganatorTip ~= true then error("out of a fight, the tip shows at once") end
+    -- the bank stepping aside alone counts too
+    ns.root = {}
+    ns.steppedAside.bagWindow = nil
+    local keepBank = ns.steppedAside.bankWindow
+    ns.steppedAside.bankWindow = "Baganator"
+    mark = #printed
+    ns:BaganatorTip()
+    if Said(mark) ~= 1 then error("the bank stepping aside for Baganator should give the tip too") end
+    ns.steppedAside.bankWindow = keepBank
+    -- it never writes Baganator's own settings
+    if rawget(env, "BAGANATOR_CONFIG") ~= nil then error("Baganator's settings must not be written") end
+    ns.root, ns.steppedAside.bagWindow, env.InCombatLockdown = keepRoot, keepAside, keepCombat
+end)
 try("Minimap button for the options", function()
     if type(ns.LauncherClick) ~= "function" then error("the launcher module did not start") end
     runTimers(); ns.BuildLauncher()

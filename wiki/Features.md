@@ -267,12 +267,12 @@ The quest guide's two switches are on the Guide tab of `/fgui`. Every setting fo
 | Profession cooldowns | on | Remembers each character's once-a-day crafts (transmutes and the like) whenever a profession window is open, and says when one is ready again. /fgui profcd lists them for all your characters. |
 | Profession leveling helper (Skill-ups) | on | A Skill-ups button on the profession window: the recipes you know that still give skill points, best first. What you can make now comes first, then what needs the fewest materials (counting your other characters), orange before yellow before green. |
 | Bags: my own rules | on | The sections you make yourself with the bag rules below (or /fgui bagrules). They come first: the first rule an item meets decides its section. |
-| Bags: Upgrades section | off | Gear better than what you wear (the green arrow) gets its own section at the top of the bags. |
-| Bags: Gear sets section | off | Items in a gear set from the equipment manager are kept together in a Gear sets section. |
-| Bags: Bind on equip section | off | Gear that binds when equipped and is not yet bound to you, so it can still be sold or traded, in a section of its own. |
-| Bags: materials by kind | off | Trade goods split by kind: Cloth, Leather, Ore and stone, Herbs, Cooking ingredients, Elemental, Enchanting materials and Gems, each its own section. |
-| Bags: potions, food and scrolls apart | off | Consumables split into Potions and elixirs, Food and drink, Scrolls and Bandages. |
-| Bags: Recipes section | off | Recipes, patterns, plans and formulas in a section of their own. |
+| Bags: Upgrades section | on | Gear better than what you wear (the green arrow) gets its own section at the top of the bags. |
+| Bags: Gear sets section | on | Items in a gear set from the equipment manager are kept together in a Gear sets section. |
+| Bags: Bind on equip section | on | Gear that binds when equipped and is not yet bound to you, so it can still be sold or traded, in a section of its own. |
+| Bags: materials by kind | on | Trade goods split by kind: Cloth, Leather, Ore and stone, Herbs, Cooking ingredients, Elemental, Enchanting materials and Gems, each its own section. |
+| Bags: potions, food and scrolls apart | on | Consumables split into Potions and elixirs, Food and drink, Scrolls and Bandages. |
+| Bags: Recipes section | on | Recipes, patterns, plans and formulas in a section of their own. |
 
 ## Vendors, trainers and mail
 
