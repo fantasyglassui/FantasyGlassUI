@@ -1,4 +1,15 @@
 {
+ "Your route": {
+  "en": "Your route",
+  "de": "Deine Route",
+  "fr": "Votre itinéraire",
+  "es": "Tu ruta",
+  "ru": "Ваш маршрут",
+  "pt": "Sua rota",
+  "it": "Il tuo percorso",
+  "ko": "내 경로",
+  "zh": "你的路线"
+ },
  "Quest guide": {
   "en": "Quest guide",
   "de": "Questguide",

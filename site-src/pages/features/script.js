@@ -16,7 +16,8 @@
     "Bags and bag rules": L("All your bags in one window, sorted into sections by rules you can change."),
     "Vendors, trainers and mail": L("Selling, repairs, the auction house and its prices, trainers and the mailbox."),
     "Done for you": L("Small jobs it can do for you. Each one has its own switch."),
-    "Game settings": L("The game's own settings as switches. Switching one off puts back what it was.")
+    "Game settings": L("The game's own settings as switches. Switching one off puts back what it was."),
+    "Quest guides": L("The Guide tab's switches and the planner window's: what the route takes in, its stops, the map, and planning with a friend.")
   }[title]; }
   function slug(t) { return "s-" + t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""); }
   function mark(text, q) {

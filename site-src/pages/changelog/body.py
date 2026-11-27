@@ -83,9 +83,12 @@ def read_changelog(repo):
 def anchor(v): return 'v' + v.replace('.', '-')
 
 
+# The "Big updates" email list: one paragraph, one phrase in site_tr.py. To drop the list, set EMAIL_LIST = '' and
+# delete that phrase; the release feed stays.
+EMAIL_LIST = ('<p>[[For big updates only, by email: write to <a href="mailto:email-forwarding@fantasyglassui.com?subject=Big%20updates">email-forwarding@fantasyglassui.com</a> with the subject “Big updates”. Your address is kept only in our mailbox, it is used only to send you a note when a big update comes out, and writing again stops it.]]</p>')
 FOLLOW = ('<aside class="follow card" aria-labelledby="h-follow"><h2 id="h-follow">[[Hear about new versions]]</h2>'
           '<p>[[New versions come out on CurseForge, and the <a href="/feed.xml">release feed</a> lists each one for any feed reader.]]</p>'
-          '<p>[[For big updates only, by email: write to <a href="mailto:email-forwarding@fantasyglassui.com?subject=Big%20updates">email-forwarding@fantasyglassui.com</a> with the subject “Big updates”. Your address is used for nothing else, and you can write again to stop.]]</p></aside>')
+          + EMAIL_LIST + '</aside>')
 
 
 def body(ctx):

@@ -157,7 +157,7 @@
         <div>
           <h2>登录并跟着设置向导走</h2>
           <p>第一次登录时，设置向导会自动打开。它用四个简短步骤问你要它接管多少、你怎么玩、喜欢哪种外观，然后给你一个起步的布局。</p>
-          <p><b>从其他界面转过来的？</b> 在最后一步，点一下就能把框体放到 ElvUI 或 Tukui、RealUI、GW2 UI、游戏自带界面原来的位置。 <a href="/zh/features/#compare">它们如何比较</a></p>
+          <p><b>从其他界面转过来的？</b> 在最后一步，点一下就能把框体排成类似 ElvUI 或 Tukui、RealUI、GW2 UI、游戏自带界面的布局。 <a href="/zh/features/#compare">它们如何比较</a></p>
           <p class="faint"><code>/fgui setup</code> 随时可以重新运行。新角色会沿用你主角色的设置，并按其职业调整。</p>
           <img src="/shots/glass-settings.webp" srcset="/shots/glass-settings-480.webp 480w, /shots/glass-settings-800.webp 800w, /shots/glass-settings.webp 1070w" sizes="(max-width: 900px) 100vw, 760px" width="1070" height="730" alt="选项窗口：所有主题集中一处，每项功能都可以关闭。" class="cut tour-shot" loading="lazy" decoding="async">
         </div>
@@ -186,7 +186,7 @@
 
   <section class="wrap narrow help-wrap" aria-labelledby="help-h">
     <div class="help card">
-      <div><h2 id="help-h" class="h3">发现问题，或者有想法？</h2><p>来 Discord 聊聊，或在 GitHub 告诉我们。报告问题时最有用的是插件自带的报告：在游戏中打开 <code>/fgui</code>，点击 <b>Report a Problem</b> 并粘贴文字。其他事宜：<a href=&quot;mailto:email-forwarding@fantasyglassui.com&quot;>email-forwarding@fantasyglassui.com</a>。</p></div>
+      <div><h2 id="help-h" class="h3">发现问题，或者有想法？</h2><p>来 Discord 聊聊，或在 GitHub 告诉我们。报告问题时最有用的是插件自带的报告：在游戏中打开 <code>/fgui</code>，点击 <b>Report a Problem</b> 并粘贴文字。其他事宜：<a href="mailto:email-forwarding@fantasyglassui.com">email-forwarding@fantasyglassui.com</a>。</p></div>
       <div class="cta">
         <a class="btn" href="https://discord.gg/qeSMwQWyPR" target="_blank" rel="noopener">加入 Discord</a>
         <a class="btn line" href="https://github.com/fantasyglassui/FantasyGlassUI/issues/new?template=bug_report.yml" target="_blank" rel="noopener">报告问题</a>
@@ -209,7 +209,7 @@
 
       <div id="faq">
         <h3 class="sub">常见问题</h3>
-        <div class="faq card"><details class="q"><summary>适用于哪个游戏？</summary><p><b>WoW Forever</b>（界面版本 16001）。把压缩包里的所有文件夹并排放进 <code>World of Warcraft/_forever_/Interface/AddOns</code> 即可。</p></details><details class="q"><summary>能和其他插件一起用吗？</summary><p>可以。如果你已经在用做同样事情的插件，比如姓名板用 Plater，背包用 Bagnon 或 Baganator，团队框体用 Grid2、VuhDo 或 Cell，Fantasy Glass UI 会让出那一部分，其余照常。输入 <code>/fgui conflicts off</code> 则改用它自己的。</p></details><details class="q"><summary>可以只用一部分吗？</summary><p>可以。<code>/fgui</code> 里每个部分都有自己的开关，比如只保留背包和姓名板，其余交给游戏。</p></details><details class="q"><summary>我喜欢方形框体，能用经典外观吗？</summary><p>可以。在 <code>/fgui</code> 的“框体与动作条”中选择 Classic 代替 Starcut，所有框体、条和按钮都会变回方框形状，任何主题都适用。</p></details><details class="q"><summary>对色盲、低视力或听力有帮助吗？</summary><p>是的，有一整个类别。<code>/fgui access</code> 提供按色觉类型调整的颜色、高对比度主题、适合低视力和阅读障碍的字体、声音字幕、朗读对话、任务和提示、用键盘操作游戏窗口、单手按键、安全闪烁、静止星空和平静模式。它按需求分类的全部功能见<a href=&quot;/accessibility/&quot;>辅助功能页面</a>。</p></details><details class="q"><summary>会让游戏变卡吗？</summary><p>关闭的部分完全不会运行。想亲自确认的话，<code>/fgui perf</code> 显示每个部分花费的时间，<code>/fgui perf fight</code> 测量你的下一场战斗，<code>/fgui memory</code> 显示内存占用。</p></details><details class="q"><summary>有地方不对劲，怎么恢复？</summary><p><code>/fgui undo</code> 撤销上一次移动或缩放，<code>/fgui history</code> 列出你改过的内容，任何一项都能撤销。<code>/fgui reset</code>（输入两次）把配置恢复为初始状态，之前会先备份：<code>/fgui backup</code> 可查看。<code>/fgui safe</code> 会关闭所有功能后重载，用来判断问题是否出在插件。</p></details><details class="q"><summary>能把我的设置分享给朋友吗？</summary><p>可以。<code>/fgui pack</code> 把整个界面（配置、布局、主题、动作条和邮件规则）打包成一段可粘贴的文字，<code>/fgui send &lt;name&gt; layout</code> 则直接发送给装有本插件的其他玩家。</p></details><details class="q"><summary>去哪里求助，或者展示我的界面？</summary><p>在<a href=&quot;https://discord.gg/qeSMwQWyPR&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;>我们的 Discord</a>：到 <b>#fgui-help</b> 提问，在 <b>#show-your-ui</b> 发截图，在 <b>#themes</b> 分享主题代码。那里也有专门报告问题和提建议的频道。</p></details><details class="q"><summary>支持哪些语言？</summary><p>英语、德语、法语、西班牙语、俄语、葡萄牙语、意大利语、韩语和中文。会跟随你的游戏语言。</p></details><details class="q"><summary>免费吗？</summary><p>是的，免费，没有广告，也没有任何需要购买的东西。</p></details></div>
+        <div class="faq card"><details class="q"><summary>适用于哪个游戏？</summary><p><b>WoW Forever</b>（界面版本 16001）。把压缩包里的所有文件夹并排放进 <code>World of Warcraft/_forever_/Interface/AddOns</code> 即可。</p></details><details class="q"><summary>能和其他插件一起用吗？</summary><p>可以。如果你已经在用做同样事情的插件，比如姓名板用 Plater，背包用 Bagnon 或 Baganator，团队框体用 Grid2、VuhDo 或 Cell，Fantasy Glass UI 会让出那一部分，其余照常。输入 <code>/fgui conflicts off</code> 则改用它自己的。</p></details><details class="q"><summary>可以只用一部分吗？</summary><p>可以。<code>/fgui</code> 里每个部分都有自己的开关，比如只保留背包和姓名板，其余交给游戏。</p></details><details class="q"><summary>我喜欢方形框体，能用经典外观吗？</summary><p>可以。在 <code>/fgui</code> 的“框体与动作条”中选择 Classic 代替 Starcut，所有框体、条和按钮都会变回方框形状，任何主题都适用。</p></details><details class="q"><summary>对色盲、低视力或听力有帮助吗？</summary><p>是的，有一整个类别。<code>/fgui access</code> 提供按色觉类型调整的颜色、高对比度主题、适合低视力和阅读障碍的字体、声音字幕、朗读对话、任务和提示、用键盘操作游戏窗口、单手按键、安全闪烁、静止星空和平静模式。它按需求分类的全部功能见<a href="/zh/accessibility/">辅助功能页面</a>。</p></details><details class="q"><summary>会让游戏变卡吗？</summary><p>关闭的部分完全不会运行。想亲自确认的话，<code>/fgui perf</code> 显示每个部分花费的时间，<code>/fgui perf fight</code> 测量你的下一场战斗，<code>/fgui memory</code> 显示内存占用。</p></details><details class="q"><summary>有地方不对劲，怎么恢复？</summary><p><code>/fgui undo</code> 撤销上一次移动或缩放，<code>/fgui history</code> 列出你改过的内容，任何一项都能撤销。<code>/fgui reset</code>（输入两次）把配置恢复为初始状态，之前会先备份：<code>/fgui backup</code> 可查看。<code>/fgui safe</code> 会关闭所有功能后重载，用来判断问题是否出在插件。</p></details><details class="q"><summary>能把我的设置分享给朋友吗？</summary><p>可以。<code>/fgui pack</code> 把整个界面（配置、布局、主题、动作条和邮件规则）打包成一段可粘贴的文字，<code>/fgui send &lt;name&gt; layout</code> 则直接发送给装有本插件的其他玩家。</p></details><details class="q"><summary>去哪里求助，或者展示我的界面？</summary><p>在<a href="https://discord.gg/qeSMwQWyPR" target="_blank" rel="noopener">我们的 Discord</a>：到 <b>#fgui-help</b> 提问，在 <b>#show-your-ui</b> 发截图，在 <b>#themes</b> 分享主题代码。那里也有专门报告问题和提建议的频道。</p></details><details class="q"><summary>支持哪些语言？</summary><p>英语、德语、法语、西班牙语、俄语、葡萄牙语、意大利语、韩语和中文。会跟随你的游戏语言。</p></details><details class="q"><summary>免费吗？</summary><p>是的，免费，没有广告，也没有任何需要购买的东西。</p></details></div>
       </div>
 
       <div id="commands">
@@ -219,7 +219,7 @@
         </div>
         <p class="dim">在游戏中，<code>/fgui help</code> 会在可搜索的窗口中列出全部命令。</p>
         <div class="tablewrap"><table class="ctable"><caption class="sr-only">命令</caption><tbody id="clist"></tbody></table></div>
-        <button class="btn line small more" type="button" id="cmore">Show all 129 commands</button>
+        <button class="btn line small more" type="button" id="cmore">Show all 137 commands</button>
       </div>
       <p class="count" id="anone" hidden>没有匹配项。试试更短的词，或到 Discord 提问。</p>
     </div>

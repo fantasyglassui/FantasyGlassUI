@@ -18,7 +18,7 @@ def build(out_dir):
             '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
             '<meta name="description" content="Paste a plan code from Fantasy Glass UI and follow the route on any screen, a phone too. Nothing leaves your browser.">\n'
             '<meta name="referrer" content="no-referrer">\n'
-            '<title>Quest guide · Fantasy Glass UI</title>\n</head>\n<body>\n' + page + '</body>\n</html>\n')
+            '<title>Your route · Fantasy Glass UI</title>\n</head>\n<body>\n' + page + '</body>\n</html>\n')
     assert re.search(r'\bfetch\(|XMLHttpRequest|sendBeacon|WebSocket|<script src|<link|https?://', html) is None
     os.makedirs(out_dir + '/plan', exist_ok=True)
     open(out_dir + '/plan/index.html', 'w', encoding='utf-8').write(html)

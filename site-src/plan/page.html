@@ -179,8 +179,8 @@ var WORDS = /*@WORDS@*/;
 
   function words() {
     document.documentElement.lang = lang;
-    document.title = T("Quest guide");
-    $("title").textContent = T("Quest guide");
+    document.title = T("Your route");
+    $("title").textContent = T("Your route");
     $("langlabel").textContent = T("Language");
     $("codelabel").textContent = T("Paste a plan code");
     $("codehint").textContent = T("Copy the code in the game with Share plan, then paste it here.");
@@ -226,7 +226,7 @@ var WORDS = /*@WORDS@*/;
   var pick = $("lang");
   LANGS.forEach(function (l) { var o = el("option", "", l[1]); o.value = l[0]; pick.appendChild(o); });
   try { lang = localStorage.getItem("fgui-plan-lang") || guessLang(); } catch (e) { lang = guessLang(); }
-  if (!WORDS["Quest guide"] || !WORDS["Quest guide"][lang]) lang = "en";
+  if (!WORDS["Your route"] || !WORDS["Your route"][lang]) lang = "en";
   pick.value = lang;
   pick.addEventListener("change", function () {
     lang = pick.value;
