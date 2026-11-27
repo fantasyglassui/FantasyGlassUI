@@ -524,8 +524,7 @@ end
 
 
 ------------------------------------------------------------------------------------------
--- Guide: quest guides are not released yet. Everyone sees "coming soon"; where they have been
--- unlocked (see Guide.lua) this tab holds their switch and controls instead.
+-- Guide: the quest guide's switch and controls, and the route planner's buttons.
 ------------------------------------------------------------------------------------------
 -- (polish) While this tab is the section on show, its rows join the settings window's keys: Tab and
 -- the arrows reach them, Space and Enter use them, Left and Right step a choice or a slider
@@ -555,20 +554,6 @@ end
 function ns.BuildGuidePage(page)
     local T = {}
     ns.guidePage = T
-    local soon = CreateFrame("Frame", nil, page)
-    soon:SetPoint("TOPLEFT", 0, 0)
-    soon:SetSize(736, 400)
-    local big = soon:CreateFontString(nil, "OVERLAY")
-    ns:Font(big, 30, true)
-    big:SetPoint("TOP", 0, -120)
-    big:SetText(ns:Tr("Coming soon"))
-    ns:Paint(big, "SetTextColor", "@accent")
-    local what = Small(soon, 13, 520)
-    what:SetPoint("TOP", big, "BOTTOM", 0, -16)
-    what:SetJustifyH("CENTER")
-    ns:Paint(what, "SetTextColor", "dim")
-    what:SetText(ns:Tr("A quest guide is on its way: routes you follow one step at a time, with a panel for the step you are on and an arrow that points to it."))
-    T.soon = soon
     page.navItems = { { title = "Quest guide" } }            -- (one section: no list to choose from)
     page.NavSelect = function() end
 
@@ -658,9 +643,7 @@ function ns.BuildGuidePage(page)
     page.FollowWidth = function(w) Layout(w) end              -- (shown on a section's card: as wide as the card)
 
     page.Refresh = function()
-        local open = ns.GuideUnlocked and ns:GuideUnlocked()
-        T.unlocked = open and true or false
-        if open then soon:Hide(); live:Show() else live:Hide(); soon:Show() return end
+        live:Show()
         for _, row in ipairs(G.list) do if row.Sync then row.Sync() end end
         recBtn.text:SetText(ns:Tr(ns.guideRecording and "Stop recording" or "Record"))
         local st = ns.GuideState and ns.GuideState()
@@ -674,11 +657,10 @@ function ns.BuildGuidePage(page)
             status:SetText(ns:Tr("Following") .. ": " .. AccentTextHex(status) .. tostring(name) .. "|r  -  " .. tostring(st.at))
         else status:SetText(ns:Tr("You are not following a guide.")) end
         Layout(G.width)
-        -- the first time the tab is opened after the guide was unlocked: the planner's short tour
+        -- the first time the tab is opened: the planner's short tour
         local host = GuideShowing()
         if host and host.sheet == page and ns.PlannerIntroDue and ns:PlannerIntroDue() then ns:PlannerIntro(1) end
     end
     page.Refresh()
-    if not T.unlocked then Layout(G.width) end
     return T
 end

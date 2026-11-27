@@ -134,33 +134,9 @@ function ns:DeleteProfile(name)
     return true, format(ns:Tr("Profile \"%s\" deleted."), name)
 end
 
--- The settings only an unlocked quest guide uses: while it is locked, a shared code leaves them out, so a code
--- never shows their names, and a template or an import does not store them either.
-function ns.GuideGatedKey(k)
-    return type(k) == "string" and (k:find("^planner") ~= nil or k == "questGuide" or k == "guideSound")
-end
--- Is this a gated key while the guide is locked (to be left out of a profile that is stored)?
-function ns.GuideGatedHidden(k)
-    return ns.GuideGatedKey(k) and not (ns.GuideUnlocked and ns:GuideUnlocked())
-end
-local function Shareable(db)
-    if type(db) ~= "table" or (ns.GuideUnlocked and ns:GuideUnlocked()) then return db end
-    local out = {}
-    for k, v in pairs(db) do if not ns.GuideGatedKey(k) then out[k] = v end end
-    -- the guide panel's place and size (its "questGuide" entry): copies without it, the profile's own tables untouched
-    for _, t in ipairs({ "pos", "scale" }) do
-        if type(db[t]) == "table" then
-            local copy = {}
-            for k, v in pairs(db[t]) do if k ~= "questGuide" then copy[k] = v end end
-            out[t] = copy
-        end
-    end
-    return out
-end
-
 function ns:ExportProfile()
     local out = {}
-    Encode(Shareable(ns.db), out, 0)
+    Encode(ns.db, out, 0)
     return HEADER .. table.concat(out)
 end
 
@@ -178,21 +154,21 @@ function ns:ImportProfile(name, text)
     -- keep only settings this version knows, with the type it expects
     local clean = {}
     for k, default in pairs(ns.defaults) do
-        if type(data[k]) == type(default) and not ns.GuideGatedHidden(k) then clean[k] = data[k] end   -- (locked: no guide settings)
+        if type(data[k]) == type(default) then clean[k] = data[k] end
     end
     if type(data.role) == "string" then clean.role = data.role end
     clean.pos, clean.scale = {}, {}
     if type(data.pos) == "table" then
         for k, p in pairs(data.pos) do
-            if type(k) == "string" and not ns.GuideGatedHidden(k) and type(p) == "table" and type(p[1]) == "string" and type(p[2]) == "string"
-               and type(p[3]) == "number" and type(p[4]) == "number" then   -- (locked: not the guide panel's place)
+            if type(k) == "string" and type(p) == "table" and type(p[1]) == "string" and type(p[2]) == "string"
+               and type(p[3]) == "number" and type(p[4]) == "number" then
                 clean.pos[k] = { p[1], p[2], p[3], p[4] }
             end
         end
     end
     if type(data.scale) == "table" then
         for k, v in pairs(data.scale) do
-            if type(k) == "string" and type(v) == "number" and not ns.GuideGatedHidden(k) then clean.scale[k] = math.max(0.5, math.min(2, v)) end
+            if type(k) == "string" and type(v) == "number" then clean.scale[k] = math.max(0.5, math.min(2, v)) end
         end
     end
     clean.classColors = {}
@@ -448,7 +424,7 @@ local function EditModeString()
     return nil
 end
 function ns:ExportPack()
-    local data = { v = 1, profile = Shareable(ns.db), from = UnitName("player") }
+    local data = { v = 1, profile = ns.db, from = UnitName("player") }
     if type(ns.root.mailRules) == "table" then data.mailRules = ns.root.mailRules end
     if type(ns.root.mailTo) == "table" then data.mailTo = ns.root.mailTo end
     data.editMode = EditModeString()
@@ -462,22 +438,23 @@ function ns.CleanPackProfile(p)
     local clean = {}
     if type(p) ~= "table" then return clean end
     for k, default in pairs(ns.defaults) do
-        if type(p[k]) == type(default) and not ns.GuideGatedHidden(k) then clean[k] = DeepCopy(p[k]) end   -- (locked: no guide settings)
+        if type(p[k]) == type(default) then clean[k] = DeepCopy(p[k]) end
     end
     for k, v in pairs(p) do
-        if type(k) == "string" and clean[k] == nil and ns.defaults[k] == nil and not ns.GuideGatedHidden(k) and (type(v) == "table" or type(v) == "string" or type(v) == "number" or type(v) == "boolean") then
+        if type(k) == "string" and clean[k] == nil and ns.defaults[k] == nil and (type(v) == "table" or type(v) == "string" or type(v) == "number" or type(v) == "boolean") then
             clean[k] = DeepCopy(v)
         end
     end
     if type(clean.pos) == "table" then
         for k, at in pairs(clean.pos) do
-            if not (type(k) == "string" and type(at) == "table" and type(at[1]) == "string" and type(at[2]) == "string" and type(at[3]) == "number" and type(at[4]) == "number")
-               or ns.GuideGatedHidden(k) then clean.pos[k] = nil end   -- (locked: not the guide panel's place)
+            if not (type(k) == "string" and type(at) == "table" and type(at[1]) == "string" and type(at[2]) == "string" and type(at[3]) == "number" and type(at[4]) == "number") then
+                clean.pos[k] = nil
+            end
         end
     else clean.pos = {} end
     if type(clean.scale) == "table" then
         for k, v in pairs(clean.scale) do
-            if type(v) ~= "number" or ns.GuideGatedHidden(k) then clean.scale[k] = nil else clean.scale[k] = math.max(0.5, math.min(2, v)) end
+            if type(v) ~= "number" then clean.scale[k] = nil else clean.scale[k] = math.max(0.5, math.min(2, v)) end
         end
     else clean.scale = {} end
     return clean

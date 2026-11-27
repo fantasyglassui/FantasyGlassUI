@@ -370,10 +370,8 @@ local function BuildPlay(page)
         cards[style] = card
     end
     page.cards = cards
-    -- the quest guide: on or off here (quest guides are not released yet: only where they have been unlocked)
-    if ns.GuideUnlocked and ns:GuideUnlocked() then
-        page.guideToggle = Toggle(page, cardW + 6, -162 - 2 * 62 + 14, "questGuide", "Quest guides", "Follow a quest route one step at a time, with a panel for the step you are on and an arrow pointing to it. Nothing shows until you follow a guide.")
-    end
+    -- the quest guide: on or off here
+    page.guideToggle = Toggle(page, cardW + 6, -162 - 2 * 62 + 14, "questGuide", "Quest guides", "Follow a quest route one step at a time, with a panel for the step you are on and an arrow pointing to it. Nothing shows until you follow a guide.")
     Mark()
     refreshers[#refreshers + 1] = Mark
 end

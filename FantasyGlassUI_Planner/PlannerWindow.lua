@@ -8,15 +8,13 @@ if type(ns) ~= "table" then return end
 -- groups, built with the Guide tab's 12.3 rows (ns.GuideRowKit, FantasyGlassUI_Options/Bars.lua): a
 -- heading over each group, a row to a setting with its name and what it does, the switch at the right,
 -- the keys of the settings window, and "Bigger controls". Every setting keeps its ns.db key and what
--- it did on the Guide tab, where these rows were before. Built at its first open, never at login, and
--- only while the guide is unlocked; locked again, it is put away.
+-- it did on the Guide tab, where these rows were before. Built at its first open, never at login.
 ------------------------------------------------------------------------------------------
 local NAME, WIDTH, HEIGHT = "FantasyGlassUIPlanner", 600, 640
 local SUMMARY_TOP, SUMMARY_LINES, SUMMARY_LINE_H = -56, 5, 24     -- (the summary: y -56 to -176)
 local BUTTONS_Y, SWITCHES_Y, SHEET_W = -186, -222, 556
 local W                                                     -- the window, once built
 
-local function Unlocked() return ns.GuideUnlocked ~= nil and ns:GuideUnlocked() == true end
 local function Shown(f, on) if f then if on then f:Show() else f:Hide() end end end
 local function Num(v) if ns:IsSecret(v) or type(v) ~= "number" or v ~= v then return nil end return v end
 
@@ -41,7 +39,7 @@ local ORDER = {
 }
 
 ------------------------------------------------------------------------------------------
--- What you follow, in at most five lines (nil while locked)
+-- What you follow, in at most five lines
 ------------------------------------------------------------------------------------------
 local function StepCount(st, guide)
     local steps = type(guide) == "table" and type(guide.steps) == "table" and guide.steps or {}
@@ -57,7 +55,6 @@ local function RidingLine()
     return format(ns:Tr("Riding: %s to go"), ns.PlannerGoldText(r.short))
 end
 function ns.PlannerWindowSummary()
-    if not Unlocked() then return nil end
     local out = {}
     local st = ns.GuideState and ns.GuideState()
     if type(st) == "table" and st.name == ns.GUIDE_PLANNED then
@@ -591,7 +588,7 @@ local function Build()
         wait = wait + (Num(elapsed) or 0)
         if wait < 1 then return end
         wait = 0
-        if Unlocked() then Refresh(true) else f:Hide() end
+        Refresh(true)
     end)
     f:SetScript("OnHide", function(self) self.focusRing:Hide(); self.nav.at, self.focusedKey = nil, nil end)
     return f
@@ -620,12 +617,11 @@ Refresh = function(light)
     if not light and f.T then f.T.Refresh()
     elseif f.T and f.T.zoneGoalDraw then f.T.zoneGoalDraw() end       -- (the zone goal can end by itself: "Zone done")
 end
-ns.PlannerWindowRefresh = function() if W and Unlocked() then Refresh() end end
+ns.PlannerWindowRefresh = function() if W then Refresh() end end
 
--- Open the window (nil while the guide is locked). The first open, while the tour is still to be seen,
+-- Open the window. The first open, while the tour is still to be seen,
 -- shows "How the planner works" too.
 function ns:PlannerOpen()
-    if not Unlocked() then return nil end
     local f = Build()
     Refresh()
     f:Show()
@@ -634,8 +630,4 @@ function ns:PlannerOpen()
     return f
 end
 
--- Locked again: the window is put away.
-if ns.GuideRegisterLock then
-    ns.GuideRegisterLock("plannerWindow", function(unlocked) if not unlocked and W then W:Hide() end end)
-end
 ns.FolderFileDone("planner", "PlannerWindow.lua")

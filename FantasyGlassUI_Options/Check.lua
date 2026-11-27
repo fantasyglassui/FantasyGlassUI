@@ -210,7 +210,7 @@ function ns:SelfCheck(quiet)
     end
     do
         local gs = ns.GuideState and ns.GuideState()
-        add("Quest guide: " .. ((ns.GuideUnlocked and not ns:GuideUnlocked()) and "coming soon (locked)" or ns.db.questGuide == false and "off" or (gs and ("following \"" .. tostring(gs.name) .. "\", step " .. tostring(gs.at)) or "on, not following one"))
+        add("Quest guide: " .. (ns.db.questGuide == false and "off" or (gs and ("following \"" .. tostring(gs.name) .. "\", step " .. tostring(gs.at)) or "on, not following one"))
             .. "; guides saved: " .. (ns.GuideNames and #ns:GuideNames() or 0) .. (ns.guideRecording and "; recording" or ""))
     end
     -- 10.0.0

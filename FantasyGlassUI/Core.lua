@@ -1,6 +1,6 @@
 local ADDON, ns = ...
 _G.FantasyGlassUI = ns
-ns.version = "12.4.1"
+ns.version = "13.0.0"
 ns.author = "DustyMouse"
 
 ns.modules = {}
@@ -1480,29 +1480,6 @@ function ns:CharKey()
     return (type(name) == "string" and name or "Unknown") .. " - " .. (type(realm) == "string" and realm or "")
 end
 
--- polish P3: begin
--- The settings only an unlocked quest guide uses (as ns.GuideGatedKey in Profiles.lua), and how a
--- locked player's profile reads them: their defaults, never written.
-local function GuideGated(k)
-    return type(k) == "string" and (k:find("^planner") ~= nil or k == "questGuide" or k == "guideSound")
-end
-local GATED_READ = { __index = function(_, k) if GuideGated(k) then return ns.defaults[k] end end }
--- Unlocked during the session: the guide's defaults are written now, as at load for an unlocked player.
-function ns:FillGatedDefaults(profile)
-    if type(profile) ~= "table" or not (ns.GuideUnlocked and ns:GuideUnlocked()) then return end
-    for k, v in pairs(ns.defaults) do
-        if GuideGated(k) and rawget(profile, k) == nil then profile[k] = v end
-    end
-end
--- And at logout while locked, the guide's own stores, if a read made them empty, are not saved.
-function ns:DropGatedStores()
-    local root = ns.root
-    if type(root) ~= "table" or (ns.GuideUnlocked and ns:GuideUnlocked()) then return end
-    for _, key in ipairs({ "guides", "guideState" }) do
-        if type(root[key]) == "table" and next(root[key]) == nil then root[key] = nil end
-    end
-end
--- polish P3: end
 function ns:FillDefaults(profile)
     -- Settings from older versions: carry over the ones that still mean something, drop the rest.
     if profile.microMode == nil and profile.fadeMicro == false then profile.microMode = "SHOW" end
@@ -1526,22 +1503,8 @@ function ns:FillDefaults(profile)
     for where, key in pairs(profile.placeThemes) do if type(key) == "string" then profile.placeThemes[where] = ns.CelestialFor(key) end end
     for _, def in pairs(profile.customThemes) do if type(def) == "table" and def.style == "RUNIC" then def.style = "CELESTIAL" end end
     if type(profile.alertBuffs) ~= "table" then profile.alertBuffs = {} end
-    -- polish P3: begin
-    -- (polish) While the quest guide is locked, its settings are not written into the profile, so
-    -- the saved file never names them: they are read through to their defaults instead, and a
-    -- default written by an older version is taken out again (a value someone set is kept).
-    local locked = not (ns.GuideUnlocked and ns:GuideUnlocked())
-    if locked then
-        for k, v in pairs(ns.defaults) do
-            if GuideGated(k) and type(v) ~= "table" and rawget(profile, k) == v then profile[k] = nil end
-        end
-        if getmetatable(profile) == nil then setmetatable(profile, GATED_READ) end
-    end
-    -- polish P3: end
     for k, v in pairs(ns.defaults) do
-        if locked and GuideGated(k) then
-            -- (read through GATED_READ)
-        elseif rawget(profile, k) == nil then
+        if rawget(profile, k) == nil then
             if type(v) == "table" then                       -- (a table of its own: never the defaults' table, shared by every profile)
                 local copy = {}
                 for kk, vv in pairs(v) do copy[kk] = vv end
@@ -1584,14 +1547,6 @@ function ns:InitDB()
     if ns.TakeBackups then pcall(ns.TakeBackups, ns, root) end       -- (Safety.lua: before anything of this session changes them)
     ns.root, ns.profile = root, name
     ns.db = ns:FillDefaults(root.profiles[name])
-    -- polish P3: begin
-    if ns.GuideRegisterLock then ns.GuideRegisterLock("gatedDefaults", function(unlocked) if unlocked then ns:FillGatedDefaults(ns.db) end end) end
-    if not ns.gatedLogout then
-        ns.gatedLogout = CreateFrame("Frame")
-        ns.gatedLogout:RegisterEvent("PLAYER_LOGOUT")
-        ns.gatedLogout:SetScript("OnEvent", function() ns:DropGatedStores() end)
-    end
-    -- polish P3: end
     -- Does this client refuse add-ons any buff/debuff data during combat? Remembered once found out.
     if root.aurasLocked == nil then
         local ok, _, _, _, toc = pcall(GetBuildInfo)
@@ -1683,6 +1638,13 @@ end
 
 -- What's new: shown once after an update (never on a first install, where the setup opens instead).
 ns.whatsNew = {
+    { "13.0.0", { "Quest guides: follow a route one step at a time, with a panel for the step you are on and an arrow that points the way. They are under Guide in /fgui.",
+                  "The route planner: Plan my route works out which quests to take for your level, in what order, and when to fly, train or hand in, and plans again as you play. It finds quests through Questie when Questie is loaded.",
+                  "The planner window (/fgui plan, or Planner on the guide panel) holds every setting for what it plans. Keep my route there leaves your route as it is until you ask for a new one.",
+                  "Plan with a friend for one route that suits you both, or share your route as a plan code to read on the website.",
+                  "Ways to make gold (Ctrl-click the minimap button): ideas for this character from selling, farming, gathering, crafting and the auction house. Go plans the trip and puts it on the guide panel.",
+                  "The planner and the gold ideas are in two new folders, which the game loads only when you first use them. Leave them enabled.",
+                  "Fixed: quests that WoW: Forever numbers differently from Questie are found in your quest log and tick off." } },
     { "12.4.1", { "Another add-on's full scan of the auction house, such as Auctionator's, is read for your prices too, the same way as Scan prices, and the button counts down from it.",
                   "Where this add-on has no price for an item, the tooltip shows Auctionator's or TSM's, with its name. Those prices are never kept, and give only Vendor it, never Sell now or Hold.",
                   "The Sell now, Hold and Vendor it description now says that every Vendor it hint is for common and uncommon items only." } },
@@ -2489,6 +2451,15 @@ ns.helpLines = {
     { "/fgui quiet", "quiet mode: no chat, names or info bar, for screenshots and streaming (again to undo)" },
     { "/fgui language", "choose the add-on's language" },
     { "/fgui new", "what changed in this version" },
+    { "Quest guides and gold" },
+    { "/fgui guide", "your quest guides: follow one, write or paste one, or record one as you play (record <name>, stop, next, back, off)" },
+    { "/fgui guide plan [minutes]", "plan a route of quests for your level and follow it; with a number, a route that fits the time you can play" },
+    { "/fgui plan", "the planner window: the route you follow, Keep my route, and every setting for what the planner plans" },
+    { "/fgui guide route", "change, move or take out the steps of the guide you are following" },
+    { "/fgui guide duo [name]", "plan one route with a friend who has the add-on (/fgui guide duo off to stop)" },
+    { "/fgui guide share", "your route as a plan code to copy, to read on the website's plan page" },
+    { "/fgui guide keys", "the guide panel's menu, to use with the keyboard" },
+    { "/fgui guide gold", "ways to make gold: ideas for this character, each with Go, which plans the trip (or Ctrl-click the minimap button)" },
     { "Groups and raids" },
     { "/fgui ready", "who in your group is missing food, a flask or a class buff" },
     { "/fgui ready me", "are you ready for the raid: food, flask, weapon, repairs, reagents, bag space, talents and gear" },
@@ -2599,7 +2570,7 @@ ns.helpLines = {
     { "/fgui check", "a report on what is running and what the game allows" },
     { "/fgui check new", "try each feature added since 11.6 and report what works, to copy and send" },
     { "/fgui selftest", "work through the add-on and list what passed and what did not" },
-    { "/fgui report", "everything needed to report a problem, ready to copy" },
+    { "/fgui report", "everything needed to report a problem, ready to copy (the Report a problem button in /fgui does the same)" },
     { "/fgui blocked", "anything the game refused to let the add-on do, and where" },
     { "/fgui memory", "how much memory the add-on is using" },
     { "/fgui addons", "every add-on by the memory it uses" },
@@ -2730,11 +2701,6 @@ ns.toolCommands = {
         if not ns.ButtonBagLines then ns:Print("The minimap button collector is switched off."); return end
         ns:ShowTextWindow("Minimap buttons", table.concat(ns:ButtonBagLines(), "\n"))
     end,
-    unlock = function(t)
-        if ns:GuideUnlock(t) then ns:Print("Quest guides are unlocked on this account. They are under Guide in /fgui.")
-        else ns:Print("That is not the phrase.") end
-    end,
-    lock = function() ns:GuideLock(); ns:Print("Quest guides are locked again.") end,
     ask = function(t) if ns:LoadOptions() and ns.GuidePrint then ns:GuidePrint(t) end end,
 }
 -- Runs one of them if `msg` starts with its word. Returns true when it did.
@@ -2903,7 +2869,7 @@ SlashCmdList["FANTASYGLASSUI"] = function(msg)
     elseif msg == "" or msg == "options" or msg == "config" or msg == "show" then
         ns:ToggleConfig()
     else
-        if ns.HiddenCommand and ns.HiddenCommand(msg, raw) then return end   -- (a word not in the help: Folders.lua's, while unlocked only)
+        if ns.HiddenCommand and ns.HiddenCommand(msg, raw) then return end   -- (Folders.lua's /fgui plan)
         local near = ns.ClosestCommand(msg)
         if near then
             ns:Print("\"%s\" is not a command. Did you mean |cffffff00/fgui %s|r?", raw, near)

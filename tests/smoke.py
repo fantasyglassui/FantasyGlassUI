@@ -877,6 +877,10 @@ local function fire()
         else call(h.self) end
     end
 end
+-- (Until the folder tests below, nothing loads a folder: every button above and the events of the tests before
+--  them would, as a player's clicks do. "folders: nothing loads until it is asked for" puts the loader back.)
+local realLoadFolder = ns.LoadFolder
+ns.LoadFolder = function() return false end
 for _, role in ipairs({ "DAMAGE", "TANK", "HEALER" }) do
     ns:SetRole(role)
     fire()
@@ -2341,11 +2345,12 @@ try("Minimap button for the options", function()
     x, y = ns.PlaceLauncher(40, 60)
     if x ~= 40 or y ~= 60 then error("a spot on the minimap should be kept as given") end
     local opened, moving = 0, 0
-    local realConfig, realMove = ns.ToggleConfig, ns.ToggleMove
+    local realConfig, realMove, realCtrl = ns.ToggleConfig, ns.ToggleMove, env.IsControlKeyDown
     ns.ToggleConfig = function() opened = opened + 1 end
     ns.ToggleMove = function() moving = moving + 1 end
+    env.IsControlKeyDown = function() return false end          -- (Ctrl-click is ways to make gold)
     ns.LauncherClick("LeftButton"); ns.LauncherClick("RightButton")
-    ns.ToggleConfig, ns.ToggleMove = realConfig, realMove
+    ns.ToggleConfig, ns.ToggleMove, env.IsControlKeyDown = realConfig, realMove, realCtrl
     if opened ~= 1 or moving ~= 1 then error("left-click should open the options and right-click start moving panels") end
 end)
 try("Boss frames", function()
@@ -6601,29 +6606,14 @@ try("10.3: quest guides", function()
     if not ns.GuideRecordStep(recording, { kind = "accept", quest = 7 }) or ns.GuideRecordStep(recording, { kind = "accept", quest = 7 }) then error("a step recorded once") end
     if not ns.GuideRecordStep(recording, { kind = "turnin", quest = 7 }) or #recording.steps ~= 2 then error("a different step of the same quest is recorded") end
 
-    -- not released yet: locked unless the author's phrase has been given
-    local keepKey = ns.root.guideKey
-    ns.root.guideKey = nil
-    if ns:GuideUnlocked() or ns:GuideOn() then error("quest guides start locked") end
-    if ns:GuideCommand("") ~= false or ns:GuideShowPanel() ~= nil then error("locked: the guide does nothing") end
-    if ns:GuideUnlock("open sesame") or ns:GuideUnlock("") or ns:GuideUnlocked() then error("a wrong phrase must not unlock") end
-    -- (the phrase is never written in any file, these tests included: they unlock with the stored number,
-    -- read from Guide.lua, and check the phrase's handling with a stand-in number)
-    local key = tonumber((sources["Guide.lua"] or ""):match("local GUIDE_KEY = (%d+)"))
-    if not key then error("Guide.lua keeps the number worked out from the phrase") end
-    if ns.GuideHash("abc") ~= 193485963 or ns.GuideHash("") ~= 5381 then error("the phrase's number is worked out the same way every time") end
-    ns.root.guideKey = key
-    if not ns:GuideUnlocked() then error("the stored number unlocks") end
-    ns:GuideLock()
-    if ns:GuideUnlocked() then error("locking again") end
-    ns.root.guideKey = key
+    -- for everyone since 13.0: no lock, no phrase, and the Guide tab holds the controls
+    if not ns:GuideOn() then error("quest guides are on for everyone") end
+    if ns.GuideUnlocked ~= nil or ns.GuideUnlock ~= nil or ns.GuideLock ~= nil or ns.GuideHash ~= nil or ns.GuideRegisterLock ~= nil then error("the lock is gone") end
+    if ns.toolCommands.unlock ~= nil or ns.toolCommands.lock ~= nil then error("/fgui unlock and /fgui lock are gone") end
+    if (sources["Guide.lua"] or ""):find("GUIDE_KEY", 1, true) then error("Guide.lua keeps no number for a phrase") end
     ns:ToggleConfig("guide")
-    if not ns.guidePage or ns.guidePage.unlocked ~= true then error("unlocked: the Guide tab shows the controls") end
-    ns:GuideLock()
-    ns:ToggleConfig("guide")
-    if ns.guidePage.unlocked ~= false then error("locked: the Guide tab says coming soon") end
+    if not ns.guidePage or not ns.guidePage.live or ns.guidePage.soon ~= nil then error("the Guide tab shows the controls, with no coming-soon page") end
     ns:ToggleConfig()
-    ns.root.guideKey = key
     -- following one: saved, followed, and it moves on as the game changes
     local keepG, keepS, keepQ = ns.root.guides, ns.root.guideState, env.C_QuestLog
     ns.root.guides, ns.root.guideState = nil, nil
@@ -6673,13 +6663,16 @@ try("10.3: quest guides", function()
     for _, group in ipairs(ns.featureGroups) do for _, opt in ipairs(group[2]) do
         if opt[1] == "questGuide" then error("the quest guide's switch lives on the Guide tab, not among the Features") end
     end end
-    for _, line in ipairs(ns.helpLines) do if type(line[1]) == "string" and line[1]:find("/fgui guide", 1, true) then error("/fgui help must not list the guide while it is unreleased") end end
+    local listedGuide, listedPlan = false, false
+    for _, line in ipairs(ns.helpLines) do
+        if line[1] == "/fgui guide" then listedGuide = true elseif line[1] == "/fgui plan" then listedPlan = true end
+    end
+    if not (listedGuide and listedPlan) then error("/fgui help lists the guide and the planner window") end
     ns.db.questGuide = keepSwitch
     ns:GuideStop()
     if ns.GuideState() ~= nil then error("stopping forgets where you were") end
     env.C_QuestLog, env.UnitLevel = keepQ, nil
     ns.root.guides, ns.root.guideState = keepG, keepS
-    ns.root.guideKey = keepKey
 end)
 try("10.4: each action bar's own settings", function()
     local info = ns.barHandles[1]
@@ -9381,38 +9374,18 @@ try("13.0 planner: step kinds", function()
     w.bind = "Booty Bay"; if ns.GuideStepDone(s[5], w) then error("bound elsewhere") end
     if ns.GuideParseLine("learnflight | x") ~= nil then error("learnflight needs a node number") end
 end)
-try("folders: nothing loads while locked", function()
-    local keep = { unlocked = ns.GuideUnlocked, load = rawget(env.C_AddOns, "LoadAddOn"), ctrl = env.IsControlKeyDown, state = ns.root.guideState,
-        print = ns.Print, raw = ns.PrintRaw }
-    local calls = {}
-    local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return false end
-        rawset(env.C_AddOns, "LoadAddOn", function(name, ...) calls[name] = (calls[name] or 0) + 1; return keep.load(name, ...) end)
-        if ns.folderReady.planner or ns.folderReady.gold then error("nothing is loaded before the tests ask") end
-        if ns:LoadPlanner() or ns:LoadGold() then error("locked: no folder loads") end
-        if ns:PlannerStart() ~= nil or ns:GoldOpen() ~= nil then error("locked: the stand-ins do nothing") end
-        fireEvent("AUCTION_HOUSE_SHOW"); fireEvent("AUCTION_HOUSE_CLOSED")
-        env.IsControlKeyDown = function() return true end
-        if ns.LauncherClickExtra("LeftButton") then error("locked: Ctrl-click is the usual click") end
-        env.IsControlKeyDown = keep.ctrl
-        ns.root.guideState = { [ns:CharKey()] = { name = ns.GUIDE_PLANNED, at = 1 } }
-        fireEvent("PLAYER_LOGIN"); runTimers()
-        ns:GuideCommand("duo"); ns:GuideCommand("gold")
-        if (calls.FantasyGlassUI_Planner or 0) ~= 0 or (calls.FantasyGlassUI_Gold or 0) ~= 0 then
-            error("locked: LoadAddOn was asked for a folder: " .. tostring(calls.FantasyGlassUI_Planner) .. " " .. tostring(calls.FantasyGlassUI_Gold)) end
-        if ns.folderReady.planner or ns.folderReady.gold then error("locked: nothing is ready") end
-        -- the launcher's tooltip: the same lines as with no extra at all
-        local function Lines(extra)
-            local n = 0
-            local tip = { AddLine = function() n = n + 1 end, AddDoubleLine = function() n = n + 1 end }
-            if extra then extra(tip) end
-            return n
-        end
-        if Lines(ns.LauncherTipExtra) ~= Lines(nil) then error("locked: the launcher's tooltip has a line more") end
-    end)
-    ns.GuideUnlocked, ns.root.guideState, env.IsControlKeyDown, ns.Print, ns.PrintRaw = keep.unlocked, keep.state, keep.ctrl, keep.print, keep.raw
-    rawset(env.C_AddOns, "LoadAddOn", keep.load)
-    if not ok then error(err, 0) end
+try("folders: nothing loads until it is asked for", function()
+    ns.LoadFolder = realLoadFolder
+    if ns.folderReady.planner or ns.folderReady.gold then error("nothing is loaded before the tests ask") end
+    -- the launcher's tooltip: one line more, Ctrl-click for ways to make gold (the folder still not loaded)
+    local function Lines(extra)
+        local n = 0
+        local tip = { AddLine = function() n = n + 1 end, AddDoubleLine = function() n = n + 1 end }
+        if extra then extra(tip) end
+        return n
+    end
+    if Lines(ns.LauncherTipExtra) ~= Lines(nil) + 1 then error("the launcher's tooltip names Ctrl-click") end
+    if ns.folderReady.gold then error("the tooltip loads nothing") end
 end)
 -- folders tests unloaded A (planner recorders): begin
 try("folders unloaded A: the planner records while unloaded", function()
@@ -9422,7 +9395,7 @@ try("folders unloaded A: the planner records while unloaded", function()
         "COMBATLOG_XPGAIN_FIRSTPERSON_UNNAMED", "COMBATLOG_XPGAIN_QUEST" }
     local rootNames = { "planner", "plannerNodes", "plannerFlightTimes", "plannerTimeSamples", "plannerCrossTimes", "plannerSeen", "plannerNodesSeen", "plannerLevels",
         "plannerSoloElites", "plannerTimed", "plannerQuestTimes", "plannerSessionAt" }
-    local keep = { env = {}, root = {}, unlocked = ns.GuideUnlocked, here = ns.GuideHere, load = rawget(env.C_AddOns, "LoadAddOn"), loadPlanner = ns.LoadPlanner,
+    local keep = { env = {}, root = {}, here = ns.GuideHere, load = rawget(env.C_AddOns, "LoadAddOn"), loadPlanner = ns.LoadPlanner,
         duoEvent = ns.PlannerDuoEvent, upgrade = ns.UpgradeAmount, repair = ns.db.autoRepair, ask = ns.db.plannerDuoAsk, gather = ns.db.plannerGather,
         pick = ns.db.plannerPickReward, print = ns.Print, reg = env.C_ChatInfo and env.C_ChatInfo.RegisterAddonMessagePrefix }
     for _, n in ipairs(envNames) do keep.env[n] = rawget(env, n) end
@@ -9431,7 +9404,6 @@ try("folders unloaded A: the planner records while unloaded", function()
     local loads = 0
     local ok, err = pcall(function()
         if ns.folderReady.planner then error("the planner's folder is not loaded yet") end
-        ns.GuideUnlocked = function() return true end
         ns.db.autoRepair = false                                       -- (no repair line at the vendor)
         ns.Print = function() end
         rawset(env.C_AddOns, "LoadAddOn", function(name, ...) if name == "FantasyGlassUI_Planner" then loads = loads + 1 end; return keep.load(name, ...) end)
@@ -9554,7 +9526,7 @@ try("folders unloaded A: the planner records while unloaded", function()
         if loads ~= 0 then error("nothing loaded the planner's folder: " .. loads) end
         if ns.folderReady.planner then error("still not loaded") end
     end)
-    ns.GuideUnlocked, ns.GuideHere, ns.LoadPlanner, ns.PlannerDuoEvent, ns.UpgradeAmount, ns.Print = keep.unlocked, keep.here, keep.loadPlanner, keep.duoEvent, keep.upgrade, keep.print
+    ns.GuideHere, ns.LoadPlanner, ns.PlannerDuoEvent, ns.UpgradeAmount, ns.Print = keep.here, keep.loadPlanner, keep.duoEvent, keep.upgrade, keep.print
     ns.db.autoRepair, ns.db.plannerDuoAsk, ns.db.plannerGather, ns.db.plannerPickReward = keep.repair, keep.ask, keep.gather, keep.pick
     for _, n in ipairs(envNames) do rawset(env, n, keep.env[n]) end
     for _, n in ipairs(rootNames) do ns.root[n] = keep.root[n] end
@@ -9563,13 +9535,12 @@ try("folders unloaded A: the planner records while unloaded", function()
     if not ok then error(err, 0) end
 end)
 try("folders unloaded A: a friend's ask loads the planner and is handed over once", function()
-    local keep = { unlocked = ns.GuideUnlocked, load = rawget(env.C_AddOns, "LoadAddOn"), loadPlanner = ns.LoadPlanner, duoEvent = ns.PlannerDuoEvent,
-        ask = ns.db.plannerDuoAsk, combat = env.InCombatLockdown, time = env.GetTime, raw = ns.PrintRaw, guideKey = ns.root.guideKey }
-    local loads, asked, handed, clock, fight, locked = 0, 0, {}, 5000, false, false
+    local keep = { load = rawget(env.C_AddOns, "LoadAddOn"), loadPlanner = ns.LoadPlanner, duoEvent = ns.PlannerDuoEvent,
+        ask = ns.db.plannerDuoAsk, combat = env.InCombatLockdown, time = env.GetTime, raw = ns.PrintRaw }
+    local loads, asked, handed, clock, fight = 0, 0, {}, 5000, false
     local said = {}
     local ok, err = pcall(function()
         if ns.folderReady.planner then error("the planner's folder is not loaded yet") end
-        ns.GuideUnlocked = function() return not locked end
         rawset(env.C_AddOns, "LoadAddOn", function(name, ...) if name == "FantasyGlassUI_Planner" then loads = loads + 1 end; return keep.load(name, ...) end)
         ns.LoadPlanner = function(_, quiet)                   -- (a stand-in: the region stays unloaded)
             asked = asked + 1
@@ -9611,38 +9582,30 @@ try("folders unloaded A: a friend's ask loads the planner and is handed over onc
         clock = clock + 70; fight = false
         fireEvent("PLAYER_REGEN_ENABLED")
         if asked ~= 0 or #handed ~= 0 then error("70 s in a fight: never") end
-        -- locked during the fight: the held ask is dropped, even if the guide is unlocked again before it ends
-        Fresh(); fight = true
-        Ask()
-        locked = true; ns:GuideLock(); locked = false
-        clock = clock + 5; fight = false
-        fireEvent("PLAYER_REGEN_ENABLED")
-        if asked ~= 0 or #handed ~= 0 then error("locked in the fight: the held ask is dropped") end
-        -- nothing for: locked, asking off, a party message, a hidden sender, another kind
+        -- nothing for: asking off, a party message, a hidden sender, another kind
         Fresh()
-        locked = true; Ask(); locked = false
         ns.db.plannerDuoAsk = false; Ask(); ns.db.plannerDuoAsk = nil
         Ask(nil, "PARTY")
         Ask(nil, nil, setmetatable({ __secret = true }, secretmt))
         Ask("D1:HI:ab12cd")
         Ask("D1:ASK:zz:14")
         Ask(nil, nil, nil, "Other")
-        if asked ~= 0 or #handed ~= 0 then error("locked, asking off, not a whisper, hidden, not an ask: nothing: " .. asked .. " " .. #handed) end
+        if asked ~= 0 or #handed ~= 0 then error("asking off, not a whisper, hidden, not an ask: nothing: " .. asked .. " " .. #handed) end
         if loads ~= 0 then error("LoadAddOn was never asked") end
     end)
     ns.folderReady.planner = nil
-    ns.GuideUnlocked, ns.LoadPlanner, ns.PlannerDuoEvent, ns.db.plannerDuoAsk = keep.unlocked, keep.loadPlanner, keep.duoEvent, keep.ask
-    env.InCombatLockdown, env.GetTime, ns.PrintRaw, ns.root.guideKey = keep.combat, keep.time, keep.raw, keep.guideKey
+    ns.LoadPlanner, ns.PlannerDuoEvent, ns.db.plannerDuoAsk = keep.loadPlanner, keep.duoEvent, keep.ask
+    env.InCombatLockdown, env.GetTime, ns.PrintRaw = keep.combat, keep.time, keep.raw
     rawset(env.C_AddOns, "LoadAddOn", keep.load)
     if not ok then error(err, 0) end
 end)
 try("folders unloaded A: when you were last here, without the folder", function()
-    local keep = { unlocked = ns.GuideUnlocked, on = ns.GuideOn, time = env.time, planner = ns.root.planner, catch = ns.PlannerCatchUp, key = ns.root.guideKey, hash = ns.GuideHash,
+    local keep = { on = ns.GuideOn, time = env.time, planner = ns.root.planner, catch = ns.PlannerCatchUp,
         reg = env.C_ChatInfo and env.C_ChatInfo.RegisterAddonMessagePrefix, resting = env.IsResting, afk = env.UnitIsAFK }
     local now, calls = 1800000000, 0
     local ok, err = pcall(function()
         if ns.folderReady.planner then error("the planner's folder is not loaded yet") end
-        env.IsResting, env.UnitIsAFK = function() return false end, function() return false end   -- (an unlock reads them for the quest clock)
+        env.IsResting, env.UnitIsAFK = function() return false end, function() return false end
         env.time = function() return now end
         ns.GuideOn = function() return true end
         ns.PlannerCatchUp = function() calls = calls + 1 end
@@ -9650,28 +9613,21 @@ try("folders unloaded A: when you were last here, without the folder", function(
         ns.root.planner = {}
         local rec = ns.PlannerCharRecord(true)
         rec.lastSeen = now - 3600
-        -- the login while locked: nothing saved; an unlock later in the session saves at once
+        -- the login: saved at once, and every minute after it, with no folder
         ns.PlannerSeenReset()
-        ns.GuideUnlocked = function() return false end
-        fireEvent("PLAYER_ENTERING_WORLD", true, false)
         ns.PlannerSeenSave()
-        if rec.lastSeen ~= now - 3600 then error("locked: nothing saved") end
-        ns.GuideUnlocked = keep.unlocked
-        ns.GuideHash = function() return tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)")) end
-        if not ns:GuideUnlock("test") then error("the stand-in number unlocks") end
-        ns.GuideHash = keep.hash
-        if rec.lastSeen ~= now then error("unlocked mid-session: saved at once") end
+        if rec.lastSeen ~= now - 3600 then error("before the login is handled: nothing saved") end
+        fireEvent("PLAYER_ENTERING_WORLD", true, false)
+        if rec.lastSeen ~= now then error("the login: saved at once") end
         now = now + 60
         ns.PlannerSeenSave()
         if rec.lastSeen ~= now then error("the minute's save, with no folder") end
-        -- locked again: no more saves
-        ns:GuideLock()
         now = now + 60
-        ns.PlannerSeenSave(); fireEvent("PLAYER_LOGOUT")
-        if rec.lastSeen ~= now - 60 then error("locked: the clock stops") end
+        fireEvent("PLAYER_LOGOUT")
+        if rec.lastSeen ~= now then error("saved at logout") end
         if calls ~= 0 then error("no catch-up page") end
     end)
-    ns.GuideUnlocked, ns.GuideOn, env.time, ns.root.planner, ns.PlannerCatchUp, ns.root.guideKey, ns.GuideHash = keep.unlocked, keep.on, keep.time, keep.planner, keep.catch, keep.key, keep.hash
+    ns.GuideOn, env.time, ns.root.planner, ns.PlannerCatchUp = keep.on, keep.time, keep.planner, keep.catch
     if env.C_ChatInfo then env.C_ChatInfo.RegisterAddonMessagePrefix = keep.reg end
     env.IsResting, env.UnitIsAFK = keep.resting, keep.afk
     ns.PlannerSeenReset()
@@ -9681,7 +9637,7 @@ end)
 -- keep and ids tests unloaded: begin
 try("keep-and-ids: a quest Questie numbers otherwise, before the planner loads", function()
     -- Questie calls the quest 900001 ("Agitator"); the server's log and completion use 50123.
-    local keep = { unlocked = ns.GuideUnlocked, ql = env.C_QuestLog, planner = ns.root.planner, ids = ns.root.plannerQuestIds, state = ns.root.guideState,
+    local keep = { ql = env.C_QuestLog, planner = ns.root.planner, ids = ns.root.plannerQuestIds, state = ns.root.guideState,
         print = ns.Print, raw = ns.PrintRaw, guide = ns.db.questGuide, titles = ns.root.plannerQuestIdTitles, loader = rawget(env, "QuestieLoader") }
     local said = {}
     local function Said(_, msg)                  -- (every handler hears every event here: only what is about the quest, or the route)
@@ -9722,20 +9678,8 @@ try("keep-and-ids: a quest Questie numbers otherwise, before the planner loads",
             { kind = "turnin", quest = 900001, title = "Agitator", qlevel = 12 },
         }
         local function Follow() ns.root.guideState = { [ns:CharKey()] = { name = ns.GUIDE_PLANNED, at = 1, plan = { name = ns.GUIDE_PLANNED, steps = steps } } } end
-        -- locked: nothing is matched into the saved settings, nothing kept, nothing said
-        ns.GuideUnlocked = function() return false end
-        ns.root.planner, ns.root.plannerQuestIds = nil, nil
-        Follow()
-        logged[50123] = true
-        fireEvent("QUEST_ACCEPTED", 1, 50123)
-        if ns.PlannerServerId(900001, "Agitator", 12) ~= 50123 then error("locked: the log entry is still found") end
-        logged[50123] = nil
-        fireEvent("QUEST_TURNED_IN", 50123, 0, 0)
-        runTimers()
-        if ns.root.plannerQuestIds ~= nil or ns.root.plannerQuestIdTitles ~= nil or ns.root.planner ~= nil then error("locked: nothing is written") end
-        if #said ~= 0 then error("locked: nothing is said: " .. said[1]) end
-        -- unlocked: accepting it learns the pair (the planned step's title), and the step shows the log's kills
-        ns.GuideUnlocked = function() return true end
+        ns.root.plannerQuestIds = nil
+        -- accepting it learns the pair (the planned step's title), and the step shows the log's kills
         ns.root.planner = {}
         Follow()
         logged[50123] = true
@@ -9773,7 +9717,7 @@ try("keep-and-ids: a quest Questie numbers otherwise, before the planner loads",
         -- (for the planner, once it loads: what was kept here)
         rawset(env, "__keepIdsSaved", { ids = { [900001] = 50123 }, handedIn = { [50123] = rec.handedIn[50123] } })
     end)
-    ns.GuideUnlocked, env.C_QuestLog, ns.root.planner, ns.root.plannerQuestIds, ns.root.guideState = keep.unlocked, keep.ql, keep.planner, keep.ids, keep.state
+    env.C_QuestLog, ns.root.planner, ns.root.plannerQuestIds, ns.root.guideState = keep.ql, keep.planner, keep.ids, keep.state
     ns.Print, ns.PrintRaw, ns.db.questGuide, ns.root.plannerQuestIdTitles = keep.print, keep.raw, keep.guide, keep.titles
     rawset(env, "QuestieLoader", keep.loader)
     runTimers()
@@ -9783,7 +9727,7 @@ end)
 -- rereview fix tests unloaded: begin
 try("rereview fix: a title match never ties two quests together", function()
     -- (R-I1, R-I3, R-M2, R-M4: the recorders and the guide, before the planner loads. Each block fails with its safeguard taken out.)
-    local keep = { unlocked = ns.GuideUnlocked, ql = env.C_QuestLog, planner = ns.root.planner, ids = ns.root.plannerQuestIds, titles = ns.root.plannerQuestIdTitles,
+    local keep = { ql = env.C_QuestLog, planner = ns.root.planner, ids = ns.root.plannerQuestIds, titles = ns.root.plannerQuestIdTitles,
         state = ns.root.guideState, guides = ns.root.guides, loader = rawget(env, "QuestieLoader"), Q = rawget(env, "Questie"), guide = ns.db.questGuide,
         print = ns.Print, raw = ns.PrintRaw, cap = ns.PLANNER_HANDIN_CAP }
     local logged, done, flags, qp = {}, {}, {}, {}
@@ -9791,7 +9735,7 @@ try("rereview fix: a title match never ties two quests together", function()
                       [50125] = { title = "Daily Chores", level = 12 }, [50126] = { title = "Daily Kills", level = 12 }, [900001] = { title = "Agitator", level = 12 } }
     local qdb = { QueryQuestSingle = function(id, key) if key == "specialFlags" and qp[id] then return flags[id] end end }   -- (Questie's own quests only)
     local loader = { ImportModule = function(_, name) if name == "QuestieDB" then return qdb end end }
-    local said, unlocked = {}, true
+    local said = {}
     local function Log()
         local list = {}
         for id in pairs(logged) do list[#list + 1] = id end
@@ -9806,7 +9750,6 @@ try("rereview fix: a title match never ties two quests together", function()
         end
         ns.Print, ns.PrintRaw = Said, Said
         ns.db.questGuide = true
-        ns.GuideUnlocked = function() return unlocked end
         env.C_QuestLog = {
             IsOnQuest = function(id) return logged[id] == true end,
             GetLogIndexForQuestID = function(id) for i, q in ipairs(Log()) do if q == id then return i end end end,
@@ -9886,14 +9829,10 @@ try("rereview fix: a title match never ties two quests together", function()
         logged[900001] = true; Changed()
         if ns.PlannerServerId(900001, "Agitator", 12) ~= 900001 then error("its own id in the log: that id") end
         if Pair(900001) ~= nil or ns.root.plannerQuestIdTitles[900001] ~= nil then error("Questie's id in the log: the pair is let go") end
-        -- ... or the server id's title is another now (locked: only not used, nothing written)
+        -- ... or the server id's title is another now
         Fresh(50123)
         ns.PlannerServerId(900001, "Agitator", 12)
         entries[50123].title = "Another Quest"; Changed()
-        unlocked = false
-        if ns.PlannerMappedId(900001) ~= nil then error("locked: a pair proven wrong is not used") end
-        if Pair(900001) ~= 50123 then error("locked: nothing is written") end
-        unlocked = true
         if ns.PlannerMappedId(900001) ~= nil or Pair(900001) ~= nil then error("the server id's title changed: the pair is let go") end
         ns.root.plannerQuestIds = { [900001] = 50123 }         -- (a pair kept before titles were: the quest's own title says)
         if ns.PlannerServerId(900001, "Agitator", 12) ~= nil or Pair(900001) ~= nil then error("a pair kept without its title: let go when the title differs") end
@@ -9908,12 +9847,6 @@ try("rereview fix: a title match never ties two quests together", function()
         rawset(env, "QuestieLoader", loader); Changed()
         if ns:GuideWorld().onQuest(135, defias) then error("with Questie: part 3 is not part 2 (Questie knows 132)") end
         if ns.root.plannerQuestIds ~= nil then error("a written guide: no pair") end
-        -- locked: matched for the look, nothing written
-        Fresh(50123)
-        unlocked = false
-        if ns.PlannerServerId(900001, "Agitator", 12) ~= 50123 then error("locked: still found") end
-        if ns.root.plannerQuestIds ~= nil or ns.root.plannerQuestIdTitles ~= nil then error("locked: nothing written") end
-        unlocked = true
         -- (R-M2) repeatable: read while it is in the log (accepted, or at login), so the hand-in is kept as repeatable
         Fresh(50126)
         flags[50126] = 1
@@ -9960,7 +9893,7 @@ try("rereview fix: a title match never ties two quests together", function()
         if keep.cap ~= 2000 then error("R-M4: 2000 per character") end
         if #said ~= 0 then error("nothing said: " .. said[1]) end
     end)
-    ns.GuideUnlocked, env.C_QuestLog, ns.root.planner, ns.root.plannerQuestIds, ns.root.plannerQuestIdTitles = keep.unlocked, keep.ql, keep.planner, keep.ids, keep.titles
+    env.C_QuestLog, ns.root.planner, ns.root.plannerQuestIds, ns.root.plannerQuestIdTitles = keep.ql, keep.planner, keep.ids, keep.titles
     ns.root.guideState, ns.root.guides, ns.db.questGuide, ns.Print, ns.PrintRaw, ns.PLANNER_HANDIN_CAP = keep.state, keep.guides, keep.guide, keep.print, keep.raw, keep.cap
     rawset(env, "QuestieLoader", keep.loader); rawset(env, "Questie", keep.Q)
     fireEvent("QUEST_LOG_UPDATE")
@@ -9979,7 +9912,7 @@ try("folders unloaded B: gold records while unloaded", function()
     local rootKeys = { "goldVendor", "goldMobs", "goldChars", "goldNodeItems", "goldGather", "goldNodesSeen", "plannerNodesSeen" }
     local keepRoot = {}
     for _, k in ipairs(rootKeys) do keepRoot[k] = ns.root[k] end
-    local keep = { unlocked = ns.GuideUnlocked, load = rawget(env.C_AddOns, "LoadAddOn"), today = ns.Today, info = ns.GetItemInfo,
+    local keep = { load = rawget(env.C_AddOns, "LoadAddOn"), today = ns.Today, info = ns.GetItemInfo,
         entry = ns.PriceEntry, skill = ns.PlannerGatherSkill, record = ns.PlannerRecordNode, slotType = env.Enum.LootSlotType,
         perfOn = ns.perfOn, perfData = ns.perfData, passes = ns.goldVendorPasses }
     local loads = 0
@@ -10063,22 +9996,8 @@ try("folders unloaded B: gold records while unloaded", function()
             fireEvent("PLAYER_ENTERING_WORLD")
             runTimers(); Drain()
         end
-        -- locked: nothing is recorded, nothing named Gold is timed
+        -- the gold folder still not loaded: everything is recorded
         ns.root.goldNodesSeen = { [1429] = { { name = "Peacebloom", skill = 182, x = 40, y = 60 } } }
-        ns.GuideUnlocked = function() return false end
-        ns.perfOn, ns.perfData = true, {}
-        Everything()
-        local timed = {}
-        local mine = { Gold = true, ["Gold loot"] = true, ["Gold gather"] = true, ["Gold recipes"] = true }   -- ("Gold history" is the public one)
-        for k in pairs(ns.perfData) do if mine[k] then timed[#timed + 1] = tostring(k) end end
-        ns.perfOn, ns.perfData = keep.perfOn, keep.perfData
-        if #timed > 0 then error("locked: timed " .. table.concat(timed, ", ")) end
-        for _, k in ipairs({ "goldVendor", "goldMobs", "goldChars", "goldNodeItems", "goldGather", "plannerNodesSeen" }) do
-            if ns.root[k] ~= nil then error("locked: " .. k .. " was written") end
-        end
-        if type(ns.root.goldNodesSeen) ~= "table" or #folded ~= 0 then error("locked: no fold") end
-        -- unlocked, the gold folder still not loaded: everything is recorded
-        ns.GuideUnlocked = function() return true end
         clock = clock + 60
         Everything()
         local items = ns.root.goldVendor and ns.root.goldVendor.items
@@ -10115,21 +10034,20 @@ try("folders unloaded B: gold records while unloaded", function()
     for _, n in ipairs(envNames) do rawset(env, n, keepEnv[n]) end
     for _, k in ipairs(rootKeys) do ns.root[k] = keepRoot[k] end
     env.Enum.LootSlotType = keep.slotType
-    ns.GuideUnlocked, ns.Today, ns.GetItemInfo, ns.PriceEntry = keep.unlocked, keep.today, keep.info, keep.entry
+    ns.Today, ns.GetItemInfo, ns.PriceEntry = keep.today, keep.info, keep.entry
     ns.PlannerGatherSkill, ns.PlannerRecordNode = keep.skill, keep.record
     ns.perfOn, ns.perfData, ns.goldVendorPasses = keep.perfOn, keep.perfData, keep.passes
     if not ok then error(err, 0) end
 end)
 -- folders tests unloaded B (gold recorders): end
 try("folders: load for the tests", function()
-    -- (the fixture the tests after this rely on: both folders loaded, as an unlocked player has them once used)
-    local keep = { unlocked = ns.GuideUnlocked, load = rawget(env.C_AddOns, "LoadAddOn"), resting = env.IsResting, afk = env.UnitIsAFK }
+    -- (the fixture the tests after this rely on: both folders loaded, as a player has them once used)
+    local keep = { load = rawget(env.C_AddOns, "LoadAddOn"), resting = env.IsResting, afk = env.UnitIsAFK }
     local calls = {}
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         env.IsResting, env.UnitIsAFK = function() return false end, function() return false end   -- (the late login work reads them: out in the world)
         rawset(env.C_AddOns, "LoadAddOn", function(name, ...) calls[name] = (calls[name] or 0) + 1; return keep.load(name, ...) end)
-        if not ns:LoadPlanner() or not ns:LoadGold() then error("unlocked: both folders load") end
+        if not ns:LoadPlanner() or not ns:LoadGold() then error("both folders load") end
         if not (ns:LoadPlanner() and ns:LoadGold()) then error("a second ask: still ready") end
         if ns.folderReady.planner ~= true or ns.folderReady.gold ~= true then error("both ready") end
         if calls.FantasyGlassUI_Planner ~= 1 or calls.FantasyGlassUI_Gold ~= 1 then error("one load each: " .. tostring(calls.FantasyGlassUI_Planner) .. " " .. tostring(calls.FantasyGlassUI_Gold)) end
@@ -10138,16 +10056,14 @@ try("folders: load for the tests", function()
         if not env.C_AddOns.IsAddOnLoaded("FantasyGlassUI_Planner") then error("the game says it is loaded") end
     end)
     rawset(env.C_AddOns, "LoadAddOn", keep.load)
-    ns.GuideUnlocked, env.IsResting, env.UnitIsAFK = keep.unlocked, keep.resting, keep.afk
-    if ns.GuideLock then ns:GuideLock() end            -- (back to a locked player's registrations, as before the folders)
+    env.IsResting, env.UnitIsAFK = keep.resting, keep.afk
     if not ok then error(err, 0) end
 end)
 try("folders: a folder that will not load", function()
-    local keep = { unlocked = ns.GuideUnlocked, load = rawget(env.C_AddOns, "LoadAddOn"), enable = rawget(env.C_AddOns, "EnableAddOn"),
+    local keep = { load = rawget(env.C_AddOns, "LoadAddOn"), enable = rawget(env.C_AddOns, "EnableAddOn"),
         combat = env.InCombatLockdown, logged = rawget(env, "IsLoggedIn"), time = env.GetTime, raw = ns.PrintRaw, errors = ns.errors }
     local said, answer, loads, enabled, clock = {}, nil, 0, 0, 1000
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         env.GetTime = function() return clock end
         ns.PrintRaw = function(_, t) said[#said + 1] = tostring(t) end
         ns.errors = {}
@@ -10201,16 +10117,15 @@ try("folders: a folder that will not load", function()
         if ns:LoadFolder("test") or loads ~= 0 then error("before the login: nothing loads") end
     end)
     ns.FOLDERS.test, ns.folderReady.test, ns.folderBroken.test = nil, nil, nil
-    ns.GuideUnlocked, env.InCombatLockdown, env.GetTime, ns.PrintRaw, ns.errors = keep.unlocked, keep.combat, keep.time, keep.raw, keep.errors
+    env.InCombatLockdown, env.GetTime, ns.PrintRaw, ns.errors = keep.combat, keep.time, keep.raw, keep.errors
     rawset(env.C_AddOns, "LoadAddOn", keep.load); rawset(env.C_AddOns, "EnableAddOn", keep.enable); rawset(env, "IsLoggedIn", keep.logged)
     if not ok then error(err, 0) end
 end)
 try("folders: following the plan loads the planner at login", function()
-    local keep = { unlocked = ns.GuideUnlocked, load = ns.LoadFolder, replan = ns.PlannerReplan, state = ns.root.guideState, on = ns.db.questGuide,
+    local keep = { load = ns.LoadFolder, replan = ns.PlannerReplan, state = ns.root.guideState, on = ns.db.questGuide,
         combat = env.InCombatLockdown, resting = env.IsResting, afk = env.UnitIsAFK }
     local asked, replans = {}, {}
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         env.IsResting, env.UnitIsAFK = function() return false end, function() return false end   -- (the login reads them for the quest clock: out in the world)
         ns.db.questGuide = true
         ns.LoadFolder = function(self, key, quiet) asked[#asked + 1] = { key, quiet }; return keep.load(self, key, quiet) end
@@ -10252,19 +10167,18 @@ try("folders: following the plan loads the planner at login", function()
         if #asked ~= 0 then error("no longer following when the fight ends: no load") end
     end)
     env.InCombatLockdown = keep.combat
-    ns.GuideUnlocked, ns.LoadFolder, ns.PlannerReplan, ns.root.guideState, ns.db.questGuide = keep.unlocked, keep.load, keep.replan, keep.state, keep.on
+    ns.LoadFolder, ns.PlannerReplan, ns.root.guideState, ns.db.questGuide = keep.load, keep.replan, keep.state, keep.on
     env.IsResting, env.UnitIsAFK = keep.resting, keep.afk
     if not ok then error(err, 0) end
 end)
-try("folders fix: the guide switched on, or unlocked, while following the plan loads the planner", function()
-    -- (F-I1: the login load is not the only way into "following the plan": the switch and the unlock lead there too)
-    local keep = { unlocked = ns.GuideUnlocked, load = ns.LoadFolder, replan = ns.PlannerReplan, state = ns.root.guideState, on = ns.db.questGuide,
+try("folders fix: the guide switched on while following the plan loads the planner", function()
+    -- (F-I1: the login load is not the only way into "following the plan": the switch leads there too)
+    local keep = { load = ns.LoadFolder, replan = ns.PlannerReplan, state = ns.root.guideState, on = ns.db.questGuide,
         combat = env.InCombatLockdown, resting = env.IsResting, afk = env.UnitIsAFK, ready = ns.folderReady.planner, raw = ns.PrintRaw,
-        guides = ns.root.guides, key = ns.root.guideKey, hash = ns.GuideHash }
-    local asked, replans, said, unlocked = {}, {}, {}, true
+        guides = ns.root.guides }
+    local asked, replans, said = {}, {}, {}
     local ok, err = pcall(function()
         local key = ns:CharKey()
-        ns.GuideUnlocked = function() return unlocked end
         env.IsResting, env.UnitIsAFK = function() return false end, function() return false end
         ns.LoadFolder = function(_, k, quiet) asked[#asked + 1] = { k, quiet }; if k == "planner" then ns.folderReady.planner = true end; return true end
         ns.PlannerReplan = function(_, why) replans[#replans + 1] = why; return true end
@@ -10300,32 +10214,21 @@ try("folders fix: the guide switched on, or unlocked, while following the plan l
         env.InCombatLockdown = keep.combat
         fireEvent("PLAYER_REGEN_ENABLED")
         if Loads() ~= 1 or not Replanned() then error("after the fight: loaded and replanned") end
-        -- unlocked mid-session with a saved plan: one quiet load
-        Fresh(Planned())
-        unlocked = false
-        ns:GuideApplySwitch()
-        if Loads() ~= 0 then error("locked: no load") end
-        unlocked = true
-        ns.GuideHash = function() return tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)")) end
-        if not ns:GuideUnlock("test") then error("the stand-in number unlocks") end
-        ns.GuideHash = keep.hash
-        if Loads() ~= 1 or not Replanned() then error("unlocked while following the plan: the planner loads: " .. Loads()) end
     end)
     env.InCombatLockdown = keep.combat
-    ns.GuideUnlocked, ns.LoadFolder, ns.PlannerReplan, ns.root.guideState, ns.db.questGuide = keep.unlocked, keep.load, keep.replan, keep.state, keep.on
+    ns.LoadFolder, ns.PlannerReplan, ns.root.guideState, ns.db.questGuide = keep.load, keep.replan, keep.state, keep.on
     env.IsResting, env.UnitIsAFK, ns.folderReady.planner, ns.PrintRaw = keep.resting, keep.afk, keep.ready, keep.raw
-    ns.root.guides, ns.root.guideKey, ns.GuideHash = keep.guides, keep.key, keep.hash
+    ns.root.guides = keep.guides
     if ns.GuidePanelHide then ns.GuidePanelHide() elseif _G.FantasyGlassUIGuide then _G.FantasyGlassUIGuide:Hide() end
     if ns.GuideForget then ns.GuideForget() end
     if not ok then error(err, 0) end
 end)
 try("rereview fix: a planner load that failed is tried once a session (R-M5)", function()
-    local keep = { unlocked = ns.GuideUnlocked, load = ns.LoadFolder, replan = ns.PlannerReplan, state = ns.root.guideState, on = ns.db.questGuide,
+    local keep = { load = ns.LoadFolder, replan = ns.PlannerReplan, state = ns.root.guideState, on = ns.db.questGuide,
         ready = ns.folderReady.planner, print = ns.Print, raw = ns.PrintRaw }
     local tries, said = 0, {}
     local ok, err = pcall(function()
         ns.FolderFollowReset()
-        ns.GuideUnlocked = function() return true end
         ns.db.questGuide = true
         ns.folderReady.planner = nil
         ns.Print = function(_, t) said[#said + 1] = tostring(t) end
@@ -10342,7 +10245,7 @@ try("rereview fix: a planner load that failed is tried once a session (R-M5)", f
         ns:GuideApplySwitch()
         if tries ~= 2 then error("(a new session tries again)") end
     end)
-    ns.GuideUnlocked, ns.LoadFolder, ns.PlannerReplan, ns.root.guideState, ns.db.questGuide = keep.unlocked, keep.load, keep.replan, keep.state, keep.on
+    ns.LoadFolder, ns.PlannerReplan, ns.root.guideState, ns.db.questGuide = keep.load, keep.replan, keep.state, keep.on
     ns.folderReady.planner, ns.Print, ns.PrintRaw = keep.ready, keep.print, keep.raw
     ns.FolderFollowReset()
     if ns.GuidePanelHide then ns.GuidePanelHide() elseif _G.FantasyGlassUIGuide then _G.FantasyGlassUIGuide:Hide() end
@@ -10351,12 +10254,11 @@ try("rereview fix: a planner load that failed is tried once a session (R-M5)", f
 end)
 try("folders fix: the automatic loads say nothing in a fight", function()
     -- (F-I3: the login load and the catch-up page wait for the fight's end without a word)
-    local keep = { unlocked = ns.GuideUnlocked, loadPlanner = ns.LoadPlanner, replan = ns.PlannerReplan, state = ns.root.guideState, on = ns.db.questGuide,
+    local keep = { loadPlanner = ns.LoadPlanner, replan = ns.PlannerReplan, state = ns.root.guideState, on = ns.db.questGuide,
         combat = env.InCombatLockdown, resting = env.IsResting, afk = env.UnitIsAFK, raw = ns.PrintRaw, catch = ns.PlannerCatchUp, time = env.time,
         planner = ns.root.planner, guideOn = ns.GuideOn }
     local said, fight, catches, loads, now = {}, false, 0, 0, 1800000000
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         ns.GuideOn = function() return true end
         env.IsResting, env.UnitIsAFK = function() return false end, function() return false end
         env.InCombatLockdown = function() return fight end
@@ -10391,14 +10293,14 @@ try("folders fix: the automatic loads say nothing in a fight", function()
         fireEvent("PLAYER_REGEN_ENABLED")
         if catches ~= 1 then error("the catch-up page after the fight: " .. catches) end
     end)
-    ns.GuideUnlocked, ns.LoadPlanner, ns.PlannerReplan, ns.root.guideState, ns.db.questGuide = keep.unlocked, keep.loadPlanner, keep.replan, keep.state, keep.on
+    ns.LoadPlanner, ns.PlannerReplan, ns.root.guideState, ns.db.questGuide = keep.loadPlanner, keep.replan, keep.state, keep.on
     env.InCombatLockdown, env.IsResting, env.UnitIsAFK, ns.PrintRaw, ns.PlannerCatchUp, env.time = keep.combat, keep.resting, keep.afk, keep.raw, keep.catch, keep.time
     ns.root.planner, ns.GuideOn = keep.planner, keep.guideOn
     ns.PlannerSeenReset()
     if not ok then error(err, 0) end
 end)
 try("folders: the auction house in a fight", function()
-    local keep = { unlocked = ns.GuideUnlocked, combat = env.InCombatLockdown, show = ns.GoldAuctionShow, raw = ns.PrintRaw, ready = ns.folderReady.gold }
+    local keep = { combat = env.InCombatLockdown, show = ns.GoldAuctionShow, raw = ns.PrintRaw, ready = ns.folderReady.gold }
     local shows, said = 0, {}
     local function Spoke()               -- (about the fight or the folder: the harness hands these events to every handler, so others speak too)
         local n = 0
@@ -10408,7 +10310,6 @@ try("folders: the auction house in a fight", function()
         return n
     end
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         ns.GoldAuctionShow = function() shows = shows + 1; return true end
         ns.PrintRaw = function(_, t) said[#said + 1] = tostring(t) end
         ns.folderReady.gold = nil                                  -- (as before the first use: the folder is asked for again)
@@ -10429,16 +10330,15 @@ try("folders: the auction house in a fight", function()
         fireEvent("PLAYER_REGEN_ENABLED")
         if shows ~= 1 or Spoke() ~= 0 then error("closed in the fight: nothing after it") end
     end)
-    ns.GuideUnlocked, env.InCombatLockdown, ns.GoldAuctionShow, ns.PrintRaw = keep.unlocked, keep.combat, keep.show, keep.raw
+    env.InCombatLockdown, ns.GoldAuctionShow, ns.PrintRaw = keep.combat, keep.show, keep.raw
     ns.folderReady.gold = keep.ready
     if not ok then error(err, 0) end
 end)
 try("folders: a folder the game loads with another", function()
     -- (Forever may load a load-on-demand optional dependency with the folder that names it: gold's names the planner)
-    local keep = { unlocked = ns.GuideUnlocked, load = rawget(env.C_AddOns, "LoadAddOn") }
+    local keep = { load = rawget(env.C_AddOns, "LoadAddOn") }
     local ran, asked = 0, {}
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         ns.FOLDERS.testA = { addon = "FantasyGlassUI_TestA", files = { "A.lua" } }
         ns.FOLDERS.testB = { addon = "FantasyGlassUI_TestB", files = { "B.lua" } }
         rawset(env.C_AddOns, "LoadAddOn", function(name)
@@ -10456,15 +10356,13 @@ try("folders: a folder the game loads with another", function()
         if not ns:LoadFolder("testA") or #asked ~= 1 or ran ~= 1 then error("A is not loaded again, nor its late work run twice") end
     end)
     for _, k in ipairs({ "testA", "testB" }) do ns.FOLDERS[k], ns.folderReady[k], ns.folderBroken[k] = nil, nil, nil end
-    ns.GuideUnlocked = keep.unlocked
     rawset(env.C_AddOns, "LoadAddOn", keep.load)
     if not ok then error(err, 0) end
 end)
 try("folders: late login work", function()
-    local keep = { unlocked = ns.GuideUnlocked, load = rawget(env.C_AddOns, "LoadAddOn"), errors = ns.errors }
+    local keep = { load = rawget(env.C_AddOns, "LoadAddOn"), errors = ns.errors }
     local ran = {}
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         ns.errors = {}
         ns.FOLDERS.test = { addon = "FantasyGlassUI_Test", files = { "A.lua" } }
         ns.folderReady.test, ns.folderBroken.test = nil, nil
@@ -10484,7 +10382,7 @@ try("folders: late login work", function()
         if #ran ~= 2 then error("once only") end
     end)
     ns.FOLDERS.test, ns.folderReady.test, ns.folderBroken.test = nil, nil, nil
-    ns.GuideUnlocked, ns.errors = keep.unlocked, keep.errors
+    ns.errors = keep.errors
     rawset(env.C_AddOns, "LoadAddOn", keep.load)
     if not ok then error(err, 0) end
 end)
@@ -10636,7 +10534,7 @@ end)
 try("13.0 planner: travel", function()
     local real = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), taxi = rawget(env, "C_TaxiMap"), nodeType = rawget(env, "TaxiNodeGetType"),
                    num = rawget(env, "NumTaxiNodes"), onTaxi = rawget(env, "UnitOnTaxi"), time = env.GetTime, bind = rawget(env, "GetTaxiMapID") }
-    local savedRoot, savedKey = ns.root.planner, ns.root.guideKey
+    local savedRoot = ns.root.planner
     local saved = { nodes = ns.root.plannerNodes, ft = ns.root.plannerFlightTimes, ct = ns.root.plannerCrossTimes, smp = ns.root.plannerTimeSamples }
     local pos, clock, taxi = { 1, 10, 10 }, 1000, false
     local at = function(map, x, y) pos = { map, x, y } end
@@ -10661,7 +10559,6 @@ try("13.0 planner: travel", function()
         { nodeID = 7, slotIndex = 3, name = "Seven", position = { x = 0.9, y = 0.9 } } } end }
     env.NumTaxiNodes = function() return 3 end
     env.TaxiNodeGetType = function(i) return i == 3 and "UNREACHABLE" or (i == 1 and "CURRENT" or "REACHABLE") end
-    ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
     local ok, err = pcall(function()
         local c, wx, wy = ns.PlannerWorldPos(2, 50, 50)
         if c ~= 0 or wx ~= 3500 or wy ~= 500 then error("world position") end
@@ -10718,7 +10615,7 @@ try("13.0 planner: travel", function()
     end)
     env.C_Map = real.map; rawset(env, "CreateVector2D", real.vec); rawset(env, "C_TaxiMap", real.taxi); rawset(env, "TaxiNodeGetType", real.nodeType)
     rawset(env, "NumTaxiNodes", real.num); rawset(env, "UnitOnTaxi", real.onTaxi); env.GetTime = real.time; rawset(env, "GetTaxiMapID", real.bind)
-    ns.root.planner, ns.root.guideKey = savedRoot, savedKey
+    ns.root.planner = savedRoot
     ns.root.plannerNodes, ns.root.plannerFlightTimes, ns.root.plannerCrossTimes, ns.root.plannerTimeSamples = saved.nodes, saved.ft, saved.ct, saved.smp
     if not ok then error(err, 0) end
 end)
@@ -10912,7 +10809,7 @@ end)
 try("13.0 planner: running it", function()
     local real = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), ql = env.C_QuestLog, level = env.UnitLevel, time = env.GetTime,
                    loaded = env.C_AddOns.IsAddOnLoaded, source = ns.PlannerSource, combat = env.InCombatLockdown, budget = ns.PLANNER_BUDGET_MS }
-    local saved = { key = ns.root.guideKey, guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner }
+    local saved = { guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner }
     local pos, clock = { 1, 30, 40 }, 5000
     local cm = {}
     for k, v in pairs(real.map) do cm[k] = v end
@@ -10946,7 +10843,6 @@ try("13.0 planner: running it", function()
     ns.PlannerSource = function() return world end
     ns.root.guides, ns.root.guideState, ns.root.planner = nil, nil, nil
     fireEvent("PLAYER_REGEN_ENABLED")                        -- (out of any fight an earlier test left the game in)
-    ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
     local function frame()
         for i = 1, #handlers do local h = handlers[i]; if h.name == "OnUpdate" then pcall(h.fn, h.self, 0.02) end end
         runTimers()
@@ -11123,28 +11019,24 @@ try("13.0 planner: running it", function()
         if ns:GuideCommand("plan") ~= true then error("/fgui guide plan") end
         ns:GuideCommand("off")
         if ns.plannerBusy or ns.plannerQueued then error("off stops the planner") end
-        -- locked: nothing
-        ns.root.guideKey = nil
-        if ns:PlannerStart() ~= false or ns.plannerBusy or ns.plannerQueued then error("locked: no planning") end
     end)
     ns:PlannerStop()
     env.C_Map = real.map; rawset(env, "CreateVector2D", real.vec); env.C_QuestLog = real.ql; env.UnitLevel = real.level; env.GetTime = real.time
     env.C_AddOns.IsAddOnLoaded = real.loaded; ns.PlannerSource = real.source; env.InCombatLockdown = real.combat; ns.PLANNER_BUDGET_MS = real.budget
     ns.PlannerSourceReset()
-    ns.root.guideKey, ns.root.guides, ns.root.guideState, ns.root.planner = saved.key, saved.guides, saved.state, saved.planner
+    ns.root.guides, ns.root.guideState, ns.root.planner = saved.guides, saved.state, saved.planner
     if not ok then error(err, 0) end
 end)
 try("13.0 planner: settings", function()
-    local saved = { key = ns.root.guideKey, guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner,
+    local saved = { guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner,
                     group = ns.db.plannerGroup, flights = ns.db.plannerLearnFlights, why = ns.db.plannerWhy }
     local ok, err = pcall(function()
-        ns.root.guideKey = tonumber((sources["Guide.lua"] or ""):match("local GUIDE_KEY = (%d+)"))
         ns.root.guides, ns.root.guideState = nil, nil
         ns.db.plannerGroup, ns.db.plannerLearnFlights, ns.db.plannerWhy = "solo", true, true
         ns:ToggleConfig("guide")
-        if not ns.guidePage or ns.guidePage.unlocked ~= true then error("unlocked: the Guide tab shows the controls") end
+        if not (ns.guidePage and ns.guidePage.live) then error("the Guide tab shows the controls") end
         local P = ns:PlannerOpen() and ns.plannerWindow.T          -- (the planner's settings: in its own window)
-        if not P then error("unlocked: the planner window opens") end
+        if not P then error("the planner window opens") end
         if not (P.planButton and P.groupButton and P.flightsBox and P.whyBox) then error("the planner controls exist") end
         local function click(b)
             local f = b:GetScript("OnClick")
@@ -11185,22 +11077,17 @@ try("13.0 planner: settings", function()
         ns:GuideStop(); ns:PlannerStop(); ns.plannerQueued = false
         click(P.groupButton)
         if ns.plannerQueued then error("planner not running: no replan") end
-        -- locked
-        ns:GuideLock()
-        ns:ToggleConfig("guide")
-        if ns.guidePage.unlocked ~= false then error("locked: coming soon") end
     end)
     ns:PlannerStop()
     ns:ToggleConfig()
     if ns.plannerWindow then ns.plannerWindow:Hide() end
-    ns.root.guideKey, ns.root.guides, ns.root.guideState, ns.root.planner = saved.key, saved.guides, saved.state, saved.planner
+    ns.root.guides, ns.root.guideState, ns.root.planner = saved.guides, saved.state, saved.planner
     ns.db.plannerGroup, ns.db.plannerLearnFlights, ns.db.plannerWhy = saved.group, saved.flights, saved.why
     if not ok then error(err, 0) end
 end)
 try("13.1 stops: places", function()
     local realLoaded, realMeta, realQ, realLoader = env.C_AddOns.IsAddOnLoaded, rawget(env.C_AddOns, "GetAddOnMetadata"), rawget(env, "Questie"), rawget(env, "QuestieLoader")
     local realFaction, realName, realHere, realRace = rawget(env, "UnitFactionGroup"), rawget(env, "UnitName"), ns.GuideHere, rawget(env, "UnitRace")
-    local realKey = ns.root.guideKey
     local npcs = {
         [31] = { name = "Trainer Thirtyone", spawns = { [40] = { { 10, 20 }, { 11, 21 } } } },
         [32] = { name = "Smith", spawns = { [40] = { { 30, 40 } } } },
@@ -11231,7 +11118,6 @@ try("13.1 stops: places", function()
     local spot = { 1436, 40, 40 }
     ns.GuideHere = function() return spot[1], spot[2], spot[3] end
     env.UnitName = function(u) if u == "npc" then return "Postmaster" end return "Someone" end
-    ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
     local savedSeen = ns.root.plannerSeen
     ns.root.plannerSeen = nil
     local ok, err = pcall(function()
@@ -11307,11 +11193,7 @@ try("13.1 stops: places", function()
         if #src.places("vendor", "Food") ~= 0 or #log.places("vendor", "Drink") ~= 0 then error("seen merchants are not food or drink vendors") end
         if #log.places("anyVendor") ~= 2 or #src.places("anyVendor") ~= 2 then error("every seen merchant is a place to sell") end
         if #log.places("repair") ~= 1 or log.places("repair")[1].x ~= 60 then error("only a merchant that could repair joins repair") end
-        ns.root.guideKey = nil; ns.root.plannerSeen = nil
-        fireEvent("MAIL_SHOW")
-        if ns.root.plannerSeen ~= nil then error("locked guide: nothing saved") end
     end)
-    ns.root.guideKey = realKey; ns.root.plannerSeen = savedSeen
     ns.PlannerSourceReset()
     env.C_AddOns.IsAddOnLoaded = realLoaded; rawset(env.C_AddOns, "GetAddOnMetadata", realMeta)
     rawset(env, "Questie", realQ); rawset(env, "QuestieLoader", realLoader)
@@ -11321,7 +11203,7 @@ end)
 try("13.1 stops: the mechanism and the class trainer", function()
     local real = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), level = env.UnitLevel, ql = env.C_QuestLog, trade = rawget(env, "IsTradeskillTrainer"),
                    guid = rawget(env, "UnitGUID"), here = ns.GuideHere, source = ns.PlannerSource }
-    local saved = { key = ns.root.guideKey, guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner, seen = ns.root.plannerSeen,
+    local saved = { guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner, seen = ns.root.plannerSeen,
                     trainer = ns.db.plannerTrainer, stops = {} }
     for i, d in ipairs(ns.plannerStops or {}) do saved.stops[i] = d end
     local cm = {}
@@ -11434,7 +11316,6 @@ try("13.1 stops: the mechanism and the class trainer", function()
         guide = ns.PlannerRoute(ctx)
         n, at = count(guide, "train")
         if n ~= 1 or guide.steps[at].text ~= "Trainer Ten" or not ctx.stopsWanted.classTrainer then error("level 10, never trained: a train step") end
-        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
         ns.PlannerSource = function() return source end
         ns.GuideHere = function() return 1, 30, 40 end                         -- (far from Trainer Ten at 70,70)
         local npc = 99
@@ -11565,7 +11446,7 @@ try("13.1 stops: the mechanism and the class trainer", function()
     ns.plannerStops = saved.stops
     env.C_Map = real.map; rawset(env, "CreateVector2D", real.vec); env.UnitLevel = real.level; env.C_QuestLog = real.ql; rawset(env, "IsTradeskillTrainer", real.trade)
     rawset(env, "UnitGUID", real.guid); ns.GuideHere = real.here; ns.PlannerSource = real.source
-    ns.root.guideKey, ns.root.guides, ns.root.guideState, ns.root.planner, ns.root.plannerSeen = saved.key, saved.guides, saved.state, saved.planner, saved.seen
+    ns.root.guides, ns.root.guideState, ns.root.planner, ns.root.plannerSeen = saved.guides, saved.state, saved.planner, saved.seen
     ns.db.plannerTrainer, ns.db.plannerTestStop = saved.trainer, nil
     ns.PlannerSourceReset()
     if not ok then error(err, 0) end
@@ -11573,7 +11454,7 @@ end)
 try("13.1 stops: held hand-ins and talents", function()
     local real = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), level = env.UnitLevel, here = ns.GuideHere, source = ns.PlannerSource,
                    ct = rawget(env, "C_ClassTalents"), tr = rawget(env, "C_Traits") }
-    local saved = { key = ns.root.guideKey, guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner, hold = ns.db.plannerHold,
+    local saved = { guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner, hold = ns.db.plannerHold,
                     trainer = ns.db.plannerTrainer }
     local cm = {}
     for k, v in pairs(real.map) do cm[k] = v end
@@ -11659,7 +11540,6 @@ try("13.1 stops: held hand-ins and talents", function()
         if not (at.train and at.turnins) or at.turnins[1] > at.lastB then error("setting off: the hand-ins stay") end
         ns.db.plannerHold = true
         -- the switch in the planner window
-        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
         ns.root.guideState = nil
         local P = ns:PlannerOpen() and ns.plannerWindow.T
         if not (P and P.holdBox) then error("the hold switch exists") end
@@ -11704,7 +11584,7 @@ try("13.1 stops: held hand-ins and talents", function()
     rawset(env, "C_ClassTalents", real.ct); rawset(env, "C_Traits", real.tr)
     env.C_Map = real.map; rawset(env, "CreateVector2D", real.vec); env.UnitLevel = real.level
     ns.GuideHere = real.here; ns.PlannerSource = real.source
-    ns.root.guideKey, ns.root.guides, ns.root.guideState, ns.root.planner = saved.key, saved.guides, saved.state, saved.planner
+    ns.root.guides, ns.root.guideState, ns.root.planner = saved.guides, saved.state, saved.planner
     ns.db.plannerHold, ns.db.plannerTrainer = saved.hold, saved.trainer
     ns.PlannerSourceReset()
     if not ok then error(err, 0) end
@@ -11713,7 +11593,7 @@ try("13.1 stops: the vendor", function()
     local real = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), enum = env.Enum, class = env.UnitClass, power = env.UnitPowerType,
                    free = env.C_Container.GetContainerNumFreeSlots, dur = env.GetInventoryItemDurability, count = env.C_Item.GetItemCount,
                    itemID = rawget(env, "GetInventoryItemID"), instant = env.C_Item.GetItemInfoInstant, time = env.GetTime }
-    local saved = { key = ns.root.guideKey, guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner, seen = ns.root.plannerSeen,
+    local saved = { guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner, seen = ns.root.plannerSeen,
                     vendor = ns.db.plannerVendor, supplies = ns.db.plannerSupplies }
     local cm = {}
     for k, v in pairs(real.map) do cm[k] = v end
@@ -11879,7 +11759,6 @@ try("13.1 stops: the vendor", function()
         counts[4541] = 50
         ns.root.planner = nil
         -- a skipped stop stays skipped when only its words change (what to buy)
-        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
         local function mk(text) return { name = ns.GUIDE_PLANNED, steps = { { kind = "vendor", text = text, map = 1, x = 33, y = 40, stopKey = "vendor:7" } } } end
         ns:GuideSetPlan(mk("Sell at Smith"), {})
         ns.GuideState().ticked[1] = true
@@ -11906,7 +11785,6 @@ try("13.1 stops: the vendor", function()
         if #steps ~= 0 then error("bags freed: the stop is gone") end
         -- a new visit is a new stop: the key changes when the window closes on the current vendor step
         free = 2
-        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
         guide = plan()
         ns:GuideSetPlan(guide, {})
         local at
@@ -11952,7 +11830,7 @@ try("13.1 stops: the vendor", function()
     env.C_Map = real.map; rawset(env, "CreateVector2D", real.vec); env.Enum = real.enum; env.UnitClass = real.class; env.UnitPowerType = real.power
     env.C_Container.GetContainerNumFreeSlots = real.free; env.GetInventoryItemDurability = real.dur; env.C_Item.GetItemCount = real.count
     rawset(env, "GetInventoryItemID", real.itemID); env.C_Item.GetItemInfoInstant = real.instant; env.GetTime = real.time
-    ns.root.guideKey, ns.root.guides, ns.root.guideState, ns.root.planner, ns.root.plannerSeen = saved.key, saved.guides, saved.state, saved.planner, saved.seen
+    ns.root.guides, ns.root.guideState, ns.root.planner, ns.root.plannerSeen = saved.guides, saved.state, saved.planner, saved.seen
     ns.db.plannerVendor, ns.db.plannerSupplies = saved.vendor, saved.supplies
     ns.PlannerSourceReset()
     if not ok then error(err, 0) end
@@ -11961,7 +11839,7 @@ try("13.1 stops: professions and riding", function()
     local real = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), level = env.UnitLevel, class = env.UnitClass, money = env.GetMoney,
                    profs = env.GetProfessions, info = env.GetProfessionInfo, trade = rawget(env, "IsTradeskillTrainer"),
                    guid = rawget(env, "UnitGUID"), spells = env.C_SpellBook, mounted = env.IsMounted, here = ns.GuideHere, source = ns.PlannerSource }
-    local saved = { key = ns.root.guideKey, guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner, seen = ns.root.plannerSeen,
+    local saved = { guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner, seen = ns.root.plannerSeen,
                     profession = ns.db.plannerProfession, mount = ns.db.plannerMount }
     local cm = {}
     for k, v in pairs(real.map) do cm[k] = v end
@@ -12098,7 +11976,6 @@ try("13.1 stops: professions and riding", function()
         end
         env.GetProfessions = function() return skills[1] and 1 or nil, skills[2] and 2 or nil end
         -- a riding trainer visit is not a class trainer visit
-        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
         places.classTrainer = { { name = "Trainer Ten", map = 1, x = 70, y = 70, id = 10 } }
         ns.PlannerSource = function() return source end
         ns.GuideHere = function() return 1, 30, 40 end
@@ -12138,7 +12015,7 @@ try("13.1 stops: professions and riding", function()
     env.C_Map = real.map; rawset(env, "CreateVector2D", real.vec); env.UnitLevel = real.level; env.UnitClass = real.class; env.GetMoney = real.money; env.C_SpellBook, env.IsMounted = real.spells, real.mounted
     env.GetProfessions, env.GetProfessionInfo = real.profs, real.info
     rawset(env, "IsTradeskillTrainer", real.trade); rawset(env, "UnitGUID", real.guid); ns.GuideHere, ns.PlannerSource = real.here, real.source
-    ns.root.guideKey, ns.root.guides, ns.root.guideState, ns.root.planner, ns.root.plannerSeen = saved.key, saved.guides, saved.state, saved.planner, saved.seen
+    ns.root.guides, ns.root.guideState, ns.root.planner, ns.root.plannerSeen = saved.guides, saved.state, saved.planner, saved.seen
     ns.db.plannerProfession, ns.db.plannerMount = saved.profession, saved.mount
     ns.PlannerSourceReset()
     if not ok then error(err, 0) end
@@ -12146,7 +12023,7 @@ end)
 try("13.1 stops: mail, exploring and gathering", function()
     local real = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), level = env.UnitLevel, mail = env.HasNewMail, explore = rawget(env, "C_MapExplorationInfo"),
                    profs = env.GetProfessions, info = env.GetProfessionInfo, here = ns.GuideHere, source = ns.PlannerSource, time = env.GetTime }
-    local saved = { key = ns.root.guideKey, guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner, seen = ns.root.plannerSeen,
+    local saved = { guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner, seen = ns.root.plannerSeen,
                     nodes = ns.root.plannerNodesSeen, mail = ns.db.plannerMail, explore = ns.db.plannerExplore, gather = ns.db.plannerGather, why = ns.db.plannerWhy }
     local cm = {}
     for k, v in pairs(real.map) do cm[k] = v end
@@ -12193,7 +12070,6 @@ try("13.1 stops: mail, exploring and gathering", function()
         for i, s in ipairs(guide.steps) do if s.kind == kind then return i, s end end
     end
     local ok, err = pcall(function()
-        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
         ns.root.plannerNodesSeen = nil
         ns.PlannerSource = function() return source end
         explored = function() return nil end                           -- (nothing known explored anywhere: no exploring either)
@@ -12321,13 +12197,6 @@ try("13.1 stops: mail, exploring and gathering", function()
         ns.db.plannerGather = false
         if count(plan(), "gather") ~= 0 then error("gather switched off: none") end
         ns.db.plannerGather = nil
-        -- nothing recorded while the guide is locked
-        ns.root.plannerNodesSeen = nil
-        ns.root.guideKey = nil
-        ns.GuideHere = function() return 1, 20, 20 end
-        fireEvent("UNIT_SPELLCAST_SENT", "player", "Copper Vein", "cast-8", 2575)
-        if ns.root.plannerNodesSeen ~= nil then error("locked: nothing recorded, nothing created") end
-        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
         -- skinning: a kill step says to skin them
         skills = { { 393, "Skinning", 50, 75 } }
         guide = plan()
@@ -12364,7 +12233,7 @@ try("13.1 stops: mail, exploring and gathering", function()
     rawset(env, "C_MapExplorationInfo", real.explore)
     env.GetProfessions, env.GetProfessionInfo = real.profs, real.info
     ns.GuideHere, ns.PlannerSource = real.here, real.source
-    ns.root.guideKey, ns.root.guides, ns.root.guideState, ns.root.planner, ns.root.plannerSeen = saved.key, saved.guides, saved.state, saved.planner, saved.seen
+    ns.root.guides, ns.root.guideState, ns.root.planner, ns.root.plannerSeen = saved.guides, saved.state, saved.planner, saved.seen
     ns.root.plannerNodesSeen = saved.nodes
     ns.db.plannerMail, ns.db.plannerExplore, ns.db.plannerGather, ns.db.plannerWhy = saved.mail, saved.explore, saved.gather, saved.why
     ns.PlannerSourceReset()
@@ -12377,9 +12246,8 @@ try("13.2 stops: the mount, the trainer window, supplies, seen places and the de
                    faction = rawget(env, "UnitFactionGroup"), name = rawget(env, "UnitName"), power = env.UnitPowerType, count = env.C_Item.GetItemCount,
                    enum = env.Enum, itemID = rawget(env, "GetInventoryItemID"), instant = env.C_Item.GetItemInfoInstant,
                    free = env.C_Container.GetContainerNumFreeSlots, dur = env.GetInventoryItemDurability }
-    local saved = { key = ns.root.guideKey, guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner, seen = ns.root.plannerSeen,
+    local saved = { guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner, seen = ns.root.plannerSeen,
                     why = ns.db.plannerWhy, mount = ns.db.plannerMount }
-    local KEY = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
     local cm = {}
     for k, v in pairs(real.map) do cm[k] = v end
     cm.GetWorldPosFromMapPos = function(map, v) if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end end
@@ -12429,7 +12297,6 @@ try("13.2 stops: the mount, the trainer window, supplies, seen places and the de
     end
     local ok, err = pcall(function()
         ns.root.planner = nil
-        ns.root.guideKey = KEY
         ns.db.plannerMount = nil
         -- (1) the mount is a reason of its own: closing the riding trainer keeps the mount vendor stop
         local guide = ns.PlannerRoute(context())
@@ -12461,19 +12328,13 @@ try("13.2 stops: the mount, the trainer window, supplies, seen places and the de
         level = 39
         if find(ns.PlannerRoute(context()), "vendor", "Horse Hal") then error("level 39: no mount stop") end
         level = 40
-        -- (6) the trainer window with the guide locked looks nothing up
+        -- (6) the trainer window looks the trainer up
         ns.root.planner = nil
-        ns.root.guideKey = nil
-        local srcCalls, tradeCalls = 0, 0
+        local srcCalls = 0
         ns.PlannerSource = function() srcCalls = srcCalls + 1; return source end
-        env.IsTradeskillTrainer = function() tradeCalls = tradeCalls + 1; return false end
-        calls = 0
-        fireEvent("TRAINER_SHOW"); fireEvent("TRAINER_CLOSED")
-        if srcCalls ~= 0 or tradeCalls ~= 0 or calls ~= 0 then error("locked: no Questie lookups at the trainer (" .. srcCalls .. ", " .. tradeCalls .. ", " .. calls .. ")") end
-        if ns.root.planner ~= nil then error("locked: nothing recorded") end
-        ns.root.guideKey = KEY
+        env.IsTradeskillTrainer = function() return false end
         fireEvent("TRAINER_SHOW")
-        if srcCalls == 0 then error("unlocked: the trainer is looked up") end
+        if srcCalls == 0 then error("the trainer is looked up") end
         fireEvent("TRAINER_CLOSED")
         ns.PlannerSource = function() return source end
         -- (3) supplies: every tier at or below your level counts; a mage buys no water
@@ -12547,7 +12408,7 @@ try("13.2 stops: the mount, the trainer window, supplies, seen places and the de
     rawset(env, "UnitFactionGroup", real.faction); rawset(env, "UnitName", real.name); env.UnitPowerType = real.power; env.C_Item.GetItemCount = real.count
     env.Enum = real.enum; rawset(env, "GetInventoryItemID", real.itemID); env.C_Item.GetItemInfoInstant = real.instant
     env.C_Container.GetContainerNumFreeSlots = real.free; env.GetInventoryItemDurability = real.dur
-    ns.root.guideKey, ns.root.guides, ns.root.guideState, ns.root.planner, ns.root.plannerSeen = saved.key, saved.guides, saved.state, saved.planner, saved.seen
+    ns.root.guides, ns.root.guideState, ns.root.planner, ns.root.plannerSeen = saved.guides, saved.state, saved.planner, saved.seen
     ns.db.plannerWhy, ns.db.plannerMount = saved.why, saved.mount
     ns.PlannerSourceReset()
     if not ok then error(err, 0) end
@@ -12556,7 +12417,7 @@ try("13.2 stops: exploring, and what a replan costs", function()
     local real = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), level = env.UnitLevel, explore = rawget(env, "C_MapExplorationInfo"), here = ns.GuideHere,
                    world = ns.GuideWorld, wp = ns.PlannerWorldPos, mail = env.HasNewMail, class = env.UnitClass, power = env.UnitPowerType,
                    count = env.C_Item.GetItemCount, free = env.C_Container.GetContainerNumFreeSlots, dur = env.GetInventoryItemDurability }
-    local saved = { key = ns.root.guideKey, guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner, seen = ns.root.plannerSeen,
+    local saved = { guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner, seen = ns.root.plannerSeen,
                     nodes = ns.root.plannerNodesSeen, samples = ns.PLANNER_EXPLORE_SAMPLES, stops = {}, explore = ns.db.plannerExplore, gather = ns.db.plannerGather, mailOn = ns.db.plannerMail }
     for i, d in ipairs(ns.plannerStops or {}) do saved.stops[i] = d end
     local cm = {}
@@ -12596,7 +12457,6 @@ try("13.2 stops: exploring, and what a replan costs", function()
         return out
     end
     local ok, err = pcall(function()
-        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
         ns.root.planner, ns.root.plannerNodesSeen = nil, nil
         ns.db.plannerExplore, ns.db.plannerGather = nil, nil
         ns.PlannerSourceReset()
@@ -12700,7 +12560,7 @@ try("13.2 stops: exploring, and what a replan costs", function()
     env.HasNewMail, env.UnitClass, env.UnitPowerType, env.C_Item.GetItemCount = real.mail, real.class, real.power, real.count
     env.C_Container.GetContainerNumFreeSlots, env.GetInventoryItemDurability = real.free, real.dur
     ns.GuideHere = real.here
-    ns.root.guideKey, ns.root.guides, ns.root.guideState, ns.root.planner, ns.root.plannerSeen = saved.key, saved.guides, saved.state, saved.planner, saved.seen
+    ns.root.guides, ns.root.guideState, ns.root.planner, ns.root.plannerSeen = saved.guides, saved.state, saved.planner, saved.seen
     ns.root.plannerNodesSeen, ns.PLANNER_EXPLORE_SAMPLES = saved.nodes, saved.samples
     ns.db.plannerExplore, ns.db.plannerGather, ns.db.plannerMail = saved.explore, saved.gather, saved.mailOn
     ns.PlannerSourceReset()
@@ -12808,6 +12668,7 @@ try("13.3 choices: rested, upgrades, alts", function()
         ns.root.plannerQuestTimes = nil
         local clock = 201000
         env.GetTime = function() return clock end
+        ns.GuideState = function() return nil end
         fireEvent("QUEST_ACCEPTED", 1, 202); clock = 201300; fireEvent("QUEST_TURNED_IN", 202)
         if ns.root.plannerQuestTimes then error("not following: nothing is recorded") end
         ns.GuideOn = function() return true end
@@ -13004,12 +12865,11 @@ try("13.3 choices: reputation goals", function()
 end)
 try("13.3 choices: skip list, deaths, soloed elites", function()
     local saved = { on = ns.GuideOn, here = ns.GuideHere, state = ns.GuideState, level = env.UnitLevel, group = env.IsInGroup, base = rawget(env, "UnitClassBase"),
-                    map = env.C_Map, vec = rawget(env, "CreateVector2D"), unlocked = ns.GuideUnlocked, logQ = env.C_QuestLog, db = { deaths = ns.db.plannerDeaths, solo = ns.db.plannerSoloElites },
+                    map = env.C_Map, vec = rawget(env, "CreateVector2D"), logQ = env.C_QuestLog, db = { deaths = ns.db.plannerDeaths, solo = ns.db.plannerSoloElites },
                     pworld = ns.PlannerWorldPos }
     local recC = ns.PlannerCharRecord(false)
     local before = { skip = recC and recC.skip, deaths = recC and recC.deaths, elites = ns.root.plannerSoloElites }
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         ns.GuideOn = function() return true end
         -- the skip list
         local function q(id, extra)
@@ -13050,8 +12910,11 @@ try("13.3 choices: skip list, deaths, soloed elites", function()
         local panel = ns:GuideShowPanel()
         local sb = panel and panel.stepButton
         if not sb then error("the panel has a step button") end
+        local realMenu, menus = ns.GuideStepMenu, 0                -- (the menu may be made by an earlier test: count the opens)
+        ns.GuideStepMenu = function(...) menus = menus + 1; return realMenu(...) end
         click(sb, "LeftButton")
-        if rawget(ns, "guideStepMenu") then error("a left click opens nothing") end
+        ns.GuideStepMenu = realMenu
+        if menus ~= 0 then error("a left click opens nothing") end
         click(sb, "RightButton")
         local menu = ns.guideStepMenu
         if not (menu and menu.button) then error("a right click opens the menu") end
@@ -13188,12 +13051,8 @@ try("13.3 choices: skip list, deaths, soloed elites", function()
         ns.GuideHere = function() return 1, 80, 80 end
         for _ = 1, 60 do fireEvent("PLAYER_DEAD") end
         if #ns.PlannerCharRecord(false).deaths ~= 50 then error("at most 50 deaths: " .. #ns.PlannerCharRecord(false).deaths) end
-        -- locked: nothing recorded
-        ns.GuideUnlocked = function() return false end
-        fireEvent("PLAYER_DEAD")
-        if #ns.PlannerCharRecord(false).deaths ~= 50 then error("locked: nothing recorded") end
     end)
-    ns.GuideOn, ns.GuideHere, ns.GuideState, ns.GuideUnlocked = saved.on, saved.here, saved.state, saved.unlocked
+    ns.GuideOn, ns.GuideHere, ns.GuideState = saved.on, saved.here, saved.state
     env.UnitLevel, env.IsInGroup, env.C_Map, env.C_QuestLog = saved.level, saved.group, saved.map, saved.logQ
     rawset(env, "UnitClassBase", saved.base); rawset(env, "CreateVector2D", saved.vec)
     ns.PlannerWorldPos = saved.pworld
@@ -13208,12 +13067,11 @@ end)
 
 try("13.3 choices: class, timed, escort and loot quests", function()
     local saved = { on = ns.GuideOn, here = ns.GuideHere, state = ns.GuideState, level = env.UnitLevel, base = rawget(env, "UnitClassBase"),
-                    map = env.C_Map, vec = rawget(env, "CreateVector2D"), unlocked = ns.GuideUnlocked, logQ = env.C_QuestLog,
+                    map = env.C_Map, vec = rawget(env, "CreateVector2D"), logQ = env.C_QuestLog,
                     classTable = ns.PLANNER_CLASS_QUESTS, escorts = ns.PLANNER_ESCORTS, switch = ns.db.plannerClassQuests,
                     loaded = env.C_AddOns.IsAddOnLoaded, meta = rawget(env.C_AddOns, "GetAddOnMetadata"), q = rawget(env, "Questie"), loader = rawget(env, "QuestieLoader"),
                     count = env.C_Item.GetItemCount }
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         ns.GuideOn = function() return true end
         env.C_Map = setmetatable({ GetWorldPosFromMapPos = function(map, v)
             if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end
@@ -13415,7 +13273,7 @@ try("13.3 choices: class, timed, escort and loot quests", function()
     ns.PlannerSourceReset()
     env.C_AddOns.IsAddOnLoaded = saved.loaded; rawset(env.C_AddOns, "GetAddOnMetadata", saved.meta)
     rawset(env, "Questie", saved.q); rawset(env, "QuestieLoader", saved.loader)
-    ns.GuideOn, ns.GuideHere, ns.GuideState, ns.GuideUnlocked = saved.on, saved.here, saved.state, saved.unlocked
+    ns.GuideOn, ns.GuideHere, ns.GuideState = saved.on, saved.here, saved.state
     env.UnitLevel, env.C_Map, env.C_QuestLog = saved.level, saved.map, saved.logQ
     rawset(env, "UnitClassBase", saved.base); rawset(env, "CreateVector2D", saved.vec)
     ns.PLANNER_CLASS_QUESTS, ns.PLANNER_ESCORTS, ns.db.plannerClassQuests = saved.classTable, saved.escorts, saved.switch
@@ -13426,14 +13284,13 @@ try("13.3 choices: class, timed, escort and loot quests", function()
 end)
 
 try("13.3 choices: hand-in, quest log, inn", function()
-    local saved = { combat = env.InCombatLockdown, unlocked = ns.GuideUnlocked, up = ns.UpgradeAmount, choices = env.GetNumQuestChoices, link = env.GetQuestItemLink,
+    local saved = { combat = env.InCombatLockdown, up = ns.UpgradeAmount, choices = env.GetNumQuestChoices, link = env.GetQuestItemLink,
                     info = env.C_Item.GetItemInfo, itemInfo = rawget(env, "GetQuestItemInfo"), button = rawget(env, "QuestInfo_GetRewardButton"),
                     click = rawget(env, "QuestInfoItem_OnClick"), frame = rawget(env, "QuestInfoFrame"), reward = rawget(env, "GetQuestReward"),
                     logQ = env.C_QuestLog, level = env.UnitLevel, time = env.GetTime, resting = env.IsResting, exh = env.GetXPExhaustion,
                     source = ns.PlannerSource, rootAt = ns.root.plannerSessionAt, context = ns.PlannerContext, places = ns.PlannerPlaces, travel = ns.PlannerTravel, print = ns.Print, start = ns.plannerSessionStart,
                     world = ns.PlannerWorldPos, inns = ns.plannerInns, pick = ns.db.plannerPickReward, advice = ns.db.plannerLogAdvice, inn = ns.db.plannerInn }
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         runTimers()                                           -- (picks queued by earlier tests)
         ns.plannerInns = nil
         ns.PlannerWorldPos = function(map, x, y) return 0, x * 10, y * 10 end
@@ -13475,10 +13332,6 @@ try("13.3 choices: hand-in, quest log, inn", function()
         fireEvent("QUEST_COMPLETE"); runTimers()
         if marked() ~= nil then error("switch off: nothing marked") end
         ns.db.plannerPickReward = nil
-        ns.GuideUnlocked = function() return false end
-        fireEvent("QUEST_COMPLETE"); runTimers()
-        if marked() ~= nil or #clicked ~= 0 then error("locked: nothing marked") end
-        ns.GuideUnlocked = function() return true end
         -- the quest log
         env.UnitLevel = function() return 30 end
         local function log(count, grayAt)
@@ -13605,7 +13458,7 @@ try("13.3 choices: hand-in, quest log, inn", function()
         ns:GuideCommand("stop"); frames()
         if #said ~= 1 then error("/fgui guide stop suggests it too") end
     end)
-    ns.GuideUnlocked, ns.UpgradeAmount, env.GetNumQuestChoices, env.GetQuestItemLink, env.C_Item.GetItemInfo = saved.unlocked, saved.up, saved.choices, saved.link, saved.info
+    ns.UpgradeAmount, env.GetNumQuestChoices, env.GetQuestItemLink, env.C_Item.GetItemInfo = saved.up, saved.choices, saved.link, saved.info
     rawset(env, "GetQuestItemInfo", saved.itemInfo); rawset(env, "QuestInfo_GetRewardButton", saved.button); rawset(env, "QuestInfoItem_OnClick", saved.click)
     rawset(env, "QuestInfoFrame", saved.frame); rawset(env, "GetQuestReward", saved.reward)
     env.C_QuestLog, env.UnitLevel, env.GetTime, env.IsResting, env.GetXPExhaustion = saved.logQ, saved.level, saved.time, saved.resting, saved.exh
@@ -13619,10 +13472,9 @@ end)
 
 try("13.3 choices: when quests run dry", function()
     local saved = { loaded = env.C_AddOns.IsAddOnLoaded, meta = rawget(env.C_AddOns, "GetAddOnMetadata"), q = rawget(env, "Questie"), loader = rawget(env, "QuestieLoader"),
-                    unlocked = ns.GuideUnlocked, here = ns.GuideHere, world = ns.PlannerWorldPos, dungeons = ns.PLANNER_DUNGEONS, map = env.C_Map,
+                    here = ns.GuideHere, world = ns.PlannerWorldPos, dungeons = ns.PLANNER_DUNGEONS, map = env.C_Map,
                     combat = env.InCombatLockdown, dry = ns.db.plannerDry, group = ns.db.plannerGroup, level = env.UnitLevel }
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         ns.db.plannerDry = nil
         local cm = {}
         for k, v in pairs(saved.map) do cm[k] = v end
@@ -13702,10 +13554,6 @@ try("13.3 choices: when quests run dry", function()
         ns.db.plannerDry = false
         if #ns.PlannerAdviceLines({}, 1, s2) ~= 0 then error("switch off: the saved plan's lines hide") end
         ns.db.plannerDry = nil
-        ns.GuideUnlocked = function() return false end
-        _, s2 = ns.PlannerRoute(ctx("all"))
-        if s2.dry ~= nil then error("locked") end
-        ns.GuideUnlocked = function() return true end
         env.InCombatLockdown = function() return true end
         _, s2 = ns.PlannerRoute(ctx("all"))
         if s2.dry ~= nil then error("never in a fight") end
@@ -13755,24 +13603,23 @@ try("13.3 choices: when quests run dry", function()
     ns.PlannerSourceReset()
     env.C_AddOns.IsAddOnLoaded = saved.loaded; rawset(env.C_AddOns, "GetAddOnMetadata", saved.meta)
     rawset(env, "Questie", saved.q); rawset(env, "QuestieLoader", saved.loader)
-    ns.GuideUnlocked, ns.GuideHere, ns.PlannerWorldPos, ns.PLANNER_DUNGEONS = saved.unlocked, saved.here, saved.world, saved.dungeons
+    ns.GuideHere, ns.PlannerWorldPos, ns.PLANNER_DUNGEONS = saved.here, saved.world, saved.dungeons
     env.C_Map, env.InCombatLockdown, ns.db.plannerDry, ns.db.plannerGroup, env.UnitLevel = saved.map, saved.combat, saved.dry, saved.group, saved.level
     if not ok then error(err, 0) end
 end)
 
 try("13.3 choices: final review fixes", function()
-    local saved = { on = ns.GuideOn, here = ns.GuideHere, state = ns.GuideState, unlocked = ns.GuideUnlocked, level = env.UnitLevel, group = env.IsInGroup,
+    local saved = { on = ns.GuideOn, here = ns.GuideHere, state = ns.GuideState, level = env.UnitLevel, group = env.IsInGroup,
                     base = rawget(env, "UnitClassBase"), map = env.C_Map, vec = rawget(env, "CreateVector2D"), logQ = env.C_QuestLog, time = env.GetTime,
                     max = env.UnitXPMax, rep = env.C_Reputation, up = ns.UpgradeAmount, link = rawget(env, "GetQuestLogItemLink"),
                     choices = rawget(env, "GetNumQuestLogChoices"), rewards = rawget(env, "GetNumQuestLogRewards"), rewardsOn = ns.db.plannerRewards,
                     advice = ns.db.plannerLogAdvice, explore = ns.db.plannerExplore, gather = ns.db.plannerGather, times = ns.root.plannerQuestTimes,
                     elites = ns.root.plannerSoloElites, explo = rawget(env, "C_MapExplorationInfo"), exploreMaps = ns.plannerExploreMaps,
                     context = ns.PlannerContext, route = ns.PlannerRoute, world = ns.PlannerWorldPos,
-                    guideState = ns.root.guideState, guides = ns.root.guides, key = ns.root.guideKey }
+                    guideState = ns.root.guideState, guides = ns.root.guides }
     local recC = ns.PlannerCharRecord(false)
     local before = { soloAt = recC and recC.soloAt, reached = recC and recC.exploreReached }
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         env.C_Map = setmetatable({ GetWorldPosFromMapPos = function(map, v)
             if map == 1 or map == 5 then return 0, { x = v.x * 1000, y = v.y * 1000 } end     -- (map 5: a cave map over map 1)
             if map == 2 then return 0, { x = v.x * 1000 + 5000, y = v.y * 1000 } end
@@ -14076,7 +13923,6 @@ try("13.3 choices: final review fixes", function()
         if shownAs ~= true then error("a quest step: the button is there") end
         ns:GuideSetPlan(nil)
         -- the pace estimates are the formula alone, even with your alts' times
-        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
         ns.root.plannerQuestTimes = { [561] = { n = 3, avg = 6000 } }
         local r561 = q(561, { objectives = kill(1, 32, 42, 8) })
         local fakeSrc = { kind = "test", quest = function(id) return id == 561 and r561 or nil end }
@@ -14094,7 +13940,7 @@ try("13.3 choices: final review fixes", function()
         if est ~= 200 then error("the estimate is the formula (200), not the alts' blend: " .. tostring(est)) end
         ns:PlannerStop()
     end)
-    ns.GuideOn, ns.GuideHere, ns.GuideState, ns.GuideUnlocked = saved.on, saved.here, saved.state, saved.unlocked
+    ns.GuideOn, ns.GuideHere, ns.GuideState = saved.on, saved.here, saved.state
     env.UnitLevel, env.IsInGroup, env.C_Map, env.C_QuestLog, env.GetTime = saved.level, saved.group, saved.map, saved.logQ, saved.time
     rawset(env, "UnitClassBase", saved.base); rawset(env, "CreateVector2D", saved.vec)
     env.UnitXPMax, env.C_Reputation, ns.UpgradeAmount = saved.max, saved.rep, saved.up
@@ -14106,16 +13952,16 @@ try("13.3 choices: final review fixes", function()
     local rr = ns.PlannerCharRecord(false)
     if rr then rr.soloAt, rr.exploreReached = before.soloAt, before.reached end
     ns:GuideSetPlan(nil)
-    ns.root.guideState, ns.root.guides, ns.root.guideKey = saved.guideState, saved.guides, saved.key
+    ns.root.guideState, ns.root.guides = saved.guideState, saved.guides
     ns:PlannerStop()
     ns.plannerQueued = false
     if not ok then error(err, 0) end
 end)
 
 try("13.4 feel: seams", function()
-    local saved = { on = ns.GuideOn, here = ns.GuideHere, state = ns.GuideState, unlocked = ns.GuideUnlocked, level = env.UnitLevel,
+    local saved = { on = ns.GuideOn, here = ns.GuideHere, state = ns.GuideState, level = env.UnitLevel,
                     map = env.C_Map, vec = rawget(env, "CreateVector2D"), context = ns.PlannerContext, route = ns.PlannerRoute, world = ns.PlannerWorldPos,
-                    guideState = ns.root.guideState, guides = ns.root.guides, key = ns.root.guideKey, guidePage = ns.guidePage }
+                    guideState = ns.root.guideState, guides = ns.root.guides, guidePage = ns.guidePage }
     local function click(frame, ...)
         local f = frame:GetScript("OnClick")
         if type(f) ~= "function" then
@@ -14124,7 +13970,6 @@ try("13.4 feel: seams", function()
         return f(frame, ...)
     end
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         env.C_Map = setmetatable({ GetWorldPosFromMapPos = function(map, v)
             if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end
             if map == 2 then return 0, { x = v.x * 1000 + 5000, y = v.y * 1000 } end
@@ -14287,7 +14132,6 @@ try("13.4 feel: seams", function()
         ns.PlannerHook("route", "seams", nil)
 
         -- the applied hook: the reason the run was made for
-        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
         ns.GuideOn = function() return true end
         ns.GuideHere = function() return 1, 30, 40 end
         local reason
@@ -14346,6 +14190,7 @@ try("13.4 feel: seams", function()
         rawset(panel.title, "SetText", function(_, t) titleText = t end)
         rawset(panel.more, "SetShown", function(_, v) moreShown = v end)
         rawset(panel.stepButton, "SetShown", function(_, v) stepShown = v end)
+        ns.GuideRegisterLine("paceStyle", nil); ns.GuideRegisterLine("paceBreak", nil)   -- (the pace's own lines: put back at the end)
         ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "a" }, { kind = "note", text = "b" }, { kind = "note", text = "c" } } }, { zone = 1, fromLevel = 12, toLevel = 13 })
         local h0 = height
         if extraShown ~= false then error("no lines: the extra line is hidden") end
@@ -14398,15 +14243,6 @@ try("13.4 feel: seams", function()
         if #ns.GuidePanelEntries(nil) ~= others then error("ns.GuidePanelEntries: a hidden action is not listed") end
         ns:GuideRedraw()
         if moreShown ~= (others > 0) then error("no entry shown: the ... button hides") end
-        -- (with every panel action hidden, whoever registered it: the button hides)
-        ns.GuideUnlocked = function() return false end
-        if ns.PlannerPaceSync then ns.PlannerPaceSync() end
-        ns:GuideRedraw()
-        local none, hiddenNow = #ns.GuidePanelEntries(nil), moreShown
-        ns.GuideUnlocked = function() return true end
-        if ns.PlannerPaceSync then ns.PlannerPaceSync() end
-        ns:GuideRedraw()
-        if none ~= 0 or hiddenNow ~= false then error("no panel action applies (the guide locked): the ... button hides: " .. none .. " " .. tostring(hiddenNow)) end
         ns.GuideRegisterAction("panel", "seams", nil)
         -- the step-change hook
         local calls = {}
@@ -14450,25 +14286,25 @@ try("13.4 feel: seams", function()
     ns.GuideRegisterAction("step", "seams", nil); ns.GuideRegisterAction("panel", "seams", nil); ns.GuideRegisterCommand("plan", nil)
     ns:PlannerStop()
     ns.plannerQueued = false
-    ns.GuideOn, ns.GuideHere, ns.GuideState, ns.GuideUnlocked = saved.on, saved.here, saved.state, saved.unlocked
+    ns.GuideOn, ns.GuideHere, ns.GuideState = saved.on, saved.here, saved.state
     env.UnitLevel, env.C_Map = saved.level, saved.map
     rawset(env, "CreateVector2D", saved.vec)
     ns.PlannerContext, ns.PlannerRoute, ns.PlannerWorldPos = saved.context, saved.route, saved.world
     ns:GuideSetPlan(nil)
-    ns.root.guideState, ns.root.guides, ns.root.guideKey = saved.guideState, saved.guides, saved.key
+    ns.root.guideState, ns.root.guides = saved.guideState, saved.guides
     ns.guidePage = saved.guidePage
     if ns.guideStepMenu then ns.guideStepMenu:Hide() end
+    if ns.PlannerPaceSync then ns.PlannerPaceSync() end
     if not ok then error(err, 0) end
 end)
 
 try("13.4 feel: batch 3 leftovers", function()
-    local saved = { on = ns.GuideOn, state = ns.GuideState, unlocked = ns.GuideUnlocked, level = env.UnitLevel, group = env.IsInGroup,
+    local saved = { on = ns.GuideOn, state = ns.GuideState, level = env.UnitLevel, group = env.IsInGroup,
                     base = rawget(env, "UnitClassBase"), map = env.C_Map, vec = rawget(env, "CreateVector2D"), logQ = env.C_QuestLog, time = env.GetTime,
                     elites = ns.root.plannerSoloElites, times = ns.root.plannerQuestTimes, rejects = ns.PlannerRejects }
     local recC = ns.PlannerCharRecord(false)
     local before = { soloAt = recC and recC.soloAt, pace = recC and recC.pace }
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         env.C_Map = setmetatable({ GetWorldPosFromMapPos = function(map, v)
                 if map == 1 or map == 5 then return 0, { x = v.x * 1000, y = v.y * 1000 } end
                 if map == 2 then return 0, { x = v.x * 1000 + 5000, y = v.y * 1000 } end
@@ -14575,7 +14411,7 @@ try("13.4 feel: batch 3 leftovers", function()
         local p = ns.PlannerCharRecord(false).pace
         if not (p and p.samples and #p.samples == 1 and math.abs(p.samples[1] - 2) < 1e-6) then error("counted once: one sample of 2, got " .. tostring(p and p.samples and #p.samples)) end
     end)
-    ns.GuideOn, ns.GuideState, ns.GuideUnlocked = saved.on, saved.state, saved.unlocked
+    ns.GuideOn, ns.GuideState = saved.on, saved.state
     env.UnitLevel, env.IsInGroup, env.C_Map, env.C_QuestLog, env.GetTime = saved.level, saved.group, saved.map, saved.logQ, saved.time
     rawset(env, "UnitClassBase", saved.base); rawset(env, "CreateVector2D", saved.vec)
     ns.root.plannerSoloElites, ns.root.plannerQuestTimes, ns.PlannerRejects = saved.elites, saved.times, saved.rejects
@@ -14588,7 +14424,7 @@ end)
 
 -- batch 4 tests A (map): begin
 try("13.4 feel A: the route and hubs on the map", function()
-    local saved = { on = ns.GuideOn, state = ns.GuideState, get = ns.GuideGet, unlocked = ns.GuideUnlocked, world = ns.PlannerWorldPos,
+    local saved = { on = ns.GuideOn, state = ns.GuideState, get = ns.GuideGet, world = ns.PlannerWorldPos,
                     replan = ns.PlannerReplan, start = ns.PlannerStart, map = env.C_Map, vec = rawget(env, "CreateVector2D"), wmap = rawget(env, "WorldMapFrame"),
                     combat = env.InCombatLockdown, line = ns.db.plannerMapLine, hubs = ns.db.plannerMapHubs, blind = ns.db.colorblind, vision = ns.db.colorVision,
                     from = ns.plannerFromHere }
@@ -14600,7 +14436,6 @@ try("13.4 feel A: the route and hubs on the map", function()
         return f(frame, ...)
     end
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         ns.GuideOn = function() return true end
         ns.db.plannerMapLine, ns.db.plannerMapHubs, ns.db.colorblind = true, true, false
         -- the steps the line covers
@@ -14691,10 +14526,6 @@ try("13.4 feel A: the route and hubs on the map", function()
         nl, nm, nd = ns.PlannerMapDraw(1436)
         if nl + nm + nd ~= 0 then error("nothing in combat") end
         env.InCombatLockdown = function() return false end
-        ns.GuideUnlocked = function() return false end
-        nl, nm, nd = ns.PlannerMapDraw(1436)
-        if nl + nm + nd ~= 0 then error("nothing while locked") end
-        ns.GuideUnlocked = function() return true end
         local plain = ns.GuideState
         ns.GuideState = function() return { name = "Some guide", at = 1 } end
         nl, nm, nd = ns.PlannerMapDraw(1436)
@@ -14814,7 +14645,7 @@ try("13.4 feel A: the route and hubs on the map", function()
         ns.plannerFromHere = nil
         if not okA then error(errA, 0) end
     end)
-    ns.GuideOn, ns.GuideState, ns.GuideGet, ns.GuideUnlocked, ns.PlannerWorldPos = saved.on, saved.state, saved.get, saved.unlocked, saved.world
+    ns.GuideOn, ns.GuideState, ns.GuideGet, ns.PlannerWorldPos = saved.on, saved.state, saved.get, saved.world
     ns.PlannerReplan, ns.PlannerStart = saved.replan, saved.start
     env.C_Map, env.InCombatLockdown = saved.map, saved.combat
     rawset(env, "CreateVector2D", saved.vec); rawset(env, "WorldMapFrame", saved.wmap)
@@ -14826,9 +14657,9 @@ end)
 -- batch 4 tests A (map): end
 -- batch 4 tests B (panel): begin
 try("13.4 feel B: time to level, why this, preview", function()
-    local saved = { on = ns.GuideOn, here = ns.GuideHere, unlocked = ns.GuideUnlocked, level = env.UnitLevel, xp = env.UnitXP, xpMax = env.UnitXPMax,
+    local saved = { on = ns.GuideOn, here = ns.GuideHere, level = env.UnitLevel, xp = env.UnitXP, xpMax = env.UnitXPMax,
                     brk = env.BreakUpLargeNumbers, context = ns.PlannerContext, route = ns.PlannerRoute, world = ns.PlannerWorldPos, show = ns.ShowList,
-                    guideState = ns.root.guideState, guides = ns.root.guides, key = ns.root.guideKey, plannerGroup = ns.db.plannerGroup }
+                    guideState = ns.root.guideState, guides = ns.root.guides, plannerGroup = ns.db.plannerGroup }
     local rec0 = ns.PlannerCharRecord(false)
     local oldPace = rec0 and rec0.pace
     local panelTitleSet
@@ -14840,7 +14671,6 @@ try("13.4 feel B: time to level, why this, preview", function()
         return f(frame, ...)
     end
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         ns.db.plannerGroup = nil
         env.BreakUpLargeNumbers = function(n) return (tostring(n):reverse():gsub("(%d%d%d)", "%1,"):reverse():gsub("^,", "")) end
         env.UnitLevel = function() return 25 end
@@ -14860,7 +14690,6 @@ try("13.4 feel B: time to level, why this, preview", function()
         env.UnitXPMax = function() return 10000 end
         if ns.PlannerTimeToLevel({ xp = 6000, seconds = 0 }) ~= nil or ns.PlannerTimeToLevel({ xp = 0, seconds = 60 }) ~= nil then error("no seconds or no experience: nothing") end
         -- the title of the planned guide
-        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
         ns.GuideOn = function() return true end
         ns.GuideHere = function() return 1, 30, 40 end
         local panel = ns:GuideShowPanel()
@@ -15013,7 +14842,7 @@ try("13.4 feel B: time to level, why this, preview", function()
     ns.ShowList = saved.show
     ns:PlannerStop()
     ns.plannerQueued = false
-    ns.GuideOn, ns.GuideHere, ns.GuideUnlocked = saved.on, saved.here, saved.unlocked
+    ns.GuideOn, ns.GuideHere = saved.on, saved.here
     env.UnitLevel, env.UnitXP, env.UnitXPMax, env.BreakUpLargeNumbers = saved.level, saved.xp, saved.xpMax, saved.brk
     ns.PlannerContext, ns.PlannerRoute, ns.PlannerWorldPos = saved.context, saved.route, saved.world
     ns.db.plannerGroup = saved.plannerGroup
@@ -15022,13 +14851,13 @@ try("13.4 feel B: time to level, why this, preview", function()
     if not rec0 and ns.root.planner then ns.root.planner[ns:CharKey()] = nil end       -- (the record this test made)
     if panelTitleSet then rawset(panelTitleSet, "SetText", nil) end
     ns:GuideSetPlan(nil)
-    ns.root.guideState, ns.root.guides, ns.root.guideKey = saved.guideState, saved.guides, saved.key
+    ns.root.guideState, ns.root.guides = saved.guideState, saved.guides
     if ns.guideStepMenu then ns.guideStepMenu:Hide() end
     if not ok then error(err, 0) end
 end)
 try("13.4 feel B: finish the zone", function()
-    local saved = { on = ns.GuideOn, here = ns.GuideHere, unlocked = ns.GuideUnlocked, map = env.C_Map, vec = rawget(env, "CreateVector2D"), context = ns.PlannerContext,
-                    world = ns.PlannerWorldPos, print = ns.Print, guideState = ns.root.guideState, guides = ns.root.guides, key = ns.root.guideKey,
+    local saved = { on = ns.GuideOn, here = ns.GuideHere, map = env.C_Map, vec = rawget(env, "CreateVector2D"), context = ns.PlannerContext,
+                    world = ns.PlannerWorldPos, print = ns.Print, guideState = ns.root.guideState, guides = ns.root.guides,
                     loaded = env.C_AddOns.IsAddOnLoaded, meta = rawget(env.C_AddOns, "GetAddOnMetadata"), q = rawget(env, "Questie"), loader = rawget(env, "QuestieLoader"),
                     guidePage = ns.guidePage }
     local rec0 = ns.PlannerCharRecord(false)
@@ -15036,7 +14865,6 @@ try("13.4 feel B: finish the zone", function()
     local hadPlanner = ns.root.planner ~= nil
     local panelExtraSet
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         env.C_Map = setmetatable({
             GetWorldPosFromMapPos = function(map, v)
                 if map == 1429 then return 0, { x = v.x * 1000, y = v.y * 1000 } end
@@ -15144,7 +14972,6 @@ try("13.4 feel B: finish the zone", function()
         if not (zg and zg.map == 1429 and zg.done == 1 and zg.total == 3) then error("summary.zoneGoal is 1 of 3: " .. tostring(zg and (zg.done .. "/" .. zg.total))) end
         for _, st in ipairs(guide.steps) do if st.map == 1436 then error("nothing on the other map") end end
         -- the panel line
-        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
         ns.GuideOn = function() return true end
         ns.GuideHere = function() return 1429, 30, 40 end
         local panel = ns:GuideShowPanel()
@@ -15268,7 +15095,7 @@ try("13.4 feel B: finish the zone", function()
     ns.plannerQueued = false
     ns.Print = saved.print
     ns.PlannerContext, ns.PlannerWorldPos = saved.context, saved.world
-    ns.GuideOn, ns.GuideHere, ns.GuideUnlocked = saved.on, saved.here, saved.unlocked
+    ns.GuideOn, ns.GuideHere = saved.on, saved.here
     env.C_Map = saved.map
     rawset(env, "CreateVector2D", saved.vec)
     local rr = ns.PlannerCharRecord(false)
@@ -15277,26 +15104,24 @@ try("13.4 feel B: finish the zone", function()
     if panelExtraSet then rawset(panelExtraSet, "SetText", nil) end
     if not hadPlanner then ns.root.planner = nil end                                     -- (and the table it lived in)
     ns:GuideSetPlan(nil)
-    ns.root.guideState, ns.root.guides, ns.root.guideKey = saved.guideState, saved.guides, saved.key
+    ns.root.guideState, ns.root.guides = saved.guideState, saved.guides
     ns.guidePage = saved.guidePage
     if not ok then error(err, 0) end
 end)
 -- batch 4 tests B (panel): end
 -- batch 4 tests C (pace): begin
 try("13.4 feel C: time you have, breaks, catch-up", function()
-    local saved = { on = ns.GuideOn, here = ns.GuideHere, unlocked = ns.GuideUnlocked, map = env.C_Map, vec = rawget(env, "CreateVector2D"),
+    local saved = { on = ns.GuideOn, here = ns.GuideHere, map = env.C_Map, vec = rawget(env, "CreateVector2D"),
                     time = env.time, getTime = env.GetTime, combat = env.InCombatLockdown, start = ns.PlannerStart, session = ns.plannerSessionStart,
-                    sessionAt = ns.root.plannerSessionAt, guideState = ns.root.guideState, guides = ns.root.guides, key = ns.root.guideKey,
+                    sessionAt = ns.root.plannerSessionAt, guideState = ns.root.guideState, guides = ns.root.guides,
                     whatsNew = ns.whatsNew, catch = ns.PlannerCatchUp, logQ = env.C_QuestLog,
                     planner = ns.root.planner, breaks = ns.db.plannerBreaks, minutes = ns.db.plannerBreakMinutes, level = env.UnitLevel }
     local now, clock = 1800000000, 100000
     env.time = function() return now end
     env.GetTime = function() return clock end
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         ns.GuideOn = function() return true end
         ns.GuideHere = function() return 1, 30, 40 end
-        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
         ns.root.planner = {}
         env.UnitLevel = function() return 14 end
         env.C_Map = setmetatable({ GetWorldPosFromMapPos = function(map, v)
@@ -15625,54 +15450,33 @@ try("13.4 feel C: time you have, breaks, catch-up", function()
         fireEvent("PLAYER_ENTERING_WORLD", true, false)
         if calls ~= 3 or rec.lastSeen ~= now then error("a login with the guide off settles the clock: no page") end
 
-        -- locking the guide takes its entries away at once
-        ns.GuideUnlocked = saved.unlocked
-        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
+        -- the panel offers the time list
         ns.PlannerPaceSync()
         local function offered() for _, e in ipairs(ns.GuidePanelEntries(nil)) do if e[1] == "How long can you play?" then return true end end return false end
-        if not offered() then error("unlocked: the panel offers the time list") end
-        ns:GuideLock()
-        if offered() then error("locked: the time list goes at once") end
-        -- (and unlocking brings them back at once: a stand-in hash, so no phrase is written here)
-        ns.PlannerPaceReset()
-        fireEvent("PLAYER_ENTERING_WORLD", true, false)          -- (the login came while the guide was locked: nothing handled)
-        rec.lastSeen = now - 30 * 86400
-        local realHash = ns.GuideHash
-        ns.GuideHash = function() return tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)")) end
-        local unlockedNow = ns:GuideUnlock("test")
-        ns.GuideHash = realHash
-        if not unlockedNow or not offered() then error("unlocked: the time list is back at once") end
-        if rec.lastSeen ~= now or calls ~= 3 then error("unlocked mid-session: the clock is saved at once, no catch-up page: " .. tostring(rec.lastSeen) .. " " .. calls) end
-        ns:GuideLock()
-        ns.GuideUnlocked = function() return false end
-        rec.lastSeen = now - 30 * 86400
-        fireEvent("PLAYER_ENTERING_WORLD", true, false)
-        if calls ~= 3 or rec.lastSeen ~= now - 30 * 86400 then error("locked: nothing") end
+        if not offered() then error("the panel offers the time list") end
         ns:GuideSetPlan(nil)
     end)
     ns.PlannerSetPlayTime(0)
     ns.PlannerCatchUp, ns.whatsNew = saved.catch, saved.whatsNew
     for _, point in ipairs({ "context", "rank", "route" }) do ns.PlannerHook(point, "probe", nil) end
-    ns.GuideUnlocked, ns.GuideOn, ns.GuideHere = saved.unlocked, saved.on, saved.here
+    ns.GuideOn, ns.GuideHere = saved.on, saved.here
     ns.PlannerPaceSync()
     ns.PlannerPaceReset()
     env.time, env.GetTime, env.InCombatLockdown, env.UnitLevel, env.C_Map, env.C_QuestLog = saved.time, saved.getTime, saved.combat, saved.level, saved.map, saved.logQ
     rawset(env, "CreateVector2D", saved.vec)
     ns.PlannerStart, ns.plannerSessionStart, ns.root.plannerSessionAt = saved.start, saved.session, saved.sessionAt
-    ns.root.guideState, ns.root.guides, ns.root.guideKey, ns.root.planner = saved.guideState, saved.guides, saved.key, saved.planner
+    ns.root.guideState, ns.root.guides, ns.root.planner = saved.guideState, saved.guides, saved.planner
     ns.db.plannerBreaks, ns.db.plannerBreakMinutes = saved.breaks, saved.minutes
     ns:HideLists()
     if not ok then error(err, 0) end
 end)
 try("13.4 feel C: speed, safety, story", function()
-    local saved = { on = ns.GuideOn, here = ns.GuideHere, unlocked = ns.GuideUnlocked, map = env.C_Map, vec = rawget(env, "CreateVector2D"),
-                    guideState = ns.root.guideState, guides = ns.root.guides, key = ns.root.guideKey, planner = ns.root.planner, level = env.UnitLevel,
+    local saved = { on = ns.GuideOn, here = ns.GuideHere, map = env.C_Map, vec = rawget(env, "CreateVector2D"),
+                    guideState = ns.root.guideState, guides = ns.root.guides, planner = ns.root.planner, level = env.UnitLevel,
                     start = ns.PlannerStart }
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         ns.GuideOn = function() return true end
         ns.GuideHere = function() return 1, 30, 40 end
-        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
         ns.root.planner = {}
         env.UnitLevel = function() return 14 end
         env.C_Map = setmetatable({ GetWorldPosFromMapPos = function(map, v)
@@ -15911,11 +15715,11 @@ try("13.4 feel C: speed, safety, story", function()
     end)
     ns.PlannerHook("context", "testStyle", nil); ns.PlannerHook("window", "testStyle", nil); ns.PlannerHook("rank", "testStyle", nil)
     ns.root.planner = saved.planner
-    ns.GuideUnlocked, ns.GuideOn, ns.GuideHere = saved.unlocked, saved.on, saved.here
+    ns.GuideOn, ns.GuideHere = saved.on, saved.here
     ns.PlannerPaceSync()
     env.UnitLevel, env.C_Map = saved.level, saved.map
     rawset(env, "CreateVector2D", saved.vec)
-    ns.root.guideState, ns.root.guides, ns.root.guideKey = saved.guideState, saved.guides, saved.key
+    ns.root.guideState, ns.root.guides = saved.guideState, saved.guides
     ns:GuideSetPlan(nil)
     ns:PlannerStop()
     ns.plannerQueued = false
@@ -15925,14 +15729,13 @@ end)
 -- batch 4 tests D (records): begin
 try("13.4 feel D: level times, race, where you left off", function()
     local key = ns:CharKey()
-    local saved = { unlocked = ns.GuideUnlocked, level = env.UnitLevel, xp = env.UnitXP, xpMax = env.UnitXPMax, time = env.GetTime, ttl = ns.PlannerTimeToLevel,
+    local saved = { level = env.UnitLevel, xp = env.UnitXP, xpMax = env.UnitXPMax, time = env.GetTime, ttl = ns.PlannerTimeToLevel,
                     showList = ns.ShowList, levels = ns.root.plannerLevels, race = ns.db.plannerRace, left = ns.db.plannerLeftOff, gstate = ns.root.guideState,
                     on = ns.db.questGuide }
     local rec0 = ns.PlannerCharRecord(true)
     local clock0 = rec0.levelClock
     local panel
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         local lvl, xp, xpMax, now = 9, 0, 5000, 700000
         env.UnitLevel = function() return lvl end
         env.UnitXP = function() return xp end
@@ -15958,13 +15761,8 @@ try("13.4 feel D: level times, race, where you left off", function()
         ns.PlannerRecordLevel(10)
         local e10 = ns.root.plannerLevels[key][10]
         if not (e10 and e10.s == 600 and e10.xph == 30000 and not e10.partial) then error("level 10: 600 s, 30000 xp an hour") end
-        -- locked: nothing recorded
-        ns.GuideUnlocked = function() return false end
         rec0.levelClock = { level = 11, seconds = 100, xpMax = 5000, partial = false }
         lvl = 11
-        if ns.PlannerLevelTick(30) ~= false or rec0.levelClock.seconds ~= 100 then error("locked: no tick") end
-        if ns.PlannerRecordLevel(11) ~= false or ns.root.plannerLevels[key][11] then error("locked: nothing recorded") end
-        ns.GuideUnlocked = function() return true end
 
         -- /fgui stats and the run log
         ns.root.plannerLevels = { [key] = { [9] = { s = 99, xph = 1, partial = true }, [10] = { s = 600, xph = 30000 }, [11] = { s = 1200, xph = 15000 }, [12] = { s = 900, xph = 20000 } } }
@@ -15980,11 +15778,6 @@ try("13.4 feel D: level times, race, where you left off", function()
         for _, text in ipairs({ ns:Tr("Levels"), "Fastest level: 10 (10 min)", "Slowest level: 11 (20 min)", "Average per level: 15 min" }) do
             if not has(got, text) then error("the stats page lacks " .. text) end
         end
-        ns.GuideUnlocked = function() return false end
-        ns:ShowLifetime()
-        if has(got, "Fastest level") or has(got, "Average per level") then error("locked: no Levels part") end
-        if #ns.RunLines({ level = 0 }) ~= 0 and has(ns.RunLines({ level = 0 }), "Level 10") then error("locked: no levels in the run log") end
-        ns.GuideUnlocked = function() return true end
         local runs = ns.RunLines({ level = 0 })
         if not has(runs, "Level 10: 10 min, 30,000 xp an hour") then error("the run log shows level 10") end
         if not (runs[#runs].left or ""):find("Level 9: 1 min, ", 1, true) or not (runs[#runs].left or ""):find(ns:Tr("partly timed"), 1, true) then error("a partial level is listed, marked partly timed: " .. tostring(runs[#runs].left)) end
@@ -16037,12 +15830,7 @@ try("13.4 feel D: level times, race, where you left off", function()
                 ns.db.plannerRace = false
                 now = now + 10; tick()
                 if redraws ~= 1 then error("race off: no redraw") end
-                ns.db.plannerRace = true
-                ns.GuideUnlocked = function() return false end
-                now = now + 10; tick()
-                if redraws ~= 1 then error("locked: no redraw") end
             end)
-            ns.GuideUnlocked = function() return true end
             ns.GuideRedraw = realRedraw
             rawset(env, "FantasyGlassUIGuide", realPanel)
             ns.db.plannerRace = true
@@ -16103,18 +15891,17 @@ try("13.4 feel D: level times, race, where you left off", function()
     if panel then rawset(panel.extra, "SetText", nil) end
     ns.PlannerStop()
     ns.plannerQueued = false
-    ns.GuideUnlocked, env.UnitLevel, env.UnitXP, env.UnitXPMax, env.GetTime = saved.unlocked, saved.level, saved.xp, saved.xpMax, saved.time
+    env.UnitLevel, env.UnitXP, env.UnitXPMax, env.GetTime = saved.level, saved.xp, saved.xpMax, saved.time
     ns.PlannerTimeToLevel, ns.ShowList = saved.ttl, saved.showList
     ns.root.plannerLevels, ns.db.plannerRace, ns.db.plannerLeftOff, ns.root.guideState, ns.db.questGuide = saved.levels, saved.race, saved.left, saved.gstate, saved.on
     rec0.levelClock = clock0
     if not ok then error(err, 0) end
 end)
 try("13.4 feel D: save as guide, read aloud, chime", function()
-    local saved = { unlocked = ns.GuideUnlocked, speak = ns.Speak, map = env.C_Map, gstate = ns.root.guideState, guides = ns.root.guides,
+    local saved = { speak = ns.Speak, map = env.C_Map, gstate = ns.root.guideState, guides = ns.root.guides,
                     keys = {} }
     for i, v in ipairs(ns.WINDOW_KEYS_FRAMES) do saved.keys[i] = v end
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         -- keys first (a login runs the add-on's own login again): the six names, once each
         local mine = { "FantasyGlassUIGuideMenu", "FantasyGlassUIListPlanPreview", "FantasyGlassUIListPlanWhy", "FantasyGlassUIListPlanTime",
                        "FantasyGlassUIListPlanCatchUp", "FantasyGlassUIListPlanHere" }
@@ -16130,7 +15917,7 @@ try("13.4 feel D: save as guide, read aloud, chime", function()
             for _, v in ipairs(ns.WINDOW_KEYS_FRAMES) do if v == name then n = n + 1 end end
             if n ~= 1 then error(name .. " is in the key windows " .. n .. " times") end
         end
-        -- (unlocked mid-session: the next step change adds the key windows)
+        -- (the folder loaded mid-session: the next step change adds the key windows)
         for i = #ns.WINDOW_KEYS_FRAMES, 1, -1 do if ns.WINDOW_KEYS_FRAMES[i] == mine[1] then table.remove(ns.WINDOW_KEYS_FRAMES, i) end end
         local read0, sound0, caps0, speak0 = ns.db.readDialog, ns.db.guideSound, ns.db.captions, ns.db.plannerSpeak
         local ok2, err2 = pcall(function()
@@ -16178,9 +15965,6 @@ try("13.4 feel D: save as guide, read aloud, chime", function()
             ns.GuideState().summary.empty = true
             if offered() then error("an empty plan: nothing to save") end
             ns.GuideState().summary.empty = nil
-            ns.GuideUnlocked = function() return false end
-            if ns.PlannerSaveAsGuide() ~= nil then error("locked: nothing saved") end
-            ns.GuideUnlocked = function() return true end
 
             -- /fgui guide keys
             ns:GuideCommand("keys")
@@ -16201,7 +15985,7 @@ try("13.4 feel D: save as guide, read aloud, chime", function()
             ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = notes }, { zone = 12, fromLevel = 8, toLevel = 9 })
             ns:GuideSkip(false)
             for _, v in ipairs(ns.WINDOW_KEYS_FRAMES) do if v == mine[1] then hasKey = true end end
-            if not hasKey then error("a step change adds the key windows after an unlock mid-session") end
+            if not hasKey then error("a step change adds the key windows after a load mid-session") end
             if #spoken ~= 0 then error("reading aloud off: nothing spoken") end
             ns.db.readDialog = true
             ns:GuideSkip(false)
@@ -16247,49 +16031,29 @@ try("13.4 feel D: save as guide, read aloud, chime", function()
     end)
     for i = #ns.WINDOW_KEYS_FRAMES, 1, -1 do ns.WINDOW_KEYS_FRAMES[i] = nil end
     for i, v in ipairs(saved.keys) do ns.WINDOW_KEYS_FRAMES[i] = v end
-    ns.GuideUnlocked, ns.Speak, env.C_Map = saved.unlocked, saved.speak, saved.map
+    ns.Speak, env.C_Map = saved.speak, saved.map
     ns.root.guideState, ns.root.guides = saved.gstate, saved.guides
     ns.PlannerStop()
     ns.plannerQueued = false
     if not ok then error(err, 0) end
 end)
 -- batch 4 tests D (records): end
-try("13.4 feel: locked, the options search shows no planner control", function()
-    local saved = ns.GuideUnlocked
-    local frame = ns.configFrame
-    if not (frame and frame.SearchOptions) then return end
-    local found = {}
-    local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return false end
-        for _, words in ipairs({ "Speed", "Safety", "Story", "Style", "Read the route aloud", "Race your best", "Where you left off", "Remind me to take a break",
-                                 "Draw the route on the world map", "Goal", "time to play" }) do
-            for _, h in ipairs(frame.SearchOptions(words) or {}) do
-                if h.tab == "guide" then found[#found + 1] = words .. " -> " .. tostring(h.label) end
-            end
-        end
-        ns.GuideUnlocked = function() return true end
-        local unlockedHit = false
-        for _, h in ipairs(ns:SearchOptions("Plan my route", 20)) do if h.tab == "guide" then unlockedHit = true end end   -- (the planner's own settings are in its window)
-        if not unlockedHit then error("unlocked: the search finds the guide's controls") end
-        frame.SearchOptions("")
-    end)
-    ns.GuideUnlocked = saved
-    if not ok then error(err, 0) end
-    if #found > 0 then error("locked: the search lists the guide's controls: " .. table.concat(found, ", ")) end
+try("13.4 feel: the options search finds the Guide tab's controls", function()
+    local hit = false
+    for _, h in ipairs(ns:SearchOptions("Plan my route", 20)) do if h.tab == "guide" then hit = true end end   -- (the planner's own settings are in its window)
+    if not hit then error("the search finds the guide's controls") end
 end)
 -- batch 4 tests: all four groups on one plan
 try("13.4 feel: together", function()
-    local saved = { on = ns.GuideOn, here = ns.GuideHere, unlocked = ns.GuideUnlocked, map = env.C_Map, vec = rawget(env, "CreateVector2D"),
+    local saved = { on = ns.GuideOn, here = ns.GuideHere, map = env.C_Map, vec = rawget(env, "CreateVector2D"),
                     context = ns.PlannerContext, world = ns.PlannerWorldPos, show = ns.ShowList, raw = ns.PrintRaw,
-                    guideState = ns.root.guideState, guides = ns.root.guides, key = ns.root.guideKey, planner = ns.root.planner, levels = ns.root.plannerLevels,
+                    guideState = ns.root.guideState, guides = ns.root.guides, planner = ns.root.planner, levels = ns.root.plannerLevels,
                     level = env.UnitLevel, xp = env.UnitXP, xpMax = env.UnitXPMax, wmap = rawget(env, "WorldMapFrame"), from = ns.plannerFromHere,
                     race = ns.db.plannerRace, leftOff = ns.db.plannerLeftOff, line = ns.db.plannerMapLine, hubs = ns.db.plannerMapHubs, errors = #ns.errors }
     local panelBits = {}
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         ns.GuideOn = function() return true end
         ns.GuideHere = function() return 1429, 30, 40 end
-        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
         ns.root.planner, ns.root.guides, ns.root.guideState = {}, {}, {}
         ns.root.plannerLevels = { ["Other - Realm"] = { [12] = { s = 1200, xph = 1 } } }
         ns.db.plannerRace, ns.db.plannerLeftOff, ns.db.plannerMapLine, ns.db.plannerMapHubs = true, true, true, true
@@ -16447,11 +16211,11 @@ try("13.4 feel: together", function()
     ns.plannerQueued = false
     if panelBits.panel then rawset(panelBits.panel.title, "SetText", nil); rawset(panelBits.panel.extra, "SetText", nil) end
     ns:GuideSetPlan(nil)
-    ns.GuideOn, ns.GuideHere, ns.GuideUnlocked = saved.on, saved.here, saved.unlocked
+    ns.GuideOn, ns.GuideHere = saved.on, saved.here
     env.C_Map, env.UnitLevel, env.UnitXP, env.UnitXPMax = saved.map, saved.level, saved.xp, saved.xpMax
     rawset(env, "CreateVector2D", saved.vec); rawset(env, "WorldMapFrame", saved.wmap)
     ns.PlannerContext, ns.PlannerWorldPos, ns.ShowList, ns.PrintRaw = saved.context, saved.world, saved.show, saved.raw
-    ns.root.guideState, ns.root.guides, ns.root.guideKey, ns.root.planner, ns.root.plannerLevels = saved.guideState, saved.guides, saved.key, saved.planner, saved.levels
+    ns.root.guideState, ns.root.guides, ns.root.planner, ns.root.plannerLevels = saved.guideState, saved.guides, saved.planner, saved.levels
     ns.db.plannerRace, ns.db.plannerLeftOff, ns.db.plannerMapLine, ns.db.plannerMapHubs = saved.race, saved.leftOff, saved.line, saved.hubs
     ns.plannerFromHere = saved.from
     ns.PlannerPaceSync()
@@ -16461,10 +16225,9 @@ end)
 
 -- batch 5: the seams (the hooks "candidate" and "replan", the Guide tab's sections, the plan codes, the new files)
 try("13.5 together: seams", function()
-    local saved = { on = ns.GuideOn, state = ns.GuideState, unlocked = ns.GuideUnlocked, setPlan = ns.GuideSetPlan,
+    local saved = { on = ns.GuideOn, state = ns.GuideState, setPlan = ns.GuideSetPlan,
                     queued = ns.plannerQueued, reason = ns.plannerReason, guidePage = ns.guidePage, show = ns.ShowList, fromHere = ns.plannerFromHere }
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         -- the "candidate" hook: asked about each record about to be kept
         local function q(id, extra)
             local r = { id = id, name = "Q" .. id, level = 14, minLevel = 1, xp = 100, starts = {}, ends = {}, objectives = {}, pre = {}, preAny = {}, exclusive = {},
@@ -16589,7 +16352,7 @@ try("13.5 together: seams", function()
     end)
     ns.PlannerHook("candidate", "seams", nil); ns.PlannerHook("replan", "seams", nil)
     ns:PlannerStop()
-    ns.GuideOn, ns.GuideState, ns.GuideUnlocked, ns.GuideSetPlan = saved.on, saved.state, saved.unlocked, saved.setPlan
+    ns.GuideOn, ns.GuideState, ns.GuideSetPlan = saved.on, saved.state, saved.setPlan
     ns.plannerQueued, ns.plannerReason, ns.guidePage = saved.queued, saved.reason, saved.guidePage
     ns.ShowList, ns.plannerFromHere = saved.show, saved.fromHere
     if not ok then error(err, 0) end
@@ -16597,15 +16360,13 @@ end)
 
 -- batch 5 tests A (group): begin
 try("13.5 together A: find a group", function()
-    local saved = { on = ns.GuideOn, unlocked = ns.GuideUnlocked, source = ns.PlannerSource, duo = ns.PlannerDuoRole, raw = ns.PrintRaw,
-                    guideState = ns.root.guideState, guides = ns.root.guides, key = ns.root.guideKey, map = env.C_Map, chat = rawget(env, "ChatFrameUtil"),
+    local saved = { on = ns.GuideOn, source = ns.PlannerSource, duo = ns.PlannerDuoRole, raw = ns.PrintRaw,
+                    guideState = ns.root.guideState, guides = ns.root.guides, map = env.C_Map, chat = rawget(env, "ChatFrameUtil"),
                     sendChat = rawget(env, "SendChatMessage"), cinfo = rawget(env, "C_ChatInfo"), members = rawget(env, "GetNumGroupMembers"),
                     channelName = rawget(env, "GetChannelName"), channelList = rawget(env, "GetChannelList"), group = ns.db.plannerGroup,
                     find = ns.db.plannerFindGroup, lfg = ns.db.plannerLFGChannel, raid = env.IsInRaid, combat = env.InCombatLockdown, errors = #ns.errors, page = ns.guidePage }
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         ns.GuideOn = function() return true end
-        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
         ns.root.guides = { Mine = { name = "Mine", steps = { { kind = "accept", quest = 7001, title = "Hogger", map = 1429, x = 24.5, y = 79.6 } } } }
         local plannedSteps = { ns.GuideParseLine("accept 7001 Hogger @ 1429:24.5,79.6"), ns.GuideParseLine("accept 7002 Plain @ 1429:30,30") }
         if not (plannedSteps[1] and plannedSteps[2]) then error("the fake steps parse") end
@@ -16741,9 +16502,6 @@ try("13.5 together A: find a group", function()
         follow("Mine", 1)
         if ns.PlannerFindGroupStep(ns.GuideState(), ns.root.guides.Mine.steps, 1) then error("not for a written guide") end
         follow(ns.GUIDE_PLANNED, 1)
-        ns.GuideUnlocked = function() return false end
-        if shown() or ns.PlannerFindGroup(steps[1]) ~= false then error("locked: nothing") end
-        ns.GuideUnlocked = function() return true end
 
         -- the chat box can't be opened: the line is printed
         said, opened = {}, {}
@@ -16775,8 +16533,8 @@ try("13.5 together A: find a group", function()
         if ns.db.plannerLFGChannel ~= "" then error("back to the chat box") end
         if sends ~= 0 then error("the settings send nothing") end
     end)
-    ns.GuideOn, ns.GuideUnlocked, ns.PlannerSource, ns.PlannerDuoRole, ns.PrintRaw = saved.on, saved.unlocked, saved.source, saved.duo, saved.raw
-    ns.root.guideState, ns.root.guides, ns.root.guideKey, env.C_Map, ns.guidePage = saved.guideState, saved.guides, saved.key, saved.map, saved.page
+    ns.GuideOn, ns.PlannerSource, ns.PlannerDuoRole, ns.PrintRaw = saved.on, saved.source, saved.duo, saved.raw
+    ns.root.guideState, ns.root.guides, env.C_Map, ns.guidePage = saved.guideState, saved.guides, saved.map, saved.page
     rawset(env, "ChatFrameUtil", saved.chat); rawset(env, "SendChatMessage", saved.sendChat); rawset(env, "C_ChatInfo", saved.cinfo)
     rawset(env, "GetNumGroupMembers", saved.members); rawset(env, "GetChannelName", saved.channelName); rawset(env, "GetChannelList", saved.channelList)
     env.IsInRaid = saved.raid
@@ -16791,7 +16549,7 @@ end)
 -- batch 5 B (duo): asking a friend, their state, a plan both can do; the queue's rules
 try("13.5 together B: asking, the state and a plan for both", function()
     local CI = env.C_ChatInfo
-    local saved = { on = ns.GuideOn, here = ns.GuideHere, unlocked = ns.GuideUnlocked, map = env.C_Map, vec = rawget(env, "CreateVector2D"),
+    local saved = { on = ns.GuideOn, here = ns.GuideHere, map = env.C_Map, vec = rawget(env, "CreateVector2D"),
                     context = ns.PlannerContext, world = ns.PlannerWorldPos, show = ns.ShowList, raw = ns.PrintRaw,
                     guideState = ns.root.guideState, guides = ns.root.guides, planner = ns.root.planner,
                     level = env.UnitLevel, name = env.UnitName, isPlayer = env.UnitIsPlayer, isFriend = rawget(env, "UnitIsFriend"), isUnit = env.UnitIsUnit,
@@ -16801,7 +16559,6 @@ try("13.5 together B: asking, the state and a plan for both", function()
     local sends, bad, results, publicChat = {}, nil, {}, 0
     local clock = 1000
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         ns.GuideOn = function() return true end
         ns.GuideHere = function() return 1429, 30, 40 end
         ns.root.planner, ns.root.guides, ns.root.guideState = {}, {}, {}
@@ -17032,14 +16789,9 @@ try("13.5 together B: asking, the state and a plan for both", function()
         if nlog ~= 25 or capped.faction ~= nil then error("at most 25 log entries; a word is letters only") end
         ns:PlannerDuoEnd(nil, true); flush()
 
-        -- a locked guide, or asking switched off: nothing shown, nothing sent
-        ns.GuideUnlocked = function() return false end
+        -- asking switched off: nothing shown
         lists.PlanDuoAsk = nil
         before = #sends
-        addon("D1:ASK:cd34:20", "Leo-Realm")
-        ns.PlannerDuoTick(); flush()
-        if lists.PlanDuoAsk or #sends ~= before or ns.plannerDuo then error("a locked guide answers nothing") end
-        ns.GuideUnlocked = function() return true end
         ns.db.plannerDuoAsk = false
         addon("D1:ASK:cd34:20", "Leo-Realm")
         ns.PlannerDuoTick(); flush()
@@ -17074,7 +16826,7 @@ try("13.5 together B: asking, the state and a plan for both", function()
     for _ = 1, 50 do ns.PlannerDuoFlush() end
     ns:PlannerStop(); ns.plannerQueued = false
     ns:GuideSetPlan(nil)
-    ns.GuideOn, ns.GuideHere, ns.GuideUnlocked = saved.on, saved.here, saved.unlocked
+    ns.GuideOn, ns.GuideHere = saved.on, saved.here
     env.C_Map, env.UnitLevel, env.UnitName, env.UnitIsPlayer, env.UnitIsUnit, env.GetTime = saved.map, saved.level, saved.name, saved.isPlayer, saved.isUnit, saved.time
     rawset(env, "CreateVector2D", saved.vec); rawset(env, "UnitIsFriend", saved.isFriend); rawset(env, "UnitFactionGroup", saved.faction); rawset(env, "SendChatMessage", saved.sendChat)
     CI.SendAddonMessage, CI.SendChatMessage = saved.send, saved.chat
@@ -17088,14 +16840,13 @@ end)
 -- batch 5 B (duo): one plan followed together, each other's progress, staying in touch
 try("13.5 together B: following together", function()
     local CI = env.C_ChatInfo
-    local saved = { on = ns.GuideOn, here = ns.GuideHere, unlocked = ns.GuideUnlocked, raw = ns.PrintRaw, show = ns.ShowList,
+    local saved = { on = ns.GuideOn, here = ns.GuideHere, raw = ns.PrintRaw, show = ns.ShowList,
                     guideState = ns.root.guideState, guides = ns.root.guides, planner = ns.root.planner,
                     level = env.UnitLevel, name = env.UnitName, isPlayer = env.UnitIsPlayer, isFriend = rawget(env, "UnitIsFriend"), isUnit = env.UnitIsUnit,
                     time = env.GetTime, combat = env.InCombatLockdown, send = CI.SendAddonMessage, lock = CI.InChatMessagingLockdown,
                     context = ns.PlannerContext, ask = ns.db.plannerDuoAsk, duo = ns.plannerDuo, guidePage = ns.guidePage, errors = #ns.errors }
     local sends, clock, panelBits = {}, 5000, {}
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         ns.GuideOn = function() return true end
         ns.GuideHere = function() return 1429, 30, 40 end
         ns.root.planner, ns.root.guides, ns.root.guideState = {}, {}, {}
@@ -17281,7 +17032,7 @@ try("13.5 together B: following together", function()
     ns:PlannerStop(); ns.plannerQueued = false
     if panelBits.panel then rawset(panelBits.panel.title, "SetText", nil) end
     ns:GuideSetPlan(nil)
-    ns.GuideOn, ns.GuideHere, ns.GuideUnlocked, ns.PrintRaw, ns.ShowList, ns.PlannerContext = saved.on, saved.here, saved.unlocked, saved.raw, saved.show, saved.context
+    ns.GuideOn, ns.GuideHere, ns.PrintRaw, ns.ShowList, ns.PlannerContext = saved.on, saved.here, saved.raw, saved.show, saved.context
     env.UnitLevel, env.UnitName, env.UnitIsPlayer, env.UnitIsUnit, env.GetTime = saved.level, saved.name, saved.isPlayer, saved.isUnit, saved.time
     rawset(env, "UnitIsFriend", saved.isFriend)
     CI.SendAddonMessage = saved.send
@@ -17293,14 +17044,13 @@ end)
 -- batch 5 B (duo): the review's fixes and the paths it found untested
 try("13.5 together B: review fixes", function()
     local CI = env.C_ChatInfo
-    local saved = { on = ns.GuideOn, here = ns.GuideHere, unlocked = ns.GuideUnlocked, raw = ns.PrintRaw, show = ns.ShowList,
+    local saved = { on = ns.GuideOn, here = ns.GuideHere, raw = ns.PrintRaw, show = ns.ShowList,
                     guideState = ns.root.guideState, guides = ns.root.guides, planner = ns.root.planner,
                     level = env.UnitLevel, name = env.UnitName, isPlayer = env.UnitIsPlayer, isFriend = rawget(env, "UnitIsFriend"), isUnit = env.UnitIsUnit,
                     time = env.GetTime, combat = env.InCombatLockdown, send = CI.SendAddonMessage, lock = CI.InChatMessagingLockdown,
                     enum = env.Enum.SendAddonMessageResult, context = ns.PlannerContext, ask = ns.db.plannerDuoAsk, duo = ns.plannerDuo, errors = #ns.errors }
     local sends, results, clock = {}, {}, 9000
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         ns.GuideOn = function() return true end
         ns.GuideHere = function() return 1429, 30, 40 end
         ns.root.planner, ns.root.guides, ns.root.guideState = {}, {}, {}
@@ -17514,7 +17264,7 @@ try("13.5 together B: review fixes", function()
     ns.PlannerDuoTick()
     ns:PlannerStop(); ns.plannerQueued = false
     ns:GuideSetPlan(nil)
-    ns.GuideOn, ns.GuideHere, ns.GuideUnlocked, ns.PrintRaw, ns.ShowList, ns.PlannerContext = saved.on, saved.here, saved.unlocked, saved.raw, saved.show, saved.context
+    ns.GuideOn, ns.GuideHere, ns.PrintRaw, ns.ShowList, ns.PlannerContext = saved.on, saved.here, saved.raw, saved.show, saved.context
     env.UnitLevel, env.UnitName, env.UnitIsPlayer, env.UnitIsUnit, env.GetTime = saved.level, saved.name, saved.isPlayer, saved.isUnit, saved.time
     rawset(env, "UnitIsFriend", saved.isFriend)
     CI.SendAddonMessage, env.Enum.SendAddonMessageResult = saved.send, saved.enum
@@ -17526,9 +17276,8 @@ end)
 -- batch 5 tests B (duo): end
 -- batch 5 tests C (code): begin
 try("13.5 together C: the plan code", function()
-    local saved = { unlocked = ns.GuideUnlocked, on = ns.GuideOn, state = ns.GuideState, get = ns.GuideGet, copy = ns.ShowCopyBox, map = env.C_Map, print = ns.PrintRaw }
+    local saved = { on = ns.GuideOn, state = ns.GuideState, get = ns.GuideGet, copy = ns.ShowCopyBox, map = env.C_Map, print = ns.PrintRaw }
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         ns.GuideOn = function() return true end
         env.C_Map = setmetatable({ GetMapInfo = function(map)
             return { name = ({ [1429] = "Elwynn Forest", [1453] = "Stormwind City", [1436] = "Westfall" })[map] or "Somewhere" } end }, { __index = saved.map })
@@ -17623,16 +17372,12 @@ try("13.5 together C: the plan code", function()
         ns.GuideState = function() return { name = ns.GUIDE_PLANNED, at = 1, ticked = {}, summary = summary } end
         ns.GuideGet = function(_, name) if name == ns.GUIDE_PLANNED then return current end return saved.get(ns, name) end
         ns:GuideCommand("share")
-        if not (shown and shown[1] == code and shown[2] == ns:Tr("Copy this plan code. The plan page goes online with the next big update.")) then error("/fgui guide share: the copy box with the code and caption") end
+        if not (shown and shown[1] == code and shown[2] == ns:Tr("Copy this plan code and paste it on fantasyglassui.com/plan/")) then error("/fgui guide share: the copy box with the code and caption") end
         shown = nil
         current = { name = ns.GUIDE_PLANNED, steps = {} }
         ns:GuideCommand("share")
         if shown ~= nil or not (printed[#printed] or ""):find("There is no plan to share yet.", 1, true) then error("no plan: the line, no copy box: " .. tostring(printed[#printed])) end
         current = guide
-        ns.GuideUnlocked = function() return false end
-        ns:GuideCommand("share")
-        if ns:PlannerSharePlan() ~= false or shown ~= nil then error("locked: nothing") end
-        ns.GuideUnlocked = function() return true end
         local labels = {}
         for _, en in ipairs(ns.GuidePanelEntries(guide.steps[1])) do labels[#labels + 1] = en[1] end
         if not table.concat(labels, "|"):find("Share plan", 1, true) then error("the panel menu lists Share plan: " .. table.concat(labels, "|")) end
@@ -17681,7 +17426,7 @@ try("13.5 together C: the plan code", function()
         local data, stop = ns.ShareDecode(theme, 7)
         if theme:sub(1, 6) ~= "SUIT1!" or ns.ShareEncode(data) ~= theme:sub(7) or stop ~= #theme + 1 then error("a theme exports the same bytes through the exported encoder") end
     end)
-    ns.GuideUnlocked, ns.GuideOn, ns.GuideState, ns.GuideGet, ns.ShowCopyBox, ns.PrintRaw = saved.unlocked, saved.on, saved.state, saved.get, saved.copy, saved.print
+    ns.GuideOn, ns.GuideState, ns.GuideGet, ns.ShowCopyBox, ns.PrintRaw = saved.on, saved.state, saved.get, saved.copy, saved.print
     env.C_Map = saved.map
     if not ok then error(err, 0) end
 end)
@@ -17689,18 +17434,16 @@ end)
 -- batch 5: the three groups on one plan (Task 7)
 try("13.5 together: together", function()
     local CI = env.C_ChatInfo
-    local saved = { on = ns.GuideOn, here = ns.GuideHere, unlocked = ns.GuideUnlocked, raw = ns.PrintRaw, show = ns.ShowList, source = ns.PlannerSource,
-                    guideState = ns.root.guideState, guides = ns.root.guides, key = ns.root.guideKey, planner = ns.root.planner, map = env.C_Map,
+    local saved = { on = ns.GuideOn, here = ns.GuideHere, raw = ns.PrintRaw, show = ns.ShowList, source = ns.PlannerSource,
+                    guideState = ns.root.guideState, guides = ns.root.guides, planner = ns.root.planner, map = env.C_Map,
                     level = env.UnitLevel, name = env.UnitName, time = env.GetTime, combat = env.InCombatLockdown, context = ns.PlannerContext,
                     send = CI.SendAddonMessage, sendChat = rawget(CI, "SendChatMessage"), lock = CI.InChatMessagingLockdown, gSendChat = rawget(env, "SendChatMessage"),
                     chat = rawget(env, "ChatFrameUtil"), members = rawget(env, "GetNumGroupMembers"), raid = env.IsInRaid,
                     group = ns.db.plannerGroup, find = ns.db.plannerFindGroup, lfg = ns.db.plannerLFGChannel, ask = ns.db.plannerDuoAsk, duo = ns.plannerDuo, errors = #ns.errors }
     local addonSends, chatSends, opened, clock = {}, 0, {}, 20000
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         ns.GuideOn = function() return true end
         ns.GuideHere = function() return 1429, 30, 40 end
-        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
         ns.root.planner, ns.root.guides, ns.root.guideState = {}, {}, {}
         ns.db.plannerDuoAsk, ns.db.plannerGroup, ns.db.plannerFindGroup, ns.db.plannerLFGChannel = true, "solo", true, ""
         env.GetTime = function() return clock end
@@ -17792,8 +17535,8 @@ try("13.5 together: together", function()
     ns:PlannerStop(); ns.plannerQueued = false
     ns:GuideSetPlan(nil)
     if ns.HideLists then ns:HideLists() end
-    ns.GuideOn, ns.GuideHere, ns.GuideUnlocked, ns.PrintRaw, ns.ShowList, ns.PlannerSource, ns.PlannerContext = saved.on, saved.here, saved.unlocked, saved.raw, saved.show, saved.source, saved.context
-    ns.root.guideState, ns.root.guides, ns.root.guideKey, ns.root.planner, env.C_Map = saved.guideState, saved.guides, saved.key, saved.planner, saved.map
+    ns.GuideOn, ns.GuideHere, ns.PrintRaw, ns.ShowList, ns.PlannerSource, ns.PlannerContext = saved.on, saved.here, saved.raw, saved.show, saved.source, saved.context
+    ns.root.guideState, ns.root.guides, ns.root.planner, env.C_Map = saved.guideState, saved.guides, saved.planner, saved.map
     env.UnitLevel, env.UnitName, env.GetTime, env.InCombatLockdown, env.IsInRaid = saved.level, saved.name, saved.time, saved.combat, saved.raid
     CI.SendAddonMessage, CI.InChatMessagingLockdown = saved.send, saved.lock
     rawset(CI, "SendChatMessage", saved.sendChat); rawset(env, "SendChatMessage", saved.gSendChat)
@@ -17805,9 +17548,8 @@ try("13.5 together: together", function()
 end)
 -- batch 4's final re-review, carried into the merge: the pace flags frozen per run, and a map mark's match
 try("13.5 together: batch 4 leftovers", function()
-    local saved = { unlocked = ns.GuideUnlocked, planner = ns.root.planner, time = env.time, worldPos = ns.PlannerWorldPos, fromHere = ns.plannerFromHere }
+    local saved = { planner = ns.root.planner, time = env.time, worldPos = ns.PlannerWorldPos, fromHere = ns.plannerFromHere }
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         ns.root.planner = {}
         local now = 1800000000
         env.time = function() return now end
@@ -17875,14 +17617,14 @@ try("13.5 together: batch 4 leftovers", function()
         if not found then error("ns.PlannerContext copies the candidate hooks too") end
     end)
     ns.PlannerHook("candidate", "leftovers", nil)
-    ns.GuideUnlocked, ns.root.planner, env.time, ns.PlannerWorldPos, ns.plannerFromHere = saved.unlocked, saved.planner, saved.time, saved.worldPos, saved.fromHere
+    ns.root.planner, env.time, ns.PlannerWorldPos, ns.plannerFromHere = saved.planner, saved.time, saved.worldPos, saved.fromHere
     ns.PlannerPaceSync()
     if not ok then error(err, 0) end
 end)
--- batch 5's final review: names, the window of both, the queue, the totals, a locked player, a loading source, codes
+-- batch 5's final review: names, the window of both, the queue, the totals, a loading source, codes
 try("13.5 together: final review", function()
     local CI = env.C_ChatInfo
-    local saved = { on = ns.GuideOn, here = ns.GuideHere, unlocked = ns.GuideUnlocked, raw = ns.PrintRaw, show = ns.ShowList, state = ns.GuideState,
+    local saved = { on = ns.GuideOn, here = ns.GuideHere, raw = ns.PrintRaw, show = ns.ShowList, state = ns.GuideState,
                     guideState = ns.root.guideState, guides = ns.root.guides, planner = ns.root.planner, context = ns.PlannerContext,
                     level = env.UnitLevel, name = env.UnitName, isPlayer = env.UnitIsPlayer, isFriend = rawget(env, "UnitIsFriend"), isUnit = env.UnitIsUnit,
                     ambiguate = rawget(env, "Ambiguate"), time = env.GetTime, combat = env.InCombatLockdown, send = CI.SendAddonMessage,
@@ -17890,7 +17632,6 @@ try("13.5 together: final review", function()
                     profiles = ns.root.profiles, errors = #ns.errors }
     local sends, clock = {}, 30000
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         ns.GuideOn = function() return true end
         ns.GuideHere = function() return 1429, 30, 40 end
         ns.root.planner, ns.root.guides, ns.root.guideState = {}, {}, {}
@@ -18047,32 +17788,18 @@ try("13.5 together: final review", function()
 
         -- I5: locked, no planner or guide row in /fgui perf, and no add-on messages listened to
         local data = { ["Planner duo"] = { ms = 5, calls = 9, worst = 1 }, ["Guide on the map"] = { ms = 1, calls = 1, worst = 1 }, ["Bags"] = { ms = 1, calls = 1, worst = 1 } }
-        if #ns.PerfRows(data, 1) ~= 3 then error("unlocked: every row") end
+        if #ns.PerfRows(data, 1) ~= 3 then error("every row") end
         ns.PlannerDuoTick()
-        if not ns.PlannerDuoListening() then error("unlocked: the duo listens") end
-        ns.GuideUnlocked = function() return false end
-        local rowsL = ns.PerfRows(data, 1)
-        if #rowsL ~= 1 or rowsL[1].label ~= "Bags" then error("locked: no Planner or Guide row") end
-        ns.PlannerDuoTick()
-        if ns.PlannerDuoListening() then error("locked: CHAT_MSG_ADDON is not registered") end
+        if not ns.PlannerDuoListening() then error("the duo listens") end
 
-        -- M4: locked, a shared profile or pack code names no guide setting; importing still takes them
-        local lockedCode, lockedPack = ns:ExportProfile(), ns:ExportPack()
-        ns.GuideUnlocked = function() return true end
-        local openCode = ns:ExportProfile()
-        if not openCode:find("plannerGroup", 1, true) then error("unlocked: the profile code has the planner's settings") end
-        for _, code in ipairs({ lockedCode, lockedPack }) do
-            if code:find("planner", 1, true) or code:find("questGuide", 1, true) or code:find("guideSound", 1, true) then error("locked: a code names a guide setting") end
-        end
-        ns.GuideUnlocked = function() return false end
+        -- M4: a shared profile or pack code has the guide's settings, and an import takes them
+        local openCode, openPack = ns:ExportProfile(), ns:ExportPack()
+        if not openCode:find("plannerGroup", 1, true) or not openPack:find("plannerGroup", 1, true) then error("the profile and pack codes have the planner's settings") end
         ns.root.profiles = setmetatable({}, { __index = saved.profiles })
         local okI = ns:ImportProfile("Final review", openCode)
-        -- (polish review I-C: while locked, an import stores no guide settings; they read their defaults)
-        if not (okI and type(ns.root.profiles["Final review"]) == "table" and rawget(ns.root.profiles["Final review"], "plannerGroup") == nil) then error("locked: an import stores no guide settings") end
-        ns.GuideUnlocked = function() return true end
+        if not (okI and type(ns.root.profiles["Final review"]) == "table" and rawget(ns.root.profiles["Final review"], "plannerGroup") ~= nil) then error("an import stores the guide's settings") end
         if #ns.errors ~= saved.errors then error("no errors: " .. tostring(ns.errors[#ns.errors])) end
     end)
-    ns.GuideUnlocked = function() return true end
     if ns.plannerDuo then ns:PlannerDuoEnd(nil, true, true) end
     ns.PlannerHook("replan", "finalReview", nil)
     CI.InChatMessagingLockdown, env.InCombatLockdown = saved.lock, saved.combat
@@ -18080,7 +17807,7 @@ try("13.5 together: final review", function()
     ns.PlannerDuoTick()
     ns:PlannerStop(); ns.plannerQueued = false
     ns:GuideSetPlan(nil)
-    ns.GuideOn, ns.GuideHere, ns.GuideUnlocked, ns.PrintRaw, ns.ShowList, ns.PlannerContext, ns.GuideState = saved.on, saved.here, saved.unlocked, saved.raw, saved.show, saved.context, saved.state
+    ns.GuideOn, ns.GuideHere, ns.PrintRaw, ns.ShowList, ns.PlannerContext, ns.GuideState = saved.on, saved.here, saved.raw, saved.show, saved.context, saved.state
     env.UnitLevel, env.UnitName, env.UnitIsPlayer, env.UnitIsUnit, env.GetTime = saved.level, saved.name, saved.isPlayer, saved.isUnit, saved.time
     rawset(env, "UnitIsFriend", saved.isFriend); rawset(env, "Ambiguate", saved.ambiguate)
     CI.SendAddonMessage = saved.send
@@ -18096,34 +17823,27 @@ end)
 try("13.5 together: batch 5's last two fixes", function()
     local CI = env.C_ChatInfo
     local O = ns.optUI
-    local saved = { on = ns.GuideOn, here = ns.GuideHere, unlocked = ns.GuideUnlocked, raw = ns.PrintRaw, show = ns.ShowList,
-                    guideState = ns.root.guideState, guides = ns.root.guides, key = ns.root.guideKey, planner = ns.root.planner,
+    local saved = { on = ns.GuideOn, here = ns.GuideHere, raw = ns.PrintRaw, show = ns.ShowList,
+                    guideState = ns.root.guideState, guides = ns.root.guides, planner = ns.root.planner,
                     level = env.UnitLevel, name = env.UnitName, time = env.GetTime, combat = env.InCombatLockdown,
                     send = CI.SendAddonMessage, lock = CI.InChatMessagingLockdown, ask = ns.db.plannerDuoAsk, duo = ns.plannerDuo,
                     pos = ns.db.pos, scale = ns.db.scale, lang = ns.root.language, realCF = env.CreateFrame, errors = #ns.errors }
     local clock = 40000
     local ok, err = pcall(function()
-        -- N1: locked, a profile or pack code leaves out the guide panel's place and size; the profile keeps them
+        -- N1: a profile or pack code carries the guide panel's place and size, with the others
         ns.db.pos = { questGuide = { "CENTER", "CENTER", 10, 20 }, Player = { "CENTER", "CENTER", -200, -100 } }
         ns.db.scale = { questGuide = 1.2, Player = 0.9 }
-        ns.GuideUnlocked = function() return false end
         for _, code in ipairs({ ns:ExportProfile(), ns:ExportPack() }) do
-            if code:find("questGuide", 1, true) then error("locked: a code names the guide panel's place or size") end
             local kind, data = ns:DecodeShared(code)
             local p = kind == "pack" and data.profile or data
-            if not (type(p) == "table" and type(p.pos) == "table" and type(p.pos.Player) == "table" and p.pos.Player[3] == -200) then error("locked: the other places are still in the " .. tostring(kind) .. " code") end
-            if not (type(p.scale) == "table" and p.scale.Player == 0.9) then error("locked: the other sizes are still in the " .. tostring(kind) .. " code") end
+            if not (type(p) == "table" and type(p.pos) == "table" and type(p.pos.Player) == "table" and p.pos.Player[3] == -200) then error("the other places are in the " .. tostring(kind) .. " code") end
+            if not (type(p.pos.questGuide) == "table" and type(p.scale) == "table" and p.scale.questGuide == 1.2 and p.scale.Player == 0.9) then error("the guide panel's place and size are in the " .. tostring(kind) .. " code") end
         end
-        if not (ns.db.pos.questGuide and ns.db.pos.questGuide[3] == 10 and ns.db.scale.questGuide == 1.2) then error("the profile's own tables keep the guide panel's place and size") end
-        ns.GuideUnlocked = function() return true end
-        local _, open = ns:DecodeShared(ns:ExportProfile())
-        if not (open.pos.questGuide and open.scale.questGuide == 1.2) then error("unlocked: the code has the guide panel's place and size") end
         ns.db.pos, ns.db.scale = saved.pos, saved.scale
 
         -- N2: the friend plans from their own level for as many levels as the leader's plan covers
         ns.GuideOn = function() return true end
         ns.GuideHere = function() return 1429, 30, 40 end
-        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
         ns.root.planner, ns.root.guides, ns.root.guideState = {}, {}, {}
         ns.db.plannerDuoAsk = true
         env.GetTime = function() return clock end
@@ -18184,7 +17904,7 @@ try("13.5 together: batch 5's last two fixes", function()
         local WT = ns.BuildPlannerSwitches(env.CreateFrame("Frame", nil, holder))
         env.CreateFrame = saved.realCF
         local T = ns.guidePage
-        if not (T and T.unlocked == true) then error("unlocked: the Guide tab shows the controls") end
+        if not (T and T.live) then error("the Guide tab shows the controls") end
         for _, label in ipairs({ "QUEST GUIDES", "PLAN MY ROUTE", "TIME, STYLE AND SLIDERS", "STOPS ON THE WAY", "WITH OTHERS" }) do
             if not texts[label] then error("the Guide tab's and the planner window's headings are section labels: " .. label) end
         end
@@ -18202,8 +17922,8 @@ try("13.5 together: batch 5's last two fixes", function()
     ns:GuideSetPlan(nil)
     if ns.HideLists then ns:HideLists() end
     if ns.configFrame and ns.configFrame:IsShown() then pcall(ns.ToggleConfig, ns) end
-    ns.GuideOn, ns.GuideHere, ns.GuideUnlocked, ns.PrintRaw, ns.ShowList = saved.on, saved.here, saved.unlocked, saved.raw, saved.show
-    ns.root.guideState, ns.root.guides, ns.root.guideKey, ns.root.planner, ns.root.language = saved.guideState, saved.guides, saved.key, saved.planner, saved.lang
+    ns.GuideOn, ns.GuideHere, ns.PrintRaw, ns.ShowList = saved.on, saved.here, saved.raw, saved.show
+    ns.root.guideState, ns.root.guides, ns.root.planner, ns.root.language = saved.guideState, saved.guides, saved.planner, saved.lang
     env.UnitLevel, env.UnitName, env.GetTime, env.InCombatLockdown = saved.level, saved.name, saved.time, saved.combat
     CI.SendAddonMessage, CI.InChatMessagingLockdown = saved.send, saved.lock
     ns.db.plannerDuoAsk, ns.plannerDuo, ns.db.pos, ns.db.scale = saved.ask, saved.duo, saved.pos, saved.scale
@@ -19546,11 +19266,10 @@ try("12.3 settings look: pages follow the window's width", function()
     if not ok then error(err, 0) end
 end)
 try("13.6 leftovers: exclusive quests", function()
-    local saved = { unlocked = ns.GuideUnlocked, here = ns.GuideHere, places = ns.PlannerPlaces, psrc = ns.PlannerSource, planner = ns.root.planner,
-                    key = ns.root.guideKey, guid = env.UnitGUID, trade = env.IsTradeskillTrainer, level = env.UnitLevel, map = env.C_Map,
+    local saved = { here = ns.GuideHere, places = ns.PlannerPlaces, psrc = ns.PlannerSource, planner = ns.root.planner,
+                    guid = env.UnitGUID, trade = env.IsTradeskillTrainer, level = env.UnitLevel, map = env.C_Map,
                     dungeons = ns.PLANNER_DUNGEONS, combat = env.InCombatLockdown, dry = ns.db.plannerDry, errors = #ns.errors }
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         local function rec(id, t)
             local r = { id = id, name = "X" .. id, level = 20, minLevel = 1, xp = 500, starts = { { map = 1429, x = 40, y = 40 } }, ends = {}, objectives = {},
                 pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true }
@@ -19617,7 +19336,6 @@ try("13.6 leftovers: exclusive quests", function()
         if not (dry and dry.dungeon and dry.dungeon.count == 2 and dry.dungeon.xp == 6500) then error("dungeon advice: two exclusive quests count once: " .. tostring(dry and dry.dungeon and dry.dungeon.count)) end
 
         -- a riding trainer visit, then the window closes twice and a class trainer opens: ridingKnown is set once only
-        ns.root.guideKey = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
         ns.root.planner = nil
         ns.PlannerSource = function() return source end
         ns.PlannerPlaces = function(_, kind)
@@ -19642,60 +19360,24 @@ try("13.6 leftovers: exclusive quests", function()
         if d.ridingKnown or d.trainerLevel ~= 40 then error("the class trainer after the riding one: no ridingKnown again, the trainer level kept") end
         if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
     end)
-    ns.GuideUnlocked, ns.GuideHere, ns.PlannerPlaces, ns.PlannerSource, ns.root.planner, ns.root.guideKey = saved.unlocked, saved.here, saved.places, saved.psrc, saved.planner, saved.key
+    ns.GuideHere, ns.PlannerPlaces, ns.PlannerSource, ns.root.planner = saved.here, saved.places, saved.psrc, saved.planner
     env.UnitGUID, env.IsTradeskillTrainer, env.UnitLevel, env.C_Map, env.InCombatLockdown = saved.guid, saved.trade, saved.level, saved.map, saved.combat
     ns.PLANNER_DUNGEONS, ns.db.plannerDry = saved.dungeons, saved.dry
     if not ok then error(err, 0) end
 end)
 try("13.6 leftovers: seams", function()
     local CI = env.C_ChatInfo
-    local saved = { hash = ns.GuideHash, key = ns.root.guideKey, unlocked = ns.GuideUnlocked, duo = ns.plannerDuo, reg = CI.RegisterAddonMessagePrefix,
+    local saved = { duo = ns.plannerDuo, reg = CI.RegisterAddonMessagePrefix,
                     planner = ns.root.planner, timedQ = ns.PlannerTimedQuest, map = env.C_Map, vec = rawget(env, "CreateVector2D"), errors = #ns.errors }
-    local key = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
     local ok, err = pcall(function()
-        -- the lock registry: after a working unlock (true), after a lock has cleared the key (false)
+        -- the Story style puts the pace hook in
         ns.root.planner = {}
-        ns.root.guideKey = key
-        local calls, keyAt, after = {}, "unset", 0
-        ns.GuideRegisterLock("test6a", function(u) calls[#calls + 1] = u; if u == false then keyAt = ns.root.guideKey end end)
         ns.PlannerSetStyle("story")
         local function paceRank() for _, h in ipairs(ns.PlannerHookList("rank")) do if h.key == "pace" then return true end end return false end
-        if not paceRank() then error("Story, unlocked: the pace hook is there") end
-        ns.plannerDuo = { role = "leader", partner = "Mira", to = "Mira", session = "ab41", heard = 1, asked = 1, accepted = true }
-        ns:GuideLock()
-        if #calls ~= 1 or calls[1] ~= false then error("a lock: called once with false") end
-        if keyAt ~= nil then error("the key is already cleared when the lock hook runs") end
-        if ns.plannerDuo ~= nil then error("a lock ends the duo") end
-        if paceRank() then error("a lock removes the pace hooks") end
-        local prefixes = {}
-        CI.RegisterAddonMessagePrefix = function(p) prefixes[#prefixes + 1] = p; return true end
-        ns.GuideHash = function() return 1 end
-        if ns:GuideUnlock("x") or #calls ~= 1 then error("a wrong number: no unlock, no call") end
-        ns.GuideHash = function() return key end
-        if not ns:GuideUnlock("x") then error("the stubbed number unlocks") end
-        if #calls ~= 2 or calls[2] ~= true then error("an unlock: called once with true") end
-        if prefixes[1] ~= "FGUIPlan" then error("an unlock registers the duo's prefix: " .. tostring(prefixes[1])) end
-        if not paceRank() then error("an unlock puts the pace hooks back") end
-        -- a failing hook is written down, and the next one still runs
-        ns.GuideRegisterLock("test6b", function() error("boom") end)
-        ns.GuideRegisterLock("test6c", function() after = after + 1 end)
-        local n = #ns.errors
-        ns:GuideLock()
-        local found = false
-        for i = n + 1, #ns.errors do if tostring(ns.errors[i]):find("Guide hook test6b: ", 1, true) then found = true end end
-        if not found or after ~= 1 then error("a failing lock hook: in ns.errors, and the next still runs") end
-        for i = #ns.errors, n + 1, -1 do table.remove(ns.errors, i) end
-        -- the same key replaces, nil removes
-        ns.GuideRegisterLock("test6c", function() after = after + 10 end)
-        ns.GuideRegisterLock("test6b", nil)
-        ns.root.guideKey = nil
-        ns:GuideUnlock("x")
-        if after ~= 11 or #ns.errors ~= n then error("the same key replaces, nil removes") end
-        for _, k in ipairs({ "test6a", "test6b", "test6c" }) do ns.GuideRegisterLock(k, nil) end
+        if not paceRank() then error("Story: the pace hook is there") end
         ns.PlannerSetStyle("speed")
 
         -- a quest known to be timed before you take it: a run of its own, first in its hub
-        ns.GuideUnlocked = function() return true end
         env.C_Map = setmetatable({ GetWorldPosFromMapPos = function(map, v) if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end end }, { __index = saved.map })
         env.CreateVector2D = function(x, y) return { x = x, y = y } end
         local function at(x, y) return { { map = 1, x = x, y = y } } end
@@ -19737,8 +19419,7 @@ try("13.6 leftovers: seams", function()
         if s:find("!", 1, true) or not s:find("^accept:9621") then error("no PlannerTimedQuest: the normal order: " .. s) end
         if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
     end)
-    for _, k in ipairs({ "test6a", "test6b", "test6c" }) do ns.GuideRegisterLock(k, nil) end
-    ns.GuideHash, ns.root.guideKey, ns.GuideUnlocked, ns.plannerDuo, CI.RegisterAddonMessagePrefix = saved.hash, saved.key, saved.unlocked, saved.duo, saved.reg
+    ns.plannerDuo, CI.RegisterAddonMessagePrefix = saved.duo, saved.reg
     ns.root.planner, ns.PlannerTimedQuest, env.C_Map, env.CreateVector2D = saved.planner, saved.timedQ, saved.map, saved.vec
     ns.PlannerPaceSync()
     if not ok then error(err, 0) end
@@ -19747,11 +19428,10 @@ end)
 try("13.6 leftovers A: recording kills", function()
     local names = { "GetTime", "UnitXP", "UnitXPMax", "GetXPExhaustion", "UnitLevel", "UnitExists", "UnitIsDead", "UnitCanAttack", "UnitClassification", "IsInGroup",
                     "COMBATLOG_XPGAIN_FIRSTPERSON_UNNAMED", "COMBATLOG_XPGAIN_QUEST" }
-    local saved = { unlocked = ns.GuideUnlocked, planner = ns.root.planner, errors = #ns.errors, env = {} }
+    local saved = { planner = ns.root.planner, errors = #ns.errors, env = {} }
     for _, n in ipairs(names) do saved.env[n] = rawget(env, n) end
     local ok, err = pcall(function()
         if ns.PLANNER_KILL_PAIR ~= 1 or ns.PLANNER_KILL_GAP ~= 180 or ns.PLANNER_KILL_GAPS ~= 50 or ns.PLANNER_KILL_MIN_GAPS ~= 10 then error("the kill constants") end
-        ns.GuideUnlocked = function() return true end
         local clock, xp, xpMax, rest, level, grouped = 50000, 5000, 10000, nil, 20, false
         local tgt
         local hidden = setmetatable({ __secret = true }, secretmt)
@@ -19917,13 +19597,6 @@ try("13.6 leftovers A: recording kills", function()
         -- the recorder called directly
         ns.PlannerRecordKill({ xp = 174, level = 20, mobLevel = 20, elite = false })
         if not (sample() and near(sample().r, 1.2)) or R().killGaps then error("a direct sample with no time: killXP only") end
-        -- locked: nothing written
-        reset()
-        ns.GuideUnlocked = function() return false end
-        kill(174, 0.2); clock = clock + 30; kill(174, 0.2)
-        ns.PlannerRecordKill({ xp = 174, level = 20, mobLevel = 20, elite = false, t = clock })
-        if next(ns.root.planner) then error("locked: nothing written") end
-        ns.GuideUnlocked = function() return true end
         -- hidden XP: nothing written, no error
         reset()
         env.UnitXP = function() return hidden end
@@ -19937,16 +19610,15 @@ try("13.6 leftovers A: recording kills", function()
         if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
     end)
     for _, n in ipairs(names) do env[n] = saved.env[n] end
-    ns.GuideUnlocked, ns.root.planner = saved.unlocked, saved.planner
+    ns.root.planner = saved.planner
     if ns.PlannerKillsEvent then ns.PlannerKillsEvent("PLAYER_ENTERING_WORLD") end
     if not ok then error(err, 0) end
 end)
 try("13.6 leftovers A: kills in the plan", function()
     local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), planner = ns.root.planner, times = ns.root.plannerQuestTimes, ratio = ns.PlannerKillRatio,
-                    dry = ns.db.plannerDry, unlocked = ns.GuideUnlocked, combat = env.InCombatLockdown, errors = #ns.errors }
+                    dry = ns.db.plannerDry, combat = env.InCombatLockdown, errors = #ns.errors }
     local ok, err = pcall(function()
         if ns.PLANNER_WAY_KILLS ~= 0.5 then error("half a monster a minute on the way") end
-        ns.GuideUnlocked = function() return true end
         local cm = {}
         for k, v in pairs(saved.map) do cm[k] = v end
         cm.GetWorldPosFromMapPos = function(map, v)
@@ -20027,18 +19699,17 @@ try("13.6 leftovers A: kills in the plan", function()
         if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
     end)
     env.C_Map, env.CreateVector2D, ns.root.planner, ns.root.plannerQuestTimes = saved.map, saved.vec, saved.planner, saved.times
-    ns.PlannerKillRatio, ns.db.plannerDry, ns.GuideUnlocked, env.InCombatLockdown = saved.ratio, saved.dry, saved.unlocked, saved.combat
+    ns.PlannerKillRatio, ns.db.plannerDry, env.InCombatLockdown = saved.ratio, saved.dry, saved.combat
     if not ok then error(err, 0) end
 end)
 try("13.6 leftovers A: quest times without away and town", function()
-    local saved = { on = ns.GuideOn, state = ns.GuideState, unlocked = ns.GuideUnlocked, time = rawget(env, "GetTime"), afk = rawget(env, "UnitIsAFK"),
+    local saved = { on = ns.GuideOn, state = ns.GuideState, time = rawget(env, "GetTime"), afk = rawget(env, "UnitIsAFK"),
                     resting = rawget(env, "IsResting"), times = ns.root.plannerQuestTimes, errors = #ns.errors, queued = ns.plannerQueued,
-                    hash = ns.GuideHash, key = ns.root.guideKey, duo = ns.plannerDuo, planner = ns.root.planner, reg = env.C_ChatInfo.RegisterAddonMessagePrefix }
+                    duo = ns.plannerDuo, planner = ns.root.planner, reg = env.C_ChatInfo.RegisterAddonMessagePrefix }
     local afk, resting = false, false
     local function setAFK(v, unit) afk = v; fireEvent("PLAYER_FLAGS_CHANGED", unit or "player") end
     local function setRest(v) resting = v; fireEvent("PLAYER_UPDATE_RESTING") end
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         ns.GuideOn = function() return true end
         ns.GuideState = function() return { name = ns.GUIDE_PLANNED, at = 1, plan = {} } end
         local base, clock = 0, 0
@@ -20102,31 +19773,15 @@ try("13.6 leftovers A: quest times without away and town", function()
         at(200); setRest(false)
         at(500); fireEvent("QUEST_TURNED_IN", 9656)
         if avg(9656) ~= 300 then error("logged in at an inn: 300, got " .. tostring(avg(9656))) end
-        -- an unlock reads the state again (it may have changed while locked)
-        local key = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
-        ns.GuideUnlocked = saved.unlocked
-        ns.root.guideKey = nil
-        ns.GuideHash = function() return key end
-        afk = true
-        if not ns:GuideUnlock("x") or not ns.PlannerQuestClock().away then error("an unlock reads the state") end
-        ns.GuideUnlocked = function() return true end
-        setAFK(false)
-        -- locked: the state is not read
-        ns.GuideUnlocked = function() return false end
-        setAFK(true)
-        if ns.PlannerQuestClock().away then error("locked: nothing read") end
-        ns.GuideUnlocked = function() return true end
-        afk = false
         if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
     end)
     -- (leave the clock present, then put everything back)
-    ns.GuideUnlocked = function() return true end
     env.UnitIsAFK, env.IsResting = function() return false end, function() return false end
     afk, resting = false, false
     pcall(setAFK, false); pcall(setRest, false)
-    ns.GuideOn, ns.GuideState, ns.GuideUnlocked, env.GetTime = saved.on, saved.state, saved.unlocked, saved.time
+    ns.GuideOn, ns.GuideState, env.GetTime = saved.on, saved.state, saved.time
     env.UnitIsAFK, env.IsResting, ns.root.plannerQuestTimes = saved.afk, saved.resting, saved.times
-    ns.plannerQueued, ns.GuideHash, ns.root.guideKey, ns.plannerDuo = saved.queued, saved.hash, saved.key, saved.duo
+    ns.plannerQueued, ns.plannerDuo = saved.queued, saved.duo
     ns.root.planner, env.C_ChatInfo.RegisterAddonMessagePrefix = saved.planner, saved.reg
     if ns.PlannerPaceSync then ns.PlannerPaceSync() end
     if not ok then error(err, 0) end
@@ -20134,7 +19789,7 @@ end)
 -- batch 6 tests A (learning): end
 -- batch 6 tests B (questie): begin
 try("13.6 leftovers B: Questie's ids a slice at a time", function()
-    local saved = { on = ns.GuideOn, here = ns.GuideHere, unlocked = ns.GuideUnlocked, map = env.C_Map, vec = rawget(env, "CreateVector2D"),
+    local saved = { on = ns.GuideOn, here = ns.GuideHere, map = env.C_Map, vec = rawget(env, "CreateVector2D"),
                     context = ns.PlannerContext, world = ns.PlannerWorldPos, guideState = ns.root.guideState, guides = ns.root.guides, planner = ns.root.planner,
                     combat = env.InCombatLockdown, dp = rawget(env, "debugprofilestop"), loaded = env.C_AddOns.IsAddOnLoaded,
                     meta = rawget(env.C_AddOns, "GetAddOnMetadata"), Q = rawget(env, "Questie"), loader = rawget(env, "QuestieLoader"),
@@ -20152,7 +19807,6 @@ try("13.6 leftovers B: Questie's ids a slice at a time", function()
     local fakes = { QuestieDB = db, QuestXP = { GetQuestLogRewardXP = function() return 100 end },
                     ZoneDB = { GetUiMapIdByAreaId = function(_, area) return area == 40 and 1429 or nil end } }
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         ns.GuideOn = function() return true end
         ns.GuideHere = function() return 1429, 30, 40 end
         ns.root.planner, ns.root.guides, ns.root.guideState = {}, {}, {}
@@ -20249,7 +19903,7 @@ try("13.6 leftovers B: Questie's ids a slice at a time", function()
     ns:PlannerStop(); ns.plannerQueued = false
     ns:GuideSetPlan(nil)
     ns.PlannerSourceReset()
-    ns.GuideOn, ns.GuideHere, ns.GuideUnlocked, ns.PlannerContext, ns.PlannerWorldPos = saved.on, saved.here, saved.unlocked, saved.context, saved.world
+    ns.GuideOn, ns.GuideHere, ns.PlannerContext, ns.PlannerWorldPos = saved.on, saved.here, saved.context, saved.world
     env.C_Map, env.InCombatLockdown, env.C_QuestLog = saved.map, saved.combat, saved.ql
     rawset(env, "CreateVector2D", saved.vec); rawset(env, "UnitFactionGroup", saved.faction)
     env.C_AddOns.IsAddOnLoaded = saved.loaded; rawset(env.C_AddOns, "GetAddOnMetadata", saved.meta)
@@ -20261,7 +19915,7 @@ try("13.6 leftovers B: gathering from Questie", function()
     local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), level = env.UnitLevel, profs = env.GetProfessions, info = env.GetProfessionInfo,
                     here = ns.GuideHere, mail = env.HasNewMail, loaded = env.C_AddOns.IsAddOnLoaded, meta = rawget(env.C_AddOns, "GetAddOnMetadata"),
                     Q = rawget(env, "Questie"), loader = rawget(env, "QuestieLoader"), planner = ns.root.planner, nodes = ns.root.plannerNodesSeen,
-                    gather = ns.db.plannerGather, explore = ns.db.plannerExplore, unlocked = ns.GuideUnlocked, errors = #ns.errors }
+                    gather = ns.db.plannerGather, explore = ns.db.plannerExplore, errors = #ns.errors }
     local skills = {}
     local objects = {
         [1618] = { name = "Peacebloom", spawns = { [12] = { { 50, 41.5 }, { 50, 80 } } } },   -- (15 yards off the run, and 400)
@@ -20274,7 +19928,6 @@ try("13.6 leftovers B: gathering from Questie", function()
     local fakes = { QuestieDB = db, QuestXP = { GetQuestLogRewardXP = function() return 100 end },
                     ZoneDB = { GetUiMapIdByAreaId = function(_, area) return area == 12 and 1429 or nil end } }
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         env.C_Map = setmetatable({ GetWorldPosFromMapPos = function(map, v) if map == 1429 then return 0, { x = v.x * 1000, y = v.y * 1000 } end end },
                                  { __index = saved.map })                                    -- (a percent is 10 yards)
         env.CreateVector2D = function(x, y) return { x = x, y = y } end
@@ -20365,12 +20018,12 @@ try("13.6 leftovers B: gathering from Questie", function()
     rawset(env, "CreateVector2D", saved.vec)
     env.C_AddOns.IsAddOnLoaded = saved.loaded; rawset(env.C_AddOns, "GetAddOnMetadata", saved.meta)
     rawset(env, "Questie", saved.Q); rawset(env, "QuestieLoader", saved.loader)
-    ns.root.planner, ns.root.plannerNodesSeen, ns.db.plannerGather, ns.db.plannerExplore, ns.GuideUnlocked = saved.planner, saved.nodes, saved.gather, saved.explore, saved.unlocked
+    ns.root.planner, ns.root.plannerNodesSeen, ns.db.plannerGather, ns.db.plannerExplore = saved.planner, saved.nodes, saved.gather, saved.explore
     ns.GuideHere = saved.here
     if not ok then error(err, 0) end
 end)
 try("13.6 leftovers B: timed quests before you take them", function()
-    local saved = { unlocked = ns.GuideUnlocked, timed = ns.root.plannerTimed, ql = env.C_QuestLog, map = env.C_Map, mex = rawget(env, "C_MapExplorationInfo"), exMaps = ns.plannerExploreMaps, time = rawget(env, "time"),
+    local saved = { timed = ns.root.plannerTimed, ql = env.C_QuestLog, map = env.C_Map, mex = rawget(env, "C_MapExplorationInfo"), exMaps = ns.plannerExploreMaps, time = rawget(env, "time"),
                     vec = rawget(env, "CreateVector2D"), planner = ns.root.planner, nodes = ns.root.plannerNodesSeen, profs = env.GetProfessions,
                     info = env.GetProfessionInfo, explore = ns.db.plannerExplore, known = ns.PLANNER_TIMED, errors = #ns.errors }
     local allowed = 900
@@ -20380,11 +20033,6 @@ try("13.6 leftovers B: timed quests before you take them", function()
         ns.root.plannerTimed = nil
         rawset(env, "time", function() return 86400 * 20000 + 5 end)        -- (day 20000)
         env.C_QuestLog = setmetatable({ GetTimeAllowed = function() return allowed, 0 end }, { __index = saved.ql })
-        -- locked: nothing written, nothing made
-        ns.GuideUnlocked = function() return false end
-        fireEvent("QUEST_ACCEPTED", 9680)
-        if ns.root.plannerTimed ~= nil then error("locked: nothing written") end
-        ns.GuideUnlocked = function() return true end
         -- hidden, or no clock: nothing
         allowed = setmetatable({ __secret = true }, secretmt)
         fireEvent("QUEST_ACCEPTED", 9680)
@@ -20469,7 +20117,7 @@ try("13.6 leftovers B: timed quests before you take them", function()
         if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
     end)
     ns.PLANNER_TIMED[9682] = nil
-    ns.GuideUnlocked, ns.root.plannerTimed, env.C_QuestLog, env.C_Map = saved.unlocked, saved.timed, saved.ql, saved.map
+    ns.root.plannerTimed, env.C_QuestLog, env.C_Map = saved.timed, saved.ql, saved.map
     rawset(env, "C_MapExplorationInfo", saved.mex); ns.plannerExploreMaps = saved.exMaps; rawset(env, "time", saved.time)
     rawset(env, "CreateVector2D", saved.vec)
     ns.root.planner, ns.root.plannerNodesSeen, env.GetProfessions, env.GetProfessionInfo, ns.db.plannerExplore = saved.planner, saved.nodes, saved.profs, saved.info, saved.explore
@@ -20478,7 +20126,7 @@ end)
 -- batch 6 tests B (questie): end
 -- batch 6 tests C (route): begin
 try("13.6 leftovers C: moving zones in words", function()
-    local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), unlocked = ns.GuideUnlocked, why = ns.db.plannerWhy,
+    local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), why = ns.db.plannerWhy,
         state = ns.root.guideState, errors = #ns.errors }
     -- Eastern Kingdoms (1415): Wetlands 1437 and Arathi 1417 on it, Undercity 1458; Kalimdor: Dustwallow 1445, Durotar 1411
     local regions = { [1437] = { 0, 4000, 4000 }, [1417] = { 0, 6000, 2000 }, [1458] = { 0, 1000, 1000 }, [1445] = { 1, 5000, 5000 }, [1411] = { 1, 7000, 2000 } }
@@ -20504,7 +20152,6 @@ try("13.6 leftovers C: moving zones in words", function()
     cm.GetAreaInfo = function(id) return areas[id] end
     env.C_Map = cm
     env.CreateVector2D = function(x, y) return { x = x, y = y } end
-    ns.GuideUnlocked = function() return true end
     local function rec(id, map, x, y)
         return { id = id, name = "Quest " .. id, level = 10, minLevel = 1, xp = 3000, starts = { { map = map, x = x, y = y } }, ends = { { map = map, x = x, y = y } },
             objectives = { { kind = "kill", count = 4, countKnown = true, mobLevel = 10, spots = { { map = map, x = x + 1, y = y + 1 } } } },
@@ -20588,13 +20235,12 @@ try("13.6 leftovers C: moving zones in words", function()
     end)
     ns:GuideStop()
     env.C_Map = saved.map; rawset(env, "CreateVector2D", saved.vec)
-    ns.GuideUnlocked, ns.db.plannerWhy, ns.root.guideState = saved.unlocked, saved.why, saved.state
+    ns.db.plannerWhy, ns.root.guideState = saved.why, saved.state
     if not ok then error(err, 0) end
 end)
 try("13.6 leftovers C: plan again and plan my route", function()
-    local saved = { unlocked = ns.GuideUnlocked, state = ns.root.guideState, guides = ns.root.guides, start = ns.PlannerStart, show = ns.ShowList,
-        queued = ns.plannerQueued, reason = ns.plannerReason, key = ns.root.guideKey, errors = #ns.errors }
-    ns.GuideUnlocked = function() return true end
+    local saved = { state = ns.root.guideState, guides = ns.root.guides, start = ns.PlannerStart, show = ns.ShowList,
+        queued = ns.plannerQueued, reason = ns.plannerReason, errors = #ns.errors }
     ns.root.guides = { Written = { name = "Written", steps = { { kind = "note", text = "a" }, { kind = "note", text = "b" } } } }
     local function click(b, ...)
         local f = b:GetScript("OnClick")
@@ -20625,6 +20271,9 @@ try("13.6 leftovers C: plan again and plan my route", function()
         if ns.plannerQueued ~= false or ns.plannerReason ~= nil then error("a refused replan changes nothing") end
         -- the height is set only when it changes
         rawset(panel, "SetHeight", function() heights = heights + 1 end)
+        ns.GuideRegisterLine("paceStyle", nil); ns.GuideRegisterLine("paceBreak", nil)   -- (the pace's own lines: put back at the end)
+        ns:GuideRedraw()
+        heights = 0
         ns.GuideRegisterLine("test6c", function() return "one more line" end)
         ns:GuideRedraw(); ns:GuideRedraw()
         ns.GuideRegisterLine("test6c", nil)
@@ -20654,12 +20303,6 @@ try("13.6 leftovers C: plan again and plan my route", function()
         if starts ~= 1 or redrawn ~= 1 then error("its click starts the plan once and the list redraws: " .. starts .. ", " .. redrawn) end
         if ns.GuideState().name ~= ns.GUIDE_PLANNED then error("following the plan now") end
         ns:PlannerStop()
-        -- locked: no such line
-        ns.GuideUnlocked = saved.unlocked
-        ns.root.guideKey = nil
-        ns:GuideList()
-        for _, l in ipairs(lines) do if type(l.left) == "string" and l.left:find("Plan my route", 1, true) then error("locked: no Plan my route") end end
-        ns.GuideUnlocked = function() return true end
         ns.PlannerStart = nil
         ns:GuideList()
         if lines[1].left:find("Plan my route", 1, true) then error("no planner: no line") end
@@ -20667,14 +20310,15 @@ try("13.6 leftovers C: plan again and plan my route", function()
     end)
     ns.ShowList, ns.PlannerStart = saved.show, saved.start
     ns.GuideRegisterLine("test6c", nil); ns.PlannerHook("replan", "test6c", nil)
+    if ns.PlannerPaceSync then ns.PlannerPaceSync() end
     ns:GuideStop()
     if ns.HideLists then ns:HideLists() end
-    ns.GuideUnlocked, ns.root.guideState, ns.root.guides, ns.root.guideKey = saved.unlocked, saved.state, saved.guides, saved.key
+    ns.root.guideState, ns.root.guides = saved.state, saved.guides
     ns.plannerQueued, ns.plannerReason = saved.queued, saved.reason
     if not ok then error(err, 0) end
 end)
 try("13.6 leftovers C: route and travel leftovers", function()
-    local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), travel = ns.PlannerTravel, timedQ = ns.PlannerTimedQuest, unlocked = ns.GuideUnlocked,
+    local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), travel = ns.PlannerTravel, timedQ = ns.PlannerTimedQuest,
         taxi = rawget(env, "UnitOnTaxi"), time = env.GetTime, planner = ns.root.planner, nodes = ns.root.plannerNodes, ft = ns.root.plannerFlightTimes,
         ct = ns.root.plannerCrossTimes, smp = ns.root.plannerTimeSamples, crossings = ns.PLANNER_CROSSINGS, errors = #ns.errors }
     local pos, clock, taxi = { 1, 10, 10 }, 5000, false
@@ -20690,7 +20334,6 @@ try("13.6 leftovers C: route and travel leftovers", function()
     env.CreateVector2D = function(x, y) return { x = x, y = y } end
     env.GetTime = function() return clock end
     env.UnitOnTaxi = function() return taxi end
-    ns.GuideUnlocked = function() return true end
     local function rec(id, sx, sy, ends, xp)
         return { id = id, name = "Quest " .. id, level = 10, minLevel = 1, xp = xp or 3000, starts = { { map = 1, x = sx, y = sy } }, ends = ends or { { map = 1, x = sx, y = sy } },
             objectives = { { kind = "kill", count = 4, countKnown = true, mobLevel = 10, spots = { { map = 1, x = sx + 1, y = sy + 1 } } } },
@@ -20781,14 +20424,14 @@ try("13.6 leftovers C: route and travel leftovers", function()
         if math.abs(times("x-z") - 250) > 1 then error("1000 s or 30 s: no crossing time: " .. tostring(times("x-z"))) end
         if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
     end)
-    ns.PlannerTravel, ns.PlannerTimedQuest, ns.GuideUnlocked, ns.PLANNER_CROSSINGS = saved.travel, saved.timedQ, saved.unlocked, saved.crossings
+    ns.PlannerTravel, ns.PlannerTimedQuest, ns.PLANNER_CROSSINGS = saved.travel, saved.timedQ, saved.crossings
     env.C_Map = saved.map; rawset(env, "CreateVector2D", saved.vec); rawset(env, "UnitOnTaxi", saved.taxi); env.GetTime = saved.time
     ns.root.planner, ns.root.plannerNodes, ns.root.plannerFlightTimes, ns.root.plannerCrossTimes, ns.root.plannerTimeSamples = saved.planner, saved.nodes, saved.ft, saved.ct, saved.smp
     if not ok then error(err, 0) end
 end)
 try("13.6 leftovers C: the arrow and the guide's keys", function()
-    local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), unlocked = ns.GuideUnlocked, state = ns.root.guideState, guides = ns.root.guides,
-        key = ns.root.guideKey, tomtom = rawget(env, "TomTom"), tt = ns.db.plannerTomTom, motion = ns.db.reduceMotion, combat = env.InCombatLockdown,
+    local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), state = ns.root.guideState, guides = ns.root.guides,
+        tomtom = rawget(env, "TomTom"), tt = ns.db.plannerTomTom, motion = ns.db.reduceMotion, combat = env.InCombatLockdown,
         faction = rawget(env, "UnitFactionGroup"), time = env.GetTime, queued = ns.plannerQueued, reason = ns.plannerReason, errors = #ns.errors }
     -- Dun Morogh 1426, Wetlands 1437 and Arathi 1417 side by side on one continent; Dustwallow 1445 over the sea
     local regions = { [1426] = { 0, 2000, 4000 }, [1437] = { 0, 4000, 4000 }, [1417] = { 0, 6000, 2000 }, [1445] = { 1, 5000, 5000 } }
@@ -20806,21 +20449,14 @@ try("13.6 leftovers C: the arrow and the guide's keys", function()
     env.CreateVector2D = function(x, y) return { x = x, y = y } end
     env.UnitFactionGroup = function() return "Alliance", "Alliance" end
     env.GetTime = function() return clock end
-    ns.GuideUnlocked = function() return true end
     ns.root.guides = { Far = { name = "Far", steps = { { kind = "goto", text = "Arathi", map = 1417, x = 50, y = 50 }, { kind = "goto", text = "Marsh", map = 1445, x = 70, y = 55 },
         { kind = "goto", text = "Here", map = 1426, x = 60, y = 50 }, { kind = "note", text = "end" } } } }
     local function arrowUpdate(arrow)
         for i = #handlers, 1, -1 do local h = handlers[i]; if h.self == arrow and h.name == "OnUpdate" then return h.fn end end
     end
     local ok, err = pcall(function()
-        -- the guide's keys: names in the key bindings window, and nothing while locked or in combat
-        -- (polish P2: neutral names while locked, "Guide: ..." once unlocked)
-        ns.GuideBindingNames(false)
-        for i = 1, 3 do
-            local name = env["BINDING_NAME_FANTASYGLASSUI_EXTRA" .. i]
-            if name ~= "Fantasy Glass UI: extra " .. i then error("locked: the extra " .. i .. " key's neutral name: " .. tostring(name)) end
-        end
-        ns.GuideBindingNames(true)
+        -- the guide's keys: names in the key bindings window ("Guide: ..."), and nothing in combat
+        ns.GuideBindingNames()
         for i = 1, 3 do
             local name = env["BINDING_NAME_FANTASYGLASSUI_EXTRA" .. i]
             if type(name) ~= "string" or not name:find("^Guide") then error("the extra " .. i .. " key's name: " .. tostring(name)) end
@@ -20828,10 +20464,6 @@ try("13.6 leftovers C: the arrow and the guide's keys", function()
         ns.db.plannerTomTom = false
         ns:GuideFollow("Far")
         local st = ns.GuideState()
-        ns.GuideUnlocked = function() return false end
-        env.FantasyGlassUI_ExtraBinding(1); env.FantasyGlassUI_ExtraBinding(3)
-        ns.GuideUnlocked = function() return true end
-        if st.at ~= 1 then error("locked: the keys do nothing") end
         -- another map: the arrow points where your way leaves this one (two maps away, toward Arathi)
         local w = ns.waypoint
         if not (w and w.map == 1426 and math.abs(w.x - 1) < 0.001 and math.abs(w.y - 0.25) < 0.001) then
@@ -20971,7 +20603,7 @@ try("13.6 leftovers C: the arrow and the guide's keys", function()
     ns:PlannerStop(); ns:GuideStop(); ns:ClearWaypoint(true)
     env.C_Map = saved.map; rawset(env, "CreateVector2D", saved.vec); rawset(env, "TomTom", saved.tomtom); rawset(env, "UnitFactionGroup", saved.faction)
     env.InCombatLockdown, env.GetTime = saved.combat, saved.time
-    ns.GuideUnlocked, ns.root.guideState, ns.root.guides, ns.root.guideKey = saved.unlocked, saved.state, saved.guides, saved.key
+    ns.root.guideState, ns.root.guides = saved.state, saved.guides
     ns.db.plannerTomTom, ns.db.reduceMotion, ns.plannerQueued, ns.plannerReason = saved.tt, saved.motion, saved.queued, saved.reason
     ns.GuideRegisterAdvance("test6c", nil); ns.PlannerSessionSkipReset()
     if not ok then error(err, 0) end
@@ -20980,7 +20612,7 @@ end)
 -- batch 6 tests D (leftovers): begin
 try("13.6 leftovers D: leftovers", function()
     local CI = env.C_ChatInfo
-    local saved = { source = ns.PlannerSource, map = env.C_Map, unlocked = ns.GuideUnlocked, duo = ns.plannerDuo, myState = ns.PlannerDuoMyState,
+    local saved = { source = ns.PlannerSource, map = env.C_Map, duo = ns.plannerDuo, myState = ns.PlannerDuoMyState,
                     level = env.UnitLevel, raw = ns.PrintRaw, guideState = ns.root.guideState, guides = ns.root.guides,
                     time = env.GetTime, combat = env.InCombatLockdown, send = CI.SendAddonMessage, lock = CI.InChatMessagingLockdown,
                     vec = rawget(env, "CreateVector2D"), enum = env.Enum, class = env.UnitClass, power = env.UnitPowerType,
@@ -20989,7 +20621,6 @@ try("13.6 leftovers D: leftovers", function()
                     planner = ns.root.planner, vendor = ns.db.plannerVendor, supplies = ns.db.plannerSupplies, errors = #ns.errors }
     local function frames(k) for _ = 1, k or 30 do for i = 1, #handlers do local h = handlers[i]; if h.name == "OnUpdate" then pcall(h.fn, h.self, 0) end end end end
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         -- "LFG <title>, <zone>": a title that cleans to nothing, or is cut to nothing, takes the record's name, else "#id"
         local recs = { [7001] = { id = 7001, name = "Hogger" } }
         ns.PlannerSource = function() return { kind = "test", quest = function(id) return recs[id] end } end
@@ -21163,7 +20794,7 @@ try("13.6 leftovers D: leftovers", function()
     env.InCombatLockdown, CI.InChatMessagingLockdown = saved.combat, saved.lock
     for _ = 1, 120 do ns.PlannerDuoFlush() end
     ns:PlannerStop(); ns.plannerQueued = false
-    ns.PlannerSource, env.C_Map, ns.GuideUnlocked, ns.plannerDuo, ns.PlannerDuoMyState = saved.source, saved.map, saved.unlocked, saved.duo, saved.myState
+    ns.PlannerSource, env.C_Map, ns.plannerDuo, ns.PlannerDuoMyState = saved.source, saved.map, saved.duo, saved.myState
     env.GetTime, CI.SendAddonMessage, env.CreateVector2D, env.Enum, env.UnitClass, env.UnitPowerType = saved.time, saved.send, saved.vec, saved.enum, saved.class, saved.power
     env.C_Container.GetContainerNumFreeSlots, env.GetInventoryItemDurability, env.C_Item.GetItemCount = saved.free, saved.dur, saved.count
     env.GetInventoryItemID, env.C_Item.GetItemInfoInstant = saved.itemID, saved.instant
@@ -21176,11 +20807,10 @@ end)
 -- batch 6 tests D (leftovers): end
 -- batch 6, Task 13: the merge's own fixes (the Task 1-2 review minors, the crossing clock, the session skips)
 try("13.6 leftovers: merge fixes", function()
-    local saved = { unlocked = ns.GuideUnlocked, on = ns.GuideOn, map = env.C_Map, vec = rawget(env, "CreateVector2D"), time = env.GetTime, crossings = ns.PLANNER_CROSSINGS,
+    local saved = { on = ns.GuideOn, map = env.C_Map, vec = rawget(env, "CreateVector2D"), time = env.GetTime, crossings = ns.PLANNER_CROSSINGS,
                     ct = ns.root.plannerCrossTimes, smp = ns.root.plannerTimeSamples, state = ns.root.guideState, guides = ns.root.guides,
                     queued = ns.plannerQueued, reason = ns.plannerReason, errors = #ns.errors }
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         local function rec(id, t)
             local r = { id = id, name = "X" .. id, level = 20, minLevel = 1, xp = 500, starts = { { map = 1429, x = 40, y = 40 } }, ends = {}, objectives = {},
                 pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true }
@@ -21260,7 +20890,7 @@ try("13.6 leftovers: merge fixes", function()
     ns:PlannerStop()
     ns:GuideSetPlan(nil)
     ns.PlannerSessionSkipReset()
-    ns.GuideUnlocked, ns.GuideOn, env.C_Map, env.GetTime, ns.PLANNER_CROSSINGS = saved.unlocked, saved.on, saved.map, saved.time, saved.crossings
+    ns.GuideOn, env.C_Map, env.GetTime, ns.PLANNER_CROSSINGS = saved.on, saved.map, saved.time, saved.crossings
     rawset(env, "CreateVector2D", saved.vec)
     ns.root.plannerCrossTimes, ns.root.plannerTimeSamples, ns.root.guideState, ns.root.guides = saved.ct, saved.smp, saved.state, saved.guides
     ns.plannerQueued, ns.plannerReason = saved.queued, saved.reason
@@ -21268,17 +20898,14 @@ try("13.6 leftovers: merge fixes", function()
 end)
 -- batch 6, Task 13: everything together, through the real runner and the real context, with a fake Questie
 try("13.6 leftovers: together", function()
-    local saved = { here = ns.GuideHere, unlocked = ns.GuideUnlocked, on = ns.GuideOn, hash = ns.GuideHash, show = ns.ShowList, raw = ns.PrintRaw,
+    local saved = { here = ns.GuideHere, on = ns.GuideOn, show = ns.ShowList, raw = ns.PrintRaw,
                     context = ns.PlannerContext, map = env.C_Map, vec = rawget(env, "CreateVector2D"), level = env.UnitLevel, xp = env.UnitXP,
                     xpMax = env.UnitXPMax, combat = env.InCombatLockdown, profs = env.GetProfessions, info = env.GetProfessionInfo,
                     Q = rawget(env, "Questie"), loader = rawget(env, "QuestieLoader"), loaded = env.C_AddOns.IsAddOnLoaded, meta = rawget(env.C_AddOns, "GetAddOnMetadata"),
-                    guideState = ns.root.guideState, guides = ns.root.guides, key = ns.root.guideKey, planner = ns.root.planner, timed = ns.root.plannerTimed,
+                    guideState = ns.root.guideState, guides = ns.root.guides, planner = ns.root.planner, timed = ns.root.plannerTimed,
                     nodes = ns.root.plannerNodesSeen, ft = ns.root.plannerFlightTimes, questGuide = ns.db.questGuide, gather = ns.db.plannerGather,
                     explore = ns.db.plannerExplore, why = ns.db.plannerWhy, budget = ns.PLANNER_BUDGET_MS, errors = #ns.errors }
-    local GUIDE_KEY = tonumber(sources["Guide.lua"]:match("local GUIDE_KEY = (%d+)"))
-    local lockCalls = {}
     local ok, err = pcall(function()
-        ns.root.guideKey = GUIDE_KEY                          -- (the real lock: unlocked by its number, never by the phrase)
         ns.root.planner, ns.root.guides, ns.root.guideState, ns.root.plannerNodesSeen, ns.root.plannerFlightTimes = {}, {}, {}, nil, nil
         ns.db.questGuide, ns.db.plannerGather, ns.db.plannerExplore, ns.db.plannerWhy = true, true, false, false
         ns.GuideHere = function() return 1437, 50, 50 end
@@ -21423,38 +21050,18 @@ try("13.6 leftovers: together", function()
         -- the remembered timed quest runs first, in one run
         local first = s:match("accept:(%d+)")
         if first ~= "7304" or not s:find("accept:7304! do:7304! turnin:7304!", 1, true) then error("the remembered timed quest runs first: " .. s) end
-
-        -- 3. locking the guide while a plan is being made: the lock registry runs once, the plan stops
-        ns.GuideRegisterLock("test13", function(unlocked) lockCalls[#lockCalls + 1] = unlocked end)
-        local before = seq(plan())
-        ns.PLANNER_BUDGET_MS = 0                             -- (every yield point yields: the plan takes many slices)
-        if not ns:GuidePlanAgain() then error("plan again") end
-        frames(2)
-        if not ns.plannerBusy then error("a plan is being made") end
-        ns:GuideLock()
-        if #lockCalls ~= 1 or lockCalls[1] ~= false then error("the lock registry ran once, locked: " .. #lockCalls) end
-        frames(3)
-        if ns.plannerBusy or ns.plannerQueued then error("locked: the plan stops") end
-        if #lockCalls ~= 1 then error("still once") end
-        ns.PLANNER_BUDGET_MS = saved.budget
-        if seq(plan()) ~= before then error("locked mid-plan: the plan is not replaced") end
-        noErrors("locked mid-plan")
     end)
-    ns.GuideRegisterLock("test13", nil)
     ns.PLANNER_BUDGET_MS = saved.budget
     ns:PlannerStop(); ns.plannerQueued = false
-    ns.GuideHash = function() return GUIDE_KEY end            -- (unlocked again the real way, so the recorders' lock hooks run)
-    ns:GuideUnlock("x")
-    ns.GuideHash = saved.hash
     ns:GuideSetPlan(nil)
     ns.PlannerSourceReset()
     if ns.HideLists then ns:HideLists() end
-    ns.GuideHere, ns.GuideUnlocked, ns.GuideOn, ns.ShowList, ns.PrintRaw, ns.PlannerContext = saved.here, saved.unlocked, saved.on, saved.show, saved.raw, saved.context
+    ns.GuideHere, ns.GuideOn, ns.ShowList, ns.PrintRaw, ns.PlannerContext = saved.here, saved.on, saved.show, saved.raw, saved.context
     env.C_Map, env.UnitLevel, env.UnitXP, env.UnitXPMax, env.InCombatLockdown = saved.map, saved.level, saved.xp, saved.xpMax, saved.combat
     env.GetProfessions, env.GetProfessionInfo = saved.profs, saved.info
     rawset(env, "CreateVector2D", saved.vec); rawset(env, "Questie", saved.Q); rawset(env, "QuestieLoader", saved.loader)
     env.C_AddOns.IsAddOnLoaded = saved.loaded; rawset(env.C_AddOns, "GetAddOnMetadata", saved.meta)
-    ns.root.guideState, ns.root.guides, ns.root.guideKey, ns.root.planner, ns.root.plannerTimed = saved.guideState, saved.guides, saved.key, saved.planner, saved.timed
+    ns.root.guideState, ns.root.guides, ns.root.planner, ns.root.plannerTimed = saved.guideState, saved.guides, saved.planner, saved.timed
     ns.root.plannerNodesSeen, ns.root.plannerFlightTimes = saved.nodes, saved.ft
     ns.db.questGuide, ns.db.plannerGather, ns.db.plannerExplore, ns.db.plannerWhy = saved.questGuide, saved.gather, saved.explore, saved.why
     if ns.PlannerPaceSync then ns.PlannerPaceSync() end
@@ -21462,13 +21069,12 @@ try("13.6 leftovers: together", function()
 end)
 -- batch 6, the final review's fixes
 try("13.6 leftovers: final review fixes", function()
-    local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), unlocked = ns.GuideUnlocked, state = ns.root.guideState, guides = ns.root.guides,
+    local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), state = ns.root.guideState, guides = ns.root.guides,
         tomtom = rawget(env, "TomTom"), tt = ns.db.plannerTomTom, motion = ns.db.reduceMotion, combat = env.InCombatLockdown, faction = rawget(env, "UnitFactionGroup"),
         time = env.GetTime, travel = ns.PlannerTravel, nodes = ns.root.plannerNodes, planner = ns.root.planner, stops = ns.plannerStops, timedQ = ns.PlannerTimedQuest,
         role = ns.PlannerDuoRole, partner = ns.PlannerDuoPartner, raw = ns.PrintRaw, queued = ns.plannerQueued, reason = ns.plannerReason, context = ns.PlannerContext,
         cands = ns.PlannerCandidates, level = env.UnitLevel, gsub = string.gsub, errors = #ns.errors }
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         ns.db.reduceMotion = false
         env.UnitFactionGroup = function() return "Alliance", "Alliance" end
         env.CreateVector2D = function(x, y) return { x = x, y = y } end
@@ -21670,7 +21276,7 @@ try("13.6 leftovers: final review fixes", function()
     ns.PlannerSessionSkipReset()
     env.C_Map = saved.map; rawset(env, "CreateVector2D", saved.vec); rawset(env, "TomTom", saved.tomtom); rawset(env, "UnitFactionGroup", saved.faction)
     env.InCombatLockdown, env.GetTime, env.UnitLevel = saved.combat, saved.time, saved.level
-    ns.GuideUnlocked, ns.root.guideState, ns.root.guides, ns.root.plannerNodes, ns.root.planner = saved.unlocked, saved.state, saved.guides, saved.nodes, saved.planner
+    ns.root.guideState, ns.root.guides, ns.root.plannerNodes, ns.root.planner = saved.state, saved.guides, saved.nodes, saved.planner
     ns.db.plannerTomTom, ns.db.reduceMotion, ns.plannerQueued, ns.plannerReason = saved.tt, saved.motion, saved.queued, saved.reason
     ns.PlannerTravel, ns.plannerStops, ns.PlannerTimedQuest, ns.PlannerDuoRole, ns.PlannerDuoPartner = saved.travel, saved.stops, saved.timedQ, saved.role, saved.partner
     ns.PrintRaw, ns.PlannerContext, ns.PlannerCandidates = saved.raw, saved.context, saved.cands
@@ -21679,10 +21285,9 @@ try("13.6 leftovers: final review fixes", function()
 end)
 -- batch 6: a timed run's travel stays in the run; the arrow still points on your own map in a fight
 try("13.6 leftovers: a timed run's travel", function()
-    local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), unlocked = ns.GuideUnlocked, state = ns.root.guideState, guides = ns.root.guides,
+    local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), state = ns.root.guideState, guides = ns.root.guides,
         tt = ns.db.plannerTomTom, combat = env.InCombatLockdown, stops = ns.plannerStops, timedQ = ns.PlannerTimedQuest, planner = ns.root.planner, errors = #ns.errors }
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         env.CreateVector2D = function(x, y) return { x = x, y = y } end
         local pos = { 1, 30, 40 }
         local cm = {}
@@ -21736,14 +21341,14 @@ try("13.6 leftovers: a timed run's travel", function()
     ns:GuideStop(); ns:ClearWaypoint(true)
     env.C_Map = saved.map; rawset(env, "CreateVector2D", saved.vec)
     env.InCombatLockdown = saved.combat
-    ns.GuideUnlocked, ns.root.guideState, ns.root.guides, ns.root.planner = saved.unlocked, saved.state, saved.guides, saved.planner
+    ns.root.guideState, ns.root.guides, ns.root.planner = saved.state, saved.guides, saved.planner
     ns.db.plannerTomTom, ns.plannerStops, ns.PlannerTimedQuest = saved.tt, saved.stops, saved.timedQ
     if ns.PlannerPosReset then ns.PlannerPosReset() end
     if not ok then error(err, 0) end
 end)
 -- polish P1: begin
 try("polish P1: planning and speed", function()
-    local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), unlocked = ns.GuideUnlocked, on = ns.GuideOn, state = ns.root.guideState,
+    local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), on = ns.GuideOn, state = ns.root.guideState,
         guides = ns.root.guides, planner = ns.root.planner, times = ns.root.plannerQuestTimes, nodes = ns.root.plannerNodesSeen, raw = ns.PrintRaw,
         taxi = rawget(env, "UnitOnTaxi"), dead = rawget(env, "UnitIsDeadOrGhost"), here = ns.GuideHere, world = ns.PlannerWorldPos, ql = env.C_QuestLog,
         cap = ns.PLANNER_QUEST_TIMES_CAP, total = ns.PLANNER_NODES_TOTAL, questie = rawget(env, "Questie"), loader = rawget(env, "QuestieLoader"),
@@ -21753,7 +21358,6 @@ try("polish P1: planning and speed", function()
         up = ns.UpgradeAmount, pick = ns.db.plannerPickReward, errors = #ns.errors }
     local said = {}
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         ns.PrintRaw = function(_, m) said[#said + 1] = tostring(m) end
         local calls = 0
         local cm = {}
@@ -21816,15 +21420,6 @@ try("polish P1: planning and speed", function()
         fireEvent("PLAYER_ENTERING_WORLD", false, true)
         if not ns.PlannerSessionSkipped(9901) then error("a /reload keeps the session's skips") end
         ns.PlannerSessionSkipReset()
-
-        -- I13: a locked character's quest event reads no guide state
-        local reads, realState = 0, ns.GuideState
-        ns.GuideUnlocked = function() return false end
-        ns.GuideState = function(...) reads = reads + 1; return realState(...) end
-        fireEvent("QUEST_ACCEPTED", 1, 9902)
-        ns.GuideState = realState
-        ns.GuideUnlocked = function() return true end
-        if reads ~= 0 then error("locked: the guide state is never read: " .. reads) end
 
         -- F8 and F26: following the plan, an abandoned quest is left out, a quest taken outside it plans again
         ns.root.guides, ns.root.guideState = {}, {}
@@ -21958,7 +21553,7 @@ try("polish P1: planning and speed", function()
     rawset(env, "QuestInfo_GetRewardButton", saved.button); rawset(env, "QuestInfoFrame", saved.qframe)
     env.C_QuestLog, env.GetTime = saved.ql, saved.time
     ns.UpgradeAmount, ns.db.plannerPickReward = saved.up, saved.pick
-    ns.GuideUnlocked, ns.GuideOn, ns.GuideHere, ns.PlannerWorldPos = saved.unlocked, saved.on, saved.here, saved.world
+    ns.GuideOn, ns.GuideHere, ns.PlannerWorldPos = saved.on, saved.here, saved.world
     ns.root.guideState, ns.root.guides, ns.root.planner = saved.state, saved.guides, saved.planner
     ns.root.plannerQuestTimes, ns.root.plannerNodesSeen = saved.times, saved.nodes
     ns.PLANNER_QUEST_TIMES_CAP, ns.PLANNER_NODES_TOTAL = saved.cap, saved.total
@@ -21970,10 +21565,9 @@ end)
 -- polish P1: end
 -- polish P2: begin
 try("polish P2: the panel fits its lettering", function()
-    local saved = { unlocked = ns.GuideUnlocked, state = ns.root.guideState, scale = ns.fontScale, big = ns.db.bigControls, errors = #ns.errors }
+    local saved = { state = ns.root.guideState, scale = ns.fontScale, big = ns.db.bigControls, errors = #ns.errors }
     local panel
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         ns.root.guideState = {}
         ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "one" }, { kind = "note", text = "two" }, { kind = "note", text = "three" } } }, {})
         panel = ns:GuideShowPanel()
@@ -22046,7 +21640,7 @@ try("polish P2: the panel fits its lettering", function()
     end
     ns.fontScale, ns.db.bigControls = saved.scale, saved.big
     ns:GuideStop()
-    ns.GuideUnlocked, ns.root.guideState = saved.unlocked, saved.state
+    ns.root.guideState = saved.state
     if not ok then error(err, 0) end
 end)
 try("polish P2: the arrow", function()
@@ -22147,10 +21741,9 @@ try("polish P2: list rows and colours", function()
     if not ok then error(err, 0) end
 end)
 try("polish P2: the duo ask and reading aloud", function()
-    local saved = { unlocked = ns.GuideUnlocked, state = ns.root.guideState, time = env.GetTime, combat = env.InCombatLockdown, ask = ns.db.plannerDuoAsk,
+    local saved = { state = ns.root.guideState, time = env.GetTime, combat = env.InCombatLockdown, ask = ns.db.plannerDuoAsk,
         captions = ns.db.captions, read = ns.db.readDialog, send = ns.PlannerDuoSend, speak = ns.Speak, list = ns.ShowList, errors = #ns.errors, keys = ns.WINDOW_KEYS_FRAMES }
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         local clock = 7000
         env.GetTime = function() return clock end
         local sends, spoken, lists = {}, {}, {}
@@ -22214,17 +21807,16 @@ try("polish P2: the duo ask and reading aloud", function()
     if ns.HideLists then ns:HideLists() end
     ns:GuideStop()
     env.GetTime, env.InCombatLockdown = saved.time, saved.combat
-    ns.GuideUnlocked, ns.root.guideState = saved.unlocked, saved.state
+    ns.root.guideState = saved.state
     ns.db.plannerDuoAsk, ns.db.captions, ns.db.readDialog = saved.ask, saved.captions, saved.read
     ns.PlannerDuoSend, ns.Speak, ns.ShowList, ns.WINDOW_KEYS_FRAMES = saved.send, saved.speak, saved.list, saved.keys
     if not ok then error(err, 0) end
 end)
 try("polish P2: no stuck states", function()
-    local saved = { unlocked = ns.GuideUnlocked, state = ns.root.guideState, guides = ns.root.guides, map = env.C_Map, ql = env.C_QuestLog, time = env.GetTime,
+    local saved = { state = ns.root.guideState, guides = ns.root.guides, map = env.C_Map, ql = env.C_QuestLog, time = env.GetTime,
         dead = rawget(env, "UnitIsDeadOrGhost"), bind = rawget(env, "GetBindLocation"), zone = rawget(env, "GetMinimapZoneText"), sub = rawget(env, "GetSubZoneText"),
         ztext = rawget(env, "GetZoneText"), errors = #ns.errors, raw = ns.PrintRaw }
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         ns.root.guideState = {}
         local clock = 3000
         env.GetTime = function() return clock end
@@ -22330,14 +21922,13 @@ try("polish P2: no stuck states", function()
     env.C_Map, env.C_QuestLog, env.GetTime = saved.map, saved.ql, saved.time
     rawset(env, "UnitIsDeadOrGhost", saved.dead); rawset(env, "GetBindLocation", saved.bind); rawset(env, "GetMinimapZoneText", saved.zone)
     rawset(env, "GetSubZoneText", saved.sub); rawset(env, "GetZoneText", saved.ztext)
-    ns.GuideUnlocked, ns.root.guideState, ns.root.guides, ns.PrintRaw = saved.unlocked, saved.state, saved.guides, saved.raw
+    ns.root.guideState, ns.root.guides, ns.PrintRaw = saved.state, saved.guides, saved.raw
     if not ok then error(err, 0) end
 end)
 try("polish P2: speed and safety", function()
-    local saved = { unlocked = ns.GuideUnlocked, state = ns.root.guideState, guides = ns.root.guides, advance = ns.GuideAdvance, raw = ns.PrintRaw,
+    local saved = { state = ns.root.guideState, guides = ns.root.guides, advance = ns.GuideAdvance, raw = ns.PrintRaw,
         cluster = rawget(env, "MinimapCluster"), errors = #ns.errors, levels = ns.root.plannerLevels, alts = ns.root.alts }
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         -- reading the guide's state saves nothing: a character that never followed a guide keeps nothing of it
         ns.root.guideState, ns.root.guides = nil, nil
         ns:GuideAdvance(); ns:GuideGet("x"); ns:GuideNames(); ns.GuideState(); ns:GuideStop()
@@ -22371,12 +21962,6 @@ try("polish P2: speed and safety", function()
         if ns:OpenTrackingMenu() ~= "click" or clicked ~= 1 then error("a client without the newer menu: its button is clicked, as before") end
         env.MinimapCluster = { Tracking = { Button = { OpenMenu = function() opened = opened + 1 end } } }
         if ns:OpenTrackingMenu() ~= "menu" or opened ~= 1 then error("the newer menu opens") end
-        -- a locked player's first quest event makes neither saved table
-        ns.GuideUnlocked = function() return false end
-        ns.root.guideState, ns.root.guides = nil, nil
-        fireEvent("QUEST_ACCEPTED", 1, 2); fireEvent("QUEST_LOG_UPDATE"); fireEvent("QUEST_TURNED_IN", 2, 0, 0); runTimers()
-        if ns.root.guideState ~= nil or ns.root.guides ~= nil then error("locked: a quest event made the guide's saved tables") end
-        ns.GuideUnlocked = function() return true end
         -- the far dock of a crossing ticks a sail step; a dark accent is lightened to read on the panel
         local dock = ns.GuideFarDock({ kind = "sail", crossing = "auberdine-rutheran", map = 1439, x = 33, y = 40 })
         if not (dock and dock.map == 1438) then error("the far dock: Rut'theran") end
@@ -22397,11 +21982,11 @@ try("polish P2: speed and safety", function()
     ns:GuideStop()
     if type(ns.root.alts) == "table" then ns.root.alts["Gone - Realm"] = nil end
     ns.root.plannerLevels, ns.root.alts = saved.levels, saved.alts
-    ns.GuideUnlocked, ns.root.guideState, ns.root.guides = saved.unlocked, saved.state, saved.guides
+    ns.root.guideState, ns.root.guides = saved.state, saved.guides
     if not ok then error(err, 0) end
 end)
 try("polish P2: English words and plural forms", function()
-    local saved = { raw = ns.PrintRaw, guides = ns.root.guides, state = ns.root.guideState, unlocked = ns.GuideUnlocked, errors = #ns.errors }
+    local saved = { raw = ns.PrintRaw, guides = ns.root.guides, state = ns.root.guideState, errors = #ns.errors }
     local ok, err = pcall(function()
         -- the parser's messages are whole sentences, in your language, and a kind's own word goes into its sentence
         local step, why, arg = ns.GuideParseLine("accept Hogger")
@@ -22412,7 +21997,6 @@ try("polish P2: English words and plural forms", function()
         -- one step, one quest: the singular
         local said = {}
         ns.PrintRaw = function(_, m) said[#said + 1] = tostring(m) end
-        ns.GuideUnlocked = function() return true end
         ns.root.guides = { One = { name = "One", steps = { { kind = "note", text = "only" } } } }
         ns.root.guideState = {}
         ns:GuideFollow("One")
@@ -22422,20 +22006,19 @@ try("polish P2: English words and plural forms", function()
         -- the step kinds say what to do
         if ns.GuideStepText({ kind = "train" }) ~= "Learn from your trainer" or ns.GuideStepText({ kind = "learnflight", node = 3 }) ~= "Learn the flight point" then error("the kinds' words") end
         -- the keys' names
-        ns.GuideBindingNames(true)
+        ns.GuideBindingNames()
         if env.BINDING_NAME_FANTASYGLASSUI_EXTRA3 ~= "Guide: plan again" then error("plan again's key: " .. tostring(env.BINDING_NAME_FANTASYGLASSUI_EXTRA3)) end
-        ns.GuideBindingNames(false)
         if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
     end)
     ns:GuideStop()
-    ns.PrintRaw, ns.root.guides, ns.root.guideState, ns.GuideUnlocked = saved.raw, saved.guides, saved.state, saved.unlocked
+    ns.PrintRaw, ns.root.guides, ns.root.guideState = saved.raw, saved.guides, saved.state
     if not ok then error(err, 0) end
 end)
 -- polish P2: end
 -- polish P3: begin
 try("polish P3: the Guide tab's rows, the hidden saved data and the planner's tour", function()
     local O = ns.optUI
-    local saved = { unlocked = ns.GuideUnlocked, seen = ns.root.plannerIntroSeen, big = ns.db.bigControls, keyNav = ns.db.keyNav,
+    local saved = { seen = ns.root.plannerIntroSeen, big = ns.db.bigControls, keyNav = ns.db.keyNav,
                     read = ns.db.readDialog, winKeys = ns.db.windowKeys, speak = ns.Speak, intro = ns.PlannerIntro, guides = ns.root.guides,
                     state = ns.root.guideState, errors = #ns.errors, scale = ns.fontScale, paint = ns.Paint, cf = env.CreateFrame,
                     code = ns.PlannerCodeFollowing, lang = ns.root.language, after = ns.After, queued = ns.plannerQueued, reason = ns.plannerReason }
@@ -22446,41 +22029,13 @@ try("polish P3: the Guide tab's rows, the hidden saved data and the planner's to
                    "plannerSpeak", "plannerFindGroup", "plannerDuoAsk", "plannerGroup", "plannerBreakMinutes", "plannerLFGChannel" }
     for _, k in ipairs(keys) do saved[k] = rawget(ns.db, k) end
     local ok, err = pcall(function()
-        -- 1. Hidden saved data: while locked, the guide's settings are read through to their defaults, never written
-        ns.GuideUnlocked = function() return false end
+        -- 1. The guide's settings are written into the profile like every other (a value someone set is kept)
         local p = { design = 4, plannerTrainer = true, plannerMount = false, questGuide = true }
         ns:FillDefaults(p)
-        for k in pairs(ns.defaults) do
-            if ns.GuideGatedKey(k) and k ~= "plannerMount" and rawget(p, k) ~= nil then error("locked: a guide setting is written into the profile: " .. k) end
-        end
-        if rawget(p, "plannerMount") ~= false then error("locked: a value someone set is kept") end
-        if p.plannerTrainer ~= true or p.plannerGroup ~= "solo" or p.plannerBreakMinutes ~= 120 or p.questGuide ~= true then error("locked: read through to the defaults") end
+        if rawget(p, "plannerMount") ~= false then error("a value someone set is kept") end
+        if rawget(p, "plannerGroup") ~= "solo" or rawget(p, "plannerBreakMinutes") ~= 120 or rawget(p, "questGuide") ~= true then error("the guide's defaults are written") end
         if rawget(p, "autoSell") ~= ns.defaults.autoSell then error("the other settings are written as before") end
-        for k in pairs(p) do if ns.GuideGatedKey(k) and k ~= "plannerMount" then error("locked: a saved file would name " .. k) end end
-        ns.GuideUnlocked = function() return true end
-        ns:FillGatedDefaults(p)
-        if rawget(p, "plannerTrainer") ~= true or rawget(p, "plannerMount") ~= false or rawget(p, "plannerGroup") ~= "solo" then error("unlocked in the session: the guide's defaults are written now") end
-        local q = ns:FillDefaults({ design = 4 })
-        if rawget(q, "plannerGroup") ~= "solo" or rawget(q, "questGuide") ~= true then error("unlocked at load: written as before") end
-        ns.GuideUnlocked = function() return false end
-        ns.root.guides, ns.root.guideState = {}, {}
-        ns:DropGatedStores()
-        if ns.root.guides ~= nil or ns.root.guideState ~= nil then error("locked: the guide's empty stores are not saved at logout") end
-        ns.root.guides = { mine = { steps = {} } }
-        ns:DropGatedStores()
-        if type(ns.root.guides) ~= "table" then error("a store with something in it is kept") end
-        ns.GuideUnlocked = function() return true end
-        ns.root.guides, ns.root.guideState = {}, {}
-        ns:DropGatedStores()
-        if type(ns.root.guides) ~= "table" then error("unlocked: the stores stay") end
-        ns.root.guides, ns.root.guideState = saved.guides, saved.state
-
-        -- 2. Locked: the tour makes nothing and writes nothing
-        ns.GuideUnlocked = function() return false end
-        ns.root.plannerIntroSeen = nil
-        if ns:PlannerIntro(1) ~= false or ns:PlannerIntroDue() then error("locked: no tour") end
-        if ns.root.plannerIntroSeen ~= nil then error("locked: nothing is written") end
-        ns.GuideUnlocked = function() return true end
+        if getmetatable(p) ~= nil then error("no read-through table") end
 
         -- 3. The Guide tab's rows: every setting a row with a name and what it does, in secondary lettering
         local painted = setmetatable({}, { __mode = "k" })
@@ -22626,8 +22181,8 @@ try("polish P3: the Guide tab's rows, the hidden saved data and the planner's to
         runTimers()
         O.Open("guide:Guide")                                    -- (after the window's own delayed calls)
         local fp, P = O.sections, ns.guidePage
-        if not (P and P.unlocked == true) then error("the Guide tab shows its rows") end
-        if calls < 1 or ns.root.plannerIntroSeen ~= true then error("the first open of the Guide tab after the unlock shows the tour: " .. calls) end
+        if not (P and P.live) then error("the Guide tab shows its rows") end
+        if calls < 1 or ns.root.plannerIntroSeen ~= true then error("the first open of the Guide tab shows the tour: " .. calls) end
         local list = fp.shownKeys or {}
         local at = {}
         for i, k in ipairs(list) do at[k] = i end
@@ -22720,7 +22275,7 @@ try("polish P3: the Guide tab's rows, the hidden saved data and the planner's to
     if ns.configFrame and ns.configFrame:IsShown() then pcall(ns.ToggleConfig, ns) end
     local win = ns.PlannerIntroWindow and ns:PlannerIntroWindow()
     if win then win:Hide() end
-    ns.GuideUnlocked, ns.root.guides, ns.root.guideState = saved.unlocked, saved.guides, saved.state
+    ns.root.guides, ns.root.guideState = saved.guides, saved.state
     ns.root.plannerIntroSeen, ns.root.language = saved.seen, saved.lang
     ns.db.bigControls, ns.db.keyNav, ns.db.readDialog, ns.db.windowKeys = saved.big, saved.keyNav, saved.read, saved.winKeys
     for _, k in ipairs(keys) do rawset(ns.db, k, saved[k]) end
@@ -22730,7 +22285,7 @@ end)
 -- polish P3: end
 -- polish merge: begin
 try("polish merge: the cross-group fixes", function()
-    local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), ql = env.C_QuestLog, unlocked = ns.GuideUnlocked, on = ns.GuideOn,
+    local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), ql = env.C_QuestLog, on = ns.GuideOn,
         gstate = ns.GuideState, state = ns.root.guideState, guides = ns.root.guides, planner = ns.root.planner, raw = ns.PrintRaw,
         showList = ns.ShowList, scale = ns.fontScale, errors = #ns.errors }
     local ok, err = pcall(function()
@@ -22780,7 +22335,6 @@ try("polish merge: the cross-group fixes", function()
         if not (empty.empty and empty.source == "log") then error("an empty plan from the log says so") end
 
         -- P2's F25: the skip list keeps the quest's name
-        ns.GuideUnlocked = function() return true end
         ns.root.planner = {}
         env.C_QuestLog = setmetatable({ GetTitleForQuestID = function(id) return id == 9932 and "Titled" or nil end, IsOnQuest = function() return false end },
             { __index = saved.ql })
@@ -22844,17 +22398,16 @@ try("polish merge: the cross-group fixes", function()
     ns:PlannerStop(); ns:GuideStop()
     ns.PlannerSessionSkipReset()
     env.C_Map = saved.map; rawset(env, "CreateVector2D", saved.vec); env.C_QuestLog = saved.ql
-    ns.GuideUnlocked, ns.GuideOn, ns.GuideState, ns.PrintRaw, ns.ShowList, ns.fontScale = saved.unlocked, saved.on, saved.gstate, saved.raw, saved.showList, saved.scale
+    ns.GuideOn, ns.GuideState, ns.PrintRaw, ns.ShowList, ns.fontScale = saved.on, saved.gstate, saved.raw, saved.showList, saved.scale
     ns.root.guideState, ns.root.guides, ns.root.planner = saved.state, saved.guides, saved.planner
     if ns.PlannerPosReset then ns.PlannerPosReset() end
     if not ok then error(err, 0) end
 end)
 try("polish: together", function()
     local real = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), ql = env.C_QuestLog, level = env.UnitLevel, time = env.GetTime,
-        combat = env.InCombatLockdown, source = ns.PlannerSource, context = ns.PlannerContext, hash = ns.GuideHash, replan = ns.PlannerReplan,
+        combat = env.InCombatLockdown, source = ns.PlannerSource, context = ns.PlannerContext, replan = ns.PlannerReplan,
         raw = ns.PrintRaw, budget = ns.PLANNER_BUDGET_MS, errors = #ns.errors, qguide = ns.db.questGuide, lang = ns.root.language }
-    local saved = { key = ns.root.guideKey, guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner, seen = ns.root.plannerIntroSeen }
-    local key = tonumber((sources["Guide.lua"] or ""):match("local GUIDE_KEY = (%d+)"))
+    local saved = { guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner, seen = ns.root.plannerIntroSeen }
     local pos, clock = { 1, 10, 10 }, 900000
     local cm = {}
     for k, v in pairs(real.map) do cm[k] = v end
@@ -22892,27 +22445,6 @@ try("polish: together", function()
     local function steps() local gd = ns:GuideGet(ns.GUIDE_PLANNED); return gd and gd.steps or {} end
     local function plans(id) for _, s in ipairs(steps()) do if s.quest == id then return true end end return false end
     local function current() local st = ns.GuideState(); return st and steps()[st.at or 1], st end
-    local function neutral(where)
-        for i = 1, 3 do
-            if env["BINDING_NAME_FANTASYGLASSUI_EXTRA" .. i] ~= string.format(ns:Tr("Fantasy Glass UI: extra %d"), i) then
-                error(where .. ": the neutral name of key " .. i .. ": " .. tostring(env["BINDING_NAME_FANTASYGLASSUI_EXTRA" .. i])) end
-        end
-    end
-    local function nothingLocked(where)              -- (a locked player: no planner data, whatever the game does)
-        ns.root.guides, ns.root.guideState, ns.root.planner, ns.root.plannerIntroSeen = nil, nil, nil, nil
-        accepted[501] = true; fireEvent("QUEST_ACCEPTED", 1, 501)
-        accepted[501] = nil; fireEvent("QUEST_REMOVED", 501)
-        fireEvent("QUEST_TURNED_IN", 502, 400, 0); fireEvent("QUEST_LOG_UPDATE"); fireEvent("PLAYER_LEVEL_UP", 11)
-        fireEvent("HEARTHSTONE_BOUND"); fireEvent("ZONE_CHANGED_NEW_AREA"); fireEvent("PLAYER_ENTERING_WORLD", false, true)
-        if ns:PlannerStart() ~= false then error(where .. ": locked, Plan my route does nothing") end
-        if ns.PlannerIntro and ns:PlannerIntro(1) ~= false then error(where .. ": locked, no tour") end
-        clock = clock + 2; for _ = 1, 5 do frame() end
-        for _, k in ipairs({ "guides", "guideState", "planner", "plannerIntroSeen" }) do
-            if ns.root[k] ~= nil then error(where .. ": a locked player has no " .. k) end
-        end
-        if ns.plannerBusy or ns.plannerQueued then error(where .. ": locked, nothing is planned") end
-        neutral(where)
-    end
     local ok, err = pcall(function()
         env.C_Map, env.C_QuestLog = cm, QL
         env.CreateVector2D = function(x, y) return { x = x, y = y } end
@@ -22933,16 +22465,9 @@ try("polish: together", function()
         end
         fireEvent("PLAYER_REGEN_ENABLED")
 
-        -- 1. Locked: nothing, and the keys have neutral names
-        ns.root.guideKey = nil
-        if ns:GuideUnlocked() then error("starts locked") end
-        nothingLocked("before the unlock")
-
-        -- 2. Unlocked (the stored number, through the real unlock: its hooks run), the keys are named
-        ns.GuideHash = function() return key end
-        if not ns:GuideUnlock("x") then error("the unlock") end
-        ns.GuideHash = real.hash
-        if env.BINDING_NAME_FANTASYGLASSUI_EXTRA1 ~= ns:Tr("Guide: next step") then error("unlocked: the keys are named: " .. tostring(env.BINDING_NAME_FANTASYGLASSUI_EXTRA1)) end
+        -- 1 and 2. A player new to the planner: nothing saved yet, and the keys are named
+        ns.root.guides, ns.root.guideState, ns.root.planner, ns.root.plannerIntroSeen = nil, nil, nil, nil
+        if env.BINDING_NAME_FANTASYGLASSUI_EXTRA1 ~= ns:Tr("Guide: next step") then error("the keys are named: " .. tostring(env.BINDING_NAME_FANTASYGLASSUI_EXTRA1)) end
 
         -- 3. The first open of the Guide tab shows the tour, once
         local O = ns.optUI
@@ -23007,14 +22532,9 @@ try("polish: together", function()
         settle()
         if plans(502) or plans(501) then error("after the end: the abandoned quest stays out, the handed-in one is gone") end
         ns.PlannerReplan = real.replan
-
-        -- 9. Locked again: the keys are neutral, and a locked player has no planner data
-        ns:GuideLock()
-        neutral("locked again")
-        nothingLocked("locked again")
         if #ns.errors ~= real.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
     end)
-    ns.PlannerReplan, ns.GuideHash = real.replan, real.hash
+    ns.PlannerReplan = real.replan
     ns:PlannerStop(); ns:GuideStop()
     local win = ns.PlannerIntroWindow and ns:PlannerIntroWindow()
     if win then win:Hide() end
@@ -23024,14 +22544,13 @@ try("polish: together", function()
     ns.db.questGuide, ns.root.language = real.qguide, real.lang
     ns.PlannerSourceReset(); ns.PlannerSessionSkipReset()
     if ns.PlannerPosReset then ns.PlannerPosReset() end
-    ns.root.guideKey, ns.root.guides, ns.root.guideState, ns.root.planner, ns.root.plannerIntroSeen = saved.key, saved.guides, saved.state, saved.planner, saved.seen
-    ns.GuideBindingNames(ns:GuideUnlocked())
+    ns.root.guides, ns.root.guideState, ns.root.planner, ns.root.plannerIntroSeen = saved.guides, saved.state, saved.planner, saved.seen
     if not ok then error(err, 0) end
 end)
 -- polish merge: end
 -- polish review: begin
 try("polish review: the final review's fixes", function()
-    local saved = { unlocked = ns.GuideUnlocked, on = ns.GuideOn, state = ns.root.guideState, guides = ns.root.guides, planner = ns.root.planner,
+    local saved = { on = ns.GuideOn, state = ns.root.guideState, guides = ns.root.guides, planner = ns.root.planner,
         ql = env.C_QuestLog, raw = ns.PrintRaw, time = env.GetTime, map = env.C_Map, replan = ns.PlannerReplan, again = ns.GuidePlanAgain,
         profiles = {}, mapLine = rawget(ns.db, "plannerMapLine"), speak = ns.Speak, read = ns.db.readDialog, show = ns.ShowList,
         role = ns.Role, winKeys = ns.db.windowKeys, front = ns.FrontList, wfront = ns.WindowKeysFront, errors = #ns.errors,
@@ -23040,7 +22559,6 @@ try("polish review: the final review's fixes", function()
     for k, v in pairs(ns.root.profiles) do saved.profiles[k] = v end
     local ok, err = pcall(function()
         ns.PrintRaw = function() end
-        ns.GuideUnlocked = function() return true end
         ns.GuideOn = function() return true end
         ns.root.planner = {}
         local candidateHooks = ns.PlannerHookCopy("candidate")
@@ -23135,36 +22653,31 @@ try("polish review: the final review's fixes", function()
         ns:PlannerStop(); ns:GuideStop()
         env.GetTime = saved.time
 
-        -- I-C: while locked, a role template, a profile code and a pack store no guide settings
+        -- I-C: a role template, a profile code and a pack keep the guide settings
         rawset(ns.db, "plannerMapLine", false)
         local keepPos, keepScale = ns.db.pos, ns.db.scale
         ns.db.pos, ns.db.scale = {}, {}
         for k, v in pairs(type(keepPos) == "table" and keepPos or {}) do ns.db.pos[k] = v end
         for k, v in pairs(type(keepScale) == "table" and keepScale or {}) do ns.db.scale[k] = v end
-        ns.db.pos.questGuide, ns.db.scale.questGuide = { "CENTER", "CENTER", 10, 20 }, 1.2     -- (N2: an unlocked tester's code carries the panel's place)
+        ns.db.pos.questGuide, ns.db.scale.questGuide = { "CENTER", "CENTER", 10, 20 }, 1.2     -- (N2: a code carries the panel's place)
         local code, pack = ns:ExportProfile(), ns:ExportPack()
         ns.db.pos, ns.db.scale = keepPos, keepScale
-        ns.GuideUnlocked = function() return false end
-        local function NoGated(name, where)
+        local function HasGuide(name, where)
             local p = ns.root.profiles[name]
             if type(p) ~= "table" then error(where .. ": no profile stored") end
-            for k in pairs(p) do if ns.GuideGatedKey(k) then error(where .. ": a locked player's profile holds " .. k) end end
-            for _, t in ipairs({ "pos", "scale" }) do
-                if type(p[t]) == "table" and p[t].questGuide ~= nil then error(where .. ": a locked player's profile holds " .. t .. ".questGuide") end
-            end
+            if p.plannerGroup == nil or p.questGuide == nil then error(where .. ": the profile has the guide's settings") end
         end
         local packed = ns.CleanPackProfile({ pos = { questGuide = { "CENTER", "CENTER", 1, 2 }, other = { "CENTER", "CENTER", 3, 4 } }, scale = { questGuide = 1.1, other = 1 } })
-        if packed.pos.questGuide or packed.scale.questGuide or not packed.pos.other or packed.scale.other ~= 1 then error("N2: a locked pack keeps no guide panel place, and keeps the rest") end
+        if not packed.pos.questGuide or packed.scale.questGuide ~= 1.1 or not packed.pos.other or packed.scale.other ~= 1 then error("N2: a pack keeps the guide panel's place, and the rest") end
         local okT, _, tname = ns:NewTemplateProfile("TANK")
         if not okT then error("the template") end
-        NoGated(tname, "role template")
+        HasGuide(tname, "role template")
         if not ns:ImportProfile("Review import", code) then error("the import") end
-        NoGated("Review import", "profile import")
+        HasGuide("Review import", "profile import")
+        local imported = ns.root.profiles["Review import"]
+        if not (imported.pos and imported.pos.questGuide and imported.scale and imported.scale.questGuide == 1.2) then error("the import keeps the guide panel's place and size") end
         if not ns:ImportPack("Review pack", pack, false) then error("the pack") end
-        NoGated("Review pack", "pack import")
-        ns.GuideUnlocked = function() return true end
-        local okT2, _, tname2 = ns:NewTemplateProfile("TANK")
-        if not (okT2 and ns.root.profiles[tname2].plannerMapLine ~= nil) then error("unlocked: a template has the guide settings") end
+        HasGuide("Review pack", "pack import")
 
         -- M5: the catch-up page's action row in the theme's style, read aloud as it opens
         local lines, spoken
@@ -23261,7 +22774,7 @@ try("polish review: the final review's fixes", function()
     env.C_QuestLog, env.GetTime, env.C_Map = saved.ql, saved.time, saved.map
     rawset(env, "MinimapCluster", saved.cluster); rawset(env, "QuestInfoFrame", saved.qframe); rawset(env, "QuestInfo_GetRewardButton", saved.button)
     rawset(env, "GetNumQuestChoices", saved.choices); rawset(env, "GetQuestItemLink", saved.link); ns.UpgradeAmount = saved.up
-    ns.GuideUnlocked, ns.GuideOn, ns.PrintRaw, ns.PlannerReplan, ns.GuidePlanAgain = saved.unlocked, saved.on, saved.raw, saved.replan, saved.again
+    ns.GuideOn, ns.PrintRaw, ns.PlannerReplan, ns.GuidePlanAgain = saved.on, saved.raw, saved.replan, saved.again
     ns.Speak, ns.db.readDialog, ns.ShowList, ns.Role = saved.speak, saved.read, saved.show, saved.role
     ns.db.windowKeys, ns.FrontList, ns.WindowKeysFront = saved.winKeys, saved.front, saved.wfront
     ns.ReadSetLastWhisper(nil)
@@ -23272,14 +22785,13 @@ end)
 -- polish review: end
 -- gold tests seams: begin
 try("gold seams: ideas, jobs and ranking", function()
-    local keep = { unlocked = ns.GuideUnlocked, combat = env.InCombatLockdown, clock = env.debugprofilestop, secret = ns.IsSecret,
+    local keep = { combat = env.InCombatLockdown, clock = env.debugprofilestop, secret = ns.IsSecret,
         errors = ns.errors, weights = ns.root.goldWeights, chars = ns.root.goldChars, vendor = ns.root.goldVendor,
         entry = ns.PriceEntry, info = ns.GetItemInfo, today = ns.Today, travel = ns.GoldTravel, map = env.C_Map, sources = nil }
     local ok, err = pcall(function()
         if type(ns.GoldIdeaValid) ~= "function" then error("ns.GoldIdeaValid is nil") end
         keep.sources = ns.GoldSources()
         for key in pairs(keep.sources) do ns.GoldRegister(key, nil) end
-        ns.GuideUnlocked = function() return true end
         ns.errors = {}
         fireEvent("PLAYER_REGEN_ENABLED")
         local today = 20261125
@@ -23462,7 +22974,7 @@ try("gold seams: ideas, jobs and ranking", function()
         env.InCombatLockdown = function() return true end
         if ns.GoldGo(idea) ~= false then error("not during a fight") end
     end)
-    ns.GuideUnlocked, env.InCombatLockdown, env.debugprofilestop, ns.IsSecret = keep.unlocked, keep.combat, keep.clock, keep.secret
+    env.InCombatLockdown, env.debugprofilestop, ns.IsSecret = keep.combat, keep.clock, keep.secret
     ns.errors, ns.root.goldWeights, ns.root.goldChars, ns.root.goldVendor = keep.errors, keep.weights, keep.chars, keep.vendor
     ns.PriceEntry, ns.GetItemInfo, ns.Today, ns.GoldTravel, env.C_Map = keep.entry, keep.info, keep.today, keep.travel, keep.map
     if ns.GoldRegister then
@@ -23471,8 +22983,8 @@ try("gold seams: ideas, jobs and ranking", function()
     end
     if not ok then error(err, 0) end
 end)
-try("gold seams: the window, the panel, hidden while locked", function()
-    local keep = { key = ns.root.guideKey, unlocked = ns.GuideUnlocked, ctrl = env.IsControlKeyDown, combat = env.InCombatLockdown, money = env.GetMoney,
+try("gold seams: the window and the panel", function()
+    local keep = { ctrl = env.IsControlKeyDown, combat = env.InCombatLockdown, money = env.GetMoney,
         ahf = rawget(env, "AuctionHouseFrame"), house = ns.PriceHouse, chars = ns.root.goldChars, weights = ns.root.goldWeights, vendor = ns.root.goldVendor,
         mobs = ns.root.goldMobs, gather = ns.root.goldGather, guides = ns.root.guides, state = ns.root.guideState, today = ns.Today,
         perfOn = ns.perfOn, perfData = ns.perfData, clock = env.debugprofilestop, cf = env.CreateFrame, dropped = ns.goldDropped, opens = ns.goldOpens }
@@ -23484,36 +22996,10 @@ try("gold seams: the window, the panel, hidden while locked", function()
         local function Handler(obj, name) for i = #handlers, 1, -1 do local h = handlers[i]; if h.self == obj and h.name == name then return h.fn end end end
         local function Click(b, button) local f = Handler(b, "OnClick"); if not f then error("nothing to click") end; f(b, button or "LeftButton") end
         local function Settle() local n = 0; while ns.GoldBusy() and n < 200 do ns.GoldRunSlice(); n = n + 1 end; runTimers() end
-        local function Said(from, text) for i = from + 1, #printed do if tostring(printed[i]):find(text, 1, true) then return true end end return false end
-        -- locked: no way in, nothing made, nothing translated
-        ns.root.guideKey = nil
-        local goldWords = { "Ways to make gold", "Ctrl-click: ways to make gold", "Gold ideas here", "Gold an hour" }
-        keep.seenWords = {}
-        for _, s in ipairs(goldWords) do keep.seenWords[s] = ns.seenStrings[s]; ns.seenStrings[s] = nil end   -- (an earlier unlocked test may have shown the panel's menu)
-        if ns:GoldOpen() ~= nil then error("locked: no window") end
         local added = 0
         local tip = { AddLine = function() added = added + 1 end, AddDoubleLine = function() added = added + 1 end }
-        ns.LauncherTipExtra(tip)
-        if added ~= 0 then error("locked: no launcher line") end
         env.IsControlKeyDown = function() return true end
-        if ns.LauncherClickExtra("LeftButton") ~= false then error("locked: Ctrl-click is the usual click") end
-        local mark = #printed
-        env.SlashCmdList["FANTASYGLASSUI"]("guide gold")
-        if not Said(mark, "Quest guides are coming soon.") then error("locked: /fgui guide gold is the usual answer") end
-        ns.perfOn, ns.perfData = true, {}
-        fireEvent("AUCTION_HOUSE_SHOW"); fireEvent("AUCTION_HOUSE_CLOSED")
-        local timed = ns.perfData.Gold
-        ns.perfOn, ns.perfData = keep.perfOn, keep.perfData
-        if timed ~= nil then error("locked: nothing named Gold in /fgui perf") end
-        if ns.goldPanel ~= nil or rawget(env, "FantasyGlassUIGoldAH") ~= nil then error("locked: no auction house panel") end
-        fireEvent("PLAYER_ENTERING_WORLD"); runTimers()
-        if ns.goldWindow ~= nil or rawget(env, "FantasyGlassUIGold") ~= nil then error("locked: nothing made at login") end
-        for _, s in ipairs(goldWords) do
-            if ns.seenStrings[s] ~= nil then error("locked: never translated: " .. s) end
-        end
-        for s, v in pairs(keep.seenWords) do if ns.seenStrings[s] == nil then ns.seenStrings[s] = v end end
-        -- unlocked: the launcher, with no sources (and old records forgotten on the first open)
-        ns.GuideUnlocked = function() return true end
+        -- the launcher, with no sources (and old records forgotten on the first open)
         local today = 20261125
         ns.Today = function() return today end
         ns.goldTest.Reset()
@@ -23525,7 +23011,7 @@ try("gold seams: the window, the panel, hidden while locked", function()
         ns.root.goldChars, ns.root.goldWeights = { ["Gone - Realm"] = { seen = 20260509, recipes = {} }, ["Fresh - Realm"] = { seen = 20261101 },
             ["Unstamped - Realm"] = { recipes = {} } }, nil
         ns.LauncherTipExtra(tip)
-        if added ~= 1 then error("unlocked: the launcher says Ctrl-click") end
+        if added ~= 1 then error("the launcher says Ctrl-click") end
         ns.LauncherClick("LeftButton")
         local w = ns.goldWindow
         if not w or rawget(w, "suiLook") ~= "settings" or ns.goldOpens ~= 1 then error("Ctrl-click opens the window, in the settings look") end
@@ -23558,7 +23044,7 @@ try("gold seams: the window, the panel, hidden while locked", function()
         rawset(gp, "layoutSig", nil)
         ns:GuideRedraw()
         rawset(gp.more, "SetShown", nil)
-        if moreOn ~= true then error("a written guide, unlocked: the panel's \"...\" is shown") end
+        if moreOn ~= true then error("a written guide: the panel's \"...\" is shown") end
         local realMenu = ns.GuideMenu
         ns.GuideMenu = function(_, entries) menu = entries end
         Click(gp.more)
@@ -23696,60 +23182,6 @@ try("gold seams: the window, the panel, hidden while locked", function()
         if calls ~= c0 + 1 then error("a new scan collects again") end
         fireEvent("AUCTION_HOUSE_CLOSED")
         if rawget(p, "suiGoldOn") ~= false then error("closed with the auction house") end
-        -- locked again while the window is up: the tick hides it and stops, the job waits, and nothing
-        -- named Gold is timed
-        ns:GoldOpen(); Settle()
-        ns.GoldJob(function() coroutine.yield() end, "t:locked")
-        ns.GuideUnlocked = function() return false end
-        ns.perfOn, ns.perfData = true, {}
-        local tickFrame = ns.goldTick
-        local onTick = tickFrame and Handler(tickFrame, "OnUpdate")
-        if not onTick then error("the jobs' tick") end
-        onTick(tickFrame, 0.01)
-        local timedLocked = ns.perfData.Gold
-        ns.perfOn, ns.perfData = keep.perfOn, keep.perfData
-        if rawget(w, "suiGoldOn") ~= false then error("locked again: the window hides") end
-        if timedLocked ~= nil then error("locked again: nothing named Gold is timed") end
-        if not ns.GoldBusy("t:locked") then error("locked: the job waits") end
-        ns.GuideUnlocked = function() return true end
-        onTick(tickFrame, 0.01)
-        Settle()
-        if ns.GoldBusy("t:locked") then error("unlocked: the tick runs the job") end
-        -- a collect queued before a lock runs once the window is opened again after the unlock
-        local tickShown
-        rawset(tickFrame, "Show", function() tickShown = true end)
-        rawset(tickFrame, "Hide", function() tickShown = false end)
-        ns:GoldOpen()
-        if not ns.GoldBusy("collect:window") then error("opening queues a collect") end
-        ns.GuideUnlocked = function() return false end
-        onTick(tickFrame, 0.01)
-        if tickShown ~= false or not ns.GoldBusy("collect:window") then error("locked: the tick stops, the collect waits") end
-        ns.GuideUnlocked = function() return true end
-        ns:GoldOpen()
-        if not tickShown then error("opened again: the tick runs again for the waiting collect") end
-        local ticks = 0
-        while ns.GoldBusy() and ticks < 400 do onTick(tickFrame, 0.01); ticks = ticks + 1 end
-        runTimers(); Settle()
-        rawset(tickFrame, "Show", nil); rawset(tickFrame, "Hide", nil)
-        local afterUnlock = ns.GoldWindowLines().ranked[1]
-        if ns.GoldBusy("collect:window") or afterUnlock == "Looking for ways to make gold..." then error("after the unlock the window fills: " .. tostring(afterUnlock)) end
-        -- callbacks scheduled before a lock do nothing after it: no perf row, no collect, no stamp
-        local me = ns:CharKey()
-        ns.root.goldChars = { [me] = {} }
-        fireEvent("BAG_UPDATE_DELAYED")                           -- (a collect 2 s later)
-        ns:After(0, function() end)
-        ns.GuideUnlocked = function() return false end
-        ns.perfOn, ns.perfData = true, {}
-        runTimers()
-        local panelTick = Handler(p, "OnUpdate")
-        panelTick(p, 6)
-        local lateRow = ns.perfData.Gold
-        ns.perfOn, ns.perfData = keep.perfOn, keep.perfData
-        ns.GuideUnlocked = function() return true end
-        if lateRow ~= nil then error("a callback from before the lock is not timed") end
-        if ns.GoldBusy("collect:window") or ns.GoldBusy("collect:auction") then error("a callback from before the lock queues nothing") end
-        if ns.root.goldChars[me].seen ~= nil then error("a callback from before the lock stamps nothing") end
-        ns.root.goldChars = nil
         -- a list's title or note shown as it is
         ns:ShowList("GoldRawTest", "Made 7 x Thing", {}, "Note 9 x", nil, nil, { rawTitle = true, rawNote = true })
         if ns.seenStrings["Made 7 x Thing"] ~= nil or ns.seenStrings["Note 9 x"] ~= nil then error("rawTitle and rawNote are not translated") end
@@ -23758,7 +23190,7 @@ try("gold seams: the window, the panel, hidden while locked", function()
         ns.seenStrings["Made 8 x Thing"] = nil
         ns:ListWindow("GoldRawTest"):Hide()
     end)
-    ns.root.guideKey, ns.GuideUnlocked, env.IsControlKeyDown, env.InCombatLockdown, env.GetMoney = keep.key, keep.unlocked, keep.ctrl, keep.combat, keep.money
+    env.IsControlKeyDown, env.InCombatLockdown, env.GetMoney = keep.ctrl, keep.combat, keep.money
     for s, v in pairs(keep.seenWords or {}) do if ns.seenStrings[s] == nil then ns.seenStrings[s] = v end end
     env.AuctionHouseFrame, ns.PriceHouse, ns.Today = keep.ahf, keep.house, keep.today
     ns.root.goldChars, ns.root.goldWeights, ns.root.goldVendor, ns.root.goldMobs, ns.root.goldGather = keep.chars, keep.weights, keep.vendor, keep.mobs, keep.gather
@@ -23776,7 +23208,7 @@ end)
 -- gold tests seams: end
 -- gold tests A (sell): begin
 try("gold A: bags, junk and vendor flips", function()
-    local keep = { unlocked = ns.GuideUnlocked, today = ns.Today, vendor = ns.root.goldVendor, info = ns.GetItemInfo, hint = ns.SellHintFor,
+    local keep = { today = ns.Today, vendor = ns.root.goldVendor, info = ns.GetItemInfo, hint = ns.SellHintFor,
         priceItems = ns.PriceItems, bagItems = ns.AuctionBagItems, clock = env.debugprofilestop, inv = ns.root.inventory, passes = ns.goldVendorPasses,
         num = rawget(env, "GetMerchantNumItems"), mid = rawget(env, "GetMerchantItemID"), mf = rawget(env, "C_MerchantFrame"), merchant = rawget(env, "MerchantFrame"),
         cost = rawget(env, "GetMerchantItemCostInfo"), citem = rawget(env, "C_Item"), combat = env.InCombatLockdown, date = env.date }
@@ -23817,10 +23249,6 @@ try("gold A: bags, junk and vendor flips", function()
         env.C_MerchantFrame = { GetItemInfo = function(i) return slots[i] and slots[i][2] end }
         ns.root.goldVendor = nil
         ns.goldVendorPasses = 0
-        ns.GuideUnlocked = function() return false end
-        fireEvent("MERCHANT_SHOW"); runTimers()
-        if ns.root.goldVendor ~= nil or ns.goldVendorPasses ~= 0 then error("locked: nothing recorded") end
-        ns.GuideUnlocked = function() return true end
         env.InCombatLockdown = function() return true end
         fireEvent("MERCHANT_SHOW"); runTimers(); Settle()
         if ns.root.goldVendor ~= nil or ns.goldVendorPasses ~= 0 then error("in a fight: nothing recorded") end
@@ -24014,7 +23442,7 @@ try("gold A: bags, junk and vendor flips", function()
         if not keptBest then error("the biggest flip is kept") end
         ns.GoldRegister("vflip", nil)
     end)
-    ns.GuideUnlocked, ns.Today, ns.root.goldVendor, ns.GetItemInfo, ns.SellHintFor = keep.unlocked, keep.today, keep.vendor, keep.info, keep.hint
+    ns.Today, ns.root.goldVendor, ns.GetItemInfo, ns.SellHintFor = keep.today, keep.vendor, keep.info, keep.hint
     ns.PriceItems, ns.AuctionBagItems, env.debugprofilestop, ns.root.inventory, ns.goldVendorPasses = keep.priceItems, keep.bagItems, keep.clock, keep.inv, keep.passes
     env.GetMerchantNumItems, env.GetMerchantItemID, env.C_MerchantFrame, env.MerchantFrame = keep.num, keep.mid, keep.mf, keep.merchant
     env.GetMerchantItemCostInfo, env.C_Item, env.InCombatLockdown, env.date = keep.cost, keep.citem, keep.combat, keep.date
@@ -24035,7 +23463,7 @@ try("gold B: monsters worth killing", function()
     local keepEnv = {}
     local keepSlotType = env.Enum.LootSlotType
     for _, n in ipairs(envNames) do keepEnv[n] = rawget(env, n) end
-    local keep = { unlocked = ns.GuideUnlocked, mobs = ns.root.goldMobs, chars = ns.root.goldChars, zones = ns.root.farmZones,
+    local keep = { mobs = ns.root.goldMobs, chars = ns.root.goldChars, zones = ns.root.farmZones,
         info = ns.GetItemInfo, entry = ns.PriceEntry, today = ns.Today, loaded = env.C_AddOns.IsAddOnLoaded, sources = nil }
     local ok, err = pcall(function()
         if type(ns.GoldMobNote) ~= "function" or type(ns.GoldFarmIdeas) ~= "function" then error("ns.GoldMobNote is nil") end
@@ -24043,7 +23471,6 @@ try("gold B: monsters worth killing", function()
         for key in pairs(keep.sources) do ns.GoldRegister(key, nil) end
         local function Drain() local n = 0; while ns.GoldBusy() and n < 2000 do ns.GoldRunSlice(); n = n + 1 end; return n end
         Drain()
-        ns.GuideUnlocked = function() return true end
         env.InCombatLockdown = function() return false end
         fireEvent("PLAYER_REGEN_ENABLED")
         local today = 20261125
@@ -24107,10 +23534,6 @@ try("gold B: monsters worth killing", function()
         local a, b = ns.root.goldMobs[590], ns.root.goldMobs[591]
         if not (a and b) or a.items[2589] ~= 1 or b.items[2589] ~= 2 or a.copper ~= 0 or b.copper ~= 0 or a.loots ~= 1 then error("two monsters: items kept, no coin") end
         if a.name ~= nil then error("a name only from the target") end
-        ns.GuideUnlocked = function() return false end
-        Loot({ { link = LINEN, qty = 1, src = { Guid(592), 1 } } }, 10)
-        ns.GuideUnlocked = function() return true end
-        if ns.root.goldMobs[592] ~= nil then error("locked: nothing kept") end
         -- the caps: 12 items a monster, 400 monsters
         local many = {}
         for i = 1, 13 do many[5000 + i] = i; vendor[5000 + i] = 10 end
@@ -24361,7 +23784,7 @@ try("gold B: monsters worth killing", function()
     for _, n in ipairs(envNames) do rawset(env, n, keepEnv[n]) end
     env.Enum.LootSlotType = keepSlotType
     env.C_AddOns.IsAddOnLoaded = keep.loaded
-    ns.GuideUnlocked, ns.GetItemInfo, ns.PriceEntry, ns.Today = keep.unlocked, keep.info, keep.entry, keep.today
+    ns.GetItemInfo, ns.PriceEntry, ns.Today = keep.info, keep.entry, keep.today
     ns.root.goldMobs, ns.root.goldChars, ns.root.farmZones = keep.mobs, keep.chars, keep.zones
     ns.GoldRegister("t:farm400", nil)
     if keep.sources then
@@ -24372,14 +23795,13 @@ try("gold B: monsters worth killing", function()
 end)
 try("gold B: dungeon drops", function()
     local keepTime = rawget(env, "time")
-    local keep = { unlocked = ns.GuideUnlocked, runs = ns.root.runs, book = ns.root.lootBook, info = ns.GetItemInfo, entry = ns.PriceEntry,
+    local keep = { runs = ns.root.runs, book = ns.root.lootBook, info = ns.GetItemInfo, entry = ns.PriceEntry,
         today = ns.Today, sources = nil }
     local ok, err = pcall(function()
         if type(ns.GoldRunValue) ~= "function" then error("ns.GoldRunValue is nil") end
         keep.sources = ns.GoldSources()
         for key in pairs(keep.sources) do ns.GoldRegister(key, nil) end
         ns.GoldRegister("dungeon", keep.sources.dungeon)
-        ns.GuideUnlocked = function() return true end
         local today, now = 20261125, 1800000000
         ns.Today = function() return today end
         env.time = function() return now end
@@ -24445,7 +23867,7 @@ try("gold B: dungeon drops", function()
         if #ns.GoldCollectNow(ns.GoldContext("auction")) ~= 0 then error("nothing for the auction house panel") end
     end)
     rawset(env, "time", keepTime)
-    ns.GuideUnlocked, ns.GetItemInfo, ns.PriceEntry, ns.Today = keep.unlocked, keep.info, keep.entry, keep.today
+    ns.GetItemInfo, ns.PriceEntry, ns.Today = keep.info, keep.entry, keep.today
     ns.root.runs, ns.root.lootBook = keep.runs, keep.book
     if keep.sources then
         for key in pairs(ns.GoldSources()) do ns.GoldRegister(key, nil) end
@@ -24456,7 +23878,7 @@ end)
 -- gold tests B (farm): end
 -- gold tests C (gather): begin
 try("gold C: gathering", function()
-    local keep = { unlocked = ns.GuideUnlocked, map = env.C_Map, time = env.GetTime, num = env.GetNumLootItems, link = env.GetLootSlotLink,
+    local keep = { map = env.C_Map, time = env.GetTime, num = env.GetNumLootItems, link = env.GetLootSlotLink,
         info = env.GetLootSlotInfo, profs = env.GetProfessions, prof = env.GetProfessionInfo, world = ns.PlannerWorldPos, value = ns.GoldItemValue,
         today = ns.Today, seen = ns.root.goldNodesSeen, items = ns.root.goldNodeItems, gather = ns.root.goldGather, planner = ns.root.plannerNodesSeen,
         secret = ns.IsSecret, yards = ns.PLANNER_NODE_YARDS, switch = ns.db.plannerGather }
@@ -24473,11 +23895,7 @@ try("gold C: gathering", function()
         cm.GetMapInfo = function(m) return { name = ({ [1429] = "Elwynn Forest", [1436] = "Westfall" })[m] or "Somewhere" } end
         env.C_Map = cm
         ns.PlannerWorldPos = function(map, x, y) if map == 1429 then return 0, x * 100, y * 100 end end
-        -- node recording (the planner's one recorder, into the one memory): once a spot, never while locked
-        ns.GuideUnlocked = function() return false end
-        fireEvent("UNIT_SPELLCAST_SENT", "player", "Peacebloom", nil, 2366)
-        if ns.root.plannerNodesSeen ~= nil then error("nothing is recorded while locked") end
-        ns.GuideUnlocked = function() return true end
+        -- node recording (the planner's one recorder, into the one memory): once a spot
         fireEvent("UNIT_SPELLCAST_SENT", "player", "Peacebloom", nil, 2366)
         local list = ns.root.plannerNodesSeen and ns.root.plannerNodesSeen[1429]
         if type(list) ~= "table" or #list ~= 1 or ns.root.goldNodesSeen ~= nil then error("one node recorded, in the planner's memory") end
@@ -24509,11 +23927,7 @@ try("gold C: gathering", function()
         fireEvent("UNIT_SPELLCAST_SUCCEEDED", "player", nil, 2366); clock = 1026; fireEvent("LOOT_OPENED")
         fireEvent("LOOT_OPENED")
         fireEvent("UNIT_SPELLCAST_SUCCEEDED", "player", nil, 133); fireEvent("LOOT_OPENED")
-        fireEvent("UNIT_SPELLCAST_SUCCEEDED", "player", nil, 2366)
-        ns.GuideUnlocked = function() return false end
-        fireEvent("LOOT_OPENED")
-        ns.GuideUnlocked = function() return true end
-        if g.n ~= before or got.n ~= 2 then error("only a gathering's loot within 5 s, and never while locked") end
+        if g.n ~= before or got.n ~= 2 then error("only a gathering's loot within 5 s") end
         -- hidden or odd values, the planner's switch, its node distance, no world position, the cap
         local hidden = {}
         ns.IsSecret = function(self, v) if rawequal(v, hidden) then return true end return keep.secret(self, v) end
@@ -24651,7 +24065,7 @@ try("gold C: gathering", function()
         ns.GoldSources().gather(ctx, Add)
         if not Find("gather:1436:182") then error("the source reads your skills") end
     end)
-    ns.GuideUnlocked, env.C_Map, env.GetTime, env.GetNumLootItems, env.GetLootSlotLink, env.GetLootSlotInfo = keep.unlocked, keep.map, keep.time, keep.num, keep.link, keep.info
+    env.C_Map, env.GetTime, env.GetNumLootItems, env.GetLootSlotLink, env.GetLootSlotInfo = keep.map, keep.time, keep.num, keep.link, keep.info
     env.GetProfessions, env.GetProfessionInfo, ns.PlannerWorldPos, ns.GoldItemValue, ns.Today = keep.profs, keep.prof, keep.world, keep.value, keep.today
     ns.root.goldNodesSeen, ns.root.goldNodeItems, ns.root.goldGather, ns.root.plannerNodesSeen = keep.seen, keep.items, keep.gather, keep.planner
     ns.IsSecret, ns.PLANNER_NODE_YARDS, ns.db.plannerGather = keep.secret, keep.yards, keep.switch
@@ -24660,7 +24074,7 @@ end)
 -- gold tests C (gather): end
 -- gold tests D (craft): begin
 try("gold D: crafting for profit", function()
-    local keep = { unlocked = ns.GuideUnlocked, combat = env.InCombatLockdown, T = env.C_TradeSkillUI, count = env.C_Item.GetItemCount,
+    local keep = { combat = env.InCombatLockdown, T = env.C_TradeSkillUI, count = env.C_Item.GetItemCount,
         owners = ns.ItemOwners, entry = ns.PriceEntry, info = ns.GetItemInfo, today = ns.Today, vbuy = ns.GoldVendorBuy, chars = ns.root.goldChars,
         inv = ns.root.inventory, clock = env.debugprofilestop }
     local ok, err = pcall(function()
@@ -24685,10 +24099,6 @@ try("gold D: crafting for profit", function()
             GetRecipeInfo = function(id) return { recipeID = id, name = (id == 1) and "Heavy Linen Bandage" or "Other", learned = (id ~= 2) } end,
             GetRecipeSchematic = function(id) return schem[id] end,
             GetBaseProfessionInfo = function() return { professionName = "First Aid" } end }
-        ns.GuideUnlocked = function() return false end
-        fireEvent("TRADE_SKILL_SHOW"); runTimers(); Settle()
-        if ns.root.goldChars ~= nil then error("locked: no recipes read") end
-        ns.GuideUnlocked = function() return true end
         env.InCombatLockdown = function() return true end
         fireEvent("TRADE_SKILL_SHOW"); runTimers(); Settle()
         if ns.root.goldChars ~= nil then error("in a fight nothing runs") end
@@ -24825,7 +24235,7 @@ try("gold D: crafting for profit", function()
         ns.root.goldChars = nil
         if #got ~= 0 or #ns.GoldCollectNow(ctx) ~= 0 then error("no recipes: no ideas") end
     end)
-    ns.GuideUnlocked, env.InCombatLockdown, env.C_TradeSkillUI, env.C_Item.GetItemCount = keep.unlocked, keep.combat, keep.T, keep.count
+    env.InCombatLockdown, env.C_TradeSkillUI, env.C_Item.GetItemCount = keep.combat, keep.T, keep.count
     ns.ItemOwners, ns.PriceEntry, ns.GetItemInfo, ns.Today, ns.GoldVendorBuy, ns.root.goldChars = keep.owners, keep.entry, keep.info, keep.today, keep.vbuy, keep.chars
     ns.root.inventory, env.debugprofilestop = keep.inv, keep.clock
     fireEvent("PLAYER_REGEN_ENABLED")
@@ -24833,7 +24243,7 @@ try("gold D: crafting for profit", function()
     if not ok then error(err, 0) end
 end)
 try("gold D: auction flips", function()
-    local keep = { info = ns.GetItemInfo, clock = env.debugprofilestop, today = ns.Today, items = ns.PriceItems, unlocked = ns.GuideUnlocked }
+    local keep = { info = ns.GetItemInfo, clock = env.debugprofilestop, today = ns.Today, items = ns.PriceItems }
     local ok, err = pcall(function()
         if type(ns.GoldFlipIdeas) ~= "function" then error("ns.GoldFlipIdeas is nil") end
         keep.sources = ns.GoldSources()
@@ -24842,7 +24252,6 @@ try("gold D: auction flips", function()
         fireEvent("PLAYER_REGEN_ENABLED")
         local function Settle() local n = 0; while ns.GoldBusy() and n < 400 do ns.GoldRunSlice(); n = n + 1 end end
         Settle()
-        ns.GuideUnlocked = function() return true end
         local today = 20261125
         ns.Today = function() return today end
         ns.GetItemInfo = function(self, id) return "Item " .. id, nil, (id == 9) and 0 or 2, nil, nil, nil, nil, nil, nil, nil, 1 end
@@ -24906,14 +24315,14 @@ try("gold D: auction flips", function()
         ns.PriceItems = function() return {} end
         if #ns.GoldCollectNow(ctx) ~= 0 then error("no prices: no flips") end
     end)
-    ns.GetItemInfo, env.debugprofilestop, ns.Today, ns.PriceItems, ns.GuideUnlocked = keep.info, keep.clock, keep.today, keep.items, keep.unlocked
+    ns.GetItemInfo, env.debugprofilestop, ns.Today, ns.PriceItems = keep.info, keep.clock, keep.today, keep.items
     for key, fn in pairs(keep.sources or {}) do ns.GoldRegister(key, fn) end
     if not ok then error(err, 0) end
 end)
 -- gold tests D (craft): end
 -- gold tests together: begin
 try("gold together: one window from every source", function()
-    local keep = { unlocked = ns.GuideUnlocked, today = ns.Today, items = ns.PriceItems, entry = ns.PriceEntry, info = ns.GetItemInfo,
+    local keep = { today = ns.Today, items = ns.PriceItems, entry = ns.PriceEntry, info = ns.GetItemInfo,
         bags = ns.AuctionBagItems, owners = ns.ItemOwners, house = ns.PriceHouse, dropped = ns.goldDropped, opens = ns.goldOpens,
         vendor = ns.root.goldVendor, chars = ns.root.goldChars, mobs = ns.root.goldMobs, gather = ns.root.goldGather, weights = ns.root.goldWeights,
         seen = ns.root.goldNodesSeen, planner = ns.root.plannerNodesSeen, zones = ns.root.farmZones, runs = ns.root.runs, book = ns.root.lootBook,
@@ -24930,7 +24339,6 @@ try("gold together: one window from every source", function()
         local function Handler(obj, name) for i = #handlers, 1, -1 do local h = handlers[i]; if h.self == obj and h.name == name then return h.fn end end end
         local function Settle() local n = 0; while ns.GoldBusy() and n < 2000 do ns.GoldRunSlice(); n = n + 1 end; runTimers() end
         fireEvent("PLAYER_REGEN_ENABLED"); Settle()
-        ns.GuideUnlocked = function() return true end
         local today, now = 20261125, 1800000000
         ns.Today = function() return today end
         rawset(env, "time", function() return now end)
@@ -25098,36 +24506,8 @@ try("gold together: one window from every source", function()
         end
         ns.GoldSetGoal(nil)
         rawset(w.goalBox, "GetText", nil)
-        -- locked again: nothing opens
-        ns.GuideUnlocked = function() return false end
-        local opens = ns.goldOpens
-        if ns:GoldOpen() ~= nil or ns.goldOpens ~= opens then error("locked: the window does not open") end
-        env.IsControlKeyDown = function() return true end
-        if ns.LauncherClickExtra("LeftButton") ~= false then error("locked: Ctrl-click is the usual click") end
-        local added = 0
-        ns.LauncherTipExtra({ AddLine = function() added = added + 1 end })
-        if added ~= 0 then error("locked: no launcher line") end
-        env.IsControlKeyDown = keep.ctrl
-        local perfOn, perfData = ns.perfOn, ns.perfData
-        ns.perfOn, ns.perfData = true, {}
-        fireEvent("AUCTION_HOUSE_SHOW"); Settle()
-        local shown = rawget(p, "suiGoldOn") == true or ns:GoldAuctionShow() ~= nil
-        fireEvent("AUCTION_HOUSE_CLOSED")
-        -- every recorder is quiet too: nothing named Gold in /fgui perf
-        local lootN = env.GetNumLootItems
-        env.GetNumLootItems = function() return 0 end            -- (the loot browser and the upgrade check hear LOOT_OPENED too)
-        for _, e in ipairs({ "MERCHANT_SHOW", "MERCHANT_UPDATE", "LOOT_OPENED", "LOOT_CLOSED", "UNIT_SPELLCAST_SENT", "UNIT_SPELLCAST_SUCCEEDED",
-            "TRADE_SKILL_SHOW", "TRADE_SKILL_LIST_UPDATE", "BAG_UPDATE_DELAYED", "PLAYER_MONEY" }) do fireEvent(e, "player") end
-        env.GetNumLootItems = lootN
-        runTimers()
-        local timed = {}
-        local mine = { Gold = true, ["Gold loot"] = true, ["Gold gather"] = true, ["Gold recipes"] = true, ["Planner gather"] = true }   -- ("Gold history" is the public one; the planner's SENT recorder hands gathering to gold)
-        for label in pairs(ns.perfData) do if mine[label] then timed[#timed + 1] = tostring(label) end end
-        ns.perfOn, ns.perfData = perfOn, perfData
-        if shown then error("locked: the panel does not open") end
-        if #timed > 0 then error("locked: timed in /fgui perf: " .. table.concat(timed, ", ")) end
     end)
-    ns.GuideUnlocked, ns.Today, ns.PriceItems, ns.PriceEntry, ns.GetItemInfo = keep.unlocked, keep.today, keep.items, keep.entry, keep.info
+    ns.Today, ns.PriceItems, ns.PriceEntry, ns.GetItemInfo = keep.today, keep.items, keep.entry, keep.info
     ns.AuctionBagItems, ns.ItemOwners, ns.PriceHouse = keep.bags, keep.owners, keep.house
     ns.root.goldVendor, ns.root.goldChars, ns.root.goldMobs, ns.root.goldGather, ns.root.goldWeights = keep.vendor, keep.chars, keep.mobs, keep.gather, keep.weights
     ns.root.goldNodesSeen, ns.root.plannerNodesSeen, ns.root.farmZones, ns.root.runs, ns.root.lootBook = keep.seen, keep.planner, keep.zones, keep.runs, keep.book
@@ -25145,7 +24525,7 @@ try("gold together: one window from every source", function()
 end)
 -- gold tests together: end
 try("folders 0: one branch, one node memory", function()
-    local keep = { unlocked = ns.GuideUnlocked, here = ns.GuideHere, world = ns.PlannerWorldPos, open = ns.GoldOpen, sent = ns.GoldGatherSent,
+    local keep = { here = ns.GuideHere, world = ns.PlannerWorldPos, open = ns.GoldOpen, sent = ns.GoldGatherSent,
         yield = ns.GoldYield, print = ns.Print, secret = ns.IsSecret, errors = ns.errors, value = ns.GoldItemValue, known = ns.PlannerRidingKnown,
         planner = ns.root.plannerNodesSeen, seen = ns.root.goldNodesSeen, items = ns.root.goldNodeItems, gather = ns.root.goldGather,
         chars = ns.root.goldChars, guides = ns.root.guides, state = ns.root.guideState, switch = ns.db.plannerGather, guideOn = ns.db.questGuide,
@@ -25154,9 +24534,8 @@ try("folders 0: one branch, one node memory", function()
     local ok, err = pcall(function()
         local function Settle() local n = 0; while ns.GoldBusy() and n < 2000 do ns.GoldRunSlice(); n = n + 1 end end
         fireEvent("PLAYER_REGEN_ENABLED"); Settle()
-        ns.GuideUnlocked = function() return true end
         ns.db.questGuide = true
-        -- the panel: no Gold button of its own; a "..." entry, and /fgui guide gold, while unlocked only
+        -- the panel: no Gold button of its own; a "..." entry, and /fgui guide gold
         local opened = 0
         ns.GoldOpen = function() opened = opened + 1; return true end
         ns.root.guides, ns.root.guideState = {}, {}
@@ -25175,14 +24554,6 @@ try("folders 0: one branch, one node memory", function()
         if opened ~= 1 then error("the entry opens the gold window once: " .. opened) end
         ns:GuideCommand("gold")
         if opened ~= 2 then error("/fgui guide gold opens it too: " .. opened) end
-        local said
-        ns.Print = function(_, t) said = t end
-        ns.GuideUnlocked = function() return false end
-        if GoldEntry() then error("locked: no gold entry") end
-        ns:GuideCommand("gold")
-        ns.Print = keep.print
-        if opened ~= 2 or said ~= "Quest guides are coming soon." then error("locked: /fgui guide gold gives the usual answer: " .. tostring(said)) end
-        ns.GuideUnlocked = function() return true end
         ns:PlannerStop(); ns:GuideStop()
         -- one SENT recorder: the planner's, into its memory, handing every gathering to gold
         local sentArgs = {}
@@ -25284,15 +24655,11 @@ try("folders 0: one branch, one node memory", function()
         local route
         for _, i in ipairs(ideas) do if i.id == "gather:1436:182" then route = i end end
         if not route or #route.steps ~= 5 then error("while the fold is pending, the ideas see both memories: " .. tostring(route and #route.steps)) end
-        -- locked: the fold is not queued at a loading screen; unlocked, it is
+        -- the fold is queued at a loading screen
         ns.root.goldNodesSeen = { [1429] = { Node("Silverleaf", 40, 40) } }
         ns.root.plannerNodesSeen = {}
-        ns.GuideUnlocked = function() return false end
         fireEvent("PLAYER_ENTERING_WORLD")
-        if ns.GoldBusy("nodeFold") then error("locked: no fold at PLAYER_ENTERING_WORLD") end
-        ns.GuideUnlocked = function() return true end
-        fireEvent("PLAYER_ENTERING_WORLD")
-        if not ns.GoldBusy("nodeFold") then error("unlocked: the fold is queued at PLAYER_ENTERING_WORLD") end
+        if not ns.GoldBusy("nodeFold") then error("the fold is queued at PLAYER_ENTERING_WORLD") end
         Settle()
         if ns.root.goldNodesSeen ~= nil or #(ns.root.plannerNodesSeen[1429] or {}) ~= 1 then error("the loading screen's fold ran") end
         ns:PlannerStop()
@@ -25310,7 +24677,7 @@ try("folders 0: one branch, one node memory", function()
             if name ~= "mount" or not r or goal - 80 * 10000 ~= r.short then error(class .. ": gold's riding goal leaves what the planner's riding line says: " .. tostring(r and r.short)) end
         end
     end)
-    ns.GuideUnlocked, ns.GuideHere, ns.PlannerWorldPos, ns.GoldOpen, ns.GoldGatherSent = keep.unlocked, keep.here, keep.world, keep.open, keep.sent
+    ns.GuideHere, ns.PlannerWorldPos, ns.GoldOpen, ns.GoldGatherSent = keep.here, keep.world, keep.open, keep.sent
     ns.GoldYield, ns.Print, ns.IsSecret, ns.errors, ns.GoldItemValue, ns.PlannerRidingKnown = keep.yield, keep.print, keep.secret, keep.errors, keep.value, keep.known
     ns.root.plannerNodesSeen, ns.root.goldNodesSeen, ns.root.goldNodeItems, ns.root.goldGather = keep.planner, keep.seen, keep.items, keep.gather
     ns.root.goldChars, ns.root.guides, ns.root.guideState, ns.db.plannerGather, ns.db.questGuide = keep.chars, keep.guides, keep.state, keep.switch, keep.guideOn
@@ -25323,7 +24690,7 @@ try("folders 0: one branch, one node memory", function()
 end)
 -- folders tests seams: begin
 try("folders: seams", function()
-    local keep = { unlocked = ns.GuideUnlocked, open = ns.PlannerOpen, gold = ns.GoldOpen, state = ns.root.guideState, guides = ns.root.guides,
+    local keep = { open = ns.PlannerOpen, gold = ns.GoldOpen, state = ns.root.guideState, guides = ns.root.guides,
         on = ns.db.questGuide, print = ns.PrintRaw, level = env.UnitLevel, money = env.GetMoney, class = env.UnitClass, known = ns.PlannerRidingKnown,
         mount = ns.db.plannerMount, chars = ns.root.goldChars, world = ns.PlannerWorldPos, travel = ns.GoldTravel, load = ns.LoadPlanner,
         menu = ns.menuButton, hidden = ns.HiddenCommand }
@@ -25336,18 +24703,7 @@ try("folders: seams", function()
         ns.db.questGuide = true
         ns.root.guides = {}
         ns.root.guideState = { [ns:CharKey()] = nil }
-        -- locked: no Planner button, a palette with no extras, /fgui plan as today
-        ns.GuideUnlocked = function() return false end
         if ns.toolCommands.plan ~= nil then error("/fgui plan is no tool command") end
-        local said = {}
-        ns.PrintRaw = function(_, t) said[#said + 1] = tostring(t) end
-        env.SlashCmdList["FANTASYGLASSUI"]("plan")
-        local lockedSays = table.concat(said, "\n")
-        said = {}
-        ns.HiddenCommand = nil
-        env.SlashCmdList["FANTASYGLASSUI"]("plan")
-        ns.HiddenCommand = keep.hidden
-        if lockedSays ~= table.concat(said, "\n") or lockedSays == "" or opens ~= 0 then error("locked: /fgui plan says what it always said: " .. lockedSays) end
         local function Palette()
             local p = ns.toolPalette
             if not p then ns:ToggleToolsMenu(); p = ns.toolPalette; ns:ToggleToolsMenu() end
@@ -25363,29 +24719,7 @@ try("folders: seams", function()
             for _, b in pairs(p.extraButtons or {}) do rawset(b, "SetShown", nil) end
             return p, height, heading, shown
         end
-        if ns:GuideShowPanel() ~= nil then error("locked: no panel, so no Planner button") end
-        -- the palette with no extras registered, then with them, locked: the same, and no hidden word read
-        local words = { "Planner", "Ways to make gold" }
-        keep.words = {}
-        for _, w in ipairs(words) do keep.words[w] = ns.seenStrings[w]; ns.seenStrings[w] = nil end
-        local registered = ns.ToolExtrasList()
-        for _, e in ipairs(registered) do ns.RegisterToolExtra(e.key, nil) end
-        local p0, height0, heading0, shown0 = Palette()
-        local made0 = 0
-        for _ in pairs(p0.extraButtons or {}) do made0 = made0 + 1 end
-        for _, e in ipairs(registered) do ns.RegisterToolExtra(e.key, e.label, e.typed, e.fn, e.shown) end
-        if #ns.ToolExtrasList() ~= 2 then error("the two extras are registered again") end
-        local p, height, heading, shown = Palette()
-        local made = 0
-        for _ in pairs(p.extraButtons or {}) do made = made + 1 end
-        if #p.buttons ~= #ns.TOOL_MENU then error("the palette's own buttons") end
-        if height ~= height0 or height ~= p.baseHeight or heading ~= heading0 or made ~= made0 or shown.planner == true or shown.gold == true then
-            error("locked: the palette is the one with no extras: " .. tostring(height) .. " " .. tostring(height0) .. " " .. tostring(heading) .. " " .. made .. "/" .. made0) end
-        for _, w in ipairs(words) do
-            if ns.seenStrings[w] ~= nil then error("locked: the Tools menu read a hidden word: " .. w) end
-        end
-        -- unlocked: the panel's Planner button, the Tools extras, /fgui plan
-        ns.GuideUnlocked = function() return true end
+        -- the panel's Planner button, the Tools extras, /fgui plan
         ns.root.guideState = {}
         ns:GuideSetPlan({ name = ns.GUIDE_PLANNED, steps = { { kind = "note", text = "Somewhere" }, { kind = "note", text = "then" } } }, { logFits = false })
         ns:PlannerStop()
@@ -25396,19 +24730,13 @@ try("folders: seams", function()
         rawset(panel, "layoutSig", nil)
         ns:GuideRedraw()
         rawset(panel.planner, "SetShown", nil); rawset(panel.planner, "SetPoint", nil)
-        if plannerOn ~= true then error("unlocked: the panel's Planner button is shown") end
-        ns.GuideUnlocked = function() return false end           -- (locked again: a redraw never shows it)
-        rawset(panel.planner, "SetShown", function(_, v) if v then plannerOn = "shown while locked" end end)
-        ns:GuideRedraw()
-        rawset(panel.planner, "SetShown", nil)
-        ns.GuideUnlocked = function() return true end
-        if plannerOn ~= true then error("locked: the Planner button stays hidden") end
+        if plannerOn ~= true then error("the panel's Planner button is shown") end
         if not (at and at[1] == "RIGHT" and (at[2] == panel.more or at[2] == panel.list) and at[3] == "LEFT" and at[4] == -4 and at[5] == 0) then
             error("the Planner button sits left of the panel's menu button") end
         Click(panel.planner, "panel.planner")
         if opens ~= 1 then error("its click opens the planner") end
-        p, height, heading, shown = Palette()
-        if heading ~= true or shown.planner ~= true or shown.gold ~= true or not (height and height > p.baseHeight) then error("unlocked: the Guide heading and two extras") end
+        local p, height, heading, shown = Palette()
+        if heading ~= true or shown.planner ~= true or shown.gold ~= true or not (height and height > p.baseHeight) then error("the Guide heading and two extras") end
         Click(p.extraButtons.planner, "p.extraButtons.planner")
         if opens ~= 2 then error("the Tools menu's Planner opens it") end
         Click(p.extraButtons.gold, "p.extraButtons.gold")
@@ -25483,7 +24811,7 @@ try("folders: seams", function()
         if r ~= "travel" or loaded ~= 1 then error("Go: the planner's travel, loaded first: " .. tostring(r)) end
         if type(ns.GoldStepsList) ~= "function" then error("the steps list is exported") end
     end)
-    ns.GuideUnlocked, ns.PlannerOpen, ns.GoldOpen, ns.root.guideState, ns.root.guides = keep.unlocked, keep.open, keep.gold, keep.state, keep.guides
+    ns.PlannerOpen, ns.GoldOpen, ns.root.guideState, ns.root.guides = keep.open, keep.gold, keep.state, keep.guides
     ns.db.questGuide, ns.PrintRaw, env.UnitLevel, env.GetMoney, env.UnitClass, ns.PlannerRidingKnown = keep.on, keep.print, keep.level, keep.money, keep.class, keep.known
     ns.db.plannerMount, ns.root.goldChars, ns.PlannerWorldPos, ns.GoldTravel, ns.LoadPlanner, ns.HiddenCommand = keep.mount, keep.chars, keep.world, keep.travel, keep.load, keep.hidden
     if keep.map then env.C_Map = keep.map; rawset(env, "CreateVector2D", keep.vec) end
@@ -25494,11 +24822,10 @@ try("folders: seams", function()
     if not ok then error(err, 0) end
 end)
 try("folders: the Task 1 review's minors", function()
-    local keep = { unlocked = ns.GuideUnlocked, here = ns.GuideHere, planner = ns.root.plannerNodesSeen, seen = ns.root.goldNodesSeen,
+    local keep = { here = ns.GuideHere, planner = ns.root.plannerNodesSeen, seen = ns.root.goldNodesSeen,
         cap = ns.PLANNER_NODE_CAP, gather = ns.db.plannerGather, world = ns.PlannerWorldPos }
     local ok, err = pcall(function()
         local function Settle() local n = 0; while ns.GoldBusy() and n < 5000 do ns.GoldRunSlice(); n = n + 1 end end
-        ns.GuideUnlocked = function() return true end
         local function Node(name, x, y, sk) return { name = name, x = x, y = y, skill = sk or 182 } end
         -- one cap, the planner's, read by the fold too
         if ns.PLANNER_NODE_CAP ~= 300 then error("ns.PLANNER_NODE_CAP is the planner's 300") end
@@ -25548,7 +24875,7 @@ try("folders: the Task 1 review's minors", function()
         local l = ns.root.plannerNodesSeen[1429]
         if not (l and #l == 1) then error("the player's cast records its node") end
     end)
-    ns.GuideUnlocked, ns.GuideHere, ns.root.plannerNodesSeen, ns.root.goldNodesSeen = keep.unlocked, keep.here, keep.planner, keep.seen
+    ns.GuideHere, ns.root.plannerNodesSeen, ns.root.goldNodesSeen = keep.here, keep.planner, keep.seen
     ns.PLANNER_NODE_CAP, ns.db.plannerGather, ns.PlannerWorldPos = keep.cap, keep.gather, keep.world
     local n = 0
     while ns.GoldBusy and ns.GoldBusy() and n < 2000 do ns.GoldRunSlice(); n = n + 1 end
@@ -25587,11 +24914,10 @@ try("folders A: recorders moved, not copied", function()
     end
 end)
 try("folders A: the catch-up check, before the clock is saved", function()
-    local keep = { unlocked = ns.GuideUnlocked, on = ns.GuideOn, time = env.time, planner = ns.root.planner, catch = ns.PlannerCatchUp, load = ns.LoadPlanner }
+    local keep = { on = ns.GuideOn, time = env.time, planner = ns.root.planner, catch = ns.PlannerCatchUp, load = ns.LoadPlanner }
     local now, calls, seenAtCall, loads = 1800000000, {}, nil, 0
     local ok, err = pcall(function()
         env.time = function() return now end
-        ns.GuideUnlocked = function() return true end
         ns.GuideOn = function() return true end
         ns.root.planner = {}
         local rec = ns.PlannerCharRecord(true)
@@ -25611,12 +24937,12 @@ try("folders A: the catch-up check, before the clock is saved", function()
         fireEvent("PLAYER_ENTERING_WORLD", false, true)
         if #calls ~= 1 then error("a reload: no page") end
     end)
-    ns.GuideUnlocked, ns.GuideOn, env.time, ns.root.planner, ns.PlannerCatchUp, ns.LoadPlanner = keep.unlocked, keep.on, keep.time, keep.planner, keep.catch, keep.load
+    ns.GuideOn, env.time, ns.root.planner, ns.PlannerCatchUp, ns.LoadPlanner = keep.on, keep.time, keep.planner, keep.catch, keep.load
     ns.PlannerSeenReset()
     if not ok then error(err, 0) end
 end)
-try("folders A: the folder loaded mid-session, then a lock: the clock is right", function()
-    local keep = { unlocked = ns.GuideUnlocked, on = ns.GuideOn, time = env.time, planner = ns.root.planner, catch = ns.PlannerCatchUp }
+try("folders A: the folder loaded mid-session: the clock is right", function()
+    local keep = { on = ns.GuideOn, time = env.time, planner = ns.root.planner, catch = ns.PlannerCatchUp }
     local now, calls = 1800000000, 0
     local ok, err = pcall(function()
         env.time = function() return now end
@@ -25628,7 +24954,6 @@ try("folders A: the folder loaded mid-session, then a lock: the clock is right",
         -- the login, with the folder not loaded yet
         ns.PlannerSeenReset()
         ns.folderReady.planner = nil
-        ns.GuideUnlocked = function() return true end
         fireEvent("PLAYER_ENTERING_WORLD", true, false)
         if rec.lastSeen ~= now then error("the login saves the clock, folder or not") end
         -- the folder loads later in the session: the clock goes on being saved
@@ -25640,36 +24965,25 @@ try("folders A: the folder loaded mid-session, then a lock: the clock is right",
         now = now + 60
         fireEvent("PLAYER_LOGOUT")
         if rec.lastSeen ~= now then error("after a load mid-session: the logout's save") end
-        -- then a lock: nothing more is saved
-        ns.GuideUnlocked = function() return false end
-        local at = rec.lastSeen
-        now = now + 60
-        ns.PlannerSeenSave(); fireEvent("PLAYER_LOGOUT")
-        if rec.lastSeen ~= at then error("locked: the clock stops") end
-        -- and unlocked again: saved again
-        ns.GuideUnlocked = function() return true end
-        ns.PlannerSeenSave()
-        if rec.lastSeen ~= now then error("unlocked again: saved") end
         if calls ~= 0 then error("no catch-up page") end
     end)
     ns.folderReady.planner = true
-    ns.GuideUnlocked, ns.GuideOn, env.time, ns.root.planner, ns.PlannerCatchUp = keep.unlocked, keep.on, keep.time, keep.planner, keep.catch
+    ns.GuideOn, env.time, ns.root.planner, ns.PlannerCatchUp = keep.on, keep.time, keep.planner, keep.catch
     ns.PlannerPaceSync()
     ns.PlannerSeenReset()
     if not ok then error(err, 0) end
 end)
 try("folders A: a friend's ask once the planner is loaded: not handed over", function()
-    local keep = { unlocked = ns.GuideUnlocked, duoEvent = ns.PlannerDuoEvent, load = ns.LoadPlanner, ask = ns.db.plannerDuoAsk, duo = ns.plannerDuo }
+    local keep = { duoEvent = ns.PlannerDuoEvent, load = ns.LoadPlanner, ask = ns.db.plannerDuoAsk, duo = ns.plannerDuo }
     local handed, loads = 0, 0
     local ok, err = pcall(function()
-        ns.GuideUnlocked = function() return true end
         ns.db.plannerDuoAsk = false                             -- (the folder's own listener would answer: it is off, so it sends nothing)
         ns.PlannerDuoEvent = function() handed = handed + 1 end
         ns.LoadPlanner = function() loads = loads + 1; return true end
         fireEvent("CHAT_MSG_ADDON", "FGUIPlan", "D1:ASK:ab12cd:14", "WHISPER", "Mira-Realm")
         if handed ~= 0 or loads ~= 0 then error("loaded: the main add-on hands nothing over") end
     end)
-    ns.GuideUnlocked, ns.PlannerDuoEvent, ns.LoadPlanner, ns.db.plannerDuoAsk, ns.plannerDuo = keep.unlocked, keep.duoEvent, keep.load, keep.ask, keep.duo
+    ns.PlannerDuoEvent, ns.LoadPlanner, ns.db.plannerDuoAsk, ns.plannerDuo = keep.duoEvent, keep.load, keep.ask, keep.duo
     if not ok then error(err, 0) end
 end)
 -- folders tests A (planner recorders): end
@@ -25706,10 +25020,10 @@ end)
 -- folders tests B (gold recorders): end
 -- folders tests C (window): begin
 try("folders C: the planner window", function()
-    local keep = { unlocked = ns.GuideUnlocked, state = ns.root.guideState, guides = ns.root.guides, on = ns.db.questGuide,
+    local keep = { state = ns.root.guideState, guides = ns.root.guides, on = ns.db.questGuide,
         level = env.UnitLevel, money = env.GetMoney, class = env.UnitClass, known = ns.PlannerRidingKnown, gold = ns.GoldOpen,
         chars = ns.root.goldChars, intro = ns.PlannerIntro, seen = ns.root.plannerIntroSeen, open = ns.PlannerOpen,
-        hide = ns.HideConfig, cf = env.CreateFrame, keyNav = ns.db.keyNav, big = ns.db.bigControls, errors = #ns.errors, guideKey = ns.root.guideKey, db = {} }
+        hide = ns.HideConfig, cf = env.CreateFrame, keyNav = ns.db.keyNav, big = ns.db.bigControls, errors = #ns.errors, db = {} }
     for k, v in pairs(ns.db) do if type(k) == "string" and k:find("^planner") then keep.db[k] = v end end
     local ok, err = pcall(function()
         local function Handlers(obj, name) local l = {}; for i = 1, #handlers do local h = handlers[i]; if h.self == obj and h.name == name then l[#l + 1] = h.fn end end; return l end
@@ -25725,18 +25039,9 @@ try("folders C: the planner window", function()
         env.UnitLevel = function() return 12 end
         ns.root.plannerIntroSeen = true
         if ns.plannerWindow then ns.plannerWindow:Hide() end
-        -- locked: nothing, and no frame made
-        ns.GuideUnlocked = function() return false end
-        local made = 0
-        env.CreateFrame = function(...) made = made + 1; return keep.cf(...) end
-        local r = ns:PlannerOpen()
-        env.CreateFrame = keep.cf
-        if r ~= nil or made ~= 0 then error("locked: PlannerOpen hands back nil and makes no frame: " .. tostring(r) .. " " .. made) end
-        if ns.PlannerWindowSummary() ~= nil then error("locked: no summary") end
-        ns.GuideUnlocked = function() return true end
         -- the look
         local f = ns:PlannerOpen()
-        if not (f and f == ns.plannerWindow) then error("unlocked: the window") end
+        if not (f and f == ns.plannerWindow) then error("the window") end
         if not (sources["planner/PlannerWindow.lua"] or ""):find('local NAME, WIDTH, HEIGHT = "FantasyGlassUIPlanner", 600, 640', 1, true) then error("named FantasyGlassUIPlanner, 600 by 640") end
         if rawget(f, "suiLook") ~= "settings" then error("in the settings look: " .. tostring(rawget(f, "suiLook"))) end
         local listed = false
@@ -26046,22 +25351,15 @@ try("folders C: the planner window", function()
         ns.LoadFolder, ns.GuideOn, ns.HideConfig = real.load, real.on, keep.hide
         ns.guidePage = saveGuide
         if not ok2 then error(err2, 0) end
-        -- locked again: the window is put away
-        local hid = false
-        rawset(f, "Hide", function() hid = true end)
-        ns.GuideUnlocked = function() return false end
-        ns:GuideLock()
-        rawset(f, "Hide", nil)
-        if not hid then error("locked: the window is hidden") end
         if #ns.errors ~= keep.errors then error("no errors: " .. tostring(ns.errors[#ns.errors])) end
     end)
     env.CreateFrame = keep.cf
     if ns.PlannerStop then ns:PlannerStop() end
     ns.plannerQueued = false
-    ns.GuideUnlocked, ns.root.guideState, ns.root.guides, ns.db.questGuide = keep.unlocked, keep.state, keep.guides, keep.on
+    ns.root.guideState, ns.root.guides, ns.db.questGuide = keep.state, keep.guides, keep.on
     env.UnitLevel, env.GetMoney, env.UnitClass, ns.PlannerRidingKnown, ns.GoldOpen = keep.level, keep.money, keep.class, keep.known, keep.gold
     ns.root.goldChars, ns.PlannerIntro, ns.root.plannerIntroSeen, ns.PlannerOpen, ns.HideConfig = keep.chars, keep.intro, keep.seen, keep.open, keep.hide
-    ns.db.keyNav, ns.db.bigControls, ns.root.guideKey = keep.keyNav, keep.big, keep.guideKey
+    ns.db.keyNav, ns.db.bigControls = keep.keyNav, keep.big
     for k in pairs(ns.db) do if type(k) == "string" and k:find("^planner") and keep.db[k] == nil then ns.db[k] = nil end end
     for k, v in pairs(keep.db) do ns.db[k] = v end
     if ns.plannerWindow then ns.plannerWindow:Hide() end
@@ -26073,7 +25371,7 @@ end)
 -- folders tests C (window): end
 -- folders tests D (go): begin
 try("folders D: a trip pauses the plan and resumes it", function()
-    local keep = { unlocked = ns.GuideUnlocked, state = ns.root.guideState, guides = ns.root.guides, on = ns.db.questGuide, print = ns.Print,
+    local keep = { state = ns.root.guideState, guides = ns.root.guides, on = ns.db.questGuide, print = ns.Print,
         world = ns.GuideWorld, replan = ns.PlannerReplan, sound = ns.db.guideSound, inn = ns.PlannerInnSuggest }
     local ok, err = pcall(function()
         local key = ns:CharKey()
@@ -26081,7 +25379,6 @@ try("folders D: a trip pauses the plan and resumes it", function()
         ns.Print = function(_, msg, ...) said[#said + 1] = (select("#", ...) > 0) and string.format(ns:Tr(msg), ...) or ns:Tr(msg) end
         ns.PlannerReplan = function(_, why) replans[#replans + 1] = tostring(why); return true end
         ns.PlannerInnSuggest = nil
-        ns.GuideUnlocked = function() return true end
         ns.db.questGuide, ns.db.guideSound = true, false
         local reached = {}
         local world = { level = 1, near = function(step) return reached[step.text] == true end, onQuest = function() return false end,
@@ -26228,21 +25525,8 @@ try("folders D: a trip pauses the plan and resumes it", function()
         st = St()
         if not (st and st.name == ns.GUIDE_PLANNED and st.at == 3 and #st.plan.steps == 5 and replans[1] == "trip over") then error("after a reload the trip still resumes") end
         reached = {}
-        -- locked: the trip stays saved, the panel hides as today
-        Following(3)
-        ns:GuideStartTrip(Trip("A", "B"), { title = "T" })
-        ns:GuideShowPanel()
-        ns.GuideUnlocked = function() return false end
-        hid = false
-        rawset(panel, "Hide", function() hid = true end)
-        ns:GuideApplySwitch()
-        rawset(panel, "Hide", nil)
-        if not hid then error("locked: the panel hides") end
-        if not (St().name == ns.GUIDE_TRIP and St().resume and St().trip) then error("locked: the trip stays saved") end
-        if ns:GuideStartTrip(Trip("C", "D"), { title = "U" }) ~= false or St().trip.title ~= "T" then error("locked: no trip starts") end
-        ns.GuideUnlocked = function() return true end
     end)
-    ns.GuideUnlocked, ns.root.guideState, ns.root.guides, ns.db.questGuide, ns.Print = keep.unlocked, keep.state, keep.guides, keep.on, keep.print
+    ns.root.guideState, ns.root.guides, ns.db.questGuide, ns.Print = keep.state, keep.guides, keep.on, keep.print
     ns.GuideWorld, ns.PlannerReplan, ns.db.guideSound, ns.PlannerInnSuggest = keep.world, keep.replan, keep.sound, keep.inn
     ns.GuideRegisterAdvance("testTrip", nil)
     ns.GuideRegisterAction("panel", "testTripAny", nil, nil)
@@ -26255,7 +25539,7 @@ try("folders D: a trip pauses the plan and resumes it", function()
     if not ok then error(err, 0) end
 end)
 try("folders D: Go", function()
-    local keep = { unlocked = ns.GuideUnlocked, state = ns.root.guideState, guides = ns.root.guides, on = ns.db.questGuide, print = ns.Print,
+    local keep = { state = ns.root.guideState, guides = ns.root.guides, on = ns.db.questGuide, print = ns.Print,
         world = ns.GuideWorld, replan = ns.PlannerReplan, sound = ns.db.guideSound, ctx = ns.PlannerContext, map = env.C_Map,
         vec = rawget(env, "CreateVector2D"), duo = ns.plannerDuo, duoEnd = ns.PlannerDuoEnd, left = ns.PlannerTimeLeft, list = ns.GoldStepsList,
         combat = env.InCombatLockdown, here = ns.GuideHere, inn = ns.PlannerInnSuggest }
@@ -26268,7 +25552,6 @@ try("folders D: Go", function()
         ns.PlannerReplan = function(_, why) replans[#replans + 1] = tostring(why); return true end
         ns.GoldStepsList = function(idea) lists[#lists + 1] = idea; return true end
         ns.PlannerInnSuggest = nil
-        ns.GuideUnlocked = function() return true end
         ns.db.questGuide, ns.db.guideSound = true, false
         ns.GuideWorld = function() return { level = 1, near = function() return false end, onQuest = function() return false end,
             completed = function() return false end, ready = function() return false end } end
@@ -26445,7 +25728,7 @@ try("folders D: Go", function()
         ns:GuideEndTrip("stop")
         if not (St().name == ns.GUIDE_PLANNED and St().plan == newer and replans[1] == "trip over") then error("the end: the latest plan, planned again") end
     end)
-    ns.GuideUnlocked, ns.root.guides, ns.db.questGuide, ns.Print = keep.unlocked, keep.guides, keep.on, keep.print
+    ns.root.guides, ns.db.questGuide, ns.Print = keep.guides, keep.on, keep.print
     ns.GuideWorld, ns.PlannerReplan, ns.db.guideSound, ns.PlannerContext = keep.world, keep.replan, keep.sound, keep.ctx
     env.C_Map = keep.map; rawset(env, "CreateVector2D", keep.vec)
     ns.plannerDuo, ns.PlannerDuoEnd, ns.PlannerTimeLeft, ns.GoldStepsList = keep.duo, keep.duoEnd, keep.left, keep.list
@@ -26458,7 +25741,7 @@ end)
 -- folders tests D (go): end
 -- keep and ids tests A (ids): begin
 try("keep-and-ids A: Questie's other numbers, with the planner loaded", function()
-    local saved = { unlocked = ns.GuideUnlocked, on = ns.GuideOn, ql = env.C_QuestLog, planner = ns.root.planner, ids = ns.root.plannerQuestIds,
+    local saved = { on = ns.GuideOn, ql = env.C_QuestLog, planner = ns.root.planner, ids = ns.root.plannerQuestIds,
         state = ns.root.guideState, level = env.UnitLevel, faction = rawget(env, "UnitFactionGroup"), loaded = env.C_AddOns.IsAddOnLoaded,
         meta = rawget(env.C_AddOns, "GetAddOnMetadata"), Q = rawget(env, "Questie"), loader = rawget(env, "QuestieLoader"), map = env.C_Map,
         vec = rawget(env, "CreateVector2D"), print = ns.Print, raw = ns.PrintRaw, world = ns.PlannerWorldPos, errors = #ns.errors,
@@ -26489,8 +25772,7 @@ try("keep-and-ids A: Questie's other numbers, with the planner loaded", function
     local ok, err = pcall(function()
         if not ns.folderReady.planner then error("the planner's folder is loaded") end
         ns.Print, ns.PrintRaw = Said, Said
-        ns.GuideUnlocked = function() return true end
-        ns.GuideOn = function() return ns:GuideUnlocked() end
+        ns.GuideOn = function() return true end
         env.UnitLevel = function() return 12 end
         rawset(env, "UnitFactionGroup", function() return "Alliance" end)
         env.C_Map = setmetatable({ GetWorldPosFromMapPos = function(map, v) if map == 1429 then return 0, { x = v.x * 1000, y = v.y * 1000 } end end },
@@ -26594,20 +25876,9 @@ try("keep-and-ids A: Questie's other numbers, with the planner loaded", function
         Offered()
         if not (ns.root.plannerQuestIds and ns.root.plannerQuestIds[900001] == 50123) then error("R-M1: a twin you can't take is no rival: the one you can is matched") end
         quests[900002], db.QuestPointers[900002], db.IsDoable = nil, nil, function() return true end
-        -- locked: nothing is learned or kept, nothing said
-        Fresh()
-        ns.root.planner = nil
-        ns.GuideUnlocked = function() return false end
-        logged[50123] = true
-        Offered()
-        fireEvent("QUEST_ACCEPTED", 1, 50123)
-        logged[50123] = nil
-        fireEvent("QUEST_TURNED_IN", 50123, 0, 0)
-        if ns.root.plannerQuestIds ~= nil or ns.root.plannerQuestIdTitles ~= nil or ns.root.planner ~= nil then error("locked: nothing is written") end
-        if #said ~= 0 then error("locked: nothing is said: " .. said[1]) end
         if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
     end)
-    ns.GuideUnlocked, ns.GuideOn, env.C_QuestLog, ns.root.planner, ns.root.plannerQuestIds, ns.root.guideState = saved.unlocked, saved.on, saved.ql, saved.planner, saved.ids, saved.state
+    ns.GuideOn, env.C_QuestLog, ns.root.planner, ns.root.plannerQuestIds, ns.root.guideState = saved.on, saved.ql, saved.planner, saved.ids, saved.state
     env.UnitLevel, env.C_Map, ns.Print, ns.PrintRaw, ns.PlannerWorldPos = saved.level, saved.map, saved.print, saved.raw, saved.world
     rawset(env, "UnitFactionGroup", saved.faction); rawset(env, "CreateVector2D", saved.vec)
     env.C_AddOns.IsAddOnLoaded = saved.loaded; rawset(env.C_AddOns, "GetAddOnMetadata", saved.meta)
@@ -26619,7 +25890,7 @@ end)
 -- keep and ids tests A (ids): end
 -- keep and ids tests B (keep): begin
 try("keep-and-ids B: Keep my route", function()
-    local saved = { unlocked = ns.GuideUnlocked, ql = env.C_QuestLog, state = ns.root.guideState, keepRoute = ns.db.plannerKeepRoute, guide = ns.db.questGuide,
+    local saved = { ql = env.C_QuestLog, state = ns.root.guideState, keepRoute = ns.db.plannerKeepRoute, guide = ns.db.questGuide,
         print = ns.Print, raw = ns.PrintRaw, planner = ns.root.planner, ids = ns.root.plannerQuestIds,
         context = ns.PlannerContext, route = ns.PlannerRoute, here = ns.GuideHere, world = ns.PlannerWorldPos, guideOn = ns.GuideOn }
     local said = {}
@@ -26628,7 +25899,6 @@ try("keep-and-ids B: Keep my route", function()
         if ns.defaults.plannerKeepRoute ~= false then error("off by default") end
         ns.Print = function(_, msg) said[#said + 1] = tostring(msg) end
         ns.PrintRaw = function() end
-        ns.GuideUnlocked = function() return true end
         ns.db.questGuide = true
         ns.root.planner, ns.root.plannerQuestIds = {}, nil
         env.C_QuestLog = {
@@ -26743,7 +26013,7 @@ try("keep-and-ids B: Keep my route", function()
     ns:PlannerStop()
     ns.PlannerHook("applied", "keepids", nil)
     ns.PlannerContext, ns.PlannerRoute, ns.GuideHere, ns.PlannerWorldPos, ns.GuideOn = saved.context, saved.route, saved.here, saved.world, saved.guideOn
-    ns.GuideUnlocked, env.C_QuestLog, ns.root.guideState, ns.db.plannerKeepRoute, ns.db.questGuide = saved.unlocked, saved.ql, saved.state, saved.keepRoute, saved.guide
+    env.C_QuestLog, ns.root.guideState, ns.db.plannerKeepRoute, ns.db.questGuide = saved.ql, saved.state, saved.keepRoute, saved.guide
     ns.Print, ns.PrintRaw, ns.root.planner, ns.root.plannerQuestIds = saved.print, saved.raw, saved.planner, saved.ids
     runTimers()
     if not ok then error(err, 0) end

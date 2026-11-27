@@ -2,9 +2,7 @@ local _, ns = ...
 
 ------------------------------------------------------------------------------------------
 -- Folders: the route planner and the gold advisor live in two load-on-demand folders,
--- FantasyGlassUI_Planner and FantasyGlassUI_Gold, which the game loads only when one is first used,
--- and never while the guide is locked. A locked player never loads either, sees no new text anywhere,
--- and has the Tools menu, launcher tooltip, /fgui replies and guide panel of before.
+-- FantasyGlassUI_Planner and FantasyGlassUI_Gold, which the game loads only when one is first used.
 --
 -- Here, in the main add-on: the loader (ns:LoadFolder), the stand-ins that load a folder and hand the
 -- call on (as ns.optionsStubs do for the options folder), the ways in that must answer before a folder
@@ -20,7 +18,6 @@ local type, pairs, ipairs, tostring, pcall = type, pairs, ipairs, tostring, pcal
 
 -- Folder seams (what the main add-on calls in the folders):
 --   GoldAuctionShow
---   GoldLockedNow
 --   GoldOpen
 --   PlannerAdviceLines
 --   PlannerCatchUp
@@ -78,7 +75,6 @@ ns.folderReady, ns.folderBroken = {}, {}
 local done, late, loading, said = {}, {}, {}, {}
 local WARN_EVERY = 10                  -- seconds between two of a folder's messages
 
-local function Unlocked() return ns.GuideUnlocked ~= nil and ns:GuideUnlocked() == true end
 local function Now()
     local ok, t = pcall(GetTime)
     return (ok and type(t) == "number" and not ns:IsSecret(t)) and t or 0
@@ -86,7 +82,7 @@ end
 local function Note(text)
     if type(ns.errors) == "table" and #ns.errors < 60 then ns.errors[#ns.errors + 1] = text end
 end
--- A folder's message: once, then at most every 10 s (only an unlocked player ever gets this far).
+-- A folder's message: once, then at most every 10 s.
 local function Say(key, text, ...)
     local at = said[key]
     if at and Now() - at < WARN_EVERY then return end
@@ -121,13 +117,11 @@ local function RunLate(key)
     end
 end
 
--- Load a folder ("planner" or "gold"). True when it is ready. Never while the guide is locked, before the
--- login, or in a fight ("Not during a fight.", unless `quiet`: an automatic load says nothing).
+-- Load a folder ("planner" or "gold"). True when it is ready. Never before the login, or in a fight ("Not during a fight.", unless `quiet`: an automatic load says nothing).
 function ns:LoadFolder(key, quiet)
     local f = ns.FOLDERS[key]
     if type(f) ~= "table" then return false end
     if ns.folderReady[key] then return true end
-    if not Unlocked() then return false end
     if type(IsLoggedIn) == "function" then
         local ok, v = pcall(IsLoggedIn)
         if not (ok and ns.Yes(v)) then return false end
@@ -218,7 +212,7 @@ do
 end
 
 ------------------------------------------------------------------------------------------
--- Gold's ways in (they answer before the gold folder is loaded; each does nothing while locked):
+-- Gold's ways in (they answer before the gold folder is loaded):
 -- the launcher's tooltip line and Ctrl-click, the guide panel's "..." entry, /fgui guide gold, the
 -- auction house's panel.
 ------------------------------------------------------------------------------------------
@@ -227,26 +221,21 @@ do
     local prevTip, prevClick = ns.LauncherTipExtra, ns.LauncherClickExtra
     function ns.LauncherTipExtra(tooltip)
         if prevTip then prevTip(tooltip) end
-        if Unlocked() and type(tooltip) == "table" and tooltip.AddLine then tooltip:AddLine(ns:Tr("Ctrl-click: ways to make gold"), 1, 1, 1) end
+        if type(tooltip) == "table" and tooltip.AddLine then tooltip:AddLine(ns:Tr("Ctrl-click: ways to make gold"), 1, 1, 1) end
     end
     function ns.LauncherClickExtra(button)
         if prevClick and prevClick(button) then return true end
-        if not Unlocked() then return false end
         if not (IsControlKeyDown and ns.Yes(IsControlKeyDown())) then return false end
         ns:GoldOpen()
         return true
     end
 
-    ns.GuideRegisterAction("panel", "gold", "Ways to make gold", function() ns:GoldOpen() end, function() return Unlocked() end, true)   -- (whatever guide you follow)
+    ns.GuideRegisterAction("panel", "gold", "Ways to make gold", function() ns:GoldOpen() end, nil, true)   -- (whatever guide you follow)
     ns.GuideRegisterCommand("gold", function() ns:GoldOpen(); return true end)
-    ns.GuideRegisterLock("gold", function(unlocked)                -- (locked again: the window and the auction-house panel hide at once)
-        if not unlocked and type(ns.GoldLockedNow) == "function" then ns.GoldLockedNow() end
-    end)
 
     local ev = CreateFrame("Frame")
     pcall(ev.RegisterEvent, ev, "AUCTION_HOUSE_SHOW")
     pcall(ev.RegisterEvent, ev, "AUCTION_HOUSE_CLOSED")
-    -- (a plain handler: while locked it returns at once, so nothing named Gold is timed by /fgui perf)
     local guarded, ahOpen
     ev:SetScript("OnEvent", function(_, event)
         if event == "AUCTION_HOUSE_SHOW" then ahOpen = true elseif event == "AUCTION_HOUSE_CLOSED" then ahOpen, ahWaiting = false, false end
@@ -254,15 +243,10 @@ do
             pcall(ev.UnregisterEvent, ev, "PLAYER_REGEN_ENABLED")
             local was = ahWaiting
             ahWaiting = false
-            if was and ahOpen and Unlocked() and ns:LoadGold(true) then ns:GoldAuctionShow() end
+            if was and ahOpen and ns:LoadGold(true) then ns:GoldAuctionShow() end
             return
         end
         if event ~= "AUCTION_HOUSE_SHOW" and event ~= "AUCTION_HOUSE_CLOSED" then return end
-        local p = ns.goldPanel
-        if not Unlocked() then
-            if type(p) == "table" and event == "AUCTION_HOUSE_CLOSED" then p.suiGoldOn = false; p:Hide() end
-            return
-        end
         guarded = guarded or ns:Guard("Gold", function(e)
             local panelNow = ns.goldPanel
             if e == "AUCTION_HOUSE_SHOW" then
@@ -281,12 +265,12 @@ end
 ------------------------------------------------------------------------------------------
 -- The login load: following the planned guide (or a trip) means the planner is loaded, which every
 -- "if ns.Planner... then" in Guide.lua relies on. It runs behind the loading screen, and again, the same
--- way, when the guide is switched on or unlocked later in the session while the saved state follows the
+-- way, when the guide is switched on later in the session while the saved state follows the
 -- plan or a trip. It is automatic, so it says nothing, in a fight too.
 ------------------------------------------------------------------------------------------
 local LoginLoad
 local function Following()
-    if not Unlocked() or not ns:GuideOn() then return false end
+    if not ns:GuideOn() then return false end
     local st = ns.GuideState and ns.GuideState()
     local name = type(st) == "table" and st.name or nil
     return name ~= nil and (name == ns.GUIDE_PLANNED or name == ns.GUIDE_TRIP)
@@ -302,15 +286,15 @@ end
 do
     local ev = CreateFrame("Frame")
     pcall(ev.RegisterEvent, ev, "PLAYER_LOGIN")
-    ev:SetScript("OnEvent", function(_, event)                 -- (plain: while locked it returns at once)
-        if event ~= "PLAYER_LOGIN" or not Unlocked() or not ns:GuideOn() then return end
+    ev:SetScript("OnEvent", function(_, event)                 -- (plain: with the guide off it returns at once)
+        if event ~= "PLAYER_LOGIN" or not ns:GuideOn() then return end
         local st = ns.GuideState and ns.GuideState()
         local name = type(st) == "table" and st.name or nil
         if name == nil or not (name == ns.GUIDE_PLANNED or name == ns.GUIDE_TRIP) then return end
         LoginLoad()
     end)
 end
--- The guide switched on (ns:GuideApplySwitch) or unlocked mid-session: following the plan or a trip, the
+-- The guide switched on mid-session (ns:GuideApplySwitch): following the plan or a trip, the
 -- planner's folder loads as at login (once: a folder already loaded is left as it is). A load that failed is
 -- not tried again this way: ns:GuideApplySwitch also runs when other switches change, and each try would say why.
 local followFailed = false
@@ -325,24 +309,21 @@ function ns.FolderFollowCheck()
     if not fight and not ns.folderReady.planner then followFailed = true end
 end
 function ns.FolderFollowReset() followFailed = false end    -- (the tests: a new session)
-ns.GuideRegisterLock("plannerFollow", function(unlocked)
-    if unlocked then ns.FolderFollowCheck() end
-end)
 
 ------------------------------------------------------------------------------------------
--- The planner's own ways in: /fgui plan (in no help list: answered only while unlocked; locked, it is the
--- usual "not a command"), and the Tools menu's "Guide" entries.
+-- The planner's own ways in: /fgui plan (answered here, before "not a command"), and the Tools menu's
+-- "Guide" entries.
 ------------------------------------------------------------------------------------------
 function ns.HiddenCommand(msg)
-    if not Unlocked() or type(msg) ~= "string" or ns:IsSecret(msg) then return false end
+    if type(msg) ~= "string" or ns:IsSecret(msg) then return false end
     if msg ~= "plan" and msg:sub(1, 5) ~= "plan " then return false end
     ns:PlannerOpen()
     return true
 end
 do
     local entries = {
-        { "planner", "Planner", "/fgui plan", function() ns:PlannerOpen() end, Unlocked },
-        { "gold", "Ways to make gold", "/fgui guide gold", function() ns:GoldOpen() end, Unlocked },
+        { "planner", "Planner", "/fgui plan", function() ns:PlannerOpen() end },
+        { "gold", "Ways to make gold", "/fgui guide gold", function() ns:GoldOpen() end },
     }
     if ns.RegisterToolExtra then
         for _, e in ipairs(entries) do ns.RegisterToolExtra(e[1], e[2], e[3], e[4], e[5]) end

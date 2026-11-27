@@ -12,9 +12,9 @@ look you choose from **116 glass, fantasy and celestial themes**.
 
 ## Install
 
-Use the CurseForge app, or download the zip and put its **three folders** (`FantasyGlassUI`,
-`FantasyGlassUI_Options`, `FantasyGlassUI_Locales`) side by side in
-`World of Warcraft/_forever_/Interface/AddOns/`. A guided setup opens the first time you log in.
+Use the CurseForge app, or download the zip and put its **five folders** (`FantasyGlassUI`,
+`FantasyGlassUI_Options`, `FantasyGlassUI_Locales`, `FantasyGlassUI_Planner`, `FantasyGlassUI_Gold`)
+side by side in `World of Warcraft/_forever_/Interface/AddOns/`. A guided setup opens the first time you log in.
 More on the wiki's [Installation](../../wiki/Installation) and
 [Getting Started](../../wiki/Getting-Started) pages.
 
@@ -25,6 +25,8 @@ More on the wiki's [Installation](../../wiki/Installation) and
 | `FantasyGlassUI/` | The add-on itself: every feature, the themes, the art in `Media/` |
 | `FantasyGlassUI_Options/` | The options window, the setup and the self-check, loaded only when opened |
 | `FantasyGlassUI_Locales/` | The translations, loaded only for languages other than English |
+| `FantasyGlassUI_Planner/` | The route planner for the quest guides, loaded the first time it is used |
+| `FantasyGlassUI_Gold/` | Ways to make gold, loaded the first time it is opened or the auction house is visited |
 | `CHANGELOG.md` | Every release and what it changed |
 
 Release zips are on CurseForge; this repository holds the same files as the latest release.

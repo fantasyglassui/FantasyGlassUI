@@ -5,12 +5,12 @@ Search for **Fantasy Glass UI** and install. The app puts everything in the righ
 
 ## By hand
 1. Download the zip from [CurseForge](https://www.curseforge.com/wow/addons/fantasy-glass-ui).
-2. It holds **three folders**: `FantasyGlassUI`, `FantasyGlassUI_Options` and `FantasyGlassUI_Locales`.
-3. Put all three, side by side, in `World of Warcraft/_forever_/Interface/AddOns/`.
+2. It holds **five folders**: `FantasyGlassUI`, `FantasyGlassUI_Options`, `FantasyGlassUI_Locales`, `FantasyGlassUI_Planner` and `FantasyGlassUI_Gold`.
+3. Put all five, side by side, in `World of Warcraft/_forever_/Interface/AddOns/`.
 4. Check that each folder's `.toc` file sits directly inside it (`AddOns/FantasyGlassUI/FantasyGlassUI.toc`), not one level deeper.
 5. Start the game, or type `/reload`.
 
-In the game's add-on list there are three entries: the add-on, **options** and **translations**. Leave all three enabled. The options load the first time you open them, and the translations only for a language other than English, so neither costs memory until it is needed.
+In the game's add-on list there are five entries: the add-on, **options**, **translations**, **planner** and **gold**. Leave all five enabled. The options load the first time you open them, the translations only for a language other than English, the planner the first time you use it, and gold the first time you open it or visit the auction house, so none of them costs memory until it is needed.
 
 ## Updating
 Install over the old version. Your settings are kept, and a backup of them is made before each update (`/fgui backup`).

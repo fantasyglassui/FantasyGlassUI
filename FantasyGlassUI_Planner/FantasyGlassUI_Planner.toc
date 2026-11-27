@@ -1,8 +1,8 @@
 ## Interface: 16001
-## Title: |cff33ccffFantasy Glass|r UI - extras 1
-## Notes: Part of Fantasy Glass UI. The game loads it only when it is needed, so it uses no memory until then. Leave it enabled.
+## Title: |cff33ccffFantasy Glass|r UI - planner
+## Notes: The route planner for Fantasy Glass UI's quest guides. The game loads this by itself the first time the planner is used, so it uses no memory until then. Leave it enabled.
 ## Author: DustyMouse
-## Version: 12.4.1
+## Version: 13.0.0
 ## LoadOnDemand: 1
 ## RequiredDeps: FantasyGlassUI
 ## OptionalDeps: Questie

@@ -6,7 +6,7 @@ local Secret = function(v) return ns:IsSecret(v) end
 -- Ways to make gold: the core. Sources (GoldSell, GoldFarm, GoldGather, GoldCraft) hand in ideas
 -- through ns.GoldRegister; this file checks them, collects them a slice at a time (never in a fight),
 -- ranks them by three sliders, keeps the goal, and knows what an item is worth and how fresh that is.
--- It exists only while the guide is unlocked: nothing here is built, translated or run before then.
+-- Its folder loads at the first use: nothing here is built, translated or run before then.
 --
 -- An idea:
 --   { id, kind, title, oneOff, perHour (per-hour ideas) | total and minutes (one-offs), ease, safety,
@@ -481,7 +481,6 @@ end
 ------------------------------------------------------------------------------------------
 -- The window: "Right now", the sliders, the goal, and the ranked list
 ------------------------------------------------------------------------------------------
-local function Unlocked() return ns.GuideUnlocked ~= nil and ns:GuideUnlocked() == true end
 -- Show or hide, and remember which (frames are asked through suiGoldOn, never IsShown).
 local function Shown(f, on)
     if type(f) ~= "table" then return end
@@ -591,7 +590,6 @@ end
 
 local function Draw()
     if not W then return end
-    if not Unlocked() then Shown(W, false); return end       -- (locked again since it opened)
     local today = ns.Today()
     local drawn = { now = {}, ranked = {} }
     -- the mix
@@ -669,14 +667,13 @@ local function Draw()
 end
 
 -- (drawn on the next frame, guarded: an error is noted, never handed to the game)
--- (plain wrappers first: a call scheduled before a lock does nothing after it, and is never timed)
 local GuardedDraw = ns:Guard("Gold", function() Draw() end)
-local function DrawLater() if Unlocked() then GuardedDraw() end end
+local function DrawLater() GuardedDraw() end
 local CollectWindow
 local GuardedCollect = ns:Guard("Gold", function() CollectWindow() end)
-local function CollectLater() if Unlocked() then GuardedCollect() end end
+local function CollectLater() GuardedCollect() end
 function CollectWindow()
-    if not W or not Unlocked() then return end
+    if not W then return end
     win.waiting = ns.GoldInFight()
     local queued = ns.GoldCollect(ns.GoldContext("window"), function(ideas)
         win.ideas, win.waiting = ideas, false                 -- (drawn on the next frame, outside the job's slice)
@@ -832,7 +829,7 @@ local function Build()
     pcall(ev.RegisterEvent, ev, "BAG_UPDATE_DELAYED")
     pcall(ev.RegisterEvent, ev, "PLAYER_MONEY")
     ev:SetScript("OnEvent", function(_, event)                -- (plain: cheap, and never timed by /fgui perf)
-        if (event ~= "BAG_UPDATE_DELAYED" and event ~= "PLAYER_MONEY") or not f.suiGoldOn or W ~= f or not Unlocked() then return end
+        if (event ~= "BAG_UPDATE_DELAYED" and event ~= "PLAYER_MONEY") or not f.suiGoldOn or W ~= f then return end
         win.gen = win.gen + 1
         local mine = win.gen
         ns:After(2, function() if mine == win.gen and f.suiGoldOn and W == f then CollectLater() end end)
@@ -841,10 +838,9 @@ local function Build()
     return f
 end
 
--- Open the window (nil while the guide is locked) and collect. opts.goalName ("mount" or "epic"): that named goal,
+-- Open the window and collect. opts.goalName ("mount" or "epic"): that named goal,
 -- at what it costs this character, is set first (the riding line's "Save for riding").
 function ns:GoldOpen(opts)
-    if not Unlocked() then return nil end
     local goalName = type(opts) == "table" and opts.goalName or nil
     if goalName == "mount" or goalName == "epic" then
         local copper = ns.GoldGoalAmount(goalName)
@@ -859,7 +855,7 @@ function ns:GoldOpen(opts)
 end
 -- Collect again (Refresh).
 function ns:GoldRefresh()
-    if W and Unlocked() then CollectWindow() end
+    if W then CollectWindow() end
 end
 
 ------------------------------------------------------------------------------------------
@@ -909,12 +905,11 @@ local function DrawPanel()
     panel.drawn = drawn
 end
 local GuardedDrawPanel = ns:Guard("Gold", function() DrawPanel() end)
-local function DrawPanelLater() if Unlocked() then GuardedDrawPanel() end end
+local function DrawPanelLater() GuardedDrawPanel() end
 local CollectPanel
 local GuardedCollectPanel = ns:Guard("Gold", function() CollectPanel() end)
-local function CollectPanelLater() if Unlocked() then GuardedCollectPanel() end end
+local function CollectPanelLater() GuardedCollectPanel() end
 function CollectPanel()
-    if not Unlocked() then return end
     local queued = ns.GoldCollect(ns.GoldContext("auction"), function(ideas)
         panel.ideas = ideas                                    -- (drawn on the next frame, outside the job's slice)
         ns:After(0, DrawPanelLater)
@@ -968,27 +963,17 @@ local function BuildPanel()
         local at = ScanAt()
         if at ~= panel.scanAt then panel.scanAt = at; CollectPanel() end
     end)
-    f:SetScript("OnUpdate", function(self, elapsed)            -- (plain first: locked again, it hides untimed)
-        if not Unlocked() then Shown(self, false); return end
-        guardedTick(self, elapsed)
-    end)
+    f:SetScript("OnUpdate", guardedTick)
     ns.GoldTickOn()
     return f
 end
--- Show the panel on the open auction house and collect (nil while locked, or with no auction house).
+-- Show the panel on the open auction house and collect (nil with no auction house).
 function ns:GoldAuctionShow()
-    if not Unlocked() then return nil end
     if not BuildPanel() then return nil end
     Shown(P, true)
     panel.acc, panel.scanAt = 0, ScanAt()
     CollectPanel()
     return P
-end
-
--- Locked again: the window and the panel hide (the tick calls this, and then stops).
-function ns.GoldLockedNow()
-    if W and W.suiGoldOn then Shown(W, false) end
-    if P and P.suiGoldOn then Shown(P, false) end
 end
 
 -- For the tests: let the window and the panel go, as at login (their frames stay, unused).

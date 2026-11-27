@@ -38,7 +38,7 @@ local function SectionShown(sec)
 end
 local function CategoryShown(cat)
     if cat.home then return true end
-    if cat.guide then return ns.GuideUnlocked and ns:GuideUnlocked() and true or false end
+    if cat.guide then return true end
     if cat.allOnly and ns:SettingsSimple() then return false end
     for _, sec in ipairs(cat.sections or {}) do if SectionShown(sec) then return true end end
     return false

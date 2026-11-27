@@ -4,11 +4,10 @@ if type(ns) ~= "table" then return end
 ------------------------------------------------------------------------------------------
 -- Planner, batch 4 group D: level times, race your best, where you left off, save as guide, read aloud (Tasks 7 and 8).
 -- Built on the seams: ns.PlannerHook (Planner.lua), the panel's registries (Guide.lua) and its
--- section of the Guide tab (Bars.lua). Everything here is behind ns:GuideUnlocked().
+-- section of the Guide tab (Bars.lua).
 ------------------------------------------------------------------------------------------
 local floor, min, max, abs = math.floor, math.min, math.max, math.abs
 
-local function Unlocked() return ns.GuideUnlocked ~= nil and ns:GuideUnlocked() == true end
 -- A number the game gave (nil when unreadable or hidden).
 local function Read(fn, ...)
     if type(fn) ~= "function" then return nil end
@@ -36,7 +35,7 @@ local function BestOther(level)
 end
 
 local function RaceLine()
-    if not (Unlocked() and ns.db and ns.db.plannerRace == true) then return nil end
+    if not (ns.db and ns.db.plannerRace == true) then return nil end
     local rec = ns.PlannerCharRecord and ns.PlannerCharRecord(false)
     local c = type(rec) == "table" and rec.levelClock
     if type(c) ~= "table" or c.partial or not tonumber(c.seconds) then return nil end
@@ -61,7 +60,7 @@ local leftOffWanted = false                      -- (an initial login: the line 
 
 function ns.PlannerLeftOff()
     leftOff = nil
-    if not (Unlocked() and ns:GuideOn() and ns.db and ns.db.plannerLeftOff ~= false) then return nil end
+    if not (ns:GuideOn() and ns.db and ns.db.plannerLeftOff ~= false) then return nil end
     local st = ns.GuideState and ns.GuideState()
     if type(st) ~= "table" or st.name == nil or st.name ~= ns.GUIDE_PLANNED then return nil end
     local guide = type(st.plan) == "table" and st.plan or ns:GuideGet(st.name)
@@ -93,7 +92,7 @@ end
 if ns.PlannerHook then ns.PlannerHook("applied", "leftoff", function() ns.PlannerLeftOffDue() end) end
 ns.GuideRegisterLine("leftoff", function()
     if not leftOff then return nil end
-    if GetTime() >= leftOff.till or not Unlocked() or not (ns.db and ns.db.plannerLeftOff ~= false) then leftOff = nil; return nil end
+    if GetTime() >= leftOff.till or not (ns.db and ns.db.plannerLeftOff ~= false) then leftOff = nil; return nil end
     return leftOff.text
 end)
 
@@ -110,7 +109,6 @@ end
 -- The planned guide as a saved one: each step through the text format (so only what it keeps), named
 -- "Zone from-to" (the level rounded outwards), then " (2)", " (3)" ... when that name is taken.
 function ns.PlannerSaveAsGuide()
-    if not Unlocked() then return nil end
     local guide = ns:GuideGet(ns.GUIDE_PLANNED)
     local st = ns.GuideState and ns.GuideState()
     if type(guide) ~= "table" or type(guide.steps) ~= "table" or #guide.steps < 1 then return nil end
@@ -136,7 +134,6 @@ function ns.PlannerSaveAsGuide()
 end
 -- (offered for a plan the planner made: it has a length, and is not the empty one)
 local function PlanReady()
-    if not Unlocked() then return false end
     local st = ns.GuideState and ns.GuideState()
     local sum = type(st) == "table" and st.name ~= nil and st.name == ns.GUIDE_PLANNED and st.summary
     return type(sum) == "table" and (tonumber(sum.seconds) or 0) > 0 and not sum.empty
@@ -146,8 +143,8 @@ ns.GuideRegisterAction("panel", "saveAsGuide", "Save as guide", function() ns.Pl
 -- The step you are on changed: read it aloud (only with reading aloud on; not the step a login or /reload
 -- finds you on, which is not new), and caption the chime.
 ns.GuideRegisterAdvance("records", function(_, _, step, _, moved, resumed)
-    if not Unlocked() or not ns.db then return end
-    ns.PlannerKeyFrames()                                  -- (unlocked in this session: the key windows join now, not at the next login)
+    if not ns.db then return end
+    ns.PlannerKeyFrames()                                  -- (the folder loaded in this session: the key windows join now)
     if ns.db.readDialog and ns.db.plannerSpeak ~= false and type(step) == "table" and not resumed then
         ns:Speak(ns.GuideStepBase(step))
     end
@@ -192,15 +189,14 @@ do
         leftOffWanted = true
         ns:After(seconds, ns:Guard("Planner records", function() ns.PlannerLeftOffDue() end))
     end
-    ns.FolderLate("planner", "keyFrames", function() if Unlocked() then ns.PlannerKeyFrames() end end)   -- (what the login did: the folder loads later)
+    ns.FolderLate("planner", "keyFrames", function() ns.PlannerKeyFrames() end)   -- (what the login did: the folder loads later)
     -- (loaded a moment after the initial login, whose PLAYER_ENTERING_WORLD this folder did not hear: the rest of the 20 s)
     ns.FolderLate("planner", "leftOff", function()
-        local at = not sawLogin and Unlocked() and ns.PlannerLoginAt and ns.PlannerLoginAt()
+        local at = not sawLogin and ns.PlannerLoginAt and ns.PlannerLoginAt()
         local now = at and Read(GetTime)
         if now and now >= at and now - at < 20 then Wait(20 - (now - at)) end
     end)
     ev:SetScript("OnEvent", ns:Guard("Planner records", function(_, event, a)
-        if not Unlocked() then return end
         if event == "PLAYER_ENTERING_WORLD" and a == true then       -- (an initial login: not a reload, not a loading screen)
             sawLogin = true
             Wait(20)
