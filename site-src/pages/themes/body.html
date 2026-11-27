@@ -1,0 +1,49 @@
+<!-- Themes (W2). The gallery and the theme maker; see site-src/PAGES.md. -->
+  <section class="block" id="themes">
+    <div class="wrap">
+      <header>
+        <div class="eyebrow">[[Themes]]</div>
+        <h1>[[{{themes}} themes in three families]]</h1>
+        <p class="lede">[[Glass is see-through panes with a bright top edge. Fantasy is solid panels with a dark rim, grain and gold corners. Celestial is a moving night sky with stars, a faint Milky Way and a real constellation on big windows. Each family has one theme in your class color, and you can make your own from three colors. Click a theme to see it larger.]]</p>
+      </header>
+      <div class="chosen card" id="chosen" aria-live="polite"></div>
+      <div class="filters" id="tfilters" role="group" aria-label="[[Theme family]]"></div>
+      <div class="gallery" id="gallery"></div>
+      <button class="btn line more" type="button" id="tmore">Show all {{themes}} themes</button>
+    </div>
+  </section>
+
+  <section class="block" id="maker">
+    <div class="wrap">
+      <header>
+        <div class="eyebrow">[[Theme maker]]</div>
+        <h2>[[Make a theme of your own]]</h2>
+        <p class="lede">[[Pick three colors and a family, and the rest is worked out the way the add-on does it. Copy the code, then in the game type <code>/fgui sharepreview</code>, paste it and press <b>Use it</b>.]]</p>
+      </header>
+      <div class="maker">
+        <div class="mk-view">
+          <div id="mkpane"></div>
+          <div class="cta">
+            <button class="btn" type="button" id="mkwear">[[Wear it on this page]]</button>
+            <button class="btn line" type="button" id="mkrandom">[[Surprise me]]</button>
+          </div>
+        </div>
+        <div class="mk-form card">
+          <label class="mk-row"><span>[[Name]]</span><input class="field" id="mkname" type="text" maxlength="24" value="My theme" autocomplete="off"></label>
+          <div class="mk-row"><span>[[Family]]</span><div class="filters" id="mkfam" role="group" aria-label="[[Family]]"></div></div>
+          <div class="mk-colors">
+            <label class="mk-color"><input type="color" id="mkpanel" value="#121a33"><span><b>[[Panel]]</b><small id="mkpanelhex"></small></span></label>
+            <label class="mk-color"><input type="color" id="mkrim" value="#5a6a9a"><span><b>[[Rim]]</b><small id="mkrimhex"></small></span></label>
+            <label class="mk-color"><input type="color" id="mkaccent" value="#f0c66b"><span><b>[[Accent]]</b><small id="mkaccenthex"></small></span></label>
+          </div>
+          <label class="mk-row"><span>[[Code for the game]]</span><textarea class="code" id="mkcode" rows="3" readonly spellcheck="false"></textarea></label>
+          <div class="cta"><button class="btn" type="button" id="mkcopy">[[Copy the code]]</button><button class="btn line" type="button" id="mklink">[[Copy a link to it]]</button></div>
+          <p class="count" id="mkshare">[[Made one you like? Share the code in <b>#themes</b> on <a href="https://discord.gg/qeSMwQWyPR" target="_blank" rel="noopener">our Discord</a>.]]</p>
+          <details class="mk-paste"><summary>[[Have a theme code already? Paste it here to see it]]</summary>
+            <textarea class="code" id="mkin" rows="3" spellcheck="false" placeholder="SUIT1!{...}" aria-label="[[A theme code]]"></textarea>
+            <p class="count" id="mkinmsg" aria-live="polite"></p>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>

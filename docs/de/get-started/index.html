@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="de" data-lang="de" data-page="get-started">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Loslegen · Fantasy Glass UI</title>
+<meta name="description" content="Installiere Fantasy Glass UI und richte es in wenigen Minuten ein, mit Antworten auf häufige Fragen und allen Befehlen.">
+<link rel="canonical" href="https://fantasyglassui.com/de/get-started/">
+<link rel="alternate" hreflang="en" href="https://fantasyglassui.com/get-started/">
+<link rel="alternate" hreflang="de" href="https://fantasyglassui.com/de/get-started/">
+<link rel="alternate" hreflang="fr" href="https://fantasyglassui.com/fr/get-started/">
+<link rel="alternate" hreflang="es" href="https://fantasyglassui.com/es/get-started/">
+<link rel="alternate" hreflang="ru" href="https://fantasyglassui.com/ru/get-started/">
+<link rel="alternate" hreflang="pt" href="https://fantasyglassui.com/pt/get-started/">
+<link rel="alternate" hreflang="it" href="https://fantasyglassui.com/it/get-started/">
+<link rel="alternate" hreflang="ko" href="https://fantasyglassui.com/ko/get-started/">
+<link rel="alternate" hreflang="zh-Hans" href="https://fantasyglassui.com/zh/get-started/">
+<link rel="alternate" hreflang="x-default" href="https://fantasyglassui.com/get-started/">
+<link rel="icon" type="image/png" href="/icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Fantasy Glass UI">
+<meta property="og:locale" content="de_DE">
+<meta property="og:locale:alternate" content="en_US">
+<meta property="og:locale:alternate" content="fr_FR">
+<meta property="og:locale:alternate" content="es_ES">
+<meta property="og:locale:alternate" content="ru_RU">
+<meta property="og:locale:alternate" content="pt_BR">
+<meta property="og:locale:alternate" content="it_IT">
+<meta property="og:locale:alternate" content="ko_KR">
+<meta property="og:locale:alternate" content="zh_CN">
+<meta property="og:title" content="Loslegen · Fantasy Glass UI">
+<meta property="og:description" content="Installiere Fantasy Glass UI und richte es in wenigen Minuten ein, mit Antworten auf häufige Fragen und allen Befehlen.">
+<meta property="og:url" content="https://fantasyglassui.com/de/get-started/">
+<meta property="og:image" content="https://fantasyglassui.com/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Fantasy Glass UI">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Loslegen · Fantasy Glass UI">
+<meta name="twitter:description" content="Installiere Fantasy Glass UI und richte es in wenigen Minuten ein, mit Antworten auf häufige Fragen und allen Befehlen.">
+<meta name="twitter:image" content="https://fantasyglassui.com/og.jpg">
+<meta name="theme-color" content="#12141a" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4f5f8" media="(prefers-color-scheme: light)">
+<script>(function(){var d=document.documentElement;d.classList.add("js");try{var t=localStorage.getItem("fg-theme");if(t==="light"||t==="dark")d.setAttribute("data-theme",t)}catch(e){}var here="de",page="get-started/",to=here,q=location.search,h=location.hash;var m=/[?&]lang=([a-z]{2})\b/.exec(q);if(m){to=m[1];q=q.replace(/([?&])lang=[a-z]{2}&?/,"$1").replace(/[?&]$/,"")}else if(here==="en"){var c=null;try{c=localStorage.getItem("fg-lang")}catch(e){}if(!c)c=String(navigator.language||"en").slice(0,2).toLowerCase();to=c}if(["en", "de", "fr", "es", "ru", "pt", "it", "ko", "zh"].indexOf(to)<0)to=here;var u=(to==="en"?"/":"/"+to+"/")+page;if(u!==location.pathname||q!==location.search)location.replace(u+q+h)})();</script>
+<link rel="preload" href="/assets/marcellus.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap">
+<link rel="stylesheet" href="/assets/site.css?v=0338b00d2b">
+<style>
+/* Get started: the three steps, the questions and the commands (moved from the old long page). */
+#start .status { margin: 0 0 8px; }
+.steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; counter-reset: s; }
+.step { padding: 22px; counter-increment: s; min-width: 0; }
+.step::before { content: counter(s); display: grid; place-items: center; width: 40px; height: 40px; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); background: var(--gold); color: var(--on-gold); font: 700 1rem/1 var(--body); margin: 0 0 14px; }
+.step h3 { font-size: 1.15rem; margin-bottom: 6px; }
+.step p { margin: 0; color: var(--dim); }
+.help { margin-top: 22px; padding: 24px; display: grid; gap: 18px; }
+.help p { max-width: 75ch; }
+.help p { margin: 6px 0 0; color: var(--dim); }
+.help .cta { margin: 0; }
+
+/* questions: one outlined list, a line between each */
+.faq { display: block; max-width: 920px; padding: 0; }
+.q + .q { border-top: 1px solid var(--rule); }
+.q summary { cursor: pointer; list-style: none; padding: 16px 48px 16px 22px; position: relative; font: 600 1.05rem/1.35 var(--body); min-height: 44px; }
+.q summary::-webkit-details-marker { display: none; }
+.q summary::after { content: ""; position: absolute; right: 22px; top: 50%; width: 9px; height: 9px; margin-top: -6px; border: solid var(--gold); border-width: 0 2px 2px 0; transform: rotate(45deg); transition: transform .2s ease; }
+.q[open] summary::after { transform: rotate(-135deg); margin-top: -2px; }
+.q summary:hover { color: var(--gold); }
+.q summary:focus-visible { outline-offset: -3px; }
+.q p { margin: 0; padding: 0 22px 18px; color: var(--dim); }
+
+/* commands */
+.ctable { width: 100%; border-collapse: collapse; }
+.ctable td, .ctable th { padding: 10px 10px; text-align: left; font-weight: 400; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.ctable th { white-space: nowrap; }
+.ctable code { font: 600 0.9rem/1.4 var(--mono); color: var(--gold); }
+.ctable td:nth-child(2) { color: var(--dim); }
+.copy { min-height: 36px; padding: 6px 12px; font-size: 0.85rem; --cut: 8px; }
+.tablewrap { overflow-x: auto; }
+#copyall { justify-self: start; }
+
+@media (max-width: 900px) { .steps { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 620px) { .ctable th { white-space: normal; } }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Zum Inhalt springen</a>
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="/de/"><img src="/logo-64.webp" alt="" width="32" height="32">Fantasy Glass UI</a>
+    <nav class="site-nav" id="site-nav" aria-label="Seiten">
+      <ul><li><a href="/de/">Start</a></li><li><a href="/de/features/">Funktionen</a></li><li><a href="/de/themes/">Themen</a></li><li><a href="/de/guide-and-gold/">Anleitung und Gold</a></li><li><a href="/de/get-started/" aria-current="page">Loslegen</a></li><li><a href="/de/changelog/">Änderungen</a></li><li><a href="/de/roadmap/">Roadmap</a></li></ul>
+      <div class="head-tools">
+        <label class="lang"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span class="sr-only">Sprache</span><select id="lang"><option value="/get-started/" data-code="en" lang="en">English</option><option value="/de/get-started/" data-code="de" lang="de" selected>Deutsch</option><option value="/fr/get-started/" data-code="fr" lang="fr">Français</option><option value="/es/get-started/" data-code="es" lang="es">Español</option><option value="/ru/get-started/" data-code="ru" lang="ru">Русский</option><option value="/pt/get-started/" data-code="pt" lang="pt">Português</option><option value="/it/get-started/" data-code="it" lang="it">Italiano</option><option value="/ko/get-started/" data-code="ko" lang="ko">한국어</option><option value="/zh/get-started/" data-code="zh" lang="zh-Hans">中文</option></select></label>
+        <button class="icon-btn mode" id="mode" type="button" aria-pressed="true" title="Dunkler Modus"><span class="sr-only">Dunkler Modus</span><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M5.3 18.7 7 17M17 7l1.7-1.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      </div>
+    </nav>
+    <a class="btn small head-dl" href="https://www.curseforge.com/wow/addons/fantasy-glass-ui">Download</a>
+    <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav"><span class="sr-only">Menü</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    <button class="chip wearing" id="unwear" type="button" hidden>Du trägst <b id="wearname"></b>: zurück zu den Farben der Seite</button>
+  </div>
+</header>
+<main id="main" tabindex="-1">
+<!-- Get started (W2). The three steps, the questions and the commands; see site-src/PAGES.md. -->
+  <section class="block" id="start">
+    <div class="wrap">
+      <header>
+        <div class="eyebrow">Loslegen</div>
+        <h1>Drei Schritte</h1>
+        <p class="status"><span>Version <b>12.4.1</b></span><span class="sep" aria-hidden="true">·</span><span>Aktualisiert am <time datetime="2026-11-25">2026-11-25</time></span><span class="sep" aria-hidden="true">·</span><span>Geprüft mit WoW: Forever <b>1.60.1 (70938)</b></span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">Quellcode</a></span></p>
+      </header>
+      <div class="steps">
+        <div class="step card"><h3>Installieren</h3><p>Nimm die CurseForge-App oder leg die drei Ordner aus dem Zip nebeneinander in <code>Interface/AddOns</code>.</p></div>
+        <div class="step card"><h3>Look wählen</h3><p>Beim ersten Einloggen öffnet sich eine geführte Einrichtung. Wähle ein Thema, eine Anordnung und deine Rolle.</p></div>
+        <div class="step card"><h3>Mach es zu deinem</h3><p><code>/fgui</code> öffnet die Optionen, <code>/fgui move</code> ordnet deine Fenster an, und <code>/fgui help</code> listet jeden Befehl.</p></div>
+      </div>
+      <div class="help card">
+        <div><h3>Einen Fehler gefunden oder eine Idee?</h3><p>Komm auf Discord vorbei oder sag es uns auf GitHub. Bei einem Fehler hilft der Bericht des Add-ons am meisten: öffne <code>/fgui</code> im Spiel, drücke <b>Report a Problem</b> und füge den Text ein. Alles andere: <a href=&quot;mailto:email-forwarding@fantasyglassui.com&quot;>email-forwarding@fantasyglassui.com</a>.</p></div>
+        <div class="cta">
+          <a class="btn" href="https://discord.gg/qeSMwQWyPR" target="_blank" rel="noopener">Zum Discord</a>
+          <a class="btn line" href="https://github.com/fantasyglassui/FantasyGlassUI/issues/new?template=bug_report.yml" target="_blank" rel="noopener">Fehler melden</a>
+          <a class="btn line" href="https://github.com/fantasyglassui/FantasyGlassUI/issues/new?template=idea.yml" target="_blank" rel="noopener">Idee vorschlagen</a>
+          <a class="btn line" href="https://github.com/fantasyglassui/FantasyGlassUI/wiki" target="_blank" rel="noopener">Zum Wiki</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="faq">
+    <div class="wrap">
+      <header>
+        <div class="eyebrow">Fragen</div>
+        <h2>Häufige Fragen</h2>
+      </header>
+      <div class="faq card"><details class="q"><summary>Für welches Spiel ist es?</summary><p><b>WoW Forever</b> (Interface 16001). Es gehört nach <code>World of Warcraft/_forever_/Interface/AddOns</code>, als drei Ordner nebeneinander.</p></details><details class="q"><summary>Läuft es mit meinen anderen Add-ons?</summary><p>Ja. Nutzt du schon ein Add-on für dieselbe Aufgabe, etwa Plater für Namensplaketten, Bagnon oder Baganator für Taschen oder Grid2, VuhDo oder Cell für Schlachtzugsfenster, tritt Fantasy Glass UI bei diesem Teil zurück und behält alles andere. Mit <code>/fgui conflicts off</code> behält es stattdessen sein eigenes.</p></details><details class="q"><summary>Kann ich nur einen Teil nutzen?</summary><p>Ja. Jeder Teil hat einen eigenen Schalter in <code>/fgui</code>, du kannst also etwa Taschen und Namensplaketten behalten und den Rest dem Spiel überlassen.</p></details><details class="q"><summary>Ich mag eckige Rahmen. Gibt es den klassischen Look?</summary><p>Ja. Wähle in <code>/fgui</code> unter Fenster und Leisten Classic statt Starcut, und jeder Rahmen, jede Leiste und jede Taste wird wieder rechteckig, in jedem Thema.</p></details><details class="q"><summary>Hilft es bei Farbenblindheit, Sehschwäche oder Hörproblemen?</summary><p>Ja, eine ganze Kategorie davon. <code>/fgui access</code> bietet Farben für jede Art von Farbsehen, kontrastreiche Themen, Schrift für schwaches Sehen und für Legasthenie, Untertitel für Klänge, Vorlesen von Gesprächen, Quests und Tooltips, die Fenster des Spiels per Tastatur, Tasten für eine Hand, sicheres Blinken, einen stillen Himmel und einen Ruhemodus. Alles, was es tut, Bedürfnis für Bedürfnis, steht auf der <a href=&quot;/accessibility/&quot;>Seite zur Barrierefreiheit</a>.</p></details><details class="q"><summary>Macht es mein Spiel langsamer?</summary><p>Ausgeschaltete Teile laufen gar nicht. Zum Nachprüfen zeigt <code>/fgui perf</code>, wie viel Zeit jeder Teil braucht, <code>/fgui perf fight</code> misst deinen nächsten Kampf, und <code>/fgui memory</code> zeigt den Speicher.</p></details><details class="q"><summary>Etwas sieht falsch aus. Wie stelle ich es zurück?</summary><p><code>/fgui undo</code> macht dein letztes Verschieben oder Skalieren rückgängig, und <code>/fgui history</code> listet deine Änderungen, damit du jede zurücknehmen kannst. <code>/fgui reset</code> (zweimal eingegeben) setzt das Profil auf den Anfang zurück, vorher wird eine Sicherung angelegt: <code>/fgui backup</code> listet sie. <code>/fgui safe</code> lädt neu mit allen Funktionen aus, um zu sehen, ob ein Problem von uns kommt.</p></details><details class="q"><summary>Kann ich mein Setup mit Freunden teilen?</summary><p>Ja. <code>/fgui pack</code> packt dein ganzes Interface (Profil, Anordnung, Thema, Leisten und Post-Regeln) in einen Text zum Einfügen, und <code>/fgui send &lt;name&gt; layout</code> schickt es direkt an einen anderen Spieler mit dem Add-on.</p></details><details class="q"><summary>Wo bekomme ich Hilfe oder kann mein Setup zeigen?</summary><p>Auf <a href=&quot;https://discord.gg/qeSMwQWyPR&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;>unserem Discord</a>: Fragen in <b>#fgui-help</b>, Screenshots in <b>#show-your-ui</b> und Themen-Codes in <b>#themes</b>. Für Fehler und Ideen gibt es dort eigene Kanäle.</p></details><details class="q"><summary>Welche Sprachen spricht es?</summary><p>Englisch, Deutsch, Französisch, Spanisch, Russisch, Portugiesisch, Italienisch, Koreanisch und Chinesisch. Es folgt der Sprache deines Spiels.</p></details><details class="q"><summary>Ist es kostenlos?</summary><p>Ja, kostenlos, ohne Werbung und ohne Käufe.</p></details></div>
+    </div>
+  </section>
+
+  <section class="block" id="commands">
+    <div class="wrap">
+      <header>
+        <div class="eyebrow">Befehle</div>
+        <h2>Im Chat eingegeben, beginnend mit /fgui</h2>
+        <p class="lede">Im Spiel zeigt <code>/fgui help</code> alle in einem durchsuchbaren Fenster.</p>
+        <div><button class="btn line" id="copyall" type="button">Ganze Liste kopieren</button></div>
+      </header>
+      <div class="tools">
+        <input class="search" id="csearch" type="search" placeholder="Befehle durchsuchen" autocomplete="off" aria-label="Befehle durchsuchen">
+        <span class="count" id="ccount"></span>
+      </div>
+      <div class="tablewrap"><table class="ctable"><tbody id="clist"></tbody></table></div>
+      <button class="btn line more" type="button" id="cmore">Show all 129 commands</button>
+    </div>
+  </section>
+</main>
+<footer class="site-foot">
+  <div class="wrap">
+    <div class="foot-row">
+      <span>Fantasy Glass UI von DustyMouse. Kostenlos, für WoW Forever.</span>
+      <ul>
+        <li><a href="https://www.curseforge.com/wow/addons/fantasy-glass-ui">CurseForge</a></li>
+        <li><a href="https://discord.gg/qeSMwQWyPR">Discord</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI">GitHub</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/wiki">Wiki</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/issues/new/choose">Fehler melden</a></li>
+        <li><a href="/de/accessibility/">Barrierefreiheit</a></li>
+      </ul>
+    </div>
+    <div class="foot-row">
+      <span>Kontakt: <a href="mailto:email-forwarding@fantasyglassui.com">email-forwarding@fantasyglassui.com</a></span>
+      <p class="status"><span>Version <b>12.4.1</b></span><span class="sep" aria-hidden="true">·</span><span>Aktualisiert am <time datetime="2026-11-25">2026-11-25</time></span><span class="sep" aria-hidden="true">·</span><span>Geprüft mit WoW: Forever <b>1.60.1 (70938)</b></span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">Quellcode</a></span></p>
+    </div>
+    <nav class="foot-row foot-langs" aria-label="Sprache"><ul><li><a href="/get-started/" hreflang="en" lang="en" data-code="en">English</a></li><li><a href="/de/get-started/" hreflang="de" lang="de" data-code="de" aria-current="true">Deutsch</a></li><li><a href="/fr/get-started/" hreflang="fr" lang="fr" data-code="fr">Français</a></li><li><a href="/es/get-started/" hreflang="es" lang="es" data-code="es">Español</a></li><li><a href="/ru/get-started/" hreflang="ru" lang="ru" data-code="ru">Русский</a></li><li><a href="/pt/get-started/" hreflang="pt" lang="pt" data-code="pt">Português</a></li><li><a href="/it/get-started/" hreflang="it" lang="it" data-code="it">Italiano</a></li><li><a href="/ko/get-started/" hreflang="ko" lang="ko" data-code="ko">한국어</a></li><li><a href="/zh/get-started/" hreflang="zh-Hans" lang="zh-Hans" data-code="zh">中文</a></li></ul></nav>
+    <p class="trnote">Diese Seite wurde ohne Prüfung durch Muttersprachler übersetzt. Korrekturen sind willkommen.</p>
+  </div>
+</footer>
+<script src="/assets/site.js?v=2dd8abee61" defer></script>
+<script src="/assets/get-started.js?v=6d1c054d84" defer></script>
+</body>
+</html>

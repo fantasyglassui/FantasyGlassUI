@@ -229,5 +229,16 @@
   "it": "%d min",
   "ko": "%d분",
   "zh": "%d分钟"
+ },
+ "How to use this page": {
+  "en": "How to use this page",
+  "de": "So nutzt du diese Seite",
+  "fr": "Comment utiliser cette page",
+  "es": "Cómo usar esta página",
+  "ru": "Как пользоваться этой страницей",
+  "pt": "Como usar esta página",
+  "it": "Come usare questa pagina",
+  "ko": "이 페이지 사용법",
+  "zh": "如何使用本页"
  }
 }

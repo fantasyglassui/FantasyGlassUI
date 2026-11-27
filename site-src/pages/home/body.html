@@ -1,0 +1,137 @@
+<!-- Home (W2). The hero with the trailer, Try a theme, what sets it apart, the before-and-after, Guide and Gold, the themes
+     and the newest version; see site-src/PAGES.md. body.py puts the trailer (or, until there is one, the drawn frames)
+     where the TRAILER comment stands. -->
+  <div class="hero-band night">
+  <fg-shot name="celestial-screen" class="shot-bg" alt="" sizes="100vw" eager>
+  <div class="wrap">
+    <div class="hero load" id="hero">
+      <div>
+        <div class="eyebrow">[[For WoW Forever · Free]]</div>
+        <h1>[[Your whole interface, <span>cut like a gem.</span>]]</h1>
+        <p class="lede">[[Frames, bars, bags, chat and every window in one look, with a quest guide that plans your route and a gold advisor that knows when to sell.]]</p>
+        <div class="cta">
+          <a class="btn" href="{{curseforge}}" target="_blank" rel="noopener">[[Download on CurseForge]]</a>
+          <a class="btn line" href="{{url:features}}">[[See every feature]]</a>
+        </div>
+        <div class="facts" id="facts">
+          <span><b>{{themes}}</b> <span class="w">[[themes]]</span></span>
+          <span><b>{{switches}}</b> <span class="w">[[switches]]</span></span>
+          <span><b>{{commands}}</b> <span class="w">[[commands]]</span></span>
+          <span><b>9</b> <span class="w">[[languages]]</span></span>
+          <span><span class="w">[[version]]</span> <b>{{version_short}}</b></span>
+        </div>
+      </div>
+      <!--TRAILER-->
+    </div>
+  </div>
+  </div>
+
+  <section class="band try" id="try" aria-labelledby="try-h">
+    <div class="wrap try-grid">
+      <div class="try-text">
+        <div class="eyebrow">[[Try it here]]</div>
+        <h2 id="try-h">[[Pick a theme, see it change]]</h2>
+        <p class="lede">[[Nine of the {{themes}}, drawn in their own colors. In the game, the whole screen follows the one you pick.]]</p>
+        <div class="try-pick" id="trypick"></div>
+        <div class="try-more">
+          <button class="btn line small" type="button" id="tryany">[[Another one]]</button>
+          <a href="{{url:themes}}">[[See all {{themes}} themes]]</a>
+        </div>
+      </div>
+      <figure class="try-view">
+        <div class="try-stage cut" id="trystage" aria-hidden="true">
+          <div class="try-frame cut">
+            <div class="try-who"><b>Aerin</b><span>[[Level 42]]</span></div>
+            <div class="try-bar"><i class="hp"></i></div>
+            <div class="try-bar"><i class="mana"></i></div>
+          </div>
+          <div class="try-slots"><i class="cut"></i><i class="cut"></i><i class="cut"></i><i class="cut"></i><i class="cut"></i><i class="cut"></i></div>
+          <p class="try-title" id="trytitle">Polaris</p>
+        </div>
+        <figcaption>
+          <span aria-live="polite"><b id="tryname">Polaris</b> · <span id="tryfam">[[Celestial]]</span></span>
+          <span class="faint">[[A sample unit frame and action bar, painted from the theme's own colors.]]</span>
+          <button class="btn small" type="button" id="trywear">[[Wear it on this site]]</button>
+        </figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="section" id="why" aria-labelledby="why-h">
+    <div class="wrap">
+      <h2 id="why-h">[[What sets it apart]]</h2>
+      <div class="grid why">
+        <div class="card"><h3>[[One look, every window]]</h3><p>[[{{themes}} themes in three families: Glass, Fantasy and Celestial. Pick one and the whole screen follows, down to the game's own windows.]]</p></div>
+        <div class="card"><h3>[[Made for WoW Forever]]</h3><p>[[With every change, its tests check each game function, event and setting it uses against a list taken from the WoW Forever client.]]</p></div>
+        <div class="card"><h3>[[Easy to read, for everyone]]</h3><p>[[Reading aloud, the game's windows by keyboard, high contrast, larger text and calm motion, all built in.]]</p><a class="more-link" href="/accessibility/">[[What it does for accessibility]]</a></div>
+        <div class="card"><h3>[[Coming from ElvUI?]]</h3><p>[[The setup can put your frames where ElvUI, Tukui, RealUI, GW2 UI or the game's own interface had them.]]</p><a class="more-link" href="/features/#compare">[[How they compare]]</a></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band section" id="look" aria-labelledby="look-h">
+    <div class="wrap">
+      <h2 id="look-h">[[The same screen, before and after]]</h2>
+      <p class="lede">[[Drag the line. On the left, a plain interface; on the right, the same screen with Fantasy Glass UI in a Celestial theme.]]</p>
+      <div class="compare cut" id="cmp" style="--x:50%">
+        <fg-shot name="celestial-live" sizes="(max-width: 1208px) 100vw, 1160px" alt="[[The screen with Fantasy Glass UI]]" draggable="false">
+        <fg-shot name="plain-before" class="before" sizes="(max-width: 1208px) 100vw, 1160px" alt="[[The same screen with a plain interface]]" draggable="false">
+        <span class="tag l">[[Plain]]</span><span class="tag r">Fantasy Glass UI</span>
+        <div class="handle" aria-hidden="true"><i></i></div>
+        <input type="range" min="0" max="100" value="50" step="0.5" aria-label="[[Move the line between before and after]]" id="cmprange">
+      </div>
+      <figure class="feature cut" id="shot-big" hidden>
+        <fg-shot name="celestial-screen" id="shot-img" sizes="(max-width: 1208px) 100vw, 1160px" alt="[[A whole screen in a Celestial theme: party, player and target, cast bar, action bars and the minimap.]]">
+        <figcaption id="shot-cap">[[A whole screen in a Celestial theme: party, player and target, cast bar, action bars and the minimap.]]</figcaption>
+      </figure>
+      <div class="thumbs" id="thumbs" role="group" aria-label="[[Pick a screenshot]]"></div>
+    </div>
+  </section>
+
+  <section class="section" id="guide-gold" aria-labelledby="gg-h">
+    <div class="wrap">
+      <div class="eyebrow">[[New in 13.0]]</div>
+      <h2 id="gg-h">[[A guide that plans your route, and gold that knows when to sell]]</h2>
+      <div class="gg">
+        <a class="card gg-card" href="{{url:guide-and-gold}}">
+          <svg class="gg-art" viewBox="0 0 320 120" aria-hidden="true"><path class="gg-path" d="M24 92 C70 92 70 40 116 44 S170 96 214 74 S262 22 296 30"/><g class="gg-stops"><rect x="18" y="86" width="12" height="12" transform="rotate(45 24 92)"/><rect x="110" y="38" width="12" height="12" transform="rotate(45 116 44)"/><rect x="208" y="68" width="12" height="12" transform="rotate(45 214 74)"/></g><path class="gg-star" d="M296 18 l4 9 9 3 -9 3 -4 9 -4 -9 -9 -3 9 -3z"/></svg>
+          <h3>[[Quest planner]]</h3>
+          <p>[[Plans a route from where you are, quest by quest, with flights, boats and your hearthstone. Follow it alone or with a friend.]]</p>
+          <p class="faint">[[With Questie installed, it reads Questie's quests too.]]</p>
+          <span class="more-link">[[How it works]] <span aria-hidden="true">→</span></span>
+        </a>
+        <a class="card gg-card" href="{{url:guide-and-gold}}">
+          <svg class="gg-art" viewBox="0 0 320 120" aria-hidden="true"><g class="gg-bars"><rect x="40" y="70" width="44" height="34"/><rect x="104" y="48" width="44" height="56"/><rect x="168" y="26" width="44" height="78"/></g><g class="gg-coins"><ellipse cx="262" cy="96" rx="26" ry="8"/><ellipse cx="262" cy="84" rx="26" ry="8"/><ellipse cx="262" cy="72" rx="26" ry="8"/></g></svg>
+          <h3>[[Gold advisor]]</h3>
+          <p>[[Ways to make gold from farming, gathering, crafting and selling, ranked by gold an hour, ease and safety. Every number says whether it is a guess, from prices, or what you measured.]]</p>
+          <span class="more-link">[[How it works]] <span aria-hidden="true">→</span></span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="families" aria-labelledby="fam-h">
+    <div class="wrap">
+      <div class="head-row">
+        <h2 id="fam-h">[[{{themes}} themes in three families]]</h2>
+        <a href="{{url:themes}}">[[Browse every theme]] <span aria-hidden="true">→</span></a>
+      </div>
+      <div class="fams">
+        <figure><fg-shot name="glass-overview" class="cut" sizes="(max-width: 700px) 100vw, 380px" alt="[[The same screen in a Glass theme.]]"><figcaption><b>[[Glass]]</b> <span class="faint">· [[clear and bright]]</span></figcaption></figure>
+        <figure><fg-shot name="fantasy-overview" class="cut" sizes="(max-width: 700px) 100vw, 380px" alt="[[The same screen in a Fantasy theme.]]"><figcaption><b>[[Fantasy]]</b> <span class="faint">· [[carved and gilded]]</span></figcaption></figure>
+        <figure><fg-shot name="celestial-screen" class="cut" sizes="(max-width: 700px) 100vw, 380px" alt="[[A whole screen in a Celestial theme: party, player and target, cast bar, action bars and the minimap.]]"><figcaption><b>[[Celestial]]</b> <span class="faint">· [[a night sky behind the glass]]</span></figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="new" aria-labelledby="new-h">
+    <div class="wrap">
+      <div class="latest card">
+        <div>
+          <h2 id="new-h">[[Latest version]]</h2>
+          <p class="dim"><b id="newv">{{version}}</b> · <a href="/changelog/">[[Full changelog]]</a> · <a href="/roadmap/">[[Roadmap]]</a></p>
+        </div>
+        <ul id="news"></ul>
+      </div>
+    </div>
+  </section>

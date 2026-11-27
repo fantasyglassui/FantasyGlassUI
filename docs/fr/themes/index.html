@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="fr" data-lang="fr" data-page="themes">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Thèmes · Fantasy Glass UI</title>
+<meta name="description" content="Des thèmes en trois familles, Verre, Fantasy et Céleste, à essayer sur ce site, et un atelier pour créer le vôtre.">
+<link rel="canonical" href="https://fantasyglassui.com/fr/themes/">
+<link rel="alternate" hreflang="en" href="https://fantasyglassui.com/themes/">
+<link rel="alternate" hreflang="de" href="https://fantasyglassui.com/de/themes/">
+<link rel="alternate" hreflang="fr" href="https://fantasyglassui.com/fr/themes/">
+<link rel="alternate" hreflang="es" href="https://fantasyglassui.com/es/themes/">
+<link rel="alternate" hreflang="ru" href="https://fantasyglassui.com/ru/themes/">
+<link rel="alternate" hreflang="pt" href="https://fantasyglassui.com/pt/themes/">
+<link rel="alternate" hreflang="it" href="https://fantasyglassui.com/it/themes/">
+<link rel="alternate" hreflang="ko" href="https://fantasyglassui.com/ko/themes/">
+<link rel="alternate" hreflang="zh-Hans" href="https://fantasyglassui.com/zh/themes/">
+<link rel="alternate" hreflang="x-default" href="https://fantasyglassui.com/themes/">
+<link rel="icon" type="image/png" href="/icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Fantasy Glass UI">
+<meta property="og:locale" content="fr_FR">
+<meta property="og:locale:alternate" content="en_US">
+<meta property="og:locale:alternate" content="de_DE">
+<meta property="og:locale:alternate" content="es_ES">
+<meta property="og:locale:alternate" content="ru_RU">
+<meta property="og:locale:alternate" content="pt_BR">
+<meta property="og:locale:alternate" content="it_IT">
+<meta property="og:locale:alternate" content="ko_KR">
+<meta property="og:locale:alternate" content="zh_CN">
+<meta property="og:title" content="Thèmes · Fantasy Glass UI">
+<meta property="og:description" content="Des thèmes en trois familles, Verre, Fantasy et Céleste, à essayer sur ce site, et un atelier pour créer le vôtre.">
+<meta property="og:url" content="https://fantasyglassui.com/fr/themes/">
+<meta property="og:image" content="https://fantasyglassui.com/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Fantasy Glass UI">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Thèmes · Fantasy Glass UI">
+<meta name="twitter:description" content="Des thèmes en trois familles, Verre, Fantasy et Céleste, à essayer sur ce site, et un atelier pour créer le vôtre.">
+<meta name="twitter:image" content="https://fantasyglassui.com/og.jpg">
+<meta name="theme-color" content="#12141a" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4f5f8" media="(prefers-color-scheme: light)">
+<script>(function(){var d=document.documentElement;d.classList.add("js");try{var t=localStorage.getItem("fg-theme");if(t==="light"||t==="dark")d.setAttribute("data-theme",t)}catch(e){}var here="fr",page="themes/",to=here,q=location.search,h=location.hash;var m=/[?&]lang=([a-z]{2})\b/.exec(q);if(m){to=m[1];q=q.replace(/([?&])lang=[a-z]{2}&?/,"$1").replace(/[?&]$/,"")}else if(here==="en"){var c=null;try{c=localStorage.getItem("fg-lang")}catch(e){}if(!c)c=String(navigator.language||"en").slice(0,2).toLowerCase();to=c}if(["en", "de", "fr", "es", "ru", "pt", "it", "ko", "zh"].indexOf(to)<0)to=here;var u=(to==="en"?"/":"/"+to+"/")+page;if(u!==location.pathname||q!==location.search)location.replace(u+q+h)})();</script>
+<link rel="preload" href="/assets/marcellus.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap">
+<link rel="stylesheet" href="/assets/site.css?v=0338b00d2b">
+<style>
+/* Themes: the gallery, the chosen theme and the maker (moved from the old long page). */
+/* themes */
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.tcard { transition: transform .2s ease; }
+.tcard:hover { transform: translateY(-4px); }
+.tcard:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+.tcard { background: none; border: 0; padding: 0; text-align: left; cursor: pointer; color: var(--text); font: inherit; min-width: 0; }
+.mini { --cut: 9px; height: 92px; position: relative; overflow: hidden; }
+.mini .pane { position: absolute; inset: 0; padding: 10px; }
+.mini .pane b { display: block; font: 700 0.7rem/1 var(--display); letter-spacing: .06em; }
+.mini .pane i { display: block; height: 7px; margin-top: 8px; width: 70%; clip-path: polygon(4px 0, calc(100% - 4px) 0, 100% 50%, calc(100% - 4px) 100%, 4px 100%, 0 50%); }
+.mini .pane u { display: block; height: 5px; margin-top: 5px; width: 50%; opacity: .55; text-decoration: none; }
+.tcard .tn { display: block; font-weight: 600; font-size: 0.9rem; margin-top: 7px; }
+.tcard .td { display: block; color: var(--faint); font-size: 0.78rem; line-height: 1.3; }
+.tcard[aria-pressed="true"] .mini { outline: 2px solid var(--gold); outline-offset: -2px; }
+.chosen { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 22px; align-items: center; padding: 20px; margin-bottom: 20px; }
+.chosen .mini { height: 170px; --cut: 14px; }
+.chosen .mini .pane b { font-size: 1rem; }
+.chosen .mini .pane i { height: 12px; }
+.chosen h3 { font-size: 1.4rem; }
+.chosen p { color: var(--dim); margin: 6px 0 0; }
+.chosen .acts { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+
+/* ---- theme maker ---- */
+.maker { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 22px; align-items: start; }
+.mk-view .mini { height: 260px; --cut: 16px; }
+.mk-view .mini .pane b { font-size: 1rem; }
+.mk-view .mini .pane i { height: 12px; margin-top: 14px; }
+.mk-view .mini .pane u { height: 8px; margin-top: 9px; }
+.mk-view .cta { margin-top: 16px; }
+.mk-form { padding: 20px; display: grid; gap: 16px; }
+.mk-row { display: grid; gap: 6px; }
+.mk-row > span { font-weight: 600; font-size: .9rem; color: var(--dim); }
+.mk-row .filters { margin: 0; }
+.mk-colors { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.mk-color { display: flex; align-items: center; gap: 10px; padding: 8px; cursor: pointer; min-width: 0; border: 1px solid var(--edge); }
+.mk-color input { width: 42px; height: 42px; padding: 0; border: 0; background: none; cursor: pointer; flex: none; }
+.mk-color input::-webkit-color-swatch-wrapper { padding: 0; }
+.mk-color input::-webkit-color-swatch { border: 1px solid rgba(255,255,255,.3); }
+.mk-color span { display: grid; min-width: 0; }
+.mk-color small { color: var(--faint); font: 400 .8rem/1.2 var(--mono, monospace); }
+.code { width: 100%; resize: vertical; padding: 10px 12px; background: var(--ground); color: var(--text); border: 1px solid var(--edge); font: 400 .82rem/1.45 var(--mono); word-break: break-all; }
+.mk-paste summary { cursor: pointer; color: var(--gold); font-size: .95rem; min-height: 32px; }
+.mk-paste summary:hover { color: var(--gold-hover); }
+.field { width: 100%; }
+#maker { border-top: 1px solid var(--rule); }
+.mk-paste .code { margin-top: 10px; }
+@media (max-width: 900px) { .maker { grid-template-columns: minmax(0, 1fr); } .mk-view .mini { height: 200px; } }
+@media (max-width: 520px) { .mk-colors { grid-template-columns: minmax(0, 1fr); } }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Aller au contenu</a>
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="/fr/"><img src="/logo-64.webp" alt="" width="32" height="32">Fantasy Glass UI</a>
+    <nav class="site-nav" id="site-nav" aria-label="Pages">
+      <ul><li><a href="/fr/">Accueil</a></li><li><a href="/fr/features/">Fonctions</a></li><li><a href="/fr/themes/" aria-current="page">Thèmes</a></li><li><a href="/fr/guide-and-gold/">Guide et or</a></li><li><a href="/fr/get-started/">Commencer</a></li><li><a href="/fr/changelog/">Historique</a></li><li><a href="/fr/roadmap/">Feuille de route</a></li></ul>
+      <div class="head-tools">
+        <label class="lang"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span class="sr-only">Langue</span><select id="lang"><option value="/themes/" data-code="en" lang="en">English</option><option value="/de/themes/" data-code="de" lang="de">Deutsch</option><option value="/fr/themes/" data-code="fr" lang="fr" selected>Français</option><option value="/es/themes/" data-code="es" lang="es">Español</option><option value="/ru/themes/" data-code="ru" lang="ru">Русский</option><option value="/pt/themes/" data-code="pt" lang="pt">Português</option><option value="/it/themes/" data-code="it" lang="it">Italiano</option><option value="/ko/themes/" data-code="ko" lang="ko">한국어</option><option value="/zh/themes/" data-code="zh" lang="zh-Hans">中文</option></select></label>
+        <button class="icon-btn mode" id="mode" type="button" aria-pressed="true" title="Mode sombre"><span class="sr-only">Mode sombre</span><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M5.3 18.7 7 17M17 7l1.7-1.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      </div>
+    </nav>
+    <a class="btn small head-dl" href="https://www.curseforge.com/wow/addons/fantasy-glass-ui">Télécharger</a>
+    <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav"><span class="sr-only">Menu</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    <button class="chip wearing" id="unwear" type="button" hidden>Vous portez <b id="wearname"></b> : revenir aux couleurs du site</button>
+  </div>
+</header>
+<main id="main" tabindex="-1">
+<!-- Themes (W2). The gallery and the theme maker; see site-src/PAGES.md. -->
+  <section class="block" id="themes">
+    <div class="wrap">
+      <header>
+        <div class="eyebrow">Thèmes</div>
+        <h1>116 thèmes en trois familles</h1>
+        <p class="lede">Verre, ce sont des vitres transparentes au bord supérieur lumineux. Fantasy, des panneaux pleins au bord sombre, avec grain et coins dorés. Céleste, un ciel nocturne animé avec des étoiles, une légère Voie lactée et une vraie constellation sur les grandes fenêtres. Chaque famille a un thème à la couleur de votre classe, et vous pouvez créer le vôtre à partir de trois couleurs. Cliquez sur un thème pour l'agrandir.</p>
+      </header>
+      <div class="chosen card" id="chosen" aria-live="polite"></div>
+      <div class="filters" id="tfilters" role="group" aria-label="Famille de thèmes"></div>
+      <div class="gallery" id="gallery"></div>
+      <button class="btn line more" type="button" id="tmore">Show all 116 themes</button>
+    </div>
+  </section>
+
+  <section class="block" id="maker">
+    <div class="wrap">
+      <header>
+        <div class="eyebrow">Créateur de thèmes</div>
+        <h2>Créez votre propre thème</h2>
+        <p class="lede">Choisissez trois couleurs et une famille, le reste est calculé comme le fait l'add-on. Copiez le code, puis dans le jeu tapez <code>/fgui sharepreview</code>, collez-le et appuyez sur <b>Use it</b>.</p>
+      </header>
+      <div class="maker">
+        <div class="mk-view">
+          <div id="mkpane"></div>
+          <div class="cta">
+            <button class="btn" type="button" id="mkwear">L'essayer sur cette page</button>
+            <button class="btn line" type="button" id="mkrandom">Surprenez-moi</button>
+          </div>
+        </div>
+        <div class="mk-form card">
+          <label class="mk-row"><span>Nom</span><input class="field" id="mkname" type="text" maxlength="24" value="My theme" autocomplete="off"></label>
+          <div class="mk-row"><span>Famille</span><div class="filters" id="mkfam" role="group" aria-label="Famille"></div></div>
+          <div class="mk-colors">
+            <label class="mk-color"><input type="color" id="mkpanel" value="#121a33"><span><b>Panneau</b><small id="mkpanelhex"></small></span></label>
+            <label class="mk-color"><input type="color" id="mkrim" value="#5a6a9a"><span><b>Bord</b><small id="mkrimhex"></small></span></label>
+            <label class="mk-color"><input type="color" id="mkaccent" value="#f0c66b"><span><b>Accent</b><small id="mkaccenthex"></small></span></label>
+          </div>
+          <label class="mk-row"><span>Code pour le jeu</span><textarea class="code" id="mkcode" rows="3" readonly spellcheck="false"></textarea></label>
+          <div class="cta"><button class="btn" type="button" id="mkcopy">Copier le code</button><button class="btn line" type="button" id="mklink">Copier un lien vers lui</button></div>
+          <p class="count" id="mkshare">Vous en avez fait un qui vous plaît ? Partagez le code dans <b>#themes</b> sur <a href=&quot;https://discord.gg/qeSMwQWyPR&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;>notre Discord</a>.</p>
+          <details class="mk-paste"><summary>Vous avez déjà un code de thème ? Collez-le ici pour le voir</summary>
+            <textarea class="code" id="mkin" rows="3" spellcheck="false" placeholder="SUIT1!{...}" aria-label="Un code de thème"></textarea>
+            <p class="count" id="mkinmsg" aria-live="polite"></p>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+<footer class="site-foot">
+  <div class="wrap">
+    <div class="foot-row">
+      <span>Fantasy Glass UI par DustyMouse. Gratuit, pour WoW Forever.</span>
+      <ul>
+        <li><a href="https://www.curseforge.com/wow/addons/fantasy-glass-ui">CurseForge</a></li>
+        <li><a href="https://discord.gg/qeSMwQWyPR">Discord</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI">GitHub</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/wiki">Wiki</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/issues/new/choose">Signaler un bug</a></li>
+        <li><a href="/fr/accessibility/">Accessibilité</a></li>
+      </ul>
+    </div>
+    <div class="foot-row">
+      <span>Contact: <a href="mailto:email-forwarding@fantasyglassui.com">email-forwarding@fantasyglassui.com</a></span>
+      <p class="status"><span>Version <b>12.4.1</b></span><span class="sep" aria-hidden="true">·</span><span>Mis à jour le <time datetime="2026-11-25">2026-11-25</time></span><span class="sep" aria-hidden="true">·</span><span>Vérifié avec WoW: Forever <b>1.60.1 (70938)</b></span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">Code source</a></span></p>
+    </div>
+    <nav class="foot-row foot-langs" aria-label="Langue"><ul><li><a href="/themes/" hreflang="en" lang="en" data-code="en">English</a></li><li><a href="/de/themes/" hreflang="de" lang="de" data-code="de">Deutsch</a></li><li><a href="/fr/themes/" hreflang="fr" lang="fr" data-code="fr" aria-current="true">Français</a></li><li><a href="/es/themes/" hreflang="es" lang="es" data-code="es">Español</a></li><li><a href="/ru/themes/" hreflang="ru" lang="ru" data-code="ru">Русский</a></li><li><a href="/pt/themes/" hreflang="pt" lang="pt" data-code="pt">Português</a></li><li><a href="/it/themes/" hreflang="it" lang="it" data-code="it">Italiano</a></li><li><a href="/ko/themes/" hreflang="ko" lang="ko" data-code="ko">한국어</a></li><li><a href="/zh/themes/" hreflang="zh-Hans" lang="zh-Hans" data-code="zh">中文</a></li></ul></nav>
+    <p class="trnote">Cette page a été traduite sans relecture par un locuteur natif. Les corrections sont les bienvenues.</p>
+  </div>
+</footer>
+<script src="/assets/site.js?v=2dd8abee61" defer></script>
+<script src="/assets/data.js?v=69c0402527" defer></script>
+<script src="/assets/themes.js?v=78af6c6bf8" defer></script>
+</body>
+</html>

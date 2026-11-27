@@ -44,6 +44,8 @@ ol.steps .n { color: var(--dim); min-width: 2em; text-align: right; flex: none; 
 ol.steps .done .t { text-decoration: line-through; color: var(--dim); }
 ol.steps .z { color: var(--dim); font-size: .85rem; }
 .note { color: var(--dim); font-size: .85rem; }
+a { color: var(--frost); }
+.links a { display: inline-block; padding: 6px 0; }
 [hidden] { display: none !important; }
 </style>
 <main>
@@ -70,6 +72,7 @@ ol.steps .z { color: var(--dim); font-size: .85rem; }
     </section>
   </div>
   <p class="note" id="private"></p>
+  <p class="note links"><a href="/guide-and-gold/phone/" id="howto"></a> · <a href="/">Fantasy Glass UI</a></p>
 </main>
 <script>
 var WORDS = /*@WORDS@*/;
@@ -186,6 +189,7 @@ var WORDS = /*@WORDS@*/;
     $("clear").textContent = T("Clear the ticks");
     $("local").textContent = T("Your ticks stay in this browser only.");
     $("private").textContent = T("Nothing is sent anywhere: the page reads the code here, in your browser.");
+    $("howto").textContent = T("How to use this page");
     render();
   }
   function render() {

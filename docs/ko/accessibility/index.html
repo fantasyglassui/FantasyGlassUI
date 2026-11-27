@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="ko" data-lang="ko" data-page="accessibility">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>접근성 · Fantasy Glass UI</title>
+<meta name="description" content="WoW Forever용 애드온 Fantasy Glass UI가 색각 이상, 저시력, 시각·청각 장애 플레이어, 광과민성, 한 손 플레이 등을 위해 하는 일.">
+<link rel="canonical" href="https://fantasyglassui.com/ko/accessibility/">
+<link rel="alternate" hreflang="en" href="https://fantasyglassui.com/accessibility/">
+<link rel="alternate" hreflang="de" href="https://fantasyglassui.com/de/accessibility/">
+<link rel="alternate" hreflang="fr" href="https://fantasyglassui.com/fr/accessibility/">
+<link rel="alternate" hreflang="es" href="https://fantasyglassui.com/es/accessibility/">
+<link rel="alternate" hreflang="ru" href="https://fantasyglassui.com/ru/accessibility/">
+<link rel="alternate" hreflang="pt" href="https://fantasyglassui.com/pt/accessibility/">
+<link rel="alternate" hreflang="it" href="https://fantasyglassui.com/it/accessibility/">
+<link rel="alternate" hreflang="ko" href="https://fantasyglassui.com/ko/accessibility/">
+<link rel="alternate" hreflang="zh-Hans" href="https://fantasyglassui.com/zh/accessibility/">
+<link rel="alternate" hreflang="x-default" href="https://fantasyglassui.com/accessibility/">
+<link rel="icon" type="image/png" href="/icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Fantasy Glass UI">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:locale:alternate" content="en_US">
+<meta property="og:locale:alternate" content="de_DE">
+<meta property="og:locale:alternate" content="fr_FR">
+<meta property="og:locale:alternate" content="es_ES">
+<meta property="og:locale:alternate" content="ru_RU">
+<meta property="og:locale:alternate" content="pt_BR">
+<meta property="og:locale:alternate" content="it_IT">
+<meta property="og:locale:alternate" content="zh_CN">
+<meta property="og:title" content="접근성 · Fantasy Glass UI">
+<meta property="og:description" content="WoW Forever용 애드온 Fantasy Glass UI가 색각 이상, 저시력, 시각·청각 장애 플레이어, 광과민성, 한 손 플레이 등을 위해 하는 일.">
+<meta property="og:url" content="https://fantasyglassui.com/ko/accessibility/">
+<meta property="og:image" content="https://fantasyglassui.com/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Fantasy Glass UI">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="접근성 · Fantasy Glass UI">
+<meta name="twitter:description" content="WoW Forever용 애드온 Fantasy Glass UI가 색각 이상, 저시력, 시각·청각 장애 플레이어, 광과민성, 한 손 플레이 등을 위해 하는 일.">
+<meta name="twitter:image" content="https://fantasyglassui.com/og.jpg">
+<meta name="theme-color" content="#12141a" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4f5f8" media="(prefers-color-scheme: light)">
+<script>(function(){var d=document.documentElement;d.classList.add("js");try{var t=localStorage.getItem("fg-theme");if(t==="light"||t==="dark")d.setAttribute("data-theme",t)}catch(e){}var here="ko",page="accessibility/",to=here,q=location.search,h=location.hash;var m=/[?&]lang=([a-z]{2})\b/.exec(q);if(m){to=m[1];q=q.replace(/([?&])lang=[a-z]{2}&?/,"$1").replace(/[?&]$/,"")}else if(here==="en"){var c=null;try{c=localStorage.getItem("fg-lang")}catch(e){}if(!c)c=String(navigator.language||"en").slice(0,2).toLowerCase();to=c}if(["en", "de", "fr", "es", "ru", "pt", "it", "ko", "zh"].indexOf(to)<0)to=here;var u=(to==="en"?"/":"/"+to+"/")+page;if(u!==location.pathname||q!==location.search)location.replace(u+q+h)})();</script>
+<link rel="preload" href="/assets/marcellus.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap">
+<link rel="stylesheet" href="/assets/site.css?v=0338b00d2b">
+<style>
+/* Accessibility: what the add-on does, need by need. */
+.page-head .lede { color: var(--text); font-size: 1.2rem; margin: 0 0 12px; }
+.page-head .start { color: var(--dim); margin: 0; }
+.acc { padding-block: 28px 24px; }
+nav.jump { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 30px; }
+nav.jump a { display: inline-flex; align-items: center; min-height: 36px; padding: 4px 12px; border: 1px solid var(--line); color: var(--frost); text-decoration: none; }
+nav.jump a:hover { border-color: var(--frost); }
+.need { padding: 22px 26px 10px; margin: 0 0 20px; }
+.need h2 { font-size: 1.8rem; margin: 0 0 4px; }
+.need .who { color: var(--dim); margin: 0 0 12px; }
+.need ul { margin: 0 0 12px; padding-left: 1.2em; }
+.need li { margin: 0 0 10px; color: var(--dim); }
+.need li::marker { color: var(--gold); }
+.need li b { color: var(--text); }
+.honest { border-left: 3px solid var(--gold); padding: 4px 0 4px 18px; margin: 34px 0 0; color: var(--dim); }
+.honest h2 { font-size: 1.5rem; margin-bottom: 8px; }
+@media (max-width: 560px) { .need { padding: 18px 16px 6px; } }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="/ko/"><img src="/logo-64.webp" alt="" width="32" height="32">Fantasy Glass UI</a>
+    <nav class="site-nav" id="site-nav" aria-label="페이지">
+      <ul><li><a href="/ko/">홈</a></li><li><a href="/ko/features/">기능</a></li><li><a href="/ko/themes/">테마</a></li><li><a href="/ko/guide-and-gold/">안내서와 골드</a></li><li><a href="/ko/get-started/">시작하기</a></li><li><a href="/ko/changelog/">변경 내역</a></li><li><a href="/ko/roadmap/">로드맵</a></li></ul>
+      <div class="head-tools">
+        <label class="lang"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span class="sr-only">언어</span><select id="lang"><option value="/accessibility/" data-code="en" lang="en">English</option><option value="/de/accessibility/" data-code="de" lang="de">Deutsch</option><option value="/fr/accessibility/" data-code="fr" lang="fr">Français</option><option value="/es/accessibility/" data-code="es" lang="es">Español</option><option value="/ru/accessibility/" data-code="ru" lang="ru">Русский</option><option value="/pt/accessibility/" data-code="pt" lang="pt">Português</option><option value="/it/accessibility/" data-code="it" lang="it">Italiano</option><option value="/ko/accessibility/" data-code="ko" lang="ko" selected>한국어</option><option value="/zh/accessibility/" data-code="zh" lang="zh-Hans">中文</option></select></label>
+        <button class="icon-btn mode" id="mode" type="button" aria-pressed="true" title="어두운 모드"><span class="sr-only">어두운 모드</span><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M5.3 18.7 7 17M17 7l1.7-1.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      </div>
+    </nav>
+    <a class="btn small head-dl" href="https://www.curseforge.com/wow/addons/fantasy-glass-ui">다운로드</a>
+    <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav"><span class="sr-only">메뉴</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    <button class="chip wearing" id="unwear" type="button" hidden><b id="wearname"></b> 적용 중: 사이트 색으로 돌아가기</button>
+  </div>
+</header>
+<main id="main" tabindex="-1">
+<!-- Accessibility (W3). pages/accessibility/body.py; see site-src/PAGES.md. -->
+<div class="wrap narrow page-head">
+  <h1>접근성</h1>
+  <p class="faint">이 페이지는 아직 영어로만 제공됩니다.</p>
+  <div lang="en">
+  <p class="lede">Fantasy Glass UI has accessibility built into every part of the interface: colors for each kind of color vision, high-contrast themes, lettering made to be read, captions, reading aloud, safe flashing, and keys for one hand. All of it is free, and every part can be switched on or off.</p>
+  <p class="start">In the game: <code>/fgui access</code> opens the Accessibility settings, and the first-time setup has a Comfort step. Version 12.4.1.</p>
+  </div>
+</div>
+<div class="wrap narrow acc" lang="en">
+  <nav class="jump" aria-label="Needs"><a href="#seeing-color">Color vision</a><a href="#seeing-low">Low vision</a><a href="#reading">Reading aloud</a><a href="#hearing">Hearing</a><a href="#motion">Flashing and motion</a><a href="#hands">Hands and keys</a><a href="#calm">Focus and calm</a><a href="#share">Share it</a></nav>
+  <div id="needs">
+<section class="need card" id="seeing-color" aria-labelledby="h-seeing-color"><h2 id="h-seeing-color">Color vision</h2><p class="who">For red-green or blue-yellow color blindness, or seeing no color at all.</p><ul><li><b>Colors for your kind of color vision.</b> Red-green (blue and orange), blue-yellow (teal, pink and red), or no color at all, where brightness and marks carry the meaning.</li><li><b>Marks as well as colors.</b> Debuffs get a letter, item quality gets dots, and threat on nameplates gets a mark ("!" when it is slipping, "!!" when it is lost).</li></ul></section>
+<section class="need card" id="seeing-low" aria-labelledby="h-seeing-low"><h2 id="h-seeing-low">Low vision</h2><p class="who">For seeing the screen more easily.</p><ul><li><b>High-contrast themes.</b> Pure black panels, white lettering and the strongest rims, in all three families: glass, fantasy and celestial. One button picks the one for the family you use.</li><li><b>Lettering made to be read.</b> Readable (Atkinson Hyperlegible, made for low vision) and Dyslexia-friendly (OpenDyslexic). A thicker outline round every letter, and a dark band behind messages in the middle of the screen.</li><li><b>Bigger text and a bigger interface.</b> Text size and interface scale of their own, separate from the game's.</li><li><b>A ring round your target.</b> A thick outline, 1 to 8 pixels, round your target's nameplate, so it stands out in a crowd. A ring round the mouse pointer too.</li></ul></section>
+<section class="need card" id="reading" aria-labelledby="h-reading"><h2 id="h-reading">Reading aloud</h2><p class="who">For blind and low-vision players, and for anyone who would rather listen. In the game's own voice.</p><ul><li><b>Talk and quests read as they open.</b> What an NPC says and the choices it offers, a quest's text, its progress and its reward, and books and letters. The reading stops when you close the window.</li><li><b>What you point at.</b> When the mouse rests on something, its tooltip is read aloud. (The game's own screen narrator only works before you log in.)</li><li><b>A key that reads.</b> One key reads the tooltip under the mouse, the quest you are reading, or the last whisper.</li><li><b>Spoken alerts.</b> Ready checks, whispers, missing buffs, loss of control and your own alerts, said aloud.</li></ul></section>
+<section class="need card" id="hearing" aria-labelledby="h-hearing"><h2 id="h-hearing">Hearing</h2><p class="who">For deaf and hard-of-hearing players, and for playing with the sound off.</p><ul><li><b>Captions for sounds.</b> A line on screen, with a mark for its kind, for ready checks, whispers, queues, invites, duels, resurrections, summons, boss emotes, raid warnings, loot rolls, the aggro warning and your own alerts.</li></ul></section>
+<section class="need card" id="motion" aria-labelledby="h-motion"><h2 id="h-motion">Flashing and motion</h2><p class="who">For players sensitive to flashing light or movement.</p><ul><li><b>Safe flashing.</b> Nothing flashes more than three times a second, flashes are gentle, pulsing warnings hold still, and the game's red low-health flash is off.</li><li><b>Reduce motion.</b> No fades, pulses, gliding bars or camera drift: things appear and change at once.</li><li><b>A still sky.</b> The celestial themes keep their stars but hold still: no twinkling and no shooting stars, while everything else moves as usual.</li></ul></section>
+<section class="need card" id="hands" aria-labelledby="h-hands"><h2 id="h-hands">Hands and keys</h2><p class="who">For playing with one hand, or with the keyboard alone.</p><ul><li><b>Keys for one hand.</b> One button puts moving, jumping, targeting, interacting and the first action buttons round W, A, S and D for the left hand, or all on the number pad for the right. Another puts every key back as it was.</li><li><b>The game's windows by keyboard.</b> With an NPC's talk, a quest, a vendor, the mailbox, loot, a trainer, a flight master or a question box open, Tab moves from button to button and Enter presses it, with a ring to show where you are and each choice said aloud if you like.</li><li><b>The settings by keyboard.</b> Tab and the arrow keys go from setting to setting, Space switches one, Left and Right move a slider.</li><li><b>Bigger controls.</b> Larger switches in the settings, and "click twice" buttons wait ten seconds for the second click.</li></ul></section>
+<section class="need card" id="calm" aria-labelledby="h-calm"><h2 id="h-calm">Focus and calm</h2><p class="who">For a quieter screen.</p><ul><li><b>Calm mode.</b> One notification at a time, held for fifteen seconds and put away with a click, and messages that stay up longer.</li><li><b>A wait before tooltips.</b> Tooltips show only when the mouse rests a moment, so sweeping across the screen does not throw one up after another.</li></ul></section>
+<section class="need card" id="share" aria-labelledby="h-share"><h2 id="h-share">Share it</h2><p class="who">For helping a friend, or setting up a new character.</p><ul><li><b>One line of text.</b> All your accessibility settings as one line to copy, keep or give to someone; pasting it back sets them all at once.</li><li><b>A Comfort step in the setup.</b> The first-time setup has a step for seeing, hearing and calm, so it is ready before you play.</li></ul></section>
+  </div>
+  <section class="honest">
+    <h2>What it does not do (yet)</h2>
+    <p>It is not a screen reader: reading aloud covers talk, quests, books, tooltips, whispers and the buttons of the game's main windows, but not every part of every window. The two readable lettering styles have Western European letters only. Reading aloud uses the voices your computer gives the game. Ideas and problems are welcome on <a href="https://discord.gg/qeSMwQWyPR">Discord</a>.</p>
+  </section>
+</div>
+</main>
+<footer class="site-foot">
+  <div class="wrap">
+    <div class="foot-row">
+      <span>DustyMouse의 Fantasy Glass UI. WoW Forever용 무료 애드온.</span>
+      <ul>
+        <li><a href="https://www.curseforge.com/wow/addons/fantasy-glass-ui">CurseForge</a></li>
+        <li><a href="https://discord.gg/qeSMwQWyPR">Discord</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI">GitHub</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/wiki">Wiki</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/issues/new/choose">버그 신고</a></li>
+        <li><a href="/ko/accessibility/">접근성</a></li>
+      </ul>
+    </div>
+    <div class="foot-row">
+      <span>연락처: <a href="mailto:email-forwarding@fantasyglassui.com">email-forwarding@fantasyglassui.com</a></span>
+      <p class="status"><span>버전 <b>12.4.1</b></span><span class="sep" aria-hidden="true">·</span><span><time datetime="2026-11-25">2026-11-25</time> 업데이트</span><span class="sep" aria-hidden="true">·</span><span>WoW: Forever <b>1.60.1 (70938)</b> 기준으로 확인</span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">소스 코드</a></span></p>
+    </div>
+    <nav class="foot-row foot-langs" aria-label="언어"><ul><li><a href="/accessibility/" hreflang="en" lang="en" data-code="en">English</a></li><li><a href="/de/accessibility/" hreflang="de" lang="de" data-code="de">Deutsch</a></li><li><a href="/fr/accessibility/" hreflang="fr" lang="fr" data-code="fr">Français</a></li><li><a href="/es/accessibility/" hreflang="es" lang="es" data-code="es">Español</a></li><li><a href="/ru/accessibility/" hreflang="ru" lang="ru" data-code="ru">Русский</a></li><li><a href="/pt/accessibility/" hreflang="pt" lang="pt" data-code="pt">Português</a></li><li><a href="/it/accessibility/" hreflang="it" lang="it" data-code="it">Italiano</a></li><li><a href="/ko/accessibility/" hreflang="ko" lang="ko" data-code="ko" aria-current="true">한국어</a></li><li><a href="/zh/accessibility/" hreflang="zh-Hans" lang="zh-Hans" data-code="zh">中文</a></li></ul></nav>
+    <p class="trnote">이 페이지는 원어민 검토 없이 번역되었습니다. 수정 제안을 환영합니다.</p>
+  </div>
+</footer>
+<script src="/assets/site.js?v=2dd8abee61" defer></script>
+</body>
+</html>
