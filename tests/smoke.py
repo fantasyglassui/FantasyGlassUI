@@ -29373,6 +29373,38 @@ try("13.5 P2-I1: a shared profile or pack never carries the two opt-in switches"
     for k in pairs(ns.root.profiles) do if not keep.profiles[k] then ns.root.profiles[k] = nil end end
     if not fine then error(err, 0) end
 end)
+try("13.5 P2-M11: a guarded call makes no garbage while crash reports are kept", function()
+    local keep = { on = ns.db.crashReports, crashes = ns.root.crashes, nerr = #ns.errors, raw = ns.PrintRaw, args = ns.CRASH_XPCALL_ARGS }
+    ns.db.crashReports = true
+    ns.PrintRaw = function() end
+    local fine, err = pcall(function()
+        local g = ns:Guard("zzM11", function(a) return a end)
+        local s = ns:Safe("zzM11s", function(a) return a end)
+        local bad = ns:Safe("zzM11bad", function() error("x", 0) end)
+        bad()
+        for _ = 1, 10 do g(1, 2); s(1); bad() end
+        collectgarbage("collect"); collectgarbage("stop")
+        local kb0 = collectgarbage("count")
+        for i = 1, 5000 do g(i, nil); s(i); bad(i) end
+        local kb = collectgarbage("count") - kb0
+        collectgarbage("restart")
+        ok(kb < 50, "garbage made by 15000 guarded calls: " .. string.format("%.1f", kb) .. " KB")
+        ok(ns.CRASH_XPCALL_ARGS == true, "this Lua's xpcall hands arguments on")
+        -- where xpcall takes no arguments, the closure still hands them on
+        ns.CRASH_XPCALL_ARGS = false
+        local got
+        ns:Guard("zzM11f", function(a, b, c) got = { a, b, c } end)(1, nil, 3)
+        local sgot
+        ns:Safe("zzM11g", function(a, b, c) sgot = { a, b, c } end)(4, nil, 6)
+        ns.CRASH_XPCALL_ARGS = true
+        ok(got and got[1] == 1 and got[2] == nil and got[3] == 3, "Guard's fallback hands them on")
+        ok(sgot and sgot[1] == 4 and sgot[2] == nil and sgot[3] == 6, "Safe's fallback hands them on")
+    end)
+    collectgarbage("restart")
+    ns.db.crashReports, ns.root.crashes, ns.PrintRaw, ns.CRASH_XPCALL_ARGS = keep.on, keep.crashes, keep.raw, keep.args
+    for i = #ns.errors, keep.nerr + 1, -1 do rawset(ns.errors, i, nil) end
+    if not fine then error(err, 0) end
+end)
 end
 -- 13.5 part two fix tests: end
 -- release 13 fix tests: end

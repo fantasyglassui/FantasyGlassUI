@@ -271,15 +271,20 @@ function ns:LanguageFont(fs, code)
 end
 -- One error disables the wrapped function (prints once) instead of spamming.
 -- (13.5) While Keep crash reports is on (Crashes.lua), Safe and Guard call through xpcall instead, so
--- the handler can note where it happened, and every failure is kept, not only the first. The closure
--- for that is made on the wrapper's own line, so a call stack shows the two as one place (ns.guardAt,
+-- the handler can note where it happened, and every failure is kept, not only the first. The game's
+-- xpcall hands the arguments on (ns.CRASH_XPCALL_ARGS), so nothing is made per call; where it would not,
+-- a closure is made, on the wrapper's own line, so a call stack shows the two as one place (ns.guardAt,
 -- which Blocked.lua steps over). While it is off, the call is the plain pcall it always was.
+do
+    local ok, v = xpcall(function(a) return a end, function(e) return e end, true)
+    ns.CRASH_XPCALL_ARGS = ok and v == true
+end
 function ns:Safe(label, fn)
     local failed = false
-    return function(...) local call; if ns.CrashOn and ns.CrashOn() then local args, n = { ... }, select("#", ...); call = function() return fn(unpack(args, 1, n)) end end
-        if failed then return end
-        if call then
-            local ok, err = xpcall(call, ns.CrashHandler)
+    return function(...) if failed then return end local on, call = ns.CrashOn and ns.CrashOn(), nil; if on and not ns.CRASH_XPCALL_ARGS then local args, n = { ... }, select("#", ...); call = function() return fn(unpack(args, 1, n)) end end
+        if on then
+            local ok, err
+            if call then ok, err = xpcall(call, ns.CrashHandler) else ok, err = xpcall(fn, ns.CrashHandler, ...) end
             if not ok then
                 failed = true
                 pcall(ns.CrashKeep, label, err, ns.crashStack)
@@ -314,16 +319,12 @@ end
 -- Like Safe, but keeps running: reports the first error only.
 function ns:Guard(label, fn)
     local told = false
-    return function(...) local call; if ns.CrashOn and ns.CrashOn() then local args, n = { ... }, select("#", ...); call = function() return fn(unpack(args, 1, n)) end end
+    return function(...) local on, call = ns.CrashOn and ns.CrashOn(), nil; if on and not ns.CRASH_XPCALL_ARGS then local args, n = { ... }, select("#", ...); call = function() return fn(unpack(args, 1, n)) end end
         local ok, err
-        if call then                                         -- (13.5: Keep crash reports is on; see ns:Safe)
-            if ns.perfOn then
-                local t0 = debugprofilestop()
-                ok, err = xpcall(call, ns.CrashHandler)
-                ns:PerfAdd(label, debugprofilestop() - t0)
-            else
-                ok, err = xpcall(call, ns.CrashHandler)
-            end
+        if on then                                           -- (13.5: Keep crash reports is on; see ns:Safe)
+            local t0 = ns.perfOn and debugprofilestop()
+            if call then ok, err = xpcall(call, ns.CrashHandler) else ok, err = xpcall(fn, ns.CrashHandler, ...) end
+            if t0 then ns:PerfAdd(label, debugprofilestop() - t0) end
             if not ok then
                 pcall(ns.CrashKeep, label, err, ns.crashStack)
                 ns.crashStack = nil
