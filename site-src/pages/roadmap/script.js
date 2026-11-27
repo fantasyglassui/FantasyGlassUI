@@ -12,7 +12,7 @@
         var on = which === "all" || i.dataset.status === which;
         i.hidden = !on; if (on) { any = true; n++; }
       });
-      g.hidden = !any;
+      g.hidden = !any && !(g.dataset.keep && (which === "all" || which === g.dataset.keep));   // (the Ready section stays, with its empty line, under All and Ready)
     });
     if (say) say.textContent = String(n);
   }

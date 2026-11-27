@@ -20,3 +20,10 @@ ul.ideas { list-style: none; margin: 0; padding: 0; display: grid; grid-template
 .welcome { margin-top: 34px; padding: 26px 28px; }
 .welcome h2 { margin-bottom: 8px; }
 .welcome p { margin: 0; font-size: 1.05rem; }
+/* Ready: out now. The frost blue the site keeps for links marks it apart from the gold of Next, with a tick drawn in CSS (no colour alone). */
+.tag.ready { color: var(--frost); }
+.tag.ready::before { content: "✓"; margin-right: 6px; font-weight: 700; }
+.idea:has(.tag.ready) { --c: color-mix(in srgb, var(--frost) 55%, var(--line)); }
+.idea .ver { display: inline-block; margin-left: 10px; color: var(--dim); font-size: .85rem; }
+.rm-ready { border-top: 0; padding-top: 6px; }
+.rm-ready .empty { padding: 14px 0; list-style: none; }

@@ -1,11 +1,12 @@
 {
- "_about": "The Roadmap page's data (pages/roadmap/body.py draws it). To change the page, change this file: an idea's status is one of the statuses below, its group one of the groups. Every title and text is English, translated in site_tr.py's Roadmap block; the build stops on one without a translation. No dates. The numbers are the roadmap's own (32 is left out at the player's wish). Every \"name\", \"title\" and \"text\" is listed for translation by keys_all.py (\"_translate\").",
+ "_about": "The Roadmap page's data (pages/roadmap/body.py draws it). To change the page, change this file: an idea's status is one of the statuses below (a ready idea also gets version, the add-on version it came out in, and shows in the Ready section at the top), its group one of the groups. Every title and text is English, translated in site_tr.py's Roadmap block; the build stops on one without a translation. No dates. The numbers are the roadmap's own (32 is left out at the player's wish). Every \"name\", \"title\" and \"text\" is listed for translation by keys_all.py (\"_translate\").",
  "_translate": [
   "name",
   "title",
   "text"
  ],
  "statuses": [
+  {"id": "ready", "name": "Ready", "text": "Out now, in the version shown."},
   {"id": "next", "name": "Next", "text": "Small, wanted, and first in line."},
   {"id": "planned", "name": "Planned", "text": "On the list, to be built."},
   {"id": "thinking", "name": "Thinking about it", "text": "An idea we like, not decided yet."}

@@ -2189,6 +2189,9 @@ SITE.update({
 
 # -- Roadmap (W3)
 SITE.update({
+"Ready": ("Fertig", "Prêt", "Listo", "Готово", "Pronto", "Pronto", "완료", "已完成"),
+"Out now, in the version shown.": ("Jetzt da, in der angegebenen Version.", "Disponible maintenant, dans la version indiquée.", "Ya disponible, en la versión indicada.", "Уже вышло, в указанной версии.", "Já disponível, na versão indicada.", "Già disponibile, nella versione indicata.", "지금 사용할 수 있어요. 표시된 버전부터 들어 있습니다.", "现已推出，见所示版本。"),
+"Nothing here yet: ideas move here as they come out.": ("Noch nichts hier: Ideen landen hier, sobald sie erscheinen.", "Rien pour l'instant : les idées arrivent ici dès leur sortie.", "Aún no hay nada: las ideas llegan aquí cuando salen.", "Пока пусто: идеи появляются здесь, когда выходят.", "Nada aqui ainda: as ideias vêm para cá quando saem.", "Ancora niente: le idee arrivano qui quando escono.", "아직 없어요. 아이디어가 나오면 여기로 옮겨집니다.", "暂时还没有：想法推出后会移到这里。"),
 "After 13.0": ("Nach 13.0", "Après la 13.0", "Después de 13.0", "После 13.0", "Depois da 13.0", "Dopo la 13.0", "13.0 이후", "13.0 之后"),
 "There are no dates: an idea moves up when it is ready, and the list changes as we go. Just out in 13.0: <a href=\"/guide-and-gold/\">Guide and Gold</a>.": (
  "Es gibt keine Termine: Eine Idee rückt vor, wenn sie so weit ist, und die Liste ändert sich unterwegs. Gerade erschienen in 13.0: <a href=\"/guide-and-gold/\">Anleitung und Gold</a>.",
