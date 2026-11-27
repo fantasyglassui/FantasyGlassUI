@@ -375,6 +375,25 @@ function ns.PlannerCandidates(source, ctx)
     local kept, waiting = {}, {}
     for _, r in ipairs(list) do if keep[r.id] then kept[#kept + 1] = r end end
     for _, r in ipairs(later) do if keep[r.id] then waiting[#waiting + 1] = r end end
+    -- a quest in your log whose reward the game will not tell (rec.xpGuess): worth what the other candidates within 3 levels
+    -- of it give (their median), so an unknown reward never counts as none and puts a started quest behind new ones
+    local known = {}
+    for _, r in ipairs(kept) do if not r.xpGuess and tonumber(r.xp) and r.xp > 0 then known[#known + 1] = r end end
+    if #known > 0 then
+        for i, r in ipairs(kept) do
+            if r.xpGuess and tonumber(r.level) then
+                local near = {}
+                for _, k in ipairs(known) do if tonumber(k.level) and math.abs(k.level - r.level) <= 3 then near[#near + 1] = k.xp end end
+                if #near > 0 then
+                    table.sort(near)
+                    local copy = {}
+                    for key, v in pairs(r) do copy[key] = v end
+                    copy.xp = near[floor((#near + 1) / 2)]
+                    kept[i] = copy
+                end
+            end
+        end
+    end
     -- (the logged partners' lists are read too: a group-only quest that a logged quest names cannot be taken;
     -- only group-only ids are counted, once per set)
     local counted, isGroupOnly = {}, {}

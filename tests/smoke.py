@@ -11039,7 +11039,7 @@ try("13.0 planner: running it", function()
             rawset(panel[k], "SetText", function(_, t) said[k] = t end)
         end
         ns:GuideAdvance()
-        if not tostring(said.title):find(string.format(ns:Tr("Planned: %s, level %s → %s"), "Testshire", "10", ""), 1, true) then error("the panel's title: " .. tostring(said.title)) end
+        if not tostring(said.title):find(string.format(ns:Tr("Planned: %s, level %s to %s"), "Testshire", "10", ""), 1, true) then error("the panel's title: " .. tostring(said.title)) end
         if said.skipped ~= string.format(ns:Tr("Skipped: %d group quest (Solo is on)"), 1) then error("the skipped line: " .. tostring(said.skipped)) end
         if not (planned().estimates and (planned().estimates[101] or 0) > 0) then error("each quest's estimate is kept with the plan") end
         local text = ns.GuideText(planned())
@@ -14934,7 +14934,7 @@ try("13.4 feel B: time to level, why this, preview", function()
             if lines[i].left ~= i .. ". " .. ns.GuideStepBase(s) then error("step " .. i .. " in order: " .. tostring(lines[i].left)) end
         end
         local all = text(lines)
-        for _, want in ipairs({ "Experience: 6,000", "Level 25 → 26", "Flights: 2, crossings: 1", "Skipped: 3 group quests (Solo is on)" }) do
+        for _, want in ipairs({ "Experience: 6,000", "Level 25 to 26", "Flights: 2, crossings: 1", "Skipped: 3 group quests (Solo is on)" }) do
             if not all:find(want, 1, true) then error("the preview says " .. want .. ":\n" .. all) end
         end
         if all:find("Moved:", 1, true) then error("no moved line without a moved hub") end
@@ -26466,6 +26466,215 @@ try("13.0 fix M3: /fgui check names the plan and a trip in words", function()
     if not ok then error(err, 0) end
 end)
 -- release 13 fix tests: end
+-- logmerge 13.0.1 tests: begin
+do
+    -- One fake world for the three tests: Questie knows "Agitators" (101, its giver 240 yd north of you) and "Agitator"
+    -- (900001); the quest log holds quests Questie does not know (WoW: Forever's own), each { id, title, level, xp,
+    -- objectives, wp = { map, x, y } (the game's waypoint, 0-1), poi = { x, y } (its mark on map 1), complete }.
+    local function LogWorld(entries, body, giver)
+        local real = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), ql = env.C_QuestLog, xp = rawget(env, "GetQuestLogRewardXP"),
+                       loaded = env.C_AddOns.IsAddOnLoaded, meta = rawget(env.C_AddOns, "GetAddOnMetadata"), q = rawget(env, "Questie"),
+                       loader = rawget(env, "QuestieLoader"), ids = ns.root.plannerQuestIds, titles = ns.root.plannerQuestIdTitles }
+        local cm = {}
+        for k, v in pairs(real.map) do cm[k] = v end
+        cm.GetWorldPosFromMapPos = function(map, v) if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end end
+        cm.GetBestMapForUnit = function() return 1 end
+        cm.GetMapInfo = function(map) return map == 1 and { name = "Zephras Isle", mapType = 3 } or nil end
+        env.C_Map = cm
+        env.CreateVector2D = function(x, y) return { x = x, y = y } end
+        local npcs = {
+            [9] = { spawns = { [40] = { giver or { 50, 74 } } }, minLevel = 8, maxLevel = 8, rank = 0, name = "Giver" },
+            [20] = { spawns = { [40] = { { 50, 80 } } }, minLevel = 8, maxLevel = 8, rank = 0, name = "Agitator" },
+        }
+        local quests = {
+            [101] = { name = "Agitators", questLevel = 8, level = 8, requiredLevel = 1, startedBy = { { 9 } }, finishedBy = { { 9 } },
+                      objectives = { { { 20, "Agitator slain" } } }, specialFlags = 0, zoneOrSort = 40 },
+            [900001] = { name = "Agitator", questLevel = 8, level = 8, requiredLevel = 1, startedBy = { { 9 } }, finishedBy = { { 9 } },
+                         objectives = { { { 20, "Agitator slain" } } }, specialFlags = 0, zoneOrSort = 40 },
+        }
+        local fakes = {
+            QuestieDB = { QuestPointers = { [101] = true, [900001] = true }, NPCPointers = { [9] = true, [20] = true },
+                GetQuest = function(id) return quests[id] end, IsDoable = function() return true end,
+                QueryQuestSingle = function(id, key) return quests[id] and quests[id][key] end,
+                QueryNPCSingle = function(id, key) return npcs[id] and npcs[id][key] end },
+            QuestXP = { GetQuestLogRewardXP = function() return 1202 end },
+            ZoneDB = { GetUiMapIdByAreaId = function(_, area) return area == 40 and 1 or nil end },
+        }
+        env.Questie = { API = { isReady = true, RegisterOnReady = function() end } }
+        env.QuestieLoader = { ImportModule = function(_, name) return fakes[name] end }
+        env.C_AddOns.IsAddOnLoaded = function(name) return name == "Questie" or real.loaded(name) end
+        rawset(env.C_AddOns, "GetAddOnMetadata", function() return "4" end)
+        local function Entry(id) for _, e in ipairs(entries) do if e.id == id then return e end end end
+        env.C_QuestLog = {
+            IsOnQuest = function(id) return Entry(id) ~= nil end,
+            IsQuestFlaggedCompleted = function() return false end, IsFailed = function() return false end,
+            IsComplete = function(id) local e = Entry(id); return e and e.complete or false end,
+            ReadyForTurnIn = function(id) local e = Entry(id); return e and e.complete or false end,
+            GetNumQuestLogEntries = function() return #entries end,
+            GetInfo = function(i) local e = entries[i]; return e and { questID = e.id, title = e.title, level = e.level, questLevel = e.level } or nil end,
+            GetLogIndexForQuestID = function(id) for i, e in ipairs(entries) do if e.id == id then return i end end end,
+            GetTitleForQuestID = function(id) local e = Entry(id); return e and e.title or nil end,
+            GetQuestObjectives = function(id) local e = Entry(id); return e and e.objectives or {} end,
+            GetNextWaypoint = function(id) local e = Entry(id); if e and e.wp then return e.wp[1], e.wp[2], e.wp[3] end end,
+            GetQuestsOnMap = function(map)
+                local out = {}
+                for _, e in ipairs(entries) do if map == 1 and e.poi then out[#out + 1] = { questID = e.id, x = e.poi[1], y = e.poi[2] } end end
+                return out
+            end,
+        }
+        env.GetQuestLogRewardXP = function(id) local e = Entry(id); return e and e.xp or 0 end
+        ns.PlannerSourceReset()
+        local ok, err = pcall(function()
+            local src = ns.PlannerSource()
+            if not (src and src.kind == "questie") then error("the Questie source is used") end
+            local ctx = { source = src, level = 8, group = "solo", inGroup = false, speed = 7, faction = "Alliance",
+                here = { map = 1, x = 50, y = 50 }, crossings = {}, flights = {}, learnFlights = false, pace = 1,
+                flightTime = function() return nil end, done = function() return false end,
+                onQuest = function(id) return ns.PlannerServerId(id) ~= nil end, mappedId = ns.PlannerMappedId,
+                ready = ns.PlannerContext().ready,                           -- (the live context's: by the id the game knows it by)
+                matchLog = function(rec, rivals) return ns.PlannerServerId(rec.id, rec.name, rec.level, rivals) ~= nil end }
+            body(src, ctx)
+        end)
+        ns.PlannerSourceReset()
+        env.C_Map = real.map; rawset(env, "CreateVector2D", real.vec); env.C_QuestLog = real.ql; rawset(env, "GetQuestLogRewardXP", real.xp)
+        env.C_AddOns.IsAddOnLoaded = real.loaded; rawset(env.C_AddOns, "GetAddOnMetadata", real.meta)
+        rawset(env, "Questie", real.q); rawset(env, "QuestieLoader", real.loader)
+        ns.root.plannerQuestIds, ns.root.plannerQuestIdTitles = real.ids, real.titles
+        if not ok then error(err, 0) end
+    end
+    -- Where each quest's steps are: at[kind][quest] = the first index, and the steps of a quest.
+    local function Steps(guide)
+        local at, of = { accept = {}, ["do"] = {}, turnin = {} }, {}
+        for i, s in ipairs(guide.steps) do
+            if at[s.kind] and s.quest and not at[s.kind][s.quest] then at[s.kind][s.quest] = i end
+            if s.quest then of[s.quest] = of[s.quest] or {}; table.insert(of[s.quest], s) end
+        end
+        return at, of
+    end
+    local function Kills(n) return { { text = "Juvenile Vuldren slain: 0/" .. n, type = "monster", finished = false, numFulfilled = 0, numRequired = n } } end
+    try("13.0.1 logmerge: a quest in your log that Questie does not know is planned beside Questie's", function()
+        local log = { { id = 60001, title = "Harmony in Balance", level = 8, xp = 1100, objectives = Kills(8), wp = { 1, 0.50, 0.45 } } }
+        LogWorld(log, function(src, ctx)
+            local listed = false
+            for _, id in ipairs(src.ids()) do if id == 60001 then listed = true end end
+            if not listed then error("the log's quest is one of the source's ids") end
+            local rec = src.quest(60001)
+            if not (rec and rec.objectives and rec.objectives[1] and rec.objectives[1].kind == "kill" and rec.objectives[1].count == 8) then
+                error("its objective, from the log: a kill, 8 to go") end
+            if rec.xp ~= 1100 then error("its experience, from the log: " .. tostring(rec.xp)) end
+            local guide, summary = ns.PlannerRoute(ctx)
+            local at = Steps(guide)
+            if not (at.accept[101] and at["do"][101] and at.turnin[101]) then error("Questie's quest is planned: " .. ns.GuideText(guide)) end
+            if not (at["do"][60001] and at.turnin[60001]) then error("the log's quest is planned, done then handed in: " .. ns.GuideText(guide)) end
+            if at.accept[60001] then error("a quest in your log is not accepted again") end
+            if at.turnin[60001] < at["do"][60001] then error("handed in after it is done") end
+            if at["do"][60001] > at.accept[101] then error("the started quest 50 yd away comes before a new one 240 yd away: " .. ns.GuideText(guide)) end
+            local d = guide.steps[at["do"][60001]]
+            if not (d.map == 1 and d.x == 50 and d.y == 45) then error("its objective is where the game says: " .. ns.GuideLine(d)) end
+            if summary.zone ~= 1 then error("planned in its zone") end
+            -- a zone goal counts it: Questie's 2 quests of the zone and the log's own one, none handed in yet
+            local char = ns.PlannerCharRecord(true)
+            local keepGoal = char.zoneGoal
+            char.zoneGoal = 1
+            local okG, errG = pcall(function()
+                local _, s2 = ns.PlannerRoute(ctx)
+                local zg = s2.zoneGoal
+                if not (zg and zg.done == 0 and zg.total == 3) then error("the zone goal counts the log's quest: " .. tostring(zg and zg.done) .. " of " .. tostring(zg and zg.total)) end
+            end)
+            char.zoneGoal = keepGoal
+            if not okG then error(errG, 0) end
+            -- the same quest with no experience the game will tell: still not pushed behind the new pick-up
+            log[1].xp = nil
+            ns.PlannerSourceReset()
+            ctx.source = ns.PlannerSource()
+            at = Steps((ns.PlannerRoute(ctx)))
+            if not (at["do"][60001] and at.accept[101] and at["do"][60001] < at.accept[101]) then error("an unknown reward is not counted as none") end
+        end)
+    end)
+    try("13.0.1 logmerge: a log quest matched to a Questie quest by its title is planned once", function()
+        local log = { { id = 50123, title = "Agitator", level = 8, xp = 900, objectives = Kills(8), wp = { 1, 0.50, 0.45 } } }
+        LogWorld(log, function(src, ctx)
+            for _, pass in ipairs({ "learned before", "learned in this plan" }) do
+                if pass == "learned before" then
+                    ns.root.plannerQuestIds, ns.root.plannerQuestIdTitles = { [900001] = 50123 }, { [900001] = "agitator" }
+                else
+                    ns.root.plannerQuestIds, ns.root.plannerQuestIdTitles = nil, nil
+                    ns.PlannerSourceReset()
+                    src = ns.PlannerSource(); ctx.source = src
+                end
+                if pass == "learned before" then
+                    for _, id in ipairs(src.ids()) do if id == 50123 then error("(" .. pass .. ") the server id of a matched quest is not a quest of its own") end end
+                end
+                local guide = ns.PlannerRoute(ctx)
+                local at, of = Steps(guide)
+                if of[50123] then error("(" .. pass .. ") never planned under the log's id: " .. ns.GuideText(guide)) end
+                local dos = 0
+                for _, s in ipairs(guide.steps) do if s.kind == "do" and s.title == "Agitator" then dos = dos + 1 end end
+                if dos ~= 1 or not at["do"][900001] or at.accept[900001] then error("(" .. pass .. ") one quest, planned once, as the one in your log: " .. ns.GuideText(guide)) end
+            end
+            local inLog = false
+            for _, id in ipairs(ns.PlannerLogSource().ids()) do if id == 50123 then inLog = true end end
+            if not inLog then error("the log source alone still lists it") end
+        end)
+    end)
+    try("13.0.1 logmerge: a log quest with no place still appears, after the steps that have one", function()
+        local log = { { id = 60002, title = "Infestation Investigation", level = 8, xp = 700,
+                        objectives = { { text = "Pesky Cirrusfly slain: 0/8", type = "monster", finished = false, numFulfilled = 0, numRequired = 8 } } },
+                      { id = 60003, title = "Marked", level = 8, xp = 700, objectives = Kills(4), poi = { 0.55, 0.50 } } }
+        LogWorld(log, function(src, ctx)
+            local guide = ns.PlannerRoute(ctx)
+            local at, of = Steps(guide)
+            if not at["do"][60002] then error("the quest with no place is a Do step: " .. ns.GuideText(guide)) end
+            local d = guide.steps[at["do"][60002]]
+            if d.map or d.x or d.title ~= "Infestation Investigation" then error("no place, its title: " .. ns.GuideLine(d)) end
+            if not (at.turnin[60002] and at.turnin[60002] > at["do"][60002]) then error("then its hand-in") end
+            for i, s in ipairs(guide.steps) do
+                if s.map and i > at["do"][60002] then error("placed steps come first: " .. ns.GuideText(guide)) end
+            end
+            local m = at["do"][60003] and guide.steps[at["do"][60003]]
+            if not (m and m.map == 1 and m.x == 55 and m.y == 50) then error("the game's mark on the map places a quest: " .. ns.GuideText(guide)) end
+            if not (at.accept[101] and at.accept[101] < at["do"][60002]) then error("the route goes on around it") end
+            -- nothing else to plan: the plan is that step alone
+            ctx.done = function(id) return id == 101 or id == 900001 end
+            table.remove(log, 2)
+            ns.PlannerSourceReset(); ctx.source = ns.PlannerSource()
+            local alone, summary = ns.PlannerRoute(ctx)
+            at = Steps(alone)
+            if not (at["do"][60002] and at.turnin[60002]) or summary.empty then error("alone, it is still planned: " .. ns.GuideText(alone)) end
+        end)
+    end)
+    try("13.0.1 logmerge: quests ready to hand in are handed in before a new accept as near", function()
+        -- the second screenshot: two complete quests, their hand-ins 35 yd north and 57 yd west; a new quest's giver 33 yd east
+        local log = { { id = 60001, title = "Harmony in Balance", level = 8, xp = 1100, complete = true,
+                        objectives = { { text = "Juvenile Vuldren slain: 8/8", type = "monster", finished = true, numFulfilled = 8, numRequired = 8 } },
+                        wp = { 1, 0.50, 0.465 } },
+                      { id = 60004, title = "Infestation Investigation", level = 8, xp = 1100, complete = true,
+                        objectives = { { text = "Pesky Cirrusfly slain: 8/8", type = "monster", finished = true, numFulfilled = 8, numRequired = 8 } },
+                        wp = { 1, 0.443, 0.50 } },
+                      { id = 60005, title = "No Place Yet", level = 8, xp = 500, complete = true, objectives = {} } }
+        LogWorld(log, function(src, ctx)
+            local guide = ns.PlannerRoute(ctx)
+            local at = Steps(guide)
+            if not at.accept[101] then error("the new quest is planned: " .. ns.GuideText(guide)) end
+            for _, id in ipairs({ 60001, 60004, 60005 }) do
+                if not at.turnin[id] then error("a turn-in for " .. id .. ": " .. ns.GuideText(guide)) end
+                if at.turnin[id] > at.accept[101] then error("handed in before the new accept: " .. ns.GuideText(guide)) end
+                if at["do"][id] then error("a quest ready to hand in has nothing left to do: " .. ns.GuideText(guide)) end
+            end
+            local t = guide.steps[at.turnin[60001]]
+            if not (t.map == 1 and t.x == 50 and t.y == 46.5) then error("handed in where the game says: " .. ns.GuideLine(t)) end
+            if guide.steps[at.turnin[60005]].map then error("no place known: a turn-in step with no place") end
+            -- the same quests from Questie: the hand-in still comes first
+            log[1].id, log[1].title = 101, "Agitators"
+            table.remove(log, 3); table.remove(log, 2)
+            ns.PlannerSourceReset(); ctx.source = ns.PlannerSource()
+            local g2 = ns.PlannerRoute(ctx)
+            local a2 = Steps(g2)
+            if not a2.turnin[101] or a2["do"][101] or a2.accept[101] then error("a Questie quest ready to hand in: straight to its hand-in: " .. ns.GuideText(g2)) end
+        end, { 53.3, 50 })
+    end)
+end
+-- logmerge 13.0.1 tests: end
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()
@@ -26476,6 +26685,34 @@ for _, l in ipairs(printed) do if l:find("ff4444") and l:sub(1, 2) ~= "  " and n
 return (#uniq == 0 and "no errors" or table.concat(uniq, "\n")), (#puniq == 0 and "none" or table.concat(puniq, "\n")), #handlers, #ns.modules
 '''
 run = lua.eval('function(code, ...) return load(code)(...) end')
+
+# Characters the game's fonts can't draw (they show as a box: the 13.0.1 report, "level 1 ▯ 8.5"). The default fonts
+# (FRIZQT, ARIALN) have Latin, Latin-1, Cyrillic and the common punctuation of Windows-1252 (“ ” „ ‘ ’ – — … ›);
+# the ko and zh clients use their own fonts. Anything below is refused in every add-on Lua file, translations and
+# comments too (a comment is where a string is copied from): use plain words or a game texture (|T...|t) instead.
+GLYPH_BLOCKS = [
+    (0x2022, 0x2022, "bullet"),
+    (0x2190, 0x21FF, "arrows"),
+    (0x2200, 0x23FF, "math operators and technical symbols"),
+    (0x2500, 0x25FF, "box drawing, blocks and geometric shapes"),
+    (0x2600, 0x27BF, "symbols and dingbats (stars, check marks, crosses)"),
+    (0x2900, 0x2BFF, "more arrows and symbols"),
+    (0xFFFD, 0xFFFD, "replacement character"),
+    (0x1F000, 0x10FFFF, "emoji and pictographs"),
+]
+def glyph_errors(texts):
+    """texts: {path: content}. One line per character the fonts can't draw."""
+    bad = []
+    for path in sorted(texts):
+        for n, line in enumerate(texts[path].split('\n'), 1):
+            for ch in line:
+                o = ord(ch)
+                for lo, hi, what in GLYPH_BLOCKS:
+                    if lo <= o <= hi:
+                        bad.append("%s:%d: U+%04X (%s)" % (path, n, o, what))
+    return bad
+_glyph_files = glob.glob('*.lua') + glob.glob(OPT + '*.lua') + folder_lua + ['../FantasyGlassUI_Locales/Locales.lua']
+GLYPHS = glyph_errors({f: open(f, encoding='utf-8').read() for f in _glyph_files})
 for secret in (False, True):
     sources = lua.table_from({**{f: open(f).read() for f in toc}, **{'options/' + f: open(OPT + f).read() for f in opt_toc},
                               **{pre + f: open(d + f).read() for pre, d, name in FOLDERS for f in folder_toc[name]},
@@ -26495,5 +26732,7 @@ for secret in (False, True):
     early = sorted(k for k in missing.keys() if isinstance(k, str) and k in declared and k[0].islower())
     if early:
         errs = (errs if errs != "no errors" else "") + "\nUSED BEFORE ITS DECLARATION (a global in the game): " + ", ".join(early)
+    if GLYPHS:
+        errs = (errs if errs != "no errors" else "") + "\nA CHARACTER THE GAME FONT CAN'T DRAW (tests/smoke.py GLYPH_BLOCKS):\n" + "\n".join(GLYPHS[:40])
     print("errors:", errs)
     print("in-game error messages that would print:", warns)

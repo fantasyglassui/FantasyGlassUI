@@ -2,6 +2,17 @@
 
 The releases published on CurseForge. Each lists what changed since the release before it.
 
+## 13.0.1
+
+**Fixed: the route planner**
+- Quests in your log that Questie doesn't know, such as WoW: Forever's own on Zephras Isle, are now
+  planned with Questie's: their objectives, your progress and where the game says to go. A started
+  quest close by comes before a far new one, and one the game gives no place for is still in the
+  plan, with your progress.
+- A quest ready to hand in is handed in before nearby new quests, unless a giver is on the way.
+- The zone goal counts the zone's quests from your log too, and says it counts quests handed in.
+- The planner's title and summary no longer show a box where the game font has no arrow.
+
 ## 13.0.0
 
 Guide and Gold: quest guides, a route planner and ways to make gold, for everyone.

@@ -2384,7 +2384,7 @@ function ns:ShowHelp(word)
     return #found
 end
 
--- What the help says of a command: "/fgui death" → its line. With `arg`, a line naming it is preferred.
+-- What the help says of a command: "/fgui death" gives its line. With `arg`, a line naming it is preferred.
 local HELP_ALIAS = { checknew = { "check", "new" } }            -- (a word the menu uses for a two-word command)
 -- The Discord server: an add-on cannot open a web page, so the invite goes in a box to copy.
 ns.discordInvite = "https://discord.gg/qeSMwQWyPR"
@@ -2407,7 +2407,7 @@ function ns.HelpAbout(word, arg)
     end
     return plain
 end
--- The command closest to a mistyped word (two letters off at most), from the help: "equipbets" → "equipbest".
+-- The command closest to a mistyped word (two letters off at most), from the help: "equipbets" gives "equipbest".
 local function Distance(a, b)
     local prev = {}
     for j = 0, #b do prev[j] = j end
