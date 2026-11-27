@@ -188,7 +188,7 @@ do
     ev:RegisterEvent("PLAYER_ENTERING_WORLD")
     ev:SetScript("OnEvent", ns:Guard("Minimap buttons events", function()
         if ns.oldCopy then return end                        -- (the old copy of the add-on is there: nothing starts)
-        ns:After(1, Apply)
+        ns:After(1, ns:Guard("Minimap buttons build", Apply))   -- (a fault in the build is caught and reported, not a raw error)
     end))
     ns.minimapExtras.events = ev
 end
