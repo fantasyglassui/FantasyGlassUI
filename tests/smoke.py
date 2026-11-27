@@ -9591,6 +9591,78 @@ try("Nameplates: quest mobs counted from their objectives", function()
     if ns.PlateQuestLeft({ "Kobold Miner", "Level 4" }) ~= nil then error("a mob with no objective was marked") end
     if ns.PlateQuestLeft({ " - Explore the mine (40%)" }) ~= 1 then error("a percent objective should count") end
 end)
+-- (13.0.1) An enemy's name over its bar. The game puts the name inside the bar in its Modern and Block
+-- styles, where our own bar covers it, and hides it by its NPC-names setting: the plate carries its own.
+local function PlateNameRig(unitName, attackable)
+    local realName, realAtt = env.UnitName, env.UnitCanAttack
+    env.UnitName = function() return unitName end
+    env.UnitCanAttack = function() return attackable end
+    local plate, uf = newmock(), newmock()
+    rawset(uf, "healthBar", newmock())
+    local gameName = newmock()
+    rawset(uf, "name", gameName)
+    local got = { points = {} }
+    rawset(gameName, "SetAlpha", function(_, a) got.gameAlpha = a end)
+    local n = ns.PlateName and ns.PlateName(plate, uf, "nameplate1")
+    if not n then env.UnitName, env.UnitCanAttack = realName, realAtt; error("no name of our own on the plate") end
+    local fs = rawget(n, "text")
+    rawset(fs, "SetText", function(_, s) got.text = s end)
+    rawset(fs, "Show", function() got.shown = true end)
+    rawset(fs, "Hide", function() got.shown = false end)
+    rawset(fs, "SetPoint", function(_, p, rel, rp, x, y) got.points[#got.points + 1] = { p, rel, rp, x, y } end)
+    rawset(fs, "SetFont", function(_, _, size) got.size = size end)
+    got.plate, got.uf, got.n = plate, uf, n
+    return got, function() env.UnitName, env.UnitCanAttack = realName, realAtt end
+end
+try("Nameplates 13.0.1: the plate name shows the unit's name over the bar", function()
+    ns.db.plateDesign = nil
+    local got, done = PlateNameRig("Kobold Vermin", true)
+    ns.PlateName(got.plate, got.uf, "nameplate1")
+    ns:ApplyPlateDesign()
+    done()
+    if got.text ~= "Kobold Vermin" or got.shown ~= true then error("an enemy plate should show its name, got " .. tostring(got.text) .. " shown " .. tostring(got.shown)) end
+    if got.gameAlpha ~= 0 then error("the game's own name (inside the bar, under ours) should be out of sight, so it is not shown twice") end
+    if got.size ~= ns.PLATE_DEFAULT.nameSize * (ns.fontScale or 1) then error("the name should be in the designer's name size, got " .. tostring(got.size)) end
+    local above = false
+    for _, p in ipairs(got.points) do
+        if tostring(p[1]):find("^BOTTOM") and tostring(p[3]):find("^TOP") and type(p[5]) == "number" and p[5] > 0 then above = true end
+    end
+    if not above then error("the name should sit above the bar") end
+    -- the plate taken over by a friendly unit keeps the game's own name, as it was
+    local realAtt, realReaction = env.UnitCanAttack, env.UnitReaction
+    env.UnitCanAttack = function() return false end
+    env.UnitReaction = function() return 5 end
+    ns.PlateName(got.plate, got.uf, "nameplate2")
+    env.UnitCanAttack, env.UnitReaction = realAtt, realReaction
+    if got.shown ~= false or got.gameAlpha ~= 1 then error("a friendly plate keeps the game's name and shows no second one") end
+end)
+try("Nameplates 13.0.1: \"Names on nameplates\" off hides the plate name", function()
+    local got, done = PlateNameRig("Kobold Vermin", true)
+    ns.db.plateDesign = { nameShow = false }
+    ns:ApplyPlateDesign()
+    local hidden = got.shown == false and (got.text == "" or got.text == nil)
+    ns.PlateName(got.plate, got.uf, "nameplate1")
+    hidden = hidden and got.shown == false and (got.text == "" or got.text == nil)
+    ns.db.plateDesign = nil
+    ns:ApplyPlateDesign()
+    done()
+    if not hidden then error("with names switched off the plate should show no name, got " .. tostring(got.text)) end
+    if got.gameAlpha ~= 0 then error("and the game's name stays out of sight too") end
+    if got.text ~= "Kobold Vermin" or got.shown ~= true then error("switched back on, the name comes back") end
+end)
+try("Nameplates 13.0.1: a hidden (secret) plate name is shown without being looked at", function()
+    local looked = {}
+    for k, v in pairs(secretmt) do looked[k] = v end
+    looked.__index = function() error("a hidden name was looked at", 2) end
+    local hiddenName = setmetatable({ __secret = true }, looked)
+    local got, done = PlateNameRig(hiddenName, true)
+    local errs = #ns.errors
+    local ok, e = pcall(ns.PlateName, got.plate, got.uf, "nameplate1")
+    done()
+    if not ok then error("the hidden name broke the plate: " .. tostring(e)) end
+    if #ns.errors ~= errs then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    if got.text ~= hiddenName or got.shown ~= true then error("a hidden name should be handed to the game to draw as it is") end
+end)
 try("Starcut windows: corners cut where masks slice, the rim along the cut, put back by Classic", function()
     if type(ns.StarcutWindow) ~= "function" then error("no window cut") end
     local realStyle = ns.db.ufStyle

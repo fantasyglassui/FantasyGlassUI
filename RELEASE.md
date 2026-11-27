@@ -7,6 +7,9 @@
   off; if you had switched any of them on, they stay as you set them. With Baganator showing your bags,
   a one-time tip in chat says where to find your bag slots.
 
+**Fixed**
+- Enemy and neutral nameplates show the mob's name above the bar, in the designer's name size.
+
 ## 13.0.0
 
 Guide and Gold: quest guides, a route planner and ways to make gold, for everyone.
