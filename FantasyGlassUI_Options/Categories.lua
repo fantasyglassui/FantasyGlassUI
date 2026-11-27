@@ -109,6 +109,14 @@ ns.settingRows = {
                       desc = "All of these settings in one line of text, to keep or give to someone." },
     accessPaste   = { kind = "button", label = "Paste accessibility settings", run = function() ns:ShowAccessPaste() end,
                       desc = "Takes a line someone gave you and sets everything in it at once." },
+    -- crash reports (13.5, Crashes.lua): turning the switch off with reports kept asks first, so the switch reads on until then
+    crashReports  = { kind = "check", label = "Keep crash reports",
+                      desc = "Each error in Fantasy Glass UI is kept on your computer, at most 30, with no names, so Report a problem can include them. Nothing is sent by itself. Turning it off clears them, after you confirm.",
+                      apply = function(v)
+                          if ns.CrashSwitch and not ns:CrashSwitch(v) and ns.optUI and ns.optUI.RefreshAll then ns.optUI.RefreshAll() end
+                      end },
+    crashShow     = { kind = "button", label = "Show crash reports", run = function() ns:CrashCommand("") end,
+                      desc = "The crash reports kept, a code to copy them all, and a way to clear them. Also /fgui crashes." },
     -- buttons that step through choices, or do something
     raidSort  = { kind = "cycle", label = "Raid frames ordered by", choices = { "group", "role", "name" }, default = "group", apply = After("ApplyRaidSort"),
                   desc = "Click for the next order: by group, by role, or by name." },
@@ -139,6 +147,7 @@ ns.settingsCategories = {
         { title = "Reading aloud", simple = true, new = true, rows = { "readDialog", "readHover", "readNow" } },
         { title = "Hands and keys", new = true, rows = { "bigControls", "keyNav", "windowKeys", "windowKeysSay", "keysLeft", "keysNumpad", "keysBack" } },
         { title = "Share", new = true, rows = { "accessCopy", "accessPaste" } },
+        { title = "Help and problems", rows = { "crashReports", "crashShow" } },
     } },
     { id = "frames", title = "Frames and bars", desc = "Unit frames, raid frames, action bars and nameplates.", samples = true, sections = {
         { title = "Your frames", simple = true, rows = { "ufW", "ufH", "smoothBars", "hitFlash", "idleFade" },

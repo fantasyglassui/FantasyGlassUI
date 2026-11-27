@@ -28453,6 +28453,315 @@ end
 --
 -- 13.5 G crashes tests: begin
 do
+env.xpcall = xpcall                                          -- (the game's own, as Guard and Safe use it while crash reports are kept)
+local function ok(cond, msg) if not cond then error(msg, 2) end end
+-- Each test runs as "Mychar" of "Mal'Ganis" in the guild "Night (Watch)", with an alt "Alt" of "Argent Dawn",
+-- its own crash list and switch, a clock it moves, a call stack that names the character and a path, and the
+-- chat, the lists and the text window caught. Everything is put back after, ns.errors too.
+local FAKE_STACK = table.concat({
+    "Interface\\AddOns\\FantasyGlassUI\\Bags.lua:12: in function <Interface\\AddOns\\FantasyGlassUI\\Bags.lua:10>",
+    "",
+    "Interface\\AddOns\\FantasyGlassUI\\Skin.lua:306: in function for Mychar of Mal'Ganis",
+    "C:\\Users\\Mychar\\Games\\x.lua:5: in Player-1234-0ABCDEF0",
+    "the fifth line",
+    "the sixth line",
+}, "\n")
+local function crashCase(name, on, body)
+    try(name, function()
+        local keep = { unit = rawget(env, "UnitName"), realm = rawget(env, "GetRealmName"), guild = rawget(env, "GetGuildInfo"),
+                       stack = rawget(env, "debugstack"), time = rawget(env, "time"), chars = ns.root.chars, crashes = ns.root.crashes,
+                       switch = ns.db.crashReports, raw = ns.PrintRaw, show = ns.ShowList, text = ns.ShowTextWindow,
+                       scrub = ns.CrashScrub, nerr = #ns.errors }
+        local ctx = { printed = {}, texts = {}, now = 1000 }
+        env.UnitName = function() return "Mychar" end
+        env.GetRealmName = function() return "Mal'Ganis" end
+        env.GetGuildInfo = function() return "Night (Watch)", "Member", 3 end
+        env.time = function() return ctx.now end
+        env.debugstack = function() return FAKE_STACK end
+        ns.root.chars = { ["Mychar - Mal'Ganis"] = "Default", ["Alt - Argent Dawn"] = "Default" }
+        ns.root.crashes = nil
+        ns.db.crashReports = on
+        ns.PrintRaw = function(_, s) ctx.printed[#ctx.printed + 1] = s end
+        ns.ShowList = function(_, key, title, lines, note)
+            local w = { key = key, title = title, lines = lines, note = note }
+            function w.SetLines(self, l) self.lines = l end
+            function w.Hide(self) self.hidden = true end
+            ctx.list = w
+            return w
+        end
+        ns.ShowTextWindow = function(_, title, text) ctx.texts[#ctx.texts + 1] = { title = title, text = text } end
+        local fine, err = pcall(body, ctx)
+        env.UnitName, env.GetRealmName, env.GetGuildInfo, env.debugstack, env.time = keep.unit, keep.realm, keep.guild, keep.stack, keep.time
+        ns.root.chars, ns.root.crashes, ns.db.crashReports = keep.chars, keep.crashes, keep.switch
+        ns.PrintRaw, ns.ShowList, ns.ShowTextWindow, ns.CrashScrub = keep.raw, keep.show, keep.text, keep.scrub
+        if ctx.realRefresh then ns.optUI.RefreshAll = ctx.realRefresh end
+        for i = #ns.errors, keep.nerr + 1, -1 do table.remove(ns.errors, i) end
+        if not fine then error(err, 0) end
+    end)
+end
+local function list() return ns.root.crashes and ns.root.crashes.list or {} end
+local function empty() return #list() == 0 end
+local function find(part, msg)
+    for _, r in ipairs(list()) do if r.part == part and (msg == nil or r.msg == msg) then return r end end
+end
+local PRIVATE = { "Mychar", "Mal'Ganis", "Alt", "Argent Dawn", "Night (Watch)", "Bob", "Player-1234", "0ABCDEF0", "Users", "C:" }
+local function noPrivate(text, what)
+    for _, word in ipairs(PRIVATE) do
+        ok(not text:find(word, 1, true), what .. " holds " .. word .. ": " .. text)
+    end
+end
+
+crashCase("13.5 G: off by default", false, function(ctx)
+    ok(ns.defaults.crashReports == false, "off by default")
+    ok(ns.CrashOn() == false, "reads off")
+    local before = #ns.errors
+    ns:Guard("Bags", function() error("boom") end)()
+    ok(ns.root.crashes == nil, "nothing kept by Guard")
+    ok(#ns.errors == before + 1 and ns.errors[#ns.errors]:find("^Bags: .*boom"), "ns.errors gains the line, as in 13.0: " .. tostring(ns.errors[#ns.errors]))
+    ok(#ctx.printed == 1, "printed once")
+    ns:Safe("Bars", function() error("bang") end)()
+    ns.errors[#ns.errors + 1] = "Planner hook x: oops"
+    ok(ns.CrashKeep("Bags", "direct") == nil, "CrashKeep keeps nothing while off")
+    ok(ns.root.crashes == nil, "nothing kept from anywhere while off")
+    ok(ns.CrashCode() == nil, "no code")
+    local db = ns.db; ns.db = nil                                -- (no profile yet: off)
+    local off = ns.CrashOn()
+    ns.db = db
+    ok(off == false, "no profile: off")
+end)
+
+crashCase("13.5 G: what is kept", true, function(ctx)
+    local before = #ns.errors
+    local g = ns:Guard("Bags", function() error("Interface\\AddOns\\FantasyGlassUI\\Bags.lua:12: boom for Mychar", 0) end)
+    g(); ctx.now = 1005; g()
+    ok(#list() == 1, "one record: " .. #list())
+    local r = list()[1]
+    ok(r.part == "Bags", "the part: " .. tostring(r.part))
+    ok(r.msg:find("FantasyGlassUI/Bags.lua:12: boom for <name>", 1, true), "the message, trimmed and scrubbed: " .. tostring(r.msg))
+    ok(not r.msg:find("Interface", 1, true) and not r.msg:find("Mychar", 1, true), "no path, no name: " .. r.msg)
+    ok(r.version == ns.version and r.build == "70888", "version and build: " .. tostring(r.version) .. " " .. tostring(r.build))
+    ok(r.n == 2 and r.first == 1000 and r.last == 1005 and r.first <= r.last, "count and times")
+    ok(type(r.stack) == "table" and #r.stack >= 1 and #r.stack <= ns.CRASH_STACK_LINES, "the top lines of the stack: " .. #r.stack)
+    ok(r.stack[1] == "FantasyGlassUI/Bags.lua:12: in function <FantasyGlassUI/Bags.lua:10>", "the first stack line: " .. tostring(r.stack[1]))
+    for _, line in ipairs(r.stack) do noPrivate(line, "a stack line") end
+    ok(r.stack[2]:find("<name> of <realm>", 1, true), "the empty line skipped, names scrubbed: " .. tostring(r.stack[2]))
+    ok(#ctx.printed == 1, "the chat line printed once: " .. #ctx.printed)
+    ok(#ns.errors == before + 1, "ns.errors grew by one")
+    ok(ns.CrashOn() == true and ns.CRASH_MAX == 30 and ns.CRASH_TEXT_MAX == 300 and ns.CRASH_CODE_HEADER == "FGC1!", "the constants")
+    ns:Safe("Bars", function() error("bang", 0) end)()
+    local s = find("Bars")
+    ok(s and s.msg == "bang" and s.n == 1, "Safe keeps its error too")
+    ok(ns.errors[#ns.errors] == "Bars (switched off): bang" and #ns.errors == before + 2, "and lists it once")
+    -- arguments still reach the guarded function, and its error after a nil in them
+    local got
+    ns:Guard("Args", function(a, b, c) got = { a, b, c } end)(1, nil, 3)
+    ok(got and got[1] == 1 and got[2] == nil and got[3] == 3, "the arguments are handed on, with a nil in them")
+end)
+
+crashCase("13.5 G: no names anywhere", true, function(ctx)
+    local g = ns:Guard("Mychar's tooltip", function()
+        error("Interface/AddOns/FantasyGlassUI/Tooltip.lua:9: Mychar-Mal'Ganis of <Night (Watch)> saw |Hplayer:Bob-Argent Dawn|h[Bob]|h, Player-1234-0ABCDEF0, C:\\Users\\Mychar\\x.lua:3", 0)
+    end)
+    g()
+    -- (another player's name reaches a report only inside a link or a GUID; a bare name the add-on cannot know)
+    ns.errors[#ns.errors + 1] = "Planner hook Alt: |Hplayer:Bob|h[Bob]|h's Player-1234-0ABCDEF0 in Argent Dawn"
+    ok(#list() == 2, "two kept: " .. #list())
+    noPrivate(ns.ShareEncode(ns.root.crashes), "a stored report")
+    local code = ns.CrashCode()
+    noPrivate(code, "the code")
+    local v = ns.ShareDecode(code, #ns.CRASH_CODE_HEADER + 1)
+    noPrivate(ns.ShareEncode(v), "the decoded code")
+    local report = table.concat(ns:ProblemReport(), "\n")
+    local from = report:find("CRASH REPORTS", 1, true)
+    ok(from, "in the report")
+    noPrivate(report:sub(from, report:find("\n\n", from, true) or #report), "the report's crash section")
+    ok(find("<name>'s tooltip"), "the part is scrubbed too")
+end)
+
+crashCase("13.5 G: the scrub", true, function(ctx)
+    local function is(input, want) local got = ns.CrashScrub(input); ok(got == want, "scrub " .. input .. " -> " .. tostring(got) .. ", wanted " .. want) end
+    is("hit |Hplayer:Bob-Realm|h[Bob]|h", "hit <link>")
+    is("Player-1234-0ABCDEF0 and Pet-0-1-2-3-4-5", "Player-? and Pet-?")
+    is("C:\\Games\\WoW\\Interface\\AddOns\\Other\\x.lua:3: y", "Other/x.lua:3: y")
+    is("C:\\Program Files (x86)\\World of Warcraft\\_classic_\\Interface\\AddOns\\FantasyGlassUI\\Skin.lua:313: z", "FantasyGlassUI/Skin.lua:313: z")
+    is("/Applications/World of Warcraft/_classic_/Interface/AddOns/FantasyGlassUI/Skin.lua:3: z", "FantasyGlassUI/Skin.lua:3: z")
+    is("module bags: Interface/AddOns/FantasyGlassUI/Bags.lua:3: bad", "module bags: FantasyGlassUI/Bags.lua:3: bad")
+    is("/Users/me/a.lua:1", "<path>:1")
+    is("at /home/John Smith/b.lua:2: c", "at <path>:2: c")
+    is("D:\\Users\\John Smith\\c.lua:4: d", "<path>:4: d")
+    is("Mychar of Mal'Ganis in Night (Watch); Alt of Argent Dawn", "<name> of <realm> in <guild>; <name> of <realm>")
+    is("|cffff0000red|r and |TInterface\\Icons\\x:0|t", "red and ")
+    is("100% sure (%d) [%s]", "100% sure (%d) [%s]")
+    local long = ns.CrashScrub(string.rep("é", 200))
+    ok(#long <= 300 and long == string.rep("é", 150), "cut on a whole character: " .. #long)
+    local odd = ns.CrashScrub("a" .. string.rep("é", 200))
+    ok(#odd == 299 and odd == "a" .. string.rep("é", 149), "cut before a half character: " .. #odd)
+    local names = ns.CrashNames()
+    ok(type(names) == "table" and #names == 5, "five names: " .. #names)
+    for i = 2, #names do ok(#names[i - 1][1] >= #names[i][1], "longest first") end
+    local seen = {}
+    for _, e in ipairs(names) do seen[e[1]] = e[2] end
+    ok(seen["Mychar"] == "<name>" and seen["Alt"] == "<name>" and seen["Mal'Ganis"] == "<realm>" and seen["Argent Dawn"] == "<realm>"
+       and seen["Night (Watch)"] == "<guild>", "each name, realm and the guild")
+    ok(ns.CrashScrub("Mychar and X", { { "X", "<x>" } }) == "Mychar and <x>", "names given")
+    env.GetGuildInfo = function() return nil end
+    env.UnitName = function() return "A" end
+    ns.root.chars = { ["B - "] = "Default" }
+    env.GetRealmName = function() return "" end
+    ok(#ns.CrashNames() == 0, "names under two bytes are not used")
+    ok(ns.CrashScrub(nil) == "nil" and ns.CrashScrub(12) == "12", "not text")
+end)
+
+crashCase("13.5 G: errors from elsewhere", true, function(ctx)
+    ns.errors[#ns.errors + 1] = "Planner hook x: oops"
+    local r = find("Planner hook x")
+    ok(r and r.msg == "oops", "a record from ns.errors")
+    ns.errors[#ns.errors + 1] = "module bags: Interface/AddOns/FantasyGlassUI/Bags.lua:3: bad"
+    r = find("module bags")
+    ok(r and r.msg == "FantasyGlassUI/Bags.lua:3: bad", "module bags: " .. tostring(r and r.msg))
+    ns.errors[#ns.errors + 1] = "Interface/AddOns/FantasyGlassUI/X.lua:1: raw"
+    r = find("add-on")
+    ok(r and r.msg == "FantasyGlassUI/X.lua:1: raw", "no part: add-on: " .. tostring(r and r.msg))
+    local p, m = ns.CrashPartOf("Planner hook x: oops")
+    ok(p == "Planner hook x" and m == "oops", "CrashPartOf")
+    p, m = ns.CrashPartOf("no separator")
+    ok(p == "add-on" and m == "no separator", "CrashPartOf without one")
+    ok(#list() == 3, "three kept")
+end)
+
+crashCase("13.5 G: at most 30", true, function(ctx)
+    for i = 1, 31 do ctx.now = 1000 + i; ns.CrashKeep("Bags", "error " .. i) end
+    ok(#list() == 30, "30 records: " .. #list())
+    ok(not find("Bags", "error 1") and find("Bags", "error 2") and find("Bags", "error 31"), "the first one gone")
+    ctx.now = 2000; ns.CrashKeep("Bags", "error 2")
+    ctx.now = 2001; ns.CrashKeep("Bags", "error 32")
+    ok(#list() == 30 and not find("Bags", "error 2") and find("Bags", "error 3"), "the smallest first-seen goes, even when seen again lately")
+end)
+
+crashCase("13.5 G: an error every frame", true, function(ctx)
+    local before = #ns.errors
+    local g = ns:Guard("Spin", function() error("spin", 0) end)
+    for i = 1, 1000 do ctx.now = 1000 + i; g() end
+    ok(#list() == 1 and list()[1].n == 1000 and list()[1].last == 2000, "one record of 1000")
+    ok(#ctx.printed == 1 and #ns.errors == before + 1, "one chat line, one line for /fgui check")
+    ns.CrashScrub = function() error("the scrub broke") end
+    ns:Guard("Other", function() error("other", 0) end)()
+    ok(ns.errors[#ns.errors] == "Other: other" and #ctx.printed == 2, "the guarded error still listed and printed")
+    ns.errors[#ns.errors + 1] = "Planner hook y: broken"
+    ok(ns.errors[#ns.errors] == "Planner hook y: broken", "an append still works")
+    ok(ns.CrashKeep("Bags", "z") == nil, "CrashKeep swallows it")
+    ok(#list() == 1, "nothing else kept")
+end)
+
+crashCase("13.5 G: the code and the report", true, function(ctx)
+    ns.CrashKeep("Bags", "one"); ctx.now = 1001; ns.CrashKeep("Bags", "one"); ns.CrashKeep("Bars", "two", "a\n\nb")
+    local code = ns.CrashCode()
+    ok(type(code) == "string" and code:sub(1, 5) == "FGC1!", "the code: " .. tostring(code))
+    local v = ns.ShareDecode(code, 6)
+    ok(type(v) == "table" and v.v == ns.version and v.b == "70888" and #v.r == 2, "decoded")
+    ok(v.r[1][1] == "one" and v.r[1][3] == "Bags" and v.r[1][4] == 2 and v.r[1][5] == 1000 and v.r[1][6] == 1001, "the first report")
+    ok(v.r[2][2] == "a\nb" and v.r[2][3] == "Bars", "the stack lines joined")
+    local text = table.concat(ns:ProblemReport(), "\n")
+    ok(text:find("CRASH REPORTS (2)", 1, true), "the heading")
+    ok(text:find("  " .. ns.CrashIncluded(), 1, true) and text:find("  " .. code, 1, true), "what is included, and the code")
+    ok(ns.CrashIncluded() == ns:Tr("Each report holds the error's message with paths cut to the add-on's own files, the top lines of where it happened, the add-on's version, the game's build, the part it was in, how often it happened, and when it was first and last seen. No player, character, realm or guild names."), "the sentence")
+    ns.root.crashes = nil
+    text = table.concat(ns:ProblemReport(), "\n")
+    ok(text:find("CRASH REPORTS (0)\n  none kept", 1, true), "none and on")
+    ns.db.crashReports = false
+    text = table.concat(ns:ProblemReport(), "\n")
+    ok(text:find("CRASH REPORTS (0)\n  Keep crash reports is off (Accessibility, Help and problems).", 1, true), "none and off")
+    ok(ns.CrashCode() == nil, "no code with none")
+end)
+
+crashCase("13.5 G: /fgui crashes and clearing", true, function(ctx)
+    ns.CrashKeep("Bags", "one"); ns.CrashKeep("Bars", "two"); ns.CrashKeep("Bars", "two")
+    ok(ns:CrashCommand("") == 4, "four lines")
+    local w = ctx.list
+    ok(w.key == "Crashes" and w.title == "Crash reports" and w.note == ns.CrashIncluded(), "the list")
+    ok(w.lines[1].left == "Bags: one" and w.lines[1].right == "x1" and w.lines[2].right == "x2", "one line per report")
+    ok(w.lines[3].left == ns:Tr("Copy them as one code"), "the copy line")
+    w.lines[3].click()
+    ok(#ctx.texts == 1 and ctx.texts[1].title == "Crash reports" and ctx.texts[1].text == ns.CrashIncluded() .. "\n\n" .. ns.CrashCode(), "the code in the text window")
+    local clear = w.lines[4]
+    local label = string.format(ns:Tr("Clear these %d reports (click twice)"), 2)
+    ok(clear.left == label, "the clear line: " .. tostring(clear.left))
+    clear.click(nil, 100)
+    ok(#list() == 2 and clear.left == ns:Tr("Click again within 10 seconds to clear them"), "one click: kept, asks again")
+    clear.click(nil, 111)
+    ok(#list() == 2 and clear.left == label, "too late: kept")
+    clear.click(nil, 120); clear.click(nil, 125)
+    ok(empty(), "two clicks: cleared")
+    ok(w.lines[1].left == ns:Tr("No crash reports kept."), "the list says so: " .. tostring(w.lines[1].left))
+    ok(ns:CrashCommand("") == 1, "none kept: one line")
+    ns.db.crashReports = false
+    ok(ns:CrashCommand("") == 2 and ctx.list.lines[2].left == ns:Tr("Keep crash reports is off (Accessibility, Help and problems)."), "off: and the off line")
+    ns.db.crashReports = true
+    ns.CrashKeep("Bags", "one"); ns.CrashKeep("Bars", "two")
+    ok(ns:CrashCommand("clear") == 4 and #list() == 2, "clear: nothing removed yet")
+    ctx.list.lines[4].click(nil, 300)
+    ok(#list() == 2, "one click: still kept")
+    ctx.list.lines[4].click(nil, 301)
+    ok(empty(), "the second click clears")
+    ok(type(ns.toolCommands.crashes) == "function", "/fgui crashes")
+end)
+
+crashCase("13.5 G: turning it off", true, function(ctx)
+    ns.CrashKeep("Bags", "one"); ns.CrashKeep("Bars", "two")
+    ok(ns:CrashSwitch(false) == false, "refused for now")
+    ok(ns.db.crashReports == true and #list() == 2, "still on, still kept")
+    local w = ctx.list
+    ok(w.key == "CrashesOff" and w.title == "Keep crash reports", "the list: " .. tostring(w.key))
+    ok(w.lines[1].left == string.format(ns:Tr("%d crash reports are kept."), 2), "how many")
+    ok(w.lines[2].left == string.format(ns:Tr("Turn off and clear these %d reports (click twice)"), 2), "the confirm line")
+    local refreshed = 0
+    if ns.optUI then ctx.realRefresh = ns.optUI.RefreshAll; ns.optUI.RefreshAll = function() refreshed = refreshed + 1 end end
+    w.lines[2].click(nil, 100)
+    ok(#list() == 2 and ns.db.crashReports == true, "one click: nothing yet")
+    w.lines[2].click(nil, 101)
+    ok(empty() and ns.db.crashReports == false, "confirmed: cleared and off")
+    ok(not ns.optUI or refreshed == 1, "the settings redrawn")
+    -- closing the list instead
+    ns.db.crashReports = true
+    ns.CrashKeep("Bags", "one"); ns.CrashKeep("Bars", "two")
+    ok(ns:CrashSwitch(false) == false, "asked again")
+    ctx.list:Hide()
+    ok(#list() == 2 and ns.db.crashReports == true, "closed: as they were")
+    -- none kept: it simply goes off
+    ns.root.crashes = nil
+    ok(ns:CrashSwitch(false) == true and ns.db.crashReports == false, "none kept: off at once")
+    ok(ns:CrashSwitch(true) == true and ns.db.crashReports == true, "on")
+    -- off by hand (a reset, a profile): nothing new kept, nothing deleted
+    ns.CrashKeep("Bags", "one")
+    ns.db.crashReports = false
+    ns:Guard("Bags", function() error("new", 0) end)()
+    ns.errors[#ns.errors + 1] = "Planner hook x: new"
+    ok(#list() == 1 and list()[1].msg == "one", "the old record stays, nothing new")
+end)
+
+crashCase("13.5 G: the setting", true, function(ctx)
+    ok(ns:LoadOptions(), "the options load")
+    local sec = ns:SectionOfRow("crashReports")
+    ok(sec and sec.id == "access:Help and problems", "in Accessibility, Help and problems: " .. tostring(sec and sec.id))
+    ok(ns:SectionOfRow("crashShow") == sec, "the button beside it")
+    local access
+    for _, cat in ipairs(ns.settingsCategories) do if cat.id == "access" then access = cat end end
+    ok(access.sections[#access.sections] == sec, "the last section")
+    local row = ns.settingRows.crashReports
+    ok(row.kind == "check" and row.label == "Keep crash reports" and row.desc:find("at most 30", 1, true), "the switch")
+    ok(ns.settingRows.crashShow.kind == "button" and ns.settingRows.crashShow.label == "Show crash reports", "the button")
+    ns.CrashKeep("Bags", "one")
+    local refreshed = 0
+    ctx.realRefresh = ns.optUI.RefreshAll; ns.optUI.RefreshAll = function() refreshed = refreshed + 1 end
+    ns.db.crashReports = false; row.apply(false)                 -- (as the switch does: the setting, then apply)
+    ok(ns.db.crashReports == true and refreshed == 1, "refused: the switch reads on again")
+    ok(ctx.list.key == "CrashesOff", "and it asks")
+    ns.settingRows.crashShow.run()
+    ok(ctx.list.key == "Crashes", "the button shows them")
+    ns.root.crashes = nil
+    ns.db.crashReports = false; row.apply(false)
+    ok(ns.db.crashReports == false and refreshed == 1, "none kept: off")
+end)
 end
 -- 13.5 G crashes tests: end
 --

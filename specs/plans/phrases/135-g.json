@@ -1,0 +1,142 @@
+{
+  "Keep crash reports": [
+    "Absturzberichte behalten",
+    "Conserver les rapports de plantage",
+    "Guardar informes de fallos",
+    "Сохранять отчёты о сбоях",
+    "Guardar relatórios de falhas",
+    "Conserva i rapporti sui crash",
+    "충돌 보고서 보관",
+    "保留崩溃报告"
+  ],
+  "Each error in Fantasy Glass UI is kept on your computer, at most 30, with no names, so Report a problem can include them. Nothing is sent by itself. Turning it off clears them, after you confirm.": [
+    "Jeder Fehler in Fantasy Glass UI wird auf deinem Computer behalten, höchstens 30, ohne Namen, damit Problem melden sie mitschicken kann. Nichts wird von selbst gesendet. Wenn du es ausschaltest, werden sie gelöscht, nachdem du bestätigt hast.",
+    "Chaque erreur de Fantasy Glass UI est conservée sur votre ordinateur, 30 au plus, sans aucun nom, pour que Signaler un problème puisse les inclure. Rien n'est envoyé tout seul. Le désactiver les efface, après votre confirmation.",
+    "Cada error de Fantasy Glass UI se guarda en tu ordenador, como mucho 30, sin nombres, para que Informar de un problema pueda incluirlos. No se envía nada por sí solo. Al desactivarlo se borran, después de que lo confirmes.",
+    "Каждая ошибка Fantasy Glass UI сохраняется на вашем компьютере, не больше 30, без имён, чтобы «Сообщить о проблеме» могло их включить. Ничего не отправляется само. Если выключить, они удаляются после подтверждения.",
+    "Cada erro do Fantasy Glass UI é guardado no seu computador, no máximo 30, sem nomes, para que Relatar um problema possa incluí-los. Nada é enviado sozinho. Desligar apaga-os, depois que você confirmar.",
+    "Ogni errore di Fantasy Glass UI viene conservato sul tuo computer, al massimo 30, senza nomi, così Segnala un problema può includerli. Niente viene inviato da solo. Spegnerlo li cancella, dopo che hai confermato.",
+    "Fantasy Glass UI의 각 오류가 이름 없이 최대 30개까지 내 컴퓨터에 보관되어 문제 신고에 포함될 수 있습니다. 어떤 것도 저절로 전송되지 않습니다. 끄면 확인한 뒤에 지워집니다.",
+    "Fantasy Glass UI 的每个错误都会保存在你的电脑上，最多 30 个，不含任何名字，以便“报告问题”可以附上它们。任何内容都不会自动发送。关闭它会在你确认后清除它们。"
+  ],
+  "Show crash reports": [
+    "Absturzberichte zeigen",
+    "Afficher les rapports de plantage",
+    "Mostrar informes de fallos",
+    "Показать отчёты о сбоях",
+    "Mostrar relatórios de falhas",
+    "Mostra i rapporti sui crash",
+    "충돌 보고서 보기",
+    "显示崩溃报告"
+  ],
+  "The crash reports kept, a code to copy them all, and a way to clear them. Also /fgui crashes.": [
+    "Die behaltenen Absturzberichte, ein Code, um sie alle zu kopieren, und eine Möglichkeit, sie zu löschen. Auch /fgui crashes.",
+    "Les rapports de plantage conservés, un code pour tous les copier, et un moyen de les effacer. Aussi /fgui crashes.",
+    "Los informes de fallos guardados, un código para copiarlos todos y una forma de borrarlos. También /fgui crashes.",
+    "Сохранённые отчёты о сбоях, код, чтобы скопировать их все, и способ их удалить. Также /fgui crashes.",
+    "Os relatórios de falhas guardados, um código para copiar todos e um jeito de apagá-los. Também /fgui crashes.",
+    "I rapporti sui crash conservati, un codice per copiarli tutti e un modo per cancellarli. Anche /fgui crashes.",
+    "보관된 충돌 보고서, 모두 복사할 코드, 그리고 지우는 방법. /fgui crashes로도 됩니다.",
+    "已保存的崩溃报告、一个可复制全部报告的代码，以及清除它们的方法。也可用 /fgui crashes。"
+  ],
+  "Help and problems": [
+    "Hilfe und Probleme",
+    "Aide et problèmes",
+    "Ayuda y problemas",
+    "Помощь и проблемы",
+    "Ajuda e problemas",
+    "Aiuto e problemi",
+    "도움말과 문제",
+    "帮助与问题"
+  ],
+  "Each report holds the error's message with paths cut to the add-on's own files, the top lines of where it happened, the add-on's version, the game's build, the part it was in, how often it happened, and when it was first and last seen. No player, character, realm or guild names.": [
+    "Jeder Bericht enthält die Meldung des Fehlers, mit Pfaden gekürzt auf die eigenen Dateien des Add-ons, die obersten Zeilen der Stelle, an der er passiert ist, die Version des Add-ons, den Build des Spiels, den Teil, in dem er war, wie oft er passiert ist und wann er zuerst und zuletzt gesehen wurde. Keine Namen von Spielern, Charakteren, Realms oder Gilden.",
+    "Chaque rapport contient le message de l'erreur, avec les chemins réduits aux propres fichiers de l'add-on, les premières lignes de l'endroit où elle s'est produite, la version de l'add-on, le build du jeu, la partie concernée, sa fréquence, et quand elle a été vue pour la première et la dernière fois. Aucun nom de joueur, de personnage, de royaume ou de guilde.",
+    "Cada informe contiene el mensaje del error, con las rutas recortadas a los propios archivos del accesorio, las primeras líneas de dónde ocurrió, la versión del accesorio, la compilación del juego, la parte en la que estaba, cuántas veces ocurrió y cuándo se vio por primera y última vez. Ningún nombre de jugador, personaje, reino o hermandad.",
+    "Каждый отчёт содержит сообщение об ошибке с путями, сокращёнными до собственных файлов аддона, верхние строки того места, где она произошла, версию аддона, сборку игры, часть, в которой она была, как часто она случалась и когда её видели впервые и в последний раз. Никаких имён игроков, персонажей, миров или гильдий.",
+    "Cada relatório traz a mensagem do erro, com os caminhos cortados para os próprios arquivos do add-on, as primeiras linhas de onde aconteceu, a versão do add-on, a build do jogo, a parte em que estava, quantas vezes aconteceu e quando foi visto pela primeira e pela última vez. Nenhum nome de jogador, personagem, reino ou guilda.",
+    "Ogni rapporto contiene il messaggio dell'errore, con i percorsi ridotti ai file dell'add-on stesso, le prime righe del punto in cui è successo, la versione dell'add-on, la build del gioco, la parte in cui era, quante volte è successo e quando è stato visto la prima e l'ultima volta. Nessun nome di giocatori, personaggi, reami o gilde.",
+    "각 보고서에는 애드온 자체 파일까지만 남긴 경로가 담긴 오류 메시지, 오류가 난 위치의 맨 위 몇 줄, 애드온 버전, 게임 빌드, 오류가 난 부분, 발생 횟수, 처음과 마지막으로 본 시간이 들어 있습니다. 플레이어, 캐릭터, 서버, 길드 이름은 없습니다.",
+    "每份报告包含错误信息（路径只保留到插件自己的文件）、出错位置的前几行、插件版本、游戏版本号、出错的部分、发生的次数，以及首次和最后一次出现的时间。不含任何玩家、角色、服务器或公会的名字。"
+  ],
+  "Keep crash reports is off (Accessibility, Help and problems).": [
+    "Absturzberichte behalten ist aus (Barrierefreiheit, Hilfe und Probleme).",
+    "Conserver les rapports de plantage est désactivé (Accessibilité, Aide et problèmes).",
+    "Guardar informes de fallos está desactivado (Accesibilidad, Ayuda y problemas).",
+    "«Сохранять отчёты о сбоях» выключено («Доступность», «Помощь и проблемы»).",
+    "Guardar relatórios de falhas está desligado (Acessibilidade, Ajuda e problemas).",
+    "Conserva i rapporti sui crash è spento (Accessibilità, Aiuto e problemi).",
+    "충돌 보고서 보관이 꺼져 있습니다(접근성, 도움말과 문제).",
+    "“保留崩溃报告”已关闭（辅助功能，帮助与问题）。"
+  ],
+  "Crash reports": [
+    "Absturzberichte",
+    "Rapports de plantage",
+    "Informes de fallos",
+    "Отчёты о сбоях",
+    "Relatórios de falhas",
+    "Rapporti sui crash",
+    "충돌 보고서",
+    "崩溃报告"
+  ],
+  "Copy them as one code": [
+    "Alle als einen Code kopieren",
+    "Les copier en un seul code",
+    "Copiarlos como un solo código",
+    "Скопировать их одним кодом",
+    "Copiar todos como um código",
+    "Copiali come un unico codice",
+    "하나의 코드로 복사",
+    "复制为一个代码"
+  ],
+  "Clear these %d reports (click twice)": [
+    "Diese %d Berichte löschen (zweimal klicken)",
+    "Effacer ces %d rapports (cliquer deux fois)",
+    "Borrar estos %d informes (dos clics)",
+    "Удалить эти %d отчётов (нажмите дважды)",
+    "Apagar estes %d relatórios (clique duas vezes)",
+    "Cancella questi %d rapporti (fai clic due volte)",
+    "이 보고서 %d개 지우기 (두 번 클릭)",
+    "清除这 %d 份报告（点击两次）"
+  ],
+  "Click again within 10 seconds to clear them": [
+    "Klicke innerhalb von 10 Sekunden noch einmal, um sie zu löschen",
+    "Cliquez encore dans les 10 secondes pour les effacer",
+    "Haz clic otra vez en 10 segundos para borrarlos",
+    "Нажмите ещё раз в течение 10 секунд, чтобы удалить их",
+    "Clique de novo em até 10 segundos para apagá-los",
+    "Fai clic di nuovo entro 10 secondi per cancellarli",
+    "지우려면 10초 안에 다시 클릭하세요",
+    "在 10 秒内再次点击以清除它们"
+  ],
+  "No crash reports kept.": [
+    "Keine Absturzberichte behalten.",
+    "Aucun rapport de plantage conservé.",
+    "No hay informes de fallos guardados.",
+    "Отчётов о сбоях не сохранено.",
+    "Nenhum relatório de falhas guardado.",
+    "Nessun rapporto sui crash conservato.",
+    "보관된 충돌 보고서가 없습니다.",
+    "没有保存的崩溃报告。"
+  ],
+  "%d crash reports are kept.": [
+    "%d Absturzberichte sind behalten.",
+    "%d rapports de plantage sont conservés.",
+    "Hay %d informes de fallos guardados.",
+    "Сохранено отчётов о сбоях: %d.",
+    "%d relatórios de falhas estão guardados.",
+    "Sono conservati %d rapporti sui crash.",
+    "충돌 보고서 %d개가 보관되어 있습니다.",
+    "已保存 %d 份崩溃报告。"
+  ],
+  "Turn off and clear these %d reports (click twice)": [
+    "Ausschalten und diese %d Berichte löschen (zweimal klicken)",
+    "Désactiver et effacer ces %d rapports (cliquer deux fois)",
+    "Desactivar y borrar estos %d informes (dos clics)",
+    "Выключить и удалить эти %d отчётов (нажмите дважды)",
+    "Desligar e apagar estes %d relatórios (clique duas vezes)",
+    "Spegni e cancella questi %d rapporti (fai clic due volte)",
+    "끄고 이 보고서 %d개 지우기 (두 번 클릭)",
+    "关闭并清除这 %d 份报告（点击两次）"
+  ]
+}
