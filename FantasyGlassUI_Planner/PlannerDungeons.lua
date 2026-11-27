@@ -58,6 +58,9 @@ function ns.PlannerDungeonSkipped(zone)
     local s = zone ~= nil and Session(false)
     return s and s.skipped[zone] == true or false
 end
+-- Empty this session's runs and skips. (13.5 part two, P2-M12) No caller in the add-on on purpose: a new session
+-- starts its own record by itself, and ns:PlannerStart clears only the skips (part one, C1). Kept as the one way to
+-- empty the session's record from outside, which the tests use between cases.
 function ns.PlannerDungeonSessionReset()
     loose = nil
     local rec = ns.PlannerCharRecord and ns.PlannerCharRecord(false)
