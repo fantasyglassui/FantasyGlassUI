@@ -97,10 +97,18 @@ def field_ok(full):
 
 def scan():
     """Everything the add-on reaches for: (found, uses). `found`: what Forever lacks, {kind: {name: [where, ...]}}.
-    `uses`: what it has, per file (its path from the repository root): {"globals": set, "fields": set, "templates": set}
-    (tests/health_needs.py makes the list of what each part of the add-on needs from these)."""
+    `uses`: what it has, per file (its path from the repository root): {"globals": set, "fields": set, "templates": set,
+    "at": {name: set of line numbers}} (tests/health_needs.py makes the list of what each part of the add-on needs
+    from these, by the lines each name is used on)."""
     found = collections.OrderedDict()
-    uses = collections.defaultdict(lambda: {"globals": set(), "fields": set(), "templates": set()})
+    uses = collections.defaultdict(lambda: {"globals": set(), "fields": set(), "templates": set(), "at": collections.defaultdict(set)})
+
+    def use(path, kind, name, line):
+        uses[path][kind].add(name)
+        uses[path]["at"][name].add(int(line))
+
+    def line_of(f, pos):
+        return src[f].count("\n", 0, pos) + 1
 
     def note(kind, name, loc):
         found.setdefault(kind, collections.OrderedDict()).setdefault(name, []).append(loc)
@@ -128,7 +136,8 @@ def scan():
                 note("Globals Forever does not have", g, loc)
         elif g not in LUA51 and g not in NOT_THE_GAMES and g not in own:
             for loc in locs:
-                uses[loc.rsplit(":", 1)[0]]["globals"].add(g)
+                path, line = loc.rsplit(":", 1)
+                use(path, "globals", g, line)
     for g in own:
         if not g.startswith(("FantasyGlassUI", "SLASH_", "BINDING_")) and g not in GLOBALS and g not in NOT_THE_GAMES:
             note("Game globals the add-on writes that Forever does not have", g, ".luacheckrc")
@@ -138,7 +147,7 @@ def scan():
             if g in LUA51 or g in own or g in NOT_THE_GAMES or g.startswith(("FantasyGlassUI", "SLASH_", "BINDING_")):
                 continue
             if g in GLOBALS:
-                uses[rel(f)]["globals"].add(g)
+                use(rel(f), "globals", g, line_of(f, m.start()))
                 continue
             note("Globals read through _G that Forever does not have", g, where(f, m.start()))
 
@@ -153,14 +162,14 @@ def scan():
             if not field_ok(full):
                 note("Game functions and fields Forever does not have", full, where(f, m.start()))
             else:
-                uses[rel(f)]["fields"].add(full)
+                use(rel(f), "fields", full, line_of(f, m.start()))
         for m in re.finditer(r'local\s+(\w+)\s*=\s*(?:type\((?:C_\w+)\)\s*==\s*"table"\s*and\s*)?(C_\w+)\b(?=[ \t]*(?:\n|;|\)|or\b|--))', code[f]):
             alias, table = m.group(1), m.group(2)
             for k in re.finditer(r"(?<![\w.:])" + alias + r"\s*\.\s*([A-Za-z_]\w*)", code[f][m.end():m.end() + 6000]):
                 if not field_ok(table + "." + k.group(1)):
                     note("Game functions and fields Forever does not have", f"{table}.{k.group(1)} (as {alias})", where(f, m.end() + k.start()))
                 else:
-                    uses[rel(f)]["fields"].add(table + "." + k.group(1))
+                    use(rel(f), "fields", table + "." + k.group(1), line_of(f, m.end() + k.start()))
 
     # 3. events: registered, compared against, or listed for registering
     for f in files:
@@ -206,7 +215,7 @@ def scan():
                 if t.strip() and t.strip() not in TEMPLATES:
                     note("Templates Forever does not have", t.strip(), where(f, m.start()))
                 elif t.strip():
-                    uses[rel(f)]["templates"].add(t.strip())
+                    use(rel(f), "templates", t.strip(), line_of(f, m.start()))
         for m in re.finditer(r'(?:SetAtlas|CreateAtlasMarkup|GetAtlasInfo)\s*\(\s*"([^"]+)"', s):
             if m.group(1).lower() not in ATLASES:
                 note("Built-in art (atlases) Forever does not have", m.group(1), where(f, m.start()))

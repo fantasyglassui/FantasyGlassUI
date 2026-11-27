@@ -303,6 +303,7 @@ function ns:SelfCheck(quiet)
         if not listed[m.key] and m.key ~= "fallbacks" then
             listed[m.key] = true
             local state = ns.loaded[m.key] and "running" or (ns.db[m.key] and "NOT RUNNING" or "")
+            if ns.healthOff[m.key] and not ns.loaded[m.key] then state = "off after the game's update (/fgui health)" end
             if ns.steppedAside[m.key] then state = "left to " .. ns.steppedAside[m.key] .. " (another add-on that does this)" end
             if ns.aurasLocked and ns.db[m.key] then
                 if m.key == "auraBars" or m.key == "raidFrames" then state = "the game's own, restyled"

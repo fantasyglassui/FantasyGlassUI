@@ -240,6 +240,29 @@ def test_health_needs_current():
     assert p.returncode == 0, p.stdout + p.stderr
 
 
+def test_health_needs_per_module():
+    """(13.5 part two, P2-I4) The needs are the game's own functions and globals only, each under the module whose own
+    code uses it: no frame, template or load-on-demand name, and Helpers.lua's modules do not share one list."""
+    sys.path.insert(0, TESTS)
+    import health_needs
+    text = open(os.path.join(ROOT, "FantasyGlassUI", "HealthNeeds.lua"), encoding="utf-8").read()
+    names = re.findall(r'"([^"]+)",', text[text.index("ns.HEALTH_NAMES"):text.index("ns.HEALTH_NEEDS")])
+    needs = {k: [names[int(i) - 1] for i in re.findall(r"\d+", body)]
+             for k, body in re.findall(r'\["(\w+)"\] = \{ label = "[^"]*",([^}]*)\}', text)}
+    assert names and all(health_needs.is_core(n) for n in names), [n for n in names if not health_needs.is_core(n)][:10]
+    for frame in ("InspectFrame", "ClassTrainerFrame", "CompactRaidFrameManager", "CompactRaidFrameContainer", "MovieFrame",
+                  "AuctionHouseFrame", "UIParent", "GameTooltip"):
+        assert frame not in names, frame
+    assert not any(n.startswith("t:") for n in names)
+    spans = health_needs.module_spans("FantasyGlassUI/Helpers.lua")
+    assert len(spans) == 18 and {s[2] for s in spans} >= {"autoInvite", "fastLoot", "versionNotice"}
+    assert "LootSlot" in needs["fastLoot"] and "LootSlot" not in needs.get("autoInvite", [])
+    assert "AcceptGroup" in needs["autoInvite"] and "AcceptGroup" not in needs.get("fastLoot", [])
+    helpers = [frozenset(needs.get(s[2], [])) for s in spans]
+    assert len(set(helpers)) > 1, "every Helpers.lua module has the same needs"
+    assert health_needs.part_of_line(spans, 1) == "core", "a line outside every module is core"
+
+
 def test_plan_page_published():
     """From 13.0 the website's plan page is published with the rest of the site; tests/sitecheck.py checks the build."""
     if not glob.glob(os.path.join(ROOT, "site-src", "site", "i18n", "*.json")):   # (git-ignored: a fresh clone, as on CI, makes them first)

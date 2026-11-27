@@ -129,6 +129,8 @@ end
 function ns:LoadFolder(key, quiet)
     local f = ns.FOLDERS[key]
     if type(f) ~= "table" then return false end
+    -- (the login's check first, when this load comes before it: PLAYER_LOGIN reaches the frames in no promised order)
+    if not ns.healthChecked and ns.HealthLogin then pcall(ns.HealthLogin, ns) end
     if ns.healthOff[key] then                                 -- (the check after a game update left it off: Health.lua)
         if not quiet then Say(key, "This part is off after the game's update, until Fantasy Glass UI is updated. /fgui health says why.") end
         return false

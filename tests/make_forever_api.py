@@ -11,6 +11,12 @@ Sources: BlizzardInterfaceResources holds dumps taken from the live client (its 
 widget methods, enums, settings and art); wow-ui-source holds the client's own interface code, read
 here only for the files Forever loads (game type "camelot", in the Mainline family). The fallbacks in
 Blizzard_Deprecated* are left out on purpose: Blizzard removes them, so the add-on must not lean on them.
+
+core_globals and core_fields (13.5 part two) are what the check after a game update may count as a need
+(tests/health_needs.py): the client's own functions (GlobalAPI.lua, not FrameXML.lua's dump, which holds
+load-on-demand code too), its enums, constants and global strings, and what the Lua of the Blizzard add-ons
+that are always there defines, less every frame. An add-on is not always there when it loads on demand, has a
+## DefaultState the player can change, is one other add-ons switch off (the raid frames), or needs one of those.
 """
 import glob
 import gzip
@@ -64,9 +70,10 @@ def follow(path, out):
             follow(os.path.join(os.path.dirname(real), m.group(1).replace("\\", "/")), out)
 
 
-def loaded_files():
+def loaded_files(owner=None):
+    """Every interface file Forever loads. `owner`, when given, is filled with {file: add-on folder name}."""
     out = set()
-    for toc in glob.glob(os.path.join(ADDONS, "*", "*.toc")):
+    for toc in sorted(glob.glob(os.path.join(ADDONS, "*", "*.toc"))):
         folder = os.path.dirname(toc)
         if os.path.basename(toc)[:-4] != os.path.basename(folder):
             continue
@@ -86,8 +93,41 @@ def loaded_files():
             if not allowed(words(a.group(1)) if a else None, words(e.group(1)) if e else None):
                 continue
             p = re.sub(r"(?:\s+\[[^\]]*\])+\s*$", "", s).replace("[Family]", "Mainline").replace("[Game]", "Camelot")
+            before = set(out) if owner is not None else None
             follow(os.path.join(folder, p.replace("\\", "/").strip()), out)
+            if owner is not None:
+                for f in out - before:
+                    owner[f] = os.path.basename(folder)
     return out
+
+
+# ---- which add-ons are always there (13.5 part two, P2-I4) ----------------------------------------
+# A Blizzard add-on is optional when it loads on demand, has a state the player can change (## DefaultState),
+# is one players switch off for another add-on's raid frames, or needs one of those. What only an optional
+# add-on makes may be missing at a login for reasons that have nothing to do with a game update.
+DISABLED_BY_ADDONS = {"Blizzard_CompactRaidFrames", "Blizzard_CUFProfiles"}
+
+
+def optional_addons():
+    info = {}
+    for toc in sorted(glob.glob(os.path.join(ADDONS, "*", "*.toc"))):
+        folder = os.path.dirname(toc)
+        name = os.path.basename(folder)
+        if os.path.basename(toc)[:-4] != name:
+            continue
+        text = read(toc)
+        lod = re.search(r"^## LoadOnDemand:\s*1\s*$", text, re.M) is not None
+        state = re.search(r"^## DefaultState:", text, re.M) is not None
+        deps = set()
+        for m in re.finditer(r"^## (?:Dependencies|RequiredDeps?|Dep\w*):\s*(.+)$", text, re.M):
+            deps |= set(words(m.group(1)))
+        info[name] = (lod or state or name in DISABLED_BY_ADDONS, deps)
+    optional = {n for n, (o, _) in info.items() if o}
+    while True:
+        more = {n for n, (_, deps) in info.items() if n not in optional and deps & optional}
+        if not more:
+            return optional
+        optional |= more
 
 
 # ---- names the loaded XML creates (with $parent worked out, and template children carried over) ----
@@ -143,7 +183,8 @@ def xml_names(files):
 
 
 # ---- put it together ------------------------------------------------------------------------------
-files = loaded_files()
+owner = {}
+files = loaded_files(owner)
 lua = sorted(f for f in files if f.endswith(".lua"))
 xml = sorted(f for f in files if f.endswith(".xml"))
 
@@ -203,6 +244,35 @@ for f in glob.glob(os.path.join(ADDONS, "Blizzard_APIDocumentationGenerated", "*
         fields |= {"Constants." + m.group(1) + "." + v for v in re.findall(r'\{ Name = "(\w+)"', m.group(2))}
 atlases = {k.lower() for k in re.findall(r'\["([^"]+)"\]', read(os.path.join(R, "AtlasInfo.lua")))}
 
+# ---- what the check after a game update may count as a need (13.5 part two, P2-I4) -----------------
+# Only plain API functions and globals from the game's core: the client's own functions and C_ tables (GlobalAPI),
+# its enums and constants, its global strings, and what the always-loaded interface code defines that is not a
+# frame. Never a frame or a template (they come and go with what is loaded), never what only an optional
+# (load-on-demand, or able to be switched off) Blizzard add-on defines.
+optional = optional_addons()
+core_lua = [f for f in lua if owner.get(f) not in optional]
+frames = xml_names(xml) | quoted(os.path.join(R, "Frames.lua"))
+capi = quoted(os.path.join(R, "GlobalAPI.lua"))                 # (the client's own functions; FrameXML.lua's dump holds load-on-demand code too)
+core_globals = {n for n in capi if "." not in n} | {n.split(".")[0] for n in capi if "." in n}
+core_globals |= set(re.findall(r"^([A-Za-z0-9_]+) = ", read(os.path.join(R, "GlobalStrings", "enUS.lua")), re.M))
+core_globals |= set(re.findall(r"^([A-Za-z0-9_]+) = ", read(os.path.join(R, "LuaEnum.lua")), re.M))
+core_fields = {n for n in capi if "." in n} | {f for f in fields if f.startswith("Constants.")}
+made_frames = set()
+for f in lua:
+    made_frames |= set(re.findall(r"^([A-Za-z_]\w*)\s*=\s*CreateFrame\s*\(", read(f), re.M))
+for f in core_lua:
+    t = read(f)
+    core_globals |= set(re.findall(r"^([A-Za-z_]\w*)\s*=[^=]", t, re.M))
+    core_globals |= set(re.findall(r"^function\s+([A-Za-z_]\w*)\s*\(", t, re.M))
+    for a, b in re.findall(r"^\s*(?:function\s+)?([A-Za-z_]\w*)\.([A-Za-z_]\w*)\s*[=(]", t, re.M):
+        core_fields.add(a + "." + b)
+    for name, body in re.findall(r"^([A-Z][A-Za-z0-9_]+)\s*=\s*\{(.*?)^\}", t, re.M | re.S):
+        for k in re.findall(r'^\s*\[?"?([A-Za-z_]\w*)"?\]?\s*=', body, re.M):
+            core_fields.add(name + "." + k)
+core_globals = (core_globals & globals_) - frames - made_frames
+core_fields = {f for f in core_fields & fields if f.split(".")[0] in core_globals}
+
+
 def subject(repo):
     return os.popen(f"git -C {repo} log -1 --format=%s").read().strip()
 build = f"{subject(BIR)} dumps, interface code {subject(UI)}"
@@ -217,9 +287,12 @@ snapshot = {
     "templates": sorted(templates),
     "methods": sorted(methods),
     "atlases": sorted(atlases),
+    "core_globals": sorted(core_globals),
+    "core_fields": sorted(core_fields),
 }
 with open(os.path.join(HERE, "forever_api.json.gz"), "wb") as raw:              # (mtime 0: the same input makes the same file)
     with gzip.GzipFile(fileobj=raw, mode="wb", mtime=0) as out:
         out.write(json.dumps(snapshot, separators=(",", ":")).encode("utf-8"))
 print(f"WoW: Forever {build}: {len(globals_)} globals, {len(fields)} fields, {len(events)} events ({len(restricted)} restricted), "
-      f"{len(cvars)} settings, {len(templates)} templates, {len(methods)} methods, {len(atlases)} atlases")
+      f"{len(cvars)} settings, {len(templates)} templates, {len(methods)} methods, {len(atlases)} atlases; "
+      f"{len(core_globals)} core globals and {len(core_fields)} core fields ({len(optional)} optional Blizzard add-ons)")

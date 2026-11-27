@@ -8,15 +8,24 @@ local _, ns = ...
 ------------------------------------------------------------------------------------------
 ns.SELFTEST_WINDOWS = { "checklist", "session", "rares", "level", "profcd", "gold", "loot", "rolls", "recent", "lockouts", "trades", "todo", "addons", "missing", "events", "comp", "bagrules", "mailrules", "talents", "crafts", "reps" }
 
+-- The features switched on that are not running, as one line ("not running: a, b (off after the game's update)"), or nil.
+function ns.SelfTestNotRunning()
+    local off = {}
+    for _, m in ipairs(ns.modules or {}) do
+        if ns.db[m.key] and not ns.loaded[m.key] and not (ns.steppedAside and ns.steppedAside[m.key]) then
+            off[#off + 1] = (ns.healthOff and ns.healthOff[m.key]) and (m.key .. " (off after the game's update)") or m.key
+        end
+    end
+    if #off == 0 then return nil end
+    return "not running: " .. table.concat(off, ", ")
+end
+
 local function Steps()
     local s = {}
     local function add(name, fn) s[#s + 1] = { name = name, fn = fn } end
     add("Features switched on are running", function()
-        local off = {}
-        for _, m in ipairs(ns.modules or {}) do
-            if ns.db[m.key] and not ns.loaded[m.key] and not (ns.steppedAside and ns.steppedAside[m.key]) then off[#off + 1] = m.key end
-        end
-        if #off > 0 then error("not running: " .. table.concat(off, ", ")) end
+        local why = ns.SelfTestNotRunning()
+        if why then error(why) end
     end)
     add("No errors so far this session", function()
         if #(ns.errors or {}) > 0 then error(tostring(ns.errors[1]) .. ((#ns.errors > 1) and (" (+" .. (#ns.errors - 1) .. " more)") or "")) end

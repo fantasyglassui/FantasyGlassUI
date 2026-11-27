@@ -28254,10 +28254,6 @@ end
 -- 13.5 F health tests: begin
 do
 local function ok(cond, msg) if not cond then error(msg, 2) end end
-local function needs(key)                                   -- the first name of a part
-    local e = ns.HEALTH_NEEDS[key]
-    return e and e[1] and ns.HEALTH_NAMES[e[1]]
-end
 local function partsOf(name)                                -- every part that needs this name
     local idx
     for i, n in ipairs(ns.HEALTH_NAMES) do if n == name then idx = i end end
@@ -28290,24 +28286,31 @@ local function pick()
     end
 end
 local function absentOnly(set) return function(name) return not set[name] end end
+local function as(name) env.UnitName = function() return name end end      -- (who is playing: the baseline is per character)
+local function login() ns.healthChecked = nil; ns:HealthLogin() end        -- (a login: the check runs once per session)
 -- Run body with a fresh root, a build, a has stub; everything put back after.
 local function with(build, has, body)
     pick()
-    local saved = { root = ns.root, has = ns.HealthHas, gbi = env.GetBuildInfo, fight = env.InCombatLockdown }
+    local saved = { root = ns.root, has = ns.HealthHas, gbi = env.GetBuildInfo, fight = env.InCombatLockdown, unit = rawget(env, "UnitName"),
+                    realm = rawget(env, "GetRealmName"), checked = ns.healthChecked }
     local savedOff = {}
     for k, v in pairs(ns.healthOff) do savedOff[k] = v end
     for k in pairs(ns.healthOff) do ns.healthOff[k] = nil end
     local root = {}
     ns.root = root
     if has then ns.HealthHas = has end
+    as("Mychar"); env.GetRealmName = function() return "Mal'Ganis" end
     env.GetBuildInfo = function() return "1.60.1", build, "Nov 1 2026", 16001 end
     local fine, err = pcall(body, root)
     ns.root, ns.HealthHas, env.GetBuildInfo, env.InCombatLockdown = saved.root, saved.has, saved.gbi, saved.fight
+    rawset(env, "UnitName", saved.unit); rawset(env, "GetRealmName", saved.realm); ns.healthChecked = saved.checked
     for k in pairs(ns.healthOff) do ns.healthOff[k] = nil end
     for k, v in pairs(savedOff) do ns.healthOff[k] = v end
     if ns.HideLists then ns:HideLists() end
     if not fine then error(err, 0) end
 end
+local ME = "Mychar - Mal'Ganis"
+local function mine(root) return root.health and root.health.chars and root.health.chars[ME] end
 local function label(key) return ns.HEALTH_NEEDS[key].label end
 local function offCount() local n = 0 for _ in pairs(ns.healthOff) do n = n + 1 end return n end
 try("13.5 F: the needs list", function()
@@ -28337,18 +28340,19 @@ try("13.5 F: the first login takes a baseline", function()
     with("70888", nil, function(root)
         ns.HealthHas = absentOnly({ [N] = true })
         local n0 = #printed
-        ns:HealthLogin()
+        login()
         ok(root.lastBuild == "70888", "the build kept: " .. tostring(root.lastBuild))
-        ok(root.health and root.health.base and root.health.base.version == ns.version, "the base's version")
-        ok(root.health.base.absent[N] == true, "what was absent")
-        ok(root.health.result == nil, "no result")
+        local c = mine(root)
+        ok(c and c.version == ns.version and c.build == "70888", "this character's baseline: version and build")
+        ok(c.absent[N] == true, "what was absent")
+        ok(c.result == nil, "no result")
         ok(offCount() == 0, "nothing off")
         ok(#printed == n0, "no line")
     end)
 end)
 local function patched(root, absent)
     root.lastBuild = "70888"
-    root.health = { base = { version = ns.version, absent = {} } }
+    root.health = { chars = { [ME] = { version = ns.version, build = "70888", absent = {} } } }
     ns.HealthHas = absentOnly(absent)
     env.GetBuildInfo = function() return "1.60.1", "71000", "Nov 1 2026", 16001 end
 end
@@ -28357,15 +28361,15 @@ try("13.5 F: after a patch", function()
         patched(root, { [N] = true })
         local db = ns.db[P]
         local n0 = #printed
-        ns:HealthLogin()
+        login()
         ok(ns.healthOff[P] == true, "the part is off")
         ok(offCount() == 1, "only that part")
         ok(ns.db[P] == db, "the saved setting is unchanged")
-        local r = root.health.result
+        local r = mine(root).result
         ok(r and r.build == "71000" and r.version == ns.version, "the result kept")
         ok(#r.off == 1 and r.off[1] == P, "result.off")
         ok(r.missing[P] and r.missing[P][1] == N, "result.missing")
-        ok(root.lastBuild == "70888", "the baseline's build stays")
+        ok(mine(root).build == "70888", "the baseline's build stays")
         ok(#printed == n0 + 1, "one line")
         ok(printed[#printed] == "After the game's update, these parts are off until Fantasy Glass UI is updated: " .. label(P) .. ".",
            "the line: " .. tostring(printed[#printed]))
@@ -28374,9 +28378,9 @@ try("13.5 F: after a patch", function()
     with("71000", nil, function(root)
         patched(root, { [C] = true })
         local n0 = #printed
-        ns:HealthLogin()
+        login()
         ok(offCount() == 0, "core is never off")
-        ok(#root.health.result.off == 0 and root.health.result.core[1] == C, "core's missing name kept")
+        ok(#mine(root).result.off == 0 and mine(root).result.core[1] == C, "core's missing name kept")
         ok(#printed == n0 + 1 and printed[#printed] == "After the game's update, some of what Fantasy Glass UI uses is missing: /fgui health lists it.",
            "the core line: " .. tostring(printed[#printed]))
     end)
@@ -28384,9 +28388,9 @@ end)
 try("13.5 F: a name missing before the patch", function()
     with("71000", nil, function(root)
         patched(root, { [N] = true })
-        root.health.base.absent[N] = true                    -- (a frame not there at login)
+        mine(root).absent[N] = true                          -- (absent at this character's baseline)
         local n0 = #printed
-        ns:HealthLogin()
+        login()
         ok(offCount() == 0, "nothing off")
         ok(#printed == n0, "no line")
     end)
@@ -28394,11 +28398,11 @@ end)
 try("13.5 F: the next login, and an update", function()
     with("71000", nil, function(root)
         patched(root, { [N] = true })
-        ns:HealthLogin()
+        login()
         ok(ns.healthOff[P], "off after the patch")
         for k in pairs(ns.healthOff) do ns.healthOff[k] = nil end
         local n0 = #printed
-        ns:HealthLogin()
+        login()
         ok(ns.healthOff[P] == true and offCount() == 1, "off again at the next login")
         ok(#printed == n0, "no line the second time")
         -- an update: a new version and a new build
@@ -28407,11 +28411,12 @@ try("13.5 F: the next login, and an update", function()
         ns.version = version .. "-test"
         env.GetBuildInfo = function() return "1.60.1", "72000", "Nov 1 2026", 16001 end
         local fine, err = pcall(function()
-            ns:HealthLogin()
-            ok(root.health.base.version == ns.version, "a new base")
-            ok(root.health.base.absent[N] == true, "the new base holds what is absent now")
+            login()
+            local c = mine(root)
+            ok(c.version == ns.version and c.build == "72000", "a new base")
+            ok(c.absent[N] == true, "the new base holds what is absent now")
             ok(root.lastBuild == "72000", "the new build")
-            ok(root.health.result == nil, "no result")
+            ok(c.result == nil, "no result")
             ok(offCount() == 0, "nothing off")
             ok(#printed == n0, "no line")
         end)
@@ -28424,12 +28429,12 @@ try("13.5 F: in a fight", function()
         patched(root, { [N] = true })
         env.InCombatLockdown = function() return true end
         local n0 = #printed
-        ns:HealthLogin()
-        ok(root.health.result == nil and offCount() == 0, "nothing happens in the fight")
+        login()
+        ok(mine(root).result == nil and offCount() == 0, "nothing happens in the fight")
         ok(#printed == n0, "no line in the fight")
         env.InCombatLockdown = function() return false end
         fireEvent("PLAYER_REGEN_ENABLED")                    -- (other handlers may print too: only the check's lines are counted)
-        local r = root.health.result
+        local r = mine(root).result
         ok(r and r.later == true and r.off[1] == P, "the result kept, for later")
         ok(offCount() == 0, "nothing turned off now")
         local function told()
@@ -28440,7 +28445,7 @@ try("13.5 F: in a fight", function()
         local lines = told()
         ok(#lines == 1 and lines[1] == "After the game's update, these parts may not work. They are off from your next login until Fantasy Glass UI is updated: " .. label(P) .. ".",
            "the later line: " .. tostring(lines[1]))
-        ns:HealthLogin()
+        login()
         ok(ns.healthOff[P] == true, "off from the next login")
         ok(#told() == 1, "no second line")
     end)
@@ -28467,13 +28472,13 @@ try("13.5 F: /fgui health and the report", function()
             if l.left == label(P) and tostring(l.right):find(N, 1, true) then found = true end
         end
         ok(found, "the part and its name")
-        ok(root.health.last and root.health.last.when, "kept as the last check")
+        ok(mine(root).last and mine(root).last.when, "kept as the last check")
         ns.HealthHas = absentOnly({})
         ok(ns:HealthCommand("") == 1, "one line")
         w = ns:ListWindow("Health")
         ok(w.lines[1].left == "Everything this version uses is in the game.", "the one line: " .. tostring(w.lines[1].left))
         ns.HealthHas = absentOnly({ [N] = true })
-        ns:HealthLogin()
+        login()
         local lines = ns:ProblemReport()
         local heading, named
         for _, l in ipairs(lines) do
@@ -28499,11 +28504,130 @@ try("13.5 F: light", function()
     for _, gbi in ipairs(builds) do
         with("0", nil, function(root)
             env.GetBuildInfo = gbi
+            ns.healthChecked = nil
             local fine, err = pcall(ns.HealthLogin, ns)
             ok(fine, "no error: " .. tostring(err))
             ok(root.lastBuild == nil and root.health == nil, "nothing done")
         end)
     end
+end)
+-- (13.5 part two fixes) The check never turns off a working part.
+try("13.5 P2-I4: frames and load-on-demand names never turn a part off", function()
+    local LOD = { "InspectFrame", "ClassTrainerFrame", "CompactRaidFrameManager", "CompactRaidFrameContainer", "MovieFrame",
+                  "AuctionHouseFrame", "CommunitiesFrame", "PlayerSpellsFrame", "ProfessionsFrame", "TalentButtonUtil", "ArenaEnemyFramesContainer" }
+    local listed = {}
+    for _, n in ipairs(ns.HEALTH_NAMES) do listed[n] = true end
+    for _, n in ipairs(ns.HEALTH_NAMES) do ok(n:sub(1, 2) ~= "t:", "no templates in the needs: " .. n) end
+    for _, n in ipairs(LOD) do ok(not listed[n], "not a need: " .. n) end
+    -- and whatever the list holds, these going away at a patch turns nothing off
+    with("70888", function() return true end, function(root)
+        login()
+        ok(mine(root) and mine(root).build == "70888", "the baseline, everything there")
+        local gone = {}
+        for _, n in ipairs(LOD) do gone[n] = true end
+        ns.HealthHas = absentOnly(gone)
+        env.GetBuildInfo = function() return "1.60.1", "71000", "Nov 1 2026", 16001 end
+        login()
+        ok(offCount() == 0, "nothing off: " .. table.concat((mine(root).result or {}).off or {}, ", "))
+    end)
+end)
+try("13.5 P2-I4: each character has its own baseline", function()
+    with("70888", function() return true end, function(root)
+        login()                                              -- Mychar's baseline: everything there
+        as("Other")
+        ns.HealthHas = absentOnly({ [N] = true })
+        env.GetBuildInfo = function() return "1.60.1", "71000", "Nov 1 2026", 16001 end
+        login()                                              -- Other's first login is after the patch, without N
+        ok(offCount() == 0, "a character's first login takes its own baseline: nothing off")
+        local other = root.health.chars["Other - Mal'Ganis"]
+        ok(other and other.build == "71000" and other.absent[N] and other.result == nil, "Other's baseline")
+        ok(mine(root).build == "70888" and mine(root).result == nil, "Mychar's untouched")
+        as("Mychar")
+        login()                                              -- Mychar after the patch, N gone: its own part goes off
+        ok(ns.healthOff[P] == true and offCount() == 1, "Mychar's part off")
+        for k in pairs(ns.healthOff) do ns.healthOff[k] = nil end
+        as("Other")
+        login()
+        ok(offCount() == 0, "and Other's result is its own: nothing off")
+    end)
+end)
+try("13.5 P2-I4: the baseline grows over the build's logins", function()
+    with("70888", function() return true end, function(root)
+        login()
+        ok(not mine(root).absent[N], "there at the first login")
+        ns.HealthHas = absentOnly({ [N] = true })
+        login()                                              -- (the same build: an add-on that loaded it is gone)
+        ok(mine(root).absent[N] == true, "absent at a later login of the same build: in the baseline")
+        env.GetBuildInfo = function() return "1.60.1", "71000", "Nov 1 2026", 16001 end
+        login()
+        ok(offCount() == 0, "absent before the patch: nothing off")
+    end)
+end)
+try("13.5 P2-M1: a kept result applies in a fight", function()
+    with("71000", nil, function(root)
+        patched(root, { [N] = true })
+        login()
+        for k in pairs(ns.healthOff) do ns.healthOff[k] = nil end
+        env.InCombatLockdown = function() return true end
+        login()                                              -- (a /reload in a fight)
+        ok(ns.healthOff[P] == true, "off at once, from the kept result")
+        env.InCombatLockdown = function() return false end
+    end)
+end)
+try("13.5 P2-M2: /fgui health in a fight after the login's check waits too", function()
+    with("71000", nil, function(root)
+        patched(root, { [N] = true })
+        env.InCombatLockdown = function() return true end
+        login()                                              -- (the login's check waits for the fight's end)
+        ok(ns:HealthCommand("") == 0, "the command waits")
+        if ns.HideLists then ns:HideLists() end
+        local w0 = ns:ListWindow("Health")
+        if w0 then w0.lines = nil end
+        env.InCombatLockdown = function() return false end
+        fireEvent("PLAYER_REGEN_ENABLED")
+        local w = ns:ListWindow("Health")
+        ok(w and w.lines and #w.lines >= 1, "and the list opens when the fight ends")
+    end)
+end)
+try("13.5 P2-M3: a template lookup that fails is not an absence", function()
+    local keep = rawget(env, "C_XMLUtil")
+    env.C_XMLUtil = { GetTemplateInfo = function() error("changed") end }
+    local yes = ns.HealthHas("t:SecureUnitButtonTemplate")
+    rawset(env, "C_XMLUtil", keep)
+    ok(yes == true, "it cannot tell: there")
+end)
+try("13.5 P2-M7: a folder loaded before the check runs it first", function()
+    with("71000", nil, function(root)
+        patched(root, { [N] = true })
+        local keep = ns.HEALTH_NEEDS.planner
+        ns.HEALTH_NEEDS.planner = { label = "Route planner", (function() for i, n in ipairs(ns.HEALTH_NAMES) do if n == N then return i end end end)() }
+        ns.healthChecked = nil
+        local fine, err = pcall(function()
+            ok(ns:LoadFolder("planner", true) == false, "the check ran first: the folder is off")
+            ok(ns.healthOff.planner == true and ns.healthChecked == true, "checked once")
+        end)
+        ns.HEALTH_NEEDS.planner = keep
+        if not fine then error(err, 0) end
+    end)
+end)
+try("13.5 P2-M8: a part off after an update says why", function()
+    with("71000", nil, function()
+        local key = P
+        local keepDb, keepLoaded = ns.db[key], ns.loaded[key]
+        ns.db[key] = true; ns.healthOff[key] = true; ns.loaded[key] = nil       -- (left off at login: not started)
+        local fine, err = pcall(function()
+            ok(ns:LoadOptions(), "the options load")
+            local hit
+            for _, l in ipairs(ns:SelfCheck(true)) do
+                if type(l) == "string" and l:find("  " .. key .. " ", 1, true) and l:find("off after the game's update", 1, true) then hit = true end
+            end
+            ok(hit, "the self-check gives the reason")
+            local why = ns.SelfTestNotRunning()
+            ok(why and why:find(key .. " (off after the game's update)", 1, true), "the self-test gives the reason: " .. tostring(why))
+        end)
+        ns.db[key], ns.loaded[key] = keepDb, keepLoaded
+        if not fine then error(err, 0) end
+    end)
 end)
 end
 -- 13.5 F health tests: end
