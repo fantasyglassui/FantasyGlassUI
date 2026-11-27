@@ -8,7 +8,8 @@ text over a screenshot is left to the eye); no page wider than the screen; no sc
 script error. The other languages are checked at 390 px for width. The plan page (/plan/) is checked at 390 px: a
 plan code pasted shows its steps, in German too, with no script error and nothing wider than the screen; a sample plan's route
 is pinned on the world map at the expected pixels (390 and 1280 px, light and dark), asking only this site, and once a plan is
-shown; without tiles the zone sketches show instead. The world map (/map/)
+shown; a zone the world map does not have (Zephras Isle) is drawn as a sketch, beside the world map or instead of an empty
+one; without tiles the zone sketches show instead. The world map (/map/)
 draws its tiles from this site, its places file is valid and ?pins shows the pin helper. On Guide and
 Gold (English and German, 390 px), the example route is drawn and the short tour opens, steps on and closes by keyboard. --shots DIR
 saves Home and Get started, dark and light, at both widths (and the plan page's route, plan-route-*.png). --quick checks English only. Needs Python's playwright with its Chromium; when that is
@@ -318,8 +319,16 @@ def main():
                     problems.append(f"{where}: the map takes the wheel or one finger before it is clicked: {got['before']}")
                 if got["height"] < 300 or got["wide"] or got["sketch"] or not got["credit"]:
                     problems.append(f"{where}: height {got['height']}, too wide {got['wide']}, sketch shown {got['sketch']}, credit {got['credit']}")
-                if got["unplaced"] != "Steps " + ", ".join(str(i + 1) for i in sample["unplaced"]) + " have no place on the map.":
+                none = lambda ns: ("Step %s has no place on the map." if len(ns) == 1 else "Steps %s have no place on the map.") % ", ".join(str(i + 1) for i in ns)
+                if got["unplaced"] != none(sample["unplaced"]):
                     problems.append(f"{where}: the steps with no place: {got['unplaced']!r}")
+                # the mixed plan: its Zephras Isle step (a zone the world map does not have) on a sketch under the world map
+                mix = page.evaluate("""() => { const off = document.getElementById('offpanels'), z = document.getElementById('off-z4');
+                  return [off.hidden, off.querySelectorAll('svg.fgmap').length, !!z && z.querySelector('h2').textContent,
+                          !!z && [...z.querySelectorAll('.mk')].map(m => m.dataset.steps).join('|'), document.getElementById('mapframe').hidden,
+                          [...document.querySelectorAll('#views button')].map(b => b.textContent).join('|')]; }""")
+                if mix != [False, 1, "Zephras Isle", " ".join(map(str, sample["offmap"])), False, "Whole route|Durotar|Elwynn Forest|Stormwind City|Zephras Isle"]:
+                    problems.append(f"{where}: the mixed plan's Zephras Isle sketch beside the world map: {mix}")
                 page.locator("#views button").first.click()             # (the whole route again)
                 now1 = page.evaluate("document.querySelector('#routemap [aria-current=step]').dataset.steps")
                 page.check("#s0")
@@ -339,6 +348,27 @@ def main():
                 if SHOTS:
                     os.makedirs(SHOTS, exist_ok=True)
                     page.screenshot(path=os.path.join(SHOTS, f"plan-route-{scheme}-{w}.png"), full_page=True)
+                # a plan all on Zephras Isle: no (empty) world map, the zone's sketch with numbered pins and the current step
+                zs = sample["zephras"]
+                page.fill("#code", zs["code"])
+                page.wait_for_timeout(300)
+                zg = page.evaluate("""() => { const off = document.getElementById('offpanels');
+                  return [document.getElementById('mapframe').hidden, document.getElementById('legend').hidden, document.getElementById('mapcredit').hidden,
+                          document.getElementById('views').hidden, off.hidden, off.querySelectorAll('svg.fgmap').length,
+                          [...off.querySelectorAll('.mk[role=button]')].map(m => m.dataset.steps).join(' '),
+                          !!off.querySelector('.mk.now[data-steps~="0"]'), (off.querySelector('.panel .note') || {}).textContent || '',
+                          document.getElementById('unplaced').textContent,
+                          document.documentElement.scrollWidth > document.documentElement.clientWidth + 1]; }""")
+                want = [True, True, True, True, False, 1, " ".join(map(str, zs["offmap"])), True,
+                        "Zephras Isle is not on the world map yet, so its steps are drawn as a sketch.", none(zs["unplaced"]), False]
+                if zg != want:
+                    problems.append(f"{where}: a plan all on Zephras Isle: {zg}, wanted {want}")
+                page.locator("#steps button.n").nth(2).click()           # (a step's number: its marker on the sketch)
+                if page.evaluate("document.activeElement.getAttribute('data-steps')") != "2":
+                    problems.append(f"{where}: a Zephras Isle step's number does not show its marker")
+                problems += [f"{where} Zephras Isle: {x}" for x in page.evaluate(CHECK) if x.startswith(("contrast", "wider"))]
+                if SHOTS:
+                    page.screenshot(path=os.path.join(SHOTS, f"plan-zephras-{scheme}-{w}.png"), full_page=True)
                 if any(st != 200 for _, st in tiles) or not tiles:
                     problems.append(f"{where}: tiles asked for {[t for t in tiles if t[1] != 200][:3] or 'none'}")
                 if asked:
@@ -358,7 +388,7 @@ def main():
             except Exception:
                 pass
             fb = page.evaluate("[document.getElementById('panels').hidden, document.querySelectorAll('#panels svg.fgmap').length, document.getElementById('sketchnote').hidden, document.getElementById('mapframe').hidden]")
-            if fb != [False, 4, False, True]:              # (Durotar, Elwynn Forest, Stormwind City and Nowhere)
+            if fb != [False, 4, False, True]:              # (Durotar, Elwynn Forest, Stormwind City and Zephras Isle)
                 problems.append(f"/plan/ without tiles: the sketches do not show instead ({fb})")
             problems += [f"/plan/ without tiles: script error: {e}" for e in errors]
             checked += 1

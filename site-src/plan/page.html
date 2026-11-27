@@ -108,6 +108,10 @@ a { color: var(--frost); }
 .legend li { display: inline-flex; align-items: center; gap: 6px; }
 .legend .rt-pin { width: 18px; height: 18px; font-size: 0; box-shadow: none; cursor: default; }
 .route .credit { margin: 8px 0 0; }
+#offpanels { margin-top: 14px; }
+.mapframe:not([hidden]) ~ #offpanels { border-top: 1px solid var(--line); padding-top: 14px; }
+#offpanels .panel .note { margin: -4px 0 8px; }
+#offpanels .panel.hit { box-shadow: 0 0 0 2px var(--gold); border-radius: 6px; }
 @media (max-width: 600px) { .routemap { height: clamp(320px, 58vh, 460px); } }
 .real h2 { font-family: var(--display); font-weight: 400; font-size: 1.15rem; margin: 0 0 8px; }
 .real .row { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; margin: 12px 0; }
@@ -141,6 +145,8 @@ a { color: var(--frost); }
       <ul class="legend" id="legend"></ul>
       <p class="note" id="unplaced" hidden></p>
       <p class="note credit" id="mapcredit"></p>
+      <!-- the zones the world map does not have (an island added later, say): each one's sketch (map.js) -->
+      <div class="panels" id="offpanels" hidden></div>
       <!-- only when the world map cannot be loaded: each zone's sketch (map.js) -->
       <p class="note" id="sketchnote" hidden></p>
       <div class="panels" id="panels" hidden></div>
@@ -251,7 +257,7 @@ var WORDS = /*@WORDS@*/;
     if (rt.state === "failed") return;
     rt.state = "failed";
     if (rt.map) { try { rt.map.remove(); } catch (e) {} rt.map = null; }
-    ["mapframe", "views", "legend", "unplaced", "mapcredit"].forEach(function (id) { $(id).hidden = true; });
+    ["mapframe", "views", "legend", "unplaced", "mapcredit", "offpanels"].forEach(function (id) { $(id).hidden = true; });
     $("sketchnote").hidden = false; $("panels").hidden = false;
     if (result && result.ok) { drawPanels(result.plan); drawSteps(result.plan); }
   }
@@ -282,7 +288,7 @@ var WORDS = /*@WORDS@*/;
       .on("tileload", function () { loaded++; }).on("tileerror", function () { failed++; })
       .on("load", function () { if (!loaded && failed) setTimeout(fallback, 0); })   // (after Leaflet is done with the tile)
       .addTo(map);
-    map.setMinZoom(Math.max(0, Math.floor(map.getBoundsZoom(all, false) * 2) / 2));
+    rt.all = all;
     rt.line = L.layerGroup().addTo(map); rt.pins = L.layerGroup().addTo(map);
     function wake() {
       map.scrollWheelZoom.enable();
@@ -314,6 +320,15 @@ var WORDS = /*@WORDS@*/;
     rt.plan = plan; rt.code = code; rt.at = at; rt.now = now;
     rt.placed = [];
     at.forEach(function (p, i) { if (p) rt.placed.push({ i: i, ll: rt.ll(p), kind: KIND[plan.st[i].k] || "other" }); });
+    // a zone the world map does not have (its steps have a place in the zone, but none on the map): a sketch of it,
+    // and no empty world map when no step at all is on it
+    var off = [];
+    plan.st.forEach(function (s, i) { if (!at[i] && s.z !== null && s.x !== null && s.y !== null && off.indexOf(s.z) < 0) off.push(s.z); });
+    rt.off = off;
+    drawOff(plan, off);
+    var onMap = rt.placed.length > 0, wasHidden = $("mapframe").hidden;
+    ["mapframe", "legend", "mapcredit"].forEach(function (id) { $(id).hidden = !onMap; });
+    if (onMap && wasHidden) fresh = true;
     // the line: walking solid, a flight, a boat or the hearthstone dashed in blue; each over a dark edge to stand out
     rt.line.clearLayers();
     var walk = [], hop = [];
@@ -338,14 +353,26 @@ var WORDS = /*@WORDS@*/;
     }
     if (zs.indexOf(rt.view) < 0) rt.view = "all";
     views(plan);
-    // the steps with no place: listed, not pinned
+    // the steps with no place at all: listed, not pinned
     var none = [];
-    at.forEach(function (p, i) { if (!p) none.push(i + 1); });
+    plan.st.forEach(function (s, i) { if (!at[i] && (s.z === null || s.x === null || s.y === null)) none.push(i + 1); });
     $("unplaced").hidden = !none.length;
     $("unplaced").textContent = none.length ? T(none.length === 1 ? "Step %s has no place on the map." : "Steps %s have no place on the map.").replace("%s", none.join(", ")) : "";
+    if (!onMap) { rt.pins.clearLayers(); rt.sig = null; rt.byStep = {}; return; }
     map.invalidateSize();
+    map.setMinZoom(Math.max(0, Math.floor(map.getBoundsZoom(rt.all, false) * 2) / 2));
     if (fresh) fit(); else if (nowAt && now !== prevNow) map.panInside(nowAt, { padding: [40, 40], animate: !reduce });
     pins(true);
+  }
+  function drawOff(plan, off) {
+    var box = $("offpanels");
+    box.textContent = "";
+    box.hidden = !off.length;
+    FGPlan.panels(plan).forEach(function (p) {
+      if (off.indexOf(p.zone) < 0) return;
+      var wrap = drawPanel(p, plan, box, T("%s is not on the world map yet, so its steps are drawn as a sketch.").replace("%s", p.name));
+      wrap.id = "off-z" + p.zone;
+    });
   }
   function nowZone(plan) {                                             // the zone of the current step, or of the next one with a place
     for (var i = Math.max(0, rt.now); i < plan.st.length; i++) if (rt.at[i]) return zoneOf(plan, i);
@@ -362,14 +389,26 @@ var WORDS = /*@WORDS@*/;
     var row = $("views");
     row.textContent = "";
     row.setAttribute("aria-label", T("Map view"));
-    row.hidden = rt.zs.length < 2;
-    ["all"].concat(rt.zs).forEach(function (z) {
-      var b = el("button", "", z === "all" ? T("Whole route") : plan.z[z - 1].n);
+    var chips = (rt.placed.length ? ["all"].concat(rt.zs) : []).concat(rt.off.map(function (z) { return -z; }));
+    row.hidden = chips.length < 2;
+    chips.forEach(function (z) {
+      var b = el("button", "", z === "all" ? T("Whole route") : plan.z[Math.abs(z) - 1].n);
       b.type = "button";
+      if (z !== "all" && z < 0) {                                      // a zone not on the world map: to its sketch
+        b.addEventListener("click", function () {
+          var w = $("off-z" + -z);
+          if (!w) return;
+          w.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
+          w.classList.add("hit");
+          setTimeout(function () { w.classList.remove("hit"); }, 1600);
+        });
+        row.appendChild(b);
+        return;
+      }
       b.setAttribute("aria-pressed", String(rt.view === z));
       b.addEventListener("click", function () {
         rt.view = z;
-        [].forEach.call(row.children, function (c) { c.setAttribute("aria-pressed", String(c === b)); });
+        [].forEach.call(row.querySelectorAll("[aria-pressed]"), function (c) { c.setAttribute("aria-pressed", String(c === b)); });
         fit(); pins(false);
       });
       row.appendChild(b);
@@ -427,7 +466,8 @@ var WORDS = /*@WORDS@*/;
   }
   function showStep(i) {                                               // a step's number in the list: its pin, opened
     if (rt.state === "failed") return FGPlanMap.show($("panels"), i, reduce);
-    if (rt.state !== "ready" || !rt.at[i]) return;
+    if (rt.state !== "ready") return;
+    if (!rt.at[i]) return FGPlanMap.show($("offpanels"), i, reduce);  // (a step in a zone the world map does not have)
     var ll = rt.ll(rt.at[i]);
     $("routebox").scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
     rt.map.setView(ll, Math.max(rt.map.getZoom(), rt.Z - 1), { animate: false });
@@ -463,13 +503,15 @@ var WORDS = /*@WORDS@*/;
   }
 
   // the fallback, only when the world map cannot be loaded: each zone's sketch (map.js), linked to the list both ways
-  function drawPanel(p, plan) {
+  function drawPanel(p, plan, box, note) {
     var wrap = el("div", "panel"), holder = el("div", "map");
     wrap.appendChild(el("h2", "", p.name));
+    if (note) wrap.appendChild(el("p", "note", note));
     wrap.appendChild(holder);
-    $("panels").appendChild(wrap);                                     // (in the page first: the map takes its width)
+    (box || $("panels")).appendChild(wrap);                            // (in the page first: the map takes its width)
     FGPlanMap.draw(holder, p, { name: T("Map of the stops in %s").replace("%s", p.name), north: T("N"), northTitle: T("North is up"),
       label: stepLabel, group: groupLabel, current: current(plan), done: function (i) { return !!ticks[i]; }, pick: toStep });
+    return wrap;
   }
   function drawPanels(plan) {
     var box = $("panels"), seen = {}, step = {};
@@ -483,12 +525,10 @@ var WORDS = /*@WORDS@*/;
       drawPanel(p, plan);
     });
   }
-  // which steps the list's numbers can show: those pinned on the world map (or, while it loads, every step with a
-  // place in its zone; in the fallback, those on a sketch)
+  // which steps the list's numbers can show: every step with a place in its zone (on the world map, or on a sketch)
   function shown(plan) {
     var ok = {};
-    if (rt.state === "ready" && rt.plan === plan) rt.at.forEach(function (p, i) { if (p) ok[i] = true; });
-    else FGPlan.panels(plan).forEach(function (p) { p.stops.forEach(function (st) { ok[st.step] = true; }); });
+    FGPlan.panels(plan).forEach(function (p) { p.stops.forEach(function (st) { ok[st.step] = true; }); });
     return ok;
   }
 

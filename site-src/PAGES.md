@@ -97,7 +97,9 @@ empty cue list (`"cues": []`), and while it is empty no caption file and no `<tr
   `tools/plan_zones.py` (per zone: pixel = a + b × the in-game coordinate / 100, the same sums as `tools/map_markers.py`;
   a zone that comes without its UiMapID is found by its English name). Steps are numbered pins by kind, joined in
   order, with a ring on the current step; chips fit the view to the whole route or one zone; steps with no known place
-  are named in a note under the map, with the credit line. The wheel and (on a phone) one finger move the page until
+  are named in a note under the map, with the credit line. A zone the world map does not have (an island on its own
+  game map, such as Zephras Isle) is drawn with the zone sketch under the world map, with a line saying so; when no
+  step is on the world map, only the sketches show (never an empty world map). The wheel and (on a phone) one finger move the page until
   the map is clicked or tapped. `tests/plan_map_points.json` is the sample plan the checks place at known pixels.
 - The zone sketches, in the example route and on the plan page only when the world map's tiles cannot be loaded: one
   drawer, `plan/map.js` (inline in the plan page, `/assets/plan-map.js` for Guide and Gold). Each map is fitted to its zone's stops (one scale across and down, never
