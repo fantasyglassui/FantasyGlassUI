@@ -42,6 +42,13 @@ ns:NewModule("plateQuest", function()
     local marks = setmetatable({}, { __mode = "k" })        -- plate -> its mark
     local units = {}                                         -- unit -> plate, for the ones on screen
 
+    -- (13.0.1) left of the bar, past the plate's level, so the "!" never covers the level
+    local function Place(m)
+        local slot = ns.PlateLevelSlot and ns.PlateLevelSlot() or 0
+        m:ClearAllPoints()
+        if m.suiBar then m:SetPoint("RIGHT", m.suiBar, "LEFT", -(slot + 1), 0)
+        else m:SetPoint("RIGHT", m:GetParent(), "LEFT", 8 - slot, 0) end
+    end
     local function Mark(plate)
         local m = marks[plate]
         if m then return m end
@@ -50,11 +57,10 @@ ns:NewModule("plateQuest", function()
         local uf = plate.UnitFrame
         local bar = type(uf) == "table" and (uf.healthBar or uf.HealthBar or (type(uf.HealthBarsContainer) == "table" and uf.HealthBarsContainer.healthBar)) or nil
         if type(bar) == "table" and ns:Usable(bar) then
-            m:SetPoint("RIGHT", bar, "LEFT", -2, 0)
+            m.suiBar = bar
             pcall(function() m:SetFrameLevel((bar:GetFrameLevel() or 1) + 5) end)
-        else
-            m:SetPoint("RIGHT", plate, "LEFT", 8, 0)
         end
+        Place(m)
         m.text = ns:NewText(m, 17, "CENTER")
         m.text:SetPoint("CENTER")
         m.text:SetText("!")
@@ -71,7 +77,7 @@ ns:NewModule("plateQuest", function()
         if via then how = via end
         if on == nil then return end                         -- cannot tell right now: leave it as it is
         local m = Mark(plate)
-        if on then m:Show() else m:Hide() end
+        if on then Place(m); m:Show() else m:Hide() end
     end
     local function UpdateAll()
         shown = 0

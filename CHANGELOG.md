@@ -2,6 +2,11 @@
 
 The releases published on CurseForge. Each lists what changed since the release before it.
 
+## 13.0.1
+
+**Fixed**
+- Enemy and neutral nameplates show the mob's name above the bar, in the designer's name size.
+
 ## 13.0.0
 
 Guide and Gold: quest guides, a route planner and ways to make gold, for everyone.
