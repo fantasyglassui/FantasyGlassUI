@@ -64,6 +64,20 @@ def test_every_file_must_agree(tmp_path):
     assert code == 1 and "Core.lua does not say 13.5.0-beta.1" in out
 
 
+def test_core_version_line_is_whole(tmp_path):
+    """(13.5 part two, P2-M9) Core.lua's version is its own line: the version in a comment, or as part of a longer
+    line, is not enough."""
+    make_tree(tmp_path, "13.5.0")
+    core = tmp_path / "FantasyGlassUI" / "Core.lua"
+    core.write_text('-- ns.version = "13.5.0"\nns.version = "13.0.0"\n')
+    code, out = run("release", tmp_path)
+    assert code == 1 and "Core.lua does not say 13.5.0" in out
+    core.write_text('xns.version = "13.5.0"\n')
+    assert run("release", tmp_path)[0] == 1
+    core.write_bytes(b'local _, ns = ...\r\nns.version = "13.5.0"\r\n')
+    assert run("release", tmp_path) == (0, "13.5.0")
+
+
 def test_crlf_toc_is_read(tmp_path):
     make_tree(tmp_path, "13.5.0")
     toc = tmp_path / "FantasyGlassUI" / "FantasyGlassUI.toc"

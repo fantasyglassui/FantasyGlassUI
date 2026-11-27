@@ -19,5 +19,5 @@ if ! echo "$version" | grep -Eq "$rule"; then echo "not a $kind version: $versio
 for f in FantasyGlassUI_Options/FantasyGlassUI_Options.toc FantasyGlassUI_Locales/FantasyGlassUI_Locales.toc FantasyGlassUI_Planner/FantasyGlassUI_Planner.toc FantasyGlassUI_Gold/FantasyGlassUI_Gold.toc; do
   tr -d '\r' < "$dir/$f" | grep -qxF "## Version: $version" || { echo "$f does not say $version"; exit 1; }
 done
-grep -qF "ns.version = \"$version\"" "$dir/FantasyGlassUI/Core.lua" || { echo "Core.lua does not say $version"; exit 1; }
+tr -d '\r' < "$dir/FantasyGlassUI/Core.lua" | grep -qxF "ns.version = \"$version\"" || { echo "Core.lua does not say $version"; exit 1; }   # (the whole line)
 echo "$version"
