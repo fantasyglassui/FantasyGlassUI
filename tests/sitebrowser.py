@@ -225,6 +225,52 @@ def main():
             problems += [f"/plan/: script error: {e}" for e in errors]
             checked += 1
             ctx.close()
+            # OpenMap on the plan page: nothing asks openmap.world on load (with a plan or without, and not on Guide and Gold);
+            # pressing "Show OpenMap here" inserts the iframe with its attributes, and the plain link stays
+            for w, scheme in ((390, "dark"), (390, "light"), (1280, "dark"), (1280, "light")):
+                ctx = browser.new_context(viewport={"width": w, "height": 900}, locale="en-US", color_scheme=scheme)
+                asked = []
+                ctx.route("**/*", lambda route: route.abort() if not route.request.url.startswith(base) else route.continue_())
+                page = ctx.new_page()
+                page.on("request", lambda r: asked.append(r.url) if not r.url.startswith(base) else None)
+                errors = []
+                page.on("pageerror", lambda e: errors.append(str(e)))
+                where = f"/plan/ OpenMap {w}px {scheme}"
+                page.goto(base + "/plan/#c=" + code, wait_until="load")
+                page.wait_for_timeout(300)
+                if asked or page.evaluate("document.querySelectorAll('iframe').length"):
+                    problems.append(f"{where}: the page asks for an outside address or has an iframe before the button: {asked}")
+                page.goto(base + "/guide-and-gold/", wait_until="load")
+                page.wait_for_timeout(300)
+                if asked or page.evaluate("document.querySelectorAll('iframe').length") or not page.evaluate("!!document.querySelector('#example a[href=\"https://openmap.world/\"][target=_blank][rel=\"noopener noreferrer\"]')"):
+                    problems.append(f"{where}: Guide and Gold must only link OpenMap ({asked})")
+                page.goto(base + "/plan/", wait_until="load")
+                page.wait_for_timeout(200)
+                link = page.evaluate("(() => { const a = document.getElementById('openmaptab'); return [a.href, a.target, a.rel, a.textContent, getComputedStyle(a).display]; })()")
+                if link[:4] != ["https://openmap.world/", "_blank", "noopener noreferrer", "Open OpenMap in a new tab"]:
+                    problems.append(f"{where}: the fallback link is wrong: {link}")
+                page.focus("#openmap")
+                f = page.evaluate(FOCUS).split("|")
+                if f[1] != "true": problems.append(f"{where}: no focus ring on the OpenMap button")
+                bad = [x for x in page.evaluate(CHECK) if x.startswith(("contrast", "wider"))]
+                problems += [f"{where}: {x}" for x in bad]
+                if SHOTS:
+                    os.makedirs(SHOTS, exist_ok=True)
+                    page.locator("section.real").screenshot(path=os.path.join(SHOTS, f"openmap-before-{scheme}-{w}.png"))
+                page.keyboard.press("Enter")                                   # (by keyboard)
+                page.wait_for_timeout(200)
+                got = page.evaluate("""(() => { const f = document.querySelector('#openmapframe iframe');
+                  return f && [f.getAttribute('src'), f.getAttribute('title'), f.getAttribute('loading'), f.getAttribute('referrerpolicy'), f.getAttribute('sandbox'),
+                    [f.style.width, f.style.height, f.style.borderStyle].join(' '), Math.round(f.getBoundingClientRect().width), Math.round(f.getBoundingClientRect().height), document.querySelectorAll('iframe').length, document.activeElement === f]; })()""")
+                want_h = round(900 * 0.7) if w == 390 else 600
+                if not got or got[:6] != ["https://openmap.world/", "OpenMap: the world map of WoW Forever", "lazy", "no-referrer", "allow-scripts allow-same-origin allow-popups", "100% 600px none"] \
+                        or got[8] != 1 or abs(got[7] - want_h) > 1 or not got[9] or got[6] < min(w, 860) - 80:
+                    problems.append(f"{where}: the iframe after the button is wrong: {got} (height should be {want_h})")
+                if not page.evaluate("!document.getElementById('openmaptab').hidden"):
+                    problems.append(f"{where}: the fallback link is gone after the button")
+                problems += [f"{where}: script error: {e}" for e in errors]
+                checked += 1
+                ctx.close()
             # Guide and Gold: the example route is drawn from its sample code, and the short tour works by keyboard
             for lang in ("en", "de"):
                 ctx = browser.new_context(viewport={"width": 390, "height": 800}, locale="en-US", reduced_motion="reduce")

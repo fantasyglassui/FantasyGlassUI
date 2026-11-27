@@ -62,6 +62,14 @@ ol.steps .z { color: var(--dim); font-size: .85rem; }
 a { color: var(--frost); }
 .links a { display: inline-block; padding: 6px 0; }
 [hidden] { display: none !important; }
+.real h2 { font-family: var(--display); font-weight: 400; font-size: 1.15rem; margin: 0 0 8px; }
+.real .row { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; margin: 12px 0; }
+.real .row button { min-height: 44px; padding: 8px 18px; background: var(--gold); border-color: var(--gold); color: var(--on-gold); font-weight: 600; }
+.real .row button:hover, .real .row button:focus-visible { border-color: var(--text); }
+.real .row a { display: inline-block; padding: 12px 0; }
+.real .frame { margin: 12px 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--shot); }
+.real .frame iframe { display: block; }
+@media (max-width: 600px) { .real .frame iframe { height: 70vh !important; } }
 </style>
 <main>
   <header>
@@ -86,6 +94,18 @@ a { color: var(--frost); }
       <p class="note" id="local"></p>
     </section>
   </div>
+  <section class="box real" aria-labelledby="realhead">
+    <h2 id="realhead"></h2>
+    <p class="hint" id="realtext"></p>
+    <div class="row">
+      <button type="button" id="openmap" aria-controls="openmapframe"></button>
+      <!-- the page never contacts OpenMap by itself: this link is only an address until it is followed, and the button below
+           inserts the iframe (src taken from this link) when pressed -->
+      <a id="openmaptab" href="https://openmap.world/" target="_blank" rel="noopener noreferrer"></a>
+    </div>
+    <div class="frame" id="openmapframe" hidden></div>
+    <p class="note" id="realcredit"></p>
+  </section>
   <p class="note" id="private"></p>
   <p class="note links"><a href="/guide-and-gold/phone/" id="howto"></a> · <a href="/">Fantasy Glass UI</a></p>
 </main>
@@ -216,6 +236,13 @@ var WORDS = /*@WORDS@*/;
     $("local").textContent = T("Your ticks stay in this browser only.");
     $("private").textContent = T("Nothing is sent anywhere: the page reads the code here, in your browser.");
     $("howto").textContent = T("How to use this page");
+    $("realhead").textContent = T("The real map");
+    $("realtext").textContent = T("OpenMap shows WoW Forever's own zone maps. It's a separate site, made by other players.");
+    $("openmap").textContent = T("Show OpenMap here");
+    $("openmaptab").textContent = T("Open OpenMap in a new tab");
+    $("realcredit").textContent = T("Map art \u00a9 Blizzard Entertainment, shown by OpenMap (openmap.world). Not part of Fantasy Glass UI.");
+    var fr = $("openmapframe").firstChild;
+    if (fr) fr.title = T("OpenMap: the world map of WoW Forever");
     render();
   }
   function render() {
@@ -258,6 +285,22 @@ var WORDS = /*@WORDS@*/;
     lang = pick.value;
     try { localStorage.setItem("fgui-plan-lang", lang); } catch (e) {}
     words();
+  });
+  // OpenMap: the iframe is made only here, when the player presses the button (nothing contacts openmap.world before)
+  $("openmap").addEventListener("click", function () {
+    var holder = $("openmapframe"), f = document.createElement("iframe");
+    // TODO(deep links): nobody has confirmed that openmap.world reads URL parameters (a zone, coordinates). If it does,
+    // add them to the address here, for example from the zone of the step on show; until then the plain address is used.
+    f.src = $("openmaptab").href;
+    f.title = T("OpenMap: the world map of WoW Forever");
+    f.loading = "lazy";
+    f.referrerPolicy = "no-referrer";
+    f.setAttribute("sandbox", "allow-scripts allow-same-origin allow-popups");
+    f.style.cssText = "width:100%;height:600px;border:none";         // (on a phone the page's CSS makes it 70vh)
+    holder.appendChild(f);
+    holder.hidden = false;
+    $("openmap").hidden = true;                                       // (done: the focus goes to the map, the link stays)
+    f.focus();
   });
   $("show").addEventListener("click", function () { load($("code").value); });
   $("code").addEventListener("input", function () { load($("code").value); });

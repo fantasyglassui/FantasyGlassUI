@@ -128,10 +128,16 @@ with tempfile.TemporaryDirectory() as tmp:
     page = text(fa["plan/index.html"])
     if "noindex" in page:
         fail("the plan page is hidden from search engines")
-    for bad in ["ld+json", "goatcounter", "zgo.at", "<script src", "<link", "sendBeacon", "fetch(", "XMLHttpRequest", "WebSocket"]:
+    for bad in ["ld+json", "goatcounter", "zgo.at", "<script src", "<link", "<iframe", "sendBeacon", "fetch(", "XMLHttpRequest", "WebSocket"]:
         if bad in page:
             fail("the plan page contains " + bad)
-    if "https://" in page.replace("fantasyglassui.com", "") or "http://" in page:
+    # The one outside address allowed is OpenMap's, as a plain link (nothing loads until it is followed). The page as
+    # served has no <iframe>; plan/page.html makes it with createElement only when the player presses the button, and
+    # tests/sitebrowser.py checks that (no request to openmap.world on load; the iframe and its attributes after the press).
+    om = '<a id="openmaptab" href="https://openmap.world/" target="_blank" rel="noopener noreferrer">'
+    if page.count(om) != 1 or page.count("https://openmap.world") != 1:      # (the credit line says "openmap.world" in words only)
+        fail("the plan page names openmap.world other than as its one plain link and the credit line")
+    if "https://" in page.replace("fantasyglassui.com", "").replace("https://openmap.world/", "") or "http://" in page:
         fail("the plan page names another site")
     if '<meta name="referrer" content="no-referrer">' not in page:
         fail("the plan page sends a referrer")

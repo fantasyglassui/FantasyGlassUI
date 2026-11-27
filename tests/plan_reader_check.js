@@ -91,6 +91,11 @@ eq(FGPlanMap.rangeText([2, 5], false), "2, 5", "two apart");
 var banned = /fetch\(|XMLHttpRequest|sendBeacon|WebSocket|<script src|<link|https?:\/\//;
 ["reader.js", "map.js", "page.html"].forEach(function (name) {
   var text = fs.readFileSync(path.join(ROOT, "site-src", "plan", name), "utf8").replace(/fantasyglassui\.com/g, "");
+  // the one outside address: OpenMap's plain link in page.html (the button copies it into an iframe it makes; no <iframe> is written)
+  if (name === "page.html") {
+    if (text.split("https://openmap.world/").length !== 2 || /<iframe/.test(text)) fail("page.html: OpenMap must be named once and have no <iframe> tag");
+    text = text.replace("https://openmap.world/", "");
+  }
   var m = banned.exec(text);
   if (m) fail(name + " contains " + m[0]);
 });
