@@ -16,6 +16,7 @@ local Secret = function(v) return ns:IsSecret(v) end
 local floor, huge = math.floor, math.huge
 
 ns.GOLD_BUDGET_MS = 4
+ns.goldSliceMax = 0                -- the longest slice (ms) since it was last set back to 0: the speed tests read it
 
 ------------------------------------------------------------------------------------------
 -- recorders (light; may stay in the main add-on when the folder moves)
@@ -60,6 +61,8 @@ function ns.GoldRunSlice()
     slicing, sliceStart = true, Clock()
     local ok, err = coroutine.resume(job.co)
     slicing = false
+    local took = Clock() - sliceStart
+    if took > ns.goldSliceMax then ns.goldSliceMax = took end
     if not ok then Note(err) end
     if not ok or coroutine.status(job.co) == "dead" then
         for i = 1, #queue do if queue[i] == job then table.remove(queue, i); break end end
