@@ -21,6 +21,8 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["Its profile choice"] = "Seine Profilwahl",
+    ["Your computer's clock is more than a day off the server's, so nothing is offered. Set the clock right and look again."] = "Die Uhr deines Computers weicht mehr als einen Tag von der des Servers ab, daher wird nichts angeboten. Stell die Uhr richtig und schau noch einmal nach.",
     ["with guides, routes and gold"] = "mit Anleitungen, Routen und Gold",
     ["Saved data"] = "Gespeicherte Daten",
     ["What each part of the add-on keeps, and a tidy-up that asks before it removes anything."] = "Was jeder Teil des Add-ons speichert, und ein Aufräumen, das fragt, bevor es etwas entfernt.",
@@ -3911,6 +3913,8 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["Its profile choice"] = "Son choix de profil",
+    ["Your computer's clock is more than a day off the server's, so nothing is offered. Set the clock right and look again."] = "L'horloge de ton ordinateur a plus d'un jour d'écart avec celle du serveur, donc rien n'est proposé. Règle l'horloge et regarde à nouveau.",
     ["with guides, routes and gold"] = "avec guides, itinéraires et or",
     ["Saved data"] = "Données enregistrées",
     ["What each part of the add-on keeps, and a tidy-up that asks before it removes anything."] = "Ce que garde chaque partie de l'add-on, et un rangement qui demande avant de retirer quoi que ce soit.",
@@ -7801,6 +7805,8 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["Its profile choice"] = "Su elección de perfil",
+    ["Your computer's clock is more than a day off the server's, so nothing is offered. Set the clock right and look again."] = "El reloj de tu ordenador se desvía más de un día del del servidor, así que no se ofrece nada. Ajusta el reloj y vuelve a mirar.",
     ["with guides, routes and gold"] = "con guías, rutas y oro",
     ["Saved data"] = "Datos guardados",
     ["What each part of the add-on keeps, and a tidy-up that asks before it removes anything."] = "Lo que guarda cada parte del add-on, y una limpieza que pregunta antes de quitar nada.",
@@ -11694,6 +11700,8 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["Its profile choice"] = "Выбранный профиль",
+    ["Your computer's clock is more than a day off the server's, so nothing is offered. Set the clock right and look again."] = "Часы вашего компьютера расходятся с часами сервера больше чем на сутки, поэтому ничего не предлагается. Поставьте часы правильно и посмотрите снова.",
     ["with guides, routes and gold"] = "с гайдами, маршрутами и золотом",
     ["Saved data"] = "Сохранённые данные",
     ["What each part of the add-on keeps, and a tidy-up that asks before it removes anything."] = "Что хранит каждая часть модификации, и уборка, которая спрашивает, прежде чем что-либо удалить.",
@@ -15584,6 +15592,8 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["Its profile choice"] = "A escolha de perfil",
+    ["Your computer's clock is more than a day off the server's, so nothing is offered. Set the clock right and look again."] = "O relógio do seu computador está mais de um dia diferente do do servidor, então nada é oferecido. Acerte o relógio e veja de novo.",
     ["with guides, routes and gold"] = "com guias, rotas e ouro",
     ["Saved data"] = "Dados salvos",
     ["What each part of the add-on keeps, and a tidy-up that asks before it removes anything."] = "O que cada parte do add-on guarda, e uma limpeza que pergunta antes de remover qualquer coisa.",
@@ -19474,6 +19484,8 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["Its profile choice"] = "La scelta del profilo",
+    ["Your computer's clock is more than a day off the server's, so nothing is offered. Set the clock right and look again."] = "L'orologio del tuo computer differisce di oltre un giorno da quello del server, quindi non viene proposto nulla. Regola l'orologio e guarda di nuovo.",
     ["with guides, routes and gold"] = "con guide, percorsi e oro",
     ["Saved data"] = "Dati salvati",
     ["What each part of the add-on keeps, and a tidy-up that asks before it removes anything."] = "Cosa conserva ogni parte dell'add-on, e una pulizia che chiede prima di rimuovere qualsiasi cosa.",
@@ -23364,6 +23376,8 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["Its profile choice"] = "프로필 선택",
+    ["Your computer's clock is more than a day off the server's, so nothing is offered. Set the clock right and look again."] = "컴퓨터 시계가 서버 시계와 하루 넘게 차이 나서 아무것도 제안하지 않습니다. 시계를 맞춘 뒤 다시 확인하세요.",
     ["with guides, routes and gold"] = "안내서, 경로, 골드 포함",
     ["Saved data"] = "저장된 데이터",
     ["What each part of the add-on keeps, and a tidy-up that asks before it removes anything."] = "애드온의 각 부분이 무엇을 보관하는지, 그리고 무엇이든 지우기 전에 묻는 정리.",
@@ -27257,6 +27271,8 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["Its profile choice"] = "所选配置",
+    ["Your computer's clock is more than a day off the server's, so nothing is offered. Set the clock right and look again."] = "你的电脑时钟与服务器相差超过一天，因此不提供任何内容。请校准时钟后再看一次。",
     ["with guides, routes and gold"] = "含指南、路线和金币",
     ["Saved data"] = "已保存的数据",
     ["What each part of the add-on keeps, and a tidy-up that asks before it removes anything."] = "插件每个部分保存了什么，以及在删除任何内容之前都会询问的清理。",

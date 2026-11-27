@@ -725,10 +725,11 @@ local function LoadFolderFiles(name)
             ns[key] = fnOpen
             collectgarbage("stop")
             local at = os.clock()
-            local r = fnOpen(...)
+            local r = (function(...) return { n = select("#", ...), ... } end)(pcall(fnOpen, ...))
             speed[key == "PlannerOpen" and "plannerWindow" or "goldWindow"] = (os.clock() - at) * 1000
-            collectgarbage("restart")
-            return r
+            collectgarbage("restart")                                 -- (13.5 fix M4: also after an error, which goes on as before)
+            if not r[1] then error(r[2], 0) end
+            return (table.unpack or unpack)(r, 2, r.n)
         end
     end
     return true
@@ -9813,7 +9814,7 @@ try("folders unloaded A: when you were last here, without the folder", function(
         ns.PlannerSeenReset()
         ns.PlannerSeenSave()
         if rec.lastSeen ~= now - 3600 then error("before the login is handled: nothing saved") end
-        fireEvent("PLAYER_ENTERING_WORLD", true, false)
+        fireEvent("PLAYER_ENTERING_WORLD")
         if rec.lastSeen ~= now then error("the login: saved at once") end
         now = now + 60
         ns.PlannerSeenSave()
@@ -16962,7 +16963,7 @@ try("13.5 together B: asking, the state and a plan for both", function()
         yes()
         if ns.PlannerDuoRole() ~= "friend" or ns.PlannerDuoPartner() ~= "Leo" then error("following Leo") end
         flush()
-        if not (sends[before + 1] and sends[before + 1].text == "D1:YES:ab12" and sends[before + 1].target == "Leo-Realm") then error("the yes goes back to Leo") end
+        if not (sends[before + 1] and sends[before + 1].text == "D1:YES:ab12:2" and sends[before + 1].target == "Leo-Realm") then error("the yes goes back to Leo") end
         frames(300); flush(80)
         local whole
         for i = before + 2, #sends do
@@ -17007,7 +17008,7 @@ try("13.5 together B: asking, the state and a plan for both", function()
             for _, r in ipairs(lists.PlanDuoAsk or {}) do if r.click and r.left:find("Plan together", 1, true) then r.click() end end
             before = #sends
             frames(300); flush(80)
-            if #sends ~= before + 1 or sends[#sends].text ~= "D1:YES:ef56" then error("a hidden level: only the yes is sent") end
+            if #sends ~= before + 1 or sends[#sends].text ~= "D1:YES:ef56:2" then error("a hidden level: only the yes is sent") end
             ns:PlannerDuoEnd(nil, true); flush()
         end
         for _, x in ipairs(sends) do
@@ -17344,7 +17345,7 @@ try("13.5 together B: review fixes", function()
         ns.PlannerDuoTick(); flush()
         before = #sends
         clock = clock + 61; ns.PlannerDuoTick(); flush()
-        if not (sends[before + 1] and sends[before + 1].text == "D1:HI:" .. s) then error("a word every minute") end
+        if not (sends[before + 1] and sends[before + 1].text == "D1:HI:" .. s .. ":2") then error("a word every minute") end
         -- END reaching the leader
         addon("D1:END:" .. s)
         if ns.plannerDuo or heard("Mira stopped planning together.") ~= 1 or not (ns.plannerQueued and ns.plannerReason == "duo end") then error("Mira stopped: the leader plans alone") end
@@ -26803,13 +26804,13 @@ try("13.5 A: for everyone, and the switch", function()
 end)
 try("13.5 A: the run time", function()
     Fixture(function()
-        local d = { name = "The Deadmines", minLevel = 17, bosses = 6, instance = 36 }
+        local d = { name = "The Deadmines", minLevel = 17, maxLevel = 26, bosses = 6, instance = 36 }
         local def = (600 + 360 * 6) * (1 + 2 / 60)
         local function near(a, b) return type(a) == "number" and math.abs(a - b) < 0.01 end
         ok(near(ns.PlannerDungeonSeconds(d), def), "no runs: the default: " .. tostring(ns.PlannerDungeonSeconds(d)))
         ok(near(ns.PlannerDungeonSeconds({ name = "Ragefire Chasm", minLevel = 13, bosses = 4, instance = 389 }), 600 + 360 * 4), "below 15: no level part")
         local function run(id, name, length, kill)
-            local r = ns.RunNew(name, "Normal", 1000, "Me - Realm", id)
+            local r = ns.RunNew(name, "Normal", 1000, ns:CharKey(), id, 20)
             if kill then ns.RunEncounter(r, "Boss", true, 1000 + length) else r.left = 1000 + length end
             return r
         end
@@ -26818,7 +26819,8 @@ try("13.5 A: the run time", function()
         ns.root.runs = { run(36, "Die Todesminen", 1800, false), run(48, "The Deadmines", 1800, true) }
         ok(near(ns.PlannerDungeonSeconds(d), def), "no kill, or another id: not counted")
         ns.root.runs = { run(nil, "The Deadmines", 1800, true) }
-        ok(near(ns.PlannerDungeonSeconds(d), (def + 1800) / 2), "a run from before 13.5 (no id): by its name")
+        ns.root.runs[1].level = nil
+        ok(near(ns.PlannerDungeonSeconds(d), (def + 1800) / 2), "a run from before 13.5 (no id, no level, yours): by its name")
         ns.root.runs = {}
         for i = 1, 6 do ns.root.runs[i] = run(36, "Die Todesminen", i * 1000, true) end
         ok(near(ns.PlannerDungeonSeconds(d), 4000), "six runs: the median of the last five: " .. tostring(ns.PlannerDungeonSeconds(d)))
@@ -26916,8 +26918,8 @@ end)
 try("13.5 A: data from Questie", function()
     local saved = { loaded = env.C_AddOns.IsAddOnLoaded, meta = rawget(env.C_AddOns, "GetAddOnMetadata"), q = rawget(env, "Questie"), loader = rawget(env, "QuestieLoader") }
     local fine, err = pcall(function()
-        local want = { ["Ragefire Chasm"] = { 389, 4 }, ["Wailing Caverns"] = { 43, 7 }, ["The Deadmines"] = { 36, 6 }, ["Shadowfang Keep"] = { 33, 7 },
-            ["Blackfathom Deeps"] = { 48, 7 }, ["The Stockade"] = { 34, 5 }, ["Gnomeregan"] = { 90, 6 }, ["Razorfen Kraul"] = { 47, 6 },
+        local want = { ["Ragefire Chasm"] = { 389, 4 }, ["Wailing Caverns"] = { 43, 8 }, ["The Deadmines"] = { 36, 6 }, ["Shadowfang Keep"] = { 33, 8 },
+            ["Blackfathom Deeps"] = { 48, 8 }, ["The Stockade"] = { 34, 5 }, ["Gnomeregan"] = { 90, 6 }, ["Razorfen Kraul"] = { 47, 6 },
             ["Scarlet Monastery"] = { 189, 4 }, ["Razorfen Downs"] = { 129, 5 }, ["Uldaman"] = { 70, 9 }, ["Zul'Farrak"] = { 209, 8 },
             ["Maraudon"] = { 349, 7 }, ["The Temple of Atal'Hakkar"] = { 109, 8 } }
         ok(#ns.PLANNER_DUNGEONS == 14, "fourteen dungeons")
@@ -26942,7 +26944,7 @@ try("13.5 A: data from Questie", function()
             for _, d in ipairs(src.dungeons()) do if d.zone == 1581 then return d, src end end
         end
         local d, src = entry()
-        ok(d and d.map == 1436 and d.x == 43 and d.y == 72 and d.instance == 36 and d.bosses == 6 and d.minLevel == 17 and d.maxLevel == 24 and d.name == "The Deadmines", "no GetDungeonLocation: the table's entrance")
+        ok(d and d.map == 1436 and d.x == 43 and d.y == 72 and d.instance == 36 and d.bosses == 6 and d.minLevel == 17 and d.maxLevel == 26 and d.name == "The Deadmines", "no GetDungeonLocation: the table's entrance")
         ok(#src.dungeons() == 14, "all fourteen")
         for i, e in ipairs(src.dungeons()) do ok(e ~= ns.PLANNER_DUNGEONS[i], "copies") end
         fakes.ZoneDB.GetDungeonLocation = function(_, area) asked = asked + 1; if area == 1581 then return { { 40, 42.6, 71.9 } } end end
@@ -26999,6 +27001,275 @@ try("13.5 A: the run log keeps the id", function()
         ns.root.runNow[ns:CharKey()] = nil
     end)
 end)
+-- 13.5 fix: the whole-branch review's findings (fix-report.md)
+local function contextHook(c)                    -- (the dungeons' "context" hook, as ns.PlannerContext runs it)
+    for _, h in ipairs(ns.PlannerHookList("context")) do if h.key == "dungeons" then h.fn(c) end end
+    return c
+end
+try("13.5 fix C1: a replan on the way out never brings the run back", function()
+    Fixture(function(f)
+        ns.root.guideState = {}
+        local now = 1000
+        env.GetTime = function() return now end
+        local g, s = f.plan()
+        ns:GuideSetPlan(g, s)
+        local gi, ri = f.find(g, "group"), f.find(g, "dungeon")
+        local st = ns.GuideState()
+        st.at = gi
+        ns:GuideAdvance()
+        local stale = f.plan()                                  -- (a plan made before the exit: the run still in it)
+        f.inside, f.id = true, 36
+        ns:GuideAdvance()
+        ok(st.inside == 36 and st.at == ri, "inside: marked, on the run step")
+        -- out again, alive: the queued replan's plan is made, and applied, before the guide's own advance
+        f.inside, f.id = false, nil
+        local c = contextHook(f.ctx())
+        ok(ns.PlannerDungeonRan(1581), "the replan's context: the dungeon counts as run")
+        local g2, s2 = ns.PlannerRoute(c)
+        ok(f.runSteps(g2) == 0, "the replan plans no run: " .. f.kinds(g2))
+        ns:GuideSetPlan(g2, s2)
+        ok(f.runSteps(f.plan()) == 0, "nor any later plan this session")
+        ns:PlannerStart(); ns:PlannerStop()
+        ok(ns.PlannerDungeonRan(1581), "Plan my route keeps it run")
+        ok(ns.GuideState().inside == nil, "no run step of it left: the mark goes")
+        -- a plan made before the exit and applied after it: the mark goes with it, and its run steps tick at once
+        ns.PlannerDungeonSessionReset()
+        ns:GuideSetPlan(g, s); st = ns.GuideState(); st.at = gi
+        ns:GuideAdvance()
+        f.inside, f.id = true, 36; ns:GuideAdvance()
+        f.inside, f.id = false, nil
+        ns:GuideSetPlan(stale, s)
+        st = ns.GuideState()
+        local sri = f.find(stale, "dungeon")
+        ok(st.inside == 36, "the mark goes with the plan")
+        st.skipped = {}
+        for i = 1, f.find(stale, "group") - 1 do st.skipped[i] = true end   -- (its pick-ups: taken already, in the game)
+        ns:GuideAdvance()
+        ok(st.at > sri, "the plan made before the exit: its run steps are done: at " .. tostring(st.at) .. ", run " .. sri)
+        ok(ns.PlannerDungeonRan(1581), "and the dungeon was run")
+        -- M3: the wait for a group is carried over a replan
+        ns.PlannerDungeonSessionReset()
+        ns:GuideSetPlan(g, s); st = ns.GuideState(); st.at = gi
+        ns:GuideAdvance()
+        now = 1000 + 600
+        ns:GuideSetPlan(g, s); st = ns.GuideState(); st.at = gi
+        now = 1000 + 900
+        ok(ns.PlannerDungeonWaitLine(st, g.steps, gi) ~= nil, "15 minutes on the group step, over a replan: Skip this dungeon is offered")
+    end)
+end)
+try("13.5 fix M2: the session's runs and skips survive a /reload", function()
+    Fixture(function()
+        local rec = ns.PlannerCharRecord(true)
+        ns.PlannerDungeonSkip(1581)
+        ok(type(rec.dungeonSession) == "table" and rec.dungeonSession.at == ns.plannerSessionStart and rec.dungeonSession.skipped[1581] == true, "kept in the character's record")
+        rec.dungeonSession = { at = ns.plannerSessionStart, ran = { [718] = true }, skipped = { [209] = true } }   -- (as a /reload finds it)
+        ok(ns.PlannerDungeonRan(718) and ns.PlannerDungeonSkipped(209) and not ns.PlannerDungeonSkipped(1581), "read back after a reload")
+        local keep = ns.plannerSessionStart
+        ns.plannerSessionStart = keep + 5000                      -- (a new session)
+        ok(not ns.PlannerDungeonRan(718) and not ns.PlannerDungeonSkipped(209), "a new session starts with none")
+        ns.plannerSessionStart = keep
+        ns.PlannerDungeonSessionReset()
+        ok(not ns.PlannerDungeonRan(718), "the reset")
+    end)
+end)
+try("13.5 fix I1: going in while an earlier step is open", function()
+    Fixture(function(f)
+        ns.root.guideState = {}
+        local g, s = f.plan()
+        ns:GuideSetPlan(g, s)
+        local st = ns.GuideState()
+        local gi, ri = f.find(g, "group"), f.find(g, "dungeon")
+        ok(st.at == 1 and g.steps[1].kind == "accept", "on the first pick-up")
+        f.inside, f.id = true, 48; ns:GuideAdvance()
+        ok(st.inside == nil, "another dungeon: no mark")
+        f.inside, f.id = true, 36; ns:GuideAdvance()
+        ok(st.inside == 36 and st.at == 1, "inside while a pick-up is open: marked")
+        f.inside, f.id = false, nil; ns:GuideAdvance()
+        ok(st.inside == 36, "out again: the mark stays while its run steps are ahead")
+        st.skipped = {}
+        for i = 1, gi - 1 do st.skipped[i] = true end
+        ns:GuideAdvance()
+        ok(st.at > ri, "the open pick-ups skipped: the group and run steps are done: at " .. tostring(st.at))
+    end)
+end)
+try("13.5 fix I2: a written guide's dungeon steps tick", function()
+    local keepGuides = ns.root.guides
+    Fixture(function(f)
+        ns.root.guides = {}
+        local guide = ns.GuideParse("guide: T135 run\ngroup 36 | Find a group\ndungeon 36 | Run The Deadmines\ndungeon | Run any dungeon\nnote | after", "T135 run")
+        ok(ns:GuideSave(guide), "saved")
+        ns:GuideFollow("T135 run")
+        local st = ns.GuideState()
+        ok(st.name == "T135 run" and st.at == 1, "following it")
+        f.inside, f.id = true, 36; ns:GuideAdvance()
+        ok(st.inside == 36 and st.at == 2, "inside: marked, the group step done: " .. tostring(st.at))
+        f.inside, f.id = false, nil; ns:GuideAdvance()
+        ok(st.at == 3, "out, alive: the run is done: " .. tostring(st.at))
+        f.inside, f.id = true, 48; ns:GuideAdvance()
+        f.inside, f.id = false, nil; ns:GuideAdvance()
+        ok(st.at == 4, "a run step with no number: any dungeon: " .. tostring(st.at))
+        ok(ns.PlannerDungeonRan(1581), "the planner knows it was run")
+    end)
+    ns.root.guides = keepGuides
+end)
+try("13.5 fix I3: the level ranges and boss counts", function()
+    local want = {
+        ["Ragefire Chasm"] = { 13, 18, 4 }, ["Wailing Caverns"] = { 17, 24, 8 }, ["The Deadmines"] = { 17, 26, 6 },
+        ["Shadowfang Keep"] = { 22, 30, 8 }, ["Blackfathom Deeps"] = { 24, 32, 8 }, ["The Stockade"] = { 24, 32, 5 },
+        ["Gnomeregan"] = { 29, 38, 6 }, ["Razorfen Kraul"] = { 29, 38, 6 }, ["Scarlet Monastery"] = { 26, 45, 4 },
+        ["Razorfen Downs"] = { 37, 46, 5 }, ["Uldaman"] = { 41, 51, 9 }, ["Zul'Farrak"] = { 44, 54, 8 },
+        ["Maraudon"] = { 46, 55, 7 }, ["The Temple of Atal'Hakkar"] = { 50, 60, 8 } }
+    for _, d in ipairs(ns.PLANNER_DUNGEONS) do
+        local w = want[d.name]
+        ok(w and d.minLevel == w[1] and d.maxLevel == w[2] and d.bosses == w[3], "the Classic range and bosses: " .. tostring(d.name) .. " " .. tostring(d.minLevel) .. "-" .. tostring(d.maxLevel) .. " " .. tostring(d.bosses))
+        ok(type(d.stone) == "number", "its meeting stone, for Questie's range: " .. tostring(d.name))
+    end
+    -- Questie's range at runtime (its meeting stones), the table's when Questie has none or a broken one
+    local saved = { loaded = env.C_AddOns.IsAddOnLoaded, meta = rawget(env.C_AddOns, "GetAddOnMetadata"), q = rawget(env, "Questie"), loader = rawget(env, "QuestieLoader") }
+    local fine, err = pcall(function()
+        local ranges = { [178834] = "(16-25)", [178884] = "(x)", [178845] = "(30-20)" }
+        local fakes = {
+            QuestieDB = { QuestPointers = {}, GetQuest = function() end, IsDoable = function() return true end, QueryNPCSingle = function() end },
+            QuestXP = { GetQuestLogRewardXP = function() return 0 end },
+            ZoneDB = { GetUiMapIdByAreaId = function() return nil end },
+            MeetingStones = { GetLocalizedDungeonNameAndLevelRangeByObjectId = function(_, id) if id == 178825 then error("broken") end return "X", ranges[id] end },
+        }
+        env.Questie = { API = { isReady = true, RegisterOnReady = function() end } }
+        env.QuestieLoader = { ImportModule = function(_, name) return fakes[name] end }
+        env.C_AddOns.IsAddOnLoaded = function() return true end
+        rawset(env.C_AddOns, "GetAddOnMetadata", function() return ns.PLANNER_CONTRACT end)
+        ns.PlannerSourceReset()
+        local src = ns.PlannerSource()
+        local by = {}
+        for _, d in ipairs(src.dungeons()) do by[d.zone] = d end
+        ok(by[1581].minLevel == 16 and by[1581].maxLevel == 25, "Questie's range: " .. by[1581].minLevel .. "-" .. by[1581].maxLevel)
+        ok(by[718].minLevel == 17 and by[718].maxLevel == 24, "a range that does not read: the table's")
+        ok(by[209].minLevel == 22 and by[209].maxLevel == 30, "a range upside down: the table's")
+        ok(by[491].minLevel == 29, "an error: the table's")
+        ok(by[717].minLevel == 24, "no range: the table's")
+        fakes.MeetingStones = nil
+        ns.PlannerSourceReset()
+        for _, d in ipairs(ns.PlannerSource().dungeons()) do by[d.zone] = d end
+        ok(by[1581].minLevel == 17 and by[1581].maxLevel == 26, "no meeting stones: the table's")
+    end)
+    ns.PlannerSourceReset()
+    env.C_AddOns.IsAddOnLoaded = saved.loaded; rawset(env.C_AddOns, "GetAddOnMetadata", saved.meta)
+    rawset(env, "Questie", saved.q); rawset(env, "QuestieLoader", saved.loader)
+    if not fine then error(err, 0) end
+    -- never a dungeon above your level
+    Fixture(function(f)
+        ok(f.runSteps(f.plan({ level = 16 })) == 0, "level 16, the Deadmines from 17: not planned")
+        ok(f.runSteps(f.plan({ level = 17 })) == 2, "level 17: planned")
+    end)
+end)
+try("13.5 fix I4: run times only from runs in the dungeon's level range", function()
+    Fixture(function()
+        local d = { name = "The Deadmines", minLevel = 17, maxLevel = 26, bosses = 6, instance = 36 }
+        local def = (600 + 360 * 6) * (1 + 2 / 60)
+        local function near(a, b) return type(a) == "number" and math.abs(a - b) < 0.01 end
+        local function run(char, level, length)
+            local r = ns.RunNew("Die Todesminen", "Normal", 1000, char, 36, level)
+            ns.RunEncounter(r, "Boss", true, 1000 + length)
+            return r
+        end
+        ns.root.runs = {}
+        for i = 1, 6 do ns.root.runs[i] = run("Alt - Realm", 60, 360) end
+        ok(near(ns.PlannerDungeonSeconds(d), def), "a level 60 alt farming it: not counted: " .. tostring(ns.PlannerDungeonSeconds(d)))
+        ns.root.runs = { run("Alt - Realm", 20, 1800) }
+        ok(near(ns.PlannerDungeonSeconds(d), (def + 1800) / 2), "an alt at 20: counted")
+        ns.root.runs = { run(ns:CharKey(), 40, 1800) }
+        ok(near(ns.PlannerDungeonSeconds(d), def), "you, above its range: not counted")
+        ns.root.runs = { run(ns:CharKey(), nil, 1800) }
+        ok(near(ns.PlannerDungeonSeconds(d), (def + 1800) / 2), "your own run from before 13.5 (no level): counted")
+        ns.root.runs = { run("Alt - Realm", nil, 1800) }
+        ok(near(ns.PlannerDungeonSeconds(d), def), "another's, its level unknown: not counted")
+        ok(ns.RunNew("X", nil, 1, "c", 48, 22).level == 22, "RunNew keeps the level")
+    end)
+end)
+try("13.5 fix I5: a duo friend gets the run steps", function()
+    local keep, keepPlan = ns.plannerDuo, ns.GuideState and ns.GuideState()
+    local fine, err = pcall(function()
+        local function run(kind)
+            return { kind = kind, instance = 36, zone = 1581, dungeon = "The Deadmines", stopKey = "dungeon:1581:" .. (kind == "group" and "group" or "run"),
+                     text = kind == "group" and "Find a group for The Deadmines" or "Run The Deadmines", map = 1436, x = 43, y = 72 }
+        end
+        local guide = { steps = { { kind = "accept", quest = 901, title = "DQ901", map = 1436, x = 50, y = 51 }, run("group"), run("dungeon"),
+                                  { kind = "turnin", quest = 901, map = 1436, x = 52, y = 50 } } }
+        local sum = { zone = 1436, fromLevel = 18, toLevel = 19 }
+        -- a friend on 13.5: it says so in its YES and its HI
+        ns.plannerDuo = { role = "lead", partner = "Mira", to = "Mira-Realm", session = "abcd", heard = 0, asked = 0, accepted = true, state = {} }
+        ns.PlannerDuoEvent("CHAT_MSG_ADDON", ns.PLANNER_DUO_PREFIX, "D1:HI:abcd:" .. ns.PLANNER_DUO_TEXT, "WHISPER", "Mira-Realm")
+        ok(ns.plannerDuo.partnerText == ns.PLANNER_DUO_TEXT, "the friend's HI says what it reads: " .. tostring(ns.plannerDuo.partnerText))
+        local text = ns.PlannerDuoPlanText(guide, sum, 1)
+        ok(text:find("\ngroup 36 1581 | Find a group for The Deadmines", 1, true) and text:find("\ndungeon 36 1581 | Run The Deadmines", 1, true), "the run steps with their dungeon: " .. text)
+        ns.plannerDuo.role = "friend"
+        local plan = ns.PlannerDuoReadPlan(text)
+        local gs, rs = plan and plan.steps[2], plan and plan.steps[3]
+        ok(gs and gs.kind == "group" and gs.instance == 36 and gs.zone == 1581 and gs.stopKey == "dungeon:1581:group" and gs.dungeon == "The Deadmines", "the friend's group step: as the leader's")
+        ok(rs and rs.kind == "dungeon" and rs.zone == 1581 and rs.stopKey == "dungeon:1581:run" and rs.dungeon == "The Deadmines", "the friend's run step: as the leader's")
+        -- a friend on 13.0 (nothing after its session): the run steps go as notes, every line one 13.0 reads
+        ns.plannerDuo = { role = "lead", partner = "Mira", to = "Mira-Realm", session = "abcd", heard = 0, asked = 0, accepted = true, state = {} }
+        ns.PlannerDuoEvent("CHAT_MSG_ADDON", ns.PLANNER_DUO_PREFIX, "D1:HI:abcd", "WHISPER", "Mira-Realm")
+        text = ns.PlannerDuoPlanText(guide, sum, 2)
+        local old = { accept = true, turnin = true, ["do"] = true, ["goto"] = true, note = true, level = true, hearth = true, fly = true, learnflight = true,
+                      sail = true, bind = true, train = true, vendor = true, mail = true, explore = true, gather = true }
+        local n = 0
+        for line in text:gmatch("[^\n]+") do
+            n = n + 1
+            local kind = line:match("^(%S+)")
+            if n > 2 then ok(old[kind], "a line 13.0 reads: " .. line) end
+        end
+        ok(text:find("\nnote | Find a group for The Deadmines @ 1436:43.0,72.0", 1, true) and text:find("\nnote | Run The Deadmines @", 1, true), "as go-there notes: " .. text)
+    end)
+    ns.plannerDuo = keep
+    if ns.PlannerDuoSync then ns.PlannerDuoSync() end
+    if not fine then error(err, 0) end
+end)
+try("13.5 fix M1: three in the group ticks the group step by itself", function()
+    ok(type(ns.GUIDE_EVENTS) == "table", "the guide's events")
+    local registered = false
+    for _, e in ipairs(ns.GUIDE_EVENTS or {}) do if e == "GROUP_ROSTER_UPDATE" then registered = true end end
+    ok(registered, "the guide listens to the roster")
+    Fixture(function(f)
+        ns.root.guideState = {}
+        local g, s = f.plan()
+        ns:GuideSetPlan(g, s)
+        local st = ns.GuideState()
+        local gi, ri = f.find(g, "group"), f.find(g, "dungeon")
+        st.at = gi
+        ns:GuideAdvance(); runTimers()
+        ok(st.at == gi, "alone: on the group step")
+        f.members = 3
+        fireEvent("GROUP_ROSTER_UPDATE"); runTimers()
+        ok(st.at == ri, "the roster changed: the group step ticks: " .. tostring(st.at))
+    end)
+end)
+try("13.5 fix M9: after the run, a hand-in that is not ready is passed over", function()
+    local keepQL = env.C_QuestLog
+    Fixture(function(f)
+        ns.root.guideState = {}
+        local ql = {}
+        for k, v in pairs(keepQL) do ql[k] = v end
+        ql.IsOnQuest = function(id) return id >= 901 and id <= 904 end
+        ql.IsComplete = function(id) return id == 903 end
+        env.C_QuestLog = ql
+        ns.db.plannerKeepRoute = true
+        local g, s = f.plan()
+        ns:GuideSetPlan(g, s)
+        local st = ns.GuideState()
+        local ri = f.find(g, "dungeon")
+        st.at = ri
+        f.inside, f.id = true, 36; ns:GuideAdvance()
+        f.inside, f.id = false, nil; ns:GuideAdvance(); runTimers()
+        local step = g.steps[st.at]
+        ok(step and step.kind == "turnin" and step.quest == 903, "the ready hand-in is next; the others passed over: " .. tostring(step and step.kind) .. " " .. tostring(step and step.quest))
+        for i = ri + 1, #g.steps do
+            local x = g.steps[i]
+            if x.kind == "turnin" and x.quest ~= 903 and x.dungeonZone == 1581 then ok(st.skipped and st.skipped[i], "skipped: " .. tostring(x.quest)) end
+        end
+    end)
+    env.C_QuestLog = keepQL
+end)
 end
 -- 13.5 A dungeon tests: end
 --
@@ -27009,7 +27280,7 @@ local function ok(cond, msg) if not cond then error(msg, 2) end end
 -- the warrior's level 10 class quest 1638 starts in Stormwind, 500 is a level 4 quest there.
 local function classWorld(body)
     local rec0 = ns.PlannerCharRecord(true)
-    local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), print = ns.PrintRaw, cq = ns.db.plannerClassQuests, told = rec0.classTold }
+    local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), print = ns.PrintRaw, cq = ns.db.plannerClassQuests, told = rec0.classTold, level = env.UnitLevel }
     local fine, err = pcall(function()
         local cm = {}
         for k, v in pairs(saved.map) do cm[k] = v end
@@ -27027,7 +27298,9 @@ local function classWorld(body)
         env.CreateVector2D = function(x, y) return { x = x, y = y } end
         ns.db.plannerClassQuests = true
         rec0.classTold = nil
-        local W = { recs = {}, order = {}, done = {}, logged = {}, printed = {} }
+        local W = { recs = {}, order = {}, done = {}, logged = {}, printed = {}, level = 8 }
+        env.UnitLevel = function() return W.level end        -- (the panel's heads-up line reads your level: the test's)
+        ns.guideLevelUp = nil
         ns.PrintRaw = function(_, msg) W.printed[#W.printed + 1] = msg end
         local function q(id, map, x, y, xp, level)
             local r = { id = id, name = "Quest " .. id, level = level, minLevel = 1, xp = xp, starts = { { map = map, x = x, y = y } }, ends = { { map = map, x = x, y = y } },
@@ -27064,7 +27337,7 @@ local function classWorld(body)
     end)
     ns.PlannerHook("extra", "t135b", nil)
     env.C_Map = saved.map; rawset(env, "CreateVector2D", saved.vec)
-    ns.PrintRaw, ns.db.plannerClassQuests, rec0.classTold = saved.print, saved.cq, saved.told
+    ns.PrintRaw, ns.db.plannerClassQuests, rec0.classTold, env.UnitLevel = saved.print, saved.cq, saved.told, saved.level
     if not fine then error(err, 0) end
 end
 local LINE = "Your level 10 class quest is coming: it starts in Stormwind City."
@@ -27189,6 +27462,39 @@ try("13.5 B: no flying away in the level before", function()
         guide = ns.PlannerRoute(c)
         ok(W.planned(guide)[3001] or W.planned(guide)[3002], "and planned: " .. W.seq(guide))
     end)
+end)
+try("13.5 fix I7: the heads-up goes when it no longer applies, kept route or not", function()
+    local keepQL, keepKeep, keepState = env.C_QuestLog, ns.db.plannerKeepRoute, ns.root.guideState
+    classWorld(function(W)
+        local ql = {}
+        for k, v in pairs(keepQL) do ql[k] = v end
+        local inLog, done = false, false
+        ql.IsOnQuest = function(id) return inLog and id == 1638 end
+        ql.IsQuestFlaggedCompleted = function(id) return done and id == 1638 end
+        env.C_QuestLog = ql
+        ns.db.plannerKeepRoute = true
+        ns.root.guideState = {}
+        local guide, summary = ns.PlannerRoute(W.hooks(W.ctx({ level = 8 })))
+        ok(summary.classSoon and summary.classSoon.level == 10, "the plan has the heads-up")
+        ns:GuideSetPlan(guide, summary)
+        local function lines() local st = ns.GuideState(); return ns.PlannerAdviceLines(st.plan.steps, st.at, st.summary) end
+        W.level = 9
+        ok(has(lines()), "level 9 on the kept route: still shown")
+        ok(ns:PlannerReplan("level") == false, "kept: the level's replan is refused")
+        W.level = 10
+        ok(not has(lines()), "level 10: gone, though the kept plan still carries it")
+        W.level = 9
+        fireEvent("PLAYER_LEVEL_UP", 10); runTimers()
+        ok(not has(lines()), "the level-up says 10 before the game's level does: gone")
+        ns.guideLevelUp = nil
+        ok(has(lines()), "back at 9: shown")
+        inLog = true; ok(not has(lines()), "the quest in your log: gone"); inLog = false
+        done = true; ok(not has(lines()), "the quest done: gone"); done = false
+        ok(has(lines()), "and back")
+    end)
+    if ns.PlannerStop then ns:PlannerStop() end
+    env.C_QuestLog, ns.db.plannerKeepRoute, ns.root.guideState = keepQL, keepKeep, keepState
+    ns.guideLevelUp = nil
 end)
 end
 -- 13.5 B class tests: end
@@ -27337,7 +27643,7 @@ try("13.5 C speed: slices keep to their budget", function()
         while (ns.plannerBusy or ns.plannerQueued) and n < 5000 do frame(); n = n + 1 end
         if ns.plannerBusy or ns.plannerQueued then error("the planner never finished") end
         if speedTimed then print(string.format("speed (%s): plannerSliceMax %.2f ms in %d frames (budget %s)", speedMode, tonumber(ns.plannerSliceMax) or -1, n, tostring(ns.PLANNER_BUDGET_MS))) end
-        if not (type(ns.plannerSliceMax) == "number" and ns.plannerSliceMax > 0 and ns.plannerSliceMax <= 3 * ns.PLANNER_BUDGET_MS) then
+        if not (type(ns.plannerSliceMax) == "number" and ns.plannerSliceMax > 0 and (ns.plannerSliceMax <= 3 * ns.PLANNER_BUDGET_MS or not speedTimed)) then   -- (13.5 fix M5: the audits' code is slower)
             error("the longest planner slice was " .. tostring(ns.plannerSliceMax) .. " ms; the budget is " .. ns.PLANNER_BUDGET_MS)
         end
         -- gold: one collect, a slice at a time
@@ -27351,7 +27657,7 @@ try("13.5 C speed: slices keep to their budget", function()
         end
         if not finished then error("the gold collect never finished") end
         if speedTimed then print(string.format("speed (%s): goldSliceMax %.2f ms in %d slices (budget %s)", speedMode, tonumber(ns.goldSliceMax) or -1, n, tostring(ns.GOLD_BUDGET_MS))) end
-        if not (type(ns.goldSliceMax) == "number" and ns.goldSliceMax > 0 and ns.goldSliceMax <= 3 * ns.GOLD_BUDGET_MS) then
+        if not (type(ns.goldSliceMax) == "number" and ns.goldSliceMax > 0 and (ns.goldSliceMax <= 3 * ns.GOLD_BUDGET_MS or not speedTimed)) then
             error("the longest gold slice was " .. tostring(ns.goldSliceMax) .. " ms; the budget is " .. ns.GOLD_BUDGET_MS)
         end
     end)
@@ -27410,13 +27716,15 @@ try("13.5 D: backups hold the records", function()
         ns.backupsTaken = nil
         local took = ns:TakeBackups(root, TODAY)
         ok(#took == 2, "update and daily")
-        local d, u = root.backups.daily, root.backups.update
-        ok(type(d.records) == "table" and not d.recordsDone, "the records wait for the job")
+        local u = root.backups.update
+        ok(type(u.records) == "table" and not u.recordsDone and ns.BackupRecords(root.backups, "daily") == nil, "the records wait for the job")
         drain()
-        for _, k in ipairs(keys) do ok(d.records[k] ~= nil and u.records[k] ~= nil, "a record in the backups: " .. k) end
-        ok(d.records.prices == nil, "never the prices")
-        ok(d.records.planner ~= root.planner and deq(d.records.planner, root.planner), "a copy")
-        ok(d.recordsDone == true and u.recordsDone == true and d.recordsLeftOut == nil, "done, nothing left out")
+        local dr = ns.BackupRecords(root.backups, "daily")
+        for _, k in ipairs(keys) do ok(dr[k] ~= nil and u.records[k] ~= nil, "a record in the backups: " .. k) end
+        ok(dr.prices == nil, "never the prices")
+        ok(dr.planner ~= root.planner and deq(dr.planner, root.planner), "a copy")
+        ok(u.recordsDone == true and u.recordsLeftOut == nil, "done, nothing left out")
+        local d = root.backups.daily
         ok(d.profiles.Default.a == 1, "the settings as before")
         local lines = ns.BackupLines(root.backups, NOW)
         ok(lines[1].records == true and lines[2].records == true, "the list says so")
@@ -27430,9 +27738,9 @@ try("13.5 D: backups hold the records", function()
         local root2 = Fixture()
         ns.backupsTaken = nil
         ns:TakeBackups(root2, TODAY); drain()
-        local left = root2.backups.daily.recordsLeftOut
+        local left = root2.backups.update.recordsLeftOut
         ok(type(left) == "table" and left[1] == "goldMobs", "the largest left out first")
-        ok(root2.backups.daily.records.goldMobs == nil and root2.backups.daily.recordsDone == true, "and not copied")
+        ok(ns.BackupRecords(root2.backups, "daily").goldMobs == nil and root2.backups.update.recordsDone == true, "and not copied")
     end)
     ns.BACKUP_RECORDS_MAX_KB = keepMax
     ns.backupsTaken = true
@@ -27445,7 +27753,7 @@ try("13.5 D: restore", function()
         local root = Fixture()
         ns.backupsTaken = nil
         ns:TakeBackups(root, TODAY); drain()
-        local before = root.backups.daily.records.planner
+        local before = ns.BackupRecords(root.backups, "daily").planner
         root.planner["Me - R"].handedIn[300] = true
         local changed = root.planner
         root.profiles.Default.a = 2
@@ -27528,7 +27836,7 @@ try("13.5 D: what the tidy-up finds", function()
     local groups = {}
     for _, g in ipairs(old.groups) do groups[g.id] = g end
     ok(groups.planner.count == 2 and groups.gold.count == 1 and groups.guides.count == 1 and groups.alts.count == 1
-       and groups.inventory.count == 1 and groups.other.count == 3, "in groups")
+       and groups.inventory.count == 1 and groups.other.count == 2 and groups.profile.count == 1, "in groups")
     ok(#FindsOf(finds, "char", "Mid - R") == 0, "100 days: kept")
     ok(#FindsOf(finds, "char", "Me - R") == 0, "never me")
     ok(#FindsOf(finds, "char", "NoTime - R") == 0, "no time: kept")
@@ -27609,6 +27917,127 @@ try("13.5 D: tidy only after confirming", function()
     local still = ns.root.planner["Old - R"] and ns.root.goldChars["Old - R"] and ns.root.charInfo["Old - R"] and ns.root.guideState["Lost - R"]
     for k, v in pairs(keep) do ns.root[k] = v end
     ok(still, "nothing removed at login")
+end)
+try("13.5 fix I6: the tidy-up goes by the server's clock", function()
+    drain()
+    local realRoot = ns.root
+    local keep = { time = env.time, server = rawget(env, "GetServerTime") }
+    local fine, err = pcall(function()
+        local root = Fixture()
+        ns.root = root
+        local function tidy()
+            ns:DataCommand("tidy"); drain()
+            return ns:ListWindow("DataTidy").lines
+        end
+        local function has(lines, text) for _, l in ipairs(lines) do if l.left == text then return true end end return false end
+        local label = string.format(ns:Tr("%s, not played for %d days"), "Old - R", 200)
+        -- the computer's clock a year ahead of the server's: nothing offered, and why
+        env.time = function() return NOW + 400 * DAY end
+        rawset(env, "GetServerTime", function() return NOW end)
+        local lines = tidy()
+        ok(has(lines, ns:Tr("Your computer's clock is more than a day off the server's, so nothing is offered. Set the clock right and look again.")), "the clock line")
+        for _, l in ipairs(lines) do ok(not l.click, "nothing to remove: " .. tostring(l.left)) end
+        ok(ns.DataTidyFind(root, NOW, TODAY, "Me - R", { clockWrong = true }).clockWrong == true and #ns.DataTidyFind(root, NOW, TODAY, "Me - R", { clockWrong = true }) == 0, "the find offers nothing")
+        -- the two clocks agree within a day: the server's is the one used
+        env.time = function() return NOW + DAY / 2 end
+        lines = tidy()
+        ok(has(lines, label), "by the server's time: " .. tostring(lines[1] and lines[1].left))
+        -- no server time: the computer's
+        rawset(env, "GetServerTime", nil)
+        env.time = function() return NOW end
+        ok(has(tidy(), label), "no server clock: the computer's")
+        -- each login stamps the server's time for the character
+        rawset(env, "GetServerTime", function() return NOW + 7 end)
+        fireEvent("PLAYER_ENTERING_WORLD", true, false)
+        ok(type(root.charSeen) == "table" and root.charSeen[ns:CharKey()] == NOW + 7, "stamped: " .. tostring(root.charSeen and root.charSeen[ns:CharKey()]))
+        root.charSeen["Old - R"] = NOW - DAY
+        ok(#FindsOf(ns.DataTidyFind(root, NOW, TODAY, "Me - R"), "char", "Old - R") == 0, "seen yesterday by the server's clock: kept, whatever the old times say")
+    end)
+    env.time = keep.time; rawset(env, "GetServerTime", keep.server)
+    ns.root = realRoot
+    if not fine then error(err, 0) end
+end)
+try("13.5 fix M10: your main and the profile choice", function()
+    local root = Fixture()
+    local old = FindsOf(ns.DataTidyFind(root, NOW, TODAY, "Me - R"), "char", "Old - R")[1]
+    local groups = {}
+    for _, g in ipairs(old.groups) do groups[g.id] = g end
+    ok(groups.profile and groups.profile.count == 1 and groups.profile.label == "Its profile choice", "the profile choice has its own line")
+    ok(groups.other.count == 2, "everything else: the rest")
+    root.mainChar = "Old - R"
+    ok(#FindsOf(ns.DataTidyFind(root, NOW, TODAY, "Me - R"), "char", "Old - R") == 0, "your main is never offered")
+end)
+try("13.5 fix M6: the key pass hands the frame back", function()
+    drain()
+    local keepBudget = ns.GOLD_BUDGET_MS
+    local fine, err = pcall(function()
+        local t = {}
+        for i = 1, 20000 do t[i] = true; t["k" .. i] = i end
+        local got, slices
+        ns.GOLD_BUDGET_MS = 0
+        ns.GoldJob(function() got = ns.DataKeys(t) end, "t135 keys")
+        slices = 0
+        while ns.GoldBusy("t135 keys") and slices < 100000 do
+            ns.GoldRunSlice(); slices = slices + 1
+            if slices == 3 then t.k5 = nil; t.k6 = nil; for i = 1, 50 do t["new" .. i] = true end end   -- (changed between slices)
+        end
+        ok(slices > 1, "more than one slice: " .. slices)
+        ok(type(got) == "table", "done")
+        local seen, n = {}, 0
+        for _, k in ipairs(got) do ok(not seen[k], "each key once: " .. tostring(k)); seen[k] = true; n = n + 1 end
+        for i = 1, 20000 do ok(seen[i], "the array part: " .. i) end
+        for i = 7, 20000 do ok(seen["k" .. i], "every key that stayed: k" .. i) end
+        ok(#ns.DataKeys({ a = 1, b = 2 }) == 2, "outside a job: at once")
+    end)
+    ns.GOLD_BUDGET_MS = keepBudget
+    drain()
+    if not fine then error(err, 0) end
+end)
+try("13.5 fix M7: an unfinished daily copy is tried again; the update's copy serves the daily", function()
+    drain()
+    local fine, err = pcall(function()
+        local root = Fixture()
+        ns.backupsTaken = nil
+        ns:TakeBackups(root, TODAY)
+        local jobs = 0
+        for _, k in ipairs({ "backup records update", "backup records daily" }) do if ns.GoldBusy(k) then jobs = jobs + 1 end end
+        ok(jobs == 1, "one copy for both: " .. jobs)
+        drain()
+        local d, u = root.backups.daily, root.backups.update
+        ok(ns.BackupRecords(root.backups, "daily") == u.records and u.recordsDone, "the daily's records are the update's")
+        ok(d.records == nil, "not kept twice in the saved file")
+        ok(ns.BackupLines(root.backups, NOW)[2].records == true, "the list says the daily has them")
+        -- the update copy cut short by a logout: the next login the same day copies the daily's own
+        u.recordsDone = nil
+        ok(ns.BackupRecords(root.backups, "daily") == nil, "an unfinished copy serves nothing")
+        root.seenVersion = ns.version
+        ns.backupsTaken = nil
+        ns:TakeBackups(root, TODAY); drain()
+        ok(d.recordsDone == true and type(d.records) == "table" and d.records.planner ~= nil and ns.BackupRecords(root.backups, "daily") == d.records, "tried again: the daily has its own")
+        -- the daily's own copy unfinished: tried again too
+        d.recordsDone, d.records = nil, {}
+        ns.backupsTaken = nil
+        ns:TakeBackups(root, TODAY); drain()
+        ok(d.recordsDone == true and d.records.planner ~= nil, "again")
+        -- a finished daily is left alone
+        local was = d.records
+        ns.backupsTaken = nil
+        ns:TakeBackups(root, TODAY); drain()
+        ok(d.records == was, "a finished one: not copied again")
+        -- restore from a daily that shares the update's copy
+        local root2 = Fixture()
+        ns.backupsTaken = nil
+        ns:TakeBackups(root2, TODAY); drain()
+        local before = root2.backups.update.records.planner
+        root2.planner = { changed = true }
+        local realRoot = ns.root
+        ns.root = root2
+        local okR = ns:RestoreBackup("daily")
+        ns.root = realRoot
+        ok(okR and root2.planner == before, "restored from the shared copy")
+    end)
+    ns.backupsTaken = true
+    if not fine then error(err, 0) end
 end)
 end
 -- 13.5 D data tests: end

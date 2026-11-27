@@ -266,10 +266,19 @@ Dungeon runs ("Dungeon runs in my route", on by default):
       real entrance either way.
 - [ ] Every row of `ns.PLANNER_DUNGEONS` (written from memory): inside each dungeon, `select(8, GetInstanceInfo())`
       equals its `instance`, and the boss count matches `bosses`. Expected: Ragefire Chasm 389 / 4, Wailing Caverns
-      43 / 7, The Deadmines 36 / 6, Shadowfang Keep 33 / 7, Blackfathom Deeps 48 / 7, The Stockade 34 / 5,
+      43 / 8, The Deadmines 36 / 6, Shadowfang Keep 33 / 8, Blackfathom Deeps 48 / 8, The Stockade 34 / 5,
       Gnomeregan 90 / 6, Razorfen Kraul 47 / 6, Scarlet Monastery 189 / 4, Razorfen Downs 129 / 5, Uldaman 70 / 9,
-      Zul'Farrak 209 / 8, Maraudon 349 / 7, The Temple of Atal'Hakkar 109 / 8. Also the levels, entrances and
-      Questie area ids (`zone`).
+      Zul'Farrak 209 / 8, Maraudon 349 / 7, The Temple of Atal'Hakkar 109 / 8. Also the entrances and Questie area
+      ids (`zone`). Ragefire Chasm's entrance in the table is on Durotar (1411); in the game it is inside Orgrimmar
+      (1454, the Cleft of Shadow): check Questie's entrance puts the arrow there.
+- [ ] The level ranges (13.5 fix I3). The table holds the Classic-era recommended ranges: Ragefire Chasm 13-18,
+      Wailing Caverns 17-24, The Deadmines 17-26, Shadowfang Keep 22-30, Blackfathom Deeps 24-32, The Stockade
+      24-32, Gnomeregan 29-38, Razorfen Kraul 29-38, Scarlet Monastery 26-45, Razorfen Downs 37-46, Uldaman 41-51,
+      Zul'Farrak 44-54, Maraudon 46-55, The Temple of Atal'Hakkar 50-60. With Questie loaded its meeting stones' ranges
+      are used instead (`/dump QuestieLoader:ImportModule("MeetingStones"):GetLocalizedDungeonNameAndLevelRangeByObjectId(178834)`
+      should give the Deadmines and "(16-24)"). Check that a character below a dungeon's lowest level is never sent there.
+- [ ] A run's time is learnt only from runs by a character within the dungeon's range: run a dungeon on a level 60
+      alt, and the low character's plan keeps the default time.
 - [ ] A planned run: the pick-ups, then "Find a group for <dungeon>" ticks when you join a group, the wait line
       counts up, "Skip this dungeon" shows on the group step only from 15 minutes on and replans without it.
 - [ ] "Run <dungeon>" ticks only once you are back in the open world, alive, after being inside; then the
@@ -279,7 +288,14 @@ Dungeon runs ("Dungeon runs in my route", on by default):
       Scarlet Monastery wing) and come back to life inside it. The run step must not tick there; it ticks once you
       leave to the open world.
 - [ ] Find a group's text for a dungeon group step names the dungeon, with no "#nil".
-- [ ] A new session (logout, or `/fgui plan` start) clears the dungeon skips with the other session skips.
+- [ ] A new session (logout, or `/fgui plan` start) clears the dungeon skips with the other session skips. A dungeon
+      run this session stays out of every plan until the next login, `/fgui plan` start or not; a /reload keeps both.
+- [ ] Leaving the dungeon with a replan queued (the loading screen's): the new route has no group or run step for it,
+      and it does not come back later that session. Going in while a pick-up is still open: after the run, skipping
+      the pick-up ticks the group and run steps.
+- [ ] A written guide's `dungeon 36 | Run The Deadmines` ticks after the run, the same way.
+- [ ] Planning together with a friend on 13.0: the friend gets the run steps as notes and keeps getting plans; with a
+      friend on 13.5 the friend's group step has Find a group and Skip this dungeon.
 - [ ] A dungeon quest of a dungeon not in the table (Blackrock Depths) still shows up in its quest hub.
 
 Class quests on time:
@@ -287,7 +303,8 @@ Class quests on time:
       record to count as doable then. If it says no, there is no heads-up at all.
 - [ ] The heads-up: chat prints "Your level %d class quest is coming: it starts in %s." once per quest per
       character (not again after /reload), and the planner panel line stays on every plan while it applies, in
-      German too ("du"). Neither shows with "Plan class quests" off.
+      German too ("du"). Neither shows with "Plan class quests" off. With Keep my route on, the panel line goes at
+      the level-up to the quest's level, and once the quest is in your log.
 - [ ] The hold on its continent: a level before the class quest, standing on its continent, the route stays on that
       continent (no boat or zeppelin away). Standing on another continent, the hold is lifted and the route still plans.
 - [ ] A due "always" class quest across the sea is planned as a lead-in when a crossing reaches it, and its missing
@@ -308,6 +325,8 @@ Saved data:
       within 10 seconds, a late second click resets it. Then "Removed %d old records (about %s).", and after a
       /reload the records are really gone and nothing else is.
 - [ ] Nothing is removed by a login, a /reload or a timer with old records in place.
+- [ ] Set the computer's clock a few days wrong and run `/fgui data tidy`: no character is offered, and the line says
+      the clock is off. Your main character is never offered.
 - [ ] The backup restore on a copy of real saved data: after an update and a day's play, `/fgui backup` shows
       ", with guides, routes and gold"; `/fgui backup restore daily` brings back the guide state, the planner and
       gold records as well as the settings; "before restore" puts them back again. Check the saved file's size

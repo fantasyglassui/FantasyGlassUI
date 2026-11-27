@@ -285,6 +285,7 @@ read_globals = {
     "GetTargetTradeMoney",
     "GetTaxiMapID",
     "GetTime",
+    "GetServerTime",
     "GetTitleText",
     "GetTotemInfo",
     "GetTradePlayerItemInfo",

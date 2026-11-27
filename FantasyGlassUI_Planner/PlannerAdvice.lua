@@ -208,6 +208,29 @@ local function DryLines(summary)
     return out
 end
 
+-- Does the plan's class quest heads-up still apply, as the game is now (each drawing of the panel, and so after a
+-- level-up: a kept route's plan is never made again)? Your level below the quest's (the level-up's own number counts
+-- before UnitLevel says it), and the quest neither done nor in your log.
+local function ClassSoonStill(soon)
+    local level = Num(UnitLevel and UnitLevel("player")) or 0
+    local up = Num(ns.guideLevelUp)
+    if up and up > level then level = up end
+    if level >= (tonumber(soon.level) or 0) then return false end
+    local id = soon.id
+    if type(id) ~= "number" then return true end
+    if ns.PlannerQuestDone and ns.PlannerQuestDone(id) then return false end
+    local QL = C_QuestLog
+    if type(QL) == "table" then
+        for _, fn in ipairs({ QL.IsQuestFlaggedCompleted, QL.IsOnQuest }) do
+            if type(fn) == "function" then
+                local ok, v = pcall(fn, id)
+                if ok and ns.Is(v, true) then return false end
+            end
+        end
+    end
+    if ns.PlannerServerId and ns.PlannerServerId(id) ~= nil then return false end   -- (in your log under the number the game gives it)
+    return true
+end
 -- The panel's lines: the quest log advice, then the inn, then a class quest coming soon, then what to do when quests run dry.
 function ns.PlannerAdviceLines(steps, at, summary)
     local lines = {}
@@ -221,7 +244,8 @@ function ns.PlannerAdviceLines(steps, at, summary)
         if now and inn.t and now >= inn.t and now - inn.t <= ns.PLANNER_INN_SHOWN then lines[#lines + 1] = inn.text else ns.plannerInnLine = nil end
     end
     local soon = type(summary) == "table" and summary.classSoon or nil   -- (a class quest a level or two ahead: PlannerClass.lua)
-    if type(soon) == "table" and tonumber(soon.level) and type(soon.start) == "string" and not (ns.db and ns.db.plannerClassQuests == false) then
+    if type(soon) == "table" and tonumber(soon.level) and type(soon.start) == "string" and not (ns.db and ns.db.plannerClassQuests == false)
+        and ClassSoonStill(soon) then
         lines[#lines + 1] = format(ns:Tr("Your level %d class quest is coming: it starts in %s."), soon.level, soon.start)
     end
     for _, l in ipairs(DryLines(summary)) do lines[#lines + 1] = l end

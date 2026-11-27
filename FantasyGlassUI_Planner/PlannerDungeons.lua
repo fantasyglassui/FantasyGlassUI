@@ -33,19 +33,56 @@ local function GroupSize()
 end
 
 ------------------------------------------------------------------------------------------
--- This session's runs and skips, by the dungeon's area id (a new session or Plan my route clears them)
+-- This session's runs and skips, by the dungeon's area id. Kept in the character's record with the session's start
+-- (ns.plannerSessionStart, which a /reload keeps), so a /reload keeps them and a new session starts with none. A
+-- dungeon run this session is never planned again this session, Plan my route or not; Plan my route clears the skips.
 ------------------------------------------------------------------------------------------
-local ran, skipped = {}, {}
-function ns.PlannerDungeonRan(zone) return zone ~= nil and ran[zone] == true end
-function ns.PlannerDungeonSkip(zone) if zone ~= nil then skipped[zone] = true end end
-function ns.PlannerDungeonSkipped(zone) return zone ~= nil and skipped[zone] == true end
-function ns.PlannerDungeonSessionReset() ran, skipped = {}, {} end
--- (called where the session's quest skips are cleared: a new session, PlannerRoute.lua, and ns:PlannerStart)
+local loose                                   -- (no saved record yet: this session's, in memory)
+local function Session(create)
+    local rec = ns.PlannerCharRecord and ns.PlannerCharRecord(create) or nil
+    local at = ns.plannerSessionStart
+    local s = type(rec) == "table" and rec.dungeonSession or loose
+    if type(s) == "table" and s.at == at and type(s.ran) == "table" and type(s.skipped) == "table" then return s end
+    if not create then return nil end
+    s = { at = at, ran = {}, skipped = {} }
+    if type(rec) == "table" then rec.dungeonSession = s else loose = s end
+    return s
+end
+local function MarkRan(zone) if zone ~= nil then local s = Session(true); if s then s.ran[zone] = true end end end
+function ns.PlannerDungeonRan(zone)
+    local s = zone ~= nil and Session(false)
+    return s and s.ran[zone] == true or false
+end
+function ns.PlannerDungeonSkip(zone) if zone ~= nil then local s = Session(true); if s then s.skipped[zone] = true end end end
+function ns.PlannerDungeonSkipped(zone)
+    local s = zone ~= nil and Session(false)
+    return s and s.skipped[zone] == true or false
+end
+function ns.PlannerDungeonSessionReset()
+    loose = nil
+    local rec = ns.PlannerCharRecord and ns.PlannerCharRecord(false)
+    if type(rec) == "table" then rec.dungeonSession = nil end
+end
+-- You came out of the instance `instance` alive after being inside (Guide.lua's inside mark): that dungeon was run.
+-- By the run steps of `steps` with that instance, and by the dungeon table's.
+function ns.PlannerDungeonLeft(instance, steps)
+    instance = Num(instance)
+    if not instance then return end
+    for _, s in ipairs(type(steps) == "table" and steps or {}) do
+        if type(s) == "table" and ns.GUIDE_RUN_KINDS[s.kind] and s.instance == instance and s.zone ~= nil then MarkRan(s.zone) end
+    end
+    for _, d in ipairs(type(ns.PLANNER_DUNGEONS) == "table" and ns.PLANNER_DUNGEONS or {}) do
+        if type(d) == "table" and d.instance == instance and d.zone ~= nil then MarkRan(d.zone) end
+    end
+end
+-- (the skips go where the session's quest skips are cleared: Plan my route, ns:PlannerStart; a new session needs
+-- nothing, its start is a new stamp)
 do
     local reset = ns.PlannerSessionSkipReset
     if type(reset) == "function" then
         ns.PlannerSessionSkipReset = function(...)
-            ns.PlannerDungeonSessionReset()
+            local s = Session(false)
+            if s then s.skipped = {} end
             return reset(...)
         end
     end
@@ -64,6 +101,16 @@ local function Same(r, d)
     if r.id ~= nil then return d.instance ~= nil and r.id == d.instance end
     return d.name ~= nil and r.instance == d.name
 end
+-- Was it run at a level the dungeon is for? Its character's level when it began (RunLog.lua); a run with no level
+-- (from before 13.5) only when it is your own. (A level 60 alt farming it says nothing of your time.)
+local function InRange(r, d)
+    local level = Num(tonumber(r.level))
+    if level then
+        local lo, hi = Num(tonumber(d.minLevel)), Num(tonumber(d.maxLevel))
+        return lo ~= nil and hi ~= nil and level >= lo and level <= hi
+    end
+    return r.char ~= nil and r.char == ns:CharKey()
+end
 local function Median(list)
     local copy = {}
     for i, v in ipairs(list) do copy[i] = v end
@@ -72,8 +119,8 @@ local function Median(list)
     if n % 2 == 1 then return copy[(n + 1) / 2] end
     return (copy[n / 2] + copy[n / 2 + 1]) / 2
 end
--- Seconds a run of `d` takes: the default from its level and size, sharpened by your own runs of it that killed a
--- boss (1 or 2: the average of the default and their mean; 3 or more: the median of the last 5).
+-- Seconds a run of `d` takes: the default from its level and size, sharpened by runs of it that killed a boss, by a
+-- character within its level range (1 or 2: the average of the default and their mean; 3 or more: the median of the last 5).
 function ns.PlannerDungeonSeconds(d)
     if type(d) ~= "table" then return 0 end
     local def = Default(d)
@@ -81,7 +128,7 @@ function ns.PlannerDungeonSeconds(d)
     local runs = {}
     for _, r in ipairs(type(log) == "table" and log or {}) do
         ns.PlannerYield()
-        if type(r) == "table" and Same(r, d) and ns.RunKills and ns.RunKills(r) > 0 then
+        if type(r) == "table" and Same(r, d) and InRange(r, d) and ns.RunKills and ns.RunKills(r) > 0 then
             local length = ns.RunLength and tonumber(ns.RunLength(r)) or 0
             if length > 0 then runs[#runs + 1] = length end
         end
@@ -375,6 +422,8 @@ end)
 -- The plan's view of your group and your log.
 ns.PlannerHook("context", "dungeons", function(ctx)
     if type(ctx) ~= "table" then return end
+    local left = ns.GuideLeftDungeon and ns.GuideLeftDungeon()   -- (out of a dungeon you were in: run, before this plan is made)
+    if left then ns.PlannerDungeonLeft(left) end
     ctx.groupSize = GroupSize()
     ctx.ready = LogReady
 end)
@@ -403,13 +452,36 @@ local function Waited(st, step)
 end
 local function LongWait(st, step) return Waited(st, step) >= ns.PLANNER_GROUP_SKIP_AFTER end
 
+-- After the run, a hand-in of its quests that is not ready (a drop that never came) is passed over: the run is done,
+-- and it would hold the route (a kept one for good).
+local function Yes(fn, ...) return type(fn) == "function" and fn(...) == true end
+local function PassOver(st, steps, at, runDone)
+    local w = type(ns.GuideWorld) == "function" and ns:GuideWorld() or {}
+    local pass = false
+    for i = at, #steps do
+        local s = steps[i]
+        if type(s) == "table" and s.kind == "turnin" and type(s.quest) == "number" and s.dungeonZone ~= nil and runDone[s.dungeonZone]
+            and not (type(st.skipped) == "table" and st.skipped[i]) and not (Yes(w.ready, s.quest, s) or Yes(w.completed, s.quest, s)) then
+            st.skipped = type(st.skipped) == "table" and st.skipped or {}
+            st.skipped[i], pass = true, true
+        end
+    end
+    if pass then ns:After(0, function() pcall(ns.GuideAdvance, ns) end) end   -- (not from inside the advance that called this)
+end
 ns.GuideRegisterAdvance("dungeon", function(st, guide, step, at)
     if not Planned(st) or type(guide) ~= "table" or type(guide.steps) ~= "table" then return end
     local skippedSteps = type(st.skipped) == "table" and st.skipped or {}
-    for i = 1, (tonumber(at) or 1) - 1 do                     -- (a run step behind you, done and not skipped: the dungeon was run)
+    at = tonumber(at) or 1
+    local runDone
+    for i = 1, at - 1 do                                      -- (a run step behind you, done and not skipped: the dungeon was run)
         local s = guide.steps[i]
-        if type(s) == "table" and s.kind == "dungeon" and s.zone ~= nil and not skippedSteps[i] then ran[s.zone] = true end
+        if type(s) == "table" and s.kind == "dungeon" and s.zone ~= nil and not skippedSteps[i] then
+            MarkRan(s.zone)
+            runDone = runDone or {}
+            runDone[s.zone] = true
+        end
     end
+    if runDone then PassOver(st, guide.steps, at, runDone) end
     if type(step) == "table" and step.kind == "group" then Waited(st, step) end
 end)
 
