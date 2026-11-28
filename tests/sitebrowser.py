@@ -374,6 +374,13 @@ def main():
                         "Zephras Isle is not on the world map yet, so it has its own map.", "Map art \u00a9 Blizzard Entertainment", none(zs["unplaced"]), True, False]
                 if zg != want:
                     problems.append(f"{where}: a plan all on Zephras Isle: {zg}, wanted {want}")
+                # every placed step in view when the plan opens (the map, made before its panel was laid out, once
+                # started zoomed right in on one pin, with the others off its edges and the zoom locked there)
+                outside = page.evaluate("""() => { const m = document.querySelector('#offpanels .zonemap'), r = m.getBoundingClientRect();
+                  return [...m.querySelectorAll('.rt-pin[data-steps]')].filter(e => { const b = e.getBoundingClientRect(), x = b.left + b.width / 2, y = b.top + b.height / 2;
+                    return x < r.left || x > r.right || y < r.top || y > r.bottom; }).map(e => e.dataset.steps); }""")
+                if outside:
+                    problems.append(f"{where}: Zephras Isle's pins start off the map: steps {outside}")
                 page.locator("#steps button.n").nth(2).click()           # (a step's number: its pin on the zone's map, opened)
                 if "Slay the Tidecaller" not in page.evaluate("(document.querySelector('#offpanels .leaflet-popup-content') || {}).textContent || ''"):
                     problems.append(f"{where}: a Zephras Isle step's number does not open its pin")

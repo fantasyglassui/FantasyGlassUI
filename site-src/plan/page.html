@@ -448,9 +448,24 @@ var WORDS = /*@WORDS@*/;
       setTimeout(function () { if (result && result.ok) drawOff(result.plan, rt.off, true); }, 0);
     }).addTo(map);
     map.setMaxBounds(L.latLngBounds(bounds).pad(0.1));
-    map.fitBounds(bounds, { animate: false });
-    var z0 = map.getZoom();
-    map.setMinZoom(z0); map.setMaxZoom(z0 + 3); V.near = z0 + 1.5;
+    // the whole island in view, worked out from the panel's real size (made before it is laid out it can be 0 px wide,
+    // which zoomed right in and locked the zoom there); again whenever its size changes
+    var ro = null;
+    function whole(first) {
+      if (!holder.isConnected || !map._mapPane || map !== holder._fgMap) { if (ro) ro.disconnect(); return; }   // (the map was made again, or put away)
+      map.invalidateSize(false);
+      if (!holder.clientWidth || !holder.clientHeight) return;
+      var z0 = map.getBoundsZoom(bounds, false);
+      map.setMinZoom(z0); map.setMaxZoom(z0 + 3); V.near = z0 + 0.75;
+      if (first || map.getZoom() < z0) map.fitBounds(bounds, { animate: false });
+    }
+    var fitWhole = whole;
+    whole = function (first) { try { fitWhole(first); } catch (e) { if (ro) ro.disconnect(); } };
+    map.setMinZoom(0); map.setMaxZoom(18);
+    whole(true);
+    var fitted = false;
+    requestAnimationFrame(function () { whole(!fitted); fitted = true; });
+    if (window.ResizeObserver) { ro = new ResizeObserver(function () { whole(!fitted); }); ro.observe(holder); }
     tame(V, holder, hint);
     offRoute(o, plan, p);
     pins(V, true);
