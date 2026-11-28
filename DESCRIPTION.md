@@ -1,0 +1,114 @@
+# Fantasy Glass UI
+
+**Your whole interface, cut like a gem.**
+
+One add-on restyles everything you look at in WoW Forever: unit frames, action bars, raid frames, nameplates, bags, quests, the minimap, chat, tooltips and every one of the game's own windows. Pick a look from 116 themes, answer a two-minute setup, and play. **Guide and Gold** builds in a quest route planner and a gold advisor, and 13.5 adds dungeon runs to your route. Every part has its own switch, so you keep only what you want.
+
+**[Website](https://fantasyglassui.com)**: try every theme, make your own, and search every switch and command · **[Discord](https://discord.gg/qeSMwQWyPR)**: help, screenshots and theme codes · **[Wiki](https://github.com/fantasyglassui/FantasyGlassUI/wiki)**: the full guide · **[World map](https://fantasyglassui.com/map/)**: dungeons, flight masters and boats on one map · **[Roadmap](https://fantasyglassui.com/roadmap/)**: what's coming next
+
+## New in 13.5
+
+- **Dungeon runs in your route.** When a dungeon gives more experience than the quests near you, the route picks up its quests, helps you find a group, takes you to the entrance and hands the quests in after. Solo players too.
+- **Class quests on time.** A heads-up a level or two before, and the route stays where it can reach the start.
+- **Plan ahead.** Plan the next couple of quest hubs, about 5, or about 10 for a whole session.
+- **An arrow to the mobs you need.** On a kill or collect step, the arrow points to the nearest one, with its name and distance.
+- **Your target's debuffs in a fight**, your damage over time among them, even though WoW Forever hides them from add-ons in combat.
+- **Safer saved data.** Backups keep your guides, planner and gold records too; `/fgui data` shows what's saved and tidies it up, always asking first. After a game update, anything the update broke is switched off by itself until it's fixed.
+
+## Guide and Gold
+
+- **A quest route planner.** Press **Plan my route** and it works out which quests to take, in what order, and when to fly, take the boat, use your hearthstone, train or hand in. A panel shows the step you're on, an arrow points the way, and kill and item counts show as you go. It plans again as you play.
+- **It fits how you play.** Tell it how long you can play and it ends at a good place to stop. **Speed**, **Safety** and **Story** sliders, reputation and zone goals, and **Keep my route** if you'd rather it never changes your plan.
+- **Its own window and minimap button.** Every planner setting in one place, with a short tour the first time.
+- **Plan with a friend.** Two players get one route that suits you both, and each panel says where the other one is.
+- **Plan codes.** Share your route as a code, and follow it on your phone on [the plan page](https://fantasyglassui.com/plan/), drawn on the real world map.
+- **Ways to make gold.** Ideas for this character from selling, farming, gathering, crafting and the auction house, with **Sell now**, **Hold** and **Vendor it** hints on your items. **Go** plans the trip and puts it on the guide panel, then gives your levelling route back.
+- **Works with Questie.** With Questie installed it plans from Questie's quests; without it, it plans the quests in your log. Prices can come from Auctionator or TSM too.
+- **Write your own guides**, record one as you play, or paste one a friend gave you.
+
+## What makes it different
+
+- **Starcut frames.** Portraits are diamonds with a star on each point, and every bar is cut to glowing points: health, power, cast bars, nameplates, raid frames, even totems. Prefer squares? One switch puts the classic box back.
+- **A sky that moves.** The Celestial themes are a living night sky: twinkling stars, a faint Milky Way, a real constellation on big windows, the odd shooting star, and a minimap drawn as a star chart.
+- **Make your own theme.** Pick three colors on [the website](https://fantasyglassui.com), see it on a full screen, and paste the code into the game. Or give each place its own theme: one for cities, another for raids.
+- **Built for WoW Forever, and only for it.** Every function, event and frame it uses is checked against the Forever client itself, on every update. Where the game hides information in combat, it works around it instead of breaking.
+- **Made for everyone.** Colors for each kind of color vision, high contrast, lettering for low vision and dyslexia, captions for sounds, talk and quests read aloud, the game's windows by keyboard, and keys for one hand. See "Accessibility" below.
+- **300 switches.** A settings window with a search that finds any setting and tells you where it lives, an undo for every change, and Simple or All options.
+
+## The look
+
+- **Three families, 116 themes.** **Glass** is clear panes with a bright top edge. **Fantasy** is solid panels with grain, dark rims and gold corners. **Celestial** is the night sky. Each family has a theme in your class color.
+- **31 accent colors and 36 lettering styles**, a preview of every theme, and a theme editor in the game.
+- **A diamond or round minimap**, a glossy bar texture, panels that snap together, and your lettering on the combat text too.
+- **Screenshot mode, a login splash, and an AFK screen** where the camera drifts round your character and your session's stats show.
+
+## Fights, groups and raids
+
+- **Threat meter**, and an **aggro warning** when a monster turns on you and you are not the tank
+- **Interrupt rotation** that tells you when it's your kick, and a **group cooldowns** panel
+- Your own **boss notes**, shown when you target or pull the boss, and a **death recap**
+- **Raid frames** with your heals over time, dispel highlights, and marks on anyone missing a buff you can give
+- **Am I ready?** Food, flask, weapon, repairs, reagents and bag space, in one look before the pull
+- **Group gear check**, pull and break timers, ready-check report, and a **damage meter** drawer on the chat box
+- **Cooldown tracker, timeline and pulse**, custom and spoken alerts, an execute line, and a loss-of-control alert
+- **Enemy trinkets, interrupts and dispels** on arena and battleground enemies
+
+## Loot and gear
+
+- **Green arrows on upgrades** in your bags, loot and quest rewards, and one button to put an upgrade on
+- **A loot wishlist,** loot rolls that **light the button to press** (and say why), a loot browser of what bosses drop, and **whose upgrade** it is in your group
+- **Gear sets** with buttons on the character window, the set's name over your frame, and sets that follow your talent set
+- **Missing enchants, item levels when inspecting**, and item level and price in tooltips
+
+## Your progress
+
+- **Farming sessions:** what you make an hour, in gold and in the items you loot
+- **Run log:** every dungeon and raid run, with its time, bosses, wipes and loot, and your best time for each place
+- **Lifetime stats, milestones and a weekly recap**
+- **Goals panel** for your own goals and achievements, and a **daily and weekly checklist**
+
+## Bags, vendors and mail
+
+- **One-window bags and bank** with search, smart sections and your own rules
+- **A one-line vendor summary** of what you sold, bought and repaired; auto-sell grays and auto-repair from guild funds first
+- **Mail rules** like "all cloth to my tailor", sent with one button at the mailbox
+- **Every character in one list:** gold, professions, reputations and lockouts, and which of them can make the item in a tooltip
+- **Profession leveling helper** that lists the recipes still worth making, best first
+
+## Accessibility
+
+A whole category of its own, and a [page on the website](https://fantasyglassui.com/accessibility/) that lists it need by need:
+- **Color vision:** red-green, blue-yellow, or no color at all, where brightness and marks carry the meaning. Threat, debuffs and item quality get marks too.
+- **Low vision:** high-contrast themes in all three families, Atkinson Hyperlegible and OpenDyslexic lettering, a thicker outline round letters, a dark band behind messages, and a ring round your target.
+- **Reading aloud:** NPC talk, quests and books read as they open, tooltips read when you rest the mouse on something, and a key that reads the quest or the last whisper, in the game's own voice.
+- **Hearing:** captions on screen for ready checks, whispers, queues, invites, boss emotes, raid warnings and loot rolls.
+- **Hands and keys:** keys for one hand (round W, A, S and D, or all on the number pad), the game's windows by keyboard (Tab to move, Enter to press, each choice said aloud), and bigger controls.
+- **Flashing and motion:** safe flashing, reduce motion, and a still sky.
+- **Calm:** calm mode and a wait before tooltips show.
+- **Share it:** all your accessibility settings as one line of text.
+
+## Peace of mind
+
+- **Backups made by themselves**, an undo for every change, and `/fgui safe` to find out whether a problem is ours
+- **Share your whole interface** as one line of text, or send it straight to another player
+- **Plays nicely with your other add-ons:** if one already handles bars, bags, nameplates or raid frames, Fantasy Glass UI steps aside for that part
+- **Light:** parts you switch off don't run at all, and `/fgui perf` shows what each part costs
+- **Nine languages:** English, Deutsch, Français, Español, Italiano, Português, Русский, 한국어 and 简体中文
+
+## Getting started
+
+1. **Install** with the CurseForge app, or put the zip's **five folders** side by side in `Interface/AddOns`.
+2. **Log in:** the setup opens by itself. Choose your role, your look and your layout.
+3. **Make it yours:** `/fgui` opens the settings, `/fgui move` arranges your panels, and `/fgui help` lists all 140 commands.
+
+Coming from ElvUI, Tukui, RealUI or GW2 UI? One click in the setup puts your frames where you're used to them.
+
+## Help and feedback
+
+- **Something wrong?** Open `/fgui`, press **Report a Problem**, and paste the text in **#bug-reports** on [Discord](https://discord.gg/qeSMwQWyPR) or in [an issue on GitHub](https://github.com/fantasyglassui/FantasyGlassUI/issues).
+- **An idea?** Tell us on Discord.
+- **The full guide** is on the [wiki](https://github.com/fantasyglassui/FantasyGlassUI/wiki), and the source is on [GitHub](https://github.com/fantasyglassui/FantasyGlassUI).
+
+---
+
+Fantasy Glass UI is by **DustyMouse**. Free, with no ads and nothing to buy. All rights reserved. The bundled fonts are under the SIL Open Font License.
