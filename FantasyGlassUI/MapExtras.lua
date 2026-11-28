@@ -340,6 +340,46 @@ ns:NewModule("smallMap", function()
         if map.IsShown and ns.Yes(map:IsShown()) then pcall(Apply) end
     end))
 end)
+------------------------------------------------------------------------------------------
+-- (13.5.1) Always open the world map windowed. The game itself picks windowed or full screen when the map
+-- shows, from its setting miniWorldMap ("1" windowed, "0" full screen: Blizzard_WorldMap's OnShow, Forever
+-- 1.60.1 too), and the button at the map's top right writes it. So this only puts the setting back to "1": at
+-- login and each time the map closes, out of combat. The map is never minimized or maximized from here (that
+-- would taint it); full screen chosen with the game's button lasts until you close the map. A map add-on that
+-- keeps a window setting of its own may still decide otherwise.
+------------------------------------------------------------------------------------------
+ns:NewModule("mapWindowed", function()
+    local waiting = false                                     -- (a close in a fight: set once the fight is over)
+    local function Apply()
+        if not (ns.db and ns.db.mapWindowed) then waiting = false; return false end
+        if InCombatLockdown() then waiting = true; return false end
+        waiting = false
+        local get = (C_CVar and C_CVar.GetCVar) or GetCVar
+        local set = (C_CVar and C_CVar.SetCVar) or SetCVar
+        if type(get) ~= "function" or type(set) ~= "function" then return false end
+        local ok, v = pcall(get, "miniWorldMap")
+        if not ok or ns:IsSecret(v) then return false end    -- (hidden: left alone)
+        if v == "1" then return false end
+        return (pcall(set, "miniWorldMap", "1"))
+    end
+    local hooked = false
+    local function Hook()                                     -- (the map's own frame: once it is there)
+        local map = _G.WorldMapFrame
+        if hooked or type(map) ~= "table" or not map.HookScript then return end
+        hooked = pcall(map.HookScript, map, "OnHide", function() pcall(Apply) end)
+    end
+    Hook()
+    local ev = CreateFrame("Frame")
+    for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_ENABLED", "ADDON_LOADED" }) do pcall(ev.RegisterEvent, ev, e) end
+    local function OnEvent(_, event)
+        if event == "ADDON_LOADED" then Hook(); return end
+        if event == "PLAYER_ENTERING_WORLD" then Hook(); Apply()
+        elseif event == "PLAYER_REGEN_ENABLED" and waiting then Apply() end
+    end
+    ev:SetScript("OnEvent", ns:Guard("Windowed map", OnEvent))
+    ns.mapWindowedTest = { Apply = Apply, Event = function(e) return OnEvent(nil, e) end, Waiting = function() return waiting end }
+    ns.mapWindowedState = "on"
+end)
 function ns:MapSizeCommand(text)
     local n = tonumber((ns.Trim(text):gsub("%%", "")))
     if n then ns.db.mapSize = math.floor(ns.MapScale(n) * 100) end

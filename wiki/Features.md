@@ -109,6 +109,7 @@ The search box at the top of the options finds any of them, and pointing at a sw
 | Minimap: who pinged | on | When someone pings the minimap, their name is shown on it for a moment. |
 | World map: group in class colors | on | Your party or raid on the world map as dots in class colors; point at one for the name. The game gives no positions inside dungeons and raids. |
 | Smaller world map | off | The world map opens at three quarters of its size (/fgui mapsize to change) and fades while you move, so you can walk with it open. |
+| Always open the world map windowed | off | The world map always opens as a window, not full screen. The button at the map's top right still switches it for that time. A map add-on's own window setting can override this. |
 | Flight timer | on | A bar with the time left on a flight path. A route's time is learned the first time you fly it; until then the bar counts up. |
 | Info bar | on | A thin bar at the top: frame rate, latency, durability, gold and time. |
 | Info bar: bags, friends, guild | on | Adds free bag slots, friends and guild online, and a mail note to the info bar. |

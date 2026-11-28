@@ -21,6 +21,8 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["Always open the world map windowed"] = "Weltkarte immer als Fenster öffnen",
+    ["The world map always opens as a window, not full screen. The button at the map's top right still switches it for that time. A map add-on's own window setting can override this."] = "Die Weltkarte öffnet sich immer als Fenster, nicht im Vollbild. Mit dem Knopf oben rechts auf der Karte schaltest du sie weiterhin für dieses Mal um. Die eigene Fenstereinstellung eines Karten-Add-ons kann das überschreiben.",
     ["Arrow points to the nearest quest mob"] = "Pfeil zeigt auf das nächste Questziel",
     ["On a step to kill or collect, the arrow points to the nearest creature or object you still need in your zone, with its name and how far it is. Needs Questie; off, it points to the step's place."] = "Bei einem Schritt, in dem du etwas töten oder sammeln sollst, zeigt der Pfeil auf die nächste Kreatur oder das nächste Objekt in deiner Zone, das du noch brauchst, mit Namen und Entfernung. Braucht Questie; aus, zeigt er auf den Ort des Schritts.",
     ["Each error in Fantasy Glass UI is kept on your computer, at most 30, so Report a problem can include them. Names are removed wherever the add-on can find them. Look over the report before you share it. Nothing is sent by itself. Turning it off clears them, after you confirm."] = "Jeder Fehler in Fantasy Glass UI wird auf deinem Computer behalten, höchstens 30, damit Problem melden sie mitschicken kann. Namen werden entfernt, wo immer das Add-on sie finden kann. Sieh dir den Bericht an, bevor du ihn teilst. Nichts wird von selbst gesendet. Wenn du es ausschaltest, werden sie gelöscht, nachdem du bestätigt hast.",
@@ -3959,6 +3961,8 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["Always open the world map windowed"] = "Toujours ouvrir la carte du monde en fenêtre",
+    ["The world map always opens as a window, not full screen. The button at the map's top right still switches it for that time. A map add-on's own window setting can override this."] = "La carte du monde s'ouvre toujours en fenêtre, pas en plein écran. Le bouton en haut à droite de la carte la bascule toujours pour cette fois. Le réglage de fenêtre d'un add-on de carte peut passer outre.",
     ["Arrow points to the nearest quest mob"] = "La flèche indique la créature de quête la plus proche",
     ["On a step to kill or collect, the arrow points to the nearest creature or object you still need in your zone, with its name and how far it is. Needs Questie; off, it points to the step's place."] = "Sur une étape où il faut tuer ou ramasser, la flèche indique la créature ou l'objet le plus proche qu'il vous faut encore dans votre zone, avec son nom et sa distance. Nécessite Questie ; désactivé, elle indique le lieu de l'étape.",
     ["Each error in Fantasy Glass UI is kept on your computer, at most 30, so Report a problem can include them. Names are removed wherever the add-on can find them. Look over the report before you share it. Nothing is sent by itself. Turning it off clears them, after you confirm."] = "Chaque erreur de Fantasy Glass UI est conservée sur votre ordinateur, 30 au plus, pour que Signaler un problème puisse les inclure. Les noms sont retirés partout où l'add-on peut les trouver. Relisez le rapport avant de le partager. Rien n'est envoyé tout seul. Le désactiver les efface, après votre confirmation.",
@@ -7897,6 +7901,8 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["Always open the world map windowed"] = "Abrir siempre el mapa del mundo en ventana",
+    ["The world map always opens as a window, not full screen. The button at the map's top right still switches it for that time. A map add-on's own window setting can override this."] = "El mapa del mundo siempre se abre en ventana, no a pantalla completa. El botón de arriba a la derecha del mapa aún lo cambia esa vez. El ajuste de ventana propio de un accesorio de mapas puede anular esto.",
     ["Arrow points to the nearest quest mob"] = "La flecha señala la criatura de misión más cercana",
     ["On a step to kill or collect, the arrow points to the nearest creature or object you still need in your zone, with its name and how far it is. Needs Questie; off, it points to the step's place."] = "En un paso de matar o recoger, la flecha señala la criatura u objeto más cercano que aún necesitas en tu zona, con su nombre y a qué distancia está. Necesita Questie; desactivado, señala el lugar del paso.",
     ["Each error in Fantasy Glass UI is kept on your computer, at most 30, so Report a problem can include them. Names are removed wherever the add-on can find them. Look over the report before you share it. Nothing is sent by itself. Turning it off clears them, after you confirm."] = "Cada error de Fantasy Glass UI se guarda en tu ordenador, como mucho 30, para que Informar de un problema pueda incluirlos. Los nombres se quitan allí donde el accesorio puede encontrarlos. Revisa el informe antes de compartirlo. No se envía nada por sí solo. Al desactivarlo se borran, después de que lo confirmes.",
@@ -11838,6 +11844,8 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["Always open the world map windowed"] = "Всегда открывать карту мира в окне",
+    ["The world map always opens as a window, not full screen. The button at the map's top right still switches it for that time. A map add-on's own window setting can override this."] = "Карта мира всегда открывается в окне, а не на весь экран. Кнопка в правом верхнем углу карты по-прежнему переключает её на этот раз. Собственная настройка окна у аддона карты может это переопределить.",
     ["Arrow points to the nearest quest mob"] = "Стрелка указывает на ближайшую цель задания",
     ["On a step to kill or collect, the arrow points to the nearest creature or object you still need in your zone, with its name and how far it is. Needs Questie; off, it points to the step's place."] = "На шаге, где нужно убить или собрать, стрелка указывает на ближайшее существо или предмет в вашей зоне, который ещё нужен, с его названием и расстоянием. Нужен Questie; если выключено, указывает на место шага.",
     ["Each error in Fantasy Glass UI is kept on your computer, at most 30, so Report a problem can include them. Names are removed wherever the add-on can find them. Look over the report before you share it. Nothing is sent by itself. Turning it off clears them, after you confirm."] = "Каждая ошибка Fantasy Glass UI сохраняется на вашем компьютере, не больше 30, чтобы «Сообщить о проблеме» могло их включить. Имена удаляются везде, где аддон может их найти. Просмотрите отчёт, прежде чем делиться им. Ничего не отправляется само. Если выключить, они удаляются после подтверждения.",
@@ -15776,6 +15784,8 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["Always open the world map windowed"] = "Sempre abrir o mapa-múndi em janela",
+    ["The world map always opens as a window, not full screen. The button at the map's top right still switches it for that time. A map add-on's own window setting can override this."] = "O mapa-múndi sempre abre em janela, não em tela cheia. O botão no canto superior direito do mapa ainda o alterna daquela vez. A configuração de janela de um addon de mapa pode substituir isto.",
     ["Arrow points to the nearest quest mob"] = "A seta aponta para a criatura de missão mais próxima",
     ["On a step to kill or collect, the arrow points to the nearest creature or object you still need in your zone, with its name and how far it is. Needs Questie; off, it points to the step's place."] = "Em um passo de matar ou coletar, a seta aponta para a criatura ou o objeto mais próximo que você ainda precisa na sua zona, com o nome e a distância. Precisa do Questie; desligado, aponta para o lugar do passo.",
     ["Each error in Fantasy Glass UI is kept on your computer, at most 30, so Report a problem can include them. Names are removed wherever the add-on can find them. Look over the report before you share it. Nothing is sent by itself. Turning it off clears them, after you confirm."] = "Cada erro do Fantasy Glass UI é guardado no seu computador, no máximo 30, para que Relatar um problema possa incluí-los. Os nomes são removidos onde quer que o add-on consiga encontrá-los. Revise o relatório antes de compartilhá-lo. Nada é enviado sozinho. Desligar apaga-os, depois que você confirmar.",
@@ -19714,6 +19724,8 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["Always open the world map windowed"] = "Apri sempre la mappa del mondo in finestra",
+    ["The world map always opens as a window, not full screen. The button at the map's top right still switches it for that time. A map add-on's own window setting can override this."] = "La mappa del mondo si apre sempre in finestra, non a schermo intero. Il pulsante in alto a destra della mappa la cambia ancora per quella volta. L'impostazione della finestra di un add-on per la mappa può prevalere.",
     ["Arrow points to the nearest quest mob"] = "La freccia indica la creatura di missione più vicina",
     ["On a step to kill or collect, the arrow points to the nearest creature or object you still need in your zone, with its name and how far it is. Needs Questie; off, it points to the step's place."] = "In un passo in cui uccidere o raccogliere, la freccia indica la creatura o l'oggetto più vicino che ti serve ancora nella tua zona, con il nome e la distanza. Richiede Questie; se disattivato, indica il luogo del passo.",
     ["Each error in Fantasy Glass UI is kept on your computer, at most 30, so Report a problem can include them. Names are removed wherever the add-on can find them. Look over the report before you share it. Nothing is sent by itself. Turning it off clears them, after you confirm."] = "Ogni errore di Fantasy Glass UI viene conservato sul tuo computer, al massimo 30, così Segnala un problema può includerli. I nomi vengono tolti ovunque l'add-on riesca a trovarli. Controlla il rapporto prima di condividerlo. Niente viene inviato da solo. Spegnerlo li cancella, dopo che hai confermato.",
@@ -23652,6 +23664,8 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["Always open the world map windowed"] = "세계 지도를 항상 창 모드로 열기",
+    ["The world map always opens as a window, not full screen. The button at the map's top right still switches it for that time. A map add-on's own window setting can override this."] = "세계 지도가 전체 화면이 아닌 항상 창으로 열립니다. 지도 오른쪽 위의 버튼으로 그때만 전환할 수 있습니다. 지도 애드온 자체의 창 설정이 이를 무시할 수 있습니다.",
     ["Arrow points to the nearest quest mob"] = "화살표가 가장 가까운 퀘스트 대상을 가리킴",
     ["On a step to kill or collect, the arrow points to the nearest creature or object you still need in your zone, with its name and how far it is. Needs Questie; off, it points to the step's place."] = "처치하거나 수집하는 단계에서 화살표가 지역 안에서 아직 필요한 가장 가까운 생물이나 물체를 이름과 거리와 함께 가리킵니다. Questie가 필요하며, 끄면 단계의 위치를 가리킵니다.",
     ["Each error in Fantasy Glass UI is kept on your computer, at most 30, so Report a problem can include them. Names are removed wherever the add-on can find them. Look over the report before you share it. Nothing is sent by itself. Turning it off clears them, after you confirm."] = "Fantasy Glass UI의 각 오류가 최대 30개까지 내 컴퓨터에 보관되어 문제 신고에 포함될 수 있습니다. 애드온이 찾을 수 있는 곳에서는 이름을 지웁니다. 공유하기 전에 보고서를 살펴보세요. 어떤 것도 저절로 전송되지 않습니다. 끄면 확인한 뒤에 지워집니다.",
@@ -27593,6 +27607,8 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["Always open the world map windowed"] = "总是以窗口方式打开世界地图",
+    ["The world map always opens as a window, not full screen. The button at the map's top right still switches it for that time. A map add-on's own window setting can override this."] = "世界地图总是以窗口方式打开，而不是全屏。地图右上角的按钮仍可在那一次切换。地图插件自己的窗口设置可能会覆盖此设置。",
     ["Arrow points to the nearest quest mob"] = "箭头指向最近的任务怪物",
     ["On a step to kill or collect, the arrow points to the nearest creature or object you still need in your zone, with its name and how far it is. Needs Questie; off, it points to the step's place."] = "在击杀或收集的步骤中，箭头指向你所在区域内仍需要的最近的生物或物体，并显示其名称和距离。需要 Questie；关闭时指向该步骤的地点。",
     ["Each error in Fantasy Glass UI is kept on your computer, at most 30, so Report a problem can include them. Names are removed wherever the add-on can find them. Look over the report before you share it. Nothing is sent by itself. Turning it off clears them, after you confirm."] = "Fantasy Glass UI 的每个错误都会保存在你的电脑上，最多 30 个，以便“报告问题”可以附上它们。插件能找到的名字都会被删除。分享之前请先检查一遍报告。任何内容都不会自动发送。关闭它会在你确认后清除它们。",

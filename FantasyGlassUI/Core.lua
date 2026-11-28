@@ -264,6 +264,7 @@ ns.defaults = {
     fishingMode      = false,       -- louder splash, auto-loot, while a fishing pole is equipped
     smallMap         = false,       -- a smaller world map that fades while you move
     mapSize          = 75,
+    mapWindowed      = false,       -- (13.5.1) the world map always opens as a window (the game's miniWorldMap, set back on close)
     mapGroup         = true,        -- your group as class-colored dots on the world map
     mapTracking      = true,        -- right-click the minimap for the tracking menu
     mapPing          = true,        -- who pinged the minimap
