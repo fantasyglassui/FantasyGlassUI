@@ -68,12 +68,14 @@ function ns.PlannerTimeLeft()
     return max(0, deadline - Now())
 end
 
--- "context": with a deadline the plan has the time left and a horizon of 6 hubs.
+-- "context": with a deadline the plan has the time left and a horizon of 6 hubs, or Plan ahead's when it is more
+-- (Very far: 10). The time still ends the plan first when fewer hubs fit (RankTime): it never plans past the time.
 local function ContextTime(ctx)
     local left = ns.PlannerTimeLeft()
     if left then
         ctx.timeLeft = left
-        ctx.horizon, ctx.horizonSet = max(tonumber(ctx.horizon) or 0, ns.PLANNER_PLAY_HORIZON), true   -- (another hook may have raised it more)
+        local own = tonumber(ctx.horizon) or (ns.PlannerAheadHubs and ns.PlannerAheadHubs(ctx.planAhead)) or 0
+        ctx.horizon, ctx.horizonSet = max(own, ns.PLANNER_PLAY_HORIZON), true   -- (another hook may have raised it more)
     end
 end
 

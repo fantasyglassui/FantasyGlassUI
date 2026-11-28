@@ -14844,14 +14844,19 @@ try("13.4 feel: batch 3 leftovers", function()
         if asked == 0 or (summary.logReasons or {})[502] ~= "off the route" then error("the log unknown: worked out") end
         ns.PlannerRejects = saved.rejects
         logged[502] = nil
-        -- (a quest taken outside such a plan plans again; one in the plan does not)
+        -- (a quest taken, outside such a plan or in it, plans again: once, half a second after the last, 13.5.1)
         ns.GuideOn = function() return true end
         ns.GuideState = function() return { name = ns.GUIDE_PLANNED, at = 1, summary = { logFits = true }, plan = { steps = { { kind = "accept", quest = 301 } } } } end
         ns.plannerQueued = false
         fireEvent("QUEST_ACCEPTED", 1, 301)
-        if ns.plannerQueued then error("a planned accept: no replan") end
+        if ns.plannerQueued then error("a planned accept: no replan at once") end
         fireEvent("QUEST_ACCEPTED", 1, 999)
-        if not ns.plannerQueued then error("an unplanned accept on a plan that asked nothing: plans again") end
+        if ns.plannerQueued then error("an unplanned accept: not at once either") end
+        local realGT, base = env.GetTime, env.GetTime()
+        env.GetTime = function() return base + 1 end
+        ns.PlannerAcceptDue()
+        env.GetTime = realGT
+        if not ns.plannerQueued then error("the accepts on a plan that asked nothing: plan again") end
         ns.plannerQueued = false
 
         -- b. QUEST_REMOVED before the quest is flagged, then QUEST_TURNED_IN within a second: a hand-in
@@ -17836,10 +17841,10 @@ try("13.5 together C: the plan code", function()
         if #one(string.rep("a", 300)) ~= 80 then error("a long text is cut to 80 bytes") end
         local cut = one(string.rep("\195\169", 60))
         if #cut ~= 80 or cut:sub(-2) ~= "\195\169" then error("a cut never splits a character: " .. #cut) end
-        local steps70 = {}
-        for i = 1, 70 do steps70[i] = { kind = "note", text = "n" .. i } end
-        local big = ns.PlannerReadPlanCode(ns.PlannerPlanCode({ steps = steps70 }, summary))
-        if not (big and #big.st == 60 and big.more == 10 and big.st[60].t == "n60") then error("60 steps and more = 10") end
+        local steps160 = {}
+        for i = 1, 160 do steps160[i] = { kind = "note", text = "n" .. i } end
+        local big = ns.PlannerReadPlanCode(ns.PlannerPlanCode({ steps = steps160 }, summary))
+        if not (big and #big.st == 150 and big.more == 10 and big.st[150].t == "n150") then error("150 steps and more = 10 (13.5.1)") end
         if ns.PlannerReadPlanCode(code).more ~= 0 then error("no more when all fit") end
         -- Share plan
         local shown
@@ -21908,6 +21913,10 @@ try("polish P1: planning and speed", function()
         if not ns.PlannerSessionSkipped(9903) or not ns.plannerQueued then error("abandoned: left out this session, and planned again") end
         ns:PlannerStop()
         fireEvent("QUEST_ACCEPTED", 1, 9904)
+        local realGT, base = env.GetTime, env.GetTime()
+        env.GetTime = function() return base + 1 end
+        ns.PlannerAcceptDue()
+        env.GetTime = realGT
         if not ns.plannerQueued then error("a quest taken outside the plan plans again, room or not") end
         ns:PlannerStop()
         ns.PlannerSessionSkipReset()
@@ -27857,7 +27866,8 @@ local function speedReport(name, ms)
     end
 end
 -- A fake Questie of n quests: levels 1 to 60, six maps on two continents (1 to 3 and 4 to 6), a giver and an ender NPC each, one kill objective. No random.
-local function speedQuestie(n)
+-- `spread` (13.5.1, Plan ahead): each quest's giver, ender and mob at one point of a 5 x 5 grid 200 yards apart, so a map has many hubs.
+local function speedQuestie(n, spread)
     local npcs, quests, pointers = {}, {}, {}
     for m = 1, 6 do npcs[90000 + m] = { name = "Mob " .. m, minLevel = 1, maxLevel = 60, rank = 0, spawns = { [100 + m] = { { 20, 30 }, { 60, 70 }, { 40, 50 } } } } end
     for i = 1, n do
@@ -27866,8 +27876,16 @@ local function speedQuestie(n)
         local g, e = 10000 + i * 2, 10001 + i * 2
         npcs[g] = { name = "Giver " .. i, minLevel = level, maxLevel = level, rank = 0, spawns = { [100 + map] = { { 10 + (i * 7) % 80, 10 + (i * 13) % 80 } } } }
         npcs[e] = { name = "Ender " .. i, minLevel = level, maxLevel = level, rank = 0, spawns = { [100 + map] = { { 10 + (i * 11) % 80, 10 + (i * 17) % 80 } } } }
+        local mob = 90000 + map
+        if spread then
+            local k = math.floor((i - 1) / 6) % 25
+            local x, y = 10 + (k % 5) * 20, 10 + math.floor(k / 5) * 20
+            npcs[g].spawns, npcs[e].spawns = { [100 + map] = { { x, y } } }, { [100 + map] = { { x, y + 1 } } }
+            mob = 80000 + i
+            npcs[mob] = { name = "Mob of " .. i, minLevel = level, maxLevel = level, rank = 0, spawns = { [100 + map] = { { x + 2, y + 2 } } } }
+        end
         quests[i] = { name = "Quest " .. i, questLevel = level, level = level, requiredLevel = math.max(1, level - 3), zoneOrSort = 100 + map, specialFlags = 0,
-            startedBy = { { g } }, finishedBy = { { e } }, objectives = { { { 90000 + map, "Mob slain", 0 } } } }
+            startedBy = { { g } }, finishedBy = { { e } }, objectives = { { { mob, "Mob slain", 0 } } } }
         pointers[i] = true
     end
     return {
@@ -27880,11 +27898,11 @@ local function speedQuestie(n)
     }
 end
 -- Installs it (and a place to stand on map 1) and hands back what puts everything as it was.
-local function speedWorld(level)
+local function speedWorld(level, spread)
     local real = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), ql = env.C_QuestLog, level = env.UnitLevel, loaded = env.C_AddOns.IsAddOnLoaded,
                    meta = rawget(env.C_AddOns, "GetAddOnMetadata"), q = rawget(env, "Questie"), loader = rawget(env, "QuestieLoader"), source = ns.PlannerSource,
                    here = ns.GuideHere, combat = env.InCombatLockdown }
-    local fakes = speedQuestie(1500)
+    local fakes = speedQuestie(1500, spread)
     local cm = {}
     for k, v in pairs(real.map) do cm[k] = v end
     cm.GetWorldPosFromMapPos = function(map, v) return map <= 3 and 0 or 1, { x = v.x * 1000 + map * 5000, y = v.y * 1000 } end
@@ -27962,6 +27980,7 @@ try("13.5 C speed: slices keep to their budget", function()
     env.debugprofilestop = function() return os.clock() * 1000 end
     local back = speedWorld(20)
     local savedRoot = { guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner }
+    local savedAhead = ns.db.plannerPlanAhead
     if speedTimed then collectgarbage("stop") end   -- (not in the audits: their instrumented code runs many more slices, and with collection held their garbage reached 6 GB)
     local ok, err = pcall(function()
         ns.root.guides, ns.root.guideState, ns.root.planner = nil, nil, nil
@@ -27994,14 +28013,365 @@ try("13.5 C speed: slices keep to their budget", function()
         if not (type(ns.goldSliceMax) == "number" and ns.goldSliceMax > 0 and (ns.goldSliceMax <= 3 * ns.GOLD_BUDGET_MS or not speedTimed)) then
             error("the longest gold slice was " .. tostring(ns.goldSliceMax) .. " ms; the budget is " .. ns.GOLD_BUDGET_MS)
         end
+        -- 13.5.1: Plan ahead "Very far" (10 hubs), on a world with many hubs a map: the same slices, in a reasonable number of frames.
+        -- (A plan's first slice reads the context and starts the quest list, the same for every horizon and as before; it is
+        -- printed apart. The hubs Very far adds are planned in the slices after it, which keep to the budget.)
+        ns:PlannerStop()
+        back()
+        back = speedWorld(20, true)
+        local function planOnce(what)
+            if speedTimed then collectgarbage("collect") end
+            ns:PlannerStop()
+            ns.root.guides, ns.root.guideState, ns.root.planner = nil, nil, nil
+            ns.plannerSliceMax = 0
+            if ns:PlannerStart() ~= true then error("PlannerStart, " .. what) end
+            local frames, first = 0, nil
+            while (ns.plannerBusy or ns.plannerQueued) and frames < 5000 do
+                frame(); frames = frames + 1
+                if frames == 1 then first, ns.plannerSliceMax = ns.plannerSliceMax, 0 end
+            end
+            if ns.plannerBusy or ns.plannerQueued then error("the " .. what .. " plan never finished") end
+            local st = ns.GuideState()
+            return { frames = frames, first = first or 0, rest = ns.plannerSliceMax, hubs = #((st or {}).summary or { taken = {} }).taken,
+                     steps = st and st.plan and #st.plan.steps or 0 }
+        end
+        ns.db.plannerPlanAhead = "near"
+        local near = planOnce("near")
+        ns.db.plannerPlanAhead = "veryfar"
+        local far = planOnce("very far")
+        ns.db.plannerPlanAhead = savedAhead
+        local nearFrames, nearHubs, farHubs, n = near.frames, near.hubs, far.hubs, far.frames
+        if speedTimed then print(string.format("speed (%s): very far plan: %d hubs, %d steps in %d frames, slices %.2f ms (first %.2f); near: %d hubs, %d steps in %d frames, slices %.2f ms (first %.2f)",
+            speedMode, far.hubs, far.steps, far.frames, far.rest, far.first, near.hubs, near.steps, near.frames, near.rest, near.first)) end
+        if not (far.rest > 0 and (far.rest <= 3 * ns.PLANNER_BUDGET_MS or not speedTimed)) then
+            error("very far: the longest planner slice after the first was " .. tostring(far.rest) .. " ms; the budget is " .. ns.PLANNER_BUDGET_MS)
+        end
+        if farHubs < 8 or farHubs <= nearHubs then error("very far takes more hubs on the spread fixture: " .. farHubs .. " (near " .. nearHubs .. ")") end
+        if speedTimed and n > 10 * math.max(nearFrames, 30) then error("very far took " .. n .. " frames; near took " .. nearFrames) end
     end)
     collectgarbage("restart")
+    ns.db.plannerPlanAhead = savedAhead
     env.debugprofilestop = realClock
     back()
     ns.root.guides, ns.root.guideState, ns.root.planner = savedRoot.guides, savedRoot.state, savedRoot.planner
     if not ok then error(err, 0) end
 end)
 -- 13.5 C speed tests: end
+-- 13.5.1 plan ahead tests: begin
+try("13.5.1 plan ahead: hubs, the lead-in, a time limit, the summary", function()
+    local saved = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), time = env.time, planner = ns.root.planner, ahead = ns.db.plannerPlanAhead }
+    local now = 1800000000
+    local ok, err = pcall(function()
+        env.time = function() return now end
+        ns.root.planner = {}
+        env.C_Map = setmetatable({ GetWorldPosFromMapPos = function(map, v)
+            if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end
+            if map == 2 then return 0, { x = v.x * 1000 + 5000, y = v.y * 1000 } end
+        end, GetMapInfo = function(map) return { name = "Zone " .. tostring(map), mapType = 3, parentMapID = 0 } end }, { __index = saved.map })
+        env.CreateVector2D = function(x, y) return { x = x, y = y } end
+        local function q(id, extra)
+            local r = { id = id, name = "Q" .. id, level = 14, minLevel = 1, xp = 100, starts = {}, ends = {}, objectives = {}, pre = {}, preAny = {}, exclusive = {},
+                        elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+            for k, v in pairs(extra or {}) do r[k] = v end
+            return r
+        end
+        local function at(map, x, y) return { { map = map, x = x, y = y } } end
+        local function kill(map, x, y) return { { kind = "kill", count = 0, countKnown = true, mobLevel = 14, spots = at(map, x, y) } } end
+        local recs, order = {}, {}
+        local function add(r) recs[r.id] = r; order[#order + 1] = r.id end
+        local inns = { { map = 1, x = 12, y = 12, name = "Fake Inn" } }
+        local source = { kind = "test", ids = function() return order end, quest = function(id) return recs[id] end, inns = function() return {} end,
+                         inRange = function() return true end, places = function(kind) if kind == "innkeeper" then return inns end return {} end }
+        local function ctxFor(extra)
+            local c = { source = source, level = 14, group = "solo", inGroup = false, speed = 7, faction = "Alliance", xp = 0, xpMax = 100000,
+                done = function() return false end, onQuest = function() return false end, here = { map = 1, x = 10, y = 10 },
+                crossings = {}, learnFlights = false, bind = "Elsewhere", bindSpot = { map = 9, x = 1, y = 1 }, pace = 1, flights = {},
+                flightTime = function() return nil end, timed = function() return false end, itemCount = function() return 0 end }
+            for k, v in pairs(extra or {}) do c[k] = v end
+            return c
+        end
+        local function ahead(choice) return ctxFor({ planAhead = choice, horizon = ns.PlannerAheadHubs(choice) }) end
+        -- fourteen hubs on map 1, 200 yards apart on a grid (each quest its own hub), the best nearest you
+        local id = 0
+        for row = 0, 2 do
+            for col = 0, 4 do
+                id = id + 1
+                if id <= 14 then
+                    local x, y = 10 + col * 20, 10 + row * 20
+                    add(q(id, { xp = 3000 - id * 100, starts = at(1, x, y), ends = at(1, x, y), objectives = kill(1, x + 1, y + 1) }))
+                end
+            end
+        end
+        -- the setting's values
+        if ns.PlannerAheadHubs(nil) ~= 2 or ns.PlannerAheadHubs("near") ~= 2 or ns.PlannerAheadHubs("far") ~= 5 or ns.PlannerAheadHubs("veryfar") ~= 10
+            or ns.PlannerAheadHubs("nonsense") ~= 2 then error("near 2, far 5, very far 10, anything else near") end
+        if ns.defaults.plannerPlanAhead ~= "near" then error("the default is near: " .. tostring(ns.defaults.plannerPlanAhead)) end
+        -- the default stays two hubs (no setting: as before)
+        local _, sNone = ns.PlannerRoute(ctxFor())
+        local gNear, sNear = ns.PlannerRoute(ahead("near"))
+        if #sNone.taken ~= 2 or #sNear.taken ~= 2 then error("near: two hubs: " .. #sNone.taken .. " " .. #sNear.taken) end
+        local gFar, sFar = ns.PlannerRoute(ahead("far"))
+        local gVery, sVery = ns.PlannerRoute(ahead("veryfar"))
+        if #sFar.taken ~= 5 then error("far: five hubs: " .. #sFar.taken) end
+        if #sVery.taken ~= 10 then error("very far: ten hubs: " .. #sVery.taken) end
+        if not (#gFar.steps > #gNear.steps and #gVery.steps > #gFar.steps) then error("more steps further ahead: " .. #gNear.steps .. " " .. #gFar.steps .. " " .. #gVery.steps) end
+        -- the summary adds up over the hubs: experience, time and the level reached
+        local xp, secs = 0, 0
+        for _, t in ipairs(sVery.taken) do xp, secs = xp + t.xp, secs + t.seconds end
+        if math.abs(sVery.xp - xp) > 1 then error("the plan's experience is its hubs': " .. sVery.xp .. " " .. xp) end
+        if sVery.seconds < secs then error("the plan's time holds its hubs': " .. sVery.seconds .. " " .. secs) end
+        if math.abs(sVery.toLevel - (14 + math.floor(sVery.xp / 100000 * 10 + 0.5) / 10)) > 0.11 then error("the level reached: " .. tostring(sVery.toLevel)) end
+        if sVery.xp <= sFar.xp or sVery.seconds <= sFar.seconds then error("ten hubs earn and take more than five") end
+        -- the real context: the setting gives the horizon (and near is the old 2)
+        ns.db.plannerPlanAhead = nil
+        local live = ns.PlannerContext()
+        if live.horizon ~= 2 or live.planAhead ~= "near" then error("no setting: near, two hubs: " .. tostring(live.horizon) .. " " .. tostring(live.planAhead)) end
+        ns.db.plannerPlanAhead = "far"
+        if ns.PlannerContext().horizon ~= 5 then error("far: the context's horizon is 5") end
+        ns.db.plannerPlanAhead = "veryfar"
+        if ns.PlannerContext().horizon ~= 10 then error("very far: the context's horizon is 10") end
+        ns.db.plannerPlanAhead = saved.ahead
+        -- a lead-in (a class quest on another map) is on top of the zone's hubs, as near does
+        add(q(401, { level = 8, xp = 50, starts = at(2, 50, 50), ends = at(2, 50, 50) }))
+        local always = { { id = 401, level = 8, kind = "always", parts = 1 } }
+        local function withLead(choice) local c = ahead(choice); c.classQuests = always; return c end
+        local _, sl = ns.PlannerRoute(withLead("near"))
+        if #sl.taken ~= 3 or not sl.taken[1].lead then error("near: the lead-in and two hubs: " .. #sl.taken) end
+        _, sl = ns.PlannerRoute(withLead("far"))
+        if #sl.taken ~= 6 or not sl.taken[1].lead then error("far: the lead-in and five hubs: " .. #sl.taken) end
+        recs[401] = nil; table.remove(order)
+        -- a time limit with very far: the horizon stays 10, and the plan still stops at the time
+        local rec = ns.PlannerCharRecord(true)
+        local need = 0
+        for i = 1, 4 do need = need + sVery.taken[i].seconds + sVery.taken[i].travel end
+        local left = need + sVery.taken[5].seconds * 0.5
+        rec.playUntil = now + left
+        ns.PlannerPaceSync()
+        local tc = ahead("veryfar")
+        ns.PlannerPaceHooks.time.context(tc)
+        if tc.horizon ~= 10 or not tc.horizonSet or math.abs(tc.timeLeft - left) > 1 then error("very far with a limit: 10 hubs at most, the time left: " .. tostring(tc.horizon)) end
+        local nc = ahead("near")
+        ns.PlannerPaceHooks.time.context(nc)
+        if nc.horizon ~= ns.PLANNER_PLAY_HORIZON then error("near with a limit: as before, " .. ns.PLANNER_PLAY_HORIZON .. " hubs: " .. tostring(nc.horizon)) end
+        local gt, st = ns.PlannerRoute(tc)
+        if not (#st.taken >= 1 and #st.taken < 10) then error("the time cuts the very far plan short: " .. #st.taken) end
+        if st.seconds > left + 1 then error("never past the time: " .. st.seconds .. " of " .. left) end
+        if not st.stop or gt.steps[#gt.steps].kind ~= "note" then error("the plan ends with the stop") end
+        rec.playUntil = nil
+        ns.PlannerPaceSync()
+    end)
+    env.C_Map = saved.map; rawset(env, "CreateVector2D", saved.vec); env.time = saved.time
+    ns.root.planner, ns.db.plannerPlanAhead = saved.planner, saved.ahead
+    ns.PlannerPaceSync()
+    if not ok then error(err, 0) end
+end)
+try("13.5.1 plan ahead: the setting, per profile, replans", function()
+    local saved = { guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner, db = ns.db, ahead = ns.db.plannerPlanAhead, profiles = ns.root.profiles }
+    local ok, err = pcall(function()
+        ns.root.guides, ns.root.guideState = nil, nil
+        ns.db.plannerPlanAhead = nil
+        local P = ns:PlannerOpen() and ns.plannerWindow.T
+        if not (P and P.planAheadButton) then error("the window has the Plan ahead button") end
+        if P.planAheadButton.row.sec ~= "time" then error("Plan ahead is with the plan's settings: " .. tostring(P.planAheadButton.row.sec)) end
+        local function click(b, button)
+            local f = b:GetScript("OnClick")
+            if type(f) ~= "function" then for _, h in ipairs(handlers) do if h.self == b and h.name == "OnClick" then f = h.fn end end end
+            f(b, button)
+        end
+        local text = P.planAheadButton.text:GetText()
+        if not (text and text:find(ns:Tr("Near"), 1, true)) then error("the button says Near: " .. tostring(text)) end
+        local desc = ""
+        rawset(P.planAheadButton.row.desc, "SetText", function(_, t) desc = t end)
+        P.Refresh()
+        rawset(P.planAheadButton.row.desc, "SetText", nil)
+        if type(desc) ~= "string" then error("the row's words: " .. tostring(desc)) end
+        local n = 0
+        for _ in desc:gmatch("[^\n]+") do n = n + 1 end
+        if n ~= 3 or not desc:find(ns:Tr("Far: about 5 hubs."), 1, true) then error("one line for each choice: " .. desc) end
+        if P.planAheadButton.row.tipTitle ~= "Plan ahead" then error("the tooltip's title") end
+        click(P.planButton)
+        if ns.GuideState().name ~= ns.GUIDE_PLANNED then error("the button plans") end
+        ns.plannerQueued = false
+        click(P.planAheadButton)
+        if ns.db.plannerPlanAhead ~= "far" or not ns.plannerQueued then error("far, and a replan: " .. tostring(ns.db.plannerPlanAhead)) end
+        if not P.planAheadButton.text:GetText():find(ns:Tr("Far"), 1, true) then error("the button says Far") end
+        ns.plannerQueued = false
+        click(P.planAheadButton)
+        if ns.db.plannerPlanAhead ~= "veryfar" or not ns.plannerQueued then error("very far, and a replan") end
+        click(P.planAheadButton)
+        if ns.db.plannerPlanAhead ~= "near" then error("and round again") end
+        click(P.planAheadButton, "RightButton")
+        if ns.db.plannerPlanAhead ~= "veryfar" then error("right-click steps back") end
+        -- per profile: kept with the profile, another profile has its own, a profile code carries it
+        local code = ns:ExportProfile()
+        if not code:find("plannerPlanAhead", 1, true) then error("the profile code has the setting") end
+        ns.root.profiles = setmetatable({}, { __index = saved.profiles })
+        local okI = ns:ImportProfile("Plan ahead", code)
+        if not (okI and rawget(ns.root.profiles["Plan ahead"], "plannerPlanAhead") == "veryfar") then error("an import keeps it") end
+        ns.db = ns:FillDefaults({})
+        if ns.db.plannerPlanAhead ~= "near" or ns.PlannerContext().horizon ~= 2 then error("another profile: its own, near") end
+        ns.db = saved.db
+        if ns.PlannerContext().horizon ~= 10 then error("back: very far") end
+        ns:GuideStop(); ns:PlannerStop(); ns.plannerQueued = false
+        click(P.planAheadButton)
+        if ns.plannerQueued then error("planner not running: no replan") end
+    end)
+    ns.db = saved.db
+    ns:PlannerStop()
+    ns.plannerQueued = false
+    if ns.plannerWindow then ns.plannerWindow:Hide() end
+    ns.root.guides, ns.root.guideState, ns.root.planner, ns.root.profiles = saved.guides, saved.state, saved.planner, saved.profiles
+    ns.db.plannerPlanAhead = saved.ahead
+    if not ok then error(err, 0) end
+end)
+try("13.5.1 plan ahead: long plans in the code and on the page", function()
+    local saved = { map = env.C_Map }
+    local ok, err = pcall(function()
+        env.C_Map = setmetatable({ GetMapInfo = function() return { name = "Elwynn Forest" } end }, { __index = saved.map })
+        local function long(n)
+            local steps = {}
+            for i = 1, n do steps[i] = { kind = (i % 3 == 0) and "turnin" or "do", quest = 1000 + i, title = "Quest " .. i, text = "Step " .. i, map = 1429, x = (i % 90) + 1.25, y = 40 } end
+            return { name = ns.GUIDE_PLANNED, steps = steps }
+        end
+        local summary = { fromLevel = 14, toLevel = 17.2, xp = 52000, seconds = 14400 }
+        local plan = ns.PlannerReadPlanCode(ns.PlannerPlanCode(long(120), summary))
+        if not (plan and #plan.st == 120 and plan.more == 0) then error("120 steps round-trip: " .. tostring(plan and #plan.st) .. " " .. tostring(plan and plan.more)) end
+        if plan.st[120].x ~= 31.3 or plan.st[120].z ~= 1 or plan.xp ~= 52000 or plan.lv[2] ~= 17 then error("the last step and the totals come back") end
+        local p2 = ns.PlannerReadPlanCode(ns.PlannerPlanCode(long(160), summary))
+        if not (p2 and #p2.st == 150 and p2.more == 10) then error("150 steps at most, the rest counted: " .. tostring(p2 and #p2.st) .. " " .. tostring(p2 and p2.more)) end
+        -- the preview page: every step, in a list that scrolls
+        local lines = ns.PlannerPreviewLines(long(120), summary)
+        if #lines < 120 or lines[120].left:sub(1, 5) ~= "120. " then error("the preview lists all 120 steps") end
+        local w = ns:ShowList("PlanPreview", "Preview the next hour", lines, nil, 440, 420)
+        if not (w.rows[#lines] and w.area and w.area.SetContentHeight) then error("a row for each line, in a scroll area") end
+        w:Hide()
+    end)
+    env.C_Map = saved.map
+    if not ok then error(err, 0) end
+end)
+try("13.5.1 accept: the route plans again when you take a quest", function()
+    local real = { map = env.C_Map, vec = rawget(env, "CreateVector2D"), ql = env.C_QuestLog, level = env.UnitLevel, time = env.GetTime,
+                   source = ns.PlannerSource, replan = ns.PlannerReplan }
+    local saved = { guides = ns.root.guides, state = ns.root.guideState, planner = ns.root.planner, keep = ns.db.plannerKeepRoute }
+    local pos, clock = { 1, 30, 40 }, 7000
+    local cm = {}
+    for k, v in pairs(real.map) do cm[k] = v end
+    cm.GetWorldPosFromMapPos = function(map, v) if map == 1 then return 0, { x = v.x * 1000, y = v.y * 1000 } end end
+    cm.GetBestMapForUnit = function() return pos[1] end
+    cm.GetPlayerMapPosition = function() return { GetXY = function() return pos[2] / 100, pos[3] / 100 end } end
+    cm.GetMapInfo = function(map) return map == 1 and { name = "Testshire" } or nil end
+    env.C_Map = cm
+    env.CreateVector2D = function(x, y) return { x = x, y = y } end
+    env.UnitLevel = function() return 10 end
+    env.GetTime = function() return clock end
+    local accepted, logged = {}, {}
+    env.C_QuestLog = { IsOnQuest = function(id) return accepted[id] or false end, IsQuestFlaggedCompleted = function() return false end,
+        IsComplete = function() return false end, ReadyForTurnIn = function() return false end,
+        GetTitleForQuestID = function(id) return "Quest " .. id end,
+        GetNumQuestLogEntries = function() return #logged end,
+        GetInfo = function(i) return logged[i] and { questID = logged[i], title = "Quest " .. logged[i], questLevel = 10 } or nil end,
+        GetLogIndexForQuestID = function(id) for i, q in ipairs(logged) do if q == id then return i end end end,
+        GetNextWaypoint = function() return 1, 0.31, 0.41 end }
+    local function rec(id, x, y)
+        return { id = id, name = "Quest " .. id, level = 10, minLevel = 1, xp = 400,
+            starts = { { map = 1, x = x, y = y } }, ends = { { map = 1, x = x, y = y } },
+            objectives = { { kind = "kill", count = 4, countKnown = true, mobLevel = 10, spots = { { map = 1, x = x + 4, y = y + 4 } } } },
+            pre = {}, preAny = {}, exclusive = {}, elite = false, group = false, dungeon = false, repeatable = false, doable = true }
+    end
+    local recs, ids = {}, {}
+    for i = 1, 6 do recs[600 + i] = rec(600 + i, 30 + (i % 2), 40 + math.floor(i / 2)); ids[i] = 600 + i end
+    local world = { kind = "questie", ids = function() return ids end, quest = function(id) return recs[id] end, inns = function() return {} end }
+    ns.PlannerSource = function() return world end
+    ns.root.guides, ns.root.guideState, ns.root.planner = nil, nil, nil
+    ns.db.plannerKeepRoute = false
+    fireEvent("PLAYER_REGEN_ENABLED")
+    local function frame()
+        for i = 1, #handlers do local h = handlers[i]; if h.name == "OnUpdate" then pcall(h.fn, h.self, 0.02) end end
+        runTimers()
+    end
+    local function settle()
+        for _ = 1, 3000 do
+            if not ns.plannerBusy and not ns.plannerQueued then return end
+            frame()
+        end
+        error("the planner never finished")
+    end
+    local function planned() return ns:GuideGet(ns.GUIDE_PLANNED) end
+    local asks = {}
+    local function accepts() local n = 0 for _, a in ipairs(asks) do if a.why == "accept" then n = n + 1 end end return n end
+    local function take(id, inLog)
+        accepted[id] = true
+        if inLog ~= false then logged[#logged + 1] = id end
+        fireEvent("QUEST_ACCEPTED", #logged, id)
+        frame()
+    end
+    local ok, err = pcall(function()
+        if ns:PlannerStart() ~= true then error("PlannerStart") end
+        settle()
+        local first = planned() and planned().steps[1]
+        if not (first and first.kind == "accept" and first.quest) then error("the plan starts with an accept") end
+        local q = first.quest
+        local others = {}
+        for _, id in ipairs(ids) do if id ~= q then others[#others + 1] = id end end
+        ns.PlannerReplan = function(self, why) local r = real.replan(self, why); asks[#asks + 1] = { why = why, ok = r }; return r end
+        -- a planned quest taken: the accept step is ticked first, then one replan half a second later
+        take(q)
+        if accepts() ~= 0 then error("not at once: a burst may follow") end
+        if (ns.GuideState().at or 1) < 2 then error("the guide ticks the accept step first: at " .. tostring(ns.GuideState().at)) end
+        clock = clock + 0.6; frame()
+        if accepts() ~= 1 or asks[#asks].ok ~= true then error("one replan after the accept: " .. accepts()) end
+        settle()
+        for _ = 1, 5 do clock = clock + 0.5; frame() end
+        if accepts() ~= 1 then error("only one: " .. accepts()) end
+        local s1 = planned().steps[1]
+        if not s1 or (s1.kind == "accept" and s1.quest == q) then error("the new plan no longer starts with that accept") end
+        for _, s in ipairs(planned().steps) do if s.kind == "accept" and s.quest == q then error("the quest in your log is not accepted again") end end
+        -- three accepts within 0.3 s: one replan
+        asks = {}
+        take(others[1]); clock = clock + 0.1
+        take(others[2]); clock = clock + 0.2
+        take(others[3]); clock = clock + 0.4; frame()
+        if accepts() ~= 0 then error("the burst is still coming: no replan yet") end
+        clock = clock + 0.2; frame()
+        if accepts() ~= 1 then error("three accepts, one replan: " .. accepts()) end
+        settle()
+        for _ = 1, 5 do clock = clock + 0.5; frame() end
+        if accepts() ~= 1 then error("still one: " .. accepts()) end
+        -- the log does not have the quest yet: the replan waits for it, at most about 2 s
+        asks = {}
+        take(others[4], false)
+        clock = clock + 0.6; frame()
+        if accepts() ~= 0 then error("waits until the log has the quest") end
+        logged[#logged + 1] = others[4]; frame()
+        if accepts() ~= 1 then error("the log has it: the replan") end
+        settle()
+        asks = {}
+        take(9999, false)
+        clock = clock + 1; frame()
+        if accepts() ~= 0 then error("not in the log yet") end
+        clock = clock + 1.2; frame()
+        if accepts() ~= 1 then error("after about 2 s it plans anyway") end
+        settle()
+        -- Keep my route: the accept asks, PlannerReplan refuses, nothing replans
+        asks = {}
+        ns.db.plannerKeepRoute = true
+        take(9998)
+        clock = clock + 0.6; frame()
+        if accepts() ~= 1 or asks[#asks].ok ~= false or ns.plannerQueued then error("Keep my route: nothing replans") end
+        if ns.plannerBusy then error("and nothing runs") end
+    end)
+    ns.PlannerReplan = real.replan
+    ns:PlannerStop()
+    ns.plannerQueued = false
+    env.C_Map = real.map; rawset(env, "CreateVector2D", real.vec); env.C_QuestLog = real.ql; env.UnitLevel = real.level; env.GetTime = real.time
+    ns.PlannerSource = real.source
+    ns.PlannerSourceReset()
+    ns.db.plannerKeepRoute = saved.keep
+    ns:GuideSetPlan(nil)
+    ns.root.guides, ns.root.guideState, ns.root.planner = saved.guides, saved.state, saved.planner
+    if not ok then error(err, 0) end
+end)
+-- 13.5.1 plan ahead tests: end
 --
 -- 13.5 D data tests: begin
 do

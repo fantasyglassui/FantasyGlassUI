@@ -21,6 +21,14 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["Plan ahead"] = "Vorausplanen",
+    ["Plan ahead: %s"] = "Vorausplanen: %s",
+    ["Near"] = "Nah",
+    ["Far"] = "Weit",
+    ["Very far"] = "Sehr weit",
+    ["Near: the next couple of quest hubs (7 to 18 steps)."] = "Nah: die nächsten paar Questgebiete (7 bis 18 Schritte).",
+    ["Far: about 5 hubs."] = "Weit: etwa 5 Gebiete.",
+    ["Very far: about 10 hubs, a whole session. The far end is a best guess, as quests unlock as you level, and is planned again as you play."] = "Sehr weit: etwa 10 Gebiete, eine ganze Spielsitzung. Das ferne Ende ist nur eine Schätzung, weil Quests mit deiner Stufe freigeschaltet werden, und wird beim Spielen neu geplant.",
     ["Each error in Fantasy Glass UI is kept on your computer, at most 30, so Report a problem can include them. Names are removed wherever the add-on can find them. Look over the report before you share it. Nothing is sent by itself. Turning it off clears them, after you confirm."] = "Jeder Fehler in Fantasy Glass UI wird auf deinem Computer behalten, höchstens 30, damit Problem melden sie mitschicken kann. Namen werden entfernt, wo immer das Add-on sie finden kann. Sieh dir den Bericht an, bevor du ihn teilst. Nichts wird von selbst gesendet. Wenn du es ausschaltest, werden sie gelöscht, nachdem du bestätigt hast.",
     ["Each report holds the error's message with paths cut to the add-on's own files, the top lines of where it happened, the add-on's version, the game's build, the part it was in, how often it happened, and when it was first and last seen. Names are removed wherever the add-on can find them. Look over the report before you share it."] = "Jeder Bericht enthält die Meldung des Fehlers, mit Pfaden gekürzt auf die eigenen Dateien des Add-ons, die obersten Zeilen der Stelle, an der er passiert ist, die Version des Add-ons, den Build des Spiels, den Teil, in dem er war, wie oft er passiert ist und wann er zuerst und zuletzt gesehen wurde. Namen werden entfernt, wo immer das Add-on sie finden kann. Sieh dir den Bericht an, bevor du ihn teilst.",
     ["Help improve time estimates"] = "Hilf, die Zeitschätzungen zu verbessern",
@@ -3956,6 +3964,14 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["Plan ahead"] = "Planifier en avance",
+    ["Plan ahead: %s"] = "Planifier en avance : %s",
+    ["Near"] = "Proche",
+    ["Far"] = "Loin",
+    ["Very far"] = "Très loin",
+    ["Near: the next couple of quest hubs (7 to 18 steps)."] = "Proche : les prochaines zones de quêtes (7 à 18 étapes).",
+    ["Far: about 5 hubs."] = "Loin : environ 5 zones.",
+    ["Very far: about 10 hubs, a whole session. The far end is a best guess, as quests unlock as you level, and is planned again as you play."] = "Très loin : environ 10 zones, une séance entière. La fin n'est qu'une estimation, car des quêtes se débloquent à mesure que vous montez de niveau, et elle est replanifiée pendant que vous jouez.",
     ["Each error in Fantasy Glass UI is kept on your computer, at most 30, so Report a problem can include them. Names are removed wherever the add-on can find them. Look over the report before you share it. Nothing is sent by itself. Turning it off clears them, after you confirm."] = "Chaque erreur de Fantasy Glass UI est conservée sur votre ordinateur, 30 au plus, pour que Signaler un problème puisse les inclure. Les noms sont retirés partout où l'add-on peut les trouver. Relisez le rapport avant de le partager. Rien n'est envoyé tout seul. Le désactiver les efface, après votre confirmation.",
     ["Each report holds the error's message with paths cut to the add-on's own files, the top lines of where it happened, the add-on's version, the game's build, the part it was in, how often it happened, and when it was first and last seen. Names are removed wherever the add-on can find them. Look over the report before you share it."] = "Chaque rapport contient le message de l'erreur, avec les chemins réduits aux propres fichiers de l'add-on, les premières lignes de l'endroit où elle s'est produite, la version de l'add-on, le build du jeu, la partie concernée, sa fréquence, et quand elle a été vue pour la première et la dernière fois. Les noms sont retirés partout où l'add-on peut les trouver. Relisez le rapport avant de le partager.",
     ["Help improve time estimates"] = "Aider à améliorer les estimations de temps",
@@ -7891,6 +7907,14 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["Plan ahead"] = "Planificar con antelación",
+    ["Plan ahead: %s"] = "Planificar con antelación: %s",
+    ["Near"] = "Cerca",
+    ["Far"] = "Lejos",
+    ["Very far"] = "Muy lejos",
+    ["Near: the next couple of quest hubs (7 to 18 steps)."] = "Cerca: las próximas zonas de misiones (de 7 a 18 pasos).",
+    ["Far: about 5 hubs."] = "Lejos: unas 5 zonas.",
+    ["Very far: about 10 hubs, a whole session. The far end is a best guess, as quests unlock as you level, and is planned again as you play."] = "Muy lejos: unas 10 zonas, una sesión entera. El final es solo una estimación, porque las misiones se desbloquean al subir de nivel, y se vuelve a planificar mientras juegas.",
     ["Each error in Fantasy Glass UI is kept on your computer, at most 30, so Report a problem can include them. Names are removed wherever the add-on can find them. Look over the report before you share it. Nothing is sent by itself. Turning it off clears them, after you confirm."] = "Cada error de Fantasy Glass UI se guarda en tu ordenador, como mucho 30, para que Informar de un problema pueda incluirlos. Los nombres se quitan allí donde el accesorio puede encontrarlos. Revisa el informe antes de compartirlo. No se envía nada por sí solo. Al desactivarlo se borran, después de que lo confirmes.",
     ["Each report holds the error's message with paths cut to the add-on's own files, the top lines of where it happened, the add-on's version, the game's build, the part it was in, how often it happened, and when it was first and last seen. Names are removed wherever the add-on can find them. Look over the report before you share it."] = "Cada informe contiene el mensaje del error, con las rutas recortadas a los propios archivos del accesorio, las primeras líneas de dónde ocurrió, la versión del accesorio, la compilación del juego, la parte en la que estaba, cuántas veces ocurrió y cuándo se vio por primera y última vez. Los nombres se quitan allí donde el accesorio puede encontrarlos. Revisa el informe antes de compartirlo.",
     ["Help improve time estimates"] = "Ayudar a mejorar las estimaciones de tiempo",
@@ -11829,6 +11853,14 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["Plan ahead"] = "Планировать вперёд",
+    ["Plan ahead: %s"] = "Планировать вперёд: %s",
+    ["Near"] = "Близко",
+    ["Far"] = "Далеко",
+    ["Very far"] = "Очень далеко",
+    ["Near: the next couple of quest hubs (7 to 18 steps)."] = "Близко: ближайшие два-три района заданий (от 7 до 18 шагов).",
+    ["Far: about 5 hubs."] = "Далеко: около 5 районов.",
+    ["Very far: about 10 hubs, a whole session. The far end is a best guess, as quests unlock as you level, and is planned again as you play."] = "Очень далеко: около 10 районов, целая игровая сессия. Дальний конец — лишь прикидка, ведь задания открываются с ростом уровня, и он планируется заново, пока вы играете.",
     ["Each error in Fantasy Glass UI is kept on your computer, at most 30, so Report a problem can include them. Names are removed wherever the add-on can find them. Look over the report before you share it. Nothing is sent by itself. Turning it off clears them, after you confirm."] = "Каждая ошибка Fantasy Glass UI сохраняется на вашем компьютере, не больше 30, чтобы «Сообщить о проблеме» могло их включить. Имена удаляются везде, где аддон может их найти. Просмотрите отчёт, прежде чем делиться им. Ничего не отправляется само. Если выключить, они удаляются после подтверждения.",
     ["Each report holds the error's message with paths cut to the add-on's own files, the top lines of where it happened, the add-on's version, the game's build, the part it was in, how often it happened, and when it was first and last seen. Names are removed wherever the add-on can find them. Look over the report before you share it."] = "Каждый отчёт содержит сообщение об ошибке с путями, сокращёнными до собственных файлов аддона, верхние строки того места, где она произошла, версию аддона, сборку игры, часть, в которой она была, как часто она случалась и когда её видели впервые и в последний раз. Имена удаляются везде, где аддон может их найти. Просмотрите отчёт, прежде чем делиться им.",
     ["Help improve time estimates"] = "Помочь улучшить оценки времени",
@@ -15764,6 +15796,14 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["Plan ahead"] = "Planejar adiante",
+    ["Plan ahead: %s"] = "Planejar adiante: %s",
+    ["Near"] = "Perto",
+    ["Far"] = "Longe",
+    ["Very far"] = "Muito longe",
+    ["Near: the next couple of quest hubs (7 to 18 steps)."] = "Perto: as próximas áreas de missões (7 a 18 etapas).",
+    ["Far: about 5 hubs."] = "Longe: cerca de 5 áreas.",
+    ["Very far: about 10 hubs, a whole session. The far end is a best guess, as quests unlock as you level, and is planned again as you play."] = "Muito longe: cerca de 10 áreas, uma sessão inteira. O final é só uma estimativa, pois missões são liberadas conforme você sobe de nível, e é planejado de novo enquanto você joga.",
     ["Each error in Fantasy Glass UI is kept on your computer, at most 30, so Report a problem can include them. Names are removed wherever the add-on can find them. Look over the report before you share it. Nothing is sent by itself. Turning it off clears them, after you confirm."] = "Cada erro do Fantasy Glass UI é guardado no seu computador, no máximo 30, para que Relatar um problema possa incluí-los. Os nomes são removidos onde quer que o add-on consiga encontrá-los. Revise o relatório antes de compartilhá-lo. Nada é enviado sozinho. Desligar apaga-os, depois que você confirmar.",
     ["Each report holds the error's message with paths cut to the add-on's own files, the top lines of where it happened, the add-on's version, the game's build, the part it was in, how often it happened, and when it was first and last seen. Names are removed wherever the add-on can find them. Look over the report before you share it."] = "Cada relatório traz a mensagem do erro, com os caminhos cortados para os próprios arquivos do add-on, as primeiras linhas de onde aconteceu, a versão do add-on, a build do jogo, a parte em que estava, quantas vezes aconteceu e quando foi visto pela primeira e pela última vez. Os nomes são removidos onde quer que o add-on consiga encontrá-los. Revise o relatório antes de compartilhá-lo.",
     ["Help improve time estimates"] = "Ajudar a melhorar as estimativas de tempo",
@@ -19699,6 +19739,14 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["Plan ahead"] = "Pianifica in anticipo",
+    ["Plan ahead: %s"] = "Pianifica in anticipo: %s",
+    ["Near"] = "Vicino",
+    ["Far"] = "Lontano",
+    ["Very far"] = "Molto lontano",
+    ["Near: the next couple of quest hubs (7 to 18 steps)."] = "Vicino: le prossime zone di missioni (da 7 a 18 passi).",
+    ["Far: about 5 hubs."] = "Lontano: circa 5 zone.",
+    ["Very far: about 10 hubs, a whole session. The far end is a best guess, as quests unlock as you level, and is planned again as you play."] = "Molto lontano: circa 10 zone, un'intera sessione. La parte finale è solo una stima, perché le missioni si sbloccano salendo di livello, e viene ripianificata mentre giochi.",
     ["Each error in Fantasy Glass UI is kept on your computer, at most 30, so Report a problem can include them. Names are removed wherever the add-on can find them. Look over the report before you share it. Nothing is sent by itself. Turning it off clears them, after you confirm."] = "Ogni errore di Fantasy Glass UI viene conservato sul tuo computer, al massimo 30, così Segnala un problema può includerli. I nomi vengono tolti ovunque l'add-on riesca a trovarli. Controlla il rapporto prima di condividerlo. Niente viene inviato da solo. Spegnerlo li cancella, dopo che hai confermato.",
     ["Each report holds the error's message with paths cut to the add-on's own files, the top lines of where it happened, the add-on's version, the game's build, the part it was in, how often it happened, and when it was first and last seen. Names are removed wherever the add-on can find them. Look over the report before you share it."] = "Ogni rapporto contiene il messaggio dell'errore, con i percorsi ridotti ai file dell'add-on stesso, le prime righe del punto in cui è successo, la versione dell'add-on, la build del gioco, la parte in cui era, quante volte è successo e quando è stato visto la prima e l'ultima volta. I nomi vengono tolti ovunque l'add-on riesca a trovarli. Controlla il rapporto prima di condividerlo.",
     ["Help improve time estimates"] = "Aiuta a migliorare le stime dei tempi",
@@ -23634,6 +23682,14 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["Plan ahead"] = "미리 계획",
+    ["Plan ahead: %s"] = "미리 계획: %s",
+    ["Near"] = "가까이",
+    ["Far"] = "멀리",
+    ["Very far"] = "아주 멀리",
+    ["Near: the next couple of quest hubs (7 to 18 steps)."] = "가까이: 다음 몇 개의 퀘스트 지역 (7~18단계).",
+    ["Far: about 5 hubs."] = "멀리: 약 5개 지역.",
+    ["Very far: about 10 hubs, a whole session. The far end is a best guess, as quests unlock as you level, and is planned again as you play."] = "아주 멀리: 약 10개 지역, 한 번의 플레이 전체. 레벨이 오르면서 퀘스트가 열리므로 끝부분은 추정일 뿐이며, 플레이하는 동안 다시 계획됩니다.",
     ["Each error in Fantasy Glass UI is kept on your computer, at most 30, so Report a problem can include them. Names are removed wherever the add-on can find them. Look over the report before you share it. Nothing is sent by itself. Turning it off clears them, after you confirm."] = "Fantasy Glass UI의 각 오류가 최대 30개까지 내 컴퓨터에 보관되어 문제 신고에 포함될 수 있습니다. 애드온이 찾을 수 있는 곳에서는 이름을 지웁니다. 공유하기 전에 보고서를 살펴보세요. 어떤 것도 저절로 전송되지 않습니다. 끄면 확인한 뒤에 지워집니다.",
     ["Each report holds the error's message with paths cut to the add-on's own files, the top lines of where it happened, the add-on's version, the game's build, the part it was in, how often it happened, and when it was first and last seen. Names are removed wherever the add-on can find them. Look over the report before you share it."] = "각 보고서에는 애드온 자체 파일까지만 남긴 경로가 담긴 오류 메시지, 오류가 난 위치의 맨 위 몇 줄, 애드온 버전, 게임 빌드, 오류가 난 부분, 발생 횟수, 처음과 마지막으로 본 시간이 들어 있습니다. 애드온이 찾을 수 있는 곳에서는 이름을 지웁니다. 공유하기 전에 보고서를 살펴보세요.",
     ["Help improve time estimates"] = "시간 예측 개선 돕기",
@@ -27572,6 +27628,14 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["Plan ahead"] = "提前规划",
+    ["Plan ahead: %s"] = "提前规划：%s",
+    ["Near"] = "近",
+    ["Far"] = "远",
+    ["Very far"] = "很远",
+    ["Near: the next couple of quest hubs (7 to 18 steps)."] = "近：接下来的几个任务区域（7 到 18 步）。",
+    ["Far: about 5 hubs."] = "远：约 5 个区域。",
+    ["Very far: about 10 hubs, a whole session. The far end is a best guess, as quests unlock as you level, and is planned again as you play."] = "很远：约 10 个区域，一整段游戏时间。任务会随等级提升而解锁，所以后段只是估计，并会在你游玩时重新规划。",
     ["Each error in Fantasy Glass UI is kept on your computer, at most 30, so Report a problem can include them. Names are removed wherever the add-on can find them. Look over the report before you share it. Nothing is sent by itself. Turning it off clears them, after you confirm."] = "Fantasy Glass UI 的每个错误都会保存在你的电脑上，最多 30 个，以便“报告问题”可以附上它们。插件能找到的名字都会被删除。分享之前请先检查一遍报告。任何内容都不会自动发送。关闭它会在你确认后清除它们。",
     ["Each report holds the error's message with paths cut to the add-on's own files, the top lines of where it happened, the add-on's version, the game's build, the part it was in, how often it happened, and when it was first and last seen. Names are removed wherever the add-on can find them. Look over the report before you share it."] = "每份报告包含错误信息（路径只保留到插件自己的文件）、出错位置的前几行、插件版本、游戏版本号、出错的部分、发生的次数，以及首次和最后一次出现的时间。插件能找到的名字都会被删除。分享之前请先检查一遍报告。",
     ["Help improve time estimates"] = "帮助改进时间估算",

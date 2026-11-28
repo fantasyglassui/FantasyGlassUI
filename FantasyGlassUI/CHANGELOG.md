@@ -2,6 +2,11 @@
 
 The releases published on CurseForge. Each lists what changed since the release before it.
 
+## 13.5.1
+
+- The route planner can plan further ahead: Plan ahead in the planner window takes the next couple of quest hubs (Near, as before), about 5 (Far) or about 10 (Very far), and plans again as you play.
+- The route plans again when you take a quest, so it always counts the quests in your log.
+
 ## 13.0.1
 
 Fixes from your first reports on 13.0: bags, nameplates, the class emblem and the route planner.
