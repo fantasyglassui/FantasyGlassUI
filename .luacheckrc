@@ -58,6 +58,7 @@ read_globals = {
     "AcceptQuest",
     "AcceptResurrect",
     "Ambiguate",
+    "AnchorUtil",
     "AuraUtil",
     "AutoLootMailItem",
     "BACKPACK_TOOLTIP",

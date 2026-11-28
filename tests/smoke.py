@@ -1038,6 +1038,149 @@ try("Aura lock", function()
     env.InCombatLockdown = combat
     ns.auraLock = false
 end)
+try("Target debuffs in a fight on a locked client (13.5.1)", function()
+    -- WoW: Forever hides auras from add-ons in combat. The target's row then shows the game's own aura container
+    -- (CustomAuraContainerTemplate), set up out of combat; our own icons are back once the fight is over.
+    local T, F
+    for _, f in ipairs(ns.unitFrameList or {}) do
+        if f.designKey == "Target" then T = f elseif f.designKey == "Focus" then F = f end
+    end
+    if not (T and T.auras and F and F.auras) then error("no target or focus aura row") end
+    local row = T.auras
+    if not ns.aurasLocked and rawget(row, "suiGame") then error("a client that lets us read auras needs no game container") end
+    -- The harness's stand-in for the game's container: it keeps what it is told and, while shown, shows what the game would.
+    local AURAS = { { harmful = true, mine = true }, { harmful = true }, { helpful = true } }
+    local made = {}
+    local function Fake()
+        local c = newmock()
+        c.groups, c.order, c.refreshed, c.isShown = {}, {}, 0, false
+        rawset(c, "SetUnit", function(self, u) self.unitToken = u end)
+        rawset(c, "AddAuraGroup", function(self, key, filter, opts)
+            local g = { filter = filter, opts = opts or {}, enabled = true, max = (opts and opts.maxFrameCount) or math.huge, frames = {} }
+            self.groups[key] = g; self.order[#self.order + 1] = key
+            for i = 1, 3 do                                    -- (the game makes a batch of buttons up front)
+                local b = newmock()
+                rawset(b, "SetIcon", function(_, t) b.gotIcon = t end)
+                rawset(b, "SetDurationCooldown", function(_, cd) b.gotCooldown = cd end)
+                rawset(b, "SetApplicationCount", function(_, fs) b.gotCount = fs end)
+                rawset(b, "SetSize", function(_, w) b.size = w end)
+                if g.opts.initializeFrame then g.opts.initializeFrame(b) end
+                g.frames[i] = b
+            end
+        end)
+        rawset(c, "SetAuraGroupFilterString", function(self, key, f) self.groups[key].filter = f end)
+        rawset(c, "SetAuraGroupMaxFrameCount", function(self, key, n) self.groups[key].max = n end)
+        rawset(c, "SetAuraGroupEnabled", function(self, key, on) self.groups[key].enabled = on end)
+        rawset(c, "SetAuraGroupLayout", function(self, key, l) self.groups[key].layout = l end)
+        rawset(c, "GetAuraGroupFrameCount", function(self, key) return #self.groups[key].frames end)
+        rawset(c, "GetAuraGroupFrame", function(self, key, i) return self.groups[key].frames[i] end)
+        rawset(c, "SetFlowLayoutAnchorPoint", function(self, p) self.anchorPoint = p end)
+        rawset(c, "UpdateAllAuras", function(self) self.refreshed = self.refreshed + 1 end)
+        rawset(c, "Show", function(self) self.isShown = true end)
+        rawset(c, "Hide", function(self) self.isShown = false end)
+        c.Showing = function(self)                            -- icons on screen
+            if not self.isShown then return 0 end
+            local n = 0
+            for _, key in ipairs(self.order) do
+                local g, k = self.groups[key], 0
+                if g.enabled then
+                    for _, a in ipairs(AURAS) do
+                        local fits = (g.filter == "HARMFUL" and a.harmful) or (g.filter == "HARMFUL|PLAYER" and a.harmful and a.mine) or (g.filter == "HELPFUL" and a.helpful)
+                        if fits and k < g.max then k = k + 1 end
+                    end
+                end
+                n = n + k
+            end
+            return n
+        end
+        made[#made + 1] = c
+        return c
+    end
+    local keep = { locked = ns.aurasLocked, cf = env.CreateFrame, combat = env.InCombatLockdown, read = env.C_UnitAuras.GetAuraDataByIndex,
+                   design = ns.db.auraDesign, game = rawget(row, "suiGame"), fgame = rawget(F.auras, "suiGame") }
+    env.CreateFrame = function(kind, name, parent, template, ...)
+        if kind == "AuraContainer" then
+            if template ~= "CustomAuraContainerTemplate" then error("the container is made from the game's template, not " .. tostring(template)) end
+            return Fake()
+        end
+        return keep.cf(kind, name, parent, template, ...)
+    end
+    -- our own icons on screen: their Show and Hide are watched
+    local function Ours()
+        local n = 0
+        for _, b in ipairs(row.buttons) do if rawget(b, "vis") then n = n + 1 end end
+        return n
+    end
+    local function Watch()
+        for _, b in ipairs(row.buttons) do
+            rawset(b, "Show", function(self) rawset(self, "vis", true) end)
+            rawset(b, "Hide", function(self) rawset(self, "vis", false) end)
+        end
+    end
+    local ok, err = pcall(function()
+        ns.aurasLocked = true
+        env.InCombatLockdown = function() return false end
+        fireEvent("PLAYER_REGEN_ENABLED")                      -- (no fight going on)
+        rawset(row, "suiGame", nil); rawset(F.auras, "suiGame", nil)
+        ns.db.auraDesign = { target = { show = "debuffs", mine = false, max = 10, size = 24, side = "above", grow = "left" }, focus = { show = "none" } }
+        ns:ApplyAuraDesign()
+        if rawget(F.auras, "suiGame") then error("a frame that shows no auras gets no container") end
+        ns.db.auraDesign.focus = { show = "debuffs" }
+        ns:ApplyAuraDesign()
+        local c = rawget(row, "suiGame")
+        if not c or not c.groups then error("the target has no game aura container") end
+        if c.unitToken ~= "target" then error("the container watches " .. tostring(c.unitToken) .. ", not the target") end
+        local fc = rawget(F.auras, "suiGame")
+        if not fc or fc.unitToken ~= "focus" then error("the focus gets its own container") end
+        local deb = c.groups.debuffs
+        if not deb or deb.filter ~= "HARMFUL" or not deb.enabled or deb.max ~= 10 then error("the debuff group does not follow the designer") end
+        if c.groups.buffs and c.groups.buffs.enabled then error("debuffs only: no buffs") end
+        if not deb.layout or deb.layout.elementWidth ~= 24 or deb.frames[1].size ~= 24 then error("the icons are not the designer's size") end
+        if c.anchorPoint ~= "BOTTOMRIGHT" then error("above, growing left: the row starts at the bottom right, not " .. tostring(c.anchorPoint)) end
+        local b1 = deb.frames[1]
+        if not (b1.gotIcon and b1.gotCooldown and b1.gotCount) then error("the game's buttons did not get our icon, timer and count") end
+        -- out of combat: our icons, not the game's
+        env.InCombatLockdown = function() return false end
+        ns.UnitFrameUpdate(T)
+        Watch(); ns.UnitFrameUpdate(T)
+        if Ours() ~= 3 or c:Showing() ~= 0 then error("out of combat: our 3 icons and none of the game's, got " .. Ours() .. " and " .. c:Showing()) end
+        -- a fight: the game refuses aura data; the target still shows its debuffs, once
+        env.C_UnitAuras.GetAuraDataByIndex = function() error("Auras cannot be accessed when secret while tainted by 'FantasyGlassUI'") end
+        fireEvent("PLAYER_REGEN_DISABLED")
+        env.InCombatLockdown = function() return true end
+        local before = c.refreshed
+        ns.UnitFrameUpdate(T)                                  -- (a new target in the fight)
+        if c:Showing() ~= 2 or Ours() ~= 0 then error("in combat: the target's 2 debuffs through the game's container and none of ours, got " .. c:Showing() .. " and " .. Ours()) end
+        if c.refreshed <= before then error("a new target in a fight: the container is asked to look again") end
+        env.InCombatLockdown = function() return false end      -- (the game ends the lockdown, then says so)
+        env.C_UnitAuras.GetAuraDataByIndex = keep.read
+        fireEvent("PLAYER_REGEN_ENABLED")
+        ns.auraLock = false
+        ns.UnitFrameUpdate(T)
+        if c:Showing() ~= 0 or Ours() ~= 3 then error("after the fight: ours again, got " .. Ours() .. " and " .. c:Showing()) end
+        -- only mine
+        ns.db.auraDesign.target.mine = true
+        ns:ApplyAuraDesign()
+        if deb.filter ~= "HARMFUL|PLAYER" then error("only mine: the container asks for your debuffs only") end
+        fireEvent("PLAYER_REGEN_DISABLED")
+        env.InCombatLockdown = function() return true end
+        ns.UnitFrameUpdate(T)
+        if c:Showing() ~= 1 then error("only mine, in combat: your 1 debuff, got " .. c:Showing()) end
+        -- the designer changed in a fight waits for its end
+        ns.db.auraDesign.target.max = 4
+        ns:ApplyAuraDesign()
+        if deb.max ~= 10 then error("the container is not changed in combat") end
+        env.InCombatLockdown = function() return false end
+        fireEvent("PLAYER_REGEN_ENABLED")
+        if deb.max ~= 4 then error("after the fight, the waiting change is made") end
+    end)
+    env.CreateFrame, env.InCombatLockdown, env.C_UnitAuras.GetAuraDataByIndex = keep.cf, keep.combat, keep.read
+    ns.aurasLocked, ns.db.auraDesign, ns.auraLock = keep.locked, keep.design, false
+    rawset(row, "suiGame", keep.game); rawset(F.auras, "suiGame", keep.fgame)
+    for _, b in ipairs(row.buttons) do rawset(b, "Show", nil); rawset(b, "Hide", nil) end
+    ns:ApplyAuraDesign()
+    if not ok then error(err, 0) end
+end)
 try("Tree of hovered window", function()
     env.GetMouseFoci = function() return { known.__char.slot } end      -- mouse over a slot: should climb to CharacterFrame
     local lines = ns:DumpTree()

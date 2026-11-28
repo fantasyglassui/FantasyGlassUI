@@ -12,6 +12,9 @@ Longer routes, an arrow to the mobs you need, and a nameplate fix.
 - The route plans again when you take a quest, so it always counts the quests in your log.
 - Always open the world map windowed (World map and travel): the map opens as a window, not full screen; its
   own button still switches it until you close it.
+- Target and focus frames: your damage over time and the target's other debuffs show in a fight on WoW:
+  Forever, which hides them from add-ons in combat. The game's own aura icons take the row's place
+  until the fight ends, in our look and as the aura designer is set.
 
 ## 13.5.0
 

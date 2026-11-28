@@ -686,6 +686,101 @@ function ns.AuraSlot(i, size, grow)
     if grow == "left" then return "BOTTOMRIGHT", -step end
     return "BOTTOMLEFT", step
 end
+-- In a fight on a client that hides auras from add-ons (WoW: Forever), our row can't read a single aura,
+-- so it would be empty just when your damage over time matters. The game offers add-ons its own aura
+-- container (CustomAuraContainerTemplate): it reads the unit's auras in its own secure code and fills
+-- buttons we dress. So in a fight the row's icons come from that container, and out of combat from our
+-- own row as before (with its tooltips, hidden names and own-debuff rim). One or the other, never both.
+-- The container is made and set out of combat only; in a fight it is only shown, hidden or asked to look again.
+local auraFight = false                                    -- between the game's "combat starts" and "combat ends"
+local DISPEL_LETTERS = { Magic = "M", Curse = "C", Poison = "P", Disease = "D" }
+local function DressGameAura(row, debuff, b)               -- our look on one of the container's buttons, as it is made
+    local size = row.size or 22
+    b:SetSize(size, size)
+    local icon = b:CreateTexture(nil, "ARTWORK")
+    icon:SetAllPoints()
+    icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    b:SetIcon(icon)
+    local ok, cd = pcall(CreateFrame, "Cooldown", nil, b, "CooldownFrameTemplate")
+    if ok and cd then
+        cd:SetAllPoints()
+        if cd.SetReverse then cd:SetReverse(true) end
+        if cd.SetHideCountdownNumbers then cd:SetHideCountdownNumbers(true) end
+        b:SetDurationCooldown(cd)
+    end
+    local count = Text(b, 10, "RIGHT")
+    count:SetPoint("BOTTOMRIGHT", 1, 0)
+    b:SetApplicationCount(count)
+    ns:AddBorder(b, 0, 0, 0, 1)
+    local styles = debuff and Enum and Enum.CustomAuraButtonDispelTypeTextureStyle
+    if styles and styles.PreserveAsset then
+        -- a debuff's edge in the color of what removes it (red for the rest), as the game colors it
+        local edge = b:CreateTexture(nil, "BACKGROUND")
+        edge:SetPoint("TOPLEFT", b, "TOPLEFT", -1, 1)
+        edge:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", 1, -1)
+        edge:SetColorTexture(1, 1, 1, 1)
+        b:AddDispelTypeTexture(edge, { style = styles.PreserveAsset, showWithoutDispelType = true })
+        b.suiBorder:Hide()                             -- (the outer dark line stays)
+        if ns.db.colorblind then                       -- color-blind aid: M / C / P / D
+            local letter = Text(b, 9, "LEFT")
+            letter:SetPoint("TOPLEFT", 1, -1)
+            b:SetDispelTypeText(letter, { customDispelTextMap = DISPEL_LETTERS })
+        end
+    end
+    if b.SetTooltipAnchorPoint then b:SetTooltipAnchorPoint("ANCHOR_BOTTOMRIGHT") end
+end
+local function GameAuraButton(row, debuff)
+    return function(b) pcall(DressGameAura, row, debuff, b) end           -- (the game is making its button: never break that)
+end
+-- The row's game container, made the first time it is needed (out of combat, locked clients only).
+local function GameAuras(row)
+    if row.suiGame ~= nil then return row.suiGame or nil end
+    if not ns.aurasLocked or InCombatLockdown() then return nil end
+    row.suiGame = false
+    local ok, c = pcall(CreateFrame, "AuraContainer", nil, row, "CustomAuraContainerTemplate")
+    if not ok or type(c) ~= "table" or not c.AddAuraGroup then return nil end
+    c:Hide()
+    local made = pcall(function()
+        c:SetUnit(row.unitFrame.realUnit or row.unitFrame.unit)
+        c:AddAuraGroup("debuffs", "HARMFUL", { initializeFrame = GameAuraButton(row, true) })
+        c:AddAuraGroup("buffs", "HELPFUL", { initializeFrame = GameAuraButton(row, false) })
+    end)
+    if not made then return nil end
+    row.suiGame = c
+    return c
+end
+-- The aura designer's settings on the container: what shows, only yours, how many, how big, which way.
+local function GameAurasLayout(row, d, side)
+    if not ns.aurasLocked then return end
+    if InCombatLockdown() then row.suiGamePending = true return end
+    row.suiGamePending = nil
+    if d.show == "none" and row.suiGame == nil then return end           -- (made only once the frame shows auras)
+    local c = GameAuras(row)
+    if not c then return end
+    pcall(function()
+        local dirs = AnchorUtil and AnchorUtil.FlowDirection
+        local left, down = d.grow == "left", side == "below"
+        local corner = (down and "TOP" or "BOTTOM") .. (left and "RIGHT" or "LEFT")
+        c:ClearAllPoints()
+        c:SetPoint(corner, row, corner, 0, 0)
+        c:SetFlowLayoutAnchorPoint(corner)
+        if dirs then c:SetFlowLayoutGrowthDirection(left and dirs.Left or dirs.Right, down and dirs.Down or dirs.Up) end
+        local w = row:GetWidth()
+        if type(w) == "number" and w > d.size then c:SetFlowLayoutMaximumLineSize(w) end      -- (a long row wraps, away from the frame)
+        local max = (d.show == "none") and 0 or d.max
+        c:SetAuraGroupFilterString("debuffs", d.mine and "HARMFUL|PLAYER" or "HARMFUL")
+        for key, on in pairs({ debuffs = d.show == "both" or d.show == "debuffs", buffs = d.show == "both" or d.show == "buffs" }) do
+            c:SetAuraGroupLayout(key, { elementSpacing = 3, lineSpacing = 3, groupSpacing = 3, elementWidth = d.size, elementHeight = d.size })
+            c:SetAuraGroupMaxFrameCount(key, max)
+            c:SetAuraGroupEnabled(key, on)
+            for i = 1, c:GetAuraGroupFrameCount(key) do        -- buttons made before: the new size
+                local b = c:GetAuraGroupFrame(key, i)
+                if b then b:SetSize(d.size, d.size) end
+            end
+        end
+    end)
+end
+
 local function AuraRowLayout(row)
     local f = row.unitFrame
     local d = ns.AuraDesign(row.kind)
@@ -714,6 +809,7 @@ local function AuraRowLayout(row)
         b:ClearAllPoints()
         b:SetPoint(point, row, point, x, 0)
     end
+    GameAurasLayout(row, d, side)
 end
 local function AuraButton(row, i)
     local b = CreateFrame("Frame", nil, row)
@@ -749,9 +845,19 @@ local function AuraButton(row, i)
     return b
 end
 
-local function UpdateAuras(f)
+local function UpdateAuras(f, newUnit)
     local row = f.auras
     if not row then return end
+    local game = row.suiGame
+    if game and (auraFight or InCombatLockdown()) then     -- a fight on a locked client: the game's container shows them
+        for i = 1, #row.buttons do row.buttons[i]:Hide() end
+        if not row.suiGameOn then row.suiGameOn = true; game:Show() end
+        if newUnit then pcall(game.UpdateAllAuras, game) end      -- (a new target: it doesn't notice by itself)
+        return
+    elseif game and row.suiGameOn then
+        row.suiGameOn = nil
+        game:Hide()
+    end
     local n = 0
     local get = ns.GetAura
     local function add(filter, debuff)
@@ -888,7 +994,7 @@ function UpdateAll(f)
     pcall(UpdatePower, f)
     pcall(UpdateInfo, f)
     pcall(UpdatePortrait, f)
-    pcall(UpdateAuras, f)
+    pcall(UpdateAuras, f, true)
     pcall(UpdateStatus, f)
     pcall(CastCheck, f)
 end
@@ -1470,6 +1576,23 @@ ns:NewModule("unitFrames", function()
         if ns.RefreshRaidAuras then pcall(ns.RefreshRaidAuras, ns) end
         if ns.RefreshPlateAuras then pcall(ns.RefreshPlateAuras, ns) end
         return n
+    end
+    -- A fight on a client that hides auras: the aura rows hand over to the game's containers, and take back
+    -- at its end (with any designer change that had to wait).
+    do
+        local fight = CreateFrame("Frame")
+        fight:RegisterEvent("PLAYER_REGEN_DISABLED")
+        fight:RegisterEvent("PLAYER_REGEN_ENABLED")
+        fight:SetScript("OnEvent", ns:Guard("Unit frames", function(_, event)
+            auraFight = (event == "PLAYER_REGEN_DISABLED")
+            if not ns.aurasLocked then return end
+            for _, f in ipairs(frames) do
+                if f.auras then
+                    if not auraFight and f.auras.suiGamePending then pcall(AuraRowLayout, f.auras) end
+                    pcall(UpdateAuras, f, auraFight)
+                end
+            end
+        end))
     end
     do
         local later = CreateFrame("Frame")
