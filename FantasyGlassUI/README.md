@@ -6,7 +6,7 @@ A complete interface replacement for **WoW Forever** (interface 16001): unit fra
 bars, action bars, bags and bank, quest tracker and quest log, minimap, buffs, nameplates, chat and
 the game's own windows, in one look that you choose from 116 glass, fantasy and celestial themes.
 
-Version 13.0.2
+Version 13.5.0
 
 ## Install
 

@@ -1394,6 +1394,11 @@
      "desc": "Your class quests go on the route at the right level, and the panel says when one is ready."
     },
     {
+     "key": "plannerDungeons",
+     "label": "Dungeon runs in my route",
+     "desc": "When a dungeon gives more experience an hour than the quests near you, the route picks up its quests, finds a group and runs it, solo players too."
+    },
+    {
      "key": "plannerLearnFlights",
      "label": "Learn new flight points on the way",
      "desc": "A short way round to a flight master you do not know yet, when the route passes close."
@@ -1522,6 +1527,11 @@
      "key": "plannerSpeak",
      "label": "Read the route aloud",
      "desc": "Each new step is read aloud as you reach it."
+    },
+    {
+     "key": "plannerLearnTimes",
+     "label": "Help improve time estimates",
+     "desc": "Your level, quest, flight and boat times are kept in a list of their own, with no names, at most 500, for Share my times. Nothing is sent by itself."
     },
     {
      "key": "plannerFindGroup",
@@ -2022,6 +2032,10 @@
    "desc": "the backups of your settings, made before each update, once a day and before a reset; click one to see how to put it back"
   },
   {
+   "cmd": "/fgui data",
+   "desc": "what each part of the add-on keeps, roughly how big, and a tidy-up that asks before it removes anything"
+  },
+  {
    "cmd": "/fgui history",
    "desc": "what you changed in this profile, and when; click a change to undo it"
   },
@@ -2056,6 +2070,14 @@
   {
    "cmd": "/fgui report",
    "desc": "everything needed to report a problem, ready to copy (the Report a problem button in /fgui does the same)"
+  },
+  {
+   "cmd": "/fgui health",
+   "desc": "checks that everything this version uses is still in the game, and lists what the last check after a game update found"
+  },
+  {
+   "cmd": "/fgui crashes",
+   "desc": "the crash reports kept while Keep crash reports is on (Accessibility); /fgui crashes clear offers to empty the list"
   },
   {
    "cmd": "/fgui blocked",

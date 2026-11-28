@@ -119,7 +119,7 @@ def body(ctx):
   <span class="eyebrow">[[After 13.0]]</span>
   <h1>[[Roadmap]]</h1>
   <p class="lede">[[What is coming to Fantasy Glass UI after 13.0, and what is being thought about.]]</p>
-  <p class="dim nodates">[[There are no dates: an idea moves up when it is ready, and the list changes as we go. Just out in 13.0: <a href="/guide-and-gold/">Guide and Gold</a>.]]</p>
+  <p class="dim nodates">[[There are no dates: an idea moves up when it is ready, and the list changes as we go. Just out in 13.5: dungeon runs in your route, class quests on time and more, under <a href="#ready">Ready</a>.]]</p>
 </div>
 <div class="wrap rm">
   <ul class="legend">{legend}</ul>
