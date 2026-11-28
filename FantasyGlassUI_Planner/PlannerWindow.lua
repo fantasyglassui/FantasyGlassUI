@@ -289,9 +289,16 @@ local function MapSection(K, G, Replan, T)
         ns.db.plannerTomTom = v
         if ns.GuideAdvance then ns:GuideAdvance() end
     end)
-    T.mapLineBox, T.mapHubsBox, T.tomTomBox = line, hubs, tomtom
+    -- (13.5.1) the arrow on a kill or collect step: the nearest mob or object still needed (Guide.lua, with Questie)
+    local mobs = K.SwitchRow(G, "map", "guideMobArrow", "Arrow points to the nearest quest mob", "On a step to kill or collect, the arrow points to the nearest creature or object you still need in your zone, with its name and how far it is. Needs Questie; off, it points to the step's place.",
+        function() return ns.db.guideMobArrow ~= false end, function(v)
+        ns.db.guideMobArrow = v
+        if ns.GuideAdvance then ns:GuideAdvance() end
+    end)
+    T.mapLineBox, T.mapHubsBox, T.tomTomBox, T.mobArrowBox = line, hubs, tomtom, mobs
     return function()
         tomtom:SetChecked(ns.db.plannerTomTom ~= false)
+        mobs:SetChecked(ns.db.guideMobArrow ~= false)
         line:SetChecked(ns.db.plannerMapLine ~= false)
         hubs:SetChecked(ns.db.plannerMapHubs ~= false)
     end

@@ -228,6 +228,7 @@ ns.defaults = {
     plannerGather    = true,        -- herbs and ore you have gathered before, close to the route (and a note to skin kills)
     plannerMount     = true,        -- riding at level 40: the riding trainer, your mount, and what is still to find
     plannerTomTom    = true,        -- the guide's waypoint goes to TomTom's arrow when TomTom is loaded
+    guideMobArrow    = true,        -- (13.5.1) on a kill or collect step, the arrow points to the nearest quest mob (with Questie)
     plannerKeepRoute = false,       -- keep the route you planned: only Plan my route and Plan again make a new one
     -- batch 4 A (map): begin
     plannerMapLine   = true,        -- the route's dots and line on the world map

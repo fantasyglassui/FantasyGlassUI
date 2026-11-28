@@ -2,6 +2,12 @@
 
 The releases published on CurseForge. Each lists what changed since the release before it.
 
+## 13.5.1
+
+- On a step to kill or collect, the guide's arrow points to the nearest mob or object you still need
+  in your zone, with its name and distance. Needs Questie; Arrow points to the nearest quest mob, in the
+  planner window, switches it off.
+
 ## 13.5.0
 
 Dungeons in your route, class quests on time, and some care behind the scenes.

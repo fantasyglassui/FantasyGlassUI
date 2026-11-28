@@ -21086,6 +21086,123 @@ try("13.6 leftovers C: the arrow and the guide's keys", function()
     if not ok then error(err, 0) end
 end)
 -- batch 6 tests C (route): end
+-- 13.5.1: on a "do" step the arrow points to the nearest spawn of a mob (or object) the step still needs
+try("13.5.1 the arrow points to the quest's mobs", function()
+    local saved = { map = env.C_Map, ql = env.C_QuestLog, state = ns.root.guideState, guides = ns.root.guides,
+        tomtom = rawget(env, "TomTom"), tt = ns.db.plannerTomTom, mob = ns.db.guideMobArrow, time = env.GetTime,
+        loaded = env.C_AddOns.IsAddOnLoaded, meta = rawget(env.C_AddOns, "GetAddOnMetadata"), Q = rawget(env, "Questie"),
+        loader = rawget(env, "QuestieLoader"), errors = #ns.errors }
+    local pos, clock = { 1426, 50, 50 }, 5000
+    local cm = {}
+    for k, v in pairs(saved.map) do cm[k] = v end
+    cm.GetBestMapForUnit = function() return pos[1] end
+    cm.GetPlayerMapPosition = function(map) if map == pos[1] then return { GetXY = function() return pos[2] / 100, pos[3] / 100 end } end end
+    cm.GetMapWorldSize = function() return 2000, 2000 end                 -- (a percent is 20 yards)
+    local objectives = { { text = "Mottled Boar slain: 0/8", type = "monster", finished = false, numRequired = 8, numFulfilled = 0 },
+                         { text = "Wolf Pelt: 0/5", type = "item", finished = false, numRequired = 5, numFulfilled = 0 } }
+    local QL = {}
+    for k, v in pairs(saved.ql) do QL[k] = v end
+    QL.IsOnQuest = function(id) return id == 700 end
+    QL.IsComplete = function() return false end
+    QL.ReadyForTurnIn = function() return false end
+    QL.IsQuestFlaggedCompleted = function() return false end
+    QL.IsFailed = function() return false end
+    QL.GetQuestObjectives = function(id) if id == 700 then return objectives end end
+    QL.GetNextWaypoint = function() return nil end
+    local npcs = {
+        [20] = { name = "Mottled Boar", spawns = { [40] = { { 60, 50 }, { 20, 20 } }, [41] = { { 50, 50 } } } },
+        [21] = { name = "Gray Wolf", spawns = { [40] = { { 50, 58 } } } },
+    }
+    local quests = { [700] = { name = "Boars and wolves", objectives = { { { 20, "Mottled Boar" } }, nil, { { 5, "Wolf Pelt" } } } } }
+    local fakes = {
+        QuestieDB = { QuestPointers = { [700] = true },
+            GetQuest = function(id) return quests[id] end, IsDoable = function() return true end,
+            QueryNPCSingle = function(id, key) return npcs[id] and npcs[id][key] end,
+            QueryObjectSingle = function() return nil end,
+            QueryItemSingle = function(id, key) if id == 5 then return ({ name = "Wolf Pelt", npcDrops = { 21 } })[key] end end },
+        QuestXP = { GetQuestLogRewardXP = function() return 100 end },
+        ZoneDB = { GetUiMapIdByAreaId = function(_, area) return (area == 40 and 1426) or (area == 41 and 1437) or nil end },
+    }
+    local loaded = true
+    local function arrowUpdate(arrow)
+        for i = #handlers, 1, -1 do local h = handlers[i]; if h.self == arrow and h.name == "OnUpdate" then return h.fn end end
+    end
+    local function near(w, x, y) return w and math.abs(w.x - x) < 0.001 and math.abs(w.y - y) < 0.001 end
+    local function guide(name)
+        ns.root.guides[name] = { name = name, steps = { { kind = "do", quest = 700, title = "Boars and wolves", map = 1426, x = 30, y = 70, text = "Kill boars" }, { kind = "note", text = "end" } } }
+        ns:GuideFollow(name)
+    end
+    local ok, err = pcall(function()
+        env.C_Map, env.C_QuestLog = cm, QL
+        env.GetTime = function() return clock end
+        env.Questie = { API = { isReady = true, RegisterOnReady = function() end } }
+        env.QuestieLoader = { ImportModule = function(_, name) return fakes[name] end }
+        env.C_AddOns.IsAddOnLoaded = function() return loaded end
+        rawset(env.C_AddOns, "GetAddOnMetadata", function() return "4" end)
+        ns.PlannerSourceReset()
+        ns.db.plannerTomTom, ns.db.guideMobArrow = false, nil
+        ns.root.guides = {}
+        -- the nearest spawn of a mob the step still needs: the wolf (160 yards) before the boar (200 yards)
+        guide("Mobs")
+        local w = ns.waypoint
+        if not near(w, 0.50, 0.58) then error("the nearest spawn: " .. tostring(w and w.x) .. "," .. tostring(w and w.y)) end
+        if w.mob ~= "Gray Wolf" then error("the mob's name: " .. tostring(w.mob)) end
+        local arrow = ns.waypointArrow
+        local text
+        rawset(arrow.text, "SetText", function(_, t) text = t end)
+        arrowUpdate(arrow)(arrow, 0.1)
+        rawset(arrow.text, "SetText", nil)
+        if text ~= "Gray Wolf · 160 " .. ns:Tr("yd") then error("the arrow's words: " .. tostring(text)) end
+        -- a completed objective's mob is skipped: the wolf pelts done, the boar
+        objectives[2].finished, objectives[2].numFulfilled = true, 5
+        fireEvent("QUEST_LOG_UPDATE"); runTimers()
+        w = ns.waypoint
+        if not near(w, 0.60, 0.50) or w.mob ~= "Mottled Boar" then error("a completed objective is skipped: " .. tostring(w and w.x) .. "," .. tostring(w and w.y) .. " " .. tostring(w and w.mob)) end
+        -- not every frame: standing still (or a few yards), however many ticks, no new pick; moving on, a new one
+        local picks = ns.guideMobPicks
+        pos = { 1426, 50.5, 50 }                                       -- (10 yards)
+        for _ = 1, 30 do ns.guideTickTest(nil, 0.016) end
+        for _ = 1, 5 do ns.guideTickTest(nil, 1); arrowUpdate(arrow)(arrow, 0.1) end
+        if ns.guideMobPicks ~= picks then error("no re-pick within the time and yards: " .. (ns.guideMobPicks - picks)) end
+        pos = { 1426, 25, 25 }                                         -- (far: the other boar is nearer now)
+        ns.guideTickTest(nil, 1)
+        if ns.guideMobPicks ~= picks + 1 then error("a re-pick after moving: " .. (ns.guideMobPicks - picks)) end
+        w = ns.waypoint
+        if not near(w, 0.20, 0.20) then error("the nearer boar after moving: " .. tostring(w and w.x) .. "," .. tostring(w and w.y)) end
+        ns.guideTickTest(nil, 1)
+        if ns.guideMobPicks ~= picks + 1 then error("not again at once: " .. (ns.guideMobPicks - picks)) end
+        clock = clock + 3; ns.guideTickTest(nil, 1)
+        if ns.guideMobPicks ~= picks + 2 then error("again after a while: " .. (ns.guideMobPicks - picks)) end
+        -- the setting off: the step's own spot; on again: the mob
+        ns.db.guideMobArrow = false
+        ns:GuideAdvance()
+        w = ns.waypoint
+        if not near(w, 0.30, 0.70) or w.mob ~= nil then error("the setting off: the step's spot: " .. tostring(w and w.x) .. "," .. tostring(w and w.y)) end
+        ns.db.guideMobArrow = true
+        ns:GuideAdvance()
+        if not near(ns.waypoint, 0.20, 0.20) then error("the setting on again: the mob") end
+        -- spawns only in another zone: the step's own spot
+        npcs[20].spawns = { [41] = { { 50, 50 } } }
+        guide("Mobs3")
+        if not near(ns.waypoint, 0.30, 0.70) then error("spawns only in another zone: the step's spot") end
+        npcs[20].spawns = { [40] = { { 60, 50 }, { 20, 20 } } }
+        -- no Questie: the step's own spot
+        loaded = false
+        ns.PlannerSourceReset()
+        guide("Mobs2")
+        w = ns.waypoint
+        if not near(w, 0.30, 0.70) or w.mob ~= nil then error("no Questie: the step's spot: " .. tostring(w and w.x) .. "," .. tostring(w and w.y)) end
+        if #ns.errors ~= saved.errors then error("errors: " .. tostring(ns.errors[#ns.errors])) end
+    end)
+    ns:GuideStop(); ns:ClearWaypoint(true)
+    ns.PlannerSourceReset()
+    env.C_Map, env.C_QuestLog, env.GetTime = saved.map, saved.ql, saved.time
+    env.C_AddOns.IsAddOnLoaded = saved.loaded; rawset(env.C_AddOns, "GetAddOnMetadata", saved.meta)
+    rawset(env, "Questie", saved.Q); rawset(env, "QuestieLoader", saved.loader); rawset(env, "TomTom", saved.tomtom)
+    ns.root.guideState, ns.root.guides = saved.state, saved.guides
+    ns.db.plannerTomTom, ns.db.guideMobArrow = saved.tt, saved.mob
+    if not ok then error(err, 0) end
+end)
 -- batch 6 tests D (leftovers): begin
 try("13.6 leftovers D: leftovers", function()
     local CI = env.C_ChatInfo

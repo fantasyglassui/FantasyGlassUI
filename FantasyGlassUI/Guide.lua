@@ -760,24 +760,137 @@ local function LegFor(step, index, map, x, y)
     legCache = { step = step, index = index, here = here, result = result }
     return unpack(result, 1, 6)
 end
+-- (13.5.1) The quest's mobs: on a "do" step the arrow points to the nearest spawn, in yards, of a creature or object
+-- the step still needs (an objective not yet complete in your quest log), from Questie's spawns through the planner
+-- (ns.PlannerQuestTargets). Only spawns on a map you are on count: none there, and the arrow points at the step's own
+-- spot, as it does without Questie, for a quest Questie does not know, or with "Arrow points to the nearest quest mob" off.
+-- The nearest is picked again every GUIDE_MOB_EVERY seconds or GUIDE_MOB_MOVE yards (the 1 s look asks), and at once when
+-- the quest log changes; never every frame. Each step's targets are read once (none known: asked again after a while).
+ns.GUIDE_MOB_EVERY, ns.GUIDE_MOB_MOVE, ns.GUIDE_MOB_RETRY = 2, 20, 15
+ns.guideMobPicks = 0                                -- (how many picks were made: the smoke test counts them)
+local mobList, mobPick, pointedMob                  -- (one step's targets; the last pick; the spot the arrow was given)
+local function MobOn() return not (ns.db and ns.db.guideMobArrow == false) end
+local function Now() return GetTime and GetTime() or 0 end
+local function MobTargets(step)
+    local c, now = mobList, Now()
+    if c and c.step == step and (c.targets or (now >= c.at and now - c.at < ns.GUIDE_MOB_RETRY)) then return c.targets end
+    local targets
+    if type(step.quest) == "number" and ns.PlannerQuestTargets then
+        local ok, v = pcall(ns.PlannerQuestTargets, step.quest)
+        if ok and type(v) == "table" and #v > 0 then targets = v end
+    end
+    mobList = { step = step, targets = targets, at = now }
+    return targets
+end
+-- The quest log's objectives of the step's quest (nil when it is not in your log, or the game hides them).
+local function MobLog(step)
+    local sid = LogId(step.quest, step)
+    local f = QL().GetQuestObjectives
+    if not sid or type(f) ~= "function" then return nil end
+    local ok, list = pcall(f, sid)
+    if not ok or type(list) ~= "table" or Secret(list) then return nil end
+    return list
+end
+local function ObjectiveDone(o)
+    if type(o) ~= "table" then return false end
+    local fin = o.finished
+    if type(fin) == "boolean" and not Secret(fin) then return fin end
+    local need, have = o.numRequired, o.numFulfilled
+    if type(need) == "number" and type(have) == "number" and not Secret(need) and not Secret(have) and need > 0 then return have >= need end
+    return false                                    -- (hidden: still needed)
+end
+-- Is this target done? Its log objective by its name in the objective's words, else the one in its place.
+local function TargetDone(t, log)
+    if not log then return false end
+    for _, word in ipairs({ t.name, t.text }) do
+        if type(word) == "string" and word ~= "" then
+            local low = word:lower()
+            for _, o in ipairs(log) do
+                local text = type(o) == "table" and o.text
+                if type(text) == "string" and not Secret(text) and text:lower():find(low, 1, true) then return ObjectiveDone(o) end
+            end
+        end
+    end
+    return ObjectiveDone(log[t.index])
+end
+-- The nearest spawn still needed, on a map you are on: { map, x, y, name }, or nil.
+local function MobNearest(step, targets)
+    local log = MobLog(step)
+    local best, bestD
+    local at, size = {}, {}                         -- (your place on each map asked once a pick, and its size)
+    for _, t in ipairs(targets) do
+        if type(t) == "table" and type(t.spawns) == "table" and not TargetDone(t, log) then
+            for _, s in ipairs(t.spawns) do
+                local m = type(s) == "table" and s.map
+                if type(m) == "number" and type(s.x) == "number" and type(s.y) == "number" then
+                    if at[m] == nil then
+                        local px, py = ns.MapPosition(m, "player")
+                        at[m] = px and { px, py } or false
+                        if px then size[m] = { ns.MapWorldSize(m) } end
+                    end
+                    local p = at[m]
+                    if p then
+                        local _, d = ns.WayArrow(p[1], p[2], s.x / 100, s.y / 100, size[m][1], size[m][2], 0)
+                        if not bestD or d < bestD then
+                            best, bestD = s, d
+                            if not s.name then s.name = t.name end      -- (no name of its own: the objective's)
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return best
+end
+-- The spot the arrow points to for a step's mobs (the last pick while it is fresh), or nil for the step's own spot.
+local function MobSpot(step)
+    if not (type(step) == "table" and step.kind == "do" and MobOn() and ns.MapPosition and ns.WayArrow and ns.MapWorldSize) then mobPick = nil; return nil end
+    local now, p = Now(), mobPick
+    if p and p.step == step and not p.stale and now >= p.at and now - p.at < ns.GUIDE_MOB_EVERY then
+        local moved = false                         -- (a pick stands until you have moved far enough from where it was made)
+        if p.map then
+            local x, y = ns.MapPosition(p.map, "player")
+            if not x then moved = true
+            else
+                local w, h = ns.MapWorldSize(p.map)
+                local _, d = ns.WayArrow(p.px, p.py, x, y, w, h, 0)
+                moved = d >= ns.GUIDE_MOB_MOVE
+            end
+        end
+        if not moved then return p.spot end
+    end
+    local targets = MobTargets(step)
+    local spot = targets and MobNearest(step, targets) or nil
+    local map = Here()
+    local px, py
+    if map then px, py = ns.MapPosition(map, "player") end
+    mobPick = { step = step, at = now, map = px and map or nil, px = px, py = py, spot = spot }
+    ns.guideMobPicks = ns.guideMobPicks + 1
+    return spot
+end
+-- The quest log changed (a kill, a pelt looted): the next look picks again, whatever the time.
+function ns.GuideMobStale() if mobPick then mobPick.stale = true end end
 local function Point(step, index)
     if not step then
         if pointed and ns.waypoint and ns.waypoint.quiet then ns:ClearWaypoint(true) end
         TomTomClear()
         pointed, legMap, legSpot, legReached, legCache, pointPending = nil, nil, nil, nil, nil, nil
+        mobPick, pointedMob = nil, nil
         return
     end
-    local tt = TomTomAddon()                                  -- (pointed again: a new step, a leg on another map, TomTom on or off)
-    if pointed == index and not (legMap and Here() ~= legMap) and (tt ~= nil) == pointedTomTom then return end
+    local tt = TomTomAddon()                                  -- (pointed again: a new step, a leg on another map, TomTom on or off, another mob)
+    local mob = MobSpot(step)
+    if pointed == index and mob == pointedMob and not (legMap and Here() ~= legMap) and (tt ~= nil) == pointedTomTom then return end
     local map, x, y = PlaceOf(step)
+    if mob then map, x, y = mob.map, mob.x, mob.y end         -- (on a map you are on: no leg to work out)
     local lm, lx, ly, words, switches, atEdge
-    if x then
+    if x and not mob then
         lm, lx, ly, words, switches, atEdge = LegFor(step, index, map, x, y)
         if lm == false then pointPending = true; return end
     end
     pointPending = nil
     if legReached and legReached.here ~= Here() then legReached = nil end   -- (on another map: a spot may be pointed at again)
-    pointed, legMap, legSpot, pointedTomTom = index, nil, nil, tt ~= nil
+    pointed, legMap, legSpot, pointedTomTom, pointedMob = index, nil, nil, tt ~= nil, mob
     local label = ns.GuideStepText(step)
     local edge = false
     if lm then
@@ -787,7 +900,8 @@ local function Point(step, index)
     end
     TomTomClear()
     if tt and x then
-        local ok, uid = pcall(tt.AddWaypoint, tt, map or Here(), x / 100, y / 100, { title = label, persistent = false, crazy = true, from = "Fantasy Glass UI" })
+        local title = (mob and mob.name) and (mob.name .. " · " .. tostring(label)) or label
+        local ok, uid = pcall(tt.AddWaypoint, tt, map or Here(), x / 100, y / 100, { title = title, persistent = false, crazy = true, from = "Fantasy Glass UI" })
         if ok and uid ~= nil then
             tomUid = uid
             if ns.waypoint and ns.waypoint.quiet then ns:ClearWaypoint(true) end
@@ -797,6 +911,7 @@ local function Point(step, index)
     if x and ns.SetWaypoint then
         ns:SetWaypoint(x, y, label, map, true)
         if edge and ns.waypoint then ns.waypoint.passing = true end      -- (a spot on the way, not one to arrive at: no pulse)
+        if mob and ns.waypoint then ns.waypoint.mob = mob.name end       -- (the arrow says the mob's name with the yards)
     elseif ns.waypoint and ns.waypoint.quiet then ns:ClearWaypoint(true) end
 end
 -- A leg that switches to another kind of travel (the flight master, the dock, the hearth) was reached: the next one.
@@ -2020,6 +2135,7 @@ do
                     if not done and ns.GuideKeepRoute() and not (LogId and LogId(q)) then pcall(ns.GuideSkipQuest, q) end
                 end)
             end
+            if event == "QUEST_LOG_UPDATE" then ns.GuideMobStale() end   -- (an objective done: its mob is not pointed at again)
             AdvanceSoon()
             if event == "QUEST_LOG_UPDATE" and Planned(st) then FailedCheck(st) end
         end
@@ -2037,7 +2153,8 @@ do
         local step = guide and guide.steps[st.at or 1]
         local reached = LegReached()                          -- (a leg reached: the arrow's next one, on any kind of step)
         if pointPending and not InCombatLockdown() then reached = true end   -- (a leg left for after the fight)
-        if step and (reached or step.kind == "goto" or step.kind == "level" or step.kind == "explore" or step.kind == "gather" or step.kind == "hearth" or step.kind == "fly") then pcall(ns.GuideAdvance, ns, true) end
+        if step and (reached or step.kind == "goto" or step.kind == "level" or step.kind == "explore" or step.kind == "gather" or step.kind == "hearth" or step.kind == "fly") then pcall(ns.GuideAdvance, ns, true)
+        elseif step and step.kind == "do" and MobOn() then pcall(Point, step, st.at or 1) end   -- (13.5.1: the nearest mob as you move)
         NotHere(st, step)
     end
     ev:SetScript("OnUpdate", ns:Guard("Guide tick", Tick))    -- (a bad saved step says so once, never once a second)

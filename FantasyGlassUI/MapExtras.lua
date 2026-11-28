@@ -125,7 +125,12 @@ function ns:SetWaypoint(x, y, label, onMap, quiet)
             local yards = math.floor((tonumber(distance) or 0) + 0.5)
             if yards ~= w.shownYards then                         -- (only when the number changes)
                 w.shownYards = yards
-                self.text:SetText(format("%d %s", yards, ns:Tr("yd")))
+                local line = format("%d %s", yards, ns:Tr("yd"))
+                if type(w.mob) == "string" and w.mob ~= "" then      -- (13.5.1: the guide's quest mob, "Mottled Boar · 45 yd")
+                    line = w.mob .. " · " .. line
+                    if #line ~= w.shownLength then w.shownLength = #line; back = true end   -- (a longer line: the band refitted)
+                end
+                self.text:SetText(line)
             end
             if back then pcall(ns.WaypointFit) end
         end))

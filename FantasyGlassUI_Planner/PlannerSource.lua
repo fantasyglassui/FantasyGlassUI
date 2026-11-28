@@ -64,6 +64,7 @@ local function NpcObjective(db, zones, ids, state)
 end
 
 local ServerId                    -- (below: the id the game knows a quest by in your log)
+local QuestTargets                -- (below: a quest's targets for the guide's arrow)
 local function Objectives(db, zones, quest, state, id)
     local out, raw = {}, quest.objectives
     if type(raw) == "table" then
@@ -271,6 +272,66 @@ local function Record(env, id)
         fromItem = fromItem, escort = ns.PLANNER_ESCORTS[id] == true,
         doable = db.IsDoable(id) and true or false,
     }
+end
+
+-- (13.5.1) A quest's targets for the guide's arrow (src.targets): every Questie read through Try, one failing creature,
+-- object or item leaving out only itself.
+QuestTargets = function(env, id)
+    local db, zones = env.db, env.zones
+    local okQ, quest = Try(db.GetQuest, id)
+    if not okQ or type(quest) ~= "table" then return nil end
+    local raw = type(quest.objectives) == "table" and quest.objectives or {}
+    local function Field(query, key, x)
+        if type(query) ~= "function" then return nil end
+        local ok, v = Try(query, x, key)
+        if ok then return v end
+    end
+    local function Name(query, x)
+        local v = Field(query, "name", x)
+        return (type(v) == "string" and v ~= "") and v or nil
+    end
+    local function Add(into, ids, object)
+        local query = object and db.QueryObjectSingle or db.QueryNPCSingle
+        if type(query) ~= "function" or type(ids) ~= "table" then return end
+        for _, x in ipairs(ids) do
+            if type(x) == "number" then
+                local name = Name(query, x)
+                local ok, spots = Try(Spots, db, zones, x, object)
+                for _, s in ipairs(ok and type(spots) == "table" and spots or {}) do
+                    into[#into + 1] = { map = s.map, x = tonumber(s.x), y = tonumber(s.y), name = name }
+                end
+            end
+        end
+    end
+    local out = {}
+    local function Target(kind, name, text)
+        local t = { kind = kind, name = name, text = type(text) == "string" and text ~= "" and text or nil, index = #out + 1, spawns = {} }
+        out[#out + 1] = t
+        return t
+    end
+    for _, e in ipairs(type(raw[1]) == "table" and raw[1] or {}) do            -- (creatures: { id, text })
+        if type(e) == "table" then Add(Target("monster", Name(db.QueryNPCSingle, e[1]), e[2]).spawns, { e[1] }) end
+    end
+    for _, e in ipairs(type(raw[2]) == "table" and raw[2] or {}) do            -- (objects: { id, text })
+        if type(e) == "table" then Add(Target("object", Name(db.QueryObjectSingle, e[1]), e[2]).spawns, { e[1] }, true) end
+    end
+    for _, e in ipairs(type(raw[3]) == "table" and raw[3] or {}) do            -- (items: { id, text }, from who drops them)
+        if type(e) == "table" then
+            local t = Target("item", Name(db.QueryItemSingle, e[1]), e[2])
+            Add(t.spawns, Field(db.QueryItemSingle, "npcDrops", e[1]))
+            Add(t.spawns, Field(db.QueryItemSingle, "objectDrops", e[1]), true)
+        end
+    end
+    for _, e in ipairs(type(raw[4]) == "table" and raw[4] or {}) do            -- (reputation: nothing to point at, kept for the order)
+        if type(e) == "table" then Target("other") end
+    end
+    for _, e in ipairs(type(raw[5]) == "table" and raw[5] or {}) do            -- (kill credit: { { ids }, root id, text })
+        if type(e) == "table" then
+            local ids = type(e[1]) == "table" and e[1] or { e[2] }
+            Add(Target("monster", Name(db.QueryNPCSingle, e[2]), e[3]).spawns, ids)
+        end
+    end
+    return out
 end
 
 local mapCache = nil              -- quest ids by zone map (one scan of every quest a session; a reset empties it)
@@ -959,7 +1020,22 @@ function ns.PlannerSource()
     end
     function src.places(kind, arg) return Places("questie", env, kind, arg) end
     function src.inns() return Places("questie", env, "innkeeper") end
+    -- (13.5.1) What a quest asks you to kill, use or collect, with where each is: { { kind, name, text, index, spawns =
+    -- { { map, x, y, name } } } } in Questie's order (creatures, objects, items, kill credit); an item's spawns are those
+    -- of the creatures and objects that drop it, each with its own name. Nil when Questie does not know the quest.
+    function src.targets(id) return QuestTargets(env, id) end
     return src
+end
+-- The guide's arrow (Guide.lua): a quest's targets through Questie, or nil (no Questie, not ready, another contract, or a
+-- quest it does not know). Never asks Questie to call back: a guide that only reads waits for the planner to do that.
+function ns.PlannerQuestTargets(id)
+    if type(id) ~= "number" or not IsLoaded() then return nil end
+    local api = type(_G.Questie) == "table" and _G.Questie.API
+    if not (type(api) == "table" and api.isReady) then return nil end
+    local src = ns.PlannerSource()
+    if type(src) ~= "table" or type(src.targets) ~= "function" then return nil end
+    local ok, v = Try(src.targets, id)
+    if ok and type(v) == "table" then return v end
 end
 
 -- The quest log alone: only quests being worked on, with where each ends. (Every value the game gives is read

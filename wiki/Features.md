@@ -188,6 +188,7 @@ The quest guide's two switches are on the Guide tab of `/fgui`. Every setting fo
 | The route on the map | on | The route's stops, numbered, and the line between them on the world map. |
 | Quest areas on the map | on | A mark on each area with quests the planner found, brighter where the experience comes faster. |
 | Use TomTom's arrow when TomTom is loaded | on | The step you are on goes to TomTom's arrow instead of this add-on's. |
+| Arrow points to the nearest quest mob | on | On a step to kill or collect, the arrow points to the nearest creature or object you still need in your zone, with its name and how far it is. Needs Questie; off, it points to the step's place. |
 | Race your best | off | The panel says how far ahead or behind you are of your fastest character's time at this level. |
 | Where you left off, at login | on | When you log in, a line says where you were on the route and what comes next. |
 | Find a group button | on | A group quest on the panel gets a button that writes a line asking for a group. It only fills your chat box: you send it. |
