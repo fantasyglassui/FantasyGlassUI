@@ -118,6 +118,7 @@ ns.defaults = {
     equipSets        = true,        -- a button for each saved gear set, under the character window
     setOnFrame       = true,        -- the gear set you are wearing, named over your player frame (11.13)
     autoGreed        = false,       -- roll Greed on green items (not on bind-on-pickup ones or upgrades)
+    chatButtons      = false,       -- (13.5.1) the game's chat buttons beside the chat box (chat menu, channels): off, as before
     chatEditTop      = false,       -- the typing bar above the chat box (it covers the chat tabs there) rather than under it
     chatStampsOffered = false,      -- chat timestamps were switched on once (a later "None" in the game's settings is kept)
     chatHistory      = true,        -- the last lines of each chat tab come back after a reload

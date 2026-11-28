@@ -31342,6 +31342,56 @@ try("13.5.1 the world map opens windowed", function()
     rawset(map, "Minimize", saved.min); rawset(map, "Maximize", saved.max)
     if not ok then error(err, 0) end
 end)
+-- 13.5.1 chat buttons tests: begin
+-- (13.5.1) "Show the chat buttons": the game's chat menu button (emotes, languages, its chat settings)
+-- and channels button live in chat window 1's button frame, which our chat hid with the others'.
+try("13.5.1: Show the chat buttons: off silences them, on gives them back, both ways, quiet mode still hides them", function()
+    if type(ns.ApplyChatButtons) ~= "function" then error("no chat buttons switch") end
+    if ns.defaults.chatButtons ~= false then error("off by default, as the chat looked before") end
+    if not ns.chatButtonsReady then error("the chat module should have started") end
+    if not (ns.featureInstant and ns.featureInstant.chatButtons) then error("the switch should take effect at once, with no reload") end
+    if ns.featureLabels.chatButtons ~= "Show the chat buttons" then error("the switch's name: " .. tostring(ns.featureLabels.chatButtons)) end
+    if ns.featureDesc.chatButtons ~= "Shows the game's chat buttons beside the chat box: the chat menu (emotes, languages, the game's chat settings) and channels." then error("the switch's tooltip") end
+    local placed = false
+    for _, k in ipairs(ns.featurePlace["Chat and people › Chat"] or {}) do if k == "chatButtons" then placed = true end end
+    if not placed then error("the switch should be in Chat and people > Chat") end
+    local bf1, bf2 = env.ChatFrame1ButtonFrame, env.ChatFrame2ButtonFrame
+    for _, bf in ipairs({ bf1, bf2 }) do
+        rawset(bf, "testAlpha", 1)
+        rawset(bf, "SetAlpha", function(self, a) rawset(self, "testAlpha", a) end)
+        rawset(bf, "GetAlpha", function(self) return rawget(self, "testAlpha") end)
+    end
+    local function Silenced(bf) return rawget(bf, "suiKilled") == true end
+    local keep, keepCombat = ns.db.chatButtons, env.InCombatLockdown
+    local ok, err = pcall(function()
+        if not (Silenced(bf1) and Silenced(bf2)) then error("off (as it starts): every window's buttons are silenced") end
+        ns.db.chatButtons = true; ns:ApplyInstant()
+        if Silenced(bf1) or bf1:GetAlpha() ~= 1 then error("on: chat window 1's buttons should show") end
+        if not Silenced(bf2) then error("on: only chat window 1's buttons come back") end
+        ns.db.chatButtons = false; ns:ApplyChatButtons()
+        if not Silenced(bf1) or bf1:GetAlpha() ~= 0 then error("off again: silenced again") end
+        ns.db.chatButtons = true; ns:ApplyChatButtons()
+        if Silenced(bf1) or bf1:GetAlpha() ~= 1 then error("on again: shown again") end
+        -- quiet mode still hides them; switched on during it, they wait for it to end
+        ns:ToggleQuiet(true)
+        if bf1:GetAlpha() ~= 0 then error("quiet mode should hide the chat buttons") end
+        ns.db.chatButtons = false; ns:ApplyChatButtons(); ns.db.chatButtons = true; ns:ApplyChatButtons()
+        if bf1:GetAlpha() ~= 0 then error("switched on in quiet mode: they stay hidden until it ends") end
+        ns:ToggleQuiet(false)
+        if bf1:GetAlpha() ~= 1 or Silenced(bf1) then error("quiet mode over: the buttons are back") end
+        -- in a fight: when it ends
+        env.InCombatLockdown = function() return true end
+        ns.db.chatButtons = false; ns:ApplyChatButtons()
+        if Silenced(bf1) then error("nothing is changed during a fight") end
+        env.InCombatLockdown = keepCombat
+        fireEvent("PLAYER_REGEN_ENABLED")
+        if not Silenced(bf1) then error("after the fight the switch takes effect") end
+    end)
+    env.InCombatLockdown = keepCombat
+    ns.db.chatButtons = keep; ns:ApplyChatButtons()
+    if not ok then error(err, 0) end
+end)
+-- 13.5.1 chat buttons tests: end
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()

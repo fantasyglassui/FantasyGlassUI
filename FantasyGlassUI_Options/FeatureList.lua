@@ -186,6 +186,7 @@ local groups = {
         { "chatNameSound",  "Chat: sound when my name is said" },
         { "chatHistory",    "Chat: keep lines across a reload" },
         { "chatEditTop",    "Chat: typing bar above the chat" },
+        { "chatButtons",    "Show the chat buttons" },
         { "chatBubbles",    "Chat bubbles" },
         { "bubbleNames",    "Names on chat bubbles" },
         { "chatKeywords",   "Chat: keyword alerts" },
@@ -421,6 +422,7 @@ local DESC = {
     autoRes       = "Accepts a resurrection for you. One cast by someone who is in a fight is left on screen for you to time yourself. Hold Shift as the offer arrives to answer it yourself. Presets never change this.",
     autoSummon    = "Accepts a summon for you after five seconds, saying in chat who it is from and where it leads. Decline it in that time to stay; hold Shift as it arrives to answer it yourself. Presets never change this.",
     autoGreed     = "When a group roll starts for a green (uncommon) item, Greed is rolled for you. Left for you to decide: anything blue or better, anything that binds when picked up, and gear with a higher item level than what you are wearing. Presets never change this.",
+    chatButtons   = "Shows the game's chat buttons beside the chat box: the chat menu (emotes, languages, the game's chat settings) and channels.",
     chatEditTop   = "Puts the bar you type in above the chat box instead of under it. Above, it lies over the chat tabs while you type, so they can't be clicked until you finish. Needs \"Chat improvements\".",
     chatHistory   = "The last 40 lines of each chat tab are saved when you log out or reload, and shown again, dimmed, if you are back within half an hour. The combat log is not kept. Needs \"Chat links & copy button\".",
     tweakCamera   = "Lets the camera zoom out as far as the game allows. A game setting: switching this off puts back what it was. Presets never change this.",
@@ -598,7 +600,7 @@ local NO_PRESET = { tipTitle = true, tipRealm = true, tipGuild = true, tipGuildR
                     barHotkeys = true, barMacroNames = true, quietErrors = true, snapPanels = true, chatNameSound = true,
                     repFollow = true, gossipOne = true, repairGuild = true, clock12 = true, clockServer = true, tooltipIDs = true,
                     autoInvite = true, fastLoot = true, deleteFill = true, skipCinematics = true, bagCombatUse = true,
-                    autoStand = true, autoDismount = true, autoRes = true, autoSummon = true, autoGreed = true, chatEditTop = true,
+                    autoStand = true, autoDismount = true, autoRes = true, autoSummon = true, autoGreed = true, chatEditTop = true, chatButtons = true,
                     setsFollowSpec = true, whisperInvite = true, whisperInviteAll = true, declineDuels = true, meterAuto = true,
                     lootBindSolo = true, autoRoleCheck = true, combatAlert = true,
                     tweakCamera = true, tweakErrorVoice = true, tweakBgSound = true, tweakScreenshot = true,
@@ -657,7 +659,7 @@ local NEEDS = {
     tipTitle = "playerTips", tipRealm = "playerTips", tipGuild = "playerTips", tipLevel = "playerTips", tipFaction = "playerTips",
     tipPvP = "playerTips", tipHealthBar = "playerTips", tipRole = "playerTips", tipFriend = "playerTips", tipHealth = "playerTips",
     tipCombatHide = "playerTips", tipGuildRank = "tooltip", tipTarget = "tooltip",
-    questRewards = "questTracker", bubbleNames = "chatBubbles",
+    questRewards = "questTracker", bubbleNames = "chatBubbles", chatButtons = "chat",
     bagSecMine = "bagWindow", bagSecUpgrades = "bagWindow", bagSecSets = "bagWindow", bagSecBoE = "bagWindow",
     bagSecMats = "bagWindow", bagSecConsumables = "bagWindow", bagSecRecipes = "bagWindow",
 }
@@ -713,10 +715,10 @@ local INSTANT = { tipTitle = true, tipRealm = true, tipGuild = true, tipGuildRan
                   powerText = true, infobarExtras = true, autoSell = true, autoRepair = true,
                   tweakCamera = true, tweakErrorVoice = true, tweakBgSound = true, tweakScreenshot = true,
                   tweakAutoLoot = true, tweakLootMouse = true, tweakSelfCast = true, tweakPlateRange = true, tweakPlateStack = true, tweakCameraFollow = true, tweakWeather = true, tweakBgFps = true, tweakTutorials = true, tweakProfanity = true, tweakMusic = true, tweakAmbience = true, tweakDeathGrey = true, tweakGlow = true,
-                  meterAuto = true, whisperInviteAll = true, minimapPlanner = true, minimapGold = true, goldAuctionPanel = true }
+                  meterAuto = true, whisperInviteAll = true, minimapPlanner = true, minimapGold = true, goldAuctionPanel = true, chatButtons = true }
 ns.featureInstant = INSTANT
 function ns:ApplyInstant()                                   -- redraw whatever those switches show
-    for _, fn in ipairs({ "ApplyBarText", "RefreshHealthText", "RefreshInfoBar", "ApplyTweaks", "GuideApplySwitch", "ApplyPlaceTheme", "ApplyPixelScale", "ApplyMinimapShape", "ApplyMinimapExtras", "RefreshBagWindow", "RefreshXPBar", "ApplyRaidManager", "GoldAuctionApplySwitch" }) do
+    for _, fn in ipairs({ "ApplyBarText", "RefreshHealthText", "RefreshInfoBar", "ApplyTweaks", "GuideApplySwitch", "ApplyPlaceTheme", "ApplyPixelScale", "ApplyMinimapShape", "ApplyMinimapExtras", "RefreshBagWindow", "RefreshXPBar", "ApplyRaidManager", "GoldAuctionApplySwitch", "ApplyChatButtons" }) do
         if ns[fn] then pcall(ns[fn], ns) end
     end
 end

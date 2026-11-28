@@ -15,6 +15,8 @@ Longer routes, an arrow to the mobs you need, and a nameplate fix.
 - Target and focus frames: your damage over time and the target's other debuffs show in a fight on WoW:
   Forever, which hides them from add-ons in combat. The game's own aura icons take the row's place
   until the fight ends, in our look and as the aura designer is set.
+- Chat: Show the chat buttons (Chat and people, Chat) brings back the game's chat menu button, with
+  emotes, languages and its chat settings, and the channels button beside the chat box. Off by default.
 
 ## 13.5.0
 
