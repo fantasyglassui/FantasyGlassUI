@@ -302,15 +302,32 @@ ns:NewModule("smallMap", function()
     local map = _G.WorldMapFrame
     if type(map) ~= "table" or not map.SetScale then ns.smallMapState = "this game client has no world map window an add-on can size"; return end
     local moving = false
+    -- (13.0.2) The game's full-screen map (the button at its top right; the game remembers the choice):
+    -- its blackout covers the screen, and our smaller scale shrank the map inside it, leaving black
+    -- borders. The smaller, fading map is for the windowed map only; full screen is left at its size.
+    local function Maximized()
+        if type(map.IsMaximized) == "function" then
+            local ok, on = pcall(map.IsMaximized, map)
+            if ok then return ns.Is(on, true) end
+        end
+        return ns.Is(rawget(map, "isMaximized"), true)
+    end
     local function Apply()
         if ns:Locked(map) then return false end
-        local ok = pcall(map.SetScale, map, ns.MapScale(ns.db.mapSize))
-        pcall(map.SetAlpha, map, moving and 0.45 or 1)
-        ns.smallMapState = format("on, at %d%%", ns.MapScale(ns.db.mapSize) * 100)
+        local full = Maximized()
+        local ok = pcall(map.SetScale, map, full and 1 or ns.MapScale(ns.db.mapSize))
+        pcall(map.SetAlpha, map, (moving and not full) and 0.45 or 1)
+        ns.smallMapState = full and "on (the full-screen map keeps its size)" or format("on, at %d%%", ns.MapScale(ns.db.mapSize) * 100)
         return ok
     end
     ns.smallMapTest = { Apply = Apply, Moving = function(m) moving = m; return Apply() end }
     if map.HookScript then pcall(map.HookScript, map, "OnShow", function() pcall(Apply) end) end
+    -- switching between full screen and the window: sized again once the game has done its part
+    if hooksecurefunc then
+        for _, name in ipairs({ "Maximize", "Minimize" }) do
+            if type(map[name]) == "function" then pcall(hooksecurefunc, map, name, function() pcall(Apply) end) end
+        end
+    end
     local ev = CreateFrame("Frame")
     for _, e in ipairs({ "PLAYER_STARTED_MOVING", "PLAYER_STOPPED_MOVING" }) do pcall(ev.RegisterEvent, ev, e) end
     ev:SetScript("OnEvent", ns:Guard("MapExtras events", function(_, event)

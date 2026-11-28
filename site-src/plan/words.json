@@ -449,5 +449,38 @@
   "it": "Tocca la mappa, poi trascinala per spostarla.",
   "ko": "지도를 탭한 뒤 끌어서 움직이세요.",
   "zh": "先点一下地图，再拖动来移动它。"
+ },
+ "%s is not on the world map yet, so its steps are drawn as a sketch.": {
+  "en": "%s is not on the world map yet, so its steps are drawn as a sketch.",
+  "de": "%s ist noch nicht auf der Weltkarte, darum sind die Schritte dort als Skizze gezeichnet.",
+  "fr": "%s n'est pas encore sur la carte du monde : ses étapes sont dessinées en croquis.",
+  "es": "%s aún no está en el mapa del mundo, así que sus pasos se dibujan como un boceto.",
+  "ru": "Зоны «%s» пока нет на карте мира, поэтому её шаги нарисованы схемой.",
+  "pt": "%s ainda não está no mapa-múndi, então os passos de lá aparecem como esboço.",
+  "it": "%s non è ancora sulla mappa del mondo, quindi i suoi passi sono disegnati come schizzo.",
+  "ko": "%s 지역은 아직 세계 지도에 없어서 단계를 약도로 보여 줍니다.",
+  "zh": "%s 还不在世界地图上，因此其步骤以草图显示。"
+ },
+ "%s is not on the world map yet, so it has its own map.": {
+  "en": "%s is not on the world map yet, so it has its own map.",
+  "de": "%s ist noch nicht auf der Weltkarte, darum bekommt die Zone eine eigene Karte.",
+  "fr": "%s n'est pas encore sur la carte du monde : la zone a sa propre carte.",
+  "es": "%s aún no está en el mapa del mundo, así que la zona tiene su propio mapa.",
+  "ru": "Зоны «%s» пока нет на карте мира, поэтому у неё своя карта.",
+  "pt": "%s ainda não está no mapa-múndi, então a zona tem um mapa próprio.",
+  "it": "%s non è ancora sulla mappa del mondo, quindi la zona ha una mappa a parte.",
+  "ko": "%s 지역은 아직 세계 지도에 없어서 따로 지도를 보여 줍니다.",
+  "zh": "%s 还不在世界地图上，因此单独显示该区域的地图。"
+ },
+ "Map art © Blizzard Entertainment": {
+  "en": "Map art © Blizzard Entertainment",
+  "de": "Kartengrafik © Blizzard Entertainment",
+  "fr": "Illustrations de la carte © Blizzard Entertainment",
+  "es": "Arte del mapa © Blizzard Entertainment",
+  "ru": "Изображения карты © Blizzard Entertainment",
+  "pt": "Arte do mapa © Blizzard Entertainment",
+  "it": "Grafica della mappa © Blizzard Entertainment",
+  "ko": "지도 그림 © Blizzard Entertainment",
+  "zh": "地图美术 © Blizzard Entertainment"
  }
 }

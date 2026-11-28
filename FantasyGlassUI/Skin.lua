@@ -2839,12 +2839,17 @@ function ns:CreateEmblem(parent, inset)
         self.sigil:SetSize(w * 0.74, w * 0.74)
         if self.shape then
             -- in a shape (Starcut's diamond portrait): the disc and glow reach past the shape's points so
-            -- the cut leaves the whole shape filled; the ring and the motes turn on the circle that fits inside it
-            Pad(self.disc, -w * 0.1); Pad(self.glow, -w * 0.1)
+            -- the cut leaves the whole shape filled, the glow fading out at its points. (13.0.2) No ring and
+            -- no circling motes in a shape: on the circle that fits inside the diamond they drew a round
+            -- disc with a ring in it, plain to see on the big player and target diamonds. Their alpha is
+            -- 0 (not hidden), so their turning goes on and the check of moving emblems stays true.
+            Pad(self.disc, -w * 0.1); Pad(self.glow, -w * 0.3)
             Pad(self.ring, w * 0.146); Pad(self.sparks, w * 0.146)
+            self.ring:SetAlpha(0); self.sparks:SetAlpha(0)
             self.padded = true
         elseif self.padded then
             for _, t in ipairs({ self.disc, self.glow, self.ring, self.sparks }) do Pad(t, 0) end
+            self.ring:SetAlpha(1); self.sparks:SetAlpha(1)
             self.padded = nil
         end
         self.size = w

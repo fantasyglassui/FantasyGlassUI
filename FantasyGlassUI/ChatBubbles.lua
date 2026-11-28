@@ -3,7 +3,7 @@ local _, ns = ...
 -- Chat bubbles in the theme's own style, built from the same parts as the add-on's panels.
 --
 --   Glass themes     a see-through pane (rounded where the client allows) with a soft shadow, a
---                    bright top edge, a thin rim and a bar of the accent color down its left side.
+--                    thin rim and a bar of the accent color down its left side (no sheen: 13.0.2).
 --   Fantasy themes   a solid panel with grain, a dark outer line, a rim in the theme's metal and
 --                    small corner brackets in the accent color.
 --   Celestial themes a small piece of night sky with a few stars, one fine line with a soft glow
@@ -117,11 +117,9 @@ ns:NewModule("chatBubbles", function()
             shadow:SetPoint("BOTTOMRIGHT", fill, "BOTTOMRIGHT", 2, -4)
             if round then ns:SliceTexture(shadow, "round.tga") else shadow:SetTexture(ns.FLAT) end
             shadow:SetVertexColor(0, 0, 0, 0.34)
-            local side = round and 6 or 1                    -- keep the light clear of rounded corners
-            local sheen = flat("sheen", -5)
-            sheen:SetPoint("TOPLEFT", fill, "TOPLEFT", side, -1)
-            sheen:SetPoint("BOTTOMRIGHT", fill, "BOTTOMRIGHT", -side, 1)
-            Gradient(sheen, lt[1], lt[2], lt[3], 0, 0.12, 0.05)
+            -- (13.0.2) No sheen and no lit top edge on a bubble: both were set in from the rounded
+            -- corners, so they drew a lighter box inside the pane and the words looked boxed in. The
+            -- pane, its rim, the accent bar, the tail and the name tab are the whole bubble.
             if round then
                 local rim = tex("rim", -4)
                 rim:SetAllPoints(fill)
@@ -130,11 +128,6 @@ ns:NewModule("chatBubbles", function()
             else
                 Lines("rim", fill, 0, -4, "@border", 1)
             end
-            local edge = flat("edge", -3)                    -- the pane catching light along its top
-            edge:SetHeight(1)
-            edge:SetPoint("TOPLEFT", fill, "TOPLEFT", side, -1)
-            edge:SetPoint("TOPRIGHT", fill, "TOPRIGHT", -side, -1)
-            ns:Paint(edge, "SetVertexColor", "@light", 0.26)
             local bar = flat("accent", -3)                   -- a bar of the accent color, like a quoted line
             bar:SetWidth(2)
             bar:SetPoint("TOPLEFT", fill, "TOPLEFT", 6, -7)

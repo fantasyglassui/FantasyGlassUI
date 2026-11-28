@@ -1,6 +1,6 @@
 local ADDON, ns = ...
 _G.FantasyGlassUI = ns
-ns.version = "13.0.1"
+ns.version = "13.5.0"
 ns.author = "DustyMouse"
 
 ns.modules = {}
@@ -1699,6 +1699,7 @@ ns.whatsNew = {
                   "Class quests on time: a heads-up a level or two before, and the route stays where it can reach the start.",
                   "Your guides, route planner and gold records are now in your backups too. /fgui data shows what each part keeps, and /fgui data tidy offers to remove old records, always asking first.",
                   "Behind the scenes: after a game update, a quick check turns off any part the update broke until Fantasy Glass UI is updated (/fgui health). Two new switches, both off until you turn them on: Keep crash reports in Accessibility, and Help improve time estimates in the planner window. Nothing is ever sent by itself." } },
+    { "13.0.2", { "Fixes: on nameplates the level no longer covers a friendly player's name, the game's orange threat flames no longer show above an enemy's bar, the class emblem fills the diamond portrait with no round disc or ring, chat bubbles lose the lighter box round their words, and the full-screen world map is no longer shrunk inside black borders." } },
     { "13.0.1", { "The bag window shows your bag slots when it opens (Slots hides them, and that is remembered), and its ready-made sections, such as Upgrades and Recipes, are switched on unless you already chose some. With Baganator, a one-time tip says where to find your bag slots." } },
     { "13.0.0", { "Quest guides: follow a route one step at a time, with a panel for the step you are on and an arrow that points the way. They are under Guide in /fgui.",
                   "The route planner: Plan my route works out which quests to take for your level, in what order, and when to fly, train or hand in, and plans again as you play. It finds quests through Questie when Questie is loaded.",

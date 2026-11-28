@@ -152,6 +152,11 @@ with tempfile.TemporaryDirectory() as tmp:
             fail(f"plan/zones.json puts {q['zone']} {x}, {y} at {got}, not {q['px']}")
         if (x, y) == (50, 50) and (abs(names[q["zone"]][0] - got[0]) > 1 or abs(names[q["zone"]][1] - got[1]) > 1):
             fail(f"plan/zones.json: {q['zone']}'s middle is not where /map/ names it")
+    # zones off the world map with map art of their own: each picture listed is served, and each served one is listed
+    arts = {n for n in fa if n.startswith("map/zones/")}
+    if {v["src"].lstrip("/") for v in zones.get("images", {}).values()} != arts or "map/zones/2521.webp" not in arts \
+            or zones["images"]["2521"]["size"] != [1002, 668]:
+        fail("plan/zones.json does not list the zone maps in map/zones/: " + str(sorted(arts)))
     if "Map art \u00a9 Blizzard Entertainment, map pieces from OpenMap." not in page or "Full credits on the world map" not in page:
         fail("the plan page's map has no credit line")
     # The one outside address allowed is OpenMap's, as a plain link (nothing loads until it is followed). The page as
