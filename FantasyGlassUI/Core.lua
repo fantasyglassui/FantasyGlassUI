@@ -1,6 +1,6 @@
 local ADDON, ns = ...
 _G.FantasyGlassUI = ns
-ns.version = "13.5.3"
+ns.version = "13.5.4"
 ns.author = "DustyMouse"
 
 ns.modules = {}
@@ -1698,6 +1698,7 @@ end
 
 -- What's new: shown once after an update (never on a first install, where the setup opens instead).
 ns.whatsNew = {
+    { "13.5.4", { "Disenchant from our bags works now: with Disenchant or another spell waiting for an item, click the item in the bag window. (In 13.5.3 the game blocked that click.)" } },
     { "13.5.3", { "The rank bars in the professions book now fill neatly inside their box, with the text centred. On friendly nameplates in the Modern and Block styles, the name now sits above the health bar instead of being hidden behind it. And with Disenchant or another spell waiting for an item, clicking an item in our bags now uses the spell on it instead of picking the item up." } },
     { "13.5.2", { "Your damage over time and the target's other debuffs now show on the target and focus frames during a fight. Two new switches, both off until you turn them on: Always open the world map windowed (Quests and map) and Show the chat buttons (Chat and people)." } },
     { "13.5.1", { "Plan ahead, in the planner window: plan the next couple of quest hubs (as before), about 5, or about 10 for a whole session. The route also plans again when you take a quest, and on a kill or collect step the arrow points to the nearest mob you still need (with Questie). A number no longer covers a friendly player's name on its nameplate." } },

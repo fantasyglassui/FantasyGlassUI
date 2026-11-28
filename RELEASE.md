@@ -1,8 +1,5 @@
-## 13.5.3
+## 13.5.4
 
-- Professions: the rank bars fill our box, 1 px inside its rim on every side, in a flat bar of the accent
-  color without the game's profession art and glow, the label centred; the unlearn button sits level with its bar.
-- Nameplates: on a friendly plate that shows its health bar, in the game's Modern and Block styles, the name
-  is drawn above the bar instead of inside it, where our bar covered it.
-- Bags: with Disenchant or another spell waiting for an item, a left-click on an item in our bag window
-  gives it to the spell, as the game's own bags do, instead of picking the item up.
+- Bags: Disenchant (or any spell waiting for an item) works from our bag window. 13.5.3 handed the item to the
+  spell from add-on code, which the game blocks; the slot's secure button now does it with the game's own
+  `/use bag slot`, set only for that click, so ordinary clicks still pick the item up. Not during combat.

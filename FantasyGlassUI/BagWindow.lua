@@ -30,6 +30,11 @@ end
 -- quality borders. Blizzard's own frames stay the "source of truth" for open/closed (so B, vendors,
 -- the banker and the bag button all keep working); they are made invisible and ours mirror them.
 
+-- a spell is waiting for an item to be clicked (Disenchant, an enchant, a sharpening stone...)
+local function SpellWantsItem()
+    return (SpellCanTargetItem and SpellCanTargetItem()) or (SpellCanTargetItemID and SpellCanTargetItemID()) or false
+end
+
 local SIZE, GAP, COLS, PAD = 36, 4, 10, 12
 local TOP, FOOT = 66, 30
 local ORDER = { "Equipment", "Consumables", "Quest", "Trade Goods", "Other", "Junk" }
@@ -185,6 +190,26 @@ local function NewWindow(cfg)
     -- button is anchored to, and whatever that is anchored to in turn (the slot, then this whole
     -- window), the game will not let an add-on show, hide or move during combat. Left attached, it
     -- would stop the bags opening and closing in a fight. So it lets go whenever it steps aside.
+    -- Giving an item to a waiting spell (Disenchant...) is something the game only lets a secure button do.
+    -- Just before a left-click, while such a spell waits, the slot's secure button gets a "/use bag slot"
+    -- macro, the game's own way to hand the item over; at any other time it has no left-click action, so
+    -- an ordinary click still picks the item up. (Not the secure "item" action: that would equip gear.)
+    -- Attributes can't change in a fight, so in combat this stays as it was (spells like this aren't cast then).
+    local function SpellPreClick(self, button, down)
+        if button ~= "LeftButton" or InCombatLockdown() then return end
+        local want = SpellWantsItem() and self.target and true or false
+        if want then self.suiSpell = true end
+        local kind = want and "macro" or nil
+        if self:GetAttribute("type1") ~= kind then self:SetAttribute("type1", kind) end
+        local text = want and ("/use " .. self.target.bag .. " " .. self.target.slot) or nil
+        if self:GetAttribute("macrotext1") ~= text then self:SetAttribute("macrotext1", text) end
+    end
+    local function SpellPostClick(self, button, down)            -- true: this click went to the waiting spell
+        if button ~= "LeftButton" or not self.suiSpell then return false end
+        if not down then self.suiSpell = nil end
+        return true
+    end
+
     local function LetGo()
         if not overlay or InCombatLockdown() then return false end
         overlay:Hide()
@@ -229,16 +254,15 @@ local function NewWindow(cfg)
     ns.bagTest = ns.bagTest or {}
     ns.bagTest[cfg.name] = { RightClick = function(b) return RightClick(b) end, Attach = function(b) return Attach(b) end,
                              overlay = function() return overlay end, LetGo = function() return LetGo() end }
+    ns.bagTest[cfg.name].SpellPreClick, ns.bagTest[cfg.name].SpellPostClick = SpellPreClick, SpellPostClick
 
     local function LeftClick(b)
         local info = b.info
         local link = info and info.hyperlink
-        -- a spell waiting for an item (Disenchant, an enchant, a sharpening stone, Pick Lock...): give it this
-        -- item, as the game's own bag button does, instead of picking the item up
-        if (SpellCanTargetItem and SpellCanTargetItem()) or (SpellCanTargetItemID and SpellCanTargetItemID()) then
-            C.UseContainerItem(b.bag, b.slot)
-            return
-        end
+        -- a spell waiting for an item (Disenchant, an enchant, a sharpening stone, Pick Lock...): the slot's
+        -- secure button gives it the item (see SpellPreClick); an add-on may not do that itself, and
+        -- picking the item up instead would be wrong, so a plain click does nothing here
+        if SpellWantsItem() then return end
         if info and info.itemID and IsAltKeyDown and IsAltKeyDown() then       -- Alt-click: choose a category for this item
             OpenPicker(b)
             return
@@ -338,7 +362,9 @@ local function NewWindow(cfg)
         u:SetAttribute("item", tostring(b.bag) .. " " .. tostring(b.slot))      -- "bag slot": which item this button uses
         u.target = b
         if ns.BagHandOver() then u:SetAttribute("type2", nil) end
+        u:SetScript("PreClick", SpellPreClick)
         u:SetScript("PostClick", function(self, button, down)
+            if SpellPostClick(self, button, down) then return end
             if down then return end
             if button == "RightButton" then
                 if self:GetAttribute("type2") == nil and ns.BagHandOver() then C.UseContainerItem(self.target.bag, self.target.slot) end
@@ -457,7 +483,9 @@ local function NewWindow(cfg)
         overlay:RegisterForDrag("LeftButton")
         overlay:SetAttribute("type2", "item")
         overlay:Hide()
+        overlay:SetScript("PreClick", SpellPreClick)
         overlay:SetScript("PostClick", function(self, button, down)
+            if SpellPostClick(self, button, down) then return end
             if down or not self.target then return end
             if button == "RightButton" then
                 if self:GetAttribute("type2") == nil and ns.BagHandOver() then C.UseContainerItem(self.target.bag, self.target.slot) end

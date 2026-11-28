@@ -4890,19 +4890,33 @@ try("Right-click hands items over", function()
 end)
 try("Left-click gives a waiting spell the item (Disenchant)", function()
     local T = ns.bagTest and ns.bagTest.FantasyGlassUIBags
-    if not T or not T.LeftClick then error("the bag window's left-click hook is missing") end
+    if not T or not T.LeftClick or not T.SpellPreClick then error("the bag window's left-click hooks are missing") end
     local used, picked
     local keepUse, keepPick = env.C_Container.UseContainerItem, env.C_Container.PickupContainerItem
     local keepCan, keepCanID = rawget(env, "SpellCanTargetItem"), rawget(env, "SpellCanTargetItemID")
     env.C_Container.UseContainerItem = function(bag, slot) used = bag .. ":" .. slot end
     env.C_Container.PickupContainerItem = function(bag, slot) picked = bag .. ":" .. slot end
     local b = { bag = 1, slot = 5, info = { itemID = 2000, hyperlink = "|Hitem:2000|h[Sword]|h" } }
+    local attr = {}
+    local sec = { target = b, GetAttribute = function(_, k) return attr[k] end, SetAttribute = function(_, k, v) attr[k] = v end }
     env.SpellCanTargetItem = function() return true end
     env.SpellCanTargetItemID = function() return false end
+    -- the add-on itself must never hand the item over: the game blocks that ("never allowed for add-ons")
     T.LeftClick(b)
-    if used ~= "1:5" or picked then error("with Disenchant waiting, a click should give it the item, not pick it up: used " .. tostring(used) .. ", picked " .. tostring(picked)) end
-    used, picked = nil, nil
-    env.SpellCanTargetItem = function() return false end
+    if used or picked then error("with Disenchant waiting, our own click code must neither use nor pick up the item: used " .. tostring(used) .. ", picked " .. tostring(picked)) end
+    -- the secure button does it, with the game's own /use for that bag slot (not the item action, which equips gear)
+    T.SpellPreClick(sec, "LeftButton", true)
+    if attr.type1 ~= "macro" or attr.macrotext1 ~= "/use 1 5" then error("the secure button should carry /use 1 5 for the click: " .. tostring(attr.type1) .. " " .. tostring(attr.macrotext1)) end
+    if not T.SpellPostClick(sec, "LeftButton", true) then error("the click went to the spell, so nothing else should run") end
+    env.SpellCanTargetItem = function() return false end                 -- the spell took the item
+    T.SpellPreClick(sec, "LeftButton", false)
+    if attr.type1 ~= nil or attr.macrotext1 ~= nil then error("once no spell waits, the left button has no secure action again") end
+    if not T.SpellPostClick(sec, "LeftButton", false) then error("the release of that same click still belongs to the spell") end
+    if T.SpellPostClick(sec, "LeftButton", false) then error("and the next click is an ordinary one") end
+    -- a right-click is left alone
+    T.SpellPreClick(sec, "RightButton", false)
+    if attr.type1 ~= nil then error("a right-click must not set the left button's action") end
+    -- with no spell waiting, a click picks the item up as before
     T.LeftClick(b)
     if picked ~= "1:5" or used then error("with no spell waiting, a click picks the item up as before") end
     env.SpellCanTargetItem, env.SpellCanTargetItemID = keepCan, keepCanID
