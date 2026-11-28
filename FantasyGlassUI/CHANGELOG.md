@@ -2,6 +2,12 @@
 
 The releases published on CurseForge. Each lists what changed since the release before it.
 
+## 13.5.1
+
+- Target and focus frames: your damage over time and the target's other debuffs show in a fight on WoW:
+  Forever, which hides them from add-ons in combat. The game's own aura icons take the row's place
+  until the fight ends, in our look and as the aura designer is set.
+
 ## 13.5.0
 
 Dungeons in your route, class quests on time, and some care behind the scenes.
