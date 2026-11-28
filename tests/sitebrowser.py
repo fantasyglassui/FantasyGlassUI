@@ -8,8 +8,8 @@ text over a screenshot is left to the eye); no page wider than the screen; no sc
 script error. The other languages are checked at 390 px for width. The plan page (/plan/) is checked at 390 px: a
 plan code pasted shows its steps, in German too, with no script error and nothing wider than the screen; a sample plan's route
 is pinned on the world map at the expected pixels (390 and 1280 px, light and dark), asking only this site, and once a plan is
-shown; a zone the world map does not have (Zephras Isle) is drawn as a sketch, beside the world map or instead of an empty
-one; without tiles the zone sketches show instead. The world map (/map/)
+shown; a zone the world map does not have (Zephras Isle) is drawn on its own map art (pins checked to 2 px), or as a
+sketch without it, beside the world map or instead of an empty one; without tiles the zone sketches show instead. The world map (/map/)
 draws its tiles from this site, its places file is valid and ?pins shows the pin helper. On Guide and
 Gold (English and German, 390 px), the example route is drawn and the short tour opens, steps on and closes by keyboard. --shots DIR
 saves Home and Get started, dark and light, at both widths (and the plan page's route, plan-route-*.png). --quick checks English only. Needs Python's playwright with its Chromium; when that is
@@ -324,11 +324,11 @@ def main():
                     problems.append(f"{where}: the steps with no place: {got['unplaced']!r}")
                 # the mixed plan: its Zephras Isle step (a zone the world map does not have) on a sketch under the world map
                 mix = page.evaluate("""() => { const off = document.getElementById('offpanels'), z = document.getElementById('off-z4');
-                  return [off.hidden, off.querySelectorAll('svg.fgmap').length, !!z && z.querySelector('h2').textContent,
-                          !!z && [...z.querySelectorAll('.mk')].map(m => m.dataset.steps).join('|'), document.getElementById('mapframe').hidden,
+                  return [off.hidden, off.querySelectorAll('.zonemap').length, !!z && z.querySelector('h2').textContent,
+                          !!z && [...z.querySelectorAll('.zonemap .rt-pin[data-steps]')].map(m => m.dataset.steps).join('|'), document.getElementById('mapframe').hidden,
                           [...document.querySelectorAll('#views button')].map(b => b.textContent).join('|')]; }""")
                 if mix != [False, 1, "Zephras Isle", " ".join(map(str, sample["offmap"])), False, "Whole route|Durotar|Elwynn Forest|Stormwind City|Zephras Isle"]:
-                    problems.append(f"{where}: the mixed plan's Zephras Isle sketch beside the world map: {mix}")
+                    problems.append(f"{where}: the mixed plan's Zephras Isle map beside the world map: {mix}")
                 page.locator("#views button").first.click()             # (the whole route again)
                 now1 = page.evaluate("document.querySelector('#routemap [aria-current=step]').dataset.steps")
                 page.check("#s0")
@@ -348,24 +348,36 @@ def main():
                 if SHOTS:
                     os.makedirs(SHOTS, exist_ok=True)
                     page.screenshot(path=os.path.join(SHOTS, f"plan-route-{scheme}-{w}.png"), full_page=True)
-                # a plan all on Zephras Isle: no (empty) world map, the zone's sketch with numbered pins and the current step
+                # a plan all on Zephras Isle (a zone off the world map, with its own map art at /map/zones/2521.webp): no
+                # (empty) world map; the zone's own map with numbered pins where its 0-100 x, y fall on the picture (2 px),
+                # the current step, the credit, and a step's number opening its pin
                 zs = sample["zephras"]
                 page.fill("#code", zs["code"])
-                page.wait_for_timeout(300)
-                zg = page.evaluate("""() => { const off = document.getElementById('offpanels');
-                  return [document.getElementById('mapframe').hidden, document.getElementById('legend').hidden, document.getElementById('mapcredit').hidden,
-                          document.getElementById('views').hidden, off.hidden, off.querySelectorAll('svg.fgmap').length,
-                          [...off.querySelectorAll('.mk[role=button]')].map(m => m.dataset.steps).join(' '),
-                          !!off.querySelector('.mk.now[data-steps~="0"]'), (off.querySelector('.panel .note') || {}).textContent || '',
-                          document.getElementById('unplaced').textContent,
-                          document.documentElement.scrollWidth > document.documentElement.clientWidth + 1]; }""")
-                want = [True, True, True, True, False, 1, " ".join(map(str, zs["offmap"])), True,
-                        "Zephras Isle is not on the world map yet, so its steps are drawn as a sketch.", none(zs["unplaced"]), False]
+                try:
+                    page.wait_for_selector("#offpanels .zonemap img.leaflet-image-layer", timeout=4000)
+                    page.wait_for_function("document.querySelector('#offpanels .zonemap img.leaflet-image-layer').complete", timeout=4000)
+                except Exception:
+                    problems.append(f"{where}: Zephras Isle's map art is not drawn")
+                page.wait_for_timeout(200)
+                zg = page.evaluate("""(steps) => { const off = document.getElementById('offpanels'), img = off.querySelector('.zonemap img.leaflet-image-layer');
+                  const pins = [...off.querySelectorAll('.zonemap .rt-pin[data-steps]')], r = img ? img.getBoundingClientRect() : null, p = window.FGPlan.read(steps.code).plan;
+                  const far = steps.offmap.map(i => { const pin = pins.find(e => e.dataset.steps.split(' ').includes(String(i))); if (!pin || !r) return [i, null];
+                    const b = pin.getBoundingClientRect(), x = r.left + p.st[i].x / 100 * r.width, y = r.top + p.st[i].y / 100 * r.height;
+                    return [i, Math.round(Math.hypot(b.left + b.width / 2 - x, b.top + b.height / 2 - y) * 10) / 10]; }).filter(o => o[1] === null || o[1] > 2);
+                  return [document.getElementById('mapframe').hidden, document.getElementById('mapcredit').hidden, document.getElementById('legend').hidden,
+                          document.getElementById('views').hidden, off.hidden, off.querySelectorAll('svg.fgmap').length, img && img.getAttribute('src'),
+                          [r && Math.round(r.width / r.height * 1000) / 1000], far,
+                          !!off.querySelector('.rt-pin[aria-current=step][data-steps~="0"]'), (off.querySelector('.panel .note') || {}).textContent || '',
+                          (off.querySelector('.panel .credit') || {}).textContent || '', document.getElementById('unplaced').textContent,
+                          off.querySelector('.zonemap').offsetHeight >= 240, document.documentElement.scrollWidth > document.documentElement.clientWidth + 1]; }""", zs)
+                want = [True, True, False, True, False, 0, "/map/zones/2521.webp", [1.5], [], True,
+                        "Zephras Isle is not on the world map yet, so it has its own map.", "Map art \u00a9 Blizzard Entertainment", none(zs["unplaced"]), True, False]
                 if zg != want:
                     problems.append(f"{where}: a plan all on Zephras Isle: {zg}, wanted {want}")
-                page.locator("#steps button.n").nth(2).click()           # (a step's number: its marker on the sketch)
-                if page.evaluate("document.activeElement.getAttribute('data-steps')") != "2":
-                    problems.append(f"{where}: a Zephras Isle step's number does not show its marker")
+                page.locator("#steps button.n").nth(2).click()           # (a step's number: its pin on the zone's map, opened)
+                if "Slay the Tidecaller" not in page.evaluate("(document.querySelector('#offpanels .leaflet-popup-content') || {}).textContent || ''"):
+                    problems.append(f"{where}: a Zephras Isle step's number does not open its pin")
+                page.locator("#offpanels a.leaflet-popup-close-button").click()
                 problems += [f"{where} Zephras Isle: {x}" for x in page.evaluate(CHECK) if x.startswith(("contrast", "wider"))]
                 if SHOTS:
                     page.screenshot(path=os.path.join(SHOTS, f"plan-zephras-{scheme}-{w}.png"), full_page=True)
@@ -376,6 +388,25 @@ def main():
                 problems += [f"{where}: script error or warning: {e}" for e in errors]
                 checked += 1
                 ctx.close()
+            # no map art for Zephras Isle: its steps on a sketch instead (map.js), with no script error
+            ctx = browser.new_context(viewport={"width": 1280, "height": 900}, locale="en-US")
+            ctx.route("**/*", lambda route: route.abort() if not route.request.url.startswith(base) or "/map/zones/" in route.request.url else route.continue_())
+            page = ctx.new_page()
+            errors = []
+            page.on("pageerror", lambda e: errors.append(str(e)))
+            page.goto(base + "/plan/#c=" + sample["zephras"]["code"], wait_until="load")
+            try:
+                page.wait_for_selector("#offpanels svg.fgmap", timeout=8000)
+            except Exception:
+                pass
+            na = page.evaluate("""[document.querySelectorAll('#offpanels svg.fgmap').length, document.querySelectorAll('#offpanels .zonemap').length,
+                                   [...document.querySelectorAll('#offpanels .mk[role=button]')].map(m => m.dataset.steps).join(' '),
+                                   (document.querySelector('#offpanels .panel .note') || {}).textContent, document.getElementById('mapframe').hidden]""")
+            if na != [1, 0, " ".join(map(str, sample["zephras"]["offmap"])), "Zephras Isle is not on the world map yet, so its steps are drawn as a sketch.", True]:
+                problems.append(f"/plan/ without Zephras Isle's map art: no sketch instead ({na})")
+            problems += [f"/plan/ without Zephras Isle's map art: script error: {e}" for e in errors]
+            checked += 1
+            ctx.close()
             # no tiles: the sketches instead, with no script error
             ctx = browser.new_context(viewport={"width": 390, "height": 900}, locale="en-US")
             ctx.route("**/*", lambda route: route.abort() if not route.request.url.startswith(base) or "/map/tiles/" in route.request.url and route.request.url.endswith(".webp") else route.continue_())

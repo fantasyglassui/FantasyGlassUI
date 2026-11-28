@@ -108,6 +108,7 @@ function nulls(a) { return a.map(function (p, i) { return p ? -1 : i; }).filter(
 eq(nulls(at), sample.unplaced.concat(sample.offmap).sort(), "the steps not on the world map");
 // a zone the world map does not have (Zephras Isle, uiMapID 2521, on its own game map): no pixel, but a sketch panel
 eq(String(2521) in zones.ids, false, "Zephras Isle is not on the world map");
+eq([zones.images["2521"], zones.names["Zephras Isle"]], [{ size: [1002, 668], src: "/map/zones/2521.webp" }, 2521], "Zephras Isle has its own map art, the standard zone map")
 var zp = FGPlan.read(sample.zephras.code);
 if (!zp.ok) fail("the Zephras Isle sample does not read");
 eq(nulls(FGPlan.place(zp.plan, zones)), sample.zephras.offmap.concat(sample.zephras.unplaced), "no Zephras Isle step on the world map");
