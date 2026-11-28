@@ -2119,7 +2119,7 @@ try("Chat bubbles in each style", function()
             if by.corner ~= 4 or by.grain ~= 1 or by.outline ~= 4 or by.rim ~= 4 then error("fantasy: expected brackets, grain, an outer line and a rim") end
             if by.accent or by.shadow then error("fantasy: glass pieces on a fantasy bubble") end
         else
-            if by.accent ~= 1 or by.shadow ~= 1 or by.edge ~= 1 then error(style .. ": expected a shadow, a lit top edge and an accent bar") end
+            if by.accent ~= 1 or by.shadow ~= 1 then error(style .. ": expected a shadow and an accent bar") end
             if by.corner or by.grain then error(style .. ": fantasy pieces on a glass bubble") end
             if wantRound and by.rim ~= 1 then error("rounded glass: the rim should be one rounded piece") end
             if not wantRound and by.rim ~= 4 then error("square glass: the rim should be four lines") end
@@ -27076,6 +27076,256 @@ do
     end)
 end
 -- logmerge 13.0.1 tests: end
+-- 13.0.2 tests: begin
+-- (13.0.2) A friendly player's name-only plate read "Ice60sar": the level was put just left of the game's
+-- name, but that name's box is as wide as the bar (or has none), so the level sat in the middle of the
+-- name. The level now stands just left of our own bar on every plate, and lives on that bar, so a plate
+-- that shows only a name (the bar hidden) shows no level, as the game's own level does.
+try("Nameplates 13.0.2: the level sits left of the bar on every plate, never on the name", function()
+    if type(ns.PlateLevel) ~= "function" then error("no plate level") end
+    local keep = { lvl = env.UnitLevel }
+    env.UnitLevel = function() return 60 end
+    local function Rig(foe)
+        local uf, bar, own, name = newmock(), newmock(), newmock(), newmock()
+        rawset(bar, "suiOwn", own); rawset(uf, "healthBar", bar); rawset(uf, "name", name)
+        if foe then rawset(uf, "suiFoe", true) end
+        local function Maker(owner)
+            return function()
+                local fs, pts = newmock(), {}
+                rawset(fs, "owner", owner); rawset(fs, "pts", pts)
+                rawset(fs, "SetPoint", function(_, p, rel, rp, x, y) pts[#pts + 1] = { p, rel, rp, x, y } end)
+                rawset(fs, "ClearAllPoints", function() for i = #pts, 1, -1 do pts[i] = nil end end)
+                rawset(fs, "SetText", function(_, s) rawset(fs, "txt", s) end)
+                return fs
+            end
+        end
+        rawset(uf, "CreateFontString", Maker("the plate")); rawset(own, "CreateFontString", Maker("our bar"))
+        rawset(bar, "CreateFontString", Maker("the game's bar")); rawset(name, "CreateFontString", Maker("the name"))
+        return uf, own, name
+    end
+    local ok, err = pcall(function()
+        for _, case in ipairs({ { "an enemy's plate", true }, { "a friendly plate", false }, { "a name-only plate", false, true } }) do
+            local what, foe, nameOnly = case[1], case[2], case[3]
+            local uf, own, name = Rig(foe)
+            if nameOnly then rawset(own, "IsShown", function() return false end) end     -- (the game hid the bar; ours went with it)
+            ns.PlateLevel(uf, "nameplate1")
+            local t = rawget(uf, "suiLevel")
+            if not t then error(what .. ": no level") end
+            if rawget(t, "owner") ~= "our bar" then error(what .. ": the level is drawn on " .. tostring(rawget(t, "owner")) .. ", not on our bar (so it stays where a name-only plate hides the bar)") end
+            local beside = false
+            for _, p in ipairs(rawget(t, "pts")) do
+                if p[2] == name then error(what .. ": the level is placed by the game's name, whose box is not its text: it lands on the name") end
+                if p[1] == "RIGHT" and p[2] == own and p[3] == "LEFT" and type(p[4]) == "number" and p[4] < 0 then beside = true end
+            end
+            if not beside then error(what .. ": the level is not just left of the bar") end
+            if rawget(t, "txt") ~= 60 then error(what .. ": the level reads " .. tostring(rawget(t, "txt"))) end
+        end
+    end)
+    env.UnitLevel = keep.lvl
+    if not ok then error(err, 0) end
+end)
+
+-- (13.0.2) Orange flames over an enemy's bar: the game's own threat flare (its "Progressive" threat
+-- display, UI-HUD-Nameplates-Aggro-Flare), shown above the bar while the unit is attacking you. Our
+-- plates show threat in the bar's color and edge, so with those on the flare is kept at alpha 0, even
+-- as the game fades it in; with both off the game's flare is left alone.
+try("Nameplates 13.0.2: the game's threat flare stays out of sight while our plates show threat", function()
+    local plate, uf = newmock(), newmock()
+    rawset(plate, "UnitFrame", uf)
+    local flares = {}
+    for _, k in ipairs({ "aggroHighlightBase", "aggroHighlightAdditive" }) do
+        local t = newmock()
+        rawset(t, "testAlpha", 1)
+        rawset(t, "GetObjectType", function() return "Texture" end)
+        rawset(t, "SetAlpha", function(self, a) rawset(self, "testAlpha", a) end)
+        rawset(t, "GetAlpha", function(self) return rawget(self, "testAlpha") end)
+        rawset(uf, k, t)
+        flares[k] = t
+    end
+    local realPlates = rawget(env.C_NamePlate, "GetNamePlateForUnit")
+    local keepDesign = ns.db.plateDesign
+    local function Frame()                                    -- one drawn frame: every OnUpdate runs once
+        for i = 1, #handlers do local h = handlers[i]; if h.name == "OnUpdate" then pcall(h.fn, h.self, 0.02) end end
+    end
+    local ok, err = pcall(function()
+        rawset(env.C_NamePlate, "GetNamePlateForUnit", function() return plate end)
+        ns.db.plateDesign = nil                               -- (threat in the bar's color and on its edge: on, as for everyone)
+        fireEvent("NAME_PLATE_UNIT_ADDED", "nameplate4")
+        for k, t in pairs(flares) do
+            if rawget(t, "testAlpha") ~= 0 then error("the game's flare (" .. k .. ") shows over the bar") end
+        end
+        for _, t in pairs(flares) do t:SetAlpha(1) end      -- the game fades it in as the mob turns on you
+        Frame()
+        for k, t in pairs(flares) do
+            if rawget(t, "testAlpha") ~= 0 then error("the game faded its flare (" .. k .. ") back in and it stayed") end
+        end
+        ns.db.plateDesign = { threat = false, threatEdge = false }
+        fireEvent("NAME_PLATE_UNIT_ADDED", "nameplate4")
+        Frame()
+        for k, t in pairs(flares) do
+            if rawget(t, "testAlpha") ~= 1 then error("with our threat display off, the game's flare (" .. k .. ") should be left to show") end
+        end
+    end)
+    rawset(env.C_NamePlate, "GetNamePlateForUnit", realPlates)
+    ns.db.plateDesign = keepDesign
+    if not ok then error(err, 0) end
+end)
+
+-- (13.0.2) The class emblem in the big diamonds (player, target) drew a round disc with a ring in it: the
+-- ring and the circling motes turn on the circle that fits inside the diamond. In a diamond the emblem
+-- is now the art alone, filling it, on every frame alike (party too), out of a fight and in one.
+try("13.0.2: the class emblem fills the diamond with no ring or round disc, on every frame", function()
+    local frames = {}
+    for _, f in ipairs(ns.unitFrameList or {}) do
+        if f.designKey == "Player" or f.designKey == "Target" or f.designKey == "Party1" then frames[f.designKey] = f end
+    end
+    for _, k in ipairs({ "Player", "Target", "Party1" }) do if not frames[k] then error("no " .. k .. " frame") end end
+    local keep = { style = ns.db.ufStyle, portrait = ns.db.ufPortrait, lock = env.InCombatLockdown, class = env.UnitClass,
+                   isPlayer = env.UnitIsPlayer, make = env.CreateFrame, motion = ns.db.reduceMotion }
+    local portraits = {}
+    for k, f in pairs(frames) do
+        local h = (k == "Party1") and 30 or 40
+        rawset(f, "GetHeight", function() return h end); rawset(f, "GetWidth", function() return 200 end)
+        local p = f.portrait
+        portraits[p] = k
+        rawset(p, "SetSize", function(self, w, hh) rawset(self, "testW", w); rawset(self, "testH", hh) end)
+        rawset(p, "GetWidth", function(self) return rawget(self, "testW") or 0 end)
+        rawset(p, "GetHeight", function(self) return rawget(self, "testH") or 0 end)
+        rawset(p, "IsShown", function() return true end)
+    end
+    env.CreateFrame = function(kind, name, parent, ...)
+        local f = keep.make(kind, name, parent, ...)
+        if portraits[parent] then                             -- a medallion on a diamond: its textures say what they show
+            -- (a field it never set or set back to nil reads as nil, as on a real frame, not as a stand-in)
+            local plain = { shape = true, shapeSize = true, padded = true }
+            setmetatable(f, { __index = function(t, k) if plain[k] then return nil end; return mockmt.__index(t, k) end,
+                              __call = mockmt.__call })
+            rawset(f, "CreateTexture", function()
+                local t = newmock()
+                rawset(t, "testAlpha", 1)
+                rawset(t, "SetAlpha", function(self, a) rawset(self, "testAlpha", a) end)
+                rawset(t, "GetAlpha", function(self) return rawget(self, "testAlpha") end)
+                return t
+            end)
+        end
+        return f
+    end
+    local function Check(when, inShape)
+        for _, k in ipairs({ "Player", "Target", "Party1" }) do
+            local m = rawget(frames[k].portrait, "emblem")
+            if not m then error(when .. ", " .. k .. ": no class emblem") end
+            for _, part in ipairs({ "ring", "sparks" }) do
+                local a = rawget(m[part], "testAlpha")
+                if inShape and a ~= 0 then error(when .. ", " .. k .. ": the emblem's " .. part .. " shows (alpha " .. tostring(a) .. "): a round ring inside the diamond") end
+                if not inShape and a ~= 1 then error(when .. ", " .. k .. ": the round medallion lost its " .. part) end
+            end
+            if inShape and not rawget(m.disc, "scMasked") then error(when .. ", " .. k .. ": the emblem is not cut to the diamond") end
+        end
+    end
+    local function Send(f, event, ...)
+        for i = 1, #handlers do local h = handlers[i]; if h.self == f and h.name == "OnEvent" then h.fn(f, event, ...) end end
+    end
+    local ok, err = pcall(function()
+        ns.db.ufStyle, ns.db.ufPortrait = "STARCUT", "CLASS"
+        env.UnitIsPlayer = function() return true end
+        env.UnitClass = function() return "Druid", "DRUID" end
+        env.InCombatLockdown = function() return false end
+        for _, f in pairs(frames) do rawset(f.portrait, "emblem", false) end
+        ns:RefreshUnitFrames()
+        Check("out of a fight", true)
+        env.InCombatLockdown = function() return true end
+        env.UnitClass = function() return "Hunter", "HUNTER" end
+        Send(frames.Target, "PLAYER_TARGET_CHANGED")
+        Send(frames.Party1, "GROUP_ROSTER_UPDATE")
+        Send(frames.Player, "UNIT_PORTRAIT_UPDATE", "player")
+        Check("in a fight", true)
+        ns.db.reduceMotion = true                             -- held still: still no ring
+        for _, f in pairs(frames) do local m = rawget(f.portrait, "emblem"); m:Animate(); m:Fit() end
+        Check("with Reduce motion", true)
+        ns.db.reduceMotion = keep.motion
+        env.InCombatLockdown = function() return false end
+        ns.db.ufStyle = "CLASSIC"; ns:RefreshUnitFrames()
+        Check("Classic (the round medallion in the box)", false)
+    end)
+    env.InCombatLockdown, env.UnitClass, env.UnitIsPlayer, env.CreateFrame = keep.lock, keep.class, keep.isPlayer, keep.make
+    ns.db.ufStyle, ns.db.ufPortrait, ns.db.reduceMotion = keep.style, keep.portrait, keep.motion
+    for _, f in pairs(frames) do
+        for _, name in ipairs({ "GetHeight", "GetWidth" }) do rawset(f, name, nil) end
+        for _, name in ipairs({ "SetSize", "GetWidth", "GetHeight", "IsShown" }) do rawset(f.portrait, name, nil) end
+    end
+    ns:RefreshUnitFrames()
+    if not ok then error(err, 0) end
+end)
+-- (13.0.2) A glass bubble showed a lighter box inside the dark pane, round the words: its sheen and lit
+-- top edge were set in from the rounded corners. A bubble is now its pane, rim, accent bar, tail and
+-- name tab only; the glass windows keep their own sheen.
+try("Chat bubbles 13.0.2: a glass bubble has no lighter box round the words", function()
+    if type(ns.StyleBubble) ~= "function" then error("the chat bubble module did not start") end
+    local keepTheme, keepRounded = ns.db.theme, ns.db.rounded
+    local ok, err = pcall(function()
+        for _, rounded in ipairs({ true, false }) do
+            ns.db.theme = "SMOKE"; ns.db.rounded = rounded; ns:BuildPalette()
+            local made = {}
+            local holder = newmock()
+            rawset(holder, "CreateTexture", function()
+                local tx = newmock(); made[#made + 1] = tx; return tx
+            end)
+            local str = newmock(); rawset(str, "GetText", function() return "Aonda is a good woman." end)
+            rawset(holder, "String", str)
+            rawset(holder, "GetRegions", function() return end)
+            rawset(holder, "IsForbidden", function() return false end)
+            local bubble = newmock()
+            rawset(bubble, "GetChildren", function() return holder end)
+            rawset(bubble, "IsForbidden", function() return false end)
+            ns.StyleBubble(bubble)
+            local by = {}
+            for _, tx in ipairs(made) do local part = rawget(tx, "part"); if part then by[part] = (by[part] or 0) + 1 end end
+            local what = rounded and "rounded glass" or "square glass"
+            if by.sheen or by.edge then error(what .. ": the bubble still has a highlight inside its pane (" .. (by.sheen and "sheen" or "edge") .. ")") end
+            if by.fill ~= 1 or not by.rim or by.tail ~= 1 or by.tailEdge ~= 1 or by.tab ~= 1 then error(what .. ": the pane, its rim, the tail or the name tab is missing") end
+        end
+    end)
+    ns.db.theme, ns.db.rounded = keepTheme, keepRounded; ns:Retheme()
+    if not ok then error(err, 0) end
+end)
+-- (13.0.2) "Keeps opening the map to full screen with black borders": the smaller map scaled the game's
+-- full-screen map too, which then sat shrunk inside the game's blackout. Full screen keeps its size and
+-- never fades; the windowed map takes the setting. Switching between the two sizes it again.
+try("World map 13.0.2: the full-screen map is not shrunk; the windowed one takes the setting", function()
+    local T = ns.smallMapTest
+    if not T then error("the smaller map did not start") end
+    local map = env.WorldMapFrame
+    local saved = {}
+    for _, k in ipairs({ "IsMaximized", "SetScale", "SetAlpha", "isMaximized" }) do saved[k] = rawget(map, k) end
+    local keepSize = ns.db.mapSize
+    local ok, err = pcall(function()
+        local scale, alpha, full = nil, nil, true
+        rawset(map, "SetScale", function(_, x) scale = x end)
+        rawset(map, "SetAlpha", function(_, a) alpha = a end)
+        rawset(map, "IsMaximized", function() return full end)
+        ns.db.mapSize = 60
+        T.Moving(false)
+        if scale ~= 1 then error("the full-screen map was scaled to " .. tostring(scale) .. ": it sits shrunk inside black borders") end
+        T.Moving(true)
+        if scale ~= 1 or alpha ~= 1 then error("walking with the full-screen map open faded or shrank it (" .. tostring(scale) .. ", " .. tostring(alpha) .. ")") end
+        T.Moving(false)
+        full = false
+        T.Apply()
+        if math.abs((scale or 0) - 0.6) > 0.001 then error("the windowed map should be at the chosen 60%, got " .. tostring(scale)) end
+        T.Moving(true)
+        if alpha ~= 0.45 then error("the windowed map should fade while you move") end
+        T.Moving(false)
+        -- a client whose map has only the field the game sets
+        rawset(map, "IsMaximized", false); rawset(map, "isMaximized", true)
+        T.Apply()
+        if scale ~= 1 then error("with only isMaximized set, the full-screen map was still scaled") end
+    end)
+    for k, v in pairs(saved) do rawset(map, k, v) end
+    for _, k in ipairs({ "IsMaximized", "SetScale", "SetAlpha", "isMaximized" }) do if saved[k] == nil then rawset(map, k, nil) end end
+    ns.db.mapSize = keepSize
+    if not ok then error(err, 0) end
+end)
+-- 13.0.2 tests: end
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()
