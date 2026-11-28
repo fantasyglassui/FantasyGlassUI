@@ -1,6 +1,6 @@
 {
- "_": "A plan code for the plan page's world map (tests/plan_reader_check.js, tests/sitebrowser.py): its steps land at these pixels of /map/ at maxZoom (from tools/map_markers.py's zone_px; zones at 50, 50 are where markers.json puts the zone's name). Step 2 is close to step 0; steps 5 (no place) and 6 (a zone the map does not know) are not pinned.",
- "code": "SUIP1!{S1:vN1;S2:lv{N1;N1;N2;N5;}S2:xpN900;S1:sN1200;S2:flN0;S2:crN1;S1:z{N1;{S1:mN1411;S1:nS7:Durotar}N2;{S1:nS13:Elwynn Forest}N3;{S1:mN1453;S1:nS14:Stormwind City}N4;{S1:nS7:Nowhere}}S2:st{N1;{S1:kS6:acceptS1:tS31:Accept: Your Place in the WorldS1:xN50;S1:yN50;S1:zN1;}N2;{S1:kS2:doS1:tS20:Kill 8 Mottled BoarsS1:xN45.2;S1:yN61;S1:zN1;}N3;{S1:kS6:turninS1:tS32:Turn in: Your Place in the WorldS1:xN50.2;S1:yN50.1;S1:zN1;}N4;{S1:kS4:sailS1:tS37:Take the boat to the Eastern KingdomsS1:xN50;S1:yN50;S1:zN2;}N5;{S1:kS6:turninS1:tS29:Turn in: A Warrior's TrainingS1:xN50;S1:yN50;S1:zN3;}N6;{S1:kS4:noteS1:tS23:Stop here for the night}N7;{S1:kS4:gotoS1:tS24:Walk to the hidden gladeS1:xN30;S1:yN30;S1:zN4;}}}",
+ "_": "Plan codes for the plan page's world map (tests/plan_reader_check.js, tests/sitecheck.py, tests/sitebrowser.py). code: a mixed plan whose steps land at these pixels of /map/ at maxZoom (from tools/map_markers.py's zone_px; zones at 50, 50 are where markers.json puts the zone's name); step 2 is close to step 0; step 5 has no place at all, step 6 is on Zephras Isle (uiMapID 2521, not on the world map: drawn on a sketch). zephras: a plan all on Zephras Isle (no world map, one sketch), its last step with no place.",
+ "code": "SUIP1!{S1:vN1;S2:lv{N1;N1;N2;N5;}S2:xpN900;S1:sN1200;S2:flN0;S2:crN1;S1:z{N1;{S1:mN1411;S1:nS7:Durotar}N2;{S1:nS13:Elwynn Forest}N3;{S1:mN1453;S1:nS14:Stormwind City}N4;{S1:mN2521;S1:nS12:Zephras Isle}}S2:st{N1;{S1:kS6:acceptS1:tS31:Accept: Your Place in the WorldS1:xN50;S1:yN50;S1:zN1;}N2;{S1:kS2:doS1:tS20:Kill 8 Mottled BoarsS1:xN45.2;S1:yN61;S1:zN1;}N3;{S1:kS6:turninS1:tS32:Turn in: Your Place in the WorldS1:xN50.2;S1:yN50.1;S1:zN1;}N4;{S1:kS4:sailS1:tS37:Take the boat to the Eastern KingdomsS1:xN50;S1:yN50;S1:zN2;}N5;{S1:kS6:turninS1:tS29:Turn in: A Warrior's TrainingS1:xN50;S1:yN50;S1:zN3;}N6;{S1:kS4:noteS1:tS23:Stop here for the night}N7;{S1:kS4:sailS1:tS29:Take the boat to Zephras IsleS1:xN30;S1:yN30;S1:zN4;}}}",
  "points": [
   {
    "step": 0,
@@ -36,7 +36,22 @@
   }
  ],
  "unplaced": [
-  5,
+  5
+ ],
+ "offmap": [
   6
- ]
+ ],
+ "zephras": {
+  "code": "SUIP1!{S1:vN1;S2:lv{N1;N58;N2;N60;}S2:xpN900;S1:sN1200;S2:flN0;S2:crN1;S1:z{N1;{S1:mN2521;S1:nS12:Zephras Isle}}S2:st{N1;{S1:kS6:acceptS1:tS26:Accept: Storm Over ZephrasS1:xN42.5;S1:yN61.3;S1:zN1;}N2;{S1:kS2:doS1:tS28:Gather 6 Gale-Touched ShellsS1:xN55.1;S1:yN48.7;S1:zN1;}N3;{S1:kS2:doS1:tS19:Slay the TidecallerS1:xN63.8;S1:yN32.4;S1:zN1;}N4;{S1:kS6:turninS1:tS27:Turn in: Storm Over ZephrasS1:xN42.6;S1:yN61.2;S1:zN1;}N5;{S1:kS4:noteS1:tS18:Log out at the inn}}}",
+  "zone": "Zephras Isle",
+  "offmap": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "unplaced": [
+   4
+  ]
+ }
 }

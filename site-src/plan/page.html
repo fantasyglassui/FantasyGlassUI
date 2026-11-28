@@ -108,6 +108,13 @@ a { color: var(--frost); }
 .legend li { display: inline-flex; align-items: center; gap: 6px; }
 .legend .rt-pin { width: 18px; height: 18px; font-size: 0; box-shadow: none; cursor: default; }
 .route .credit { margin: 8px 0 0; }
+#offpanels { margin-top: 14px; }
+.mapframe:not([hidden]) ~ #offpanels { border-top: 1px solid var(--line); padding-top: 14px; }
+#offpanels .panel .note { margin: -4px 0 8px; }
+#offpanels .panel .credit { margin: 8px 0 0; }
+.zoneframe { --sea: #3a3226; }
+.routemap.zonemap { height: auto; aspect-ratio: 3 / 2; min-height: 240px; max-height: 520px; }
+#offpanels .panel.hit { box-shadow: 0 0 0 2px var(--gold); border-radius: 6px; }
 @media (max-width: 600px) { .routemap { height: clamp(320px, 58vh, 460px); } }
 .real h2 { font-family: var(--display); font-weight: 400; font-size: 1.15rem; margin: 0 0 8px; }
 .real .row { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; margin: 12px 0; }
@@ -141,6 +148,8 @@ a { color: var(--frost); }
       <ul class="legend" id="legend"></ul>
       <p class="note" id="unplaced" hidden></p>
       <p class="note credit" id="mapcredit"></p>
+      <!-- the zones the world map does not have (an island added later, say): each one's sketch (map.js) -->
+      <div class="panels" id="offpanels" hidden></div>
       <!-- only when the world map cannot be loaded: each zone's sketch (map.js) -->
       <p class="note" id="sketchnote" hidden></p>
       <div class="panels" id="panels" hidden></div>
@@ -251,7 +260,9 @@ var WORDS = /*@WORDS@*/;
     if (rt.state === "failed") return;
     rt.state = "failed";
     if (rt.map) { try { rt.map.remove(); } catch (e) {} rt.map = null; }
-    ["mapframe", "views", "legend", "unplaced", "mapcredit"].forEach(function (id) { $(id).hidden = true; });
+    Object.keys(rt.offp || {}).forEach(function (z) { var o = rt.offp[z]; if (o.V) try { o.V.map.remove(); } catch (e) {} });
+    rt.offp = {};
+    ["mapframe", "views", "legend", "unplaced", "mapcredit", "offpanels"].forEach(function (id) { $(id).hidden = true; });
     $("sketchnote").hidden = false; $("panels").hidden = false;
     if (result && result.ok) { drawPanels(result.plan); drawSteps(result.plan); }
   }
@@ -260,17 +271,14 @@ var WORDS = /*@WORDS@*/;
     if (meta.sea) $("mapframe").style.setProperty("--sea", meta.sea);
     var have = null;
     if (haveList) { have = {}; Object.keys(haveList).forEach(function (z) { haveList[z].forEach(function (k) { have[z + "/" + k] = 1; }); }); }
-    // a phone: one finger scrolls the page until the map is tapped (then it drags the map); two fingers always zoom it.
-    // The mouse wheel scrolls the page until the map is clicked.
-    var coarse = !!(window.matchMedia && matchMedia("(pointer: coarse)").matches);
-    var map = L.map(box, { crs: L.CRS.Simple, minZoom: 0, maxZoom: Z + 1, zoomSnap: 0.5, zoomDelta: 0.5, attributionControl: false,
-                           zoomControl: false, scrollWheelZoom: false, dragging: !coarse, maxBoundsViscosity: 0.8 });
-    rt.map = map; rt.Z = Z; rt.zones = zones; rt.coarse = coarse;
+    rt.coarse = !!(window.matchMedia && matchMedia("(pointer: coarse)").matches);
+    rt.zones = zones; rt.Z = Z; rt.tamed = []; rt.offp = {};
+    var map = L.map(box, opts(Z + 1, 0.5));
+    rt.map = map;
     box._fgMap = map;                                                  // (for tests/sitebrowser.py)
-    rt.ll = function (p) { return map.unproject(p, Z); };
-    var all = L.latLngBounds(rt.ll([0, H]), rt.ll([W, 0]));
+    var V = rt.world = view(map, function (p) { return map.unproject(p, Z); }, Z - 1);
+    var all = L.latLngBounds(V.ll([0, H]), V.ll([W, 0]));
     map.setMaxBounds(all.pad(0.05));
-    rt.zoom = L.control.zoom({ zoomInTitle: T("Zoom in"), zoomOutTitle: T("Zoom out") }).addTo(map);
     var loaded = 0, failed = 0;
     var Tiles = L.TileLayer.extend({
       createTile: function (c, done) {                                 // (none is asked for where the list says there is only sea)
@@ -282,52 +290,94 @@ var WORDS = /*@WORDS@*/;
       .on("tileload", function () { loaded++; }).on("tileerror", function () { failed++; })
       .on("load", function () { if (!loaded && failed) setTimeout(fallback, 0); })   // (after Leaflet is done with the tile)
       .addTo(map);
-    map.setMinZoom(Math.max(0, Math.floor(map.getBoundsZoom(all, false) * 2) / 2));
-    rt.line = L.layerGroup().addTo(map); rt.pins = L.layerGroup().addTo(map);
-    function wake() {
-      map.scrollWheelZoom.enable();
-      if (coarse) { map.dragging.enable(); $("maphint").hidden = true; }
-    }
-    map.on("click", wake);
-    box.addEventListener("focus", function () { map.scrollWheelZoom.enable(); });
-    box.addEventListener("mouseleave", function () { map.scrollWheelZoom.disable(); });
-    if (coarse) {
-      $("maphint").hidden = false;
-      document.addEventListener("touchstart", function (e) {
-        if (rt.map && !box.contains(e.target) && map.dragging.enabled()) { map.dragging.disable(); $("maphint").hidden = false; }
-      }, { passive: true });
-    }
-    map.on("zoomend", function () { pins(false); });
-    map.on("popupopen", function (e) {
-      var x = e.popup.getElement() && e.popup.getElement().querySelector(".leaflet-popup-close-button");
-      if (x) x.setAttribute("aria-label", T("Close"));
-    });
+    rt.all = all;
+    tame(V, box, $("maphint"));
+    // a phone: a touch outside a map gives one finger back to the page
+    if (rt.coarse) document.addEventListener("touchstart", function (e) {
+      rt.tamed.forEach(function (t) { if (!t.box.contains(e.target) && t.map.dragging.enabled()) { t.map.dragging.disable(); t.hint.hidden = false; } });
+    }, { passive: true });
     rt.state = "ready";
     $("mapwait").hidden = true;
     if (result && result.ok) { paint(result.plan, true); drawSteps(result.plan); }
   }
-
-  function zoneOf(plan, i) { var z = plan.st[i].z; return z === null ? null : z; }
-  // draw the plan on the map; fresh (a new code): fit the view again
-  function paint(plan, fresh) {
-    var map = rt.map, at = FGPlan.place(plan, rt.zones), now = current(plan), prevNow = rt.now;
-    rt.plan = plan; rt.code = code; rt.at = at; rt.now = now;
-    rt.placed = [];
-    at.forEach(function (p, i) { if (p) rt.placed.push({ i: i, ll: rt.ll(p), kind: KIND[plan.st[i].k] || "other" }); });
-    // the line: walking solid, a flight, a boat or the hearthstone dashed in blue; each over a dark edge to stand out
-    rt.line.clearLayers();
+  // a Leaflet map for the route (the world, or one zone's own map): the wheel and, on a phone, one finger move the page
+  // until the map is clicked or tapped; two fingers always zoom it
+  function opts(maxZoom, snap) {
+    return { crs: L.CRS.Simple, minZoom: 0, maxZoom: maxZoom, zoomSnap: snap, zoomDelta: snap, attributionControl: false, zoomControl: false,
+             scrollWheelZoom: false, dragging: !rt.coarse, maxBoundsViscosity: 0.8 };
+  }
+  // what a map shows of the route: its line and current-step ring, its pins (by step), and how to place a pixel on it
+  function view(map, ll, near) {
+    var V = { map: map, ll: ll, near: near, line: L.layerGroup().addTo(map), pins: L.layerGroup().addTo(map), placed: [], sig: null, byStep: {} };
+    L.control.zoom({ zoomInTitle: T("Zoom in"), zoomOutTitle: T("Zoom out") }).addTo(map);
+    map.on("zoomend", function () { pins(V, false); });
+    map.on("popupopen", function (e) {
+      var x = e.popup.getElement() && e.popup.getElement().querySelector(".leaflet-popup-close-button");
+      if (x) x.setAttribute("aria-label", T("Close"));
+    });
+    return V;
+  }
+  function tame(V, box, hint) {
+    var map = V.map;
+    map.on("click", function () {
+      map.scrollWheelZoom.enable();
+      if (rt.coarse) { map.dragging.enable(); hint.hidden = true; }
+    });
+    box.addEventListener("focus", function () { map.scrollWheelZoom.enable(); });
+    box.addEventListener("mouseleave", function () { map.scrollWheelZoom.disable(); });
+    hint.hidden = !rt.coarse;
+    rt.tamed.push({ map: map, box: box, hint: hint });
+  }
+  // the route on a map: items [{ i: step, p: [x, y] pixels }] in step order. The line: walking solid, a flight, a boat
+  // or the hearthstone dashed in blue, each over a dark edge to stand out; a ring on the current step
+  function route(V, plan, items) {
+    V.placed = items.map(function (it) { return { i: it.i, ll: V.ll(it.p), kind: KIND[plan.st[it.i].k] || "other" }; });
+    V.line.clearLayers();
     var walk = [], hop = [];
-    for (var k = 1; k < rt.placed.length; k++) (TRAVEL[plan.st[rt.placed[k].i].k] ? hop : walk).push([rt.placed[k - 1].ll, rt.placed[k].ll]);
+    for (var k = 1; k < V.placed.length; k++) (TRAVEL[plan.st[V.placed[k].i].k] ? hop : walk).push([V.placed[k - 1].ll, V.placed[k].ll]);
     [[walk, "#f0c66b", null], [hop, "#8fd3ff", "6 7"]].forEach(function (l) {
       if (!l[0].length) return;
-      L.polyline(l[0], { color: "#14110a", weight: 6, opacity: 0.55, interactive: false, className: "rt-line" }).addTo(rt.line);
-      L.polyline(l[0], { color: l[1], weight: 3, opacity: 0.95, dashArray: l[2], interactive: false, className: "rt-line" }).addTo(rt.line);
+      L.polyline(l[0], { color: "#14110a", weight: 6, opacity: 0.55, interactive: false, className: "rt-line" }).addTo(V.line);
+      L.polyline(l[0], { color: l[1], weight: 3, opacity: 0.95, dashArray: l[2], interactive: false, className: "rt-line" }).addTo(V.line);
     });
-    var nowAt = at[now] ? rt.ll(at[now]) : null;
-    if (nowAt) L.marker(nowAt, { icon: L.divIcon({ className: "rt-now", iconSize: [40, 40], iconAnchor: [20, 20] }), interactive: false, keyboard: false, zIndexOffset: -500 }).addTo(rt.line);
+    var now = V.placed.filter(function (p) { return p.i === rt.now; })[0];
+    V.nowAt = now ? now.ll : null;
+    if (now) L.marker(now.ll, { icon: L.divIcon({ className: "rt-now", iconSize: [40, 40], iconAnchor: [20, 20] }), interactive: false, keyboard: false, zIndexOffset: -500 }).addTo(V.line);
+  }
+  function fitTo(V, lls, pad) {
+    var map = V.map;
+    if (!lls.length) { map.fitBounds(map.options.maxBounds, { animate: false }); return; }
+    var b = L.latLngBounds(lls);
+    if (b.getNorthEast().equals(b.getSouthWest())) map.setView(lls[0], V.near, { animate: false });
+    else map.fitBounds(b, { padding: [pad, pad], maxZoom: V.near, animate: false });
+  }
+
+  function zoneOf(plan, i) { var z = plan.st[i].z; return z === null ? null : z; }
+  function zoneId(plan, z) {                                           // a zone's UiMapID, from the code or by its English name
+    var zn = plan.z[z - 1], own = Object.prototype.hasOwnProperty;
+    if (zn.m !== null) return zn.m;
+    return rt.zones.names && own.call(rt.zones.names, zn.n) ? rt.zones.names[zn.n] : null;
+  }
+  // draw the plan on the maps; fresh (a new code): fit the views again
+  function paint(plan, fresh) {
+    var map = rt.map, V = rt.world, at = FGPlan.place(plan, rt.zones), now = current(plan), prevNow = rt.now;
+    rt.plan = plan; rt.code = code; rt.at = at; rt.now = now;
+    var items = [];
+    at.forEach(function (p, i) { if (p) items.push({ i: i, p: p }); });
+    // a zone the world map does not have (its steps have a place in the zone, but none on the map): its own map when
+    // the site has one (/plan/zones.json "images"), else a sketch of it; and no empty world map when no step is on it
+    var off = [];
+    plan.st.forEach(function (s, i) { if (!at[i] && s.z !== null && s.x !== null && s.y !== null && off.indexOf(s.z) < 0) off.push(s.z); });
+    rt.off = off;
+    var onMap = items.length > 0, wasHidden = $("mapframe").hidden;
+    ["mapframe", "mapcredit"].forEach(function (id) { $(id).hidden = !onMap; });
+    if (onMap && wasHidden) fresh = true;
+    route(V, plan, items);
+    drawOff(plan, off, fresh);
+    $("legend").hidden = !onMap && !Object.keys(rt.offp).some(function (z) { return !!rt.offp[z].V; });
     // the views: the whole route, or one zone's steps
     var zs = [];
-    rt.placed.forEach(function (p) { var z = zoneOf(plan, p.i); if (zs.indexOf(z) < 0) zs.push(z); });
+    V.placed.forEach(function (p) { var z = zoneOf(plan, p.i); if (zs.indexOf(z) < 0) zs.push(z); });
     rt.zs = zs;
     if (fresh) {
       var nz = nowZone(plan);
@@ -338,46 +388,133 @@ var WORDS = /*@WORDS@*/;
     }
     if (zs.indexOf(rt.view) < 0) rt.view = "all";
     views(plan);
-    // the steps with no place: listed, not pinned
+    // the steps with no place at all: listed, not pinned
     var none = [];
-    at.forEach(function (p, i) { if (!p) none.push(i + 1); });
+    plan.st.forEach(function (s, i) { if (!at[i] && (s.z === null || s.x === null || s.y === null)) none.push(i + 1); });
     $("unplaced").hidden = !none.length;
     $("unplaced").textContent = none.length ? T(none.length === 1 ? "Step %s has no place on the map." : "Steps %s have no place on the map.").replace("%s", none.join(", ")) : "";
+    if (!onMap) { V.pins.clearLayers(); V.sig = null; V.byStep = {}; return; }
     map.invalidateSize();
-    if (fresh) fit(); else if (nowAt && now !== prevNow) map.panInside(nowAt, { padding: [40, 40], animate: !reduce });
-    pins(true);
+    map.setMinZoom(Math.max(0, Math.floor(map.getBoundsZoom(rt.all, false) * 2) / 2));
+    if (fresh) fit(); else if (V.nowAt && now !== prevNow) map.panInside(V.nowAt, { padding: [40, 40], animate: !reduce });
+    pins(V, true);
+  }
+  // the zones off the world map, each in a panel: its own map (Leaflet over the zone's map art, 0-100 across and down
+  // it), or a sketch (map.js) when the site has no art for it or the art does not load
+  function drawOff(plan, off, fresh) {
+    var box = $("offpanels"), sig = off.join(",");
+    box.hidden = !off.length;
+    var ps = FGPlan.panels(plan).filter(function (p) { return off.indexOf(p.zone) >= 0; });
+    if (fresh || sig !== rt.offSig) {
+      rt.offSig = sig;
+      Object.keys(rt.offp).forEach(function (z) { var o = rt.offp[z]; if (o.V) { o.V.map.remove(); rt.tamed = rt.tamed.filter(function (t) { return t.map !== o.V.map; }); } });
+      rt.offp = {};
+      box.textContent = "";
+      ps.forEach(function (p) {
+        var id = zoneId(plan, p.zone), img = id !== null && rt.zones.images ? rt.zones.images[String(id)] : null;
+        if (img && !(rt.noArt || {})[id]) offMap(p, plan, box, img, id);
+        else drawPanel(p, plan, box, true);
+        rt.offp[p.zone].wrap.id = "off-z" + p.zone;
+      });
+    } else ps.forEach(function (p) {                                   // (a tick, or another language: the same maps, drawn again)
+      var o = rt.offp[p.zone];
+      if (!o) return;
+      if (o.V) { o.map.setAttribute("aria-label", T("Map of the stops in %s").replace("%s", p.name)); offRoute(o, plan, p); pins(o.V, true); }
+      else FGPlanMap.draw(o.holder, p, sketchOpts(p, plan));
+    });
+    Object.keys(rt.offp).forEach(function (z) {
+      var o = rt.offp[z];
+      o.note.textContent = T(o.V ? "%s is not on the world map yet, so it has its own map." : "%s is not on the world map yet, so its steps are drawn as a sketch.").replace("%s", o.p.name);
+      if (o.credit) o.credit.textContent = T("Map art © Blizzard Entertainment");
+    });
+  }
+  function offMap(p, plan, box, img, id) {
+    var w = +img.size[0], h = +img.size[1];
+    var wrap = el("div", "panel"), note = el("p", "note"), frame = el("div", "mapframe zoneframe"), holder = el("div", "routemap zonemap"), hint = el("p", "maphint");
+    var credit = el("p", "note credit");
+    wrap.appendChild(el("h2", "", p.name)); wrap.appendChild(note);
+    holder.setAttribute("role", "region");
+    holder.setAttribute("aria-label", T("Map of the stops in %s").replace("%s", p.name));
+    hint.textContent = T("Tap the map, then drag to move it.");
+    frame.appendChild(holder); frame.appendChild(hint); wrap.appendChild(frame); wrap.appendChild(credit);
+    box.appendChild(wrap);
+    var bounds = [[0, 0], [h, w]];
+    var map = L.map(holder, opts(18, 0.25));
+    holder._fgMap = map;
+    var V = view(map, function (q) { return L.latLng(h - q[1], q[0]); }, 0);
+    var o = rt.offp[p.zone] = { wrap: wrap, note: note, credit: credit, map: holder, V: V, p: p, size: [w, h] };
+    L.imageOverlay(img.src, bounds, { alt: "", interactive: false }).on("error", function () {
+      (rt.noArt = rt.noArt || {})[id] = 1;                             // (the art did not load: a sketch instead)
+      setTimeout(function () { if (result && result.ok) drawOff(result.plan, rt.off, true); }, 0);
+    }).addTo(map);
+    map.setMaxBounds(L.latLngBounds(bounds).pad(0.1));
+    // the whole island in view, worked out from the panel's real size (made before it is laid out it can be 0 px wide,
+    // which zoomed right in and locked the zoom there); again whenever its size changes
+    var ro = null;
+    function whole(first) {
+      if (!holder.isConnected || !map._mapPane || map !== holder._fgMap) { if (ro) ro.disconnect(); return; }   // (the map was made again, or put away)
+      map.invalidateSize(false);
+      if (!holder.clientWidth || !holder.clientHeight) return;
+      var z0 = map.getBoundsZoom(bounds, false);
+      map.setMinZoom(z0); map.setMaxZoom(z0 + 3); V.near = z0 + 0.75;
+      if (first || map.getZoom() < z0) map.fitBounds(bounds, { animate: false });
+    }
+    var fitWhole = whole;
+    whole = function (first) { try { fitWhole(first); } catch (e) { if (ro) ro.disconnect(); } };
+    map.setMinZoom(0); map.setMaxZoom(18);
+    whole(true);
+    var fitted = false;
+    requestAnimationFrame(function () { whole(!fitted); fitted = true; });
+    if (window.ResizeObserver) { ro = new ResizeObserver(function () { whole(!fitted); }); ro.observe(holder); }
+    tame(V, holder, hint);
+    offRoute(o, plan, p);
+    pins(V, true);
+    return o;
+  }
+  function offRoute(o, plan, p) {                                      // (a step's 0-100 on the zone's own map art)
+    route(o.V, plan, p.stops.map(function (st) { return { i: st.step, p: [st.x / 100 * o.size[0], st.y / 100 * o.size[1]] }; }));
   }
   function nowZone(plan) {                                             // the zone of the current step, or of the next one with a place
     for (var i = Math.max(0, rt.now); i < plan.st.length; i++) if (rt.at[i]) return zoneOf(plan, i);
     return null;
   }
   function fit() {
-    var map = rt.map, lls = rt.placed.filter(function (p) { return rt.view === "all" || zoneOf(rt.plan, p.i) === rt.view; }).map(function (p) { return p.ll; });
-    if (!lls.length) { map.fitBounds(map.options.maxBounds, { animate: false }); return; }
-    var b = L.latLngBounds(lls);
-    if (b.getNorthEast().equals(b.getSouthWest())) map.setView(lls[0], rt.Z - 1, { animate: false });
-    else map.fitBounds(b, { padding: [36, 36], maxZoom: rt.Z - 1, animate: false });
+    fitTo(rt.world, rt.world.placed.filter(function (p) { return rt.view === "all" || zoneOf(rt.plan, p.i) === rt.view; }).map(function (p) { return p.ll; }), 36);
   }
   function views(plan) {
     var row = $("views");
     row.textContent = "";
     row.setAttribute("aria-label", T("Map view"));
-    row.hidden = rt.zs.length < 2;
-    ["all"].concat(rt.zs).forEach(function (z) {
-      var b = el("button", "", z === "all" ? T("Whole route") : plan.z[z - 1].n);
+    var chips = (rt.world.placed.length ? ["all"].concat(rt.zs) : []).concat(rt.off.map(function (z) { return -z; }));
+    row.hidden = chips.length < 2;
+    chips.forEach(function (z) {
+      var b = el("button", "", z === "all" ? T("Whole route") : plan.z[Math.abs(z) - 1].n);
       b.type = "button";
+      if (z !== "all" && z < 0) {                                      // a zone not on the world map: to its own map or sketch
+        b.addEventListener("click", function () {
+          var w = $("off-z" + -z);
+          if (!w) return;
+          w.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
+          w.classList.add("hit");
+          setTimeout(function () { w.classList.remove("hit"); }, 1600);
+        });
+        row.appendChild(b);
+        return;
+      }
       b.setAttribute("aria-pressed", String(rt.view === z));
       b.addEventListener("click", function () {
         rt.view = z;
-        [].forEach.call(row.children, function (c) { c.setAttribute("aria-pressed", String(c === b)); });
-        fit(); pins(false);
+        [].forEach.call(row.querySelectorAll("[aria-pressed]"), function (c) { c.setAttribute("aria-pressed", String(c === b)); });
+        fit(); pins(rt.world, false);
       });
       row.appendChild(b);
     });
   }
   // the pins at this zoom: those closer than a pin share one
-  function pins(force) {
-    var map = rt.map, P = rt.placed, z = map.getZoom(), pts = P.map(function (p) { return map.project(p.ll, z); });
+  function pins(V, force) {
+    var map = V.map, P = V.placed;
+    if (!map.getSize().x || map.getZoom() === undefined) return;
+    var z = map.getZoom(), pts = P.map(function (p) { return map.project(p.ll, z); });
     var up = P.map(function (p, i) { return i; });
     function top(i) { while (up[i] !== i) i = up[i] = up[up[i]]; return i; }
     for (var a = 0; a < P.length; a++)
@@ -386,10 +523,10 @@ var WORDS = /*@WORDS@*/;
     var groups = {}, order = [];
     P.forEach(function (p, i) { var t = top(i); if (!groups[t]) { groups[t] = []; order.push(t); } groups[t].push(i); });
     var sig = order.map(function (t) { return groups[t].join(","); }).join("|");
-    if (!force && sig === rt.sig) return;
-    rt.sig = sig;
-    rt.pins.clearLayers();
-    rt.byStep = {};
+    if (!force && sig === V.sig) return;
+    V.sig = sig;
+    V.pins.clearLayers();
+    V.byStep = {};
     order.forEach(function (t) {
       var g = groups[t], steps = g.map(function (k) { return P[k].i; });
       var run = g.every(function (k, j) { return !j || k === g[j - 1] + 1; });
@@ -403,14 +540,14 @@ var WORDS = /*@WORDS@*/;
       var m = L.marker([lat / g.length, lng / g.length], {
         icon: L.divIcon({ className: "rt-pin k-" + kind + (done ? " done" : "") + (isNow ? " now" : ""), html: num, iconSize: [w, 26], iconAnchor: [w / 2, 13], popupAnchor: [0, -14] }),
         title: label, keyboard: true, riseOnHover: true, zIndexOffset: isNow ? 1000 : 0 });
-      m.bindPopup(function () { return popup(steps); }, { maxWidth: 260, autoPanPadding: [24, 24] });
-      m.addTo(rt.pins);
+      m.bindPopup(function () { return popup(steps, V); }, { maxWidth: 260, autoPanPadding: [24, 24] });
+      m.addTo(V.pins);
       var e = m.getElement();
       if (e) { e.setAttribute("aria-label", label); e.setAttribute("data-steps", steps.join(" ")); if (isNow) e.setAttribute("aria-current", "step"); }
-      steps.forEach(function (i) { rt.byStep[i] = m; });
+      steps.forEach(function (i) { V.byStep[i] = m; });
     });
   }
-  function popup(steps) {                                              // (every word in it is plain text)
+  function popup(steps, V) {                                           // (every word in it is plain text)
     var box = el("div", "rt-pop"), plan = rt.plan;
     steps.forEach(function (i) {
       var s = plan.st[i], row = el("div"), kind = KIND[s.k] || "other";
@@ -419,7 +556,7 @@ var WORDS = /*@WORDS@*/;
       if (s.z !== null) row.appendChild(el("span", "z", plan.z[s.z - 1].n));
       var go = el("button", "", T("Show in the list"));
       go.type = "button";
-      go.addEventListener("click", function () { rt.map.closePopup(); toStep(i); });
+      go.addEventListener("click", function () { V.map.closePopup(); toStep(i); });
       row.appendChild(go);
       box.appendChild(row);
     });
@@ -427,12 +564,22 @@ var WORDS = /*@WORDS@*/;
   }
   function showStep(i) {                                               // a step's number in the list: its pin, opened
     if (rt.state === "failed") return FGPlanMap.show($("panels"), i, reduce);
-    if (rt.state !== "ready" || !rt.at[i]) return;
-    var ll = rt.ll(rt.at[i]);
-    $("routebox").scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
-    rt.map.setView(ll, Math.max(rt.map.getZoom(), rt.Z - 1), { animate: false });
-    pins(false);
-    var m = rt.byStep[i];
+    if (rt.state !== "ready") return;
+    var V = rt.world, o = null, at = null;
+    if (rt.at[i]) at = V.ll(rt.at[i]);
+    else {                                                             // (a step in a zone the world map does not have)
+      o = rt.offp[zoneOf(rt.plan, i)];
+      if (!o) return;
+      if (!o.V) return FGPlanMap.show(o.wrap, i, reduce);
+      V = o.V;
+      at = V.placed.filter(function (p) { return p.i === i; })[0];
+      if (!at) return;
+      at = at.ll;
+    }
+    (o ? o.wrap : $("mapframe")).scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
+    V.map.setView(at, Math.max(V.map.getZoom(), V.near), { animate: false });
+    pins(V, false);
+    var m = V.byStep[i];
     if (!m) return;
     m.openPopup();
     var e = m.getElement();
@@ -456,20 +603,29 @@ var WORDS = /*@WORDS@*/;
       li.appendChild(dot); li.appendChild(document.createTextNode(T(k[1])));
       lg.appendChild(li);
     });
-    if (rt.map) {
-      var c = $("routemap").querySelectorAll(".leaflet-control-zoom a");
+    [].forEach.call($("routebox").querySelectorAll(".leaflet-control-zoom"), function (bar) {
+      var c = bar.querySelectorAll("a");
       [["Zoom in", 0], ["Zoom out", 1]].forEach(function (z) { if (c[z[1]]) { c[z[1]].title = T(z[0]); c[z[1]].setAttribute("aria-label", T(z[0])); } });
-    }
+    });
+    [].forEach.call($("routebox").querySelectorAll(".zoneframe .maphint"), function (h) { h.textContent = T("Tap the map, then drag to move it."); });
   }
 
   // the fallback, only when the world map cannot be loaded: each zone's sketch (map.js), linked to the list both ways
-  function drawPanel(p, plan) {
-    var wrap = el("div", "panel"), holder = el("div", "map");
+  // a zone's sketch (map.js), linked to the list both ways: every zone when the world map cannot be loaded, or a zone
+  // off the world map with no map art of its own (then box is #offpanels, and the panel is remembered with its note)
+  function sketchOpts(p, plan) {
+    return { name: T("Map of the stops in %s").replace("%s", p.name), north: T("N"), northTitle: T("North is up"),
+             label: stepLabel, group: groupLabel, current: current(plan), done: function (i) { return !!ticks[i]; }, pick: toStep };
+  }
+  function drawPanel(p, plan, box, note) {
+    var wrap = el("div", "panel"), holder = el("div", "map"), n = note ? el("p", "note") : null;
     wrap.appendChild(el("h2", "", p.name));
+    if (n) wrap.appendChild(n);
     wrap.appendChild(holder);
-    $("panels").appendChild(wrap);                                     // (in the page first: the map takes its width)
-    FGPlanMap.draw(holder, p, { name: T("Map of the stops in %s").replace("%s", p.name), north: T("N"), northTitle: T("North is up"),
-      label: stepLabel, group: groupLabel, current: current(plan), done: function (i) { return !!ticks[i]; }, pick: toStep });
+    (box || $("panels")).appendChild(wrap);                            // (in the page first: the map takes its width)
+    FGPlanMap.draw(holder, p, sketchOpts(p, plan));
+    if (n) rt.offp[p.zone] = { wrap: wrap, note: n, holder: holder, p: p };
+    return wrap;
   }
   function drawPanels(plan) {
     var box = $("panels"), seen = {}, step = {};
@@ -483,12 +639,10 @@ var WORDS = /*@WORDS@*/;
       drawPanel(p, plan);
     });
   }
-  // which steps the list's numbers can show: those pinned on the world map (or, while it loads, every step with a
-  // place in its zone; in the fallback, those on a sketch)
+  // which steps the list's numbers can show: every step with a place in its zone (on the world map, or on a sketch)
   function shown(plan) {
     var ok = {};
-    if (rt.state === "ready" && rt.plan === plan) rt.at.forEach(function (p, i) { if (p) ok[i] = true; });
-    else FGPlan.panels(plan).forEach(function (p) { p.stops.forEach(function (st) { ok[st.step] = true; }); });
+    FGPlan.panels(plan).forEach(function (p) { p.stops.forEach(function (st) { ok[st.step] = true; }); });
     return ok;
   }
 

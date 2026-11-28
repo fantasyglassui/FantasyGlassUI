@@ -119,6 +119,13 @@ a { color: var(--frost); }
 .legend li { display: inline-flex; align-items: center; gap: 6px; }
 .legend .rt-pin { width: 18px; height: 18px; font-size: 0; box-shadow: none; cursor: default; }
 .route .credit { margin: 8px 0 0; }
+#offpanels { margin-top: 14px; }
+.mapframe:not([hidden]) ~ #offpanels { border-top: 1px solid var(--line); padding-top: 14px; }
+#offpanels .panel .note { margin: -4px 0 8px; }
+#offpanels .panel .credit { margin: 8px 0 0; }
+.zoneframe { --sea: #3a3226; }
+.routemap.zonemap { height: auto; aspect-ratio: 3 / 2; min-height: 240px; max-height: 520px; }
+#offpanels .panel.hit { box-shadow: 0 0 0 2px var(--gold); border-radius: 6px; }
 @media (max-width: 600px) { .routemap { height: clamp(320px, 58vh, 460px); } }
 .real h2 { font-family: var(--display); font-weight: 400; font-size: 1.15rem; margin: 0 0 8px; }
 .real .row { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; margin: 12px 0; }
@@ -152,6 +159,8 @@ a { color: var(--frost); }
       <ul class="legend" id="legend"></ul>
       <p class="note" id="unplaced" hidden></p>
       <p class="note credit" id="mapcredit"></p>
+      <!-- the zones the world map does not have (an island added later, say): each one's sketch (map.js) -->
+      <div class="panels" id="offpanels" hidden></div>
       <!-- only when the world map cannot be loaded: each zone's sketch (map.js) -->
       <p class="note" id="sketchnote" hidden></p>
       <div class="panels" id="panels" hidden></div>
@@ -180,7 +189,7 @@ a { color: var(--frost); }
   <p class="note links"><a href="/guide-and-gold/phone/" id="howto"></a> · <a href="/">Fantasy Glass UI</a></p>
 </main>
 <script>
-var WORDS = {"Your route":{"en":"Your route","de":"Deine Route","fr":"Votre itinéraire","es":"Tu ruta","ru":"Ваш маршрут","pt":"Sua rota","it":"Il tuo percorso","ko":"내 경로","zh":"你的路线"},"Quest guide":{"en":"Quest guide","de":"Questguide","fr":"Guide de quêtes","es":"Guía de misiones","ru":"Путеводитель по заданиям","pt":"Guia de missões","it":"Guida alle missioni","ko":"퀘스트 가이드","zh":"任务指南"},"Paste a plan code":{"en":"Paste a plan code","de":"Plancode einfügen","fr":"Collez un code de plan","es":"Pega un código de plan","ru":"Вставьте код плана","pt":"Cole um código de plano","it":"Incolla un codice del piano","ko":"계획 코드를 붙여넣으세요","zh":"粘贴计划代码"},"Copy the code in the game with Share plan, then paste it here.":{"en":"Copy the code in the game with Share plan, then paste it here.","de":"Kopiere den Code im Spiel mit „Plan teilen“ und füge ihn hier ein.","fr":"Copiez le code dans le jeu avec « Partager le plan », puis collez-le ici.","es":"Copia el código en el juego con «Compartir el plan» y pégalo aquí.","ru":"Скопируйте код в игре через «Поделиться планом» и вставьте его сюда.","pt":"Copie o código no jogo com «Compartilhar o plano» e cole-o aqui.","it":"Copia il codice nel gioco con «Condividi il piano» e incollalo qui.","ko":"게임에서 ‘계획 공유’로 코드를 복사한 뒤 여기에 붙여넣으세요.","zh":"在游戏中用“分享计划”复制代码，然后粘贴到这里。"},"Show the plan":{"en":"Show the plan","de":"Plan anzeigen","fr":"Afficher le plan","es":"Mostrar el plan","ru":"Показать план","pt":"Mostrar o plano","it":"Mostra il piano","ko":"계획 보기","zh":"显示计划"},"That is not a plan code.":{"en":"That is not a plan code.","de":"Das ist kein Plancode.","fr":"Ce n'est pas un code de plan.","es":"Eso no es un código de plan.","ru":"Это не код плана.","pt":"Isso não é um código de plano.","it":"Questo non è un codice del piano.","ko":"계획 코드가 아닙니다.","zh":"这不是计划代码。"},"That is a theme or layout code, not a plan code.":{"en":"That is a theme or layout code, not a plan code.","de":"Das ist ein Design- oder Layoutcode, kein Plancode.","fr":"C'est un code de thème ou de disposition, pas un code de plan.","es":"Es un código de tema o de diseño, no un código de plan.","ru":"Это код темы или раскладки, а не код плана.","pt":"Esse é um código de tema ou de layout, não um código de plano.","it":"È un codice di tema o di layout, non un codice del piano.","ko":"테마 또는 배치 코드이며 계획 코드가 아닙니다.","zh":"这是主题或布局代码，不是计划代码。"},"The code is damaged or cut short.":{"en":"The code is damaged or cut short.","de":"Der Code ist beschädigt oder abgeschnitten.","fr":"Le code est endommagé ou tronqué.","es":"El código está dañado o cortado.","ru":"Код повреждён или обрезан.","pt":"O código está danificado ou cortado.","it":"Il codice è danneggiato o troncato.","ko":"코드가 손상되었거나 잘렸습니다.","zh":"代码已损坏或被截断。"},"This code is from a newer version of the add-on.":{"en":"This code is from a newer version of the add-on.","de":"Dieser Code stammt aus einer neueren Version des Addons.","fr":"Ce code vient d'une version plus récente de l'add-on.","es":"Este código es de una versión más nueva del addon.","ru":"Этот код создан в более новой версии аддона.","pt":"Este código é de uma versão mais nova do addon.","it":"Questo codice proviene da una versione più recente dell'add-on.","ko":"이 코드는 더 새로운 버전의 애드온에서 만든 것입니다.","zh":"此代码来自更新版本的插件。"},"Experience":{"en":"Experience","de":"Erfahrung","fr":"Expérience","es":"Experiencia","ru":"Опыт","pt":"Experiência","it":"Esperienza","ko":"경험치","zh":"经验"},"Time":{"en":"Time","de":"Zeit","fr":"Durée","es":"Tiempo","ru":"Время","pt":"Tempo","it":"Tempo","ko":"시간","zh":"时间"},"Levels":{"en":"Levels","de":"Stufen","fr":"Niveaux","es":"Niveles","ru":"Уровни","pt":"Níveis","it":"Livelli","ko":"레벨","zh":"等级"},"Flights":{"en":"Flights","de":"Flüge","fr":"Vols","es":"Vuelos","ru":"Перелёты","pt":"Voos","it":"Voli","ko":"비행","zh":"飞行"},"Crossings":{"en":"Crossings","de":"Überfahrten","fr":"Traversées","es":"Travesías","ru":"Переправы","pt":"Travessias","it":"Traversate","ko":"항해","zh":"渡海"},"Steps":{"en":"Steps","de":"Schritte","fr":"Étapes","es":"Pasos","ru":"Шаги","pt":"Passos","it":"Passaggi","ko":"단계","zh":"步骤"},"%d more steps are not shown.":{"en":"%d more steps are not shown.","de":"%d weitere Schritte werden nicht angezeigt.","fr":"%d autres étapes ne sont pas affichées.","es":"No se muestran %d pasos más.","ru":"Ещё %d шагов не показано.","pt":"%d passos a mais não são mostrados.","it":"Altri %d passaggi non vengono mostrati.","ko":"%d개의 단계가 더 있으나 표시되지 않습니다.","zh":"另有 %d 个步骤未显示。"},"Clear the ticks":{"en":"Clear the ticks","de":"Haken entfernen","fr":"Effacer les coches","es":"Borrar las marcas","ru":"Снять отметки","pt":"Limpar as marcas","it":"Cancella le spunte","ko":"체크 지우기","zh":"清除勾选"},"Your ticks stay in this browser only.":{"en":"Your ticks stay in this browser only.","de":"Deine Haken bleiben nur in diesem Browser.","fr":"Vos coches restent dans ce navigateur uniquement.","es":"Tus marcas se quedan solo en este navegador.","ru":"Ваши отметки хранятся только в этом браузере.","pt":"Suas marcas ficam somente neste navegador.","it":"Le tue spunte restano solo in questo browser.","ko":"체크 표시는 이 브라우저에만 저장됩니다.","zh":"你的勾选只保存在此浏览器中。"},"Nothing is sent anywhere: the page reads the code here, in your browser.":{"en":"Nothing is sent anywhere: the page reads the code here, in your browser.","de":"Nichts wird irgendwohin gesendet: Die Seite liest den Code hier, in deinem Browser.","fr":"Rien n'est envoyé : la page lit le code ici, dans votre navigateur.","es":"No se envía nada: la página lee el código aquí, en tu navegador.","ru":"Ничего никуда не отправляется: страница читает код здесь, в вашем браузере.","pt":"Nada é enviado: a página lê o código aqui, no seu navegador.","it":"Non viene inviato nulla: la pagina legge il codice qui, nel tuo browser.","ko":"아무것도 전송되지 않습니다. 이 페이지는 브라우저에서 코드를 읽습니다.","zh":"不会发送任何内容：页面在你的浏览器中读取代码。"},"Language":{"en":"Language","de":"Sprache","fr":"Langue","es":"Idioma","ru":"Язык","pt":"Idioma","it":"Lingua","ko":"언어","zh":"语言"},"%d h %d min":{"en":"%d h %d min","de":"%d Std. %d Min.","fr":"%d h %d min","es":"%d h %d min","ru":"%d ч %d мин","pt":"%d h %d min","it":"%d h %d min","ko":"%d시간 %d분","zh":"%d小时%d分钟"},"%d min":{"en":"%d min","de":"%d Min.","fr":"%d min","es":"%d min","ru":"%d мин","pt":"%d min","it":"%d min","ko":"%d분","zh":"%d分钟"},"How to use this page":{"en":"How to use this page","de":"So nutzt du diese Seite","fr":"Comment utiliser cette page","es":"Cómo usar esta página","ru":"Как пользоваться этой страницей","pt":"Como usar esta página","it":"Come usare questa pagina","ko":"이 페이지 사용법","zh":"如何使用本页"},"The route on the map":{"en":"The route on the map","de":"Die Route auf der Karte","fr":"L'itinéraire sur la carte","es":"La ruta en el mapa","ru":"Маршрут на карте","pt":"A rota no mapa","it":"Il percorso sulla mappa","ko":"지도 위의 경로","zh":"地图上的路线"},"Whole route":{"en":"Whole route","de":"Ganze Route","fr":"Tout l'itinéraire","es":"Toda la ruta","ru":"Весь маршрут","pt":"Rota inteira","it":"Tutto il percorso","ko":"전체 경로","zh":"整条路线"},"Map view":{"en":"Map view","de":"Kartenansicht","fr":"Vue de la carte","es":"Vista del mapa","ru":"Вид карты","pt":"Vista do mapa","it":"Vista della mappa","ko":"지도 보기","zh":"地图视图"},"Map of the route":{"en":"Map of the route","de":"Karte der Route","fr":"Carte de l'itinéraire","es":"Mapa de la ruta","ru":"Карта маршрута","pt":"Mapa da rota","it":"Mappa del percorso","ko":"경로 지도","zh":"路线地图"},"Loading the map…":{"en":"Loading the map…","de":"Die Karte wird geladen …","fr":"Chargement de la carte…","es":"Cargando el mapa…","ru":"Загрузка карты…","pt":"Carregando o mapa…","it":"Caricamento della mappa…","ko":"지도를 불러오는 중…","zh":"正在加载地图…"},"Map art © Blizzard Entertainment, map pieces from OpenMap.":{"en":"Map art © Blizzard Entertainment, map pieces from OpenMap.","de":"Kartengrafik © Blizzard Entertainment, Kartenteile von OpenMap.","fr":"Illustrations de la carte © Blizzard Entertainment, morceaux de carte d'OpenMap.","es":"Arte del mapa © Blizzard Entertainment, piezas del mapa de OpenMap.","ru":"Изображения карты © Blizzard Entertainment, фрагменты карты от OpenMap.","pt":"Arte do mapa © Blizzard Entertainment, partes do mapa do OpenMap.","it":"Grafica della mappa © Blizzard Entertainment, pezzi della mappa da OpenMap.","ko":"지도 그림 © Blizzard Entertainment, 지도 조각은 OpenMap 제공.","zh":"地图美术 © Blizzard Entertainment，地图拼块来自 OpenMap。"},"Full credits on the world map":{"en":"Full credits on the world map","de":"Alle Angaben auf der Weltkarte","fr":"Tous les crédits sur la carte du monde","es":"Todos los créditos en el mapa del mundo","ru":"Все благодарности — на карте мира","pt":"Todos os créditos no mapa-múndi","it":"Tutti i crediti sulla mappa del mondo","ko":"전체 출처는 세계 지도에서","zh":"完整致谢见世界地图"},"Step %s has no place on the map.":{"en":"Step %s has no place on the map.","de":"Schritt %s hat keinen Ort auf der Karte.","fr":"L'étape %s n'a pas de lieu sur la carte.","es":"El paso %s no tiene lugar en el mapa.","ru":"У шага %s нет места на карте.","pt":"O passo %s não tem lugar no mapa.","it":"Il passo %s non ha un luogo sulla mappa.","ko":"%s단계는 지도에 위치가 없습니다.","zh":"第 %s 步在地图上没有位置。"},"Steps %s have no place on the map.":{"en":"Steps %s have no place on the map.","de":"Die Schritte %s haben keinen Ort auf der Karte.","fr":"Les étapes %s n'ont pas de lieu sur la carte.","es":"Los pasos %s no tienen lugar en el mapa.","ru":"У шагов %s нет места на карте.","pt":"Os passos %s não têm lugar no mapa.","it":"I passi %s non hanno un luogo sulla mappa.","ko":"%s단계는 지도에 위치가 없습니다.","zh":"第 %s 步在地图上没有位置。"},"The world map could not be loaded, so each zone is drawn as a sketch.":{"en":"The world map could not be loaded, so each zone is drawn as a sketch.","de":"Die Weltkarte konnte nicht geladen werden, darum ist jede Zone als Skizze gezeichnet.","fr":"La carte du monde n'a pas pu être chargée : chaque zone est dessinée en croquis.","es":"No se pudo cargar el mapa del mundo, así que cada zona se dibuja como un boceto.","ru":"Карту мира не удалось загрузить, поэтому каждая зона нарисована схемой.","pt":"Não foi possível carregar o mapa-múndi, então cada zona aparece como um esboço.","it":"Non è stato possibile caricare la mappa del mondo, quindi ogni zona è disegnata come uno schizzo.","ko":"세계 지도를 불러올 수 없어 각 지역을 간단한 그림으로 보여 줍니다.","zh":"无法加载世界地图，因此每个区域以草图显示。"},"Accept a quest":{"en":"Accept a quest","de":"Quest annehmen","fr":"Accepter une quête","es":"Aceptar una misión","ru":"Взять задание","pt":"Aceitar uma missão","it":"Accettare una missione","ko":"퀘스트 수락","zh":"接受任务"},"Do a quest":{"en":"Do a quest","de":"Quest erledigen","fr":"Faire une quête","es":"Hacer una misión","ru":"Выполнить задание","pt":"Fazer uma missão","it":"Svolgere una missione","ko":"퀘스트 진행","zh":"完成任务目标"},"Turn in a quest":{"en":"Turn in a quest","de":"Quest abgeben","fr":"Rendre une quête","es":"Entregar una misión","ru":"Сдать задание","pt":"Entregar uma missão","it":"Consegnare una missione","ko":"퀘스트 완료 보고","zh":"交任务"},"Travel":{"en":"Travel","de":"Reisen","fr":"Voyage","es":"Viaje","ru":"Перемещение","pt":"Viagem","it":"Viaggio","ko":"이동","zh":"旅行"},"Other step":{"en":"Other step","de":"Anderer Schritt","fr":"Autre étape","es":"Otro paso","ru":"Другой шаг","pt":"Outro passo","it":"Altro passo","ko":"기타 단계","zh":"其他步骤"},"Step %d":{"en":"Step %d","de":"Schritt %d","fr":"Étape %d","es":"Paso %d","ru":"Шаг %d","pt":"Passo %d","it":"Passo %d","ko":"%d단계","zh":"第 %d 步"},"Show in the list":{"en":"Show in the list","de":"In der Liste zeigen","fr":"Voir dans la liste","es":"Ver en la lista","ru":"Показать в списке","pt":"Ver na lista","it":"Mostra nell'elenco","ko":"목록에서 보기","zh":"在列表中显示"},"Tap the map, then drag to move it.":{"en":"Tap the map, then drag to move it.","de":"Tippe auf die Karte, dann kannst du sie verschieben.","fr":"Touchez la carte, puis faites-la glisser pour la déplacer.","es":"Toca el mapa y luego arrástralo para moverlo.","ru":"Коснитесь карты, затем перетаскивайте её.","pt":"Toque no mapa e depois arraste para movê-lo.","it":"Tocca la mappa, poi trascinala per spostarla.","ko":"지도를 탭한 뒤 끌어서 움직이세요.","zh":"先点一下地图，再拖动来移动它。"},"Map of the stops in %s":{"en":"Map of the stops in %s","de":"Karte der Stopps in %s","fr":"Carte des étapes dans %s","es":"Mapa de las paradas en %s","ru":"Карта остановок: %s","pt":"Mapa das paradas em %s","it":"Mappa delle tappe in %s","ko":"%s의 정류 지점 지도","zh":"%s 的停靠点地图"},"Step %d: %s":{"en":"Step %d: %s","de":"Schritt %d: %s","fr":"Étape %d : %s","es":"Paso %d: %s","ru":"Шаг %d: %s","pt":"Passo %d: %s","it":"Passo %d: %s","ko":"%d단계: %s","zh":"第 %d 步：%s"},"Steps %s: %s":{"en":"Steps %s: %s","de":"Schritte %s: %s","fr":"Étapes %s : %s","es":"Pasos %s: %s","ru":"Шаги %s: %s","pt":"Passos %s: %s","it":"Passi %s: %s","ko":"%s단계: %s","zh":"第 %s 步：%s"},"N":{"en":"N","de":"N","fr":"N","es":"N","ru":"С","pt":"N","it":"N","ko":"북","zh":"北"},"North is up":{"en":"North is up","de":"Norden ist oben","fr":"Le nord est en haut","es":"El norte está arriba","ru":"Север сверху","pt":"O norte fica em cima","it":"Il nord è in alto","ko":"위쪽이 북쪽","zh":"上方为北"},"Show step %d on the map":{"en":"Show step %d on the map","de":"Schritt %d auf der Karte zeigen","fr":"Afficher l'étape %d sur la carte","es":"Mostrar el paso %d en el mapa","ru":"Показать шаг %d на карте","pt":"Mostrar o passo %d no mapa","it":"Mostra il passo %d sulla mappa","ko":"지도에서 %d단계 보기","zh":"在地图上显示第 %d 步"},"The real map":{"en":"The real map","de":"Die echte Karte","fr":"La vraie carte","es":"El mapa real","ru":"Настоящая карта","pt":"O mapa real","it":"La mappa vera","ko":"실제 지도","zh":"真实地图"},"OpenMap shows WoW Forever's own zone maps. It's a separate site, made by other players.":{"en":"OpenMap shows WoW Forever's own zone maps. It's a separate site, made by other players.","de":"OpenMap zeigt die eigenen Zonenkarten von WoW Forever. Es ist eine eigene Seite, gemacht von anderen Spielern.","fr":"OpenMap affiche les cartes de zone propres à WoW Forever. C'est un site à part, fait par d'autres joueurs.","es":"OpenMap muestra los mapas de zona propios de WoW Forever. Es un sitio aparte, hecho por otros jugadores.","ru":"OpenMap показывает собственные карты зон WoW Forever. Это отдельный сайт, его сделали другие игроки.","pt":"O OpenMap mostra os mapas de zona do próprio WoW Forever. É um site à parte, feito por outros jogadores.","it":"OpenMap mostra le mappe delle zone di WoW Forever. È un sito a parte, fatto da altri giocatori.","ko":"OpenMap은 WoW Forever의 지역 지도를 그대로 보여 줍니다. 다른 플레이어들이 만든 별개의 사이트입니다.","zh":"OpenMap 显示 WoW Forever 自带的区域地图。它是一个独立的网站，由其他玩家制作。"},"Open OpenMap in a new tab":{"en":"Open OpenMap in a new tab","de":"OpenMap in einem neuen Tab öffnen","fr":"Ouvrir OpenMap dans un nouvel onglet","es":"Abrir OpenMap en una pestaña nueva","ru":"Открыть OpenMap в новой вкладке","pt":"Abrir o OpenMap numa nova aba","it":"Apri OpenMap in una nuova scheda","ko":"새 탭에서 OpenMap 열기","zh":"在新标签页中打开 OpenMap"},"Open the world map":{"en":"Open the world map","de":"Weltkarte öffnen","fr":"Ouvrir la carte du monde","es":"Abrir el mapa del mundo","ru":"Открыть карту мира","pt":"Abrir o mapa-múndi","it":"Apri la mappa del mondo","ko":"세계 지도 열기","zh":"打开世界地图"},"Map art © Blizzard Entertainment, shown by OpenMap (openmap.world). Not part of Fantasy Glass UI.":{"en":"Map art © Blizzard Entertainment, shown by OpenMap (openmap.world). Not part of Fantasy Glass UI.","de":"Kartengrafik © Blizzard Entertainment, gezeigt von OpenMap (openmap.world). Kein Teil von Fantasy Glass UI.","fr":"Illustrations des cartes © Blizzard Entertainment, affichées par OpenMap (openmap.world). Ne fait pas partie de Fantasy Glass UI.","es":"Arte de los mapas © Blizzard Entertainment, mostrado por OpenMap (openmap.world). No forma parte de Fantasy Glass UI.","ru":"Графика карт © Blizzard Entertainment, показана через OpenMap (openmap.world). Не является частью Fantasy Glass UI.","pt":"Arte dos mapas © Blizzard Entertainment, mostrada pelo OpenMap (openmap.world). Não faz parte do Fantasy Glass UI.","it":"Grafica delle mappe © Blizzard Entertainment, mostrata da OpenMap (openmap.world). Non fa parte di Fantasy Glass UI.","ko":"지도 그림 © Blizzard Entertainment, OpenMap(openmap.world)이 보여 줍니다. Fantasy Glass UI의 일부가 아닙니다.","zh":"地图美术 © Blizzard Entertainment，由 OpenMap（openmap.world）显示。不属于 Fantasy Glass UI。"},"Zoom in":{"en":"Zoom in","de":"Hineinzoomen","fr":"Zoomer","es":"Acercar","ru":"Приблизить","pt":"Aproximar","it":"Ingrandisci","ko":"확대","zh":"放大"},"Zoom out":{"en":"Zoom out","de":"Herauszoomen","fr":"Dézoomer","es":"Alejar","ru":"Отдалить","pt":"Afastar","it":"Riduci","ko":"축소","zh":"缩小"},"Close":{"en":"Close","de":"Schließen","fr":"Fermer","es":"Cerrar","ru":"Закрыть","pt":"Fechar","it":"Chiudi","ko":"닫기","zh":"关闭"}};
+var WORDS = {"Your route":{"en":"Your route","de":"Deine Route","fr":"Votre itinéraire","es":"Tu ruta","ru":"Ваш маршрут","pt":"Sua rota","it":"Il tuo percorso","ko":"내 경로","zh":"你的路线"},"Quest guide":{"en":"Quest guide","de":"Questguide","fr":"Guide de quêtes","es":"Guía de misiones","ru":"Путеводитель по заданиям","pt":"Guia de missões","it":"Guida alle missioni","ko":"퀘스트 가이드","zh":"任务指南"},"Paste a plan code":{"en":"Paste a plan code","de":"Plancode einfügen","fr":"Collez un code de plan","es":"Pega un código de plan","ru":"Вставьте код плана","pt":"Cole um código de plano","it":"Incolla un codice del piano","ko":"계획 코드를 붙여넣으세요","zh":"粘贴计划代码"},"Copy the code in the game with Share plan, then paste it here.":{"en":"Copy the code in the game with Share plan, then paste it here.","de":"Kopiere den Code im Spiel mit „Plan teilen“ und füge ihn hier ein.","fr":"Copiez le code dans le jeu avec « Partager le plan », puis collez-le ici.","es":"Copia el código en el juego con «Compartir el plan» y pégalo aquí.","ru":"Скопируйте код в игре через «Поделиться планом» и вставьте его сюда.","pt":"Copie o código no jogo com «Compartilhar o plano» e cole-o aqui.","it":"Copia il codice nel gioco con «Condividi il piano» e incollalo qui.","ko":"게임에서 ‘계획 공유’로 코드를 복사한 뒤 여기에 붙여넣으세요.","zh":"在游戏中用“分享计划”复制代码，然后粘贴到这里。"},"Show the plan":{"en":"Show the plan","de":"Plan anzeigen","fr":"Afficher le plan","es":"Mostrar el plan","ru":"Показать план","pt":"Mostrar o plano","it":"Mostra il piano","ko":"계획 보기","zh":"显示计划"},"That is not a plan code.":{"en":"That is not a plan code.","de":"Das ist kein Plancode.","fr":"Ce n'est pas un code de plan.","es":"Eso no es un código de plan.","ru":"Это не код плана.","pt":"Isso não é um código de plano.","it":"Questo non è un codice del piano.","ko":"계획 코드가 아닙니다.","zh":"这不是计划代码。"},"That is a theme or layout code, not a plan code.":{"en":"That is a theme or layout code, not a plan code.","de":"Das ist ein Design- oder Layoutcode, kein Plancode.","fr":"C'est un code de thème ou de disposition, pas un code de plan.","es":"Es un código de tema o de diseño, no un código de plan.","ru":"Это код темы или раскладки, а не код плана.","pt":"Esse é um código de tema ou de layout, não um código de plano.","it":"È un codice di tema o di layout, non un codice del piano.","ko":"테마 또는 배치 코드이며 계획 코드가 아닙니다.","zh":"这是主题或布局代码，不是计划代码。"},"The code is damaged or cut short.":{"en":"The code is damaged or cut short.","de":"Der Code ist beschädigt oder abgeschnitten.","fr":"Le code est endommagé ou tronqué.","es":"El código está dañado o cortado.","ru":"Код повреждён или обрезан.","pt":"O código está danificado ou cortado.","it":"Il codice è danneggiato o troncato.","ko":"코드가 손상되었거나 잘렸습니다.","zh":"代码已损坏或被截断。"},"This code is from a newer version of the add-on.":{"en":"This code is from a newer version of the add-on.","de":"Dieser Code stammt aus einer neueren Version des Addons.","fr":"Ce code vient d'une version plus récente de l'add-on.","es":"Este código es de una versión más nueva del addon.","ru":"Этот код создан в более новой версии аддона.","pt":"Este código é de uma versão mais nova do addon.","it":"Questo codice proviene da una versione più recente dell'add-on.","ko":"이 코드는 더 새로운 버전의 애드온에서 만든 것입니다.","zh":"此代码来自更新版本的插件。"},"Experience":{"en":"Experience","de":"Erfahrung","fr":"Expérience","es":"Experiencia","ru":"Опыт","pt":"Experiência","it":"Esperienza","ko":"경험치","zh":"经验"},"Time":{"en":"Time","de":"Zeit","fr":"Durée","es":"Tiempo","ru":"Время","pt":"Tempo","it":"Tempo","ko":"시간","zh":"时间"},"Levels":{"en":"Levels","de":"Stufen","fr":"Niveaux","es":"Niveles","ru":"Уровни","pt":"Níveis","it":"Livelli","ko":"레벨","zh":"等级"},"Flights":{"en":"Flights","de":"Flüge","fr":"Vols","es":"Vuelos","ru":"Перелёты","pt":"Voos","it":"Voli","ko":"비행","zh":"飞行"},"Crossings":{"en":"Crossings","de":"Überfahrten","fr":"Traversées","es":"Travesías","ru":"Переправы","pt":"Travessias","it":"Traversate","ko":"항해","zh":"渡海"},"Steps":{"en":"Steps","de":"Schritte","fr":"Étapes","es":"Pasos","ru":"Шаги","pt":"Passos","it":"Passaggi","ko":"단계","zh":"步骤"},"%d more steps are not shown.":{"en":"%d more steps are not shown.","de":"%d weitere Schritte werden nicht angezeigt.","fr":"%d autres étapes ne sont pas affichées.","es":"No se muestran %d pasos más.","ru":"Ещё %d шагов не показано.","pt":"%d passos a mais não são mostrados.","it":"Altri %d passaggi non vengono mostrati.","ko":"%d개의 단계가 더 있으나 표시되지 않습니다.","zh":"另有 %d 个步骤未显示。"},"Clear the ticks":{"en":"Clear the ticks","de":"Haken entfernen","fr":"Effacer les coches","es":"Borrar las marcas","ru":"Снять отметки","pt":"Limpar as marcas","it":"Cancella le spunte","ko":"체크 지우기","zh":"清除勾选"},"Your ticks stay in this browser only.":{"en":"Your ticks stay in this browser only.","de":"Deine Haken bleiben nur in diesem Browser.","fr":"Vos coches restent dans ce navigateur uniquement.","es":"Tus marcas se quedan solo en este navegador.","ru":"Ваши отметки хранятся только в этом браузере.","pt":"Suas marcas ficam somente neste navegador.","it":"Le tue spunte restano solo in questo browser.","ko":"체크 표시는 이 브라우저에만 저장됩니다.","zh":"你的勾选只保存在此浏览器中。"},"Nothing is sent anywhere: the page reads the code here, in your browser.":{"en":"Nothing is sent anywhere: the page reads the code here, in your browser.","de":"Nichts wird irgendwohin gesendet: Die Seite liest den Code hier, in deinem Browser.","fr":"Rien n'est envoyé : la page lit le code ici, dans votre navigateur.","es":"No se envía nada: la página lee el código aquí, en tu navegador.","ru":"Ничего никуда не отправляется: страница читает код здесь, в вашем браузере.","pt":"Nada é enviado: a página lê o código aqui, no seu navegador.","it":"Non viene inviato nulla: la pagina legge il codice qui, nel tuo browser.","ko":"아무것도 전송되지 않습니다. 이 페이지는 브라우저에서 코드를 읽습니다.","zh":"不会发送任何内容：页面在你的浏览器中读取代码。"},"Language":{"en":"Language","de":"Sprache","fr":"Langue","es":"Idioma","ru":"Язык","pt":"Idioma","it":"Lingua","ko":"언어","zh":"语言"},"%d h %d min":{"en":"%d h %d min","de":"%d Std. %d Min.","fr":"%d h %d min","es":"%d h %d min","ru":"%d ч %d мин","pt":"%d h %d min","it":"%d h %d min","ko":"%d시간 %d분","zh":"%d小时%d分钟"},"%d min":{"en":"%d min","de":"%d Min.","fr":"%d min","es":"%d min","ru":"%d мин","pt":"%d min","it":"%d min","ko":"%d분","zh":"%d分钟"},"How to use this page":{"en":"How to use this page","de":"So nutzt du diese Seite","fr":"Comment utiliser cette page","es":"Cómo usar esta página","ru":"Как пользоваться этой страницей","pt":"Como usar esta página","it":"Come usare questa pagina","ko":"이 페이지 사용법","zh":"如何使用本页"},"The route on the map":{"en":"The route on the map","de":"Die Route auf der Karte","fr":"L'itinéraire sur la carte","es":"La ruta en el mapa","ru":"Маршрут на карте","pt":"A rota no mapa","it":"Il percorso sulla mappa","ko":"지도 위의 경로","zh":"地图上的路线"},"Whole route":{"en":"Whole route","de":"Ganze Route","fr":"Tout l'itinéraire","es":"Toda la ruta","ru":"Весь маршрут","pt":"Rota inteira","it":"Tutto il percorso","ko":"전체 경로","zh":"整条路线"},"Map view":{"en":"Map view","de":"Kartenansicht","fr":"Vue de la carte","es":"Vista del mapa","ru":"Вид карты","pt":"Vista do mapa","it":"Vista della mappa","ko":"지도 보기","zh":"地图视图"},"Map of the route":{"en":"Map of the route","de":"Karte der Route","fr":"Carte de l'itinéraire","es":"Mapa de la ruta","ru":"Карта маршрута","pt":"Mapa da rota","it":"Mappa del percorso","ko":"경로 지도","zh":"路线地图"},"Loading the map…":{"en":"Loading the map…","de":"Die Karte wird geladen …","fr":"Chargement de la carte…","es":"Cargando el mapa…","ru":"Загрузка карты…","pt":"Carregando o mapa…","it":"Caricamento della mappa…","ko":"지도를 불러오는 중…","zh":"正在加载地图…"},"Map art © Blizzard Entertainment, map pieces from OpenMap.":{"en":"Map art © Blizzard Entertainment, map pieces from OpenMap.","de":"Kartengrafik © Blizzard Entertainment, Kartenteile von OpenMap.","fr":"Illustrations de la carte © Blizzard Entertainment, morceaux de carte d'OpenMap.","es":"Arte del mapa © Blizzard Entertainment, piezas del mapa de OpenMap.","ru":"Изображения карты © Blizzard Entertainment, фрагменты карты от OpenMap.","pt":"Arte do mapa © Blizzard Entertainment, partes do mapa do OpenMap.","it":"Grafica della mappa © Blizzard Entertainment, pezzi della mappa da OpenMap.","ko":"지도 그림 © Blizzard Entertainment, 지도 조각은 OpenMap 제공.","zh":"地图美术 © Blizzard Entertainment，地图拼块来自 OpenMap。"},"Full credits on the world map":{"en":"Full credits on the world map","de":"Alle Angaben auf der Weltkarte","fr":"Tous les crédits sur la carte du monde","es":"Todos los créditos en el mapa del mundo","ru":"Все благодарности — на карте мира","pt":"Todos os créditos no mapa-múndi","it":"Tutti i crediti sulla mappa del mondo","ko":"전체 출처는 세계 지도에서","zh":"完整致谢见世界地图"},"Step %s has no place on the map.":{"en":"Step %s has no place on the map.","de":"Schritt %s hat keinen Ort auf der Karte.","fr":"L'étape %s n'a pas de lieu sur la carte.","es":"El paso %s no tiene lugar en el mapa.","ru":"У шага %s нет места на карте.","pt":"O passo %s não tem lugar no mapa.","it":"Il passo %s non ha un luogo sulla mappa.","ko":"%s단계는 지도에 위치가 없습니다.","zh":"第 %s 步在地图上没有位置。"},"Steps %s have no place on the map.":{"en":"Steps %s have no place on the map.","de":"Die Schritte %s haben keinen Ort auf der Karte.","fr":"Les étapes %s n'ont pas de lieu sur la carte.","es":"Los pasos %s no tienen lugar en el mapa.","ru":"У шагов %s нет места на карте.","pt":"Os passos %s não têm lugar no mapa.","it":"I passi %s non hanno un luogo sulla mappa.","ko":"%s단계는 지도에 위치가 없습니다.","zh":"第 %s 步在地图上没有位置。"},"The world map could not be loaded, so each zone is drawn as a sketch.":{"en":"The world map could not be loaded, so each zone is drawn as a sketch.","de":"Die Weltkarte konnte nicht geladen werden, darum ist jede Zone als Skizze gezeichnet.","fr":"La carte du monde n'a pas pu être chargée : chaque zone est dessinée en croquis.","es":"No se pudo cargar el mapa del mundo, así que cada zona se dibuja como un boceto.","ru":"Карту мира не удалось загрузить, поэтому каждая зона нарисована схемой.","pt":"Não foi possível carregar o mapa-múndi, então cada zona aparece como um esboço.","it":"Non è stato possibile caricare la mappa del mondo, quindi ogni zona è disegnata come uno schizzo.","ko":"세계 지도를 불러올 수 없어 각 지역을 간단한 그림으로 보여 줍니다.","zh":"无法加载世界地图，因此每个区域以草图显示。"},"Accept a quest":{"en":"Accept a quest","de":"Quest annehmen","fr":"Accepter une quête","es":"Aceptar una misión","ru":"Взять задание","pt":"Aceitar uma missão","it":"Accettare una missione","ko":"퀘스트 수락","zh":"接受任务"},"Do a quest":{"en":"Do a quest","de":"Quest erledigen","fr":"Faire une quête","es":"Hacer una misión","ru":"Выполнить задание","pt":"Fazer uma missão","it":"Svolgere una missione","ko":"퀘스트 진행","zh":"完成任务目标"},"Turn in a quest":{"en":"Turn in a quest","de":"Quest abgeben","fr":"Rendre une quête","es":"Entregar una misión","ru":"Сдать задание","pt":"Entregar uma missão","it":"Consegnare una missione","ko":"퀘스트 완료 보고","zh":"交任务"},"Travel":{"en":"Travel","de":"Reisen","fr":"Voyage","es":"Viaje","ru":"Перемещение","pt":"Viagem","it":"Viaggio","ko":"이동","zh":"旅行"},"Other step":{"en":"Other step","de":"Anderer Schritt","fr":"Autre étape","es":"Otro paso","ru":"Другой шаг","pt":"Outro passo","it":"Altro passo","ko":"기타 단계","zh":"其他步骤"},"Step %d":{"en":"Step %d","de":"Schritt %d","fr":"Étape %d","es":"Paso %d","ru":"Шаг %d","pt":"Passo %d","it":"Passo %d","ko":"%d단계","zh":"第 %d 步"},"Show in the list":{"en":"Show in the list","de":"In der Liste zeigen","fr":"Voir dans la liste","es":"Ver en la lista","ru":"Показать в списке","pt":"Ver na lista","it":"Mostra nell'elenco","ko":"목록에서 보기","zh":"在列表中显示"},"Tap the map, then drag to move it.":{"en":"Tap the map, then drag to move it.","de":"Tippe auf die Karte, dann kannst du sie verschieben.","fr":"Touchez la carte, puis faites-la glisser pour la déplacer.","es":"Toca el mapa y luego arrástralo para moverlo.","ru":"Коснитесь карты, затем перетаскивайте её.","pt":"Toque no mapa e depois arraste para movê-lo.","it":"Tocca la mappa, poi trascinala per spostarla.","ko":"지도를 탭한 뒤 끌어서 움직이세요.","zh":"先点一下地图，再拖动来移动它。"},"%s is not on the world map yet, so its steps are drawn as a sketch.":{"en":"%s is not on the world map yet, so its steps are drawn as a sketch.","de":"%s ist noch nicht auf der Weltkarte, darum sind die Schritte dort als Skizze gezeichnet.","fr":"%s n'est pas encore sur la carte du monde : ses étapes sont dessinées en croquis.","es":"%s aún no está en el mapa del mundo, así que sus pasos se dibujan como un boceto.","ru":"Зоны «%s» пока нет на карте мира, поэтому её шаги нарисованы схемой.","pt":"%s ainda não está no mapa-múndi, então os passos de lá aparecem como esboço.","it":"%s non è ancora sulla mappa del mondo, quindi i suoi passi sono disegnati come schizzo.","ko":"%s 지역은 아직 세계 지도에 없어서 단계를 약도로 보여 줍니다.","zh":"%s 还不在世界地图上，因此其步骤以草图显示。"},"%s is not on the world map yet, so it has its own map.":{"en":"%s is not on the world map yet, so it has its own map.","de":"%s ist noch nicht auf der Weltkarte, darum bekommt die Zone eine eigene Karte.","fr":"%s n'est pas encore sur la carte du monde : la zone a sa propre carte.","es":"%s aún no está en el mapa del mundo, así que la zona tiene su propio mapa.","ru":"Зоны «%s» пока нет на карте мира, поэтому у неё своя карта.","pt":"%s ainda não está no mapa-múndi, então a zona tem um mapa próprio.","it":"%s non è ancora sulla mappa del mondo, quindi la zona ha una mappa a parte.","ko":"%s 지역은 아직 세계 지도에 없어서 따로 지도를 보여 줍니다.","zh":"%s 还不在世界地图上，因此单独显示该区域的地图。"},"Map art © Blizzard Entertainment":{"en":"Map art © Blizzard Entertainment","de":"Kartengrafik © Blizzard Entertainment","fr":"Illustrations de la carte © Blizzard Entertainment","es":"Arte del mapa © Blizzard Entertainment","ru":"Изображения карты © Blizzard Entertainment","pt":"Arte do mapa © Blizzard Entertainment","it":"Grafica della mappa © Blizzard Entertainment","ko":"지도 그림 © Blizzard Entertainment","zh":"地图美术 © Blizzard Entertainment"},"Map of the stops in %s":{"en":"Map of the stops in %s","de":"Karte der Stopps in %s","fr":"Carte des étapes dans %s","es":"Mapa de las paradas en %s","ru":"Карта остановок: %s","pt":"Mapa das paradas em %s","it":"Mappa delle tappe in %s","ko":"%s의 정류 지점 지도","zh":"%s 的停靠点地图"},"Step %d: %s":{"en":"Step %d: %s","de":"Schritt %d: %s","fr":"Étape %d : %s","es":"Paso %d: %s","ru":"Шаг %d: %s","pt":"Passo %d: %s","it":"Passo %d: %s","ko":"%d단계: %s","zh":"第 %d 步：%s"},"Steps %s: %s":{"en":"Steps %s: %s","de":"Schritte %s: %s","fr":"Étapes %s : %s","es":"Pasos %s: %s","ru":"Шаги %s: %s","pt":"Passos %s: %s","it":"Passi %s: %s","ko":"%s단계: %s","zh":"第 %s 步：%s"},"N":{"en":"N","de":"N","fr":"N","es":"N","ru":"С","pt":"N","it":"N","ko":"북","zh":"北"},"North is up":{"en":"North is up","de":"Norden ist oben","fr":"Le nord est en haut","es":"El norte está arriba","ru":"Север сверху","pt":"O norte fica em cima","it":"Il nord è in alto","ko":"위쪽이 북쪽","zh":"上方为北"},"Show step %d on the map":{"en":"Show step %d on the map","de":"Schritt %d auf der Karte zeigen","fr":"Afficher l'étape %d sur la carte","es":"Mostrar el paso %d en el mapa","ru":"Показать шаг %d на карте","pt":"Mostrar o passo %d no mapa","it":"Mostra il passo %d sulla mappa","ko":"지도에서 %d단계 보기","zh":"在地图上显示第 %d 步"},"The real map":{"en":"The real map","de":"Die echte Karte","fr":"La vraie carte","es":"El mapa real","ru":"Настоящая карта","pt":"O mapa real","it":"La mappa vera","ko":"실제 지도","zh":"真实地图"},"OpenMap shows WoW Forever's own zone maps. It's a separate site, made by other players.":{"en":"OpenMap shows WoW Forever's own zone maps. It's a separate site, made by other players.","de":"OpenMap zeigt die eigenen Zonenkarten von WoW Forever. Es ist eine eigene Seite, gemacht von anderen Spielern.","fr":"OpenMap affiche les cartes de zone propres à WoW Forever. C'est un site à part, fait par d'autres joueurs.","es":"OpenMap muestra los mapas de zona propios de WoW Forever. Es un sitio aparte, hecho por otros jugadores.","ru":"OpenMap показывает собственные карты зон WoW Forever. Это отдельный сайт, его сделали другие игроки.","pt":"O OpenMap mostra os mapas de zona do próprio WoW Forever. É um site à parte, feito por outros jogadores.","it":"OpenMap mostra le mappe delle zone di WoW Forever. È un sito a parte, fatto da altri giocatori.","ko":"OpenMap은 WoW Forever의 지역 지도를 그대로 보여 줍니다. 다른 플레이어들이 만든 별개의 사이트입니다.","zh":"OpenMap 显示 WoW Forever 自带的区域地图。它是一个独立的网站，由其他玩家制作。"},"Open OpenMap in a new tab":{"en":"Open OpenMap in a new tab","de":"OpenMap in einem neuen Tab öffnen","fr":"Ouvrir OpenMap dans un nouvel onglet","es":"Abrir OpenMap en una pestaña nueva","ru":"Открыть OpenMap в новой вкладке","pt":"Abrir o OpenMap numa nova aba","it":"Apri OpenMap in una nuova scheda","ko":"새 탭에서 OpenMap 열기","zh":"在新标签页中打开 OpenMap"},"Open the world map":{"en":"Open the world map","de":"Weltkarte öffnen","fr":"Ouvrir la carte du monde","es":"Abrir el mapa del mundo","ru":"Открыть карту мира","pt":"Abrir o mapa-múndi","it":"Apri la mappa del mondo","ko":"세계 지도 열기","zh":"打开世界地图"},"Map art © Blizzard Entertainment, shown by OpenMap (openmap.world). Not part of Fantasy Glass UI.":{"en":"Map art © Blizzard Entertainment, shown by OpenMap (openmap.world). Not part of Fantasy Glass UI.","de":"Kartengrafik © Blizzard Entertainment, gezeigt von OpenMap (openmap.world). Kein Teil von Fantasy Glass UI.","fr":"Illustrations des cartes © Blizzard Entertainment, affichées par OpenMap (openmap.world). Ne fait pas partie de Fantasy Glass UI.","es":"Arte de los mapas © Blizzard Entertainment, mostrado por OpenMap (openmap.world). No forma parte de Fantasy Glass UI.","ru":"Графика карт © Blizzard Entertainment, показана через OpenMap (openmap.world). Не является частью Fantasy Glass UI.","pt":"Arte dos mapas © Blizzard Entertainment, mostrada pelo OpenMap (openmap.world). Não faz parte do Fantasy Glass UI.","it":"Grafica delle mappe © Blizzard Entertainment, mostrata da OpenMap (openmap.world). Non fa parte di Fantasy Glass UI.","ko":"지도 그림 © Blizzard Entertainment, OpenMap(openmap.world)이 보여 줍니다. Fantasy Glass UI의 일부가 아닙니다.","zh":"地图美术 © Blizzard Entertainment，由 OpenMap（openmap.world）显示。不属于 Fantasy Glass UI。"},"Zoom in":{"en":"Zoom in","de":"Hineinzoomen","fr":"Zoomer","es":"Acercar","ru":"Приблизить","pt":"Aproximar","it":"Ingrandisci","ko":"확대","zh":"放大"},"Zoom out":{"en":"Zoom out","de":"Herauszoomen","fr":"Dézoomer","es":"Alejar","ru":"Отдалить","pt":"Afastar","it":"Riduci","ko":"축소","zh":"缩小"},"Close":{"en":"Close","de":"Schließen","fr":"Fermer","es":"Cerrar","ru":"Закрыть","pt":"Fechar","it":"Chiudi","ko":"닫기","zh":"关闭"}};
 // Reads a plan code (the text "Share plan" gives in the game). No DOM here: the page draws, this only reads.
 // The code is "SUIP1!" and the add-on's share encoding: S<bytes>:text, N<number>; and { key value ... }.
 var FGPlan = (function () {
@@ -697,7 +706,9 @@ if (typeof module !== "undefined") module.exports = FGPlanMap;
     if (rt.state === "failed") return;
     rt.state = "failed";
     if (rt.map) { try { rt.map.remove(); } catch (e) {} rt.map = null; }
-    ["mapframe", "views", "legend", "unplaced", "mapcredit"].forEach(function (id) { $(id).hidden = true; });
+    Object.keys(rt.offp || {}).forEach(function (z) { var o = rt.offp[z]; if (o.V) try { o.V.map.remove(); } catch (e) {} });
+    rt.offp = {};
+    ["mapframe", "views", "legend", "unplaced", "mapcredit", "offpanels"].forEach(function (id) { $(id).hidden = true; });
     $("sketchnote").hidden = false; $("panels").hidden = false;
     if (result && result.ok) { drawPanels(result.plan); drawSteps(result.plan); }
   }
@@ -706,17 +717,14 @@ if (typeof module !== "undefined") module.exports = FGPlanMap;
     if (meta.sea) $("mapframe").style.setProperty("--sea", meta.sea);
     var have = null;
     if (haveList) { have = {}; Object.keys(haveList).forEach(function (z) { haveList[z].forEach(function (k) { have[z + "/" + k] = 1; }); }); }
-    // a phone: one finger scrolls the page until the map is tapped (then it drags the map); two fingers always zoom it.
-    // The mouse wheel scrolls the page until the map is clicked.
-    var coarse = !!(window.matchMedia && matchMedia("(pointer: coarse)").matches);
-    var map = L.map(box, { crs: L.CRS.Simple, minZoom: 0, maxZoom: Z + 1, zoomSnap: 0.5, zoomDelta: 0.5, attributionControl: false,
-                           zoomControl: false, scrollWheelZoom: false, dragging: !coarse, maxBoundsViscosity: 0.8 });
-    rt.map = map; rt.Z = Z; rt.zones = zones; rt.coarse = coarse;
+    rt.coarse = !!(window.matchMedia && matchMedia("(pointer: coarse)").matches);
+    rt.zones = zones; rt.Z = Z; rt.tamed = []; rt.offp = {};
+    var map = L.map(box, opts(Z + 1, 0.5));
+    rt.map = map;
     box._fgMap = map;                                                  // (for tests/sitebrowser.py)
-    rt.ll = function (p) { return map.unproject(p, Z); };
-    var all = L.latLngBounds(rt.ll([0, H]), rt.ll([W, 0]));
+    var V = rt.world = view(map, function (p) { return map.unproject(p, Z); }, Z - 1);
+    var all = L.latLngBounds(V.ll([0, H]), V.ll([W, 0]));
     map.setMaxBounds(all.pad(0.05));
-    rt.zoom = L.control.zoom({ zoomInTitle: T("Zoom in"), zoomOutTitle: T("Zoom out") }).addTo(map);
     var loaded = 0, failed = 0;
     var Tiles = L.TileLayer.extend({
       createTile: function (c, done) {                                 // (none is asked for where the list says there is only sea)
@@ -728,52 +736,94 @@ if (typeof module !== "undefined") module.exports = FGPlanMap;
       .on("tileload", function () { loaded++; }).on("tileerror", function () { failed++; })
       .on("load", function () { if (!loaded && failed) setTimeout(fallback, 0); })   // (after Leaflet is done with the tile)
       .addTo(map);
-    map.setMinZoom(Math.max(0, Math.floor(map.getBoundsZoom(all, false) * 2) / 2));
-    rt.line = L.layerGroup().addTo(map); rt.pins = L.layerGroup().addTo(map);
-    function wake() {
-      map.scrollWheelZoom.enable();
-      if (coarse) { map.dragging.enable(); $("maphint").hidden = true; }
-    }
-    map.on("click", wake);
-    box.addEventListener("focus", function () { map.scrollWheelZoom.enable(); });
-    box.addEventListener("mouseleave", function () { map.scrollWheelZoom.disable(); });
-    if (coarse) {
-      $("maphint").hidden = false;
-      document.addEventListener("touchstart", function (e) {
-        if (rt.map && !box.contains(e.target) && map.dragging.enabled()) { map.dragging.disable(); $("maphint").hidden = false; }
-      }, { passive: true });
-    }
-    map.on("zoomend", function () { pins(false); });
-    map.on("popupopen", function (e) {
-      var x = e.popup.getElement() && e.popup.getElement().querySelector(".leaflet-popup-close-button");
-      if (x) x.setAttribute("aria-label", T("Close"));
-    });
+    rt.all = all;
+    tame(V, box, $("maphint"));
+    // a phone: a touch outside a map gives one finger back to the page
+    if (rt.coarse) document.addEventListener("touchstart", function (e) {
+      rt.tamed.forEach(function (t) { if (!t.box.contains(e.target) && t.map.dragging.enabled()) { t.map.dragging.disable(); t.hint.hidden = false; } });
+    }, { passive: true });
     rt.state = "ready";
     $("mapwait").hidden = true;
     if (result && result.ok) { paint(result.plan, true); drawSteps(result.plan); }
   }
-
-  function zoneOf(plan, i) { var z = plan.st[i].z; return z === null ? null : z; }
-  // draw the plan on the map; fresh (a new code): fit the view again
-  function paint(plan, fresh) {
-    var map = rt.map, at = FGPlan.place(plan, rt.zones), now = current(plan), prevNow = rt.now;
-    rt.plan = plan; rt.code = code; rt.at = at; rt.now = now;
-    rt.placed = [];
-    at.forEach(function (p, i) { if (p) rt.placed.push({ i: i, ll: rt.ll(p), kind: KIND[plan.st[i].k] || "other" }); });
-    // the line: walking solid, a flight, a boat or the hearthstone dashed in blue; each over a dark edge to stand out
-    rt.line.clearLayers();
+  // a Leaflet map for the route (the world, or one zone's own map): the wheel and, on a phone, one finger move the page
+  // until the map is clicked or tapped; two fingers always zoom it
+  function opts(maxZoom, snap) {
+    return { crs: L.CRS.Simple, minZoom: 0, maxZoom: maxZoom, zoomSnap: snap, zoomDelta: snap, attributionControl: false, zoomControl: false,
+             scrollWheelZoom: false, dragging: !rt.coarse, maxBoundsViscosity: 0.8 };
+  }
+  // what a map shows of the route: its line and current-step ring, its pins (by step), and how to place a pixel on it
+  function view(map, ll, near) {
+    var V = { map: map, ll: ll, near: near, line: L.layerGroup().addTo(map), pins: L.layerGroup().addTo(map), placed: [], sig: null, byStep: {} };
+    L.control.zoom({ zoomInTitle: T("Zoom in"), zoomOutTitle: T("Zoom out") }).addTo(map);
+    map.on("zoomend", function () { pins(V, false); });
+    map.on("popupopen", function (e) {
+      var x = e.popup.getElement() && e.popup.getElement().querySelector(".leaflet-popup-close-button");
+      if (x) x.setAttribute("aria-label", T("Close"));
+    });
+    return V;
+  }
+  function tame(V, box, hint) {
+    var map = V.map;
+    map.on("click", function () {
+      map.scrollWheelZoom.enable();
+      if (rt.coarse) { map.dragging.enable(); hint.hidden = true; }
+    });
+    box.addEventListener("focus", function () { map.scrollWheelZoom.enable(); });
+    box.addEventListener("mouseleave", function () { map.scrollWheelZoom.disable(); });
+    hint.hidden = !rt.coarse;
+    rt.tamed.push({ map: map, box: box, hint: hint });
+  }
+  // the route on a map: items [{ i: step, p: [x, y] pixels }] in step order. The line: walking solid, a flight, a boat
+  // or the hearthstone dashed in blue, each over a dark edge to stand out; a ring on the current step
+  function route(V, plan, items) {
+    V.placed = items.map(function (it) { return { i: it.i, ll: V.ll(it.p), kind: KIND[plan.st[it.i].k] || "other" }; });
+    V.line.clearLayers();
     var walk = [], hop = [];
-    for (var k = 1; k < rt.placed.length; k++) (TRAVEL[plan.st[rt.placed[k].i].k] ? hop : walk).push([rt.placed[k - 1].ll, rt.placed[k].ll]);
+    for (var k = 1; k < V.placed.length; k++) (TRAVEL[plan.st[V.placed[k].i].k] ? hop : walk).push([V.placed[k - 1].ll, V.placed[k].ll]);
     [[walk, "#f0c66b", null], [hop, "#8fd3ff", "6 7"]].forEach(function (l) {
       if (!l[0].length) return;
-      L.polyline(l[0], { color: "#14110a", weight: 6, opacity: 0.55, interactive: false, className: "rt-line" }).addTo(rt.line);
-      L.polyline(l[0], { color: l[1], weight: 3, opacity: 0.95, dashArray: l[2], interactive: false, className: "rt-line" }).addTo(rt.line);
+      L.polyline(l[0], { color: "#14110a", weight: 6, opacity: 0.55, interactive: false, className: "rt-line" }).addTo(V.line);
+      L.polyline(l[0], { color: l[1], weight: 3, opacity: 0.95, dashArray: l[2], interactive: false, className: "rt-line" }).addTo(V.line);
     });
-    var nowAt = at[now] ? rt.ll(at[now]) : null;
-    if (nowAt) L.marker(nowAt, { icon: L.divIcon({ className: "rt-now", iconSize: [40, 40], iconAnchor: [20, 20] }), interactive: false, keyboard: false, zIndexOffset: -500 }).addTo(rt.line);
+    var now = V.placed.filter(function (p) { return p.i === rt.now; })[0];
+    V.nowAt = now ? now.ll : null;
+    if (now) L.marker(now.ll, { icon: L.divIcon({ className: "rt-now", iconSize: [40, 40], iconAnchor: [20, 20] }), interactive: false, keyboard: false, zIndexOffset: -500 }).addTo(V.line);
+  }
+  function fitTo(V, lls, pad) {
+    var map = V.map;
+    if (!lls.length) { map.fitBounds(map.options.maxBounds, { animate: false }); return; }
+    var b = L.latLngBounds(lls);
+    if (b.getNorthEast().equals(b.getSouthWest())) map.setView(lls[0], V.near, { animate: false });
+    else map.fitBounds(b, { padding: [pad, pad], maxZoom: V.near, animate: false });
+  }
+
+  function zoneOf(plan, i) { var z = plan.st[i].z; return z === null ? null : z; }
+  function zoneId(plan, z) {                                           // a zone's UiMapID, from the code or by its English name
+    var zn = plan.z[z - 1], own = Object.prototype.hasOwnProperty;
+    if (zn.m !== null) return zn.m;
+    return rt.zones.names && own.call(rt.zones.names, zn.n) ? rt.zones.names[zn.n] : null;
+  }
+  // draw the plan on the maps; fresh (a new code): fit the views again
+  function paint(plan, fresh) {
+    var map = rt.map, V = rt.world, at = FGPlan.place(plan, rt.zones), now = current(plan), prevNow = rt.now;
+    rt.plan = plan; rt.code = code; rt.at = at; rt.now = now;
+    var items = [];
+    at.forEach(function (p, i) { if (p) items.push({ i: i, p: p }); });
+    // a zone the world map does not have (its steps have a place in the zone, but none on the map): its own map when
+    // the site has one (/plan/zones.json "images"), else a sketch of it; and no empty world map when no step is on it
+    var off = [];
+    plan.st.forEach(function (s, i) { if (!at[i] && s.z !== null && s.x !== null && s.y !== null && off.indexOf(s.z) < 0) off.push(s.z); });
+    rt.off = off;
+    var onMap = items.length > 0, wasHidden = $("mapframe").hidden;
+    ["mapframe", "mapcredit"].forEach(function (id) { $(id).hidden = !onMap; });
+    if (onMap && wasHidden) fresh = true;
+    route(V, plan, items);
+    drawOff(plan, off, fresh);
+    $("legend").hidden = !onMap && !Object.keys(rt.offp).some(function (z) { return !!rt.offp[z].V; });
     // the views: the whole route, or one zone's steps
     var zs = [];
-    rt.placed.forEach(function (p) { var z = zoneOf(plan, p.i); if (zs.indexOf(z) < 0) zs.push(z); });
+    V.placed.forEach(function (p) { var z = zoneOf(plan, p.i); if (zs.indexOf(z) < 0) zs.push(z); });
     rt.zs = zs;
     if (fresh) {
       var nz = nowZone(plan);
@@ -784,46 +834,133 @@ if (typeof module !== "undefined") module.exports = FGPlanMap;
     }
     if (zs.indexOf(rt.view) < 0) rt.view = "all";
     views(plan);
-    // the steps with no place: listed, not pinned
+    // the steps with no place at all: listed, not pinned
     var none = [];
-    at.forEach(function (p, i) { if (!p) none.push(i + 1); });
+    plan.st.forEach(function (s, i) { if (!at[i] && (s.z === null || s.x === null || s.y === null)) none.push(i + 1); });
     $("unplaced").hidden = !none.length;
     $("unplaced").textContent = none.length ? T(none.length === 1 ? "Step %s has no place on the map." : "Steps %s have no place on the map.").replace("%s", none.join(", ")) : "";
+    if (!onMap) { V.pins.clearLayers(); V.sig = null; V.byStep = {}; return; }
     map.invalidateSize();
-    if (fresh) fit(); else if (nowAt && now !== prevNow) map.panInside(nowAt, { padding: [40, 40], animate: !reduce });
-    pins(true);
+    map.setMinZoom(Math.max(0, Math.floor(map.getBoundsZoom(rt.all, false) * 2) / 2));
+    if (fresh) fit(); else if (V.nowAt && now !== prevNow) map.panInside(V.nowAt, { padding: [40, 40], animate: !reduce });
+    pins(V, true);
+  }
+  // the zones off the world map, each in a panel: its own map (Leaflet over the zone's map art, 0-100 across and down
+  // it), or a sketch (map.js) when the site has no art for it or the art does not load
+  function drawOff(plan, off, fresh) {
+    var box = $("offpanels"), sig = off.join(",");
+    box.hidden = !off.length;
+    var ps = FGPlan.panels(plan).filter(function (p) { return off.indexOf(p.zone) >= 0; });
+    if (fresh || sig !== rt.offSig) {
+      rt.offSig = sig;
+      Object.keys(rt.offp).forEach(function (z) { var o = rt.offp[z]; if (o.V) { o.V.map.remove(); rt.tamed = rt.tamed.filter(function (t) { return t.map !== o.V.map; }); } });
+      rt.offp = {};
+      box.textContent = "";
+      ps.forEach(function (p) {
+        var id = zoneId(plan, p.zone), img = id !== null && rt.zones.images ? rt.zones.images[String(id)] : null;
+        if (img && !(rt.noArt || {})[id]) offMap(p, plan, box, img, id);
+        else drawPanel(p, plan, box, true);
+        rt.offp[p.zone].wrap.id = "off-z" + p.zone;
+      });
+    } else ps.forEach(function (p) {                                   // (a tick, or another language: the same maps, drawn again)
+      var o = rt.offp[p.zone];
+      if (!o) return;
+      if (o.V) { o.map.setAttribute("aria-label", T("Map of the stops in %s").replace("%s", p.name)); offRoute(o, plan, p); pins(o.V, true); }
+      else FGPlanMap.draw(o.holder, p, sketchOpts(p, plan));
+    });
+    Object.keys(rt.offp).forEach(function (z) {
+      var o = rt.offp[z];
+      o.note.textContent = T(o.V ? "%s is not on the world map yet, so it has its own map." : "%s is not on the world map yet, so its steps are drawn as a sketch.").replace("%s", o.p.name);
+      if (o.credit) o.credit.textContent = T("Map art © Blizzard Entertainment");
+    });
+  }
+  function offMap(p, plan, box, img, id) {
+    var w = +img.size[0], h = +img.size[1];
+    var wrap = el("div", "panel"), note = el("p", "note"), frame = el("div", "mapframe zoneframe"), holder = el("div", "routemap zonemap"), hint = el("p", "maphint");
+    var credit = el("p", "note credit");
+    wrap.appendChild(el("h2", "", p.name)); wrap.appendChild(note);
+    holder.setAttribute("role", "region");
+    holder.setAttribute("aria-label", T("Map of the stops in %s").replace("%s", p.name));
+    hint.textContent = T("Tap the map, then drag to move it.");
+    frame.appendChild(holder); frame.appendChild(hint); wrap.appendChild(frame); wrap.appendChild(credit);
+    box.appendChild(wrap);
+    var bounds = [[0, 0], [h, w]];
+    var map = L.map(holder, opts(18, 0.25));
+    holder._fgMap = map;
+    var V = view(map, function (q) { return L.latLng(h - q[1], q[0]); }, 0);
+    var o = rt.offp[p.zone] = { wrap: wrap, note: note, credit: credit, map: holder, V: V, p: p, size: [w, h] };
+    L.imageOverlay(img.src, bounds, { alt: "", interactive: false }).on("error", function () {
+      (rt.noArt = rt.noArt || {})[id] = 1;                             // (the art did not load: a sketch instead)
+      setTimeout(function () { if (result && result.ok) drawOff(result.plan, rt.off, true); }, 0);
+    }).addTo(map);
+    map.setMaxBounds(L.latLngBounds(bounds).pad(0.1));
+    // the whole island in view, worked out from the panel's real size (made before it is laid out it can be 0 px wide,
+    // which zoomed right in and locked the zoom there); again whenever its size changes
+    var ro = null;
+    function whole(first) {
+      if (!holder.isConnected || !map._mapPane || map !== holder._fgMap) { if (ro) ro.disconnect(); return; }   // (the map was made again, or put away)
+      map.invalidateSize(false);
+      if (!holder.clientWidth || !holder.clientHeight) return;
+      var z0 = map.getBoundsZoom(bounds, false);
+      map.setMinZoom(z0); map.setMaxZoom(z0 + 3); V.near = z0 + 0.75;
+      if (first || map.getZoom() < z0) map.fitBounds(bounds, { animate: false });
+    }
+    var fitWhole = whole;
+    whole = function (first) { try { fitWhole(first); } catch (e) { if (ro) ro.disconnect(); } };
+    map.setMinZoom(0); map.setMaxZoom(18);
+    whole(true);
+    var fitted = false;
+    requestAnimationFrame(function () { whole(!fitted); fitted = true; });
+    if (window.ResizeObserver) { ro = new ResizeObserver(function () { whole(!fitted); }); ro.observe(holder); }
+    tame(V, holder, hint);
+    offRoute(o, plan, p);
+    pins(V, true);
+    return o;
+  }
+  function offRoute(o, plan, p) {                                      // (a step's 0-100 on the zone's own map art)
+    route(o.V, plan, p.stops.map(function (st) { return { i: st.step, p: [st.x / 100 * o.size[0], st.y / 100 * o.size[1]] }; }));
   }
   function nowZone(plan) {                                             // the zone of the current step, or of the next one with a place
     for (var i = Math.max(0, rt.now); i < plan.st.length; i++) if (rt.at[i]) return zoneOf(plan, i);
     return null;
   }
   function fit() {
-    var map = rt.map, lls = rt.placed.filter(function (p) { return rt.view === "all" || zoneOf(rt.plan, p.i) === rt.view; }).map(function (p) { return p.ll; });
-    if (!lls.length) { map.fitBounds(map.options.maxBounds, { animate: false }); return; }
-    var b = L.latLngBounds(lls);
-    if (b.getNorthEast().equals(b.getSouthWest())) map.setView(lls[0], rt.Z - 1, { animate: false });
-    else map.fitBounds(b, { padding: [36, 36], maxZoom: rt.Z - 1, animate: false });
+    fitTo(rt.world, rt.world.placed.filter(function (p) { return rt.view === "all" || zoneOf(rt.plan, p.i) === rt.view; }).map(function (p) { return p.ll; }), 36);
   }
   function views(plan) {
     var row = $("views");
     row.textContent = "";
     row.setAttribute("aria-label", T("Map view"));
-    row.hidden = rt.zs.length < 2;
-    ["all"].concat(rt.zs).forEach(function (z) {
-      var b = el("button", "", z === "all" ? T("Whole route") : plan.z[z - 1].n);
+    var chips = (rt.world.placed.length ? ["all"].concat(rt.zs) : []).concat(rt.off.map(function (z) { return -z; }));
+    row.hidden = chips.length < 2;
+    chips.forEach(function (z) {
+      var b = el("button", "", z === "all" ? T("Whole route") : plan.z[Math.abs(z) - 1].n);
       b.type = "button";
+      if (z !== "all" && z < 0) {                                      // a zone not on the world map: to its own map or sketch
+        b.addEventListener("click", function () {
+          var w = $("off-z" + -z);
+          if (!w) return;
+          w.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
+          w.classList.add("hit");
+          setTimeout(function () { w.classList.remove("hit"); }, 1600);
+        });
+        row.appendChild(b);
+        return;
+      }
       b.setAttribute("aria-pressed", String(rt.view === z));
       b.addEventListener("click", function () {
         rt.view = z;
-        [].forEach.call(row.children, function (c) { c.setAttribute("aria-pressed", String(c === b)); });
-        fit(); pins(false);
+        [].forEach.call(row.querySelectorAll("[aria-pressed]"), function (c) { c.setAttribute("aria-pressed", String(c === b)); });
+        fit(); pins(rt.world, false);
       });
       row.appendChild(b);
     });
   }
   // the pins at this zoom: those closer than a pin share one
-  function pins(force) {
-    var map = rt.map, P = rt.placed, z = map.getZoom(), pts = P.map(function (p) { return map.project(p.ll, z); });
+  function pins(V, force) {
+    var map = V.map, P = V.placed;
+    if (!map.getSize().x || map.getZoom() === undefined) return;
+    var z = map.getZoom(), pts = P.map(function (p) { return map.project(p.ll, z); });
     var up = P.map(function (p, i) { return i; });
     function top(i) { while (up[i] !== i) i = up[i] = up[up[i]]; return i; }
     for (var a = 0; a < P.length; a++)
@@ -832,10 +969,10 @@ if (typeof module !== "undefined") module.exports = FGPlanMap;
     var groups = {}, order = [];
     P.forEach(function (p, i) { var t = top(i); if (!groups[t]) { groups[t] = []; order.push(t); } groups[t].push(i); });
     var sig = order.map(function (t) { return groups[t].join(","); }).join("|");
-    if (!force && sig === rt.sig) return;
-    rt.sig = sig;
-    rt.pins.clearLayers();
-    rt.byStep = {};
+    if (!force && sig === V.sig) return;
+    V.sig = sig;
+    V.pins.clearLayers();
+    V.byStep = {};
     order.forEach(function (t) {
       var g = groups[t], steps = g.map(function (k) { return P[k].i; });
       var run = g.every(function (k, j) { return !j || k === g[j - 1] + 1; });
@@ -849,14 +986,14 @@ if (typeof module !== "undefined") module.exports = FGPlanMap;
       var m = L.marker([lat / g.length, lng / g.length], {
         icon: L.divIcon({ className: "rt-pin k-" + kind + (done ? " done" : "") + (isNow ? " now" : ""), html: num, iconSize: [w, 26], iconAnchor: [w / 2, 13], popupAnchor: [0, -14] }),
         title: label, keyboard: true, riseOnHover: true, zIndexOffset: isNow ? 1000 : 0 });
-      m.bindPopup(function () { return popup(steps); }, { maxWidth: 260, autoPanPadding: [24, 24] });
-      m.addTo(rt.pins);
+      m.bindPopup(function () { return popup(steps, V); }, { maxWidth: 260, autoPanPadding: [24, 24] });
+      m.addTo(V.pins);
       var e = m.getElement();
       if (e) { e.setAttribute("aria-label", label); e.setAttribute("data-steps", steps.join(" ")); if (isNow) e.setAttribute("aria-current", "step"); }
-      steps.forEach(function (i) { rt.byStep[i] = m; });
+      steps.forEach(function (i) { V.byStep[i] = m; });
     });
   }
-  function popup(steps) {                                              // (every word in it is plain text)
+  function popup(steps, V) {                                           // (every word in it is plain text)
     var box = el("div", "rt-pop"), plan = rt.plan;
     steps.forEach(function (i) {
       var s = plan.st[i], row = el("div"), kind = KIND[s.k] || "other";
@@ -865,7 +1002,7 @@ if (typeof module !== "undefined") module.exports = FGPlanMap;
       if (s.z !== null) row.appendChild(el("span", "z", plan.z[s.z - 1].n));
       var go = el("button", "", T("Show in the list"));
       go.type = "button";
-      go.addEventListener("click", function () { rt.map.closePopup(); toStep(i); });
+      go.addEventListener("click", function () { V.map.closePopup(); toStep(i); });
       row.appendChild(go);
       box.appendChild(row);
     });
@@ -873,12 +1010,22 @@ if (typeof module !== "undefined") module.exports = FGPlanMap;
   }
   function showStep(i) {                                               // a step's number in the list: its pin, opened
     if (rt.state === "failed") return FGPlanMap.show($("panels"), i, reduce);
-    if (rt.state !== "ready" || !rt.at[i]) return;
-    var ll = rt.ll(rt.at[i]);
-    $("routebox").scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
-    rt.map.setView(ll, Math.max(rt.map.getZoom(), rt.Z - 1), { animate: false });
-    pins(false);
-    var m = rt.byStep[i];
+    if (rt.state !== "ready") return;
+    var V = rt.world, o = null, at = null;
+    if (rt.at[i]) at = V.ll(rt.at[i]);
+    else {                                                             // (a step in a zone the world map does not have)
+      o = rt.offp[zoneOf(rt.plan, i)];
+      if (!o) return;
+      if (!o.V) return FGPlanMap.show(o.wrap, i, reduce);
+      V = o.V;
+      at = V.placed.filter(function (p) { return p.i === i; })[0];
+      if (!at) return;
+      at = at.ll;
+    }
+    (o ? o.wrap : $("mapframe")).scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
+    V.map.setView(at, Math.max(V.map.getZoom(), V.near), { animate: false });
+    pins(V, false);
+    var m = V.byStep[i];
     if (!m) return;
     m.openPopup();
     var e = m.getElement();
@@ -902,20 +1049,29 @@ if (typeof module !== "undefined") module.exports = FGPlanMap;
       li.appendChild(dot); li.appendChild(document.createTextNode(T(k[1])));
       lg.appendChild(li);
     });
-    if (rt.map) {
-      var c = $("routemap").querySelectorAll(".leaflet-control-zoom a");
+    [].forEach.call($("routebox").querySelectorAll(".leaflet-control-zoom"), function (bar) {
+      var c = bar.querySelectorAll("a");
       [["Zoom in", 0], ["Zoom out", 1]].forEach(function (z) { if (c[z[1]]) { c[z[1]].title = T(z[0]); c[z[1]].setAttribute("aria-label", T(z[0])); } });
-    }
+    });
+    [].forEach.call($("routebox").querySelectorAll(".zoneframe .maphint"), function (h) { h.textContent = T("Tap the map, then drag to move it."); });
   }
 
   // the fallback, only when the world map cannot be loaded: each zone's sketch (map.js), linked to the list both ways
-  function drawPanel(p, plan) {
-    var wrap = el("div", "panel"), holder = el("div", "map");
+  // a zone's sketch (map.js), linked to the list both ways: every zone when the world map cannot be loaded, or a zone
+  // off the world map with no map art of its own (then box is #offpanels, and the panel is remembered with its note)
+  function sketchOpts(p, plan) {
+    return { name: T("Map of the stops in %s").replace("%s", p.name), north: T("N"), northTitle: T("North is up"),
+             label: stepLabel, group: groupLabel, current: current(plan), done: function (i) { return !!ticks[i]; }, pick: toStep };
+  }
+  function drawPanel(p, plan, box, note) {
+    var wrap = el("div", "panel"), holder = el("div", "map"), n = note ? el("p", "note") : null;
     wrap.appendChild(el("h2", "", p.name));
+    if (n) wrap.appendChild(n);
     wrap.appendChild(holder);
-    $("panels").appendChild(wrap);                                     // (in the page first: the map takes its width)
-    FGPlanMap.draw(holder, p, { name: T("Map of the stops in %s").replace("%s", p.name), north: T("N"), northTitle: T("North is up"),
-      label: stepLabel, group: groupLabel, current: current(plan), done: function (i) { return !!ticks[i]; }, pick: toStep });
+    (box || $("panels")).appendChild(wrap);                            // (in the page first: the map takes its width)
+    FGPlanMap.draw(holder, p, sketchOpts(p, plan));
+    if (n) rt.offp[p.zone] = { wrap: wrap, note: n, holder: holder, p: p };
+    return wrap;
   }
   function drawPanels(plan) {
     var box = $("panels"), seen = {}, step = {};
@@ -929,12 +1085,10 @@ if (typeof module !== "undefined") module.exports = FGPlanMap;
       drawPanel(p, plan);
     });
   }
-  // which steps the list's numbers can show: those pinned on the world map (or, while it loads, every step with a
-  // place in its zone; in the fallback, those on a sketch)
+  // which steps the list's numbers can show: every step with a place in its zone (on the world map, or on a sketch)
   function shown(plan) {
     var ok = {};
-    if (rt.state === "ready" && rt.plan === plan) rt.at.forEach(function (p, i) { if (p) ok[i] = true; });
-    else FGPlan.panels(plan).forEach(function (p) { p.stops.forEach(function (st) { ok[st.step] = true; }); });
+    FGPlan.panels(plan).forEach(function (p) { p.stops.forEach(function (st) { ok[st.step] = true; }); });
     return ok;
   }
 

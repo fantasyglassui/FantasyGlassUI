@@ -97,9 +97,14 @@ empty cue list (`"cues": []`), and while it is empty no caption file and no `<tr
   `tools/plan_zones.py` (per zone: pixel = a + b × the in-game coordinate / 100, the same sums as `tools/map_markers.py`;
   a zone that comes without its UiMapID is found by its English name). Steps are numbered pins by kind, joined in
   order, with a ring on the current step; chips fit the view to the whole route or one zone; steps with no known place
-  are named in a note under the map, with the credit line. The wheel and (on a phone) one finger move the page until
+  are named in a note under the map, with the credit line. A zone the world map does not have (an island on its own
+  game map, such as Zephras Isle) gets a panel under the world map, with a line saying so: a small Leaflet map of its
+  own zone map art (`/map/zones/`, above) with the same pins, line, popups and current-step ring, credited to
+  Blizzard; or, with no art for it (or when the art does not load), the zone sketch. When no step is on the world
+  map, only those panels show (never an empty world map); a zone's chip scrolls to its panel. The wheel and (on a phone) one finger move the page until
   the map is clicked or tapped. `tests/plan_map_points.json` is the sample plan the checks place at known pixels.
-- The zone sketches, in the example route and on the plan page only when the world map's tiles cannot be loaded: one
+- The zone sketches, in the example route and on the plan page only when the world map's tiles cannot be loaded (or
+  for a zone off the world map with no art of its own): one
   drawer, `plan/map.js` (inline in the plan page, `/assets/plan-map.js` for Guide and Gold). Each map is fitted to its zone's stops (one scale across and down, never
   closer than about 8 units of the zone's 0-100 map on a phone), its height follows them (150-420 px), and markers that
   would touch fan out around the spot or join into a run ("9–14"). A faint grid and N for north; no game map art.
@@ -130,6 +135,12 @@ empty cue list (`"cues": []`), and while it is empty no caption file and no `<tr
     button to show or hide it; Zones and Dungeons show at first (`ON` in `script.js`). A place's name and description
     are plain text (never HTML) and stay in English; a new kind's name goes in `kindName` in `script.js` and in the
     World map block of `site_tr.py`.
+  - `zones/<UiMapID>.webp`: zone maps for places off the world map (an island on its own game map, such as Zephras
+    Isle, `zones/2521.webp`): the game's own zone map, the standard 1002 x 668 layout, served at `/map/zones/`. The
+    world map page does not show them; the plan page draws a plan's steps in that zone on it (a step's 0-100 x, y
+    straight across and down the picture). Dropping a picture in is all it takes: `tools/plan_zones.py` lists every
+    one in `/plan/zones.json` (`images`) on the next build. Give the zone's English name in `OFF_NAMES` there too, for
+    codes that name the zone without its UiMapID.
   - To add a place by hand: open `/map/?pins`, click the spot, and copy the line the pin helper shows into
     `markers.json` with its name, category and description. Then build; `tests/sitecheck.py` checks every place.
 

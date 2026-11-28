@@ -104,7 +104,17 @@ sample.points.forEach(function (q) {
     if (!m || Math.abs(m.coords[0] - p[0]) > 1 || Math.abs(m.coords[1] - p[1]) > 1) fail(q.zone + " at 50, 50 is not where /map/ names the zone");
   }
 });
-eq(at.map(function (p, i) { return p ? -1 : i; }).filter(function (i) { return i >= 0; }), sample.unplaced, "the steps with no place on the map");
+function nulls(a) { return a.map(function (p, i) { return p ? -1 : i; }).filter(function (i) { return i >= 0; }); }
+eq(nulls(at), sample.unplaced.concat(sample.offmap).sort(), "the steps not on the world map");
+// a zone the world map does not have (Zephras Isle, uiMapID 2521, on its own game map): no pixel, but a sketch panel
+eq(String(2521) in zones.ids, false, "Zephras Isle is not on the world map");
+eq([zones.images["2521"], zones.names["Zephras Isle"]], [{ size: [1002, 668], src: "/map/zones/2521.webp" }, 2521], "Zephras Isle has its own map art, the standard zone map")
+var zp = FGPlan.read(sample.zephras.code);
+if (!zp.ok) fail("the Zephras Isle sample does not read");
+eq(nulls(FGPlan.place(zp.plan, zones)), sample.zephras.offmap.concat(sample.zephras.unplaced), "no Zephras Isle step on the world map");
+var zpan = FGPlan.panels(zp.plan);
+eq([zpan.length, zpan[0].name, zpan[0].stops.map(function (s) { return s.step; })], [1, sample.zephras.zone, sample.zephras.offmap], "one sketch panel for Zephras Isle");
+eq(FGPlan.panels(sp.plan).filter(function (p) { return p.name === "Zephras Isle"; })[0].stops.map(function (s) { return s.step; }), sample.offmap, "the mixed plan's Zephras Isle panel");
 eq(at[0][0] < 7395 && at[4][0] > 7395, true, "Durotar on Kalimdor (left), Stormwind in the Eastern Kingdoms (right)");
 eq(FGPlan.place(sp.plan, null).every(function (p) { return p === null; }), true, "no zones: no place");
 eq(Object.keys(zones.ids).length > 40 && zones.names["Durotar"] === 1411, true, "zones.json has the zones and their names");

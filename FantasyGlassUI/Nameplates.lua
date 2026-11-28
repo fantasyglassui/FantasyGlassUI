@@ -172,21 +172,27 @@ ns:NewModule("nameplates", function()
         local on = ns.PlateDesign().nameShow and not rawget(uf, "suiFoe")
         uf.name:SetAlpha(on and 1 or 0)
     end
-    -- Our level, in the game's difficulty color ("??" for a boss): on an enemy's plate just left of the
-    -- bar, at its middle (the name is over the bar); on a friendly plate just left of the game's name.
+    -- Our level, in the game's difficulty color ("??" for a boss), just left of the bar at its middle, on
+    -- every plate. (13.0.2) It is drawn on our own bar, so it goes wherever the bar goes: where the game
+    -- shows only a name (a friendly player's name-only plate, a friendly NPC's), the bar is hidden and the
+    -- level with it, as the game's own level is. It was beside the game's name on friendly plates, but
+    -- that name's box is the bar's width (or none at all), not its text's, so the level landed in the
+    -- middle of the name.
     local function PlateLevel(uf, unit)
-        if not (uf.name and uf.name.GetParent) then return end
+        local bar = HealthBar(uf)
+        bar = bar and (rawget(bar, "suiOwn") or bar)
         local t = rawget(uf, "suiLevel")
+        if not (bar and bar.CreateFontString) then
+            if t then t:SetText("") end
+            return
+        end
         if not t then
-            t = ns:NewText(uf, ns.PlateDesign().nameSize, "RIGHT", true)
+            t = ns:NewText(bar, ns.PlateDesign().nameSize, "RIGHT", true)
             if t.SetShadowOffset then t:SetShadowOffset(1, -1); t:SetShadowColor(0, 0, 0, 1) end
             uf.suiLevel = t
         end
-        local bar = HealthBar(uf)
-        bar = bar and (rawget(bar, "suiOwn") or bar)
         t:ClearAllPoints()
-        if bar and rawget(uf, "suiFoe") then t:SetPoint("RIGHT", bar, "LEFT", -3, 0)
-        else t:SetPoint("RIGHT", uf.name, "LEFT", -3, 0) end
+        t:SetPoint("RIGHT", bar, "LEFT", -3, 0)
         local ok, lvl = pcall(UnitLevel, unit)
         if not ok or type(lvl) ~= "number" or Secret(lvl) or not ns.PlateDesign().nameShow then t:SetText(""); return end
         if lvl < 0 then t:SetText("??"); t:SetTextColor(1, 0.25, 0.2); return end
@@ -196,6 +202,23 @@ ns:NewModule("nameplates", function()
     end
     ns.PlateLevel = PlateLevel
 
+    -- (13.0.2) The game's threat flare: orange flames along the top of the bar (the atlas
+    -- UI-HUD-Nameplates-Aggro-Flare, its "Progressive" threat display) while the unit is attacking you.
+    -- Our plates show threat themselves, in the bar's color and on its edge, so while either of those is
+    -- on the flare is kept out of sight, the way the game's cast bar is: its alpha held at 0 every frame,
+    -- as the game fades it in. With both off, the game's flare is left to do the job.
+    local function GameFlare(uf)
+        local pd = ns.PlateDesign()
+        local ours = pd.threat or pd.threatEdge
+        for _, k in ipairs({ "aggroHighlightBase", "aggroHighlightAdditive" }) do
+            local t = uf[k]
+            if IsTexture(t) then
+                if ours then ns:Kill(t, true) elseif rawget(t, "suiKilled") then ns:Unkill(t) end
+            end
+        end
+    end
+    ns.PlateFlare = GameFlare
+
     local function Skin(uf)
         if not Usable(uf) then return end
         local bar = HealthBar(uf)
@@ -203,8 +226,9 @@ ns:NewModule("nameplates", function()
             bar.suiSkinned = true
             ns.PlateOwnBar(uf, bar)
         end
-        local badge = uf.PlayerLevelDiffFrame                  -- the game's level badge: ours is beside the name
+        local badge = uf.PlayerLevelDiffFrame                  -- the game's level badge: ours is left of the bar
         if type(badge) == "table" and badge.SetAlpha and not badge.suiKilled then ns:Kill(badge) end
+        GameFlare(uf)
         if bar then
             plates[uf] = nil                                   -- a reused plate: look at its selection afresh
             pcall(ShowSelection, uf)
@@ -733,6 +757,7 @@ ns:NewModule("nameplates", function()
             end
             local lv = Usable(uf) and rawget(uf, "suiLevel")
             if lv then ns:Font(lv, pd.nameSize, true) end
+            if Usable(uf) then GameFlare(uf) end                 -- (13.0.2: the threat switches decide the game's flare)
             plates[uf] = "again"                             -- (selection looked at afresh; kept in the list so it is still watched)
         end
         if ns.RefreshPlateAuras then pcall(ns.RefreshPlateAuras, ns) end     -- (more or fewer debuffs allowed: shown at once)
