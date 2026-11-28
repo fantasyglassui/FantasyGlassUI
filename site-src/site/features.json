@@ -1514,6 +1514,11 @@
      "desc": "The step you are on goes to TomTom's arrow instead of this add-on's."
     },
     {
+     "key": "guideMobArrow",
+     "label": "Arrow points to the nearest quest mob",
+     "desc": "On a step to kill or collect, the arrow points to the nearest creature or object you still need in your zone, with its name and how far it is. Needs Questie; off, it points to the step's place."
+    },
+    {
      "key": "plannerRace",
      "label": "Race your best",
      "desc": "The panel says how far ahead or behind you are of your fastest character's time at this level."

@@ -4,6 +4,8 @@ The releases published on CurseForge. Each lists what changed since the release 
 
 ## 13.5.1
 
+Longer routes, an arrow to the mobs you need, and a nameplate fix.
+
 - On a step to kill or collect, the guide's arrow points to the nearest mob or object you still need
   in your zone, with its name and distance. Needs Questie; Arrow points to the nearest quest mob, in the
   planner window, switches it off.

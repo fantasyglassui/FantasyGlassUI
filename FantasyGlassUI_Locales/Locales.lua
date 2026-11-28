@@ -21,6 +21,7 @@ if type(ns) ~= "table" or type(ns.locales) ~= "table" then return end
 
 -- German ---------------------------------------------------------------------------------------------
 ns.locales.deDE = {
+    ["Plan ahead, in the planner window: plan the next couple of quest hubs (as before), about 5, or about 10 for a whole session. The route also plans again when you take a quest, and on a kill or collect step the arrow points to the nearest mob you still need (with Questie). A number no longer covers a friendly player's name on its nameplate."] = "Vorausplanen im Planerfenster: plane die nächsten paar Questgebiete (wie bisher), etwa 5 oder etwa 10 für eine ganze Spielrunde. Die Route plant außerdem neu, wenn du eine Quest annimmst, und bei einem Töte- oder Sammelschritt zeigt der Pfeil auf den nächsten Gegner, den du noch brauchst (mit Questie). Auf der Namensplakette eines freundlichen Spielers verdeckt keine Zahl mehr den Namen.",
     ["Arrow points to the nearest quest mob"] = "Pfeil zeigt auf das nächste Questziel",
     ["On a step to kill or collect, the arrow points to the nearest creature or object you still need in your zone, with its name and how far it is. Needs Questie; off, it points to the step's place."] = "Bei einem Schritt, in dem du etwas töten oder sammeln sollst, zeigt der Pfeil auf die nächste Kreatur oder das nächste Objekt in deiner Zone, das du noch brauchst, mit Namen und Entfernung. Braucht Questie; aus, zeigt er auf den Ort des Schritts.",
     ["Plan ahead"] = "Vorausplanen",
@@ -3967,6 +3968,7 @@ ns.locales.deDE = {
 
 -- French ---------------------------------------------------------------------------------------------
 ns.locales.frFR = {
+    ["Plan ahead, in the planner window: plan the next couple of quest hubs (as before), about 5, or about 10 for a whole session. The route also plans again when you take a quest, and on a kill or collect step the arrow points to the nearest mob you still need (with Questie). A number no longer covers a friendly player's name on its nameplate."] = "Planifier à l'avance, dans la fenêtre du planificateur : les prochains groupes de quêtes (comme avant), environ 5, ou environ 10 pour toute une session. L'itinéraire se replanifie aussi quand vous prenez une quête, et sur une étape où il faut tuer ou ramasser, la flèche pointe vers le monstre le plus proche dont vous avez encore besoin (avec Questie). Un nombre ne cache plus le nom d'un joueur allié sur sa barre d'info.",
     ["Arrow points to the nearest quest mob"] = "La flèche indique la créature de quête la plus proche",
     ["On a step to kill or collect, the arrow points to the nearest creature or object you still need in your zone, with its name and how far it is. Needs Questie; off, it points to the step's place."] = "Sur une étape où il faut tuer ou ramasser, la flèche indique la créature ou l'objet le plus proche qu'il vous faut encore dans votre zone, avec son nom et sa distance. Nécessite Questie ; désactivé, elle indique le lieu de l'étape.",
     ["Plan ahead"] = "Planifier en avance",
@@ -7913,6 +7915,7 @@ ns.locales.frFR = {
 
 -- Spanish ---------------------------------------------------------------------------------------------
 ns.locales.esES = {
+    ["Plan ahead, in the planner window: plan the next couple of quest hubs (as before), about 5, or about 10 for a whole session. The route also plans again when you take a quest, and on a kill or collect step the arrow points to the nearest mob you still need (with Questie). A number no longer covers a friendly player's name on its nameplate."] = "Planificar con antelación, en la ventana del planificador: los próximos grupos de misiones (como antes), unos 5 o unos 10 para toda una sesión. La ruta también se vuelve a planificar al aceptar una misión, y en un paso de matar o recoger, la flecha apunta al enemigo más cercano que aún necesitas (con Questie). Un número ya no tapa el nombre de un jugador amistoso en su placa de nombre.",
     ["Arrow points to the nearest quest mob"] = "La flecha señala la criatura de misión más cercana",
     ["On a step to kill or collect, the arrow points to the nearest creature or object you still need in your zone, with its name and how far it is. Needs Questie; off, it points to the step's place."] = "En un paso de matar o recoger, la flecha señala la criatura u objeto más cercano que aún necesitas en tu zona, con su nombre y a qué distancia está. Necesita Questie; desactivado, señala el lugar del paso.",
     ["Plan ahead"] = "Planificar con antelación",
@@ -11862,6 +11865,7 @@ ns.locales.esMX = ns.locales.esES                         -- Latin American Span
 
 -- Russian ---------------------------------------------------------------------------------------------
 ns.locales.ruRU = {
+    ["Plan ahead, in the planner window: plan the next couple of quest hubs (as before), about 5, or about 10 for a whole session. The route also plans again when you take a quest, and on a kill or collect step the arrow points to the nearest mob you still need (with Questie). A number no longer covers a friendly player's name on its nameplate."] = "Планирование вперёд, в окне планировщика: ближайшие пара групп заданий (как раньше), около 5 или около 10 на целую игровую сессию. Маршрут также пересчитывается, когда вы берёте задание, а на шаге «убить» или «собрать» стрелка указывает на ближайшего нужного противника (с Questie). Число больше не закрывает имя дружественного игрока на его индикаторе.",
     ["Arrow points to the nearest quest mob"] = "Стрелка указывает на ближайшую цель задания",
     ["On a step to kill or collect, the arrow points to the nearest creature or object you still need in your zone, with its name and how far it is. Needs Questie; off, it points to the step's place."] = "На шаге, где нужно убить или собрать, стрелка указывает на ближайшее существо или предмет в вашей зоне, который ещё нужен, с его названием и расстоянием. Нужен Questie; если выключено, указывает на место шага.",
     ["Plan ahead"] = "Планировать вперёд",
@@ -15808,6 +15812,7 @@ ns.locales.ruRU = {
 
 -- Portuguese ---------------------------------------------------------------------------------------------
 ns.locales.ptBR = {
+    ["Plan ahead, in the planner window: plan the next couple of quest hubs (as before), about 5, or about 10 for a whole session. The route also plans again when you take a quest, and on a kill or collect step the arrow points to the nearest mob you still need (with Questie). A number no longer covers a friendly player's name on its nameplate."] = "Planejar adiante, na janela do planejador: os próximos grupos de missões (como antes), cerca de 5, ou cerca de 10 para uma sessão inteira. A rota também se replaneja quando você aceita uma missão, e numa etapa de matar ou coletar a seta aponta para o inimigo mais próximo de que você ainda precisa (com Questie). Um número não cobre mais o nome de um jogador aliado na placa de nome.",
     ["Arrow points to the nearest quest mob"] = "A seta aponta para a criatura de missão mais próxima",
     ["On a step to kill or collect, the arrow points to the nearest creature or object you still need in your zone, with its name and how far it is. Needs Questie; off, it points to the step's place."] = "Em um passo de matar ou coletar, a seta aponta para a criatura ou o objeto mais próximo que você ainda precisa na sua zona, com o nome e a distância. Precisa do Questie; desligado, aponta para o lugar do passo.",
     ["Plan ahead"] = "Planejar adiante",
@@ -19754,6 +19759,7 @@ ns.locales.ptBR = {
 
 -- Italian ---------------------------------------------------------------------------------------------
 ns.locales.itIT = {
+    ["Plan ahead, in the planner window: plan the next couple of quest hubs (as before), about 5, or about 10 for a whole session. The route also plans again when you take a quest, and on a kill or collect step the arrow points to the nearest mob you still need (with Questie). A number no longer covers a friendly player's name on its nameplate."] = "Pianifica in anticipo, nella finestra del pianificatore: i prossimi gruppi di missioni (come prima), circa 5 o circa 10 per un'intera sessione. Il percorso si ripianifica anche quando accetti una missione, e in un passo di uccisione o raccolta la freccia punta al nemico più vicino che ti serve ancora (con Questie). Un numero non copre più il nome di un giocatore alleato sulla sua barra del nome.",
     ["Arrow points to the nearest quest mob"] = "La freccia indica la creatura di missione più vicina",
     ["On a step to kill or collect, the arrow points to the nearest creature or object you still need in your zone, with its name and how far it is. Needs Questie; off, it points to the step's place."] = "In un passo in cui uccidere o raccogliere, la freccia indica la creatura o l'oggetto più vicino che ti serve ancora nella tua zona, con il nome e la distanza. Richiede Questie; se disattivato, indica il luogo del passo.",
     ["Plan ahead"] = "Pianifica in anticipo",
@@ -23700,6 +23706,7 @@ ns.locales.itIT = {
 
 -- Korean ---------------------------------------------------------------------------------------------
 ns.locales.koKR = {
+    ["Plan ahead, in the planner window: plan the next couple of quest hubs (as before), about 5, or about 10 for a whole session. The route also plans again when you take a quest, and on a kill or collect step the arrow points to the nearest mob you still need (with Questie). A number no longer covers a friendly player's name on its nameplate."] = "미리 계획하기(플래너 창): 다음 두어 개의 퀘스트 지역(이전과 같음), 약 5개, 또는 한 번의 플레이 동안 약 10개를 계획합니다. 퀘스트를 받으면 경로를 다시 계획하고, 처치나 수집 단계에서는 화살표가 아직 필요한 가장 가까운 몬스터를 가리킵니다(Questie 필요). 우호적인 플레이어의 이름표에서 숫자가 더 이상 이름을 가리지 않습니다.",
     ["Arrow points to the nearest quest mob"] = "화살표가 가장 가까운 퀘스트 대상을 가리킴",
     ["On a step to kill or collect, the arrow points to the nearest creature or object you still need in your zone, with its name and how far it is. Needs Questie; off, it points to the step's place."] = "처치하거나 수집하는 단계에서 화살표가 지역 안에서 아직 필요한 가장 가까운 생물이나 물체를 이름과 거리와 함께 가리킵니다. Questie가 필요하며, 끄면 단계의 위치를 가리킵니다.",
     ["Plan ahead"] = "미리 계획",
@@ -27649,6 +27656,7 @@ ns.locales.ptPT = ns.locales.ptBR                         -- European Portuguese
 
 -- Simplified Chinese ---------------------------------------------------------------------------------
 ns.locales.zhCN = {
+    ["Plan ahead, in the planner window: plan the next couple of quest hubs (as before), about 5, or about 10 for a whole session. The route also plans again when you take a quest, and on a kill or collect step the arrow points to the nearest mob you still need (with Questie). A number no longer covers a friendly player's name on its nameplate."] = "提前规划（规划器窗口中）：规划接下来的几个任务区域（与以前相同）、约 5 个，或一整局游戏约 10 个。接受任务时路线也会重新规划；在击杀或收集步骤中，箭头会指向你仍需要的最近怪物（需要 Questie）。友方玩家姓名板上的数字不再遮住名字。",
     ["Arrow points to the nearest quest mob"] = "箭头指向最近的任务怪物",
     ["On a step to kill or collect, the arrow points to the nearest creature or object you still need in your zone, with its name and how far it is. Needs Questie; off, it points to the step's place."] = "在击杀或收集的步骤中，箭头指向你所在区域内仍需要的最近的生物或物体，并显示其名称和距离。需要 Questie；关闭时指向该步骤的地点。",
     ["Plan ahead"] = "提前规划",

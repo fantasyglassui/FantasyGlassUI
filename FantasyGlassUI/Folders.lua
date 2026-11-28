@@ -35,6 +35,7 @@ local type, pairs, ipairs, tostring, pcall = type, pairs, ipairs, tostring, pcal
 --   PlannerOpen
 --   PlannerPlaces
 --   PlannerPlanCommand
+--   PlannerQuestTargets
 --   PlannerRepGoals
 --   PlannerRepName
 --   PlannerRepNeeded
