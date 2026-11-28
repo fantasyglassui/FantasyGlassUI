@@ -11,7 +11,7 @@ local floor = math.floor
 
 
 ns.PLANNER_CODE_HEADER = "SUIP1!"
-local MAX_STEPS, MAX_TEXT, MAX_ZONE = 60, 80, 40
+local MAX_STEPS, MAX_TEXT, MAX_ZONE = 150, 80, 40            -- (150: a Very far plan; the rest is counted in `more`)
 
 -- Text for the code: no |escapes (colors, textures, links), no control characters, at most `limit` bytes
 -- (never in the middle of a UTF-8 character).

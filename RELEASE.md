@@ -6,6 +6,8 @@
 - Nameplates: a friendly player's name-only plate no longer shows a number over the name (it was the
   health text, left on where the game hides the bar). Plates keep their own health, name and level
   as the game reuses them.
+- The route planner can plan further ahead: Plan ahead in the planner window takes the next couple of quest hubs (Near, as before), about 5 (Far) or about 10 (Very far), and plans again as you play.
+- The route plans again when you take a quest, so it always counts the quests in your log.
 
 ## 13.5.0
 

@@ -18,6 +18,13 @@ local format = string.format
 ns.PLANNER_HUB_YARDS = 150
 ns.PLANNER_ON_WAY_YARDS = 20             -- a new quest's giver this far off the way to a hand-in is taken on the way
 ns.PLANNER_HORIZON = 2
+-- Plan ahead (13.5.1, the planner window: ns.db.plannerPlanAhead): the hubs a plan takes before it is planned again.
+-- Near is the plan as it always was; a lead-in hub goes on top of the zone's hubs at every choice.
+ns.PLANNER_AHEAD = { { "near", 2, "Near" }, { "far", 5, "Far" }, { "veryfar", 10, "Very far" } }
+function ns.PlannerAheadHubs(choice)
+    for _, a in ipairs(ns.PLANNER_AHEAD) do if a[1] == choice then return a[2], a[1] end end
+    return ns.PLANNER_HORIZON, "near"
+end
 ns.PLANNER_LEARN_SECONDS = 120
 ns.PLANNER_REPICK_LEVELS = 3
 
@@ -1088,9 +1095,10 @@ local function Build(ctx, candidates, skipped)
         local ts, tf = tonumber(than.score) or -1, tonumber(than.first) or 0
         return f > tf or (f == tf and s > ts)
     end
-    local horizon = tonumber(c.horizon) or ns.PLANNER_HORIZON
+    local ahead = ns.PlannerAheadHubs(c.planAhead)  -- (Plan ahead: 2, 5 or 10 hubs)
+    local horizon = tonumber(c.horizon) or ahead
     local leadRound = false                          -- (the default plan: the zone's hubs, and the lead-in on top; a hook that sets ctx.horizonSet has its own, which counts it)
-    if lead and not c.horizonSet and horizon == ns.PLANNER_HORIZON then horizon, leadRound = horizon + 1, true end
+    if lead and not c.horizonSet and horizon == ahead then horizon, leadRound = horizon + 1, true end
     local zoneTaken = 0
     for n = 1, horizon do
         local withExtras = #extras > 0 and (#left > 0 or lead ~= nil or not zone)   -- (R6: never a round for the extras alone in a zone)
@@ -1209,7 +1217,7 @@ end
 -- "never planned": the planner's own filters would reject it (skipped, above the level window, a group or elite
 -- quest the group setting leaves out) or its hand-in can't be reached. "off the route": every known spot of it lies
 -- beyond a hub's radius of every step of the route. A quest that passes and lies near the route (it may just be
--- beyond the plan's two hubs) is never named. Nil while the advice is off.
+-- beyond the plan's hubs) is never named. Nil while the advice is off.
 -- The log has room for the whole plan (more than PLANNER_LOG_FREE places free, and its peak fits)? Then the
 -- panel gives no advice and nothing is asked here. ctx.logCount, ctx.logMax: the log when the plan began.
 local function LogFits(ctx, guide)
@@ -1534,7 +1542,7 @@ function ns.PlannerContext()
     }
     ctx.logCount, ctx.logMax = LogCount()
     ctx.windowLo, ctx.windowHi = ctx.level - 4, ctx.level + 2    -- (the cheap pre-filter's bounds: "context" hooks may widen them)
-    ctx.horizon = ns.PLANNER_HORIZON                             -- (hubs a plan takes: hooks may raise it)
+    ctx.horizon, ctx.planAhead = ns.PlannerAheadHubs(db.plannerPlanAhead)   -- (hubs a plan takes, Plan ahead: hooks may raise it)
     ctx.hooks = {}                                               -- (the hooks this plan uses, copied now: ns.PlannerHooksFor)
     for _, point in ipairs(ns.PLANNER_HOOK_POINTS) do ctx.hooks[point] = ns.PlannerHookCopy(point) end
     for _, h in ipairs(ctx.hooks.context) do h.fn(ctx) end

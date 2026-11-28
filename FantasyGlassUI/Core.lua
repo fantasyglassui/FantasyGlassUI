@@ -230,6 +230,7 @@ ns.defaults = {
     plannerTomTom    = true,        -- the guide's waypoint goes to TomTom's arrow when TomTom is loaded
     guideMobArrow    = true,        -- (13.5.1) on a kill or collect step, the arrow points to the nearest quest mob (with Questie)
     plannerKeepRoute = false,       -- keep the route you planned: only Plan my route and Plan again make a new one
+    plannerPlanAhead = "near",      -- (13.5.1) how far a plan reaches: near (2 hubs), far (5) or veryfar (10); planned again as you play
     -- batch 4 A (map): begin
     plannerMapLine   = true,        -- the route's dots and line on the world map
     plannerMapHubs   = true,        -- a mark on each hub the planner worked out, brighter for a better rate

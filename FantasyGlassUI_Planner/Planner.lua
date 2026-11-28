@@ -1018,8 +1018,44 @@ local function PlaceOK()
     return false
 end
 
+-- 13.5.1: every quest taken while you follow the plan plans again, so the route always counts the quests in your log.
+-- A burst (a party share, several quests from one giver, Forever's events in pairs) is one replan, ACCEPT_QUIET seconds
+-- after the last accept, and only once the log has each quest taken (Forever can fill it a moment later), or after
+-- ACCEPT_WAIT seconds at most. Never more than one waits; it asks ns:PlannerReplan("accept"), which keeps every rule
+-- (Keep my route, the "replan" hooks). By then the guide has ticked the accept step (Guide.lua, AdvanceSoon).
+ns.PLANNER_ACCEPT_QUIET, ns.PLANNER_ACCEPT_WAIT = 0.5, 2
+local acceptWait                                             -- { first, last, ids = { [questID] = true } } while one waits
+local function InLog(id)
+    local get = C_QuestLog and C_QuestLog.GetLogIndexForQuestID
+    if type(get) ~= "function" then return true end           -- (the game cannot say: the quiet time is enough)
+    local ok, index = pcall(get, id)
+    return ok and type(index) == "number" and not ns:IsSecret(index) and index > 0
+end
+local function AcceptSoon(id)
+    local now = Now() or 0
+    acceptWait = acceptWait or { first = now, ids = {} }
+    acceptWait.last = now
+    if type(id) == "number" then acceptWait.ids[id] = true end
+end
+local function AcceptDue()
+    local w = acceptWait
+    if not w then return end
+    local now = Now()
+    if now then
+        if now - w.last < ns.PLANNER_ACCEPT_QUIET then return end
+        if now - w.first < ns.PLANNER_ACCEPT_WAIT then
+            for id in pairs(w.ids) do if not InLog(id) then return end end
+        end
+    end
+    acceptWait = nil
+    ns:PlannerReplan("accept")
+end
+
+ns.PlannerAcceptDue = AcceptDue                              -- (the tests' way in: what Tick asks each frame)
+
 local function Tick()
     if batch then Flush(GetTime()) end
+    if acceptWait then AcceptDue() end
     if not (ns.plannerBusy or ns.plannerQueued) then
         if waitRetryAt then                                   -- (Questie still loading: look again now and then)
             local now = Now()
@@ -1111,6 +1147,7 @@ end
 
 function ns:PlannerStop()
     running, ns.plannerBusy, ns.plannerQueued, startPending, planToken = nil, false, false, false, nil
+    acceptWait = nil
     waitAsked = false
     waitRetryAt, burst, placeWait = nil, nil, 0
 end
@@ -1233,9 +1270,9 @@ do
                     if type(s) == "table" and (s.quest == id or (ns.PlannerMappedId and ns.PlannerMappedId(s.quest) == id)) then inPlan = true; break end
                 end
                 -- (a planned quest Questie numbers otherwise, taken: its title says so, and the pair is learned)
-                if not inPlan and ns.PlannerLearnAccepted and ns.PlannerLearnAccepted(id, steps) then inPlan = true end
-                if not inPlan then ns:PlannerReplan("log") end
+                if not inPlan and ns.PlannerLearnAccepted then ns.PlannerLearnAccepted(id, steps) end
             end
+            AcceptSoon(id)                                           -- (planned or not: the route plans again, once a burst is over)
             return
         end
         if event == "QUEST_TURNED_IN" then

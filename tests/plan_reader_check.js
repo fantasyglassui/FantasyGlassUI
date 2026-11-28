@@ -55,6 +55,23 @@ eq(FGPlan.read("SUIT1!{S4:nameS1:x}").other, true, "a theme code is told apart")
 eq(FGPlan.read("hello").other, false, "other text is not");
 eq(FGPlan.read(null).why, "empty", "nothing");
 
+// a long plan (13.5.1, Plan ahead "Very far"): the add-on sends up to 150 steps and counts the rest in "more"; the
+// reader has no lower limit, every step comes back, and the totals count the steps left out
+function longCode(n, more) {
+  var S = function (t) { return "S" + Buffer.byteLength(t, "utf8") + ":" + t; }, N = function (v) { return "N" + v + ";"; };
+  var st = "";
+  for (var i = 1; i <= n; i++) st += N(i) + "{" + S("k") + S(i % 3 ? "do" : "turnin") + S("t") + S("Step " + i) + S("x") + N((i % 90) + 1.5) + S("y") + N(40) + S("z") + N(1) + "}";
+  return "SUIP1!{" + S("lv") + "{" + N(1) + N(14) + N(2) + N(17) + "}" + (more ? S("more") + N(more) : "") + S("st") + "{" + st + "}" + S("v") + N(1) +
+    S("z") + "{" + N(1) + "{" + S("m") + N(1429) + S("n") + S("Elwynn Forest") + "}}}";
+}
+var big = FGPlan.read(longCode(150, 10));
+if (!big.ok) fail("a 150-step code reads: " + big.why);
+eq(big.plan.st.length, 150, "150 steps");
+eq(big.plan.st[149].t, "Step 150", "the last step");
+eq(FGPlan.totals(big.plan).steps, 160, "the steps left out are counted");
+eq(FGPlan.panels(big.plan)[0].stops.length, 150, "every step on the zone's panel");
+eq(FGPlan.read(longCode(120, 0)).plan.st.length, 120, "120 steps");
+
 // the zone map (map.js): fitted to the stops, one scale for x and y, and no two markers on top of each other
 var FGPlanMap = require(path.join(ROOT, "site-src", "plan", "map.js"));
 function stopsOf(list) { return list.map(function (p, i) { return { x: p[0], y: p[1], step: i, kind: p[2] || "do" }; }); }

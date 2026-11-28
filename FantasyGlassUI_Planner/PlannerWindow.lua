@@ -31,7 +31,7 @@ local ORDER = {
     stops = { "flightsBox", "trainerBox", "holdBox", "vendorBox", "suppliesBox", "professionBox", "mountBox", "mailBox" },
     explore = { "exploreBox", "gatherBox" },
     rewards = { "pickBox", "rewardsBox", "logAdviceBox", "innBox", "restedBox", "dryBox", "reputationButton", "skippedButton" },
-    time = { "keepRouteBox", "playTimeButton", "breaksBox", "breakButton", "styleButton", "speedSlider", "safetySlider", "storySlider", "zoneGoalButton", "deathsBox" },
+    time = { "keepRouteBox", "planAheadButton", "playTimeButton", "breaksBox", "breakButton", "styleButton", "speedSlider", "safetySlider", "storySlider", "zoneGoalButton", "deathsBox" },
     map = { "mapLineBox", "mapHubsBox", "tomTomBox" },
     records = { "raceBox", "leftOffBox", "whyBox", "learnBox", "shareTimesButton" },
     speak = { "speakBox" },
@@ -201,7 +201,34 @@ local function PaceSection(K, G, Replan, T)
     T.keepRouteBox = K.SwitchRow(G, "time", "plannerKeepRoute", "Keep my route",
         "Levelling up, hand-ins and loading screens leave the route as it is. Only Plan my route and Plan again make a new one.",
         function() return ns.db.plannerKeepRoute == true end, function(v) ns.db.plannerKeepRoute = v and true or false end)
+    -- Plan ahead (13.5.1): how many hubs a plan takes, Near (2, as before), Far (5) or Very far (10); a change plans again
+    local aheads = ns.PLANNER_AHEAD or { { "near", 2, "Near" } }
+    local AHEAD_LINES = { "Near: the next couple of quest hubs (7 to 18 steps).", "Far: about 5 hubs.",
+        "Very far: about 10 hubs, a whole session. The far end is a best guess, as quests unlock as you level, and is planned again as you play." }
+    local function AheadAt()
+        local now = ns.db.plannerPlanAhead or "near"
+        for i, a in ipairs(aheads) do if a[1] == now then return i end end
+        return 1
+    end
+    local function DrawAhead(b)
+        b.text:SetText(string.format(ns:Tr("Plan ahead: %s"), ns:Tr(aheads[AheadAt()][3])))
+        local lines = {}                                    -- (one line for each choice, in the row and its tooltip)
+        for i, line in ipairs(AHEAD_LINES) do lines[i] = ns:Tr(line) end
+        b.row.desc:SetText(table.concat(lines, "\n"))
+        b.words = strlower(ns:Tr("Plan ahead") .. " " .. table.concat(lines, " "))
+    end
+    local aheadButton = K.ButtonRow(G, "time", "Plan ahead: %s", "", function(b, button)
+        local at = AheadAt()
+        at = (button == "RightButton") and ((at - 2) % #aheads + 1) or (at % #aheads + 1)
+        ns.db.plannerPlanAhead = aheads[at][1]
+        DrawAhead(b)
+        Replan()
+    end, true)
+    aheadButton.row.tipTitle = "Plan ahead"
+    DrawAhead(aheadButton)
+    T.planAheadButton = aheadButton
     refreshes[#refreshes + 1] = function()
+        DrawAhead(aheadButton)
         DrawTime(timeButton)
         breaks:SetChecked(ns.db.plannerBreaks == true)
         DrawBreak(breakButton)
