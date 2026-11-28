@@ -459,6 +459,11 @@
      "desc": "The world map opens at three quarters of its size (/fgui mapsize to change) and fades while you move, so you can walk with it open."
     },
     {
+     "key": "mapWindowed",
+     "label": "Always open the world map windowed",
+     "desc": "The world map always opens as a window, not full screen. The button at the map's top right still switches it for that time. A map add-on's own window setting can override this."
+    },
+    {
      "key": "flightTimer",
      "label": "Flight timer",
      "desc": "A bar with the time left on a flight path. A route's time is learned the first time you fly it; until then the bar counts up."
@@ -842,6 +847,11 @@
      "key": "chatEditTop",
      "label": "Chat: typing bar above the chat",
      "desc": "Puts the bar you type in above the chat box instead of under it. Above, it lies over the chat tabs while you type, so they can't be clicked until you finish. Needs \"Chat improvements\"."
+    },
+    {
+     "key": "chatButtons",
+     "label": "Show the chat buttons",
+     "desc": "Shows the game's chat buttons beside the chat box: the chat menu (emotes, languages, the game's chat settings) and channels."
     },
     {
      "key": "chatBubbles",

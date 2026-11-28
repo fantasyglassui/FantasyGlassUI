@@ -1,6 +1,6 @@
 local ADDON, ns = ...
 _G.FantasyGlassUI = ns
-ns.version = "13.5.1"
+ns.version = "13.5.2"
 ns.author = "DustyMouse"
 
 ns.modules = {}
@@ -1698,6 +1698,7 @@ end
 
 -- What's new: shown once after an update (never on a first install, where the setup opens instead).
 ns.whatsNew = {
+    { "13.5.2", { "Your damage over time and the target's other debuffs now show on the target and focus frames during a fight. Two new switches, both off until you turn them on: Always open the world map windowed (Quests and map) and Show the chat buttons (Chat and people)." } },
     { "13.5.1", { "Plan ahead, in the planner window: plan the next couple of quest hubs (as before), about 5, or about 10 for a whole session. The route also plans again when you take a quest, and on a kill or collect step the arrow points to the nearest mob you still need (with Questie). A number no longer covers a friendly player's name on its nameplate." } },
     { "13.5.0", { "Dungeon runs in your route: when a dungeon gives more experience than the quests near you, the route picks up its quests, finds a group and runs it. Switch it off in the planner window.",
                   "Class quests on time: a heads-up a level or two before, and the route stays where it can reach the start.",

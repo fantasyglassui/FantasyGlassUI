@@ -29017,7 +29017,9 @@ local function ok(cond, msg) if not cond then error(msg, 2) end end
 try("13.5 seams2: shared entries", function()
     ok(ns.defaults.crashReports == false and ns.defaults.plannerLearnTimes == false, "both switches off by default")
     ok(type(ns.toolCommands.health) == "function" and type(ns.toolCommands.crashes) == "function", "commands")
-    ok(#ns.whatsNew[1][2] == 4, "what's new for 13.5: four lines")
+    local wn135b                                                      -- (13.5.0's entry, wherever later versions have pushed it)
+    for _, e in ipairs(ns.whatsNew) do if e[1] == "13.5.0" then wn135b = e; break end end
+    ok(wn135b and #wn135b[2] == 4, "what's new for 13.5: four lines")
     ok(type(ns.healthOff) == "table" and type(ns.HEALTH_NEEDS) == "table" and type(ns.PLANNER_SHARED_TIMES) == "table", "tables")
     ok(sources["Crashes.lua"] and sources["Health.lua"] and sources["HealthNeeds.lua"] and sources["PlannerLearn.lua"]
        and sources["planner/PlannerShare.lua"] and sources["planner/PlannerSharedTimes.lua"], "the new files load")
@@ -29124,7 +29126,9 @@ try("13.5 E: beta versions", function()
     local text = ns:WhatsNew()
     ok(text and text:find("Version 13.5.0", 1, true), "a beta shows what's new")
     ns.version = "13.5.0"
-    ok(ns:WhatsNew() == nil, "the release after the beta shows nothing new")
+    -- (the notes for 13.5.0 itself are not shown again; later versions' entries in the list are not this test's)
+    local again = ns:WhatsNew()
+    ok(again == nil or not again:find("Version 13.5.0", 1, true), "the release after the beta shows nothing new")
     ns.version, ns.root.seenVersion, ns.freshInstall = keepVersion, keepSeenV, keepFresh
 end)
 try("13.5 E: the beta line", function()
