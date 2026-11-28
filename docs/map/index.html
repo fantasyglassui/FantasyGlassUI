@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en" data-lang="en" data-page="map">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>World map · Fantasy Glass UI</title>
+<meta name="description" content="Kalimdor and the Eastern Kingdoms of WoW Forever in one map to drag and zoom, from the game&#x27;s own zone maps.">
+<link rel="stylesheet" href="/map/leaflet/leaflet.css">
+<script src="/map/leaflet/leaflet.js" defer></script>
+<link rel="canonical" href="https://fantasyglassui.com/map/">
+<link rel="alternate" hreflang="en" href="https://fantasyglassui.com/map/">
+<link rel="alternate" hreflang="de" href="https://fantasyglassui.com/de/map/">
+<link rel="alternate" hreflang="fr" href="https://fantasyglassui.com/fr/map/">
+<link rel="alternate" hreflang="es" href="https://fantasyglassui.com/es/map/">
+<link rel="alternate" hreflang="ru" href="https://fantasyglassui.com/ru/map/">
+<link rel="alternate" hreflang="pt" href="https://fantasyglassui.com/pt/map/">
+<link rel="alternate" hreflang="it" href="https://fantasyglassui.com/it/map/">
+<link rel="alternate" hreflang="ko" href="https://fantasyglassui.com/ko/map/">
+<link rel="alternate" hreflang="zh-Hans" href="https://fantasyglassui.com/zh/map/">
+<link rel="alternate" hreflang="x-default" href="https://fantasyglassui.com/map/">
+<link rel="icon" type="image/png" href="/icon.png">
+<link rel="alternate" type="application/rss+xml" title="Fantasy Glass UI releases" href="/feed.xml">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Fantasy Glass UI">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="de_DE">
+<meta property="og:locale:alternate" content="fr_FR">
+<meta property="og:locale:alternate" content="es_ES">
+<meta property="og:locale:alternate" content="ru_RU">
+<meta property="og:locale:alternate" content="pt_BR">
+<meta property="og:locale:alternate" content="it_IT">
+<meta property="og:locale:alternate" content="ko_KR">
+<meta property="og:locale:alternate" content="zh_CN">
+<meta property="og:title" content="World map · Fantasy Glass UI">
+<meta property="og:description" content="Kalimdor and the Eastern Kingdoms of WoW Forever in one map to drag and zoom, from the game&#x27;s own zone maps.">
+<meta property="og:url" content="https://fantasyglassui.com/map/">
+<meta property="og:image" content="https://fantasyglassui.com/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Fantasy Glass UI">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="World map · Fantasy Glass UI">
+<meta name="twitter:description" content="Kalimdor and the Eastern Kingdoms of WoW Forever in one map to drag and zoom, from the game&#x27;s own zone maps.">
+<meta name="twitter:image" content="https://fantasyglassui.com/og.jpg">
+<meta name="theme-color" content="#12141a" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4f5f8" media="(prefers-color-scheme: light)">
+<script>(function(){var d=document.documentElement;d.classList.add("js");try{var t=localStorage.getItem("fg-theme");if(t==="light"||t==="dark")d.setAttribute("data-theme",t)}catch(e){}var here="en",page="map/",to=here,q=location.search,h=location.hash;var m=/[?&]lang=([a-z]{2})\b/.exec(q);if(m){to=m[1];q=q.replace(/([?&])lang=[a-z]{2}&?/,"$1").replace(/[?&]$/,"")}else if(here==="en"){var c=null;try{c=localStorage.getItem("fg-lang")}catch(e){}if(!c)c=String(navigator.language||"en").slice(0,2).toLowerCase();to=c}if(["en", "de", "fr", "es", "ru", "pt", "it", "ko", "zh"].indexOf(to)<0)to=here;var u=(to==="en"?"/":"/"+to+"/")+page;if(u!==location.pathname||q!==location.search)location.replace(u+q+h)})();</script>
+<link rel="preload" href="/fonts/marcellus-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/source-sans-3-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/site.css?v=9495293704">
+<style>
+/* World map: the map in a gold-edged frame, the kinds of places under it, the credits. The map's own ground is the
+   sea of the art (the same in light and dark); everything around it uses the site's tokens. */
+.worldmap { display: grid; gap: 18px; padding-block: 22px 48px; }
+.map-frame { --sea: #2e3c44; position: relative; border: 1px solid var(--gold); background: var(--sea);
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut)); }
+.map { width: 100%; height: clamp(340px, 72vh, 780px); background: var(--sea); }
+.map-wait { position: absolute; inset: auto 0 0 0; margin: 0; padding: 10px 16px; color: #e7e9f4; background: #12141a; }
+.js .map-wait { display: none; }
+.map-tools .filters { margin: 0; }
+.map-tools p { margin: 0; }
+
+/* Leaflet's parts, in the site's look */
+.map.leaflet-container { font: 400 0.95rem/1.4 var(--body); background: var(--sea); }
+.map .leaflet-control-zoom { border: 1px solid var(--line); border-radius: 0; box-shadow: none; }
+.map .leaflet-bar a, .map .leaflet-bar a:hover { width: 40px; height: 40px; line-height: 38px; border-radius: 0; font: 700 20px/38px var(--body);
+  color: var(--gold); background: var(--raised); border-bottom-color: var(--line); }
+.map .leaflet-bar a:hover { color: var(--gold-hover); }
+.map .leaflet-bar a.leaflet-disabled { color: var(--faint); background: var(--raised); }
+.map .leaflet-bar a:focus-visible, .map.leaflet-container:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.map .leaflet-popup-content-wrapper, .map .leaflet-popup-tip { background: var(--card); color: var(--text); border-radius: 0; box-shadow: 0 4px 16px rgba(0, 0, 0, .45); }
+.map .leaflet-popup-content-wrapper { border: 1px solid var(--gold); }
+.map .leaflet-popup-content { margin: 12px 16px; }
+.map .leaflet-popup-content strong { display: block; font: 400 1.1rem/1.25 var(--display); color: var(--text); }
+.map .leaflet-popup-content .kind { display: block; margin-top: 2px; color: var(--eyebrow); font: 700 .75rem/1.2 var(--body); letter-spacing: .08em; text-transform: uppercase; }
+.map .leaflet-popup-content p { margin: 8px 0 0; color: var(--dim); }
+.map a.leaflet-popup-close-button { color: var(--dim); width: 32px; height: 32px; font: 400 22px/30px var(--body); }
+.map a.leaflet-popup-close-button:hover { color: var(--gold); }
+/* a place: a small gold diamond */
+.map-pin { background: none; border: 0; }
+.map-pin::before { content: ""; position: absolute; inset: 3px; background: var(--gold); border: 2px solid #14110a; transform: rotate(45deg); }
+.map-pin.k-zones::before { inset: 5px; background: rgba(20, 17, 10, .55); border-color: #f0c66b; }
+.map-pin.k-raids::before { background: #e2574c; }
+.map-pin.k-flight-masters::before { inset: 4px; background: #8fd3ff; }
+.map-pin.k-boats-and-zeppelins::before { inset: 4px; background: #e7e9f4; }
+.map-pin:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* the hidden helper (?pins) */
+.pins h2 { font-size: 1.15rem; margin-bottom: 6px; }
+.pins-out { margin: 10px 0 12px; padding: 10px 12px; min-height: 2.6em; overflow-x: auto; white-space: pre-wrap; word-break: break-all;
+  font: 400 .9rem/1.4 var(--mono); color: var(--text); background: var(--ground); border: 1px solid var(--edge); }
+
+.credits h2 { font-size: 1.15rem; margin-bottom: 8px; }
+.credits ul { margin: 0; padding-left: 1.2em; color: var(--dim); }
+.credits li { margin: 0 0 6px; }
+.credits li::marker { color: var(--gold); }
+
+@media (max-width: 600px) {
+  .map { height: clamp(280px, 54vh, 460px); }
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="/"><img src="/logo-64.webp" alt="" width="32" height="32">Fantasy Glass UI</a>
+    <nav class="site-nav" id="site-nav" aria-label="Pages">
+      <ul><li><a href="/">Home</a></li><li><a href="/features/">Features</a></li><li><a href="/themes/">Themes</a></li><li><a href="/guide-and-gold/">Guide and Gold</a></li><li><a href="/get-started/">Get started</a></li><li><a href="/changelog/">Changelog</a></li><li><a href="/roadmap/">Roadmap</a></li><li><a href="/map/" aria-current="page">World map</a></li></ul>
+      <div class="head-tools">
+        <label class="lang"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span class="sr-only">Language</span><select id="lang"><option value="/map/" data-code="en" lang="en" selected>English</option><option value="/de/map/" data-code="de" lang="de">Deutsch</option><option value="/fr/map/" data-code="fr" lang="fr">Français</option><option value="/es/map/" data-code="es" lang="es">Español</option><option value="/ru/map/" data-code="ru" lang="ru">Русский</option><option value="/pt/map/" data-code="pt" lang="pt">Português</option><option value="/it/map/" data-code="it" lang="it">Italiano</option><option value="/ko/map/" data-code="ko" lang="ko">한국어</option><option value="/zh/map/" data-code="zh" lang="zh-Hans">中文</option></select></label>
+        <button class="icon-btn mode" id="mode" type="button" aria-pressed="true" title="Dark mode"><span class="sr-only">Dark mode</span><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M5.3 18.7 7 17M17 7l1.7-1.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      </div>
+    </nav>
+    <a class="btn small head-dl" href="https://www.curseforge.com/wow/addons/fantasy-glass-ui">Download</a>
+    <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav"><span class="sr-only">Menu</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    <button class="chip wearing" id="unwear" type="button" hidden>Wearing <b id="wearname"></b>: back to the site's colors</button>
+  </div>
+</header>
+<main id="main" tabindex="-1">
+<!-- World map (W3). pages/map/body.py, with the tiles, the places and Leaflet in pages/map/files/; see site-src/PAGES.md. -->
+<div class="wrap page-head">
+  <span class="eyebrow">Azeroth</span>
+  <h1>World map</h1>
+  <p class="lede">Kalimdor and the Eastern Kingdoms side by side, from the game's own zone maps. Drag to move around; scroll, pinch or use the buttons to zoom.</p>
+</div>
+<div class="wrap worldmap">
+  <div class="map-frame">
+    <div id="worldmap" class="map" role="region" aria-label="The world map of Azeroth"></div>
+    <p class="map-wait" id="map-wait">The map needs JavaScript to show.</p>
+  </div>
+  <div class="map-tools">
+    <div class="filters" id="map-cats" role="group" aria-label="Show on the map" hidden></div>
+    <p class="faint" id="map-none" hidden>No places are marked on the map yet.</p>
+  </div>
+  <section class="pins card filled" id="pins" aria-labelledby="h-pins" hidden>
+    <h2 id="h-pins">Pin helper</h2>
+    <p>Click the map to read a spot's coordinates: pixels from the top left of the whole map, as markers.json takes them.</p>
+    <pre id="pins-out" class="pins-out"></pre>
+    <button class="btn small line" id="pins-copy" type="button" disabled>Copy</button>
+  </section>
+  <section class="credits" aria-labelledby="h-credits">
+    <h2 id="h-credits">Credits</h2>
+    <ul>
+      <li>Map art © Blizzard Entertainment. This site is not made or endorsed by Blizzard.</li>
+      <li>The zone pieces come from <a href="https://openmap.world/" target="_blank" rel="noopener noreferrer">OpenMap</a>, made by other players for WoW Forever (its source on GitHub, MIT license).
+        <a href="https://ko-fi.com/jigrobbulus" target="_blank" rel="noopener noreferrer">Support OpenMap on Ko-fi</a></li>
+      <li>The places on the map (dungeon and raid entrances, flight masters, boats, zeppelins and zones) come from OpenMap's data, placed with the game's own map tables.</li>
+      <li>The painted pieces that fill the gaps between zones are by Santiago Reyes, used by OpenMap with his permission.</li>
+      <li>The map is drawn with <a href="https://leafletjs.com/" target="_blank" rel="noopener noreferrer">Leaflet</a> (BSD 2-clause license), served from this site: the page loads nothing from anywhere else.</li>
+    </ul>
+  </section>
+</div>
+</main>
+<footer class="site-foot">
+  <div class="wrap">
+    <div class="foot-row">
+      <span>Fantasy Glass UI by DustyMouse. Free, for WoW Forever.</span>
+      <ul>
+        <li><a href="https://www.curseforge.com/wow/addons/fantasy-glass-ui">CurseForge</a></li>
+        <li><a href="https://discord.gg/qeSMwQWyPR">Discord</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI">GitHub</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/wiki">Wiki</a></li>
+        <li><a href="https://github.com/fantasyglassui/FantasyGlassUI/issues/new/choose">Report a bug</a></li>
+        <li><a href="/accessibility/">Accessibility</a></li>
+        <li><a href="/press/">Press kit</a></li>
+        <li><a href="/feed.xml" type="application/rss+xml">RSS</a></li>
+      </ul>
+    </div>
+    <div class="foot-row">
+      <span>Contact: <a href="mailto:email-forwarding@fantasyglassui.com">email-forwarding@fantasyglassui.com</a></span>
+      <p class="status"><span>Version <b>13.0.1</b></span><span class="sep" aria-hidden="true">·</span><span>Updated <time datetime="2026-11-26">2026-11-26</time></span><span class="sep" aria-hidden="true">·</span><span>Checked against WoW: Forever <b>1.60.1 (70938)</b></span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">Source code</a></span></p>
+    </div>
+    <nav class="foot-row foot-langs" aria-label="Language"><ul><li><a href="/map/" hreflang="en" lang="en" data-code="en" aria-current="true">English</a></li><li><a href="/de/map/" hreflang="de" lang="de" data-code="de">Deutsch</a></li><li><a href="/fr/map/" hreflang="fr" lang="fr" data-code="fr">Français</a></li><li><a href="/es/map/" hreflang="es" lang="es" data-code="es">Español</a></li><li><a href="/ru/map/" hreflang="ru" lang="ru" data-code="ru">Русский</a></li><li><a href="/pt/map/" hreflang="pt" lang="pt" data-code="pt">Português</a></li><li><a href="/it/map/" hreflang="it" lang="it" data-code="it">Italiano</a></li><li><a href="/ko/map/" hreflang="ko" lang="ko" data-code="ko">한국어</a></li><li><a href="/zh/map/" hreflang="zh-Hans" lang="zh-Hans" data-code="zh">中文</a></li></ul></nav>
+    
+  </div>
+</footer>
+<script src="/assets/site.js?v=2dd8abee61" defer></script>
+<script src="/assets/map.js?v=67d56e78d5" defer></script>
+</body>
+</html>

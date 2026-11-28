@@ -1,0 +1,1613 @@
+[
+ {
+  "name": "Shadowfang Keep",
+  "category": "Dungeons",
+  "coords": [
+   11132,
+   3632
+  ],
+  "description": "Dungeon. Levels 20 to 30. Bosses: Rethilgore, Razorclaw the Butcher, Baron Silverlaine, Commander Springvale, Odo the Blindwatcher, Fenrus the Devourer, Wolf Master Nandos, Archmage Arugal."
+ },
+ {
+  "name": "Stormwind Stockade",
+  "category": "Dungeons",
+  "coords": [
+   11391,
+   6693
+  ],
+  "description": "Dungeon. Levels 24 to 32. Bosses: Targorr the Dread, Kam Deepfury, Hamhock, Dextren Ward, Bazil Thredd."
+ },
+ {
+  "name": "Deadmines",
+  "category": "Dungeons",
+  "coords": [
+   11092,
+   7570
+  ],
+  "description": "Dungeon. Levels 17 to 26. Bosses: Rhahk'Zor, Sneed, Miner Johnson, Gilnid, Captain Greenskin, Mr. Smite, Cookie, Edwin VanCleef."
+ },
+ {
+  "name": "Wailing Caverns",
+  "category": "Dungeons",
+  "coords": [
+   3906,
+   5565
+  ],
+  "description": "Dungeon. Levels 15 to 24. Bosses: Lady Anacondra, Lord Cobrahn, Kresh, Lord Pythas, Skum, Lord Serpentis, Verdan the Everliving, Mutanus the Devourer."
+ },
+ {
+  "name": "Razorfen Kraul",
+  "category": "Dungeons",
+  "coords": [
+   3710,
+   6889
+  ],
+  "description": "Dungeon. Levels 29 to 38. Bosses: Roogug, Aggem Thorncurse, Death Speaker Jargba, Overlord Ramtusk, Agathelos the Raging, Charlga Razorflank."
+ },
+ {
+  "name": "Blackfathom Deeps",
+  "category": "Dungeons",
+  "coords": [
+   2849,
+   3778
+  ],
+  "description": "Dungeon. Levels 24 to 32. Bosses: Ghamoo-ra, Lady Sarevess, Geilhast, Lorgus Jett, Old Serra'kis, Twilight Lord Kelris, Baron Aquanis, Aku'mai, Gelihast."
+ },
+ {
+  "name": "Uldaman",
+  "category": "Dungeons",
+  "coords": [
+   12756,
+   5723
+  ],
+  "description": "Dungeon. Levels 41 to 51. Bosses: Revelosh, The Lost Dwarves, Ironaya, Obsidian Sentinel, Ancient Stone Keeper, Galgann Firehammer, Grimlok, Archaedas."
+ },
+ {
+  "name": "Gnomeregan",
+  "category": "Dungeons",
+  "coords": [
+   11361,
+   5401
+  ],
+  "description": "Dungeon. Levels 29 to 38. Bosses: Grubbis, Viscous Fallout, Electrocutioner 6000, Crowd Pummeler 9-60, Mekgineer Thermaplugg, Mechanical Menagerie."
+ },
+ {
+  "name": "Sunken Temple",
+  "category": "Dungeons",
+  "coords": [
+   13129,
+   7198
+  ],
+  "description": "Dungeon. Levels 50 to 60. Bosses: Avatar of Hakkar, Atal'alarion, Jammal'an the Prophet, Dreamscythe, Festering Rotslime, Weaver, Atal'ai Defenders, Shade of Eranikus, Dreamscythe and Weaver, Hazzas, Morphaz, Jammal'an and Ogom, Morphaz and Hazzas."
+ },
+ {
+  "name": "Razorfen Downs",
+  "category": "Dungeons",
+  "coords": [
+   4022,
+   6962
+  ],
+  "description": "Dungeon. Levels 37 to 46. Bosses: Tuten'kash, Plaguemaw the Rotting, Mordresh Fire Eye, Ragglesnout, Glutton, Amnennar the Coldbringer."
+ },
+ {
+  "name": "Scarlet Monastery - Graveyard",
+  "category": "Dungeons",
+  "coords": [
+   11987,
+   2512
+  ],
+  "description": "Dungeon. Levels 30 to 38. Bosses: Interrogator Vishas, Bloodmage Thalnos, Houndmaster Loksey, Arcanist Doan, Herod, High Inquisitor Fairbanks, High Inquisitor Whitemane."
+ },
+ {
+  "name": "Scarlet Monastery - Library",
+  "category": "Dungeons",
+  "coords": [
+   11987,
+   2512
+  ],
+  "description": "Dungeon. Levels 33 to 41. Bosses: Interrogator Vishas, Bloodmage Thalnos, Houndmaster Loksey, Arcanist Doan, Herod, High Inquisitor Fairbanks, High Inquisitor Whitemane."
+ },
+ {
+  "name": "Scarlet Monastery - Armory",
+  "category": "Dungeons",
+  "coords": [
+   11987,
+   2512
+  ],
+  "description": "Dungeon. Levels 36 to 44. Bosses: Interrogator Vishas, Bloodmage Thalnos, Houndmaster Loksey, Arcanist Doan, Herod, High Inquisitor Fairbanks, High Inquisitor Whitemane."
+ },
+ {
+  "name": "Scarlet Monastery - Cathedral",
+  "category": "Dungeons",
+  "coords": [
+   11987,
+   2512
+  ],
+  "description": "Dungeon. Levels 38 to 46. Bosses: Interrogator Vishas, Bloodmage Thalnos, Houndmaster Loksey, Arcanist Doan, Herod, High Inquisitor Fairbanks, High Inquisitor Whitemane."
+ },
+ {
+  "name": "Zul'Farrak",
+  "category": "Dungeons",
+  "coords": [
+   4149,
+   7722
+  ],
+  "description": "Dungeon. Levels 44 to 54. Bosses: Hydromancer Velratha, Gahz'rilla, Antu'sul, Theka the Martyr, Witch Doctor Zum'rah, Nekrum Gutchewer, Shadowpriest Sezz'ziz, Chief Ukorz Sandscalp."
+ },
+ {
+  "name": "Lower Blackrock Spire",
+  "category": "Dungeons",
+  "coords": [
+   12138,
+   6248
+  ],
+  "description": "Dungeon. Levels 55 to 60. Bosses: Highlord Omokk, Shadow Hunter Vosh'gajin, War Master Voone, Mother Smolderweb, Urok Doomhowl, Quartermaster Zigris, Halycon, Gizrul the Slavener, Overlord Wyrmthalak, Pyroguard Emberseer, Warchief Rend Blackhand, The Beast, General Drakkisath, Lord Valthalak."
+ },
+ {
+  "name": "Upper Blackrock Spire",
+  "category": "Dungeons",
+  "coords": [
+   12138,
+   6248
+  ],
+  "description": "Dungeon. Levels 59 to 60. Bosses: Highlord Omokk, Shadow Hunter Vosh'gajin, War Master Voone, Mother Smolderweb, Urok Doomhowl, Quartermaster Zigris, Halycon, Gizrul the Slavener, Overlord Wyrmthalak, Pyroguard Emberseer, Warchief Rend Blackhand, The Beast, General Drakkisath, Lord Valthalak."
+ },
+ {
+  "name": "Molten Core",
+  "category": "Raids",
+  "coords": [
+   12138,
+   6248
+  ],
+  "description": "Raid. Levels 60 to 60. Bosses: Lucifron, Magmadar, Gehennas, Garr, Shazzrah, Baron Geddon, Sulfuron Harbinger, Golemagg the Incinerator, Majordomo Executus, Ragnaros, The Molten Core."
+ },
+ {
+  "name": "Blackwing Lair",
+  "category": "Raids",
+  "coords": [
+   12138,
+   6248
+  ],
+  "description": "Raid. Levels 60 to 60. Bosses: Razorgore the Untamed, Vaelastrasz the Corrupt, Broodlord Lashlayer, Firemaw, Ebonroc, Flamegor, Chromaggus, Nefarian."
+ },
+ {
+  "name": "Blackrock Depths",
+  "category": "Dungeons",
+  "coords": [
+   12029,
+   6124
+  ],
+  "description": "Dungeon. Levels 52 to 60. Bosses: High Interrogator Gerstahn, Lord Roccor, Houndmaster Grebmar, Ring of Law, Pyromancer Loregrain, Lord Incendius, Warder Stilgiss, Fineous Darkvire, Bael'Gar, General Angerforge, Golem Lord Argelmach, Hurley Blackbreath, Phalanx, Ribbly Screwspigot, Plugger Spazzring, The Vault, Ambassador Flamelash, The Seven, Magmus, Princess Moira Bronzebeard, Emperor Dagran Thaurissan."
+ },
+ {
+  "name": "Onyxia's Lair",
+  "category": "Raids",
+  "coords": [
+   4457,
+   6994
+  ],
+  "description": "Raid. Levels 60 to 60. Bosses: Onyxia."
+ },
+ {
+  "name": "Scholomance",
+  "category": "Dungeons",
+  "coords": [
+   12611,
+   3092
+  ],
+  "description": "Dungeon. Levels 58 to 60. Bosses: Kirtonos, Jandice Barov, Rattlegore, Marduk Blackpool, Vectus, Kormok, Ras Frostwhisperer, Instructor Malicia, Doctor Theolen Krastinov, Lorekeeper Polkelt, The Ravenian, Lord Alexei Barov, Lady Illucia Barov, Darkmaster Gandling."
+ },
+ {
+  "name": "Zul'Gurub",
+  "category": "Raids",
+  "coords": [
+   12135,
+   7824
+  ],
+  "description": "Raid. Levels 60 to 60. Bosses: High Priestess Jeklik, High Priest Venoxis, High Priestess Mar'li, Bloodlord Mandokir, Edge of Madness, High Priest Thekal, Gahz'ranka, High Priestess Arlokk, Jin'do the Hexxer, Hakkar."
+ },
+ {
+  "name": "Stratholme",
+  "category": "Dungeons",
+  "coords": [
+   12908,
+   2333
+  ],
+  "description": "Dungeon. Levels 58 to 60. Bosses: Hearthsinger Forresten, Timmy the Cruel, Malor the Zealous, Cannon Master Willey, Archivist Galford, Balnazzar, The Unforgiven, Baroness Anastari, Nerub'enkan, Maleki the Pallid, Magistrate Barthilas, Ramstein the Gorger, Baron Rivendare, Black Guard Swordsmith, Crimson Hammersmith, Ezra Grimm, Postmaster Malown, Skul, Stonespine."
+ },
+ {
+  "name": "Maraudon",
+  "category": "Dungeons",
+  "coords": [
+   2072,
+   5808
+  ],
+  "description": "Dungeon. Levels 46 to 55. Bosses: Noxxion, Razorlash, Tinkerer Gizlock, Lord Vyletongue, Celebras the Cursed, Landslide, Rotgrip, Princess Theradras."
+ },
+ {
+  "name": "Ragefire Chasm",
+  "category": "Dungeons",
+  "coords": [
+   4697,
+   4647
+  ],
+  "description": "Dungeon. Levels 13 to 18. Bosses: Oggleflint, Taragaman the Hungerer, Jergosh the Invoker, Bazzalan."
+ },
+ {
+  "name": "Dire Maul - East",
+  "category": "Dungeons",
+  "coords": [
+   2713,
+   6692
+  ],
+  "description": "Dungeon. Levels 54 to 60. Bosses: Zevrim Thornhoof, Hydrospawn, Lethtendris, Pusillin, Alzzin the Wildshaper, Tendris Warpwood, Illyanna Ravenoak, Magister Kalendris, Immol'thar, Prince Tortheldrin, Guard Mol'dar, Stomper Kreeg, Guard Fengus, Guard Slip'kik, Captain Kromcrush, Cho'Rush the Observer, King Gordok, Lord Hel'nurath, Tsu'zee."
+ },
+ {
+  "name": "Dire Maul - West",
+  "category": "Dungeons",
+  "coords": [
+   2713,
+   6692
+  ],
+  "description": "Dungeon. Levels 56 to 60. Bosses: Zevrim Thornhoof, Hydrospawn, Lethtendris, Pusillin, Alzzin the Wildshaper, Tendris Warpwood, Illyanna Ravenoak, Magister Kalendris, Immol'thar, Prince Tortheldrin, Guard Mol'dar, Stomper Kreeg, Guard Fengus, Guard Slip'kik, Captain Kromcrush, Cho'Rush the Observer, King Gordok, Lord Hel'nurath, Tsu'zee."
+ },
+ {
+  "name": "Dire Maul - North",
+  "category": "Dungeons",
+  "coords": [
+   2713,
+   6692
+  ],
+  "description": "Dungeon. Levels 56 to 60. Bosses: Zevrim Thornhoof, Hydrospawn, Lethtendris, Pusillin, Alzzin the Wildshaper, Tendris Warpwood, Illyanna Ravenoak, Magister Kalendris, Immol'thar, Prince Tortheldrin, Guard Mol'dar, Stomper Kreeg, Guard Fengus, Guard Slip'kik, Captain Kromcrush, Cho'Rush the Observer, King Gordok, Lord Hel'nurath, Tsu'zee."
+ },
+ {
+  "name": "Ruins of Ahn'Qiraj",
+  "category": "Raids",
+  "coords": [
+   2571,
+   8195
+  ],
+  "description": "Raid. Levels 60 to 60. Bosses: Kurinnaxx, General Rajaxx, Moam, Buru the Gorger, Ayamiss the Hunter, Ossirian the Unscarred."
+ },
+ {
+  "name": "Ahn'Qiraj Temple",
+  "category": "Raids",
+  "coords": [
+   2571,
+   8195
+  ],
+  "description": "Raid. Levels 60 to 60. Bosses: The Prophet Skeram, Silithid Royalty, Battleguard Sartura, Fankriss the Unyielding, Viscidus, Princess Huhuran, Twin Emperors, Ouro, C'thun."
+ },
+ {
+  "name": "City of Dalaran",
+  "category": "Dungeons",
+  "coords": [
+   11500,
+   3408
+  ],
+  "description": "Dungeon. Levels 28 to 35. Bosses: Arcane Anomaly, Fel Ancient, Mana Devourer, Mana Elemental, Unstable Sentinel, Shade of the Archmage, Lyn the Ignored, Atrexis the Grave Knight, Mana Wraith."
+ },
+ {
+  "name": "The Drowned City",
+  "category": "Dungeons",
+  "coords": [
+   11387,
+   7980
+  ],
+  "description": "Dungeon. Levels 35 to 42. Bosses: Zul'Alai, Var'Taka, Captain Dreadrise, Deathless Guardians, Primeval Elemental, Min'loth the Serpent."
+ },
+ {
+  "name": "Blackmaw Hold",
+  "category": "Dungeons",
+  "coords": [
+   4986,
+   3789
+  ],
+  "description": "Dungeon. Levels 55 to 60. Bosses: Withermaw, Impaan the Imprisoner, Elder Shaman Bloodmane, Bonesnout the Unbroken, Varrox Bleakhoof, Blackmaw Behemoth, Unbound Spirit."
+ },
+ {
+  "name": "Alcaz Prison",
+  "category": "Dungeons",
+  "coords": [
+   4877,
+   6199
+  ],
+  "description": "Dungeon. Levels 48 to 55. Bosses: Overseer Wrex, Tidemistress Ca'zass, Katerina the Cleaner, The Questioner, Blazeroar."
+ },
+ {
+  "name": "Excavation Site: Wetlands",
+  "category": "Dungeons",
+  "coords": [
+   12545,
+   4876
+  ],
+  "description": "Dungeon. Levels 26 to 33. Bosses: Saltspine, Shadetooth, Highland Horror, Relic Guardian."
+ },
+ {
+  "name": "Ruins of Lordaeron",
+  "category": "Dungeons",
+  "coords": [
+   11632,
+   2902
+  ],
+  "description": "Dungeon. Levels 15 to 22. Bosses: Witherfang, The Abandoned, The Butcher, Rath'mael, Lordaeron Captain, Viktor the Vile, Bjork."
+ },
+ {
+  "name": "Shaper's Terrace",
+  "category": "Dungeons",
+  "coords": [
+   3562,
+   7482
+  ],
+  "description": "Dungeon. Levels 58 to 60. Bosses: Titanosaur, Ravasaur Hunters, Thunderhoof, Venomridge, Direhorn Matriarch, Cinder, King Op, Snowtalon, Bolt, Vitrix, Nanaya."
+ },
+ {
+  "name": "Krol'dok Stronghold",
+  "category": "Dungeons",
+  "coords": [
+   13027,
+   6302
+  ],
+  "description": "Dungeon. Levels 40 to 47. Bosses: Slavecrusher Grox, Twilight Commander Zarmok, Handler Ashka, Nar'gurk, Overseer Mugg."
+ },
+ {
+  "name": "The Hall of Thanes",
+  "category": "Dungeons",
+  "coords": [
+   12030,
+   5279
+  ],
+  "description": "Dungeon. Levels 13 to 20. Bosses: Faldrim Anvilmar, Infurnus, Plunder, Durgen Dirgehammer."
+ },
+ {
+  "name": "Boat: Booty Bay - Ratchet",
+  "category": "Boats and zeppelins",
+  "coords": [
+   4489,
+   5656
+  ],
+  "description": "Boat dock, Booty Bay - Ratchet route."
+ },
+ {
+  "name": "Boat: Booty Bay - Ratchet",
+  "category": "Boats and zeppelins",
+  "coords": [
+   11486,
+   8671
+  ],
+  "description": "Boat dock, Booty Bay - Ratchet route."
+ },
+ {
+  "name": "Zeppelin: Grom'gol - Orgrimmar",
+  "category": "Boats and zeppelins",
+  "coords": [
+   11613,
+   8021
+  ],
+  "description": "Zeppelin dock, Grom'gol - Orgrimmar route."
+ },
+ {
+  "name": "Zeppelin: Grom'gol - Orgrimmar",
+  "category": "Boats and zeppelins",
+  "coords": [
+   4771,
+   4810
+  ],
+  "description": "Zeppelin dock, Grom'gol - Orgrimmar route."
+ },
+ {
+  "name": "Boat: Menethil Ships",
+  "category": "Boats and zeppelins",
+  "coords": [
+   11906,
+   4950
+  ],
+  "description": "Boat dock, Menethil Ships route."
+ },
+ {
+  "name": "Boat: Menethil Ships",
+  "category": "Boats and zeppelins",
+  "coords": [
+   4810,
+   6731
+  ],
+  "description": "Boat dock, Menethil Ships route."
+ },
+ {
+  "name": "Boat: Rut'theran - Auberdine",
+  "category": "Boats and zeppelins",
+  "coords": [
+   2751,
+   2248
+  ],
+  "description": "Boat dock, Rut'theran - Auberdine route."
+ },
+ {
+  "name": "Boat: Rut'theran - Auberdine",
+  "category": "Boats and zeppelins",
+  "coords": [
+   2845,
+   2940
+  ],
+  "description": "Boat dock, Rut'theran - Auberdine route."
+ },
+ {
+  "name": "Zeppelin: Orgrimmar Zepplins",
+  "category": "Boats and zeppelins",
+  "coords": [
+   11620,
+   8000
+  ],
+  "description": "Zeppelin dock, Orgrimmar Zepplins route."
+ },
+ {
+  "name": "Zeppelin: Orgrimmar Zepplins",
+  "category": "Boats and zeppelins",
+  "coords": [
+   11611,
+   2810
+  ],
+  "description": "Zeppelin dock, Orgrimmar Zepplins route."
+ },
+ {
+  "name": "Zeppelin: Orgrimmar Zepplins",
+  "category": "Boats and zeppelins",
+  "coords": [
+   4780,
+   4825
+  ],
+  "description": "Zeppelin dock, Orgrimmar Zepplins route."
+ },
+ {
+  "name": "Zeppelin: Orgrimmar Zepplins",
+  "category": "Boats and zeppelins",
+  "coords": [
+   11591,
+   2810
+  ],
+  "description": "Zeppelin dock, Orgrimmar Zepplins route."
+ },
+ {
+  "name": "Boat: Feathermoon - Feralas",
+  "category": "Boats and zeppelins",
+  "coords": [
+   1942,
+   6796
+  ],
+  "description": "Boat dock, Feathermoon - Feralas route."
+ },
+ {
+  "name": "Boat: Feathermoon - Feralas",
+  "category": "Boats and zeppelins",
+  "coords": [
+   2243,
+   6850
+  ],
+  "description": "Boat dock, Feathermoon - Feralas route."
+ },
+ {
+  "name": "Boat: Menethil - Southshore - Auberdine",
+  "category": "Boats and zeppelins",
+  "coords": [
+   11902,
+   4880
+  ],
+  "description": "Boat dock, Menethil - Southshore - Auberdine route."
+ },
+ {
+  "name": "Boat: Menethil - Southshore - Auberdine",
+  "category": "Boats and zeppelins",
+  "coords": [
+   11895,
+   3945
+  ],
+  "description": "Boat dock, Menethil - Southshore - Auberdine route."
+ },
+ {
+  "name": "Boat: Menethil - Southshore - Auberdine",
+  "category": "Boats and zeppelins",
+  "coords": [
+   2822,
+   3008
+  ],
+  "description": "Boat dock, Menethil - Southshore - Auberdine route."
+ },
+ {
+  "name": "Boat: Steamwheedle Port - Powderfuse Port",
+  "category": "Boats and zeppelins",
+  "coords": [
+   4885,
+   7773
+  ],
+  "description": "Boat dock, Steamwheedle Port - Powderfuse Port route."
+ },
+ {
+  "name": "Boat: Steamwheedle Port - Powderfuse Port",
+  "category": "Boats and zeppelins",
+  "coords": [
+   13777,
+   6503
+  ],
+  "description": "Boat dock, Steamwheedle Port - Powderfuse Port route."
+ },
+ {
+  "name": "Airship: Alterac Mountains - Zephras Isle",
+  "category": "Boats and zeppelins",
+  "coords": [
+   11543,
+   3354
+  ],
+  "description": "Airship dock, Alterac Mountains - Zephras Isle route."
+ },
+ {
+  "name": "Airship: Mulgore - Zephras Isle",
+  "category": "Boats and zeppelins",
+  "coords": [
+   2986,
+   5583
+  ],
+  "description": "Airship dock, Mulgore - Zephras Isle route."
+ },
+ {
+  "name": "Boat: Stormwind - Auberdine",
+  "category": "Boats and zeppelins",
+  "coords": [
+   2780,
+   2957
+  ],
+  "description": "Boat dock, Stormwind - Auberdine route."
+ },
+ {
+  "name": "Boat: Stormwind - Auberdine",
+  "category": "Boats and zeppelins",
+  "coords": [
+   11213,
+   6654
+  ],
+  "description": "Boat dock, Stormwind - Auberdine route."
+ },
+ {
+  "name": "Stormwind, Elwynn",
+  "category": "Flight masters",
+  "coords": [
+   11524,
+   6718
+  ],
+  "description": "Flight master. Alliance."
+ },
+ {
+  "name": "Sentinel Hill, Westfall",
+  "category": "Flight masters",
+  "coords": [
+   11324,
+   7362
+  ],
+  "description": "Flight master. Alliance."
+ },
+ {
+  "name": "Lakeshire, Redridge",
+  "category": "Flight masters",
+  "coords": [
+   12496,
+   6932
+  ],
+  "description": "Flight master. Alliance."
+ },
+ {
+  "name": "Ironforge, Dun Morogh",
+  "category": "Flight masters",
+  "coords": [
+   12110,
+   5279
+  ],
+  "description": "Flight master. Alliance."
+ },
+ {
+  "name": "Menethil Harbor, Wetlands",
+  "category": "Flight masters",
+  "coords": [
+   11977,
+   4910
+  ],
+  "description": "Flight master. Alliance."
+ },
+ {
+  "name": "Thelsamar, Loch Modan",
+  "category": "Flight masters",
+  "coords": [
+   12747,
+   5494
+  ],
+  "description": "Flight master. Alliance."
+ },
+ {
+  "name": "The Sepulcher, Silverpine Forest",
+  "category": "Flight masters",
+  "coords": [
+   11144,
+   3378
+  ],
+  "description": "Flight master. Horde."
+ },
+ {
+  "name": "Undercity, Tirisfal",
+  "category": "Flight masters",
+  "coords": [
+   11599,
+   2987
+  ],
+  "description": "Flight master. Horde."
+ },
+ {
+  "name": "Darkshire, Duskwood",
+  "category": "Flight masters",
+  "coords": [
+   12148,
+   7322
+  ],
+  "description": "Flight master. Alliance."
+ },
+ {
+  "name": "Tarren Mill, Hillsbrad",
+  "category": "Flight masters",
+  "coords": [
+   12004,
+   3550
+  ],
+  "description": "Flight master. Horde."
+ },
+ {
+  "name": "Southshore, Hillsbrad",
+  "category": "Flight masters",
+  "coords": [
+   11881,
+   3805
+  ],
+  "description": "Flight master. Alliance."
+ },
+ {
+  "name": "Refuge Pointe, Arathi",
+  "category": "Flight masters",
+  "coords": [
+   12598,
+   3994
+  ],
+  "description": "Flight master. Alliance."
+ },
+ {
+  "name": "Hammerfall, Arathi",
+  "category": "Flight masters",
+  "coords": [
+   12950,
+   3878
+  ],
+  "description": "Flight master. Horde."
+ },
+ {
+  "name": "Booty Bay, Stranglethorn",
+  "category": "Flight masters",
+  "coords": [
+   11513,
+   8731
+  ],
+  "description": "Flight master. Horde."
+ },
+ {
+  "name": "Booty Bay, Stranglethorn",
+  "category": "Flight masters",
+  "coords": [
+   11529,
+   8741
+  ],
+  "description": "Flight master. Alliance."
+ },
+ {
+  "name": "Grom'gol, Stranglethorn",
+  "category": "Flight masters",
+  "coords": [
+   11643,
+   8003
+  ],
+  "description": "Flight master. Horde."
+ },
+ {
+  "name": "Kargath, Badlands",
+  "category": "Flight masters",
+  "coords": [
+   12478,
+   5929
+  ],
+  "description": "Flight master. Horde."
+ },
+ {
+  "name": "Thunder Bluff, Mulgore",
+  "category": "Flight masters",
+  "coords": [
+   3106,
+   5724
+  ],
+  "description": "Flight master. Horde."
+ },
+ {
+  "name": "Orgrimmar, Durotar",
+  "category": "Flight masters",
+  "coords": [
+   4658,
+   4697
+  ],
+  "description": "Flight master. Horde."
+ },
+ {
+  "name": "Crossroads, The Barrens",
+  "category": "Flight masters",
+  "coords": [
+   4044,
+   5454
+  ],
+  "description": "Flight master. Horde."
+ },
+ {
+  "name": "Auberdine, Darkshore",
+  "category": "Flight masters",
+  "coords": [
+   2917,
+   3031
+  ],
+  "description": "Flight master. Alliance."
+ },
+ {
+  "name": "Rut'theran Village, Teldrassil",
+  "category": "Flight masters",
+  "coords": [
+   2816,
+   2208
+  ],
+  "description": "Flight master. Alliance."
+ },
+ {
+  "name": "Astranaar, Ashenvale",
+  "category": "Flight masters",
+  "coords": [
+   3220,
+   4286
+  ],
+  "description": "Flight master. Alliance."
+ },
+ {
+  "name": "Sun Rock Retreat, Stonetalon Mountains",
+  "category": "Flight masters",
+  "coords": [
+   2745,
+   4951
+  ],
+  "description": "Flight master. Horde."
+ },
+ {
+  "name": "Freewind Post, Thousand Needles",
+  "category": "Flight masters",
+  "coords": [
+   3979,
+   7228
+  ],
+  "description": "Flight master. Horde."
+ },
+ {
+  "name": "Thalanaar, Feralas",
+  "category": "Flight masters",
+  "coords": [
+   3394,
+   6901
+  ],
+  "description": "Flight master. Alliance."
+ },
+ {
+  "name": "Theramore, Dustwallow Marsh",
+  "category": "Flight masters",
+  "coords": [
+   4730,
+   6663
+  ],
+  "description": "Flight master. Alliance."
+ },
+ {
+  "name": "Stonetalon Peak, Stonetalon Mountains",
+  "category": "Flight masters",
+  "coords": [
+   2594,
+   4338
+  ],
+  "description": "Flight master. Alliance."
+ },
+ {
+  "name": "Nijel's Point, Desolace",
+  "category": "Flight masters",
+  "coords": [
+   2643,
+   5247
+  ],
+  "description": "Flight master. Alliance."
+ },
+ {
+  "name": "Shadowprey Village, Desolace",
+  "category": "Flight masters",
+  "coords": [
+   1950,
+   5928
+  ],
+  "description": "Flight master. Horde."
+ },
+ {
+  "name": "Gadgetzan, Tanaris",
+  "category": "Flight masters",
+  "coords": [
+   4451,
+   7877
+  ],
+  "description": "Flight master. Alliance."
+ },
+ {
+  "name": "Gadgetzan, Tanaris",
+  "category": "Flight masters",
+  "coords": [
+   4467,
+   7815
+  ],
+  "description": "Flight master. Horde."
+ },
+ {
+  "name": "Feathermoon, Feralas",
+  "category": "Flight masters",
+  "coords": [
+   1924,
+   6859
+  ],
+  "description": "Flight master. Alliance."
+ },
+ {
+  "name": "Camp Mojache, Feralas",
+  "category": "Flight masters",
+  "coords": [
+   3045,
+   6875
+  ],
+  "description": "Flight master. Horde."
+ },
+ {
+  "name": "Aerie Peak, The Hinterlands",
+  "category": "Flight masters",
+  "coords": [
+   12414,
+   3448
+  ],
+  "description": "Flight master. Alliance."
+ },
+ {
+  "name": "Valormok, Azshara",
+  "category": "Flight masters",
+  "coords": [
+   4685,
+   3988
+  ],
+  "description": "Flight master. Horde."
+ },
+ {
+  "name": "Nethergarde Keep, Blasted Lands",
+  "category": "Flight masters",
+  "coords": [
+   12928,
+   7536
+  ],
+  "description": "Flight master. Alliance."
+ },
+ {
+  "name": "Bloodvenom Post, Felwood",
+  "category": "Flight masters",
+  "coords": [
+   3237,
+   3486
+  ],
+  "description": "Flight master. Horde."
+ },
+ {
+  "name": "Moonglade",
+  "category": "Flight masters",
+  "coords": [
+   4005,
+   2632
+  ],
+  "description": "Flight master. Alliance."
+ },
+ {
+  "name": "Everlook, Winterspring",
+  "category": "Flight masters",
+  "coords": [
+   4811,
+   2867
+  ],
+  "description": "Flight master. Alliance."
+ },
+ {
+  "name": "Everlook, Winterspring",
+  "category": "Flight masters",
+  "coords": [
+   4764,
+   2862
+  ],
+  "description": "Flight master. Horde."
+ },
+ {
+  "name": "Brackenwall Village, Dustwallow Marsh",
+  "category": "Flight masters",
+  "coords": [
+   4132,
+   6421
+  ],
+  "description": "Flight master. Horde."
+ },
+ {
+  "name": "Stonard, Swamp of Sorrows",
+  "category": "Flight masters",
+  "coords": [
+   12872,
+   7301
+  ],
+  "description": "Flight master. Horde."
+ },
+ {
+  "name": "Zoram'gar Outpost, Ashenvale",
+  "category": "Flight masters",
+  "coords": [
+   2760,
+   4091
+  ],
+  "description": "Flight master. Horde."
+ },
+ {
+  "name": "Splintertree Post, Ashenvale",
+  "category": "Flight masters",
+  "coords": [
+   4018,
+   4474
+  ],
+  "description": "Flight master. Horde."
+ },
+ {
+  "name": "Nighthaven, Moonglade",
+  "category": "Flight masters",
+  "coords": [
+   3975,
+   2512
+  ],
+  "description": "Flight master. Alliance, DRUID only."
+ },
+ {
+  "name": "Nighthaven, Moonglade",
+  "category": "Flight masters",
+  "coords": [
+   3975,
+   2514
+  ],
+  "description": "Flight master. Horde, DRUID only."
+ },
+ {
+  "name": "Talrendis Point, Azshara",
+  "category": "Flight masters",
+  "coords": [
+   4503,
+   4324
+  ],
+  "description": "Flight master. Alliance."
+ },
+ {
+  "name": "Talonbranch Glade, Felwood",
+  "category": "Flight masters",
+  "coords": [
+   3813,
+   3079
+  ],
+  "description": "Flight master. Alliance."
+ },
+ {
+  "name": "Chillwind Camp, Western Plaguelands",
+  "category": "Flight masters",
+  "coords": [
+   12209,
+   3215
+  ],
+  "description": "Flight master. Alliance."
+ },
+ {
+  "name": "Light's Hope Chapel, Eastern Plaguelands",
+  "category": "Flight masters",
+  "coords": [
+   13612,
+   2735
+  ],
+  "description": "Flight master. Alliance."
+ },
+ {
+  "name": "Light's Hope Chapel, Eastern Plaguelands",
+  "category": "Flight masters",
+  "coords": [
+   13592,
+   2715
+  ],
+  "description": "Flight master. Horde."
+ },
+ {
+  "name": "Moonglade",
+  "category": "Flight masters",
+  "coords": [
+   3875,
+   2627
+  ],
+  "description": "Flight master. Horde."
+ },
+ {
+  "name": "Flame Crest, Burning Steppes",
+  "category": "Flight masters",
+  "coords": [
+   12480,
+   6241
+  ],
+  "description": "Flight master. Horde."
+ },
+ {
+  "name": "Morgan's Vigil, Burning Steppes",
+  "category": "Flight masters",
+  "coords": [
+   12678,
+   6550
+  ],
+  "description": "Flight master. Alliance."
+ },
+ {
+  "name": "Cenarion Hold, Silithus",
+  "category": "Flight masters",
+  "coords": [
+   2818,
+   7730
+  ],
+  "description": "Flight master. Horde."
+ },
+ {
+  "name": "Cenarion Hold, Silithus",
+  "category": "Flight masters",
+  "coords": [
+   2841,
+   7712
+  ],
+  "description": "Flight master. Alliance."
+ },
+ {
+  "name": "Thorium Point, Searing Gorge",
+  "category": "Flight masters",
+  "coords": [
+   12115,
+   5900
+  ],
+  "description": "Flight master. Alliance."
+ },
+ {
+  "name": "Thorium Point, Searing Gorge",
+  "category": "Flight masters",
+  "coords": [
+   12090,
+   5901
+  ],
+  "description": "Flight master. Horde."
+ },
+ {
+  "name": "Revantusk Village, The Hinterlands",
+  "category": "Flight masters",
+  "coords": [
+   13389,
+   3777
+  ],
+  "description": "Flight master. Horde."
+ },
+ {
+  "name": "Camp Taurajo, The Barrens",
+  "category": "Flight masters",
+  "coords": [
+   3789,
+   6147
+  ],
+  "description": "Flight master. Horde."
+ },
+ {
+  "name": "Marshal's Refuge, Un'Goro Crater",
+  "category": "Flight masters",
+  "coords": [
+   3525,
+   7481
+  ],
+  "description": "Flight master. Both factions."
+ },
+ {
+  "name": "Ratchet, The Barrens",
+  "category": "Flight masters",
+  "coords": [
+   4464,
+   5616
+  ],
+  "description": "Flight master. Both factions."
+ },
+ {
+  "name": "Summit of Eternity, Mount Hyjal",
+  "category": "Flight masters",
+  "coords": [
+   4298,
+   3409
+  ],
+  "description": "Flight master. Both factions."
+ },
+ {
+  "name": "Rog'mar, Riverglades",
+  "category": "Flight masters",
+  "coords": [
+   13412,
+   6392
+  ],
+  "description": "Flight master. Horde."
+ },
+ {
+  "name": "Tainted Foothills, Mount Hyjal",
+  "category": "Flight masters",
+  "coords": [
+   4130,
+   3727
+  ],
+  "description": "Flight master. Both factions."
+ },
+ {
+  "name": "Farholde Keep, Riverglades",
+  "category": "Flight masters",
+  "coords": [
+   13429,
+   6815
+  ],
+  "description": "Flight master. Alliance."
+ },
+ {
+  "name": "Durotar",
+  "category": "Zones",
+  "coords": [
+   4762,
+   5280
+  ],
+  "description": "Levels 1 to 10."
+ },
+ {
+  "name": "Mulgore",
+  "category": "Zones",
+  "coords": [
+   3330,
+   5934
+  ],
+  "description": "Levels 1 to 10."
+ },
+ {
+  "name": "The Barrens",
+  "category": "Zones",
+  "coords": [
+   3989,
+   5927
+  ],
+  "description": "Levels 10 to 25."
+ },
+ {
+  "name": "Alterac Mountains",
+  "category": "Zones",
+  "coords": [
+   11917,
+   3346
+  ],
+  "description": "Levels 30 to 40."
+ },
+ {
+  "name": "Arathi Highlands",
+  "category": "Zones",
+  "coords": [
+   12652,
+   4028
+  ],
+  "description": "Levels 30 to 40."
+ },
+ {
+  "name": "Badlands",
+  "category": "Zones",
+  "coords": [
+   12888,
+   5960
+  ],
+  "description": "Levels 35 to 45."
+ },
+ {
+  "name": "Blasted Lands",
+  "category": "Zones",
+  "coords": [
+   12742,
+   7740
+  ],
+  "description": "Levels 45 to 55."
+ },
+ {
+  "name": "Tirisfal Glades",
+  "category": "Zones",
+  "coords": [
+   11418,
+   2713
+  ],
+  "description": "Levels 1 to 10."
+ },
+ {
+  "name": "Silverpine Forest",
+  "category": "Zones",
+  "coords": [
+   11211,
+   3454
+  ],
+  "description": "Levels 10 to 20."
+ },
+ {
+  "name": "Western Plaguelands",
+  "category": "Zones",
+  "coords": [
+   12317,
+   2856
+  ],
+  "description": "Levels 51 to 58."
+ },
+ {
+  "name": "Eastern Plaguelands",
+  "category": "Zones",
+  "coords": [
+   13277,
+   2739
+  ],
+  "description": "Levels 53 to 60."
+ },
+ {
+  "name": "Hillsbrad Foothills",
+  "category": "Zones",
+  "coords": [
+   11887,
+   3789
+  ],
+  "description": "Levels 20 to 30."
+ },
+ {
+  "name": "The Hinterlands",
+  "category": "Zones",
+  "coords": [
+   12951,
+   3484
+  ],
+  "description": "Levels 40 to 50."
+ },
+ {
+  "name": "Dun Morogh",
+  "category": "Zones",
+  "coords": [
+   11933,
+   5529
+  ],
+  "description": "Levels 1 to 10."
+ },
+ {
+  "name": "Searing Gorge",
+  "category": "Zones",
+  "coords": [
+   12212,
+   6004
+  ],
+  "description": "Levels 45 to 50."
+ },
+ {
+  "name": "Burning Steppes",
+  "category": "Zones",
+  "coords": [
+   12317,
+   6422
+  ],
+  "description": "Levels 50 to 58."
+ },
+ {
+  "name": "Elwynn Forest",
+  "category": "Zones",
+  "coords": [
+   11767,
+   6813
+  ],
+  "description": "Levels 1 to 10."
+ },
+ {
+  "name": "Deadwind Pass",
+  "category": "Zones",
+  "coords": [
+   12443,
+   7388
+  ],
+  "description": "Levels 55 to 60."
+ },
+ {
+  "name": "Duskwood",
+  "category": "Zones",
+  "coords": [
+   11881,
+   7358
+  ],
+  "description": "Levels 18 to 30."
+ },
+ {
+  "name": "Loch Modan",
+  "category": "Zones",
+  "coords": [
+   12906,
+   5489
+  ],
+  "description": "Levels 10 to 20."
+ },
+ {
+  "name": "Redridge Mountains",
+  "category": "Zones",
+  "coords": [
+   12688,
+   6885
+  ],
+  "description": "Levels 15 to 25."
+ },
+ {
+  "name": "Stranglethorn Vale",
+  "category": "Zones",
+  "coords": [
+   12044,
+   8319
+  ],
+  "description": "Levels 30 to 45."
+ },
+ {
+  "name": "Swamp of Sorrows",
+  "category": "Zones",
+  "coords": [
+   12905,
+   7275
+  ],
+  "description": "Levels 35 to 45."
+ },
+ {
+  "name": "Westfall",
+  "category": "Zones",
+  "coords": [
+   11241,
+   7340
+  ],
+  "description": "Levels 10 to 20."
+ },
+ {
+  "name": "Wetlands",
+  "category": "Zones",
+  "coords": [
+   12577,
+   4814
+  ],
+  "description": "Levels 20 to 30."
+ },
+ {
+  "name": "Teldrassil",
+  "category": "Zones",
+  "coords": [
+   2663,
+   1676
+  ],
+  "description": "Levels 1 to 10."
+ },
+ {
+  "name": "Darkshore",
+  "category": "Zones",
+  "coords": [
+   3236,
+   3099
+  ],
+  "description": "Levels 10 to 20."
+ },
+ {
+  "name": "Ashenvale",
+  "category": "Zones",
+  "coords": [
+   3539,
+   4313
+  ],
+  "description": "Levels 18 to 30."
+ },
+ {
+  "name": "Thousand Needles",
+  "category": "Zones",
+  "coords": [
+   4057,
+   7237
+  ],
+  "description": "Levels 25 to 35."
+ },
+ {
+  "name": "Stonetalon Mountains",
+  "category": "Zones",
+  "coords": [
+   2829,
+   4836
+  ],
+  "description": "Levels 15 to 27."
+ },
+ {
+  "name": "Desolace",
+  "category": "Zones",
+  "coords": [
+   2407,
+   5670
+  ],
+  "description": "Levels 30 to 40."
+ },
+ {
+  "name": "Feralas",
+  "category": "Zones",
+  "coords": [
+   2414,
+   6969
+  ],
+  "description": "Levels 40 to 50."
+ },
+ {
+  "name": "Dustwallow Marsh",
+  "category": "Zones",
+  "coords": [
+   4402,
+   6648
+  ],
+  "description": "Levels 35 to 45."
+ },
+ {
+  "name": "Tanaris",
+  "category": "Zones",
+  "coords": [
+   4427,
+   8217
+  ],
+  "description": "Levels 40 to 50."
+ },
+ {
+  "name": "Azshara",
+  "category": "Zones",
+  "coords": [
+   5193,
+   3992
+  ],
+  "description": "Levels 45 to 55."
+ },
+ {
+  "name": "Felwood",
+  "category": "Zones",
+  "coords": [
+   3557,
+   3433
+  ],
+  "description": "Levels 48 to 55."
+ },
+ {
+  "name": "Un'Goro Crater",
+  "category": "Zones",
+  "coords": [
+   3587,
+   7869
+  ],
+  "description": "Levels 48 to 55."
+ },
+ {
+  "name": "Moonglade",
+  "category": "Zones",
+  "coords": [
+   4022,
+   2538
+  ],
+  "description": "Levels 55 to 60."
+ },
+ {
+  "name": "Silithus",
+  "category": "Zones",
+  "coords": [
+   2832,
+   7840
+  ],
+  "description": "Levels 55 to 60."
+ },
+ {
+  "name": "Winterspring",
+  "category": "Zones",
+  "coords": [
+   4498,
+   3093
+  ],
+  "description": "Levels 55 to 60."
+ },
+ {
+  "name": "Stormwind City",
+  "category": "Zones",
+  "coords": [
+   11389,
+   6625
+  ],
+  "description": "City."
+ },
+ {
+  "name": "Orgrimmar",
+  "category": "Zones",
+  "coords": [
+   4682,
+   4651
+  ],
+  "description": "City."
+ },
+ {
+  "name": "Ironforge",
+  "category": "Zones",
+  "coords": [
+   12093,
+   5283
+  ],
+  "description": "City."
+ },
+ {
+  "name": "Thunder Bluff",
+  "category": "Zones",
+  "coords": [
+   3118,
+   5724
+  ],
+  "description": "City."
+ },
+ {
+  "name": "Darnassus",
+  "category": "Zones",
+  "coords": [
+   2256,
+   1765
+  ],
+  "description": "City."
+ },
+ {
+  "name": "Undercity",
+  "category": "Zones",
+  "coords": [
+   11554,
+   2991
+  ],
+  "description": "City."
+ },
+ {
+  "name": "Mount Hyjal",
+  "category": "Zones",
+  "coords": [
+   4066,
+   3457
+  ],
+  "description": "Zone."
+ },
+ {
+  "name": "Riverglades",
+  "category": "Zones",
+  "coords": [
+   13244,
+   6449
+  ],
+  "description": "Levels 35 to 45."
+ },
+ {
+  "name": "Shen'dralas",
+  "category": "Zones",
+  "coords": [
+   2759,
+   6219
+  ],
+  "description": "Zone."
+ }
+]

@@ -77,6 +77,61 @@ ol.howtos p { margin: 0; }
 .plan-card p { margin: 0; font-size: 1.05rem; }
 .plan-card .cta { margin: 0; flex-direction: column; align-items: stretch; }
 @media (max-width: 760px) { .plan-card { grid-template-columns: 1fr; padding: 24px 20px; } }
+/* The short tour: a start button in the page's head, a box at the foot of the screen, and the part of the page it
+   is about outlined in gold (a card's own outline; anything else, a ring around it). Nothing moves under reduced motion. */
+.tour-start { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 16px 0 0; }
+.tour-start[hidden], .tour[hidden] { display: none; }
+.tour {
+  --cut: 14px;
+  position: fixed; z-index: 30; left: 50%; bottom: 16px; transform: translateX(-50%);
+  width: min(600px, calc(100% - 32px)); max-height: calc(100vh - 120px); overflow-y: auto;
+  padding: 18px 22px 16px; --c: var(--gold); --fill: var(--card); color: var(--text);
+}
+.tour:focus-visible { outline: 2px solid var(--focus); outline-offset: -6px; }
+.tour .eyebrow { margin: 0 0 6px; }
+.tour h2 { font-size: 1.45rem; margin: 0 0 8px; padding-right: 40px; }
+.tour p { margin: 0 0 14px; color: var(--dim); }
+.tour-nav { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.tour-nav .btn[disabled] { opacity: .45; cursor: default; pointer-events: none; }
+.tour-x {
+  position: absolute; top: 10px; right: 10px; width: 40px; height: 40px; display: grid; place-items: center;
+  font: 400 1.6rem/1 var(--body); color: var(--text); background: transparent; border: 1px solid var(--line); cursor: pointer;
+}
+.tour-x:hover { border-color: var(--gold); color: var(--gold); }
+.tour-on { outline: 2px solid var(--gold); outline-offset: 8px; }
+.card.tour-on { outline: 0; --c: var(--gold); --fill: color-mix(in srgb, var(--gold) 8%, transparent); }
+.card.tour-on::after { content: ""; position: absolute; inset: 0; border: 2px solid var(--gold); pointer-events: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .tour { animation: tour-in .2s ease-out; }
+  @keyframes tour-in { from { opacity: 0; transform: translate(-50%, 10px); } }
+}
+@media (max-width: 600px) { .tour { bottom: 10px; padding: 14px 16px 12px; } .tour h2 { font-size: 1.25rem; } .tour-nav .btn { flex: 1 1 auto; } }
+
+/* The example route: a sample plan code read by the plan page's reader, zone by zone with its steps. */
+.ex-badge { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 16px; }
+.ex-badge .tag { display: inline-flex; align-items: center; min-height: 24px; padding: 3px 9px; font: 700 .74rem/1.1 var(--body); letter-spacing: .07em; text-transform: uppercase; color: var(--gold); border: 1px dashed currentColor; }
+dl.ex-totals { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin: 0 0 20px; }
+dl.ex-totals div { padding: 10px 14px; border: 1px solid var(--line); }
+dl.ex-totals dt { color: var(--dim); font-size: .85rem; }
+dl.ex-totals dd { margin: 0; font: 400 1.35rem/1.3 var(--display); }
+.ex-zones { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 20px; }
+.ex-zone { display: grid; grid-template-columns: minmax(0, 240px) minmax(0, 1fr); grid-template-areas: "h h" "map steps"; gap: 12px 20px; align-content: start; }
+.ex-zone h3 { grid-area: h; margin: 0; }
+.ex-zone .ex-steps { grid-area: steps; }
+.ex-map { grid-area: map; min-width: 0; --map-radius: 0; }                    /* the map itself: site-src/plan/map.js (.fgmap) */
+@media (max-width: 480px) { .ex-zone { grid-template-columns: minmax(0, 1fr); grid-template-areas: "h" "map" "steps"; } }
+ol.ex-steps { list-style: none; margin: 0; padding: 0; }
+ol.ex-steps li { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-top: 1px solid var(--rule); }
+ol.ex-steps li:first-child { border-top: 0; }
+ol.ex-steps .n { min-width: 1.6em; text-align: right; color: var(--faint); font-variant-numeric: tabular-nums; }
+ol.ex-steps button.n { flex: none; min-width: 2.2em; min-height: 26px; padding: 0 6px; font: 600 .9rem/1 var(--body); text-align: center; color: var(--text); background: var(--raised); border: 1px solid var(--line); border-radius: 13px; cursor: pointer; }
+ol.ex-steps button.n:hover { border-color: var(--gold); }
+ol.ex-steps li.now { box-shadow: inset 3px 0 0 var(--gold); padding-left: 8px; }
+ol.ex-steps li.now button.n { background: var(--gold); border-color: var(--gold); color: var(--on-gold); }
+ol.ex-steps input { flex: none; width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--gold); }
+ol.ex-steps label { cursor: pointer; }
+ol.ex-steps li.done label { text-decoration: line-through; color: var(--dim); }
+#example .how a { white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -85,7 +140,7 @@ ol.howtos p { margin: 0; }
   <div class="wrap">
     <a class="brand" href="/ko/"><img src="/logo-64.webp" alt="" width="32" height="32">Fantasy Glass UI</a>
     <nav class="site-nav" id="site-nav" aria-label="페이지">
-      <ul><li><a href="/ko/">홈</a></li><li><a href="/ko/features/">기능</a></li><li><a href="/ko/themes/">테마</a></li><li><a href="/ko/guide-and-gold/" aria-current="page">안내서와 골드</a></li><li><a href="/ko/get-started/">시작하기</a></li><li><a href="/ko/changelog/">변경 내역</a></li><li><a href="/ko/roadmap/">로드맵</a></li></ul>
+      <ul><li><a href="/ko/">홈</a></li><li><a href="/ko/features/">기능</a></li><li><a href="/ko/themes/">테마</a></li><li><a href="/ko/guide-and-gold/" aria-current="page">안내서와 골드</a></li><li><a href="/ko/get-started/">시작하기</a></li><li><a href="/ko/changelog/">변경 내역</a></li><li><a href="/ko/roadmap/">로드맵</a></li><li><a href="/ko/map/">세계 지도</a></li></ul>
       <div class="head-tools">
         <label class="lang"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span class="sr-only">언어</span><select id="lang"><option value="/guide-and-gold/" data-code="en" lang="en">English</option><option value="/de/guide-and-gold/" data-code="de" lang="de">Deutsch</option><option value="/fr/guide-and-gold/" data-code="fr" lang="fr">Français</option><option value="/es/guide-and-gold/" data-code="es" lang="es">Español</option><option value="/ru/guide-and-gold/" data-code="ru" lang="ru">Русский</option><option value="/pt/guide-and-gold/" data-code="pt" lang="pt">Português</option><option value="/it/guide-and-gold/" data-code="it" lang="it">Italiano</option><option value="/ko/guide-and-gold/" data-code="ko" lang="ko" selected>한국어</option><option value="/zh/guide-and-gold/" data-code="zh" lang="zh-Hans">中文</option></select></label>
         <button class="icon-btn mode" id="mode" type="button" aria-pressed="true" title="어두운 모드"><span class="sr-only">어두운 모드</span><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M5.3 18.7 7 17M17 7l1.7-1.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
@@ -99,7 +154,9 @@ ol.howtos p { margin: 0; }
 <main id="main" tabindex="-1">
 <!-- Guide and Gold (W3): what the route planner and Ways to make gold do, Questie, the prices and sell hints, the
      how-to pages (pages/guide-and-gold/<name>/) and the plan page (/plan/, built by site-src/plan_page.py).
-     Every claim here is true of the add-on's code (FantasyGlassUI_Planner/, FantasyGlassUI_Gold/, Guide.lua). -->
+     Every claim here is true of the add-on's code (FantasyGlassUI_Planner/, FantasyGlassUI_Gold/, Guide.lua).
+     body.py fills in the example route's plan code (tests/plan_codes.txt) and the reader's and the map's addresses; script.js runs the
+     short tour (#tour, its steps in #tour-steps) and draws the example route (#example). -->
 <div class="wrap page-head gg-head">
   <span class="eyebrow">13.0의 새 기능</span>
   <h1>안내서와 골드</h1>
@@ -108,7 +165,8 @@ ol.howtos p { margin: 0; }
     <a class="btn" href="/ko/guide-and-gold/first-route/">첫 경로 계획하기</a>
     <a class="btn line" href="/plan/">계획 페이지 열기</a>
   </div>
-  <p class="status"><span>버전 <b>13.0.0</b></span><span class="sep" aria-hidden="true">·</span><span><time datetime="2026-11-26">2026-11-26</time> 업데이트</span><span class="sep" aria-hidden="true">·</span><span>WoW: Forever <b>1.60.1 (70938)</b> 기준으로 확인</span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">소스 코드</a></span></p>
+  <p class="tour-start" id="tour-start" hidden><button class="btn line small" type="button" id="tour-go" aria-haspopup="dialog">짧은 둘러보기 시작</button> <span class="faint">이 페이지를 여섯 단계로, 원하는 속도로 둘러봅니다.</span></p>
+  <p class="status"><span>버전 <b>13.0.1</b></span><span class="sep" aria-hidden="true">·</span><span><time datetime="2026-11-26">2026-11-26</time> 업데이트</span><span class="sep" aria-hidden="true">·</span><span>WoW: Forever <b>1.60.1 (70938)</b> 기준으로 확인</span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">소스 코드</a></span></p>
 </div>
 
 <section class="block" id="planner" aria-labelledby="h-planner">
@@ -119,14 +177,14 @@ ol.howtos p { margin: 0; }
       <p class="lede">레벨에 맞는 퀘스트 경로를 짭니다: 무엇을 받을지, 어떤 순서로 할지, 언제 날아가고 훈련하고 완료할지. 플레이하는 동안 다시 계획하므로 경로가 늘 나를 따라옵니다.</p>
     </header>
     <div class="grid feats">
-      <div class="card"><h3>한 단계씩</h3><p>작은 패널이 현재 단계를 보여 주고 화살표가 길을 가리킵니다. 단계는 하는 대로 저절로 체크됩니다.</p></div>
-      <div class="card"><h3>나만의 속도</h3><p>속도, 안전, 이야기 슬라이더로 경로가 무엇을 우선할지 정합니다. 플레이할 수 있는 시간을 정하면 그 안에 맞는 것만 넣고 멈추기 좋은 곳에서 끝납니다.</p></div>
+      <div class="card" id="gg-panel"><h3>한 단계씩</h3><p>작은 패널이 현재 단계를 보여 주고 화살표가 길을 가리킵니다. 단계는 하는 대로 저절로 체크됩니다.</p></div>
+      <div class="card" id="gg-pace"><h3>나만의 속도</h3><p>속도, 안전, 이야기 슬라이더로 경로가 무엇을 우선할지 정합니다. 플레이할 수 있는 시간을 정하면 그 안에 맞는 것만 넣고 멈추기 좋은 곳에서 끝납니다.</p></div>
       <div class="card"><h3>가는 길의 들를 곳</h3><p>새 비행 지점, 2레벨마다 직업 상급자, 가방이 거의 찼을 때 상인, 우편, 40레벨부터 탈것 알림. 들를 곳은 종류별로 끌 수 있습니다.</p></div>
       <div class="card"><h3>지도 위에</h3><p>세계 지도에 번호가 매겨진 경로의 들를 곳과 그 사이의 선, 그리고 퀘스트가 있는 지역마다 표시. 경험치를 빨리 얻는 곳일수록 더 밝습니다.</p></div>
       <div class="card"><h3>친구와 함께</h3><p>둘을 위한 하나의 경로: 같은 퀘스트를 같은 순서로. 패널에 친구가 얼마나 뒤처졌는지 나옵니다.</p></div>
       <div class="card"><h3>휴대폰에서</h3><p>‘계획 공유’는 경로를 코드로 바꿉니다. 계획 페이지에 붙여 넣으면 휴대폰에서 경로를 보고 단계를 체크할 수 있습니다.</p></div>
     </div>
-    <p class="how"><code>/fgui plan</code>을 입력하거나, 설정의 안내서 탭에서 <b>내 경로 계획</b>을 누르거나, 안내서 패널의 ‘계획’ 버튼으로 엽니다. 처음에는 네 쪽짜리 짧은 둘러보기가 설명해 주고, 플래너 창의 <b>플래너 사용법</b>으로 다시 볼 수 있습니다.</p>
+    <p class="how" id="gg-open"><code>/fgui plan</code>을 입력하거나, 설정의 안내서 탭에서 <b>내 경로 계획</b>을 누르거나, 안내서 패널의 ‘계획’ 버튼으로 엽니다. 처음에는 네 쪽짜리 짧은 둘러보기가 설명해 주고, 플래너 창의 <b>플래너 사용법</b>으로 다시 볼 수 있습니다.</p>
   </div>
 </section>
 
@@ -162,7 +220,7 @@ ol.howtos p { margin: 0; }
 
 <section class="block" id="gold" aria-labelledby="h-gold">
   <div class="wrap">
-    <header>
+    <header id="gg-gold">
       <span class="eyebrow">골드</span>
       <h2 id="h-gold">골드 버는 방법</h2>
       <p class="lede">내가 본 것을 바탕으로 골드 버는 방법을 좋은 순서대로 보여 주는 창: 내 경매장의 가격, 상인이 주는 값, 전리품을 얻은 몬스터, 채집한 약초와 광석, 아는 제조법.</p>
@@ -227,6 +285,32 @@ ol.howtos p { margin: 0; }
   </div>
 </section>
 
+<section class="block" id="example" aria-labelledby="h-example">
+  <div class="wrap">
+    <header>
+      <span class="eyebrow">예시</span>
+      <h2 id="h-example">계획 페이지가 보여 주는 경로</h2>
+      <p class="lede">이것은 예시입니다: 엘윈 숲의 짧은 구간을 담은 계획 코드를, 계획 페이지와 같은 판독기로 읽었습니다. 내 경로는 게임 안의 플래너가 만듭니다.</p>
+    </header>
+    <div class="ex" id="ex" data-code="SUIP1!&#123;S2:crN0;S2:flN1;S2:lv&#123;N1;N8;N2;N10;&#125;S1:sN1800;S2:st&#123;N1;&#123;S1:kS6:acceptS1:tS23:Accept: Red Linen GoodsS1:xN79.5;S1:yN68.9;S1:zN1;&#125;N2;&#123;S1:kS2:doS1:tS44:Collect 6 Red Linen Bandanas from the Defias&#125;N3;&#123;S1:kS6:turninS1:tS24:Turn in: Red Linen GoodsS1:xN79.5;S1:yN68.9;S1:zN1;&#125;N4;&#123;S1:kS3:flyS1:tS9:StormwindS1:xN70.9;S1:yN72.5;S1:zN2;&#125;N5;&#123;S1:kS4:noteS1:tS18:Good place to stop&#125;&#125;S1:vN1;S2:xpN4100;S1:z&#123;N1;&#123;S1:mN1429;S1:nS13:Elwynn Forest&#125;N2;&#123;S1:mN1453;S1:nS14:Stormwind City&#125;&#125;&#125;" data-min="%d분" data-hmin="%d시간 %d분" data-map="%s의 정류 지점 지도" data-step="%d단계: %s" data-steps="%s단계: %s" data-north="북" data-north-t="위쪽이 북쪽" data-pin="지도에서 %d단계 보기" hidden>
+      <p class="ex-badge"><span class="tag">예시</span> <span class="faint">내 경로가 아닙니다: 견본 계획 코드입니다.</span></p>
+      <dl class="ex-totals">
+        <div><dt>경험치</dt><dd data-t="xp"></dd></div>
+        <div><dt>시간</dt><dd data-t="time"></dd></div>
+        <div><dt>레벨</dt><dd data-t="levels"></dd></div>
+        <div><dt>비행</dt><dd data-t="flights"></dd></div>
+        <div><dt>단계</dt><dd data-t="steps"></dd></div>
+      </dl>
+      <div class="ex-zones" id="ex-zones"></div>
+      <p class="how">단계는 게임이 붙인 말 그대로라서 여기서는 영어로 남습니다. 단계를 체크해 보세요: 계획 페이지에서는 체크 표시가 브라우저에 남습니다. <a href="/plan/#c=SUIP1%21%7BS2%3AcrN0%3BS2%3AflN1%3BS2%3Alv%7BN1%3BN8%3BN2%3BN10%3B%7DS1%3AsN1800%3BS2%3Ast%7BN1%3B%7BS1%3AkS6%3AacceptS1%3AtS23%3AAccept%3A%20Red%20Linen%20GoodsS1%3AxN79.5%3BS1%3AyN68.9%3BS1%3AzN1%3B%7DN2%3B%7BS1%3AkS2%3AdoS1%3AtS44%3ACollect%206%20Red%20Linen%20Bandanas%20from%20the%20Defias%7DN3%3B%7BS1%3AkS6%3AturninS1%3AtS24%3ATurn%20in%3A%20Red%20Linen%20GoodsS1%3AxN79.5%3BS1%3AyN68.9%3BS1%3AzN1%3B%7DN4%3B%7BS1%3AkS3%3AflyS1%3AtS9%3AStormwindS1%3AxN70.9%3BS1%3AyN72.5%3BS1%3AzN2%3B%7DN5%3B%7BS1%3AkS4%3AnoteS1%3AtS18%3AGood%20place%20to%20stop%7D%7DS1%3AvN1%3BS2%3AxpN4100%3BS1%3Az%7BN1%3B%7BS1%3AmN1429%3BS1%3AnS13%3AElwynn%20Forest%7DN2%3B%7BS1%3AmN1453%3BS1%3AnS14%3AStormwind%20City%7D%7D%7D">이 예시를 계획 페이지에서 열기</a></p>
+    </div>
+    <p class="how">실제 지역 지도는 <a href="https://openmap.world/" target="_blank" rel="noopener noreferrer">새 탭에서 OpenMap을 열어</a> 보세요. 다른 플레이어들이 만든 별개의 사이트입니다.</p>
+    <noscript><p class="how">예시 경로는 브라우저의 스크립트가 그립니다. 계획 페이지에도 스크립트가 필요합니다.</p></noscript>
+  </div>
+</section>
+<script src="/assets/plan-reader.js?v=06a1b05a15" defer></script>
+<script src="/assets/plan-map.js?v=c9fb341499" defer></script>
+
 <section class="block" id="private" aria-labelledby="h-private">
   <div class="wrap">
     <header>
@@ -241,6 +325,26 @@ ol.howtos p { margin: 0; }
     </ul>
   </div>
 </section>
+
+<div class="tour card filled" id="tour" role="dialog" aria-modal="false" aria-labelledby="tour-h" aria-describedby="tour-count tour-text" tabindex="-1" hidden data-of="%d / %d단계">
+  <p class="eyebrow" id="tour-count"></p>
+  <h2 id="tour-h"></h2>
+  <p id="tour-text"></p>
+  <div class="tour-nav">
+    <button class="btn line small" type="button" id="tour-back">이전</button>
+    <button class="btn small" type="button" id="tour-next" data-next="다음 단계" data-done="둘러보기 마치기">다음 단계</button>
+    <button class="tour-x" type="button" id="tour-x"><span aria-hidden="true">×</span><span class="sr-only">둘러보기 닫기</span></button>
+  </div>
+  <p class="sr-only" id="tour-say" aria-live="polite"></p>
+</div>
+<ol id="tour-steps" hidden>
+  <li data-target="gg-panel"><h3>패널이 보여 주는 것</h3><p>작은 패널이 지금 할 단계를 보여 주고, 끝나면 알아서 체크합니다. &gt;를 누르면 단계를 건너뛰고, ‘다시 계획’은 지금 있는 곳에서 새로 계획하며, 단계를 오른쪽 클릭하면 더 많은 기능이 나옵니다.</p></li>
+  <li data-target="gg-panel"><h3>화살표</h3><p>화살표가 단계의 장소를 가리킵니다. 단계가 다른 지도에 있으면 그곳으로 가는 다음 구간, 예를 들어 비행 조련사나 부두를 가리킵니다. TomTom이 로드되어 있으면 TomTom의 화살표가 대신 가리킬 수 있습니다.</p></li>
+  <li data-target="gg-open"><h3>내 경로 계획</h3><p>설정의 안내서 탭에 있는 <b>내 경로 계획</b>은 지금 있는 곳에서 내 레벨에 맞는 퀘스트 경로를 짜고, 바로 따라가기 시작합니다.</p></li>
+  <li data-target="gg-pace"><h3>플래너 창</h3><p><code>/fgui plan</code> 또는 안내서 패널의 ‘계획’으로 플래너 창을 엽니다: 맨 위에는 지금 따라가는 것이, 그 아래에는 속도·안전·이야기 슬라이더와 플레이할 수 있는 시간 같은 계획에 관한 모든 설정이 있습니다.</p></li>
+  <li data-target="gg-gold"><h3>골드 창</h3><p>‘골드 버는 방법’은 이 캐릭터에게 맞는 아이디어를 좋은 것부터 보여 줍니다. 각 아이디어의 ‘가기’는 이동을 계획해 안내서 패널에 올립니다.</p></li>
+  <li data-target="ex"><h3>어느 화면에서나 내 경로</h3><p>플래너 창의 <b>계획 공유</b>는 경로를 코드로 바꿉니다. 계획 페이지에서 그 코드는 지역마다 지도와 체크할 단계 목록이 됩니다. 아래가 예시입니다.</p></li>
+</ol>
 </main>
 <footer class="site-foot">
   <div class="wrap">
@@ -259,12 +363,13 @@ ol.howtos p { margin: 0; }
     </div>
     <div class="foot-row">
       <span>연락처: <a href="mailto:email-forwarding@fantasyglassui.com">email-forwarding@fantasyglassui.com</a></span>
-      <p class="status"><span>버전 <b>13.0.0</b></span><span class="sep" aria-hidden="true">·</span><span><time datetime="2026-11-26">2026-11-26</time> 업데이트</span><span class="sep" aria-hidden="true">·</span><span>WoW: Forever <b>1.60.1 (70938)</b> 기준으로 확인</span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">소스 코드</a></span></p>
+      <p class="status"><span>버전 <b>13.0.1</b></span><span class="sep" aria-hidden="true">·</span><span><time datetime="2026-11-26">2026-11-26</time> 업데이트</span><span class="sep" aria-hidden="true">·</span><span>WoW: Forever <b>1.60.1 (70938)</b> 기준으로 확인</span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">소스 코드</a></span></p>
     </div>
     <nav class="foot-row foot-langs" aria-label="언어"><ul><li><a href="/guide-and-gold/" hreflang="en" lang="en" data-code="en">English</a></li><li><a href="/de/guide-and-gold/" hreflang="de" lang="de" data-code="de">Deutsch</a></li><li><a href="/fr/guide-and-gold/" hreflang="fr" lang="fr" data-code="fr">Français</a></li><li><a href="/es/guide-and-gold/" hreflang="es" lang="es" data-code="es">Español</a></li><li><a href="/ru/guide-and-gold/" hreflang="ru" lang="ru" data-code="ru">Русский</a></li><li><a href="/pt/guide-and-gold/" hreflang="pt" lang="pt" data-code="pt">Português</a></li><li><a href="/it/guide-and-gold/" hreflang="it" lang="it" data-code="it">Italiano</a></li><li><a href="/ko/guide-and-gold/" hreflang="ko" lang="ko" data-code="ko" aria-current="true">한국어</a></li><li><a href="/zh/guide-and-gold/" hreflang="zh-Hans" lang="zh-Hans" data-code="zh">中文</a></li></ul></nav>
     <p class="trnote">이 페이지는 원어민 검토 없이 번역되었습니다. 수정 제안을 환영합니다.</p>
   </div>
 </footer>
 <script src="/assets/site.js?v=2dd8abee61" defer></script>
+<script src="/assets/guide-and-gold.js?v=6528c8dc8b" defer></script>
 </body>
 </html>

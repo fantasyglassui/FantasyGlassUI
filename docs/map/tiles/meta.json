@@ -1,0 +1,1 @@
+{"width": 14790, "height": 9690, "maxZoom": 6, "tileSize": 256, "sea": "#2e3c44", "pxPerWorldUnit": 16, "worldMap": [1002, 668], "note": "pixel = world-map (uiMap 947) coords 0..1 * worldMap * pxPerWorldUnit (OpenMap ZoneArt.lua)"}

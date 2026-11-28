@@ -165,6 +165,7 @@ local function WhyText(step, guide)
     local xp, saves = tonumber(why.xp), tonumber(why.saves)
     if why.held then return "  " .. ns:Tr("(held for your trainer)") end
     if why.skin then return "  " .. ns:Tr("(skin them)") end
+    if why.noPlace then return "  " .. ns:Tr("(no place known: follow the game's quest marker)") end
     if xp and xp > 0 then
         local n = xp - xp % 1
         local good, nice = pcall(BreakUpLargeNumbers or tostring, n)
@@ -201,7 +202,7 @@ local function Short(t, n)
     local cut = t:sub(1, n):gsub("[\192-\255][\128-\191]*$", "")   -- (never half a letter)
     return ns.Trim(cut) .. "…"
 end
-local DONE_TICK = "|TInterface\\RaidFrame\\ReadyCheck-Ready:0|t"   -- (the ready-check tick the raid frames use: the game font has no ✓)
+local DONE_TICK = "|TInterface\\RaidFrame\\ReadyCheck-Ready:0|t"   -- (the ready-check tick the raid frames use: the game font has no check mark)
 local function Progress(step)
     local sid = type(step) == "table" and LogId and LogId(step.quest, step)
     local f = sid and C_QuestLog and C_QuestLog.GetQuestObjectives
@@ -1151,7 +1152,7 @@ TitleBase = function(st, guide)
     local s = type(st.summary) == "table" and st.summary
     local zone = s and ZoneName(s.zone)
     if not zone then return ns:Tr("Quest guide") end
-    return format(ns:Tr("Planned: %s, level %s → %s"), zone, LevelText(s.fromLevel), LevelText(s.toLevel))
+    return format(ns:Tr("Planned: %s, level %s to %s"), zone, LevelText(s.fromLevel), LevelText(s.toLevel))
 end
 -- What the panel says when the guide has no step left: a plan still being made, or nothing worth doing.
 local function EndText(st)

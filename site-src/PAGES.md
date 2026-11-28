@@ -23,6 +23,7 @@ belongs to the team that fills it. **One page is one folder, and nobody edits an
 | Accessibility | `pages/accessibility/` | `/accessibility/` | `/de/accessibility/` | W3 |
 | How-to pages (5) | `pages/guide-and-gold/<name>/` | `/guide-and-gold/<name>/` | `/de/guide-and-gold/<name>/` | W3 |
 | Press kit | `pages/press/` | `/press/` | `/de/press/` | W3 |
+| World map | `pages/map/` | `/map/` | `/de/map/` | W3 |
 | Plan page | `plan/` (`plan_page.py`) | `/plan/` (every language inside it) | | W3 |
 
 The languages are en, de, fr, es, ru, pt, it, ko and zh (`/de/`, `/fr/` ... `/zh/`). The list of pages, their
@@ -52,7 +53,7 @@ time and the files are served at `/video/`:
     video/trailer.webm     the loop, sound-free (VP9; offered first)
     video/trailer.mp4      the same loop for browsers without WebM (H.264)
     video/poster.jpg       its first frame: shown until the loop plays, and whenever it doesn't (sets the size)
-    video/captions-<lang>.vtt   optional: captions per language (en, de, ...), shown by default
+    video/captions.json    the captions: cue times and English lines (below); the build makes captions-<lang>.vtt
 
 - With a video: a muted, looping `<video>` that downloads nothing but the poster until it scrolls into view, plays by
   itself only when the reader has not asked for reduced motion, pauses when scrolled away, and has a visible
@@ -61,14 +62,76 @@ time and the files are served at `/video/`:
 - Keep the files small (a few MB); add them with `git add site-src/site/video/` and rebuild. No other change is
   needed.
 
+#### Captions, once the trailer is cut
+
+The captions come from one file, `site/video/captions.json`, like every other word on the site. It ships with an
+empty cue list (`"cues": []`), and while it is empty no caption file and no `<track>` is made. To fill it:
+
+1. Watch the cut and write one cue per line shown, in English, with its start and end in seconds from the start of
+   the trailer (decimals are fine; a cue may not start before the one above it ends; `\n` breaks a line):
+
+       {"_translate": ["text"], "cues": [
+         {"start": 0.0, "end": 2.8, "text": "Your whole interface in one look"},
+         {"start": 2.8, "end": 6.0, "text": "A route planner for levelling"}
+       ]}
+
+2. Run `python3 site-src/keys_all.py && python3 site-src/make_i18n.py`: the new lines are listed as missing. Add
+   them to the Home block of `site_tr.py` in all 8 other languages (German in "du"), and run `make_i18n.py` again.
+3. Run `python3 site-src/build_site.py`. It writes `/video/captions-<lang>.vtt` (WebVTT) for all 9 languages, and
+   the video gets a `<track kind="captions">` for each, labelled with the language's own name, with the page's
+   language on by default (a reader can pick another from the player's captions menu). The build stops on a cue
+   with no translation, or one whose times are wrong.
+
+`python3 -m pytest tests -q -k site_captions` checks that a sample file makes valid WebVTT in every language.
+
 - Changelog: built from the repository's `CHANGELOG.md` by `pages/changelog/body.py` (anchors `#v12-4-1` as before).
 - Accessibility: `pages/accessibility/body.py`, the text of the old page (anchors `#seeing-color` and so on as before).
 - Guide and Gold: the planner, Questie, gold, the hints, links to the five how-to pages and to the plan page (/plan/).
+  Also a short tour (six steps, each outlining a part of the page; `#tour` and its steps in `#tour-steps` in
+  `body.html`, run by `script.js`), and an example route (`#example`): the first `ok` plan code in
+  `tests/plan_codes.txt`, read in the browser by the plan page's own reader (`plan/reader.js`, which `body.py`
+  serves at `/assets/plan-reader.js`) and drawn zone by zone with its steps to tick.
+- The plan page's route map: once a plan is shown, the page loads the world map's own Leaflet, `tiles/meta.json`,
+  `tiles-have.json` and tiles from `/map/` (nothing is copied, nothing is asked before a plan is shown, and only this
+  site is asked), plus `/plan/zones.json`, which `plan_page.py` writes from the game's map table with
+  `tools/plan_zones.py` (per zone: pixel = a + b × the in-game coordinate / 100, the same sums as `tools/map_markers.py`;
+  a zone that comes without its UiMapID is found by its English name). Steps are numbered pins by kind, joined in
+  order, with a ring on the current step; chips fit the view to the whole route or one zone; steps with no known place
+  are named in a note under the map, with the credit line. The wheel and (on a phone) one finger move the page until
+  the map is clicked or tapped. `tests/plan_map_points.json` is the sample plan the checks place at known pixels.
+- The zone sketches, in the example route and on the plan page only when the world map's tiles cannot be loaded: one
+  drawer, `plan/map.js` (inline in the plan page, `/assets/plan-map.js` for Guide and Gold). Each map is fitted to its zone's stops (one scale across and down, never
+  closer than about 8 units of the zone's 0-100 map on a phone), its height follows them (150-420 px), and markers that
+  would touch fan out around the spot or join into a run ("9–14"). A faint grid and N for north; no game map art.
+  Markers are buttons named by their steps, and a step's number in the list is a button to its marker. Its words are
+  in the Guide and Gold block of `site_tr.py`; `plan_page.py` copies them into the plan page (`MAP_WORDS`).
 - Roadmap: drawn from `pages/roadmap/roadmap.json`; change an idea's status there (no dates).
+  An in-progress idea may carry a `preview` (what it will do, in a player's words), a `sketch` (a small text sketch:
+  `{"kind": "steps" | "list", "title": ..., "lines": [{"text": ...}]}`) and an `after` line; those ideas then show in a
+  "Coming in <version>" section under Ready (`/roadmap/#coming-13-5`), marked as not out yet, with no date. Home
+  (beside the latest version) and the Changelog (under its heading) link the first such section in one line, made by
+  `coming_link()` in `pages/roadmap/body.py`. For a later release, give its in-progress ideas a preview; once they
+  are out (status `ready`), the section and the links go by themselves.
 - Changelog: also writes `/feed.xml` (RSS, linked in every head and footer). Until CHANGELOG.md has a `## 13.0.x`
   heading, a marked 13.0 stand-in ("Coming soon") stands at the top and stays out of the feed.
 - A page can sit in a sub-folder (`pages/guide-and-gold/duo/` is `/guide-and-gold/duo/`); a data file with
   `"_translate": ["title", "text"]` has those fields listed for translation by `keys_all.py`.
+
+- World map (W3, `pages/map/`): Kalimdor and the Eastern Kingdoms in one map to drag and zoom, drawn with Leaflet 1.9.4
+  (from npm, served from `/map/leaflet/` with its licence; nothing comes from another site), on `L.CRS.Simple`. Its
+  files are in `pages/map/files/` and served at `/map/`:
+  - `tiles/{z}/{y}/{x}.webp` and `tiles/meta.json` (`width`, `height` of the whole map at `maxZoom`, `tileSize`, `sea`):
+    the map art (Blizzard's, from OpenMap's MapZones textures, with Santiago Reyes' painted gap fills). The page reads
+    meta.json when it loads, so a new tile set only needs the folder replaced (delete the old one first). The build
+    writes `/map/tiles-have.json`, the tiles there are, so open sea (no tile) is never asked for.
+  - `markers.json`: the places, `[{"name": "...", "category": "...", "coords": [x, y], "description": "..."}]`, with
+    `x, y` in pixels from the top left of the whole map at `maxZoom`. Made by `tools/map_markers.py` from OpenMap's
+    data and the game's map table in `tools/mapdata/` (run it again after changing those). Each kind (category) gets a
+    button to show or hide it; Zones and Dungeons show at first (`ON` in `script.js`). A place's name and description
+    are plain text (never HTML) and stay in English; a new kind's name goes in `kindName` in `script.js` and in the
+    World map block of `site_tr.py`.
+  - To add a place by hand: open `/map/?pins`, click the spot, and copy the line the pin helper shows into
+    `markers.json` with its name, category and description. Then build; `tests/sitecheck.py` checks every place.
 
 Old links keep working: on Home, `/#features`, `/#themes`, `/#maker`, `/#commands`, `/#faq` and `/#start` (and the
 same under `/de/` and so on), `/?theme=...` and `/?code=...#maker` open the page that now has that part (a small

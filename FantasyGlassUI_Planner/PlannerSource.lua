@@ -675,7 +675,8 @@ function ns.PlannerSource()
     -- Has Questie's quest list been read? (Not yet: the plan waits for it, PlannerSource's "waiting".)
     function src.ready() return IdList("QuestPointers") ~= nil end
     -- A copy of the shared list, so a caller may sort or change it (not ready yet: none this time), and the
-    -- quests in your log that Questie does not list (src.quest gives them from the log).
+    -- quests in your log that Questie does not know: not listed, and not matched to one of its quests by title
+    -- (src.quest gives them from the log, as the log source reads them).
     function src.ids()
         local ids, out = IdList("QuestPointers"), {}
         for i, id in ipairs(ids or {}) do
@@ -683,8 +684,18 @@ function ns.PlannerSource()
             out[i] = id
         end
         local listed = ids and IdSet("QuestPointers") or nil
+        -- (a log entry already matched by its title to one of Questie's quests is that quest: not a quest of its own)
+        local matched, pairsKept = {}, type(ns.root) == "table" and type(ns.root.plannerQuestIds) == "table" and ns.root.plannerQuestIds or nil
+        if pairsKept and ns.PlannerMappedId then
+            local qs = {}
+            for q in pairs(pairsKept) do qs[#qs + 1] = q end          -- (a pair proven wrong is let go: not while walking the table)
+            for _, q in ipairs(qs) do
+                local sid = ns.PlannerMappedId(q)
+                if type(sid) == "number" then matched[sid] = true end
+            end
+        end
         for _, id in ipairs(ns.PlannerLogSource().ids()) do
-            if not (listed and listed(id)) and InLog(id) then out[#out + 1] = id end
+            if not (listed and listed(id)) and not matched[id] and InLog(id) then out[#out + 1] = id end
         end
         return out
     end
@@ -955,6 +966,60 @@ end
 -- through pcall and checked before it is looked at: a hidden one counts as missing.)
 local function LogNum(v) if type(v) == "number" and not ns:IsSecret(v) then return v end end
 local function LogStr(v) if type(v) == "string" and not ns:IsSecret(v) and v ~= "" then return v end end
+local function LogYes(f, id)
+    if type(f) ~= "function" then return false end
+    local ok, v = Try(f, id)
+    return ok and ns.Yes(v)
+end
+-- What the log's objective types are to the plan (anything else: "other", a minute's work).
+local LOG_KINDS = { monster = "kill", item = "item" }
+-- The quest log's objectives of a quest still to be done, as plan objectives: each with what is left of it (count).
+local function LogObjectives(QL, id)
+    local out = {}
+    if type(QL.GetQuestObjectives) ~= "function" then return out end
+    local ok, list = Try(QL.GetQuestObjectives, id)
+    if not ok or type(list) ~= "table" or ns:IsSecret(list) then return out end
+    for _, o in ipairs(list) do
+        if type(o) == "table" then
+            local need, have = LogNum(o.numRequired), LogNum(o.numFulfilled) or 0
+            local fin = o.finished
+            local finished = (type(fin) == "boolean" and not ns:IsSecret(fin) and fin) or (need and need > 0 and have >= need)
+            if not finished then
+                local e = { kind = LOG_KINDS[LogStr(o.type) or ""] or "other", spots = {} }
+                if need and need > 0 then e.count, e.countKnown = math.max(1, need - have), true else e.countKnown = false end
+                out[#out + 1] = e
+            end
+        end
+    end
+    return out
+end
+-- Where the game says to go for a quest in your log: its next waypoint, else its mark on the map you are on (or a map
+-- above it, up to the zone). nil when the game gives neither.
+local function LogSpot(QL, id)
+    if type(QL.GetNextWaypoint) == "function" then
+        local ok, map, x, y = Try(QL.GetNextWaypoint, id)
+        map, x, y = ok and LogNum(map), ok and LogNum(x), ok and LogNum(y)
+        if map and x and y then return { map = map, x = x * 100, y = y * 100 } end
+    end
+    if type(QL.GetQuestsOnMap) ~= "function" or not (C_Map and C_Map.GetBestMapForUnit) then return nil end
+    local okM, here = Try(C_Map.GetBestMapForUnit, "player")
+    here = okM and LogNum(here)
+    if not here then return nil end
+    for _, map in ipairs(ns.PlannerZoneMaps and ns.PlannerZoneMaps(here) or { here }) do
+        local ok, list = Try(QL.GetQuestsOnMap, map)
+        if ok and type(list) == "table" and not ns:IsSecret(list) then
+            for _, e in ipairs(list) do
+                if type(e) == "table" and LogNum(e.questID) == id then
+                    local x, y = LogNum(e.x), LogNum(e.y)
+                    if x and y then return { map = map, x = x * 100, y = y * 100 } end
+                end
+            end
+        end
+    end
+    return nil
+end
+ns.PLANNER_LOG_XP_KILLS = 10     -- a logged quest whose reward the game will not tell: worth this many kills at its level, until
+                                 -- ns.PlannerCandidates sets it to what Questie's quests of its level give
 function ns.PlannerLogSource()
     local src = { kind = "log" }
     function src.ids()
@@ -969,6 +1034,8 @@ function ns.PlannerLogSource()
         end
         return out
     end
+    -- A quest in your log as a record (fromLog): what is left of its objectives, its experience, and where the game says to
+    -- go: the objectives' place while there is something to do, its hand-in once it is complete (ready).
     function src.quest(id)
         local QL = C_QuestLog
         if not (QL and QL.GetLogIndexForQuestID) then return nil end
@@ -980,11 +1047,12 @@ function ns.PlannerLogSource()
             local ok, v = Try(QL.GetInfo, index)
             info = ok and type(v) == "table" and v or nil
         end
-        local ends = {}
-        if QL.GetNextWaypoint then
-            local ok, map, x, y = Try(QL.GetNextWaypoint, id)
-            map, x, y = ok and LogNum(map), ok and LogNum(x), ok and LogNum(y)
-            if map and x and y then ends[1] = { map = map, x = x * 100, y = y * 100 } end
+        local ready = LogYes(QL.ReadyForTurnIn, id) or LogYes(QL.IsComplete, id)
+        local objectives = ready and {} or LogObjectives(QL, id)
+        local spot, ends = LogSpot(QL, id), {}
+        if spot then
+            if ready or #objectives == 0 then ends[1] = spot
+            else for _, o in ipairs(objectives) do o.spots = { { map = spot.map, x = spot.x, y = spot.y } } end end
         end
         local tag
         if QL.GetQuestTagInfo then
@@ -997,12 +1065,22 @@ function ns.PlannerLogSource()
             local ok, v = Try(QL.GetTitleForQuestID, id)
             title = ok and LogStr(v)
         end
+        local level = info and (LogNum(info.level) or LogNum(info.questLevel)) or 1
+        local xp, guess
+        if type(GetQuestLogRewardXP) == "function" then
+            local ok, v = Try(GetQuestLogRewardXP, id)
+            xp = ok and LogNum(v) or nil
+        end
+        if not xp or xp <= 0 then
+            guess = true
+            xp = (ns.PlannerKillXP and ns.PlannerKillXP(level, level) or 0) * ns.PLANNER_LOG_XP_KILLS
+        end
         return {
             id = id, name = title or (info and LogStr(info.title)) or format(ns:Tr("Quest %d"), id),
-            level = info and LogNum(info.questLevel) or 1, minLevel = 1, xp = 0,
-            starts = {}, ends = ends, objectives = {}, pre = {}, preAny = {}, exclusive = {},
+            level = level, minLevel = 1, xp = xp, xpGuess = guess,
+            starts = {}, ends = ends, objectives = objectives, pre = {}, preAny = {}, exclusive = {},
             elite = tag and ns.Yes(tag.isElite) or false, group = group,
-            dungeon = dungeon,
+            dungeon = dungeon, fromLog = true, complete = ready,
             repeatable = false, doable = true, reputation = {}, escort = ns.PLANNER_ESCORTS[id] == true,
         }
     end

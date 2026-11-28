@@ -335,6 +335,50 @@ function ns:KeepPlace(w, key)
     end
 end
 
+-- A window's size, kept like its place: the size saved under `key` is put back (never below the
+-- smallest that still fits, `minW` x `minH`). Returns the size it set, or nil when none was kept.
+function ns:KeepSize(w, key, minW, minH)
+    if type(w) ~= "table" or not w.SetSize then return end
+    local saved = type(ns.root) == "table" and type(ns.root.listSize) == "table" and ns.root.listSize[key]
+    if type(saved) ~= "table" then return end
+    local sw, sh = tonumber(saved[1]), tonumber(saved[2])
+    if not sw or not sh then return end
+    sw, sh = math.max(minW or 0, sw), math.max(minH or 0, sh)
+    w:SetSize(sw, sh)
+    return sw, sh
+end
+-- A corner to drag, which makes the window bigger or smaller and keeps the size under `key`.
+function ns:AddSizeGrip(w, key, minW, minH, maxW, maxH)
+    if type(w) ~= "table" then return end
+    if w.SetResizable then pcall(w.SetResizable, w, true) end
+    if w.SetResizeBounds then pcall(w.SetResizeBounds, w, minW, minH, maxW or 1600, maxH or 1200)
+    elseif w.SetMinResize then pcall(w.SetMinResize, w, minW, minH) end
+    local grip = CreateFrame("Button", nil, w)
+    grip:SetSize(16, 16)
+    grip:SetPoint("BOTTOMRIGHT", -3, 3)
+    grip.tex = grip:CreateTexture(nil, "OVERLAY")
+    grip.tex:SetAllPoints()
+    grip.tex:SetTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
+    grip:SetScript("OnMouseDown", function() if w.StartSizing then w:StartSizing("BOTTOMRIGHT") end end)
+    grip:SetScript("OnMouseUp", function()
+        if w.StopMovingOrSizing then w:StopMovingOrSizing() end
+        local gw, gh = w:GetWidth(), w:GetHeight()
+        if type(ns.root) == "table" and type(gw) == "number" and type(gh) == "number" then
+            ns.root.listSize = type(ns.root.listSize) == "table" and ns.root.listSize or {}
+            ns.root.listSize[key] = { math.floor(gw + 0.5), math.floor(gh + 0.5) }
+        end
+    end)
+    grip:SetScript("OnEnter", function(self)
+        if not GameTooltip then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(ns:Tr("Drag to resize"))
+        GameTooltip:Show()
+    end)
+    grip:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    w.grip = grip
+    return grip
+end
+
 -- How long ago, in words: "just now", "12 min ago", "3 h ago", "5 days ago".
 function ns.Ago(seconds)
     local ago = math.max(0, tonumber(seconds) or 0)

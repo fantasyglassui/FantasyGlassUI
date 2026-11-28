@@ -55,10 +55,73 @@ eq(FGPlan.read("SUIT1!{S4:nameS1:x}").other, true, "a theme code is told apart")
 eq(FGPlan.read("hello").other, false, "other text is not");
 eq(FGPlan.read(null).why, "empty", "nothing");
 
-// the page and the reader: nothing leaves the browser
+// the zone map (map.js): fitted to the stops, one scale for x and y, and no two markers on top of each other
+var FGPlanMap = require(path.join(ROOT, "site-src", "plan", "map.js"));
+function stopsOf(list) { return list.map(function (p, i) { return { x: p[0], y: p[1], step: i, kind: p[2] || "do" }; }); }
+var hub = [46.2, 30.4], clump = stopsOf([hub, hub, [46.6, 30.1], [47.9, 31.8], [48.4, 32.6], [49.0, 31.2], [47.2, 33.4], hub, hub, [46.6, 30.1],
+  [46.6, 30.1], [45.7, 29.6], [45.5, 30.9], [48.8, 29.0], [49.3, 28.6], [46.6, 30.1], [46.0, 30.6], [46.0, 30.6, "hearth"]]);
+var spread = stopsOf([[79.5, 68.9], [79.8, 68.3], [69.0, 79.2], [52.4, 66.1], [41.9, 65.6], [41.9, 65.6], [61.0, 53.7], [79.5, 68.9], [24.2, 74.5], [34.6, 84.1]]);
+[[clump, "a clump"], [spread, "a spread route"], [stopsOf([[52, 47.5]]), "one stop"]].forEach(function (c) {
+  [358, 760, 200].forEach(function (w) {
+    var L = FGPlanMap.layout(c[0], w), what = c[1] + " at " + w + " px: ";
+    var seen = [];
+    L.marks.forEach(function (q) { seen = seen.concat(q.steps); });
+    eq(seen.sort(function (a, b) { return a - b; }), c[0].map(function (s) { return s.step; }), what + "every stop on one marker");
+    L.marks.forEach(function (q, i) {
+      if (q.mx - q.hw < 0 || q.mx + q.hw > L.width || q.my - 11 < 0 || q.my + 11 > L.height) fail(what + "a marker outside the map");
+      L.marks.forEach(function (r, j) {
+        if (j > i && FGPlanMap.touch(q, r, 0)) fail(what + "markers " + q.text + " and " + r.text + " overlap");
+      });
+    });
+    if (L.height < 150 || L.height > 420) fail(what + "a height of " + L.height);
+    if (Math.abs(L.view.w / L.view.h - L.width / L.height) > 1e-6) fail(what + "x and y at different scales");
+    L.points.forEach(function (p) {
+      if (Math.abs((p.x - L.view.x) * L.scale - p.px) > 1e-6 || Math.abs((p.y - L.view.y) * L.scale - p.py) > 1e-6) fail(what + "a stop not where it is");
+    });
+  });
+});
+var one = FGPlanMap.layout(stopsOf([[52, 47.5]]), 760);
+if (one.view.w < 10 || one.height > 200) fail("one stop is not zoomed in too far, in a low box: " + one.view.w + " units, " + one.height + " px");
+var far = FGPlanMap.layout(spread, 358);
+if (far.view.w < 55 || far.view.w > 100) fail("a spread route fits its stops: " + far.view.w + " units across");
+eq(FGPlanMap.rangeText([3, 4, 5, 6], true), "3\u20136", "a run of steps");
+eq(FGPlanMap.rangeText([2, 5], false), "2, 5", "two apart");
+
+// the world map (FGPlan.place with /plan/zones.json from tools/plan_zones.py): a sample plan's steps land at known pixels
+// (tests/plan_map_points.json), the same as the zone names on /map/ (markers.json puts each at its zone's 50, 50)
+var zones = JSON.parse(require("child_process").execFileSync("python3", [path.join(ROOT, "site-src", "tools", "plan_zones.py")], { stdio: ["ignore", "pipe", "ignore"] }).toString());
+var sample = JSON.parse(fs.readFileSync(path.join(ROOT, "tests", "plan_map_points.json"), "utf8"));
+var sp = FGPlan.read(sample.code);
+if (!sp.ok) fail("the map sample code does not read");
+var at = FGPlan.place(sp.plan, zones);
+var marks = JSON.parse(fs.readFileSync(path.join(ROOT, "site-src", "pages", "map", "files", "markers.json"), "utf8"));
+sample.points.forEach(function (q) {
+  var p = at[q.step];
+  if (!p || Math.abs(p[0] - q.px[0]) > 1 || Math.abs(p[1] - q.px[1]) > 1) fail("step " + (q.step + 1) + " in " + q.zone + " is at " + JSON.stringify(p) + ", not " + JSON.stringify(q.px));
+  var s = sp.plan.st[q.step];
+  if (s.x === 50 && s.y === 50) {
+    var m = marks.filter(function (x) { return x.category === "Zones" && x.name === q.zone; })[0];
+    if (!m || Math.abs(m.coords[0] - p[0]) > 1 || Math.abs(m.coords[1] - p[1]) > 1) fail(q.zone + " at 50, 50 is not where /map/ names the zone");
+  }
+});
+eq(at.map(function (p, i) { return p ? -1 : i; }).filter(function (i) { return i >= 0; }), sample.unplaced, "the steps with no place on the map");
+eq(at[0][0] < 7395 && at[4][0] > 7395, true, "Durotar on Kalimdor (left), Stormwind in the Eastern Kingdoms (right)");
+eq(FGPlan.place(sp.plan, null).every(function (p) { return p === null; }), true, "no zones: no place");
+eq(Object.keys(zones.ids).length > 40 && zones.names["Durotar"] === 1411, true, "zones.json has the zones and their names");
+
+// the page and the reader: nothing leaves the browser. The page asks only this site, once a plan is shown, through one
+// fetch() that refuses any other path (and for Leaflet's files and the tiles, by path; tests/sitebrowser.py watches it)
 var banned = /fetch\(|XMLHttpRequest|sendBeacon|WebSocket|<script src|<link|https?:\/\//;
-["reader.js", "page.html"].forEach(function (name) {
+["reader.js", "map.js", "page.html"].forEach(function (name) {
   var text = fs.readFileSync(path.join(ROOT, "site-src", "plan", name), "utf8").replace(/fantasyglassui\.com/g, "");
+  // the one outside address: OpenMap's plain link in page.html (the button copies it into an iframe it makes; no <iframe> is written)
+  if (name === "page.html") {
+    if (text.split("https://openmap.world/").length !== 2 || /<iframe/.test(text)) fail("page.html: OpenMap must be named once and have no <iframe> tag");
+    text = text.replace("https://openmap.world/", "");
+    var guard = 'if (!/^\\/(?:map|plan)\\/[\\w\\/.-]+$/.test(path)) return Promise.reject(new Error(path));\n    return fetch(path, ';
+    if (text.split("fetch(").length !== 2 || text.indexOf(guard) < 0) fail("page.html: one fetch(), for this site's /map/ and /plan/ only");
+    text = text.replace(guard, "");
+  }
   var m = banned.exec(text);
   if (m) fail(name + " contains " + m[0]);
 });

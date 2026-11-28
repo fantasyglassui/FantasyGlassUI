@@ -251,5 +251,203 @@
   "it": "Come usare questa pagina",
   "ko": "이 페이지 사용법",
   "zh": "如何使用本页"
+ },
+ "The route on the map": {
+  "en": "The route on the map",
+  "de": "Die Route auf der Karte",
+  "fr": "L'itinéraire sur la carte",
+  "es": "La ruta en el mapa",
+  "ru": "Маршрут на карте",
+  "pt": "A rota no mapa",
+  "it": "Il percorso sulla mappa",
+  "ko": "지도 위의 경로",
+  "zh": "地图上的路线"
+ },
+ "Whole route": {
+  "en": "Whole route",
+  "de": "Ganze Route",
+  "fr": "Tout l'itinéraire",
+  "es": "Toda la ruta",
+  "ru": "Весь маршрут",
+  "pt": "Rota inteira",
+  "it": "Tutto il percorso",
+  "ko": "전체 경로",
+  "zh": "整条路线"
+ },
+ "Map view": {
+  "en": "Map view",
+  "de": "Kartenansicht",
+  "fr": "Vue de la carte",
+  "es": "Vista del mapa",
+  "ru": "Вид карты",
+  "pt": "Vista do mapa",
+  "it": "Vista della mappa",
+  "ko": "지도 보기",
+  "zh": "地图视图"
+ },
+ "Map of the route": {
+  "en": "Map of the route",
+  "de": "Karte der Route",
+  "fr": "Carte de l'itinéraire",
+  "es": "Mapa de la ruta",
+  "ru": "Карта маршрута",
+  "pt": "Mapa da rota",
+  "it": "Mappa del percorso",
+  "ko": "경로 지도",
+  "zh": "路线地图"
+ },
+ "Loading the map…": {
+  "en": "Loading the map…",
+  "de": "Die Karte wird geladen …",
+  "fr": "Chargement de la carte…",
+  "es": "Cargando el mapa…",
+  "ru": "Загрузка карты…",
+  "pt": "Carregando o mapa…",
+  "it": "Caricamento della mappa…",
+  "ko": "지도를 불러오는 중…",
+  "zh": "正在加载地图…"
+ },
+ "Map art © Blizzard Entertainment, map pieces from OpenMap.": {
+  "en": "Map art © Blizzard Entertainment, map pieces from OpenMap.",
+  "de": "Kartengrafik © Blizzard Entertainment, Kartenteile von OpenMap.",
+  "fr": "Illustrations de la carte © Blizzard Entertainment, morceaux de carte d'OpenMap.",
+  "es": "Arte del mapa © Blizzard Entertainment, piezas del mapa de OpenMap.",
+  "ru": "Изображения карты © Blizzard Entertainment, фрагменты карты от OpenMap.",
+  "pt": "Arte do mapa © Blizzard Entertainment, partes do mapa do OpenMap.",
+  "it": "Grafica della mappa © Blizzard Entertainment, pezzi della mappa da OpenMap.",
+  "ko": "지도 그림 © Blizzard Entertainment, 지도 조각은 OpenMap 제공.",
+  "zh": "地图美术 © Blizzard Entertainment，地图拼块来自 OpenMap。"
+ },
+ "Full credits on the world map": {
+  "en": "Full credits on the world map",
+  "de": "Alle Angaben auf der Weltkarte",
+  "fr": "Tous les crédits sur la carte du monde",
+  "es": "Todos los créditos en el mapa del mundo",
+  "ru": "Все благодарности — на карте мира",
+  "pt": "Todos os créditos no mapa-múndi",
+  "it": "Tutti i crediti sulla mappa del mondo",
+  "ko": "전체 출처는 세계 지도에서",
+  "zh": "完整致谢见世界地图"
+ },
+ "Step %s has no place on the map.": {
+  "en": "Step %s has no place on the map.",
+  "de": "Schritt %s hat keinen Ort auf der Karte.",
+  "fr": "L'étape %s n'a pas de lieu sur la carte.",
+  "es": "El paso %s no tiene lugar en el mapa.",
+  "ru": "У шага %s нет места на карте.",
+  "pt": "O passo %s não tem lugar no mapa.",
+  "it": "Il passo %s non ha un luogo sulla mappa.",
+  "ko": "%s단계는 지도에 위치가 없습니다.",
+  "zh": "第 %s 步在地图上没有位置。"
+ },
+ "Steps %s have no place on the map.": {
+  "en": "Steps %s have no place on the map.",
+  "de": "Die Schritte %s haben keinen Ort auf der Karte.",
+  "fr": "Les étapes %s n'ont pas de lieu sur la carte.",
+  "es": "Los pasos %s no tienen lugar en el mapa.",
+  "ru": "У шагов %s нет места на карте.",
+  "pt": "Os passos %s não têm lugar no mapa.",
+  "it": "I passi %s non hanno un luogo sulla mappa.",
+  "ko": "%s단계는 지도에 위치가 없습니다.",
+  "zh": "第 %s 步在地图上没有位置。"
+ },
+ "The world map could not be loaded, so each zone is drawn as a sketch.": {
+  "en": "The world map could not be loaded, so each zone is drawn as a sketch.",
+  "de": "Die Weltkarte konnte nicht geladen werden, darum ist jede Zone als Skizze gezeichnet.",
+  "fr": "La carte du monde n'a pas pu être chargée : chaque zone est dessinée en croquis.",
+  "es": "No se pudo cargar el mapa del mundo, así que cada zona se dibuja como un boceto.",
+  "ru": "Карту мира не удалось загрузить, поэтому каждая зона нарисована схемой.",
+  "pt": "Não foi possível carregar o mapa-múndi, então cada zona aparece como um esboço.",
+  "it": "Non è stato possibile caricare la mappa del mondo, quindi ogni zona è disegnata come uno schizzo.",
+  "ko": "세계 지도를 불러올 수 없어 각 지역을 간단한 그림으로 보여 줍니다.",
+  "zh": "无法加载世界地图，因此每个区域以草图显示。"
+ },
+ "Accept a quest": {
+  "en": "Accept a quest",
+  "de": "Quest annehmen",
+  "fr": "Accepter une quête",
+  "es": "Aceptar una misión",
+  "ru": "Взять задание",
+  "pt": "Aceitar uma missão",
+  "it": "Accettare una missione",
+  "ko": "퀘스트 수락",
+  "zh": "接受任务"
+ },
+ "Do a quest": {
+  "en": "Do a quest",
+  "de": "Quest erledigen",
+  "fr": "Faire une quête",
+  "es": "Hacer una misión",
+  "ru": "Выполнить задание",
+  "pt": "Fazer uma missão",
+  "it": "Svolgere una missione",
+  "ko": "퀘스트 진행",
+  "zh": "完成任务目标"
+ },
+ "Turn in a quest": {
+  "en": "Turn in a quest",
+  "de": "Quest abgeben",
+  "fr": "Rendre une quête",
+  "es": "Entregar una misión",
+  "ru": "Сдать задание",
+  "pt": "Entregar uma missão",
+  "it": "Consegnare una missione",
+  "ko": "퀘스트 완료 보고",
+  "zh": "交任务"
+ },
+ "Travel": {
+  "en": "Travel",
+  "de": "Reisen",
+  "fr": "Voyage",
+  "es": "Viaje",
+  "ru": "Перемещение",
+  "pt": "Viagem",
+  "it": "Viaggio",
+  "ko": "이동",
+  "zh": "旅行"
+ },
+ "Other step": {
+  "en": "Other step",
+  "de": "Anderer Schritt",
+  "fr": "Autre étape",
+  "es": "Otro paso",
+  "ru": "Другой шаг",
+  "pt": "Outro passo",
+  "it": "Altro passo",
+  "ko": "기타 단계",
+  "zh": "其他步骤"
+ },
+ "Step %d": {
+  "en": "Step %d",
+  "de": "Schritt %d",
+  "fr": "Étape %d",
+  "es": "Paso %d",
+  "ru": "Шаг %d",
+  "pt": "Passo %d",
+  "it": "Passo %d",
+  "ko": "%d단계",
+  "zh": "第 %d 步"
+ },
+ "Show in the list": {
+  "en": "Show in the list",
+  "de": "In der Liste zeigen",
+  "fr": "Voir dans la liste",
+  "es": "Ver en la lista",
+  "ru": "Показать в списке",
+  "pt": "Ver na lista",
+  "it": "Mostra nell'elenco",
+  "ko": "목록에서 보기",
+  "zh": "在列表中显示"
+ },
+ "Tap the map, then drag to move it.": {
+  "en": "Tap the map, then drag to move it.",
+  "de": "Tippe auf die Karte, dann kannst du sie verschieben.",
+  "fr": "Touchez la carte, puis faites-la glisser pour la déplacer.",
+  "es": "Toca el mapa y luego arrástralo para moverlo.",
+  "ru": "Коснитесь карты, затем перетаскивайте её.",
+  "pt": "Toque no mapa e depois arraste para movê-lo.",
+  "it": "Tocca la mappa, poi trascinala per spostarla.",
+  "ko": "지도를 탭한 뒤 끌어서 움직이세요.",
+  "zh": "先点一下地图，再拖动来移动它。"
  }
 }

@@ -1,6 +1,8 @@
 <!-- Guide and Gold (W3): what the route planner and Ways to make gold do, Questie, the prices and sell hints, the
      how-to pages (pages/guide-and-gold/<name>/) and the plan page (/plan/, built by site-src/plan_page.py).
-     Every claim here is true of the add-on's code (FantasyGlassUI_Planner/, FantasyGlassUI_Gold/, Guide.lua). -->
+     Every claim here is true of the add-on's code (FantasyGlassUI_Planner/, FantasyGlassUI_Gold/, Guide.lua).
+     body.py fills in the example route's plan code (tests/plan_codes.txt) and the reader's and the map's addresses; script.js runs the
+     short tour (#tour, its steps in #tour-steps) and draws the example route (#example). -->
 <div class="wrap page-head gg-head">
   <span class="eyebrow">[[New in 13.0]]</span>
   <h1>[[Guide and Gold]]</h1>
@@ -9,6 +11,7 @@
     <a class="btn" href="/guide-and-gold/first-route/">[[Plan your first route]]</a>
     <a class="btn line" href="/plan/">[[Open the plan page]]</a>
   </div>
+  <p class="tour-start" id="tour-start" hidden><button class="btn line small" type="button" id="tour-go" aria-haspopup="dialog">[[Take the short tour]]</button> <span class="faint">[[Six steps through this page, at your own pace.]]</span></p>
   {{status}}
 </div>
 
@@ -20,14 +23,14 @@
       <p class="lede">[[It works out a route of quests for your level: which to take, in what order, and when to fly, train or hand in. As you play, it plans again, so the route keeps up with you.]]</p>
     </header>
     <div class="grid feats">
-      <div class="card"><h3>[[A step at a time]]</h3><p>[[A small panel shows the step you are on, and an arrow points the way. Steps tick off by themselves as you do them.]]</p></div>
-      <div class="card"><h3>[[Your pace]]</h3><p>[[The Speed, Safety and Story sliders set what the route goes for. Say how long you can play, and the route takes only what fits and ends at a good place to stop.]]</p></div>
+      <div class="card" id="gg-panel"><h3>[[A step at a time]]</h3><p>[[A small panel shows the step you are on, and an arrow points the way. Steps tick off by themselves as you do them.]]</p></div>
+      <div class="card" id="gg-pace"><h3>[[Your pace]]</h3><p>[[The Speed, Safety and Story sliders set what the route goes for. Say how long you can play, and the route takes only what fits and ends at a good place to stop.]]</p></div>
       <div class="card"><h3>[[Stops on the way]]</h3><p>[[New flight points, your class trainer every two levels, a vendor when your bags are nearly full, mail, and a mount reminder from level 40. Each kind of stop can be switched off.]]</p></div>
       <div class="card"><h3>[[On the map]]</h3><p>[[The route's stops, numbered, with a line between them on the world map, and a mark on each area with quests, brighter where the experience comes faster.]]</p></div>
       <div class="card"><h3>[[With a friend]]</h3><p>[[Plan one route for two: the same quests, in the same order. The panel shows how far behind your friend is.]]</p></div>
       <div class="card"><h3>[[On your phone]]</h3><p>[[Share plan turns your route into a code. Paste it on the plan page to see the route and tick off the steps on a phone.]]</p></div>
     </div>
-    <p class="how">[[Open it with <code>/fgui plan</code>, with <b>Plan my route</b> on the Guide tab of the settings, or with the Planner button on the guide panel. The first time, a short tour of four pages explains it, and <b>How the planner works</b> in the planner window shows it again.]]</p>
+    <p class="how" id="gg-open">[[Open it with <code>/fgui plan</code>, with <b>Plan my route</b> on the Guide tab of the settings, or with the Planner button on the guide panel. The first time, a short tour of four pages explains it, and <b>How the planner works</b> in the planner window shows it again.]]</p>
   </div>
 </section>
 
@@ -63,7 +66,7 @@
 
 <section class="block" id="gold" aria-labelledby="h-gold">
   <div class="wrap">
-    <header>
+    <header id="gg-gold">
       <span class="eyebrow">[[Gold]]</span>
       <h2 id="h-gold">[[Ways to make gold]]</h2>
       <p class="lede">[[One window that lists ways to make gold, best first, from what you have seen: the prices at your auction house, what vendors pay, the monsters you have looted, the herbs and ore you have gathered and the recipes you know.]]</p>
@@ -128,6 +131,32 @@
   </div>
 </section>
 
+<section class="block" id="example" aria-labelledby="h-example">
+  <div class="wrap">
+    <header>
+      <span class="eyebrow">[[Example]]</span>
+      <h2 id="h-example">[[A route, as the plan page shows it]]</h2>
+      <p class="lede">[[This is an example plan code for a short stretch of Elwynn Forest, read by the same reader as the plan page. Your own route comes from the planner in the game.]]</p>
+    </header>
+    <div class="ex" id="ex" data-code="@@EXAMPLE_CODE@@" data-min="[[%d min]]" data-hmin="[[%d h %d min]]" data-map="[[Map of the stops in %s]]" data-step="[[Step %d: %s]]" data-steps="[[Steps %s: %s]]" data-north="[[N]]" data-north-t="[[North is up]]" data-pin="[[Show step %d on the map]]" hidden>
+      <p class="ex-badge"><span class="tag">[[Example]]</span> <span class="faint">[[Not your route: a sample plan code.]]</span></p>
+      <dl class="ex-totals">
+        <div><dt>[[Experience]]</dt><dd data-t="xp"></dd></div>
+        <div><dt>[[Time]]</dt><dd data-t="time"></dd></div>
+        <div><dt>[[Levels]]</dt><dd data-t="levels"></dd></div>
+        <div><dt>[[Flights]]</dt><dd data-t="flights"></dd></div>
+        <div><dt>[[Steps]]</dt><dd data-t="steps"></dd></div>
+      </dl>
+      <div class="ex-zones" id="ex-zones"></div>
+      <p class="how">[[The steps are in the words the game gave them, so they stay in English here. Tick a step to try it: on the plan page, your ticks are kept in your browser.]] <a href="@@EXAMPLE_LINK@@">[[Open this example on the plan page]]</a></p>
+    </div>
+    <p class="how">[[For the real zone maps, <a href="https://openmap.world/" target="_blank" rel="noopener noreferrer">open OpenMap in a new tab</a>. It's a separate site, made by other players.]]</p>
+    <noscript><p class="how">[[The example route is drawn by a script in your browser. The plan page needs one too.]]</p></noscript>
+  </div>
+</section>
+<script src="@@READER@@" defer></script>
+<script src="@@MAP@@" defer></script>
+
 <section class="block" id="private" aria-labelledby="h-private">
   <div class="wrap">
     <header>
@@ -142,3 +171,23 @@
     </ul>
   </div>
 </section>
+
+<div class="tour card filled" id="tour" role="dialog" aria-modal="false" aria-labelledby="tour-h" aria-describedby="tour-count tour-text" tabindex="-1" hidden data-of="[[Step %d of %d]]">
+  <p class="eyebrow" id="tour-count"></p>
+  <h2 id="tour-h"></h2>
+  <p id="tour-text"></p>
+  <div class="tour-nav">
+    <button class="btn line small" type="button" id="tour-back">[[Back]]</button>
+    <button class="btn small" type="button" id="tour-next" data-next="[[Next step]]" data-done="[[Finish the tour]]">[[Next step]]</button>
+    <button class="tour-x" type="button" id="tour-x"><span aria-hidden="true">×</span><span class="sr-only">[[Close the tour]]</span></button>
+  </div>
+  <p class="sr-only" id="tour-say" aria-live="polite"></p>
+</div>
+<ol id="tour-steps" hidden>
+  <li data-target="gg-panel"><h3>[[What the panel shows]]</h3><p>[[A small panel shows the step you are on, and ticks it off by itself when it is done. Press &gt; to move past a step, Plan again to plan from where you are now, and right-click a step for more.]]</p></li>
+  <li data-target="gg-panel"><h3>[[The arrow]]</h3><p>[[An arrow points to the place of your step. When the step is on another map, it points to the next leg of the way there, such as the flight master or the dock. With TomTom loaded, TomTom's arrow can point instead.]]</p></li>
+  <li data-target="gg-open"><h3>[[Plan my route]]</h3><p>[[<b>Plan my route</b>, on the Guide tab of the settings, works out a route of quests for your level from where you are, and starts following it.]]</p></li>
+  <li data-target="gg-pace"><h3>[[The planner window]]</h3><p>[[<code>/fgui plan</code>, or Planner on the guide panel, opens the planner window: what you are following at the top, then every setting for what it plans, such as the Speed, Safety and Story sliders and how long you can play.]]</p></li>
+  <li data-target="gg-gold"><h3>[[The gold window]]</h3><p>[[Ways to make gold lists ideas for this character, best first. Each has Go, which plans the trip and puts it on the guide panel.]]</p></li>
+  <li data-target="ex"><h3>[[Your route on any screen]]</h3><p>[[<b>Share plan</b> in the planner window turns your route into a code. On the plan page, the code becomes a map for each zone and a list of steps to tick. Here is an example.]]</p></li>
+</ol>

@@ -31,3 +31,6 @@ nav.jump a.gone { opacity: .45; }
 .follow { margin: 10px 0 0; padding: 22px 26px 12px; }
 .follow h2 { font-size: 1.5rem; margin-bottom: 10px; }
 .follow p { color: var(--dim); }
+/* The one-line link to the Roadmap's "Coming in <version>" preview (drawn from pages/roadmap/roadmap.json). */
+.coming-link { margin: 10px 0 0; color: var(--frost); }
+.coming-link a { font-weight: 600; }

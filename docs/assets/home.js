@@ -120,7 +120,7 @@
       if (loaded) return; loaded = true;
       ["webm", "mp4"].forEach(function (k) {
         var u = v.getAttribute("data-" + k); if (!u) return;
-        var s = document.createElement("source"); s.src = u; s.type = "video/" + k; v.appendChild(s);
+        var s = document.createElement("source"); s.src = u; s.type = "video/" + k; v.insertBefore(s, v.querySelector("track"));   // (sources before the caption tracks)
       });
       v.preload = "auto"; v.load();
     }

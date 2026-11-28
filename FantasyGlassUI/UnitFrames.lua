@@ -168,12 +168,30 @@ local function ScShow(s, on)
     if s.state and not on then s.state:Hide() end
 end
 
+-- The class emblem stands in for the portrait: under Starcut it fills the whole diamond and is cut to
+-- it, in Classic it fills the box. Called whenever the emblem shows and whenever the frame is laid out.
+-- The medallion is a plain frame of our own, so this is the same in a fight as out of one.
+local function EmblemFill(f)
+    local p = f.portrait
+    local m = p and p.emblem
+    if not m then return end
+    if ns.StarcutOn() and p.scSize then m:FillShape(p, "diamond", p.scSize) else m:FillShape(nil, nil, nil, 1) end
+end
+-- (made before it is needed, at layout, so it is already the right size and shape when it first shows)
+local function EmblemMake(f)
+    local p = f.portrait
+    if p and not p.emblem then p.emblem = ns:CreateEmblem(p, 1); p.emblem:Hide() end
+    EmblemFill(f)
+    return p and p.emblem
+end
+
 -- the diamond is S across; the line and stars hang off it; `mirror` puts it on the right
 local function ScPortrait(f, S, mirror)
     local p, s = f.portrait, ScParts(f)
     if not p then return end
     p:ClearAllPoints()
     p:SetSize(S, S)
+    p.scSize = S
     if mirror then p:SetPoint("CENTER", f, "RIGHT", S / 2 + 6, 0) else p:SetPoint("CENTER", f, "LEFT", -(S / 2 + 6), 0) end
     if p.bg then p.bg:Hide() end
     if p.sep then p.sep:Hide() end
@@ -186,10 +204,7 @@ local function ScPortrait(f, S, mirror)
     ScMasked(p.tex, s.mask, true)
     p.model:ClearAllPoints()
     p.model:SetPoint("TOPLEFT", p, "TOPLEFT", S / 4 + 1, -(S / 4 + 1)); p.model:SetPoint("BOTTOMRIGHT", p, "BOTTOMRIGHT", -(S / 4 + 1), S / 4 + 1)
-    if p.emblem then
-        p.emblem:ClearAllPoints()
-        p.emblem:SetPoint("TOPLEFT", p, "TOPLEFT", S * 0.2, -S * 0.2); p.emblem:SetPoint("BOTTOMRIGHT", p, "BOTTOMRIGHT", -S * 0.2, S * 0.2)
-    end
+    if (ns.db.ufPortrait or "3D") == "CLASS" then EmblemMake(f) else EmblemFill(f) end   -- the emblem fills the whole diamond
     if s.top then
         local side = mirror and "RIGHT" or "LEFT"
         s.top:ClearAllPoints(); s.top:SetPoint("CENTER", p, "TOP", 0, 2)
@@ -209,7 +224,8 @@ local function ClassicPortrait(f)
         if p.sep then p.sep:Show() end
         p.tex:ClearAllPoints(); p.tex:SetPoint("TOPLEFT", 1, -1); p.tex:SetPoint("BOTTOMRIGHT", -1, 1)
         p.model:ClearAllPoints(); p.model:SetPoint("TOPLEFT", 1, -1); p.model:SetPoint("BOTTOMRIGHT", -1, 1)
-        if p.emblem then p.emblem:ClearAllPoints(); p.emblem:SetPoint("TOPLEFT", 1, -1); p.emblem:SetPoint("BOTTOMRIGHT", -1, 1) end
+        p.scSize = nil
+        EmblemFill(f)
         if s then ScMasked(p.tex, s.mask, false) end
     end
     if s then ScShow(s, false) end
@@ -411,7 +427,7 @@ local function UpdatePortrait(f)
         local _, class = UnitClass(unit)
         if type(class) == "string" and not ns:IsSecret(class) and OUR_CLASSES[class] then
             local r, g, b = ns:ClassColor(unit)
-            if not p.emblem then p.emblem = ns:CreateEmblem(p, 1) end
+            EmblemMake(f)                                    -- (its full size and shape, every time it shows: in a fight too)
             p.emblem:SetClass(class, r, g, b)
             p.emblem:Show()
             return

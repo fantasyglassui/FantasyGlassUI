@@ -223,6 +223,9 @@
   .hero h1 { font-size: 2.35rem; }
 }
 @media (max-width: 600px) { .fams figure:not(:first-child) { display: none; } }
+/* The one-line link to the Roadmap's "Coming in <version>" preview (drawn from pages/roadmap/roadmap.json). */
+.coming-link, .latest .coming-link { margin: 10px 0 0; color: var(--frost); }
+.coming-link a { font-weight: 600; }
 </style>
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "SoftwareApplication", "name": "Fantasy Glass UI", "applicationCategory": "GameApplication", "applicationSubCategory": "World of Warcraft add-on", "operatingSystem": "Windows, macOS", "description": "A complete interface for WoW Forever: unit frames, action bars, raid frames, nameplates, bags and every window in one Starcut look, with 116 themes.", "url": "https://fantasyglassui.com/", "image": "https://fantasyglassui.com/og.jpg", "downloadUrl": "https://www.curseforge.com/wow/addons/fantasy-glass-ui", "author": {"@type": "Person", "name": "DustyMouse"}, "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "sameAs": ["https://discord.gg/qeSMwQWyPR", "https://www.curseforge.com/wow/addons/fantasy-glass-ui", "https://github.com/fantasyglassui/FantasyGlassUI"], "inLanguage": ["en", "de", "fr", "es", "ru", "pt", "it", "ko", "zh"]}</script>
 </head>
@@ -232,7 +235,7 @@
   <div class="wrap">
     <a class="brand" href="/fr/"><img src="/logo-64.webp" alt="" width="32" height="32">Fantasy Glass UI</a>
     <nav class="site-nav" id="site-nav" aria-label="Pages">
-      <ul><li><a href="/fr/" aria-current="page">Accueil</a></li><li><a href="/fr/features/">Fonctions</a></li><li><a href="/fr/themes/">Thèmes</a></li><li><a href="/fr/guide-and-gold/">Guide et or</a></li><li><a href="/fr/get-started/">Commencer</a></li><li><a href="/fr/changelog/">Historique</a></li><li><a href="/fr/roadmap/">Feuille de route</a></li></ul>
+      <ul><li><a href="/fr/" aria-current="page">Accueil</a></li><li><a href="/fr/features/">Fonctions</a></li><li><a href="/fr/themes/">Thèmes</a></li><li><a href="/fr/guide-and-gold/">Guide et or</a></li><li><a href="/fr/get-started/">Commencer</a></li><li><a href="/fr/changelog/">Historique</a></li><li><a href="/fr/roadmap/">Feuille de route</a></li><li><a href="/fr/map/">Carte du monde</a></li></ul>
       <div class="head-tools">
         <label class="lang"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span class="sr-only">Langue</span><select id="lang"><option value="/" data-code="en" lang="en">English</option><option value="/de/" data-code="de" lang="de">Deutsch</option><option value="/fr/" data-code="fr" lang="fr" selected>Français</option><option value="/es/" data-code="es" lang="es">Español</option><option value="/ru/" data-code="ru" lang="ru">Русский</option><option value="/pt/" data-code="pt" lang="pt">Português</option><option value="/it/" data-code="it" lang="it">Italiano</option><option value="/ko/" data-code="ko" lang="ko">한국어</option><option value="/zh/" data-code="zh" lang="zh-Hans">中文</option></select></label>
         <button class="icon-btn mode" id="mode" type="button" aria-pressed="true" title="Mode sombre"><span class="sr-only">Mode sombre</span><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M5.3 18.7 7 17M17 7l1.7-1.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
@@ -393,7 +396,8 @@
       <div class="latest card">
         <div>
           <h2 id="new-h">Dernière version</h2>
-          <p class="dim"><b id="newv">13.0.0</b> · <a href="/fr/changelog/">Journal complet</a> · <a href="/fr/roadmap/">Feuille de route</a></p>
+          <p class="dim"><b id="newv">13.0.1</b> · <a href="/fr/changelog/">Journal complet</a> · <a href="/fr/roadmap/">Feuille de route</a></p>
+          <p class="coming-link"><a href="/fr/roadmap/#coming-13-5">Un premier aperçu de la 13.5 : ce qui est en préparation</a> <span aria-hidden="true">→</span></p>
         </div>
         <ul id="news"></ul>
       </div>
@@ -417,7 +421,7 @@
     </div>
     <div class="foot-row">
       <span>Contact: <a href="mailto:email-forwarding@fantasyglassui.com">email-forwarding@fantasyglassui.com</a></span>
-      <p class="status"><span>Version <b>13.0.0</b></span><span class="sep" aria-hidden="true">·</span><span>Mis à jour le <time datetime="2026-11-26">2026-11-26</time></span><span class="sep" aria-hidden="true">·</span><span>Vérifié avec WoW: Forever <b>1.60.1 (70938)</b></span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">Code source</a></span></p>
+      <p class="status"><span>Version <b>13.0.1</b></span><span class="sep" aria-hidden="true">·</span><span>Mis à jour le <time datetime="2026-11-26">2026-11-26</time></span><span class="sep" aria-hidden="true">·</span><span>Vérifié avec WoW: Forever <b>1.60.1 (70938)</b></span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">Code source</a></span></p>
     </div>
     <nav class="foot-row foot-langs" aria-label="Langue"><ul><li><a href="/" hreflang="en" lang="en" data-code="en">English</a></li><li><a href="/de/" hreflang="de" lang="de" data-code="de">Deutsch</a></li><li><a href="/fr/" hreflang="fr" lang="fr" data-code="fr" aria-current="true">Français</a></li><li><a href="/es/" hreflang="es" lang="es" data-code="es">Español</a></li><li><a href="/ru/" hreflang="ru" lang="ru" data-code="ru">Русский</a></li><li><a href="/pt/" hreflang="pt" lang="pt" data-code="pt">Português</a></li><li><a href="/it/" hreflang="it" lang="it" data-code="it">Italiano</a></li><li><a href="/ko/" hreflang="ko" lang="ko" data-code="ko">한국어</a></li><li><a href="/zh/" hreflang="zh-Hans" lang="zh-Hans" data-code="zh">中文</a></li></ul></nav>
     <p class="trnote">Cette page a été traduite sans relecture par un locuteur natif. Les corrections sont les bienvenues.</p>
@@ -425,6 +429,6 @@
 </footer>
 <script src="/assets/site.js?v=2dd8abee61" defer></script>
 <script src="/assets/data.js?v=69c0402527" defer></script>
-<script src="/assets/home.js?v=d5c6f14bff" defer></script>
+<script src="/assets/home.js?v=25b9f888e2" defer></script>
 </body>
 </html>

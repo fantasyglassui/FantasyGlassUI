@@ -6,10 +6,15 @@ in German, is checked for: a skip link that shows when it gets focus; a header, 
 one h1; a visible focus ring; AA contrast for every piece of text on a plain background (4.5:1, or 3:1 for large text;
 text over a screenshot is left to the eye); no page wider than the screen; no script from another site; and no
 script error. The other languages are checked at 390 px for width. The plan page (/plan/) is checked at 390 px: a
-plan code pasted shows its steps, in German too, with no script error and nothing wider than the screen. --shots DIR
-saves Home and Get started, dark and light, at both widths. --quick checks English only. Needs Python's playwright with its Chromium; when that is
+plan code pasted shows its steps, in German too, with no script error and nothing wider than the screen; a sample plan's route
+is pinned on the world map at the expected pixels (390 and 1280 px, light and dark), asking only this site, and once a plan is
+shown; without tiles the zone sketches show instead. The world map (/map/)
+draws its tiles from this site, its places file is valid and ?pins shows the pin helper. On Guide and
+Gold (English and German, 390 px), the example route is drawn and the short tour opens, steps on and closes by keyboard. --shots DIR
+saves Home and Get started, dark and light, at both widths (and the plan page's route, plan-route-*.png). --quick checks English only. Needs Python's playwright with its Chromium; when that is
 missing it says so and exits 0 (the other site checks still run)."""
 import functools
+import json
 import http.server
 import os
 import socketserver
@@ -93,7 +98,7 @@ CHECK = r"""
   for (const sel of ["header.site-head", "nav", "main#main", "footer.site-foot", "a.skip[href='#main']"]) if (!document.querySelector(sel)) bad.push("missing " + sel);
   const h1 = document.querySelectorAll("h1").length; if (h1 !== 1) bad.push(h1 + " h1 elements");
   document.querySelectorAll("script[src]").forEach(s => { if (new URL(s.src).origin !== location.origin) bad.push("a script from " + s.src); });
-  document.querySelectorAll("img").forEach(i => { if (!i.hasAttribute("alt")) bad.push("an image with no alt: " + i.src); if (!i.getAttribute("width") && !i.closest(".thumb")) bad.push("an image with no size: " + i.src); });
+  document.querySelectorAll("img").forEach(i => { if (!i.hasAttribute("alt")) bad.push("an image with no alt: " + i.src); if (!i.getAttribute("width") && !i.closest(".thumb, .leaflet-container")) bad.push("an image with no size: " + i.src); });
   return bad;
 }
 """
@@ -224,6 +229,228 @@ def main():
             problems += [f"/plan/: script error: {e}" for e in errors]
             checked += 1
             ctx.close()
+            # OpenMap on the plan page: nothing asks openmap.world on load (with a plan or without, and not on Guide and Gold);
+            # OpenMap refuses to be framed, so it is only a link, opened in a new tab
+            for w, scheme in ((390, "dark"), (390, "light"), (1280, "dark"), (1280, "light")):
+                ctx = browser.new_context(viewport={"width": w, "height": 900}, locale="en-US", color_scheme=scheme)
+                asked = []
+                ctx.route("**/*", lambda route: route.abort() if not route.request.url.startswith(base) else route.continue_())
+                page = ctx.new_page()
+                page.on("request", lambda r: asked.append(r.url) if not r.url.startswith(base) else None)
+                errors = []
+                page.on("pageerror", lambda e: errors.append(str(e)))
+                where = f"/plan/ OpenMap {w}px {scheme}"
+                page.goto(base + "/plan/#c=" + code, wait_until="load")
+                page.wait_for_timeout(300)
+                if asked or page.evaluate("document.querySelectorAll('iframe').length"):
+                    problems.append(f"{where}: the page asks for an outside address or has an iframe before the button: {asked}")
+                page.goto(base + "/guide-and-gold/", wait_until="load")
+                page.wait_for_timeout(300)
+                if asked or page.evaluate("document.querySelectorAll('iframe').length") or not page.evaluate("!!document.querySelector('#example a[href=\"https://openmap.world/\"][target=_blank][rel=\"noopener noreferrer\"]')"):
+                    problems.append(f"{where}: Guide and Gold must only link OpenMap ({asked})")
+                page.goto(base + "/plan/", wait_until="load")
+                page.wait_for_timeout(200)
+                link = page.evaluate("(() => { const a = document.getElementById('openmaptab'); return [a.href, a.target, a.rel, a.textContent, getComputedStyle(a).display]; })()")
+                if link[:4] != ["https://openmap.world/", "_blank", "noopener noreferrer", "Open OpenMap in a new tab"]:
+                    problems.append(f"{where}: the fallback link is wrong: {link}")
+                page.focus("#openmaptab")
+                f = page.evaluate(FOCUS).split("|")
+                if f[1] != "true": problems.append(f"{where}: no focus ring on the OpenMap link")
+                bad = [x for x in page.evaluate(CHECK) if x.startswith(("contrast", "wider"))]
+                problems += [f"{where}: {x}" for x in bad]
+                if SHOTS:
+                    os.makedirs(SHOTS, exist_ok=True)
+                    page.locator("section.real").screenshot(path=os.path.join(SHOTS, f"openmap-{scheme}-{w}.png"))
+                if page.evaluate("document.querySelectorAll('iframe').length"):
+                    problems.append(f"{where}: OpenMap refuses frames, so the page must only link it")
+                problems += [f"{where}: script error: {e}" for e in errors]
+                checked += 1
+                ctx.close()
+            # the route on the world map (/plan/): nothing of the map is asked for until a plan is shown; then a sample plan's
+            # steps are pinned where tests/plan_map_points.json says (pixels of /map/ at maxZoom), the steps with no place are
+            # listed in a note, the current step's pin moves on with a tick, the map is at least 300 px tall and never wider
+            # than the screen, it asks this site only and no tile that isn't there, with no script error; the map does not
+            # take the mouse wheel (or, on a phone, one finger) until it is clicked. Without tiles it falls back to the sketches.
+            sample = json.load(open(os.path.join(ROOT, "tests", "plan_map_points.json"), encoding="utf-8"))
+            for w, scheme in ((390, "dark"), (390, "light"), (1280, "dark"), (1280, "light")):
+                phone = w == 390
+                ctx = browser.new_context(viewport={"width": w, "height": 900}, locale="en-US", color_scheme=scheme, has_touch=phone, is_mobile=phone,
+                                          reduced_motion="reduce")
+                asked, mine, tiles, errors = [], [], [], []
+                ctx.route("**/*", lambda route: route.abort() if not route.request.url.startswith(base) else route.continue_())
+                page = ctx.new_page()
+                page.on("request", lambda r: asked.append(r.url) if not r.url.startswith(base) else mine.append(r.url[len(base):]))
+                page.on("response", lambda r: tiles.append((r.url, r.status)) if "/map/tiles/" in r.url and r.url.endswith(".webp") else None)
+                page.on("pageerror", lambda e: errors.append(str(e)))
+                page.on("console", lambda m: errors.append(m.text) if m.type in ("error", "warning") else None)
+                where = f"/plan/ route {w}px {scheme}"
+                page.goto(base + "/plan/", wait_until="load")
+                page.wait_for_timeout(300)
+                early = [u for u in mine if u.startswith(("/map/", "/plan/zones"))]
+                if early:
+                    problems.append(f"{where}: the map is asked for before a plan is shown: {early[:3]}")
+                page.fill("#code", sample["code"])
+                try:
+                    page.wait_for_selector("#routemap img.leaflet-tile-loaded", timeout=8000)
+                    page.wait_for_selector("#routemap .rt-pin[data-steps]", timeout=4000)
+                except Exception:
+                    problems.append(f"{where}: the route map was not drawn")
+                page.wait_for_timeout(400)
+                got = page.evaluate("""(pts) => {
+                  const box = document.getElementById('routemap'), m = box._fgMap, Z = m.getMaxZoom() - 1, out = [];
+                  const before = [m.scrollWheelZoom.enabled(), m.dragging.enabled()];
+                  for (const q of pts) {
+                    const ll = m.unproject(q.px, Z);
+                    m.setView(ll, Z, { animate: false });
+                    const pin = [...box.querySelectorAll('.rt-pin[data-steps]')].find(e => e.dataset.steps.split(' ').includes(String(q.step)));
+                    if (!pin) { out.push([q.step, null]); continue; }
+                    const r = pin.getBoundingClientRect(), c = box.getBoundingClientRect(), want = m.latLngToContainerPoint(ll);
+                    out.push([q.step, Math.round(Math.hypot(r.left + r.width / 2 - c.left - want.x, r.top + r.height / 2 - c.top - want.y))]);
+                  }
+                  return { off: out, before, height: box.offsetHeight, unplaced: document.getElementById('unplaced').textContent,
+                           credit: !!document.querySelector('#mapcredit a[href="/map/"]') && document.getElementById('mapcredit').textContent.includes('Blizzard'),
+                           sketch: !document.getElementById('panels').hidden, wide: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1 };
+                }""", sample["points"])
+                far = [o for o in got["off"] if o[1] is None or o[1] > 4]
+                if far:
+                    problems.append(f"{where}: pins not where their steps are (step, px off): {far}")
+                if got["before"] != [False, not phone]:
+                    problems.append(f"{where}: the map takes the wheel or one finger before it is clicked: {got['before']}")
+                if got["height"] < 300 or got["wide"] or got["sketch"] or not got["credit"]:
+                    problems.append(f"{where}: height {got['height']}, too wide {got['wide']}, sketch shown {got['sketch']}, credit {got['credit']}")
+                if got["unplaced"] != "Steps " + ", ".join(str(i + 1) for i in sample["unplaced"]) + " have no place on the map.":
+                    problems.append(f"{where}: the steps with no place: {got['unplaced']!r}")
+                page.locator("#views button").first.click()             # (the whole route again)
+                now1 = page.evaluate("document.querySelector('#routemap [aria-current=step]').dataset.steps")
+                page.check("#s0")
+                page.wait_for_timeout(200)
+                now2 = page.evaluate("document.querySelector('#routemap [aria-current=step]').dataset.steps")
+                if "0" not in now1.split() or "1" not in now2.split():
+                    problems.append(f"{where}: the current step's pin does not move on with a tick ({now1} -> {now2})")
+                page.uncheck("#s0")
+                page.locator("#steps button.n").nth(1).click()           # (a step's number: its pin, opened)
+                pop = page.evaluate("(document.querySelector('#routemap .leaflet-popup-content') || {}).textContent || ''")
+                if "Kill 8 Mottled Boars" not in pop:
+                    problems.append(f"{where}: a step's number does not open its pin ({pop[:60]!r})")
+                page.locator("#routemap a.leaflet-popup-close-button").click()
+                page.locator("#views button").first.click()
+                page.wait_for_timeout(300)
+                problems += [f"{where}: {x}" for x in page.evaluate(CHECK) if x.startswith(("contrast", "wider"))]
+                if SHOTS:
+                    os.makedirs(SHOTS, exist_ok=True)
+                    page.screenshot(path=os.path.join(SHOTS, f"plan-route-{scheme}-{w}.png"), full_page=True)
+                if any(st != 200 for _, st in tiles) or not tiles:
+                    problems.append(f"{where}: tiles asked for {[t for t in tiles if t[1] != 200][:3] or 'none'}")
+                if asked:
+                    problems.append(f"{where}: the page asks another site: {asked[:3]}")
+                problems += [f"{where}: script error or warning: {e}" for e in errors]
+                checked += 1
+                ctx.close()
+            # no tiles: the sketches instead, with no script error
+            ctx = browser.new_context(viewport={"width": 390, "height": 900}, locale="en-US")
+            ctx.route("**/*", lambda route: route.abort() if not route.request.url.startswith(base) or "/map/tiles/" in route.request.url and route.request.url.endswith(".webp") else route.continue_())
+            page = ctx.new_page()
+            errors = []
+            page.on("pageerror", lambda e: errors.append(str(e)))
+            page.goto(base + "/plan/#c=" + sample["code"], wait_until="load")
+            try:
+                page.wait_for_selector("#panels svg.fgmap", timeout=8000)
+            except Exception:
+                pass
+            fb = page.evaluate("[document.getElementById('panels').hidden, document.querySelectorAll('#panels svg.fgmap').length, document.getElementById('sketchnote').hidden, document.getElementById('mapframe').hidden]")
+            if fb != [False, 4, False, True]:              # (Durotar, Elwynn Forest, Stormwind City and Nowhere)
+                problems.append(f"/plan/ without tiles: the sketches do not show instead ({fb})")
+            problems += [f"/plan/ without tiles: script error: {e}" for e in errors]
+            checked += 1
+            ctx.close()
+            # the world map (/map/): the tiles load from this site (and none that isn't there is asked for), the places file
+            # is valid, nothing outside is asked, no script error, nothing wider than the screen; ?pins shows the helper
+            for w, scheme, lang in ((390, "dark", "en"), (390, "light", "de"), (1280, "light", "en"), (1280, "dark", "en")):
+                ctx = browser.new_context(viewport={"width": w, "height": 900}, locale="en-US", color_scheme=scheme, reduced_motion="reduce")
+                asked, tiles = [], []
+                ctx.route("**/*", lambda route: route.abort() if not route.request.url.startswith(base) else route.continue_())
+                page = ctx.new_page()
+                page.on("request", lambda r: asked.append(r.url) if not r.url.startswith(base) else None)
+                page.on("response", lambda r: tiles.append((r.url, r.status)) if "/map/tiles/" in r.url and r.url.endswith(".webp") else None)
+                errors = []
+                page.on("pageerror", lambda e: errors.append(str(e)))
+                page.on("console", lambda m: errors.append(m.text) if m.type in ("error", "warning") else None)
+                path = ("/" if lang == "en" else f"/{lang}/") + "map/"
+                where = f"{path} {w}px {scheme}"
+                page.goto(base + path, wait_until="load")
+                try:
+                    page.wait_for_selector("#worldmap img.leaflet-tile-loaded", timeout=8000)
+                except Exception:
+                    problems.append(f"{where}: no map tile was drawn")
+                page.wait_for_timeout(400)
+                if not any(st == 200 for _, st in tiles):
+                    problems.append(f"{where}: no tile request succeeded ({tiles[:3]})")
+                if any(st != 200 for _, st in tiles):
+                    problems.append(f"{where}: a tile that is not there was asked for: {[t for t in tiles if t[1] != 200][:3]}")
+                got = page.evaluate("""async () => {
+                  const meta = await (await fetch('/map/tiles/meta.json')).json();
+                  const r = await fetch('/map/markers.json'); let list = null; try { list = await r.json(); } catch (e) {}
+                  const ok = r.ok && Array.isArray(list) && list.every(m => m && typeof m.name === 'string' && m.name && typeof m.category === 'string'
+                    && m.category && Array.isArray(m.coords) && m.coords.length === 2 && m.coords.every(Number.isFinite)
+                    && m.coords[0] >= 0 && m.coords[1] >= 0 && m.coords[0] <= meta.width && m.coords[1] <= meta.height
+                    && (m.description === undefined || typeof m.description === 'string'));
+                  const shown = document.querySelectorAll('#worldmap .map-pin').length;
+                  const on = [...document.querySelectorAll('#map-cats .chip[aria-pressed=true]')].map(b => b.dataset.kind);
+                  const want = (list || []).filter(m => on.includes(m.category)).length;
+                  document.querySelectorAll('#map-cats .chip[aria-pressed=false]').forEach(b => b.click());
+                  return [ok, document.getElementById('pins').hidden, [shown, document.querySelectorAll('#worldmap .map-pin').length, on.sort().join('+')],
+                          [want, (list || []).length, 'Dungeons+Zones'],
+                          getComputedStyle(document.getElementById('map-wait')).display, !!document.querySelector('a[href="https://ko-fi.com/jigrobbulus"][target=_blank][rel="noopener noreferrer"]')];
+                }""")
+                if not got[0]: problems.append(f"{where}: markers.json is not a valid list of places")
+                if not got[1]: problems.append(f"{where}: the pin helper shows without ?pins")
+                if got[2] != got[3]: problems.append(f"{where}: places on the map (shown at first, with every kind on, kinds on at first) {got[2]}, wanted {got[3]}")
+                if got[4] != "none": problems.append(f"{where}: the map's waiting line still shows")
+                if not got[5]: problems.append(f"{where}: no Ko-fi link for OpenMap in the credits")
+                problems += [f"{where}: {x}" for x in page.evaluate(CHECK) if x.startswith(("contrast", "wider"))]
+                if w == 390:
+                    page.goto(base + path + "?pins", wait_until="load")
+                    page.wait_for_selector("#worldmap img.leaflet-tile-loaded", timeout=8000)
+                    page.locator("#worldmap").click()                          # (its middle: inside the map art)
+                    out = page.evaluate("[document.getElementById('pins').hidden, document.getElementById('pins-out').textContent, document.getElementById('pins-copy').disabled]")
+                    if out[0] or '"coords": [' not in out[1] or out[2]:
+                        problems.append(f"{where}?pins: the pin helper does not give a spot's coords ({out})")
+                if SHOTS:
+                    os.makedirs(SHOTS, exist_ok=True)
+                    page.screenshot(path=os.path.join(SHOTS, f"map-{lang}-{scheme}-{w}.png"), full_page=True)
+                if asked:
+                    problems.append(f"{where}: the map asks another site: {asked[:3]}")
+                problems += [f"{where}: script error or warning: {e}" for e in errors]
+                checked += 1
+                ctx.close()
+            # Guide and Gold: the example route is drawn from its sample code, and the short tour works by keyboard
+            for lang in ("en", "de"):
+                ctx = browser.new_context(viewport={"width": 390, "height": 800}, locale="en-US", reduced_motion="reduce")
+                ctx.route("**/*", lambda route: route.abort() if not route.request.url.startswith(base) else route.continue_())
+                page = ctx.new_page()
+                errors = []
+                page.on("pageerror", lambda e: errors.append(str(e)))
+                path = ("/" if lang == "en" else f"/{lang}/") + "guide-and-gold/"
+                page.goto(base + path, wait_until="load")
+                page.wait_for_timeout(200)
+                ex = page.evaluate("[document.getElementById('ex').hidden, document.querySelectorAll('#ex-zones input[type=checkbox]').length, document.querySelectorAll('#ex-zones svg[aria-label] [role=button][aria-label]').length]")
+                if ex[0] or ex[1] < 1 or ex[2] < 1:
+                    problems.append(f"{path} 390px: the example route is not drawn ({ex})")
+                page.focus("#tour-go")
+                page.keyboard.press("Enter")
+                t1 = page.evaluate("[document.getElementById('tour').hidden, document.activeElement.id, document.querySelectorAll('.tour-on').length, document.getElementById('tour-count').textContent]")
+                page.keyboard.press("ArrowRight")
+                t2 = page.evaluate("[document.getElementById('tour-say').textContent, document.getElementById('tour-count').textContent]")
+                for _ in range(6):
+                    page.keyboard.press("ArrowRight")
+                last = page.evaluate("document.querySelector('.tour-on') && document.querySelector('.tour-on').id")
+                page.keyboard.press("Escape")
+                t3 = page.evaluate("[document.getElementById('tour').hidden, document.activeElement.id, document.querySelectorAll('.tour-on').length]")
+                if t1[0] or t1[1] != "tour" or t1[2] != 1 or not t1[3] or not t2[0] or t2[1] == t1[3] or last != "ex" or t3 != [True, "tour-go", 0]:
+                    problems.append(f"{path}: the tour by keyboard: open {t1}, next {t2}, last {last}, closed {t3}")
+                problems += [f"{path}: script error: {e}" for e in errors]
+                checked += 1
+                ctx.close()
             browser.close()
         httpd.shutdown()
     if problems:

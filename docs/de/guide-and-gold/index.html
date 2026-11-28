@@ -79,6 +79,61 @@ ol.howtos p { margin: 0; }
 .plan-card p { margin: 0; font-size: 1.05rem; }
 .plan-card .cta { margin: 0; flex-direction: column; align-items: stretch; }
 @media (max-width: 760px) { .plan-card { grid-template-columns: 1fr; padding: 24px 20px; } }
+/* The short tour: a start button in the page's head, a box at the foot of the screen, and the part of the page it
+   is about outlined in gold (a card's own outline; anything else, a ring around it). Nothing moves under reduced motion. */
+.tour-start { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 16px 0 0; }
+.tour-start[hidden], .tour[hidden] { display: none; }
+.tour {
+  --cut: 14px;
+  position: fixed; z-index: 30; left: 50%; bottom: 16px; transform: translateX(-50%);
+  width: min(600px, calc(100% - 32px)); max-height: calc(100vh - 120px); overflow-y: auto;
+  padding: 18px 22px 16px; --c: var(--gold); --fill: var(--card); color: var(--text);
+}
+.tour:focus-visible { outline: 2px solid var(--focus); outline-offset: -6px; }
+.tour .eyebrow { margin: 0 0 6px; }
+.tour h2 { font-size: 1.45rem; margin: 0 0 8px; padding-right: 40px; }
+.tour p { margin: 0 0 14px; color: var(--dim); }
+.tour-nav { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.tour-nav .btn[disabled] { opacity: .45; cursor: default; pointer-events: none; }
+.tour-x {
+  position: absolute; top: 10px; right: 10px; width: 40px; height: 40px; display: grid; place-items: center;
+  font: 400 1.6rem/1 var(--body); color: var(--text); background: transparent; border: 1px solid var(--line); cursor: pointer;
+}
+.tour-x:hover { border-color: var(--gold); color: var(--gold); }
+.tour-on { outline: 2px solid var(--gold); outline-offset: 8px; }
+.card.tour-on { outline: 0; --c: var(--gold); --fill: color-mix(in srgb, var(--gold) 8%, transparent); }
+.card.tour-on::after { content: ""; position: absolute; inset: 0; border: 2px solid var(--gold); pointer-events: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .tour { animation: tour-in .2s ease-out; }
+  @keyframes tour-in { from { opacity: 0; transform: translate(-50%, 10px); } }
+}
+@media (max-width: 600px) { .tour { bottom: 10px; padding: 14px 16px 12px; } .tour h2 { font-size: 1.25rem; } .tour-nav .btn { flex: 1 1 auto; } }
+
+/* The example route: a sample plan code read by the plan page's reader, zone by zone with its steps. */
+.ex-badge { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 16px; }
+.ex-badge .tag { display: inline-flex; align-items: center; min-height: 24px; padding: 3px 9px; font: 700 .74rem/1.1 var(--body); letter-spacing: .07em; text-transform: uppercase; color: var(--gold); border: 1px dashed currentColor; }
+dl.ex-totals { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin: 0 0 20px; }
+dl.ex-totals div { padding: 10px 14px; border: 1px solid var(--line); }
+dl.ex-totals dt { color: var(--dim); font-size: .85rem; }
+dl.ex-totals dd { margin: 0; font: 400 1.35rem/1.3 var(--display); }
+.ex-zones { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 20px; }
+.ex-zone { display: grid; grid-template-columns: minmax(0, 240px) minmax(0, 1fr); grid-template-areas: "h h" "map steps"; gap: 12px 20px; align-content: start; }
+.ex-zone h3 { grid-area: h; margin: 0; }
+.ex-zone .ex-steps { grid-area: steps; }
+.ex-map { grid-area: map; min-width: 0; --map-radius: 0; }                    /* the map itself: site-src/plan/map.js (.fgmap) */
+@media (max-width: 480px) { .ex-zone { grid-template-columns: minmax(0, 1fr); grid-template-areas: "h" "map" "steps"; } }
+ol.ex-steps { list-style: none; margin: 0; padding: 0; }
+ol.ex-steps li { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-top: 1px solid var(--rule); }
+ol.ex-steps li:first-child { border-top: 0; }
+ol.ex-steps .n { min-width: 1.6em; text-align: right; color: var(--faint); font-variant-numeric: tabular-nums; }
+ol.ex-steps button.n { flex: none; min-width: 2.2em; min-height: 26px; padding: 0 6px; font: 600 .9rem/1 var(--body); text-align: center; color: var(--text); background: var(--raised); border: 1px solid var(--line); border-radius: 13px; cursor: pointer; }
+ol.ex-steps button.n:hover { border-color: var(--gold); }
+ol.ex-steps li.now { box-shadow: inset 3px 0 0 var(--gold); padding-left: 8px; }
+ol.ex-steps li.now button.n { background: var(--gold); border-color: var(--gold); color: var(--on-gold); }
+ol.ex-steps input { flex: none; width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--gold); }
+ol.ex-steps label { cursor: pointer; }
+ol.ex-steps li.done label { text-decoration: line-through; color: var(--dim); }
+#example .how a { white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -87,7 +142,7 @@ ol.howtos p { margin: 0; }
   <div class="wrap">
     <a class="brand" href="/de/"><img src="/logo-64.webp" alt="" width="32" height="32">Fantasy Glass UI</a>
     <nav class="site-nav" id="site-nav" aria-label="Seiten">
-      <ul><li><a href="/de/">Start</a></li><li><a href="/de/features/">Funktionen</a></li><li><a href="/de/themes/">Themen</a></li><li><a href="/de/guide-and-gold/" aria-current="page">Anleitung und Gold</a></li><li><a href="/de/get-started/">Loslegen</a></li><li><a href="/de/changelog/">Änderungen</a></li><li><a href="/de/roadmap/">Roadmap</a></li></ul>
+      <ul><li><a href="/de/">Start</a></li><li><a href="/de/features/">Funktionen</a></li><li><a href="/de/themes/">Themen</a></li><li><a href="/de/guide-and-gold/" aria-current="page">Anleitung und Gold</a></li><li><a href="/de/get-started/">Loslegen</a></li><li><a href="/de/changelog/">Änderungen</a></li><li><a href="/de/roadmap/">Roadmap</a></li><li><a href="/de/map/">Weltkarte</a></li></ul>
       <div class="head-tools">
         <label class="lang"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span class="sr-only">Sprache</span><select id="lang"><option value="/guide-and-gold/" data-code="en" lang="en">English</option><option value="/de/guide-and-gold/" data-code="de" lang="de" selected>Deutsch</option><option value="/fr/guide-and-gold/" data-code="fr" lang="fr">Français</option><option value="/es/guide-and-gold/" data-code="es" lang="es">Español</option><option value="/ru/guide-and-gold/" data-code="ru" lang="ru">Русский</option><option value="/pt/guide-and-gold/" data-code="pt" lang="pt">Português</option><option value="/it/guide-and-gold/" data-code="it" lang="it">Italiano</option><option value="/ko/guide-and-gold/" data-code="ko" lang="ko">한국어</option><option value="/zh/guide-and-gold/" data-code="zh" lang="zh-Hans">中文</option></select></label>
         <button class="icon-btn mode" id="mode" type="button" aria-pressed="true" title="Dunkler Modus"><span class="sr-only">Dunkler Modus</span><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M5.3 18.7 7 17M17 7l1.7-1.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
@@ -101,7 +156,9 @@ ol.howtos p { margin: 0; }
 <main id="main" tabindex="-1">
 <!-- Guide and Gold (W3): what the route planner and Ways to make gold do, Questie, the prices and sell hints, the
      how-to pages (pages/guide-and-gold/<name>/) and the plan page (/plan/, built by site-src/plan_page.py).
-     Every claim here is true of the add-on's code (FantasyGlassUI_Planner/, FantasyGlassUI_Gold/, Guide.lua). -->
+     Every claim here is true of the add-on's code (FantasyGlassUI_Planner/, FantasyGlassUI_Gold/, Guide.lua).
+     body.py fills in the example route's plan code (tests/plan_codes.txt) and the reader's and the map's addresses; script.js runs the
+     short tour (#tour, its steps in #tour-steps) and draws the example route (#example). -->
 <div class="wrap page-head gg-head">
   <span class="eyebrow">Neu in 13.0</span>
   <h1>Anleitung und Gold</h1>
@@ -110,7 +167,8 @@ ol.howtos p { margin: 0; }
     <a class="btn" href="/de/guide-and-gold/first-route/">Plane deine erste Route</a>
     <a class="btn line" href="/plan/">Planseite öffnen</a>
   </div>
-  <p class="status"><span>Version <b>13.0.0</b></span><span class="sep" aria-hidden="true">·</span><span>Aktualisiert am <time datetime="2026-11-26">2026-11-26</time></span><span class="sep" aria-hidden="true">·</span><span>Geprüft mit WoW: Forever <b>1.60.1 (70938)</b></span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">Quellcode</a></span></p>
+  <p class="tour-start" id="tour-start" hidden><button class="btn line small" type="button" id="tour-go" aria-haspopup="dialog">Mach die kurze Tour</button> <span class="faint">Sechs Schritte durch diese Seite, in deinem Tempo.</span></p>
+  <p class="status"><span>Version <b>13.0.1</b></span><span class="sep" aria-hidden="true">·</span><span>Aktualisiert am <time datetime="2026-11-26">2026-11-26</time></span><span class="sep" aria-hidden="true">·</span><span>Geprüft mit WoW: Forever <b>1.60.1 (70938)</b></span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">Quellcode</a></span></p>
 </div>
 
 <section class="block" id="planner" aria-labelledby="h-planner">
@@ -121,14 +179,14 @@ ol.howtos p { margin: 0; }
       <p class="lede">Er plant eine Questroute für deine Stufe: welche Quests, in welcher Reihenfolge und wann du fliegst, trainierst oder abgibst. Während du spielst, plant er neu, damit die Route mit dir Schritt hält.</p>
     </header>
     <div class="grid feats">
-      <div class="card"><h3>Schritt für Schritt</h3><p>Ein kleines Fenster zeigt deinen aktuellen Schritt, und ein Pfeil zeigt den Weg. Schritte haken sich von selbst ab, wenn du sie erledigst.</p></div>
-      <div class="card"><h3>Dein Tempo</h3><p>Die Regler Tempo, Sicherheit und Geschichte legen fest, worauf die Route aus ist. Sag, wie lange du spielen kannst, und die Route nimmt nur, was passt, und endet an einem guten Haltepunkt.</p></div>
+      <div class="card" id="gg-panel"><h3>Schritt für Schritt</h3><p>Ein kleines Fenster zeigt deinen aktuellen Schritt, und ein Pfeil zeigt den Weg. Schritte haken sich von selbst ab, wenn du sie erledigst.</p></div>
+      <div class="card" id="gg-pace"><h3>Dein Tempo</h3><p>Die Regler Tempo, Sicherheit und Geschichte legen fest, worauf die Route aus ist. Sag, wie lange du spielen kannst, und die Route nimmt nur, was passt, und endet an einem guten Haltepunkt.</p></div>
       <div class="card"><h3>Halte unterwegs</h3><p>Neue Flugpunkte, alle zwei Stufen dein Klassenlehrer, ein Händler, wenn die Taschen fast voll sind, Post und ab Stufe 40 eine Reittier-Erinnerung. Jede Art von Halt lässt sich abschalten.</p></div>
       <div class="card"><h3>Auf der Karte</h3><p>Die Halte der Route, nummeriert und mit einer Linie verbunden, auf der Weltkarte, und eine Markierung auf jedem Gebiet mit Quests, heller, wo die Erfahrung schneller kommt.</p></div>
       <div class="card"><h3>Mit einem Freund</h3><p>Eine Route für zwei: dieselben Quests in derselben Reihenfolge. Das Fenster zeigt, wie weit dein Freund zurückliegt.</p></div>
       <div class="card"><h3>Auf dem Handy</h3><p>„Plan teilen“ macht aus deiner Route einen Code. Füge ihn auf der Planseite ein, um die Route zu sehen und die Schritte auf dem Handy abzuhaken.</p></div>
     </div>
-    <p class="how">Öffne ihn mit <code>/fgui plan</code>, mit <b>Route planen</b> auf dem Reiter „Anleitung“ in den Einstellungen oder mit dem Knopf „Planer“ im Anleitungsfenster. Beim ersten Mal erklärt ihn eine kurze Tour aus vier Seiten, und <b>So funktioniert der Planer</b> im Planerfenster zeigt sie wieder.</p>
+    <p class="how" id="gg-open">Öffne ihn mit <code>/fgui plan</code>, mit <b>Route planen</b> auf dem Reiter „Anleitung“ in den Einstellungen oder mit dem Knopf „Planer“ im Anleitungsfenster. Beim ersten Mal erklärt ihn eine kurze Tour aus vier Seiten, und <b>So funktioniert der Planer</b> im Planerfenster zeigt sie wieder.</p>
   </div>
 </section>
 
@@ -164,7 +222,7 @@ ol.howtos p { margin: 0; }
 
 <section class="block" id="gold" aria-labelledby="h-gold">
   <div class="wrap">
-    <header>
+    <header id="gg-gold">
       <span class="eyebrow">Gold</span>
       <h2 id="h-gold">Wege zu Gold</h2>
       <p class="lede">Ein Fenster, das Wege zu Gold auflistet, die besten zuerst, aus dem, was du gesehen hast: die Preise in deinem Auktionshaus, was Händler zahlen, die Monster, die du geplündert hast, die Kräuter und Erze, die du gesammelt hast, und die Rezepte, die du kennst.</p>
@@ -229,6 +287,32 @@ ol.howtos p { margin: 0; }
   </div>
 </section>
 
+<section class="block" id="example" aria-labelledby="h-example">
+  <div class="wrap">
+    <header>
+      <span class="eyebrow">Beispiel</span>
+      <h2 id="h-example">Eine Route, wie die Planseite sie zeigt</h2>
+      <p class="lede">Das ist ein Beispiel: ein Plancode für ein kurzes Stück im Wald von Elwynn, gelesen vom selben Leser wie auf der Planseite. Deine eigene Route kommt vom Planer im Spiel.</p>
+    </header>
+    <div class="ex" id="ex" data-code="SUIP1!&#123;S2:crN0;S2:flN1;S2:lv&#123;N1;N8;N2;N10;&#125;S1:sN1800;S2:st&#123;N1;&#123;S1:kS6:acceptS1:tS23:Accept: Red Linen GoodsS1:xN79.5;S1:yN68.9;S1:zN1;&#125;N2;&#123;S1:kS2:doS1:tS44:Collect 6 Red Linen Bandanas from the Defias&#125;N3;&#123;S1:kS6:turninS1:tS24:Turn in: Red Linen GoodsS1:xN79.5;S1:yN68.9;S1:zN1;&#125;N4;&#123;S1:kS3:flyS1:tS9:StormwindS1:xN70.9;S1:yN72.5;S1:zN2;&#125;N5;&#123;S1:kS4:noteS1:tS18:Good place to stop&#125;&#125;S1:vN1;S2:xpN4100;S1:z&#123;N1;&#123;S1:mN1429;S1:nS13:Elwynn Forest&#125;N2;&#123;S1:mN1453;S1:nS14:Stormwind City&#125;&#125;&#125;" data-min="%d Min." data-hmin="%d Std. %d Min." data-map="Karte der Stopps in %s" data-step="Schritt %d: %s" data-steps="Schritte %s: %s" data-north="N" data-north-t="Norden ist oben" data-pin="Schritt %d auf der Karte zeigen" hidden>
+      <p class="ex-badge"><span class="tag">Beispiel</span> <span class="faint">Nicht deine Route: ein Beispiel-Plancode.</span></p>
+      <dl class="ex-totals">
+        <div><dt>Erfahrung</dt><dd data-t="xp"></dd></div>
+        <div><dt>Zeit</dt><dd data-t="time"></dd></div>
+        <div><dt>Stufen</dt><dd data-t="levels"></dd></div>
+        <div><dt>Flüge</dt><dd data-t="flights"></dd></div>
+        <div><dt>Schritte</dt><dd data-t="steps"></dd></div>
+      </dl>
+      <div class="ex-zones" id="ex-zones"></div>
+      <p class="how">Die Schritte stehen in den Worten, die das Spiel ihnen gab, darum bleiben sie hier auf Englisch. Hak einen Schritt ab, um es auszuprobieren: Auf der Planseite bleiben deine Haken in deinem Browser. <a href="/plan/#c=SUIP1%21%7BS2%3AcrN0%3BS2%3AflN1%3BS2%3Alv%7BN1%3BN8%3BN2%3BN10%3B%7DS1%3AsN1800%3BS2%3Ast%7BN1%3B%7BS1%3AkS6%3AacceptS1%3AtS23%3AAccept%3A%20Red%20Linen%20GoodsS1%3AxN79.5%3BS1%3AyN68.9%3BS1%3AzN1%3B%7DN2%3B%7BS1%3AkS2%3AdoS1%3AtS44%3ACollect%206%20Red%20Linen%20Bandanas%20from%20the%20Defias%7DN3%3B%7BS1%3AkS6%3AturninS1%3AtS24%3ATurn%20in%3A%20Red%20Linen%20GoodsS1%3AxN79.5%3BS1%3AyN68.9%3BS1%3AzN1%3B%7DN4%3B%7BS1%3AkS3%3AflyS1%3AtS9%3AStormwindS1%3AxN70.9%3BS1%3AyN72.5%3BS1%3AzN2%3B%7DN5%3B%7BS1%3AkS4%3AnoteS1%3AtS18%3AGood%20place%20to%20stop%7D%7DS1%3AvN1%3BS2%3AxpN4100%3BS1%3Az%7BN1%3B%7BS1%3AmN1429%3BS1%3AnS13%3AElwynn%20Forest%7DN2%3B%7BS1%3AmN1453%3BS1%3AnS14%3AStormwind%20City%7D%7D%7D">Dieses Beispiel auf der Planseite öffnen</a></p>
+    </div>
+    <p class="how">Für die echten Zonenkarten <a href="https://openmap.world/" target="_blank" rel="noopener noreferrer">öffne OpenMap in einem neuen Tab</a>. Es ist eine eigene Seite, gemacht von anderen Spielern.</p>
+    <noscript><p class="how">Die Beispielroute zeichnet ein Skript in deinem Browser. Die Planseite braucht auch eines.</p></noscript>
+  </div>
+</section>
+<script src="/assets/plan-reader.js?v=06a1b05a15" defer></script>
+<script src="/assets/plan-map.js?v=c9fb341499" defer></script>
+
 <section class="block" id="private" aria-labelledby="h-private">
   <div class="wrap">
     <header>
@@ -243,6 +327,26 @@ ol.howtos p { margin: 0; }
     </ul>
   </div>
 </section>
+
+<div class="tour card filled" id="tour" role="dialog" aria-modal="false" aria-labelledby="tour-h" aria-describedby="tour-count tour-text" tabindex="-1" hidden data-of="Schritt %d von %d">
+  <p class="eyebrow" id="tour-count"></p>
+  <h2 id="tour-h"></h2>
+  <p id="tour-text"></p>
+  <div class="tour-nav">
+    <button class="btn line small" type="button" id="tour-back">Zurück</button>
+    <button class="btn small" type="button" id="tour-next" data-next="Nächster Schritt" data-done="Tour beenden">Nächster Schritt</button>
+    <button class="tour-x" type="button" id="tour-x"><span aria-hidden="true">×</span><span class="sr-only">Tour schließen</span></button>
+  </div>
+  <p class="sr-only" id="tour-say" aria-live="polite"></p>
+</div>
+<ol id="tour-steps" hidden>
+  <li data-target="gg-panel"><h3>Was das Feld zeigt</h3><p>Ein kleines Feld zeigt den Schritt, bei dem du bist, und hakt ihn selbst ab, wenn er erledigt ist. Drück &gt;, um einen Schritt zu überspringen, „Neu planen“, um von deinem jetzigen Ort aus neu zu planen, und klick einen Schritt mit rechts an für mehr.</p></li>
+  <li data-target="gg-panel"><h3>Der Pfeil</h3><p>Ein Pfeil zeigt zum Ort deines Schritts. Liegt der Schritt auf einer anderen Karte, zeigt er auf das nächste Stück des Wegs dorthin, etwa den Flugmeister oder den Anleger. Ist TomTom geladen, kann stattdessen TomToms Pfeil zeigen.</p></li>
+  <li data-target="gg-open"><h3>Route planen</h3><p><b>Route planen</b> auf dem Reiter „Anleitung“ in den Einstellungen stellt von deinem Ort aus eine Route aus Quests für deine Stufe zusammen und folgt ihr gleich.</p></li>
+  <li data-target="gg-pace"><h3>Das Planerfenster</h3><p><code>/fgui plan</code> oder „Planer“ im Anleitungsfenster öffnet das Planerfenster: oben, was du gerade verfolgst, darunter jede Einstellung dafür, was er plant, etwa die Regler für Tempo, Sicherheit und Geschichte und wie lange du spielen kannst.</p></li>
+  <li data-target="gg-gold"><h3>Das Goldfenster</h3><p>„Wege zu Gold“ listet Ideen für diesen Charakter auf, die besten zuerst. Jede hat „Los“, das den Weg plant und ihn ins Anleitungsfenster bringt.</p></li>
+  <li data-target="ex"><h3>Deine Route auf jedem Bildschirm</h3><p><b>Plan teilen</b> im Planerfenster macht aus deiner Route einen Code. Auf der Planseite wird der Code zu einer Karte für jede Zone und einer Liste von Schritten zum Abhaken. Hier ist ein Beispiel.</p></li>
+</ol>
 </main>
 <footer class="site-foot">
   <div class="wrap">
@@ -261,12 +365,13 @@ ol.howtos p { margin: 0; }
     </div>
     <div class="foot-row">
       <span>Kontakt: <a href="mailto:email-forwarding@fantasyglassui.com">email-forwarding@fantasyglassui.com</a></span>
-      <p class="status"><span>Version <b>13.0.0</b></span><span class="sep" aria-hidden="true">·</span><span>Aktualisiert am <time datetime="2026-11-26">2026-11-26</time></span><span class="sep" aria-hidden="true">·</span><span>Geprüft mit WoW: Forever <b>1.60.1 (70938)</b></span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">Quellcode</a></span></p>
+      <p class="status"><span>Version <b>13.0.1</b></span><span class="sep" aria-hidden="true">·</span><span>Aktualisiert am <time datetime="2026-11-26">2026-11-26</time></span><span class="sep" aria-hidden="true">·</span><span>Geprüft mit WoW: Forever <b>1.60.1 (70938)</b></span><span class="sep" aria-hidden="true">·</span><span><a href="https://github.com/fantasyglassui/FantasyGlassUI">Quellcode</a></span></p>
     </div>
     <nav class="foot-row foot-langs" aria-label="Sprache"><ul><li><a href="/guide-and-gold/" hreflang="en" lang="en" data-code="en">English</a></li><li><a href="/de/guide-and-gold/" hreflang="de" lang="de" data-code="de" aria-current="true">Deutsch</a></li><li><a href="/fr/guide-and-gold/" hreflang="fr" lang="fr" data-code="fr">Français</a></li><li><a href="/es/guide-and-gold/" hreflang="es" lang="es" data-code="es">Español</a></li><li><a href="/ru/guide-and-gold/" hreflang="ru" lang="ru" data-code="ru">Русский</a></li><li><a href="/pt/guide-and-gold/" hreflang="pt" lang="pt" data-code="pt">Português</a></li><li><a href="/it/guide-and-gold/" hreflang="it" lang="it" data-code="it">Italiano</a></li><li><a href="/ko/guide-and-gold/" hreflang="ko" lang="ko" data-code="ko">한국어</a></li><li><a href="/zh/guide-and-gold/" hreflang="zh-Hans" lang="zh-Hans" data-code="zh">中文</a></li></ul></nav>
     <p class="trnote">Diese Seite wurde ohne Prüfung durch Muttersprachler übersetzt. Korrekturen sind willkommen.</p>
   </div>
 </footer>
 <script src="/assets/site.js?v=2dd8abee61" defer></script>
+<script src="/assets/guide-and-gold.js?v=6528c8dc8b" defer></script>
 </body>
 </html>
