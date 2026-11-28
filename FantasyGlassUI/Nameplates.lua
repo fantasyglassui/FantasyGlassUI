@@ -153,6 +153,7 @@ ns:NewModule("nameplates", function()
         if own.HookScript then
             local function Again() if ns.PlateBarChanged then pcall(ns.PlateBarChanged, uf) end end
             own:HookScript("OnShow", Again)
+            own:HookScript("OnHide", Again)                -- (13.5.3: a friendly name goes back to the game's)
             own:HookScript("OnSizeChanged", Again)
         end
         ns:Kill(bar)                                           -- (the game's bar: out of sight, still running)
@@ -176,7 +177,7 @@ ns:NewModule("nameplates", function()
     -- on a friendly one as the designer's "Names on nameplates" says.
     local function GameName(uf)
         if not (uf and uf.name and uf.name.SetAlpha) then return end
-        local on = ns.PlateDesign().nameShow and not rawget(uf, "suiFoe")
+        local on = ns.PlateDesign().nameShow and not rawget(uf, "suiFoe") and not rawget(uf, "suiNameOurs")
         uf.name:SetAlpha(on and 1 or 0)
     end
     -- (13.5.1) Is our bar drawn: shown, and wider than a sliver? Where the game shows only a name (a
@@ -193,6 +194,28 @@ ns:NewModule("nameplates", function()
         return true
     end
     ns.PlateBarDrawn = BarDrawn
+    -- (13.5.3) Is the game's own name inside the bar, under ours? Its Modern and Block styles put a
+    -- friendly unit's name inside the health bar when the bar is shown, on a layer under our bar (ours
+    -- is a frame above the game's), so the name was covered or showed through in pieces. Its Classic
+    -- style puts the name over the bar, where it can be read. Where it cannot be told (a position the
+    -- game keeps hidden, a plate not laid out yet with anchors we cannot read), the game's name is kept.
+    local function NameUnderBar(uf, bar)
+        local name = Usable(uf) and uf.name
+        if type(name) ~= "table" or not BarDrawn(bar) then return false end
+        local okB, nb = pcall(name.GetBottom, name)
+        local okT, bt = pcall(bar.GetTop, bar)
+        if okB and okT and type(nb) == "number" and type(bt) == "number" and not Secret(nb) and not Secret(bt) then
+            return nb < bt - 1
+        end
+        local okN, count = pcall(name.GetNumPoints, name)
+        if not okN or type(count) ~= "number" or Secret(count) or count < 1 then return false end
+        for i = 1, count do
+            local okP, point, _, relPoint = pcall(name.GetPoint, name, i)
+            if not okP or type(point) ~= "string" or type(relPoint) ~= "string" then return false end
+            if point:find("BOTTOM") and relPoint:find("TOP") then return false end      -- (over the bar)
+        end
+        return true
+    end
     -- The bar a plate's own pieces hang on: ours, on the unit frame the plate has now. (The game hands
     -- its unit frames out from a pool: a plate can get a different one each time a unit is put on it,
     -- and its old one goes to another plate.)
@@ -763,10 +786,14 @@ ns:NewModule("nameplates", function()
     local function PlateName(plate, uf, unit)
         if not Usable(plate) then return end
         local foe = unit ~= nil and Foe(unit)
-        if Usable(uf) then uf.suiFoe = foe or nil; GameName(uf) end
+        -- (13.5.3) a friendly unit's plate with its bar shown, where the game's name is inside the bar
+        -- (its Modern and Block styles): our name over the bar instead, as an enemy's has
+        local over = not foe and unit ~= nil and NameUnderBar(uf, PlateBar(uf)) or false
+        local ours = foe or over
+        if Usable(uf) then uf.suiFoe = foe or nil; uf.suiNameOurs = over or nil; GameName(uf) end
         local n = plateNames[plate]
         if not n then
-            if not foe then return end
+            if not ours then return end
             local hb = HealthBar(uf)
             if not hb then return end
             n = CreateFrame("Frame", nil, plate)
@@ -781,7 +808,7 @@ ns:NewModule("nameplates", function()
         PlaceName(n)
         if n.text.SetShadowOffset then n.text:SetShadowOffset(1, -1); n.text:SetShadowColor(0, 0, 0, 1) end
         n:UnregisterAllEvents()
-        n.suiUnit = foe and unit or nil
+        n.suiUnit = ours and unit or nil
         if n.suiUnit then
             pcall(n.RegisterUnitEvent, n, "UNIT_NAME_UPDATE", unit)
             n:Show()
@@ -802,6 +829,8 @@ ns:NewModule("nameplates", function()
         local plate = uf.GetParent and uf:GetParent()
         local h = type(plate) == "table" and healthTexts[plate]
         if h and rawget(h, "suiHome") == PlateBar(uf) then pcall(WriteHealth, h); pcall(WritePower, h) end
+        -- (13.5.3) a friendly name: ours over a bar that is drawn, the game's on a name-only plate
+        if type(plate) == "table" and type(unit) == "string" and rawget(plate, "UnitFrame") == uf then pcall(PlateName, plate, uf, unit) end
     end
 
     function ns:RefreshPlateHealth()                        -- the option changed: rewrite every plate showing

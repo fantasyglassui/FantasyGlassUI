@@ -31083,8 +31083,12 @@ do
         rawset(o, "SetParent", function(_, p) g.parent = p end)
         rawset(o, "GetParent", function() return g.parent end)
         rawset(o, "Show", function() local was = g.shown; g.shown = true; if not was then Fire("OnShow") end end)
-        rawset(o, "Hide", function() g.shown = false end)
+        rawset(o, "Hide", function() local was = g.shown; g.shown = false; if was then Fire("OnHide") end end)
         rawset(o, "SetShown", function(self, on) if on then self:Show() else self:Hide() end end)
+        rawset(o, "GetLeft", function() local r = Rect(o); return r and r[1] end)
+        rawset(o, "GetBottom", function() local r = Rect(o); return r and r[2] end)
+        rawset(o, "GetRight", function() local r = Rect(o); return r and r[3] end)
+        rawset(o, "GetTop", function() local r = Rect(o); return r and r[4] end)
         rawset(o, "IsShown", function() return g.shown end)
         rawset(o, "IsVisible", function() return Visible(o) end)
         rawset(o, "SetAlpha", function(_, a) g.alpha = a end)
@@ -31250,6 +31254,9 @@ do
         function W.Text(o) return Geo(o).text end
         function W.Shows(o) return Visible(o) and Geo(o).text ~= nil and tostring(Geo(o).text) ~= "" end
         function W.Rect(o) return Rect(o) end
+        function W.TextRect(o) return TextRect(o) end
+        function W.Level(o) return Geo(o).level end
+        function W.Parent(o) return Geo(o).parent end
         return W
     end
 
@@ -31399,6 +31406,56 @@ try("Nameplates 13.5.1: the name-only switch turned off while the plate is up br
     end)
 end)
 -- 13.5.1 plate level tests: end
+-- 13.5.3 friendly plate name tests: begin
+-- (13.5.3) A friendly unit's plate with its health bar, in the game's Modern and Block styles: the game
+-- puts the name inside the bar, on the unit frame, and our bar is a frame above it, so the name was
+-- covered (or showed through in pieces). The name a friendly plate shows must be drawn on a frame above
+-- our bar, sit over the bar rather than inside it, and stay clear of the level. Classic, enemies and
+-- name-only plates are as they were.
+try("Nameplates 13.5.3: a friendly plate with a bar shows its name over our bar, not under it", function()
+    PlateWorldRun("friendly name", function(W, style)
+        local plate, uf = W.Plate(100), W.UnitFrame()
+        W.Add(plate, uf, "nameplate1", Friend())
+        local own = rawget(rawget(uf, "healthBar"), "suiOwn")
+        local br = W.Rect(own)
+        local shown = {}
+        for _, o in ipairs(W.all) do
+            if W.Shows(o) and W.Text(o) == FRIEND.name then shown[#shown + 1] = o end
+        end
+        if #shown ~= 1 then error(style .. ": the friendly name should show once, got " .. #shown) end
+        local fs = shown[1]
+        local holder = W.Parent(fs)
+        -- (Classic: the game's own name, over the bar and clear of it; its frame level does not matter)
+        if style ~= "Classic" and not (W.Level(holder) > W.Level(own)) then
+            error(style .. ": the name is drawn on frame level " .. tostring(W.Level(holder)) .. ", not above our bar's " .. tostring(W.Level(own)))
+        end
+        local r = W.TextRect(fs)
+        if not (r and r[2] >= br[4]) then error(style .. ": the name sits inside the bar, not over it") end
+        if not (r[1] >= br[1] - 1 and r[3] <= br[3] + 1) then error(style .. ": the name should be over the bar, as wide as it") end
+        local lv = rawget(uf, "suiLevel")
+        local lr = lv and W.Shows(lv) and W.TextRect(lv)
+        if not lr then error(style .. ": the level should still show beside the bar") end
+        if r[1] < lr[3] and lr[1] < r[3] and r[2] < lr[4] and lr[2] < r[4] then error(style .. ": the level covers the name") end
+        W.Check(style .. ", a friendly plate with its bar")
+        if style == "Classic" then
+            if fs ~= rawget(uf, "name") then error("Classic: the friendly plate should keep the game's own name") end
+        else
+            if rawget(rawget(uf, "name"), "__geo").alpha ~= 0 then error(style .. ": the game's name under the bar should be out of sight") end
+        end
+        -- the game hides the bar (name only): the game's own name comes back, ours goes
+        rawget(uf, "healthBar"):Hide()
+        local seen = {}
+        for _, o in ipairs(W.all) do if W.Shows(o) and W.Text(o) == FRIEND.name then seen[#seen + 1] = o end end
+        if #seen ~= 1 or seen[1] ~= rawget(uf, "name") then error(style .. ": with the bar hidden, the game's own name should show, once (" .. #seen .. ")") end
+        -- and an enemy on the same frame still gets ours, over the bar
+        W.Remove("nameplate1")
+        W.Add(plate, uf, "nameplate2", FOE)
+        local foes = {}
+        for _, o in ipairs(W.all) do if W.Shows(o) and W.Text(o) == FOE.name then foes[#foes + 1] = o end end
+        if #foes ~= 1 or foes[1] == rawget(uf, "name") then error(style .. ": the enemy should show our name, once") end
+    end)
+end)
+-- 13.5.3 friendly plate name tests: end
 -- 13.5.1: "Always open the world map windowed": only the game's miniWorldMap setting, put back to "1" when the map
 -- closes (and at login), out of combat; never Minimize or Maximize from here.
 try("13.5.1 the world map opens windowed", function()
