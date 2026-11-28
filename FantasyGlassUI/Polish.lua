@@ -387,6 +387,17 @@ ns:NewModule("windows", function()
         if Shown(content) then
             Each(content, function(panel)
                 kit.FlatBar(panel.StatusBar)
+                -- the unlearn button (the red X) stays where the game puts it beside the bar, but
+                -- level with it: the game hangs it 4 px low. Out of combat only, if it is ever protected.
+                local x = panel.UnlearnButton
+                if type(x) == "table" and not x.suiLevel and x.GetPoint and kit.CanMove(x, panel.StatusBar) then
+                    local point, rel, relPoint, dx = x:GetPoint(1)
+                    if rel == panel.StatusBar and type(point) == "string" and type(dx) == "number" then
+                        x.suiLevel = true
+                        x:ClearAllPoints()
+                        x:SetPoint(point, rel, relPoint, dx, 0)
+                    end
+                end
                 for i = 1, 6 do AbilityButton(panel["SpellButton" .. i]) end
                 if Once(panel, "suiPolish") and type(panel.ProfessionName) == "table" and panel.ProfessionName.SetFont then
                     ns:Font(panel.ProfessionName, 15, true)

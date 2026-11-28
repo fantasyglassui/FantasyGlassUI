@@ -3603,15 +3603,93 @@ end
 
 -- Bars built from a Fill texture cut to shape by a Mask, inside an ornate Border on a Background
 -- (profession ranks, and the reputation and skill bars of the character window). The ornate frame
--- and backdrop go; the fill and its mask stay exactly as the game drives them, on a flat trough with
--- our rim. The trough is fitted to FillArea when the bar has one, otherwise to the bar's own frame.
--- (Never to the mask: a mask is only as wide as the bar but can be many times taller, and a trough
--- sized to it covers half the window.)
+-- and backdrop go, on a flat trough with our rim. The trough is fitted to FillArea when the bar has
+-- one, otherwise to the bar's own frame. (Never to the mask: a mask is only as wide as the bar but can
+-- be many times taller, and a trough sized to it covers half the window.)
+--
+-- The rank bars of the professions (no FillArea; the game widens the Mask to show the rank and puts
+-- a Flare at its end) draw their Fill 18 px tall 3 px below the frame's top, so it hung 3 px out of
+-- our box, and carry each profession's own art (Tailoring's arcs) and a glow. On those the game's Fill
+-- and Flare are hidden too, and our own status bar (ns:NewStatusBar, the add-on's bar) fills the box,
+-- RANK_INSET px inside it on every side, at the rank the game shows: read from the Mask's width, so it
+-- follows the game's own easing. The label is centred on the box, above the fill.
+local RANK_INSET = 1
+
+local function RankProgress(bar)
+    local ok, w, mw = pcall(function() return bar:GetWidth(), bar.Mask:GetWidth() end)
+    if not ok or type(w) ~= "number" or type(mw) ~= "number" or ns:IsSecret(w) or ns:IsSecret(mw) or w <= 0 then return nil end
+    local off = tonumber(bar.overrideMaskRightOffset) or 0        -- the game's width: bar width * progress + offset
+    if mw <= 0 then                                                -- (a rank near 0 leaves the mask no width:
+        local r = bar.ratio                                        --  the rank the game last set, if it is that small)
+        if type(r) == "number" and not ns:IsSecret(r) and r >= 0 and r * w + off <= 0 then return r end
+        return 0
+    end
+    return math.max(0, math.min(1, (mw - off) / w))
+end
+
+local function ShowRank(bar)
+    local fill = bar.suiRankFill
+    if not fill then return end
+    local p = RankProgress(bar)
+    if p == nil and type(bar.ratio) == "number" and not ns:IsSecret(bar.ratio) then p = math.max(0, math.min(1, bar.ratio)) end
+    if p ~= nil then fill:SetValue(p) end
+end
+
+-- Pieces of the game's that are moved: the label's frame (and, in Polish, the unlearn button). None of
+-- them is protected in this client; if one ever is, it is left where it is in a fight and the layout is
+-- done by the next pass after it (the window passes run twice a second).
+local function Protected(f) return type(f) == "table" and f.IsProtected and f:IsProtected() and true or false end
+function kit.CanMove(...)
+    if not InCombatLockdown() then return true end
+    for i = 1, select("#", ...) do if Protected((select(i, ...))) then return false end end
+    return true
+end
+
+local function RankLayout(bar)
+    if bar.suiRankLaidOut or not bar.suiRankFill then return end
+    local rank = type(bar.Rank) == "table" and bar.Rank or nil
+    if rank and not kit.CanMove(rank) then return end
+    bar.suiRankLaidOut = true
+    local lvl = bar.suiRankFill:GetFrameLevel()
+    if rank and rank.ClearAllPoints then
+        rank:ClearAllPoints()
+        rank:SetPoint("LEFT", bar, "LEFT", 0, 0)
+        rank:SetPoint("RIGHT", bar, "RIGHT", 0, 0)
+    end
+    for _, f in ipairs({ rank or false, bar.ExpansionDropdownButton or false }) do
+        if type(f) == "table" and f.GetFrameLevel and type(lvl) == "number" then
+            local own = f:GetFrameLevel()
+            if type(own) == "number" and own <= lvl then f:SetFrameLevel(lvl + 1) end
+        end
+    end
+end
+
+local function RankFill(bar)
+    ns:Kill(bar.Fill)
+    if bar.Flare then ns:Kill(bar.Flare, true) end                 -- (the game sets its alpha back on each update)
+    local fill = ns:NewStatusBar(bar)
+    fill:SetPoint("TOPLEFT", bar, "TOPLEFT", RANK_INSET, -RANK_INSET)
+    fill:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", -RANK_INSET, RANK_INSET)
+    local lvl = bar.GetFrameLevel and bar:GetFrameLevel()
+    if type(lvl) == "number" then fill:SetFrameLevel(lvl + 1) end
+    ns:Paint(fill, "SetStatusBarColor", "@accent")
+    bar.suiRankFill, bar.suiRankInset = fill, RANK_INSET
+    if type(bar.Mask) == "table" and bar.Mask.SetWidth then
+        hooksecurefunc(bar.Mask, "SetWidth", function() ShowRank(bar) end)
+    end
+    if type(bar.Update) == "function" then
+        hooksecurefunc(bar, "Update", function() ShowRank(bar) end)
+    end
+    ShowRank(bar)
+end
+
 function kit.FlatBar(bar)
-    if type(bar) ~= "table" or bar.suiBar or not IsTexture(bar.Fill) or not bar.CreateTexture then return end
+    if type(bar) ~= "table" or not IsTexture(bar.Fill) or not bar.CreateTexture then return end
+    if bar.suiBar then RankLayout(bar) return end                  -- (a layout a fight put off is done now)
     bar.suiBar = true
     kit.Hide(bar.Background); kit.Hide(bar.Border)
-    local area = (type(bar.FillArea) == "table" and bar.FillArea.GetObjectType) and bar.FillArea or bar
+    local hasArea = type(bar.FillArea) == "table" and bar.FillArea.GetObjectType
+    local area = hasArea and bar.FillArea or bar
     local trough = bar:CreateTexture(nil, "BACKGROUND", nil, -8)
     trough:SetAllPoints(area)
     trough:SetTexture(ns.FLAT)
@@ -3621,6 +3699,10 @@ function kit.FlatBar(bar)
     ns:Outline(area, -1, th.border[1], th.border[2], th.border[3], 1, "OVERLAY")
     local rank = type(bar.Rank) == "table" and bar.Rank.Text or bar.Text
     if type(rank) == "table" and rank.SetFont then ns:Font(rank, 11) end
+    if not hasArea and type(bar.Mask) == "table" then
+        RankFill(bar)
+        RankLayout(bar)
+    end
 end
 
 -- Art that is named after its frame instead of attached to it: MerchantMoneyBg + "Left" / "Middle" / "Right".

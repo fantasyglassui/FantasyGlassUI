@@ -1479,6 +1479,111 @@ try("Professions", function()
     if not rawget(f.bar, "suiBar") then error("rank bar not flattened") end
     if not rawget(f.spell, "suiPolish") or not rawget(f.spell, "suiBorder") then error("ability button not restyled") end
 end)
+try("Profession rank bars sit inside their box", function()
+    -- A rank bar of the professions book as the game builds it (ProfessionsRankBarTemplate, Camelot's
+    -- overrides): a 441 x 18 frame, the game's Fill drawn through a Mask the game widens to show the rank,
+    -- a Flare at its end, and our box drawn around the frame. Our fill must sit inside the box by the
+    -- inset on all four sides, the game's art must be gone, and no rank may overflow the box.
+    local keep = { cf = env.CreateFrame, hook = env.hooksecurefunc, combat = env.InCombatLockdown }
+    local function frame(kind, w, h)
+        local f = newmock(); local pts, lvl, prot = {}, 3, false
+        rawset(f, "__kind", kind); rawset(f, "__points", pts)
+        rawset(f, "GetObjectType", function() return kind end)
+        rawset(f, "GetWidth", function() return w end); rawset(f, "GetHeight", function() return h end)
+        rawset(f, "SetWidth", function(_, nw) w = nw end)
+        rawset(f, "ClearAllPoints", function() for i = #pts, 1, -1 do pts[i] = nil end end)
+        rawset(f, "SetPoint", function(_, p, rel, rp, x, y)
+            if type(rel) == "number" then rel, rp, x, y = nil, p, rel, rp end
+            pts[#pts + 1] = { p, rel, rp or p, x or 0, y or 0 } end)
+        rawset(f, "SetAllPoints", function(_, rel) pts[#pts + 1] = { "TOPLEFT", rel, "TOPLEFT", 0, 0 }; pts[#pts + 1] = { "BOTTOMRIGHT", rel, "BOTTOMRIGHT", 0, 0 } end)
+        rawset(f, "GetPoint", function(_, i) local q = pts[i or 1]; if q then return q[1], q[2], q[3], q[4], q[5] end end)
+        rawset(f, "GetNumPoints", function() return #pts end)
+        rawset(f, "GetFrameLevel", function() return lvl end); rawset(f, "SetFrameLevel", function(_, l) lvl = l end)
+        rawset(f, "IsProtected", function() return prot end); rawset(f, "__protect", function(v) prot = v end)
+        return f
+    end
+    local function tex(kind)
+        local t = frame(kind or "Texture", 441, 18); local a = { 1 }
+        rawset(t, "SetAlpha", function(_, v) a[1] = v end); rawset(t, "GetAlpha", function() return a[1] end); rawset(t, "__alpha", a)
+        return t
+    end
+    local made = {}
+    env.CreateFrame = function(kind, ...)
+        local f = frame(kind, 0, 0); local v, lo, hi = 0, 0, 1
+        rawset(f, "SetMinMaxValues", function(_, a, b) lo, hi = a, b end); rawset(f, "GetMinMaxValues", function() return lo, hi end)
+        rawset(f, "SetValue", function(_, x) v = x end); rawset(f, "GetValue", function() return v end)
+        made[#made + 1] = f
+        return f
+    end
+    env.hooksecurefunc = function(t, name, fn)
+        if type(t) ~= "table" then return end
+        local old = t[name]
+        rawset(t, name, function(...) local r = { old(...) }; fn(...); return table.unpack(r) end)
+    end
+    local function rankBar(width, offset)
+        local bar = frame("Frame", width, 18)
+        rawset(bar, "overrideWidth", width); rawset(bar, "overrideMaskRightOffset", offset); rawset(bar, "FillArea", false)
+        for _, k in ipairs({ "Fill", "Flare", "Background", "Border" }) do rawset(bar, k, tex()) end
+        rawset(bar, "Mask", tex("MaskTexture"))
+        local rank = frame("Frame", width, 18); rawset(rank, "Text", newmock()); rawset(bar, "Rank", rank)
+        rank.__points[1] = { "LEFT", bar, "LEFT", 0, -3 }; rank.__points[2] = { "RIGHT", bar, "RIGHT", 0, -3 }
+        rawset(bar, "Update", function(self, info)
+            self.ratio = math.min(info.skillLevel / info.maxSkillLevel, 1)
+            self.Mask:SetWidth(width * self.ratio + offset)
+        end)
+        return bar
+    end
+    local ok, e = pcall(function()
+        for _, case in ipairs({ { 441, -7, "primary" }, { 190, -5, "secondary" } }) do
+            local width, offset, label = case[1], case[2], case[3]
+            local bar = rankBar(width, offset)
+            ns.kit.FlatBar(bar)
+            local fill = rawget(bar, "suiRankFill")
+            if type(fill) ~= "table" then error(label .. ": the rank bar has no fill of ours") end
+            -- the fill sits inside the box by the inset, on all four sides
+            local inset = rawget(bar, "suiRankInset")
+            if type(inset) ~= "number" or inset < 1 or inset > 2 then error(label .. ": the inset should be 1 or 2 px, is " .. tostring(inset)) end
+            local tl, br
+            for _, q in ipairs(fill.__points) do if q[1] == "TOPLEFT" then tl = q elseif q[1] == "BOTTOMRIGHT" then br = q end end
+            if not tl or not br then error(label .. ": the fill is not pinned by its corners") end
+            if tl[2] ~= bar or tl[3] ~= "TOPLEFT" or tl[4] ~= inset or tl[5] ~= -inset then
+                error(label .. ": the fill's top left should be " .. inset .. ", " .. -inset .. " in the box, is " .. tostring(tl[4]) .. ", " .. tostring(tl[5])) end
+            if br[2] ~= bar or br[3] ~= "BOTTOMRIGHT" or br[4] ~= -inset or br[5] ~= inset then
+                error(label .. ": the fill's bottom right should be " .. -inset .. ", " .. inset .. " in the box, is " .. tostring(br[4]) .. ", " .. tostring(br[5])) end
+            -- the game's art on the bar is gone
+            for _, k in ipairs({ "Fill", "Flare", "Background", "Border" }) do
+                if rawget(bar, k).__alpha[1] ~= 0 then error(label .. ": the game's " .. k .. " still shows") end
+            end
+            -- the label is centred on the box, above the fill
+            local rp = bar.Rank.__points
+            if #rp ~= 2 or rp[1][5] ~= 0 or rp[2][5] ~= 0 then error(label .. ": the label is not centred on the box") end
+            if bar.Rank:GetFrameLevel() <= fill:GetFrameLevel() then error(label .. ": the label is under the fill") end
+            -- ranks: near 0, the middle, full; none overflows
+            for _, r in ipairs({ { 1, 75 }, { 41, 75 }, { 75, 75 }, { 300, 300 }, { 0, 75 } }) do
+                bar:Update({ skillLevel = r[1], maxSkillLevel = r[2] })
+                local v, want = fill:GetValue(), r[1] / r[2]
+                local lo, hi = fill:GetMinMaxValues()
+                if v < lo or v > hi then error(label .. ": rank " .. r[1] .. "/" .. r[2] .. " overflows the box (" .. v .. ")") end
+                if math.abs(v / hi - want) > 0.02 then error(label .. ": rank " .. r[1] .. "/" .. r[2] .. " shows " .. v .. ", wants " .. want) end
+            end
+            -- a mask wider than the bar (an animation overshooting) still stops at the box
+            bar.Mask:SetWidth(width * 1.5)
+            local _, hi = fill:GetMinMaxValues()
+            if fill:GetValue() > hi then error(label .. ": a full bar overflows the box") end
+        end
+        -- in combat, a protected piece is not moved: the layout waits for the fight to end
+        local bar = rankBar(441, -7)
+        bar.Rank.__protect(true)
+        env.InCombatLockdown = function() return true end
+        ns.kit.FlatBar(bar)
+        if bar.Rank.__points[1][5] ~= -3 then error("a protected label was moved in combat") end
+        env.InCombatLockdown = keep.combat
+        ns.kit.FlatBar(bar)
+        if bar.Rank.__points[1][5] ~= 0 then error("the layout put off by the fight was not done after it") end
+    end)
+    env.CreateFrame, env.hooksecurefunc, env.InCombatLockdown = keep.cf, keep.hook, keep.combat
+    if not ok then error(e, 0) end
+end)
 try("Collections", function()
     local c = known.__coll
     if not rawget(c.tab, "suiTab") then error("collections tab not restyled") end
