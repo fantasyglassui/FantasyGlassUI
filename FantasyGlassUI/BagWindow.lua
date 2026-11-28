@@ -233,6 +233,12 @@ local function NewWindow(cfg)
     local function LeftClick(b)
         local info = b.info
         local link = info and info.hyperlink
+        -- a spell waiting for an item (Disenchant, an enchant, a sharpening stone, Pick Lock...): give it this
+        -- item, as the game's own bag button does, instead of picking the item up
+        if (SpellCanTargetItem and SpellCanTargetItem()) or (SpellCanTargetItemID and SpellCanTargetItemID()) then
+            C.UseContainerItem(b.bag, b.slot)
+            return
+        end
         if info and info.itemID and IsAltKeyDown and IsAltKeyDown() then       -- Alt-click: choose a category for this item
             OpenPicker(b)
             return
@@ -249,6 +255,7 @@ local function NewWindow(cfg)
         end
         C.PickupContainerItem(b.bag, b.slot)
     end
+    ns.bagTest[cfg.name].LeftClick = LeftClick
 
     local function Matches(b)
         if query == "" then return true end

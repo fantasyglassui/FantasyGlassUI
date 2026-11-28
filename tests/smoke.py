@@ -4888,6 +4888,26 @@ try("Right-click hands items over", function()
     if T.RightClick({ bag = 0, slot = 4, info = {} }) ~= "used" or used ~= "0:4" then error("away from a vendor an item with no use is used as before") end
     env.C_Container.UseContainerItem = keep
 end)
+try("Left-click gives a waiting spell the item (Disenchant)", function()
+    local T = ns.bagTest and ns.bagTest.FantasyGlassUIBags
+    if not T or not T.LeftClick then error("the bag window's left-click hook is missing") end
+    local used, picked
+    local keepUse, keepPick = env.C_Container.UseContainerItem, env.C_Container.PickupContainerItem
+    local keepCan, keepCanID = rawget(env, "SpellCanTargetItem"), rawget(env, "SpellCanTargetItemID")
+    env.C_Container.UseContainerItem = function(bag, slot) used = bag .. ":" .. slot end
+    env.C_Container.PickupContainerItem = function(bag, slot) picked = bag .. ":" .. slot end
+    local b = { bag = 1, slot = 5, info = { itemID = 2000, hyperlink = "|Hitem:2000|h[Sword]|h" } }
+    env.SpellCanTargetItem = function() return true end
+    env.SpellCanTargetItemID = function() return false end
+    T.LeftClick(b)
+    if used ~= "1:5" or picked then error("with Disenchant waiting, a click should give it the item, not pick it up: used " .. tostring(used) .. ", picked " .. tostring(picked)) end
+    used, picked = nil, nil
+    env.SpellCanTargetItem = function() return false end
+    T.LeftClick(b)
+    if picked ~= "1:5" or used then error("with no spell waiting, a click picks the item up as before") end
+    env.SpellCanTargetItem, env.SpellCanTargetItemID = keepCan, keepCanID
+    env.C_Container.UseContainerItem, env.C_Container.PickupContainerItem = keepUse, keepPick
+end)
 try("Vendor summary", function()
     local L = ns.VendorSummaryLine
     if L({ sold = 0, spent = 0 }) then error("a visit where nothing happened says nothing") end

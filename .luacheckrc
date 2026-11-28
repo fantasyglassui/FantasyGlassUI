@@ -301,6 +301,8 @@ read_globals = {
     "GetZoneText",
     "HEALER",
     "HandleModifiedItemClick",
+    "SpellCanTargetItem",
+    "SpellCanTargetItemID",
     "HasNewMail",
     "HealthBar_OnValueChanged",
     "HideUIPanel",
