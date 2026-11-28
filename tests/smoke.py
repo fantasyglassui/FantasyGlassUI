@@ -31147,6 +31147,58 @@ try("Nameplates 13.5.1: the name-only switch turned off while the plate is up br
     end)
 end)
 -- 13.5.1 plate level tests: end
+-- 13.5.1: "Always open the world map windowed": only the game's miniWorldMap setting, put back to "1" when the map
+-- closes (and at login), out of combat; never Minimize or Maximize from here.
+try("13.5.1 the world map opens windowed", function()
+    local T = ns.mapWindowedTest
+    if not T then error("the windowed map did not start") end
+    local map = env.WorldMapFrame
+    local saved = { cvar = env.C_CVar, combat = env.InCombatLockdown, on = ns.db.mapWindowed, min = rawget(map, "Minimize"), max = rawget(map, "Maximize") }
+    local store, sets, sized = { miniWorldMap = "0" }, 0, 0
+    local ok, err = pcall(function()
+        env.C_CVar = { GetCVar = function(name) return store[name] end, SetCVar = function(name, value) sets = sets + 1; store[name] = tostring(value) end }
+        rawset(map, "Minimize", function() sized = sized + 1 end)
+        rawset(map, "Maximize", function() sized = sized + 1 end)
+        local onHide
+        for i = #handlers, 1, -1 do local h = handlers[i]; if h.self == map and h.name == "OnHide" then onHide = h.fn; break end end
+        if not onHide then error("the map's close is hooked") end
+        local fight = false
+        env.InCombatLockdown = function() return fight end
+        -- off: nothing touches the setting, whatever happens
+        ns.db.mapWindowed = false
+        onHide(map); T.Event("PLAYER_ENTERING_WORLD"); T.Event("PLAYER_REGEN_ENABLED")
+        if sets ~= 0 or store.miniWorldMap ~= "0" then error("off: the setting was touched: " .. sets) end
+        -- on: closing the map sets it back to windowed
+        ns.db.mapWindowed = true
+        onHide(map)
+        if store.miniWorldMap ~= "1" or sets ~= 1 then error("on: closing the map sets windowed: " .. tostring(store.miniWorldMap)) end
+        onHide(map)
+        if sets ~= 1 then error("already windowed: not set again") end
+        -- in a fight it waits, and is set once the fight is over
+        store.miniWorldMap = "0"
+        fight = true
+        onHide(map)
+        if store.miniWorldMap ~= "0" or not T.Waiting() then error("in combat: it waits") end
+        T.Event("PLAYER_REGEN_ENABLED")
+        if store.miniWorldMap ~= "0" then error("still in combat: it waits") end
+        fight = false
+        T.Event("PLAYER_REGEN_ENABLED")
+        if store.miniWorldMap ~= "1" or T.Waiting() then error("after the fight: windowed") end
+        -- at login too
+        store.miniWorldMap = "0"
+        T.Event("PLAYER_ENTERING_WORLD")
+        if store.miniWorldMap ~= "1" then error("at login: windowed") end
+        -- a hidden value is left alone
+        store.miniWorldMap = setmetatable({ __secret = true }, { __index = function() error("read") end })
+        local before = sets
+        onHide(map)
+        if sets ~= before then error("a hidden value is never compared or overwritten") end
+        if sized ~= 0 then error("the map was minimized or maximized from add-on code: " .. sized) end
+    end)
+    env.C_CVar, env.InCombatLockdown, ns.db.mapWindowed = saved.cvar, saved.combat, saved.on
+    rawset(map, "Minimize", saved.min); rawset(map, "Maximize", saved.max)
+    if not ok then error(err, 0) end
+end)
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()

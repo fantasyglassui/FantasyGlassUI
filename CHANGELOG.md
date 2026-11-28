@@ -14,6 +14,8 @@ Longer routes, an arrow to the mobs you need, and a nameplate fix.
   as the game reuses them.
 - The route planner can plan further ahead: Plan ahead in the planner window takes the next couple of quest hubs (Near, as before), about 5 (Far) or about 10 (Very far), and plans again as you play.
 - The route plans again when you take a quest, so it always counts the quests in your log.
+- Always open the world map windowed (World map and travel): the map opens as a window, not full screen; its
+  own button still switches it until you close it.
 
 ## 13.5.0
 
