@@ -3,6 +3,8 @@
 - Nameplates: a friendly player's name-only plate no longer shows a number over the name (it was the
   health text, left on where the game hides the bar). Plates keep their own health, name and level
   as the game reuses them.
+- Chat: Show the chat buttons (Chat and people, Chat) brings back the game's chat menu button, with
+  emotes, languages and its chat settings, and the channels button beside the chat box. Off by default.
 
 ## 13.5.0
 

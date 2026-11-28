@@ -7,7 +7,38 @@ function ns.ChatEditPlace(above)
     return "TOP", "BOTTOM", "under the chat box", -6
 end
 
+-- (13.5.1) The game's chat buttons beside the chat box (the chat menu, with emotes, languages and the
+-- game's chat settings, and the channels button) live in chat window 1's button frame. They are hidden
+-- with the other windows' unless "Show the chat buttons" (chatButtons) is on; then they are left as the
+-- game draws them.
+function ns.ChatButtonsShown(i)
+    return i == 1 and ns.db and ns.db.chatButtons and true or false
+end
+-- The switch changed: silence or give back the button frames at once (out of a fight; in one, as soon
+-- as it ends). Quiet mode keeps them out of sight while it is on, and puts back what the switch says.
+function ns:ApplyChatButtons()
+    if not ns.chatButtonsReady then return false end      -- (Chat improvements off: the game's own, untouched)
+    if InCombatLockdown() then
+        if ns.AfterFight then ns:AfterFight("Show the chat buttons", function() ns:ApplyChatButtons() end, true) end
+        return false
+    end
+    for i = 1, Constants.ChatFrameConstants.MaxChatWindows do
+        local bf = _G["ChatFrame" .. i .. "ButtonFrame"]
+        if type(bf) == "table" then
+            local show = ns.ChatButtonsShown(i)
+            if show and rawget(bf, "suiKilled") then ns:Unsilence(bf)
+            elseif not show and not rawget(bf, "suiKilled") then ns:Silence(bf) end
+            if ns.quietOn and type(ns.quietSaved) == "table" and type(ns.quietSaved.alpha) == "table" then
+                ns.quietSaved.alpha[bf] = show and 1 or 0
+                pcall(bf.SetAlpha, bf, 0)
+            end
+        end
+    end
+    return true
+end
+
 ns:NewModule("chat", function()
+    ns.chatButtonsReady = true
     -- Short channel names
     local short = {
         CHAT_GUILD_GET          = "|Hchannel:GUILD|h[G]|h %s: ",
@@ -42,9 +73,9 @@ ns:NewModule("chat", function()
     for i = 1, Constants.ChatFrameConstants.MaxChatWindows do
         local chat = _G["ChatFrame" .. i]
         if chat then
-            -- Hide the clutter buttons
-            local bf = _G["ChatFrame" .. i .. "ButtonFrame"]
-            ns:Silence(bf)   -- invisible and unclickable, without hooking or hiding it
+            -- Hide the clutter buttons (invisible and unclickable, without hooking or hiding them).
+            -- (13.5.1) "Show the chat buttons" keeps chat window 1's: the chat menu and the channels.
+            if not ns.ChatButtonsShown(i) then ns:Silence(_G["ChatFrame" .. i .. "ButtonFrame"]) end
 
             -- Mouse wheel scroll: Shift = top/bottom, Ctrl = faster
             chat:EnableMouseWheel(true)
