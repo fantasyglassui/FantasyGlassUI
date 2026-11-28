@@ -2,6 +2,12 @@
 
 The releases published on CurseForge. Each lists what changed since the release before it.
 
+## 13.5.1
+
+- Nameplates: a friendly player's name-only plate no longer shows a number over the name (it was the
+  health text, left on where the game hides the bar). Plates keep their own health, name and level
+  as the game reuses them.
+
 ## 13.5.0
 
 Dungeons in your route, class quests on time, and some care behind the scenes.

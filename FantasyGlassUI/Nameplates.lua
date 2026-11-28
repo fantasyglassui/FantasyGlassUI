@@ -148,6 +148,13 @@ ns:NewModule("nameplates", function()
         end
         local okS, shown = pcall(bar.IsShown, bar)
         if okS and shown == false then own:Hide() end
+        -- (13.5.1) the level and the health text are only written on a bar that is drawn: when ours comes
+        -- back (the plate shows its bar again) or gets its size, they are written afresh
+        if own.HookScript then
+            local function Again() if ns.PlateBarChanged then pcall(ns.PlateBarChanged, uf) end end
+            own:HookScript("OnShow", Again)
+            own:HookScript("OnSizeChanged", Again)
+        end
         ns:Kill(bar)                                           -- (the game's bar: out of sight, still running)
         if hooksecurefunc then                                 -- (and if the game fades it back in, straight back out)
             hooksecurefunc(bar, "SetAlpha", function(self, a)
@@ -172,6 +179,45 @@ ns:NewModule("nameplates", function()
         local on = ns.PlateDesign().nameShow and not rawget(uf, "suiFoe")
         uf.name:SetAlpha(on and 1 or 0)
     end
+    -- (13.5.1) Is our bar drawn: shown, and wider than a sliver? Where the game shows only a name (a
+    -- friendly player's name-only plate) it hides its bar, and ours with it; a bar of no width sits at a
+    -- single point, the plate's middle, where the name is. Either way nothing is written beside or on it.
+    -- (A width the game keeps hidden counts as not drawn: it cannot be checked.)
+    local function BarDrawn(bar)
+        if type(bar) ~= "table" then return false end
+        local okS, shown = pcall(bar.IsShown, bar)
+        if okS and shown == false then return false end
+        local okW, w = pcall(bar.GetWidth, bar)
+        if not okW or Secret(w) then return false end
+        if type(w) == "number" and w <= 1 then return false end
+        return true
+    end
+    ns.PlateBarDrawn = BarDrawn
+    -- The bar a plate's own pieces hang on: ours, on the unit frame the plate has now. (The game hands
+    -- its unit frames out from a pool: a plate can get a different one each time a unit is put on it,
+    -- and its old one goes to another plate.)
+    local function PlateBar(uf)
+        if not Usable(uf) then return nil end
+        local hb = HealthBar(uf)
+        if type(hb) ~= "table" then return nil end
+        return rawget(hb, "suiOwn") or hb
+    end
+    -- (13.5.1) A piece of ours on a plate (the health text, the name, the cast bar and debuffs, the quest
+    -- count) moves onto the bar of the plate's present unit frame: placed by it, and hidden with it.
+    -- They were placed by the bar of the first unit frame the plate had, and stayed there as that frame
+    -- went to other plates, and were shown when the game had hidden the bar: a friendly player's
+    -- health number sat in the middle of their name.
+    local function Rehome(f, uf, lift, fill)
+        local bar = PlateBar(uf)
+        if not bar then return rawget(f, "suiHome") end
+        if rawget(f, "suiHome") ~= bar then
+            f:SetParent(bar)
+            if fill ~= false then f:ClearAllPoints(); f:SetAllPoints(bar) end
+            f.suiHome = bar
+        end
+        f:SetFrameLevel(((bar.GetFrameLevel and bar:GetFrameLevel()) or 1) + (lift or 3))
+        return bar
+    end
     -- Our level, in the game's difficulty color ("??" for a boss), just left of the bar at its middle, on
     -- every plate. (13.0.2) It is drawn on our own bar, so it goes wherever the bar goes: where the game
     -- shows only a name (a friendly player's name-only plate, a friendly NPC's), the bar is hidden and the
@@ -193,6 +239,9 @@ ns:NewModule("nameplates", function()
         end
         t:ClearAllPoints()
         t:SetPoint("RIGHT", bar, "LEFT", -3, 0)
+        -- (13.5.1) no level where the bar is not drawn (a name-only plate, a bar of no width): there is
+        -- nothing for it to stand beside, and the name is where it would land
+        if type(unit) ~= "string" or Secret(unit) or not BarDrawn(bar) then t:SetText(""); return end
         local ok, lvl = pcall(UnitLevel, unit)
         if not ok or type(lvl) ~= "number" or Secret(lvl) or not ns.PlateDesign().nameShow then t:SetText(""); return end
         if lvl < 0 then t:SetText("??"); t:SetTextColor(1, 0.25, 0.2); return end
@@ -226,8 +275,17 @@ ns:NewModule("nameplates", function()
             bar.suiSkinned = true
             ns.PlateOwnBar(uf, bar)
         end
-        local badge = uf.PlayerLevelDiffFrame                  -- the game's level badge: ours is left of the bar
-        if type(badge) == "table" and badge.SetAlpha and not badge.suiKilled then ns:Kill(badge) end
+        -- the game's own levels: ours is left of the bar. (13.5.1) Both of them: its level badge, and the
+        -- level its Classic style puts at the bar's right end, which it shows on name-only plates too
+        for _, k in ipairs({ "PlayerLevelDiffFrame", "LevelFrame" }) do
+            local lv = uf[k]
+            if type(lv) == "table" and lv.SetAlpha and not lv.suiKilled then ns:Kill(lv) end
+        end
+        local own = bar and rawget(bar, "suiOwn")                -- (13.5.1) ours shown or hidden as the game's bar is now
+        if own then
+            local okS, shown = pcall(bar.IsShown, bar)
+            if okS and shown == true then own:Show() elseif okS and shown == false then own:Hide() end
+        end
         GameFlare(uf)
         if bar then
             plates[uf] = nil                                   -- a reused plate: look at its selection afresh
@@ -411,11 +469,12 @@ ns:NewModule("nameplates", function()
         x = CreateFrame("Frame", nil, plate)
         x:SetAllPoints(hb)
         x.auras = {}
+        -- (13.5.1) everything below is placed by x, which goes with the plate's present bar (Rehome)
 
         local bar = ns:NewStatusBar(x, true)
         bar:SetHeight(ns.PlateDesign().castHeight)
-        bar:SetPoint("TOPLEFT", hb, "BOTTOMLEFT", 0, -4)
-        bar:SetPoint("TOPRIGHT", hb, "BOTTOMRIGHT", 0, -4)
+        bar:SetPoint("TOPLEFT", x, "BOTTOMLEFT", 0, -4)
+        bar:SetPoint("TOPRIGHT", x, "BOTTOMRIGHT", 0, -4)
         bar.lock = bar:CreateTexture(nil, "ARTWORK", nil, 3)
         bar.lock:SetAllPoints()
         bar.lock:SetTexture(ns.FLAT)
@@ -446,7 +505,7 @@ ns:NewModule("nameplates", function()
 
         x.auraRow = CreateFrame("Frame", nil, x)
         x.auraRow:SetSize(105, 18)
-        x.auraRow:SetPoint("BOTTOMLEFT", hb, "TOPLEFT", 0, ns.PlateAuraLift())
+        x.auraRow:SetPoint("BOTTOMLEFT", x, "TOPLEFT", 0, ns.PlateAuraLift())
 
         x:SetScript("OnEvent", ns:Guard("Nameplate extras", function(self, event)
             if event == "UNIT_AURA" then PlateAuras(self) else PlateCast(self) end
@@ -498,7 +557,7 @@ ns:NewModule("nameplates", function()
     -- whether or not casts and debuffs on plates are switched on, and on friendly plates too.
     local healthTexts = setmetatable({}, { __mode = "k" })
     local function WriteHealth(h)
-        if not h.suiUnit or not ns.db.plateHealth then h.text:SetText(""); return end
+        if not h.suiUnit or not ns.db.plateHealth or not BarDrawn(rawget(h, "suiHome")) then h.text:SetText(""); return end
         local ok, gone = pcall(function() return UnitIsDeadOrGhost(h.suiUnit) end)
         if ok and ns.Is(gone, true) then h.text:SetText(""); return end
         if ns.SetHealthText then ns.SetHealthText(h.text, h.suiUnit) end
@@ -509,7 +568,7 @@ ns:NewModule("nameplates", function()
     -- has no mana at all would be worse than showing nothing.
     local function WritePower(h)
         local fs, unit = h.power, h.suiUnit
-        if not unit or not ns.db.powerText or not ns.SetPowerPct then fs:SetText(""); return end
+        if not unit or not ns.db.powerText or not ns.SetPowerPct or not BarDrawn(rawget(h, "suiHome")) then fs:SetText(""); return end
         local ok, max = pcall(UnitPowerMax, unit)
         if ok and not ns:IsSecret(max) then
             h.suiHasPower = (type(max) == "number" and max > 0)
@@ -612,6 +671,9 @@ ns:NewModule("nameplates", function()
             if q.text.SetShadowOffset then q.text:SetShadowOffset(1, -1); q.text:SetShadowColor(0, 0, 0, 1) end
             questMarks[plate] = q
         end
+        -- (13.5.1) on the bar of the plate's present unit frame, hidden with it
+        local qb = Rehome(q, uf, 4, false)
+        if qb then q.suiBar = qb end
         -- (13.0.1) out past the level and the quest "!" (QuestMarks.lua), so the three stand side by side
         q:ClearAllPoints()
         q:SetPoint("RIGHT", q.suiBar, "LEFT", -(ns.PlateLevelSlot() + 16), 0)
@@ -656,6 +718,7 @@ ns:NewModule("nameplates", function()
             end))
             healthTexts[plate] = h
         end
+        if uf then Rehome(h, uf, 3) end
         if not h.suiPlaced then ns.PlaceHealthText(h); h.suiPlaced = true end
         h:UnregisterAllEvents()
         h.suiUnit = unit
@@ -714,6 +777,7 @@ ns:NewModule("nameplates", function()
             n:SetScript("OnEvent", ns:Guard("Nameplate names", function(self) WriteName(self) end))
             plateNames[plate] = n
         end
+        Rehome(n, uf, 3)
         PlaceName(n)
         if n.text.SetShadowOffset then n.text:SetShadowOffset(1, -1); n.text:SetShadowColor(0, 0, 0, 1) end
         n:UnregisterAllEvents()
@@ -728,6 +792,17 @@ ns:NewModule("nameplates", function()
         return n
     end
     ns.PlateName = PlateName
+
+    -- (13.5.1) our bar on a unit frame was shown again or resized: its level and its plate's health
+    -- text are written afresh (or blanked, if the bar is not drawn)
+    function ns.PlateBarChanged(uf)
+        if not Usable(uf) then return end
+        local unit = uf.unit
+        pcall(PlateLevel, uf, unit)
+        local plate = uf.GetParent and uf:GetParent()
+        local h = type(plate) == "table" and healthTexts[plate]
+        if h and rawget(h, "suiHome") == PlateBar(uf) then pcall(WriteHealth, h); pcall(WritePower, h) end
+    end
 
     function ns:RefreshPlateHealth()                        -- the option changed: rewrite every plate showing
         for _, h in pairs(healthTexts) do pcall(WriteHealth, h); pcall(WritePower, h) end
@@ -773,6 +848,7 @@ ns:NewModule("nameplates", function()
         if not Usable(plate) then return end
         local x = GetExtra(plate, uf)
         if not x then return end
+        Rehome(x, uf, 1)
         x:UnregisterAllEvents()
         if UnitCanAttack("player", unit) then
             x.unit = unit

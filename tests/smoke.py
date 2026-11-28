@@ -30057,7 +30057,9 @@ try("Nameplates 13.0.2: the level sits left of the bar on every plate, never on 
                 if p[1] == "RIGHT" and p[2] == own and p[3] == "LEFT" and type(p[4]) == "number" and p[4] < 0 then beside = true end
             end
             if not beside then error(what .. ": the level is not just left of the bar") end
-            if rawget(t, "txt") ~= 60 then error(what .. ": the level reads " .. tostring(rawget(t, "txt"))) end
+            -- (13.5.1) where the bar is not drawn there is no level at all, not only one hidden with the bar
+            local want = nameOnly and "" or 60
+            if rawget(t, "txt") ~= want then error(what .. ": the level reads " .. tostring(rawget(t, "txt"))) end
         end
     end)
     env.UnitLevel = keep.lvl
@@ -30265,6 +30267,394 @@ try("World map 13.0.2: the full-screen map is not shrunk; the windowed one takes
     if not ok then error(err, 0) end
 end)
 -- 13.0.2 tests: end
+-- 13.5.1 plate level tests: begin
+-- (13.5.1) "Thrett155etank": a friendly player's name-only plate with a white number in the middle of
+-- the name. The number was not a level at all: it was our health text (the friendly player's health,
+-- 155, with "Health as numbers" on; white, as the health text is, where our level is in a difficulty
+-- color). It lives on a small frame of the plate's own, placed by the game's health bar: where the game
+-- shows only a name it hides that bar, but our frame stayed shown, at the bar's middle, which in the
+-- Modern and Block styles is just where the name-only plate centres the name. And the game hands its
+-- unit frames out from a pool, so that frame (and our name, cast bar, debuffs and quest count) stayed
+-- placed by the first unit frame's bar after it moved on to another plate.
+-- These tests lay plates out (a small model of the game's frames, with real positions) and check that
+-- no number shown on any plate covers a name shown on any plate, in each of the game's styles.
+local PlateWorld, PlateWorldRun
+do
+    local function Geo(o) return rawget(o, "__geo") end
+    local function AnchorX(r, p) if p:find("LEFT") then return r[1] elseif p:find("RIGHT") then return r[3] end return (r[1] + r[3]) / 2 end
+    local function AnchorY(r, p) if p:find("BOTTOM") then return r[2] elseif p:find("TOP") then return r[4] end return (r[2] + r[4]) / 2 end
+    local Rect
+    local function TextWidth(o) local g = Geo(o); local t = g.text; return (type(t) == "string" or type(t) == "number") and #tostring(t) * 6 or 0 end
+    function Rect(o, depth)
+        local g = Geo(o)
+        if not g or (depth or 0) > 30 then return nil end
+        if g.rect then return g.rect end
+        if #g.pts == 0 then return nil end
+        local l, r, cx, b, t, cy
+        for _, p in ipairs(g.pts) do
+            local rr = Rect(p[2], (depth or 0) + 1)
+            if not rr then return nil end
+            local X, Y = AnchorX(rr, p[3]) + p[4], AnchorY(rr, p[3]) + p[5]
+            if p[1]:find("LEFT") then l = X elseif p[1]:find("RIGHT") then r = X else cx = X end
+            if p[1]:find("BOTTOM") then b = Y elseif p[1]:find("TOP") then t = Y else cy = Y end
+        end
+        local w = g.w or (g.fs and TextWidth(o)) or 0
+        local h = g.h or (g.fs and (g.size or 10)) or 0
+        if l and r then elseif l then r = l + w elseif r then l = r - w elseif cx then l, r = cx - w / 2, cx + w / 2 else return nil end
+        if b and t then elseif b then t = b + h elseif t then b = t - h elseif cy then b, t = cy - h / 2, cy + h / 2 else return nil end
+        return { l, b, r, t }
+    end
+    -- where a label's letters are: its box, or the part of it its text takes, as it is justified
+    local function TextRect(o)
+        local box = Rect(o)
+        if not box then return nil end
+        local g, sw = Geo(o), TextWidth(o)
+        if box[3] - box[1] <= sw then return box end
+        local j = g.justify or "CENTER"
+        if j == "LEFT" then return { box[1], box[2], box[1] + sw, box[4] } end
+        if j == "RIGHT" then return { box[3] - sw, box[2], box[3], box[4] } end
+        local c = (box[1] + box[3]) / 2
+        return { c - sw / 2, box[2], c + sw / 2, box[4] }
+    end
+    local function Visible(o)
+        local x = o
+        for _ = 1, 40 do
+            local g = Geo(x)
+            if not g then return true end
+            if not g.shown or (g.alpha or 1) <= 0 then return false end
+            x = g.parent
+            if x == nil then return true end
+        end
+        return true
+    end
+    local function Object(kind, parent, all)
+        local o = newmock()
+        local g = { kind = kind, parent = parent, shown = true, alpha = 1, pts = {}, level = 1, scripts = {},
+                    fs = (kind == "FontString") or nil }
+        rawset(o, "__geo", g)
+        if kind ~= "FontString" and kind ~= "Texture" then rawset(o, "__kind", kind) end
+        all[#all + 1] = o
+        local function Fire(name) for _, fn in ipairs(g.scripts[name] or {}) do fn(o) end end
+        rawset(o, "GetObjectType", function() return kind end)
+        rawset(o, "SetParent", function(_, p) g.parent = p end)
+        rawset(o, "GetParent", function() return g.parent end)
+        rawset(o, "Show", function() local was = g.shown; g.shown = true; if not was then Fire("OnShow") end end)
+        rawset(o, "Hide", function() g.shown = false end)
+        rawset(o, "SetShown", function(self, on) if on then self:Show() else self:Hide() end end)
+        rawset(o, "IsShown", function() return g.shown end)
+        rawset(o, "IsVisible", function() return Visible(o) end)
+        rawset(o, "SetAlpha", function(_, a) g.alpha = a end)
+        rawset(o, "GetAlpha", function() return g.alpha end)
+        rawset(o, "SetPoint", function(_, p, rel, rp, x, y)
+            if type(rel) ~= "table" then x, y, rel, rp = rel, rp, g.parent, p
+            elseif type(rp) ~= "string" then x, y, rp = rp, x, p end
+            for i = #g.pts, 1, -1 do if g.pts[i][1] == p then table.remove(g.pts, i) end end
+            g.pts[#g.pts + 1] = { p, rel, rp, tonumber(x) or 0, tonumber(y) or 0 }
+        end)
+        rawset(o, "ClearAllPoints", function() g.pts = {} end)
+        rawset(o, "SetAllPoints", function(_, rel)
+            rel = rel or g.parent
+            g.pts = { { "TOPLEFT", rel, "TOPLEFT", 0, 0 }, { "BOTTOMRIGHT", rel, "BOTTOMRIGHT", 0, 0 } }
+        end)
+        rawset(o, "GetNumPoints", function() return #g.pts end)
+        rawset(o, "GetPoint", function(_, i) local p = g.pts[i or 1]; if p then return p[1], p[2], p[3], p[4], p[5] end end)
+        rawset(o, "SetSize", function(_, w, h) g.w, g.h = w, h end)
+        rawset(o, "SetWidth", function(_, w) g.w = w end)
+        rawset(o, "SetHeight", function(_, h) g.h = h end)
+        rawset(o, "GetWidth", function() local r = Rect(o); return r and (r[3] - r[1]) or 0 end)
+        rawset(o, "GetHeight", function() local r = Rect(o); return r and (r[4] - r[2]) or 0 end)
+        rawset(o, "SetFrameLevel", function(_, l) g.level = tonumber(l) or 1 end)
+        rawset(o, "GetFrameLevel", function() return g.level end)
+        rawset(o, "SetScript", function(_, name, fn) g.scripts[name] = { fn } end)
+        rawset(o, "HookScript", function(_, name, fn) g.scripts[name] = g.scripts[name] or {}; table.insert(g.scripts[name], fn) end)
+        rawset(o, "CreateFontString", function(self) return Object("FontString", self, all) end)
+        rawset(o, "CreateTexture", function(self) return Object("Texture", self, all) end)
+        rawset(o, "SetText", function(_, s) g.text = s end)
+        rawset(o, "SetFormattedText", function(_, f) g.text = "000" end)
+        rawset(o, "GetText", function() return g.text end)
+        rawset(o, "GetStringWidth", function() return TextWidth(o) end)
+        rawset(o, "SetFont", function(_, _, size) g.size = tonumber(size) or g.size end)
+        rawset(o, "SetJustifyH", function(_, j) g.justify = j end)
+        rawset(o, "IsForbidden", function() return false end)
+        rawset(o, "IsProtected", function() return false end)
+        return o
+    end
+
+    -- A world of plates: `style` is the game's nameplate style (Modern, Block or Classic).
+    function PlateWorld(style)
+        local W = { all = {}, units = {}, at = {}, plates = {} }
+        local all = W.all
+        local screen = Object("Frame", nil, all); rawset(screen, "__geo", Geo(screen)); Geo(screen).rect = { 0, 0, 2000, 1000 }
+        function W.Plate(x)
+            local p = Object("Frame", screen, all)
+            Geo(p).rect = { x, 400, x + 152, 460 }
+            W.plates[#W.plates + 1] = p
+            return p
+        end
+        -- one of the game's unit frames, from its pool
+        function W.UnitFrame()
+            local uf = Object("Button", nil, all)
+            local c = Object("Frame", uf, all)
+            c:SetPoint("TOPLEFT", uf, "TOPLEFT", 12, -30)
+            c:SetPoint("BOTTOMRIGHT", uf, "BOTTOMRIGHT", -12, 20)
+            local bar = Object("StatusBar", c, all)
+            for _, k in ipairs({ "SetMinMaxValues", "SetValue", "SetStatusBarColor" }) do rawset(bar, k, function() end) end
+            rawset(bar, "GetMinMaxValues", function() return 0, 100 end)
+            rawset(bar, "GetValue", function() return 50 end)
+            rawset(bar, "GetStatusBarColor", function() return 0.2, 0.8, 0.2 end)
+            if style == "Classic" then
+                bar:SetPoint("TOPLEFT", c, "TOPLEFT", 3.5, 0); bar:SetPoint("BOTTOMRIGHT", c, "BOTTOMRIGHT", -20.75, 0)
+            else
+                bar:SetAllPoints(c)
+            end
+            rawset(c, "healthBar", bar)
+            rawset(uf, "HealthBarsContainer", c)
+            rawset(uf, "healthBar", bar)
+            local name = Object("FontString", uf, all)
+            Geo(name).size = 10
+            rawset(uf, "name", name)
+            -- the game's own levels: the badge right of the bar, and the Classic style's level at the bar's right end
+            local badge = Object("Frame", uf, all)
+            badge:SetPoint("TOPLEFT", bar, "TOPRIGHT", 5, 3); badge:SetPoint("BOTTOMLEFT", bar, "BOTTOMRIGHT", 5, -2); badge:SetWidth(20)
+            local bt = Object("FontString", badge, all); bt:SetPoint("CENTER", badge, "CENTER", 0, 0)
+            rawset(badge, "playerLevelDiffText", bt); rawset(uf, "PlayerLevelDiffFrame", badge)
+            local lf = Object("Frame", uf, all)
+            lf:SetSize(15, 15); lf:SetPoint("CENTER", c, "RIGHT", -11, 0)
+            local lt = Object("FontString", lf, all); lt:SetPoint("CENTER", lf, "CENTER", 0, 0)
+            rawset(lf, "LevelText", lt); rawset(uf, "LevelFrame", lf)
+            uf:Hide()
+            return uf
+        end
+        -- the game puts a unit on a plate: the frame from the pool, laid out as its style lays it out
+        function W.Add(plate, uf, unit, u)
+            W.units[unit], W.at[unit] = u, plate
+            rawset(plate, "UnitFrame", uf)
+            uf:SetParent(plate); uf:SetAllPoints(plate); uf:Show()
+            rawset(uf, "unit", unit)
+            local c, bar, name = rawget(uf, "HealthBarsContainer"), rawget(uf, "healthBar"), rawget(uf, "name")
+            local nameOnly = u.nameOnly
+            if nameOnly then bar:Hide() else bar:Show() end
+            Geo(name).text = u.name
+            name:ClearAllPoints()
+            if nameOnly then
+                Geo(name).justify = "CENTER"
+                if style == "Classic" then
+                    name:SetPoint("BOTTOMLEFT", c, "TOPLEFT", 4, 2); name:SetPoint("BOTTOMRIGHT", c, "TOPRIGHT", -4, 2)
+                else
+                    name:SetPoint("LEFT", c, "LEFT", 4, 0); name:SetPoint("RIGHT", c, "RIGHT", -4, 0)
+                end
+            elseif style == "Classic" then
+                Geo(name).justify = "CENTER"; name:SetPoint("BOTTOM", c, "TOP", 0, 4)
+            else
+                Geo(name).justify = "LEFT"; name:SetPoint("LEFT", c, "LEFT", 4, 0); name:SetPoint("RIGHT", c, "RIGHT", -30, 0)
+            end
+            local lvl = tostring(u.level)
+            local badge, lf = rawget(uf, "PlayerLevelDiffFrame"), rawget(uf, "LevelFrame")
+            Geo(rawget(badge, "playerLevelDiffText")).text = lvl
+            if u.player and not nameOnly then badge:Show() else badge:Hide() end
+            Geo(rawget(lf, "LevelText")).text = lvl
+            if style == "Classic" then lf:Show() else lf:Hide() end
+            if u.zeroBar then                                -- a bar laid out with no width, at the plate's middle
+                bar:ClearAllPoints(); bar:SetPoint("CENTER", c, "CENTER", 0, 0); bar:SetSize(0, 10)
+                name:ClearAllPoints(); Geo(name).justify = "CENTER"
+                name:SetPoint("LEFT", c, "LEFT", 4, 0); name:SetPoint("RIGHT", c, "RIGHT", -4, 0)
+            end
+            fireEvent("NAME_PLATE_UNIT_ADDED", unit)
+        end
+        -- the game takes a unit off its plate: the frame goes back to the pool first
+        function W.Remove(unit)
+            local plate = W.at[unit]
+            local uf = rawget(plate, "UnitFrame")
+            rawset(plate, "UnitFrame", nil)
+            if uf then uf:Hide(); uf:ClearAllPoints(); rawset(uf, "unit", nil) end
+            fireEvent("NAME_PLATE_UNIT_REMOVED", unit)
+            W.at[unit] = nil
+        end
+        -- every name shown, and every number shown, anywhere: none of the numbers may touch a name
+        function W.Check(what)
+            local names, nums = {}, {}
+            local known = {}
+            for _, u in pairs(W.units) do known[u.name] = true end
+            for _, o in ipairs(all) do
+                local g = Geo(o)
+                if g.fs and Visible(o) and g.text ~= nil and tostring(g.text) ~= "" then
+                    local r = TextRect(o)
+                    if r and known[tostring(g.text)] then
+                        -- (the game's name inside the bar, in the Modern and Block styles, is under our bar)
+                        local covered = false
+                        local uf = g.parent
+                        local bar = type(uf) == "table" and rawget(uf, "healthBar")
+                        local own = bar and rawget(bar, "suiOwn")
+                        local orr = own and Visible(own) and Rect(own)
+                        if orr and g.parent == uf and r[1] >= orr[1] and r[3] <= orr[3] + 1 and r[2] >= orr[2] - 1 and r[4] <= orr[4] + 1 then covered = true end
+                        if not covered then names[#names + 1] = { o, r } end
+                    elseif r and tostring(g.text):find("%d") then
+                        nums[#nums + 1] = { o, r }
+                    end
+                end
+            end
+            for _, n in ipairs(names) do
+                for _, d in ipairs(nums) do
+                    local a, b = n[2], d[2]
+                    if a[1] < b[3] and b[1] < a[3] and a[2] < b[4] and b[2] < a[4] then
+                        error(what .. ": \"" .. tostring(Geo(d[1]).text) .. "\" is drawn over the name \"" .. tostring(Geo(n[1]).text) .. "\"", 0)
+                    end
+                end
+            end
+            return names, nums
+        end
+        function W.Text(o) return Geo(o).text end
+        function W.Shows(o) return Visible(o) and Geo(o).text ~= nil and tostring(Geo(o).text) ~= "" end
+        function W.Rect(o) return Rect(o) end
+        return W
+    end
+
+    -- runs `body(W)` in each style with the game's functions answering for the units in the world
+    function PlateWorldRun(label, body)
+        local keep = {}
+        for _, k in ipairs({ "CreateFrame", "hooksecurefunc", "UnitCanAttack", "UnitReaction", "UnitIsPlayer", "UnitLevel", "UnitName",
+                             "UnitHealth", "UnitHealthMax", "UnitIsFriend" }) do keep[k] = env[k] end
+        local realPlates = rawget(env.C_NamePlate, "GetNamePlateForUnit")
+        local keepDb = { ns.db.plateDesign, ns.db.healthNumbers, ns.db.plateHealth, ns.db.powerText }
+        local errs = #ns.errors
+        local ok, err = pcall(function()
+            for _, style in ipairs({ "Modern", "Block", "Classic" }) do
+                local W = PlateWorld(style)
+                env.CreateFrame = function(kind, _, parent) return Object(kind or "Frame", parent, W.all) end
+                env.hooksecurefunc = function(a, b, c)
+                    if type(a) == "table" and type(b) == "string" and type(c) == "function" and type(rawget(a, b)) == "function" then
+                        local was = rawget(a, b)
+                        rawset(a, b, function(...) local r = table.pack(was(...)); c(...); return table.unpack(r, 1, r.n) end)
+                    end
+                end
+                local function U(u) return W.units[u] or {} end
+                env.UnitCanAttack = function(_, u) return U(u).foe == true end
+                env.UnitReaction = function(u) return U(u).foe and 2 or 5 end
+                env.UnitIsFriend = function(_, u) return not U(u).foe end
+                env.UnitIsPlayer = function(u) return U(u).player == true end
+                env.UnitLevel = function(u) return U(u).level or 1 end
+                env.UnitName = function(u) return U(u).name end
+                env.UnitHealth = function() return 155 end
+                env.UnitHealthMax = function() return 200 end
+                rawset(env.C_NamePlate, "GetNamePlateForUnit", function(u) return W.at[u] end)
+                ns.db.plateDesign, ns.db.healthNumbers, ns.db.plateHealth, ns.db.powerText = nil, true, true, true
+                body(W, style)
+            end
+        end)
+        for k, v in pairs(keep) do env[k] = v end
+        rawset(env.C_NamePlate, "GetNamePlateForUnit", realPlates)
+        ns.db.plateDesign, ns.db.healthNumbers, ns.db.plateHealth, ns.db.powerText = keepDb[1], keepDb[2], keepDb[3], keepDb[4]
+        if not ok then error(err, 0) end
+        if #ns.errors ~= errs then error(label .. ": " .. tostring(ns.errors[#ns.errors]), 0) end
+    end
+end
+
+local FRIEND = { name = "Threttletank", player = true, level = 55 }
+local function Friend(extra) local u = {}; for k, v in pairs(FRIEND) do u[k] = v end; for k, v in pairs(extra or {}) do u[k] = v end; return u end
+local FOE = { name = "Prideclaw", foe = true, level = 6 }
+
+try("Nameplates 13.5.1: a friendly player's name-only plate shows no number on the name", function()
+    PlateWorldRun("name-only", function(W, style)
+        local plate, uf = W.Plate(100), W.UnitFrame()
+        W.Add(plate, uf, "nameplate1", Friend({ nameOnly = true }))
+        local names = W.Check(style .. ", a friendly player's name-only plate")
+        if #names ~= 1 then error(style .. ": the friendly player's name should show, once (" .. #names .. " names)") end
+        local lv = rawget(uf, "suiLevel")
+        if lv and W.Shows(lv) then error(style .. ": a level shows on a name-only plate: " .. tostring(W.Text(lv))) end
+        if rawget(rawget(uf, "LevelFrame"), "__geo").alpha ~= 0 then error(style .. ": the game's own level is still in sight") end
+    end)
+end)
+
+try("Nameplates 13.5.1: a friendly player's plate with a bar: the level left of the bar, off the name", function()
+    PlateWorldRun("with a bar", function(W, style)
+        local plate, uf = W.Plate(100), W.UnitFrame()
+        W.Add(plate, uf, "nameplate1", Friend())
+        W.Check(style .. ", a friendly player's plate with its bar")
+        local lv = rawget(uf, "suiLevel")
+        if not (lv and W.Shows(lv) and tostring(W.Text(lv)) == "55") then error(style .. ": the level should show beside the bar, got " .. tostring(lv and W.Text(lv))) end
+        local own = rawget(rawget(uf, "healthBar"), "suiOwn")
+        local lr, br = W.Rect(lv), W.Rect(own)
+        if not (lr and br and lr[3] <= br[1]) then error(style .. ": the level should stand left of the bar") end
+        for _, k in ipairs({ "PlayerLevelDiffFrame", "LevelFrame" }) do
+            if rawget(rawget(uf, k), "__geo").alpha ~= 0 then error(style .. ": the game's own level (" .. k .. ") is still in sight") end
+        end
+    end)
+end)
+
+try("Nameplates 13.5.1: a plate reused from an enemy for a friendly player, and back", function()
+    PlateWorldRun("reuse", function(W, style)
+        local plate, uf = W.Plate(100), W.UnitFrame()
+        W.Add(plate, uf, "nameplate1", FOE)
+        W.Check(style .. ", the enemy first")
+        W.Remove("nameplate1")
+        W.Add(plate, uf, "nameplate2", Friend({ nameOnly = true }))
+        local names = W.Check(style .. ", an enemy's plate reused for a friendly player's name-only plate")
+        if #names ~= 1 then error(style .. ": one name should show on the reused plate (" .. #names .. ")") end
+        W.Remove("nameplate2")
+        W.Add(plate, uf, "nameplate3", FOE)
+        W.Check(style .. ", a friendly name-only plate reused for an enemy")
+        local lv = rawget(uf, "suiLevel")
+        if not (lv and W.Shows(lv) and tostring(W.Text(lv)) == "6") then error(style .. ": back on an enemy, the level should show again, got " .. tostring(lv and W.Text(lv))) end
+        local seen = false
+        for _, o in ipairs(W.all) do if W.Shows(o) and tostring(W.Text(o)) == "155" then seen = true end end
+        if not seen then error(style .. ": back on an enemy, the health text should show again") end
+    end)
+end)
+
+try("Nameplates 13.5.1: the game's unit frames change plates: our pieces go with the plate's present one", function()
+    PlateWorldRun("pool", function(W, style)
+        local p, q = W.Plate(100), W.Plate(600)
+        local uf1, uf2 = W.UnitFrame(), W.UnitFrame()
+        W.Add(p, uf1, "nameplate1", FOE)                    -- plate P makes its health text, name and cast bar on uf1
+        W.Remove("nameplate1")
+        W.Add(q, uf1, "nameplate2", Friend({ nameOnly = true }))     -- uf1 goes to plate Q, for a friendly player's name
+        W.Add(p, uf2, "nameplate3", FOE)                    -- and P gets uf2 for another enemy
+        W.Check(style .. ", a unit frame handed from an enemy's plate to a friendly player's")
+        -- what P shows is on P's bar
+        local own2 = rawget(rawget(uf2, "healthBar"), "suiOwn")
+        local br = W.Rect(own2)
+        for _, o in ipairs(W.all) do
+            if W.Shows(o) and tostring(W.Text(o)) == "155" then
+                local r = W.Rect(o)
+                if r and (r[1] < 300) ~= (br[1] < 300) then error(style .. ": the enemy's health shows on the other plate") end
+            end
+        end
+        -- and back: the friendly player's frame goes to P, the enemy's to Q
+        W.Remove("nameplate2"); W.Remove("nameplate3")
+        W.Add(p, uf1, "nameplate4", Friend({ nameOnly = true }))
+        W.Add(q, uf2, "nameplate5", FOE)
+        W.Check(style .. ", the frames swapped back")
+    end)
+end)
+
+try("Nameplates 13.5.1: a bar of no width shows no level and no health on the name", function()
+    PlateWorldRun("zero width", function(W, style)
+        local plate, uf = W.Plate(100), W.UnitFrame()
+        W.Add(plate, uf, "nameplate1", Friend({ zeroBar = true }))
+        W.Check(style .. ", a friendly plate whose bar has no width")
+        local lv = rawget(uf, "suiLevel")
+        if lv and W.Shows(lv) then error(style .. ": a level shows beside a bar of no width") end
+        -- the bar gets its width: the level comes back, left of it
+        local bar, c = rawget(uf, "healthBar"), rawget(uf, "HealthBarsContainer")
+        bar:ClearAllPoints(); bar:SetAllPoints(c)
+        local own = rawget(bar, "suiOwn")
+        for _, fn in ipairs(rawget(own, "__geo").scripts.OnSizeChanged or {}) do fn(own) end
+        if not (lv and W.Shows(lv) and tostring(W.Text(lv)) == "55") then error(style .. ": with its width back, the level should show, got " .. tostring(lv and W.Text(lv))) end
+    end)
+end)
+
+try("Nameplates 13.5.1: the name-only switch turned off while the plate is up brings the level back", function()
+    PlateWorldRun("switch", function(W, style)
+        local plate, uf = W.Plate(100), W.UnitFrame()
+        W.Add(plate, uf, "nameplate1", Friend({ nameOnly = true }))
+        local lv = rawget(uf, "suiLevel")
+        rawget(uf, "healthBar"):Show()                    -- the game shows the bar again (its name-only setting off)
+        if not (lv and W.Shows(lv) and tostring(W.Text(lv)) == "55") then error(style .. ": the level should come back with the bar, got " .. tostring(lv and W.Text(lv))) end
+        rawget(uf, "healthBar"):Hide()                    -- and on again
+        if W.Shows(lv) then error(style .. ": the level should go with the bar") end
+    end)
+end)
+-- 13.5.1 plate level tests: end
 try("Delayed calls", function() runTimers(); fireEvent("PLAYER_ENTERING_WORLD"); runTimers() end)
 try("Preview off", function() ns:TogglePreview(true); if ns.previewing then error("preview stuck on") end end)
 fire()
