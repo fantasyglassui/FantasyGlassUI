@@ -7,6 +7,9 @@ The releases published on CurseForge. Each lists what changed since the release 
 - On a step to kill or collect, the guide's arrow points to the nearest mob or object you still need
   in your zone, with its name and distance. Needs Questie; Arrow points to the nearest quest mob, in the
   planner window, switches it off.
+- Nameplates: a friendly player's name-only plate no longer shows a number over the name (it was the
+  health text, left on where the game hides the bar). Plates keep their own health, name and level
+  as the game reuses them.
 
 ## 13.5.0
 

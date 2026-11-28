@@ -49,17 +49,25 @@ ns:NewModule("plateQuest", function()
         if m.suiBar then m:SetPoint("RIGHT", m.suiBar, "LEFT", -(slot + 1), 0)
         else m:SetPoint("RIGHT", m:GetParent(), "LEFT", 8 - slot, 0) end
     end
-    local function Mark(plate)
-        local m = marks[plate]
-        if m then return m end
-        m = CreateFrame("Frame", nil, plate)
-        m:SetSize(14, 18)
+    -- (13.5.1) The bar of the unit frame the plate has now (ours, standing in for the game's). The game
+    -- hands its unit frames out from a pool, so a plate's frame can change each time a unit is put on
+    -- it: the mark moves onto the present one's bar, and is hidden with it where the game hides the bar.
+    local function Home(m, plate)
         local uf = plate.UnitFrame
-        local bar = type(uf) == "table" and (uf.healthBar or uf.HealthBar or (type(uf.HealthBarsContainer) == "table" and uf.HealthBarsContainer.healthBar)) or nil
+        local bar = type(uf) == "table" and ns:Usable(uf) and (uf.healthBar or uf.HealthBar or (type(uf.HealthBarsContainer) == "table" and uf.HealthBarsContainer.healthBar)) or nil
+        if type(bar) == "table" then bar = rawget(bar, "suiOwn") or bar end
         if type(bar) == "table" and ns:Usable(bar) then
+            if m.suiBar ~= bar then pcall(m.SetParent, m, bar) end
             m.suiBar = bar
             pcall(function() m:SetFrameLevel((bar:GetFrameLevel() or 1) + 5) end)
         end
+    end
+    local function Mark(plate)
+        local m = marks[plate]
+        if m then Home(m, plate); return m end
+        m = CreateFrame("Frame", nil, plate)
+        m:SetSize(14, 18)
+        Home(m, plate)
         Place(m)
         m.text = ns:NewText(m, 17, "CENTER")
         m.text:SetPoint("CENTER")
